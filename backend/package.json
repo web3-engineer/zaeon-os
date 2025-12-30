@@ -1,0 +1,22 @@
+{
+  "name": "zaeon-agent-service",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "dev": "nodemon --watch src --exec ts-node src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "@google/generative-ai": "^0.24.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "ts-node": "^10.9.2",
+    "@types/node": "^20.10.0",
+    "@types/express": "^5.0.1",
+    "nodemon": "^3.1.0"
+  }
+}
