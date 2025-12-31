@@ -1,4 +1,3 @@
-// app/layout.tsx
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Footer } from "@/components/main/footer";
@@ -8,6 +7,8 @@ import { siteConfig } from "@/config";
 import { cn } from "@/lib/utils";
 import { inter, notoSansSC } from "@/app/fonts";
 import ClientShell from "@/components/ClientShell";
+// 1. IMPORTAÇÃO NOVA (Seu arquivo providers.tsx deve estar na mesma pasta 'app')
+import { Web3Provider } from "./providers";
 
 import "./globals.css";
 
@@ -19,7 +20,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <html lang="pt-BR">
         <head>
             {/* fonte Matrix global */}
-            <link rel="stylesheet" href={notoSansSC.css} />
+            {/* Nota: href={notoSansSC.css} pode precisar de ajuste dependendo de como você carrega fontes, mas vou manter como está */}
             <script
                 dangerouslySetInnerHTML={{
                     __html: `
@@ -36,13 +37,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 inter.className
             )}
         >
-        {/* Splash + hidratação controlada no cliente */}
-        <ClientShell>
-            <StarsCanvas />
-            <Navbar />
-            {children}
-            <Footer />
-        </ClientShell>
+        {/* 2. ENVOLVENDO TUDO COM O PROVIDER WEB3 */}
+        <Web3Provider>
+            <ClientShell>
+                <StarsCanvas />
+                <Navbar />
+                {children}
+                <Footer />
+            </ClientShell>
+        </Web3Provider>
         </body>
         </html>
     );

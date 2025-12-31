@@ -13,19 +13,42 @@ import {
     CommandLineIcon,
     HeartIcon,
     CalculatorIcon,
-    ChevronUpIcon
+    ChevronUpIcon,
+    WalletIcon,
+    ExclamationTriangleIcon
 } from "@heroicons/react/24/outline";
 import MatrixRain from "@/components/main/star-background";
+
+// --- WEB3 IMPORTS ---
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useConnect } from 'wagmi';
+import { uploadToPinata } from "@/src/utils/ipfs";
 
 // --- IMAGE IMPORTS ---
 import zoxImage from "./zox.png";
 import ethernautImage from "./ethernaut.png";
 import ballenaImage from "./ballena.png";
 
+// --- CONTRACT CONFIGURATION ---
+// Updated with the new address/hash provided
+const CONTRACT_ADDRESS = "0xceccfaf7e5f883fa399b9c9272f26030890f17bbbcbdb248b56908a1c6569412";
+
+const CONTRACT_ABI = [
+    {
+        "inputs": [
+            { "internalType": "address", "name": "scientist", "type": "address" },
+            { "internalType": "string", "name": "ipfsMetadataUrl", "type": "string" }
+        ],
+        "name": "mintResearch",
+        "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    }
+] as const;
+
 // --- ASSETS: PIXEL PYTHON SVG ---
 const PixelPython = ({ color = "#22d3ee" }: { color?: string }) => (
     <svg width="45" height="45" viewBox="0 0 24 24" fill="none" className="drop-shadow-[0_0_15px_rgba(34,211,238,0.6)]">
-        <path d="M10 4H14V6H16V10H14V8H10V10H8V6H10V4Z" fill={color} />
+        <path d="M10 4H14V6H16V10H14V8H10V10H8V6H10V10H8V6H10V4Z" fill={color} />
         <path d="M16 10H18V14H16V16H8V14H6V10H8V12H16V10Z" fill={color} fillOpacity="0.7"/>
         <rect x="9" y="5" width="1" height="1" fill="white" />
         <rect x="13" y="5" width="1" height="1" fill="white" />
@@ -42,7 +65,6 @@ const AGENTS = {
         bg: "bg-cyan-500/20",
         border: "border-cyan-500/50",
         image: zoxImage,
-        // Small Size
         widthClass: "w-64",
         contentPadding: "pl-[290px]"
     },
@@ -54,7 +76,6 @@ const AGENTS = {
         bg: "bg-red-500/20",
         border: "border-red-500/50",
         image: ballenaImage,
-        // Target Size (Medium)
         widthClass: "w-[260px]",
         contentPadding: "pl-[290px]"
     },
@@ -66,7 +87,6 @@ const AGENTS = {
         bg: "bg-purple-500/20",
         border: "border-purple-500/50",
         image: ethernautImage,
-        // UPDATED: Now matches Ballena exactly to fit the prompt window
         widthClass: "w-[260px]",
         contentPadding: "pl-[290px]"
     },
@@ -76,11 +96,19 @@ type AgentKey = keyof typeof AGENTS;
 
 export default function WorkStationPage() {
     const [mounted, setMounted] = useState(false);
-    useEffect(() => { setMounted(true); }, []);
 
+    // --- WEB3 STATE ---
+    const { address, isConnected } = useAccount();
+    const { connectors, connect } = useConnect();
+    const { writeContract, data: hash, error: writeError } = useWriteContract();
+    const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+
+    // --- UI STATE ---
     const [activeSection, setActiveSection] = useState<"doc" | "chat" | "terminal" | null>(null);
     const [prompt, setPrompt] = useState("");
     const [docTitle, setDocTitle] = useState("Untitled_Research_Paper.txt");
+    const [docContent, setDocContent] = useState("");
+    const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
 
     const [selectedAgent, setSelectedAgent] = useState<AgentKey>("zenita");
     const [isAgentMenuOpen, setIsAgentMenuOpen] = useState(false);
@@ -90,31 +118,48 @@ export default function WorkStationPage() {
     const [isTyping, setIsTyping] = useState(false);
 
     const chatContainerRef = useRef<HTMLDivElement>(null);
+    const terminalRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => { setMounted(true); addLog("System initialized. Agents standing by."); }, []);
+
+    const scrollToBottom = () => {
+        if (chatContainerRef.current) {
+            const { scrollHeight, clientHeight } = chatContainerRef.current;
+            chatContainerRef.current.scrollTo({ top: scrollHeight - clientHeight, behavior: "smooth" });
+        }
+        if (terminalRef.current) {
+            terminalRef.current.scrollTo({ top: terminalRef.current.scrollHeight, behavior: "smooth"});
+        }
+    };
+
+    useEffect(() => { if (mounted) scrollToBottom(); }, [chatHistory, terminalLogs, mounted, isTyping, selectedAgent]);
+
+    // Monitoramento da Transação
+    useEffect(() => {
+        if (isConfirming) {
+            addLog("Blockchain: Securing data on Very Network...");
+        }
+        if (isConfirmed) {
+            addLog(`SUCCESS: Proof of Knowledge established! Tx: ${hash?.slice(0, 10)}...`);
+            setChatHistory(prev => [...prev, { role: 'ai', text: `Document secured on chain.\nTx Hash: ${hash}` }]);
+        }
+        if (writeError) {
+            addLog(`ERROR: ${writeError.message.slice(0, 30)}...`);
+        }
+    }, [isConfirming, isConfirmed, writeError, hash]);
+
+    const addLog = (msg: string) => {
+        setTerminalLogs(prev => [...prev, `zaeon@root:~$ ${msg}`]);
+    };
 
     const handleAgentSwitch = (key: AgentKey) => {
         if (key === selectedAgent) return;
         setIsAgentMenuOpen(false);
         setIsImageLoading(true);
         setSelectedAgent(key);
-
-        setTimeout(() => {
-            setIsImageLoading(false);
-        }, 600);
+        addLog(`Switched active agent: ${AGENTS[key].name}`);
+        setTimeout(() => { setIsImageLoading(false); }, 600);
     };
-
-    const scrollToBottom = () => {
-        if (chatContainerRef.current) {
-            const { scrollHeight, clientHeight } = chatContainerRef.current;
-            chatContainerRef.current.scrollTo({
-                top: scrollHeight - clientHeight,
-                behavior: "smooth"
-            });
-        }
-    };
-
-    useEffect(() => {
-        if (mounted) scrollToBottom();
-    }, [chatHistory, mounted, isTyping, selectedAgent]);
 
     const handleSend = () => {
         if(!prompt.trim()) return;
@@ -124,16 +169,73 @@ export default function WorkStationPage() {
 
         const agent = AGENTS[selectedAgent];
         setTimeout(() => {
-            setChatHistory(prev => [...prev, { role: 'ai', text: `${agent.name}: Analyzing inputs... Accessing ${agent.role} database...` }]);
+            setChatHistory(prev => [...prev, { role: 'ai', text: `${agent.name}: Acknowledged. I can process "${prompt}". Click GENERATE to compile the research paper.` }]);
             setIsTyping(false);
         }, 1000);
+    };
+
+    // --- MAIN LOGIC: GENERATE (GOOGLE AI) -> IPFS -> BLOCKCHAIN ---
+    const handleGenerateProtocol = async () => {
+        if (!isConnected) {
+            alert("Connection required. Please link wallet.");
+            addLog("Error: Wallet disconnected.");
+            return;
+        }
+        if (!docTitle) {
+            alert("Document title required.");
+            return;
+        }
+
+        const agent = AGENTS[selectedAgent];
+        addLog(`Initiating generation protocol via ${agent.name}...`);
+        setActiveSection('doc');
+
+        // 1. GERAÇÃO DE CONTEÚDO (GOOGLE AI PLACEHOLDER)
+        setDocContent("Accessing Neural Network... Generating Research...");
+        await new Promise(r => setTimeout(r, 1000));
+
+        // TODO: Aqui entra a IA do Google depois
+        const generatedText = `RESEARCH PAPER: ${docTitle}\n\nAUTHOR: ${agent.name} (AI Agent)\nFIELD: ${agent.role}\nDATE: ${new Date().toISOString()}\n\nABSTRACT:\nThis document serves as an immutable record of research regarding "${docTitle}". Generated by the Zaeon Framework utilizing advanced neural processing.\n\nCORE ANALYSIS:\nThe integration of Artificial Intelligence with the Very Network blockchain ensures that this knowledge is preserved with cryptographic certainty.\n\nCONCLUSION:\nData integrity verified.`;
+
+        setDocContent(generatedText);
+        addLog("Content generated. Encrypting for IPFS...");
+
+        // 2. Upload para IPFS
+        try {
+            const ipfsHash = await uploadToPinata({
+                title: docTitle,
+                agent: agent.name,
+                topic: agent.role,
+                content: generatedText
+            });
+
+            if (!ipfsHash) {
+                throw new Error("IPFS returned null. Check API Keys.");
+            }
+
+            addLog(`IPFS Storage Confirmed: ${ipfsHash}`);
+            addLog("Initiating Blockchain Transaction...");
+
+            // 3. Gravação na Blockchain (Mint)
+            writeContract({
+                address: CONTRACT_ADDRESS as `0x${string}`,
+                abi: CONTRACT_ABI,
+                functionName: 'mintResearch',
+                args: [address!, ipfsHash],
+            });
+
+        } catch (error) {
+            console.error("ERRO CRÍTICO:", error);
+            addLog("CRITICAL ERROR: Upload failed. Check console (F12) for details.");
+            alert("Erro no upload. Verifique se o .env.local está configurado e reinicie o servidor.");
+        }
     };
 
     if (!mounted) return <div className="w-full h-screen bg-[#030014]" />;
 
     const panelStyle = "relative overflow-hidden backdrop-blur-2xl border border-white/10 shadow-[0_0_40px_rgba(34,211,238,0.12)] bg-[linear-gradient(135deg,rgba(7,38,77,0.4),rgba(11,58,164,0.3),rgba(7,38,77,0.4))] rounded-xl transition-all duration-300";
     const activeBorder = "ring-1 ring-cyan-400/50 shadow-[0_0_30px_rgba(34,211,238,0.25)] bg-[linear-gradient(135deg,rgba(7,38,77,0.6),rgba(11,58,164,0.4),rgba(7,38,77,0.6))]";
-    const btnBase = "px-4 py-2 rounded-md text-[11px] font-bold border transition flex items-center gap-2 uppercase tracking-wider";
+    const btnBase = "px-4 py-2 rounded-md text-[11px] font-bold border transition flex items-center gap-2 uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed";
 
     const activeConfig = AGENTS[selectedAgent];
 
@@ -160,11 +262,52 @@ export default function WorkStationPage() {
                         )}
                     </AnimatePresence>
 
-                    {/* --- STATIC VISUALS CONTAINER --- */}
-                    {/* Positioned absolutely at bottom left */}
-                    <div className="absolute bottom-6 left-6 z-30 flex flex-col items-center">
+                    {/* --- HEADER: WALLET BUTTONS (AQUI ESTÁ A MUDANÇA PARA O PASSO 3) --- */}
+                    <div className="absolute top-4 left-4 z-40">
+                        {isConnected ? (
+                            <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/30 px-3 py-1.5 rounded-lg shadow-[0_0_15px_rgba(74,222,128,0.2)] backdrop-blur-md">
+                                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-[0_0_8px_#4ade80]" />
+                                <div className="flex flex-col">
+                                    <span className="text-[9px] text-green-400/70 font-bold uppercase tracking-widest leading-none mb-0.5">Connected</span>
+                                    <span className="text-[10px] text-white font-mono leading-none tracking-wide">{address?.slice(0,6)}...{address?.slice(-4)}</span>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex gap-2">
+                                {/* BOTÃO METAMASK */}
+                                <button
+                                    onClick={() => {
+                                        const metaMask = connectors.find(c => c.id === 'io.metamask') || connectors[0];
+                                        connect({ connector: metaMask });
+                                    }}
+                                    className="flex items-center gap-2 bg-orange-500/10 border border-orange-500/30 px-3 py-1.5 rounded-lg hover:bg-orange-500/20 transition-all group backdrop-blur-md"
+                                >
+                                    <span className="text-lg">🦊</span>
+                                    <span className="text-[9px] text-orange-400 font-bold uppercase tracking-widest">MetaMask</span>
+                                </button>
 
-                        {/* 1. CHARACTER IMAGE */}
+                                {/* BOTÃO WEPIN */}
+                                <button
+                                    onClick={() => {
+                                        const wepin = connectors.find(c => c.name === 'Wepin' || c.id === 'wepin');
+                                        if (wepin) {
+                                            connect({ connector: wepin });
+                                        } else {
+                                            alert("Wepin not configured in wagmi.ts!");
+                                        }
+                                    }}
+                                    className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/30 px-3 py-1.5 rounded-lg hover:bg-blue-500/20 transition-all group backdrop-blur-md"
+                                >
+                                    <span className="text-lg">🔵</span>
+                                    <span className="text-[9px] text-blue-400 font-bold uppercase tracking-widest">Wepin</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* --- STATIC VISUALS CONTAINER --- */}
+                    <div className="absolute bottom-6 left-6 z-30 flex flex-col items-center">
+                        {/* CHARACTER IMAGE */}
                         <div className={`relative transition-all duration-500 ease-in-out flex justify-center items-end ${activeConfig.widthClass} h-auto`}>
                             <AnimatePresence mode="wait">
                                 {isImageLoading ? (
@@ -174,10 +317,7 @@ export default function WorkStationPage() {
                                         className="h-48 w-full flex items-center justify-center"
                                     >
                                         <div className="bg-black/40 p-4 rounded-full backdrop-blur-md border border-white/10">
-                                            <svg className="animate-spin text-white/50 w-8 h-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
+                                            <div className="animate-spin text-white/50 w-8 h-8 rounded-full border-2 border-white/20 border-t-cyan-500"></div>
                                         </div>
                                     </motion.div>
                                 ) : (
@@ -197,7 +337,7 @@ export default function WorkStationPage() {
                             </AnimatePresence>
                         </div>
 
-                        {/* 2. AGENT SELECTOR BUTTON */}
+                        {/* AGENT SELECTOR BUTTON */}
                         <div className="relative mt-2">
                             <AnimatePresence>
                                 {isAgentMenuOpen && (
@@ -244,7 +384,7 @@ export default function WorkStationPage() {
                     </div>
 
                     {/* CHAT CONTENT */}
-                    <div ref={chatContainerRef} className="flex-1 relative p-6 overflow-y-auto custom-scrollbar flex flex-col z-0">
+                    <div ref={chatContainerRef} className="flex-1 relative p-6 overflow-y-auto custom-scrollbar flex flex-col z-0 pt-16">
                         <div className="flex-1" />
                         <div className="space-y-6 pb-2">
                             {chatHistory.map((msg, i) => (
@@ -279,7 +419,7 @@ export default function WorkStationPage() {
                                     value={prompt}
                                     onChange={(e) => setPrompt(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                                    placeholder={`Ask ${activeConfig.name} about ${activeConfig.role.toLowerCase()}...`}
+                                    placeholder={`What topic from (${activeConfig.role.toLowerCase()}) you wanna research?`}
                                     className="w-full bg-black/50 border border-white/10 rounded-xl py-3 px-4 text-white placeholder:text-white/40 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-all font-mono text-sm"
                                 />
                             </div>
@@ -290,11 +430,8 @@ export default function WorkStationPage() {
                             </button>
                         </div>
 
-                        {/* Footer with Padding */}
-                        <div className={`flex justify-between items-center px-1 transition-all duration-300 ${activeConfig.contentPadding}`}>
-                 <span className="text-[10px] text-white/30 uppercase tracking-widest font-bold">
-                    System Status: <span className="text-green-400">ONLINE</span>
-                 </span>
+                        {/* Footer Simplificado (Já que a Wallet subiu) */}
+                        <div className={`flex justify-end items-center px-1 transition-all duration-300 ${activeConfig.contentPadding}`}>
                             <button
                                 onClick={() => setChatHistory([])}
                                 className="text-[10px] text-red-400/50 hover:text-red-400 flex items-center gap-1.5 px-2 py-1 hover:bg-red-900/10 rounded transition-colors uppercase tracking-widest"
@@ -323,7 +460,7 @@ export default function WorkStationPage() {
                             )}
                         </AnimatePresence>
 
-                        <div className="h-14 bg-black/40 border-b border-white/10 flex items-center px-6 shrink-0">
+                        <div className="h-14 bg-black/40 border-b border-white/10 flex items-center px-6 shrink-0 gap-4">
                             <input
                                 value={docTitle}
                                 onChange={(e) => setDocTitle(e.target.value)}
@@ -332,32 +469,56 @@ export default function WorkStationPage() {
                             />
                         </div>
 
-                        <div className="flex-1 p-8 font-mono text-sm text-white/80 leading-loose overflow-auto custom-scrollbar bg-black/20">
-                            <p className="opacity-40 italic">Waiting for generated output...</p>
-                        </div>
+                        {/* TEXTAREA EDITÁVEL */}
+                        <textarea
+                            value={docContent}
+                            onChange={(e) => setDocContent(e.target.value)}
+                            className="flex-1 p-8 font-mono text-sm text-white/80 leading-loose overflow-auto custom-scrollbar bg-black/20 resize-none focus:outline-none focus:bg-black/30 transition-colors placeholder:text-white/20"
+                            placeholder="Waiting for generated output... (You can write here too)"
+                        />
 
                         <div className="p-4 border-t border-white/10 bg-black/40 flex justify-end gap-3 rounded-b-xl">
-                            <button className={`${btnBase} bg-cyan-900/20 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20 shadow-[0_0_10px_rgba(34,211,238,0.1)]`}>
-                                <CpuChipIcon className="w-4 h-4" /> APPLY
+                            <button disabled={true} className={`${btnBase} opacity-50 cursor-not-allowed bg-cyan-900/20 text-cyan-400 border-cyan-500/30`}>
+                                <CpuChipIcon className="w-4 h-4" /> AUTO-FIX
                             </button>
-                            <button className={`${btnBase} bg-green-900/20 text-green-400 border-green-500/30 hover:bg-green-500/20 shadow-[0_0_10px_rgba(74,222,128,0.1)]`}>
-                                <PlayIcon className="w-4 h-4" /> GENERATE
+
+                            <button
+                                onClick={handleGenerateProtocol}
+                                disabled={isConfirming || !isConnected}
+                                className={`${btnBase} ${isConfirming ? 'bg-yellow-900/20 border-yellow-500/30 text-yellow-400' : 'bg-green-900/20 text-green-400 border-green-500/30 hover:bg-green-500/20'} shadow-[0_0_10px_rgba(74,222,128,0.1)]`}
+                            >
+                                {isConfirming ? (
+                                    <>Processing...</>
+                                ) : (
+                                    <><PlayIcon className="w-4 h-4" /> GENERATE</>
+                                )}
                             </button>
                         </div>
                     </div>
 
-                    <div className={`${panelStyle} h-[28%] flex flex-col shrink-0`}>
-                        <div className="h-9 bg-black/60 border-b border-white/10 flex items-center justify-end px-4 gap-4">
-                            <button className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider text-white/40 hover:text-purple-400 transition">
-                                <AcademicCapIcon className="w-3.5 h-3.5" /> Homework
-                            </button>
-                            <button className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider text-white/40 hover:text-green-400 transition">
-                                <ArrowDownTrayIcon className="w-3.5 h-3.5" /> Save Work
-                            </button>
+                    <div
+                        onClick={() => setActiveSection('terminal')}
+                        className={`${panelStyle} h-[28%] flex flex-col shrink-0 ${activeSection === 'terminal' ? activeBorder : ''}`}
+                    >
+                        <div className="h-9 bg-black/60 border-b border-white/10 flex items-center justify-between px-4">
+                            <span className="text-[10px] text-white/30 font-mono">TERMINAL (VERY NETWORK)</span>
+                            <div className="flex gap-4">
+                                <button className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider text-white/40 hover:text-purple-400 transition">
+                                    <AcademicCapIcon className="w-3.5 h-3.5" /> Homework Session
+                                </button>
+                                <button className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider text-white/40 hover:text-green-400 transition">
+                                    <ArrowDownTrayIcon className="w-3.5 h-3.5" /> Save Session
+                                </button>
+                            </div>
                         </div>
-                        <div className="flex-1 p-4 font-mono text-xs text-green-500/90 bg-black/60 overflow-hidden shadow-inner rounded-b-xl">
+
+                        {/* TERMINAL LOGS REAIS */}
+                        <div ref={terminalRef} className="flex-1 p-4 font-mono text-xs text-green-500/90 bg-black/60 overflow-y-auto custom-scrollbar shadow-inner rounded-b-xl">
                             <div className="opacity-80 space-y-1">
-                                <p>zaeon@user:~$ <span className="animate-pulse">_</span></p>
+                                {terminalLogs.map((log, idx) => (
+                                    <div key={idx} className="break-all">{log}</div>
+                                ))}
+                                <p>zaeon@root:~$ <span className="animate-pulse">_</span></p>
                             </div>
                         </div>
                     </div>
