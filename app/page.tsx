@@ -10,7 +10,6 @@ export default function Home() {
         <Hero />
         <Encryption />
         <Suspense fallback={null}>
-          <Projects />
         </Suspense>
       </div>
     </main>

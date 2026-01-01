@@ -2,22 +2,22 @@
 
 import React, { useEffect, useRef } from "react";
 
-// South Korean translations of:
+// Mandarin Chinese translations of:
 // Luck, Faith, Work, Education, Organization, Honor, Community, Victory, Dreams
 const WORDS = [
-    "행운",   // Luck
-    "신념",   // Faith
-    "노력",   // Work (Effort)
-    "교육",   // Education
-    "조직",   // Organization
-    "명예",   // Honor
-    "공동체", // Community
-    "승리",   // Victory
-    "꿈"      // Dreams
+    "幸运",   // Luck
+    "信仰",   // Faith
+    "努力",   // Work (Effort)
+    "教育",   // Education
+    "组织",   // Organization
+    "荣誉",   // Honor
+    "社区",   // Community
+    "胜利",   // Victory
+    "梦想"    // Dreams
 ];
 
-// Updated font stack to prioritize Korean characters
-const FONT_FAMILY = `"Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", monospace, sans-serif`;
+// Updated font stack to prioritize Simplified Chinese characters
+const FONT_FAMILY = `"Noto Sans SC", "Microsoft YaHei", "SimHei", monospace, sans-serif`;
 
 /** Cold Palette — Blue and Teal tones fitting the VERY ecosystem */
 const PALETTE = [
@@ -27,7 +27,6 @@ const PALETTE = [
 
 function buildStreamSource() {
     // Keep the crypto symbols for the ecosystem feel
-    const specials = ["₿","Ξ",];
     const chunks: string[] = [];
     for (let i = 0; i < WORDS.length; i++) {
         chunks.push(WORDS[i]);
@@ -59,11 +58,18 @@ const MatrixRain: React.FC = () => {
         };
         applyDPR();
 
-        const fontSize = 13; // Slightly larger for legibility of Hangul
-        const colWidth = Math.round(fontSize * 1.05);
-        let columns = Math.max(8, Math.floor(width / colWidth) - 6);
+        const fontSize = 13;
+
+        // --- MUDANÇA DE DENSIDADE AQUI ---
+        // Antes: fontSize * 1.05 (Muito denso)
+        // Agora: fontSize * 4 (Cria espaçamento entre as colunas, deixando mais leve)
+        const colWidth = Math.round(fontSize * 4);
+
+        let columns = Math.max(4, Math.floor(width / colWidth));
 
         type Col = { y: number; speed: number; color: string; offset: number };
+
+        // Inicializa as colunas
         let cols: Col[] = new Array(columns).fill(0).map((_, i) => ({
             y: -Math.random() * 40,
             speed: 0.50 + (i % 7) * (0.32 / 7),
@@ -74,19 +80,19 @@ const MatrixRain: React.FC = () => {
         ctx.font = `${fontSize}px ${FONT_FAMILY}`;
         ctx.textBaseline = "top";
 
-        const FADE_LENGTH_LINES = 24;
-        const BASE_ALPHA = 0.95;
+        const FADE_LENGTH_LINES = 50; // Levemente reduzido para ficar mais curto
+        const BASE_ALPHA = 0.90; // Um pouco mais transparente
         const TOP_ALPHA = 0.00;
 
         const draw = () => {
-            // Darker fade for sharper contrast
+            // Limpa o fundo com um fade para criar rastro
             ctx.globalAlpha = 1.0;
             ctx.fillStyle = "rgba(0,0,0,0.22)";
             ctx.fillRect(0, 0, width, height);
 
             for (let i = 0; i < columns; i++) {
                 const col = cols[i];
-                const x = i * colWidth;
+                const x = i * colWidth; // Posicionamento baseado na nova largura espaçada
                 const headY = col.y * fontSize;
                 ctx.fillStyle = col.color;
 
@@ -110,6 +116,8 @@ const MatrixRain: React.FC = () => {
                 if (headY > height + FADE_LENGTH_LINES * fontSize) {
                     col.y = -Math.random() * 30;
                     col.offset = (col.offset + Math.floor(5 + Math.random() * 25)) % STREAM_SOURCE.length;
+
+                    // Randomiza cor ocasionalmente
                     if (Math.random() > 0.7) {
                         col.color = PALETTE[Math.floor(Math.random() * PALETTE.length)];
                     }
@@ -123,7 +131,8 @@ const MatrixRain: React.FC = () => {
 
         const onResize = () => {
             applyDPR();
-            columns = Math.max(8, Math.floor(width / colWidth) - 6);
+            // Recalcula colunas no resize usando o novo espaçamento
+            columns = Math.max(4, Math.floor(width / colWidth));
             cols = new Array(columns).fill(0).map((_, i) => ({
                 y: -Math.random() * 40,
                 speed: 0.50 + (i % 7) * (0.32 / 7),
@@ -146,7 +155,7 @@ const MatrixRain: React.FC = () => {
             <canvas
                 ref={canvasRef}
                 className="w-full h-full"
-                style={{ background: "#000", imageRendering: "auto" }}
+                style={{ background: "#030014", imageRendering: "auto" }} // Fundo levemente azulado para combinar com o tema
             />
         </div>
     );

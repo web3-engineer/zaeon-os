@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation"; // --- ADDED THIS IMPORT ---
+import { useRouter } from "next/navigation";
 import { slideInFromLeft, slideInFromRight, slideInFromTop } from "@/lib/motion";
 import onboardPng from "@/app/onboard.png";
 
@@ -116,7 +116,6 @@ function OnboardModal({ open, onClose, role, onSuccess }: { open: boolean; onClo
 
   const handleSubmit = () => {
     if (canSubmit) {
-      // Pass data back to parent for redirection logic
       onSuccess({
         role,
         id: idValue,
@@ -203,7 +202,7 @@ function OnboardModal({ open, onClose, role, onSuccess }: { open: boolean; onClo
 
 const HeroContentComponent = () => {
   const { t, i18n } = useTranslation();
-  const router = useRouter(); // --- HOOK FOR NAVIGATION ---
+  const router = useRouter();
 
   const [index, setIndex] = useState(0);
   const [roleIndex, setRoleIndex] = useState(0);
@@ -221,11 +220,8 @@ const HeroContentComponent = () => {
     i18n.changeLanguage(e.target.value);
   };
 
-  // --- REDIRECTION LOGIC ---
   const handleOnboardSuccess = (data: any) => {
-    // You can append query params here if you want to pass data to the WorkStation
     const query = new URLSearchParams(data).toString();
-    // Redirect to the separated WorkStation page
     router.push(`/workstation?${query}`);
   };
 
@@ -337,14 +333,17 @@ const HeroContentComponent = () => {
                           <div className="flex flex-col">
                             <span className="text-[13px] text-white/50 font-medium uppercase tracking-wider mb-1">{t("options.language")}</span>
                             <span className="text-[15px] font-semibold text-white">
-                              {i18n.language === 'en' ? 'English' : i18n.language === 'ko' ? '한국어' : i18n.language === 'pt' ? 'Português' : i18n.language === 'es' ? 'Español' : 'Français'}
+                              {/* Atualizado para exibir Mandarim em vez de Coreano */}
+                              {i18n.language === 'en' ? 'English' : i18n.language === 'zh' ? '中文 (Mandarin)' : i18n.language === 'pt' ? 'Português' : i18n.language === 'es' ? 'Español' : 'Français'}
                             </span>
                           </div>
+                          {/* Opção 'ko' trocada por 'zh' */}
                           <select className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" value={i18n.language} onChange={handleLanguageChange}>
                             <option className="bg-slate-900 text-white" value="en">English</option>
-                            <option className="bg-slate-900 text-white" value="ko">한국어 (Korean)</option>
+                            <option className="bg-slate-900 text-white" value="zh">中文 (Mandarin)</option>
                             <option className="bg-slate-900 text-white" value="pt">Português (Brasil)</option>
                             <option className="bg-slate-900 text-white" value="es">Español (Spanish)</option>
+                            <option className="bg-slate-900 text-white" value="fr">Français</option>
                           </select>
                           <ChevronRightIcon className="h-5 w-5 text-white/40" />
                         </div>
@@ -371,9 +370,7 @@ const HeroContentComponent = () => {
             </motion.aside>
             <motion.div initial="hidden" animate="visible" className="flex-1 min-h-[60vh] flex items-start">
               <div>
-                <motion.div variants={slideInFromTop} className="w-fit py-2 px-3 border border-white/15 bg-white/5 rounded-lg flex items-center gap-2 shadow-[0_0_24px_rgba(34,211,238,0.16)]">
-                  <span className="text-[13px] text-white/85">Research Node v2.1</span>
-                </motion.div>
+
                 <motion.h1 variants={slideInFromRight(0.28)} className="mt-6 text-5xl sm:text-6xl font-light tracking-tight leading-tight max-w-[780px] select-none">
                   <span className="bg-clip-text text-transparent" style={{ backgroundImage: "linear-gradient(90deg,#22d3ee,#60a5fa,#22d3ee)", backgroundSize: "260% 100%", WebkitTextStroke: "0.4px rgba(255,255,255,0.08)", }} />
                 </motion.h1>

@@ -6,15 +6,19 @@ const config: Config = {
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     './app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  // ... dentro do seu tailwind.config.ts
   theme: {
     extend: {
-      backgroundImage: {
-        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'gradient-conic':
-          'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
+      fontFamily: {
+        // Mapeia a classe 'font-sans' para a Space Grotesk
+        sans: ["var(--font-space)", "sans-serif"],
+        // Mapeia a classe 'font-mono' para a JetBrains Mono
+        mono: ["var(--font-code)", "monospace"],
       },
+      // ...
     },
   },
+// ...
   plugins: [],
 }
 export default config

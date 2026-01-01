@@ -30,8 +30,7 @@ const resources = {
                 lbl_professional: "Enter Tax ID",
                 lbl_entrepreneur: "Enter Company ID"
             },
-            footer: { powered: "Powered by VERY", version: "Zaeon OS - v0.1 / Testnet" },
-            // --- NOVAS CHAVES (Adicionadas para Navbar e Encryption) ---
+            footer: { powered: "Powered by Movement", version: "Zaeon OS - v0.1 / Testnet" },
             navbar: {
                 about: "About Us",
                 roadmap: "Roadmap",
@@ -43,41 +42,41 @@ const resources = {
             }
         }
     },
-    ko: {
+    // Substituído Coreano (ko) por Mandarim (zh)
+    zh: {
         translation: {
-            menu: { new: "새 계정", load: "계정 불러오기", options: "옵션", manual: "매뉴얼", back: "메뉴로 돌아가기" },
-            roles: { student: "학생", researcher: "연구원", professional: "전문가", entrepreneur: "사업가" },
-            options: { language: "언어", node: "블록체인 노드", tutorials: "튜토리얼", on: "켜기", off: "끄기" },
+            menu: { new: "新账户", load: "加载账户", options: "选项", manual: "手册", back: "返回菜单" },
+            roles: { student: "学生", researcher: "研究员", professional: "专业人士", entrepreneur: "企业家" },
+            options: { language: "语言", node: "区块链节点", tutorials: "教程", on: "开启", off: "关闭" },
             modal: {
-                title: "새 계정",
-                name: "성명",
-                email: "이메일",
-                phone: "전화번호",
-                continue: "계속",
-                cancel: "취소",
-                use_wallet: "지갑 주소 사용",
-                use_id: "신분증 사용",
-                wallet_label: "VERY 지갑 주소",
+                title: "新账户",
+                name: "姓名",
+                email: "电子邮件",
+                phone: "电话号码",
+                continue: "继续",
+                cancel: "取消",
+                use_wallet: "使用钱包地址",
+                use_id: "使用身份证",
+                wallet_label: "VERY 钱包地址",
                 wallet_placeholder: "0x...",
-                ph_student: "000.000.000-00 (주민등록번호)",
-                ph_researcher: "ORCID 또는 Lattes ID",
-                ph_professional: "납세자 번호",
-                ph_entrepreneur: "사업자 등록번호",
-                lbl_student: "신분증 번호 입력",
-                lbl_researcher: "ORCID 입력",
-                lbl_professional: "세금 ID 입력",
-                lbl_entrepreneur: "사업자 번호 입력"
+                ph_student: "身份证号码",
+                ph_researcher: "ORCID 或 Lattes ID",
+                ph_professional: "纳税人识别号",
+                ph_entrepreneur: "公司注册号",
+                lbl_student: "输入身份证号",
+                lbl_researcher: "输入 ORCID",
+                lbl_professional: "输入税号",
+                lbl_entrepreneur: "输入公司 ID"
             },
-            footer: { powered: "Powered by VERY", version: "Zaeon OS - v0.1 / 테스트넷" },
-            // --- NOVAS CHAVES ---
+            footer: { powered: "Powered by Movement", version: "Zaeon OS - v0.1 / 测试网" },
             navbar: {
-                about: "회사 소개",
-                roadmap: "로드맵",
-                study_rooms: "스터디룸"
+                about: "关于我们",
+                roadmap: "路线图",
+                study_rooms: "自习室"
             },
             encryption: {
-                title: "다른 차원에서 온 AI 에이전트.",
-                button: "더 알아보기"
+                title: "来自另一个维度的 AI 代理。",
+                button: "了解更多"
             }
         }
     },
@@ -90,12 +89,12 @@ const resources = {
                 title: "Nova Conta",
                 name: "Nome Completo",
                 email: "E-mail",
-                phone: "Telefone",
+                phone: "Celular",
                 continue: "Continuar",
                 cancel: "Cancelar",
                 use_wallet: "Usar Carteira",
                 use_id: "Usar ID",
-                wallet_label: "Endereço da Carteira VERY",
+                wallet_label: "Endereço da Carteira",
                 wallet_placeholder: "0x...",
                 ph_student: "000.000.000-00 (CPF)",
                 ph_researcher: "ORCID ou Lattes",
@@ -106,8 +105,7 @@ const resources = {
                 lbl_professional: "Informe CPF/CNPJ",
                 lbl_entrepreneur: "Informe o CNPJ"
             },
-            footer: { powered: "Desenvolvido por VERY", version: "Zaeon OS - v0.1 / Testnet" },
-            // --- NOVAS CHAVES ---
+            footer: { powered: "Powered by Movement", version: "Zaeon OS - v0.1 / Testnet" },
             navbar: {
                 about: "Sobre Nós",
                 roadmap: "Roadmap",
@@ -144,8 +142,7 @@ const resources = {
                 lbl_professional: "Ingrese ID Fiscal",
                 lbl_entrepreneur: "Ingrese ID Empresa"
             },
-            footer: { powered: "Desarrollado por VERY", version: "Zaeon OS - v0.1 / Testnet" },
-            // --- NOVAS CHAVES ---
+            footer: { powered: "Powered by Movement", version: "Zaeon OS - v0.1 / Testnet" },
             navbar: {
                 about: "Sobre Nosotros",
                 roadmap: "Roadmap",
@@ -183,7 +180,6 @@ const resources = {
                 lbl_entrepreneur: "Entrez ID Entreprise"
             },
             footer: { powered: "Propulsé par VERY", version: "Zaeon OS - v0.1 / Testnet" },
-            // --- NOVAS CHAVES ---
             navbar: {
                 about: "À Propos",
                 roadmap: "Roadmap",
@@ -205,7 +201,8 @@ if (!i18n.isInitialized) {
         .init({
             resources,
             fallbackLng: "en",
-            supportedLngs: ["en", "pt", "ko", "es", "fr"],
+            // Atualizado 'ko' para 'zh'
+            supportedLngs: ["en", "pt", "zh", "es", "fr"],
             nonExplicitSupportedLngs: true, // IMPORTANTE: Corrige o pt-BR
             load: 'languageOnly', // IMPORTANTE: Ignora o código regional
 
