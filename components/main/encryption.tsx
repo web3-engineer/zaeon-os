@@ -2,22 +2,18 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { useMemo, useRef, useState, useEffect } from "react"; // ADD useEffect
+import { useMemo, useRef, useState, useEffect } from "react";
 import whoAre from "@/app/who-are-zaeon.png";
-
-// --- I18N IMPORTS ---
 import { useTranslation } from "react-i18next";
 import "../../src/i18n";
 
 export default function Encryption() {
     const { t } = useTranslation();
-
-    // --- CORREÇÃO DO ERRO DE HIDRATAÇÃO ---
     const [mounted, setMounted] = useState(false);
+
     useEffect(() => {
         setMounted(true);
     }, []);
-    // ----------------------------------------
 
     const reduced = useMemo(
         () =>
@@ -42,19 +38,23 @@ export default function Encryption() {
         window.location.assign("/about");
     };
 
-    // Só renderiza depois de montar no cliente para evitar conflito de idioma
     if (!mounted) return null;
 
     return (
         <section
             id="about-us"
             ref={sectionRef}
-            className="relative flex flex-col items-center justify-center min-h-[100vh] w-full overflow-hidden"
+            // ADICIONADO: bg-background para garantir que o fundo base seja correto
+            className="relative flex flex-col items-center justify-center min-h-[100vh] w-full overflow-hidden bg-background transition-colors duration-300"
         >
-            {/* Vídeo de fundo */}
+            {/* VÍDEO DE FUNDO */}
             <div className="absolute inset-0 z-0 pointer-events-none">
                 <video
-                    className="h-full w-full object-cover"
+                    // MUDANÇA MÁGICA AQUI:
+                    // invert: No modo claro, inverte as cores (preto vira branco).
+                    // dark:invert-0: No modo escuro, remove a inversão (video original).
+                    // opacity-40 dark:opacity-100: No modo claro, deixamos o video mais sutil.
+                    className="h-full w-full object-cover invert dark:invert-0 opacity-40 dark:opacity-100 transition-all duration-500"
                     loop
                     muted
                     autoPlay
@@ -101,7 +101,7 @@ export default function Encryption() {
                 {t("encryption.title")}
             </motion.div>
 
-            {/* Imagem */}
+            {/* Imagem Central */}
             <div className="relative z-10 flex items-center justify-center mt-24">
                 <motion.div
                     onMouseMove={handleMove}
@@ -111,7 +111,8 @@ export default function Encryption() {
                     transition={reduced ? {} : { duration: 6, ease: "easeInOut", repeat: Infinity }}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 1.02 }}
-                    className="drop-shadow-[0_0_45px_rgba(56,189,248,0.5)] transition-transform duration-700 ease-out"
+                    // Sombra adaptativa: Cyan no escuro, Azul profundo no claro para contraste
+                    className="drop-shadow-[0_0_45px_rgba(56,189,248,0.5)] dark:drop-shadow-[0_0_45px_rgba(56,189,248,0.5)] transition-transform duration-700 ease-out"
                 >
                     <Image
                         src={whoAre}
@@ -123,13 +124,14 @@ export default function Encryption() {
                 </motion.div>
             </div>
 
-            {/* Botão */}
+            {/* Botão Flutuante */}
             <motion.button
                 type="button"
                 onClick={handleClick}
+                // Cores do botão ajustadas para ficarem visíveis em ambos os modos
                 className="pointer-events-auto absolute z-30 rounded-full px-3.5 py-1.5 text-[12px] font-semibold
                    text-white shadow-[0_8px_24px_rgba(0,0,0,0.35)]
-                   bg-[linear-gradient(135deg,rgba(17,24,39,.9),rgba(30,58,138,.9))]
+                   bg-gradient-to-br from-gray-900/90 to-blue-900/90
                    border border-white/15 backdrop-blur-sm"
                 style={{
                     left: pos.x,
@@ -148,10 +150,13 @@ export default function Encryption() {
                 {t("encryption.button")}
             </motion.button>
 
-            {/* Vinheta */}
-            <div
-                className="pointer-events-none absolute inset-0 z-[5]
-                   bg-[radial-gradient(1000px_550px_at_50%_40%,rgba(0,0,0,0)_0%,rgba(0,0,0,0.45)_100%)]"
+            {/* VINHETA (Overlay de bordas) */}
+            {/* Modo Dark: Gradiente Preto nas bordas */}
+            {/* Modo Light: Gradiente Branco nas bordas (via dark: prefixo invertido) */}
+            <div className="pointer-events-none absolute inset-0 z-[5]
+                bg-[radial-gradient(1000px_550px_at_50%_40%,rgba(255,255,255,0)_0%,rgba(255,255,255,0.8)_100%)]
+                dark:bg-[radial-gradient(1000px_550px_at_50%_40%,rgba(0,0,0,0)_0%,rgba(0,0,0,0.45)_100%)]
+                transition-colors duration-500"
             />
         </section>
     );
