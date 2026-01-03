@@ -40,20 +40,43 @@ export default function Encryption() {
 
     if (!mounted) return null;
 
+    // Configurações de animação
+    const textAnimateState = reduced ? {} : {
+        y: [0, -8, 0],
+        opacity: [1, 0.85, 1],
+        backgroundImage: [
+            "linear-gradient(90deg,#3b82f6,#38bdf8,#22d3ee)",
+            "linear-gradient(90deg,#6366f1,#8b5cf6,#ec4899)",
+            "linear-gradient(90deg,#7c3aed,#8b5cf6,#10b981)",
+            "linear-gradient(90deg,#3b82f6,#38bdf8,#22d3ee)",
+        ],
+    };
+
+    const textTransitionState = reduced ? {} : {
+        duration: 12,
+        ease: "easeInOut",
+        repeat: Infinity,
+    };
+
+    const textStyleState = {
+        backgroundSize: "200% 100%",
+        WebkitBackgroundClip: "text",
+        WebkitTextFillColor: "transparent",
+    };
+
+    const fontClass = "text-[42px] sm:text-[54px] font-light tracking-tight leading-tight";
+
     return (
         <section
             id="about-us"
             ref={sectionRef}
-            // ADICIONADO: bg-background para garantir que o fundo base seja correto
-            className="relative flex flex-col items-center justify-center min-h-[100vh] w-full overflow-hidden bg-background transition-colors duration-300"
+            // CORREÇÃO VISUAL: bg-transparent remove qualquer cor de fundo sólida.
+            // A "separação" some porque agora estamos vendo direto o body/matrix rain.
+            className="relative flex flex-col items-center justify-center min-h-[100vh] w-full overflow-hidden bg-transparent py-20"
         >
             {/* VÍDEO DE FUNDO */}
             <div className="absolute inset-0 z-0 pointer-events-none">
                 <video
-                    // MUDANÇA MÁGICA AQUI:
-                    // invert: No modo claro, inverte as cores (preto vira branco).
-                    // dark:invert-0: No modo escuro, remove a inversão (video original).
-                    // opacity-40 dark:opacity-100: No modo claro, deixamos o video mais sutil.
                     className="h-full w-full object-cover invert dark:invert-0 opacity-40 dark:opacity-100 transition-all duration-500"
                     loop
                     muted
@@ -65,44 +88,18 @@ export default function Encryption() {
                 </video>
             </div>
 
-            {/* Texto principal */}
+            {/* --- 1. TÍTULO PRINCIPAL (TOPO) --- */}
             <motion.div
-                className="absolute top-[14%] z-20 select-none text-center text-transparent bg-clip-text
-                   text-[46px] sm:text-[54px] font-light tracking-tight leading-tight"
-                animate={
-                    reduced
-                        ? {}
-                        : {
-                            y: [0, -8, 0],
-                            opacity: [1, 0.85, 1],
-                            backgroundImage: [
-                                "linear-gradient(90deg,#3b82f6,#38bdf8,#22d3ee)",
-                                "linear-gradient(90deg,#6366f1,#8b5cf6,#ec4899)",
-                                "linear-gradient(90deg,#7c3aed,#8b5cf6,#10b981)",
-                                "linear-gradient(90deg,#3b82f6,#38bdf8,#22d3ee)",
-                            ],
-                        }
-                }
-                transition={
-                    reduced
-                        ? {}
-                        : {
-                            duration: 12,
-                            ease: "easeInOut",
-                            repeat: Infinity,
-                        }
-                }
-                style={{
-                    backgroundSize: "200% 100%",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                }}
+                className={`absolute top-[12%] md:top-[15%] z-20 select-none text-center text-transparent bg-clip-text px-4 ${fontClass}`}
+                animate={textAnimateState}
+                transition={textTransitionState}
+                style={textStyleState}
             >
                 {t("encryption.title")}
             </motion.div>
 
-            {/* Imagem Central */}
-            <div className="relative z-10 flex items-center justify-center mt-24">
+            {/* --- 2. IMAGEM CENTRAL (MEIO) --- */}
+            <div className="relative z-10 flex items-center justify-center mt-32 mb-8">
                 <motion.div
                     onMouseMove={handleMove}
                     onHoverStart={() => setHovering(true)}
@@ -111,7 +108,6 @@ export default function Encryption() {
                     transition={reduced ? {} : { duration: 6, ease: "easeInOut", repeat: Infinity }}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 1.02 }}
-                    // Sombra adaptativa: Cyan no escuro, Azul profundo no claro para contraste
                     className="drop-shadow-[0_0_45px_rgba(56,189,248,0.5)] dark:drop-shadow-[0_0_45px_rgba(56,189,248,0.5)] transition-transform duration-700 ease-out"
                 >
                     <Image
@@ -119,16 +115,26 @@ export default function Encryption() {
                         alt="Who are Zaeon"
                         priority
                         draggable={false}
-                        className="w-[90vw] max-w-[1180px] h-auto select-none"
+                        // CORREÇÃO TAMANHO: Aumentado para 1250px (era 1000px)
+                        className="w-[95vw] max-w-[1250px] h-auto select-none"
                     />
                 </motion.div>
             </div>
+
+            {/* --- 3. SUBTÍTULO (EMBAIXO) --- */}
+            <motion.div
+                className={`relative z-20 select-none text-center text-transparent bg-clip-text px-6 max-w-5xl ${fontClass}`}
+                animate={textAnimateState}
+                transition={textTransitionState}
+                style={textStyleState}
+            >
+                {t("encryption.subtitle")}
+            </motion.div>
 
             {/* Botão Flutuante */}
             <motion.button
                 type="button"
                 onClick={handleClick}
-                // Cores do botão ajustadas para ficarem visíveis em ambos os modos
                 className="pointer-events-auto absolute z-30 rounded-full px-3.5 py-1.5 text-[12px] font-semibold
                    text-white shadow-[0_8px_24px_rgba(0,0,0,0.35)]
                    bg-gradient-to-br from-gray-900/90 to-blue-900/90
@@ -150,13 +156,11 @@ export default function Encryption() {
                 {t("encryption.button")}
             </motion.button>
 
-            {/* VINHETA (Overlay de bordas) */}
-            {/* Modo Dark: Gradiente Preto nas bordas */}
-            {/* Modo Light: Gradiente Branco nas bordas (via dark: prefixo invertido) */}
+            {/* VINHETA - Ajustada para ser suave e não criar linhas duras */}
             <div className="pointer-events-none absolute inset-0 z-[5]
-                bg-[radial-gradient(1000px_550px_at_50%_40%,rgba(255,255,255,0)_0%,rgba(255,255,255,0.8)_100%)]
-                dark:bg-[radial-gradient(1000px_550px_at_50%_40%,rgba(0,0,0,0)_0%,rgba(0,0,0,0.45)_100%)]
-                transition-colors duration-500"
+                bg-[radial-gradient(ellipse_at_center,transparent_20%,rgba(255,255,255,0.4)_100%)]
+                dark:bg-[radial-gradient(ellipse_at_center,transparent_20%,rgba(0,0,0,0.4)_100%)]
+                transition-colors duration-500 opacity-60"
             />
         </section>
     );
