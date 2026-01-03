@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import brain from "@/app/zaeon-brain.png";
 
 type Props = {
-    show?: boolean; // Deixei opcional para facilitar o uso
+    show?: boolean;
     onDone?: () => void;
     minDurationMs?: number;
     logoSrc?: StaticImageData | string;
@@ -13,7 +13,7 @@ type Props = {
 };
 
 export default function MacSplash({
-                                      show = true, // Padrão true
+                                      show = true,
                                       onDone,
                                       minDurationMs = 3000,
                                       logoSrc = brain,
@@ -42,6 +42,12 @@ export default function MacSplash({
         setVisible(true);
         const openT = setTimeout(() => setOpacity(1), 10);
 
+        // Força o scroll manual logo na montagem
+        if (typeof window !== "undefined") {
+            window.history.scrollRestoration = "manual";
+            window.scrollTo(0, 0);
+        }
+
         let raf = 0;
         const loop = (ts: number) => {
             if (!startedAt.current) startedAt.current = ts;
@@ -52,6 +58,14 @@ export default function MacSplash({
 
             setProgress(eased);
 
+            // --- FORÇA BRUTA (AQUI ESTÁ A MÁGICA) ---
+            // Enquanto a animação não acabou (tela preta), forçamos o topo a cada frame.
+            // O navegador não tem chance de descer.
+            if (!exitingRef.current && typeof window !== "undefined") {
+                window.scrollTo(0, 0);
+            }
+            // ----------------------------------------
+
             if (eased >= 0.9 && phase < 4) setPhase(4);
             else if (eased >= 0.69 && phase < 3) setPhase(3);
             else if (eased >= 0.51 && phase < 2) setPhase(2);
@@ -61,6 +75,10 @@ export default function MacSplash({
                 raf = requestAnimationFrame(loop);
             } else if (!exitingRef.current) {
                 exitingRef.current = true;
+
+                // Uma última garantia antes de começar o fade out
+                if (typeof window !== "undefined") window.scrollTo(0, 0);
+
                 if (!prefersReducedMotion) {
                     setContentScale(0.985);
                     setContentBlur(4);
@@ -84,7 +102,6 @@ export default function MacSplash({
             clearTimeout(openT);
             cancelAnimationFrame(raf);
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [show, minDurationMs, prefersReducedMotion]);
 
     useEffect(() => {
@@ -107,9 +124,6 @@ export default function MacSplash({
     if (!visible) return null;
 
     // --- FRASES MÍSTICAS EM CHINÊS ---
-    // Phase 4/3: "A esperança do mundo nasceu" -> 世界之希望已诞生
-    // Phase 2: "Sol, lua e estrelas são nossa casa" -> 日月星辰皆为吾家
-    // Phase 1: "Somos todos um" -> 万物归一 (Todas as coisas retornam ao um / Unidade)
     const zhPhrase =
         phase >= 4 || phase === 3
             ? "世界之希望已诞生"
@@ -166,7 +180,7 @@ export default function MacSplash({
                     <div
                         className="mt-6 text-center text-[10px] tracking-widest leading-tight text-sky-400/90 font-light"
                         style={{
-                            fontFamily: `"Noto Sans SC", "Microsoft YaHei", sans-serif`, // Fonte melhor para caracteres chineses
+                            fontFamily: `"Noto Sans SC", "Microsoft YaHei", sans-serif`,
                         }}
                         aria-hidden="true"
                     >
