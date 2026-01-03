@@ -2,32 +2,51 @@
 
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import { SunIcon, MoonIcon } from "@heroicons/react/24/outline";
+import { SunIcon, MoonIcon } from "@heroicons/react/24/solid"; // Usando SOLID para preenchimento
+import { motion } from "framer-motion";
 
 export default function ThemeToggle() {
-    const { theme, setTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
+    const { theme, setTheme } = useTheme();
 
-    // Evita erro de hidratação
-    useEffect(() => setMounted(true), []);
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
-    if (!mounted) return null;
+    if (!mounted) {
+        return <div className="w-8 h-8" />; // Placeholder para evitar layout shift
+    }
 
     return (
         <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            // MUDANÇA AQUI: Usando 'foreground' em vez de 'white'
-            // Isso garante que no modo claro (fundo branco), a borda fique escura
-            className="p-2 rounded-lg border border-foreground/10 bg-foreground/5 hover:bg-foreground/10 transition-all group shadow-sm"
+            className="relative p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-300 group focus:outline-none"
             aria-label="Toggle Theme"
         >
-            {theme === "dark" ? (
-                // Sol Amarelo no modo escuro
-                <SunIcon className="w-6 h-6 text-yellow-300 group-hover:scale-110 transition-transform" />
-            ) : (
-                // Lua Roxa/Azul no modo claro
-                <MoonIcon className="w-6 h-6 text-indigo-600 group-hover:scale-110 transition-transform" />
-            )}
+            <div className="relative w-6 h-6">
+                {/* SOL: Amarelo Preenchido, rotaciona e some no dark mode */}
+                <motion.div
+                    initial={{ rotate: 0, scale: 1, opacity: 1 }}
+                    animate={theme === "dark" ? { rotate: 90, scale: 0, opacity: 0 } : { rotate: 0, scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                    className="absolute inset-0 flex items-center justify-center"
+                >
+                    <SunIcon className="w-6 h-6 text-yellow-500 drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]" />
+                </motion.div>
+
+                {/* LUA: Preta (ou Branca no dark mode para contraste) Preenchida, rotaciona e aparece no dark mode */}
+                <motion.div
+                    initial={{ rotate: -90, scale: 0, opacity: 0 }}
+                    animate={theme === "dark" ? { rotate: 0, scale: 1, opacity: 1 } : { rotate: -90, scale: 0, opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="absolute inset-0 flex items-center justify-center"
+                >
+                    {/* No modo Dark, a lua precisa ser clara para aparecer no fundo escuro.
+              Se você quiser estritamente "preta", ela sumiria no fundo preto.
+              Vou colocar um tom cinza-azulado muito bonito para "noite". */}
+                    <MoonIcon className="w-5 h-5 text-slate-200 drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]" />
+                </motion.div>
+            </div>
         </button>
     );
 }

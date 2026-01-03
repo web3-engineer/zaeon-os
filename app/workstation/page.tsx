@@ -14,12 +14,15 @@ import {
     HeartIcon,
     CalculatorIcon,
     ChevronUpIcon,
+    EyeIcon,
+    EyeSlashIcon,
+    PowerIcon
 } from "@heroicons/react/24/outline";
 import MatrixRain from "@/components/main/star-background";
 
 // --- AUTH & I18N ---
 import { useTranslation } from "react-i18next";
-import { useSession, signIn, signOut } from "next-auth/react"; // Adicionado
+import { useSession, signIn, signOut } from "next-auth/react";
 import "../../src/i18n";
 
 // --- WEB3 IMPORTS ---
@@ -87,7 +90,7 @@ const AGENTS = {
 type AgentKey = keyof typeof AGENTS;
 
 export default function WorkStationPage() {
-    const { data: session } = useSession(); // Hook do Google
+    const { data: session } = useSession();
     const { t } = useTranslation();
     const [mounted, setMounted] = useState(false);
 
@@ -111,6 +114,9 @@ export default function WorkStationPage() {
     const [chatHistory, setChatHistory] = useState<{role: 'user' | 'ai', text: string}[]>([]);
     const [isTyping, setIsTyping] = useState(false);
 
+    // --- MODO FOCO ---
+    const [isFocusMode, setIsFocusMode] = useState(false);
+
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const terminalRef = useRef<HTMLDivElement>(null);
 
@@ -133,7 +139,6 @@ export default function WorkStationPage() {
         }
     };
 
-    // --- CARREGAR SESSÃO DO GOOGLE (NOVO) ---
     useEffect(() => {
         const loadSession = async () => {
             const userId = session?.user?.email || address;
@@ -208,7 +213,6 @@ export default function WorkStationPage() {
         }
     };
 
-    // --- SALVAR SESSÃO (NOVO: USA EMAIL SE DISPONÍVEL) ---
     const saveSession = async () => {
         const userId = session?.user?.email || address;
         if (!userId) {
@@ -287,17 +291,51 @@ export default function WorkStationPage() {
     const activeConfig = AGENTS[selectedAgent];
 
     return (
-        <div className="relative w-full h-screen bg-[#030014] overflow-hidden flex flex-col justify-end items-center pb-2 px-4">
-            <MatrixRain />
+        <div className={`relative w-full h-screen bg-background dark:bg-[#030014] overflow-hidden flex flex-col justify-end items-center pb-2 px-4 transition-all duration-500 ${isFocusMode ? 'z-[100] !bg-[#030014]' : ''}`}>
+
+            <div className="absolute inset-0 z-0 pointer-events-none">
+                <MatrixRain />
+            </div>
+
+            {/* --- INTERRUPTOR DE FOCO (LINHA DO MENU) --- */}
+            {/* top-[28px]: Alinhado com a navbar */}
+            {/* right-10: Canto direito */}
+            <div className="fixed top-[18px] right-10 z-[150] flex flex-col items-center">
+                <div
+                    onClick={() => setIsFocusMode(!isFocusMode)}
+                    // title ADICIONADO AQUI: Mostra o tooltip com a tradução
+                    title={t("workstation.focus_mode")}
+                    className={`
+                        w-8 h-14 rounded-full border transition-all duration-300 cursor-pointer backdrop-blur-xl shadow-lg flex flex-col items-center p-1
+                        ${isFocusMode
+                        ? "bg-gradient-to-b from-cyan-900/80 to-blue-950/80 border-cyan-500/50 shadow-[0_0_15px_rgba(8,145,178,0.4)]" // ON: Azul Degrade/Cyber
+                        : "bg-white/80 border-slate-300 dark:bg-white/10 dark:border-white/20" // OFF
+                    }
+                    `}
+                >
+                    <motion.div
+                        className={`
+                            w-5 h-5 rounded-full shadow-sm flex items-center justify-center
+                            ${isFocusMode
+                            ? "bg-cyan-400 text-black"
+                            : "bg-slate-400 dark:bg-white/40 text-white"
+                        }
+                        `}
+                        animate={{ y: isFocusMode ? 0 : 26 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                    >
+                        {isFocusMode ? <EyeIcon className="w-3 h-3" /> : <PowerIcon className="w-3 h-3" />}
+                    </motion.div>
+                </div>
+            </div>
 
             <div className="z-20 w-full max-w-[1700px] h-[88vh] grid grid-cols-12 gap-6">
 
                 {/* --- 1. LEFT SIDE: CHAT WINDOW --- */}
                 <div onClick={() => setActiveSection('chat')} className={`col-span-7 ${panelStyle} flex flex-col ${activeSection === 'chat' ? activeBorder : ''} relative h-full`}>
 
-                    {/* --- HEADER: AUTH BUTTONS (GOOGLE + WALLET) --- */}
+                    {/* --- HEADER: AUTH BUTTONS --- */}
                     <div className="absolute top-4 left-4 z-40 flex gap-3">
-                        {/* 1. GOOGLE LOGIN */}
                         {session ? (
                             <div className="flex items-center gap-2 bg-white/10 border border-white/20 px-3 py-1.5 rounded-lg backdrop-blur-md">
                                 {session.user?.image && <img src={session.user.image} alt="User" className="w-5 h-5 rounded-full border border-white/30" />}
@@ -313,8 +351,6 @@ export default function WorkStationPage() {
                                 <span className="text-[9px] text-white font-bold uppercase tracking-widest">Google Login</span>
                             </button>
                         )}
-
-                        {/* 2. WEB3 WALLET */}
                         {isConnected ? (
                             <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/30 px-3 py-1.5 rounded-lg shadow-[0_0_15px_rgba(74,222,128,0.2)] backdrop-blur-md">
                                 <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-[0_0_8px_#4ade80]" />
