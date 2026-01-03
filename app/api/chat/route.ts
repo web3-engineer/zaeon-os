@@ -30,8 +30,7 @@ export async function POST(req: Request) {
             contents: [{ role: 'user', parts: [{ text: `${systemInstruction}\n\nUser: ${prompt}` }] }],
         });
 
-        const text = result.response.candidates[0].content.parts[0].text;
-        console.log("✅ Sucesso Vertex AI!");
+        const text = result.response?.candidates?.[0]?.content?.parts?.[0]?.text || "⚠️ No response from AI.";        console.log("✅ Sucesso Vertex AI!");
 
         return NextResponse.json({ text });
 

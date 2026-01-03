@@ -10,7 +10,7 @@ const resources = {
         translation: {
             menu: { new: "New Account", load: "Load Account", options: "Options", manual: "Manual", back: "Back to Menu" },
             roles: { student: "Student", researcher: "Researcher", professional: "Professional", entrepreneur: "Entrepreneur" },
-            options: { language: "Language", node: "Blockchain Node", tutorials: "Tutorials", on: "ON", off: "OFF" },
+            options: { language: "Language", node: "Node", tutorials: "Tutorials", on: "ON", off: "OFF" },
             modal: { title: "New Account", name: "Full Name", email: "Email", phone: "Phone", continue: "Continue", cancel: "Cancel", use_wallet: "Use Wallet Address", use_id: "Use Role ID", wallet_label: "Movement Wallet Address", wallet_placeholder: "0x...", ph_student: "000.000.000-00 (ID)", ph_researcher: "ORCID or Lattes ID", ph_professional: "Tax ID / SSN", ph_entrepreneur: "Company Tax ID", lbl_student: "Enter your ID", lbl_researcher: "Enter ORCID/ID", lbl_professional: "Enter Tax ID", lbl_entrepreneur: "Enter Company ID" },
             footer: { powered: "Powered by Movement", version: "Zaeon OS - v0.1 / Testnet" },
             navbar: { about: "About Us", homework: "Homework", workstation: "Research Lab", study_rooms: "Study Rooms" },
@@ -41,7 +41,15 @@ const resources = {
             workstation: {
                 focus_mode: "Focus Mode",
                 system_init: "System initialized. Agents standing by.",
-                connected: "Connected",
+                // Identidade (Topo Esquerdo)
+                connected: "Authenticated",
+                welcome: "Welcome",
+                login: "Login / Connect",
+                exit: "Exit",
+                // Terminal (Inferior Direito)
+                linked: "Wallet Linked",
+                no_wallet: "No Wallet",
+                // Geral
                 metamask: "MetaMask",
                 wepin: "Wepin",
                 active_agent: "Active Agent",
@@ -73,7 +81,7 @@ const resources = {
         translation: {
             menu: { new: "新账户", load: "加载账户", options: "选项", manual: "手册", back: "返回菜单" },
             roles: { student: "学生", researcher: "研究员", professional: "专业人士", entrepreneur: "企业家" },
-            options: { language: "语言", node: "区块链节点", tutorials: "教程", on: "开启", off: "关闭" },
+            options: { language: "语言", node: "节点", tutorials: "教程", on: "开启", off: "关闭" },
             modal: { title: "新账户", name: "姓名", email: "电子邮件", phone: "电话号码", continue: "继续", cancel: "取消", use_wallet: "使用钱包地址", use_id: "使用身份证", wallet_label: "Movement 钱包地址", wallet_placeholder: "0x...", ph_student: "身份证号码", ph_researcher: "ORCID 或 Lattes ID", ph_professional: "纳税人识别号", ph_entrepreneur: "公司注册号", lbl_student: "输入身份证号", lbl_researcher: "输入 ORCID", lbl_professional: "输入税号", lbl_entrepreneur: "输入公司 ID" },
             footer: { powered: "Powered by Movement", version: "Zaeon OS - v0.1 / 测试网" },
             navbar: { about: "关于我们", homework: "课业", workstation: "研究实验室", study_rooms: "自习室" },
@@ -104,7 +112,15 @@ const resources = {
             workstation: {
                 focus_mode: "专注模式",
                 system_init: "系统初始化。智能体待命。",
-                connected: "已连接",
+                // Identidade
+                connected: "已认证",
+                welcome: "欢迎",
+                login: "登录 / 连接",
+                exit: "退出",
+                // Terminal
+                linked: "钱包已链接",
+                no_wallet: "无钱包",
+                // Geral
                 metamask: "MetaMask",
                 wepin: "Wepin",
                 active_agent: "当前智能体",
@@ -136,7 +152,7 @@ const resources = {
         translation: {
             menu: { new: "새 계정", load: "계정 불러오기", options: "옵션", manual: "매뉴얼", back: "메뉴로 돌아가기" },
             roles: { student: "학생", researcher: "연구원", professional: "전문가", entrepreneur: "기업가" },
-            options: { language: "언어", node: "블록체인 노드", tutorials: "튜토리얼", on: "켜짐", off: "꺼짐" },
+            options: { language: "언어", node: "노드", tutorials: "튜토리얼", on: "켜짐", off: "꺼짐" },
             modal: { title: "새 계정", name: "이름", email: "이메일", phone: "전화번호", continue: "계속", cancel: "취소", use_wallet: "지갑 주소 사용", use_id: "ID 사용", wallet_label: "Movement 지갑 주소", wallet_placeholder: "0x...", ph_student: "학번 또는 ID", ph_researcher: "ORCID 또는 연구자 ID", ph_professional: "납세자 번호", ph_entrepreneur: "사업자 등록 번호", lbl_student: "ID 입력", lbl_researcher: "ORCID 입력", lbl_professional: "세금 ID 입력", lbl_entrepreneur: "사업자 ID 입력" },
             footer: { powered: "Powered by Movement", version: "Zaeon OS - v0.1 / Testnet" },
             navbar: { about: "소개", homework: "과제", workstation: "연구실", study_rooms: "스터디 룸" },
@@ -167,7 +183,15 @@ const resources = {
             workstation: {
                 focus_mode: "집중 모드",
                 system_init: "시스템 초기화 완료. 에이전트 대기 중.",
-                connected: "연결됨",
+                // Identidade
+                connected: "인증됨",
+                welcome: "환영합니다",
+                login: "로그인 / 연결",
+                exit: "종료",
+                // Terminal
+                linked: "지갑 연결됨",
+                no_wallet: "지갑 없음",
+                // Geral
                 metamask: "메타마스크",
                 wepin: "위핀 (Wepin)",
                 active_agent: "활성 에이전트",
@@ -199,7 +223,7 @@ const resources = {
         translation: {
             menu: { new: "Nouveau Compte", load: "Charger Compte", options: "Options", manual: "Manuel", back: "Retour au Menu" },
             roles: { student: "Étudiant", researcher: "Chercheur", professional: "Professionnel", entrepreneur: "Entrepreneur" },
-            options: { language: "Langue", node: "Nœud Blockchain", tutorials: "Tutoriels", on: "MARCHE", off: "ARRÊT" },
+            options: { language: "Langue", node: "Nœud", tutorials: "Tutoriels", on: "MARCHE", off: "ARRÊT" },
             modal: { title: "Nouveau Compte", name: "Nom Complet", email: "E-mail", phone: "Téléphone", continue: "Continuer", cancel: "Annuler", use_wallet: "Utiliser Portefeuille", use_id: "Utiliser ID", wallet_label: "Adresse Portefeuille Movement", wallet_placeholder: "0x...", ph_student: "ID Étudiant", ph_researcher: "ORCID ou ID", ph_professional: "ID Fiscal", ph_entrepreneur: "ID Entreprise", lbl_student: "Entrez votre ID", lbl_researcher: "Entrez ORCID", lbl_professional: "Entrez ID Fiscal", lbl_entrepreneur: "Entrez ID Entreprise" },
             footer: { powered: "Propulsé par Movement", version: "Zaeon OS - v0.1 / Testnet" },
             navbar: { about: "À Propos", homework: "Exercices", workstation: "Labo de Recherche", study_rooms: "Salles d'Étude" },
@@ -230,7 +254,15 @@ const resources = {
             workstation: {
                 focus_mode: "Mode Concentration",
                 system_init: "Système initialisé. Agents en attente.",
-                connected: "Connecté",
+                // Identidade
+                connected: "Authentifié",
+                welcome: "Bienvenue",
+                login: "Connexion",
+                exit: "Quitter",
+                // Terminal
+                linked: "Portefeuille Lié",
+                no_wallet: "Aucun portefeuille",
+                // Geral
                 metamask: "MetaMask",
                 wepin: "Wepin",
                 active_agent: "Agent Actif",
@@ -262,7 +294,7 @@ const resources = {
         translation: {
             menu: { new: "Nova Conta", load: "Carregar Conta", options: "Opções", manual: "Manual", back: "Voltar ao Menu" },
             roles: { student: "Estudante", researcher: "Pesquisador", professional: "Profissional", entrepreneur: "Empresário" },
-            options: { language: "Idioma", node: "Nó Blockchain", tutorials: "Tutoriais", on: "LIGADO", off: "DESLIGADO" },
+            options: { language: "Idioma", node: "Nó", tutorials: "Tutoriais", on: "LIGADO", off: "DESLIGADO" },
             modal: { title: "Nova Conta", name: "Nome Completo", email: "E-mail", phone: "Celular", continue: "Continuar", cancel: "Cancelar", use_wallet: "Usar Carteira", use_id: "Usar ID", wallet_label: "Endereço da Carteira", wallet_placeholder: "0x...", ph_student: "000.000.000-00 (CPF)", ph_researcher: "ORCID ou Lattes", ph_professional: "CPF ou CNPJ", ph_entrepreneur: "CNPJ da Empresa", lbl_student: "Digite seu CPF", lbl_researcher: "Informe ORCID/Lattes", lbl_professional: "Informe CPF/CNPJ", lbl_entrepreneur: "Informe o CNPJ" },
             footer: { powered: "Powered by Movement", version: "Zaeon OS - v0.1 / Testnet" },
             navbar: { about: "Sobre Nós", homework: "Estudo Dirigido", workstation: "Laboratório de Pesquisa", study_rooms: "Salas de Estudo" },
@@ -293,7 +325,15 @@ const resources = {
             workstation: {
                 focus_mode: "Modo Foco",
                 system_init: "Sistema inicializado. Agentes aguardando.",
-                connected: "Conectado",
+                // Identidade
+                connected: "Autenticado",
+                welcome: "Bem-vindo",
+                login: "Entrar / Conectar",
+                exit: "Sair",
+                // Terminal
+                linked: "Vinculada",
+                no_wallet: "Sem Carteira",
+                // Geral
                 metamask: "MetaMask",
                 wepin: "Wepin",
                 active_agent: "Agente Ativo",
@@ -325,7 +365,7 @@ const resources = {
         translation: {
             menu: { new: "Nueva Cuenta", load: "Cargar Cuenta", options: "Opciones", manual: "Manual", back: "Volver al Menú" },
             roles: { student: "Estudiante", researcher: "Investigador", professional: "Profesional", entrepreneur: "Empresario" },
-            options: { language: "Idioma", node: "Nodo Blockchain", tutorials: "Tutoriales", on: "ENCENDIDO", off: "APAGADO" },
+            options: { language: "Idioma", node: "Nodo", tutorials: "Tutoriales", on: "ENCENDIDO", off: "APAGADO" },
             modal: { title: "Nueva Cuenta", name: "Nombre Completo", email: "Correo", phone: "Teléfono", continue: "Continuar", cancel: "Cancelar", use_wallet: "Usar Billetera", use_id: "Usar ID", wallet_label: "Dirección de Billetera Movement", wallet_placeholder: "0x...", ph_student: "Documento de Identidad", ph_researcher: "ORCID o ID", ph_professional: "ID Fiscal", ph_entrepreneur: "ID de la Empresa", lbl_student: "Ingrese su ID", lbl_researcher: "Ingrese ORCID", lbl_professional: "Ingrese ID Fiscal", lbl_entrepreneur: "Ingrese ID Empresa" },
             footer: { powered: "Powered by Movement", version: "Zaeon OS - v0.1 / Testnet" },
             navbar: { about: "Sobre Nosotros", homework: "Actividades", workstation: "Lab. de Investigación", study_rooms: "Salas de Estudio" },
@@ -356,7 +396,15 @@ const resources = {
             workstation: {
                 focus_mode: "Modo Enfoque",
                 system_init: "Sistema inicializado. Agentes en espera.",
-                connected: "Conectado",
+                // Identidade
+                connected: "Autenticado",
+                welcome: "Bienvenido",
+                login: "Conectar",
+                exit: "Salir",
+                // Terminal
+                linked: "Vinculada",
+                no_wallet: "Sin Billetera",
+                // Geral
                 metamask: "MetaMask",
                 wepin: "Wepin",
                 active_agent: "Agente Activo",
@@ -385,6 +433,7 @@ const resources = {
     }
 };
 
+// Inicialização segura para Next.js
 if (typeof window !== 'undefined' && !i18n.isInitialized) {
     i18n
         .use(LanguageDetector)

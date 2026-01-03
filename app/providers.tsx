@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
-import { type ThemeProviderProps } from "next-themes/dist/types";
 
-// Agora exportamos apenas o ThemeProvider limpo
-export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
+// SOLUÇÃO: Usamos React.ComponentProps para pegar a tipagem automaticamente
+// sem precisar adivinhar onde o arquivo de tipos está escondido.
+export function ThemeProvider({ children, ...props }: React.ComponentProps<typeof NextThemesProvider>) {
     return (
         <NextThemesProvider {...props}>
             {children}

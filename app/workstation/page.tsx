@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import {
     PaperAirplaneIcon,
@@ -14,7 +14,10 @@ import {
     CalculatorIcon,
     ChevronUpIcon,
     EyeIcon,
-    PowerIcon
+    PowerIcon,
+    UserCircleIcon,
+    SignalIcon,
+    ExclamationTriangleIcon
 } from "@heroicons/react/24/outline";
 import MatrixRain from "@/components/main/star-background";
 
@@ -22,8 +25,10 @@ import MatrixRain from "@/components/main/star-background";
 import { useTranslation } from "react-i18next";
 import "../../src/i18n";
 
-// --- PRIVY & WEB3 IMPORTS (EVM / HACKATHON) ---
-// Substituindo Aptos por Privy conforme solicitado
+// --- 1. NEXT AUTH (IDENTIDADE - CARD SUPERIOR) ---
+import { useSession, signIn, signOut } from "next-auth/react";
+
+// --- 2. PRIVY & WEB3 (INFRA - TERMINAL INFERIOR) ---
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { uploadToPinata } from "@/src/utils/ipfs";
 
@@ -72,8 +77,12 @@ const AGENTS = {
 type AgentKey = keyof typeof AGENTS;
 
 export default function WorkStationPage() {
-    // --- HOOKS DA PRIVY (Carteira & Login) ---
-    const { login, authenticated, user, logout } = usePrivy();
+    // --- ESTADO 1: IDENTIDADE (NEXT AUTH) ---
+    const { data: session } = useSession();
+
+    // --- ESTADO 2: INFRAESTRUTURA (PRIVY) ---
+    // Renomeei login para connectWallet para não confundir com o login do Google
+    const { login: connectWallet, authenticated: privyAuthenticated, ready: privyReady } = usePrivy();
     const { wallets } = useWallets();
     const wallet = wallets[0]; // A carteira ativa
 
@@ -95,7 +104,7 @@ export default function WorkStationPage() {
     const [chatHistory, setChatHistory] = useState<{role: 'user' | 'ai', text: string}[]>([]);
     const [isTyping, setIsTyping] = useState(false);
 
-    // --- MODO FOCO (Visual) ---
+    // --- MODO FOCO ---
     const [isFocusMode, setIsFocusMode] = useState(false);
 
     const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -120,10 +129,10 @@ export default function WorkStationPage() {
         }
     };
 
-    // Load Session usando ID da Privy
+    // Load Session (Baseado no Email do NextAuth ou Wallet)
     useEffect(() => {
         const loadSession = async () => {
-            const userId = user?.id || user?.wallet?.address;
+            const userId = session?.user?.email || wallet?.address;
             if (userId) {
                 addLog(`Loading workspace for ${String(userId).slice(0,15)}...`);
                 try {
@@ -140,8 +149,8 @@ export default function WorkStationPage() {
                 }
             }
         };
-        if (mounted && authenticated) loadSession();
-    }, [mounted, authenticated, user]);
+        if (mounted && (session || wallet)) loadSession();
+    }, [mounted, session, wallet]); // Dependências: Session (Google) ou Wallet (Privy)
 
     useEffect(() => { if (mounted) scrollToBottom(); }, [chatHistory, terminalLogs, mounted, isTyping, selectedAgent]);
 
@@ -183,10 +192,13 @@ export default function WorkStationPage() {
     };
 
     const saveSession = async () => {
-        const userId = user?.id;
+        // Salva preferencialmente no email do Google, senão na Wallet
+        const userId = session?.user?.email || wallet?.address;
+
         if (!userId) {
-            alert("Please Login with Zaeon ID (Privy) to save progress!");
-            login();
+            alert(t("modal.title")); // "Nova Conta" / Login
+            // Se não tem nada, sugere login Google
+            signIn('google');
             return;
         }
         addLog("Saving session...");
@@ -208,11 +220,11 @@ export default function WorkStationPage() {
         } catch (e) { console.error(e); }
     };
 
-    // --- FUNÇÃO DE GERAÇÃO E BLOCKCHAIN (USANDO PRIVY/EVM) ---
     const handleGenerateProtocol = async () => {
-        if (!authenticated || !wallet) {
-            alert("Connection required. Please Login.");
-            login();
+        // Para gerar na blockchain, PRECISA da carteira (Privy), não basta o Google
+        if (!privyAuthenticated || !wallet) {
+            alert(t("workstation.no_wallet"));
+            connectWallet(); // Abre o modal do Privy
             return;
         }
         if (!docTitle) {
@@ -225,7 +237,6 @@ export default function WorkStationPage() {
         addLog(t("workstation.logs.gen_protocol", { name: agent.name }));
         setActiveSection('doc');
 
-        // 1. Simula Geração AI
         setDocContent("Accessing Neural Network... Generating Research...");
         await new Promise(r => setTimeout(r, 1000));
         const generatedText = `RESEARCH PAPER: ${docTitle}\n\nAUTHOR: ${agent.name} (AI Agent)\nFIELD: ${t(agent.roleKey)}\nDATE: ${new Date().toISOString()}\n\nABSTRACT:\nThis document serves as an immutable record of research regarding "${docTitle}". Generated by the Zaeon Framework utilizing advanced neural processing.\n\nCORE ANALYSIS:\nThe integration of Artificial Intelligence with the Movement EVM Blockchain ensures that this knowledge is preserved with cryptographic certainty.\n\nCONCLUSION:\nData integrity verified.`;
@@ -233,7 +244,6 @@ export default function WorkStationPage() {
         addLog(t("workstation.logs.content_gen"));
 
         try {
-            // 2. Upload para IPFS
             const ipfsHash = await uploadToPinata({
                 title: docTitle,
                 agent: agent.name,
@@ -244,8 +254,9 @@ export default function WorkStationPage() {
             if (!ipfsHash) throw new Error("IPFS returned null. Check API Keys.");
             addLog(t("workstation.logs.ipfs_success", { hash: ipfsHash }));
 
-            // 3. Transação Movement EVM (Simulada por enquanto)
-            addLog("Initiating Movement EVM Transaction...");
+            addLog(t("workstation.logs.blockchain_init"));
+
+            // Simulação de transação EVM via Privy Provider
             await new Promise(r => setTimeout(r, 2000));
             const mockHash = "0x" + Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2);
 
@@ -255,7 +266,6 @@ export default function WorkStationPage() {
         } catch (error: any) {
             console.error("CRITICAL ERROR:", error);
             addLog(t("workstation.logs.error"));
-            addLog(`Debug: ${error.message}`);
             alert("Error during minting process.");
         } finally {
             setIsBlockchainProcessing(false);
@@ -278,28 +288,8 @@ export default function WorkStationPage() {
 
             {/* --- FOCUS MODE TOGGLE --- */}
             <div className="fixed top-[18px] right-10 z-[150] flex flex-col items-center">
-                <div
-                    onClick={() => setIsFocusMode(!isFocusMode)}
-                    title={t("workstation.focus_mode")}
-                    className={`
-                        w-8 h-14 rounded-full border transition-all duration-300 cursor-pointer backdrop-blur-xl shadow-lg flex flex-col items-center p-1
-                        ${isFocusMode
-                        ? "bg-gradient-to-b from-cyan-900/80 to-blue-950/80 border-cyan-500/50 shadow-[0_0_15px_rgba(8,145,178,0.4)]"
-                        : "bg-white/80 border-slate-300 dark:bg-white/10 dark:border-white/20"
-                    }
-                    `}
-                >
-                    <motion.div
-                        className={`
-                            w-5 h-5 rounded-full shadow-sm flex items-center justify-center
-                            ${isFocusMode
-                            ? "bg-cyan-400 text-black"
-                            : "bg-slate-400 dark:bg-white/40 text-white"
-                        }
-                        `}
-                        animate={{ y: isFocusMode ? 0 : 26 }}
-                        transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                    >
+                <div onClick={() => setIsFocusMode(!isFocusMode)} title={t("workstation.focus_mode")} className={`w-8 h-14 rounded-full border transition-all duration-300 cursor-pointer backdrop-blur-xl shadow-lg flex flex-col items-center p-1 ${isFocusMode ? "bg-gradient-to-b from-cyan-900/80 to-blue-950/80 border-cyan-500/50 shadow-[0_0_15px_rgba(8,145,178,0.4)]" : "bg-white/80 border-slate-300 dark:bg-white/10 dark:border-white/20"}`}>
+                    <motion.div className={`w-5 h-5 rounded-full shadow-sm flex items-center justify-center ${isFocusMode ? "bg-cyan-400 text-black" : "bg-slate-400 dark:bg-white/40 text-white"}`} animate={{ y: isFocusMode ? 0 : 26 }} transition={{ type: "spring", stiffness: 400, damping: 25 }}>
                         {isFocusMode ? <EyeIcon className="w-3 h-3" /> : <PowerIcon className="w-3 h-3" />}
                     </motion.div>
                 </div>
@@ -310,28 +300,48 @@ export default function WorkStationPage() {
                 {/* --- 1. LEFT SIDE: CHAT WINDOW --- */}
                 <div onClick={() => setActiveSection('chat')} className={`col-span-7 ${panelStyle} flex flex-col ${activeSection === 'chat' ? activeBorder : ''} relative h-full`}>
 
-                    {/* --- HEADER: LOGIN BUTTONS (PRIVY) --- */}
+                    {/* --- HEADER: NEXT AUTH GOOGLE CARD (USANDO useSession) --- */}
                     <div className="absolute top-4 left-4 z-40 flex gap-3">
-                        {authenticated ? (
-                            <div className="flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/30 px-3 py-1.5 rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.2)] backdrop-blur-md">
-                                <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#22d3ee]" />
+                        {session ? (
+                            // LOGADO NO GOOGLE
+                            <div className="flex items-center gap-3 bg-cyan-950/30 border border-cyan-500/20 px-4 py-2 rounded-xl backdrop-blur-md shadow-lg group hover:border-cyan-500/40 transition-all">
+                                {session.user?.image ? (
+                                    <img src={session.user.image} alt="User" className="w-8 h-8 rounded-full border border-cyan-400/50 shadow-[0_0_10px_rgba(34,211,238,0.3)]" />
+                                ) : (
+                                    <div className="w-8 h-8 rounded-full bg-cyan-900/50 flex items-center justify-center border border-cyan-500/30">
+                                        <UserCircleIcon className="w-5 h-5 text-cyan-300" />
+                                    </div>
+                                )}
+
                                 <div className="flex flex-col">
-                                    <span className="text-[9px] text-cyan-400/70 font-bold uppercase tracking-widest leading-none mb-0.5">Zaeon ID</span>
-                                    <span className="text-[10px] text-white font-mono leading-none tracking-wide">
-                                        {user?.email?.address || user?.wallet?.address.slice(0,6) + '...'}
+                                    <span className="text-[9px] text-cyan-400 font-bold uppercase tracking-widest leading-none mb-1">
+                                        {t("workstation.connected")}
+                                    </span>
+                                    <span className="text-[11px] text-white font-mono leading-none tracking-wide max-w-[120px] truncate">
+                                        {session.user?.name || session.user?.email}
                                     </span>
                                 </div>
-                                <button onClick={logout} className="ml-2 text-[10px] text-red-400 hover:text-red-300 uppercase font-bold">Exit</button>
+                                <div className="h-6 w-[1px] bg-white/10 mx-1" />
+                                {/* signOut do NextAuth */}
+                                <button onClick={() => signOut()} className="text-[10px] text-red-400 hover:text-red-300 uppercase font-bold hover:bg-red-500/10 px-2 py-1 rounded transition-all">
+                                    {t("workstation.exit")}
+                                </button>
                             </div>
                         ) : (
-                            <button onClick={login} className="flex items-center gap-2 bg-white/10 border border-white/30 px-3 py-1.5 rounded-lg hover:bg-white/20 transition-all group backdrop-blur-md">
-                                <span className="text-lg">✨</span>
-                                <span className="text-[9px] text-white font-bold uppercase tracking-widest">Login / Connect</span>
+                            // DESLOGADO (NEXT AUTH) -> CHAMA signIn('google')
+                            <button onClick={() => signIn('google')} className="flex items-center gap-2 bg-white/5 border border-white/20 px-4 py-2 rounded-xl hover:bg-white/10 transition-all group backdrop-blur-md hover:border-cyan-500/30">
+                                <UserCircleIcon className="w-5 h-5 text-white/70 group-hover:text-white" />
+                                <div className="flex flex-col items-start">
+                                    <span className="text-[8px] text-white/50 font-bold uppercase tracking-widest">{t("workstation.welcome")}</span>
+                                    <span className="text-[10px] text-white font-bold group-hover:text-cyan-300 transition-colors">
+                                        {t("workstation.login")}
+                                    </span>
+                                </div>
                             </button>
                         )}
                     </div>
 
-                    {/* --- STATIC VISUALS CONTAINER --- */}
+                    {/* --- VISUALS --- */}
                     <div className="absolute bottom-6 left-6 z-30 flex flex-col items-center">
                         <div className={`relative transition-all duration-500 ease-in-out flex justify-center items-end ${activeConfig.widthClass} h-auto`}>
                             <AnimatePresence mode="wait">
@@ -408,22 +418,65 @@ export default function WorkStationPage() {
                         </div>
                         <textarea value={docContent} onChange={(e) => setDocContent(e.target.value)} className="flex-1 p-8 font-mono text-sm text-slate-900 leading-loose overflow-auto scrollbar-dark-thumb bg-[#f1f5f9] resize-none focus:outline-none transition-colors placeholder:text-slate-400" placeholder={t("workstation.doc_content_placeholder")} />
                         <div className="p-4 bg-[#f1f5f9] flex justify-end gap-3 rounded-b-xl">
-                            {/* BOTÃO SAVE MOVIDO PARA CÁ (Parte do Modo Foco) */}
                             <button onClick={saveSession} className={`${btnBase} bg-blue-100 text-blue-700 border-blue-400 hover:bg-blue-200`}>
                                 <ArrowDownTrayIcon className="w-4 h-4" /> {t("workstation.session_save")}
                             </button>
-
                             <button disabled={true} className={`${btnBase} opacity-50 cursor-not-allowed bg-slate-200 text-slate-500 border-slate-300`}><CpuChipIcon className="w-4 h-4" /> {t("workstation.auto_fix")}</button>
-                            <button onClick={handleGenerateProtocol} disabled={isBlockchainProcessing || !authenticated} className={`${btnBase} ${isBlockchainProcessing ? 'bg-yellow-100 border-yellow-400 text-yellow-700' : 'bg-green-100 text-green-700 border-green-400 hover:bg-green-200'}`}>{isBlockchainProcessing ? <>{t("workstation.processing")}</> : <><PlayIcon className="w-4 h-4" /> {t("workstation.generate")}</>}</button>
+                            <button onClick={handleGenerateProtocol} disabled={isBlockchainProcessing || !privyAuthenticated} className={`${btnBase} ${isBlockchainProcessing ? 'bg-yellow-100 border-yellow-400 text-yellow-700' : 'bg-green-100 text-green-700 border-green-400 hover:bg-green-200'}`}>{isBlockchainProcessing ? <>{t("workstation.processing")}</> : <><PlayIcon className="w-4 h-4" /> {t("workstation.generate")}</>}</button>
                         </div>
                     </div>
 
-                    {/* TERMINAL: Só aparece se o MODO FOCO estiver DESLIGADO (Visual) */}
+                    {/* --- TERMINAL (INFRA - PRIVY) --- */}
                     {!isFocusMode && (
                         <div onClick={() => setActiveSection('terminal')} className={`${panelStyle} h-[28%] flex flex-col shrink-0 ${activeSection === 'terminal' ? activeBorder : ''}`}>
-                            <div className="h-9 bg-black/60 border-b border-white/10 flex items-center justify-between px-4">
-                                <span className="text-[10px] text-white/30 font-mono">{t("workstation.terminal_title")} (EVM)</span>
+
+                            {/* --- HEADER DO TERMINAL (STATUS CARTEIRA PRIVY) --- */}
+                            <div className="h-10 bg-[#0a0a0a] border-b border-white/5 flex items-center justify-between px-4 shrink-0 select-none">
+                                {/* Lado Esquerdo: Nó / Rede */}
+                                <div className="flex items-center gap-2.5">
+                                    <SignalIcon className="w-3.5 h-3.5 text-yellow-500/80" />
+                                    <span className="text-[10px] font-mono font-bold tracking-[0.1em] text-white/50 uppercase">
+                                        {t("options.node")} <span className="text-yellow-500/80 ml-1">M2</span>
+                                    </span>
+                                </div>
+
+                                {/* Lado Direito: APENAS DADOS DA CARTEIRA PRIVY */}
+                                <div className="flex items-center gap-3">
+                                    {/* LED STATUS */}
+                                    <div
+                                        className={`w-2 h-2 rounded-full transition-all duration-500 ${
+                                            isBlockchainProcessing ? 'bg-yellow-400 animate-pulse shadow-[0_0_10px_#facc15]' :
+                                                (privyAuthenticated && wallet) ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' :
+                                                    'bg-red-500/80 shadow-[0_0_5px_#ef4444]'
+                                        }`}
+                                    />
+
+                                    <div className="flex flex-col items-end leading-none">
+                                        {privyReady && privyAuthenticated && wallet ? (
+                                            <>
+                                                <span className="text-[10px] font-mono text-white/90 font-medium tracking-wide">
+                                                    {wallet.address.slice(0, 6)}...{wallet.address.slice(-4)}
+                                                </span>
+                                                <span className="text-[8px] uppercase tracking-wider text-white/30 font-bold mt-0.5">
+                                                    {t("workstation.linked")}
+                                                </span>
+                                            </>
+                                        ) : (
+                                            // Botão de Conectar Carteira no Terminal
+                                            <button
+                                                onClick={connectWallet}
+                                                className="flex items-center gap-1.5 text-red-400/50 hover:text-white transition-colors cursor-pointer group"
+                                            >
+                                                <ExclamationTriangleIcon className="w-3 h-3 group-hover:text-yellow-400" />
+                                                <span className="text-[10px] font-mono uppercase tracking-widest group-hover:underline">
+                                                    {t("workstation.no_wallet")}
+                                                </span>
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
+
                             <div ref={terminalRef} className="flex-1 p-4 font-mono text-xs text-green-500/90 bg-black/60 overflow-y-auto custom-scrollbar shadow-inner rounded-b-xl">
                                 <div className="opacity-80 space-y-1">
                                     {terminalLogs.map((log, idx) => (<div key={idx} className="break-all">{log}</div>))}

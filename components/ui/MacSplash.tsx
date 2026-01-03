@@ -2,10 +2,10 @@
 
 import Image, { type StaticImageData } from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
-import brain from "@/app/zaeon-brain.png"; // ✅ imagem no app/
+import brain from "@/app/zaeon-brain.png";
 
 type Props = {
-    show: boolean;
+    show?: boolean; // Deixei opcional para facilitar o uso
     onDone?: () => void;
     minDurationMs?: number;
     logoSrc?: StaticImageData | string;
@@ -13,7 +13,7 @@ type Props = {
 };
 
 export default function MacSplash({
-                                      show,
+                                      show = true, // Padrão true
                                       onDone,
                                       minDurationMs = 3000,
                                       logoSrc = brain,
@@ -106,14 +106,17 @@ export default function MacSplash({
 
     if (!visible) return null;
 
-    // Frases místicas (Coreano) por fase: 1, 2, 3/4
-    const krPhrase =
+    // --- FRASES MÍSTICAS EM CHINÊS ---
+    // Phase 4/3: "A esperança do mundo nasceu" -> 世界之希望已诞生
+    // Phase 2: "Sol, lua e estrelas são nossa casa" -> 日月星辰皆为吾家
+    // Phase 1: "Somos todos um" -> 万物归一 (Todas as coisas retornam ao um / Unidade)
+    const zhPhrase =
         phase >= 4 || phase === 3
-            ? "세계의 희망이 탄생했습니다."
+            ? "世界之希望已诞生"
             : phase === 2
-                ? "태양, 달, 별은 우리의 집입니다"
+                ? "日月星辰皆为吾家"
                 : phase === 1
-                    ? "우리는 모두 하나입니다"
+                    ? "万物归一"
                     : "";
 
     return (
@@ -140,7 +143,7 @@ export default function MacSplash({
                     className="mb-6 opacity-95"
                 />
 
-                {/* Barra de progresso (fina, visível) */}
+                {/* Barra de progresso */}
                 <div className="w-[200px] h-[3px] rounded-full bg-white/15 overflow-hidden">
                     <div
                         className="h-full rounded-full"
@@ -158,22 +161,20 @@ export default function MacSplash({
                     />
                 </div>
 
-                {/* Espaço maior entre a barra e os textos */}
-                {/* Linha mística em coreano (azul), pequena e discreta */}
-                {krPhrase && (
+                {/* Frase Mística (Chinês) */}
+                {zhPhrase && (
                     <div
-                        className="mt-6 text-center text-[9px] leading-tight text-sky-400/90"
+                        className="mt-6 text-center text-[10px] tracking-widest leading-tight text-sky-400/90 font-light"
                         style={{
-                            fontFamily:
-                                `"Ubuntu Mono","SF Mono","Menlo","Consolas","Liberation Mono",monospace`,
+                            fontFamily: `"Noto Sans SC", "Microsoft YaHei", sans-serif`, // Fonte melhor para caracteres chineses
                         }}
                         aria-hidden="true"
                     >
-                        {krPhrase}
+                        {zhPhrase}
                     </div>
                 )}
 
-                {/* Logs em inglês: bem menores e mais abaixo */}
+                {/* Logs técnicos (Inglês) */}
                 <div
                     className="mt-4 text-center text-[9px] leading-tight text-white/60"
                     style={{
