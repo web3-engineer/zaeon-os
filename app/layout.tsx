@@ -7,8 +7,9 @@ import { Footer } from "@/components/main/footer";
 import { Navbar } from "@/components/main/navbar";
 import { siteConfig } from "@/config";
 import { cn } from "@/lib/utils";
-// ClientShell REMOVIDO para evitar erro 'undefined'
 import { Web3Provider } from "./providers";
+// ADICIONADO: O provedor de sessão do NextAuth
+import AuthProvider from "@/src/providers/SessionProvider";
 import "../src/i18n";
 import "./globals.css";
 
@@ -39,7 +40,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <html lang="en" className="scroll-smooth">
         <body
             className={cn(
-                // MUDANÇA CRÍTICA: bg-background e text-foreground (variáveis) em vez de cor fixa
                 "relative bg-background text-foreground overflow-x-hidden overflow-y-scroll",
                 spaceGrotesk.variable,
                 jetbrainsMono.variable,
@@ -47,11 +47,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             )}
         >
         <Web3Provider>
-            {/* Componentes diretos, sem ClientShell */}
-            <StarsCanvas />
-            <Navbar />
-            {children}
-            <Footer />
+            <AuthProvider> {/* <--- ENVOLVENDO A APP COM SESSÃO */}
+                <StarsCanvas />
+                <Navbar />
+                {children}
+                <Footer />
+            </AuthProvider>
         </Web3Provider>
         </body>
         </html>

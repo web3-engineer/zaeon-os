@@ -15,6 +15,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import dynamic from "next/dynamic";
+// IMPORTAR SIGNIN DO NEXTAUTH
+import { signIn } from "next-auth/react";
 
 // Importações internas
 import { slideInFromLeft } from "@/lib/motion";
@@ -26,7 +28,7 @@ type MenuItem = { labelKey: string; href: string };
 
 const MENU_ITEMS: MenuItem[] = [
   { labelKey: "menu.new", href: "/signup" },
-  { labelKey: "menu.load", href: "/signin" },
+  { labelKey: "menu.load", href: "#" }, // Link vazio pois vamos interceptar
   { labelKey: "menu.options", href: "/settings" },
   { labelKey: "menu.manual", href: "/manual" },
 ];
@@ -123,6 +125,11 @@ function OnboardModal({ open, onClose, role, onSuccess }: { open: boolean; onClo
     }
   };
 
+  // LOGIN DIRETO COM GOOGLE DENTRO DO MODAL
+  const handleGoogleQuickStart = () => {
+    signIn('google', { callbackUrl: '/workstation' });
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     e.stopPropagation();
     if (e.code === "Escape") { e.preventDefault(); onClose(); return; }
@@ -146,9 +153,26 @@ function OnboardModal({ open, onClose, role, onSuccess }: { open: boolean; onClo
           <button onClick={onClose} className="absolute right-3 top-3 rounded-md p-2 text-white/70 hover:bg-white/10"><XMarkIcon className="h-5 w-5" /></button>
           <div className="grid grid-cols-[1.3fr_0.7fr]">
             <div className="p-6 space-y-3">
-              <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center gap-3 mb-1">
                 <p className="text-sm text-white/85 tracking-wide">{t("modal.title")} · {roleLabel}</p>
               </div>
+
+              {/* --- BOTÃO DE GOOGLE QUICK START --- */}
+              <div className="mb-4">
+                <button
+                    onClick={handleGoogleQuickStart}
+                    className="w-full flex items-center justify-center gap-3 bg-white text-black hover:bg-gray-100 font-bold py-2.5 rounded-xl transition-all shadow-[0_0_15px_rgba(255,255,255,0.3)]"
+                >
+                  <img src="https://authjs.dev/img/providers/google.svg" alt="Google" className="w-5 h-5" />
+                  Entrar com Google (Recomendado)
+                </button>
+                <div className="flex items-center gap-2 mt-3 mb-2 opacity-50">
+                  <div className="h-px bg-white/30 flex-1"></div>
+                  <span className="text-[10px] uppercase text-white">OU Manualmente</span>
+                  <div className="h-px bg-white/30 flex-1"></div>
+                </div>
+              </div>
+
               {steps.map((s, i) => {
                 const active = i === step;
                 return (
@@ -209,6 +233,12 @@ const HeroContentComponent = () => {
     router.push(`/workstation?${query}`);
   };
 
+  // --- LÓGICA DO MENU LOAD ---
+  const handleLoadGame = () => {
+    // Abre o popup do Google para "Carregar" o jogo
+    signIn('google', { callbackUrl: '/workstation' });
+  };
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (onboardOpen) return;
@@ -229,6 +259,8 @@ const HeroContentComponent = () => {
         const item = MENU_ITEMS[index];
         if (!item) return;
         if (item.labelKey === "menu.new") { e.preventDefault(); setPickerOpen(true); return; }
+        // INTERCEPTANDO O LOAD VIA TECLADO
+        if (item.labelKey === "menu.load") { e.preventDefault(); handleLoadGame(); return; }
         if (item.labelKey === "menu.options") { setIsOptionsOpen(true); return; }
         window.location.assign(item.href);
       }
@@ -282,12 +314,25 @@ const HeroContentComponent = () => {
                       const realIndex = i + 1;
                       const selected = realIndex === index;
                       const isOptions = item.labelKey === "menu.options";
+                      const isLoad = item.labelKey === "menu.load";
+
                       return (
                           <li key={item.labelKey}>
                             {isOptions ? (
                                 <button onClick={() => setIsOptionsOpen(true)} className={[cardBase, selected ? cardSelected : "", "w-full"].join(" ")} onMouseEnter={() => setIndex(realIndex)}>
                                   <span className={accentBar(selected)} />
                                   <span className={labelClass}>{t(item.labelKey)}</span>
+                                  <ChevronRightIcon className="h-5 w-5 text-white/85 opacity-0 group-hover:opacity-100 transition-all group-hover:translate-x-0.5" />
+                                </button>
+                            ) : isLoad ? (
+                                // --- BOTÃO LOAD COM AÇÃO GOOGLE ---
+                                <button onClick={handleLoadGame} className={[cardBase, selected ? cardSelected : "", "w-full"].join(" ")} onMouseEnter={() => setIndex(realIndex)}>
+                                  <span className={accentBar(selected)} />
+                                  <div className="flex items-center gap-3">
+                                    <span className={labelClass}>{t(item.labelKey)}</span>
+                                    {/* Indicador sutil de que é Google */}
+                                    {selected && <span className="text-[10px] text-white/50 bg-white/10 px-2 py-0.5 rounded ml-2">Google Save</span>}
+                                  </div>
                                   <ChevronRightIcon className="h-5 w-5 text-white/85 opacity-0 group-hover:opacity-100 transition-all group-hover:translate-x-0.5" />
                                 </button>
                             ) : (
@@ -306,7 +351,6 @@ const HeroContentComponent = () => {
                     <div className="flex items-center mb-1">
                       <button
                           onClick={() => setIsOptionsOpen(false)}
-                          // MUDANÇA AQUI: Cor adaptável para Light (Azul Escuro) e Dark (Cyan Neon)
                           className="flex items-center gap-2 text-sm font-bold transition-colors text-blue-600 hover:text-blue-500 dark:text-cyan-400 dark:hover:text-cyan-300"
                       >
                         <ArrowLeftIcon className="w-4 h-4" />
