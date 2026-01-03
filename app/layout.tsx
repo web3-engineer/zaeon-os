@@ -9,9 +9,11 @@ import { siteConfig } from "@/config";
 import { cn } from "@/lib/utils";
 
 // --- PROVIDERS ---
-import { MovementWalletProvider } from "@/components/providers/MovementWalletProvider";
+// 1. Privy Provider (Conexão EVM para o Hackathon)
+import { PrivyWalletProvider } from "@/components/providers/PrivyWalletProvider";
+// 2. Auth Provider (Sessão Google)
 import AuthProvider from "@/src/providers/SessionProvider";
-// ADICIONADO: O provedor de tema que configuramos (assumindo que está em app/providers.tsx)
+// 3. Theme Provider (Dark/Light Mode)
 import { ThemeProvider } from "./providers";
 
 import "../src/i18n";
@@ -41,7 +43,6 @@ export const metadata: Metadata = siteConfig;
 
 export default function RootLayout({ children }: { children: ReactNode }) {
     return (
-        // suppressHydrationWarning é recomendado pelo next-themes para evitar erros no console
         <html lang="en" className="scroll-smooth" suppressHydrationWarning>
         <body
             className={cn(
@@ -51,15 +52,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 "font-sans"
             )}
         >
-        {/* 1. ThemeProvider envolve tudo para controlar as cores */}
+        {/* 1. ThemeProvider envolve tudo */}
         <ThemeProvider
             attribute="class"
             defaultTheme="dark"
             enableSystem
             disableTransitionOnChange
         >
-            {/* 2. Movement Blockchain Provider */}
-            <MovementWalletProvider>
+            {/* 2. Privy Wallet Provider (Substituindo o antigo MovementWalletProvider) */}
+            <PrivyWalletProvider>
                 {/* 3. Session Auth Provider */}
                 <AuthProvider>
                     <StarsCanvas />
@@ -67,7 +68,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                     {children}
                     <Footer />
                 </AuthProvider>
-            </MovementWalletProvider>
+            </PrivyWalletProvider>
         </ThemeProvider>
         </body>
         </html>

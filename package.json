@@ -49,10 +49,10 @@
   },
   "dependencies": {
     "@aptos-labs/ts-sdk": "^5.2.0",
-    "@aptos-labs/wallet-adapter-react": "^7.2.7",
     "@google-cloud/vertexai": "^1.10.0",
     "@google/generative-ai": "^0.24.1",
     "@heroicons/react": "^2.1.1",
+    "@privy-io/react-auth": "^3.10.0",
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",
     "@splinetool/react-spline": "^4.1.0",
@@ -82,7 +82,8 @@
     "react-icons": "^5.0.1",
     "react-intersection-observer": "^9.5.3",
     "tailwind-merge": "^2.2.0",
-    "three": "^0.160.1"
+    "three": "^0.160.1",
+    "viem": "^2.43.5"
   },
   "devDependencies": {
     "@types/crypto-js": "^4.2.2",

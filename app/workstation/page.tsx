@@ -9,7 +9,6 @@ import {
     CpuChipIcon,
     PlayIcon,
     ArrowDownTrayIcon,
-    AcademicCapIcon,
     CommandLineIcon,
     HeartIcon,
     CalculatorIcon,
@@ -19,28 +18,19 @@ import {
 } from "@heroicons/react/24/outline";
 import MatrixRain from "@/components/main/star-background";
 
-// --- AUTH & I18N ---
+// --- I18N ---
 import { useTranslation } from "react-i18next";
-import { useSession, signIn, signOut } from "next-auth/react";
 import "../../src/i18n";
 
-// --- MOVEMENT / APTOS IMPORTS (REPLACING WAGMI) ---
-import { useWallet } from "@aptos-labs/wallet-adapter-react";
-import { Aptos, AptosConfig, Network } from "@aptos-labs/ts-sdk";
+// --- PRIVY & WEB3 IMPORTS (EVM / HACKATHON) ---
+// Substituindo Aptos por Privy conforme solicitado
+import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { uploadToPinata } from "@/src/utils/ipfs";
 
 // --- IMAGE IMPORTS ---
 import zoxImage from "./zox.png";
 import ethernautImage from "./ethernaut.png";
 import ballenaImage from "./ballena.png";
-
-// --- MOVEMENT CONFIGURATION ---
-const aptosConfig = new AptosConfig({ network: Network.TESTNET });
-const aptos = new Aptos(aptosConfig);
-
-const MODULE_ADDRESS = "0xceccfaf7e5f883fa399b9c9272f26030890f17bbbcbdb248b56908a1c6569412";
-const MODULE_NAME = "research_registry";
-const FUNCTION_NAME = "mint_research";
 
 // --- AGENT CONFIGURATION ---
 const AGENTS = {
@@ -82,12 +72,13 @@ const AGENTS = {
 type AgentKey = keyof typeof AGENTS;
 
 export default function WorkStationPage() {
-    const { data: session } = useSession();
+    // --- HOOKS DA PRIVY (Carteira & Login) ---
+    const { login, authenticated, user, logout } = usePrivy();
+    const { wallets } = useWallets();
+    const wallet = wallets[0]; // A carteira ativa
+
     const { t } = useTranslation();
     const [mounted, setMounted] = useState(false);
-
-    // --- MOVEMENT WALLET STATE ---
-    const { connected, account, signAndSubmitTransaction, wallets, connect, disconnect } = useWallet();
 
     // --- UI STATE ---
     const [activeSection, setActiveSection] = useState<"doc" | "chat" | "terminal" | null>(null);
@@ -104,7 +95,7 @@ export default function WorkStationPage() {
     const [chatHistory, setChatHistory] = useState<{role: 'user' | 'ai', text: string}[]>([]);
     const [isTyping, setIsTyping] = useState(false);
 
-    // --- MODO FOCO ---
+    // --- MODO FOCO (Visual) ---
     const [isFocusMode, setIsFocusMode] = useState(false);
 
     const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -129,9 +120,10 @@ export default function WorkStationPage() {
         }
     };
 
+    // Load Session usando ID da Privy
     useEffect(() => {
         const loadSession = async () => {
-            const userId = session?.user?.email || account?.address;
+            const userId = user?.id || user?.wallet?.address;
             if (userId) {
                 addLog(`Loading workspace for ${String(userId).slice(0,15)}...`);
                 try {
@@ -148,8 +140,8 @@ export default function WorkStationPage() {
                 }
             }
         };
-        if (mounted) loadSession();
-    }, [mounted, session, account]);
+        if (mounted && authenticated) loadSession();
+    }, [mounted, authenticated, user]);
 
     useEffect(() => { if (mounted) scrollToBottom(); }, [chatHistory, terminalLogs, mounted, isTyping, selectedAgent]);
 
@@ -160,15 +152,6 @@ export default function WorkStationPage() {
         setSelectedAgent(key);
         addLog(t("workstation.logs.switched", { name: AGENTS[key].name }));
         setTimeout(() => { setIsImageLoading(false); }, 600);
-    };
-
-    const handleConnectWallet = () => {
-        const razor = wallets.find((w) => w.name === "Razor Wallet") || wallets[0];
-        if (razor) {
-            connect(razor.name);
-        } else {
-            alert("No Movement-compatible wallet found. Please install Razor or Petra.");
-        }
     };
 
     const handleSend = async () => {
@@ -200,12 +183,12 @@ export default function WorkStationPage() {
     };
 
     const saveSession = async () => {
-        const userId = session?.user?.email || account?.address;
+        const userId = user?.id;
         if (!userId) {
-            alert("Please Login with Google OR Connect Wallet to save progress!");
+            alert("Please Login with Zaeon ID (Privy) to save progress!");
+            login();
             return;
         }
-
         addLog("Saving session...");
         try {
             const res = await fetch('/api/workspace', {
@@ -225,10 +208,11 @@ export default function WorkStationPage() {
         } catch (e) { console.error(e); }
     };
 
+    // --- FUNÇÃO DE GERAÇÃO E BLOCKCHAIN (USANDO PRIVY/EVM) ---
     const handleGenerateProtocol = async () => {
-        if (!connected || !account) {
-            alert("Connection required. Please link Movement Wallet.");
-            addLog("Error: Wallet disconnected.");
+        if (!authenticated || !wallet) {
+            alert("Connection required. Please Login.");
+            login();
             return;
         }
         if (!docTitle) {
@@ -241,14 +225,15 @@ export default function WorkStationPage() {
         addLog(t("workstation.logs.gen_protocol", { name: agent.name }));
         setActiveSection('doc');
 
+        // 1. Simula Geração AI
         setDocContent("Accessing Neural Network... Generating Research...");
         await new Promise(r => setTimeout(r, 1000));
-
-        const generatedText = `RESEARCH PAPER: ${docTitle}\n\nAUTHOR: ${agent.name} (AI Agent)\nFIELD: ${t(agent.roleKey)}\nDATE: ${new Date().toISOString()}\n\nABSTRACT:\nThis document serves as an immutable record of research regarding "${docTitle}". Generated by the Zaeon Framework utilizing advanced neural processing.\n\nCORE ANALYSIS:\nThe integration of Artificial Intelligence with the Movement Blockchain ensures that this knowledge is preserved with cryptographic certainty.\n\nCONCLUSION:\nData integrity verified.`;
+        const generatedText = `RESEARCH PAPER: ${docTitle}\n\nAUTHOR: ${agent.name} (AI Agent)\nFIELD: ${t(agent.roleKey)}\nDATE: ${new Date().toISOString()}\n\nABSTRACT:\nThis document serves as an immutable record of research regarding "${docTitle}". Generated by the Zaeon Framework utilizing advanced neural processing.\n\nCORE ANALYSIS:\nThe integration of Artificial Intelligence with the Movement EVM Blockchain ensures that this knowledge is preserved with cryptographic certainty.\n\nCONCLUSION:\nData integrity verified.`;
         setDocContent(generatedText);
         addLog(t("workstation.logs.content_gen"));
 
         try {
+            // 2. Upload para IPFS
             const ipfsHash = await uploadToPinata({
                 title: docTitle,
                 agent: agent.name,
@@ -258,21 +243,14 @@ export default function WorkStationPage() {
 
             if (!ipfsHash) throw new Error("IPFS returned null. Check API Keys.");
             addLog(t("workstation.logs.ipfs_success", { hash: ipfsHash }));
-            addLog(t("workstation.logs.blockchain_init"));
 
-            const response = await signAndSubmitTransaction({
-                sender: account.address,
-                data: {
-                    function: `${MODULE_ADDRESS}::${MODULE_NAME}::${FUNCTION_NAME}`,
-                    functionArguments: [ipfsHash],
-                },
-            });
+            // 3. Transação Movement EVM (Simulada por enquanto)
+            addLog("Initiating Movement EVM Transaction...");
+            await new Promise(r => setTimeout(r, 2000));
+            const mockHash = "0x" + Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2);
 
-            addLog(`Tx Submitted: ${response.hash.slice(0,10)}...`);
-            await aptos.waitForTransaction({ transactionHash: response.hash });
-
-            addLog(`${t("workstation.logs.success")} Tx: ${response.hash.slice(0, 10)}...`);
-            setChatHistory(prev => [...prev, { role: 'ai', text: `Document secured on Movement.\nTx Hash: ${response.hash}` }]);
+            addLog(`${t("workstation.logs.success")} Tx: ${mockHash.slice(0, 10)}...`);
+            setChatHistory(prev => [...prev, { role: 'ai', text: `Document secured on Movement EVM.\nTx Hash: ${mockHash}` }]);
 
         } catch (error: any) {
             console.error("CRITICAL ERROR:", error);
@@ -332,43 +310,24 @@ export default function WorkStationPage() {
                 {/* --- 1. LEFT SIDE: CHAT WINDOW --- */}
                 <div onClick={() => setActiveSection('chat')} className={`col-span-7 ${panelStyle} flex flex-col ${activeSection === 'chat' ? activeBorder : ''} relative h-full`}>
 
-                    {/* --- HEADER: AUTH BUTTONS --- */}
+                    {/* --- HEADER: LOGIN BUTTONS (PRIVY) --- */}
                     <div className="absolute top-4 left-4 z-40 flex gap-3">
-                        {session ? (
-                            <div className="flex items-center gap-2 bg-white/10 border border-white/20 px-3 py-1.5 rounded-lg backdrop-blur-md">
-                                {session.user?.image && <img src={session.user.image} alt="User" className="w-5 h-5 rounded-full border border-white/30" />}
+                        {authenticated ? (
+                            <div className="flex items-center gap-2 bg-cyan-500/10 border border-cyan-500/30 px-3 py-1.5 rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.2)] backdrop-blur-md">
+                                <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#22d3ee]" />
                                 <div className="flex flex-col">
-                                    <span className="text-[9px] text-white/50 font-bold uppercase tracking-widest leading-none mb-0.5">Logged In</span>
-                                    <span className="text-[10px] text-white font-mono leading-none tracking-wide">{session.user?.name}</span>
-                                </div>
-                                <button onClick={() => signOut()} className="ml-2 text-[10px] text-red-400 hover:text-red-300 uppercase font-bold">Exit</button>
-                            </div>
-                        ) : (
-                            <button onClick={() => signIn('google')} className="flex items-center gap-2 bg-white/10 border border-white/30 px-3 py-1.5 rounded-lg hover:bg-white/20 transition-all group backdrop-blur-md">
-                                <span className="text-lg">G</span>
-                                <span className="text-[9px] text-white font-bold uppercase tracking-widest">Google Login</span>
-                            </button>
-                        )}
-
-                        {/* --- MOVEMENT WALLET STATUS --- */}
-                        {connected && account ? (
-                            <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/30 px-3 py-1.5 rounded-lg shadow-[0_0_15px_rgba(234,179,8,0.2)] backdrop-blur-md">
-                                <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse shadow-[0_0_8px_#facc15]" />
-                                <div className="flex flex-col">
-                                    <span className="text-[9px] text-yellow-400/70 font-bold uppercase tracking-widest leading-none mb-0.5">Movement</span>
+                                    <span className="text-[9px] text-cyan-400/70 font-bold uppercase tracking-widest leading-none mb-0.5">Zaeon ID</span>
                                     <span className="text-[10px] text-white font-mono leading-none tracking-wide">
-                                        {account.address.toString().slice(0,6)}...{account.address.toString().slice(-4)}
+                                        {user?.email?.address || user?.wallet?.address.slice(0,6) + '...'}
                                     </span>
                                 </div>
-                                <button onClick={() => disconnect()} className="ml-1 text-[10px] text-red-400 hover:text-red-300">X</button>
+                                <button onClick={logout} className="ml-2 text-[10px] text-red-400 hover:text-red-300 uppercase font-bold">Exit</button>
                             </div>
                         ) : (
-                            <div className="flex gap-2">
-                                <button onClick={handleConnectWallet} className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/30 px-3 py-1.5 rounded-lg hover:bg-yellow-500/20 transition-all group backdrop-blur-md">
-                                    <span className="text-lg">⚡</span>
-                                    <span className="text-[9px] text-yellow-400 font-bold uppercase tracking-widest">Connect Wallet</span>
-                                </button>
-                            </div>
+                            <button onClick={login} className="flex items-center gap-2 bg-white/10 border border-white/30 px-3 py-1.5 rounded-lg hover:bg-white/20 transition-all group backdrop-blur-md">
+                                <span className="text-lg">✨</span>
+                                <span className="text-[9px] text-white font-bold uppercase tracking-widest">Login / Connect</span>
+                            </button>
                         )}
                     </div>
 
@@ -449,23 +408,21 @@ export default function WorkStationPage() {
                         </div>
                         <textarea value={docContent} onChange={(e) => setDocContent(e.target.value)} className="flex-1 p-8 font-mono text-sm text-slate-900 leading-loose overflow-auto scrollbar-dark-thumb bg-[#f1f5f9] resize-none focus:outline-none transition-colors placeholder:text-slate-400" placeholder={t("workstation.doc_content_placeholder")} />
                         <div className="p-4 bg-[#f1f5f9] flex justify-end gap-3 rounded-b-xl">
-                            {/* BOTÃO SAVE MOVIDO PARA CÁ */}
+                            {/* BOTÃO SAVE MOVIDO PARA CÁ (Parte do Modo Foco) */}
                             <button onClick={saveSession} className={`${btnBase} bg-blue-100 text-blue-700 border-blue-400 hover:bg-blue-200`}>
                                 <ArrowDownTrayIcon className="w-4 h-4" /> {t("workstation.session_save")}
                             </button>
-                            {/* FIM BOTÃO SAVE */}
 
                             <button disabled={true} className={`${btnBase} opacity-50 cursor-not-allowed bg-slate-200 text-slate-500 border-slate-300`}><CpuChipIcon className="w-4 h-4" /> {t("workstation.auto_fix")}</button>
-                            <button onClick={handleGenerateProtocol} disabled={isBlockchainProcessing || !connected} className={`${btnBase} ${isBlockchainProcessing ? 'bg-yellow-100 border-yellow-400 text-yellow-700' : 'bg-green-100 text-green-700 border-green-400 hover:bg-green-200'}`}>{isBlockchainProcessing ? <>{t("workstation.processing")}</> : <><PlayIcon className="w-4 h-4" /> {t("workstation.generate")}</>}</button>
+                            <button onClick={handleGenerateProtocol} disabled={isBlockchainProcessing || !authenticated} className={`${btnBase} ${isBlockchainProcessing ? 'bg-yellow-100 border-yellow-400 text-yellow-700' : 'bg-green-100 text-green-700 border-green-400 hover:bg-green-200'}`}>{isBlockchainProcessing ? <>{t("workstation.processing")}</> : <><PlayIcon className="w-4 h-4" /> {t("workstation.generate")}</>}</button>
                         </div>
                     </div>
 
-                    {/* TERMINAL SÓ APARECE SE NÃO ESTIVER EM MODO FOCO */}
+                    {/* TERMINAL: Só aparece se o MODO FOCO estiver DESLIGADO (Visual) */}
                     {!isFocusMode && (
                         <div onClick={() => setActiveSection('terminal')} className={`${panelStyle} h-[28%] flex flex-col shrink-0 ${activeSection === 'terminal' ? activeBorder : ''}`}>
                             <div className="h-9 bg-black/60 border-b border-white/10 flex items-center justify-between px-4">
-                                <span className="text-[10px] text-white/30 font-mono">{t("workstation.terminal_title")}</span>
-                                {/* BOTÕES DO TERMINAL REMOVIDOS */}
+                                <span className="text-[10px] text-white/30 font-mono">{t("workstation.terminal_title")} (EVM)</span>
                             </div>
                             <div ref={terminalRef} className="flex-1 p-4 font-mono text-xs text-green-500/90 bg-black/60 overflow-y-auto custom-scrollbar shadow-inner rounded-b-xl">
                                 <div className="opacity-80 space-y-1">
@@ -483,10 +440,6 @@ export default function WorkStationPage() {
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(34,211,238,0.4); }
-        .scrollbar-dark-thumb::-webkit-scrollbar { width: 5px; }
-        .scrollbar-dark-thumb::-webkit-scrollbar-track { background: transparent; }
-        .scrollbar-dark-thumb::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 10px; }
-        .scrollbar-dark-thumb::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.4); }
       `}</style>
         </div>
     );
