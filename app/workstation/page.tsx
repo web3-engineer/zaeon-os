@@ -94,7 +94,7 @@ export default function WorkStationPage() {
     const [docContent, setDocContent] = useState("");
     const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
     const [isBlockchainProcessing, setIsBlockchainProcessing] = useState(false);
-
+    const [copied, setCopied] = useState(false);
     const [selectedAgent, setSelectedAgent] = useState<AgentKey>("zenita");
     const [isAgentMenuOpen, setIsAgentMenuOpen] = useState(false);
     const [isImageLoading, setIsImageLoading] = useState(false);
@@ -297,9 +297,14 @@ export default function WorkStationPage() {
                     {/* --- HEADER: NEXT AUTH GOOGLE CARD --- */}
                     <div className="absolute top-4 left-4 z-40 flex gap-3">
                         {session ? (
+                            // CARD CONECTADO (Sem botão de Log Out)
                             <div className="flex items-center gap-3 bg-cyan-950/30 border border-cyan-500/20 px-4 py-2 rounded-xl backdrop-blur-md shadow-lg group hover:border-cyan-500/40 transition-all">
                                 {session.user?.image ? (
-                                    <img src={session.user.image} alt="User" className="w-8 h-8 rounded-full border border-cyan-400/50 shadow-[0_0_10px_rgba(34,211,238,0.3)]" />
+                                    <img
+                                        src={session.user.image}
+                                        alt="User"
+                                        className="w-8 h-8 rounded-full border border-cyan-400/50 shadow-[0_0_10px_rgba(34,211,238,0.3)]"
+                                    />
                                 ) : (
                                     <div className="w-8 h-8 rounded-full bg-cyan-900/50 flex items-center justify-center border border-cyan-500/30">
                                         <UserCircleIcon className="w-5 h-5 text-cyan-300" />
@@ -307,26 +312,24 @@ export default function WorkStationPage() {
                                 )}
 
                                 <div className="flex flex-col">
-                                    <span className="text-[9px] text-cyan-400 font-bold uppercase tracking-widest leading-none mb-1">
-                                        {t("workstation.connected")}
-                                    </span>
+                <span className="text-[9px] text-cyan-400 font-bold uppercase tracking-widest leading-none mb-1">
+                    {t("workstation.connected")}
+                </span>
                                     <span className="text-[11px] text-white font-mono leading-none tracking-wide max-w-[120px] truncate">
-                                        {session.user?.name || session.user?.email}
-                                    </span>
+                    {session.user?.name || session.user?.email}
+                </span>
                                 </div>
-                                <div className="h-6 w-[1px] bg-white/10 mx-1" />
-                                <button onClick={() => signOut()} className="text-[10px] text-red-400 hover:text-red-300 uppercase font-bold hover:bg-red-500/10 px-2 py-1 rounded transition-all">
-                                    {t("workstation.exit")}
-                                </button>
+                                {/* O separador e o botão signOut() foram removidos daqui para despoluir a UI */}
                             </div>
                         ) : (
+                            // BOTÃO PARA LOGIN
                             <button onClick={() => signIn('google')} className="flex items-center gap-2 bg-white/5 border border-white/20 px-4 py-2 rounded-xl hover:bg-white/10 transition-all group backdrop-blur-md hover:border-cyan-500/30">
                                 <UserCircleIcon className="w-5 h-5 text-white/70 group-hover:text-white" />
                                 <div className="flex flex-col items-start">
                                     <span className="text-[8px] text-white/50 font-bold uppercase tracking-widest">{t("workstation.welcome")}</span>
                                     <span className="text-[10px] text-white font-bold group-hover:text-cyan-300 transition-colors">
-                                        {t("workstation.login")}
-                                    </span>
+                    {t("workstation.login")}
+                </span>
                                 </div>
                             </button>
                         )}
@@ -422,7 +425,6 @@ export default function WorkStationPage() {
                         <div onClick={() => setActiveSection('terminal')} className={`${panelStyle} h-[28%] flex flex-col shrink-0 ${activeSection === 'terminal' ? activeBorder : ''}`}>
 
                             {/* --- HEADER DO TERMINAL (LIMPO E VIBRANTE) --- */}
-                            {/* h-9: Reduzido para não cortar. Justify-Start: Tudo na esquerda. */}
                             <div className="h-9 bg-[#0a0a0a] border-b border-white/5 flex items-center px-4 shrink-0 select-none gap-4">
 
                                 {/* LED STATUS */}
@@ -434,28 +436,52 @@ export default function WorkStationPage() {
                                     }`}
                                 />
 
-                                {/* CARD DA CARTEIRA (Ao lado do ponto) */}
+                                {/* CARD DA CARTEIRA / BOTÃO DE COPIAR */}
                                 {privyReady && privyAuthenticated && wallet ? (
-                                    // CONECTADO: Card Esmeralda/Escuro
-                                    <div className="flex items-center gap-3 bg-emerald-500/5 border border-emerald-500/20 px-3 py-1 rounded hover:bg-emerald-500/10 transition-all cursor-default">
-                                        <span className="text-[10px] font-mono text-emerald-400/90 tracking-wide">
-                                            {wallet.address.slice(0, 6)}...{wallet.address.slice(-4)}
-                                        </span>
-                                        {/* Botão X discreto */}
-                                        <button onClick={disconnectWallet} className="text-[10px] text-emerald-600 hover:text-emerald-400 font-bold px-1">✕</button>
+                                    // CONECTADO: Agora é um botão que copia o endereço
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(wallet.address);
+                                                setCopied(true);
+                                                setTimeout(() => setCopied(false), 2000);
+                                                addLog("Address copied to clipboard.");
+                                            }}
+                                            className="flex items-center gap-3 bg-emerald-500/5 border border-emerald-500/20 px-3 py-1 rounded hover:bg-emerald-500/10 hover:border-emerald-500/40 transition-all group active:scale-95"
+                                            title="Click to copy address"
+                                        >
+                <span className="text-[10px] font-mono text-emerald-400/90 tracking-wide">
+                    {copied ? "COPIED!" : `${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}`}
+                </span>
+
+                                            {/* Ícone discreto que aparece no hover */}
+                                            <div className="w-3 h-3 text-emerald-600 group-hover:text-emerald-400 transition-colors">
+                                                <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-full h-full">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" />
+                                                </svg>
+                                            </div>
+                                        </button>
+
+                                        {/* Botão de Disconnect separado e minimalista */}
+                                        <button
+                                            onClick={disconnectWallet}
+                                            className="p-1 text-emerald-800 hover:text-red-500 transition-colors"
+                                            title="Disconnect"
+                                        >
+                                            <PowerIcon className="w-3 h-3" />
+                                        </button>
                                     </div>
                                 ) : (
-                                    // DESCONECTADO: Card Vermelho Vibrante (Sem ícones, apenas texto)
+                                    // DESCONECTADO
                                     <button
                                         onClick={connectWallet}
                                         className="flex items-center bg-red-600/10 border border-red-600/40 px-3 py-1 rounded hover:bg-red-600/20 hover:border-red-500 transition-all group"
                                     >
-                                        <span className="text-[10px] font-bold text-red-500 group-hover:text-red-400 tracking-wide uppercase">
-                                            {t("workstation.no_wallet")}
-                                        </span>
+            <span className="text-[10px] font-bold text-red-500 group-hover:text-red-400 tracking-wide uppercase">
+                {t("workstation.no_wallet")}
+            </span>
                                     </button>
                                 )}
-
                                 {/* Lado direito vazio para manter o foco na esquerda */}
                             </div>
 
