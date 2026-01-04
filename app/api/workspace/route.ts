@@ -1,3 +1,6 @@
+// 1. FORÇA A ROTA A SER DINÂMICA (Resolve o erro da Vercel)
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server';
 import connectToDatabase from '@/src/lib/db';
 import Workspace from '@/src/models/Workspace';
@@ -7,14 +10,14 @@ export async function POST(req: Request) {
         await connectToDatabase();
         const body = await req.json();
 
-        // Vamos usar o endereço da carteira como userId por enquanto
+        // userId pode ser o Email do Google ou Endereço da Carteira
         const { userId, title, content, agent, chatHistory, terminalLogs } = body;
 
         if (!userId) {
             return NextResponse.json({ error: 'Usuário não identificado' }, { status: 400 });
         }
 
-        // Upsert: Atualiza se existir, Cria se não existir
+        // Upsert: Atualiza se existir (baseado no userId), cria se não existir
         const workspace = await Workspace.findOneAndUpdate(
             { userId },
             {
@@ -31,7 +34,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true, data: workspace });
 
     } catch (error: any) {
-        console.error("Erro MongoDB:", error);
+        console.error("❌ Erro MongoDB POST:", error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
@@ -42,11 +45,13 @@ export async function GET(req: Request) {
         const { searchParams } = new URL(req.url);
         const userId = searchParams.get('userId');
 
-        if (!userId) return NextResponse.json({ error: 'UserId required' }, { status: 400 });
+        if (!userId) {
+            return NextResponse.json({ error: 'UserId required' }, { status: 400 });
+        }
 
         const workspace = await Workspace.findOne({ userId });
 
-        // Se não tiver nada salvo, retorna um objeto padrão limpo
+        // Se não tiver nada salvo, retorna um objeto padrão limpo para o frontend não quebrar
         if (!workspace) {
             return NextResponse.json({
                 data: {
@@ -62,6 +67,7 @@ export async function GET(req: Request) {
         return NextResponse.json({ data: workspace });
 
     } catch (error: any) {
+        console.error("❌ Erro MongoDB GET:", error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
