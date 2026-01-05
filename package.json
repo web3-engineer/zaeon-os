@@ -1,7 +1,6 @@
 {
   "name": "zaeon-os",
   "version": "1.0.1",
-  "type": "module",
   "private": true,
   "scripts": {
     "dev": "next dev",
