@@ -2,13 +2,15 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { useRouter } from "next/navigation"; // Importação correta para navegação
 import whoAre from "@/app/who-are-zaeon.png";
 import { useTranslation } from "react-i18next";
 import "../../src/i18n";
 
 export default function Encryption() {
     const { t } = useTranslation();
+    const router = useRouter();
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -22,38 +24,26 @@ export default function Encryption() {
         []
     );
 
-    const sectionRef = useRef<HTMLDivElement | null>(null);
-    const [hovering, setHovering] = useState(false);
-    const [pos, setPos] = useState({ x: 0, y: 0 });
-
-    const handleMove = (e: React.MouseEvent) => {
-        const rect = sectionRef.current?.getBoundingClientRect();
-        if (!rect) return;
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        setPos({ x, y });
-    };
-
-    const handleClick = () => {
-        window.location.assign("/about");
+    // Função de navegação para a nova página que criamos em app/about/page.tsx
+    const handleNavigation = () => {
+        router.push("/about");
     };
 
     if (!mounted) return null;
 
-    // Configurações de animação
+    // Configurações de animação do texto gradiente
     const textAnimateState = reduced ? {} : {
-        y: [0, -8, 0],
-        opacity: [1, 0.85, 1],
+        y: [0, -5, 0],
+        opacity: [1, 0.9, 1],
         backgroundImage: [
             "linear-gradient(90deg,#3b82f6,#38bdf8,#22d3ee)",
             "linear-gradient(90deg,#6366f1,#8b5cf6,#ec4899)",
-            "linear-gradient(90deg,#7c3aed,#8b5cf6,#10b981)",
             "linear-gradient(90deg,#3b82f6,#38bdf8,#22d3ee)",
         ],
     };
 
     const textTransitionState = reduced ? {} : {
-        duration: 12,
+        duration: 10,
         ease: "easeInOut",
         repeat: Infinity,
     };
@@ -64,33 +54,29 @@ export default function Encryption() {
         WebkitTextFillColor: "transparent",
     };
 
-    const fontClass = "text-[42px] sm:text-[54px] font-light tracking-tight leading-tight";
+    const fontClass = "text-[32px] sm:text-[54px] font-light tracking-tight leading-tight";
 
     return (
         <section
             id="about-us"
-            ref={sectionRef}
-            // CORREÇÃO VISUAL: bg-transparent remove qualquer cor de fundo sólida.
-            // A "separação" some porque agora estamos vendo direto o body/matrix rain.
-            className="relative flex flex-col items-center justify-center min-h-[100vh] w-full overflow-hidden bg-transparent py-20"
+            className="relative flex flex-col items-center justify-center min-h-screen w-full overflow-hidden bg-transparent py-20"
         >
             {/* VÍDEO DE FUNDO */}
             <div className="absolute inset-0 z-0 pointer-events-none">
                 <video
-                    className="h-full w-full object-cover invert dark:invert-0 opacity-40 dark:opacity-100 transition-all duration-500"
+                    className="h-full w-full object-cover invert dark:invert-0 opacity-30 dark:opacity-60 transition-all duration-500"
                     loop
                     muted
                     autoPlay
                     playsInline
-                    preload="none"
                 >
                     <source src="/videos/encryption-bg.webm" type="video/webm" />
                 </video>
             </div>
 
-            {/* --- 1. TÍTULO PRINCIPAL (TOPO) --- */}
+            {/* --- 1. TÍTULO PRINCIPAL --- */}
             <motion.div
-                className={`absolute top-[12%] md:top-[15%] z-20 select-none text-center text-transparent bg-clip-text px-4 ${fontClass}`}
+                className={`z-20 select-none text-center px-4 mb-10 ${fontClass}`}
                 animate={textAnimateState}
                 transition={textTransitionState}
                 style={textStyleState}
@@ -98,32 +84,27 @@ export default function Encryption() {
                 {t("encryption.title")}
             </motion.div>
 
-            {/* --- 2. IMAGEM CENTRAL (MEIO) --- */}
-            <div className="relative z-10 flex items-center justify-center mt-32 mb-8">
+            {/* --- 2. IMAGEM CENTRAL --- */}
+            <div className="relative z-10 flex items-center justify-center mb-10">
                 <motion.div
-                    onMouseMove={handleMove}
-                    onHoverStart={() => setHovering(true)}
-                    onHoverEnd={() => setHovering(false)}
-                    animate={reduced ? {} : { y: [0, -18, 0] }}
-                    transition={reduced ? {} : { duration: 6, ease: "easeInOut", repeat: Infinity }}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 1.02 }}
-                    className="drop-shadow-[0_0_45px_rgba(56,189,248,0.5)] dark:drop-shadow-[0_0_45px_rgba(56,189,248,0.5)] transition-transform duration-700 ease-out"
+                    animate={reduced ? {} : { y: [0, -15, 0] }}
+                    transition={reduced ? {} : { duration: 5, ease: "easeInOut", repeat: Infinity }}
+                    whileHover={{ scale: 1.02 }}
+                    className="drop-shadow-[0_0_35px_rgba(56,189,248,0.3)]"
                 >
                     <Image
                         src={whoAre}
                         alt="Who are Zaeon"
                         priority
                         draggable={false}
-                        // CORREÇÃO TAMANHO: Aumentado para 1250px (era 1000px)
-                        className="w-[95vw] max-w-[1250px] h-auto select-none"
+                        className="w-[90vw] max-w-[1100px] h-auto select-none"
                     />
                 </motion.div>
             </div>
 
-            {/* --- 3. SUBTÍTULO (EMBAIXO) --- */}
+            {/* --- 3. SUBTÍTULO --- */}
             <motion.div
-                className={`relative z-20 select-none text-center text-transparent bg-clip-text px-6 max-w-5xl ${fontClass}`}
+                className={`z-20 select-none text-center px-6 max-w-5xl mb-12 ${fontClass}`}
                 animate={textAnimateState}
                 transition={textTransitionState}
                 style={textStyleState}
@@ -131,36 +112,23 @@ export default function Encryption() {
                 {t("encryption.subtitle")}
             </motion.div>
 
-            {/* Botão Flutuante */}
-            <motion.button
-                type="button"
-                onClick={handleClick}
-                className="pointer-events-auto absolute z-30 rounded-full px-3.5 py-1.5 text-[12px] font-semibold
-                   text-white shadow-[0_8px_24px_rgba(0,0,0,0.35)]
-                   bg-gradient-to-br from-gray-900/90 to-blue-900/90
-                   border border-white/15 backdrop-blur-sm"
-                style={{
-                    left: pos.x,
-                    top: pos.y - 28,
-                    transform: "translate(-50%, -100%)",
-                }}
-                initial={{ opacity: 0, scale: 0.92 }}
-                animate={
-                    hovering
-                        ? { opacity: 1, scale: 1, x: 0, y: 0 }
-                        : { opacity: 0, scale: 0.92 }
-                }
-                transition={{ type: "spring", stiffness: 360, damping: 30, mass: 0.6 }}
-                aria-label={t("encryption.button")}
-            >
-                {t("encryption.button")}
-            </motion.button>
-
-            {/* VINHETA - Ajustada para ser suave e não criar linhas duras */}
+            {/* --- 4. BOTÃO FIXO "SAIBA MAIS" --- */}
+            <div className="z-[100] mt-8"> {/* Container com z-index altíssimo */}
+                <motion.button
+                    onClick={() => window.location.assign("/about")} // Força a navegação direta
+                    whileHover={{ scale: 1.1, boxShadow: "0 0 25px rgba(56,189,248,0.6)" }}
+                    whileTap={{ scale: 0.95 }}
+                    className="relative px-10 py-4 rounded-full font-black uppercase tracking-[0.2em] text-[12px]
+                   bg-gradient-to-r from-blue-600 to-cyan-500 text-white
+                   border border-white/30 shadow-2xl cursor-pointer pointer-events-auto"
+                >
+                    {t("encryption.button")}
+                </motion.button>
+            </div>
+            {/* VINHETA DE SUAVIZAÇÃO */}
             <div className="pointer-events-none absolute inset-0 z-[5]
-                bg-[radial-gradient(ellipse_at_center,transparent_20%,rgba(255,255,255,0.4)_100%)]
-                dark:bg-[radial-gradient(ellipse_at_center,transparent_20%,rgba(0,0,0,0.4)_100%)]
-                transition-colors duration-500 opacity-60"
+                bg-[radial-gradient(circle,transparent_40%,rgba(0,0,0,0.4)_100%)]
+                opacity-70"
             />
         </section>
     );
