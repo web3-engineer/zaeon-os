@@ -4,11 +4,10 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { motion, useScroll, useTransform, useInView } from "framer-motion";
 import { CpuChipIcon, ArrowLeftIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
+import { useTranslation } from "react-i18next";
 
-// Pool de caracteres significativos (Valores Zaeon)
 const CHAR_POOL = ["紀", "律", "知", "識", "未", "来", "革", "新", "卓", "越", "智", "慧", "教", "育"];
 
-// --- HOOK DE SCRAMBLE ---
 const useScrambleText = (
     targetText: string,
     start: boolean,
@@ -82,16 +81,20 @@ const useScrambleText = (
     }, [targetText, start, scrambleDuration, resolveDuration, holdDuration, initialDelay]);
 
     useEffect(() => {
+        // Reiniciar estado se o targetText mudar (troca de idioma)
+        stateRef.current = 'idle';
+        startTimeRef.current = 0;
+        lastStateChangeTimeRef.current = 0;
+
         if (start) animationFrameRef.current = requestAnimationFrame(animate);
         else setDisplayText("");
         return () => animationFrameRef.current && cancelAnimationFrame(animationFrameRef.current);
-    }, [animate, start]);
+    }, [animate, start, targetText]);
 
     return { displayText, isComplete };
 };
 
-// --- TÍTULO ANIMADO ---
-const CyberTitle = ({ mainText, secondaryText, startAnimations }: { mainText: string, secondaryText: string, startAnimations: boolean }) => {
+const CyberTitle = ({ mainText, secondaryText, scrollText, startAnimations }: any) => {
     const { displayText: sText, isComplete: sDone } = useScrambleText(secondaryText, startAnimations, 3500, 1500, 3000, 0);
     const { displayText: mText, isComplete: mDone } = useScrambleText(mainText, startAnimations, 4500, 2000, 3000, 1000);
 
@@ -111,8 +114,8 @@ const CyberTitle = ({ mainText, secondaryText, startAnimations }: { mainText: st
             <motion.div className="flex flex-col items-center mt-10" initial={{ opacity: 0 }} animate={startAnimations ? { opacity: 1 } : { opacity: 0 }} transition={{ duration: 1, delay: 2 }}>
                 <div className="h-[1px] w-32 bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
                 <div className="mt-8 flex flex-col items-center gap-3">
-                    <span className="text-cyan-400 font-bold text-[11px] md:text-xs uppercase tracking-[0.4em] drop-shadow-[0_0_8px_rgba(34,211,238,0.5)] animate-pulse">
-                        deslize para baixo pra saber tudo
+                    <span className="text-cyan-400 font-bold text-[11px] md:text-xs uppercase tracking-[0.4em] drop-shadow-[0_0_8px_rgba(34,211,238,0.5)] animate-pulse text-center">
+                        {scrollText}
                     </span>
                     <motion.div animate={{ y: [0, 8, 0] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}>
                         <ChevronDownIcon className="w-5 h-5 text-cyan-500/70" />
@@ -135,6 +138,8 @@ const TextBlock = ({ children, align = "left" }: { children: React.ReactNode; al
 };
 
 export default function AboutUsPage() {
+    const { t, i18n } = useTranslation();
+    const [mounted, setMounted] = useState(false);
     const containerRef = useRef(null);
     const { scrollYProgress } = useScroll({ target: containerRef });
     const backgroundY = useTransform(scrollYProgress, [0, 1], ["0%", "15%"]);
@@ -143,14 +148,11 @@ export default function AboutUsPage() {
     const [isAtTop, setIsAtTop] = useState(true);
 
     useEffect(() => {
-        // Controle de Scroll para habilitar o menu superior no topo
+        setMounted(true);
         const handleScroll = () => {
-            if (window.scrollY < 80) setIsAtTop(true);
-            else setIsAtTop(false);
+            setIsAtTop(window.scrollY < 80);
         };
         window.addEventListener("scroll", handleScroll);
-
-        // Atraso para garantir que a imagem apareça antes do texto começar a rolar
         const timer = setTimeout(() => setStartAnimations(true), 2500);
 
         return () => {
@@ -159,10 +161,11 @@ export default function AboutUsPage() {
         };
     }, []);
 
+    if (!mounted) return <div className="min-h-screen bg-[#030014]" />;
+
     return (
         <div
             ref={containerRef}
-            // LÓGICA DE DESBLOQUEIO: No topo z-0 (clicável), ao rolar z-[200] (imersivo)
             className={`relative min-h-[400vh] bg-[#030014] overflow-hidden font-sans transition-all duration-700 ${isAtTop ? 'z-0' : 'z-[200]'}`}
         >
             {/* BOTÃO VOLTAR */}
@@ -170,7 +173,9 @@ export default function AboutUsPage() {
                 <div className="w-12 h-12 rounded-full border border-white/5 flex items-center justify-center group-hover:border-cyan-500/40 backdrop-blur-xl bg-white/5 transition-all">
                     <ArrowLeftIcon className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
                 </div>
-                <span className="text-[10px] uppercase tracking-[0.2em] font-black opacity-0 group-hover:opacity-100 transition-opacity">Voltar</span>
+                <span className="text-[10px] uppercase tracking-[0.2em] font-black opacity-0 group-hover:opacity-100 transition-opacity">
+                    {t('about.back')}
+                </span>
             </button>
 
             {/* FUNDO FIXO */}
@@ -185,53 +190,66 @@ export default function AboutUsPage() {
             <div className="relative z-[210] flex flex-col items-center pt-[32vh] pb-[40vh] px-6 gap-[45vh]">
                 <CyberTitle
                     startAnimations={startAnimations}
-                    secondaryText="A escola do futuro."
-                    mainText="ACONTECENDO AGORA."
+                    secondaryText={t('about.title_secondary')}
+                    mainText={t('about.title_main')}
+                    scrollText={t('about.scroll_down')}
                 />
 
                 <TextBlock align="left">
                     <h2 className="text-2xl md:text-3xl font-bold text-white mb-4 tracking-wide uppercase flex items-center gap-3">
                         <span className="w-1.5 h-8 bg-cyan-500 shadow-[0_0_20px_cyan]"></span>
-                        A Gênese do Protocolo
+                        {t('about.genesis.title')}
                     </h2>
-                    <p>Hoje, nossa atenção é roubada por grandes empresas que buscam apenas o lucro, roubando a atenção de milhões enquanto seus algoritmos destróem a inteligência humana.</p>
-                    <p>A Zaeon surge para mudar isso: viemos resgatar o prazer de aprender novamente: Com profundidade, modernidade e diversão. Enquanto o ensino tradicional parou no tempo e não acompanha a tecnologia, nós destravamos o seu verdadeiro potencial através de Agentes de IA poderosos. Aqui, humanos e máquinas irão trabalhar por um mundo melhor <span className="text-cyan-300 font-semibold">dentro da Blockchain</span>.</p>
+                    <p>{t('about.genesis.p1')}</p>
+                    <p>
+                        {t('about.genesis.p2')}
+                        <span className="text-cyan-300 font-semibold">{t('about.genesis.p2_highlight')}</span>
+                    </p>
                 </TextBlock>
 
                 <TextBlock align="right">
                     <h2 className="text-2xl md:text-3xl font-bold text-white mb-4 tracking-wide uppercase flex items-center justify-end gap-3">
-                        Nossa Missão
+                        {t('about.mission.title')}
                         <span className="w-1.5 h-8 bg-purple-500 shadow-[0_0_20px_purple]"></span>
                     </h2>
-                    <p>Capacitar a próxima geração de arquitetos da realidade.</p>
-                    <p>Utilizamos a tecnologia Movement EVM para criar registros imutáveis de aprendizado. Aqui, seu diploma não é um papel; é um contrato inteligente, uma prova criptográfica do seu domínio sobre a tecnologia, a saúde ou a matemática.</p>
-                    <p className="text-white/60 text-sm italic border-l-2 border-purple-500/50 pl-4 mt-4">"O conhecimento não deve apenas ser adquirido, deve ser assegurado."</p>
+                    <p>{t('about.mission.p1')}</p>
+                    <p>{t('about.mission.p2')}</p>
+                    <p className="text-white/60 text-sm italic border-l-2 border-purple-500/50 pl-4 mt-4">
+                        "{t('about.mission.quote')}"
+                    </p>
                 </TextBlock>
 
                 <TextBlock align="center">
                     <CpuChipIcon className="w-12 h-12 text-cyan-400 mx-auto mb-6 animate-pulse" />
-                    <h2 className="text-3xl md:text-4xl font-black text-white mb-8 tracking-tight uppercase text-center">A Arquitetura Zaeon</h2>
-                    <p className="text-xl text-center mb-8">Mais do que salas de aula, construímos nós de processamento neural.</p>
+                    <h2 className="text-3xl md:text-4xl font-black text-white mb-8 tracking-tight uppercase text-center">
+                        {t('about.architecture.title')}
+                    </h2>
+                    <p className="text-xl text-center mb-8">{t('about.architecture.subtitle')}</p>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left w-full">
                         <div className="bg-white/5 p-8 rounded-3xl border border-white/5 hover:bg-white/10 transition-colors">
-                            <h3 className="text-cyan-300 font-bold mb-3 text-lg">Agentes Neurais</h3>
-                            <p className="text-sm text-slate-400 leading-relaxed">Zenita, Ballena e Ethernaut não são chatbots. São mentores especialistas treinados em bases de conhecimento verticais para maximizar seu potencial.</p>
+                            <h3 className="text-cyan-300 font-bold mb-3 text-lg">{t('about.architecture.card1_t')}</h3>
+                            <p className="text-sm text-slate-400 leading-relaxed">{t('about.architecture.card1_d')}</p>
                         </div>
                         <div className="bg-white/5 p-8 rounded-3xl border border-white/5 hover:bg-white/10 transition-colors">
-                            <h3 className="text-purple-300 font-bold mb-3 text-lg">Movement EVM</h3>
-                            <p className="text-sm text-slate-400 leading-relaxed">A blockchain de alta performance que garante que cada insight gerado na sua Workstation seja sua propriedade intelectual eterna e transferível.</p>
+                            <h3 className="text-purple-300 font-bold mb-3 text-lg">{t('about.architecture.card2_t')}</h3>
+                            <p className="text-sm text-slate-400 leading-relaxed">{t('about.architecture.card2_d')}</p>
                         </div>
                         <div className="bg-white/5 p-8 rounded-3xl border border-white/5 hover:bg-white/10 transition-colors">
-                            <h3 className="text-green-300 font-bold mb-3 text-lg">Estudo Híbrido</h3>
-                            <p className="text-sm text-slate-400 leading-relaxed">Ambientes digitais com baixa latência onde a colaboração global acontece em tempo real, protegida por criptografia de ponta a ponta.</p>
+                            <h3 className="text-green-300 font-bold mb-3 text-lg">{t('about.architecture.card3_t')}</h3>
+                            <p className="text-sm text-slate-400 leading-relaxed">{t('about.architecture.card3_d')}</p>
                         </div>
                     </div>
                 </TextBlock>
 
                 <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} className="text-center relative z-40 pb-[10vh]">
-                    <p className="text-slate-400 uppercase tracking-[0.5em] text-sm mb-8">O futuro aguarda sua conexão</p>
-                    <h2 className="text-4xl md:text-6xl font-black text-white mb-12">Junte-se à Vanguarda.</h2>
-                    <button onClick={() => window.location.assign('/signup')} className="px-14 py-5 bg-gradient-to-r from-cyan-600 to-blue-700 rounded-full text-white font-black uppercase tracking-widest hover:shadow-[0_0_50px_rgba(34,211,238,0.4)] transition-all duration-500 hover:scale-105">Iniciar Protocolo</button>
+                    <p className="text-slate-400 uppercase tracking-[0.5em] text-sm mb-8">{t('about.cta.wait')}</p>
+                    <h2 className="text-4xl md:text-6xl font-black text-white mb-12">{t('about.cta.join')}</h2>
+                    <button
+                        onClick={() => window.location.assign('/signup')}
+                        className="px-14 py-5 bg-gradient-to-r from-cyan-600 to-blue-700 rounded-full text-white font-black uppercase tracking-widest hover:shadow-[0_0_50px_rgba(34,211,238,0.4)] transition-all duration-500 hover:scale-105"
+                    >
+                        {t('about.cta.button')}
+                    </button>
                 </motion.div>
             </div>
         </div>

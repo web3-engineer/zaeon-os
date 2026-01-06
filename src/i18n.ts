@@ -57,7 +57,40 @@ const resources = {
                 chat_placeholder: "Ask Zaeon about {{role}}...",
                 logs: { switched: "Switched to {{name}}", gen_protocol: "Protocol initiated via {{name}}", content_gen: "Content generated.", ipfs_success: "IPFS Success: {{hash}}", blockchain_init: "Securing on Movement...", success: "Success!", error: "Error." }
             },
-            agents: { zenita: { role: "Technology" }, ballena: { role: "Health" }, ethernaut: { role: "Mathematics" } }
+            agents: { zenita: { role: "Technology" }, ballena: { role: "Health" }, ethernaut: { role: "Mathematics" } },
+            about: {
+                back: "Back",
+                scroll_down: "scroll down to learn everything",
+                title_secondary: "The school of the future.",
+                title_main: "HAPPENING NOW.",
+                genesis: {
+                    title: "The Genesis of the Protocol",
+                    p1: "Today, our attention is stolen by large corporations seeking only profit, capturing the focus of millions while their algorithms erode human intelligence.",
+                    p2: "Zaeon emerges to change this: we've come to rescue the joy of learning again: with depth, modernity, and fun. While traditional education stopped in time, we unlock your true potential through powerful AI Agents. Here, humans and machines work for a better world ",
+                    p2_highlight: "within the Blockchain."
+                },
+                mission: {
+                    title: "Our Mission",
+                    p1: "To empower the next generation of students, researchers, and teachers by offering high-impact tools for the daily life of those seeking knowledge and education.",
+                    p2: "We use Movement technology to record your evolution in a way that no one can erase or alter. Here, your research isn't a copied and pasted text; it's an eternal and secure digital record.",
+                    quote: "Knowledge should not just be acquired; it must be preserved and secured."
+                },
+                architecture: {
+                    title: "The Zaeon Architecture",
+                    subtitle: "Innovative technology set to impact millions of students worldwide.",
+                    card1_t: "Intelligent Agents",
+                    card1_d: "We offer expert mentors with refined knowledge tailored to each country, institution, and field of study. Everything is customizable and specific to you.",
+                    card2_t: "Trusted Blockchain",
+                    card2_d: "Movement acts as a high-performance database, ensuring every document generated is your intellectual property and acting as a credential validator.",
+                    card3_t: "Hybrid Study",
+                    card3_d: "Agents encourage regional study groups while controlling digital environments where global collaboration happens in real-time."
+                },
+                cta: {
+                    wait: "The future awaits your connection",
+                    join: "Join Zaeon",
+                    button: "Start Protocol"
+                }
+            }
         }
     },
 
@@ -113,7 +146,40 @@ const resources = {
                 chat_placeholder: "Pergunte à Zaeon sobre {{role}}...",
                 logs: { switched: "Alterado para {{name}}", gen_protocol: "Protocolo iniciado via {{name}}", content_gen: "Conteúdo gerado.", ipfs_success: "IPFS Sucesso: {{hash}}", blockchain_init: "Assegurando na Movement...", success: "Sucesso!", error: "Erro." }
             },
-            agents: { zenita: { role: "Tecnologia" }, ballena: { role: "Saúde" }, ethernaut: { role: "Matemática" } }
+            agents: { zenita: { role: "Tecnologia" }, ballena: { role: "Saúde" }, ethernaut: { role: "Matemática" } },
+            about: {
+                back: "Voltar",
+                scroll_down: "deslize para baixo pra saber tudo",
+                title_secondary: "A escola do futuro.",
+                title_main: "ACONTECENDO AGORA.",
+                genesis: {
+                    title: "A Gênese do Protocolo",
+                    p1: "Hoje, nossa atenção é roubada por grandes empresas que buscam apenas o lucro, roubando a atenção de milhões enquanto seus algoritmos destróem a inteligência humana.",
+                    p2: "A Zaeon surge para mudar isso: viemos resgatar o prazer de aprender novamente: Com profundidade, modernidade e diversão. Enquanto o ensino tradicional parou no tempo e não acompanha a tecnologia, nós destravamos o seu verdadeiro potencial através de Agentes de IA poderosos. Aqui, humanos e máquinas irão trabalhar por um mundo melhor ",
+                    p2_highlight: "dentro da Blockchain."
+                },
+                mission: {
+                    title: "Nossa Missão",
+                    p1: "Capacitar a próxima geração de estudantes, pesquisadores e professores, oferecendo ferramentas de alto impacto para o dia-a-dia de quem busca conhecimento e educação.",
+                    p2: "Usamos a tecnologia Movement para gravar sua evolução de um jeito que ninguém pode apagar ou alterar. Aqui, sua pesquisa não é um texto copiado e colado, é um registro digital eterno e seguro, que prova para o mundo tudo o que você aprendeu e está desenvolvendo.",
+                    quote: "O conhecimento não deve apenas ser adquirido, deve ser preservado e assegurado."
+                },
+                architecture: {
+                    title: "A Arquitetura Zaeon",
+                    subtitle: "A inovadora tecnologia que vai impactar milhões de estudantes no mundo todo.",
+                    card1_t: "Agentes Inteligentes",
+                    card1_d: "Oferecemos mentores especialistas com conhecimento refinado de acordo com cada país, estado, instituição e área do conhecimento. tudo personalizável e específico, feito para você.",
+                    card2_t: "Blockchain confiável",
+                    card2_d: "A Movement atua como banco de dados de alta performance, garantindo que cada documento gerado seja sua propriedade intelectual, além de atuar como validador de credenciais escolares.",
+                    card3_t: "Estudo Híbrido",
+                    card3_d: "Agentes incentivam grupos de estudo regionais, ao mesmo tempo que controlam ambientes digitais onde a colaboração acontece em tempo real, com estudantes do mundo todo, sem barreiras de linguagem."
+                },
+                cta: {
+                    wait: "O futuro aguarda sua conexão",
+                    join: "Junte-se à Zaeon",
+                    button: "Iniciar Protocolo"
+                }
+            }
         }
     },
 
@@ -165,7 +231,40 @@ const resources = {
                 chat_placeholder: "向 Zaeon 咨询关于 {{role}} 的问题...",
                 logs: { switched: "已切换至 {{name}}", gen_protocol: "协议已启动 via {{name}}", content_gen: "内容已生成。", ipfs_success: "IPFS 成功: {{hash}}", blockchain_init: "正在 Movement 上加固...", success: "成功！", error: "错误。" }
             },
-            agents: { zenita: { role: "科技" }, ballena: { role: "健康" }, ethernaut: { role: "数学" } }
+            agents: { zenita: { role: "科技" }, ballena: { role: "健康" }, ethernaut: { role: "数学" } },
+            about: {
+                back: "返回",
+                scroll_down: "向下滚动了解全部内容",
+                title_secondary: "未来的学校。",
+                title_main: "就在当下。",
+                genesis: {
+                    title: "协议的起源",
+                    p1: "如今，大公司正在夺走我们的注意力，通过算法破坏人类智力，只为追求利润。",
+                    p2: "Zaeon 为改变这一现状而生：我们来拯救学习的乐趣。通过强大的 AI 代理，解锁您的真实潜力。在这里，人类和机器将共同努力 ",
+                    p2_highlight: "在区块链上创造更美好的世界。"
+                },
+                mission: {
+                    title: "我们的使命",
+                    p1: "为下一代学生、研究人员和教师提供高效工具，助力每日知识探索。",
+                    p2: "我们使用 Movement 技术记录您的成长，确保记录不可篡改。在这里，您的研究是永恒且安全的数字资产。",
+                    quote: "知识不应只是被获取，更应被妥善保护。"
+                },
+                architecture: {
+                    title: "Zaeon 架构",
+                    subtitle: "即将改变全球数百万学生学习方式的创新技术。",
+                    card1_t: "智能代理",
+                    card1_d: "提供针对不同国家、机构和领域的专业导师。一切都是为您量身定制的。",
+                    card2_t: "可信区块链",
+                    card2_d: "Movement 作为高性能数据库，确保生成的每一份文档都是您的知识产权。",
+                    card3_t: "混合学习",
+                    card3_d: "代理鼓励区域学习小组，同时建立无语言障碍的全球实时协作数字环境。"
+                },
+                cta: {
+                    wait: "未来期待您的连接",
+                    join: "加入 Zaeon",
+                    button: "启动协议"
+                }
+            }
         }
     },
 
@@ -217,7 +316,40 @@ const resources = {
                 chat_placeholder: "{{role}}에 대해 Zaeon에게 질문하세요...",
                 logs: { switched: "{{name}}로 변경됨", gen_protocol: "{{name}}를 통해 프로토콜 시작", content_gen: "콘텐츠 생성됨.", ipfs_success: "IPFS 성공: {{hash}}", blockchain_init: "Movement에서 보안 중...", success: "성공!", error: "오류." }
             },
-            agents: { zenita: { role: "기술" }, ballena: { role: "건강/의학" }, ethernaut: { role: "수학" } }
+            agents: { zenita: { role: "기술" }, ballena: { role: "건강/의학" }, ethernaut: { role: "수학" } },
+            about: {
+                back: "뒤로",
+                scroll_down: "모든 내용을 보려면 아래로 스크롤하세요",
+                title_secondary: "미래의 학교.",
+                title_main: "지금 일어나고 있습니다.",
+                genesis: {
+                    title: "프로토콜의 기원",
+                    p1: "오늘날 우리의 관심은 오직 이익만을 추구하는 대기업들에 의해 도둑맞고 있습니다. 그들의 알고리즘은 인간의 지성을 파괴하고 있습니다.",
+                    p2: "Zaeon은 이를 바꾸기 위해 탄생했습니다. 우리는 배움의 즐거움을 되찾아주려 합니다. 강력한 AI 에이전트를 통해 당신의 진정한 잠재력을 깨우세요. ",
+                    p2_highlight: "블록체인 안에서 더 나은 세상을 만들 것입니다."
+                },
+                mission: {
+                    title: "우리의 미션",
+                    p1: "지식과 교육을 추구하는 이들의 일상을 위한 고영향력 도구를 제공하여 다음 세대의 학생, 연구자, 교사들에게 힘을 실어줍니다.",
+                    p2: "우리는 Movement 기술을 사용하여 당신의 성장을 누구도 지우거나 수정할 수 없는 방식으로 기록합니다. 당신의 연구는 영원하고 안전한 디지털 기록이 됩니다.",
+                    quote: "지식은 단순히 습득되는 것이 아니라, 보존되고 보호되어야 합니다."
+                },
+                architecture: {
+                    title: "Zaeon 아키텍처",
+                    subtitle: "전 세계 수백만 명의 학생들에게 영향을 미칠 혁신적인 기술.",
+                    card1_t: "지능형 에이전트",
+                    card1_d: "국가, 기관, 분야별로 최적화된 지식을 가진 전문가 멘토를 제공합니다. 모든 것이 당신에게 맞춰져 있습니다.",
+                    card2_t: "신뢰할 수 있는 블록체인",
+                    card2_d: "Movement는 고성능 데이터베이스 역할을 하여 생성된 모든 문서가 당신의 지적 재산임을 보장합니다.",
+                    card3_t: "하이브리드 학습",
+                    card3_d: "에이전트는 지역 스터디 그룹을 장려하는 동시에, 언어 장벽 없는 글로벌 실시간 협업 환경을 제어합니다."
+                },
+                cta: {
+                    wait: "미래가 당신의 연결을 기다립니다",
+                    join: "Zaeon에 참여하세요",
+                    button: "프로토콜 시작"
+                }
+            }
         }
     },
 
@@ -256,7 +388,7 @@ const resources = {
                 rooms: {
                     cyber_name: "Salón Cibernético", cyber_topic: "Ciencias de la Computación",
                     bio_name: "Bio-Lab Alpha", bio_topic: "Medicina y Salud",
-                    quantum_name: "Campo Cuántico", quantum_topic: "Matemáticas",
+                    quantum_name: "Campo Quântico", quantum_topic: "Matemáticas",
                     global_name: "Salón Global", global_topic: "Estudos Generales"
                 }
             },
@@ -269,7 +401,40 @@ const resources = {
                 chat_placeholder: "Pregunta a Zaeon sobre {{role}}...",
                 logs: { switched: "Cambiado a {{name}}", gen_protocol: "Protocolo iniciado via {{name}}", content_gen: "Contenido generado.", ipfs_success: "IPFS Éxito: {{hash}}", blockchain_init: "Asegurando en Movement...", success: "¡Éxito!", error: "Error." }
             },
-            agents: { zenita: { role: "Tecnología" }, ballena: { role: "Salud" }, ethernaut: { role: "Matemáticas" } }
+            agents: { zenita: { role: "Tecnología" }, ballena: { role: "Salud" }, ethernaut: { role: "Matemáticas" } },
+            about: {
+                back: "Volver",
+                scroll_down: "desliza para saber todo",
+                title_secondary: "La escuela del futuro.",
+                title_main: "SUCEDIENDO AHORA.",
+                genesis: {
+                    title: "La Génesis del Protocolo",
+                    p1: "Hoy, nuestra atención es robada por grandes empresas que buscan solo el lucro, destruyendo la inteligencia humana con sus algoritmos.",
+                    p2: "Zaeon surge para cambiar esto: venimos a rescatar el placer de aprender. A través de potentes Agentes de IA, desbloqueamos tu verdadero potencial. ",
+                    p2_highlight: "dentro de la Blockchain."
+                },
+                mission: {
+                    title: "Nuestra Misión",
+                    p1: "Empoderar a la próxima generación ofreciendo herramientas de alto impacto para quienes buscan conocimiento y educación.",
+                    p2: "Usamos la tecnología Movement para grabar tu evolución de forma inalterable. Tu investigación es un registro digital eterno y seguro.",
+                    quote: "El conocimiento no solo debe adquirirse, debe preservarse y asegurarse."
+                },
+                architecture: {
+                    title: "La Arquitectura Zaeon",
+                    subtitle: "Tecnología innovadora que impactará a millones de estudiantes en todo el mundo.",
+                    card1_t: "Agentes Inteligentes",
+                    card1_d: "Mentores expertos con conocimiento refinado según cada país e institución. Todo personalizable para ti.",
+                    card2_t: "Blockchain Confiable",
+                    card2_d: "Movement actúa como base de datos de alto rendimiento, asegurando tu propiedad intelectual.",
+                    card3_t: "Estudio Híbrido",
+                    card3_d: "Los agentes fomentan grupos de estudio regionales y colaboración global en tiempo real sin barreras de idioma."
+                },
+                cta: {
+                    wait: "El futuro aguarda tu conexión",
+                    join: "Únete a Zaeon",
+                    button: "Iniciar Protocolo"
+                }
+            }
         }
     },
 
@@ -319,9 +484,42 @@ const resources = {
                 session_save: "Sauvegarder", auto_fix: "CORRIGER", no_wallet: "Connecter Wallet",
                 doc_title_placeholder: "Titre...", doc_content_placeholder: "En attente...",
                 chat_placeholder: "Demandez à Zaeon sur {{role}}...",
-                logs: { switched: "Cambié pour {{name}}", gen_protocol: "Protocole initié via {{name}}", content_gen: "Contenu généré.", ipfs_success: "IPFS Succès: {{hash}}", blockchain_init: "Sécurisation sur Movement...", success: "Succès!", error: "Erreur." }
+                logs: { switched: "Changé pour {{name}}", gen_protocol: "Protocole initié via {{name}}", content_gen: "Contenu généré.", ipfs_success: "IPFS Succès: {{hash}}", blockchain_init: "Sécurisation sur Movement...", success: "Succès!", error: "Erreur." }
             },
-            agents: { zenita: { role: "Technologie" }, ballena: { role: "Santé" }, ethernaut: { role: "Mathématiques" } }
+            agents: { zenita: { role: "Technologie" }, ballena: { role: "Santé" }, ethernaut: { role: "Mathématiques" } },
+            about: {
+                back: "Retour",
+                scroll_down: "faites défiler pour tout savoir",
+                title_secondary: "L'école du futur.",
+                title_main: "ÇA SE PASSE MAINTENANT.",
+                genesis: {
+                    title: "La Genèse du Protocole",
+                    p1: "Aujourd'hui, notre attention est volée par de grandes entreprises qui ne cherchent que le profit, détruisant l'intelligence humaine avec leurs algorithmes.",
+                    p2: "Zaeon surgit pour changer cela : nous venons sauver le plaisir d'apprendre. Grâce à de puissants agents IA, nous débloquons votre véritable potentiel. ",
+                    p2_highlight: "au sein de la Blockchain."
+                },
+                mission: {
+                    title: "Notre Mission",
+                    p1: "Autonomiser la prochaine génération en offrant des outils à fort impact pour ceux qui recherchent la connaissance et l'éducation.",
+                    p2: "Nous utilisons la technologie Movement pour enregistrer votre évolution de manière inaltérable. Votre recherche est un enregistrement numérique éternel.",
+                    quote: "La connaissance ne doit pas seulement être acquise, elle doit être préservée et sécurisée."
+                },
+                architecture: {
+                    title: "L'Architecture Zaeon",
+                    subtitle: "Une technologie innovante qui impactera des millions d'étudiants dans le monde.",
+                    card1_t: "Agents Intelligents",
+                    card1_d: "Nous offrons des mentors experts avec des connaissances affinées selon chaque pays et institution. Tout est personnalisable pour vous.",
+                    card2_t: "Blockchain de Confiance",
+                    card2_d: "Movement agit comme une base de données haute performance, garantissant votre propriété intellectuelle.",
+                    card3_t: "Étude Hybride",
+                    card3_d: "Les agents encouragent les groupes d'étude régionaux et la collaboration mondiale en temps réel sans barrières linguistiques."
+                },
+                cta: {
+                    wait: "Le futur attend votre connexion",
+                    join: "Rejoindre Zaeon",
+                    button: "Démarrer le Protocole"
+                }
+            }
         }
     }
 };
