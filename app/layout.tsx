@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { Space_Grotesk, JetBrains_Mono } from "next/font/google";
 
-import "../src/i18n";
 import { Footer } from "@/components/main/footer";
 import { Navbar } from "@/components/main/navbar";
 import { siteConfig } from "@/config";

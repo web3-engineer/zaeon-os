@@ -1,0 +1,202 @@
+{
+  "navbar": {
+    "about": "About Us",
+    "homework": "Homework",
+    "workstation": "Research Lab",
+    "study_rooms": "Study Rooms"
+  },
+  "menu": {
+    "new": "New Account",
+    "load": "Load Account",
+    "options": "Options",
+    "manual": "Manual",
+    "back": "Back"
+  },
+  "roles": {
+    "student": "Student",
+    "researcher": "Researcher",
+    "professional": "Professional",
+    "entrepreneur": "Entrepreneur"
+  },
+  "options": {
+    "language": "Language",
+    "node": "Node",
+    "tutorials": "Tutorials",
+    "on": "ON",
+    "off": "OFF"
+  },
+  "footer": {
+    "powered": "Powered by Movement",
+    "version": "Zaeon OS - v0.1"
+  },
+  "modal": {
+    "title": "New Account",
+    "name": "Full Name",
+    "email": "Email",
+    "phone": "Phone",
+    "continue": "Continue",
+    "cancel": "Cancel",
+    "use_wallet": "Use Wallet",
+    "use_id": "Use ID",
+    "wallet_label": "Movement Wallet",
+    "wallet_placeholder": "0x...",
+    "lbl_student": "Student ID",
+    "ph_student": "000...",
+    "lbl_researcher": "ORCID ID",
+    "ph_researcher": "ID...",
+    "lbl_professional": "Tax ID",
+    "ph_professional": "...",
+    "lbl_entrepreneur": "Company ID",
+    "ph_entrepreneur": "...",
+    "name_ph": "John Doe",
+    "email_ph": "you@email.com",
+    "phone_ph": "(00) 00000-0000"
+  },
+  "homework": {
+    "study_title": "Study Files",
+    "add_files": "Add PDF",
+    "citations_title": "AI Citations",
+    "citations_empty": "Waiting for analysis...",
+    "videos_title": "Videos",
+    "status_digesting": "Digesting Document",
+    "status_typing": "Generating notes...",
+    "chat_header": "Research Insights",
+    "chat_placeholder": "Interact with the desk...",
+    "reload": "Reload",
+    "save_all": "Save All",
+    "paste_link": "Paste Link",
+    "suggest": "Suggest"
+  },
+  "encryption": {
+    "title": "AI Agents from Another Dimension.",
+    "subtitle": "They came to help you be the best.",
+    "button": "Learn more"
+  },
+  "study_rooms": {
+    "system": "SYSTEM_OPTIMAL",
+    "secure": "SECURE_CHANNEL",
+    "encrypted": "ENCRYPTED",
+    "highlight": "Find your Squad. Research. Publish.",
+    "together": "TOGETHER.",
+    "lobby_status": "LOBBY_STATUS: LIVE",
+    "find_party": "Find Your Party",
+    "select_cluster": "Select a research cluster",
+    "join": "Join Session",
+    "select": "Select a Room",
+    "rooms": {
+      "cyber_name": "Cybernetics Hall",
+      "cyber_topic": "Computer Science",
+      "bio_name": "Bio-Lab Alpha",
+      "bio_topic": "Medicine & Health",
+      "quantum_name": "Quantum Field",
+      "quantum_topic": "Mathematics",
+      "global_name": "Global Lounge",
+      "global_topic": "General Studies"
+    }
+  },
+  "workstation": {
+    "focus_mode": "Focus Mode",
+    "system_init": "System initialized. Agents ready.",
+    "connected": "Connected",
+    "welcome": "Welcome",
+    "login": "Login",
+    "active_agent": "Active Agent",
+    "clear_history": "Clear History",
+    "send": "SEND",
+    "generate": "GENERATE",
+    "processing": "Processing...",
+    "session_save": "Save Session",
+    "auto_fix": "AUTO-FIX",
+    "no_wallet": "Connect Wallet",
+    "doc_title_placeholder": "Document Title...",
+    "doc_content_placeholder": "Waiting for output...",
+    "chat_placeholder": "Ask Zaeon about {{role}}...",
+    "logs": {
+      "switched": "Switched to {{name}}",
+      "gen_protocol": "Protocol initiated via {{name}}",
+      "content_gen": "Content generated.",
+      "ipfs_success": "IPFS Success: {{hash}}",
+      "blockchain_init": "Securing on Movement...",
+      "success": "Success!",
+      "error": "Error."
+    }
+  },
+  "agents": {
+    "zenita": {
+      "role": "Technology"
+    },
+    "ballena": {
+      "role": "Health"
+    },
+    "ethernaut": {
+      "role": "Mathematics"
+    }
+  },
+  "about": {
+    "back": "Back",
+    "scroll_down": "scroll down to learn everything",
+    "title_secondary": "The school of the future.",
+    "title_main": "HAPPENING NOW.",
+    "genesis": {
+      "title": "The Genesis of the Protocol",
+      "p1": "Today, our attention is stolen by large corporations seeking only profit, capturing the focus of millions while their algorithms erode human intelligence.",
+      "p2": "Zaeon emerges to change this: we've come to rescue the joy of learning again: with depth, modernity, and fun. While traditional education stopped in time, we unlock your true potential through powerful AI Agents. Here, humans and machines work for a better world ",
+      "p2_highlight": "within the Blockchain."
+    },
+    "mission": {
+      "title": "Our Mission",
+      "p1": "To empower the next generation of students, researchers, and teachers by offering high-impact tools for the daily life of those seeking knowledge and education.",
+      "p2": "We use Movement technology to record your evolution in a way that no one can erase or alter. Here, your research isn't a copied and pasted text; it's an eternal and secure digital record.",
+      "quote": "Knowledge should not just be acquired; it must be preserved and secured."
+    },
+    "architecture": {
+      "title": "The Zaeon Architecture",
+      "subtitle": "Innovative technology set to impact millions of students worldwide.",
+      "card1_t": "Intelligent Agents",
+      "card1_d": "We offer expert mentors with refined knowledge tailored to each country, institution, and field of study. Everything is customizable and specific to you.",
+      "card2_t": "Trusted Blockchain",
+      "card2_d": "Movement acts as a high-performance database, ensuring every document generated is your intellectual property and acting as a credential validator.",
+      "card3_t": "Hybrid Study",
+      "card3_d": "Agents encourage regional study groups while controlling digital environments where global collaboration happens in real-time."
+    },
+    "cta": {
+      "wait": "The future awaits your connection",
+      "join": "Join Zaeon",
+      "button": "Start Protocol"
+    }
+  },
+  "tech_room": {
+    "gateway_title": "SECURE_GATEWAY_V3",
+    "access_denied_code": "ACCESS_DENIED",
+    "restricted_title": "RESTRICTED ACCESS",
+    "student_area": "student area",
+    "msg_denied": "Access Denied.",
+    "msg_id_req": "Identification required.",
+    "key_label": "Access Key",
+    "btn_auth": "AUTHENTICATE",
+    "btn_wrong": "WRONG KEY",
+    "tunnel": "Encrypted Tunnel: ZAEON-NET",
+    "status_fail": "Status: ERR_AUTH_FAIL",
+    "status_wait": "Status: AWAITING_KEY",
+    "courses": {
+      "cs": "Computer Science",
+      "se": "Software Engineering",
+      "is": "Information Systems",
+      "ce": "Computer Engineering",
+      "ads": "Systems Analysis & Dev",
+      "net": "Computer Networks",
+      "infosec": "Info Security",
+      "db": "Databases",
+      "it_mgmt": "IT Management",
+      "games": "Digital Games",
+      "ai": "Artificial Intelligence",
+      "ds": "Data Science",
+      "cloud": "Cloud Computing",
+      "devops": "DevOps",
+      "cyber": "Cybersecurity",
+      "block": "Blockchain",
+      "bigdata": "Big Data Analytics",
+      "mba": "MBA IT Project Mgmt"
+    }
+  }
+}

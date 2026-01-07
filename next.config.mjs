@@ -5,27 +5,40 @@ const nextConfig = {
         remotePatterns: [
             {
                 protocol: 'https',
-                hostname: 'lh3.googleusercontent.com', // Avatares do Google
+                hostname: 'lh3.googleusercontent.com',
                 port: '',
                 pathname: '/**',
             },
             {
                 protocol: 'https',
-                hostname: 'authjs.dev', // Ícones de provedores de login
+                hostname: 'authjs.dev',
                 port: '',
                 pathname: '/**',
             },
         ],
     },
 
-    // 2. Configurações anteriores de Build e PDF
+    // 2. Otimização de pacotes (Barrel Imports Optimization)
+    // Reduz drasticamente os >13k módulos compilados
+    modularizeImports: {
+        "@heroicons/react/24/outline": {
+            transform: "@heroicons/react/24/outline/{{member}}",
+        },
+        "@heroicons/react/24/solid": {
+            transform: "@heroicons/react/24/solid/{{member}}",
+        },
+        "lucide-react": {
+            transform: "lucide-react/dist/esm/icons/{{member}}",
+        },
+    },
+
+    // 3. Configurações de Build e PDF
     webpack: (config) => {
-        // Ignora o módulo 'canvas' que causa erro no build do PDF Viewer
         config.resolve.alias.canvas = false;
         return config;
     },
 
-    // 3. Destrava o limite de tamanho para envios de arquivos Base64 (Zenita)
+    // 4. Limite de tamanho para envios de arquivos (Zenita)
     experimental: {
         serverActions: {
             bodySizeLimit: '20mb',

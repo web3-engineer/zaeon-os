@@ -1,0 +1,202 @@
+{
+  "navbar": {
+    "about": "关于我们",
+    "homework": "课业",
+    "workstation": "研究实验室",
+    "study_rooms": "自习室"
+  },
+  "menu": {
+    "new": "新账户",
+    "load": "加载账户",
+    "options": "选项",
+    "manual": "手册",
+    "back": "返回"
+  },
+  "roles": {
+    "student": "学生",
+    "researcher": "研究员",
+    "professional": "专业人士",
+    "entrepreneur": "企业家"
+  },
+  "options": {
+    "language": "语言",
+    "node": "节点",
+    "tutorials": "教程",
+    "on": "开启",
+    "off": "关闭"
+  },
+  "footer": {
+    "powered": "Powered by Movement",
+    "version": "Zaeon OS - v0.1"
+  },
+  "modal": {
+    "title": "新账户",
+    "name": "全名",
+    "email": "电子邮件",
+    "phone": "电话",
+    "continue": "继续",
+    "cancel": "取消",
+    "use_wallet": "使用钱包",
+    "use_id": "使用 ID",
+    "wallet_label": "Movement 钱包",
+    "wallet_placeholder": "0x...",
+    "lbl_student": "学生 ID",
+    "ph_student": "000...",
+    "lbl_researcher": "ORCID ID",
+    "ph_researcher": "ID...",
+    "lbl_professional": "税号",
+    "ph_professional": "...",
+    "lbl_entrepreneur": "公司 ID",
+    "ph_entrepreneur": "...",
+    "name_ph": "李雷",
+    "email_ph": "nihao@email.com",
+    "phone_ph": "138 0000 0000"
+  },
+  "homework": {
+    "study_title": "学习文件",
+    "add_files": "添加 PDF",
+    "citations_title": "AI 引用",
+    "citations_empty": "等待分析...",
+    "videos_title": "视频",
+    "status_digesting": "正在消化文档",
+    "status_typing": "正在生成笔记...",
+    "chat_header": "研究洞察",
+    "chat_placeholder": "向 Zaeon 提问...",
+    "reload": "重载",
+    "save_all": "保存全部",
+    "paste_link": "粘贴链接",
+    "suggest": "建议"
+  },
+  "encryption": {
+    "title": "来自另一个维度的 AI 代理。",
+    "subtitle": "它们来帮助你成为最好的自己。",
+    "button": "了解更多"
+  },
+  "study_rooms": {
+    "system": "系统最佳",
+    "secure": "安全通道",
+    "encrypted": "已加密",
+    "highlight": "寻找你的小队。研究。发布。",
+    "together": "一起。",
+    "lobby_status": "大厅状态：在线",
+    "find_party": "寻找你的队伍",
+    "select_cluster": "选择研究集群",
+    "join": "加入会话",
+    "select": "选择房间",
+    "rooms": {
+      "cyber_name": "控制论大厅",
+      "cyber_topic": "计算机科学",
+      "bio_name": "生物实验室 Alpha",
+      "bio_topic": "医学与健康",
+      "quantum_name": "量子场",
+      "quantum_topic": "数学",
+      "global_name": "全球休息室",
+      "global_topic": "通识教育"
+    }
+  },
+  "workstation": {
+    "focus_mode": "专注模式",
+    "system_init": "系统初始化。智能体待命。",
+    "connected": "已登录",
+    "welcome": "欢迎",
+    "login": "登录",
+    "active_agent": "当前智能体",
+    "clear_history": "清除历史",
+    "send": "发送",
+    "generate": "生成",
+    "processing": "处理中...",
+    "session_save": "保存会话",
+    "auto_fix": "自动修复",
+    "no_wallet": "连接钱包",
+    "doc_title_placeholder": "文档标题...",
+    "doc_content_placeholder": "等待输出...",
+    "chat_placeholder": "向 Zaeon 咨询关于 {{role}} 的问题...",
+    "logs": {
+      "switched": "已切换至 {{name}}",
+      "gen_protocol": "协议已启动 via {{name}}",
+      "content_gen": "内容已生成。",
+      "ipfs_success": "IPFS 成功: {{hash}}",
+      "blockchain_init": "正在 Movement 上加固...",
+      "success": "成功！",
+      "error": "错误。"
+    }
+  },
+  "agents": {
+    "zenita": {
+      "role": "科技"
+    },
+    "ballena": {
+      "role": "健康"
+    },
+    "ethernaut": {
+      "role": "数学"
+    }
+  },
+  "about": {
+    "back": "返回",
+    "scroll_down": "向下滚动了解全部内容",
+    "title_secondary": "未来的学校。",
+    "title_main": "就在当下。",
+    "genesis": {
+      "title": "协议的起源",
+      "p1": "如今，大公司正在夺走我们的注意力，通过算法破坏人类智力，只为追求利润。",
+      "p2": "Zaeon 为改变这一现状而生：我们来拯救学习的乐趣。通过强大的 AI 代理，解锁您的真实潜力。在这里，人类和机器将共同努力 ",
+      "p2_highlight": "在区块链上创造更美好的世界。"
+    },
+    "mission": {
+      "title": "我们的使命",
+      "p1": "为下一代学生、研究人员和教师提供高效工具，助力每日知识探索。",
+      "p2": "我们使用 Movement 技术记录您的成长，确保记录不可篡改。在这里，您的研究是永恒且安全的数字资产。",
+      "quote": "知识不应只是被获取，更应被妥善保护。"
+    },
+    "architecture": {
+      "title": "Zaeon 架构",
+      "subtitle": "即将改变全球数百万学生学习方式的创新技术。",
+      "card1_t": "智能代理",
+      "card1_d": "提供针对不同国家、机构和领域的专业导师。一切都是为您量身定制的。",
+      "card2_t": "可信区块链",
+      "card2_d": "Movement 作为高性能数据库，确保生成的每一份文档都是您的知识产权。",
+      "card3_t": "混合学习",
+      "card3_d": "代理鼓励区域学习小组，同时建立无语言障碍的全球实时协作数字环境。"
+    },
+    "cta": {
+      "wait": "未来期待您的连接",
+      "join": "加入 Zaeon",
+      "button": "启动协议"
+    }
+  },
+  "tech_room": {
+    "gateway_title": "SECURE_GATEWAY_V3",
+    "access_denied_code": "ACCESS_DENIED",
+    "restricted_title": "访问受限",
+    "student_area": "学生专区",
+    "msg_denied": "访问被拒绝。",
+    "msg_id_req": "需要身份验证。",
+    "key_label": "访问密钥",
+    "btn_auth": "认证",
+    "btn_wrong": "密钥错误",
+    "tunnel": "加密隧道: ZAEON-NET",
+    "status_fail": "状态: ERR_AUTH_FAIL",
+    "status_wait": "状态: AWAITING_KEY",
+    "courses": {
+      "cs": "计算机科学",
+      "se": "软件工程",
+      "is": "信息系统",
+      "ce": "计算机工程",
+      "ads": "系统分析与开发",
+      "net": "计算机网络",
+      "infosec": "信息安全",
+      "db": "数据库",
+      "it_mgmt": "IT管理",
+      "games": "数字游戏",
+      "ai": "人工智能",
+      "ds": "数据科学",
+      "cloud": "云计算",
+      "devops": "DevOps",
+      "cyber": "网络安全",
+      "block": "区块链",
+      "bigdata": "大数据分析",
+      "mba": "MBA IT项目管理"
+    }
+  }
+}

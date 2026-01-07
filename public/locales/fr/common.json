@@ -1,0 +1,202 @@
+{
+  "navbar": {
+    "about": "À Propos",
+    "homework": "Exercices",
+    "workstation": "Laboratoire",
+    "study_rooms": "Salles d'Étude"
+  },
+  "menu": {
+    "new": "Nouveau Compte",
+    "load": "Charger Compte",
+    "options": "Options",
+    "manual": "Manuel",
+    "back": "Retour"
+  },
+  "roles": {
+    "student": "Étudiant",
+    "researcher": "Chercheur",
+    "professional": "Professionnel",
+    "entrepreneur": "Entrepreneur"
+  },
+  "options": {
+    "language": "Langue",
+    "node": "Nœud",
+    "tutorials": "Tutoriels",
+    "on": "MARCHE",
+    "off": "ARRÊT"
+  },
+  "footer": {
+    "powered": "Powered by Movement",
+    "version": "Zaeon OS - v0.1"
+  },
+  "modal": {
+    "title": "Nouveau Compte",
+    "name": "Nom Complet",
+    "email": "E-mail",
+    "phone": "Téléphone",
+    "continue": "Continuer",
+    "cancel": "Annuler",
+    "use_wallet": "Utiliser Portefeuille",
+    "use_id": "Utiliser ID",
+    "wallet_label": "Portefeuille Movement",
+    "wallet_placeholder": "0x...",
+    "lbl_student": "ID Étudiant",
+    "ph_student": "000...",
+    "lbl_researcher": "ORCID ID",
+    "ph_researcher": "ID...",
+    "lbl_professional": "ID Fiscal",
+    "ph_professional": "...",
+    "lbl_entrepreneur": "ID Entreprise",
+    "ph_entrepreneur": "...",
+    "name_ph": "Pierre Dupont",
+    "email_ph": "vous@email.com",
+    "phone_ph": "06 00 00 00 00"
+  },
+  "homework": {
+    "study_title": "Fichiers d'Étude",
+    "add_files": "Ajouter PDF",
+    "citations_title": "Citations IA",
+    "citations_empty": "En attente d'analyse...",
+    "videos_title": "Vidéos",
+    "status_digesting": "Analyse du Document",
+    "status_typing": "Génération de notes...",
+    "chat_header": "Insights",
+    "chat_placeholder": "Demandez à Zaeon...",
+    "reload": "Recharger",
+    "save_all": "Sauvegarder",
+    "paste_link": "Coller Lien",
+    "suggest": "Suggérer"
+  },
+  "encryption": {
+    "title": "Agents IA d'une Autre Dimension.",
+    "subtitle": "Ils sont venus pour vous aider à être le meilleur.",
+    "button": "En savoir plus"
+  },
+  "study_rooms": {
+    "system": "SYSTÈME OPTIMAL",
+    "secure": "CANAL SÉCURISÉ",
+    "encrypted": "CHIFFRÉ",
+    "highlight": "Trouvez votre équipe. Recherchez. Publiez.",
+    "together": "ENSEMBLE.",
+    "lobby_status": "STATUT_LOBBY: EN DIRECT",
+    "find_party": "Trouvez votre Groupe",
+    "select_cluster": "Sélectionnez un groupe de recherche",
+    "join": "Rejoindre la Session",
+    "select": "Sélectionner une Salle",
+    "rooms": {
+      "cyber_name": "Hall Cybernétique",
+      "cyber_topic": "Informatique",
+      "bio_name": "Bio-Lab Alpha",
+      "bio_topic": "Médecine & Santé",
+      "quantum_name": "Champ Quantique",
+      "quantum_topic": "Mathématiques",
+      "global_name": "Salon Global",
+      "global_topic": "Études Générales"
+    }
+  },
+  "workstation": {
+    "focus_mode": "Mode Concentration",
+    "system_init": "Système initialisé. Agents prêts.",
+    "connected": "Connecté",
+    "welcome": "Bienvenue",
+    "login": "Connexion",
+    "active_agent": "Agent Actif",
+    "clear_history": "Effacer l'historique",
+    "send": "ENVOYER",
+    "generate": "GÉNÉRER",
+    "processing": "Traitement...",
+    "session_save": "Sauvegarder",
+    "auto_fix": "CORRIGER",
+    "no_wallet": "Connecter Wallet",
+    "doc_title_placeholder": "Titre...",
+    "doc_content_placeholder": "En attente...",
+    "chat_placeholder": "Demandez à Zaeon sur {{role}}...",
+    "logs": {
+      "switched": "Changé pour {{name}}",
+      "gen_protocol": "Protocole initié via {{name}}",
+      "content_gen": "Contenu généré.",
+      "ipfs_success": "IPFS Succès: {{hash}}",
+      "blockchain_init": "Sécurisation sur Movement...",
+      "success": "Succès!",
+      "error": "Erreur."
+    }
+  },
+  "agents": {
+    "zenita": {
+      "role": "Technologie"
+    },
+    "ballena": {
+      "role": "Santé"
+    },
+    "ethernaut": {
+      "role": "Mathématiques"
+    }
+  },
+  "about": {
+    "back": "Retour",
+    "scroll_down": "faites défiler pour tout savoir",
+    "title_secondary": "L'école du futur.",
+    "title_main": "ÇA SE PASSE MAINTENANT.",
+    "genesis": {
+      "title": "La Genèse du Protocole",
+      "p1": "Aujourd'hui, notre attention est volée par de grandes entreprises.",
+      "p2": "Zaeon surgit pour changer cela : nous venons sauver le plaisir d'apprendre. ",
+      "p2_highlight": "au sein de la Blockchain."
+    },
+    "mission": {
+      "title": "Notre Mission",
+      "p1": "Autonomiser la prochaine génération en offrant des outils à fort impact.",
+      "p2": "Nous utilisons la technologie Movement pour enregistrer votre évolution de manière inaltérable.",
+      "quote": "La connaissance ne doit pas seulement être acquise, elle doit être préservée et sécurisée."
+    },
+    "architecture": {
+      "title": "L'Architecture Zaeon",
+      "subtitle": "Une technologie innovante qui impactera des millions d'étudiants dans le monde.",
+      "card1_t": "Agents Intelligents",
+      "card1_d": "Nous offrons des mentors experts avec des connaissances affinées selon chaque pays.",
+      "card2_t": "Blockchain de Confiance",
+      "card2_d": "Movement agit comme une base de données haute performance.",
+      "card3_t": "Étude Hybride",
+      "card3_d": "Les agents encouragent les groupes d'étude régionaux et la collaboration mondiale en temps réel."
+    },
+    "cta": {
+      "wait": "Le futur attend votre connexion",
+      "join": "Rejoindre Zaeon",
+      "button": "Démarrer le Protocole"
+    }
+  },
+  "tech_room": {
+    "gateway_title": "SECURE_GATEWAY_V3",
+    "access_denied_code": "ACCESS_DENIED",
+    "restricted_title": "ACCÈS RESTREINT",
+    "student_area": "zone étudiante",
+    "msg_denied": "Accès Refusé.",
+    "msg_id_req": "Identification requise.",
+    "key_label": "Clé d'Accès",
+    "btn_auth": "AUTHENTIFIER",
+    "btn_wrong": "CLÉ INCORRECTE",
+    "tunnel": "Tunnel Chiffré: ZAEON-NET",
+    "status_fail": "Statut: ERR_AUTH_FAIL",
+    "status_wait": "Statut: AWAITING_KEY",
+    "courses": {
+      "cs": "Informatique",
+      "se": "Génie Logiciel",
+      "is": "Systèmes d'Information",
+      "ce": "Génie Informatique",
+      "ads": "Analyse et Dév. de Systèmes",
+      "net": "Réseaux Informatiques",
+      "infosec": "Sécurité de l'Information",
+      "db": "Bases de Données",
+      "it_mgmt": "Gestion TI",
+      "games": "Jeux Numériques",
+      "ai": "Intelligence Artificielle",
+      "ds": "Science des Données",
+      "cloud": "Cloud Computing",
+      "devops": "DevOps",
+      "cyber": "Cybersécurité",
+      "block": "Blockchain",
+      "bigdata": "Analyse Big Data",
+      "mba": "MBA Gestion de Projets TI"
+    }
+  }
+}
