@@ -1,8 +1,11 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
+# --- ZAEON FRONTEND (Next.js / Node) ---
+node_modules/
+.next/
+out/
+build/
+.turbo/
+.vercel
+.pnp
 .pnp.js
 .yarn/install-state.gz
 .yarn/cache/
@@ -10,43 +13,34 @@
 .yarn/build-state.yml
 .yarn/.vscode/
 
-# testing
-/coverage
+# --- SMART MODULES (Movement / Aptos Move) ---
+# Onde ficam os arquivos compilados (Bytecode)
+build/
+# Onde a CLI guarda metadados locais e contas de teste (NUNCA envie isso ao GitHub)
+.aptos/
+# Arquivo de trava de dependências do Move
+Move.lock
 
-# next.js
-/.next/
-/\.turbo/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-\.idea/
-\.vscode/
-Thumbs.db
-.eslintcache
-.cache/
+# --- AMBIENTE E SEGURANÇA ---
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 *.pem
 zaeon-backend.json
-# debug
+
+# --- TESTES E LOGS ---
+coverage/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.eslintcache
+.cache/
 
-# local env files
-.env
-.env.local
-.env.development
-.env.development.local
-.env.test
-.env.test.local
-.env.production
-.env.production.local
-
-# vercel
-.vercel
-
-# typescript
+# --- IDE E SISTEMA ---
+.DS_Store
+.idea/
+.vscode/
+Thumbs.db
 *.tsbuildinfo

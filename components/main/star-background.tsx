@@ -6,9 +6,7 @@ import { useTheme } from "next-themes";
 const WORDS = ["幸运", "信仰", "努力", "教育", "组织", "荣誉", "社区", "胜利", "梦想"];
 const FONT_FAMILY = `"Noto Sans SC", "Microsoft YaHei", "SimHei", monospace, sans-serif`;
 
-// Paleta Dark (Cores Neon/Cyan)
 const DARK_PALETTE = ["#9ecbff", "#5fb4ff", "#2b8eff", "#1a73e8", "#1572a1", "#00a7a7", "#009688", "#33cccc", "#7dd3fc"];
-// Paleta Light (Cores Escuras para contraste no branco)
 const LIGHT_PALETTE = ["#0f172a", "#1e293b", "#334155", "#0369a1", "#1d4ed8", "#000000"];
 
 function buildStreamSource() {
@@ -38,11 +36,9 @@ const MatrixRain: React.FC = () => {
         let width = canvas.clientWidth;
         let height = canvas.clientHeight;
 
-        // Lógica de seleção de cor
         const currentTheme = theme === 'system' ? resolvedTheme : theme;
         const isDark = currentTheme === 'dark';
         const activePalette = isDark ? DARK_PALETTE : LIGHT_PALETTE;
-        // O fade deve combinar com o fundo do site (#030014 ou #f8fafc)
         const fadeColor = isDark ? "rgba(3, 0, 20, 0.22)" : "rgba(248, 250, 252, 0.22)";
 
         const applyDPR = () => {
@@ -56,13 +52,14 @@ const MatrixRain: React.FC = () => {
         applyDPR();
 
         const fontSize = 13;
-        const colWidth = Math.round(fontSize * 4);
-        let columns = Math.max(4, Math.floor(width / colWidth));
+        // Mantemos a densidade baixa que você pediu (divisor 0.4)
+        const colWidthBase = Math.round((fontSize * 4) / 0.4);
+        let columns = Math.max(2, Math.floor(width / colWidthBase));
 
         type Col = { y: number; speed: number; color: string; offset: number };
         let cols: Col[] = new Array(columns).fill(0).map((_, i) => ({
-            y: -Math.random() * 40,
-            speed: 0.50 + (i % 7) * (0.32 / 7),
+            y: -Math.random() * 50,
+            speed: 0.40 + (i % 5) * (0.30 / 5),
             color: activePalette[(i + Math.floor(Math.random() * 3)) % activePalette.length],
             offset: Math.floor(Math.random() * STREAM_SOURCE.length),
         }));
@@ -82,7 +79,14 @@ const MatrixRain: React.FC = () => {
 
             for (let i = 0; i < columns; i++) {
                 const col = cols[i];
-                const x = i * colWidth;
+
+                // --- LÓGICA DE SIMETRIA ---
+                // Se i=0, x=0 (borda esquerda)
+                // Se i=último, x=largura total (borda direita)
+                const x = columns > 1
+                    ? (i * (width - fontSize)) / (columns - 1)
+                    : (width - fontSize) / 2;
+
                 const headY = col.y * fontSize;
                 ctx.fillStyle = col.color;
 
@@ -101,11 +105,8 @@ const MatrixRain: React.FC = () => {
 
                 col.y += col.speed;
                 if (headY > height + FADE_LENGTH_LINES * fontSize) {
-                    col.y = -Math.random() * 30;
+                    col.y = -Math.random() * 40;
                     col.offset = (col.offset + Math.floor(5 + Math.random() * 25)) % STREAM_SOURCE.length;
-                    if (Math.random() > 0.7) {
-                        col.color = activePalette[Math.floor(Math.random() * activePalette.length)];
-                    }
                 }
             }
             ctx.globalAlpha = 1;
@@ -116,15 +117,16 @@ const MatrixRain: React.FC = () => {
 
         const onResize = () => {
             applyDPR();
-            columns = Math.max(4, Math.floor(width / colWidth));
+            columns = Math.max(2, Math.floor(width / colWidthBase));
             cols = new Array(columns).fill(0).map((_, i) => ({
-                y: -Math.random() * 40,
-                speed: 0.50 + (i % 7) * (0.32 / 7),
+                y: -Math.random() * 50,
+                speed: 0.40 + (i % 5) * (0.30 / 5),
                 color: activePalette[(i + Math.floor(Math.random() * 3)) % activePalette.length],
                 offset: Math.floor(Math.random() * STREAM_SOURCE.length),
             }));
             ctx.font = `${fontSize}px ${FONT_FAMILY}`;
         };
+
         const ro = new ResizeObserver(onResize);
         ro.observe(canvas);
         return () => { cancelAnimationFrame(animationId); ro.disconnect(); };

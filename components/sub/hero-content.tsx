@@ -147,7 +147,7 @@ function OnboardModal({ open, onClose, role, onSuccess }: { open: boolean; onClo
 
   return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center px-4" role="dialog" aria-modal="true" onKeyDown={handleKeyDown}>
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+        <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative w-full max-w-[960px] rounded-2xl border border-white/10 bg-[rgba(7,16,28,0.85)] shadow-[0_10px_50px_rgba(0,0,0,0.55)] overflow-hidden">
           <div className="absolute inset-x-0 top-0 h-[2px] bg-[linear-gradient(90deg,#22d3ee,#60a5fa,#22d3ee)]/80 animate-pulse" />
           <button onClick={onClose} className="absolute right-3 top-3 rounded-md p-2 text-white/70 hover:bg-white/10"><XMarkIcon className="h-5 w-5" /></button>
