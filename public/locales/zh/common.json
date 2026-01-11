@@ -1,202 +1,298 @@
-{
-  "navbar": {
-    "about": "关于我们",
-    "homework": "课业",
-    "workstation": "研究实验室",
-    "study_rooms": "自习室"
-  },
-  "menu": {
-    "new": "新账户",
-    "load": "加载账户",
-    "options": "选项",
-    "manual": "手册",
-    "back": "返回"
-  },
-  "roles": {
-    "student": "学生",
-    "researcher": "研究员",
-    "professional": "专业人士",
-    "entrepreneur": "企业家"
-  },
-  "options": {
-    "language": "语言",
-    "node": "节点",
-    "tutorials": "教程",
-    "on": "开启",
-    "off": "关闭"
-  },
-  "footer": {
-    "powered": "Powered by Movement",
-    "version": "Zaeon OS - v0.1"
-  },
-  "modal": {
-    "title": "新账户",
-    "name": "全名",
-    "email": "电子邮件",
-    "phone": "电话",
-    "continue": "继续",
-    "cancel": "取消",
-    "use_wallet": "使用钱包",
-    "use_id": "使用 ID",
-    "wallet_label": "Movement 钱包",
-    "wallet_placeholder": "0x...",
-    "lbl_student": "学生 ID",
-    "ph_student": "000...",
-    "lbl_researcher": "ORCID ID",
-    "ph_researcher": "ID...",
-    "lbl_professional": "税号",
-    "ph_professional": "...",
-    "lbl_entrepreneur": "公司 ID",
-    "ph_entrepreneur": "...",
-    "name_ph": "李雷",
-    "email_ph": "nihao@email.com",
-    "phone_ph": "138 0000 0000"
-  },
-  "homework": {
-    "study_title": "学习文件",
-    "add_files": "添加 PDF",
-    "citations_title": "AI 引用",
-    "citations_empty": "等待分析...",
-    "videos_title": "视频",
-    "status_digesting": "正在消化文档",
-    "status_typing": "正在生成笔记...",
-    "chat_header": "研究洞察",
-    "chat_placeholder": "向 Zaeon 提问...",
-    "reload": "重载",
-    "save_all": "保存全部",
-    "paste_link": "粘贴链接",
-    "suggest": "建议"
-  },
-  "encryption": {
-    "title": "来自另一个维度的 AI 代理。",
-    "subtitle": "它们来帮助你成为最好的自己。",
-    "button": "了解更多"
-  },
-  "study_rooms": {
-    "system": "系统最佳",
-    "secure": "安全通道",
-    "encrypted": "已加密",
-    "highlight": "寻找你的小队。研究。发布。",
-    "together": "一起。",
-    "lobby_status": "大厅状态：在线",
-    "find_party": "寻找你的队伍",
-    "select_cluster": "选择研究集群",
-    "join": "加入会话",
-    "select": "选择房间",
-    "rooms": {
-      "cyber_name": "控制论大厅",
-      "cyber_topic": "计算机科学",
-      "bio_name": "生物实验室 Alpha",
-      "bio_topic": "医学与健康",
-      "quantum_name": "量子场",
-      "quantum_topic": "数学",
-      "global_name": "全球休息室",
-      "global_topic": "通识教育"
-    }
-  },
-  "workstation": {
-    "focus_mode": "专注模式",
-    "system_init": "系统初始化。智能体待命。",
-    "connected": "已登录",
-    "welcome": "欢迎",
-    "login": "登录",
-    "active_agent": "当前智能体",
-    "clear_history": "清除历史",
-    "send": "发送",
-    "generate": "生成",
-    "processing": "处理中...",
-    "session_save": "保存会话",
-    "auto_fix": "自动修复",
-    "no_wallet": "连接钱包",
-    "doc_title_placeholder": "文档标题...",
-    "doc_content_placeholder": "等待输出...",
-    "chat_placeholder": "向 Zaeon 咨询关于 {{role}} 的问题...",
-    "logs": {
-      "switched": "已切换至 {{name}}",
-      "gen_protocol": "协议已启动 via {{name}}",
-      "content_gen": "内容已生成。",
-      "ipfs_success": "IPFS 成功: {{hash}}",
-      "blockchain_init": "正在 Movement 上加固...",
-      "success": "成功！",
-      "error": "错误。"
-    }
-  },
-  "agents": {
-    "zenita": {
-      "role": "科技"
-    },
-    "ballena": {
-      "role": "健康"
-    },
-    "ethernaut": {
-      "role": "数学"
-    }
-  },
-  "about": {
-    "back": "返回",
-    "scroll_down": "向下滚动了解全部内容",
-    "title_secondary": "未来的学校。",
-    "title_main": "就在当下。",
-    "genesis": {
-      "title": "协议的起源",
-      "p1": "如今，大公司正在夺走我们的注意力，通过算法破坏人类智力，只为追求利润。",
-      "p2": "Zaeon 为改变这一现状而生：我们来拯救学习的乐趣。通过强大的 AI 代理，解锁您的真实潜力。在这里，人类和机器将共同努力 ",
-      "p2_highlight": "在区块链上创造更美好的世界。"
-    },
-    "mission": {
-      "title": "我们的使命",
-      "p1": "为下一代学生、研究人员和教师提供高效工具，助力每日知识探索。",
-      "p2": "我们使用 Movement 技术记录您的成长，确保记录不可篡改。在这里，您的研究是永恒且安全的数字资产。",
-      "quote": "知识不应只是被获取，更应被妥善保护。"
-    },
-    "architecture": {
-      "title": "Zaeon 架构",
-      "subtitle": "即将改变全球数百万学生学习方式的创新技术。",
-      "card1_t": "智能代理",
-      "card1_d": "提供针对不同国家、机构和领域的专业导师。一切都是为您量身定制的。",
-      "card2_t": "可信区块链",
-      "card2_d": "Movement 作为高性能数据库，确保生成的每一份文档都是您的知识产权。",
-      "card3_t": "混合学习",
-      "card3_d": "代理鼓励区域学习小组，同时建立无语言障碍的全球实时协作数字环境。"
-    },
-    "cta": {
-      "wait": "未来期待您的连接",
-      "join": "加入 Zaeon",
-      "button": "启动协议"
-    }
-  },
-  "tech_room": {
-    "gateway_title": "SECURE_GATEWAY_V3",
-    "access_denied_code": "ACCESS_DENIED",
-    "restricted_title": "访问受限",
-    "student_area": "学生专区",
-    "msg_denied": "访问被拒绝。",
-    "msg_id_req": "需要身份验证。",
-    "key_label": "访问密钥",
-    "btn_auth": "认证",
-    "btn_wrong": "密钥错误",
-    "tunnel": "加密隧道: ZAEON-NET",
-    "status_fail": "状态: ERR_AUTH_FAIL",
-    "status_wait": "状态: AWAITING_KEY",
-    "courses": {
-      "cs": "计算机科学",
-      "se": "软件工程",
-      "is": "信息系统",
-      "ce": "计算机工程",
-      "ads": "系统分析与开发",
-      "net": "计算机网络",
-      "infosec": "信息安全",
-      "db": "数据库",
-      "it_mgmt": "IT管理",
-      "games": "数字游戏",
-      "ai": "人工智能",
-      "ds": "数据科学",
-      "cloud": "云计算",
-      "devops": "DevOps",
-      "cyber": "网络安全",
-      "block": "区块链",
-      "bigdata": "大数据分析",
-      "mba": "MBA IT项目管理"
-    }
-  }
-}
+# 🌌 Zaeon (载恩 / 제온)
+### The Operating System for Science Powered by AI & Casper Network
+        
+<div align="center">
+<img src="./public/zaeon-logo.png" alt="Zaeon Banner" width="100%" />
+
+[English](#-english) | [Português](#-português-brazil) | [Español](#-español) | [Français](#-français) | [Deutsch](#-deutsch) | [中文 (Chinese)](#-中文-chinese) | [한국어 (Korean)](#-한국어-korean)
+
+---
+
+## 🇺🇸 English
+
+### 🌍 Overview
+**Zaeon** is the **Operating System for Science**. We bridge the gap between academic potential and global market reality.
+
+For the academic community, Zaeon is a comprehensive workspace that manages everything from daily study routines to high-level research production. For the industry, Zaeon is a source of "Premium Intelligence," allowing companies to access verified data or commission specific research directly on the blockchain.
+
+Powered by the **Casper Network**, we use the rigorous **CBC (Correct-by-Construction)** consensus to ensure that scientific data is as mathematically sound as the infrastructure securing it.
+
+### 🚀 Key Features
+
+#### 🧠 1. The Academic Workspace (B2C - Input)
+**For Students:**
+* **AI Daily Co-Pilot:** Intelligent agents that manage study schedules, reminders, and daily tasks, organizing the student's chaotic routine.
+* **Global Collaboration Room:** A real-time study environment connecting students worldwide. AI agents perform instant translation, breaking down language barriers and allowing a student in Brazil to collaborate seamlessly with a researcher in Korea.
+* **Advanced Research Workstation:** A dedicated interface for creating high-level academic documents. AI agents assist in structuring arguments, checking citations against international standards, and validating data.
+
+**For Professors:**
+* **Academic Command Center:** Tools to manage class routines, create and apply exams, and automate grading.
+* **Performance Monitoring:** Real-time analytics dashboards to track student engagement and evolution.
+
+**Monetization & Opportunity:**
+Promising research doesn't just sit in a database; it becomes a **Digital Asset**. Within Zaeon, valid projects can receive direct donations, funding, or business proposals from the industry.
+
+#### 🏛️ 2. Casper Integration: The Trust Layer
+* **Hierarchical Validation:** We replicate the academic chain of command on-chain using Casper's *Weighted Keys*. A project is only "Minted" as valid when it receives cryptographic signatures from both the Student and the Professor.
+* **Living Assets:** Science evolves. We use Casper’s **Upgradable Smart Contracts** to allow a research project to update its status (e.g., from "Draft" to "Published") without breaking its on-chain history.
+
+#### 💼 3. The Innovation Exchange (B2B - Output)
+* **High-Fidelity Data Access:** Companies can query the Zaeon marketplace for data that has been academically validated. This eliminates the risk of using "noise" or unverified information for strategic decisions.
+* **On-Demand Research:** Companies can issue a "Request for Research" on a specific topic (e.g., "Renewable Energy Efficiency in Tropical Climates"). They can fund the project via Smart Contract and track the progress of the research on-chain in real-time, ensuring transparency and timely delivery.
+
+### 🏆 Why Zaeon chose Casper?
+**Real Science demands a Real Blockchain.**
+We chose the Casper Network because it aligns with our philosophy of rigor.
+* **Correct-by-Construction (CBC):** Casper’s consensus is built on formal mathematical proofs, not just experimental code. This provides the security and predictability that institutional clients (Universities and Enterprises) require.
+* **Future-Proof Architecture:** Casper is designed for enterprise adoption, offering upgradeable contracts and predictable gas fees, ensuring that our Research OS remains stable and scalable for decades.
+
+---
+
+## 🇧🇷 Português (Brazil)
+
+### 🌌 Zaeon: O Sistema Operacional da Ciência
+
+### 🌍 Visão Geral
+**Zaeon** é o **Sistema Operacional da Ciência**. Nós preenchemos a lacuna entre o potencial acadêmico e a realidade do mercado global.
+
+Para a comunidade acadêmica, o Zaeon é um workspace completo que gerencia desde a rotina diária de estudos até a produção de pesquisas de alto nível. Para a indústria, o Zaeon é uma fonte de "Inteligência Premium", permitindo que empresas acessem dados verificados ou encomendem pesquisas específicas diretamente na blockchain.
+
+Impulsionado pela **Casper Network**, usamos o rigoroso consenso **CBC (Correct-by-Construction)** para garantir que os dados científicos sejam tão matematicamente sólidos quanto a infraestrutura que os protege.
+
+### 🚀 Principais Recursos
+
+#### 🧠 1. O Workspace Acadêmico (B2C - Input)
+**Para Alunos:**
+* **Co-Piloto Diário de IA:** Agentes inteligentes que gerenciam cronogramas de estudo, lembretes e tarefas do dia-a-dia, organizando a rotina do estudante.
+* **Sala de Colaboração Global:** Um ambiente de estudo em tempo real conectando estudantes do mundo todo. Agentes de IA realizam tradução instantânea, quebrando barreiras linguísticas e permitindo colaboração sem fronteiras.
+* **Estação de Pesquisa Avançada:** Interface dedicada para criação de documentos acadêmicos de alto nível. A IA auxilia na estruturação de argumentos, verificação de citações em padrões internacionais e validação de dados.
+
+**Para Professores:**
+* **Centro de Comando Acadêmico:** Ferramentas para gerenciar rotinas de aulas, aplicar provas e automatizar a correção de atividades.
+* **Monitoramento de Performance:** Dashboards analíticos em tempo real para acompanhar o engajamento e evolução dos alunos.
+
+**Monetização e Oportunidade:**
+Pesquisas promissoras não ficam paradas; tornam-se **Ativos Digitais**. Dentro da Zaeon, projetos validados podem receber doações, financiamento ou propostas de negócios da indústria.
+
+#### 🏛️ 2. Integração Casper: A Camada de Confiança
+* **Validação Hierárquica:** Replicamos a cadeia de comando acadêmica on-chain usando *Chaves Ponderadas* da Casper. Um projeto só é validado com as assinaturas criptográficas do Aluno e do Professor.
+* **Ativos Vivos:** A ciência evolui. Usamos **Contratos Inteligentes Atualizáveis** da Casper para permitir que um projeto atualize seu status (ex: de "Rascunho" para "Publicado") sem perder seu histórico.
+
+#### 💼 3. O Câmbio de Inovação (B2B - Output)
+* **Acesso a Dados de Alta Fidelidade:** Empresas consultam o marketplace da Zaeon por dados academicamente validados, eliminando o risco de usar informações não verificadas para decisões estratégicas.
+* **Pesquisa Sob Demanda:** Empresas podem emitir uma "Solicitação de Pesquisa" sobre um tópico específico. Elas financiam o projeto via Smart Contract e acompanham o progresso da pesquisa on-chain em tempo real, garantindo transparência.
+
+### 🏆 Por que a Zaeon escolheu a Casper?
+**Ciência Real exige uma Blockchain Real.**
+Escolhemos a Casper Network porque ela se alinha à nossa filosofia de rigor.
+* **Correct-by-Construction (CBC):** O consenso da Casper é construído sobre provas matemáticas formais. Isso fornece a segurança e previsibilidade que clientes institucionais exigem.
+* **Arquitetura à Prova de Futuro:** Projetada para adoção empresarial, a Casper oferece contratos atualizáveis e taxas previsíveis, garantindo que nosso Research OS permaneça estável por décadas.
+
+---
+
+## 🇪🇸 Español
+
+### 🌌 Zaeon: El Sistema Operativo de la Ciencia
+
+### 🌍 Descripción General
+**Zaeon** es el **Sistema Operativo de la Ciencia**. Conectamos el potencial académico con la realidad del mercado global.
+
+Para la comunidad académica, Zaeon es un espacio de trabajo integral que gestiona desde la rutina diaria hasta la investigación de alto nivel. Para la industria, es una fuente de "Inteligencia Premium", permitiendo acceder a datos verificados o encargar investigaciones específicas en la blockchain.
+
+Impulsado por **Casper Network**, utilizamos el consenso **CBC (Correct-by-Construction)** para garantizar que los datos científicos sean matemáticamente sólidos.
+
+### 🚀 Características Clave
+
+#### 🧠 1. El Espacio Académico (B2C)
+**Para Estudiantes:**
+* **Copiloto Diario de IA:** Agentes que gestionan horarios, recordatorios y tareas diarias.
+* **Sala de Colaboración Global:** Chats en tiempo real con traducción instantánea por IA, eliminando barreras lingüísticas.
+* **Estación de Investigación Avanzada:** Creación de documentos académicos con asistencia de IA para estructuración y citas internacionales.
+
+**Para Profesores:**
+* **Centro de Comando:** Gestión de rutinas, aplicación de exámenes y corrección automática.
+* **Monitoreo de Rendimiento:** Análisis en tiempo real de la evolución de los alumnos.
+
+**Monetización:**
+Las investigaciones prometedoras se convierten en **Activos Digitales**, aptos para recibir donaciones, financiación o propuestas de negocios dentro de Zaeon.
+
+#### 🏛️ 2. Integración Casper
+* **Validación Jerárquica:** Uso de *Weighted Keys* para requerir firmas de Estudiante y Profesor.
+* **Activos Vivos:** Uso de contratos actualizables para mantener el historial de investigaciones que evolucionan.
+
+#### 💼 3. Mercado de Innovación (B2B)
+* **Datos de Alta Fidelidad:** Las empresas acceden a datos validados, eliminando el riesgo de información errónea.
+* **Investigación bajo Demanda:** Las empresas pueden solicitar y financiar investigaciones específicas, rastreando el progreso on-chain en tiempo real.
+
+### 🏆 ¿Por qué Casper?
+**La Ciencia Real exige una Blockchain Real.**
+* **Correct-by-Construction (CBC):** Seguridad basada en pruebas matemáticas formales, esencial para instituciones.
+* **Arquitectura Empresarial:** Contratos actualizables y estabilidad a largo plazo.
+
+---
+
+## 🇫🇷 Français
+
+### 🌌 Zaeon: Le Système d'Exploitation de la Science
+
+### 🌍 Vue d'ensemble
+**Zaeon** est le **Système d'Exploitation de la Science**. Nous comblons le fossé entre le potentiel académique et la réalité du marché mondial.
+
+Pour la communauté académique, Zaeon est un espace de travail complet. Pour l'industrie, c'est une source d'"Intelligence Premium", permettant l'accès à des données vérifiées ou la commande de recherches spécifiques sur la blockchain.
+
+Propulsé par **Casper Network**, nous utilisons le consensus **CBC** pour garantir l'intégrité mathématique des données scientifiques.
+
+### 🚀 Fonctionnalités Clés
+
+#### 🧠 1. L'Espace Académique (B2C)
+**Pour les Étudiants:**
+* **Copilote IA Quotidien:** Gestion des horaires, rappels et tâches.
+* **Salle de Collaboration Mondiale:** Traduction instantanée par IA pour une collaboration sans frontières.
+* **Station de Recherche Avancée:** Création de documents de haut niveau avec assistance IA pour la structure et les normes internationales.
+
+**Pour les Professeurs:**
+* **Centre de Commandement:** Gestion des cours, examens et correction automatique.
+* **Suivi de Performance:** Analyse en temps réel de l'évolution des étudiants.
+
+**Monétisation:**
+Les recherches deviennent des **Actifs Numériques**, éligibles aux dons, financements ou propositions commerciales.
+
+#### 🏛️ 2. Intégration Casper
+* **Validation Hiérarchique:** Signatures cryptographiques requises de l'étudiant et du professeur.
+* **Actifs Vivants:** Contrats évolutifs permettant la mise à jour du statut des projets sans perte d'historique.
+
+#### 💼 3. Échange d'Innovation (B2B)
+* **Données Haute Fidélité:** Accès à des données validées académiquement.
+* **Recherche à la Demande:** Les entreprises peuvent financer et suivre des sujets de recherche spécifiques en temps réel sur la chaîne.
+
+### 🏆 Pourquoi Casper?
+**La Vraie Science exige une Vraie Blockchain.**
+* **Correct-by-Construction (CBC):** Sécurité fondée sur des preuves mathématiques formelles.
+* **Architecture d'Entreprise:** Conçue pour la stabilité et l'évolutivité à long terme.
+
+---
+
+## 🇩🇪 Deutsch
+
+### 🌌 Zaeon: Das Betriebssystem für die Wissenschaft
+
+### 🌍 Überblick
+**Zaeon** ist das **Betriebssystem für die Wissenschaft**. Wir schließen die Lücke zwischen akademischem Potenzial und globaler Marktrealität.
+
+Für die akademische Gemeinschaft ist Zaeon ein umfassender Arbeitsplatz. Für die Industrie ist es eine Quelle für "Premium-Intelligenz", die Zugang zu verifizierten Daten oder beauftragter Forschung bietet.
+
+Angetrieben vom **Casper Network**, nutzen wir den **CBC**-Konsens, um mathematische Sicherheit für wissenschaftliche Daten zu gewährleisten.
+
+### 🚀 Hauptmerkmale
+
+#### 🧠 1. Der Akademische Arbeitsplatz (B2C)
+**Für Studenten:**
+* **Täglicher KI-Copilot:** Management von Lernplänen und Aufgaben.
+* **Globaler Kollaborationsraum:** Echtzeit-Übersetzung für grenzenlose Zusammenarbeit.
+* **Fortgeschrittene Forschungsstation:** Erstellung hochwertiger Dokumente mit KI-Unterstützung für internationale Standards.
+
+**Für Professoren:**
+* **Akademisches Kommandozentrum:** Verwaltung von Routinen, Prüfungen und Noten.
+* **Leistungsüberwachung:** Echtzeit-Analysen der Studentenentwicklung.
+
+**Monetarisierung:**
+Forschung wird zu **Digitalen Assets**, die Spenden, Finanzierung oder Geschäftsangebote erhalten können.
+
+#### 🏛️ 2. Casper-Integration
+* **Hierarchische Validierung:** Kryptografische Signaturen von Student und Professor erforderlich.
+* **Lebendige Assets:** Aktualisierbare Verträge bewahren die Historie bei Statusänderungen.
+
+#### 💼 3. Innovationsbörse (B2B)
+* **High-Fidelity-Daten:** Zugang zu akademisch validierten Daten für Unternehmen.
+* **Forschung auf Abruf:** Unternehmen können Forschungsthemen finanzieren und den Fortschritt on-chain verfolgen.
+
+### 🏆 Warum Casper?
+**Echte Wissenschaft verlangt eine echte Blockchain.**
+* **Correct-by-Construction (CBC):** Sicherheit durch formale mathematische Beweise.
+* **Unternehmensarchitektur:** Stabilität und aktualisierbare Verträge für langfristige Nutzung.
+
+---
+
+## 🇨🇳 中文 (Chinese)
+
+### 🌌 Zaeon：科学操作系统
+
+### 🌍 项目概况
+**Zaeon** 是**科学操作系统**。我们弥合了学术潜力与全球市场现实之间的鸿沟。
+
+对于学术界，Zaeon 是一个综合工作区，管理从日常学习到高水平研究的所有事务。对于行业而言，Zaeon 是“优质情报”的来源，允许企业访问经过验证的数据或直接在区块链上委托特定研究。
+
+由 **Casper 网络** 驱动，我们利用严格的 **CBC (构造即正确)** 共识机制，确保科学数据的安全性。
+
+### 🚀 核心功能
+
+#### 🧠 1. 学术工作区 (B2C)
+**学生端：**
+* **AI 日常副驾驶：** 管理学习计划、提醒和日常任务。
+* **全球协作室：** 具有 AI 即时翻译功能的实时学习环境，打破语言障碍。
+* **高级研究工作站：** 用于创建符合国际标准的高水平学术文档。
+
+**教授端：**
+* **学术指挥中心：** 管理课程、考试及自动评分。
+* **绩效监控：** 实时分析仪表板，跟踪学生的参与度和进步。
+
+**变现与机会：**
+有前途的研究成为**数字资产**，可在 Zaeon 内获得捐赠、资助或商业提案。
+
+#### 🏛️ 2. Casper 集成
+* **层级验证：** 使用 Casper 的加权密钥，需要学生和教授的共同签名。
+* **动态资产：** 使用可升级合约，允许项目更新状态而不丢失历史记录。
+
+#### 💼 3. 创新交易平台 (B2B)
+* **高保真数据访问：** 企业可以查询经过学术验证的数据。
+* **按需研究：** 企业可以发布特定主题的研究请求，通过智能合约资助并实时跟踪进度。
+
+### 🏆 为什么选择 Casper?
+**真正的科学需要真正的区块链。**
+* **构造即正确 (CBC)：** 基于形式化数学证明的共识，提供机构所需的安全性。
+* **面向未来的架构：** 专为企业采用而设计，确保持续稳定。
+
+---
+
+## 🇰🇷 한국어 (Korean)
+
+### 🌌 Zaeon (제온): 과학을 위한 운영체제
+
+### 🌍 프로젝트 개요
+**Zaeon**은 **과학을 위한 운영체제**입니다. 우리는 학문적 잠재력과 글로벌 시장의 현실 사이의 간극을 잇습니다.
+
+학계에게 Zaeon은 일상적인 학습부터 높은 수준의 연구까지 관리하는 포괄적인 작업 공간입니다. 산업계에게 Zaeon은 검증된 데이터에 접근하거나 블록체인에서 직접 특정 연구를 의뢰할 수 있는 "프리미엄 인텔리전스"의 원천입니다.
+
+**Casper Network**를 기반으로 하는 우리는 엄격한 **CBC (Correct-by-Construction)** 합의 알고리즘을 사용하여 과학 데이터의 무결성을 보장합니다.
+
+### 🚀 주요 기능
+
+#### 🧠 1. 학술 워크스페이스 (B2C)
+**학생용:**
+* **AI 데일리 코파일럿:** 학습 일정, 알림 및 일상 업무를 관리합니다.
+* **글로벌 협업 룸:** AI 실시간 번역을 통해 언어 장벽 없이 전 세계 학생들과 협업할 수 있습니다.
+* **고급 연구 워크스테이션:** 국제 표준에 맞춘 높은 수준의 학술 문서를 작성할 수 있도록 지원합니다.
+
+**교수용:**
+* **학사 지휘 센터:** 수업 루틴 관리, 시험 출제 및 자동 채점 기능을 제공합니다.
+* **성과 모니터링:** 학생의 참여도와 발전을 추적하는 실시간 분석 대시보드입니다.
+
+**수익화 및 기회:**
+유망한 연구는 **디지털 자산**이 되어 Zaeon 내에서 기부, 자금 지원 또는 비즈니스 제안을 받을 수 있습니다.
+
+#### 🏛️ 2. Casper 통합
+* **계층적 검증:** Casper의 가중치 키(Weighted Keys)를 사용하여 학생과 교수의 서명이 모두 필요합니다.
+* **살아있는 자산:** 업그레이드 가능한 계약을 사용하여 기록을 유지하면서 프로젝트 상태를 업데이트합니다.
+
+#### 💼 3. 혁신 거래소 (B2B)
+* **고충실도 데이터 접근:** 기업은 학문적으로 검증된 데이터를 조회할 수 있습니다.
+* **주문형 연구 (On-Demand Research):** 기업은 특정 주제에 대한 연구를 요청하고 스마트 계약을 통해 자금을 지원하며 진행 상황을 실시간으로 추적할 수 있습니다.
+
+### 🏆 왜 Casper인가?
+**진정한 과학에는 진정한 블록체인이 필요합니다.**
+* **CBC (Correct-by-Construction):** 형식적인 수학적 증명을 기반으로 한 합의로 기관급 보안을 제공합니다.
+* **미래 지향적 아키텍처:** 기업 채택을 위해 설계되어 장기적인 안정성을 보장합니다.
+
+---
+
+Built with ❤️ by web3-engineer
