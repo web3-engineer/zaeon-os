@@ -729,27 +729,17 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
         return ctx;
     };
 
-    // 🔥 FETCH CORRECTO PARA O RESUMO DO PDF
+    // Abre o PDF para conversa (ativa o contexto; sem resumo automático)
     const handlePlayDocument = async (doc: StudyDoc) => {
-        if (!doc.file || isPdfTyping || processingFileId) return;
+        if (!doc.file || processingFileId) return;
         setProcessingFileId(doc.id);
-        setIsPdfTyping(true);
         setActiveSection('pdf');
         try {
             const base64Data = await fileToBase64(doc.file);
             setActiveFileContext(base64Data);
-            const response = await fetch('/api/chat', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    prompt: `Analise o documento "${doc.title}" e gere um resumo.`,
-                    agent: "aura",
-                    fileData: base64Data,
-                    systemContext: buildSystemContext()
-                })
-            });
-            const data = await response.json();
-            if (data.text) setPdfChatHistory([{ role: 'ai', text: data.text }]);
-        } catch (e) { showToast("Erro ao processar o PDF."); } finally { setIsPdfTyping(false); setProcessingFileId(null); }
+            setPdfChatHistory([]);        // conversa limpa — o usuário pergunta o que quiser
+            setActivePdfTab('chat');
+        } catch (e) { showToast("Erro ao processar o PDF."); } finally { setProcessingFileId(null); }
     };
 
     // 🔥 FETCH CORRECTO PARA CHAT AURA
@@ -800,6 +790,15 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
         setSavedCitations(prev => [...prev, newCit]);
         setCitationContent(null);
         setActiveCitationText(citationContent);
+        showToast("Citação salva na base de dados.");
+    };
+
+    // Salva uma mensagem do chat do PDF diretamente como citação
+    const saveCitationFromChat = (text: string) => {
+        if (!text.trim()) return;
+        const newCit: CitationNote = { id: generateSafeId(), text };
+        setSavedCitations(prev => [...prev, newCit]);
+        setActiveCitationText(text);
         showToast("Citação salva na base de dados.");
     };
 
@@ -1183,8 +1182,21 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
                                             {activePdfTab === 'chat' && (
                                                 <div className="flex flex-col gap-2">
                                                     <div ref={pdfChatRef} className="h-[250px] overflow-y-auto bg-slate-50 dark:bg-black/50 p-5 rounded-2xl border border-slate-300 dark:border-white/10 shadow-inner custom-scrollbar">
-                                                        {pdfChatHistory.length === 0 && <span className="text-black dark:text-white text-xs font-medium italic">Nenhum resumo gerado.</span>}
-                                                        {pdfChatHistory.map((msg, i) => <ChatBubble key={i} role={msg.role} text={msg.text} agentName="Aura" agentImg="/agents/aura.png" userImg={session?.user?.image} />)}
+                                                        {pdfChatHistory.length === 0 && <span className="text-black dark:text-white text-xs font-medium italic">Converse com este PDF — faça perguntas, peça resumos ou citações.</span>}
+                                                        {pdfChatHistory.map((msg, i) => (
+                                                            <div key={i} className="relative group">
+                                                                <ChatBubble role={msg.role} text={msg.text} agentName="Aura" agentImg="/agents/aura.png" userImg={session?.user?.image} />
+                                                                {msg.role === 'ai' && (
+                                                                    <button
+                                                                        onClick={() => saveCitationFromChat(msg.text)}
+                                                                        title="Salvar como citação"
+                                                                        className="absolute -top-1 right-0 p-1.5 rounded-lg bg-white dark:bg-black border border-slate-300 dark:border-white/15 text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                                                                    >
+                                                                        <BookmarkIcon className="w-3.5 h-3.5" />
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        ))}
                                                         {isPdfTyping && <div className="text-[10px] font-bold animate-pulse text-cyan-600 ml-12">Aura está a analisar...</div>}
                                                     </div>
                                                     <div data-tour="ai-chat">
@@ -1354,26 +1366,13 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
                                                 <span>{hintOpen ? '▲' : '▼'}</span>
                                             </button>
                                             {hintOpen && (
-                                                <div className="px-5 pb-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-[11px] text-indigo-700 dark:text-indigo-300 leading-relaxed">
-                                                    <div className="flex flex-col gap-1">
-                                                        <span className="font-black">① Use # para seções principais</span>
-                                                        <code className="bg-indigo-100 dark:bg-indigo-900/50 rounded-lg px-2 py-1 font-mono text-[10px]"># INTRODUÇÃO</code>
-                                                        <code className="bg-indigo-100 dark:bg-indigo-900/50 rounded-lg px-2 py-1 font-mono text-[10px]"># METODOLOGIA</code>
-                                                        <code className="bg-indigo-100 dark:bg-indigo-900/50 rounded-lg px-2 py-1 font-mono text-[10px]"># CONCLUSÃO</code>
-                                                        <span className="text-indigo-500 dark:text-indigo-400 text-[10px]">Títulos ficam em MAIÚSCULAS automaticamente.</span>
-                                                    </div>
-                                                    <div className="flex flex-col gap-1">
-                                                        <span className="font-black">② Use ## para subseções</span>
-                                                        <code className="bg-indigo-100 dark:bg-indigo-900/50 rounded-lg px-2 py-1 font-mono text-[10px]">## Revisão da Literatura</code>
-                                                        <code className="bg-indigo-100 dark:bg-indigo-900/50 rounded-lg px-2 py-1 font-mono text-[10px]">## Análise dos Dados</code>
-                                                        <span className="text-indigo-500 dark:text-indigo-400 text-[10px]">Subseções recebem numeração automática (ex: 2.1).</span>
-                                                    </div>
-                                                    <div className="flex flex-col gap-1">
-                                                        <span className="font-black">③ Escreva as referências em # REFERÊNCIAS</span>
-                                                        <span className="text-indigo-500 dark:text-indigo-400 text-[10px]">O sistema detecta e formata cada entrada conforme ABNT NBR 6023:2018. Uma referência por linha.</span>
-                                                        <span className="mt-1 font-black text-green-600 dark:text-green-400">✓ Estruturado → exportação ABNT perfeita</span>
-                                                        <span className="font-black text-amber-600 dark:text-amber-400">⚠ Sem marcadores → IA tenta inferir (pode errar)</span>
-                                                    </div>
+                                                <div className="px-5 pb-4 text-[11px] text-indigo-700 dark:text-indigo-300 leading-relaxed">
+                                                    <p>
+                                                        Escreva sua pesquisa organizada em seções — introdução, metodologia,
+                                                        resultados, conclusão e referências. A Zaeon estrutura o documento e
+                                                        formata tudo conforme a ABNT na exportação: títulos, numeração de
+                                                        subseções e referências (NBR 6023:2018).
+                                                    </p>
                                                 </div>
                                             )}
                                         </div>
