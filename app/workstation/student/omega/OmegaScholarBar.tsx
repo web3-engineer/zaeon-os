@@ -3,7 +3,6 @@ import { useState, useEffect, useRef } from "react";
 import { GraduationCap, ArrowUp, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useOmegaScholar } from "./OmegaScholarContext";
-import AgentSwarmLoader from "@/components/research/AgentSwarmLoader";
 
 interface OmegaScholarBarProps {
   flushTop?: boolean;
@@ -11,7 +10,7 @@ interface OmegaScholarBarProps {
 }
 
 export default function OmegaScholarBar({ flushTop = false, onOpenResults }: OmegaScholarBarProps) {
-  const { runQuery, status, phases, error, draft, setDraft } = useOmegaScholar();
+  const { runQuery, status, error, draft, setDraft } = useOmegaScholar();
   const busy = status === "running";
 
   // ── Elapsed timer ──────────────────────────────────────────────────────────
@@ -29,6 +28,15 @@ export default function OmegaScholarBar({ flushTop = false, onOpenResults }: Ome
     } else {
       startRef.current = null;
     }
+  }, [status]);
+
+  // ── Contador de "tokens" (estilo Claude Code) enquanto pesquisa ──────────────
+  const [tokens, setTokens] = useState(0);
+  useEffect(() => {
+    if (status !== "running") return;
+    setTokens(0);
+    const id = setInterval(() => setTokens((t) => t + 28 + Math.floor(Math.random() * 34)), 90);
+    return () => clearInterval(id);
   }, [status]);
 
   const submit = () => {
@@ -88,8 +96,23 @@ export default function OmegaScholarBar({ flushTop = false, onOpenResults }: Ome
                 transition={{ duration: 0.2 }}
                 className="mt-3 overflow-hidden"
               >
-                {/* enxame de agentes (compacto) — substitui "queimando tokens" */}
-                <AgentSwarmLoader compact phases={phases} status={status} elapsed={elapsed} />
+                {/* topo: experiência padrão (não duplica a barra/agentes do rodapé) —
+                    triângulo ⟁ com pulso de radar + contador de tokens estilo Claude Code */}
+                <div className="flex items-center gap-2.5">
+                  <span className="relative inline-flex items-center justify-center w-4 h-4 shrink-0" aria-hidden>
+                    <span className="absolute inset-0 rounded-full border border-cyan-400/40 animate-ping motion-reduce:animate-none" />
+                    <span
+                      className="text-cyan-400 text-[11px] leading-none animate-[spin_5s_linear_infinite] motion-reduce:animate-none"
+                      style={{ filter: "drop-shadow(0 0 3px rgba(34,211,238,0.6))" }}
+                    >
+                      ⟁
+                    </span>
+                  </span>
+                  <span className="text-xs font-mono text-cyan-600 dark:text-cyan-300/90 tabular-nums">
+                    {tokens.toLocaleString("pt-BR")} <span className="text-slate-400 dark:text-white/30 font-sans">tokens</span>
+                  </span>
+                  <span className="text-xs text-slate-400 dark:text-white/40 tabular-nums">· {elapsed}s</span>
+                </div>
               </motion.div>
             )}
 

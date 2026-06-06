@@ -231,10 +231,17 @@ export default function ResearchSuggestionPanel({ docTitle = "", onSelectTitle, 
         </button>
       </div>
 
-      {/* ── ERROR ── */}
+      {/* ── ERROR + retry ── */}
       {error && (
-        <div className="mx-5 mb-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-[10px] text-red-300">
-          {error}
+        <div className="mx-5 mb-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-[10px] text-red-300 flex items-center justify-between gap-2">
+          <span className="min-w-0">{error}</span>
+          <button
+            onClick={() => fetchSuggestion(false)}
+            disabled={loading}
+            className="shrink-0 px-2.5 py-1 rounded-lg bg-red-500/15 border border-red-500/30 text-red-200 font-black uppercase tracking-[.08em] hover:bg-red-500/25 disabled:opacity-40 transition-colors cursor-pointer"
+          >
+            ↻ tentar de novo
+          </button>
         </div>
       )}
 

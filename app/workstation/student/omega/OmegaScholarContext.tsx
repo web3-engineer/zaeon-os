@@ -161,13 +161,14 @@ export function OmegaScholarProvider({ room, onStart, children }:
         }),
       });
       if (!res.ok) {
-        setState((s) => ({ ...s, loadingPrereqs: false }));
+        // falha → prereqs: [] faz o módulo mostrar o estado vazio com botão "tentar de novo"
+        setState((s) => ({ ...s, loadingPrereqs: false, prereqs: [] }));
         return;
       }
       const data = await res.json();
       setState((s) => ({ ...s, loadingPrereqs: false, prereqs: data.prereqs ?? [], prereqsSummary: data.summary ?? null }));
     } catch {
-      setState((s) => ({ ...s, loadingPrereqs: false }));
+      setState((s) => ({ ...s, loadingPrereqs: false, prereqs: [] }));
     }
   }, []);
 
