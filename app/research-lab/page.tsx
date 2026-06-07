@@ -37,6 +37,7 @@ import NewsPanel from "@/components/research/NewsPanel";
 import ProfilePanel from "@/components/research/ProfilePanel";
 import MiniTourToast from "@/components/research/MiniTourToast";
 import SavedCitationsSection from "./SavedCitationsSection";
+import LibrarySavedFiles from "./LibrarySavedFiles";
 
 // --- COMPONENTS ---
 import ResearchCardPDF from "@/components/ui/ResearchCardPDF";
@@ -1174,6 +1175,9 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
                                             ))}
                                         </div>
                                     </div>
+
+                                    {/* Salvos das suas pesquisas (arquivos salvos a partir das referências) */}
+                                    <LibrarySavedFiles />
 
                                     {activeFileContext && (
                                         <div className="border-t border-slate-300 dark:border-white/20 pt-6">

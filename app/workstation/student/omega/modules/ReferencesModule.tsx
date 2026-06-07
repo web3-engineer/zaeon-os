@@ -1,10 +1,10 @@
 "use client";
 import { useState } from "react";
-import { CheckCircle2, FileText, Download, Copy, Check, BookmarkPlus, Bookmark } from "lucide-react";
+import { CheckCircle2, FileText, Download, Copy, Check, Library } from "lucide-react";
 import PdfViewerModal from "../PdfViewerModal";
 import type { EvidenceRecord, Paper } from "@/lib/scholar/types";
 import { formatAbntReference } from "@/lib/scholar/abnt";
-import { useSavedCitations } from "@/lib/useSavedCitations";
+import { useLibraryFiles } from "@/lib/useLibraryFiles";
 
 function locatorLabel(l?: EvidenceRecord["locator"]) {
   if (!l) return "";
@@ -18,13 +18,13 @@ function PaperCard({ p, evidence, onOpenViewer }: {
   evidence: EvidenceRecord[];
   onOpenViewer: (url: string, page: number, quote: string) => void;
 }) {
-  const { save, citations } = useSavedCitations();
+  const { save, files } = useLibraryFiles();
   const [copied, setCopied] = useState(false);
   const [savedFeedback, setSavedFeedback] = useState(false);
 
   const abnt = formatAbntReference(p);
   const paperId = p.doi ? `doi:${p.doi}` : p.id;
-  const isSaved = citations.some((c) => c.id === paperId);
+  const isSaved = files.some((f) => f.id === paperId);
 
   function handleCopy() {
     navigator.clipboard.writeText(abnt).then(() => {
@@ -33,17 +33,19 @@ function PaperCard({ p, evidence, onOpenViewer }: {
     });
   }
 
+  // Salva o ARQUIVO (só quando há pdfUrl) na biblioteca → aba "pesquisa".
   function handleSave() {
+    if (!p.pdfUrl) return;
     save({
       id: paperId,
-      abnt,
       title: p.title,
-      authors: p.authors,
-      year: p.year,
+      pdfUrl: p.pdfUrl,
+      source: p.sources?.[0],
       venue: p.venue,
       doi: p.doi,
       url: p.url,
-      pdfUrl: p.pdfUrl,
+      authors: p.authors,
+      year: p.year,
       savedAt: Date.now(),
     });
     setSavedFeedback(true);
@@ -116,21 +118,21 @@ function PaperCard({ p, evidence, onOpenViewer }: {
               <Download size={11} /> {downloadLink.label}
             </a>
           )}
-          <button
-            onClick={handleSave}
-            disabled={savedFeedback}
-            title={isSaved ? "Citação salva" : "Salvar citação"}
-            className={`inline-flex items-center gap-1 text-[10px] font-bold border rounded-full px-3 py-1.5 transition-colors ${
-              isSaved || savedFeedback
-                ? "text-emerald-600 dark:text-emerald-400 border-emerald-300/50 bg-emerald-50 dark:bg-emerald-900/20"
-                : "text-slate-500 dark:text-white/40 border-slate-300/40 hover:text-violet-600 hover:border-violet-300/50 hover:bg-violet-50 dark:hover:bg-violet-900/20"
-            }`}
-          >
-            {isSaved || savedFeedback
-              ? <><Bookmark size={11} /> Salva ✓</>
-              : <><BookmarkPlus size={11} /> Salvar</>
-            }
-          </button>
+          {/* Salvar arquivo na biblioteca — só quando há arquivo (pdfUrl) */}
+          {p.pdfUrl && (
+            <button
+              onClick={handleSave}
+              disabled={savedFeedback}
+              title={isSaved ? "Arquivo na biblioteca" : "Salvar arquivo na biblioteca"}
+              className={`inline-flex items-center gap-1 text-[10px] font-bold border rounded-full px-3 py-1.5 transition-colors ${
+                isSaved || savedFeedback
+                  ? "text-emerald-600 dark:text-emerald-400 border-emerald-300/50 bg-emerald-50 dark:bg-emerald-900/20"
+                  : "text-slate-500 dark:text-white/40 border-slate-300/40 hover:text-violet-600 hover:border-violet-300/50 hover:bg-violet-50 dark:hover:bg-violet-900/20"
+              }`}
+            >
+              <Library size={11} /> {isSaved || savedFeedback ? "Na biblioteca ✓" : "Salvar na biblioteca"}
+            </button>
+          )}
         </div>
       </div>
 
