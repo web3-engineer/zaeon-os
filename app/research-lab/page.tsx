@@ -38,6 +38,8 @@ import ProfilePanel from "@/components/research/ProfilePanel";
 import MiniTourToast from "@/components/research/MiniTourToast";
 import SavedCitationsSection from "./SavedCitationsSection";
 import LibrarySavedFiles from "./LibrarySavedFiles";
+import { useSavedCitations } from "@/lib/useSavedCitations";
+import { extractCitationBlock } from "@/lib/scholar/chatCitation";
 
 // --- COMPONENTS ---
 import ResearchCardPDF from "@/components/ui/ResearchCardPDF";
@@ -47,7 +49,6 @@ import { mapAcademicLevel } from "@/lib/quality/segment";
 
 // --- TYPES ---
 interface StudyDoc { id: string; title: string; url: string; file?: File; }
-interface CitationNote { id: string; text: string; }
 
 // --- UTILS ---
 const generateSafeId = () => {
@@ -426,7 +427,10 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
     const [processingFileId, setProcessingFileId] = useState<string | null>(null);
     const [activePdfTab, setActivePdfTab] = useState<"chat" | "citations">("chat");
 
-    const [savedCitations, setSavedCitations] = useState<CitationNote[]>([]);
+    const { citations: persistedCitations, save: savePersistedCitation } = useSavedCitations();
+    const [savedChatCits, setSavedChatCits] = useState<string[]>([]);
+    // Forma legada {id, text} usada pela publicação/attachments (preserva o contrato dos consumidores).
+    const citationNotes = persistedCitations.map(c => ({ id: c.id, text: c.abnt }));
     const [citationContent, setCitationContent] = useState<string | null>(null);
     const [activeCitationText, setActiveCitationText] = useState<string | null>(null);
 
@@ -594,7 +598,7 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
                 images: selectedImages,
                 tags: [visibility, workType].filter(Boolean),
                 attachments: {
-                    citations: savedCitations,
+                    citations: citationNotes,
                     files: studyFiles.map(f => f.title)
                 }
             };
@@ -795,11 +799,17 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
 
     const handleSaveCitation = () => {
         if (!citationContent) return;
-        const newCit: CitationNote = { id: generateSafeId(), text: citationContent };
-        setSavedCitations(prev => [...prev, newCit]);
-        setCitationContent(null);
+        savePersistedCitation({ id: generateSafeId(), abnt: citationContent, title: docTitle || "Citação", authors: [], savedAt: Date.now() });
         setActiveCitationText(citationContent);
-        showToast("Citação salva na base de dados.");
+        setCitationContent(null);
+        showToast("Citação salva na aba Citações.");
+    };
+
+    // Salva uma citação proposta pela Aura no chat (store persistente → aba Citações).
+    const saveChatCitation = (citation: string) => {
+        savePersistedCitation({ id: generateSafeId(), abnt: citation, title: docTitle || "Citação do chat", authors: [], savedAt: Date.now() });
+        setSavedChatCits(prev => prev.includes(citation) ? prev : [...prev, citation]);
+        showToast("Citação salva na aba Citações.");
     };
 
     // 🔥 FETCH CORRECTO PARA O EXAMINER (Quiz)
@@ -857,7 +867,7 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
                 workTitle: docTitle,
                 workContent: docContent,
                 workType: workType,
-                citations: JSON.stringify(savedCitations)
+                citations: JSON.stringify(citationNotes)
             };
 
             await fetch('/api/workspace', {
@@ -908,7 +918,7 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
                     title: docTitle.replace(/\.pdf$/i, '').replace(/\.docx$/i, ''),
                     content: docContent,
                     workType: workType || 'Artigo',
-                    citations: savedCitations,
+                    citations: citationNotes,
                     author: session?.user?.name || "Autor",
                     institution: abntMeta.institution,
                     course: (session?.user as any)?.course || "",
@@ -1183,7 +1193,25 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
                                                 <div className="flex flex-col gap-2">
                                                     <div ref={pdfChatRef} className="h-[250px] overflow-y-auto bg-slate-50 dark:bg-black/50 p-5 rounded-2xl border border-slate-300 dark:border-white/10 shadow-inner custom-scrollbar">
                                                         {pdfChatHistory.length === 0 && <span className="text-black dark:text-white text-xs font-medium italic">Nenhum resumo gerado.</span>}
-                                                        {pdfChatHistory.map((msg, i) => <ChatBubble key={i} role={msg.role} text={msg.text} agentName="Aura" agentImg="/agents/aura.png" userImg={session?.user?.image} />)}
+                                                        {pdfChatHistory.map((msg, i) => {
+                                                            if (msg.role !== 'ai') return <ChatBubble key={i} role={msg.role} text={msg.text} agentName="Aura" agentImg="/agents/aura.png" userImg={session?.user?.image} />;
+                                                            const parsed = extractCitationBlock(msg.text);
+                                                            const already = savedChatCits.includes(parsed.citation || "");
+                                                            return (
+                                                                <div key={i}>
+                                                                    <ChatBubble role={msg.role} text={parsed.clean || msg.text} agentName="Aura" agentImg="/agents/aura.png" userImg={session?.user?.image} />
+                                                                    {parsed.citation && (
+                                                                        <div className="ml-12 mt-1 mb-2 p-3 rounded-2xl bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-300/60 dark:border-cyan-400/20">
+                                                                            <p className="text-[8px] font-black uppercase tracking-widest text-cyan-700 dark:text-cyan-300 mb-1">✦ Citação sugerida</p>
+                                                                            <p className="text-[12px] italic text-slate-700 dark:text-white/80 leading-snug">{parsed.citation}</p>
+                                                                            <button onClick={() => saveChatCitation(parsed.citation!)} disabled={already} className={`mt-2 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wide px-3 py-1.5 rounded-full text-white transition-colors ${already ? 'bg-emerald-600' : 'bg-cyan-600 hover:bg-cyan-500'}`}>
+                                                                                {already ? 'Salva ✓' : 'Salvar na aba Citações'}
+                                                                            </button>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
                                                         {isPdfTyping && <div className="text-[10px] font-bold animate-pulse text-cyan-600 ml-12">Aura está a analisar...</div>}
                                                     </div>
                                                     <div data-tour="ai-chat">
@@ -1206,8 +1234,8 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
                                                         {citationContent && <button onClick={handleSaveCitation} className="p-3 bg-emerald-100 rounded-full shadow-md"><BookmarkIcon className="w-4 h-4 text-emerald-600" /></button>}
                                                     </div>
                                                     <div className="flex gap-3 overflow-x-auto p-4 bg-slate-50 dark:bg-black rounded-2xl shadow-inner border border-slate-300 dark:border-white/10 min-h-[90px]">
-                                                        {savedCitations.length === 0 && <span className="text-xs text-black dark:text-white font-medium italic m-auto">Nenhuma citação salva.</span>}
-                                                        {savedCitations.map(cit => <div key={cit.id} onClick={() => setActiveCitationText(cit.text)} className="w-12 h-12 bg-yellow-200 rounded-xl flex items-center justify-center cursor-pointer shadow-md border border-yellow-400 hover:-translate-y-1 transition-transform"><DocumentTextIcon className="w-5 h-5 text-yellow-800" /></div>)}
+                                                        {persistedCitations.length === 0 && <span className="text-xs text-black dark:text-white font-medium italic m-auto">Nenhuma citação salva.</span>}
+                                                        {persistedCitations.map(cit => <div key={cit.id} onClick={() => setActiveCitationText(cit.abnt)} title={cit.abnt} className="w-12 h-12 bg-yellow-200 rounded-xl flex items-center justify-center cursor-pointer shadow-md border border-yellow-400 hover:-translate-y-1 transition-transform"><DocumentTextIcon className="w-5 h-5 text-yellow-800" /></div>)}
                                                     </div>
                                                     <div className="p-5 bg-slate-100 dark:bg-white/5 rounded-2xl border border-slate-300 dark:border-white/20 min-h-[120px] relative">
                                                         <p className="text-sm font-medium text-black dark:text-white whitespace-pre-wrap">{activeCitationText || citationContent || "Visualize citações aqui..."}</p>
@@ -1654,7 +1682,7 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
                                         {abntMeta.advisor && <p><span className="font-black text-black dark:text-white">Orientador:</span> {abntMeta.advisor}</p>}
                                         <p><span className="font-black text-black dark:text-white">Local/Ano:</span> {abntMeta.city}, {abntMeta.year}</p>
                                         <p><span className="font-black text-black dark:text-white">Fonte:</span> {abntMeta.fontChoice} 12pt</p>
-                                        <p><span className="font-black text-black dark:text-white">Citações:</span> {savedCitations.length} referência(s) salva(s)</p>
+                                        <p><span className="font-black text-black dark:text-white">Citações:</span> {citationNotes.length} referência(s) salva(s)</p>
                                     </div>
 
                                     <div className="flex flex-col gap-3" data-tour="save-research">
