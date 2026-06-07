@@ -42,7 +42,8 @@ def synthesize_wav(text: str, voice_id: str | None = None) -> bytes:
     voice = _load_voice(voice_id)
     buf = io.BytesIO()
     with wave.open(buf, "wb") as wav:
-        voice.synthesize(text, wav)
+        # Piper >= 1.3 escreve o WAV via synthesize_wav(text, wave_write).
+        voice.synthesize_wav(text, wav)
     return buf.getvalue()
 
 
