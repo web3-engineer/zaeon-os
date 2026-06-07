@@ -426,6 +426,7 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
     const [pendingUpload, setPendingUpload] = useState<File | null>(null);
     const [activeFileContext, setActiveFileContext] = useState<string | null>(null);
     const [processingFileId, setProcessingFileId] = useState<string | null>(null);
+    const [processingStage, setProcessingStage] = useState<"pdf" | "ai" | null>(null);
     const [activePdfTab, setActivePdfTab] = useState<"chat" | "citations">("chat");
 
     const { citations: persistedCitations, save: savePersistedCitation } = useSavedCitations();
@@ -795,6 +796,7 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
     const handlePlaySavedDoc = async (file: { id: string; title: string; pdfUrl: string }) => {
         if (isPdfTyping || processingFileId) return;
         setProcessingFileId(file.id);
+        setProcessingStage("pdf");
         setIsPdfTyping(true);
         setActiveSection('pdf');
         try {
@@ -808,6 +810,7 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
                 reader.onerror = reject;
             });
             setActiveFileContext(base64Data);
+            setProcessingStage("ai");
             setDocTitle(file.title);
             const response = await fetch('/api/ai/chat', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -820,7 +823,7 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
             });
             const data = await response.json();
             if (data.text) setPdfChatHistory([{ role: 'ai', text: data.text }]);
-        } catch (e) { showToast("Erro ao abrir o arquivo salvo."); } finally { setIsPdfTyping(false); setProcessingFileId(null); }
+        } catch (e) { showToast("Erro ao abrir o arquivo salvo."); } finally { setIsPdfTyping(false); setProcessingFileId(null); setProcessingStage(null); }
     };
 
     // 🔥 FETCH CORRECTO PARA CHAT AURA
@@ -1227,7 +1230,7 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
 
                 {/* CABEÇALHO — oculto na Sala de Estudos: a barra do Omega assume o topo,
                     alinhada à borda superior da sidebar */}
-                {activeTab !== "sala-de-estudos" && (
+                {activeTab !== "sala-de-estudos" && activeTab !== "pesquisa" && (
                     <div className="flex items-end justify-between shrink-0">
                         <div>
                             <h1 className="text-2xl md:text-3xl font-black uppercase tracking-wider bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">
@@ -1246,7 +1249,9 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
                             <input type="file" ref={fileInputRef} className="hidden" accept="application/pdf" multiple onChange={(e) => handleFiles(e.target.files)} />
                             <ResearchShell
                                 processingFileId={processingFileId}
+                                processingStage={processingStage}
                                 onPlayFile={handlePlaySavedDoc}
+                                onAdd={() => fileInputRef.current?.click()}
                                 sessions={sessions}
                                 onOpenSession={() => { setActiveTab("sala-de-estudos"); }}
                                 researchWindowContent={
@@ -1262,44 +1267,6 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
 
                                         {/* ÁREA DE TEXTO DA FOLHA */}
                                         <div className="flex-1 p-12 md:p-16 overflow-y-auto custom-scrollbar flex flex-col gap-4">
-                                            {/* ── ABNT HINT BAR ── */}
-                                            {(isEmptyOrTemplate(docContent) || hintOpen) && (
-                                                <div className="rounded-2xl border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50/80 dark:bg-indigo-950/40 overflow-hidden text-left shrink-0">
-                                                    <button
-                                                        onClick={() => setHintOpen(h => !h)}
-                                                        className="w-full flex items-center justify-between px-5 py-3 text-[11px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400"
-                                                    >
-                                                        <span className="flex items-center gap-2">
-                                                            <SparklesIcon className="w-3.5 h-3.5" />
-                                                            Como escrever na Zaeon para exportação ABNT automática
-                                                        </span>
-                                                        <span>{hintOpen ? '▲' : '▼'}</span>
-                                                    </button>
-                                                    {hintOpen && (
-                                                        <div className="px-5 pb-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-[11px] text-indigo-700 dark:text-indigo-300 leading-relaxed">
-                                                            <div className="flex flex-col gap-1">
-                                                                <span className="font-black">① Use # para seções principais</span>
-                                                                <code className="bg-indigo-100 dark:bg-indigo-900/50 rounded-lg px-2 py-1 font-mono text-[10px]"># INTRODUÇÃO</code>
-                                                                <code className="bg-indigo-100 dark:bg-indigo-900/50 rounded-lg px-2 py-1 font-mono text-[10px]"># METODOLOGIA</code>
-                                                                <code className="bg-indigo-100 dark:bg-indigo-900/50 rounded-lg px-2 py-1 font-mono text-[10px]"># CONCLUSÃO</code>
-                                                                <span className="text-indigo-500 dark:text-indigo-400 text-[10px]">Títulos ficam em MAIÚSCULAS automaticamente.</span>
-                                                            </div>
-                                                            <div className="flex flex-col gap-1">
-                                                                <span className="font-black">② Use ## para subseções</span>
-                                                                <code className="bg-indigo-100 dark:bg-indigo-900/50 rounded-lg px-2 py-1 font-mono text-[10px]">## Revisão da Literatura</code>
-                                                                <code className="bg-indigo-100 dark:bg-indigo-900/50 rounded-lg px-2 py-1 font-mono text-[10px]">## Análise dos Dados</code>
-                                                                <span className="text-indigo-500 dark:text-indigo-400 text-[10px]">Subseções recebem numeração automática (ex: 2.1).</span>
-                                                            </div>
-                                                            <div className="flex flex-col gap-1">
-                                                                <span className="font-black">③ Escreva as referências em # REFERÊNCIAS</span>
-                                                                <span className="text-indigo-500 dark:text-indigo-400 text-[10px]">O sistema detecta e formata cada entrada conforme ABNT NBR 6023:2018. Uma referência por linha.</span>
-                                                                <span className="mt-1 font-black text-green-600 dark:text-green-400">✓ Estruturado → exportação ABNT perfeita</span>
-                                                                <span className="font-black text-amber-600 dark:text-amber-400">⚠ Sem marcadores → IA tenta inferir (pode errar)</span>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
                                             <AcademicThermometer
                                                 docContent={docContent}
                                                 title={docTitle}

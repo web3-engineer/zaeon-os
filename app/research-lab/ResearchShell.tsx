@@ -22,6 +22,10 @@ interface ResearchShellProps {
   /** Called when the user clicks Play on a document icon. */
   onPlayFile: (file: LibraryFile) => void;
   processingFileId: string | null;
+  /** Two-stage progress for the play flow: "pdf" → "ai" → null (done). */
+  processingStage?: "pdf" | "ai" | null;
+  /** Triggers the hidden file input in page.tsx for PDF uploads via ＋ dock button. */
+  onAdd?: () => void;
   /** Research sessions list for the 📁 folder panel. */
   sessions: { id: string; title: string; updatedAt?: string }[];
   onOpenSession: (id: string) => void;
@@ -32,6 +36,8 @@ export default function ResearchShell({
   documentWindowContent,
   onPlayFile,
   processingFileId,
+  processingStage,
+  onAdd,
   sessions,
   onOpenSession,
 }: ResearchShellProps) {
@@ -174,7 +180,9 @@ export default function ResearchShell({
       {/* ──────── RIGHT PANEL (30%) ──────── */}
       <DocumentDesktop
         processingFileId={processingFileId}
+        processingStage={processingStage}
         onPlayFile={handlePlayFile}
+        onAdd={onAdd}
         openPopover={openPopover}
         onTogglePopover={setOpenPopover}
         citationCount={citations.length}

@@ -1,5 +1,4 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
 import { useLibraryFiles, type LibraryFile } from "@/lib/useLibraryFiles";
 import DocIcon from "./DocIcon";
 import DraggableDock from "./DraggableDock";
@@ -7,7 +6,11 @@ import type { DockItem } from "./DraggableDock";
 
 interface DocumentDesktopProps {
   processingFileId: string | null;
+  /** Two-stage progress: "pdf" → "ai" → null (done). */
+  processingStage?: "pdf" | "ai" | null;
   onPlayFile: (file: LibraryFile) => void;
+  /** Wire to the hidden file input in page.tsx */
+  onAdd?: () => void;
   openPopover: "citations" | "quiz" | null;
   onTogglePopover: (id: "citations" | "quiz" | null) => void;
   citationCount: number;
@@ -17,30 +20,11 @@ interface DocumentDesktopProps {
   onOpenSession: (id: string) => void;
 }
 
-/** Fake-progress ticker: 0→95% in ~8s, jumps to 100% on completion. */
-function useProgress(active: boolean): number {
-  const [pct, setPct] = useState(0);
-  const timer = useRef<ReturnType<typeof setTimeout>>();
-
-  useEffect(() => {
-    if (!active) { setPct(0); return; }
-    setPct(0);
-    let p = 0;
-    const tick = () => {
-      p = Math.min(95, p + (95 - p) * 0.04 + 0.3);
-      setPct(Math.round(p));
-      if (p < 95) timer.current = setTimeout(tick, 200);
-    };
-    timer.current = setTimeout(tick, 200);
-    return () => clearTimeout(timer.current);
-  }, [active]);
-
-  return active ? pct : 100;
-}
-
 export default function DocumentDesktop({
   processingFileId,
+  processingStage,
   onPlayFile,
+  onAdd,
   openPopover,
   onTogglePopover,
   citationCount,
@@ -50,13 +34,21 @@ export default function DocumentDesktop({
   onOpenSession,
 }: DocumentDesktopProps) {
   const { files } = useLibraryFiles();
-  const progress = useProgress(!!processingFileId);
   const activeFile = processingFileId ? files.find((f) => f.id === processingFileId) : null;
 
+  // Honest two-stage progress: 25% while downloading PDF, 70% while AI analyses, 100% when done.
+  const progress = processingStage === "pdf" ? 25 : processingStage === "ai" ? 70 : 100;
+  const stageLabel =
+    processingStage === "pdf"
+      ? "Baixando PDF…"
+      : processingStage === "ai"
+      ? "Analisando com IA…"
+      : "Concluído";
+
+  // Fixed dock order: upload → folder → citations → quiz
   const dockItems: DockItem[] = [
+    { id: "add", emoji: "＋", label: "Enviar PDF" },
     { id: "folder", emoji: "📁", label: "Minhas pesquisas", active: showFolder },
-    { id: "add", emoji: "＋", label: "Adicionar documento" },
-    { id: "rename", emoji: "✏️", label: "Renomear" },
     {
       id: "citations",
       emoji: "🔖",
@@ -68,12 +60,12 @@ export default function DocumentDesktop({
   ];
 
   const handleDockAction = (id: string) => {
+    if (id === "add") return onAdd?.();
     if (id === "folder") return onToggleFolder();
     if (id === "citations")
       return onTogglePopover(openPopover === "citations" ? null : "citations");
     if (id === "quiz")
       return onTogglePopover(openPopover === "quiz" ? null : "quiz");
-    // "add" and "rename" — sub-project #2 stubs
   };
 
   return (
@@ -134,7 +126,7 @@ export default function DocumentDesktop({
         )}
       </div>
 
-      {/* Loading progress bar */}
+      {/* Loading progress — two-stage, honest percentage */}
       {processingFileId && (
         <div
           className="mt-2.5 rounded-[12px] p-2.5 shrink-0"
@@ -160,28 +152,23 @@ export default function DocumentDesktop({
             style={{ background: "rgba(255,255,255,0.08)" }}
           >
             <div
-              className="h-full rounded-full transition-all duration-300"
+              className="h-full rounded-full"
               style={{
                 width: `${progress}%`,
+                transition: "width 0.9s ease-out",
                 background: "linear-gradient(90deg,#8b5cf6,#22d3ee)",
                 boxShadow: "0 0 8px rgba(34,211,238,.7)",
               }}
             />
           </div>
           <p className="text-[8px] mt-1" style={{ color: "#767692" }}>
-            você pode sair e continuar
+            {stageLabel}
           </p>
         </div>
       )}
 
-      {/* Dock */}
+      {/* Dock — fixed order, no drag */}
       <div className="mt-auto pt-2.5 shrink-0">
-        <p
-          className="text-[7.5px] text-center mb-1.5 uppercase tracking-[0.12em]"
-          style={{ color: "#6a6a88" }}
-        >
-          arraste para reordenar
-        </p>
         <DraggableDock items={dockItems} onAction={handleDockAction} />
       </div>
     </div>
