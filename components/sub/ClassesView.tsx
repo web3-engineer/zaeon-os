@@ -868,7 +868,7 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
         setIsZaeonProcessing(true);
         try {
             const libraryContext = storedPdfs.length > 0 ? `Available Files: ${storedPdfs.map(f => f.title).join(", ")}` : "No files in library.";
-            const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: msg, agent: "ethernaut", systemContext: `User is in Zaeon Lab. ${libraryContext}` }) });
+            const response = await fetch('/api/ai/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: msg, agent: "ethernaut", systemContext: `User is in Zaeon Lab. ${libraryContext}` }) });
             const data = await response.json();
             setLiquidChatHistory(prev => [...prev, { role: 'agent', text: data.text || "Data retrieved." }]);
         } catch (e) { setLiquidChatHistory(prev => [...prev, { role: 'agent', text: "Connection offline." }]); } finally { setIsZaeonProcessing(false); }

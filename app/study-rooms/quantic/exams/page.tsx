@@ -81,7 +81,7 @@ export default function ExamsModule() {
     const topicToUse = selectedTopic || "General Logic";
 
     try {
-        const response = await fetch('/api/chat', {
+        const response = await fetch('/api/ai/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
