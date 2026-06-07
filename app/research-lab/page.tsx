@@ -40,6 +40,7 @@ import SavedCitationsSection from "./SavedCitationsSection";
 import LibrarySavedFiles from "./LibrarySavedFiles";
 import { useSavedCitations } from "@/lib/useSavedCitations";
 import { extractCitationBlock } from "@/lib/scholar/chatCitation";
+import ResearchShell from "./ResearchShell";
 
 // --- COMPONENTS ---
 import ResearchCardPDF from "@/components/ui/ResearchCardPDF";
@@ -431,6 +432,27 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
     const [savedChatCits, setSavedChatCits] = useState<string[]>([]);
     // Forma legada {id, text} usada pela publicação/attachments (preserva o contrato dos consumidores).
     const citationNotes = persistedCitations.map(c => ({ id: c.id, text: c.abnt }));
+
+    // Saved research sessions — for the 📁 folder panel in ResearchShell
+    const [sessions, setSessions] = useState<{ id: string; title: string; updatedAt?: string }[]>([]);
+    useEffect(() => {
+        fetch("/api/ai/scholar/sessions")
+            .then((r) => r.json())
+            .then((data) => {
+                if (Array.isArray(data?.sessions)) {
+                    setSessions(
+                        data.sessions.map((s: { id: string; title?: string; createdAt?: string }) => ({
+                            id: s.id,
+                            title: s.title ?? "Pesquisa sem título",
+                            updatedAt: s.createdAt
+                                ? new Date(s.createdAt).toLocaleDateString("pt-BR")
+                                : undefined,
+                        })),
+                    );
+                }
+            })
+            .catch(() => {});
+    }, []);
     const [citationContent, setCitationContent] = useState<string | null>(null);
     const [activeCitationText, setActiveCitationText] = useState<string | null>(null);
 
@@ -755,7 +777,7 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
         try {
             const base64Data = await fileToBase64(doc.file);
             setActiveFileContext(base64Data);
-            const response = await fetch('/api/chat', {
+            const response = await fetch('/api/ai/chat', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     prompt: `Analise o documento "${doc.title}" e gere um resumo.`,
@@ -767,6 +789,38 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
             const data = await response.json();
             if (data.text) setPdfChatHistory([{ role: 'ai', text: data.text }]);
         } catch (e) { showToast("Erro ao processar o PDF."); } finally { setIsPdfTyping(false); setProcessingFileId(null); }
+    };
+
+    // Play de um arquivo SALVO (remoto): busca o PDF pelo proxy → base64 → workspace + resumo da Aura.
+    const handlePlaySavedDoc = async (file: { id: string; title: string; pdfUrl: string }) => {
+        if (isPdfTyping || processingFileId) return;
+        setProcessingFileId(file.id);
+        setIsPdfTyping(true);
+        setActiveSection('pdf');
+        try {
+            const res = await fetch(`/api/ai/scholar/pdf?url=${encodeURIComponent(file.pdfUrl)}`);
+            if (!res.ok) { showToast("Não consegui abrir esse arquivo agora."); return; }
+            const blob = await res.blob();
+            const base64Data: string = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(blob);
+                reader.onload = () => resolve((reader.result as string).split(',')[1]);
+                reader.onerror = reject;
+            });
+            setActiveFileContext(base64Data);
+            setDocTitle(file.title);
+            const response = await fetch('/api/ai/chat', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: `Analise o documento "${file.title}" e gere um resumo.`,
+                    agent: "aura",
+                    fileData: base64Data,
+                    systemContext: buildSystemContext()
+                })
+            });
+            const data = await response.json();
+            if (data.text) setPdfChatHistory([{ role: 'ai', text: data.text }]);
+        } catch (e) { showToast("Erro ao abrir o arquivo salvo."); } finally { setIsPdfTyping(false); setProcessingFileId(null); }
     };
 
     // 🔥 FETCH CORRECTO PARA CHAT AURA
@@ -783,7 +837,7 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
                 parts: [{ text: m.text }]
             }));
 
-            const response = await fetch('/api/chat', {
+            const response = await fetch('/api/ai/chat', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     prompt: currentPrompt,
@@ -824,7 +878,7 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
         if (!activeFileContext) return;
         setIsCitationTyping(true);
         try {
-            const response = await fetch('/api/chat', {
+            const response = await fetch('/api/ai/chat', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ prompt: "Gere 3 citações ABNT", agent: 'scholar', fileData: activeFileContext })
             });
@@ -862,7 +916,7 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
                 parts: [{ text: m.text }]
             }));
 
-            const response = await fetch('/api/chat', {
+            const response = await fetch('/api/ai/chat', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     prompt: inputVal,
@@ -1188,290 +1242,150 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
 
                 <div className="flex-1 flex gap-8 overflow-hidden h-full">
                     {activeTab === "pesquisa" && (
-                        <>
-                            {/* COLUNA 1: ESTUDO (PDF + QUIZ) */}
-                            <div className={`w-1/2 h-full flex flex-col gap-8 overflow-y-auto custom-scrollbar pb-32 pr-2 ${isChatLeft ? 'order-first' : 'order-last'}`}>
-                                <input type="file" ref={fileInputRef} className="hidden" accept="application/pdf" multiple onChange={(e) => handleFiles(e.target.files)} />
-
-                                {/* CHAT COM PDF & CITAÇÕES */}
-                                <section data-tour="pdf-upload" onClick={() => setActiveSection('pdf')} className={`p-6 rounded-[32px] shrink-0 ${getCardStyle('pdf')}`}>
-                                    <div className="flex items-center gap-4 mb-6">
-                                        <span className="bg-black dark:bg-white text-white dark:text-black text-[11px] font-black px-5 py-2 rounded-full uppercase tracking-widest flex items-center gap-2 shadow-md">
-                                            <BookOpenIcon className="w-4 h-4" /> Biblioteca
-                                        </span>
-                                        <div className="ml-auto">
-                                            <ActionButton icon={PlusIcon} label="Adicionar PDF" onClick={() => fileInputRef.current?.click()} colorClass="text-black dark:text-white hover:text-cyan-500" />
+                        <div className="flex-1 overflow-hidden">
+                            <input type="file" ref={fileInputRef} className="hidden" accept="application/pdf" multiple onChange={(e) => handleFiles(e.target.files)} />
+                            <ResearchShell
+                                processingFileId={processingFileId}
+                                onPlayFile={handlePlaySavedDoc}
+                                sessions={sessions}
+                                onOpenSession={() => { setActiveTab("sala-de-estudos"); }}
+                                researchWindowContent={
+                                    <div
+                                        onClick={() => setActiveSection('doc')}
+                                        className={`h-full flex flex-col bg-white dark:bg-[#0f172a] overflow-hidden transition-all border-4 ${activeSection === 'doc' ? 'border-cyan-500 ring-8 ring-cyan-500/10' : 'border-transparent'}`}
+                                    >
+                                        {/* CABEÇALHO DA FOLHA */}
+                                        <div className="h-20 flex items-center px-10 shrink-0 border-b border-slate-100 dark:border-white/5 bg-transparent">
+                                            <DocumentTextIcon className="w-6 h-6 text-black dark:text-white mr-4" />
+                                            <input value={docTitle} onChange={(e) => setDocTitle(e.target.value)} className="bg-transparent text-black dark:text-white text-2xl font-black focus:outline-none w-full placeholder:text-slate-300" />
                                         </div>
-                                    </div>
 
-                                    <div className="bg-slate-100 dark:bg-white/5 rounded-2xl p-4 mb-6 border border-slate-300 dark:border-white/10">
-                                        <div className="flex gap-4 overflow-x-auto pb-2 custom-scrollbar items-center min-h-[150px]">
-                                            {studyFiles.length === 0 && <span className="text-xs text-black dark:text-white font-medium italic">Arraste PDFs ou adicione-os no botão +.</span>}
-                                            {studyFiles.map(doc => (
-                                                <div key={doc.id} className="w-[180px] shrink-0 transition-transform hover:-translate-y-1">
-                                                    <ResearchCardPDF title={doc.title} fileUrl={doc.url} isProcessing={processingFileId === doc.id} onDelete={() => setStudyFiles(prev => prev.filter(f => f.id !== doc.id))} onPlay={() => handlePlayDocument(doc)} />
+                                        {/* ÁREA DE TEXTO DA FOLHA */}
+                                        <div className="flex-1 p-12 md:p-16 overflow-y-auto custom-scrollbar flex flex-col gap-4">
+                                            {/* ── ABNT HINT BAR ── */}
+                                            {(isEmptyOrTemplate(docContent) || hintOpen) && (
+                                                <div className="rounded-2xl border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50/80 dark:bg-indigo-950/40 overflow-hidden text-left shrink-0">
+                                                    <button
+                                                        onClick={() => setHintOpen(h => !h)}
+                                                        className="w-full flex items-center justify-between px-5 py-3 text-[11px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400"
+                                                    >
+                                                        <span className="flex items-center gap-2">
+                                                            <SparklesIcon className="w-3.5 h-3.5" />
+                                                            Como escrever na Zaeon para exportação ABNT automática
+                                                        </span>
+                                                        <span>{hintOpen ? '▲' : '▼'}</span>
+                                                    </button>
+                                                    {hintOpen && (
+                                                        <div className="px-5 pb-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-[11px] text-indigo-700 dark:text-indigo-300 leading-relaxed">
+                                                            <div className="flex flex-col gap-1">
+                                                                <span className="font-black">① Use # para seções principais</span>
+                                                                <code className="bg-indigo-100 dark:bg-indigo-900/50 rounded-lg px-2 py-1 font-mono text-[10px]"># INTRODUÇÃO</code>
+                                                                <code className="bg-indigo-100 dark:bg-indigo-900/50 rounded-lg px-2 py-1 font-mono text-[10px]"># METODOLOGIA</code>
+                                                                <code className="bg-indigo-100 dark:bg-indigo-900/50 rounded-lg px-2 py-1 font-mono text-[10px]"># CONCLUSÃO</code>
+                                                                <span className="text-indigo-500 dark:text-indigo-400 text-[10px]">Títulos ficam em MAIÚSCULAS automaticamente.</span>
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <span className="font-black">② Use ## para subseções</span>
+                                                                <code className="bg-indigo-100 dark:bg-indigo-900/50 rounded-lg px-2 py-1 font-mono text-[10px]">## Revisão da Literatura</code>
+                                                                <code className="bg-indigo-100 dark:bg-indigo-900/50 rounded-lg px-2 py-1 font-mono text-[10px]">## Análise dos Dados</code>
+                                                                <span className="text-indigo-500 dark:text-indigo-400 text-[10px]">Subseções recebem numeração automática (ex: 2.1).</span>
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <span className="font-black">③ Escreva as referências em # REFERÊNCIAS</span>
+                                                                <span className="text-indigo-500 dark:text-indigo-400 text-[10px]">O sistema detecta e formata cada entrada conforme ABNT NBR 6023:2018. Uma referência por linha.</span>
+                                                                <span className="mt-1 font-black text-green-600 dark:text-green-400">✓ Estruturado → exportação ABNT perfeita</span>
+                                                                <span className="font-black text-amber-600 dark:text-amber-400">⚠ Sem marcadores → IA tenta inferir (pode errar)</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            ))}
+                                            )}
+                                            <AcademicThermometer
+                                                docContent={docContent}
+                                                title={docTitle}
+                                                workType={workType ?? "TCC"}
+                                                academicLevel={mapAcademicLevel((session?.user as any)?.academicLevel)}
+                                                reviewMode={reviewMode}
+                                                onToggleReview={() => setReviewMode((v) => !v)}
+                                            />
+                                            {!reviewMode && (
+                                                <textarea
+                                                    value={docContent} onChange={(e) => setDocContent(e.target.value)}
+                                                    className="w-full flex-1 min-h-[400px] resize-none outline-none bg-transparent text-[17px] leading-loose text-black dark:text-white placeholder:text-slate-400 font-serif"
+                                                    placeholder="Sua pesquisa começa aqui..."
+                                                />
+                                            )}
                                         </div>
-                                    </div>
 
-                                    {/* Salvos das suas pesquisas (arquivos salvos a partir das referências) */}
-                                    <LibrarySavedFiles />
-
-                                    {activeFileContext && (
-                                        <div className="border-t border-slate-300 dark:border-white/20 pt-6">
-                                            <div className="flex p-1.5 bg-slate-200 dark:bg-white/10 rounded-xl w-fit mb-6 border border-slate-300 dark:border-white/20 shadow-inner">
-                                                <button onClick={() => setActivePdfTab('chat')} className={`px-6 py-2.5 rounded-lg text-[11px] font-black uppercase transition-all ${activePdfTab === 'chat' ? 'bg-white text-cyan-600 shadow-md' : 'text-black dark:text-white hover:bg-white/50'}`}>Chat</button>
-                                                <button data-tour="citations" onClick={() => setActivePdfTab('citations')} className={`px-6 py-2.5 rounded-lg text-[11px] font-black uppercase transition-all ${activePdfTab === 'citations' ? 'bg-white text-indigo-600 shadow-md' : 'text-black dark:text-white hover:bg-white/50'}`}>Citações</button>
+                                        {/* RODAPÉ DA FOLHA (AÇÕES) */}
+                                        <div className="p-6 flex justify-between items-center px-10 bg-slate-50/50 dark:bg-black/20 border-t border-slate-100 dark:border-white/5">
+                                            <div className="relative">
+                                                <button onClick={(e) => { e.stopPropagation(); setIsWorkTypeMenuOpen(!isWorkTypeMenuOpen); }} className="px-6 py-2.5 rounded-full text-[11px] font-black transition-all flex items-center gap-2 border-2 border-blue-500 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30">
+                                                    <SparklesIcon className="w-4 h-4" /> {workType || 'Definir Trabalho'}
+                                                </button>
+                                                <AnimatePresence>{isWorkTypeMenuOpen && (
+                                                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-full mb-4 left-0 bg-white dark:bg-black border-2 border-slate-200 dark:border-white/20 rounded-2xl shadow-2xl w-44 overflow-hidden z-[200]">
+                                                        {["Artigo", "Relatório", "TCC"].map(type => <div key={type} onClick={(e) => { e.stopPropagation(); setWorkType(type as any); setIsWorkTypeMenuOpen(false); }} className="px-5 py-4 text-[11px] font-black uppercase text-black dark:text-white hover:bg-slate-50 dark:hover:bg-white/10 cursor-pointer">{type}</div>)}
+                                                    </motion.div>
+                                                )}</AnimatePresence>
                                             </div>
 
-                                            {activePdfTab === 'chat' && (
-                                                <div className="flex flex-col gap-2">
-                                                    <div className="flex items-center justify-end">
-                                                        <button onClick={() => setVoiceOn(v => !v)} title="Aura fala cada nova resposta" className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wide px-3 py-1.5 rounded-full border transition-colors ${voiceOn ? 'bg-cyan-600 text-white border-cyan-600' : 'text-slate-500 dark:text-white/50 border-slate-300/60 dark:border-white/15 hover:border-cyan-400/50'}`}>
-                                                            {voiceOn ? '🔊 Voz automática: ON' : '🔈 Voz automática: OFF'}
-                                                        </button>
-                                                    </div>
-                                                    <div ref={pdfChatRef} className="h-[250px] overflow-y-auto bg-slate-50 dark:bg-black/50 p-5 rounded-2xl border border-slate-300 dark:border-white/10 shadow-inner custom-scrollbar">
-                                                        {pdfChatHistory.length === 0 && <span className="text-black dark:text-white text-xs font-medium italic">Nenhum resumo gerado.</span>}
-                                                        {pdfChatHistory.map((msg, i) => {
-                                                            if (msg.role !== 'ai') return <ChatBubble key={i} role={msg.role} text={msg.text} agentName="Aura" agentImg="/agents/aura.png" userImg={session?.user?.image} />;
-                                                            const parsed = extractCitationBlock(msg.text);
-                                                            const already = savedChatCits.includes(parsed.citation || "");
-                                                            return (
-                                                                <div key={i}>
-                                                                    <ChatBubble role={msg.role} text={parsed.clean || msg.text} agentName="Aura" agentImg="/agents/aura.png" userImg={session?.user?.image} />
-                                                                    <button onClick={() => playVoice(parsed.clean || msg.text, i)} disabled={voiceLoadingId === i} className="ml-12 mb-1 inline-flex items-center gap-1 text-[10px] font-bold text-cyan-700 dark:text-cyan-300 hover:underline disabled:opacity-50">
-                                                                        {voiceLoadingId === i ? '🔊 …' : '🔊 ouvir'}
-                                                                    </button>
-                                                                    {parsed.citation && (
-                                                                        <div className="ml-12 mt-1 mb-2 p-3 rounded-2xl bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-300/60 dark:border-cyan-400/20">
-                                                                            <p className="text-[8px] font-black uppercase tracking-widest text-cyan-700 dark:text-cyan-300 mb-1">✦ Citação sugerida</p>
-                                                                            <p className="text-[12px] italic text-slate-700 dark:text-white/80 leading-snug">{parsed.citation}</p>
-                                                                            <button onClick={() => saveChatCitation(parsed.citation!)} disabled={already} className={`mt-2 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wide px-3 py-1.5 rounded-full text-white transition-colors ${already ? 'bg-emerald-600' : 'bg-cyan-600 hover:bg-cyan-500'}`}>
-                                                                                {already ? 'Salva ✓' : 'Salvar na aba Citações'}
-                                                                            </button>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        })}
-                                                        {isPdfTyping && <div className="text-[10px] font-bold animate-pulse text-cyan-600 ml-12">Aura está a analisar...</div>}
-                                                    </div>
-                                                    <div data-tour="ai-chat">
-                                                    <ChatInput
-                                                        value={pdfPrompt}
-                                                        onChange={setPdfPrompt}
-                                                        onSend={handlePdfQuestion}
-                                                        isTyping={isPdfTyping}
-                                                        placeholder="Pergunte ao PDF..."
-                                                    />
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {activePdfTab === 'citations' && (
-                                                <div className="flex flex-col gap-4">
-                                                    <div className="flex items-center gap-4 mb-2">
-                                                        <span className="text-black dark:text-white text-[12px] font-black uppercase">Base de Citações</span>
-                                                        <button onClick={handleGenerateCitations} className="px-5 py-2.5 bg-black dark:bg-white text-white dark:text-black rounded-full text-[10px] font-black uppercase shadow-md flex items-center gap-2"><SparklesIcon className="w-3.5 h-3.5" /> Extrair do PDF</button>
-                                                        {citationContent && <button onClick={handleSaveCitation} className="p-3 bg-emerald-100 rounded-full shadow-md"><BookmarkIcon className="w-4 h-4 text-emerald-600" /></button>}
-                                                    </div>
-                                                    <div className="flex gap-3 overflow-x-auto p-4 bg-slate-50 dark:bg-black rounded-2xl shadow-inner border border-slate-300 dark:border-white/10 min-h-[90px]">
-                                                        {persistedCitations.length === 0 && <span className="text-xs text-black dark:text-white font-medium italic m-auto">Nenhuma citação salva.</span>}
-                                                        {persistedCitations.map(cit => <div key={cit.id} onClick={() => setActiveCitationText(cit.abnt)} title={cit.abnt} className="w-12 h-12 bg-yellow-200 rounded-xl flex items-center justify-center cursor-pointer shadow-md border border-yellow-400 hover:-translate-y-1 transition-transform"><DocumentTextIcon className="w-5 h-5 text-yellow-800" /></div>)}
-                                                    </div>
-                                                    <div className="p-5 bg-slate-100 dark:bg-white/5 rounded-2xl border border-slate-300 dark:border-white/20 min-h-[120px] relative">
-                                                        <p className="text-sm font-medium text-black dark:text-white whitespace-pre-wrap">{activeCitationText || citationContent || "Visualize citações aqui..."}</p>
-                                                        {(activeCitationText || citationContent) && <button onClick={() => copyToClipboard(activeCitationText || citationContent || "")} className="absolute top-3 right-3 p-2 bg-white dark:bg-black border border-slate-300 rounded-lg shadow-md"><ClipboardDocumentIcon className="w-4 h-4 text-black dark:text-white" /></button>}
-                                                    </div>
-                                                </div>
-                                            )}
+                                            <div className="flex gap-3">
+                                                {/* BOTÃO SALVAR QUE ABRE O MODAL */}
+                                                <button onClick={(e) => { e.stopPropagation(); setIsSaveModalOpen(true); }} className="px-6 py-2.5 rounded-full text-[11px] font-black flex items-center gap-2 border-2 border-black dark:border-white text-black dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 uppercase tracking-widest transition-colors w-[120px] justify-center">
+                                                    <ArrowDownTrayIcon className="w-4 h-4" /> Salvar
+                                                </button>
+                                                <button onClick={(e) => { e.stopPropagation(); setIsPublishOpen(true); }} className="px-8 py-2.5 rounded-full text-[11px] font-black flex items-center gap-2 bg-black dark:bg-white text-white dark:text-black hover:scale-105 transition-all uppercase tracking-widest shadow-xl">Publicar</button>
+                                            </div>
                                         </div>
-                                    )}
-                                </section>
-
-                                {/* CITAÇÕES SALVAS */}
-                                <SavedCitationsSection />
-
-                                {/* AGENTE QUIZ */}
-                                <section data-tour="specialists" onClick={() => setActiveSection('examiner')} className={`flex flex-col h-[520px] shrink-0 rounded-[32px] overflow-hidden ${getCardStyle('examiner')}`}>
-                                    <div className="p-5 border-b border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-white/5 flex items-center justify-between">
-                                        <span className="text-[10px] font-black uppercase text-orange-700 dark:text-orange-400 tracking-widest border border-orange-300 px-4 py-1.5 rounded-full bg-orange-100 dark:bg-orange-900/30">Quiz</span>
-                                        <div className="w-10 h-10 rounded-full border border-slate-300 shadow-sm overflow-hidden"><img src="/agents/examiner.png" className="w-full h-full object-cover" /></div>
                                     </div>
-                                    <div ref={examinerChatRef} className="flex-1 p-6 overflow-y-auto space-y-4 custom-scrollbar bg-white dark:bg-[#0f172a]/50">
-                                        {specialistChatHistory.examiner.length === 0 && <span className="text-sm text-black dark:text-white font-medium italic flex items-center justify-center h-full text-center px-4">Peça ao Quiz para fazer perguntas sobre o assunto da sua pesquisa e teste seus conhecimentos.</span>}
-                                        {specialistChatHistory.examiner.map((msg, i) => <ChatBubble key={i} role={msg.role} text={msg.text} agentName="Quiz" agentImg="/agents/examiner.png" userImg={session?.user?.image} />)}
-                                        {isExaminerTyping && <div className="text-[11px] text-orange-600 font-black uppercase tracking-widest animate-pulse ml-12">Quiz está a avaliar...</div>}
-                                    </div>
-                                    <div className="p-4 bg-slate-50 dark:bg-black border-t border-slate-300 dark:border-white/10">
-                                        <ChatInput
-                                            value={examinerPrompt}
-                                            onChange={setExaminerPrompt}
-                                            onSend={() => handleSpecialistQuery('examiner', examinerPrompt)}
-                                            isTyping={isExaminerTyping}
-                                            placeholder="Fale ou escreva a sua resposta..."
-                                        />
-                                    </div>
-                                </section>
-
-                                {/* IMAGENS DE REFERÊNCIA */}
-                                <section className="p-6 rounded-[32px] shrink-0 border-2 border-slate-300 dark:border-white/10 bg-white dark:bg-[#0f172a] shadow-xl flex flex-col gap-4">
-                                    <div className="flex items-center gap-4">
-                                        <span className="bg-black dark:bg-white text-white dark:text-black text-[11px] font-black px-5 py-2 rounded-full uppercase tracking-widest flex items-center gap-2 shadow-md">
-                                            <PhotoIcon className="w-4 h-4" /> Imagens de Referência
-                                        </span>
-                                        <div className="ml-auto">
-                                            <ActionButton 
-                                                icon={PlusIcon} 
-                                                label="Adicionar Imagem" 
-                                                onClick={() => {
-                                                    const imgInput = document.getElementById('image-upload-input');
-                                                    imgInput?.click();
-                                                }} 
+                                }
+                                documentWindowContent={
+                                    <div className="h-full flex flex-col bg-white dark:bg-[#0f172a]">
+                                        <div className="flex items-center justify-end px-4 pt-3 shrink-0">
+                                            <button onClick={() => setVoiceOn(v => !v)} title="Aura fala cada nova resposta" className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wide px-3 py-1.5 rounded-full border transition-colors ${voiceOn ? 'bg-cyan-600 text-white border-cyan-600' : 'text-slate-500 dark:text-white/50 border-slate-300/60 dark:border-white/15 hover:border-cyan-400/50'}`}>
+                                                {voiceOn ? '🔊 Voz automática: ON' : '🔈 Voz automática: OFF'}
+                                            </button>
+                                        </div>
+                                        <div ref={pdfChatRef} className="flex-1 px-5 py-3 overflow-y-auto space-y-2 custom-scrollbar bg-slate-50 dark:bg-black/50">
+                                            {pdfChatHistory.length === 0 && <span className="text-xs text-black dark:text-white font-medium italic">Nenhum resumo gerado.</span>}
+                                            {pdfChatHistory.map((msg, i) => {
+                                                if (msg.role !== 'ai') return <ChatBubble key={i} role={msg.role} text={msg.text} agentName="Aura" agentImg="/agents/aura.png" userImg={session?.user?.image} />;
+                                                const parsed = extractCitationBlock(msg.text);
+                                                const already = savedChatCits.includes(parsed.citation || "");
+                                                return (
+                                                    <div key={i}>
+                                                        <ChatBubble role={msg.role} text={parsed.clean || msg.text} agentName="Aura" agentImg="/agents/aura.png" userImg={session?.user?.image} />
+                                                        <button onClick={() => playVoice(parsed.clean || msg.text, i)} disabled={voiceLoadingId === i} className="ml-12 mb-1 inline-flex items-center gap-1 text-[10px] font-bold text-cyan-700 dark:text-cyan-300 hover:underline disabled:opacity-50">
+                                                            {voiceLoadingId === i ? '🔊 …' : '🔊 ouvir'}
+                                                        </button>
+                                                        {parsed.citation && (
+                                                            <div className="ml-12 mt-1 mb-2 p-3 rounded-2xl bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-300/60 dark:border-cyan-400/20">
+                                                                <p className="text-[8px] font-black uppercase tracking-widest text-cyan-700 dark:text-cyan-300 mb-1">✦ Citação sugerida</p>
+                                                                <p className="text-[12px] italic text-slate-700 dark:text-white/80 leading-snug">{parsed.citation}</p>
+                                                                <button onClick={() => saveChatCitation(parsed.citation!)} disabled={already} className={`mt-2 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wide px-3 py-1.5 rounded-full text-white transition-colors ${already ? 'bg-emerald-600' : 'bg-cyan-600 hover:bg-cyan-500'}`}>
+                                                                    {already ? 'Salva ✓' : 'Salvar na aba Citações'}
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                            {isPdfTyping && <div className="text-[10px] font-bold animate-pulse text-cyan-600 ml-12">Aura está a analisar...</div>}
+                                        </div>
+                                        <div className="p-4 border-t border-slate-100 dark:border-white/10 shrink-0">
+                                            <ChatInput
+                                                value={pdfPrompt}
+                                                onChange={setPdfPrompt}
+                                                onSend={handlePdfQuestion}
+                                                isTyping={isPdfTyping}
+                                                placeholder="Pergunte ao PDF..."
                                             />
                                         </div>
                                     </div>
-                                    
-                                    <input 
-                                        type="file" 
-                                        id="image-upload-input" 
-                                        className="hidden" 
-                                        accept="image/*" 
-                                        multiple 
-                                        onChange={async (e) => {
-                                            const files = e.target.files;
-                                            if (!files) return;
-                                            const newImages: string[] = [];
-                                            for (let i = 0; i < files.length; i++) {
-                                                try {
-                                                    const base64 = await imageToBase64(files[i]);
-                                                    newImages.push(base64);
-                                                } catch (err) {
-                                                    console.error("Erro ao converter imagem:", err);
-                                                }
-                                            }
-                                            setSelectedImages(prev => [...prev, ...newImages]);
-                                        }} 
-                                    />
-
-                                    <div className="bg-slate-100 dark:bg-white/5 rounded-2xl p-4 border border-slate-300 dark:border-white/10">
-                                        {selectedImages.length === 0 ? (
-                                            <span className="text-xs text-black dark:text-white font-medium italic block py-4 text-center">
-                                                Nenhuma imagem anexada.
-                                            </span>
-                                        ) : (
-                                            <div className="grid grid-cols-3 gap-3">
-                                                {selectedImages.map((img, idx) => (
-                                                    <div key={idx} className="relative group rounded-xl overflow-hidden aspect-video border border-slate-300 dark:border-white/10 bg-black">
-                                                        <img src={img} alt={`Anexo ${idx + 1}`} className="w-full h-full object-cover" />
-                                                        <button 
-                                                            type="button"
-                                                            onClick={() => setSelectedImages(prev => prev.filter((_, i) => i !== idx))} 
-                                                            className="absolute top-1 right-1 p-1 bg-red-600 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 shadow-lg flex items-center justify-center animate-all"
-                                                        >
-                                                            <XMarkIcon className="w-3.5 h-3.5" />
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                </section>
-
-
-                            </div>
-
-                            {/* COLUNA 2: FOLHA A4 */}
-                            <div onClick={() => setActiveSection('doc')} className={`w-1/2 flex flex-col h-full rounded-[32px] shadow-2xl transition-all border-4 ${activeSection === 'doc' ? 'border-cyan-500 ring-8 ring-cyan-500/10' : 'border-white dark:border-[#0f172a]'} ${!isChatLeft ? 'order-first' : 'order-last'} bg-white dark:bg-[#0f172a] overflow-hidden`}>
-
-                                {/* CABEÇALHO DA FOLHA */}
-                                <div className="h-20 flex items-center px-10 shrink-0 border-b border-slate-100 dark:border-white/5 bg-transparent">
-                                    <DocumentTextIcon className="w-6 h-6 text-black dark:text-white mr-4" />
-                                    <input value={docTitle} onChange={(e) => setDocTitle(e.target.value)} className="bg-transparent text-black dark:text-white text-2xl font-black focus:outline-none w-full placeholder:text-slate-300" />
-                                </div>
-
-                                {/* ÁREA DE TEXTO DA FOLHA */}
-                                <div className="flex-1 p-12 md:p-16 overflow-y-auto custom-scrollbar flex flex-col gap-4">
-                                    {/* ── ABNT HINT BAR ── */}
-                                    {(isEmptyOrTemplate(docContent) || hintOpen) && (
-                                        <div className="rounded-2xl border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50/80 dark:bg-indigo-950/40 overflow-hidden text-left shrink-0">
-                                            <button
-                                                onClick={() => setHintOpen(h => !h)}
-                                                className="w-full flex items-center justify-between px-5 py-3 text-[11px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400"
-                                            >
-                                                <span className="flex items-center gap-2">
-                                                    <SparklesIcon className="w-3.5 h-3.5" />
-                                                    Como escrever na Zaeon para exportação ABNT automática
-                                                </span>
-                                                <span>{hintOpen ? '▲' : '▼'}</span>
-                                            </button>
-                                            {hintOpen && (
-                                                <div className="px-5 pb-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-[11px] text-indigo-700 dark:text-indigo-300 leading-relaxed">
-                                                    <div className="flex flex-col gap-1">
-                                                        <span className="font-black">① Use # para seções principais</span>
-                                                        <code className="bg-indigo-100 dark:bg-indigo-900/50 rounded-lg px-2 py-1 font-mono text-[10px]"># INTRODUÇÃO</code>
-                                                        <code className="bg-indigo-100 dark:bg-indigo-900/50 rounded-lg px-2 py-1 font-mono text-[10px]"># METODOLOGIA</code>
-                                                        <code className="bg-indigo-100 dark:bg-indigo-900/50 rounded-lg px-2 py-1 font-mono text-[10px]"># CONCLUSÃO</code>
-                                                        <span className="text-indigo-500 dark:text-indigo-400 text-[10px]">Títulos ficam em MAIÚSCULAS automaticamente.</span>
-                                                    </div>
-                                                    <div className="flex flex-col gap-1">
-                                                        <span className="font-black">② Use ## para subseções</span>
-                                                        <code className="bg-indigo-100 dark:bg-indigo-900/50 rounded-lg px-2 py-1 font-mono text-[10px]">## Revisão da Literatura</code>
-                                                        <code className="bg-indigo-100 dark:bg-indigo-900/50 rounded-lg px-2 py-1 font-mono text-[10px]">## Análise dos Dados</code>
-                                                        <span className="text-indigo-500 dark:text-indigo-400 text-[10px]">Subseções recebem numeração automática (ex: 2.1).</span>
-                                                    </div>
-                                                    <div className="flex flex-col gap-1">
-                                                        <span className="font-black">③ Escreva as referências em # REFERÊNCIAS</span>
-                                                        <span className="text-indigo-500 dark:text-indigo-400 text-[10px]">O sistema detecta e formata cada entrada conforme ABNT NBR 6023:2018. Uma referência por linha.</span>
-                                                        <span className="mt-1 font-black text-green-600 dark:text-green-400">✓ Estruturado → exportação ABNT perfeita</span>
-                                                        <span className="font-black text-amber-600 dark:text-amber-400">⚠ Sem marcadores → IA tenta inferir (pode errar)</span>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                    <AcademicThermometer
-                                        docContent={docContent}
-                                        title={docTitle}
-                                        workType={workType ?? "TCC"}
-                                        academicLevel={mapAcademicLevel((session?.user as any)?.academicLevel)}
-                                        reviewMode={reviewMode}
-                                        onToggleReview={() => setReviewMode((v) => !v)}
-                                    />
-                                    {!reviewMode && (
-                                        <textarea
-                                            value={docContent} onChange={(e) => setDocContent(e.target.value)}
-                                            className="w-full flex-1 min-h-[400px] resize-none outline-none bg-transparent text-[17px] leading-loose text-black dark:text-white placeholder:text-slate-400 font-serif"
-                                            placeholder="Sua pesquisa começa aqui..."
-                                        />
-                                    )}
-                                </div>
-
-                                {/* RODAPÉ DA FOLHA (AÇÕES) */}
-                                <div className="p-6 flex justify-between items-center px-10 bg-slate-50/50 dark:bg-black/20 border-t border-slate-100 dark:border-white/5">
-                                    <div className="relative">
-                                        <button onClick={(e) => { e.stopPropagation(); setIsWorkTypeMenuOpen(!isWorkTypeMenuOpen); }} className="px-6 py-2.5 rounded-full text-[11px] font-black transition-all flex items-center gap-2 border-2 border-blue-500 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30">
-                                            <SparklesIcon className="w-4 h-4" /> {workType || 'Definir Trabalho'}
-                                        </button>
-                                        <AnimatePresence>{isWorkTypeMenuOpen && (
-                                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-full mb-4 left-0 bg-white dark:bg-black border-2 border-slate-200 dark:border-white/20 rounded-2xl shadow-2xl w-44 overflow-hidden z-[200]">
-                                                {["Artigo", "Relatório", "TCC"].map(type => <div key={type} onClick={(e) => { e.stopPropagation(); setWorkType(type as any); setIsWorkTypeMenuOpen(false); }} className="px-5 py-4 text-[11px] font-black uppercase text-black dark:text-white hover:bg-slate-50 dark:hover:bg-white/10 cursor-pointer">{type}</div>)}
-                                            </motion.div>
-                                        )}</AnimatePresence>
-                                    </div>
-
-                                    <div className="flex gap-3">
-                                        {/* BOTÃO SALVAR QUE ABRE O MODAL */}
-                                        <button onClick={(e) => { e.stopPropagation(); setIsSaveModalOpen(true); }} className="px-6 py-2.5 rounded-full text-[11px] font-black flex items-center gap-2 border-2 border-black dark:border-white text-black dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 uppercase tracking-widest transition-colors w-[120px] justify-center">
-                                            <ArrowDownTrayIcon className="w-4 h-4" /> Salvar
-                                        </button>
-                                        <button onClick={(e) => { e.stopPropagation(); setIsPublishOpen(true); }} className="px-8 py-2.5 rounded-full text-[11px] font-black flex items-center gap-2 bg-black dark:bg-white text-white dark:text-black hover:scale-105 transition-all uppercase tracking-widest shadow-xl">Publicar</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </>
+                                }
+                            />
+                        </div>
                     )}
 
                     {/* Sempre montado (escondido fora da aba) — preserva a pesquisa do Omega

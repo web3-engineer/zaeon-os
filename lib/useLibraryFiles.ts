@@ -24,6 +24,13 @@ export function upsertLibraryFile(list: LibraryFile[], f: LibraryFile): LibraryF
   return [f, ...list.filter((x) => x.id !== f.id)];
 }
 
+// Pure: renomeia o título de um arquivo (ignora título vazio). Exported for tests.
+export function renameLibraryFile(list: LibraryFile[], id: string, title: string): LibraryFile[] {
+  const t = title.trim();
+  if (!t) return list;
+  return list.map((f) => (f.id === id ? { ...f, title: t } : f));
+}
+
 function read(): LibraryFile[] {
   if (typeof window === "undefined") return [];
   try { return JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { return []; }
@@ -43,7 +50,8 @@ export function useLibraryFiles() {
     return () => { window.removeEventListener(EVT, sync); window.removeEventListener("storage", sync); };
   }, []);
   const save = useCallback((f: LibraryFile) => { write(upsertLibraryFile(read(), f)); }, []);
+  const rename = useCallback((id: string, title: string) => { write(renameLibraryFile(read(), id, title)); }, []);
   const remove = useCallback((id: string) => { write(read().filter((x) => x.id !== id)); }, []);
   const clear = useCallback(() => { write([]); }, []);
-  return { files, save, remove, clear };
+  return { files, save, rename, remove, clear };
 }
