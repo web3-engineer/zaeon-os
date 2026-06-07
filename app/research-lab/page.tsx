@@ -469,6 +469,9 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const pdfChatRef = useRef<HTMLDivElement>(null);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+    const [voiceOn, setVoiceOn] = useState(false);
+    const [voiceLoadingId, setVoiceLoadingId] = useState<number | null>(null);
     const examinerChatRef = useRef<HTMLDivElement>(null);
 
     const fetchMuralData = async () => {
@@ -648,6 +651,17 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
     useEffect(() => { if (pdfChatRef.current) pdfChatRef.current.scrollTo({ top: pdfChatRef.current.scrollHeight, behavior: 'smooth' }); }, [pdfChatHistory, isPdfTyping, activePdfTab]);
     useEffect(() => { if (examinerChatRef.current) examinerChatRef.current.scrollTo({ top: examinerChatRef.current.scrollHeight, behavior: 'smooth' }); }, [specialistChatHistory.examiner, isExaminerTyping]);
 
+    // Voz automática: fala a última resposta da Aura quando o toggle está ligado.
+    useEffect(() => {
+        if (!voiceOn) return;
+        const last = pdfChatHistory[pdfChatHistory.length - 1];
+        if (last && last.role === 'ai') {
+            const { clean } = extractCitationBlock(last.text);
+            void playVoice(clean || last.text);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pdfChatHistory.length, voiceOn]);
+
     useEffect(() => {
         return () => {
             window.dispatchEvent(new CustomEvent('zaeon-focus-mode', { detail: false }));
@@ -782,6 +796,28 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
             const data = await response.json();
             if (data.text) setPdfChatHistory(prev => [...prev, { role: 'ai', text: data.text }]);
         } catch (e) { console.error(e); showToast("Falha de conexão."); } finally { setIsPdfTyping(false); }
+    };
+
+    // 🔊 Voz da Aura (TTS via engine Python /api/ai/voice). Degrada gracioso (503 → toast).
+    const playVoice = async (text: string, msgId?: number) => {
+        const clean = text.trim();
+        if (!clean) return;
+        if (msgId != null) setVoiceLoadingId(msgId);
+        try {
+            const res = await fetch('/api/ai/voice', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: clean }),
+            });
+            if (!res.ok) { showToast("Voz indisponível agora."); return; }
+            const data = await res.json().catch(() => null);
+            if (data?.audio_base64) {
+                audioRef.current?.pause();
+                const audio = new Audio(`data:${data.mime || 'audio/wav'};base64,${data.audio_base64}`);
+                audioRef.current = audio;
+                await audio.play().catch(() => {});
+            }
+        } catch { showToast("Voz indisponível agora."); }
+        finally { if (msgId != null) setVoiceLoadingId(null); }
     };
 
     const handleGenerateCitations = async () => {
@@ -1191,6 +1227,11 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
 
                                             {activePdfTab === 'chat' && (
                                                 <div className="flex flex-col gap-2">
+                                                    <div className="flex items-center justify-end">
+                                                        <button onClick={() => setVoiceOn(v => !v)} title="Aura fala cada nova resposta" className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wide px-3 py-1.5 rounded-full border transition-colors ${voiceOn ? 'bg-cyan-600 text-white border-cyan-600' : 'text-slate-500 dark:text-white/50 border-slate-300/60 dark:border-white/15 hover:border-cyan-400/50'}`}>
+                                                            {voiceOn ? '🔊 Voz automática: ON' : '🔈 Voz automática: OFF'}
+                                                        </button>
+                                                    </div>
                                                     <div ref={pdfChatRef} className="h-[250px] overflow-y-auto bg-slate-50 dark:bg-black/50 p-5 rounded-2xl border border-slate-300 dark:border-white/10 shadow-inner custom-scrollbar">
                                                         {pdfChatHistory.length === 0 && <span className="text-black dark:text-white text-xs font-medium italic">Nenhum resumo gerado.</span>}
                                                         {pdfChatHistory.map((msg, i) => {
@@ -1200,6 +1241,9 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
                                                             return (
                                                                 <div key={i}>
                                                                     <ChatBubble role={msg.role} text={parsed.clean || msg.text} agentName="Aura" agentImg="/agents/aura.png" userImg={session?.user?.image} />
+                                                                    <button onClick={() => playVoice(parsed.clean || msg.text, i)} disabled={voiceLoadingId === i} className="ml-12 mb-1 inline-flex items-center gap-1 text-[10px] font-bold text-cyan-700 dark:text-cyan-300 hover:underline disabled:opacity-50">
+                                                                        {voiceLoadingId === i ? '🔊 …' : '🔊 ouvir'}
+                                                                    </button>
                                                                     {parsed.citation && (
                                                                         <div className="ml-12 mt-1 mb-2 p-3 rounded-2xl bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-300/60 dark:border-cyan-400/20">
                                                                             <p className="text-[8px] font-black uppercase tracking-widest text-cyan-700 dark:text-cyan-300 mb-1">✦ Citação sugerida</p>

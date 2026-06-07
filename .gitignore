@@ -53,6 +53,9 @@ __pycache__/
 
 # Python venv for suggestion-forge engine
 suggestion-forge/.venv/
+# Voice engine (Piper) venv + downloaded voice models
+voice-engine/.venv/
+voice-engine/voices/
 __pycache__/
 *.pyc
 .pytest_cache/
