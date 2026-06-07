@@ -67,7 +67,7 @@ const TOUR_STEPS: TourStep[] = [
     id: 'specialists',
     target: '[data-tour="specialists"]',
     title: '👩‍🔬 Especialistas IA',
-    description: 'Alterne entre diferentes agentes especializados: Scribe (redação), Examiner (avaliação crítica) e mais. Cada um tem um jeito único de te ajudar.',
+    description: 'Use o Examiner (Quiz) para testar seus conhecimentos sobre a sua pesquisa com perguntas desafiadoras — avaliação crítica e construtiva.',
     position: 'right',
   },
   {

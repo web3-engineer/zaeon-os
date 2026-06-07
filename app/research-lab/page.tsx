@@ -400,7 +400,7 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isChatLeft, setIsChatLeft] = useState(false);
     const [isFocusMode, setIsFocusMode] = useState(false);
-    const [activeSection, setActiveSection] = useState<"pdf" | "scribe" | "examiner" | "doc" | null>(null);
+    const [activeSection, setActiveSection] = useState<"pdf" | "examiner" | "doc" | null>(null);
     const [showTour, setShowTour] = useState(false);
     const [onboardSaved, setOnboardSaved] = useState(false);
     const [miniTourTab, setMiniTourTab] = useState<string | null>(null);
@@ -424,7 +424,7 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
     const [pendingUpload, setPendingUpload] = useState<File | null>(null);
     const [activeFileContext, setActiveFileContext] = useState<string | null>(null);
     const [processingFileId, setProcessingFileId] = useState<string | null>(null);
-    const [activePdfTab, setActivePdfTab] = useState<"chat" | "writer" | "citations">("chat");
+    const [activePdfTab, setActivePdfTab] = useState<"chat" | "citations">("chat");
 
     const [savedCitations, setSavedCitations] = useState<CitationNote[]>([]);
     const [citationContent, setCitationContent] = useState<string | null>(null);
@@ -432,18 +432,15 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
 
     // 🔥 ESTADOS CONTROLADOS PARA OS PROMPTS (Para a voz funcionar perfeitamente)
     const [pdfPrompt, setPdfPrompt] = useState("");
-    const [scribePrompt, setScribePrompt] = useState("");
     const [examinerPrompt, setExaminerPrompt] = useState("");
 
     const [pdfChatHistory, setPdfChatHistory] = useState<{ role: 'ai' | 'user', text: string }[]>([]);
     const [specialistChatHistory, setSpecialistChatHistory] = useState<{
-        scribe: { role: 'ai' | 'user', text: string }[],
         examiner: { role: 'ai' | 'user', text: string }[]
-    }>({ scribe: [], examiner: [] });
+    }>({ examiner: [] });
 
     // --- LOADING & ACTION STATES ---
     const [isPdfTyping, setIsPdfTyping] = useState(false);
-    const [isScribeTyping, setIsScribeTyping] = useState(false);
     const [isExaminerTyping, setIsExaminerTyping] = useState(false);
     const [isCitationTyping, setIsCitationTyping] = useState(false);
     const [isSystemProcessing, setIsSystemProcessing] = useState(false);
@@ -468,7 +465,6 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const pdfChatRef = useRef<HTMLDivElement>(null);
-    const scribeChatRef = useRef<HTMLDivElement>(null);
     const examinerChatRef = useRef<HTMLDivElement>(null);
 
     const fetchMuralData = async () => {
@@ -646,7 +642,6 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
     }, [status]);
 
     useEffect(() => { if (pdfChatRef.current) pdfChatRef.current.scrollTo({ top: pdfChatRef.current.scrollHeight, behavior: 'smooth' }); }, [pdfChatHistory, isPdfTyping, activePdfTab]);
-    useEffect(() => { if (scribeChatRef.current) scribeChatRef.current.scrollTo({ top: scribeChatRef.current.scrollHeight, behavior: 'smooth' }); }, [specialistChatHistory.scribe, isScribeTyping]);
     useEffect(() => { if (examinerChatRef.current) examinerChatRef.current.scrollTo({ top: examinerChatRef.current.scrollHeight, behavior: 'smooth' }); }, [specialistChatHistory.examiner, isExaminerTyping]);
 
     useEffect(() => {
@@ -807,12 +802,10 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
         showToast("Citação salva na base de dados.");
     };
 
-    // 🔥 FETCH CORRECTO PARA SCRIBE / EXAMINER
-    const handleSpecialistQuery = async (specialistType: 'scribe' | 'examiner', inputVal: string) => {
+    // 🔥 FETCH CORRECTO PARA O EXAMINER (Quiz)
+    const handleSpecialistQuery = async (specialistType: 'examiner', inputVal: string) => {
         if (!inputVal.trim()) return;
-        const isScribe = specialistType === 'scribe';
-        if (isScribe) { setIsScribeTyping(true); setScribePrompt(""); }
-        else { setIsExaminerTyping(true); setExaminerPrompt(""); }
+        setIsExaminerTyping(true); setExaminerPrompt("");
 
         setSpecialistChatHistory(prev => ({ ...prev, [specialistType]: [...prev[specialistType], { role: 'user', text: inputVal }] }));
 
@@ -828,7 +821,7 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
                 body: JSON.stringify({
                     prompt: inputVal,
                     agent: specialistType,
-                    fileData: specialistType === 'examiner' ? activeFileContext : null,
+                    fileData: activeFileContext,
                     history: historyForGemini,
                     systemContext: buildSystemContext()
                 })
@@ -841,7 +834,7 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
         } catch (e) {
             console.error(e); showToast("Falha de conexão.");
         } finally {
-            if (isScribe) setIsScribeTyping(false); else setIsExaminerTyping(false);
+            setIsExaminerTyping(false);
         }
     };
 
@@ -1150,7 +1143,7 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
                 <div className="flex-1 flex gap-8 overflow-hidden h-full">
                     {activeTab === "pesquisa" && (
                         <>
-                            {/* COLUNA 1: ESTUDO (PDF + SCRIBE + QUIZ) */}
+                            {/* COLUNA 1: ESTUDO (PDF + QUIZ) */}
                             <div className={`w-1/2 h-full flex flex-col gap-8 overflow-y-auto custom-scrollbar pb-32 pr-2 ${isChatLeft ? 'order-first' : 'order-last'}`}>
                                 <input type="file" ref={fileInputRef} className="hidden" accept="application/pdf" multiple onChange={(e) => handleFiles(e.target.files)} />
 
@@ -1183,7 +1176,6 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
                                         <div className="border-t border-slate-300 dark:border-white/20 pt-6">
                                             <div className="flex p-1.5 bg-slate-200 dark:bg-white/10 rounded-xl w-fit mb-6 border border-slate-300 dark:border-white/20 shadow-inner">
                                                 <button onClick={() => setActivePdfTab('chat')} className={`px-6 py-2.5 rounded-lg text-[11px] font-black uppercase transition-all ${activePdfTab === 'chat' ? 'bg-white text-cyan-600 shadow-md' : 'text-black dark:text-white hover:bg-white/50'}`}>Chat</button>
-                                                <button onClick={() => setActivePdfTab('writer')} className={`px-6 py-2.5 rounded-lg text-[11px] font-black uppercase transition-all ${activePdfTab === 'writer' ? 'bg-white text-purple-600 shadow-md' : 'text-black dark:text-white hover:bg-white/50'}`}>Escritor</button>
                                                 <button data-tour="citations" onClick={() => setActivePdfTab('citations')} className={`px-6 py-2.5 rounded-lg text-[11px] font-black uppercase transition-all ${activePdfTab === 'citations' ? 'bg-white text-indigo-600 shadow-md' : 'text-black dark:text-white hover:bg-white/50'}`}>Citações</button>
                                             </div>
 
@@ -1203,23 +1195,6 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
                                                         placeholder="Pergunte ao PDF..."
                                                     />
                                                     </div>
-                                                </div>
-                                            )}
-
-                                            {activePdfTab === 'writer' && (
-                                                <div className="flex flex-col gap-2">
-                                                    <div ref={scribeChatRef} className="h-[250px] overflow-y-auto bg-slate-50 dark:bg-black/50 p-5 rounded-2xl border border-slate-300 dark:border-white/10 shadow-inner custom-scrollbar">
-                                                        {specialistChatHistory.scribe.length === 0 && <span className="text-black dark:text-white text-xs font-medium italic">Nenhum rascunho ou texto gerado.</span>}
-                                                        {specialistChatHistory.scribe.map((msg, i) => <ChatBubble key={i} role={msg.role} text={msg.text} agentName="Scribe" agentImg="/agents/scribe.png" userImg={session?.user?.image} />)}
-                                                        {isScribeTyping && <div className="text-[10px] font-bold animate-pulse text-purple-600 ml-12">Scribe está a redigir...</div>}
-                                                    </div>
-                                                    <ChatInput
-                                                        value={scribePrompt}
-                                                        onChange={setScribePrompt}
-                                                        onSend={() => handleSpecialistQuery('scribe', scribePrompt)}
-                                                        isTyping={isScribeTyping}
-                                                        placeholder="Peça ao Scribe para redigir ou reescrever..."
-                                                    />
                                                 </div>
                                             )}
 
