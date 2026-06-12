@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   MapPin, User, Activity, Clock, ChevronUp, ChevronDown, 
-  Power, Send, Sparkles, X, AlertCircle, StickyNote,
+  Power, Send, Sparkles, X,
   FileText, Plus, Database, Bot, File, Briefcase, Pen, Globe,
   Users, Layers, Share2, Copy, ArrowUpRight,
   Hash, UploadCloud, Trash2, Check, Brain, Cpu, Puzzle, ExternalLink
@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSession } from 'next-auth/react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import NextImage from 'next/image';
+import { ProFeaturePanel } from '@/components/ui/ProFeaturePanel';
 
 // --- INITIAL DATA ---
 const initialSchedule: any[] = []; 
@@ -29,134 +30,6 @@ const CLASS_COLORS = [
     "from-rose-400 to-red-500",
     "from-amber-400 to-orange-500"
 ];
-
-// --- COMPONENT: REAL-TIME TRACKER ---
-const RealTimeModule = ({ classes, pluggedDay, gadgetOn, dragConstraints, session, themeColor = 'cyan' }: any) => {
-    const t = getThemeClasses(themeColor);
-    const [currentTime, setCurrentTime] = useState(new Date());
-    const awardedXPClasses = useRef<Set<string>>(new Set()); 
-
-    useEffect(() => {
-        const timer = setInterval(() => setCurrentTime(new Date()), 60000); 
-        return () => clearInterval(timer);
-    }, []);
-
-    const isActive = gadgetOn && pluggedDay !== null;
-    const currentHour = currentTime.getHours();
-    const currentRealDayIdx = (currentTime.getDay() + 6) % 7; 
-    const isPluggedOnToday = pluggedDay === currentRealDayIdx;
-
-    const activeClassNow = useMemo(() => {
-        if (!isActive || !isPluggedOnToday) return null;
-        return classes.find((c: any) => 
-            !c.isDraft && 
-            c.days.includes(pluggedDay + 1) && 
-            currentHour >= c.hour && 
-            currentHour < c.endHour
-        );
-    }, [classes, isActive, isPluggedOnToday, currentHour, pluggedDay]);
-
-    let progress = 0;
-    let earnedXP = 0;
-    let totalXP = 0;
-
-    if (activeClassNow) {
-        const totalMinutes = (activeClassNow.endHour - activeClassNow.hour) * 60;
-        const minutesPassed = (currentHour - activeClassNow.hour) * 60 + currentTime.getMinutes();
-        progress = Math.min(100, Math.max(0, (minutesPassed / totalMinutes) * 100));
-        
-        totalXP = (activeClassNow.endHour - activeClassNow.hour) * 1;
-        earnedXP = Math.floor((progress / 100) * totalXP);
-    }
-
-    useEffect(() => {
-        if (activeClassNow && progress >= 100 && session?.user?.email) {
-            const classKey = `${activeClassNow.id}-${currentTime.toDateString()}`; 
-            
-            if (!awardedXPClasses.current.has(classKey)) {
-                awardedXPClasses.current.add(classKey);
-                
-                fetch('/api/user/xp', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ xpToAdd: totalXP })
-                }).catch(err => console.error("Falha ao registrar XP:", err));
-            }
-        }
-    }, [progress, activeClassNow, session, totalXP, currentTime]);
-
-    if (!isActive) {
-        return (
-            <motion.div drag dragConstraints={dragConstraints} className="group w-80 h-[380px] relative z-10" onClick={(e) => e.stopPropagation()}>
-                <div className="w-full h-full bg-[#0a0a0a]/90 backdrop-blur-2xl border border-white/10 p-5 rounded-[2.5rem] shadow-xl flex flex-col items-center justify-center relative overflow-hidden">
-                    <Sparkles size={24} className="text-white/20 mb-2" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-white/30 text-center">Real-Time Tracker Offline<br/>Plug gadget into current day</span>
-                </div>
-            </motion.div>
-        );
-    }
-
-    if (!activeClassNow) {
-        return (
-            <motion.div drag dragConstraints={dragConstraints} className="group w-80 h-[380px] relative z-10" onClick={(e) => e.stopPropagation()}>
-                <div className={`w-full h-full bg-[#0a0a0a]/90 backdrop-blur-2xl border ${t.border} ${t.shadow} p-5 rounded-[2.5rem] flex flex-col items-center justify-center relative overflow-hidden`}>
-                    <div className="absolute top-5 left-5 flex items-center gap-2">
-                        <div className={`w-1.5 h-1.5 ${t.fill} rounded-full animate-ping`} />
-                        <span className={`text-[9px] font-bold uppercase tracking-widest ${t.text}`}>Monitoring Active</span>
-                    </div>
-                    <Clock size={24} className={`${t.text} opacity-50 mb-2`} />
-                    <span className="text-[12px] font-bold uppercase tracking-widest text-white/70 text-center">No Active Session<br/>at this hour</span>
-                </div>
-            </motion.div>
-        );
-    }
-
-    return (
-        <motion.div drag dragConstraints={dragConstraints} className="group w-80 h-[380px] relative z-10" onClick={(e) => e.stopPropagation()}>
-            <div className={`w-full h-full bg-[#0a0a0a]/90 backdrop-blur-2xl border ${t.border} ${t.shadow} p-6 rounded-[2.5rem] flex flex-col justify-between relative overflow-hidden`}>
-                <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                    <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 ${t.fill} rounded-full animate-pulse`} />
-                        <span className={`text-[9px] font-bold uppercase tracking-widest ${t.text}`}>Session Live</span>
-                    </div>
-                    <span className="text-[10px] font-mono text-white/50">{currentTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                </div>
-
-                <div className="flex flex-col items-center justify-center flex-1 py-4">
-                    <span className="text-[10px] text-white/50 uppercase tracking-widest mb-1">You are currently in</span>
-                    <h2 className="text-xl font-black text-white text-center leading-tight mb-4 drop-shadow-md">{activeClassNow.name}</h2>
-                    
-                    <div className="w-full flex items-center justify-between text-[10px] font-mono text-white/50 mb-2 px-1">
-                        <span>{activeClassNow.hour}:00</span>
-                        <span>{activeClassNow.endHour}:00</span>
-                    </div>
-                    
-                    <div className={`w-full h-3 bg-white/5 rounded-full overflow-hidden border border-white/10 relative`}>
-                        <motion.div 
-                            className={`h-full bg-gradient-to-r ${t.from} ${t.to}`}
-                            initial={{ width: 0 }}
-                            animate={{ width: `${progress}%` }}
-                            transition={{ duration: 1 }}
-                        />
-                    </div>
-
-                    
-                    <div className="w-full flex items-center justify-between mt-6 px-4 py-3 bg-white/5 border border-white/10 rounded-2xl">
-                        <div className="flex flex-col">
-                            <span className="text-[8px] uppercase tracking-widest text-white/40">XP Earned</span>
-                            <span className="text-lg font-black text-yellow-400">+{earnedXP}</span>
-                        </div>
-                        <div className="h-6 w-px bg-white/10" />
-                        <div className="flex flex-col text-right">
-                            <span className="text-[8px] uppercase tracking-widest text-white/40">Total Bounty</span>
-                            <span className="text-lg font-black text-white/80">{totalXP}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </motion.div>
-    );
-};
 
 // --- COMPONENT: COLLECTIVE BUILD NODE ---
 const CollectiveZone = ({ classes, currentUser, dragConstraints, themeColor = 'cyan' }: any) => {
@@ -520,8 +393,6 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
     
     const [gadgetOn, setGadgetOn] = useState(false);
     const [pluggedDay, setPluggedDay] = useState<number | null>(null);
-    const [showSticky, setShowSticky] = useState(true);
-    const [stickyText, setStickyText] = useState("");
 
     const [liquidChatHistory, setLiquidChatHistory] = useState<{ role: 'user' | 'agent', text: string }[]>([
         { role: 'agent', text: "Zaeon initialized. Ready." }
@@ -586,7 +457,6 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
 
         const loadLocal = () => {
             const savedClasses = localStorage.getItem('zaeon_schedule_data');
-            const savedSticky = localStorage.getItem('zaeon_sticky_note');
             const savedPluggedDay = localStorage.getItem('zaeon_plugged_day');
             const savedGadgetOn = localStorage.getItem('zaeon_gadget_on');
             
@@ -595,7 +465,6 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
             const savedModules = localStorage.getItem('zaeon_user_modules');
 
             if (savedClasses) setClasses(JSON.parse(savedClasses));
-            if (savedSticky) setStickyText(savedSticky);
             if (savedPluggedDay) setPluggedDay(JSON.parse(savedPluggedDay));
             if (savedGadgetOn) setGadgetOn(JSON.parse(savedGadgetOn));
             
@@ -617,7 +486,6 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
                     if (res.data && res.data.schedule && res.data.schedule.length > 0) {
                         const d = res.data;
                         if (d.schedule && Array.isArray(d.schedule)) setClasses(d.schedule);
-                        if (d.stickyNote) setStickyText(d.stickyNote);
                         if (d.layoutState) {
                            setPluggedDay(d.layoutState.pluggedDay ?? null);
                            setGadgetOn(d.layoutState.gadgetOn ?? false);
@@ -647,7 +515,6 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
     useEffect(() => {
         if (isDataLoaded) {
             localStorage.setItem('zaeon_schedule_data', JSON.stringify(classes));
-            localStorage.setItem('zaeon_sticky_note', stickyText);
             localStorage.setItem('zaeon_plugged_day', JSON.stringify(pluggedDay));
             localStorage.setItem('zaeon_gadget_on', JSON.stringify(gadgetOn));
             localStorage.setItem('zaeon_liquid_chat', JSON.stringify(liquidChatHistory));
@@ -661,7 +528,6 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
                     body: JSON.stringify({
                         userId: session.user.email,
                         schedule: classes,
-                        stickyNote: stickyText,
                         zaeonChat: liquidChatHistory,
                         library: storedPdfs,
                         personalModules: userModules,
@@ -670,7 +536,7 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
                 }).catch(err => console.error("Falha ao sincronizar com MongoDB:", err));
             }
         }
-    }, [classes, stickyText, pluggedDay, gadgetOn, liquidChatHistory, storedPdfs, userModules, isDataLoaded, session]);
+    }, [classes, pluggedDay, gadgetOn, liquidChatHistory, storedPdfs, userModules, isDataLoaded, session]);
 
     const handleBackgroundClick = () => {
         if (selectedClass?.isDraft) {
@@ -860,6 +726,60 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
         }
     };
 
+    // Core Active aplica a ferramenta update_schedule retornada pelo agente (cria/edita a agenda).
+    const DAY_LABELS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sab", "Dom"];
+    const applyScheduleTool = (args: any): string => {
+        const action = String(args?.action || 'add').toLowerCase();
+        const day = Number(args?.day);
+        const hour = Number(args?.hour);
+        const duration = Number(args?.duration) || 2;
+        const name = args?.name ? String(args.name) : "";
+
+        if (action === 'add') {
+            if (!day || !hour) return "Não consegui criar a aula: dia ou horário ausente.";
+            const newClass = {
+                id: Date.now(),
+                name: name || "Nova aula",
+                teacher: args?.teacher || "",
+                room: args?.room || "",
+                location: args?.room || "Online",
+                days: [day],
+                hour,
+                endHour: hour + duration,
+                duration,
+                color: CLASS_COLORS[classes.length % CLASS_COLORS.length],
+                isDraft: false,
+            };
+            setClasses(prev => [...prev, newClass]);
+            return `✅ Adicionei "${newClass.name}" à agenda (${DAY_LABELS[day - 1]} ${hour}h–${hour + duration}h).`;
+        }
+
+        const matches = (c: any) =>
+            (name && c.name?.toLowerCase() === name.toLowerCase()) ||
+            ((c.days || []).includes(day) && Number(c.hour) === hour);
+
+        if (action === 'remove') {
+            let removed = false;
+            setClasses(prev => prev.filter(c => { const m = matches(c); if (m) removed = true; return !m; }));
+            return removed ? "🗑️ Removi a aula da agenda." : "Não encontrei essa aula para remover.";
+        }
+        if (action === 'update') {
+            let updated = false;
+            setClasses(prev => prev.map(c => {
+                if (!matches(c)) return c;
+                updated = true;
+                return {
+                    ...c,
+                    ...(args.teacher ? { teacher: args.teacher } : {}),
+                    ...(args.room ? { room: args.room, location: args.room } : {}),
+                    ...(hour ? { hour, endHour: hour + duration, duration } : {}),
+                };
+            }));
+            return updated ? "✏️ Atualizei a aula na agenda." : "Não encontrei essa aula para atualizar.";
+        }
+        return "Ação de agenda não reconhecida.";
+    };
+
     const handleZaeonMessage = async () => {
         if (!zaeonInput.trim()) return;
         const msg = zaeonInput;
@@ -867,11 +787,23 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
         setZaeonInput("");
         setIsZaeonProcessing(true);
         try {
-            const libraryContext = storedPdfs.length > 0 ? `Available Files: ${storedPdfs.map(f => f.title).join(", ")}` : "No files in library.";
-            const response = await fetch('/api/ai/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: msg, agent: "ethernaut", systemContext: `User is in Zaeon Lab. ${libraryContext}` }) });
+            const libraryContext = storedPdfs.length > 0 ? `Arquivos na biblioteca: ${storedPdfs.map(f => f.title).join(", ")}.` : "Biblioteca vazia.";
+            const agendaContext = classes.length > 0
+                ? `Agenda atual do aluno: ${classes.map((c: any) => `${c.name || 'Aula'} [${(c.days || []).map((d: number) => DAY_LABELS[d - 1]).join('/')} ${c.hour}-${c.endHour}h${c.teacher ? `, prof. ${c.teacher}` : ''}]`).join('; ')}.`
+                : "A agenda do aluno está vazia.";
+            const response = await fetch('/api/ai/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: msg, agent: "core_active", systemContext: `${agendaContext} ${libraryContext}` }),
+            });
             const data = await response.json();
-            setLiquidChatHistory(prev => [...prev, { role: 'agent', text: data.text || "Data retrieved." }]);
-        } catch (e) { setLiquidChatHistory(prev => [...prev, { role: 'agent', text: "Connection offline." }]); } finally { setIsZaeonProcessing(false); }
+            if (data?.toolCall?.name === 'update_schedule') {
+                const applied = applyScheduleTool(data.toolCall.args);
+                setLiquidChatHistory(prev => [...prev, { role: 'agent', text: applied }]);
+            } else {
+                setLiquidChatHistory(prev => [...prev, { role: 'agent', text: data.text || "Pronto." }]);
+            }
+        } catch (e) { setLiquidChatHistory(prev => [...prev, { role: 'agent', text: "Conexão offline." }]); } finally { setIsZaeonProcessing(false); }
     };
 
     const handleUserModuleDrop = (e: React.DragEvent, moduleId: number) => {
@@ -956,8 +888,7 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
 
             <div className="flex justify-start items-start gap-8 flex-wrap z-20 relative w-full max-w-[1400px] mx-auto pb-10 min-h-[400px]">
 
-                {/* REAL-TIME TRACKER MODULE */}
-                <RealTimeModule classes={classes} pluggedDay={pluggedDay} gadgetOn={gadgetOn} session={session} dragConstraints={constraintsRef} themeColor={themeColor} />
+                {/* REAL-TIME TRACKER MODULE removed (Phase 3) — replaced by the Zaeon Core Active chat (rendered below). */}
 
                 {/* SCHEDULE */}
                 <motion.div ref={agendaRef} drag dragConstraints={constraintsRef} className="group w-[360px] h-[320px] relative z-10" onClick={(e) => e.stopPropagation()}>
@@ -1111,29 +1042,7 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
                     </div>
                 </motion.div>
 
-                {/* STICKY & PLUG */}
-                <AnimatePresence>
-                    {showSticky && (
-                        <motion.div drag dragConstraints={constraintsRef} className="group w-40 h-40 relative z-20" onClick={(e) => e.stopPropagation()}>
-                            <div className="w-full h-full bg-[#fbbf24] border border-yellow-600/30 p-5 rounded-[2rem] shadow-xl flex flex-col relative overflow-hidden">
-                                <button onClick={() => setShowSticky(false)} className="absolute top-3 right-3 text-yellow-900/40 hover:text-yellow-900 transition-colors opacity-0 group-hover:opacity-100 z-20"><X size={14} /></button>
-                                <div className="flex items-center gap-2 text-yellow-900 mb-2 font-black">
-                                    <AlertCircle size={12} />
-                                    <span className="text-[8px] font-black uppercase tracking-widest">Sticky Note</span>
-                                </div>
-                                <textarea
-                                    value={stickyText}
-                                    onChange={(e) => setStickyText(e.target.value)}
-                                    className="w-full h-full bg-transparent border-none outline-none resize-none text-[10px] text-yellow-900 font-black font-mono placeholder-yellow-900/40 leading-relaxed scrollbar-hide z-10"
-                                    placeholder="Take a note..."
-                                    onPointerDown={(e) => e.stopPropagation()}
-                                />
-                                <div className="h-0.5 w-12 bg-yellow-900/20 rounded-full mt-auto self-end pointer-events-none"></div>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
+                {/* PLUG (agenda gadget) */}
                 <AnimatePresence>
                     {pluggedDay === null && (
                         <motion.div layoutId="gadget-fuse" drag onDragEnd={handleGadgetDragEnd} dragConstraints={constraintsRef} className="group w-16 h-24 relative z-50" onClick={(e) => e.stopPropagation()}>
@@ -1317,8 +1226,14 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
                 ))}
             </div>
 
-            {/* COLLECTIVE BUILD ZONE */}
-            <CollectiveZone classes={classes} currentUser={session?.user} dragConstraints={constraintsRef} />
+            {/* COLLECTIVE BUILD ZONE — Pro-gated (CollectiveZone component above kept, not rendered) */}
+            <div className="w-full flex justify-center pb-20 relative z-20">
+                <ProFeaturePanel
+                    title="Collective Build Node"
+                    description="Ambiente coletivo para criar trabalhos em tempo real com seus amigos — disponível apenas no Pro."
+                    tooltip="Recurso Pro — em breve"
+                />
+            </div>
 
             {/* NEURAL EDITOR (Garantido no final) */}
             <CollabEditor dragConstraints={constraintsRef} />

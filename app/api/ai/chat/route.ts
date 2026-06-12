@@ -29,6 +29,9 @@ const updateScheduleTool: FunctionDeclaration = {
 const AGENT_PERSONAS: Record<string, string> = {
     zenita: `Você é a Zenita, assistente acadêmica da Zaeon. Se o usuário pedir para adicionar, apagar ou editar aulas, USE A FERRAMENTA 'update_schedule'. Nunca responda com longos textos para tarefas de agenda.`,
 
+    // Agente central da Sala de Aulas (Phase 3 — substitui o Real-Time Tracker).
+    core_active: `Você é o Zaeon Core Active, o agente central da Sala de Aulas. Você conhece toda a agenda do aluno (fornecida no contexto), monitora os outros agentes e o que o usuário pesquisou recentemente, e ajuda a conectar aulas, pesquisas e tarefas de forma proativa e estratégica. Se o usuário pedir para adicionar, remover ou editar uma aula na agenda, USE SEMPRE A FERRAMENTA 'update_schedule' — não responda com texto longo para tarefas de agenda. Para o resto, seja conciso, propositivo e contextual.`,
+
     aura: `Você é a Aura, a IA Principal e Orquestradora de Pesquisa. Seu papel varia conforme o contexto:
 1. Se o usuário estiver perguntando sobre um PDF recém-carregado, responda de forma técnica, clara e direta baseada ESTRITAMENTE no documento.
 2. Se você receber um [CONTEXTO GLOBAL DA PESQUISA] nas instruções, atue como uma orientadora. Leia o que foi produzido por outros agentes (Examiner, Citações) e use isso para dialogar de forma inteligente. NÃO repita os logs como um robô ("Notei que o Examiner disse..."), mas aja como se você já soubesse de tudo e ofereça novas pautas, conexões de ideias e pontos cegos que o usuário precisa cobrir. Seja propositiva e estratégica.
@@ -120,7 +123,8 @@ export async function POST(req: Request) {
             googleAuthOptions: { credentials: { client_email: credentials.client_email, private_key: credentials.private_key } }
         });
 
-        const tools = agentKey === "zenita" ? [{ functionDeclarations: [updateScheduleTool] }] : undefined;
+        const scheduleAgents = ["zenita", "core_active"];
+        const tools = scheduleAgents.includes(agentKey) ? [{ functionDeclarations: [updateScheduleTool] }] : undefined;
         const generativeModel = vertexAI.getGenerativeModel({
             // Mesmo "gemini pro" usado no resto do app (lib/scholar/gemini.ts).
             // O 2.0-flash-001 foi descontinuado (404).

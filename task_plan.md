@@ -30,14 +30,14 @@ Single PR at the end. Source of truth: `docs/superpowers/specs/2026-06-07-liquid
 - [x] Verify: tsc clean · build 104/104 (new routes registered) · vitest 248/248
 - [ ] Live teacher↔student browser QA needs seeded teacher account + voice engine (port 8004) — deferred
 
-## Phase 3 — Aulas (ClassesView.tsx rewrite)  `P1`
-- [ ] Remove RealTimeModule → "Zaeon Core Active" chat (largest block)
-- [ ] Core Active agent (monitors other agents + recent research, knows aulas, can create agenda items)
-- [ ] Agenda smaller + mirror detail card; 3 blocks one horizontal line, decreasing symmetric
-- [ ] Remove Sticky Notes (state, `zaeon_sticky_note`, UI)
-- [ ] Keep Backpack only
-- [ ] CollectiveZone → Pro via ProLockBadge
-- [ ] 🛑 CHECKPOINT #2 if 3 blocks don't fit horizontally — report px numbers
+## Phase 3 — Aulas (ClassesView.tsx rewrite)  `P1`  (functional core done)
+- [x] Remove Sticky Notes (state, `zaeon_sticky_note`, load/save, UI, imports)
+- [x] Keep Backpack only (unchanged)
+- [x] CollectiveZone → Pro via `ProFeaturePanel` (component code kept, not rendered)
+- [x] Remove RealTimeModule (render + 126-line component)
+- [x] Core Active agent: chat (already labelled "Core Active") now routes `agent: "core_active"` with the student's agenda as context, and applies the existing `update_schedule` function-tool → creates/removes/updates agenda items (`applyScheduleTool`). Backend: `core_active` persona + tool enabled (was zenita-only).
+- [x] Verify: tsc clean · vitest 248/248 · build 104/104
+- [ ] **Layout reorg (visual, needs QA + 🛑 CHECKPOINT #2):** move Core Active chat into the main horizontal line as the largest block; agenda smaller + detail card mirror; plug smaller beside details; one horizontal line, decreasing symmetric. Deferred from blind editing — needs room-flow screenshots. Functional agent works regardless of position.
 
 ## Phase 4 — Pesquisas: classifier engine + visual sync  `P1`
 - [ ] Reconnect to `lib/scholar/termometro.ts` + `levels.ts` (academic-position classifier)
