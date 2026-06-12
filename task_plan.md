@@ -19,10 +19,16 @@ Single PR at the end. Source of truth: `docs/superpowers/specs/2026-06-07-liquid
 - [ ] Decide `app/study-rooms/page.tsx` (marketing Features page, not a room lobby) — keep cyan or move to glass
 - [ ] Deferred: delete duplicate researches/news/profile/community submodules (separate cleanup pass)
 
-## Phase 2 — Provas / Knowledge Check gateway  `P1`
-- [ ] 🛑 CHECKPOINT #1: write `docs/superpowers/specs/2026-06-12-provas-gateway-design.md`, get approval BEFORE coding
-- [ ] Teacher banner (intake: informes/arquivos/tarefas, invite keys, uploads)
-- [ ] Student body (do provas, submit, Knowledge Check text+audio fixed pair)
+## Phase 2 — Provas / Knowledge Check gateway  `P1`  (spec written; PR #37 = Phase 1)
+- [x] Recon: ExamsModule is local-only; TeacherDocument/ClassLink/TeacherStudent/voice already exist
+- [x] 🛑 CHECKPOINT #1: spec written `docs/superpowers/specs/2026-06-12-provas-gateway-design.md` — **AWAITING APPROVAL** (5 open questions)
+- [x] Approved (auto-grade + teacher override; shared component) → implemented
+- [x] Prisma: `ExamSubmission` model + `TeacherDocument` widened (type informe|material|tarefa|prova, attachmentUrl/Name, dueAt) + back-relations; `prisma generate` ok
+- [x] Routes: `/api/student/submissions` (POST auto-grade + GET), `/api/teacher/submissions` (GET + PATCH grade); `/api/student/tasks` subject now optional + answers stripped (anti-cheat)
+- [x] `components/sub/ExamsGateway.tsx`: professor banner (invite keys, publish, published+counts) + aluno body (take/submit assigned provas, Knowledge Check with fixed text+AUDIO pair via /api/ai/voice, my grades)
+- [x] All 6 `exams/page.tsx` → re-export shared ExamsGateway
+- [x] Verify: tsc clean · build 104/104 (new routes registered) · vitest 248/248
+- [ ] Live teacher↔student browser QA needs seeded teacher account + voice engine (port 8004) — deferred
 
 ## Phase 3 — Aulas (ClassesView.tsx rewrite)  `P1`
 - [ ] Remove RealTimeModule → "Zaeon Core Active" chat (largest block)

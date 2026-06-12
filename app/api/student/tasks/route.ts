@@ -14,14 +14,12 @@ export async function GET(req: Request) {
         if (!student) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
         const { searchParams } = new URL(req.url);
-        const subject = searchParams.get('subject');
+        const subject = searchParams.get('subject'); // optional — omit to get ALL assigned docs (Provas gateway)
 
-        if (!subject) return NextResponse.json({ error: "Subject required" }, { status: 400 });
-
-        // Retrieve published documents matching the given subject
+        // Retrieve published documents assigned to this student (optionally by subject)
         const documents = await prisma.teacherDocument.findMany({
             where: {
-                subject: subject,
+                ...(subject ? { subject } : {}),
                 status: 'published',
                 assignedTo: { has: student.id }
             },
@@ -30,19 +28,37 @@ export async function GET(req: Request) {
                 id: true,
                 title: true,
                 type: true,
+                subject: true,
+                dueAt: true,
                 createdAt: true,
                 context: true,
+                questions: true,
             }
         });
 
-        // O Frontend em ClassesView.tsx mapeia task.content
-        // Nosso modelo usa context como snippet/description.
+        // O Frontend em ClassesView.tsx mapeia task.content; o gateway de Provas usa
+        // `questions`. Removemos a chave `answer` de cada questão para o aluno não trapacear.
+        const stripAnswers = (qs: unknown) =>
+            Array.isArray(qs)
+                ? qs.map((q) => {
+                      if (q && typeof q === 'object') {
+                          const { answer, ...rest } = q as Record<string, unknown>;
+                          void answer;
+                          return rest;
+                      }
+                      return q;
+                  })
+                : [];
+
         const mapped = documents.map(d => ({
             id: d.id,
             title: d.title,
             type: d.type,
+            subject: d.subject,
+            dueAt: d.dueAt,
             createdAt: d.createdAt,
-            content: d.context || "Documento da disciplina" 
+            content: d.context || "Documento da disciplina",
+            questions: stripAnswers(d.questions),
         }));
 
         return NextResponse.json(mapped);

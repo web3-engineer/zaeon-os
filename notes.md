@@ -58,3 +58,11 @@ Rooms render submodules as **dynamic component imports** (not href routes), e.g.
 - KEPT: `#f59e0b/#d97706/#fbbf24` window minimize dot (shared macOS control); amber ⚠ "Restricted Area" warning in bio (semantic warning, not course color); canonical cyan `#22d3ee` (Zaeon secondary accent).
 - Dev preview: machine compiles routes very slowly (cyber ~25s, bio ~231s). Viewport glitched to 35px once → use preview_resize width/height explicit. cyber proven in dark mode; bio proven green-gone.
 - Verify: tsc EXIT=0 0 errors; `npm run build` BUILD_EXIT=0, Compiled successfully, 104/104 static pages (after reskin).
+
+## Phase 2 — Provas gateway (spec approved, implemented)
+- Spec: `docs/superpowers/specs/2026-06-12-provas-gateway-design.md` (Checkpoint #1 APPROVED: auto-grade + teacher override; shared component).
+- Reused existing: `ClassLink`+`/api/teacher/invite`+`/api/student/join` (keys), `TeacherDocument`+`/api/teacher/documents`+`/api/student/tasks` (teacher→student), `/api/ai/voice` (Piper TTS, returns `{audio_base64}` → play `data:audio/wav;base64,`), `/api/ai/chat` (gen). Role = `User.role ∈ {teacher,professor}`.
+- New: `model ExamSubmission` (@@unique[documentId,studentId]); `TeacherDocument` widened (type informe|material|tarefa|prova + attachmentUrl/Name + dueAt) + back-relations; `prisma generate` ok.
+- New routes: `/api/student/submissions` (POST upsert + auto-grade closed-form, GET own), `/api/teacher/submissions` (GET for owned docs, PATCH grade/override). `/api/student/tasks` → subject optional + **strips `answer`** from questions (anti-cheat).
+- `components/sub/ExamsGateway.tsx`: role-detected. Teacher banner (invite keys / publish informe·material·tarefa·prova / published+submission counts). Student body (take assigned provas → submit → score; Knowledge Check self with fixed TEXT+AUDIO pair per item via AudioButton→/api/ai/voice; my grades). All 6 `exams/page.tsx` re-export it.
+- Verify: tsc 0 errs · build 104/104 (`/api/student/submissions`, `/api/teacher/submissions` registered; exams page 7.75kB→1.66kB) · vitest 248/248. Render check: gateway loads student view, 0 JS errors. NOTE: light-mode text-white low-contrast standalone — but renders inside dark room shell (room dark-first convention, matches sibling modules). Live teacher↔student QA needs seeded teacher account + voice engine (port 8004) — deferred.

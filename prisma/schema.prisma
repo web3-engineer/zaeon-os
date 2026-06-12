@@ -78,6 +78,9 @@ model User {
   // 🔥 NOVO: Documentos do Professor (Tarefas e Provas)
   teacherDocuments TeacherDocument[] @relation("TeacherDocuments")
 
+  // 🔥 NOVO (Phase 2 — Provas gateway): submissões do aluno
+  studentSubmissions ExamSubmission[] @relation("StudentSubmissions")
+
   // 🔥 NOVO: Links de convite gerados
   teacherLinks     ClassLink[] @relation("TeacherLinks")
 
@@ -328,17 +331,44 @@ model TeacherDocument {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   teacherId   String   @db.ObjectId
   title       String
-  type        String   // 'tarefa' or 'prova'
+  type        String   // 'informe' | 'material' | 'tarefa' | 'prova'  (Phase 2 widened from tarefa/prova)
   subject     String?
-  questions   Json     // Array of { number, statement, options[], answer, type }
+  questions   Json     // Array of { number, statement, options[], answer, type } — [] for informe/material
   headerImage String?  // Base64 institution logo
   context     String?  // Original prompt/source material
   status      String   @default("draft") // draft, published
   assignedTo  String[] @default([]) // Array of student IDs
+
+  // 🔥 NOVO (Phase 2): anexos de informe/material + prazo
+  attachmentUrl  String?
+  attachmentName String?
+  dueAt          DateTime?
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   teacher     User @relation("TeacherDocuments", fields: [teacherId], references: [id])
+  submissions ExamSubmission[]
+}
+
+// 🔥 NOVO (Phase 2 — Provas gateway): submissão do aluno a uma prova/tarefa
+model ExamSubmission {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  documentId  String   @db.ObjectId
+  studentId   String   @db.ObjectId
+  answers     Json     // [{ number, answer }]
+  score       Int?     // 0–100, null até corrigir
+  status      String   @default("submitted") // submitted | graded
+  gradedBy    String?  // 'ai' | teacherId
+  feedback    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  document    TeacherDocument @relation(fields: [documentId], references: [id])
+  student     User            @relation("StudentSubmissions", fields: [studentId], references: [id])
+
+  @@unique([documentId, studentId])
+  @@index([studentId])
 }
 
 model ScholarSession {
