@@ -876,9 +876,9 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
                     </div>
                 </div>
 
-                {/* AGENDA (com detalhes embutidos) + fitinha de tempo atual — mesma altura */}
-                <div className="w-[300px] h-[420px] flex flex-col gap-2 z-10">
-                <motion.div ref={agendaRef} className="group flex-1 min-h-0 relative z-10" onClick={(e) => e.stopPropagation()}>
+                {/* AGENDA (com detalhes embutidos) + fitinha de tempo atual — 35% menor, alinhada ao topo */}
+                <div className="w-[195px] self-start flex flex-col items-center gap-1.5 z-10">
+                <motion.div ref={agendaRef} className="group w-full h-[273px] relative z-10" onClick={(e) => e.stopPropagation()}>
                     <div className={`w-full h-full backdrop-blur-xl border border-white/10 p-4 rounded-[2.5rem] shadow-xl flex flex-col relative overflow-hidden bg-[#0f172a]/95 dark:bg-black/40`}>
                         <div className="w-full flex justify-between items-center mb-2 pointer-events-none shrink-0">
                             <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/60">Agenda</span>
@@ -923,7 +923,7 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
                                         })}
                                     </div>
                                     <div className="mt-2 w-full flex flex-col items-center justify-end h-8 relative">
-                                        {pluggedDay === dIdx ? (<motion.div layoutId="gadget-fuse" onClick={(e) => {e.stopPropagation(); setPluggedDay(null);}} className="w-full h-6 bg-[#222] border-t-2 border-cyan-500 rounded-b-md shadow-[0_0_10px_#22d3ee] flex items-center justify-center cursor-pointer hover:bg-[#333]"><div className={`w-2 h-2 rounded-full ${gadgetOn ? 'bg-cyan-400 shadow-[0_0_5px_#22d3ee]' : 'bg-gray-600'}`}></div></motion.div>) : (<div className="w-full h-1 bg-white/10 rounded-full mb-1"></div>)}
+                                        {pluggedDay === dIdx ? (<div className="w-full h-1.5 bg-gradient-to-r from-violet-400 to-cyan-400 rounded-full mb-1 shadow-[0_0_8px_#8b5cf6] animate-pulse" />) : (<div className="w-full h-1 bg-white/10 rounded-full mb-1"></div>)}
                                         <span className={`text-[7px] font-bold transition-colors ${pluggedDay === dIdx ? 'text-cyan-300' : 'text-white/40'}`}>{day[0]}</span>
                                     </div>
                                 </div>
@@ -969,23 +969,38 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
                 </motion.div>
                 {/* FITINHA "TEMPO ATUAL" — só aparece quando há aula acontecendo agora; não ocupa célula própria */}
                 {currentClass && (
-                    <div className={`w-[280px] flex items-center gap-2 rounded-full px-3 py-1.5 bg-gradient-to-r ${currentClass.color} shadow-[0_0_14px_rgba(139,92,246,0.5)] border border-white/30`}>
+                    <div className={`w-full flex items-center gap-2 rounded-full px-3 py-1.5 bg-gradient-to-r ${currentClass.color} shadow-[0_0_14px_rgba(139,92,246,0.5)] border border-white/30`}>
                         <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0" />
                         <span className="text-[9px] font-black uppercase tracking-wider text-white truncate">{currentClass.name || 'Aula agora'}</span>
                         <span className="text-[9px] font-mono text-white/90 ml-auto shrink-0 whitespace-nowrap">{currentClass.hour}h–{currentClass.endHour}h{currentClass.room ? ` · ${currentClass.room}` : ''}</span>
                     </div>
                 )}
-                {/* PLUG pequeno — gadget de energia da agenda (ao lado dos detalhes) */}
-                <AnimatePresence>
-                    {pluggedDay === null && (
-                        <motion.div layoutId="gadget-fuse" drag onDragEnd={handleGadgetDragEnd} dragConstraints={constraintsRef} className="group w-12 h-16 relative z-50 self-center shrink-0" onClick={(e) => e.stopPropagation()}>
+                {/* GADGET DE ENERGIA — encaixa na base da agenda com conector neon */}
+                <AnimatePresence mode="wait">
+                    {pluggedDay !== null ? (
+                        <motion.div key="docked" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex flex-col items-center">
+                            {/* conector neon: liga a base da agenda ao gadget plugado */}
+                            <motion.div animate={{ opacity: [0.45, 1, 0.45] }} transition={{ duration: 1.1, repeat: Infinity }} className="w-[3px] h-4 -mt-1 bg-gradient-to-b from-violet-400 to-cyan-400 rounded-full shadow-[0_0_10px_#8b5cf6]" />
+                            <motion.div layoutId="gadget-fuse" onClick={(e) => { e.stopPropagation(); setPluggedDay(null); }} className="group w-12 h-14 relative cursor-pointer" title="Desconectar gadget">
+                                <div className={`w-full h-full bg-gradient-to-b from-[#333] to-[#111] rounded-md flex flex-col items-center justify-between p-1.5 relative overflow-hidden transition-all border ${gadgetOn ? 'border-violet-400/70 shadow-[0_0_16px_rgba(139,92,246,0.7),inset_0_1px_0_rgba(255,255,255,0.2)]' : 'border-violet-500/40 shadow-[0_0_9px_rgba(139,92,246,0.4)]'}`}>
+                                    <button onClick={(e) => { e.stopPropagation(); setGadgetOn(!gadgetOn); }} className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${gadgetOn ? 'bg-violet-900 border-violet-500 shadow-[inset_0_0_8px_#8b5cf6]' : 'bg-[#222] border-[#444]'}`}>
+                                        <Power size={9} className={gadgetOn ? 'text-violet-300' : 'text-gray-600'} />
+                                    </button>
+                                    <div className="w-full h-5 bg-black/60 rounded border border-white/5 flex items-center justify-center relative overflow-hidden">
+                                        {gadgetOn && <div className="absolute inset-0 bg-violet-500/25 animate-pulse"></div>}
+                                        <div className="w-full h-[1px] bg-gray-700"><motion.div animate={{ width: gadgetOn ? "100%" : "0%" }} className="h-full bg-gradient-to-r from-violet-400 to-cyan-400 shadow-[0_0_6px_#8b5cf6]" /></div>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    ) : (
+                        <motion.div key="loose" layoutId="gadget-fuse" drag onDragEnd={handleGadgetDragEnd} dragConstraints={constraintsRef} className="group w-12 h-14 relative z-50 self-center shrink-0 cursor-grab active:cursor-grabbing" onClick={(e) => e.stopPropagation()} title="Arraste até a base da agenda para plugar">
                             <div className="w-full h-full bg-gradient-to-b from-[#333] to-[#111] border border-gray-600 rounded-md shadow-[0_8px_16px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.2)] flex flex-col items-center justify-between p-1.5 relative overflow-hidden">
                                 <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-6 h-2 bg-yellow-600 rounded-t-sm shadow-sm"></div>
-                                <button onClick={() => setGadgetOn(!gadgetOn)} className={`w-6 h-6 rounded-full border-2 border-[#444] flex items-center justify-center transition-all ${gadgetOn ? 'bg-violet-900 shadow-[inset_0_0_8px_#8b5cf6]' : 'bg-[#222]'}`}>
-                                    <Power size={9} className={`transition-colors ${gadgetOn ? 'text-violet-400' : 'text-gray-600'}`} />
+                                <button onClick={(e) => { e.stopPropagation(); setGadgetOn(!gadgetOn); }} className={`w-6 h-6 rounded-full border-2 border-[#444] flex items-center justify-center transition-all ${gadgetOn ? 'bg-violet-900 shadow-[inset_0_0_8px_#8b5cf6]' : 'bg-[#222]'}`}>
+                                    <Power size={9} className={gadgetOn ? 'text-violet-400' : 'text-gray-600'} />
                                 </button>
                                 <div className="w-full h-5 bg-black/60 rounded border border-white/5 flex items-center justify-center relative overflow-hidden">
-                                    {gadgetOn && <div className="absolute inset-0 bg-violet-500/20 animate-pulse"></div>}
                                     <div className="w-full h-[1px] bg-gray-700"><motion.div animate={{ width: gadgetOn ? "100%" : "0%" }} className="h-full bg-violet-400 shadow-[0_0_5px_#8b5cf6]" /></div>
                                 </div>
                             </div>
