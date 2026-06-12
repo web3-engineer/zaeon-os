@@ -37,7 +37,7 @@ Single PR at the end. Source of truth: `docs/superpowers/specs/2026-06-07-liquid
 - [x] Remove RealTimeModule (render + 126-line component)
 - [x] Core Active agent: chat (already labelled "Core Active") now routes `agent: "core_active"` with the student's agenda as context, and applies the existing `update_schedule` function-tool → creates/removes/updates agenda items (`applyScheduleTool`). Backend: `core_active` persona + tool enabled (was zenita-only).
 - [x] Verify: tsc clean · vitest 248/248 · build 104/104
-- [ ] **Layout reorg (visual, needs QA + 🛑 CHECKPOINT #2):** move Core Active chat into the main horizontal line as the largest block; agenda smaller + detail card mirror; plug smaller beside details; one horizontal line, decreasing symmetric. Deferred from blind editing — needs room-flow screenshots. Functional agent works regardless of position.
+- [x] **Layout reorg DONE** (user OK'd removing drag + simplifying): single horizontal line Core Active(440) → Agenda(300) → Details(176) → Plug(64), decreasing; drag removed from agenda/details; old chat section → static Library+Plugins row; cords removed. 🛑 Checkpoint #2: fits horizontally (~980px < 1400) — no overflow. Screenshot-verified at 1360px.
 
 ## Phase 4 — Pesquisas: classifier engine + visual sync  `P1`
 - [ ] Reconnect to `lib/scholar/termometro.ts` + `levels.ts` (academic-position classifier)

@@ -888,10 +888,26 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
 
             <div className="flex justify-start items-start gap-8 flex-wrap z-20 relative w-full max-w-[1400px] mx-auto pb-10 min-h-[400px]">
 
-                {/* REAL-TIME TRACKER MODULE removed (Phase 3) — replaced by the Zaeon Core Active chat (rendered below). */}
+                {/* ZAEON CORE ACTIVE — largest block in the line (replaces the old Real-Time Tracker) */}
+                <div className="w-[440px] h-[420px] bg-white/70 dark:bg-black/40 backdrop-blur-3xl border border-white/30 dark:border-white/10 rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden relative z-10">
+                    <div className="h-16 border-b border-white/20 flex items-center px-6 gap-4 bg-white/10">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#8b5cf6] to-[#22d3ee] shadow-lg flex items-center justify-center border border-white/20"><Bot size={20} className="text-white" /></div>
+                        <div className="flex flex-col">
+                            <span className="text-sm font-black text-slate-800 dark:text-white tracking-widest uppercase">Zaeon</span>
+                            <div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span><span className="text-[9px] text-slate-500 dark:text-white/40 font-bold uppercase tracking-tighter">Core Active</span></div>
+                        </div>
+                    </div>
+                    <div ref={zaeonChatScrollRef} className="flex-1 overflow-y-auto p-5 space-y-4 scrollbar-hide">{liquidChatHistory.map((m, i) => (<div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[85%] p-3.5 rounded-2xl text-xs leading-relaxed backdrop-blur-md shadow-sm ${m.role === 'user' ? 'bg-[#8b5cf6] text-white font-bold' : 'bg-white/80 dark:bg-white/5 text-slate-900 dark:text-white/90 border border-white/20'}`}>{m.text}</div></div>))}</div>
+                    <div className="p-4 bg-white/10 border-t border-white/20">
+                        <div className="flex items-center gap-2 bg-slate-200/50 dark:bg-black/30 rounded-full px-2 py-2 border border-white/30 dark:border-white/5">
+                            <input value={zaeonInput} onChange={(e) => setZaeonInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleZaeonMessage()} className="bg-transparent flex-1 text-xs text-slate-900 dark:text-white px-3 outline-none placeholder:text-slate-500 dark:placeholder:text-white/20" placeholder="Pergunte ao Core Active…" disabled={isZaeonProcessing} />
+                            <button onClick={handleZaeonMessage} disabled={isZaeonProcessing} className="w-9 h-9 rounded-full bg-[#8b5cf6] flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-lg"><Send size={14} className="text-white" /></button>
+                        </div>
+                    </div>
+                </div>
 
                 {/* SCHEDULE */}
-                <motion.div ref={agendaRef} drag dragConstraints={constraintsRef} className="group w-[360px] h-[320px] relative z-10" onClick={(e) => e.stopPropagation()}>
+                <motion.div ref={agendaRef} className="group w-[300px] h-[300px] relative z-10" onClick={(e) => e.stopPropagation()}>
                     <div className={`w-full h-full backdrop-blur-xl border border-white/10 p-5 rounded-[2.5rem] shadow-xl flex flex-col items-center justify-between relative overflow-hidden bg-[#172554]/90 dark:bg-black/40`}>
                         <div className="w-full flex justify-between items-center mb-2 pointer-events-none">
                             <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/60">Agenda</span>
@@ -946,7 +962,7 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
                 </motion.div>
 
                 {/* DETAILS CARD EDITÁVEL */}
-                <motion.div drag dragConstraints={constraintsRef} className="group w-52 h-52 relative z-30" onClick={(e) => e.stopPropagation()}>
+                <motion.div className="group w-44 h-44 relative z-30" onClick={(e) => e.stopPropagation()}>
                     <div 
                         className={`w-full h-full bg-white/90 dark:bg-black/40 backdrop-blur-xl border border-slate-300 dark:border-white/10 p-5 rounded-[2.5rem] shadow-xl flex flex-col justify-between relative overflow-hidden transition-colors duration-500 cursor-pointer ${selectedClass ? `bg-gradient-to-br ${selectedClass.color.replace('from-', 'bg-').split(' ')[0]} bg-opacity-90 dark:bg-opacity-20` : ''}`}
                         onClick={handleCycleColor}
@@ -1061,94 +1077,36 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
                 </AnimatePresence>
             </div>
 
-            {/* 4. ZAEON CHAT & GADGETS */}
-            <div className="w-full flex justify-center py-20 relative z-20">
-                <motion.div drag dragConstraints={constraintsRef} className="group relative flex items-center gap-10" onClick={(e) => e.stopPropagation()}>
-                    
-                    <div className="absolute inset-0 pointer-events-none overflow-visible">
-                        {[{ yStart: 130, yEnd: 100, delay: 0 }, { yStart: 320, yEnd: 350, delay: 0.2 }].map((cord, idx) => (
-                            <div key={idx} className="absolute left-[384px] top-0 overflow-visible">
-                                <svg width="100" height="450" className="absolute top-0 overflow-visible">
-                                    <path 
-                                        d={`M 0 ${cord.yStart} C 50 ${cord.yStart}, 50 ${cord.yEnd}, 100 ${cord.yEnd}`} 
-                                        fill="none" 
-                                        stroke="rgba(34, 211, 238, 0.25)" 
-                                        strokeWidth="3" 
-                                    />
-                                    <motion.path 
-                                        d={`M 0 ${cord.yStart} C 50 ${cord.yStart}, 50 ${cord.yEnd}, 100 ${cord.yEnd}`} 
-                                        fill="none" 
-                                        stroke="#22d3ee" 
-                                        strokeWidth="4" 
-                                        strokeDasharray="15 35" 
-                                        initial={{ strokeDashoffset: 0 }} 
-                                        animate={{ strokeDashoffset: -100 }} 
-                                        transition={{ duration: 1.5, repeat: Infinity, ease: "linear", delay: cord.delay }} 
-                                        className="drop-shadow-[0_0_12px_rgba(34,211,238,0.9)]" 
-                                    />
-                                </svg>
-                            </div>
+            {/* 4. LIBRARY & PLUGINS (static row) */}
+            <div className="w-full flex justify-center flex-wrap gap-6 py-10 relative z-20 max-w-[1400px] mx-auto">
+                {/* LIBRARY MODULE */}
+                <div onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const files = Array.from(e.dataTransfer.files); const pdfs = files.filter(f => f.type === 'application/pdf').map(f => ({ id: Math.random().toString(36).substr(2, 9), title: f.name, type: 'pdf' as const, size: (f.size / 1024 / 1024).toFixed(1) + 'mb' })); setStoredPdfs(prev => [...prev, ...pdfs]); }} className="h-32 w-[340px] max-w-[450px] bg-white/70 dark:bg-black/60 backdrop-blur-3xl border border-white/40 dark:border-white/10 rounded-[1.8rem] p-4 flex flex-col relative shadow-2xl">
+                    <div className="flex items-center justify-between mb-3 border-b border-white/20 pb-2">
+                        <div className="flex items-center gap-2"><Database size={13} className="text-[#22d3ee]" /><span className="text-[10px] font-black uppercase tracking-widest">Library</span></div>
+                    </div>
+                    <div className="flex gap-2 items-center h-full overflow-x-auto scrollbar-hide pr-2">
+                        {storedPdfs.map(pdf => (
+                            <motion.div key={pdf.id} className="group/item w-20 h-20 bg-white/10 rounded-xl border border-white/20 flex flex-col items-center justify-center gap-0.5 p-2 relative">
+                                <button onClick={(e) => { e.stopPropagation(); handleDeletePdf(pdf.id); }} className="absolute bottom-1 right-1 p-1 bg-red-500/80 hover:bg-red-600 text-white rounded-md opacity-0 group-hover/item:opacity-100 transition-opacity z-20">
+                                    <Trash2 size={10} />
+                                </button>
+                                <FileText size={22} className="text-[#22d3ee]" />
+                                <span className="text-[8px] text-slate-900 dark:text-white font-black truncate w-full block text-center">{pdf.title}</span>
+                            </motion.div>
                         ))}
+                        <label className="w-16 h-20 rounded-xl border-2 border-dashed border-white/30 flex items-center justify-center text-white hover:bg-white/10 hover:border-[#8b5cf6] cursor-pointer transition-all group/add shrink-0"><input type="file" className="hidden" accept=".pdf" onChange={handleLibraryUpload} /><Plus size={20} className="group-hover/add:scale-125 transition-transform" /></label>
                     </div>
+                </div>
 
-                    <div className="w-96 h-[450px] bg-white/10 dark:bg-black/40 bg-white/70 backdrop-blur-3xl border border-white/30 dark:border-white/10 rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden relative z-10 transition-all duration-500">
-                        <div className="h-16 border-b border-white/20 flex items-center px-6 gap-4 bg-white/10">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-cyan-400 shadow-lg flex items-center justify-center border border-white/20"><Bot size={20} className="text-white" /></div>
-                            <div className="flex flex-col">
-                                <span className="text-sm font-black text-slate-800 dark:text-white tracking-widest uppercase">Zaeon</span>
-                                <div className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span><span className="text-[9px] text-slate-500 dark:text-white/40 font-bold uppercase tracking-tighter">Core Active</span></div>
-                            </div>
-                            <div className="ml-auto">
-                                <label className="cursor-pointer text-slate-400 hover:text-cyan-400 transition-colors">
-                                    <input type="file" className="hidden" onChange={(e) => {
-                                        if (e.target.files && e.target.files.length > 0) {
-                                            alert(`File ${e.target.files[0].name} selected for Zaeon.`);
-                                        }
-                                    }}/>
-                                    <UploadCloud size={16} />
-                                </label>
-                            </div>
-                        </div>
-                        <div ref={zaeonChatScrollRef} className="flex-1 overflow-y-auto p-5 space-y-4 scrollbar-hide">{liquidChatHistory.map((m, i) => (<div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[85%] p-3.5 rounded-2xl text-xs leading-relaxed backdrop-blur-md shadow-sm ${m.role === 'user' ? 'bg-blue-600 text-white font-bold' : 'bg-white/80 dark:bg-white/5 text-slate-900 dark:text-white/90 border border-white/20'}`}>{m.text}</div></div>))}</div>
-                        <div className="p-4 bg-white/10 border-t border-white/20">
-                            <div className="flex items-center gap-2 bg-slate-200/50 dark:bg-black/30 rounded-full px-2 py-2 border border-white/30 dark:border-white/5">
-                                <input value={zaeonInput} onChange={(e) => setZaeonInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleZaeonMessage()} className="bg-transparent flex-1 text-xs text-slate-900 dark:text-white px-3 outline-none placeholder:text-slate-500 dark:placeholder:text-white/20" placeholder="Ask Zaeon..." disabled={isZaeonProcessing} />
-                                <button onClick={handleZaeonMessage} disabled={isZaeonProcessing} className="w-9 h-9 rounded-full bg-blue-600 dark:bg-cyan-500 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-lg"><Send size={14} className="text-white" /></button>
-                            </div>
+                {/* PLUGINS MODULE */}
+                <div className="h-32 w-[260px] max-w-[450px] bg-white/70 dark:bg-black/60 backdrop-blur-3xl border border-white/40 dark:border-white/10 rounded-[1.8rem] p-4 flex flex-col relative shadow-2xl">
+                    <div className="flex items-center justify-between mb-3 border-b border-white/20 pb-2">
+                        <div className="flex items-center gap-2">
+                            <Puzzle size={13} className="text-[#8b5cf6]" />
+                            <span className="text-[10px] font-black uppercase tracking-widest">Plugins</span>
                         </div>
                     </div>
-
-                    <div className="flex flex-col gap-14 z-10">
-                        {/* LIBRARY MODULE */}
-                        <div onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const files = Array.from(e.dataTransfer.files); const pdfs = files.filter(f => f.type === 'application/pdf').map(f => ({ id: Math.random().toString(36).substr(2, 9), title: f.name, type: 'pdf' as const, size: (f.size / 1024 / 1024).toFixed(1) + 'mb' })); setStoredPdfs(prev => [...prev, ...pdfs]); }} className="h-32 min-w-[150px] max-w-[450px] bg-white/70 dark:bg-black/60 backdrop-blur-3xl border border-white/40 dark:border-white/10 rounded-[1.8rem] p-4 flex flex-col relative shadow-2xl">
-                            <div className="flex items-center justify-between mb-3 border-b border-blue-200/50 dark:border-white/20 pb-2">
-                                <div className="flex items-center gap-2"><Database size={13} className="text-blue-600 dark:text-cyan-400" /><span className="text-[10px] font-black uppercase tracking-widest">Library</span></div>
-                            </div>
-                            <div className="flex gap-2 items-center h-full overflow-x-auto scrollbar-hide pr-2">
-                                {storedPdfs.map(pdf => (
-                                    <motion.div key={pdf.id} className="group/item w-20 h-20 bg-blue-50/50 dark:bg-white/10 rounded-xl border border-blue-200/50 dark:border-white/20 flex flex-col items-center justify-center gap-0.5 p-2 relative">
-                                        <button onClick={(e) => { e.stopPropagation(); handleDeletePdf(pdf.id); }} className="absolute bottom-1 right-1 p-1 bg-red-500/80 hover:bg-red-600 text-white rounded-md opacity-0 group-hover/item:opacity-100 transition-opacity z-20">
-                                            <Trash2 size={10} />
-                                        </button>
-                                        <FileText size={22} className="text-blue-600 dark:text-cyan-400" />
-                                        <span className="text-[8px] text-slate-900 dark:text-white font-black truncate w-full block text-center">{pdf.title}</span>
-                                    </motion.div>
-                                ))}
-                                <label className="w-16 h-20 rounded-xl border-2 border-dashed border-blue-300/50 dark:border-white/30 flex items-center justify-center text-blue-400 dark:text-white hover:bg-blue-50 dark:hover:bg-white/10 hover:border-blue-500 cursor-pointer transition-all group/add shrink-0"><input type="file" className="hidden" accept=".pdf" onChange={handleLibraryUpload} /><Plus size={20} className="group-hover/add:scale-125 transition-transform" /></label>
-                            </div>
-                        </div>
-
-                        {/* PLUGINS MODULE (ANTIGO FABRICATOR) */}
-                        <div className="h-32 min-w-[150px] max-w-[450px] bg-white/70 dark:bg-black/60 backdrop-blur-3xl border border-white/40 dark:border-white/10 rounded-[1.8rem] p-4 flex flex-col relative shadow-2xl">
-                            <div className="flex items-center justify-between mb-3 border-b border-purple-200/50 dark:border-white/20 pb-2">
-                                <div className="flex items-center gap-2">
-                                    <Puzzle size={13} className="text-purple-600 dark:text-purple-400" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">Plugins</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </motion.div>
+                </div>
             </div>
 
             {/* 5. BACKPACK MINIMALISTA (AGORA NA DIREITA PARA NÃO SOBREPOR AS IAs) */}
