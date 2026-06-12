@@ -1,5 +1,7 @@
 "use client";
 
+import { ProFeaturePanel } from "@/components/ui/ProFeaturePanel";
+import { CanonicalLaunchPanel } from "@/components/ui/CanonicalLaunchPanel";
 import React, { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
@@ -15,7 +17,7 @@ import { LoungeChatWidget } from "@/components/sub/LoungeChatWidget";
 
 // --- 1. CONFIGURAÇÃO DE IMPORTS ---
 const LoadingModule = () => (
-    <div className="w-full h-full flex flex-col items-center justify-center text-cyan-500/50 animate-pulse gap-2">
+    <div className="w-full h-full flex flex-col items-center justify-center text-violet-500/50 animate-pulse gap-2">
         <Zap className="w-5 h-5 animate-bounce" />
         <span className="text-[10px] tracking-[0.2em] uppercase font-mono">Loading Stream...</span>
     </div>
@@ -23,11 +25,8 @@ const LoadingModule = () => (
 
 const ClassesModule = dynamic(() => import('./main-lounge/classes/page').then(mod => mod.default), { loading: LoadingModule });
 const ExamsModule = dynamic(() => import('./main-lounge/exams/page').then(mod => mod.default), { loading: LoadingModule });
-const ProjectsModule = dynamic(() => import('./main-lounge/projects/page').then(mod => mod.default), { loading: LoadingModule });
-const ResearchModule = dynamic(() => import('./main-lounge/researches/page').then(mod => mod.default), { loading: LoadingModule });
 const CommunityModule = dynamic(() => import('./main-lounge/community/page').then(mod => mod.default), { loading: LoadingModule });
 const ProfileModule = dynamic(() => import('./main-lounge/profile/page').then(mod => mod.default), { loading: LoadingModule });
-const NewsModule = dynamic(() => import('./main-lounge/news/page').then(mod => mod.default), { loading: LoadingModule });
 
 export default function ZaeonLoungeRoom() {
 
@@ -194,10 +193,10 @@ export default function ZaeonLoungeRoom() {
     }, []);
 
     const cardStyle = `
-        dark:bg-[#0f172a]/80 bg-white/60
-        backdrop-blur-[20px] 
-        border dark:border-cyan-500/20 border-white/40
-        shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]
+        dark:bg-[rgba(22,22,34,0.55)] bg-[rgba(255,255,255,0.6)]
+        backdrop-blur-[40px] backdrop-saturate-[1.8] 
+        border dark:border-[rgba(255,255,255,0.12)] border-[rgba(255,255,255,0.5)]
+        shadow-[0_40px_100px_-30px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.10)]
     `;
 
     return (
@@ -223,52 +222,52 @@ export default function ZaeonLoungeRoom() {
                         className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-xl"
                     >
                         {/* WIDGET CONTAINER */}
-                        <div className="relative w-[300px] bg-[#050b14] border border-cyan-900/50 rounded-xl overflow-hidden shadow-[0_0_50px_-10px_rgba(6,182,212,0.15)] flex flex-col p-1">
+                        <div className="relative w-[300px] bg-[#050b14] border border-violet-900/50 rounded-xl overflow-hidden shadow-[0_0_50px_-10px_rgba(34, 211, 238,0.15)] flex flex-col p-1">
 
                             {/* Decorative Tech Corners */}
-                            <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-cyan-500/50 rounded-tl-lg" />
-                            <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-cyan-500/50 rounded-tr-lg" />
-                            <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-cyan-500/50 rounded-bl-lg" />
-                            <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-cyan-500/50 rounded-br-lg" />
+                            <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-violet-500/50 rounded-tl-lg" />
+                            <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-violet-500/50 rounded-tr-lg" />
+                            <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-violet-500/50 rounded-bl-lg" />
+                            <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-violet-500/50 rounded-br-lg" />
 
                             {/* Inner Glass */}
-                            <div className="relative z-10 w-full h-full bg-cyan-950/10 backdrop-blur-sm rounded-lg p-6 flex flex-col items-center">
+                            <div className="relative z-10 w-full h-full bg-violet-950/10 backdrop-blur-sm rounded-lg p-6 flex flex-col items-center">
 
                                 {/* Header Minimal */}
-                                <div className="w-full flex justify-between items-center mb-8 border-b border-cyan-900/30 pb-2">
-                                    <span className="text-[9px] text-cyan-600 font-bold tracking-[0.2em]">INIT_ENGINE.V4</span>
+                                <div className="w-full flex justify-between items-center mb-8 border-b border-violet-900/30 pb-2">
+                                    <span className="text-[9px] text-violet-600 font-bold tracking-[0.2em]">INIT_ENGINE.V4</span>
                                     <div className="flex gap-1">
-                                        <div className="w-1 h-1 bg-cyan-500 rounded-full animate-ping" />
-                                        <div className="w-1 h-1 bg-cyan-800 rounded-full" />
-                                        <div className="w-1 h-1 bg-cyan-900 rounded-full" />
+                                        <div className="w-1 h-1 bg-violet-500 rounded-full animate-ping" />
+                                        <div className="w-1 h-1 bg-violet-800 rounded-full" />
+                                        <div className="w-1 h-1 bg-violet-900 rounded-full" />
                                     </div>
                                 </div>
 
                                 {/* Mechanical Loader */}
                                 <div className="relative w-20 h-20 flex items-center justify-center mb-8">
                                     {/* Outer Ring */}
-                                    <div className="absolute inset-0 border border-dashed border-cyan-800/60 rounded-full animate-[spin_10s_linear_infinite]" />
+                                    <div className="absolute inset-0 border border-dashed border-violet-800/60 rounded-full animate-[spin_10s_linear_infinite]" />
 
                                     {/* Middle Ring (Reverse) */}
-                                    <div className="absolute inset-2 border-2 border-t-transparent border-l-cyan-500/80 border-r-transparent border-b-cyan-500/20 rounded-full animate-[spin_2s_linear_infinite_reverse]" />
+                                    <div className="absolute inset-2 border-2 border-t-transparent border-l-violet-500/80 border-r-transparent border-b-violet-500/20 rounded-full animate-[spin_2s_linear_infinite_reverse]" />
 
                                     {/* Inner Ring (Fast) */}
-                                    <div className="absolute inset-5 border border-cyan-400/40 rounded-full animate-pulse" />
+                                    <div className="absolute inset-5 border border-violet-400/40 rounded-full animate-pulse" />
 
                                     {/* Icon */}
-                                    <Aperture className="w-6 h-6 text-cyan-400 animate-[spin_4s_linear_infinite]" />
+                                    <Aperture className="w-6 h-6 text-violet-400 animate-[spin_4s_linear_infinite]" />
                                 </div>
 
                                 {/* Dynamic Text */}
                                 <div className="flex flex-col items-center gap-1 h-10">
-                                    <span className="text-[8px] text-cyan-700 uppercase font-mono">Loading Module</span>
+                                    <span className="text-[8px] text-violet-700 uppercase font-mono">Loading Module</span>
                                     <AnimatePresence mode="wait">
                                         <motion.span
                                             key={loadingText}
                                             initial={{ opacity: 0, y: 5, filter: "blur(4px)" }}
                                             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                                             exit={{ opacity: 0, y: -5, filter: "blur(4px)" }}
-                                            className="text-sm font-black text-cyan-100 tracking-[0.3em] uppercase drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]"
+                                            className="text-sm font-black text-violet-100 tracking-[0.3em] uppercase drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]"
                                         >
                                             {loadingText}
                                         </motion.span>
@@ -277,13 +276,13 @@ export default function ZaeonLoungeRoom() {
 
                                 {/* Slim Progress Bar */}
                                 <div className="w-full mt-6 flex flex-col gap-1">
-                                    <div className="flex justify-between text-[8px] text-cyan-800 font-mono">
+                                    <div className="flex justify-between text-[8px] text-violet-800 font-mono">
                                         <span>PROGRESS</span>
                                         <span>{Math.round(progress)}%</span>
                                     </div>
-                                    <div className="w-full h-[2px] bg-cyan-950 rounded-full overflow-hidden">
+                                    <div className="w-full h-[2px] bg-violet-950 rounded-full overflow-hidden">
                                         <motion.div
-                                            className="h-full bg-cyan-400 shadow-[0_0_10px_#22d3ee]"
+                                            className="h-full bg-violet-400 shadow-[0_0_10px_#22d3ee]"
                                             animate={{ width: `${progress}%` }}
                                             transition={{ ease: "circOut", duration: 0.5 }}
                                         />
@@ -341,7 +340,7 @@ export default function ZaeonLoungeRoom() {
                                     onClick={() => setIsFocusMode(!isFocusMode)}
                                     className={`flex items-center justify-center w-8 h-8 mx-auto rounded-xl transition-all group relative
                                         ${isFocusMode
-                                            ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                                            ? 'bg-violet-500/20 text-violet-400 border border-violet-500/30'
                                             : 'dark:text-white/40 text-slate-500 hover:dark:text-white hover:text-[#0f172a]'
                                         }`}
                                 >
@@ -390,11 +389,11 @@ export default function ZaeonLoungeRoom() {
                                                 className="h-full"
                                             >
                                                 {/* MÓDULOS CARREGADOS DINAMICAMENTE */}
-                                                {activeTab === 'news' && <NewsModule />}
+                                                {activeTab === 'news' && <CanonicalLaunchPanel target="news" />}
                                                 {activeTab === 'classes' && <ClassesModule />}
                                                 {activeTab === 'exams' && <ExamsModule />}
-                                                {activeTab === 'projects' && <ProjectsModule />}
-                                                {activeTab === 'research' && <ResearchModule />}
+                                                {activeTab === 'projects' && <ProFeaturePanel title="Projects" description="Ambiente de projetos colaborativos — disponível apenas no plano Pro." />}
+                                                {activeTab === 'research' && <CanonicalLaunchPanel target="research" />}
                                                 {activeTab === 'community' && <CommunityModule />}
                                                 {activeTab === 'profile' && <ProfileModule />}
                                             </motion.div>

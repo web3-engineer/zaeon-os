@@ -1,5 +1,7 @@
 "use client";
 
+import { ProFeaturePanel } from "@/components/ui/ProFeaturePanel";
+import { CanonicalLaunchPanel } from "@/components/ui/CanonicalLaunchPanel";
 import React, { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
@@ -13,7 +15,7 @@ import { LoungeChatWidget } from "@/components/sub/LoungeChatWidget";
 
 // --- 1. CONFIGURAÇÃO DE IMPORTS ---
 const LoadingModule = () => (
-    <div className="w-full h-full flex flex-col items-center justify-center text-emerald-400/50 animate-pulse gap-2">
+    <div className="w-full h-full flex flex-col items-center justify-center text-violet-400/50 animate-pulse gap-2">
         <Activity className="w-5 h-5 animate-bounce" />
         <span className="text-[10px] tracking-[0.2em] uppercase font-mono">Loading Stream...</span>
     </div>
@@ -22,12 +24,9 @@ const LoadingModule = () => (
 // Módulos Bio (Atualizados com os módulos do Lounge)
 const ClassesModule = dynamic(() => import('./main-room/classes/page'), { loading: LoadingModule });
 const ExamsModule = dynamic(() => import('./main-room/exams/page'), { loading: LoadingModule });
-const ProjectsModule = dynamic(() => import('./main-room/projects/page'), { loading: LoadingModule });
-const ResearchModule = dynamic(() => import('./main-room/researches/page'), { loading: LoadingModule });
 const CommunityModule = dynamic(() => import('./main-room/community/page'), { loading: LoadingModule });
 // Novos módulos integrados do Lounge
 const ProfileModule = dynamic(() => import('./main-room/profile/page'), { loading: LoadingModule });
-const NewsModule = dynamic(() => import('./main-room/news/page'), { loading: LoadingModule });
 
 // --- 2. TERMOS (CANVAS) ---
 const BASE_TERMS = [
@@ -188,9 +187,9 @@ export default function ZaeonBiologyRoom() {
             }
 
             draw(ctx: CanvasRenderingContext2D) {
-                const colorStrand1 = isDarkMode ? '#34d399' : '#166534'; 
-                const colorStrand2 = isDarkMode ? '#22d3ee' : '#0e7490'; 
-                const textColor = isDarkMode ? '#ecfdf5' : '#0f172a';   
+                const colorStrand1 = isDarkMode ? '#22d3ee' : '#8b5cf6'; 
+                const colorStrand2 = isDarkMode ? '#22d3ee' : '#22d3ee'; 
+                const textColor = isDarkMode ? '#f5f3ff' : '#0f172a';   
 
                 let displayColor = this.strand === 1 ? colorStrand1 : colorStrand2;
 
@@ -222,8 +221,8 @@ export default function ZaeonBiologyRoom() {
             if (!ctx || !canvas) return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            const lineColor1 = isDarkMode ? 'rgba(52, 211, 153, 0.3)' : 'rgba(22, 101, 52, 0.3)';
-            const lineColor2 = isDarkMode ? 'rgba(34, 211, 238, 0.3)' : 'rgba(14, 116, 144, 0.3)';
+            const lineColor1 = isDarkMode ? 'rgba(34, 211, 238, 0.3)' : 'rgba(139, 92, 246, 0.3)';
+            const lineColor2 = isDarkMode ? 'rgba(34, 211, 238, 0.3)' : 'rgba(34, 211, 238, 0.3)';
 
             const drawStrand = (strandNum: 1 | 2) => {
                 const strandMols = molecules.filter(m => m.strand === strandNum).sort((a, b) => a.y - b.y);
@@ -260,11 +259,11 @@ export default function ZaeonBiologyRoom() {
 
     // --- ESTILOS FIXOS (TEMA VERDE SEMPRE) ---
     const fixedBioStyle = `
-        bg-[#022c22]/80 
-        backdrop-blur-[20px] 
-        border border-emerald-500/30 
-        shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)]
-        text-emerald-50
+        dark:bg-[rgba(22,22,34,0.55)] bg-[rgba(255,255,255,0.6)] 
+        backdrop-blur-[40px] backdrop-saturate-[1.8] 
+        border dark:border-[rgba(255,255,255,0.12)] border-[rgba(255,255,255,0.5)] 
+        shadow-[0_40px_100px_-30px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.10)]
+        text-violet-50
     `;
 
     return (
@@ -286,8 +285,8 @@ export default function ZaeonBiologyRoom() {
                             initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0 }}
                             className={`w-full max-w-[440px] overflow-hidden relative shadow-2xl ${fixedBioStyle} rounded-2xl`}
                         >
-                            <div className="border-b border-emerald-500/30 p-3 flex justify-between bg-emerald-900/40">
-                                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-emerald-400">
+                            <div className="border-b border-violet-500/30 p-3 flex justify-between bg-violet-900/40">
+                                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-violet-400">
                                     <Activity size={12} /> PROTOCOL_V2
                                 </div>
                             </div>
@@ -298,16 +297,16 @@ export default function ZaeonBiologyRoom() {
                                         <AlertTriangle className="w-5 h-5 text-yellow-500" /> 
                                         Restricted Area
                                     </h2>
-                                    <p className="text-[10px] uppercase tracking-widest mt-1 text-emerald-400/70">Bio-Medical Sciences Only</p>
+                                    <p className="text-[10px] uppercase tracking-widest mt-1 text-violet-400/70">Bio-Medical Sciences Only</p>
                                 </div>
-                                <p className="text-sm leading-relaxed mb-8 text-emerald-100/80">
+                                <p className="text-sm leading-relaxed mb-8 text-violet-100/80">
                                     You are entering the <strong>Biology & Health Lounge</strong>. 
                                     <br/>All systems are optimized for organic chemistry, anatomy, and medical research.
                                 </p>
                                 <button
                                     onClick={() => setIsModalOpen(false)}
                                     className="w-full py-4 font-bold uppercase tracking-[0.2em] text-xs transition-all flex items-center justify-center gap-3 group border
-                                    bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500 hover:text-black text-emerald-400"
+                                    bg-violet-500/10 border-violet-500/30 hover:bg-violet-500 hover:text-black text-violet-400"
                                 >
                                     <CheckCircle size={14} /> Initialize Access
                                 </button>
@@ -338,14 +337,14 @@ export default function ZaeonBiologyRoom() {
                                             onClick={() => { setActiveTab(item.id); setIsMinimized(false); }}
                                             className={`flex items-center justify-center w-8 h-8 mx-auto rounded-xl transition-all relative overflow-hidden group
                                             ${activeTab === item.id
-                                                ? 'bg-emerald-500/20 text-emerald-100 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
-                                                : 'text-emerald-500/40 hover:text-emerald-100 hover:bg-emerald-500/10'
+                                                ? 'bg-violet-500/20 text-violet-100 border dark:border-[rgba(255,255,255,0.12)] border-[rgba(255,255,255,0.5)] shadow-[0_0_15px_rgba(139, 92, 246,0.15)]'
+                                                : 'text-violet-500/40 hover:text-violet-100 hover:bg-violet-500/10'
                                             }`}
                                         >
                                             <div className="shrink-0 relative z-10 flex justify-center w-full">{item.icon}</div>
                                             
                                             {/* Tooltip Estilizada Tema Bio */}
-                                            <span className="absolute left-full ml-4 px-2 py-1 bg-[#022c22] border border-emerald-500/30 text-emerald-100 text-[9px] rounded font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                            <span className="absolute left-full ml-4 px-2 py-1 bg-[#161622] border dark:border-[rgba(255,255,255,0.12)] border-[rgba(255,255,255,0.5)] text-violet-100 text-[9px] rounded font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
                                                 {item.label}
                                             </span>
                                         </button>
@@ -353,19 +352,19 @@ export default function ZaeonBiologyRoom() {
                                 ))}
                             </Reorder.Group>
 
-                            <div className="w-full pt-4 mt-auto border-t border-emerald-500/20">
+                            <div className="w-full pt-4 mt-auto border-t border-violet-500/20">
                                 <button 
                                     onClick={() => setIsFocusMode(!isFocusMode)}
                                     className={`flex items-center justify-center w-8 h-8 mx-auto rounded-xl transition-all group relative
                                         ${isFocusMode 
-                                            ? 'bg-emerald-500/20 text-emerald-400' 
-                                            : 'text-emerald-500/40 hover:text-emerald-100 hover:bg-emerald-500/10'
+                                            ? 'bg-violet-500/20 text-violet-400' 
+                                            : 'text-violet-500/40 hover:text-violet-100 hover:bg-violet-500/10'
                                         }`}
                                 >
                                     <div className="shrink-0 flex justify-center w-full">
                                         {isFocusMode ? <EyeOff size={18} /> : <Eye size={18} />}
                                     </div>
-                                    <span className="absolute left-full ml-4 px-2 py-1 bg-[#022c22] border border-emerald-500/30 text-emerald-100 text-[9px] rounded font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                    <span className="absolute left-full ml-4 px-2 py-1 bg-[#161622] border dark:border-[rgba(255,255,255,0.12)] border-[rgba(255,255,255,0.5)] text-violet-100 text-[9px] rounded font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
                                         {isFocusMode ? "Exit" : "Focus"}
                                     </span>
                                 </button>
@@ -385,20 +384,20 @@ export default function ZaeonBiologyRoom() {
                                     `}
                                 >
                                     {/* HEADER DA JANELA (MAC-STYLE Adaptado para a Bio Room) */}
-                                    <div className="p-10 pb-4 flex items-center gap-4 border-b border-emerald-500/20">
+                                    <div className="p-10 pb-4 flex items-center gap-4 border-b border-violet-500/20">
                                         <div
                                             onClick={() => setIsMinimized(true)}
                                             className="w-3 h-3 rounded-full bg-[#f59e0b] border border-[#d97706] shadow-sm cursor-pointer hover:bg-[#fbbf24] active:scale-95 transition-transform"
                                             title="Minimize Window"
                                         />
-                                        <h2 className="text-xl font-black uppercase tracking-[0.2em] leading-none flex items-center gap-3 text-emerald-100">
-                                            <Dna className="w-6 h-6 text-emerald-500" />
+                                        <h2 className="text-xl font-black uppercase tracking-[0.2em] leading-none flex items-center gap-3 text-violet-100">
+                                            <Dna className="w-6 h-6 text-violet-500" />
                                             {tabs.find(t => t.id === activeTab)?.label}
                                         </h2>
                                     </div>
 
                                     {/* Container dos módulos */}
-                                    <div className="flex-1 overflow-y-auto custom-scrollbar p-12 pt-6 relative text-emerald-50 dark">
+                                    <div className="flex-1 overflow-y-auto custom-scrollbar p-12 pt-6 relative text-violet-50 dark">
                                         <AnimatePresence mode="wait">
                                             <motion.div
                                                 key={activeTab}
@@ -409,11 +408,11 @@ export default function ZaeonBiologyRoom() {
                                                 className="h-full"
                                             >
                                                 {/* Módulos Originais + Novos do Lounge */}
-                                                {activeTab === 'news' && <NewsModule />} 
+                                                {activeTab === 'news' && <CanonicalLaunchPanel target="news" />} 
                                                 {activeTab === 'classes' && <ClassesModule />}
                                                 {activeTab === 'exams' && <ExamsModule />}
-                                                {activeTab === 'projects' && <ProjectsModule />}
-                                                {activeTab === 'research' && <ResearchModule />}
+                                                {activeTab === 'projects' && <ProFeaturePanel title="Projects" description="Ambiente de projetos colaborativos — disponível apenas no plano Pro." />}
+                                                {activeTab === 'research' && <CanonicalLaunchPanel target="research" />}
                                                 {activeTab === 'community' && <CommunityModule />}
                                                 {activeTab === 'profile' && <ProfileModule />}
                                             </motion.div>
@@ -424,7 +423,7 @@ export default function ZaeonBiologyRoom() {
                         </AnimatePresence>
                         
                         {/* Wrapper do Chat */}
-                        <div className="relative z-50 text-emerald-50 dark">
+                        <div className="relative z-50 text-violet-50 dark">
                             <LoungeChatWidget defaultOpen={false} />
                         </div>
                     </motion.div>

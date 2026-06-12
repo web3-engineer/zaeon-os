@@ -1,5 +1,7 @@
 "use client";
 
+import { ProFeaturePanel } from "@/components/ui/ProFeaturePanel";
+import { CanonicalLaunchPanel } from "@/components/ui/CanonicalLaunchPanel";
 import React, { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
@@ -14,7 +16,7 @@ import { LoungeChatWidget } from "@/components/sub/LoungeChatWidget";
 
 // --- 1. CONFIGURAÇÃO DE IMPORTS (MODULOS CYBER) ---
 const LoadingModule = () => (
-    <div className="w-full h-full flex flex-col items-center justify-center text-cyan-500/50 animate-pulse gap-2">
+    <div className="w-full h-full flex flex-col items-center justify-center text-violet-500/50 animate-pulse gap-2">
         <Terminal className="w-5 h-5 animate-bounce" />
         <span className="text-[10px] tracking-[0.2em] uppercase font-mono">Loading Cyber-Stream...</span>
     </div>
@@ -22,8 +24,6 @@ const LoadingModule = () => (
 
 const ClassesModule = dynamic(() => import('./main-hall/classes/page').then(mod => mod.default), { loading: LoadingModule });
 const ExamsModule = dynamic(() => import('./main-hall/exams/page').then(mod => mod.default), { loading: LoadingModule });
-const ProjectsModule = dynamic(() => import('./main-hall/projects/page').then(mod => mod.default), { loading: LoadingModule });
-const ResearchModule = dynamic(() => import('./main-hall/researches/page').then(mod => mod.default), { loading: LoadingModule });
 const CommunityModule = dynamic(() => import('./main-hall/community/page').then(mod => mod.default), { loading: LoadingModule });
 const ProfileModule = dynamic(() => import('./main-hall/profile/page').then(mod => mod.default), { loading: LoadingModule });
 
@@ -163,7 +163,7 @@ export default function ZaeonComputerScienceRoom() {
                 this.vy = (Math.random() - 0.5) * 0.5;
                 this.width = text.length * 8 + 20;
                 this.height = 28;
-                const colors = ['#A855F7', '#3B82F6', '#06b6d4', '#6366f1'];
+                const colors = ['#A855F7', '#3B82F6', '#8b5cf6', '#6366f1'];
                 this.color = colors[Math.floor(Math.random() * colors.length)];
             }
             update(canvasW: number, canvasH: number, particles: Particle[]) {
@@ -215,11 +215,12 @@ export default function ZaeonComputerScienceRoom() {
         };
     }, []);
 
+    // Zaeon liquid glass — canonical shell tokens (see GlassPanel / liquid-glass-style-reference)
     const cardStyle = `
-        dark:bg-[#0f172a]/80 bg-white/60
-        backdrop-blur-[20px] 
-        border dark:border-cyan-500/20 border-white/40
-        shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]
+        dark:bg-[rgba(22,22,34,0.55)] bg-[rgba(255,255,255,0.6)]
+        backdrop-blur-[40px] backdrop-saturate-[1.8]
+        border dark:border-[rgba(255,255,255,0.12)] border-[rgba(255,255,255,0.5)]
+        shadow-[0_40px_100px_-30px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.10)]
     `;
 
     return (
@@ -241,20 +242,21 @@ export default function ZaeonComputerScienceRoom() {
                         transition={{ duration: 0.5 }}
                         className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md px-4"
                     >
-                        <div className={`w-full max-w-[440px] bg-[#0f172a] border-2 shadow-2xl relative overflow-hidden transition-colors duration-300
-                            ${isError ? 'border-red-500 shadow-red-500/20' : 'border-cyan-500/30 shadow-cyan-500/20'}`}>
+                        <div className={`w-full max-w-[440px] rounded-[18px] bg-[rgba(22,22,34,0.85)] backdrop-blur-[40px] backdrop-saturate-[1.8] border-2 relative overflow-hidden transition-colors duration-300
+                            shadow-[0_40px_100px_-30px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.10)]
+                            ${isError ? 'border-red-500' : 'border-[rgba(139,92,246,0.5)]'}`}>
 
-                            <div className={`border-b p-2 flex justify-between bg-slate-900/50 ${isError ? 'border-red-500/30' : 'border-cyan-500/30'}`}>
-                                <div className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest ${isError ? 'text-red-400' : 'text-cyan-400'}`}>
+                            <div className={`border-b p-2 flex justify-between bg-slate-900/50 ${isError ? 'border-red-500/30' : 'border-violet-500/30'}`}>
+                                <div className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest ${isError ? 'text-red-400' : 'text-violet-300'}`}>
                                     <Terminal size={12} /> {isError ? "ACCESS_DENIED" : "SYSTEM_GATEWAY"}
                                 </div>
-                                <div className={`w-2 h-2 rounded-full animate-pulse ${isError ? 'bg-red-500' : 'bg-cyan-500'}`} />
+                                <div className={`w-2 h-2 rounded-full animate-pulse ${isError ? 'bg-red-500' : 'bg-violet-500'}`} />
                             </div>
 
                             <div className="p-8 relative">
                                 {!isAuthenticating ? (
                                     <>
-                                        <div className={`border-l-2 pl-4 mb-6 ${isError ? 'border-red-500' : 'border-cyan-500'}`}>
+                                        <div className={`border-l-2 pl-4 mb-6 ${isError ? 'border-red-500' : 'border-violet-500'}`}>
                                             <h2 className={`font-bold text-lg flex items-center gap-2 ${isError ? 'text-red-400' : 'text-white'}`}>
                                                 {isError ? <XCircle size={18} /> : <Lock size={18} />}
                                                 {isError ? "Invalid Command" : "Secure Environment"}
@@ -265,8 +267,8 @@ export default function ZaeonComputerScienceRoom() {
                                         <div className="space-y-4">
                                             <div>
                                                 <label className="text-[9px] uppercase font-bold text-slate-500 mb-1 block">Command Line</label>
-                                                <div className={`flex items-center bg-slate-900/50 border px-3 py-2 ${isError ? 'border-red-500/50' : 'border-slate-700 focus-within:border-cyan-500'}`}>
-                                                    <span className="text-cyan-500 mr-2">{'>'}</span>
+                                                <div className={`flex items-center bg-slate-900/50 border px-3 py-2 ${isError ? 'border-red-500/50' : 'border-slate-700 focus-within:border-violet-500'}`}>
+                                                    <span className="text-violet-400 mr-2">{'>'}</span>
                                                     <input
                                                         type="text"
                                                         value={inputValue}
@@ -278,20 +280,20 @@ export default function ZaeonComputerScienceRoom() {
                                                     />
                                                 </div>
                                             </div>
-                                            <button onClick={handleAuth} className="w-full py-3 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 font-bold uppercase text-xs tracking-[0.2em] transition-all">
+                                            <button onClick={handleAuth} className="w-full py-3 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/30 text-violet-300 font-bold uppercase text-xs tracking-[0.2em] transition-all">
                                                 Execute
                                             </button>
                                         </div>
                                     </>
                                 ) : (
                                     <div className="py-8 flex flex-col items-center justify-center gap-4">
-                                        <div className="text-cyan-400 font-mono text-sm animate-pulse">STARTING DEVELOPMENT SERVER...</div>
+                                        <div className="text-violet-300 font-mono text-sm animate-pulse">STARTING DEVELOPMENT SERVER...</div>
                                         <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
                                             <motion.div
                                                 initial={{ width: 0 }}
                                                 animate={{ width: "100%" }}
                                                 transition={{ duration: 2.2, ease: "easeInOut" }}
-                                                className="h-full bg-cyan-500 shadow-[0_0_10px_#06b6d4]"
+                                                className="h-full bg-violet-500 shadow-[0_0_10px_#8b5cf6]"
                                             />
                                         </div>
                                         <div className="flex justify-between w-full text-[8px] text-slate-500 font-mono uppercase">
@@ -325,12 +327,12 @@ export default function ZaeonComputerScienceRoom() {
                                             onClick={() => { setActiveTab(item.id); setIsMinimized(false); }}
                                             className={`flex items-center justify-center w-8 h-8 mx-auto rounded-xl transition-all relative overflow-hidden group
                                             ${activeTab === item.id
-                                                    ? 'dark:bg-white/10 bg-[#0f172a] text-white shadow-lg border dark:border-white/10 border-transparent'
+                                                    ? 'dark:bg-[rgba(139,92,246,0.28)] bg-[#0f172a] text-white shadow-[0_8px_20px_-8px_rgba(139,92,246,0.85)] border border-[rgba(255,255,255,0.28)]'
                                                     : 'dark:text-white/40 text-slate-500 hover:dark:text-white hover:text-[#0f172a]'
                                                 }`}
                                         >
                                             <div className="shrink-0 relative z-10 flex justify-center w-full">{item.icon}</div>
-                                            <span className="absolute left-full ml-4 px-2 py-1 bg-[#0f172a] border border-cyan-500/30 text-white text-[9px] rounded font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg shadow-cyan-500/10">
+                                            <span className="absolute left-full ml-4 px-2 py-1 bg-[rgba(15,15,28,0.92)] border border-[rgba(139,92,246,0.55)] text-white text-[9px] rounded font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.8)]">
                                                 {item.label}
                                             </span>
                                         </button>
@@ -343,14 +345,14 @@ export default function ZaeonComputerScienceRoom() {
                                     onClick={() => setIsFocusMode(!isFocusMode)}
                                     className={`flex items-center justify-center w-8 h-8 mx-auto rounded-xl transition-all group relative
                                         ${isFocusMode
-                                            ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                                            ? 'bg-[rgba(139,92,246,0.25)] text-violet-200 border border-[rgba(139,92,246,0.45)]'
                                             : 'dark:text-white/40 text-slate-500 hover:dark:text-white hover:text-[#0f172a]'
                                         }`}
                                 >
                                     <div className="shrink-0 flex justify-center w-full">
                                         {isFocusMode ? <EyeOff size={18} /> : <Eye size={18} />}
                                     </div>
-                                    <span className="absolute left-full ml-4 px-2 py-1 bg-[#0f172a] border border-cyan-500/30 text-white text-[9px] rounded font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg shadow-cyan-500/10">
+                                    <span className="absolute left-full ml-4 px-2 py-1 bg-[rgba(15,15,28,0.92)] border border-[rgba(139,92,246,0.55)] text-white text-[9px] rounded font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.8)]">
                                         {isFocusMode ? "Exit" : "Focus"}
                                     </span>
                                 </button>
@@ -375,7 +377,7 @@ export default function ZaeonComputerScienceRoom() {
                                             title="Minimize Window"
                                         />
                                         <h2 className="text-xl font-black uppercase tracking-[0.3em] dark:text-white text-[#0f172a] leading-none flex items-center gap-3">
-                                            <Terminal className="w-6 h-6 text-cyan-500" />
+                                            <Terminal className="w-6 h-6 text-violet-400" />
                                             {tabs.find(t => t.id === activeTab)?.label}
                                         </h2>
                                     </div>
@@ -392,8 +394,9 @@ export default function ZaeonComputerScienceRoom() {
                                             >
                                                 {activeTab === 'classes' && <ClassesModule />}
                                                 {activeTab === 'exams' && <ExamsModule />}
-                                                {activeTab === 'projects' && <ProjectsModule />}
-                                                {activeTab === 'research' && <ResearchModule />}
+                                                {activeTab === 'projects' && <ProFeaturePanel title="Projects" description="Ambiente de projetos colaborativos — disponível apenas no plano Pro." />}
+                                                {activeTab === 'research' && <CanonicalLaunchPanel target="research" />}
+                                                {activeTab === 'news' && <CanonicalLaunchPanel target="news" />}
                                                 {activeTab === 'community' && <CommunityModule />}
                                                 {activeTab === 'profile' && <ProfileModule />}
                                             </motion.div>

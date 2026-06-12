@@ -1,5 +1,7 @@
 "use client";
 
+import { ProFeaturePanel } from "@/components/ui/ProFeaturePanel";
+import { CanonicalLaunchPanel } from "@/components/ui/CanonicalLaunchPanel";
 import React, { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
@@ -12,7 +14,7 @@ import { LoungeChatWidget } from "@/components/sub/LoungeChatWidget";
 
 // --- 1. CONFIGURAÇÃO DE IMPORTS (MODULOS MEDLAB) ---
 const LoadingModule = () => (
-    <div className="w-full h-full flex flex-col items-center justify-center text-rose-500/50 animate-pulse gap-2">
+    <div className="w-full h-full flex flex-col items-center justify-center text-violet-500/50 animate-pulse gap-2">
         <HeartPulse className="w-6 h-6 animate-ping" />
         <span className="text-[10px] tracking-[0.2em] uppercase font-mono">Loading Med-Stream...</span>
     </div>
@@ -20,11 +22,8 @@ const LoadingModule = () => (
 
 const ClassesModule = dynamic(() => import('../med/classes/page').then(mod => mod.default), { loading: LoadingModule });
 const ExamsModule = dynamic(() => import('../med/exams/page').then(mod => mod.default), { loading: LoadingModule });
-const ProjectsModule = dynamic(() => import('../med/projects/page').then(mod => mod.default), { loading: LoadingModule });
-const ResearchModule = dynamic(() => import('../med/researches/page').then(mod => mod.default), { loading: LoadingModule });
 const CommunityModule = dynamic(() => import('../med/community/page').then(mod => mod.default), { loading: LoadingModule });
 const ProfileModule = dynamic(() => import('../med/profile/page').then(mod => mod.default), { loading: LoadingModule });
-const NewsModule = dynamic(() => import('../med/news/page').then(mod => mod.default), { loading: LoadingModule });
 
 export default function ZaeonMedLabRoom() {
 
@@ -176,19 +175,19 @@ export default function ZaeonMedLabRoom() {
             ctx.lineTo(x, nextY);
             
             ctx.lineWidth = 3;
-            ctx.strokeStyle = '#ff003c'; 
+            ctx.strokeStyle = '#8b5cf6'; 
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
             
             ctx.shadowBlur = 15;
-            ctx.shadowColor = '#ff2a5f';
+            ctx.shadowColor = '#22d3ee';
             ctx.stroke();
             
             ctx.beginPath();
             ctx.arc(x, nextY, 3, 0, Math.PI * 2);
             ctx.fillStyle = '#ffffff';
             ctx.shadowBlur = 20;
-            ctx.shadowColor = '#ff003c';
+            ctx.shadowColor = '#8b5cf6';
             ctx.fill();
 
             lastY = nextY;
@@ -208,10 +207,10 @@ export default function ZaeonMedLabRoom() {
     }, []);
 
     const cardStyle = `
-        dark:bg-zinc-900/80 bg-white/70
-        backdrop-blur-[20px] 
-        border dark:border-rose-500/20 border-rose-200
-        shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]
+        dark:bg-[rgba(22,22,34,0.55)] bg-[rgba(255,255,255,0.6)]
+        backdrop-blur-[40px] backdrop-saturate-[1.8] 
+        border dark:border-[rgba(255,255,255,0.12)] border-[rgba(255,255,255,0.5)]
+        shadow-[0_40px_100px_-30px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.10)]
     `;
 
     return (
@@ -219,10 +218,10 @@ export default function ZaeonMedLabRoom() {
 
             <motion.div className="absolute inset-0 z-0 pointer-events-none" animate={{ opacity: isLoaded ? 1 : 0 }} transition={{ duration: 1 }}>
                 <div className="absolute inset-0 z-0 opacity-20 dark:opacity-10 pointer-events-none" 
-                    style={{ backgroundImage: `linear-gradient(to right, #e11d48 1px, transparent 1px), linear-gradient(to bottom, #e11d48 1px, transparent 1px)`, backgroundSize: '40px 40px' }}
+                    style={{ backgroundImage: `linear-gradient(to right, #8b5cf6 1px, transparent 1px), linear-gradient(to bottom, #8b5cf6 1px, transparent 1px)`, backgroundSize: '40px 40px' }}
                 />
                 
-                <div className="absolute top-16 bottom-0 left-0 w-1/3 border-r border-rose-200 dark:border-white/5 bg-transparent">
+                <div className="absolute top-16 bottom-0 left-0 w-1/3 border-r border-violet-200 dark:border-white/5 bg-transparent">
 
                     <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-slate-50 dark:from-zinc-950 to-transparent"></div>
                 </div>
@@ -253,12 +252,12 @@ export default function ZaeonMedLabRoom() {
                                             }}
                                             className={`flex items-center justify-center w-8 h-8 mx-auto rounded-xl transition-all relative overflow-hidden group
                                             ${activeTab === item.id && !isMinimized
-                                                    ? 'bg-rose-100 dark:bg-zinc-800 text-rose-600 dark:text-white shadow-lg border border-rose-300 dark:border-rose-500/30'
-                                                    : 'text-slate-400 dark:text-zinc-500 hover:text-rose-500 hover:bg-rose-50 hover:dark:text-white hover:dark:bg-zinc-800'
+                                                    ? 'bg-violet-100 dark:bg-zinc-800 text-violet-600 dark:text-white shadow-lg border border-violet-300 dark:border-violet-500/30'
+                                                    : 'text-slate-400 dark:text-zinc-500 hover:text-violet-500 hover:bg-violet-50 hover:dark:text-white hover:dark:bg-zinc-800'
                                                 }`}
                                         >
                                             <div className="shrink-0 relative z-10 flex justify-center w-full">{item.icon}</div>
-                                            <span className="absolute left-full ml-4 px-2 py-1 bg-rose-900 dark:bg-zinc-800 text-white text-[9px] rounded font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-rose-500/20">
+                                            <span className="absolute left-full ml-4 px-2 py-1 bg-violet-900 dark:bg-zinc-800 text-white text-[9px] rounded font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-violet-500/20">
                                                 {item.label}
                                             </span>
                                         </button>
@@ -266,19 +265,19 @@ export default function ZaeonMedLabRoom() {
                                 ))}
                             </Reorder.Group>
 
-                            <div className="w-full pt-4 mt-auto border-t border-rose-200 dark:border-white/10">
+                            <div className="w-full pt-4 mt-auto border-t border-violet-200 dark:border-white/10">
                                 <button
                                     onClick={() => setIsFocusMode(!isFocusMode)}
                                     className={`flex items-center justify-center w-8 h-8 mx-auto rounded-xl transition-all group relative
                                         ${isFocusMode
-                                            ? 'bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-300 dark:border-rose-500/30'
-                                            : 'text-slate-400 dark:text-zinc-500 hover:text-rose-500 hover:bg-rose-50 hover:dark:text-white hover:dark:bg-zinc-800'
+                                            ? 'bg-violet-100 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400 border border-violet-300 dark:border-violet-500/30'
+                                            : 'text-slate-400 dark:text-zinc-500 hover:text-violet-500 hover:bg-violet-50 hover:dark:text-white hover:dark:bg-zinc-800'
                                         }`}
                                 >
                                     <div className="shrink-0 flex justify-center w-full">
                                         {isFocusMode ? <EyeOff size={18} /> : <Eye size={18} />}
                                     </div>
-                                    <span className="absolute left-full ml-4 px-2 py-1 bg-rose-900 dark:bg-zinc-800 text-white text-[9px] rounded font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-rose-500/20">
+                                    <span className="absolute left-full ml-4 px-2 py-1 bg-violet-900 dark:bg-zinc-800 text-white text-[9px] rounded font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-violet-500/20">
                                         {isFocusMode ? "Exit" : "Focus"}
                                     </span>
                                 </button>
@@ -296,14 +295,14 @@ export default function ZaeonMedLabRoom() {
                                         ${isFocusMode ? 'h-[96vh]' : 'h-[82vh]'}
                                     `}
                                 >
-                                    <div className="p-10 pb-4 flex items-center gap-4 border-b border-rose-100 dark:border-white/5">
+                                    <div className="p-10 pb-4 flex items-center gap-4 border-b border-violet-100 dark:border-white/5">
                                         <div
                                             onClick={() => setIsMinimized(true)}
                                             className="w-3 h-3 rounded-full bg-[#f59e0b] border border-[#d97706] shadow-sm cursor-pointer hover:bg-[#fbbf24] active:scale-95 transition-transform"
                                             title="Minimize Window"
                                         />
-                                        <h2 className="text-xl font-black uppercase tracking-[0.3em] text-rose-900 dark:text-white leading-none flex items-center gap-3">
-                                            <Cross className="w-6 h-6 text-rose-500" />
+                                        <h2 className="text-xl font-black uppercase tracking-[0.3em] text-violet-900 dark:text-white leading-none flex items-center gap-3">
+                                            <Cross className="w-6 h-6 text-violet-500" />
                                             {tabs.find(t => t.id === activeTab)?.label}
                                         </h2>
                                     </div>
@@ -318,11 +317,11 @@ export default function ZaeonMedLabRoom() {
                                                 transition={{ duration: 0.2 }}
                                                 className="h-full"
                                             >
-                                                {activeTab === 'news' && <NewsModule />} 
+                                                {activeTab === 'news' && <CanonicalLaunchPanel target="news" />} 
                                                 {activeTab === 'classes' && <ClassesModule />}
                                                 {activeTab === 'exams' && <ExamsModule />}
-                                                {activeTab === 'projects' && <ProjectsModule />}
-                                                {activeTab === 'research' && <ResearchModule />}
+                                                {activeTab === 'projects' && <ProFeaturePanel title="Clinical" description="Ambiente de projetos colaborativos — disponível apenas no plano Pro." />}
+                                                {activeTab === 'research' && <CanonicalLaunchPanel target="research" />}
                                                 {activeTab === 'community' && <CommunityModule />}
                                                 {activeTab === 'profile' && <ProfileModule />}
                                             </motion.div>

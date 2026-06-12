@@ -1,5 +1,7 @@
 "use client";
 
+import { ProFeaturePanel } from "@/components/ui/ProFeaturePanel";
+import { CanonicalLaunchPanel } from "@/components/ui/CanonicalLaunchPanel";
 import React, { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
@@ -14,7 +16,7 @@ import { LoungeChatWidget } from "@/components/sub/LoungeChatWidget";
 
 // --- 1. CONFIGURAÇÃO DE IMPORTS (MODULOS QUANTIC) ---
 const LoadingModule = () => (
-    <div className="w-full h-full flex flex-col items-center justify-center text-blue-500/50 animate-pulse gap-2">
+    <div className="w-full h-full flex flex-col items-center justify-center text-violet-500/50 animate-pulse gap-2">
         <Atom className="w-5 h-5 animate-[spin_3s_linear_infinite]" />
         <span className="text-[10px] tracking-[0.2em] uppercase font-mono">Loading Quantic-Stream...</span>
     </div>
@@ -23,11 +25,8 @@ const LoadingModule = () => (
 // IMPORTANTE: Ajuste os caminhos abaixo para apontar para os arquivos reais da sala Quantic
 const ClassesModule = dynamic(() => import('../quantic/classes/page').then(mod => mod.default), { loading: LoadingModule });
 const ExamsModule = dynamic(() => import('../quantic/exams/page').then(mod => mod.default), { loading: LoadingModule });
-const ProjectsModule = dynamic(() => import('../quantic/projects/page').then(mod => mod.default), { loading: LoadingModule });
-const ResearchModule = dynamic(() => import('../quantic/researches/page').then(mod => mod.default), { loading: LoadingModule });
 const CommunityModule = dynamic(() => import('../quantic/community/page').then(mod => mod.default), { loading: LoadingModule });
 const ProfileModule = dynamic(() => import('../quantic/profile/page').then(mod => mod.default), { loading: LoadingModule });
-const NewsModule = dynamic(() => import('../quantic/news/page').then(mod => mod.default), { loading: LoadingModule });
 
 // --- LISTA DE TERMOS DA FÍSICA E MATEMÁTICA (PARTÍCULAS) ---
 const QUANTIC_KEYS = [
@@ -106,17 +105,17 @@ const OdradekDrawer = ({ data, isOpen, onToggle, onAction }: DrawerProps) => {
             <motion.button
                 onClick={onToggle}
                 className={`relative w-12 h-12 flex items-center justify-center border rounded-xl transition-all z-50 shadow-lg 
-                    bg-white/80 border-blue-200 text-blue-600 hover:border-blue-400 hover:bg-blue-50
-                    dark:bg-[#0f172a]/90 dark:border-blue-500/30 dark:text-blue-400 dark:hover:bg-blue-900/80 dark:hover:border-cyan-400
+                    bg-white/80 border-violet-200 text-violet-600 hover:border-violet-400 hover:bg-violet-50
+                    dark:bg-[#0f172a]/90 dark:border-violet-500/30 dark:text-violet-400 dark:hover:bg-violet-900/80 dark:hover:border-violet-400
                 `}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
             >
-                <div className={`absolute inset-0 bg-blue-500/10 animate-pulse rounded-xl ${isOpen ? 'opacity-100' : 'opacity-0'}`} />
-                <div className={`transition-transform duration-500 ${isOpen ? 'rotate-90 text-blue-600 dark:text-cyan-300' : ''}`}>
+                <div className={`absolute inset-0 bg-violet-500/10 animate-pulse rounded-xl ${isOpen ? 'opacity-100' : 'opacity-0'}`} />
+                <div className={`transition-transform duration-500 ${isOpen ? 'rotate-90 text-violet-600 dark:text-violet-300' : ''}`}>
                     {data.icon}
                 </div>
-                <div className={`absolute top-1/2 -right-1 -translate-y-1/2 w-1.5 h-1.5 bg-blue-500 dark:bg-cyan-400 rounded-full shadow-[0_0_8px_cyan] transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0'}`} />
+                <div className={`absolute top-1/2 -right-1 -translate-y-1/2 w-1.5 h-1.5 bg-violet-500 dark:bg-violet-400 rounded-full shadow-[0_0_8px_cyan] transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0'}`} />
             </motion.button>
 
             {/* Tray 1 */}
@@ -125,17 +124,17 @@ const OdradekDrawer = ({ data, isOpen, onToggle, onAction }: DrawerProps) => {
                 animate={isOpen ? "open" : "closed"}
                 variants={tray1Variants}
                 className={`absolute top-0 left-0 w-48 border p-3 rounded-lg backdrop-blur-xl origin-left z-40
-                    bg-white/95 border-blue-200 shadow-xl shadow-blue-900/10
-                    dark:bg-[#050b14]/95 dark:border-blue-500/40 dark:shadow-[0_0_20px_rgba(6,182,212,0.15)]
+                    bg-white/95 border-violet-200 shadow-xl shadow-violet-900/10
+                    dark:bg-[#050b14]/95 dark:border-violet-500/40 dark:shadow-[0_0_20px_rgba(34, 211, 238,0.15)]
                 `}
             >
-                <div className="absolute top-1/2 -left-6 w-6 h-[1px] bg-blue-300 dark:bg-cyan-500/50" />
-                <div className="flex items-center justify-between border-b border-blue-100 dark:border-blue-500/30 pb-2 mb-2">
-                    <span className="text-[9px] uppercase tracking-widest font-bold text-blue-700 dark:text-cyan-400">{data.items[0].label}</span>
-                    <span className="text-xs text-blue-900 dark:text-white">{data.items[0].icon}</span>
+                <div className="absolute top-1/2 -left-6 w-6 h-[1px] bg-violet-300 dark:bg-violet-500/50" />
+                <div className="flex items-center justify-between border-b border-violet-100 dark:border-violet-500/30 pb-2 mb-2">
+                    <span className="text-[9px] uppercase tracking-widest font-bold text-violet-700 dark:text-violet-400">{data.items[0].label}</span>
+                    <span className="text-xs text-violet-900 dark:text-white">{data.items[0].icon}</span>
                 </div>
-                <div className="h-1 w-full bg-blue-100 dark:bg-blue-900/50 rounded overflow-hidden">
-                    <motion.div className="h-full bg-blue-500 dark:bg-cyan-500" initial={{ width: 0 }} animate={{ width: isOpen ? '100%' : 0 }} transition={{ duration: 1, delay: 0.5 }} />
+                <div className="h-1 w-full bg-violet-100 dark:bg-violet-900/50 rounded overflow-hidden">
+                    <motion.div className="h-full bg-violet-500 dark:bg-violet-500" initial={{ width: 0 }} animate={{ width: isOpen ? '100%' : 0 }} transition={{ duration: 1, delay: 0.5 }} />
                 </div>
             </motion.div>
 
@@ -145,19 +144,19 @@ const OdradekDrawer = ({ data, isOpen, onToggle, onAction }: DrawerProps) => {
                 animate={isOpen ? "open" : "closed"}
                 variants={tray2Variants}
                 className={`absolute top-0 left-0 w-48 border p-3 rounded-lg backdrop-blur-xl origin-left z-50
-                    bg-white/95 border-blue-200 shadow-xl shadow-blue-900/10
-                    dark:bg-[#050b14]/95 dark:border-blue-500/40 dark:shadow-[0_0_20px_rgba(6,182,212,0.15)]
+                    bg-white/95 border-violet-200 shadow-xl shadow-violet-900/10
+                    dark:bg-[#050b14]/95 dark:border-violet-500/40 dark:shadow-[0_0_20px_rgba(34, 211, 238,0.15)]
                 `}
             >
-                <div className="flex items-center justify-between border-b border-blue-100 dark:border-blue-500/30 pb-2 mb-2">
-                    <span className="text-[9px] uppercase tracking-widest font-bold text-blue-700 dark:text-cyan-400">{data.items[1].label}</span>
-                    <span className="text-xs text-blue-900 dark:text-white">{data.items[1].icon}</span>
+                <div className="flex items-center justify-between border-b border-violet-100 dark:border-violet-500/30 pb-2 mb-2">
+                    <span className="text-[9px] uppercase tracking-widest font-bold text-violet-700 dark:text-violet-400">{data.items[1].label}</span>
+                    <span className="text-xs text-violet-900 dark:text-white">{data.items[1].icon}</span>
                 </div>
                 <div className="flex gap-2">
-                    <button onClick={onAction} className="flex-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[8px] py-1 text-blue-700 uppercase transition-colors dark:bg-blue-900/20 dark:hover:bg-cyan-900/40 dark:border-blue-500/30 dark:text-cyan-300">
+                    <button onClick={onAction} className="flex-1 bg-violet-50 hover:bg-violet-100 border border-violet-200 text-[8px] py-1 text-violet-700 uppercase transition-colors dark:bg-violet-900/20 dark:hover:bg-violet-900/40 dark:border-violet-500/30 dark:text-violet-300">
                         Launch
                     </button>
-                    <button onClick={onAction} className="flex-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[8px] py-1 text-blue-700 uppercase transition-colors dark:bg-blue-900/20 dark:hover:bg-cyan-900/40 dark:border-blue-500/30 dark:text-cyan-300">
+                    <button onClick={onAction} className="flex-1 bg-violet-50 hover:bg-violet-100 border border-violet-200 text-[8px] py-1 text-violet-700 uppercase transition-colors dark:bg-violet-900/20 dark:hover:bg-violet-900/40 dark:border-violet-500/30 dark:text-violet-300">
                         Analyze
                     </button>
                 </div>
@@ -308,7 +307,7 @@ export default function ZaeonQuanticRoom() {
                 this.vy = (Math.random() - 0.5) * 0.5;
                 this.width = text.length * 8 + 20;
                 this.height = 28;
-                const colors = ['#3b82f6', '#06b6d4', '#8b5cf6'];
+                const colors = ['#8b5cf6', '#22d3ee', '#8b5cf6'];
                 this.color = colors[Math.floor(Math.random() * colors.length)];
             }
             update(canvasW: number, canvasH: number, particles: Particle[]) {
@@ -355,10 +354,10 @@ export default function ZaeonQuanticRoom() {
 
     // --- STYLES QUANTIC ---
     const cardStyle = `
-        dark:bg-[#0f172a]/80 bg-white/60
-        backdrop-blur-[20px] 
-        border dark:border-blue-500/20 border-blue-200
-        shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]
+        dark:bg-[rgba(22,22,34,0.55)] bg-[rgba(255,255,255,0.6)]
+        backdrop-blur-[40px] backdrop-saturate-[1.8] 
+        border dark:border-[rgba(255,255,255,0.12)] border-[rgba(255,255,255,0.5)]
+        shadow-[0_40px_100px_-30px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.10)]
     `;
 
     return (
@@ -366,7 +365,7 @@ export default function ZaeonQuanticRoom() {
 
             {/* 1. BACKGROUND FIXO */}
             <motion.div className="absolute inset-0 z-0 pointer-events-none" animate={{ opacity: isLoaded ? 1 : 0 }} transition={{ duration: 1 }}>
-                <div className="absolute top-16 bottom-0 left-0 w-1/3 border-r border-blue-200 dark:border-white/5 bg-transparent">
+                <div className="absolute top-16 bottom-0 left-0 w-1/3 border-r border-violet-200 dark:border-white/5 bg-transparent">
                     <Image src="/assets/quantic-room.png" alt="Quantic Room" fill className="object-cover object-center opacity-40 dark:opacity-80 mix-blend-multiply dark:mix-blend-overlay" priority />
                     <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-slate-50 dark:from-black to-transparent"></div>
                 </div>
@@ -387,20 +386,20 @@ export default function ZaeonQuanticRoom() {
                             bg-white/90 dark:bg-black/80
                             ${isError
                                 ? 'border-red-500 shadow-[0_0_50px_rgba(239,68,68,0.4)] dark:shadow-[0_0_50px_rgba(239,68,68,0.6)]'
-                                : 'border-blue-200 dark:border-cyan-800 shadow-xl shadow-blue-900/10 dark:shadow-[0_0_50px_rgba(6,182,212,0.15)]'
+                                : 'border-violet-200 dark:border-violet-800 shadow-xl shadow-violet-900/10 dark:shadow-[0_0_50px_rgba(34, 211, 238,0.15)]'
                             }`}
                         >
                             {/* Top Bar Modal */}
                             <div className={`border-b p-2 flex items-center justify-between select-none
-                                ${isError ? 'bg-red-50 border-red-200 dark:bg-red-900/40 dark:border-red-800/50' : 'bg-blue-50/50 border-blue-100 dark:bg-cyan-900/20 dark:border-cyan-800/50'}
+                                ${isError ? 'bg-red-50 border-red-200 dark:bg-red-900/40 dark:border-red-800/50' : 'bg-violet-50/50 border-violet-100 dark:bg-violet-900/20 dark:border-violet-800/50'}
                             `}>
                                 <div className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] 
-                                    ${isError ? 'text-red-500 dark:text-red-400' : 'text-blue-600 dark:text-cyan-400'}`}>
+                                    ${isError ? 'text-red-500 dark:text-red-400' : 'text-violet-600 dark:text-violet-400'}`}>
                                     <BoltIcon className="w-4 h-4" />
                                     <span>{isError ? "ACTION_DENIED" : "QUANTUM_GATEWAY_V9"}</span>
                                 </div>
                                 <div className="flex gap-1">
-                                    <div className={`w-1.5 h-1.5 animate-pulse rounded-full ${isError ? 'bg-red-500' : 'bg-blue-400 dark:bg-cyan-400'}`}></div>
+                                    <div className={`w-1.5 h-1.5 animate-pulse rounded-full ${isError ? 'bg-red-500' : 'bg-violet-400 dark:bg-violet-400'}`}></div>
                                 </div>
                             </div>
 
@@ -408,14 +407,14 @@ export default function ZaeonQuanticRoom() {
                                 <div className="relative z-10 flex flex-col gap-6">
                                     {/* Header Modal */}
                                     <div className={`border-l-4 pl-4 py-2 transition-colors duration-300 
-                                        ${isError ? 'border-red-500' : 'border-blue-500 dark:border-cyan-600'}`}>
+                                        ${isError ? 'border-red-500' : 'border-violet-500 dark:border-violet-600'}`}>
                                         <h2 className={`text-xl font-bold tracking-widest flex items-center gap-3 
                                             ${isError ? 'text-red-600 dark:text-red-500' : 'text-slate-800 dark:text-white'}`}>
-                                            {isError ? <XCircle size={20} /> : <Lock size={20} className="text-blue-500 dark:text-cyan-500" />}
+                                            {isError ? <XCircle size={20} /> : <Lock size={20} className="text-violet-500 dark:text-violet-500" />}
                                             {isError ? "LOGIN REQUIRED" : "RESTRICTED"}
                                         </h2>
                                         <p className={`text-[10px] mt-1 uppercase tracking-[0.3em] transition-colors 
-                                            ${isError ? 'text-red-400' : 'text-blue-400 dark:text-cyan-500/70'}`}>
+                                            ${isError ? 'text-red-400' : 'text-violet-400 dark:text-violet-500/70'}`}>
                                             PHYSICS DEPARTMENT
                                         </p>
                                     </div>
@@ -424,22 +423,22 @@ export default function ZaeonQuanticRoom() {
                                     <div className="space-y-4">
                                         <div className="relative group">
                                             <label className={`text-[9px] uppercase font-bold mb-2 block transition-colors 
-                                                ${isError ? 'text-red-500' : 'text-blue-400 dark:text-cyan-500/50'}`}>
+                                                ${isError ? 'text-red-500' : 'text-violet-400 dark:text-violet-500/50'}`}>
                                                 ACCESS KEY (Hint: ZA-2026)
                                             </label>
                                             <div className={`flex items-center border transition-colors duration-300 
                                                 ${isError
                                                     ? 'border-red-300 bg-red-50 dark:border-red-500/60 dark:bg-red-900/10'
-                                                    : 'border-blue-200 bg-blue-50/50 dark:border-cyan-500/40 dark:bg-cyan-900/10 focus-within:border-blue-400'
+                                                    : 'border-violet-200 bg-violet-50/50 dark:border-violet-500/40 dark:bg-violet-900/10 focus-within:border-violet-400'
                                                 }`}>
-                                                <span className={`pl-3 font-bold text-lg transition-colors ${isError ? 'text-red-500' : 'text-blue-500 dark:text-cyan-500'}`}>{'>'}</span>
+                                                <span className={`pl-3 font-bold text-lg transition-colors ${isError ? 'text-red-500' : 'text-violet-500 dark:text-violet-500'}`}>{'>'}</span>
                                                 <input
                                                     type="password"
                                                     value={inputValue}
                                                     onChange={(e) => { setInputValue(e.target.value); setIsError(false); }}
                                                     onKeyDown={handleKeyDown}
                                                     className={`w-full bg-transparent border-none px-3 py-3 text-lg focus:ring-0 font-mono tracking-[0.5em] outline-none
-                                                    ${isError ? 'text-red-600 dark:text-red-400 placeholder:text-red-300 dark:placeholder:text-red-800' : 'text-slate-900 dark:text-white placeholder:text-blue-200 dark:placeholder:text-cyan-900/50'}`}
+                                                    ${isError ? 'text-red-600 dark:text-red-400 placeholder:text-red-300 dark:placeholder:text-red-800' : 'text-slate-900 dark:text-white placeholder:text-violet-200 dark:placeholder:text-violet-900/50'}`}
                                                     placeholder="••••"
                                                     autoFocus
                                                 />
@@ -450,7 +449,7 @@ export default function ZaeonQuanticRoom() {
                                             className={`w-full border font-bold py-4 text-xs uppercase tracking-[0.4em] transition-all flex items-center justify-center gap-2 group duration-300 hover:scale-[1.02] active:scale-95
                                             ${isError
                                                     ? 'bg-red-50 border-red-200 text-red-500 dark:bg-red-800/40 dark:border-red-600 dark:text-red-300'
-                                                    : 'bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100 dark:bg-cyan-950/40 dark:border-cyan-600 dark:text-cyan-300 dark:hover:bg-cyan-900/60'
+                                                    : 'bg-violet-50 border-violet-200 text-violet-600 hover:bg-violet-100 dark:bg-violet-950/40 dark:border-violet-600 dark:text-violet-300 dark:hover:bg-violet-900/60'
                                                 }`}
                                         >
                                             {isError ? "ACCESS DENIED" : "AUTHENTICATE"}
@@ -491,12 +490,12 @@ export default function ZaeonQuanticRoom() {
                                                 }}
                                                 className={`flex items-center justify-center w-8 h-8 mx-auto rounded-xl transition-all relative overflow-hidden group
                                                 ${activeTab === item.id && !activeDrawer && !isMinimized
-                                                        ? 'bg-blue-100 dark:bg-[#0f172a] text-blue-600 dark:text-white shadow-lg border border-blue-300 dark:border-white/10'
-                                                        : 'text-slate-400 dark:text-white/40 hover:text-blue-500 hover:bg-blue-50 hover:dark:text-white hover:dark:bg-[#0f172a]'
+                                                        ? 'bg-violet-100 dark:bg-[#0f172a] text-violet-600 dark:text-white shadow-lg border border-violet-300 dark:border-white/10'
+                                                        : 'text-slate-400 dark:text-white/40 hover:text-violet-500 hover:bg-violet-50 hover:dark:text-white hover:dark:bg-[#0f172a]'
                                                     }`}
                                             >
                                                 <div className="shrink-0 relative z-10 flex justify-center w-full">{item.icon}</div>
-                                                <span className="absolute left-full ml-4 px-2 py-1 bg-blue-900 dark:bg-slate-800 text-white text-[9px] rounded font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                                <span className="absolute left-full ml-4 px-2 py-1 bg-violet-900 dark:bg-slate-800 text-white text-[9px] rounded font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
                                                     {item.label}
                                                 </span>
                                             </button>
@@ -504,19 +503,19 @@ export default function ZaeonQuanticRoom() {
                                     ))}
                                 </Reorder.Group>
 
-                                <div className="w-full pt-4 mt-auto border-t border-blue-200 dark:border-white/10">
+                                <div className="w-full pt-4 mt-auto border-t border-violet-200 dark:border-white/10">
                                     <button
                                         onClick={() => setIsFocusMode(!isFocusMode)}
                                         className={`flex items-center justify-center w-8 h-8 mx-auto rounded-xl transition-all group relative
                                             ${isFocusMode
-                                                ? 'bg-blue-100 dark:bg-cyan-500/20 text-blue-600 dark:text-cyan-400 border border-blue-300 dark:border-cyan-500/30'
-                                                : 'text-slate-400 dark:text-white/40 hover:text-blue-500 hover:bg-blue-50 hover:dark:text-white hover:dark:bg-[#0f172a]'
+                                                ? 'bg-violet-100 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400 border border-violet-300 dark:border-violet-500/30'
+                                                : 'text-slate-400 dark:text-white/40 hover:text-violet-500 hover:bg-violet-50 hover:dark:text-white hover:dark:bg-[#0f172a]'
                                             }`}
                                     >
                                         <div className="shrink-0 flex justify-center w-full">
                                             {isFocusMode ? <EyeOff size={18} /> : <Eye size={18} />}
                                         </div>
-                                        <span className="absolute left-full ml-4 px-2 py-1 bg-blue-900 dark:bg-slate-800 text-white text-[9px] rounded font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                        <span className="absolute left-full ml-4 px-2 py-1 bg-violet-900 dark:bg-slate-800 text-white text-[9px] rounded font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
                                             {isFocusMode ? "Exit" : "Focus"}
                                         </span>
                                     </button>
@@ -550,14 +549,14 @@ export default function ZaeonQuanticRoom() {
                                         ${isFocusMode ? 'h-[96vh]' : 'h-[82vh]'}
                                     `}
                                 >
-                                    <div className="p-10 pb-4 flex items-center gap-4 border-b border-blue-100 dark:border-white/5">
+                                    <div className="p-10 pb-4 flex items-center gap-4 border-b border-violet-100 dark:border-white/5">
                                         <div
                                             onClick={() => setIsMinimized(true)}
                                             className="w-3 h-3 rounded-full bg-[#f59e0b] border border-[#d97706] shadow-sm cursor-pointer hover:bg-[#fbbf24] active:scale-95 transition-transform"
                                             title="Minimize Window"
                                         />
-                                        <h2 className="text-xl font-black uppercase tracking-[0.3em] text-blue-900 dark:text-white leading-none flex items-center gap-3">
-                                            <Atom className="w-6 h-6 text-blue-500 dark:text-cyan-500" />
+                                        <h2 className="text-xl font-black uppercase tracking-[0.3em] text-violet-900 dark:text-white leading-none flex items-center gap-3">
+                                            <Atom className="w-6 h-6 text-violet-500 dark:text-violet-500" />
                                             {tabs.find(t => t.id === activeTab)?.label}
                                         </h2>
                                     </div>
@@ -573,11 +572,11 @@ export default function ZaeonQuanticRoom() {
                                                 className="h-full"
                                             >
                                                 {/* MÓDULOS CARREGADOS DINAMICAMENTE */}
-                                                {activeTab === 'news' && <NewsModule />}
+                                                {activeTab === 'news' && <CanonicalLaunchPanel target="news" />}
                                                 {activeTab === 'classes' && <ClassesModule />}
                                                 {activeTab === 'exams' && <ExamsModule />}
-                                                {activeTab === 'projects' && <ProjectsModule />}
-                                                {activeTab === 'research' && <ResearchModule />}
+                                                {activeTab === 'projects' && <ProFeaturePanel title="Projects" description="Ambiente de projetos colaborativos — disponível apenas no plano Pro." />}
+                                                {activeTab === 'research' && <CanonicalLaunchPanel target="research" />}
                                                 {activeTab === 'community' && <CommunityModule />}
                                                 {activeTab === 'profile' && <ProfileModule />}
                                             </motion.div>
