@@ -6,7 +6,8 @@ export interface WindowEntry {
   id: string;
   label: string;
   emoji: string;
-  type: "research" | "document";
+  /** "document" = chat com a Aura; "pdfview" = o PDF real, selecionável. */
+  type: "research" | "document" | "pdfview";
 }
 
 const RESEARCH_WINDOW: WindowEntry = {

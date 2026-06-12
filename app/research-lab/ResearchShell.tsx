@@ -1,12 +1,14 @@
 "use client";
 import { useCallback, useState } from "react";
-import { useWindowStore } from "@/lib/useWindowStore";
+import type { WindowEntry } from "@/lib/useWindowStore";
+import RichText from "@/components/research/RichText";
 import { useCursorPos } from "@/lib/useCursorPos";
 import { useSavedCitations } from "@/lib/useSavedCitations";
 import type { LibraryFile } from "@/lib/useLibraryFiles";
 import WindowSwitcher from "./WindowSwitcher";
 import DocumentDesktop from "./DocumentDesktop";
-import CitationPopover from "./CitationPopover";
+import PdfViewer from "./PdfViewer";
+import type { SavedCitation } from "@/lib/useSavedCitations";
 
 interface ResearchShellProps {
   /**
@@ -29,6 +31,27 @@ interface ResearchShellProps {
   /** Research sessions list for the 📁 folder panel. */
   sessions: { id: string; title: string; updatedAt?: string }[];
   onOpenSession: (id: string) => void;
+  /** Tipo de trabalho atual + setter — o pill "Minha pesquisa" reage a isto. */
+  workType?: string | null;
+  onWorkType?: (t: string) => void;
+  /** Arrastar um doc sobre outro → relacionar as pesquisas. */
+  onRelate?: (sourceId: string, targetId: string) => void;
+  /** Window store (subido pro page.tsx) — abas de play E de merge. */
+  windows: WindowEntry[];
+  activeId: string;
+  onSelectWindow: (id: string) => void;
+  addWindow: (entry: WindowEntry) => void;
+  removeWindow: (id: string) => void;
+  /** Resumos de relação por aba (merge): id da janela → conteúdo. */
+  relSummaries?: Record<string, { title: string; text: string; loading?: boolean }>;
+  /** Arrastar um doc PRA folha → ver o PDF real. Recebe o id do arquivo. */
+  onViewDoc?: (fileId: string) => void;
+  /** Arquivos abertos como visualizador de PDF: id da janela (pdf-…) → arquivo. */
+  pdfDocs?: Record<string, LibraryFile>;
+  /** Salvar uma citação gerada pela seleção no PDF. */
+  onCite?: (c: SavedCitation) => void;
+  /** Nível do engine de citação: "vercel" (rápido) ou "gemini" (robusto). */
+  citeMode?: "vercel" | "gemini";
 }
 
 export default function ResearchShell({
@@ -40,12 +63,25 @@ export default function ResearchShell({
   onAdd,
   sessions,
   onOpenSession,
+  workType,
+  onWorkType,
+  onRelate,
+  windows,
+  activeId,
+  onSelectWindow,
+  addWindow,
+  removeWindow,
+  relSummaries,
+  onViewDoc,
+  pdfDocs,
+  onCite,
+  citeMode,
 }: ResearchShellProps) {
-  const { windows, activeId, setActiveId, addWindow, removeWindow } = useWindowStore();
   const { containerRef, posRef } = useCursorPos();
   const { citations } = useSavedCitations();
   const [openPopover, setOpenPopover] = useState<"citations" | "quiz" | null>(null);
   const [showFolder, setShowFolder] = useState(false);
+  const [fileDragOver, setFileDragOver] = useState(false);
 
   const handlePlayFile = useCallback(
     (file: LibraryFile) => {
@@ -55,23 +91,24 @@ export default function ResearchShell({
         emoji: "📄",
         type: "document",
       });
-      setActiveId(file.id);
+      onSelectWindow(file.id);
       onPlayFile(file);
     },
-    [addWindow, setActiveId, onPlayFile],
+    [addWindow, onSelectWindow, onPlayFile],
   );
 
-  const isDocumentWindow = activeId !== "research";
+  const activeWin = windows.find((w) => w.id === activeId);
+  const isChatDoc = activeWin?.type === "document"; // só o chat da Aura mostra a barra de prompt
 
   return (
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "2.33fr 1fr",
+        gridTemplateColumns: "3.2fr 1fr",
         gap: 14,
-        height: "72vh",
-        minHeight: 560,
-        maxHeight: 760,
+        height: "78vh",
+        minHeight: 600,
+        maxHeight: 820,
         borderRadius: 22,
         background: "rgba(22,22,34,0.55)",
         border: "1px solid rgba(255,255,255,0.12)",
@@ -85,18 +122,51 @@ export default function ResearchShell({
     >
       {/* ──────── LEFT PANEL (70%) ──────── */}
       <div
-        className="flex flex-col min-h-0 overflow-hidden rounded-[18px]"
+        className="relative flex flex-col min-h-0 overflow-hidden rounded-[18px] transition-all"
         style={{
           background: "rgba(255,255,255,0.045)",
-          border: "1px solid rgba(255,255,255,0.10)",
-          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12)",
+          border: fileDragOver ? "1px solid rgba(34,197,94,0.75)" : "1px solid rgba(255,255,255,0.10)",
+          boxShadow: fileDragOver
+            ? "inset 0 0 0 2px rgba(34,197,94,0.45), inset 0 1px 0 rgba(255,255,255,0.12)"
+            : "inset 0 1px 0 rgba(255,255,255,0.12)",
+        }}
+        // Arrastar um documento PRA folha → abre o PDF real (não confundir com citação: mime diferente).
+        onDragOver={(e) => {
+          if (onViewDoc && e.dataTransfer.types.includes("text/zaeon-file")) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "copy";
+            setFileDragOver(true);
+          }
+        }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) setFileDragOver(false);
+        }}
+        onDrop={(e) => {
+          const id = e.dataTransfer.getData("text/zaeon-file");
+          if (id && onViewDoc) {
+            e.preventDefault();
+            onViewDoc(id);
+          }
+          setFileDragOver(false);
         }}
       >
+        {/* Confirmação verde ao arrastar um doc PRA folha — "soltar para ver" */}
+        {fileDragOver && (
+          <div className="absolute inset-0 z-[60] flex items-center justify-center pointer-events-none" style={{ background: "rgba(16,185,129,0.10)", backdropFilter: "blur(2px)" }}>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full" style={{ background: "rgba(6,78,59,0.92)", border: "1px solid rgba(34,197,94,0.7)", boxShadow: "0 10px 30px -10px rgba(34,197,94,0.8)" }}>
+              <span className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[14px] leading-none" style={{ background: "rgba(34,197,94,0.95)" }}>+</span>
+              <span className="text-[11px] font-black uppercase tracking-wide text-emerald-100">Soltar para ver o documento</span>
+            </div>
+          </div>
+        )}
+
         <WindowSwitcher
           windows={windows}
           activeId={activeId}
-          onSelect={setActiveId}
+          onSelect={onSelectWindow}
           onClose={removeWindow}
+          workType={workType}
+          onWorkType={onWorkType}
         />
 
         {/* Sheet area — all windows mounted, inactive ones hidden via display:none */}
@@ -109,6 +179,25 @@ export default function ResearchShell({
             {researchWindowContent}
           </div>
 
+          {/* PDF viewer windows — o documento real, selecionável (arrastado pra folha) */}
+          {windows
+            .filter((w) => w.type === "pdfview")
+            .map((w) => (
+              <div
+                key={w.id}
+                className="h-full"
+                style={{ display: activeId === w.id ? undefined : "none" }}
+              >
+                {pdfDocs?.[w.id] && (
+                  <PdfViewer
+                    file={pdfDocs[w.id]}
+                    mode={citeMode ?? "vercel"}
+                    onCite={(c) => onCite?.(c)}
+                  />
+                )}
+              </div>
+            ))}
+
           {/* Document windows — one per open doc, each hidden when not active */}
           {windows
             .filter((w) => w.type === "document")
@@ -118,17 +207,25 @@ export default function ResearchShell({
                 className="h-full overflow-y-auto"
                 style={{ display: activeId === w.id ? undefined : "none" }}
               >
-                {documentWindowContent}
+                {relSummaries?.[w.id] ? (
+                  <div className="h-full overflow-y-auto custom-scrollbar p-7 bg-white dark:bg-[#0f172a]">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-500 mb-3">🔗 {relSummaries[w.id].title}</p>
+                    {relSummaries[w.id].loading ? (
+                      <div className="mt-1">
+                        <div className="h-[3px] rounded-full overflow-hidden" style={{ background: "rgba(120,120,150,0.18)" }}>
+                          <div className="h-full rounded-full animate-pulse" style={{ width: "55%", background: "linear-gradient(90deg,#8b5cf6,#22d3ee)" }} />
+                        </div>
+                        <p className="text-[11px] text-slate-400 dark:text-white/40 mt-2 italic">Relacionando os dois trabalhos…</p>
+                      </div>
+                    ) : (
+                      <div className="text-[14px] leading-relaxed text-slate-800 dark:text-white/90"><RichText text={relSummaries[w.id].text} /></div>
+                    )}
+                  </div>
+                ) : (
+                  documentWindowContent
+                )}
               </div>
             ))}
-
-          {/* Citation popover — floats at last known cursor position */}
-          {openPopover === "citations" && (
-            <CitationPopover
-              pos={posRef.current ?? { x: 0, y: 0 }}
-              onClose={() => setOpenPopover(null)}
-            />
-          )}
 
           {/* Quiz popover — stub for sub-project #5 */}
           {openPopover === "quiz" && (
@@ -161,8 +258,8 @@ export default function ResearchShell({
           )}
         </div>
 
-        {/* Prompt bar — only visible in document mode */}
-        {isDocumentWindow && (
+        {/* Prompt bar — só no chat da Aura (não no viewer de PDF nem na pesquisa) */}
+        {isChatDoc && (
           <div
             className="mx-3.5 mb-3.5 h-10 rounded-[13px] flex items-center gap-2 px-3 text-[11px] shrink-0"
             style={{
@@ -190,6 +287,8 @@ export default function ResearchShell({
         onToggleFolder={() => setShowFolder((v) => !v)}
         sessions={sessions}
         onOpenSession={onOpenSession}
+        onRelate={onRelate}
+        onView={(f) => onViewDoc?.(f.id)}
       />
     </div>
   );

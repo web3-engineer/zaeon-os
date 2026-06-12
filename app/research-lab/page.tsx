@@ -17,6 +17,10 @@ const StudentLoungeContent = dynamic(() => import("@/app/workstation/student/Stu
 const TeacherLoungeContent = dynamic(() => import("@/app/workstation/teacher/LoungeContent"), { ssr: false });
 const ResearchesPage = dynamic(() => import("@/app/study-rooms/lounge/main-lounge/researches/page"), { ssr: false });
 import ResearchRoomTour from "@/components/onboard/ResearchRoomTour";
+import { capabilities } from "@/lib/runtime/mode";
+import { useLibraryFiles, type LibraryFile } from "@/lib/useLibraryFiles";
+import RichText from "@/components/research/RichText";
+import { useWindowStore } from "@/lib/useWindowStore";
 
 // --- ICONS ---
 import {
@@ -39,6 +43,7 @@ import MiniTourToast from "@/components/research/MiniTourToast";
 import SavedCitationsSection from "./SavedCitationsSection";
 import LibrarySavedFiles from "./LibrarySavedFiles";
 import { useSavedCitations } from "@/lib/useSavedCitations";
+import { applyCitationDrop, applyCitationRemoval } from "@/lib/citationInsert";
 import { extractCitationBlock } from "@/lib/scholar/chatCitation";
 import ResearchShell from "./ResearchShell";
 
@@ -115,14 +120,14 @@ const ChatBubble = ({ role, text, agentName, agentImg, userImg }: { role: string
                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">{agentName}</span>
                     </div>
                     <div className="p-4 rounded-2xl rounded-tl-sm text-[13px] md:text-[14px] leading-relaxed shadow-sm font-medium bg-slate-100 dark:bg-white/10 text-black dark:text-white border border-slate-300 dark:border-white/20">
-                        {text}
+                        <RichText text={text} />
                     </div>
                 </div>
             )}
             {isUser && (
                 <div className="flex items-end gap-2 max-w-[85%]">
                     <div className="p-4 rounded-2xl rounded-tr-sm text-[13px] md:text-[14px] leading-relaxed shadow-sm w-fit font-medium bg-cyan-600 text-white">
-                        {text}
+                        <RichText text={text} />
                     </div>
                     <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 border border-slate-300 dark:border-white/20 shadow-sm flex items-center justify-center bg-white dark:bg-black mb-1">
                         {userImg ? <img src={userImg} alt="User" className="w-full h-full object-cover" /> : <UserCircleIcon className="w-5 h-5 text-black dark:text-white" />}
@@ -414,6 +419,10 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
 
     // --- WORK STATES ---
     const [workType, setWorkType] = useState<"Artigo" | "Relatório" | "TCC" | null>(null);
+    const [editorZoom, setEditorZoom] = useState(1); // zoom da fonte do editor (0.7–2.2)
+    const editorRef = useRef<HTMLDivElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const [citInsertFlash, setCitInsertFlash] = useState(false); // barrinha sutil ao soltar citação
     const [isWorkTypeMenuOpen, setIsWorkTypeMenuOpen] = useState(false);
     const [docTitle, setDocTitle] = useState("minha_pesquisa.pdf");
     const [docContent, setDocContent] = useState(ABNT_TEMPLATE);
@@ -425,6 +434,12 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
     const [studyFiles, setStudyFiles] = useState<StudyDoc[]>([]);
     const [pendingUpload, setPendingUpload] = useState<File | null>(null);
     const [activeFileContext, setActiveFileContext] = useState<string | null>(null);
+    const [liteContext, setLiteContext] = useState<string | null>(null); // resumo leve (Vercel): metadados, sem PDF
+    const { files: libraryFiles, save: saveLibraryFile } = useLibraryFiles();
+    // Window store SUBIDO pra cá — pra o merge também abrir abas (não só o play).
+    const { windows: wWindows, activeId: wActiveId, setActiveId: wSetActiveId, addWindow: wAddWindow, removeWindow: wRemoveWindow } = useWindowStore();
+    const [relSummaries, setRelSummaries] = useState<Record<string, { title: string; text: string; loading?: boolean }>>({});
+    const [pdfDocs, setPdfDocs] = useState<Record<string, LibraryFile>>({}); // id da janela (pdf-…) → arquivo aberto no viewer
     const [processingFileId, setProcessingFileId] = useState<string | null>(null);
     const [processingStage, setProcessingStage] = useState<"pdf" | "ai" | null>(null);
     const [activePdfTab, setActivePdfTab] = useState<"chat" | "citations">("chat");
@@ -685,6 +700,40 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pdfChatHistory.length, voiceOn]);
 
+    // Zoom do editor por Ctrl/Cmd + scroll (passive:false p/ não deixar a PÁGINA dar zoom)
+    useEffect(() => {
+        const el = editorRef.current;
+        if (!el) return;
+        const onWheel = (e: WheelEvent) => {
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                setEditorZoom(z => Math.min(2.2, Math.max(0.7, +(z - e.deltaY * 0.0015).toFixed(3))));
+            }
+        };
+        el.addEventListener('wheel', onWheel, { passive: false });
+        return () => el.removeEventListener('wheel', onWheel);
+    }, []);
+
+    // PERSISTÊNCIA do rascunho — o que o usuário escreve NÃO reseta no reload.
+    // Restaura na montagem; salva a cada mudança de texto/título/tipo.
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem('zaeon_research_draft');
+            if (raw) {
+                const d = JSON.parse(raw);
+                if (typeof d.docContent === 'string' && d.docContent.trim()) setDocContent(d.docContent);
+                if (typeof d.docTitle === 'string' && d.docTitle) setDocTitle(d.docTitle);
+                if (d.workType) setWorkType(d.workType);
+            }
+        } catch {}
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+    useEffect(() => {
+        try {
+            localStorage.setItem('zaeon_research_draft', JSON.stringify({ docContent, docTitle, workType }));
+        } catch {}
+    }, [docContent, docTitle, workType]);
+
     useEffect(() => {
         return () => {
             window.dispatchEvent(new CustomEvent('zaeon-focus-mode', { detail: false }));
@@ -746,10 +795,12 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
 
     const confirmUpload = () => {
         if (!pendingUpload) return;
-        const newFile = {
-            id: generateSafeId(), title: pendingUpload.name, url: URL.createObjectURL(pendingUpload), file: pendingUpload
-        };
-        setStudyFiles(prev => [...prev, newFile]);
+        const id = generateSafeId();
+        const url = URL.createObjectURL(pendingUpload);
+        setStudyFiles(prev => [...prev, { id, title: pendingUpload.name, url, file: pendingUpload }]);
+        // CORREÇÃO: o upload caía só em studyFiles (que não renderiza). Salva na biblioteca
+        // → aparece como DocIcon em "Documentos" (useLibraryFiles sincroniza os painéis via evento).
+        saveLibraryFile({ id, title: pendingUpload.name, pdfUrl: url, source: "upload", savedAt: Date.now() });
         setPendingUpload(null);
     };
 
@@ -799,6 +850,25 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
         setProcessingStage("pdf");
         setIsPdfTyping(true);
         setActiveSection('pdf');
+
+        // MODO LEVE (Vercel): resume do abstract/metadados — NÃO baixa o PDF, sem 502, via Groq.
+        if (!capabilities().heavyRag) {
+            setProcessingStage("ai");
+            setDocTitle(file.title);
+            try {
+                const r = await fetch('/api/ai/summarize-lite', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pdfUrl: file.pdfUrl, title: file.title }),
+                });
+                const d = await r.json();
+                setActiveFileContext(null);
+                setLiteContext(d.context || null);
+                setPdfChatHistory([{ role: 'ai', text: d.text || "Não consegui resumir agora." }]);
+            } catch { showToast("Erro ao gerar o resumo leve."); }
+            finally { setIsPdfTyping(false); setProcessingFileId(null); setProcessingStage(null); }
+            return;
+        }
+
         try {
             const res = await fetch(`/api/ai/scholar/pdf?url=${encodeURIComponent(file.pdfUrl)}`);
             if (!res.ok) { showToast("Não consegui abrir esse arquivo agora."); return; }
@@ -826,9 +896,36 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
         } catch (e) { showToast("Erro ao abrir o arquivo salvo."); } finally { setIsPdfTyping(false); setProcessingFileId(null); setProcessingStage(null); }
     };
 
+    // Arrastar uma pesquisa sobre outra → resumo da RELAÇÃO. Nível por modo (Vercel/Groq ↔ Gemini).
+    const handleRelateFiles = async (sourceId: string, targetId: string) => {
+        const a = libraryFiles.find((f) => f.id === sourceId);
+        const b = libraryFiles.find((f) => f.id === targetId);
+        if (!a || !b) { showToast("Não achei um dos documentos."); return; }
+        // PASSIVO: abre uma ABA NOVA "A × B" (deletável) com barrinha sutil. Não troca a view —
+        // a aba aparece e o usuário clica quando quiser (regra: docs/RESEARCH_ROOM_RULES.md).
+        const relId = "rel-" + generateSafeId();
+        const shortA = a.title.length > 12 ? a.title.slice(0, 12) + "…" : a.title;
+        const shortB = b.title.length > 12 ? b.title.slice(0, 12) + "…" : b.title;
+        const title = `${a.title} × ${b.title}`;
+        wAddWindow({ id: relId, label: `${shortA} × ${shortB}`, emoji: "🔗", type: "document" });
+        setRelSummaries((prev) => ({ ...prev, [relId]: { title, text: "", loading: true } }));
+        showToast("Nova aba de relação aberta — carregando ✨");
+        try {
+            const mode = capabilities().heavyRag ? "gemini" : "vercel";
+            const res = await fetch("/api/ai/relate", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ mode, a: { pdfUrl: a.pdfUrl, title: a.title }, b: { pdfUrl: b.pdfUrl, title: b.title } }),
+            });
+            const d = await res.json();
+            setRelSummaries((prev) => ({ ...prev, [relId]: { title, text: d.text || "Não consegui relacionar agora.", loading: false } }));
+        } catch {
+            setRelSummaries((prev) => ({ ...prev, [relId]: { title, text: "Erro ao relacionar os documentos.", loading: false } }));
+        }
+    };
+
     // 🔥 FETCH CORRECTO PARA CHAT AURA
     const handlePdfQuestion = async () => {
-        if (!pdfPrompt.trim() || !activeFileContext) return;
+        if (!pdfPrompt.trim() || (!activeFileContext && !liteContext)) return;
         const currentPrompt = pdfPrompt;
         setPdfPrompt("");
         setPdfChatHistory(prev => [...prev, { role: 'user', text: currentPrompt }]);
@@ -844,10 +941,11 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     prompt: currentPrompt,
-                    agent: "aura",
-                    fileData: activeFileContext,
+                    // modo leve (sem PDF) → Groq, sem Vertex/sem 502; modo pesado → Aura/Gemini multimodal
+                    agent: (liteContext && !activeFileContext) ? "groq_bypassed" : "aura",
+                    ...(activeFileContext ? { fileData: activeFileContext } : {}),
                     history: historyForGemini,
-                    systemContext: buildSystemContext()
+                    systemContext: buildSystemContext() + ((liteContext && !activeFileContext) ? `\n\n[DOCUMENTO (metadados do artigo)]:\n${liteContext}` : "")
                 })
             });
             const data = await response.json();
@@ -855,10 +953,36 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
         } catch (e) { console.error(e); showToast("Falha de conexão."); } finally { setIsPdfTyping(false); }
     };
 
-    // 🔊 Voz da Aura (TTS via engine Python /api/ai/voice). Degrada gracioso (503 → toast).
+    // 🔊 Voz da Aura. MODO VERCEL → speechSynthesis do navegador (grátis, pt-BR, sem servidor).
+    //                  MODO CONTAINER → engine HQ via /api/ai/voice. Ver lib/runtime/mode.
     const playVoice = async (text: string, msgId?: number) => {
         const clean = text.trim();
         if (!clean) return;
+
+        // --- Vercel: TTS do navegador ---
+        if (capabilities().voiceTts === 'browser') {
+            if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+                showToast("Seu navegador não suporta voz."); return;
+            }
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(clean);
+            const voices = window.speechSynthesis.getVoices();
+            u.voice =
+                voices.find(v => /pt.?BR/i.test(v.lang) && /google|luciana|natural|premium/i.test(v.name)) ||
+                voices.find(v => /pt.?BR/i.test(v.lang)) ||
+                voices.find(v => /^pt/i.test(v.lang)) ||
+                null;
+            u.lang = 'pt-BR';
+            if (msgId != null) {
+                setVoiceLoadingId(msgId);
+                u.onend = () => setVoiceLoadingId(null);
+                u.onerror = () => setVoiceLoadingId(null);
+            }
+            window.speechSynthesis.speak(u);
+            return;
+        }
+
+        // --- Container: engine HQ ---
         if (msgId != null) setVoiceLoadingId(msgId);
         try {
             const res = await fetch('/api/ai/voice', {
@@ -904,6 +1028,76 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
         setSavedChatCits(prev => prev.includes(citation) ? prev : [...prev, citation]);
         showToast("Citação salva na aba Citações.");
     };
+
+    // Soltar uma citação salva no editor: a FRASE vai onde o cursor estava, a REFERÊNCIA (ABNT) vai pras Referências.
+    const handleCitationDrop = (e: React.DragEvent<HTMLTextAreaElement>) => {
+        const raw = e.dataTransfer.getData("text/zaeon-citation");
+        if (!raw) return; // não é uma citação nossa → deixa o comportamento padrão
+        e.preventDefault();
+        let cit: { id?: string; quote: string; abnt: string };
+        try { cit = JSON.parse(raw); } catch { return; }
+        const ta = textareaRef.current;
+        // O caret já está no ponto do drop (o browser move durante o dragover).
+        const cursor = ta ? (ta.selectionStart ?? docContent.length) : docContent.length;
+        const next = applyCitationDrop(docContent, cursor, cit);
+        setDocContent(next);
+        // marca a citação como USADA (＋ → ✓ no painel). Lê fresco do storage pra não usar estado velho.
+        if (cit.id) {
+            try {
+                const list = JSON.parse(localStorage.getItem("zaeon.savedCitations") || "[]");
+                const full = list.find((c: any) => c.id === cit.id);
+                if (full && !full.used) savePersistedCitation({ ...full, used: true });
+            } catch { /* noop */ }
+        }
+        // barrinha sutil de confirmação (regra de UX: nada agressivo)
+        setCitInsertFlash(true);
+        setTimeout(() => setCitInsertFlash(false), 650);
+        showToast("Citação inserida — referência adicionada às Referências.");
+    };
+
+    // Apagar uma citação no painel direito → remove também a frase + referência do trabalho (correlação total).
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const { quote, abnt } = (e as CustomEvent).detail || {};
+            if (!quote && !abnt) return;
+            setDocContent((prev) => applyCitationRemoval(prev, { quote, abnt }));
+        };
+        window.addEventListener("zaeon:citationRemove", handler);
+        return () => window.removeEventListener("zaeon:citationRemove", handler);
+    }, []);
+
+    // Arrastar (ou ＋ verde) um doc PRA folha → abre o PDF real numa aba pdfview (distinta do chat "play").
+    // Só abre se o documento estiver REALMENTE disponível (blob de sessão antiga morre; host pode bloquear).
+    const handleViewDoc = async (fileId: string) => {
+        const file = libraryFiles.find((f) => f.id === fileId);
+        if (!file) { showToast("Documento não encontrado na biblioteca."); return; }
+        if (!file.pdfUrl) { showToast("Esse documento não tem PDF para visualizar."); return; }
+        const winId = `pdf-${file.id}`;
+        if (pdfDocs[winId]) { wSetActiveId(winId); return; } // já aberto → só ativa
+
+        // Upload (blob:) de uma sessão anterior morre no reload → verifica antes de abrir.
+        if (file.pdfUrl.startsWith("blob:")) {
+            try {
+                const r = await fetch(file.pdfUrl);
+                if (!r.ok) throw new Error();
+            } catch {
+                showToast("Esse upload expirou ao recarregar. Suba o PDF de novo para visualizar.");
+                return;
+            }
+        }
+        setPdfDocs((prev) => ({ ...prev, [winId]: file }));
+        wAddWindow({ id: winId, label: file.title.slice(0, 18), emoji: "📄", type: "pdfview" });
+        wSetActiveId(winId);
+    };
+
+    // Seleção no PDF gerou uma citação → salva na aba de citações (com frase + referência ABNT).
+    const handleSaveCite = (c: import("@/lib/useSavedCitations").SavedCitation) => {
+        savePersistedCitation(c);
+        showToast("Citação salva na aba Citações.");
+    };
+
+    // Nível do engine de citação conforme o runtime (Vercel simples vs container robusto).
+    const citeMode: "vercel" | "gemini" = capabilities().heavyRag ? "gemini" : "vercel";
 
     // 🔥 FETCH CORRECTO PARA O EXAMINER (Quiz)
     const handleSpecialistQuery = async (specialistType: 'examiner', inputVal: string) => {
@@ -1248,6 +1442,19 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
                         <div className="flex-1 overflow-hidden">
                             <input type="file" ref={fileInputRef} className="hidden" accept="application/pdf" multiple onChange={(e) => handleFiles(e.target.files)} />
                             <ResearchShell
+                                workType={workType}
+                                onWorkType={setWorkType}
+                                onRelate={handleRelateFiles}
+                                windows={wWindows}
+                                activeId={wActiveId}
+                                onSelectWindow={wSetActiveId}
+                                addWindow={wAddWindow}
+                                removeWindow={wRemoveWindow}
+                                relSummaries={relSummaries}
+                                onViewDoc={handleViewDoc}
+                                pdfDocs={pdfDocs}
+                                onCite={handleSaveCite}
+                                citeMode={citeMode}
                                 processingFileId={processingFileId}
                                 processingStage={processingStage}
                                 onPlayFile={handlePlaySavedDoc}
@@ -1259,14 +1466,19 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
                                         onClick={() => setActiveSection('doc')}
                                         className={`h-full flex flex-col bg-white dark:bg-[#0f172a] overflow-hidden transition-all border-4 ${activeSection === 'doc' ? 'border-cyan-500 ring-8 ring-cyan-500/10' : 'border-transparent'}`}
                                     >
-                                        {/* CABEÇALHO DA FOLHA */}
-                                        <div className="h-20 flex items-center px-10 shrink-0 border-b border-slate-100 dark:border-white/5 bg-transparent">
-                                            <DocumentTextIcon className="w-6 h-6 text-black dark:text-white mr-4" />
-                                            <input value={docTitle} onChange={(e) => setDocTitle(e.target.value)} className="bg-transparent text-black dark:text-white text-2xl font-black focus:outline-none w-full placeholder:text-slate-300" />
+                                        {/* CABEÇALHO DA FOLHA — só o título (texto). Abas e tipo vivem nos pills, ACIMA da linha. */}
+                                        <div className="h-14 flex items-center px-8 shrink-0 border-b border-slate-100 dark:border-white/5 bg-transparent">
+                                            <input value={docTitle} onChange={(e) => setDocTitle(e.target.value)} placeholder="Minha Pesquisa" className="bg-transparent text-black dark:text-white text-lg font-black focus:outline-none w-full placeholder:text-slate-300" />
                                         </div>
 
-                                        {/* ÁREA DE TEXTO DA FOLHA */}
-                                        <div className="flex-1 p-12 md:p-16 overflow-y-auto custom-scrollbar flex flex-col gap-4">
+                                        {/* ÁREA DE TEXTO DA FOLHA — abaixo da linha, SÓ TEXTO */}
+                                        <div ref={editorRef} className="relative flex-1 px-8 md:px-12 py-8 overflow-y-auto custom-scrollbar flex flex-col gap-4">
+                                            {/* Barrinha sutil: pisca ao soltar uma citação */}
+                                            {citInsertFlash && (
+                                                <div className="absolute top-0 left-0 right-0 h-[3px] overflow-hidden z-10" style={{ background: "rgba(120,120,150,0.12)" }}>
+                                                    <div className="h-full rounded-full animate-pulse" style={{ width: "100%", background: "linear-gradient(90deg,#8b5cf6,#22d3ee)" }} />
+                                                </div>
+                                            )}
                                             <AcademicThermometer
                                                 docContent={docContent}
                                                 title={docTitle}
@@ -1277,8 +1489,12 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
                                             />
                                             {!reviewMode && (
                                                 <textarea
+                                                    ref={textareaRef}
                                                     value={docContent} onChange={(e) => setDocContent(e.target.value)}
-                                                    className="w-full flex-1 min-h-[400px] resize-none outline-none bg-transparent text-[17px] leading-loose text-black dark:text-white placeholder:text-slate-400 font-serif"
+                                                    onDragOver={(e) => { if (e.dataTransfer.types.includes("text/zaeon-citation")) { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; } }}
+                                                    onDrop={handleCitationDrop}
+                                                    style={{ fontSize: `${Math.round(17 * editorZoom)}px` }}
+                                                    className="w-full flex-1 min-h-[400px] resize-none outline-none bg-transparent leading-loose text-black dark:text-white placeholder:text-slate-400 font-serif"
                                                     placeholder="Sua pesquisa começa aqui..."
                                                 />
                                             )}
@@ -1286,15 +1502,11 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
 
                                         {/* RODAPÉ DA FOLHA (AÇÕES) */}
                                         <div className="p-6 flex justify-between items-center px-10 bg-slate-50/50 dark:bg-black/20 border-t border-slate-100 dark:border-white/5">
-                                            <div className="relative">
-                                                <button onClick={(e) => { e.stopPropagation(); setIsWorkTypeMenuOpen(!isWorkTypeMenuOpen); }} className="px-6 py-2.5 rounded-full text-[11px] font-black transition-all flex items-center gap-2 border-2 border-blue-500 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30">
-                                                    <SparklesIcon className="w-4 h-4" /> {workType || 'Definir Trabalho'}
-                                                </button>
-                                                <AnimatePresence>{isWorkTypeMenuOpen && (
-                                                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-full mb-4 left-0 bg-white dark:bg-black border-2 border-slate-200 dark:border-white/20 rounded-2xl shadow-2xl w-44 overflow-hidden z-[200]">
-                                                        {["Artigo", "Relatório", "TCC"].map(type => <div key={type} onClick={(e) => { e.stopPropagation(); setWorkType(type as any); setIsWorkTypeMenuOpen(false); }} className="px-5 py-4 text-[11px] font-black uppercase text-black dark:text-white hover:bg-slate-50 dark:hover:bg-white/10 cursor-pointer">{type}</div>)}
-                                                    </motion.div>
-                                                )}</AnimatePresence>
+                                            {/* Zoom do editor — liquid glass. Ctrl/Cmd + scroll, ou os botões */}
+                                            <div className="flex items-center gap-1 p-1 rounded-[12px] bg-white/50 dark:bg-black/30 border border-slate-200 dark:border-white/10 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]" title="Ctrl/Cmd + scroll para dar zoom no texto" onClick={(e) => e.stopPropagation()}>
+                                                <button onClick={(e) => { e.stopPropagation(); setEditorZoom(z => Math.max(0.7, +(z - 0.1).toFixed(2))); }} className="w-7 h-7 rounded-[9px] text-slate-500 dark:text-white/60 hover:text-cyan-500 hover:bg-cyan-500/10 font-black text-lg leading-none transition-colors">−</button>
+                                                <span className="text-[10px] font-black tabular-nums text-slate-500 dark:text-white/60 w-12 text-center">{Math.round(editorZoom * 100)}%</span>
+                                                <button onClick={(e) => { e.stopPropagation(); setEditorZoom(z => Math.min(2.2, +(z + 0.1).toFixed(2))); }} className="w-7 h-7 rounded-[9px] text-slate-500 dark:text-white/60 hover:text-cyan-500 hover:bg-cyan-500/10 font-black text-lg leading-none transition-colors">+</button>
                                             </div>
 
                                             <div className="flex gap-3">

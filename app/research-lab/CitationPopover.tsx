@@ -78,13 +78,22 @@ export default function CitationPopover({ pos, onClose }: CitationPopoverProps) 
         {citations.map((cit) => (
           <div
             key={cit.id}
-            className="rounded-[9px] p-2"
+            draggable
+            onDragStart={(e) => {
+              const payload = JSON.stringify({ quote: cit.quote || cit.abnt, abnt: cit.abnt });
+              e.dataTransfer.setData("text/zaeon-citation", payload);
+              e.dataTransfer.setData("text/plain", cit.quote || cit.abnt);
+              e.dataTransfer.effectAllowed = "copy";
+            }}
+            title="Arraste para o seu texto"
+            className="rounded-[9px] p-2 cursor-grab active:cursor-grabbing transition-colors hover:bg-white/10"
             style={{
               background: "rgba(255,255,255,0.06)",
               border: "1px solid rgba(255,255,255,0.10)",
             }}
           >
             <div className="flex items-start gap-2">
+              <span className="text-white/25 text-[11px] leading-none mt-0.5 select-none">⠿</span>
               <p className="text-[10px] text-white/85 leading-snug flex-1 line-clamp-3">
                 {cit.abnt}
               </p>
@@ -108,6 +117,12 @@ export default function CitationPopover({ pos, onClose }: CitationPopoverProps) 
           </div>
         ))}
       </div>
+
+      {citations.length > 0 && (
+        <p className="text-[8.5px] text-white/30 text-center mt-2 leading-snug">
+          ⠿ arraste uma citação para o seu texto — a frase entra no cursor, a referência vai pras Referências.
+        </p>
+      )}
     </div>
   );
 }

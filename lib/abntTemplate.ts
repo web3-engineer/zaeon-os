@@ -10,27 +10,56 @@
  */
 
 export const ABNT_TEMPLATE = `# INTRODUÇÃO
-Apresente o tema, a justificativa e os objetivos do trabalho. Contextualize o problema de pesquisa e delimite o escopo do estudo. Finalize com uma breve descrição da estrutura do trabalho.
+
+
+
+
+
+
 
 # REFERENCIAL TEÓRICO
+
 ## Conceitos Fundamentais
-Apresente os principais conceitos e teorias que embasam a pesquisa. Cite autores de referência na área (ex: SOBRENOME, Nome. Título da obra. Cidade: Editora, Ano.).
+
+
+
+
 
 ## Estado da Arte
-Discuta os trabalhos relacionados mais recentes e como eles se posicionam em relação à sua pesquisa.
+
+
+
+
+
 
 # METODOLOGIA
-Descreva o tipo de pesquisa (qualitativa, quantitativa, experimental), os instrumentos utilizados, os critérios de coleta de dados e o método de análise.
+
+
+
+
+
+
 
 # RESULTADOS E DISCUSSÃO
-Apresente os dados coletados e discuta os achados à luz do referencial teórico. Use tabelas, gráficos ou figuras quando necessário (indicando a fonte conforme ABNT).
+
+
+
+
+
+
 
 # CONCLUSÃO
-Sintetize as principais descobertas, retome os objetivos iniciais e indique as contribuições do trabalho. Aponte limitações e sugestões para trabalhos futuros.
+
+
+
+
+
+
 
 # REFERÊNCIAS
-SOBRENOME, Nome. Título do livro em itálico: subtítulo. Edição. Cidade: Editora, Ano.
-SOBRENOME, Nome. Título do artigo. Nome do Periódico, Cidade, v. N, n. N, p. XX-XX, Mês Ano.
+
+
+
 `;
 
 /** Verifica se o conteúdo é o template intacto ou está vazio */

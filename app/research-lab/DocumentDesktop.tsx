@@ -1,8 +1,11 @@
 "use client";
 import { useLibraryFiles, type LibraryFile } from "@/lib/useLibraryFiles";
 import DocIcon from "./DocIcon";
+import CitationsPanel from "./CitationsPanel";
 import DraggableDock from "./DraggableDock";
 import type { DockItem } from "./DraggableDock";
+import { useTrash } from "@/lib/useTrash";
+import { useState } from "react";
 
 interface DocumentDesktopProps {
   processingFileId: string | null;
@@ -18,6 +21,10 @@ interface DocumentDesktopProps {
   onToggleFolder: () => void;
   sessions: { id: string; title: string; updatedAt?: string }[];
   onOpenSession: (id: string) => void;
+  /** Arrastar um doc sobre outro → relacionar as pesquisas. */
+  onRelate?: (sourceId: string, targetId: string) => void;
+  /** Abrir o PDF na folha (＋ verde / soltar na folha). */
+  onView?: (file: LibraryFile) => void;
 }
 
 export default function DocumentDesktop({
@@ -32,9 +39,16 @@ export default function DocumentDesktop({
   onToggleFolder,
   sessions,
   onOpenSession,
+  onRelate,
+  onView,
 }: DocumentDesktopProps) {
-  const { files } = useLibraryFiles();
+  const { files, save: saveLibraryFile, remove: removeLibraryFile } = useLibraryFiles();
+  const { items: trashItems, trash, restore, purge } = useTrash();
+  const [showTrash, setShowTrash] = useState(false);
   const activeFile = processingFileId ? files.find((f) => f.id === processingFileId) : null;
+
+  const handleDelete = (f: LibraryFile) => { removeLibraryFile(f.id); trash(f); };
+  const handleRestore = (id: string) => { const it = restore(id); if (it) { const { deletedAt, ...rest } = it; saveLibraryFile(rest); } };
 
   // Honest two-stage progress: 25% while downloading PDF, 70% while AI analyses, 100% when done.
   const progress = processingStage === "pdf" ? 25 : processingStage === "ai" ? 70 : 100;
@@ -57,13 +71,14 @@ export default function DocumentDesktop({
       active: openPopover === "citations",
     },
     { id: "quiz", emoji: "🧠", label: "Quiz", active: openPopover === "quiz" },
+    { id: "trash", emoji: "🗑️", label: "Lixeira", badge: trashItems.length, active: showTrash },
   ];
 
   const handleDockAction = (id: string) => {
     if (id === "add") return onAdd?.();
-    if (id === "folder") return onToggleFolder();
-    if (id === "citations")
-      return onTogglePopover(openPopover === "citations" ? null : "citations");
+    if (id === "trash") { onTogglePopover(null); return setShowTrash((v) => !v); }
+    if (id === "folder") { setShowTrash(false); onTogglePopover(null); return onToggleFolder(); }
+    if (id === "citations") { setShowTrash(false); return onTogglePopover(openPopover === "citations" ? null : "citations"); }
     if (id === "quiz")
       return onTogglePopover(openPopover === "quiz" ? null : "quiz");
   };
@@ -81,12 +96,27 @@ export default function DocumentDesktop({
         className="text-[9px] font-black uppercase tracking-[0.16em] mb-2.5 flex items-center gap-1.5 shrink-0"
         style={{ color: "#9595b4" }}
       >
-        {showFolder ? "📁 Minhas pesquisas" : "🗂️ Documentos"}
+        {openPopover === "citations" ? "🔖 Citações salvas" : showTrash ? "🗑️ Lixeira" : showFolder ? "📁 Minhas pesquisas" : "🗂️ Documentos"}
       </h3>
 
-      {/* Content: folder list OR icon grid */}
+      {/* Content: citações / lixeira / pastas / grid de docs */}
       <div className="flex-1 overflow-y-auto min-h-0">
-        {showFolder ? (
+        {openPopover === "citations" ? (
+          <CitationsPanel />
+        ) : showTrash ? (
+          <div className="flex flex-col gap-1.5">
+            {trashItems.length === 0 && (
+              <p className="text-[10px] text-white/35 italic text-center mt-4">Lixeira vazia.</p>
+            )}
+            {trashItems.map((t) => (
+              <div key={t.id} className="rounded-[10px] px-3 py-2 flex items-center gap-2" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+                <p className="text-[10.5px] text-white/70 line-clamp-1 flex-1">{t.title}</p>
+                <button onClick={() => handleRestore(t.id)} title="Restaurar" className="text-[9px] font-black uppercase text-cyan-400 hover:text-cyan-300 shrink-0">↺</button>
+                <button onClick={() => purge(t.id)} title="Apagar de vez" className="text-[13px] text-white/30 hover:text-red-400 shrink-0 leading-none">×</button>
+              </div>
+            ))}
+          </div>
+        ) : showFolder ? (
           <div className="flex flex-col gap-1.5">
             {sessions.length === 0 && (
               <p className="text-[10px] text-white/35 italic text-center mt-4">
@@ -120,6 +150,9 @@ export default function DocumentDesktop({
                 file={f}
                 onPlay={onPlayFile}
                 processingId={processingFileId}
+                onRelate={onRelate}
+                onDelete={handleDelete}
+                onView={onView}
               />
             ))}
           </div>

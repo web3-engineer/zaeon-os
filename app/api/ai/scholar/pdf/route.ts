@@ -4,6 +4,9 @@ import { prisma } from "@/src/lib/prisma";
 import { isSafePublicHttpUrl } from "@/lib/scholar/ssrf";
 
 export const runtime = "nodejs";
+// Sem isto, a Vercel mata a função em ~10s e o download do PDF (host acadêmico lento)
+// fica preso em "Baixando documento". 60s cobre o fetch (timeout de 20s/hop) + o stream.
+export const maxDuration = 60;
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
@@ -39,7 +42,17 @@ export async function GET(req: Request) {
     if (!isSafePublicHttpUrl(current)) {
       return new Response("Blocked redirect to private host", { status: 403 });
     }
-    upstream = await fetch(current, { redirect: "manual", signal: AbortSignal.timeout(20000) });
+    // Muitos hosts acadêmicos (arXiv, journals) bloqueiam fetch "cru" sem User-Agent de browser → 403/502.
+    upstream = await fetch(current, {
+      redirect: "manual",
+      signal: AbortSignal.timeout(20000),
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        Accept: "application/pdf,application/octet-stream,*/*",
+        "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+      },
+    });
     const loc = upstream.headers.get("location");
     if (upstream.status >= 300 && upstream.status < 400 && loc) {
       current = new URL(loc, current).toString();
