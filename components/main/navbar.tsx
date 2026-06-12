@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import logoPng from "@/app/zaeon-name.png";
 import ThemeToggle from "@/components/sub/ThemeToggle";
+import InviteButton from "@/components/sub/InviteButton";
 import "../../src/i18n";
 
 const TRACKS = [
@@ -207,6 +208,7 @@ export const Navbar = () => {
               {showTrackName && <span className="text-[9px] font-black text-cyan-400 uppercase tracking-tighter ml-2">{getTrackName()}</span>}
             </div>
           </div>
+          <InviteButton />
           <ThemeToggle />
         </div>
       </div>
