@@ -268,97 +268,6 @@ const CollectiveZone = ({ classes, currentUser, dragConstraints, themeColor = 'c
     );
 };
 
-const CollabEditor = ({ dragConstraints, themeColor = 'cyan' }: any) => {
-    const t = getThemeClasses(themeColor);
-    const { data: session } = useSession();
-    
-    const [title, setTitle] = useState("");
-    const [subtitle, setSubtitle] = useState("");
-    const [tagsInput, setTagsInput] = useState("");
-    const [content, setContent] = useState("");
-    const [isPublishing, setIsPublishing] = useState(false);
-
-    const handlePublish = async () => {
-        if (!session?.user) {
-            alert("Operative access required. Please login.");
-            return;
-        }
-
-        if (!title.trim() || !content.trim()) {
-            alert("Title and content are required to publish.");
-            return;
-        }
-        setIsPublishing(true);
-        const tagsArray = tagsInput.split(',').map(t => t.trim().replace('#', '')).filter(Boolean);
-
-        try {
-            const res = await fetch('/api/cyber', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    title, subtitle, content, tags: tagsArray,
-                    user: session?.user?.name || "Operative",
-                    userImage: session?.user?.image || "",
-                    userId: (session?.user as any)?.id || null
-                })
-            });
-            if (res.ok) {
-                setTitle(""); setSubtitle(""); setTagsInput(""); setContent("");
-            }
-        } catch (error) {
-            console.error("Error publishing:", error);
-        } finally {
-            setIsPublishing(false);
-        }
-    };
-
-    return (
-        <div className="w-full max-w-[1400px] flex flex-col items-center mb-20 relative z-30">            
-            <motion.div drag dragConstraints={dragConstraints} whileHover={{ cursor: "grab" }} whileDrag={{ cursor: "grabbing", zIndex: 100 }} className={`relative w-full bg-white/80 dark:bg-black/30 backdrop-blur-3xl border border-slate-300 dark:border-white/10 rounded-[2.5rem] p-8 shadow-xl dark:shadow-2xl flex flex-col gap-6 overflow-hidden`} onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center justify-between border-b border-slate-300/50 dark:border-white/10 pb-4">
-                    <div className="flex items-center gap-3">
-                        <div className={`p-2 ${t.bg} rounded-xl border ${t.border} ${t.text}`}><Pen size={20} /></div>
-                        <div><h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-800 dark:text-white">Neural Editor</h3><p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">Drafting research papers & blogs</p></div>
-                    </div>
-                </div>
-                <div className="flex flex-col gap-4">
-                    <input 
-                        type="text" 
-                        value={title} onChange={(e) => setTitle(e.target.value)}
-                        placeholder="Untitled Article..." 
-                        className="text-3xl font-black bg-transparent border-none outline-none text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/20"
-                    />
-                    <input 
-                        type="text" 
-                        value={subtitle} onChange={(e) => setSubtitle(e.target.value)}
-                        placeholder="Add a subtitle or brief description..." 
-                        className="text-sm font-medium bg-transparent border-none outline-none text-slate-600 dark:text-slate-400 placeholder:text-slate-400 dark:placeholder:text-white/10"
-                    />
-                    <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-500 text-xs font-bold">
-                        <Hash size={12} />
-                        <input 
-                            type="text" 
-                            value={tagsInput} onChange={(e) => setTagsInput(e.target.value)}
-                            placeholder="Add tags (e.g., Zaeon, Research)" 
-                            className="bg-transparent outline-none w-full text-indigo-600 dark:text-indigo-500 placeholder:text-indigo-400/60 dark:placeholder:text-indigo-500/40" 
-                        />
-                    </div>
-                    <div className="w-full h-px bg-slate-200 dark:bg-white/5 my-2"></div>
-                    <textarea 
-                        value={content} onChange={(e) => setContent(e.target.value)}
-                        className="w-full h-64 bg-transparent border-none outline-none resize-none text-sm leading-relaxed text-slate-700 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-white/10 custom-scrollbar" 
-                        placeholder="Start typing your research content here..."
-                    />
-                </div>
-                <div className="flex justify-end pt-4 border-t border-slate-300/50 dark:border-white/10">
-                    <button onClick={handlePublish} disabled={isPublishing} className={`flex items-center gap-2 px-6 py-2 ${t.fill} hover:opacity-90 text-white rounded-full text-[10px] font-bold uppercase tracking-wider shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed`}>
-                        <Send size={12} /> Publish to Feed
-                    </button>
-                </div>
-            </motion.div>
-        </div>
-    );
-};
 
 export interface ClassesViewProps {
     room: string;
@@ -1194,7 +1103,6 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
             </div>
 
             {/* NEURAL EDITOR (Garantido no final) */}
-            <CollabEditor dragConstraints={constraintsRef} />
 
         </div>
     );

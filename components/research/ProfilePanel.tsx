@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { useSession } from 'next-auth/react';
+import GenderDNA from '@/components/sub/GenderDNA';
 
 const StringLine = ({ height }: { height: number }) => (
     <div className="absolute left-1/2 -translate-x-1/2 w-[1px] bg-slate-400/30 dark:bg-white/10 z-0 pointer-events-none"
@@ -343,21 +344,16 @@ function ProfilePanel({ className }: { className?: string }) {
                     </div>
                 </div>
 
-                <div className="relative hidden lg:block w-[30%] border-l border-slate-300 dark:border-white/5 h-full bg-slate-100 dark:bg-[#0b121f]">
-                    <Image
-                        src={torsoImage}
-                        alt="Torso Preview"
-                        fill
-                        className="object-cover object-top opacity-80 dark:opacity-60"
-                        priority
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-200 dark:from-black via-transparent to-transparent" />
+                {/* DNA ANIMADO POR GÊNERO (substitui a antiga "identidade neural" / torso) */}
+                <div className="relative hidden lg:flex w-[30%] flex-col items-center justify-center border-l border-slate-300 dark:border-white/5 h-full bg-slate-100 dark:bg-[#0b121f] overflow-hidden">
+                    <GenderDNA className="w-full flex-1" rungs={24} showLabel={false} />
+                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-200 dark:from-black to-transparent pointer-events-none" />
 
                     <div className="absolute bottom-10 left-8 right-8 z-10">
                         <div className="bg-white/20 dark:bg-black/40 backdrop-blur-md border border-white/20 p-4 rounded-2xl">
-                            <span className="text-[9px] font-black text-slate-500 dark:text-blue-400 uppercase tracking-[0.2em] mb-1 block">Status</span>
-                            <h4 className="text-sm font-bold text-slate-800 dark:text-white uppercase">Neural Node Active</h4>
-                            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-tight">Subject is currently synchronized with the Zaeon community protocol.</p>
+                            <span className="text-[9px] font-black text-slate-500 dark:text-violet-400 uppercase tracking-[0.2em] mb-1 block">Identidade</span>
+                            <h4 className="text-sm font-bold text-slate-800 dark:text-white uppercase">DNA Zaeon</h4>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-tight">Seu DNA, sincronizado com o protocolo da comunidade Zaeon.</p>
                         </div>
                     </div>
                 </div>
