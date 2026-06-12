@@ -303,6 +303,15 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
     const [gadgetOn, setGadgetOn] = useState(false);
     const [pluggedDay, setPluggedDay] = useState<number | null>(null);
 
+    // Relógio para a barra "tempo atual" da agenda (atualiza a cada minuto).
+    // null no SSR → setado no cliente (evita mismatch de hidratação).
+    const [now, setNow] = useState<Date | null>(null);
+    useEffect(() => {
+        setNow(new Date());
+        const t = setInterval(() => setNow(new Date()), 60_000);
+        return () => clearInterval(t);
+    }, []);
+
     const [liquidChatHistory, setLiquidChatHistory] = useState<{ role: 'user' | 'agent', text: string }[]>([
         { role: 'agent', text: "Zaeon initialized. Ready." }
     ]);
@@ -756,6 +765,13 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
     const totalHours = maxHour - minHour;
     const hours = Array.from({ length: totalHours + 1 }, (_, i) => minHour + i);
 
+    // Aula acontecendo AGORA (alimenta a fitinha "tempo atual" abaixo da agenda).
+    const DAY_NOW = now ? (((now.getDay() + 6) % 7) + 1) : null;
+    const HOUR_NOW = now ? now.getHours() + now.getMinutes() / 60 : null;
+    const currentClass = (DAY_NOW != null && HOUR_NOW != null)
+        ? classes.find((c: any) => (c.days || []).includes(DAY_NOW) && Number(c.hour) <= HOUR_NOW && HOUR_NOW < Number(c.endHour))
+        : null;
+
     return (
         <div ref={constraintsRef} onClick={handleBackgroundClick} className="relative min-h-screen w-full flex flex-col items-center p-8 bg-transparent font-sans selection:bg-cyan-500/30 text-slate-900 dark:text-white transition-colors duration-500 overflow-x-hidden">
             <div className="h-10 pointer-events-none"></div>
@@ -815,8 +831,9 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
                     </div>
                 </div>
 
-                {/* SCHEDULE */}
-                <motion.div ref={agendaRef} className="group w-[300px] h-[300px] relative z-10" onClick={(e) => e.stopPropagation()}>
+                {/* SCHEDULE + fitinha de tempo atual */}
+                <div className="flex flex-col gap-1.5 z-10">
+                <motion.div ref={agendaRef} className="group w-[280px] h-[270px] relative z-10" onClick={(e) => e.stopPropagation()}>
                     <div className={`w-full h-full backdrop-blur-xl border border-white/10 p-5 rounded-[2.5rem] shadow-xl flex flex-col items-center justify-between relative overflow-hidden bg-[#0f172a]/95 dark:bg-black/40`}>
                         <div className="w-full flex justify-between items-center mb-2 pointer-events-none">
                             <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/60">Agenda</span>
@@ -869,6 +886,15 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
                         </div>
                     </div>
                 </motion.div>
+                {/* FITINHA "TEMPO ATUAL" — só aparece quando há aula acontecendo agora; não ocupa célula própria */}
+                {currentClass && (
+                    <div className={`w-[280px] flex items-center gap-2 rounded-full px-3 py-1.5 bg-gradient-to-r ${currentClass.color} shadow-[0_0_14px_rgba(139,92,246,0.5)] border border-white/30`}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0" />
+                        <span className="text-[9px] font-black uppercase tracking-wider text-white truncate">{currentClass.name || 'Aula agora'}</span>
+                        <span className="text-[9px] font-mono text-white/90 ml-auto shrink-0 whitespace-nowrap">{currentClass.hour}h–{currentClass.endHour}h{currentClass.room ? ` · ${currentClass.room}` : ''}</span>
+                    </div>
+                )}
+                </div>
 
                 {/* DETAILS CARD EDITÁVEL */}
                 <motion.div className="group w-44 h-44 relative z-30" onClick={(e) => e.stopPropagation()}>
@@ -989,7 +1015,7 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
             {/* 4. LIBRARY & PLUGINS (static row) */}
             <div className="w-full flex justify-center flex-wrap gap-6 py-10 relative z-20 max-w-[1400px] mx-auto">
                 {/* LIBRARY MODULE */}
-                <div onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const files = Array.from(e.dataTransfer.files); const pdfs = files.filter(f => f.type === 'application/pdf').map(f => ({ id: Math.random().toString(36).substr(2, 9), title: f.name, type: 'pdf' as const, size: (f.size / 1024 / 1024).toFixed(1) + 'mb' })); setStoredPdfs(prev => [...prev, ...pdfs]); }} className="h-32 w-[340px] max-w-[450px] bg-white/70 dark:bg-black/60 backdrop-blur-3xl border border-white/40 dark:border-white/10 rounded-[1.8rem] p-4 flex flex-col relative shadow-2xl">
+                <div onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const files = Array.from(e.dataTransfer.files); const pdfs = files.filter(f => f.type === 'application/pdf').map(f => ({ id: Math.random().toString(36).substr(2, 9), title: f.name, type: 'pdf' as const, size: (f.size / 1024 / 1024).toFixed(1) + 'mb' })); setStoredPdfs(prev => [...prev, ...pdfs]); }} className="h-28 w-[210px] max-w-[260px] bg-white/70 dark:bg-black/60 backdrop-blur-3xl border border-white/40 dark:border-white/10 rounded-[1.8rem] p-4 flex flex-col relative shadow-2xl">
                     <div className="flex items-center justify-between mb-3 border-b border-white/20 pb-2">
                         <div className="flex items-center gap-2"><Database size={13} className="text-[#22d3ee]" /><span className="text-[10px] font-black uppercase tracking-widest">Library</span></div>
                     </div>
@@ -1008,7 +1034,7 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
                 </div>
 
                 {/* PLUGINS MODULE */}
-                <div className="h-32 w-[260px] max-w-[450px] bg-white/70 dark:bg-black/60 backdrop-blur-3xl border border-white/40 dark:border-white/10 rounded-[1.8rem] p-4 flex flex-col relative shadow-2xl">
+                <div className="h-28 w-[170px] max-w-[220px] bg-white/70 dark:bg-black/60 backdrop-blur-3xl border border-white/40 dark:border-white/10 rounded-[1.8rem] p-4 flex flex-col relative shadow-2xl">
                     <div className="flex items-center justify-between mb-3 border-b border-white/20 pb-2">
                         <div className="flex items-center gap-2">
                             <Puzzle size={13} className="text-[#8b5cf6]" />
