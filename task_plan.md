@@ -49,9 +49,11 @@ Single PR at the end. Source of truth: `docs/superpowers/specs/2026-06-07-liquid
 - [ ] Recover/reconnect `components/sub/LoungeEarth.tsx` (CyberGlobe, feed)
 - [ ] Per-course social gate in `/api/feed` + UI (same course → comment; other → like/view only)
 
-## Phase 6 — Perfil: DNA by gender  `P2`
-- [ ] Restore blue=male / pink=female / neutral=other from `session.user.gender`
-- [ ] Diagnose regression in profile DNA capsule
+## Phase 6 — Perfil: DNA by gender  `P2`  (done)
+- [x] Diagnosis: `session.user.gender` IS set (auth.ts session callback) — regression was that NO profile page rendered a DNA capsule anymore (dropped in migration).
+- [x] `components/sub/GenderDNA.tsx` — animated SVG double-helix, colour by gender (male=blue #3b82f6, female=pink #ec4899, other=violet→cyan), reads `session.user.gender`. Glass.
+- [x] Inserted into all 5 non-stub profile pages (463L ×3 near profile circle; 396L ×2 above circle).
+- [x] Verify: tsc · vitest 248/248 · build 104/104; DOM render confirmed.
 
 ## Dead-code recovery sweep  `P2`
 - [ ] `git log --diff-filter=D` (old lounge `study-rooms copy/`, FeedBrasil, globe)

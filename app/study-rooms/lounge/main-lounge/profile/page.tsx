@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { useSession } from 'next-auth/react';
+import GenderDNA from "@/components/sub/GenderDNA";
 
 // --- COMPONENTES VISUAIS ---
 
@@ -310,6 +311,7 @@ function ProfileModule() {
                         whileHover={{ scale: 1.05 }}
                         className="relative z-20 shrink-0"
                     >
+                        <GenderDNA className="mb-3 w-28" />
                         <div className="w-32 h-32 md:w-44 md:h-44 rounded-full border-[6px] border-white dark:border-white/10 bg-slate-200 dark:bg-white/5 backdrop-blur-xl flex items-center justify-center shadow-2xl overflow-hidden shrink-0 aspect-square relative">
                             {profileImage ? (
                                 <Image src={profileImage} alt="Profile" fill className="object-cover rounded-full" />

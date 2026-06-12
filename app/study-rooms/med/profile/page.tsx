@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { useSession } from 'next-auth/react';
+import GenderDNA from "@/components/sub/GenderDNA";
 import { useDropzone } from 'react-dropzone';
 
 // --- COMPONENTES VISUAIS (MANTIDOS INTACTOS) ---
@@ -434,6 +435,7 @@ export default function ProfileModule() {
                     </div>
 
                     {/* Foto de Perfil (Face Circle) */}
+                    <GenderDNA className="absolute top-[14%] left-[7%] z-30 w-24" />
                     <div {...getProfileProps()} className="absolute top-[15%] right-[10%] xl:right-[20%] z-30 w-32 h-32 md:w-40 md:h-40 rounded-full border-[4px] border-blue-400 bg-blue-50/80 dark:bg-blue-900/50 backdrop-blur-md flex flex-col items-center justify-center text-center p-2 shadow-2xl group/circle cursor-pointer overflow-hidden shrink-0 aspect-square">
                         <input {...getProfileInput()} />
                         {profileImage ? (
