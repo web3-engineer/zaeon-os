@@ -908,7 +908,7 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
 
                 {/* SCHEDULE */}
                 <motion.div ref={agendaRef} className="group w-[300px] h-[300px] relative z-10" onClick={(e) => e.stopPropagation()}>
-                    <div className={`w-full h-full backdrop-blur-xl border border-white/10 p-5 rounded-[2.5rem] shadow-xl flex flex-col items-center justify-between relative overflow-hidden bg-[#172554]/90 dark:bg-black/40`}>
+                    <div className={`w-full h-full backdrop-blur-xl border border-white/10 p-5 rounded-[2.5rem] shadow-xl flex flex-col items-center justify-between relative overflow-hidden bg-[#0f172a]/95 dark:bg-black/40`}>
                         <div className="w-full flex justify-between items-center mb-2 pointer-events-none">
                             <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/60">Agenda</span>
                             {pluggedDay !== null && <div className={`w-1.5 h-1.5 ${t.fill} rounded-full animate-ping ${t.shadow}`}></div>}
