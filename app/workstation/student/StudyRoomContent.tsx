@@ -14,6 +14,7 @@ import { OmegaScholarProvider } from "./omega/OmegaScholarContext";
 import OmegaScholarBar from "./omega/OmegaScholarBar";
 import OmegaScholarWorkspace from "./omega/OmegaScholarWorkspace";
 import StudyRoomSuggestionDock from "./omega/StudyRoomSuggestionDock";
+import { ProFeaturePanel } from "@/components/ui/ProFeaturePanel";
 
 // ─── ROOM MAPPING ────────────────────────────────────────────────────────────
 const ROOM_MAPPING: Record<string, string[]> = {
@@ -74,60 +75,18 @@ const ROOM_META: Record<string, {
 };
 
 // ─── TAB DEFINITIONS ─────────────────────────────────────────────────────────
+// Submódulos da Sala de Estudos: só Estudos / Aulas / Provas / Projetos (mesmo
+// conjunto para todas as salas). Pesquisas/Notícias/Perfil vivem na sidebar da
+// Sala de Pesquisa, não aqui. Projetos é bloqueado por nível Pro (ver render).
+const SALA_TABS = [
+    { id: "community",  label: "Estudos",   icon: Users         },
+    { id: "classes",    label: "Aulas",     icon: BookOpen      },
+    { id: "exams",      label: "Provas",    icon: ClipboardList },
+    { id: "projects",   label: "Projetos",  icon: FolderOpen    },
+];
 const ROOM_TABS: Record<string, Array<{ id: string; label: string; icon: React.ComponentType<any> }>> = {
-    cyber: [
-        { id: "community",  label: "Estudos",    icon: Users         },
-        { id: "classes",    label: "Aulas",       icon: BookOpen      },
-        { id: "exams",      label: "Provas",       icon: ClipboardList },
-        { id: "projects",   label: "Projetos",     icon: FolderOpen    },
-        { id: "researches", label: "Pesquisas",    icon: FlaskConical  },
-        { id: "profile",    label: "Perfil",       icon: User          },
-    ],
-    med: [
-        { id: "community",  label: "Estudos",    icon: Users         },
-        { id: "classes",    label: "Aulas",       icon: BookOpen      },
-        { id: "exams",      label: "Provas",       icon: ClipboardList },
-        { id: "projects",   label: "Projetos",     icon: FolderOpen    },
-        { id: "researches", label: "Pesquisas",    icon: FlaskConical  },
-        { id: "news",       label: "Notícias",     icon: Newspaper     },
-        { id: "profile",    label: "Perfil",       icon: User          },
-    ],
-    bio: [
-        { id: "community",  label: "Estudos",    icon: Users         },
-        { id: "classes",    label: "Aulas",       icon: BookOpen      },
-        { id: "exams",      label: "Provas",       icon: ClipboardList },
-        { id: "projects",   label: "Projetos",     icon: FolderOpen    },
-        { id: "researches", label: "Pesquisas",    icon: FlaskConical  },
-        { id: "news",       label: "Notícias",     icon: Newspaper     },
-        { id: "profile",    label: "Perfil",       icon: User          },
-    ],
-    quantic: [
-        { id: "community",  label: "Estudos",    icon: Users         },
-        { id: "classes",    label: "Aulas",       icon: BookOpen      },
-        { id: "exams",      label: "Provas",       icon: ClipboardList },
-        { id: "projects",   label: "Projetos",     icon: FolderOpen    },
-        { id: "researches", label: "Pesquisas",    icon: FlaskConical  },
-        { id: "news",       label: "Notícias",     icon: Newspaper     },
-        { id: "profile",    label: "Perfil",       icon: User          },
-    ],
-    humanities: [
-        { id: "community",  label: "Estudos",    icon: Users         },
-        { id: "classes",    label: "Aulas",       icon: BookOpen      },
-        { id: "exams",      label: "Provas",       icon: ClipboardList },
-        { id: "projects",   label: "Projetos",     icon: FolderOpen    },
-        { id: "researches", label: "Pesquisas",    icon: FlaskConical  },
-        { id: "news",       label: "Notícias",     icon: Newspaper     },
-        { id: "profile",    label: "Perfil",       icon: User          },
-    ],
-    lounge: [
-        { id: "community",  label: "Estudos",    icon: Users         },
-        { id: "classes",    label: "Aulas",       icon: BookOpen      },
-        { id: "exams",      label: "Provas",       icon: ClipboardList },
-        { id: "projects",   label: "Projetos",     icon: FolderOpen    },
-        { id: "researches", label: "Pesquisas",    icon: FlaskConical  },
-        { id: "news",       label: "Notícias",     icon: Newspaper     },
-        { id: "profile",    label: "Perfil",       icon: User          },
-    ],
+    cyber: SALA_TABS, med: SALA_TABS, bio: SALA_TABS,
+    quantic: SALA_TABS, humanities: SALA_TABS, lounge: SALA_TABS,
 };
 
 // ─── DYNAMIC COMPONENTS ──────────────────────────────────────────────────────
@@ -347,6 +306,12 @@ export default function StudyRoomContent({ flushTop = false }: { flushTop?: bool
                     <div className="absolute inset-0 overflow-y-auto" style={{ isolation: "isolate" }}>
                         {activeTab === "community" ? (
                             <OmegaScholarWorkspace />
+                        ) : activeTab === "projects" ? (
+                            <ProFeaturePanel
+                                title="Projetos"
+                                description="Ferramenta de projetos colaborativos — disponível apenas no plano Pro."
+                                tooltip="Ferramenta Pro — em breve"
+                            />
                         ) : !ActiveComponent ? (
                             <NoRoomFound />
                         ) : (

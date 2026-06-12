@@ -244,7 +244,7 @@ function TeacherBanner() {
     <GlassPanel variant="shell" className="flex flex-col gap-4 p-5">
       <div className="flex items-center gap-2">
         <GraduationCap size={15} style={{ color: GLASS_ACCENT.violet }} />
-        <span className={sectionHeader} style={{ color: GLASS_ACCENT.mutedLabel }}>
+        <span className={sectionHeader} style={{ color: "#cfcfe8" }}>
           Professor · Gateway de Entrada
         </span>
       </div>
@@ -254,7 +254,7 @@ function TeacherBanner() {
         <GlassPanel variant="inner" className="flex flex-col gap-2 p-3">
           <div className="flex items-center gap-1.5">
             <KeyRound size={12} style={{ color: GLASS_ACCENT.cyan }} />
-            <span className={sectionHeader} style={{ color: GLASS_ACCENT.mutedLabel }}>
+            <span className={sectionHeader} style={{ color: "#cfcfe8" }}>
               Chave de convite
             </span>
           </div>
@@ -271,7 +271,7 @@ function TeacherBanner() {
         <GlassPanel variant="inner" className="flex flex-col gap-2 p-3">
           <div className="flex items-center gap-1.5">
             <Upload size={12} style={{ color: GLASS_ACCENT.cyan }} />
-            <span className={sectionHeader} style={{ color: GLASS_ACCENT.mutedLabel }}>Publicar</span>
+            <span className={sectionHeader} style={{ color: "#cfcfe8" }}>Publicar</span>
           </div>
           <input className={inputCls} style={inputStyle} placeholder="Título" value={title} onChange={(e) => setTitle(e.target.value)} />
           <select className={inputCls} style={inputStyle} value={type} onChange={(e) => setType(e.target.value)}>
@@ -289,9 +289,9 @@ function TeacherBanner() {
 
         {/* PUBLISHED LIST */}
         <GlassPanel variant="inner" className="flex flex-col gap-2 p-3">
-          <span className={sectionHeader} style={{ color: GLASS_ACCENT.mutedLabel }}>Publicados</span>
+          <span className={sectionHeader} style={{ color: "#cfcfe8" }}>Publicados</span>
           <div className="flex max-h-44 flex-col gap-1.5 overflow-y-auto">
-            {docs.length === 0 && <p className="text-[11px]" style={{ color: GLASS_ACCENT.darkerDim }}>Nada publicado ainda.</p>}
+            {docs.length === 0 && <p className="text-[11px]" style={{ color: "#b6b6d4" }}>Nada publicado ainda.</p>}
             {docs.map((d) => (
               <div key={d.id} className="flex items-center justify-between rounded-[10px] bg-white/5 px-2.5 py-1.5" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
                 <span className="truncate text-[11px] text-white">{d.title}</span>
@@ -395,7 +395,7 @@ function StudentBody() {
     return (
       <GlassPanel variant="shell" className="flex flex-col gap-4 p-5">
         <div className="flex items-center justify-between">
-          <span className={sectionHeader} style={{ color: GLASS_ACCENT.mutedLabel }}>{active.title}</span>
+          <span className={sectionHeader} style={{ color: "#cfcfe8" }}>{active.title}</span>
           <button onClick={() => { setActive(null); setAnswers({}); setResult(null); }} className="text-[10px] uppercase tracking-widest text-white/50 hover:text-white">Voltar</button>
         </div>
         {result === null ? (
@@ -410,7 +410,7 @@ function StudentBody() {
         ) : (
           <div className="flex flex-col items-center gap-2 py-8 text-center">
             <span className="text-4xl font-black" style={{ color: GLASS_ACCENT.violet }}>{result}%</span>
-            <p className="text-[12px]" style={{ color: GLASS_ACCENT.dimLabel }}>Submissão enviada{result != null ? " e corrigida" : ""}.</p>
+            <p className="text-[12px]" style={{ color: "#d6d6ee" }}>Submissão enviada{result != null ? " e corrigida" : ""}.</p>
           </div>
         )}
       </GlassPanel>
@@ -421,9 +421,9 @@ function StudentBody() {
     <div className="flex flex-col gap-5">
       {/* ASSIGNED */}
       <GlassPanel variant="shell" className="flex flex-col gap-3 p-5">
-        <span className={sectionHeader} style={{ color: GLASS_ACCENT.mutedLabel }}>Provas e tarefas atribuídas</span>
+        <span className={sectionHeader} style={{ color: "#cfcfe8" }}>Provas e tarefas atribuídas</span>
         {assigned.length === 0 ? (
-          <p className="text-[12px]" style={{ color: GLASS_ACCENT.darkerDim }}>Nenhuma prova atribuída pelo professor ainda.</p>
+          <p className="text-[12px]" style={{ color: "#b6b6d4" }}>Nenhuma prova atribuída pelo professor ainda.</p>
         ) : (
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {assigned.map((d) => {
@@ -432,7 +432,7 @@ function StudentBody() {
                 <button key={d.id} onClick={() => { if (!sub) { setActive(d); setAnswers({}); setResult(null); } }} className="flex items-center justify-between rounded-[14px] bg-white/5 p-3 text-left transition-colors hover:bg-white/10" style={{ border: "1px solid rgba(255,255,255,0.10)" }}>
                   <div>
                     <p className="text-[12px] font-medium text-white">{d.title}</p>
-                    <p className="text-[10px] uppercase tracking-widest" style={{ color: GLASS_ACCENT.darkerDim }}>{d.type}</p>
+                    <p className="text-[10px] uppercase tracking-widest" style={{ color: "#b6b6d4" }}>{d.type}</p>
                   </div>
                   {sub ? (
                     <span className="text-[12px] font-black" style={{ color: GLASS_ACCENT.cyan }}>{sub.score ?? "✓"}{sub.score != null ? "%" : ""}</span>
@@ -449,8 +449,8 @@ function StudentBody() {
       {/* SELF KNOWLEDGE CHECK — fixed text+audio pairs */}
       <GlassPanel variant="shell" className="flex flex-col gap-3 p-5">
         <div className="flex items-center gap-2">
-          <span className={sectionHeader} style={{ color: GLASS_ACCENT.mutedLabel }}>Knowledge Check</span>
-          <span className="text-[9px]" style={{ color: GLASS_ACCENT.darkerDim }}>texto + áudio em cada item</span>
+          <span className={sectionHeader} style={{ color: "#cfcfe8" }}>Knowledge Check</span>
+          <span className="text-[9px]" style={{ color: "#b6b6d4" }}>texto + áudio em cada item</span>
         </div>
         <div className="flex gap-2">
           <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Tópico (ex: Cálculo I)" className="flex-1 rounded-[10px] bg-white/5 px-3 py-2 text-[12px] text-white outline-none" style={{ border: "1px solid rgba(255,255,255,0.10)" }} />
@@ -473,11 +473,11 @@ function StudentBody() {
       {/* MY GRADES */}
       {subs.length > 0 && (
         <GlassPanel variant="shell" className="flex flex-col gap-2 p-5">
-          <span className={sectionHeader} style={{ color: GLASS_ACCENT.mutedLabel }}>Minhas notas</span>
+          <span className={sectionHeader} style={{ color: "#cfcfe8" }}>Minhas notas</span>
           {subs.map((s) => (
             <div key={s.id} className="flex items-center justify-between rounded-[12px] bg-white/5 px-3 py-2" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
               <span className="text-[12px] text-white">{s.document?.title ?? "Prova"}</span>
-              <span className="text-[12px] font-black" style={{ color: s.status === "graded" ? GLASS_ACCENT.cyan : GLASS_ACCENT.darkerDim }}>
+              <span className="text-[12px] font-black" style={{ color: s.status === "graded" ? GLASS_ACCENT.cyan : "#b6b6d4" }}>
                 {s.score != null ? `${s.score}%` : s.status === "graded" ? "—" : "em correção"}
               </span>
             </div>
