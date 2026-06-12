@@ -16,11 +16,23 @@ export async function GET() {
             }
         });
 
-        const formattedPosts = posts.map((post: any) => ({
+        // Curso do usuário atual para o gate social (comentar só no mesmo curso).
+        const me = currentUserEmail
+            ? await prisma.user.findUnique({ where: { email: currentUserEmail }, select: { course: true } })
+            : null;
+        const myCourse = (me?.course || "").toLowerCase();
+
+        const formattedPosts = posts.map((post: any) => {
+            const postCourse = post.author?.course || post.room || null;
+            const pc = (postCourse || "").toLowerCase();
+            return {
             id: post.id,
             user: post.user,
             userImage: post.author?.image || null, // <--- Foto dinâmica para o frontend
             content: post.content,
+            course: postCourse,
+            // Murais de outros cursos: apenas curtir/visualizar (sem comentar).
+            canComment: !pc || !myCourse || pc === myCourse,
             time: new Date(post.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             likes: post.likes || [],
             isLiked: (post.likes || []).includes(currentUserEmail),
@@ -30,7 +42,8 @@ export async function GET() {
                 content: c.content,
                 time: new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             }))
-        }));
+            };
+        });
 
         return NextResponse.json(formattedPosts);
     } catch (error) {

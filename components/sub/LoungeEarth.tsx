@@ -34,12 +34,14 @@ interface Comment {
 interface Post {
     id: string;
     user: string;
-    userImage?: string; 
+    userImage?: string;
     content: string;
     time: string;
     likes: number;
     isLiked: boolean;
-    comments: Comment[]; 
+    comments: Comment[];
+    course?: string | null;     // curso/mural do post
+    canComment?: boolean;       // gate social: false → outro curso (só curtir/visualizar)
 }
 
 // --- CONFIGURAÇÃO DO GLOBO ---
@@ -410,12 +412,19 @@ export default function ZaeonLobby() {
                                                     </div>
 
                                                     <div className="p-6 bg-black/40 border-t border-white/10 backdrop-blur-xl absolute bottom-0 w-full rounded-t-3xl">
-                                                        <form onSubmit={handleComment} className="relative">
-                                                            <input type="text" value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Responder..." className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-4 pr-12 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-500/50 transition-all" />
-                                                            <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-cyan-500 hover:text-cyan-300 transition-colors">
-                                                                <PaperAirplaneIcon className="w-4 h-4" />
-                                                            </button>
-                                                        </form>
+                                                        {selectedPost.canComment === false ? (
+                                                            <div className="flex items-center justify-center gap-2 py-2 text-[11px] font-medium text-white/40">
+                                                                <span aria-hidden>🔒</span>
+                                                                Mural de outro curso — apenas curtir e visualizar
+                                                            </div>
+                                                        ) : (
+                                                            <form onSubmit={handleComment} className="relative">
+                                                                <input type="text" value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Responder..." className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-4 pr-12 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-500/50 transition-all" />
+                                                                <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-cyan-500 hover:text-cyan-300 transition-colors">
+                                                                    <PaperAirplaneIcon className="w-4 h-4" />
+                                                                </button>
+                                                            </form>
+                                                        )}
                                                     </div>
                                                 </motion.div>
                                             )}

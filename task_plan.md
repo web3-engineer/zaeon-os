@@ -45,9 +45,10 @@ Single PR at the end. Source of truth: `docs/superpowers/specs/2026-06-07-liquid
 - [x] Chat about research: the `/api/research/chat/[researchId]` route is functionally complete (streams via getGeminiChatModel, persists pastResearchChat) — NOT changed (no concrete repro; don't "fix" working code). Research is canonically served by research-lab since Phase 1.
 - [x] Verify: tsc · vitest 248/248 · build 104/104 (researches 349L→205B re-exports)
 
-## Phase 5 — Lounge: globe + futuristic Twitter  `P2`
-- [ ] Recover/reconnect `components/sub/LoungeEarth.tsx` (CyberGlobe, feed)
-- [ ] Per-course social gate in `/api/feed` + UI (same course → comment; other → like/view only)
+## Phase 5 — Lounge: globe + futuristic Twitter  `P2`  (done)
+- [x] LoungeEarth (CyberGlobe + feed + likes + comments) is ALREADY rendered in all 6 community tabs and functional — no recovery needed (confirmed wired).
+- [x] Per-course social gate: `/api/feed/comment` POST blocks comments when commenter's course ≠ post author's course (403); `/api/feed` GET now returns `course` + `canComment` per post; LoungeEarth shows "Mural de outro curso — apenas curtir e visualizar" instead of the comment box when `canComment === false`. Likes/view stay open.
+- [x] Verify: tsc · vitest 248/248 · build 104/104
 
 ## Phase 6 — Perfil: DNA by gender  `P2`  (done)
 - [x] Diagnosis: `session.user.gender` IS set (auth.ts session callback) — regression was that NO profile page rendered a DNA capsule anymore (dropped in migration).
@@ -55,9 +56,10 @@ Single PR at the end. Source of truth: `docs/superpowers/specs/2026-06-07-liquid
 - [x] Inserted into all 5 non-stub profile pages (463L ×3 near profile circle; 396L ×2 above circle).
 - [x] Verify: tsc · vitest 248/248 · build 104/104; DOM render confirmed.
 
-## Dead-code recovery sweep  `P2`
-- [ ] `git log --diff-filter=D` (old lounge `study-rooms copy/`, FeedBrasil, globe)
-- [ ] PR list: recovered+reconnected vs intentionally dead
+## Dead-code recovery sweep  `P2`  (done)
+- Recovered & reconnected: the **globe + feed** (CyberGlobe, /api/feed) is already live in `components/sub/LoungeEarth.tsx`, rendered in all 6 community tabs — no recovery action needed.
+- Intentionally dead (left as-is): `app/study-rooms copy/` (stale duplicate tree incl. `FeedBrasil.tsx`, old lounge pages) was deleted in prior commits and is superseded by the current rooms + LoungeEarth; `CollectiveZone` component in ClassesView kept-but-unrendered (Pro-gated, code preserved per request).
+- No TODO/DEPRECATED/LEGACY markers needing action in the touched modules.
 
 ## Delivery
 - [ ] engineering:code-review self-review
