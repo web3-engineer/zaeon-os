@@ -30,36 +30,32 @@ Single PR at the end. Source of truth: `docs/superpowers/specs/2026-06-07-liquid
 - [x] Verify: tsc clean · build 104/104 (new routes registered) · vitest 248/248
 - [ ] Live teacher↔student browser QA needs seeded teacher account + voice engine (port 8004) — deferred
 
-## Phase 3 — Aulas (ClassesView.tsx rewrite)  `P1`  (functional core done)
-- [x] Remove Sticky Notes (state, `zaeon_sticky_note`, load/save, UI, imports)
-- [x] Keep Backpack only (unchanged)
-- [x] CollectiveZone → Pro via `ProFeaturePanel` (component code kept, not rendered)
-- [x] Remove RealTimeModule (render + 126-line component)
-- [x] Core Active agent: chat (already labelled "Core Active") now routes `agent: "core_active"` with the student's agenda as context, and applies the existing `update_schedule` function-tool → creates/removes/updates agenda items (`applyScheduleTool`). Backend: `core_active` persona + tool enabled (was zenita-only).
-- [x] Verify: tsc clean · vitest 248/248 · build 104/104
-- [x] **Layout reorg DONE** (user OK'd removing drag + simplifying): single horizontal line Core Active(440) → Agenda(300) → Details(176) → Plug(64), decreasing; drag removed from agenda/details; old chat section → static Library+Plugins row; cords removed. 🛑 Checkpoint #2: fits horizontally (~980px < 1400) — no overflow. Screenshot-verified at 1360px.
+## Phase 3 — Aulas (ClassesView.tsx rewrite)  `P1`
+- [ ] Remove RealTimeModule → "Zaeon Core Active" chat (largest block)
+- [ ] Core Active agent (monitors other agents + recent research, knows aulas, can create agenda items)
+- [ ] Agenda smaller + mirror detail card; 3 blocks one horizontal line, decreasing symmetric
+- [ ] Remove Sticky Notes (state, `zaeon_sticky_note`, UI)
+- [ ] Keep Backpack only
+- [ ] CollectiveZone → Pro via ProLockBadge
+- [ ] 🛑 CHECKPOINT #2 if 3 blocks don't fit horizontally — report px numbers
 
-## Phase 4 — Pesquisas: classifier engine + visual sync  `P1`  (done)
-- [x] `components/sub/ResearchesView.tsx` (shared, all 6 re-export): GlassPanel + reconnected to `lib/scholar/levels` (LEVEL_META) + `termometro` (estimateResearchTime/publicationTarget) — each research classified by academic position with time + Qualis readout. Deterministic data (no Math.random → no hydration drift).
-- [x] Lean detail: agents + metrics hidden behind "Ver detalhes" toggle.
-- [x] Chat about research: the `/api/research/chat/[researchId]` route is functionally complete (streams via getGeminiChatModel, persists pastResearchChat) — NOT changed (no concrete repro; don't "fix" working code). Research is canonically served by research-lab since Phase 1.
-- [x] Verify: tsc · vitest 248/248 · build 104/104 (researches 349L→205B re-exports)
+## Phase 4 — Pesquisas: classifier engine + visual sync  `P1`
+- [ ] Reconnect to `lib/scholar/termometro.ts` + `levels.ts` (academic-position classifier)
+- [ ] Bring researches pages 100% to GlassPanel
+- [ ] Lean research detail (hide agent names/metadata behind "Ver detalhes")
+- [ ] Chat about research: public → on page; private → fix the buggy past-research chat
 
-## Phase 5 — Lounge: globe + futuristic Twitter  `P2`  (done)
-- [x] LoungeEarth (CyberGlobe + feed + likes + comments) is ALREADY rendered in all 6 community tabs and functional — no recovery needed (confirmed wired).
-- [x] Per-course social gate: `/api/feed/comment` POST blocks comments when commenter's course ≠ post author's course (403); `/api/feed` GET now returns `course` + `canComment` per post; LoungeEarth shows "Mural de outro curso — apenas curtir e visualizar" instead of the comment box when `canComment === false`. Likes/view stay open.
-- [x] Verify: tsc · vitest 248/248 · build 104/104
+## Phase 5 — Lounge: globe + futuristic Twitter  `P2`
+- [ ] Recover/reconnect `components/sub/LoungeEarth.tsx` (CyberGlobe, feed)
+- [ ] Per-course social gate in `/api/feed` + UI (same course → comment; other → like/view only)
 
-## Phase 6 — Perfil: DNA by gender  `P2`  (done)
-- [x] Diagnosis: `session.user.gender` IS set (auth.ts session callback) — regression was that NO profile page rendered a DNA capsule anymore (dropped in migration).
-- [x] `components/sub/GenderDNA.tsx` — animated SVG double-helix, colour by gender (male=blue #3b82f6, female=pink #ec4899, other=violet→cyan), reads `session.user.gender`. Glass.
-- [x] Inserted into all 5 non-stub profile pages (463L ×3 near profile circle; 396L ×2 above circle).
-- [x] Verify: tsc · vitest 248/248 · build 104/104; DOM render confirmed.
+## Phase 6 — Perfil: DNA by gender  `P2`
+- [ ] Restore blue=male / pink=female / neutral=other from `session.user.gender`
+- [ ] Diagnose regression in profile DNA capsule
 
-## Dead-code recovery sweep  `P2`  (done)
-- Recovered & reconnected: the **globe + feed** (CyberGlobe, /api/feed) is already live in `components/sub/LoungeEarth.tsx`, rendered in all 6 community tabs — no recovery action needed.
-- Intentionally dead (left as-is): `app/study-rooms copy/` (stale duplicate tree incl. `FeedBrasil.tsx`, old lounge pages) was deleted in prior commits and is superseded by the current rooms + LoungeEarth; `CollectiveZone` component in ClassesView kept-but-unrendered (Pro-gated, code preserved per request).
-- No TODO/DEPRECATED/LEGACY markers needing action in the touched modules.
+## Dead-code recovery sweep  `P2`
+- [ ] `git log --diff-filter=D` (old lounge `study-rooms copy/`, FeedBrasil, globe)
+- [ ] PR list: recovered+reconnected vs intentionally dead
 
 ## Delivery
 - [ ] engineering:code-review self-review
