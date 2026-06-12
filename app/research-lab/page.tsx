@@ -1096,8 +1096,6 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
                 return { title: "Pesquisas", subtitle: "Todas as pesquisas iniciadas via agente" };
             case "lounge":
                 return { title: "Lounge", subtitle: isTeacher ? "Espaço informal para conversa entre docentes" : "Espaço informal para conversa entre estudantes" };
-            case "pevem":
-                return { title: "Pevem News", subtitle: "Notificações e atualizações do sistema Pevem" };
             case "news":
                 return { title: "Central de Notícias", subtitle: "Atualizações, relatórios e eventos do ecossistema acadêmico" };
             case "profile":
@@ -1182,12 +1180,6 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
                         </button>
 
                         <div className="h-[1px] bg-slate-300 dark:bg-white/10 my-1" />
-
-                        {/* Pevem News */}
-                        <button onClick={() => setActiveTab("pevem")} className={`flex items-center gap-3 p-2 rounded-xl transition-all ${activeTab === 'pevem' ? 'bg-orange-500 text-white shadow-md' : 'text-black dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 group'}`}>
-                            <RocketLaunchIcon className="w-5 h-5 shrink-0 group-hover:text-orange-400" />
-                            {isSidebarOpen && <span className="text-[10px] font-black uppercase whitespace-nowrap">Pevem</span>}
-                        </button>
 
                         {/* Notícias */}
                         <button
@@ -1373,22 +1365,6 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
                         </div>
                     )}
 
-                    {activeTab === "pevem" && (
-                        <div className="w-full h-full flex flex-col items-center justify-center gap-6">
-                            <div className="w-20 h-20 rounded-[28px] bg-orange-500/10 flex items-center justify-center">
-                                <RocketLaunchIcon className="w-10 h-10 text-orange-500" />
-                            </div>
-                            <div className="text-center max-w-sm">
-                                <h2 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-widest mb-2">Pevem News</h2>
-                                <p className="text-xs text-slate-500 dark:text-white/40 leading-relaxed">
-                                    Esta seção estará disponível em breve. Aqui você receberá notificações e atualizações do sistema Pevem integrado à Zaeon.
-                                </p>
-                            </div>
-                            <span className="text-[9px] font-black text-orange-500 uppercase tracking-[0.3em] border border-orange-500/30 px-4 py-2 rounded-full bg-orange-500/5">
-                                Em Desenvolvimento
-                            </span>
-                        </div>
-                    )}
 
                     {activeTab === "news" && (
                         <div className="w-full h-full overflow-y-auto custom-scrollbar">
