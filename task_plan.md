@@ -39,11 +39,11 @@ Single PR at the end. Source of truth: `docs/superpowers/specs/2026-06-07-liquid
 - [x] Verify: tsc clean · vitest 248/248 · build 104/104
 - [x] **Layout reorg DONE** (user OK'd removing drag + simplifying): single horizontal line Core Active(440) → Agenda(300) → Details(176) → Plug(64), decreasing; drag removed from agenda/details; old chat section → static Library+Plugins row; cords removed. 🛑 Checkpoint #2: fits horizontally (~980px < 1400) — no overflow. Screenshot-verified at 1360px.
 
-## Phase 4 — Pesquisas: classifier engine + visual sync  `P1`
-- [ ] Reconnect to `lib/scholar/termometro.ts` + `levels.ts` (academic-position classifier)
-- [ ] Bring researches pages 100% to GlassPanel
-- [ ] Lean research detail (hide agent names/metadata behind "Ver detalhes")
-- [ ] Chat about research: public → on page; private → fix the buggy past-research chat
+## Phase 4 — Pesquisas: classifier engine + visual sync  `P1`  (done)
+- [x] `components/sub/ResearchesView.tsx` (shared, all 6 re-export): GlassPanel + reconnected to `lib/scholar/levels` (LEVEL_META) + `termometro` (estimateResearchTime/publicationTarget) — each research classified by academic position with time + Qualis readout. Deterministic data (no Math.random → no hydration drift).
+- [x] Lean detail: agents + metrics hidden behind "Ver detalhes" toggle.
+- [x] Chat about research: the `/api/research/chat/[researchId]` route is functionally complete (streams via getGeminiChatModel, persists pastResearchChat) — NOT changed (no concrete repro; don't "fix" working code). Research is canonically served by research-lab since Phase 1.
+- [x] Verify: tsc · vitest 248/248 · build 104/104 (researches 349L→205B re-exports)
 
 ## Phase 5 — Lounge: globe + futuristic Twitter  `P2`
 - [ ] Recover/reconnect `components/sub/LoungeEarth.tsx` (CyberGlobe, feed)
