@@ -11,6 +11,7 @@ import { mapLimit } from "@/lib/scholar/http";
 import type { ScholarEvent } from "@/lib/scholar/types";
 import { guard } from "@/src/lib/ratelimit";
 import { cacheDel } from "@/src/lib/cache";
+import { canDeepThink } from "@/lib/ai/deepThinkAccess";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -34,7 +35,8 @@ export async function POST(req: Request) {
   const { prompt, room, deep } = await req.json();
   // Modo RÁPIDO (default) vs PROFUNDO (toggle do usuário). O custo de tempo está em
   // abrir o full-text dos papers + sintetizar; no rápido reduzimos o N pra ser ágil.
-  const isDeep = deep === true;
+  // Modo econômico: só quem o admin liberou pode rodar o PROFUNDO; senão cai no rápido.
+  const isDeep = deep === true && (await canDeepThink(session.user.email));
   const TOP_N = isDeep ? 10 : 4;
   const FT_CONCURRENCY = isDeep ? 3 : 4;
 

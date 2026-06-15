@@ -40,6 +40,7 @@ export async function GET(req: Request) {
             countryCode: user.countryCode || "br",
             role: user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : "Student",
             kycStatus: user.kycStatus || "pending",
+            deepThinkEnabled: !!user.deepThinkEnabled,
             institution: user.institution || "",
             verificationDoc: user.verificationDoc || null,
             inviteCodeUsed: user.inviteCodeUsed || null,
@@ -65,7 +66,15 @@ export async function PATCH(req: Request) {
         }
 
         await connectToDatabase();
-        const { userId, status, academicLevel } = await req.json();
+        const { userId, status, academicLevel, deepThinkEnabled } = await req.json();
+
+        // Toggle do modo econômico: admin liga/desliga o pensamento profundo por usuário.
+        // (atualização isolada — não exige mexer no kycStatus)
+        if (typeof deepThinkEnabled === "boolean") {
+            const u = await User.findByIdAndUpdate(userId, { deepThinkEnabled }, { new: true });
+            if (!u) return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
+            return NextResponse.json({ success: true, deepThinkEnabled: !!u.deepThinkEnabled });
+        }
 
         const update: Record<string, unknown> = { kycStatus: status };
         if (academicLevel) update.academicLevel = academicLevel;

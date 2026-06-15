@@ -14,12 +14,21 @@ import { NextResponse } from "next/server";
 import { geminiText } from "@/lib/ai/gemini-text";
 import { GEMINI_MODEL_PRO } from "@/lib/ai/model";
 import { guard } from "@/src/lib/ratelimit";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/src/lib/auth";
+import { canDeepThink } from "@/lib/ai/deepThinkAccess";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
   try {
+    // Modo econômico: deep thinking (Gemini Pro) só para quem o admin liberou.
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!(await canDeepThink(session.user.email))) {
+      return NextResponse.json({ error: "deepthink_disabled", message: "O pensamento profundo está desativado na sua conta (modo econômico). Peça ao admin para liberar." }, { status: 403 });
+    }
     const rl = await guard(req, "ai-deepthink", "ai-heavy");
     if (!rl.ok) return rl.response;
     const body = await req.json().catch(() => ({} as any));

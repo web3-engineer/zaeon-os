@@ -25,6 +25,7 @@ interface UserRequest {
     institution: string | null; verificationDoc: string | null;
     inviteCodeUsed: string | null;
     kycStatus: string; academicLevel: string; submittedAt: string;
+    deepThinkEnabled?: boolean;
 }
 
 const ACADEMIC_LEVELS = ["Graduação", "Mestrado", "Doutorado", "Pós-Doutorado"];
@@ -222,6 +223,23 @@ export default function ProfileModule({ glassPanel }: { glassPanel: string }) {
         } catch (e) { alert("Falha na comunicação com o Neural Core."); }
     };
 
+    // Modo econômico: liga/desliga o pensamento profundo (Gemini Pro) para este usuário.
+    const toggleDeepThink = async () => {
+        if (!selectedReq) return;
+        const next = !selectedReq.deepThinkEnabled;
+        try {
+            const res = await fetch('/api/admin', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: selectedReq.id, deepThinkEnabled: next }),
+            });
+            if (res.ok) {
+                setSelectedReq({ ...selectedReq, deepThinkEnabled: next });
+                setRequests((prev) => prev.map((r) => (r.id === selectedReq.id ? { ...r, deepThinkEnabled: next } : r)));
+            } else { alert('Não consegui atualizar o modo de IA.'); }
+        } catch { alert('Falha na comunicação com o Neural Core.'); }
+    };
+
     return (
         <div className="flex-1 flex gap-8 overflow-hidden w-full h-full">
             
@@ -274,6 +292,24 @@ export default function ProfileModule({ glassPanel }: { glassPanel: string }) {
                                 <DetailBoard title="Institution" value={selectedReq.institution?.toUpperCase() || "Manual Entry"} icon={GlobeAmericasIcon} isActive={false} />
                                 <DetailBoard title="Registry Date" value={new Date(selectedReq.submittedAt).toLocaleDateString()} icon={CalendarDaysIcon} isActive={false} />
                                 <DetailBoard title="Via Convite" value={selectedReq.inviteCodeUsed || "—"} icon={KeyIcon} isActive={false} />
+                            </div>
+
+                            {/* MODO ECONÔMICO — pensamento profundo (Gemini Pro) por usuário */}
+                            <div className="flex items-center justify-between gap-4 bg-white/50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[28px] px-6 py-5">
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Pensamento Profundo (IA)</p>
+                                    <p className="text-sm font-bold text-slate-800 dark:text-white mt-1">{selectedReq.deepThinkEnabled ? "Liberado para este usuário" : "Bloqueado (modo econômico)"}</p>
+                                    <p className="text-[11px] text-slate-400 mt-0.5">Por padrão usuários comuns não usam deep thinking, pra economizar créditos.</p>
+                                </div>
+                                <button
+                                    onClick={toggleDeepThink}
+                                    role="switch"
+                                    aria-checked={!!selectedReq.deepThinkEnabled}
+                                    className={`relative shrink-0 w-14 h-8 rounded-full transition-colors ${selectedReq.deepThinkEnabled ? "bg-cyan-500" : "bg-slate-300 dark:bg-white/15"}`}
+                                    title={selectedReq.deepThinkEnabled ? "Desativar" : "Ativar"}
+                                >
+                                    <span className={`absolute top-1 left-1 w-6 h-6 rounded-full bg-white shadow transition-transform ${selectedReq.deepThinkEnabled ? "translate-x-6" : ""}`} />
+                                </button>
                             </div>
 
                             {/* VISUALIZADOR DE DOCUMENTO (IMAGEM OU PDF) */}

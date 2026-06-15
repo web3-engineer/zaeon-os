@@ -36,9 +36,14 @@ export default function OmegaScholarBar({ flushTop = false, onOpenResults }: Ome
   }, [status]);
 
   const [deep, setDeep] = useState(false); // pensamento profundo: pesquisa mais longa e completa
+  // Modo econômico: o toggle "Profundo" só aparece se o admin liberou esta conta.
+  const [canDeep, setCanDeep] = useState(false);
+  useEffect(() => {
+    fetch("/api/ai/capabilities").then((r) => r.json()).then((d) => setCanDeep(!!d?.deepThink)).catch(() => setCanDeep(false));
+  }, []);
   const submit = () => {
     if (draft.trim() && !busy) {
-      runQuery(draft, deep);
+      runQuery(draft, canDeep && deep);
       setDraft("");
     }
   };
@@ -71,16 +76,18 @@ export default function OmegaScholarBar({ flushTop = false, onOpenResults }: Ome
           className="flex-1 min-w-0 bg-transparent border-none px-1 py-1.5 text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-white/30 outline-none disabled:opacity-60"
         />
 
-        <button
-          onClick={() => setDeep((v) => !v)}
-          disabled={busy}
-          title={deep ? "Pensamento profundo ligado — pesquisa mais completa (e mais demorada)" : "Pensamento profundo — pesquisa mais completa, porém mais longa"}
-          aria-pressed={deep}
-          className={`shrink-0 inline-flex items-center gap-1 h-8 px-2.5 rounded-full text-[10px] font-bold transition-all disabled:opacity-60 ${deep ? "text-white" : "text-slate-500 dark:text-white/45 bg-slate-100 dark:bg-white/[0.06] border border-slate-200 dark:border-white/10"}`}
-          style={deep ? { background: "linear-gradient(135deg,#7c3aed,#06b6d4)" } : undefined}
-        >
-          <Brain size={13} /> {deep ? "Profundo" : "Rápido"}
-        </button>
+        {canDeep && (
+          <button
+            onClick={() => setDeep((v) => !v)}
+            disabled={busy}
+            title={deep ? "Pensamento profundo ligado — pesquisa mais completa (e mais demorada)" : "Pensamento profundo — pesquisa mais completa, porém mais longa"}
+            aria-pressed={deep}
+            className={`shrink-0 inline-flex items-center gap-1 h-8 px-2.5 rounded-full text-[10px] font-bold transition-all disabled:opacity-60 ${deep ? "text-white" : "text-slate-500 dark:text-white/45 bg-slate-100 dark:bg-white/[0.06] border border-slate-200 dark:border-white/10"}`}
+            style={deep ? { background: "linear-gradient(135deg,#7c3aed,#06b6d4)" } : undefined}
+          >
+            <Brain size={13} /> {deep ? "Profundo" : "Rápido"}
+          </button>
+        )}
 
         <button
           onClick={submit}

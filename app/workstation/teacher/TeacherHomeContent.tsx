@@ -15,7 +15,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   Users, ClipboardCheck, FileText, FlaskConical, BookOpen, Bot,
-  Send, ArrowRight, GraduationCap, Loader2, Sparkles,
+  Send, ArrowRight, GraduationCap, Loader2, Sparkles, Copy, Check, X, Link2,
 } from "lucide-react";
 
 function greetingForNow(): { hi: string; emoji: string } {
@@ -36,6 +36,13 @@ export default function TeacherHomeContent() {
   const [stats, setStats] = useState<Stats>({ students: 0, pending: 0, documents: 0, links: 0 });
   const [pendingList, setPendingList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // convite inline (sem teto de alunos)
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteSubject, setInviteSubject] = useState("");
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -62,6 +69,22 @@ export default function TeacherHomeContent() {
 
   const go = (path: string) => router.push(path);
 
+  const generateInvite = async () => {
+    const subject = inviteSubject.trim();
+    if (!subject) return;
+    setInviteBusy(true); setInviteLink(null); setCopied(false);
+    try {
+      const r = await fetch("/api/teacher/invite", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ subject }) });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && d.inviteUrl) { setInviteLink(d.inviteUrl); load(); }
+    } finally { setInviteBusy(false); }
+  };
+  const copyLink = async () => {
+    if (!inviteLink) return;
+    try { await navigator.clipboard.writeText(inviteLink); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* ignore */ }
+  };
+  const closeInvite = () => { setShowInvite(false); setInviteSubject(""); setInviteLink(null); setCopied(false); };
+
   const statCards = [
     { label: "Alunos", value: stats.students, icon: Users, hint: "na sua turma" },
     { label: "Correções", value: stats.pending, icon: ClipboardCheck, hint: "aguardando você", glow: stats.pending > 0 },
@@ -70,8 +93,8 @@ export default function TeacherHomeContent() {
   ];
 
   // Cards de ação — o coração da sala do professor.
-  const actions = [
-    { title: "Convidar alunos", desc: "Gere um link de turma sem limite de alunos.", icon: Send, to: "/workstation/teacher/work", accent: "from-cyan-500 to-sky-600" },
+  const actions: { title: string; desc: string; icon: any; to?: string; act?: () => void; accent: string; badge?: number }[] = [
+    { title: "Convidar alunos", desc: "Gere um link de turma sem limite de alunos.", icon: Send, act: () => setShowInvite(true), accent: "from-cyan-500 to-sky-600" },
     { title: "Atividades & correção", desc: "Confira entregas e corrija (com ajuda da IA).", icon: ClipboardCheck, to: "/workstation/teacher/review", accent: "from-violet-500 to-fuchsia-600", badge: stats.pending },
     { title: "Criar prova ou tarefa", desc: "Monte avaliações com o assistente.", icon: FileText, to: "/workstation/teacher/work", accent: "from-emerald-500 to-teal-600" },
     { title: "Sala de Pesquisa", desc: "Sua pesquisa: documento, PDFs e citações.", icon: FlaskConical, to: "/workstation/teacher/research", accent: "from-indigo-500 to-blue-600" },
@@ -122,7 +145,7 @@ export default function TeacherHomeContent() {
         {actions.map((a) => {
           const Icon = a.icon;
           return (
-            <button key={a.title} onClick={() => go(a.to)}
+            <button key={a.title} onClick={() => (a.act ? a.act() : a.to && go(a.to))}
               className="group text-left rounded-2xl p-4 border bg-white/70 border-slate-200 shadow-sm hover:border-cyan-400/50 hover:shadow-md transition-all dark:bg-white/[0.04] dark:border-white/10 dark:hover:border-cyan-400/30 dark:shadow-none">
               <div className="flex items-center gap-3">
                 <span className={`w-10 h-10 rounded-xl bg-gradient-to-br ${a.accent} flex items-center justify-center text-white shadow-sm shrink-0`}>
@@ -179,6 +202,45 @@ export default function TeacherHomeContent() {
           )}
         </div>
       </div>
+
+      {/* ── MODAL: convite de turma sem teto ── */}
+      {showInvite && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" onClick={closeInvite}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-md rounded-3xl border bg-white border-slate-200 shadow-2xl dark:bg-[#0c0b1a] dark:border-white/10 p-6">
+            <button onClick={closeInvite} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 dark:hover:text-white"><X size={18} /></button>
+            <div className="flex items-center gap-2 text-cyan-700 dark:text-cyan-300 text-[11px] font-black uppercase tracking-[0.16em] mb-1.5">
+              <Send size={14} /> Convidar alunos
+            </div>
+            <h2 className="text-lg font-black text-slate-900 dark:text-white mb-1">Link de turma · sem limite</h2>
+            <p className="text-[12px] text-slate-500 dark:text-white/45 mb-4">Dê um nome à turma e gere um link. Quantos alunos você quiser podem entrar por ele.</p>
+
+            <div className="flex gap-2">
+              <input value={inviteSubject} onChange={(e) => setInviteSubject(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") generateInvite(); }}
+                placeholder="Ex.: Cálculo I — Turma A"
+                className="flex-1 min-w-0 rounded-xl px-3 py-2.5 text-[13px] bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-cyan-400/40" />
+              <button onClick={generateInvite} disabled={inviteBusy || !inviteSubject.trim()}
+                className="shrink-0 px-4 rounded-xl text-white font-bold text-[13px] disabled:opacity-40" style={{ background: "linear-gradient(135deg,#0ea5e9,#22d3ee)" }}>
+                {inviteBusy ? <Loader2 size={15} className="animate-spin" /> : "Gerar"}
+              </button>
+            </div>
+
+            {inviteLink && (
+              <div className="mt-4 rounded-xl border border-cyan-400/30 bg-cyan-500/[0.06] p-3">
+                <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-cyan-700 dark:text-cyan-300 mb-1.5"><Link2 size={12} /> Link da turma</div>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 min-w-0 truncate text-[11px] text-slate-700 dark:text-white/80">{inviteLink}</code>
+                  <button onClick={copyLink} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold text-cyan-700 dark:text-cyan-300 hover:underline">
+                    {copied ? <><Check size={13} /> Copiado</> : <><Copy size={13} /> Copiar</>}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
