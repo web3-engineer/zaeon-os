@@ -72,7 +72,7 @@ export default function TeacherHomeContent() {
   // Cards de ação — o coração da sala do professor.
   const actions = [
     { title: "Convidar alunos", desc: "Gere um link de turma sem limite de alunos.", icon: Send, to: "/workstation/teacher/work", accent: "from-cyan-500 to-sky-600" },
-    { title: "Atividades & correção", desc: "Confira entregas e corrija (com ajuda da IA).", icon: ClipboardCheck, to: "/workstation/teacher/work", accent: "from-violet-500 to-fuchsia-600", badge: stats.pending },
+    { title: "Atividades & correção", desc: "Confira entregas e corrija (com ajuda da IA).", icon: ClipboardCheck, to: "/workstation/teacher/review", accent: "from-violet-500 to-fuchsia-600", badge: stats.pending },
     { title: "Criar prova ou tarefa", desc: "Monte avaliações com o assistente.", icon: FileText, to: "/workstation/teacher/work", accent: "from-emerald-500 to-teal-600" },
     { title: "Sala de Pesquisa", desc: "Sua pesquisa: documento, PDFs e citações.", icon: FlaskConical, to: "/workstation/teacher/research", accent: "from-indigo-500 to-blue-600" },
     { title: "Pesquisa Agêntica", desc: "Agentes e laboratórios — crie novos se precisar.", icon: Bot, to: "/workstation/teacher/agentic", accent: "from-amber-500 to-orange-600" },
@@ -149,7 +149,7 @@ export default function TeacherHomeContent() {
         <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 dark:border-white/10">
           <ClipboardCheck size={15} className="text-violet-600 dark:text-violet-300" />
           <span className="text-[12px] font-bold text-slate-800 dark:text-white">Entregas aguardando correção</span>
-          <button onClick={() => go("/workstation/teacher/work")} className="ml-auto text-[11px] font-bold text-cyan-600 dark:text-cyan-300 hover:underline inline-flex items-center gap-1">
+          <button onClick={() => go("/workstation/teacher/review")} className="ml-auto text-[11px] font-bold text-cyan-600 dark:text-cyan-300 hover:underline inline-flex items-center gap-1">
             Ver todas <ArrowRight size={12} />
           </button>
         </div>
@@ -163,7 +163,7 @@ export default function TeacherHomeContent() {
           ) : (
             <div className="flex flex-col gap-1.5">
               {pendingList.map((s: any) => (
-                <button key={s.id} onClick={() => go("/workstation/teacher/work")}
+                <button key={s.id} onClick={() => go("/workstation/teacher/review")}
                   className="text-left flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-cyan-500/[0.06] transition-colors border border-transparent hover:border-cyan-400/20">
                   <span className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-600 dark:text-violet-300 shrink-0">
                     <FileText size={14} />

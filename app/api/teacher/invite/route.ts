@@ -19,8 +19,11 @@ export async function POST(req: Request) {
         const data = await req.json();
         const { subject, room, location, hour, endHour, days } = data;
 
-        if (!subject || !room || !location || hour == null || endHour == null || !days || days.length === 0) {
-            return NextResponse.json({ error: "Todos os campos (Subject, Room, Location, Hour, EndHour, Days) são obrigatórios" }, { status: 400 });
+        // Convite de turma SEM TETO de alunos. Só o assunto é obrigatório; agenda
+        // (sala/horário/dias) é opcional — vazia = convite simples "só pra entrar na turma".
+        // ClassLink não tem maxUses → entram quantos alunos quiserem pelo mesmo link.
+        if (!subject) {
+            return NextResponse.json({ error: "Informe ao menos o assunto/nome da turma." }, { status: 400 });
         }
 
         const token = crypto.randomBytes(16).toString('hex');
@@ -31,11 +34,11 @@ export async function POST(req: Request) {
                 token,
                 teacherId: teacher.id,
                 subject,
-                room,
-                location,
-                hour,
-                endHour,
-                days
+                room: room || "geral",
+                location: location || "Online",
+                hour: hour == null ? 0 : hour,
+                endHour: endHour == null ? 0 : endHour,
+                days: Array.isArray(days) ? days : [],
             }
         });
 
