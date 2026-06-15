@@ -123,16 +123,8 @@ export default function HeroPage() {
                 className="group relative flex items-center justify-center gap-3 px-10 py-4 rounded-full border border-cyan-500/30 text-cyan-700 dark:text-cyan-300 font-medium uppercase tracking-[0.2em] text-[11px] overflow-hidden transition-all hover:border-cyan-400 dark:hover:shadow-[0_0_20px_rgba(34,211,238,0.2)] hover:scale-105 bg-transparent"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/10 to-transparent -translate-x-[100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-                <SparklesIcon className="w-4 h-4" />
-                Criar meu agente
-              </button>
-
-              <button
-                onClick={() => signIn('google', { callbackUrl: '/workstation' })}
-                className="flex items-center justify-center gap-3 px-10 py-4 rounded-full border border-slate-300 dark:border-white/10 text-slate-800 dark:text-white font-medium uppercase tracking-[0.2em] text-[11px] hover:border-slate-500 dark:hover:border-white/30 transition-colors bg-transparent hover:scale-105"
-              >
-                <UserIcon className="w-4 h-4 text-slate-400" />
-                Contratar um Agente
+                <UserIcon className="w-4 h-4" />
+                Entrar
               </button>
             </motion.div>
           )}

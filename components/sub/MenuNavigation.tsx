@@ -270,6 +270,54 @@ export default function MenuNavigation() {
   const cardSelected = "bg-white border-cyan-400 dark:bg-cyan-400/10 dark:border-cyan-400/40 text-cyan-600 dark:text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.2)] dark:shadow-[0_0_15px_rgba(34,211,238,0.15)]";
   const accentBar = (active: boolean) => `absolute left-1 top-1/2 -translate-y-1/2 h-6 w-[3px] rounded-full transition-all duration-500 ${active ? "bg-cyan-500 dark:bg-cyan-400 opacity-100 scale-y-100" : "bg-transparent opacity-0 scale-y-0"}`;
 
+  // ── DESLOGADO: painel de LOGIN (onboard em linguagem natural foi desativado) ──
+  // Login só "passa" se a pessoa já tem conta OU preencheu um convite (gate no signIn do NextAuth).
+  if (status !== "authenticated") {
+    return (
+      <div className={panelClass}>
+        <nav className="p-6 flex flex-col h-full justify-center gap-5">
+          <div className="flex flex-col items-center text-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-cyan-100 dark:bg-cyan-500/15 flex items-center justify-center">
+              <ZaeonLogo aiState="idle" className="w-7 h-7" />
+            </div>
+            <div>
+              <h2 className="text-lg font-black text-slate-900 dark:text-white">Bem-vindo à Zaeon</h2>
+              <p className="text-[12px] text-slate-500 dark:text-white/45 mt-1 leading-relaxed">
+                Entre para acessar seus estudos, pesquisas e agentes.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => signIn("google", { callbackUrl: "/workstation" })}
+            className="w-full flex items-center justify-center gap-2.5 bg-black dark:bg-white text-white dark:text-black text-[12px] font-bold py-3.5 rounded-2xl hover:scale-[1.02] transition-transform shadow-lg"
+          >
+            <Image src="https://authjs.dev/img/providers/google.svg" alt="G" width={16} height={16} /> Entrar com Google
+          </button>
+
+          <div className="flex items-center gap-3">
+            <span className="flex-1 h-px bg-slate-200 dark:bg-white/10" />
+            <span className="text-[9px] uppercase tracking-widest text-slate-400 dark:text-white/30">ou</span>
+            <span className="flex-1 h-px bg-slate-200 dark:bg-white/10" />
+          </div>
+
+          <div className="text-center">
+            <p className="text-[11px] text-slate-500 dark:text-white/45 mb-2">Novo por aqui? É preciso um convite.</p>
+            <button
+              onClick={() => router.push("/convite")}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white text-[12px] font-bold hover:border-cyan-400/50 hover:bg-cyan-50 dark:hover:bg-cyan-500/10 transition-colors"
+            >
+              <ShieldCheck size={15} /> Tenho um convite
+            </button>
+          </div>
+        </nav>
+        <div className="px-8 pb-4 text-[10px] text-slate-400 dark:opacity-30 dark:text-white tracking-[0.3em] font-light mt-auto">
+          {t("footer.version", "ZAEON OS v1.0.0")}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={panelClass}>
       <nav className="p-5 flex flex-col h-full relative">

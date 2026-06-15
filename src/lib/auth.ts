@@ -4,6 +4,8 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { MongoDBAdapter } from "@auth/mongodb-adapter";
 import { clientPromise } from "@/src/lib/db";
 import { MongoClient } from "mongodb";
+import { cookies } from "next/headers";
+import { isSuperAdminEmail } from "@/lib/auth/roles";
 
 // A LISTA VIP
 const ADMIN_EMAILS = [
@@ -50,6 +52,31 @@ export const authOptions: NextAuthOptions = {
     ],
     session: { strategy: "jwt" },
     callbacks: {
+        // GATE DE LOGIN: usuário que JÁ existe entra normal; usuário NOVO só passa se
+        // tiver preenchido um convite (cookie convite_session → PendingRegistration válida).
+        // Fundadores/admins sempre entram. Em falha de infra, não trava (fail-open).
+        async signIn({ user }) {
+            try {
+                const email = (user?.email || "").toLowerCase();
+                if (!email) return false;
+                if (ADMIN_EMAILS.includes(email) || isSuperAdminEmail(email)) return true;
+
+                const client = (await clientPromise) as MongoClient;
+                const db = client.db();
+                const existing = await db.collection("users").findOne({ email });
+                if (existing) return true; // já tem conta → entra
+
+                // novo usuário: exige convite preenchido e dados enviados (pending válido)
+                let token: string | undefined;
+                try { token = cookies().get("convite_session")?.value; } catch { token = undefined; }
+                if (!token) return false;
+                const pending = await db.collection("pending_registrations").findOne({ sessionToken: token });
+                if (pending && (!pending.expiresAt || new Date(pending.expiresAt) > new Date())) return true;
+                return false;
+            } catch {
+                return true; // falha de infra não derruba o login de quem já usa
+            }
+        },
         async jwt({ token, user }) {
             if (user) {
                 token.id = user.id;
