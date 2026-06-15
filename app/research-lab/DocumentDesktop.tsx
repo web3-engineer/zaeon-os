@@ -21,6 +21,9 @@ interface DocumentDesktopProps {
   onToggleFolder: () => void;
   sessions: { id: string; title: string; updatedAt?: string }[];
   onOpenSession: (id: string) => void;
+  /** "Minhas coisas": novo trabalho / excluir trabalho. */
+  onNewWork?: () => void;
+  onDeleteWork?: (id: string) => void;
   /** Arrastar um doc sobre outro → relacionar as pesquisas. */
   onRelate?: (sourceId: string, targetId: string) => void;
   /** Abrir o PDF na folha (＋ verde / soltar na folha). */
@@ -41,6 +44,8 @@ export default function DocumentDesktop({
   onToggleFolder,
   sessions,
   onOpenSession,
+  onNewWork,
+  onDeleteWork,
   onRelate,
   onView,
   flipped,
@@ -65,7 +70,7 @@ export default function DocumentDesktop({
   // Fixed dock order: upload → folder → citations → quiz
   const dockItems: DockItem[] = [
     { id: "add", emoji: "＋", label: "Enviar PDF" },
-    { id: "folder", emoji: "📁", label: "Minhas pesquisas", active: showFolder },
+    { id: "folder", emoji: "📁", label: "Minhas coisas", active: showFolder },
     {
       id: "citations",
       emoji: "🔖",
@@ -99,7 +104,7 @@ export default function DocumentDesktop({
         className="text-[9px] font-black uppercase tracking-[0.16em] mb-2.5 flex items-center gap-1.5 shrink-0"
         style={{ color: "#9595b4" }}
       >
-        {openPopover === "citations" ? "🔖 Citações salvas" : showTrash ? "🗑️ Lixeira" : showFolder ? "📁 Minhas pesquisas" : "🗂️ Documentos"}
+        {openPopover === "citations" ? "🔖 Citações salvas" : showTrash ? "🗑️ Lixeira" : showFolder ? "📁 Minhas coisas" : "🗂️ Documentos"}
       </h3>
 
       {/* Content: citações / lixeira / pastas / grid de docs */}
@@ -121,23 +126,40 @@ export default function DocumentDesktop({
           </div>
         ) : showFolder ? (
           <div className="flex flex-col gap-1.5">
+            {onNewWork && (
+              <button
+                onClick={onNewWork}
+                className="text-left rounded-[10px] px-3 py-2 text-[10.5px] font-black uppercase tracking-wide text-cyan-300 hover:bg-cyan-400/10 transition-colors flex items-center gap-1.5"
+                style={{ border: "1px dashed rgba(34,211,238,0.35)" }}
+              >
+                ＋ Novo trabalho
+              </button>
+            )}
             {sessions.length === 0 && (
               <p className="text-[10px] text-white/35 italic text-center mt-4">
-                Nenhuma pesquisa salva ainda.
+                Nada salvo ainda. Dê um título ao seu trabalho que ele aparece aqui.
               </p>
             )}
             {sessions.map((s) => (
-              <button
+              <div
                 key={s.id}
-                onClick={() => onOpenSession(s.id)}
-                className="text-left rounded-[10px] px-3 py-2 text-[10.5px] text-white/80 hover:bg-white/[0.08] transition-colors"
+                className="group relative rounded-[10px] hover:bg-white/[0.08] transition-colors"
                 style={{ border: "1px solid rgba(255,255,255,0.08)" }}
               >
-                <p className="font-semibold line-clamp-1">{s.title}</p>
-                {s.updatedAt && (
-                  <p className="text-white/35 text-[9px] mt-0.5">{s.updatedAt}</p>
+                <button onClick={() => onOpenSession(s.id)} className="text-left w-full px-3 py-2 text-[10.5px] text-white/80">
+                  <p className="font-semibold line-clamp-1 pr-5">{s.title}</p>
+                  {s.updatedAt && <p className="text-white/35 text-[9px] mt-0.5">{s.updatedAt}</p>}
+                </button>
+                {onDeleteWork && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDeleteWork(s.id); }}
+                    title="Excluir trabalho"
+                    className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 text-white/30 hover:text-red-400 text-[13px] leading-none"
+                  >
+                    ×
+                  </button>
                 )}
-              </button>
+              </div>
             ))}
           </div>
         ) : (

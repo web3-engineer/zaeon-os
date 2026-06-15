@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useSession } from "next-auth/react";
@@ -22,6 +22,7 @@ import { capabilities } from "@/lib/runtime/mode";
 import { useLibraryFiles, type LibraryFile } from "@/lib/useLibraryFiles";
 import RichText from "@/components/research/RichText";
 import { useWindowStore } from "@/lib/useWindowStore";
+import { useResearchWorks } from "@/lib/useResearchWorks";
 
 // --- ICONS ---
 import {
@@ -462,26 +463,15 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
     // Forma legada {id, text} usada pela publicação/attachments (preserva o contrato dos consumidores).
     const citationNotes = persistedCitations.map(c => ({ id: c.id, text: c.abnt }));
 
-    // Saved research sessions — for the 📁 folder panel in ResearchShell
-    const [sessions, setSessions] = useState<{ id: string; title: string; updatedAt?: string }[]>([]);
-    useEffect(() => {
-        fetch("/api/ai/scholar/sessions")
-            .then((r) => r.json())
-            .then((data) => {
-                if (Array.isArray(data?.sessions)) {
-                    setSessions(
-                        data.sessions.map((s: { id: string; title?: string; createdAt?: string }) => ({
-                            id: s.id,
-                            title: s.title ?? "Pesquisa sem título",
-                            updatedAt: s.createdAt
-                                ? new Date(s.createdAt).toLocaleDateString("pt-BR")
-                                : undefined,
-                        })),
-                    );
-                }
-            })
-            .catch(() => {});
-    }, []);
+    // Painel "Minhas coisas" — TRABALHOS criados aqui na sala de pesquisa (Artigo/Relatório/TCC),
+    // persistidos no navegador (useResearchWorks). NÃO são as buscas do Scholar da Sala de Estudos.
+    const { works, save: saveWork, remove: removeWork } = useResearchWorks();
+    const [currentWorkId, setCurrentWorkId] = useState<string>("");
+    const sessions = works.map((w) => ({
+        id: w.id,
+        title: w.title || "Trabalho sem título",
+        updatedAt: new Date(w.updatedAt).toLocaleDateString("pt-BR"),
+    }));
     const [citationContent, setCitationContent] = useState<string | null>(null);
     const [activeCitationText, setActiveCitationText] = useState<string | null>(null);
 
@@ -746,6 +736,48 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
             localStorage.setItem('zaeon_research_draft', JSON.stringify({ docContent, docTitle, workType }));
         } catch {}
     }, [docContent, docTitle, workType]);
+
+    // Trabalho atual ("Minhas coisas"): restaura o id ou cria um novo na montagem.
+    useEffect(() => {
+        try {
+            const cur = localStorage.getItem('zaeon_research_current');
+            if (cur) { setCurrentWorkId(cur); return; }
+        } catch {}
+        const id = generateSafeId();
+        setCurrentWorkId(id);
+        try { localStorage.setItem('zaeon_research_current', id); } catch {}
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+    // Salva o trabalho atual no painel assim que ele tem um título de verdade.
+    useEffect(() => {
+        if (!currentWorkId) return;
+        const t = (docTitle || "").trim().replace(/\.(pdf|docx)$/i, "");
+        if (!t || t.toLowerCase() === "minha_pesquisa") return; // sem título real → não cria lixo
+        saveWork({ id: currentWorkId, title: t, workType, content: docContent, updatedAt: Date.now() });
+    }, [docTitle, docContent, workType, currentWorkId, saveWork]);
+
+    // Abrir um trabalho salvo do painel → carrega na folha.
+    const openWork = useCallback((id: string) => {
+        const w = works.find((x) => x.id === id);
+        if (!w) return;
+        setCurrentWorkId(id);
+        try { localStorage.setItem('zaeon_research_current', id); } catch {}
+        setDocTitle(w.title || "");
+        if (typeof w.content === "string") setDocContent(w.content);
+        setWorkType((w.workType as "Artigo" | "Relatório" | "TCC" | null) ?? null);
+    }, [works]);
+    // Começar um trabalho novo (folha em branco, novo id).
+    const newWork = useCallback(() => {
+        const id = generateSafeId();
+        setCurrentWorkId(id);
+        try { localStorage.setItem('zaeon_research_current', id); } catch {}
+        setDocTitle("");
+        setDocContent(ABNT_TEMPLATE);
+    }, []);
+    // Excluir um trabalho do painel.
+    const deleteWork = useCallback((id: string) => {
+        removeWork(id);
+    }, [removeWork]);
 
     useEffect(() => {
         return () => {
@@ -1481,7 +1513,9 @@ export default function HomeworkPage({ isEmbedded = false }: { isEmbedded?: bool
                                 onPlayFile={handlePlaySavedDoc}
                                 onAdd={() => fileInputRef.current?.click()}
                                 sessions={sessions}
-                                onOpenSession={() => { setActiveTab("sala-de-estudos"); }}
+                                onOpenSession={openWork}
+                                onNewWork={newWork}
+                                onDeleteWork={deleteWork}
                                 researchWindowContent={
                                     <div
                                         onClick={() => setActiveSection('doc')}

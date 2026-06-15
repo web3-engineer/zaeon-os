@@ -31,6 +31,9 @@ interface ResearchShellProps {
   /** Research sessions list for the 📁 folder panel. */
   sessions: { id: string; title: string; updatedAt?: string }[];
   onOpenSession: (id: string) => void;
+  /** "Minhas coisas": criar um trabalho novo e excluir um trabalho salvo. */
+  onNewWork?: () => void;
+  onDeleteWork?: (id: string) => void;
   /** Tipo de trabalho atual + setter — o pill "Minha pesquisa" reage a isto. */
   workType?: string | null;
   onWorkType?: (t: string) => void;
@@ -65,6 +68,8 @@ export default function ResearchShell({
   onAdd,
   sessions,
   onOpenSession,
+  onNewWork,
+  onDeleteWork,
   workType,
   onWorkType,
   onRelate,
@@ -291,6 +296,8 @@ export default function ResearchShell({
         onToggleFolder={() => setShowFolder((v) => !v)}
         sessions={sessions}
         onOpenSession={onOpenSession}
+        onNewWork={onNewWork}
+        onDeleteWork={onDeleteWork}
         onRelate={onRelate}
         onView={(f) => onViewDoc?.(f.id)}
         flipped={flipped}
