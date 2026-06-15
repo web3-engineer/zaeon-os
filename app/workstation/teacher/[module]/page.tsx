@@ -13,11 +13,13 @@ import {
     Focus,
     User,
     FlaskConical,
-    Library
+    Library,
+    LayoutDashboard
 } from "lucide-react";
 
 // --- IMPORTS DOS MÓDULOS ---
 import WorkStationContent from "@/app/workstation/WorkStationContent";
+import TeacherHomeContent from "@/app/workstation/teacher/TeacherHomeContent";
 import WorkAreaContent from "@/app/workstation/teacher/WorkAreaContent";
 import ResearchAreaContent from "@/app/workstation/teacher/ResearchAreaContent";
 import AgenticAreaContent from "@/app/workstation/teacher/AgenticAreaContent";
@@ -85,6 +87,7 @@ export default function TeacherWorkstation() {
     // Ordem coerente para professores:
     // Perfil → Trabalho → Pesquisa (lab) → Repositórios → Agentes → Social → Finanças
     const menuItems = [
+        { id: "home",     label: "Início",             icon: LayoutDashboard },
         { id: "profile",  label: "Meu Perfil",        icon: User          },
         { id: "work",     label: "Área de Trabalho",  icon: Briefcase     },
         { id: "research", label: "Pesquisa",           icon: FlaskConical  },
@@ -96,6 +99,7 @@ export default function TeacherWorkstation() {
 
     const renderModuleContent = () => {
         switch (currentModule) {
+            case "home":     return <TeacherHomeContent />;
             case "profile":  return <WorkStationContent isEmbedded={true} />;
             case "work":     return <WorkAreaContent />;
             case "research": return <HomeworkPage isEmbedded={true} />;

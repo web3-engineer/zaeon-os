@@ -249,7 +249,7 @@ export default function WorkStationPage({ isEmbedded = false }: { isEmbedded?: b
 
         if (pathname === '/workstation') {
             if (isTeacher) {
-                router.replace('/workstation/teacher/profile');
+                router.replace('/workstation/teacher/home');
             } else {
                 // Alunos e visitantes vão para o perfil na Research Room
                 router.replace('/research-lab?tab=profile');
