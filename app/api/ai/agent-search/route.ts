@@ -38,7 +38,7 @@ export async function POST(req: Request) {
         });
 
         const generativeModel = vertexAI.getGenerativeModel({
-            model: 'gemini-2.0-flash-001',
+            model: (process.env.GEMINI_MODEL || 'gemini-2.5-flash'),
             generationConfig: { temperature: 0.1 }, // Baixa temperatura para ele ser analítico e focar em extrair os dados
             tools: [{ functionDeclarations: [searchStudentsTool] }]
         });

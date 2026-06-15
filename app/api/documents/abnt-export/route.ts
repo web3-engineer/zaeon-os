@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { VertexAI } from '@google-cloud/vertexai';
 
-export const maxDuration = 120;
+export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
 const ABNT_SERVICE_URL = process.env.ABNT_SERVICE_URL || 'http://localhost:8001';
@@ -45,7 +45,7 @@ async function generateMetaWithGemini(request: ABNTExportRequest): Promise<{
         },
     });
 
-    const model = vertexAI.getGenerativeModel({ model: 'gemini-2.0-flash-001' });
+    const model = vertexAI.getGenerativeModel({ model: (process.env.GEMINI_MODEL || 'gemini-2.5-flash') });
 
     const prompt = `Você é um assistente acadêmico. Analise o texto abaixo e retorne EXCLUSIVAMENTE um JSON válido (sem markdown) com:
 {
@@ -96,7 +96,7 @@ async function structureWithGemini(request: ABNTExportRequest): Promise<{
         },
     });
 
-    const model = vertexAI.getGenerativeModel({ model: 'gemini-2.0-flash-001' });
+    const model = vertexAI.getGenerativeModel({ model: (process.env.GEMINI_MODEL || 'gemini-2.5-flash') });
 
     const abntStructurerPersona = `Você é o Agente ABNT Structurer da Zaeon OS.
 Sua única função é analisar um texto acadêmico bruto e estruturá-lo nas seções da ABNT NBR 14724:2011.

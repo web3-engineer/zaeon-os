@@ -77,7 +77,7 @@ export async function POST(req: Request) {
             googleAuthOptions: { credentials: { client_email, private_key } },
         });
         const model = vertexAI.getGenerativeModel({
-            model: process.env.SCHOLAR_GEMINI_MODEL || "gemini-2.5-pro",
+            model: process.env.SCHOLAR_GEMINI_MODEL || "gemini-2.5-flash",
             generationConfig: { temperature: 0.4 },
         });
         const parts: any[] = [

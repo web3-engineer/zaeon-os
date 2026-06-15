@@ -35,7 +35,7 @@ function getModel() {
     },
   });
   return v.getGenerativeModel({
-    model: 'gemini-2.0-flash-001',
+    model: (process.env.GEMINI_MODEL || 'gemini-2.5-flash'),
     generationConfig: { temperature: 0.4, maxOutputTokens: 1024, responseMimeType: 'application/json' },
   });
 }

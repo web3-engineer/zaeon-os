@@ -6,7 +6,7 @@ import { getGeminiChatModel } from "@/lib/scholar/gemini";
 import { buildPastResearchSystemPrompt, type ChatContext } from "@/lib/scholar/omega";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 60;
 
 type ChatMessage = { id: string; role: "user" | "assistant"; content: string; createdAt: string };
 

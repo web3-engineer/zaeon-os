@@ -2,8 +2,10 @@ import { vertexCredentials } from "@/lib/ai/vertex-credentials";
 import { VertexAI } from "@google-cloud/vertexai";
 
 // Modelos por env (ajustáveis sem redeploy). O gemini-2.0-flash-001 foi descontinuado (404 no Vertex).
-// Heavy = raciocínio complexo (síntese, sugestões); Chat = mini-chat (resposta rápida).
-const HEAVY_MODEL = process.env.SCHOLAR_GEMINI_MODEL || "gemini-2.5-pro";
+// REGRA DO PROJETO: Flash é o padrão de TODOS os agentes (rápido + econômico). O Pro fica reservado
+// só pro "pensamento profundo" (/api/ai/deepthink). Por isso o "heavy" também é Flash por padrão;
+// quem quiser Pro na síntese seta SCHOLAR_GEMINI_MODEL=gemini-2.5-pro no env.
+const HEAVY_MODEL = process.env.SCHOLAR_GEMINI_MODEL || "gemini-2.5-flash";
 const CHAT_MODEL = process.env.SCHOLAR_GEMINI_CHAT_MODEL || "gemini-2.5-flash";
 
 function makeVertex() {

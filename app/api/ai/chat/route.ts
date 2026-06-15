@@ -176,9 +176,22 @@ export async function POST(req: Request) {
 
         const parts: any[] = [];
         if (fileData) {
-            parts.push({
-                inlineData: { data: fileData, mimeType: "application/pdf" }
-            });
+            // PDFs grandes estouram o limite inline do Gemini → o agente "não lê" o PDF.
+            // Fallback: acima de ~13MB, extrai o TEXTO (pdfjs) e manda como texto, pra o
+            // agente ainda conseguir conversar sobre o documento.
+            const approxChars = typeof fileData === "string" ? fileData.length : 0;
+            const TOO_BIG = approxChars > 18_000_000; // ~13.5MB em base64
+            if (TOO_BIG) {
+                try {
+                    const { extractPdfParagraphs } = await import("@/lib/scholar/pdf");
+                    const bytes = Uint8Array.from(Buffer.from(fileData, "base64"));
+                    const paras = await extractPdfParagraphs(bytes).catch(() => [] as any[]);
+                    const text = (paras as any[]).map((p) => p.text).join("\n\n").slice(0, 30000);
+                    if (text) parts.push({ text: `=== TEXTO EXTRAÍDO DO PDF (documento grande — texto puro, sem layout) ===\n${text}` });
+                } catch { /* se a extração falhar, segue sem o PDF (responde com o que tiver) */ }
+            } else {
+                parts.push({ inlineData: { data: fileData, mimeType: "application/pdf" } });
+            }
         }
         parts.push({ text: prompt });
 
