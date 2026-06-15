@@ -1,5 +1,4 @@
 "use client";
-import { useState } from "react";
 import type { WindowEntry } from "@/lib/useWindowStore";
 
 interface WindowSwitcherProps {
@@ -12,6 +11,8 @@ interface WindowSwitcherProps {
   onWorkType?: (t: string) => void;
 }
 
+const WORK_TYPES = ["Artigo", "Relatório", "TCC"] as const;
+
 export default function WindowSwitcher({
   windows,
   activeId,
@@ -20,7 +21,6 @@ export default function WindowSwitcher({
   workType,
   onWorkType,
 }: WindowSwitcherProps) {
-  const [typeOpen, setTypeOpen] = useState(false);
   return (
     <div
       className="flex items-center gap-1.5 px-3 py-2.5 overflow-x-auto"
@@ -29,80 +29,76 @@ export default function WindowSwitcher({
       {windows.map((w) => {
         const isActive = w.id === activeId;
         const isResearch = w.id === "research";
-        const btn = (
-          <button
-            onClick={() => { onSelect(w.id); if (isResearch && onWorkType) setTypeOpen((v) => !v); }}
-            className="flex items-center gap-1.5 h-8 px-3 rounded-[11px] text-[11px] whitespace-nowrap shrink-0 transition-all duration-150"
-            style={
-              isActive
-                ? {
-                    color: "#fff",
-                    background: "linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.06))",
-                    border: "1px solid rgba(255,255,255,0.28)",
-                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45), 0 8px 20px -8px rgba(139,92,246,0.85)",
-                  }
-                : { color: "#b8b8d0", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)" }
-            }
-          >
-            <span>{w.emoji}</span>
-            <span>{isResearch && workType ? `Meu ${workType}` : w.label}</span>
-            {isResearch && onWorkType && <span className="text-[8px] opacity-60 ml-0.5">▾</span>}
-            {/* Qualquer aba que não seja a do trabalho pode ser fechada (documento OU pdf que falhou). */}
-            {w.type !== "research" && (
-              <span
-                role="button"
-                aria-label={`Fechar ${w.label}`}
-                className="ml-1 opacity-50 hover:opacity-100 text-[10px] leading-none"
-                onClick={(e) => { e.stopPropagation(); onClose(w.id); }}
-              >
-                ×
-              </span>
-            )}
-          </button>
-        );
-        if (!isResearch) return <div key={w.id} className="shrink-0">{btn}</div>;
-        // O pill do trabalho É TAMBÉM o seletor de tipo (uma coisa só). Clica → Artigo/Relatório/TCC.
         return (
-          <div key={w.id} className="relative shrink-0">
-            {btn}
-            {typeOpen && onWorkType && (
-              <>
-                <div className="fixed inset-0 z-[190]" onClick={() => setTypeOpen(false)} />
-                <div
-                  className="absolute left-0 top-full mt-1.5 z-[200] rounded-[12px] overflow-hidden min-w-[160px]"
-                  style={{
-                    background: "rgba(15,15,28,0.96)",
-                    border: "1px solid rgba(255,255,255,0.14)",
-                    backdropFilter: "blur(24px) saturate(160%)",
-                    boxShadow: "0 16px 48px -12px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.12)",
-                  }}
+          <div key={w.id} className="shrink-0">
+            <button
+              onClick={() => onSelect(w.id)}
+              className="flex items-center gap-1.5 h-8 px-3 rounded-[11px] text-[11px] whitespace-nowrap shrink-0 transition-all duration-150"
+              style={
+                isActive
+                  ? {
+                      color: "#fff",
+                      background: "linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.06))",
+                      border: "1px solid rgba(255,255,255,0.28)",
+                      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45), 0 8px 20px -8px rgba(139,92,246,0.85)",
+                    }
+                  : { color: "#b8b8d0", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)" }
+              }
+            >
+              <span>{w.emoji}</span>
+              <span>{isResearch && workType ? `Meu ${workType}` : w.label}</span>
+              {/* Qualquer aba que não seja a do trabalho pode ser fechada (documento OU pdf que falhou). */}
+              {w.type !== "research" && (
+                <span
+                  role="button"
+                  aria-label={`Fechar ${w.label}`}
+                  className="ml-1 opacity-50 hover:opacity-100 text-[10px] leading-none"
+                  onClick={(e) => { e.stopPropagation(); onClose(w.id); }}
                 >
-                  <p className="px-4 pt-2.5 pb-1 text-[8px] font-black uppercase tracking-[0.18em] text-white/30">Tipo de trabalho</p>
-                  {["Artigo", "Relatório", "TCC"].map((type) => {
-                    const active = workType === type;
-                    return (
-                      <button
-                        key={type}
-                        onClick={(e) => { e.stopPropagation(); onWorkType(type); setTypeOpen(false); }}
-                        className="w-full text-left px-4 py-2.5 text-[10px] font-black uppercase tracking-wide transition-colors hover:bg-white/10"
-                        style={{ color: active ? "#22d3ee" : "#cfcfe6", background: active ? "rgba(34,211,238,0.10)" : "transparent" }}
-                      >
-                        {active ? "● " : ""}{type}
-                      </button>
-                    );
-                  })}
-                </div>
-              </>
-            )}
+                  ×
+                </span>
+              )}
+            </button>
           </div>
         );
       })}
+
+      {/* ── SELETOR DE TIPO (lado direito): três botões fixos, sempre visíveis ── */}
+      {onWorkType && (
+        <div className="ml-auto flex items-center gap-1 shrink-0 pl-2">
+          <span className="text-[8px] font-black uppercase tracking-[0.16em] text-white/30 mr-0.5 hidden sm:inline">Tipo</span>
+          {WORK_TYPES.map((type) => {
+            const active = workType === type;
+            return (
+              <button
+                key={type}
+                onClick={() => onWorkType(type)}
+                title={`Definir tipo: ${type}`}
+                aria-pressed={active}
+                className="h-8 px-2.5 rounded-[10px] text-[10px] font-black uppercase tracking-wide whitespace-nowrap shrink-0 transition-all duration-150"
+                style={
+                  active
+                    ? {
+                        color: "#06121a",
+                        background: "linear-gradient(135deg, #22d3ee, #0ea5e9)",
+                        border: "1px solid rgba(34,211,238,0.55)",
+                        boxShadow: "0 6px 16px -8px rgba(34,211,238,0.8)",
+                      }
+                    : { color: "#9a9ab8", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)" }
+                }
+              >
+                {type}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* ＋ placeholder — opens a doc from library (sub-project #2) */}
       <button
         disabled
         title="Adicionar documento (em breve)"
-        className="ml-auto w-7 h-7 rounded-[9px] flex items-center justify-center text-[13px] shrink-0 opacity-40 cursor-default"
+        className={`${onWorkType ? "" : "ml-auto"} w-7 h-7 rounded-[9px] flex items-center justify-center text-[13px] shrink-0 opacity-40 cursor-default`}
         style={{
           background: "rgba(255,255,255,0.04)",
           border: "1px solid rgba(255,255,255,0.10)",

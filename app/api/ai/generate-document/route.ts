@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/src/lib/auth';
 import { VertexAI } from '@google-cloud/vertexai';
+import { guard } from '@/src/lib/ratelimit';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Allow up to 60s for AI generation
@@ -70,6 +71,8 @@ export async function POST(req: Request) {
         if (!session?.user?.email) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
+        const rl = await guard(req, "ai-generate-document", "ai-heavy");
+        if (!rl.ok) return rl.response;
 
         const body = await req.json();
         const {

@@ -8,6 +8,8 @@ import { authOptions } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { VertexAI } from "@google-cloud/vertexai";
 import { geminiText } from "@/lib/ai/gemini-text";
+import { cacheJson, hashKey } from "@/src/lib/cache";
+import { guard } from "@/src/lib/ratelimit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -37,6 +39,9 @@ export async function POST(req: Request) {
     const dbUser = await prisma.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
     if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    const rl = await guard(req, "ai-relate", "ai-heavy");
+    if (!rl.ok) return rl.response;
+
     const body = await req.json().catch(() => ({}));
     const mode: "vercel" | "gemini" = body.mode === "gemini" ? "gemini" : "vercel";
     const a: DocRef = body.a || {};
@@ -51,7 +56,9 @@ export async function POST(req: Request) {
         const ctx = `TRABALHO A:\nTítulo: ${ma.title || "(sem título)"}\n${ma.authors?.length ? `Autores: ${ma.authors.join(", ")}\n` : ""}Abstract: ${ma.abstract || "(sem abstract)"}\n\n` +
                     `TRABALHO B:\nTítulo: ${mb.title || "(sem título)"}\n${mb.authors?.length ? `Autores: ${mb.authors.join(", ")}\n` : ""}Abstract: ${mb.abstract || "(sem abstract)"}`;
         try {
-            const text = await geminiText({ system: SYSTEM, prompt: ctx, temperature: 0.5 });
+            // mesma dupla de metadados → mesma relação (7d).
+            const text = await cacheJson(hashKey("relate", { a: { t: ma.title, ab: ma.abstract }, b: { t: mb.title, ab: mb.abstract } }), 60 * 60 * 24 * 7,
+              () => geminiText({ system: SYSTEM, prompt: ctx, temperature: 0.5 }));
             return NextResponse.json({ text, mode: "vercel" });
         } catch (e: any) {
             return NextResponse.json({ error: "ai_error", text: "Falha ao gerar a relação (leve)." }, { status: 502 });

@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { NextResponse } from "next/server";
+import { cacheJson } from "@/src/lib/cache";
 
 export const runtime = "nodejs";
 
@@ -22,11 +23,12 @@ export async function GET(req: Request) {
     const one = await prisma.scholarSession.findFirst({ where: { id, userId } });
     return NextResponse.json({ session: one });
   }
-  const list = await prisma.scholarSession.findMany({
+  // lista cacheada por usuário (30s); invalidada quando uma nova pesquisa começa (scholar/route)
+  const list = await cacheJson(`sess:${userId}`, 30, () => prisma.scholarSession.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
     take: 20,
     select: { id: true, query: true, domain: true, status: true, createdAt: true },
-  });
+  }));
   return NextResponse.json({ sessions: list });
 }

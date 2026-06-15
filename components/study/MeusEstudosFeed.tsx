@@ -17,6 +17,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Plus, Trash2, Sparkles, Youtube, Loader2, ChevronDown, NotebookPen,
   X, GripVertical, ArrowLeftToLine, FileText, StickyNote, Link2, Heading1, Heading2, Pilcrow, Pencil,
+  PanelRightClose, PanelRightOpen,
 } from "lucide-react";
 
 type Item = { id: string; type: string; title: string; payload: any; summary: string | null; placement: string; order?: number; createdAt?: string };
@@ -90,6 +91,7 @@ export default function MeusEstudosFeed() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [editingYt, setEditingYt] = useState<string | null>(null); // bloco-vídeo em modo edição do link
+  const [libOpen, setLibOpen] = useState(true); // biblioteca retraída/expandida
 
   // biblioteca: adicionar nota/link
   const [showAdd, setShowAdd] = useState(false);
@@ -266,13 +268,13 @@ export default function MeusEstudosFeed() {
     if (isMedia) {
       const url = it.payload?.url || it.payload?.text;
       return (
-        <div className="group relative my-3 rounded-2xl border p-3.5 bg-white/60 border-slate-200 dark:bg-white/[0.04] dark:border-white/10">
+        <div className="group relative my-3 rounded-2xl border p-3.5 bg-slate-50 border-slate-200 shadow-sm dark:bg-white/[0.04] dark:border-white/10 dark:shadow-none">
           <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100">
             <button onClick={() => toLibrary(it.id)} title="Voltar p/ biblioteca" className="text-slate-400 hover:text-cyan-500"><ArrowLeftToLine size={13} /></button>
             <button onClick={() => removeItem(it.id)} title="Remover" className="text-slate-400 hover:text-rose-400"><X size={14} /></button>
           </div>
           <div className="flex items-center gap-1.5 mb-1.5">
-            <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded text-cyan-700 dark:text-cyan-300 bg-cyan-500/10">{it.type}</span>
+            <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-cyan-100 text-cyan-700 dark:bg-cyan-500/15 dark:text-cyan-300">{it.type}</span>
             <span className="text-[12px] font-bold text-slate-800 dark:text-white truncate">{it.title || "(sem título)"}</span>
           </div>
           {it.type === "link" && url
@@ -307,11 +309,12 @@ export default function MeusEstudosFeed() {
     );
   };
 
+  const pillCls = "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border bg-white text-slate-600 border-slate-200 hover:bg-cyan-50 hover:text-cyan-700 hover:border-cyan-300 dark:bg-white/[0.06] dark:text-white/55 dark:border-white/10 dark:hover:bg-cyan-500/15 dark:hover:text-cyan-300 dark:hover:border-cyan-400/30 transition-colors";
   const AddBar = ({ center }: { center?: boolean }) => (
     <div className={`flex items-center gap-1.5 ${center ? "justify-center" : ""}`}>
-      <button onClick={() => addBlock("h1")} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-slate-500 dark:text-white/45 hover:bg-cyan-500/10 hover:text-cyan-600 dark:hover:text-cyan-300"><Heading1 size={13} /> Título</button>
-      <button onClick={() => addBlock("h2")} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-slate-500 dark:text-white/45 hover:bg-cyan-500/10 hover:text-cyan-600 dark:hover:text-cyan-300"><Heading2 size={13} /> Subtítulo</button>
-      <button onClick={() => addBlock("text")} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold text-slate-500 dark:text-white/45 hover:bg-cyan-500/10 hover:text-cyan-600 dark:hover:text-cyan-300"><Pilcrow size={13} /> Texto</button>
+      <button onClick={() => addBlock("h1")} className={pillCls}><Heading1 size={13} /> Título</button>
+      <button onClick={() => addBlock("h2")} className={pillCls}><Heading2 size={13} /> Subtítulo</button>
+      <button onClick={() => addBlock("text")} className={pillCls}><Pilcrow size={13} /> Texto</button>
     </div>
   );
 
@@ -376,12 +379,24 @@ export default function MeusEstudosFeed() {
         </div>
       </div>
 
+      {/* ── BIBLIOTECA recolhida: trilho fino com botão de expandir ── */}
+      {!libOpen && (
+        <button onClick={() => setLibOpen(true)} title="Mostrar biblioteca"
+          className="shrink-0 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-white/10 flex lg:flex-col items-center justify-center gap-2 px-3 py-2 lg:py-3 text-slate-400 hover:text-cyan-500 hover:bg-cyan-500/5">
+          <PanelRightOpen size={16} />
+          <span className="text-[10px] font-black uppercase tracking-[0.16em] lg:[writing-mode:vertical-rl] lg:rotate-180">Biblioteca</span>
+          <span className="text-[9px] font-mono">{library.length}</span>
+        </button>
+      )}
+
       {/* ── BIBLIOTECA (direita) ── */}
-      <div className="lg:w-72 shrink-0 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-white/10 flex flex-col min-h-0">
+      {libOpen && (
+      <div className="lg:w-60 shrink-0 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-white/10 flex flex-col min-h-0">
         <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 dark:border-white/10">
           <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 dark:text-white/50">Biblioteca</span>
           <span className="text-[9px] font-mono text-slate-400">{library.length}</span>
           <button onClick={() => setShowAdd((v) => !v)} className="ml-auto p-1 rounded-lg text-slate-400 hover:text-cyan-500" title="Adicionar à biblioteca"><Plus size={15} /></button>
+          <button onClick={() => setLibOpen(false)} className="p-1 rounded-lg text-slate-400 hover:text-cyan-500" title="Recolher biblioteca"><PanelRightClose size={15} /></button>
         </div>
 
         {showAdd && (
@@ -404,7 +419,7 @@ export default function MeusEstudosFeed() {
                 <div key={it.id}
                   draggable
                   onDragStart={(e) => { e.dataTransfer.setData(DT, it.id); e.dataTransfer.effectAllowed = "move"; }}
-                  className="group flex items-center gap-2 rounded-xl border p-2 cursor-grab active:cursor-grabbing bg-white/70 border-slate-200 hover:border-cyan-400/40 dark:bg-white/[0.04] dark:border-white/10"
+                  className="group flex items-center gap-2 rounded-xl border p-2 cursor-grab active:cursor-grabbing bg-white border-slate-200 shadow-sm hover:border-cyan-400/50 dark:bg-white/[0.04] dark:border-white/10 dark:shadow-none"
                   title="Arraste para o caderno"
                 >
                   <GripVertical size={13} className="text-slate-300 dark:text-white/20 shrink-0" />
@@ -417,6 +432,7 @@ export default function MeusEstudosFeed() {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }

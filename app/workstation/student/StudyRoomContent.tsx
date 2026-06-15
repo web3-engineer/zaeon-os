@@ -269,15 +269,10 @@ export default function StudyRoomContent({ flushTop = false }: { flushTop?: bool
                                         text-[11px] font-semibold whitespace-nowrap
                                         transition-all duration-150
                                         ${isActive
-                                            ? "text-white border-transparent"
-                                            : "text-slate-400 dark:text-white/40 border-transparent hover:text-slate-600 dark:hover:text-white/70 hover:bg-black/[0.03] dark:hover:bg-white/[0.06]"
+                                            ? "bg-gradient-to-b from-violet-100 to-violet-50 text-violet-700 border-violet-200 shadow-[0_8px_18px_-8px_rgba(139,92,246,0.45)] dark:from-white/20 dark:to-white/[0.05] dark:text-white dark:border-white/25 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.42),0_8px_18px_-8px_rgba(139,92,246,0.8)]"
+                                            : "text-slate-500 dark:text-white/40 border-transparent hover:text-slate-700 dark:hover:text-white/70 hover:bg-black/[0.03] dark:hover:bg-white/[0.06]"
                                         }
                                     `}
-                                    style={isActive ? {
-                                        background: "linear-gradient(180deg, rgba(255,255,255,0.20), rgba(255,255,255,0.05))",
-                                        border: "1px solid rgba(255,255,255,0.26)",
-                                        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.42), 0 8px 18px -8px rgba(139,92,246,0.8)",
-                                    } : undefined}
                                 >
                                     {tab.label}
                                 </button>

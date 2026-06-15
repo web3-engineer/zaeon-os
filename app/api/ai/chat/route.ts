@@ -3,6 +3,7 @@ import { VertexAI } from '@google-cloud/vertexai';
 import type { FunctionDeclaration } from '@google-cloud/vertexai';
 import { GEMINI_MODEL_FLASH } from '@/lib/ai/model';
 import { vertexCredentials } from '@/lib/ai/vertex-credentials';
+import { guard } from '@/src/lib/ratelimit';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -143,6 +144,8 @@ Regras obrigatórias:
 
 export async function POST(req: Request) {
     try {
+        const rl = await guard(req, "ai-chat", "ai-heavy");
+        if (!rl.ok) return rl.response;
         // 🔥 NOVO: Recebendo userData do frontend
         const { prompt, agent, systemContext, fileData, userData } = await req.json();
         const agentKey = agent?.toLowerCase() || "aura";

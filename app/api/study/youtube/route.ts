@@ -14,6 +14,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
 import { geminiText } from "@/lib/ai/gemini-text";
+import { cacheGet, cacheSet, hashKey } from "@/src/lib/cache";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -25,6 +26,11 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({} as any));
   const topic = typeof body.topic === "string" ? body.topic.trim() : "";
   if (topic.length < 2) return NextResponse.json({ error: "Tema inválido." }, { status: 400 });
+
+  // Cache por tópico (24h): a mesma busca não repaga a API do YouTube/Gemini.
+  const cacheKey = hashKey("yt", topic.toLowerCase());
+  const cached = await cacheGet<any>(cacheKey);
+  if (cached) return NextResponse.json({ ...cached, cached: true });
 
   const key = process.env.YOUTUBE_API_KEY;
 
@@ -47,7 +53,9 @@ export async function POST(req: Request) {
             thumbnail: it.snippet?.thumbnails?.medium?.url ?? null,
             watchable: true,
           }));
-        return NextResponse.json({ mode: "youtube-api", topic, videos });
+        const payload = { mode: "youtube-api", topic, videos };
+        await cacheSet(cacheKey, payload, 60 * 60 * 24); // 24h
+        return NextResponse.json(payload);
       }
     } catch { /* cai no fallback */ }
   }
@@ -69,7 +77,9 @@ export async function POST(req: Request) {
       thumbnail: null,
       watchable: false,
     }));
-    return NextResponse.json({ mode: "gemini-fallback", topic, videos, note: "Configure YOUTUBE_API_KEY para vídeos embutíveis." });
+    const payload = { mode: "gemini-fallback", topic, videos, note: "Configure YOUTUBE_API_KEY para vídeos embutíveis." };
+    await cacheSet(cacheKey, payload, 60 * 60 * 6); // 6h (fallback é mais fraco)
+    return NextResponse.json(payload);
   } catch (e: any) {
     return NextResponse.json({ error: "ai_error", message: "Não consegui sugerir vídeos agora." }, { status: 502 });
   }

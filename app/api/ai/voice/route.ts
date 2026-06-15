@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
+import { guard } from "@/src/lib/ratelimit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -18,6 +19,9 @@ function json(data: unknown, status: number) {
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return new Response("Unauthorized", { status: 401 });
+
+  const rl = await guard(req, "ai-voice", "ai-heavy");
+  if (!rl.ok) return rl.response;
 
   // session.user não carrega id — checa existência por email (padrão do projeto).
   const dbUser = await prisma.user.findUnique({

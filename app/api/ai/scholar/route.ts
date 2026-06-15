@@ -9,6 +9,8 @@ import { buildReferencesBib } from "@/lib/scholar/bibtex";
 import { planTone } from "@/lib/scholar/prompt";
 import { mapLimit } from "@/lib/scholar/http";
 import type { ScholarEvent } from "@/lib/scholar/types";
+import { guard } from "@/src/lib/ratelimit";
+import { cacheDel } from "@/src/lib/cache";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -17,6 +19,9 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return new Response("Unauthorized", { status: 401 });
 
+  const rl = await guard(req, "ai-scholar", "ai-heavy");
+  if (!rl.ok) return rl.response;
+
   // The session.user does NOT carry an id field — look it up from email.
   const dbUser = await prisma.user.findUnique({
     where: { email: session.user.email },
@@ -24,6 +29,7 @@ export async function POST(req: Request) {
   });
   if (!dbUser) return new Response("Unauthorized", { status: 401 });
   const userId = dbUser.id;
+  await cacheDel(`sess:${userId}`); // nova pesquisa → invalida o cache da lista de sessões
 
   const { prompt, room, deep } = await req.json();
   // Modo RÁPIDO (default) vs PROFUNDO (toggle do usuário). O custo de tempo está em

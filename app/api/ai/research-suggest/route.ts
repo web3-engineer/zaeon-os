@@ -3,6 +3,8 @@ import { authOptions } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { generateSuggestion } from "@/lib/scholar/suggest";
 import { isLevel } from "@/lib/scholar/levels";
+import { cacheJson, hashKey } from "@/src/lib/cache";
+import { guard } from "@/src/lib/ratelimit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -18,6 +20,9 @@ export async function POST(req: Request) {
   });
   if (!dbUser) return new Response("Unauthorized", { status: 401 });
 
+  const rl = await guard(req, "ai-research-suggest", "ai-light");
+  if (!rl.ok) return rl.response;
+
   const body = await req.json().catch(() => ({} as any));
   const topic = typeof body.topic === "string" ? body.topic.trim() : "";
   const level = isLevel(body.level) ? body.level : "grad";
@@ -32,7 +37,11 @@ export async function POST(req: Request) {
   }
 
   try {
-    const result = await generateSuggestion({ topic, level, excludeTitles });
+    // só cacheia a 1ª página (sem exclusões): "ver mais" sempre gera novidades.
+    const produce = () => generateSuggestion({ topic, level, excludeTitles });
+    const result = excludeTitles.length
+      ? await produce()
+      : await cacheJson(hashKey("suggest", { topic, level }), 60 * 60 * 24 * 7, produce);
     return new Response(JSON.stringify(result), { status: 200, headers: { "Content-Type": "application/json" } });
   } catch (err: any) {
     return new Response(JSON.stringify({ error: err?.message ?? "Falha ao gerar sugestão." }), {

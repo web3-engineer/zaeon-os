@@ -13,12 +13,15 @@
 import { NextResponse } from "next/server";
 import { geminiText } from "@/lib/ai/gemini-text";
 import { GEMINI_MODEL_PRO } from "@/lib/ai/model";
+import { guard } from "@/src/lib/ratelimit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
   try {
+    const rl = await guard(req, "ai-deepthink", "ai-heavy");
+    if (!rl.ok) return rl.response;
     const body = await req.json().catch(() => ({} as any));
     const step = body.step === "answer" ? "answer" : "plan";
     const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
