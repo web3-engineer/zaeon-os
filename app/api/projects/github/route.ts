@@ -38,9 +38,9 @@ const DEFAULT_BRANCHES = new Set(["main", "master"]);
 async function getEligibleUser(email: string) {
   // NOTE: once `githubInstallationId` is migrated + the Prisma client regenerated,
   // add it to `select` and pass it to executeAction() for per-user installations.
-  const dbUser = await prisma.user.findUnique({ where: { email }, select: { id: true, course: true } });
+  const dbUser = await prisma.user.findUnique({ where: { email }, select: { id: true, course: true, role: true } });
   if (!dbUser) return null;
-  assertEligibleOrThrow(dbUser.course);
+  assertEligibleOrThrow(dbUser.course, { email, role: dbUser.role }); // super admin sempre passa
   return dbUser;
 }
 

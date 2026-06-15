@@ -4,13 +4,15 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   ChevronRightIcon, ArrowLeftIcon, ArrowRightStartOnRectangleIcon
 } from "@heroicons/react/24/outline";
-import { Bot, Send, ShieldCheck, Loader2, Mic, MicOff } from "lucide-react";
+import { Bot, Send, ShieldCheck, Loader2, Mic, MicOff, Search, GraduationCap, Code2, Crown } from "lucide-react";
+import { isSuperAdmin } from "@/lib/auth/roles";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { signIn, signOut, useSession } from "next-auth/react";
 import Image from "next/image";
 import ZaeonLogo from "@/components/main/ZaeonLogo";
+import InviteButton from "@/components/sub/InviteButton";
 
 // 🔥 Menu simplificado: Apenas opções vitais pós-login
 const MENU_ITEMS = [
@@ -57,6 +59,22 @@ export default function MenuNavigation() {
   const isLoggedIn = status === "authenticated";
   const isStudent = (session?.user as any)?.role === "student" || !(session?.user as any)?.role;
   const isAdmin = !!(session?.user as any)?.isAdmin;
+  // Founder (admin supremo) — allowlist/role. Só ele vê o "Modo Founder".
+  const isFounder = isSuperAdmin({ email: session?.user?.email, role: (session?.user as any)?.role });
+  // Acesso ao Zaeon Code (mostra "Iniciar novo projeto") + flag de convite acessado.
+  const [canUseProjects, setCanUseProjects] = useState(false);
+  const [inviteAccessed, setInviteAccessed] = useState(false);
+
+  useEffect(() => {
+    try { setInviteAccessed(localStorage.getItem("zaeon.inviteAccessed") === "1"); } catch { /* ignore */ }
+    if (status !== "authenticated") { setCanUseProjects(false); return; }
+    let alive = true;
+    fetch("/api/projects/access")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (alive && d) setCanUseProjects(!!d.canUse); })
+      .catch(() => { /* offline */ });
+    return () => { alive = false; };
+  }, [status]);
 
   // Garante que o estado de onboard esteja correto baseado no login
   useEffect(() => {
@@ -421,39 +439,83 @@ export default function MenuNavigation() {
               (
                 <motion.ul key="main" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col gap-2 w-full h-full justify-center">
 
-                  {/* ITEM 1: PESQUISA / AGENTES */}
-                  {isStudent && (
+                  {/* INICIAR NOVA PESQUISA — leva à barra de pesquisa (destaque) */}
+                  <li className="w-full">
+                    <div onClick={() => router.push("/research-lab?tab=pesquisa")} className={`${cardBase} ring-1 ring-cyan-500/40 dark:ring-cyan-400/40 shadow-[0_0_20px_rgba(34,211,238,0.12)]`}>
+                      <div className="absolute left-1 top-1/2 -translate-y-1/2 h-6 w-[3px] rounded-full bg-cyan-500 dark:bg-cyan-400" />
+                      <span className="flex items-center gap-3 pl-2 min-w-0">
+                        <Search size={17} className="text-cyan-500 dark:text-cyan-300 shrink-0" />
+                        <span className="flex flex-col min-w-0">
+                          <span className="text-[9px] uppercase tracking-widest text-slate-500 dark:text-white/40 font-bold">{workTitle ? "Núcleo de Pesquisa" : "Pesquisa"}</span>
+                          <span className="text-sm tracking-tight truncate">{isLoadingResearch ? "Orquestrando..." : workTitle ? `Continuar: ${workTitle}` : "Iniciar nova pesquisa"}</span>
+                        </span>
+                      </span>
+                      <ChevronRightIcon className="h-4 w-4 opacity-30 group-hover:opacity-100 transition-opacity shrink-0" />
+                    </div>
+                  </li>
+
+                  {/* INICIAR NOVO ESTUDO — sala de estudos / barra de pesquisa */}
+                  <li className="w-full">
+                    <div onClick={() => router.push("/research-lab?tab=sala-de-estudos")} className={cardBase}>
+                      <div className={accentBar(false)} />
+                      <span className="flex items-center gap-3 pl-2 min-w-0">
+                        <GraduationCap size={17} className="text-blue-500 dark:text-blue-300 shrink-0" />
+                        <span className="text-sm tracking-tight truncate">Iniciar novo estudo</span>
+                      </span>
+                      <ChevronRightIcon className="h-4 w-4 opacity-30 group-hover:opacity-100 transition-opacity shrink-0" />
+                    </div>
+                  </li>
+
+                  {/* INICIAR NOVO PROJETO — só quem tem acesso ao Zaeon Code */}
+                  {canUseProjects && (
                     <li className="w-full">
-                      <div onClick={() => router.push("/research-lab")} className={`${cardBase} ring-1 ring-cyan-500/40 dark:ring-cyan-400/40 animate-pulse-slow shadow-[0_0_20px_rgba(34,211,238,0.15)] ${workTitle ? "border-cyan-400/30 hover:border-cyan-400/50" : "border-cyan-400/20 hover:border-cyan-400/40"}`}>
-                        <div className={`absolute left-1 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full transition-all duration-500 bg-cyan-500 dark:bg-cyan-400`} />
-                        <div className="flex items-center gap-3 pl-2 flex-1 min-w-0">
-                          <ZaeonLogo aiState="idle" className="w-6 h-6 shrink-0" />
-                          <div className="flex flex-col min-w-0">
-                            <span className="text-[9px] uppercase tracking-widest text-slate-500 dark:text-white/40 font-bold">{workTitle ? "Núcleo de Pesquisa" : "Iniciação"}</span>
-                            <span className="text-sm tracking-tight truncate text-slate-800 dark:text-white">{isLoadingResearch ? "Orquestrando..." : workTitle ? `Continuar: ${workTitle}` : "Criar Novo Agente"}</span>
-                          </div>
-                        </div>
+                      <div onClick={() => router.push("/research-lab?tab=projetos")} className={cardBase}>
+                        <div className={accentBar(false)} />
+                        <span className="flex items-center gap-3 pl-2 min-w-0">
+                          <Code2 size={17} className="text-sky-500 dark:text-sky-300 shrink-0" />
+                          <span className="text-sm tracking-tight truncate">Iniciar novo projeto</span>
+                        </span>
                         <ChevronRightIcon className="h-4 w-4 opacity-30 group-hover:opacity-100 transition-opacity shrink-0" />
                       </div>
                     </li>
                   )}
 
-                  {/* RESTANTES ITEMS DO MENU (Settings e Admin) */}
-                  {visibleMenuItems.map((item, i) => {
-                    const isSel = index === i + 1;
-                    return (
-                      <li key={item.labelKey} className="w-full" onMouseEnter={() => setIndex(i + 1)} onClick={() => {
-                        if (item.labelKey === "menu.options") setIsOptionsOpen(true);
-                        else router.push(item.href);
-                      }}>
-                        <div className={`${cardBase} ${isSel ? cardSelected : ""}`}>
-                          <div className={accentBar(isSel)} />
-                          <span className="truncate pr-2 text-sm tracking-tight pl-2">{t(item.labelKey)}</span>
-                          <ChevronRightIcon className="h-4 w-4 opacity-30 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                      </li>
-                    );
-                  })}
+                  {/* CONVITE — no estilo do menu (saiu da navbar) */}
+                  <li className="w-full"><InviteButton variant="menu" /></li>
+
+                  {/* ACESSAR CONVITE — aparece depois que a pessoa acessou um convite */}
+                  {inviteAccessed && (
+                    <li className="w-full">
+                      <div onClick={() => router.push("/convite")} className={cardBase}>
+                        <div className={accentBar(false)} />
+                        <span className="text-sm tracking-tight pl-2 truncate">Acessar convite</span>
+                        <ChevronRightIcon className="h-4 w-4 opacity-30 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    </li>
+                  )}
+
+                  {/* OPTIONS */}
+                  <li className="w-full" onClick={() => setIsOptionsOpen(true)}>
+                    <div className={cardBase}>
+                      <div className={accentBar(false)} />
+                      <span className="truncate pr-2 text-sm tracking-tight pl-2">{t("menu.options")}</span>
+                      <ChevronRightIcon className="h-4 w-4 opacity-30 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  </li>
+
+                  {/* MODO FOUNDER — visível apenas para o admin supremo */}
+                  {isFounder && (
+                    <li className="w-full" onClick={() => router.push("/workstation/admin")}>
+                      <div className={`${cardBase} hover:border-amber-400/50 dark:hover:border-amber-400/40`}>
+                        <span className="absolute left-1 top-1/2 -translate-y-1/2 h-6 w-[3px] rounded-full bg-amber-400" />
+                        <span className="flex items-center gap-3 pl-2 min-w-0">
+                          <Crown size={17} className="text-amber-500 dark:text-amber-300 shrink-0" />
+                          <span className="text-sm tracking-tight truncate">Modo Founder</span>
+                        </span>
+                        <ChevronRightIcon className="h-4 w-4 opacity-30 group-hover:opacity-100 transition-opacity shrink-0" />
+                      </div>
+                    </li>
+                  )}
                 </motion.ul>
               )}
 

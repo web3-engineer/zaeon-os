@@ -5,6 +5,8 @@ import { authOptions } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { generateCode } from "@/lib/invite-codes";
 import { buildUserUpdateData } from "@/lib/convite/migrate";
+import { checkEdu } from "@/lib/eduEligibility";
+import { grantStudentTrial } from "@/lib/plans";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -52,6 +54,20 @@ export async function GET(request: Request) {
     inviteCode: pending.inviteCode,
     myInviteCode: newCode,
   });
+
+  // Fast-track do Plus: se o login Google é uma conta de estudante (.edu),
+  // libera o Plano Plus na hora e marca como verificado. Caso contrário, o
+  // cadastro fica "pending" na fila do admin (que analisa o comprovante).
+  const edu = checkEdu(session.user.email);
+  if (edu.eligible) {
+    const grant = grantStudentTrial({ plan: "free", plusUntil: null, trialGranted: false });
+    updateData.plan = grant.plan;
+    updateData.plusUntil = grant.plusUntil;
+    updateData.trialGranted = true;
+    updateData.eduEmail = session.user.email;
+    updateData.eduVerified = true;
+    updateData.kycStatus = "verified";
+  }
 
   // Update user record with onboarding data
   const updatedUser = await prisma.user.update({

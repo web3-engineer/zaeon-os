@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
-import Groq from "groq-sdk";
+import { geminiText } from "@/lib/ai/gemini-text";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -61,18 +61,10 @@ export async function POST(req: Request) {
     ].filter(Boolean).join("\n");
 
     try {
-        const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-        const completion = await groq.chat.completions.create({
-            model: "llama-3.3-70b-versatile",
-            messages: [
-                { role: "system", content: SYSTEM },
-                { role: "user", content: ctx },
-            ],
-        });
-        const text = completion.choices?.[0]?.message?.content ?? "";
+        const text = await geminiText({ system: SYSTEM, prompt: ctx, temperature: 0.5 });
         return NextResponse.json({ text, mode: "lite", basis: abstract ? "abstract" : "title", context: ctx });
     } catch (e: any) {
         console.error("summarize-lite error:", e?.message);
-        return NextResponse.json({ error: "groq_error", text: "Falha ao gerar o resumo leve." }, { status: 502 });
+        return NextResponse.json({ error: "ai_error", text: "Falha ao gerar o resumo leve." }, { status: 502 });
     }
 }

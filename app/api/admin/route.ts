@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import connectToDatabase from "@/src/lib/db"; 
 import User from "@/src/models/User"; 
-import { authOptions } from "@/src/lib/auth"; 
+import { authOptions } from "@/src/lib/auth";
+import { grantStudentTrial } from "@/lib/plans";
 
 // --- LISTA DE EMAILS COM PODER DIVINO (Adicione outros se precisar) ---
 const ADMIN_EMAILS = ["zaeondao@gmail.com"];
@@ -64,17 +65,24 @@ export async function PATCH(req: Request) {
         }
 
         await connectToDatabase();
-        const { userId, status } = await req.json();
+        const { userId, status, academicLevel } = await req.json();
 
-        const updatedUser = await User.findByIdAndUpdate(
-            userId,
-            { kycStatus: status },
-            { new: true }
-        );
+        const update: Record<string, unknown> = { kycStatus: status };
+        if (academicLevel) update.academicLevel = academicLevel;
+        // Aprovar (verified) = conceder o Plano Plus de estudante (30 dias).
+        if (status === "verified") {
+            const grant = grantStudentTrial({ plan: "free", plusUntil: null, trialGranted: false });
+            update.plan = grant.plan;
+            update.plusUntil = grant.plusUntil;
+            update.trialGranted = true;
+            update.eduVerified = true;
+        }
+
+        const updatedUser = await User.findByIdAndUpdate(userId, update, { new: true });
 
         if (!updatedUser) return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
 
-        return NextResponse.json({ success: true, status: updatedUser.kycStatus });
+        return NextResponse.json({ success: true, status: updatedUser.kycStatus, plan: updatedUser.plan ?? "free" });
     } catch (error) {
         return NextResponse.json({ error: "Falha ao atualizar status" }, { status: 500 });
     }

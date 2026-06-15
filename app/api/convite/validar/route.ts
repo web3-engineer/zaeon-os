@@ -18,7 +18,10 @@ export async function POST(req: Request) {
 
   const code = normaliseCode(rawCode);
 
-  const inviteCode = await prisma.inviteCode.findUnique({ where: { code } });
+  const inviteCode = await prisma.inviteCode.findUnique({
+    where: { code },
+    include: { owner: { select: { name: true } } },
+  });
   if (!inviteCode) {
     return NextResponse.json({ error: "Código não encontrado." }, { status: 404 });
   }
@@ -29,9 +32,12 @@ export async function POST(req: Request) {
     );
   }
 
+  // Primeiro nome de quem convidou (para personalizar o cartão).
+  const inviterName = inviteCode.owner?.name?.trim().split(/\s+/)[0] ?? null;
+
   const sessionToken = crypto.randomUUID();
 
-  const response = NextResponse.json({ ok: true, sessionToken, inviteCode: code });
+  const response = NextResponse.json({ ok: true, sessionToken, inviteCode: code, inviterName });
   response.cookies.set("convite_session", sessionToken, {
     httpOnly: true,
     sameSite: "lax",

@@ -7,7 +7,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { VertexAI } from "@google-cloud/vertexai";
-import Groq from "groq-sdk";
+import { geminiText } from "@/lib/ai/gemini-text";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -51,15 +51,10 @@ export async function POST(req: Request) {
         const ctx = `TRABALHO A:\nTítulo: ${ma.title || "(sem título)"}\n${ma.authors?.length ? `Autores: ${ma.authors.join(", ")}\n` : ""}Abstract: ${ma.abstract || "(sem abstract)"}\n\n` +
                     `TRABALHO B:\nTítulo: ${mb.title || "(sem título)"}\n${mb.authors?.length ? `Autores: ${mb.authors.join(", ")}\n` : ""}Abstract: ${mb.abstract || "(sem abstract)"}`;
         try {
-            const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-            const completion = await groq.chat.completions.create({
-                model: "llama-3.3-70b-versatile",
-                messages: [{ role: "system", content: SYSTEM }, { role: "user", content: ctx }],
-                temperature: 0.5,
-            });
-            return NextResponse.json({ text: completion.choices?.[0]?.message?.content ?? "", mode: "vercel" });
+            const text = await geminiText({ system: SYSTEM, prompt: ctx, temperature: 0.5 });
+            return NextResponse.json({ text, mode: "vercel" });
         } catch (e: any) {
-            return NextResponse.json({ error: "groq_error", text: "Falha ao gerar a relação (leve)." }, { status: 502 });
+            return NextResponse.json({ error: "ai_error", text: "Falha ao gerar a relação (leve)." }, { status: 502 });
         }
     }
 
@@ -68,11 +63,11 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "missing_pdf", text: "O nível Gemini precisa dos dois PDFs (fileData A e B)." }, { status: 400 });
     }
     try {
-        const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS || "{}");
+        const { project, client_email, private_key, location } = vertexCredentials();
         const vertexAI = new VertexAI({
-            project: credentials.project_id || process.env.GOOGLE_PROJECT_ID,
-            location: process.env.GOOGLE_LOCATION || "us-central1",
-            googleAuthOptions: { credentials: { client_email: credentials.client_email, private_key: credentials.private_key } },
+            project,
+            location,
+            googleAuthOptions: { credentials: { client_email, private_key } },
         });
         const model = vertexAI.getGenerativeModel({
             model: process.env.SCHOLAR_GEMINI_MODEL || "gemini-2.5-pro",

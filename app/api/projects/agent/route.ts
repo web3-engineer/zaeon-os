@@ -109,12 +109,12 @@ export async function POST(req: Request) {
 
     const dbUser = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { id: true, course: true },
+      select: { id: true, course: true, role: true },
     });
     if (!dbUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    // Hard access gate.
-    assertEligibleOrThrow(dbUser.course);
+    // Hard access gate — super admin (allowlist/role) sempre passa.
+    assertEligibleOrThrow(dbUser.course, { email: session.user.email, role: dbUser.role });
 
     const body = await req.json().catch(() => ({} as any));
     const level: IdeLevel = VALID_LEVELS.includes(body.level) ? body.level : "implementation";

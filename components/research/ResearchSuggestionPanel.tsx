@@ -134,251 +134,137 @@ export default function ResearchSuggestionPanel({ docTitle = "", onSelectTitle, 
   const brl = (n: number) =>
     n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
+  const GRAD = "linear-gradient(135deg,#0ea5e9,#22d3ee)";
+
   return (
-    <div
-      style={{ fontFamily: "'Space Grotesk', sans-serif" }}
-      className="w-full bg-white/[0.03] border border-white/[0.07] rounded-[2rem] backdrop-blur-2xl overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.4)]"
-    >
+    <div className="w-full rounded-[1.6rem] overflow-hidden border bg-white/70 border-slate-200 dark:bg-white/[0.04] dark:border-white/10 backdrop-blur-2xl">
       {/* ── HEADER ── */}
       <div
-        className={`px-5 py-4 border-b border-white/[0.05] flex items-center justify-between ${collapsible ? "cursor-pointer select-none" : ""}`}
+        className={`px-5 py-4 border-b border-slate-200 dark:border-white/[0.06] flex items-center justify-between ${collapsible ? "cursor-pointer select-none" : ""}`}
         onClick={collapsible ? () => setCollapsed((c) => !c) : undefined}
       >
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 bg-cyan-400/10 border border-cyan-400/20 rounded-[9px] flex items-center justify-center text-sm">
-            🧭
-          </div>
-          <span className="text-[11px] font-black uppercase tracking-[.15em] text-cyan-400">
-            Sugestão de Pesquisa
-          </span>
-          {collapsible && collapsed && (
-            <span className="text-[7px] font-bold uppercase tracking-[.12em] text-white/25 border border-white/10 px-2 py-0.5 rounded-full">
-              standby
-            </span>
-          )}
+          <span className="w-7 h-7 rounded-[10px] flex items-center justify-center text-white text-[13px]" style={{ background: GRAD }}>✦</span>
+          <span className="text-[13px] font-black tracking-tight text-slate-900 dark:text-white">Sugestão de pesquisa</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[8px] font-bold uppercase tracking-[.1em] text-cyan-400/50 border border-cyan-400/15 px-2.5 py-1 rounded-full bg-cyan-400/[0.05]">
-            IA · Gemini
-          </span>
-          {collapsible && (
-            <span className={`text-cyan-400/60 text-[11px] leading-none transition-transform duration-200 ${collapsed ? "" : "rotate-90"}`}>
-              ▸
-            </span>
-          )}
-        </div>
+        <span className="text-[8px] font-bold uppercase tracking-[.16em] text-cyan-600 dark:text-cyan-300 border border-cyan-500/20 px-2.5 py-1 rounded-full bg-cyan-500/[0.06]">IA · Gemini</span>
       </div>
 
       {(!collapsible || !collapsed) && (
-      <>
-      {/* ── LEVEL SELECTOR ── */}
-      <div className="px-5 py-3.5 border-b border-white/[0.05]">
-        <p className="text-[8px] font-black uppercase tracking-[.18em] text-white/20 mb-2.5">
-          Nível acadêmico
-        </p>
-        <div className="grid grid-cols-4 gap-1.5">
-          {LEVELS.map(l => (
-            <button
-              key={l.id}
-              onClick={() => setLevel(l.id)}
-              className={`relative border rounded-xl py-2 px-1.5 flex flex-col items-center gap-1 transition-all duration-150
-                ${level === l.id
-                  ? "bg-cyan-400/[0.08] border-cyan-400/35 shadow-[0_0_14px_rgba(34,211,238,0.1)]"
-                  : "bg-white/[0.02] border-white/[0.08] hover:bg-cyan-400/[0.05] hover:border-cyan-400/20"
-                }`}
-            >
-              {level === l.id && (
-                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
-              )}
-              <span className="text-base leading-none">{l.icon}</span>
-              <span className={`text-[8px] font-black uppercase tracking-[.06em] text-center leading-tight
-                ${level === l.id ? "text-cyan-400" : "text-white/35"}`}>
-                {l.name}
-              </span>
-              <span className={`text-[7px] font-bold uppercase tracking-[.06em] px-1.5 py-0.5 rounded-lg text-center leading-tight ${l.tagClass}`}>
-                {l.tag}
-              </span>
-            </button>
-          ))}
+      <div className="p-5 flex flex-col gap-4">
+        {/* ── LEVEL SELECTOR ── */}
+        <div>
+          <p className="text-[9px] font-black uppercase tracking-[.18em] text-slate-400 dark:text-white/30 mb-2">Nível acadêmico</p>
+          <div className="grid grid-cols-4 gap-1.5">
+            {LEVELS.map(l => (
+              <button key={l.id} onClick={() => setLevel(l.id)}
+                className={`relative rounded-xl py-2.5 px-1 flex flex-col items-center gap-1 transition-all border text-center ${level === l.id ? "text-white border-transparent" : "bg-slate-100 dark:bg-white/[0.03] border-slate-200 dark:border-white/10 text-slate-500 dark:text-white/40 hover:border-cyan-400/30"}`}
+                style={level === l.id ? { background: GRAD } : undefined}>
+                <span className="text-base leading-none">{l.icon}</span>
+                <span className="text-[8.5px] font-black uppercase tracking-[.04em] leading-tight">{l.name}</span>
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-[10px] leading-snug text-slate-500 dark:text-white/45" dangerouslySetInnerHTML={{ __html: LEVEL_DESCRIPTIONS[level] }} />
         </div>
-      </div>
 
-      {/* ── TYPE INDICATOR ── */}
-      <div className="mx-5 mt-3.5 mb-0 p-2 rounded-xl bg-cyan-400/[0.04] border border-cyan-400/10 flex items-center gap-2">
-        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.5)] shrink-0" />
-        <p
-          className="text-[9px] font-bold text-white/40 leading-snug"
-          dangerouslySetInnerHTML={{ __html: LEVEL_DESCRIPTIONS[level] }}
-        />
-      </div>
-
-      {/* ── INPUT ── */}
-      <div className="px-5 py-3.5 flex gap-2 items-center">
-        <input
-          type="text"
-          value={topic}
-          onChange={e => setTopic(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && fetchSuggestion(false)}
-          placeholder="Tema da pesquisa..."
-          className="flex-1 bg-cyan-400/[0.04] border border-cyan-400/12 rounded-[13px] px-3 py-2.5 text-[12px] font-medium text-white outline-none transition-all focus:border-cyan-400/40 focus:shadow-[0_0_0_3px_rgba(34,211,238,0.06)] placeholder:text-white/20"
-        />
-        <button
-          onClick={() => fetchSuggestion(false)}
-          disabled={loading || !topic.trim()}
-          className="bg-[#06b6d4] hover:bg-cyan-400 disabled:opacity-40 disabled:cursor-not-allowed border-none rounded-[13px] px-4 py-2.5 text-[10px] font-black uppercase tracking-[.1em] text-[#030014] cursor-pointer whitespace-nowrap shadow-[0_0_20px_rgba(6,182,212,0.25)] hover:shadow-[0_0_28px_rgba(34,211,238,0.35)] transition-all"
-        >
-          {loading ? "..." : "Gerar ✦"}
-        </button>
-      </div>
-
-      {/* ── ERROR + retry ── */}
-      {error && (
-        <div className="mx-5 mb-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-[10px] text-red-300 flex items-center justify-between gap-2">
-          <span className="min-w-0">{error}</span>
-          <button
-            onClick={() => fetchSuggestion(false)}
-            disabled={loading}
-            className="shrink-0 px-2.5 py-1 rounded-lg bg-red-500/15 border border-red-500/30 text-red-200 font-black uppercase tracking-[.08em] hover:bg-red-500/25 disabled:opacity-40 transition-colors cursor-pointer"
-          >
-            ↻ tentar de novo
+        {/* ── INPUT ── */}
+        <div className="flex gap-2 items-center">
+          <input type="text" value={topic} onChange={e => setTopic(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && fetchSuggestion(false)} placeholder="Tema da pesquisa…"
+            className="flex-1 rounded-2xl px-4 py-3 text-[12px] focus:outline-none bg-slate-100 text-slate-900 placeholder:text-slate-400 border border-slate-200 focus:border-cyan-500/50 dark:bg-white/5 dark:text-white dark:placeholder:text-white/25 dark:border-white/10 dark:focus:border-cyan-400/40" />
+          <button onClick={() => fetchSuggestion(false)} disabled={loading || !topic.trim()}
+            className="px-4 py-3 rounded-2xl text-[11px] font-black uppercase tracking-[.1em] text-white whitespace-nowrap disabled:opacity-40 transition-transform hover:scale-[1.02]" style={{ background: GRAD }}>
+            {loading ? "…" : "Gerar ✦"}
           </button>
         </div>
-      )}
 
-      {/* ── AUTH GATE (401) ── */}
-      {authRequired && <AuthGateNotice className="mx-5 mb-4" />}
-
-      {/* ── LOADING: a IA pensando (interpolando dados…) ── */}
-      {loading && (
-        <div className="mx-5 mb-3.5 p-4 rounded-2xl border border-cyan-400/12 bg-cyan-400/[0.04]">
-          <ThinkingStream running label="forjando uma proposta relevante" />
-        </div>
-      )}
-
-      {/* ── SUGGESTION CARD ── */}
-      {result && !loading && (
-        <div className="mx-5 mb-3.5 p-4 rounded-2xl border border-cyan-400/12 bg-cyan-400/[0.04]">
-          <div className="flex items-center gap-2 mb-2.5">
-            <span className="text-[8px] font-black uppercase tracking-[.15em] text-cyan-400 bg-cyan-400/10 border border-cyan-400/20 px-2.5 py-0.5 rounded-full">
-              ✦ Sugestão
-            </span>
-            <span className={`text-[8px] font-bold uppercase tracking-[.08em] px-2 py-0.5 rounded-full ${TYPE_LABEL_STYLES[result.suggestion.type] ?? ""}`}>
-              {currentLevel.icon} {result.suggestion.type}
-            </span>
-            <button
-              onClick={() => fetchSuggestion(true)}
-              disabled={loading}
-              className="ml-auto bg-transparent border border-cyan-400/15 rounded-[9px] px-2.5 py-1 text-[8px] font-black uppercase tracking-[.1em] text-cyan-400/40 hover:border-cyan-400/40 hover:text-cyan-400 hover:bg-cyan-400/[0.06] transition-all cursor-pointer disabled:opacity-40"
-            >
-              ↻ outra
-            </button>
+        {error && (
+          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-[10px] text-rose-600 dark:text-rose-300 flex items-center justify-between gap-2">
+            <span className="min-w-0">{error}</span>
+            <button onClick={() => fetchSuggestion(false)} disabled={loading} className="shrink-0 px-2.5 py-1 rounded-lg bg-rose-500/15 border border-rose-500/30 font-black uppercase tracking-[.08em] hover:bg-rose-500/25 disabled:opacity-40">↻ de novo</button>
           </div>
+        )}
 
-          <p className="text-[12px] font-extrabold text-white/90 leading-[1.45] mb-1.5">
-            <GlitchOnce text={result.suggestion.title} />
-          </p>
-          <p className="text-[10px] text-white/35 leading-[1.55] mb-2.5">
-            {result.suggestion.rationale}
-          </p>
+        {authRequired && <AuthGateNotice />}
 
-          {onSelectTitle && (
-            <button
-              onClick={() => onSelectTitle(result.suggestion.title)}
-              className="text-[9px] font-bold uppercase tracking-[.1em] text-cyan-400/40 hover:text-cyan-400 transition-colors cursor-pointer bg-transparent border-none"
-            >
-              Usar como título no editor →
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* ── TERMÔMETRO ── */}
-      {result?.termometro && !loading && (
-        <div className="mx-5 mb-3.5 grid grid-cols-2 gap-2">
-          {/* Tempo médio */}
-          <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.07]">
-            <p className="text-[7px] font-black uppercase tracking-[.18em] text-white/25 mb-1">Tempo médio</p>
-            <p className="text-[13px] font-extrabold text-cyan-300/90">{result.termometro.researchTime.label}</p>
+        {loading && (
+          <div className="p-4 rounded-2xl border border-cyan-500/15 bg-cyan-500/[0.05]">
+            <ThinkingStream running label="forjando uma proposta relevante" />
           </div>
-          {/* Bolsa */}
-          <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.07]">
-            <p className="text-[7px] font-black uppercase tracking-[.18em] text-white/25 mb-1">Bolsa · {result.termometro.scholarship.probability}</p>
-            <p className="text-[13px] font-extrabold text-emerald-300/90">{brl(result.termometro.scholarship.monthlyValueBRL)}<span className="text-[8px] font-bold text-white/30">/mês</span></p>
-            <p className="text-[7px] text-white/30 mt-0.5">até {brl(result.termometro.scholarship.monthlyValueRangeBRL[1])} · {result.termometro.scholarship.agencies.join(" · ")}</p>
-          </div>
-          {/* Gap / originalidade */}
-          <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.07]">
-            <p className="text-[7px] font-black uppercase tracking-[.18em] text-white/25 mb-1.5">Originalidade</p>
-            <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
-              <div className="h-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.6)]" style={{ width: `${Math.round(result.termometro.gapScore * 100)}%` }} />
+        )}
+
+        {/* ── SUGGESTION CARD ── */}
+        {result && !loading && (
+          <div className="p-4 rounded-2xl border border-cyan-500/15 bg-cyan-500/[0.05]">
+            <div className="flex items-center gap-2 mb-2.5">
+              <span className="text-[8px] font-black uppercase tracking-[.14em] text-white px-2.5 py-0.5 rounded-full" style={{ background: GRAD }}>✦ Sugestão</span>
+              <span className="text-[8px] font-bold uppercase tracking-[.08em] px-2 py-0.5 rounded-full text-cyan-700 dark:text-cyan-300 bg-cyan-500/10 border border-cyan-500/20">{currentLevel.icon} {result.suggestion.type}</span>
+              <button onClick={() => fetchSuggestion(true)} disabled={loading} className="ml-auto rounded-lg px-2.5 py-1 text-[8px] font-black uppercase tracking-[.1em] text-cyan-600 dark:text-cyan-300 border border-cyan-500/20 hover:bg-cyan-500/10 disabled:opacity-40">↻ outra</button>
             </div>
-            <p className="text-[8px] text-white/35 mt-1">{result.termometro.gapLabel}</p>
+            <p className="text-[13px] font-extrabold leading-[1.4] mb-1.5 text-slate-900 dark:text-white"><GlitchOnce text={result.suggestion.title} /></p>
+            <p className="text-[11px] leading-[1.55] text-slate-600 dark:text-white/55">{result.suggestion.rationale}</p>
+            {onSelectTitle && (
+              <button onClick={() => onSelectTitle(result.suggestion.title)} className="mt-2.5 text-[10px] font-bold uppercase tracking-[.08em] text-cyan-600 dark:text-cyan-300 hover:underline">Usar como título →</button>
+            )}
           </div>
-          {/* Alvo de publicação */}
-          <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.07]">
-            <p className="text-[7px] font-black uppercase tracking-[.18em] text-white/25 mb-1">Alvo publicação</p>
-            <p className="text-[13px] font-extrabold text-violet-300/90">{result.termometro.publication.qualis}</p>
-            <p className="text-[7px] text-white/30 mt-0.5">{result.termometro.publication.tier}</p>
-          </div>
-          {/* Nota do cenário */}
-          <div className="col-span-2 p-2.5 rounded-xl bg-cyan-400/[0.04] border border-cyan-400/10">
-            <p className="text-[8px] text-white/40 leading-snug">💡 {result.termometro.scholarship.note}</p>
-          </div>
-        </div>
-      )}
+        )}
 
-      {/* ── REFERENCES ── */}
-      {result && result.references.length > 0 && (
-        <div className="mx-5 mb-5 border border-white/[0.06] rounded-2xl overflow-hidden">
-          <div className="px-3.5 py-2.5 flex items-center justify-between border-b border-white/[0.04]">
-            <span className="text-[8px] font-black uppercase tracking-[.15em] text-white/20">
-              Trabalhos relacionados
-            </span>
-            <span className="text-[8px] font-bold text-cyan-400/40 bg-cyan-400/[0.06] border border-cyan-400/12 px-2 py-0.5 rounded-[9px]">
-              {result.references.length} referências
-            </span>
+        {/* ── TERMÔMETRO ── */}
+        {result?.termometro && !loading && (
+          <div className="grid grid-cols-2 gap-2">
+            <div className="p-3 rounded-xl bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10">
+              <p className="text-[8px] font-black uppercase tracking-[.16em] text-slate-400 dark:text-white/30 mb-1">Tempo médio</p>
+              <p className="text-[14px] font-extrabold text-cyan-600 dark:text-cyan-300">{result.termometro.researchTime.label}</p>
+            </div>
+            <div className="p-3 rounded-xl bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10">
+              <p className="text-[8px] font-black uppercase tracking-[.16em] text-slate-400 dark:text-white/30 mb-1">Bolsa · {result.termometro.scholarship.probability}</p>
+              <p className="text-[14px] font-extrabold text-emerald-600 dark:text-emerald-300">{brl(result.termometro.scholarship.monthlyValueBRL)}<span className="text-[8px] font-bold text-slate-400">/mês</span></p>
+              <p className="text-[7px] text-slate-400 dark:text-white/30 mt-0.5">até {brl(result.termometro.scholarship.monthlyValueRangeBRL[1])} · {result.termometro.scholarship.agencies.join(" · ")}</p>
+            </div>
+            <div className="p-3 rounded-xl bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10">
+              <p className="text-[8px] font-black uppercase tracking-[.16em] text-slate-400 dark:text-white/30 mb-1.5">Originalidade</p>
+              <div className="h-1.5 rounded-full bg-slate-200 dark:bg-white/[0.08] overflow-hidden"><div className="h-full" style={{ width: `${Math.round(result.termometro.gapScore * 100)}%`, background: GRAD }} /></div>
+              <p className="text-[8px] text-slate-500 dark:text-white/40 mt-1">{result.termometro.gapLabel}</p>
+            </div>
+            <div className="p-3 rounded-xl bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10">
+              <p className="text-[8px] font-black uppercase tracking-[.16em] text-slate-400 dark:text-white/30 mb-1">Alvo publicação</p>
+              <p className="text-[14px] font-extrabold text-violet-600 dark:text-violet-300">{result.termometro.publication.qualis}</p>
+              <p className="text-[7px] text-slate-400 dark:text-white/30 mt-0.5">{result.termometro.publication.tier}</p>
+            </div>
+            <div className="col-span-2 p-2.5 rounded-xl bg-cyan-500/[0.06] border border-cyan-500/15">
+              <p className="text-[9px] text-slate-600 dark:text-white/50 leading-snug">💡 {result.termometro.scholarship.note}</p>
+            </div>
           </div>
+        )}
 
-          {result.references.map((ref, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25, delay: Math.min(i * 0.05, 0.5) }}
-              className="px-3.5 py-2.5 border-t border-white/[0.03] flex items-start gap-2"
-            >
-              <span className={`text-[7px] font-black uppercase tracking-[.08em] px-2 py-0.5 rounded-[8px] shrink-0 mt-0.5 ${SOURCE_STYLES[ref.source] ?? SOURCE_STYLES["DOI"]}`}>
-                {ref.source}
-              </span>
-              <div>
-                <p className="text-[10px] font-semibold text-white/65 leading-snug">{ref.title}</p>
-                <p
-                  style={{ fontFamily: "'JetBrains Mono', monospace" }}
-                  className="text-[8px] text-white/20 mt-0.5"
-                >
-                  {ref.authors} · {ref.year} · {ref.venue}
-                </p>
-              </div>
-            </motion.div>
-          ))}
-
-          <div className="px-3.5 py-2">
-            <p className="text-[8px] font-bold uppercase tracking-[.12em] text-white/12 text-center">
-              exportar ABNT
-            </p>
+        {/* ── REFERENCES ── */}
+        {result && result.references.length > 0 && (
+          <div className="border border-slate-200 dark:border-white/[0.08] rounded-2xl overflow-hidden">
+            <div className="px-3.5 py-2.5 flex items-center justify-between border-b border-slate-200 dark:border-white/[0.06]">
+              <span className="text-[9px] font-black uppercase tracking-[.14em] text-slate-400 dark:text-white/30">Trabalhos relacionados</span>
+              <span className="text-[8px] font-bold text-cyan-600 dark:text-cyan-300 bg-cyan-500/10 border border-cyan-500/15 px-2 py-0.5 rounded-lg">{result.references.length}</span>
+            </div>
+            {result.references.map((ref, i) => (
+              <motion.div key={i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: Math.min(i * 0.05, 0.5) }}
+                className="px-3.5 py-2.5 border-t border-slate-100 dark:border-white/[0.04] flex items-start gap-2">
+                <span className={`text-[7px] font-black uppercase tracking-[.08em] px-2 py-0.5 rounded-lg shrink-0 mt-0.5 ${SOURCE_STYLES[ref.source] ?? SOURCE_STYLES["DOI"]}`}>{ref.source}</span>
+                <div>
+                  <p className="text-[10.5px] font-semibold text-slate-700 dark:text-white/70 leading-snug">{ref.title}</p>
+                  <p className="text-[8px] font-mono text-slate-400 dark:text-white/25 mt-0.5">{ref.authors} · {ref.year} · {ref.venue}</p>
+                </div>
+              </motion.div>
+            ))}
           </div>
-        </div>
-      )}
+        )}
 
-      {/* ── EMPTY STATE ── */}
-      {!result && !loading && !error && !authRequired && (
-        <div className="px-5 pb-6 pt-2 text-center">
-          <p className="text-[10px] text-white/20 leading-relaxed">
-            Selecione o nível, confirme o tema e clique em <strong className="text-white/30">Gerar ✦</strong>
+        {/* ── EMPTY STATE ── */}
+        {!result && !loading && !error && !authRequired && (
+          <p className="text-center text-[11px] text-slate-400 dark:text-white/30 leading-relaxed py-2">
+            Escolha o nível, confirme o tema e clique em <strong className="text-slate-600 dark:text-white/50">Gerar ✦</strong>.
           </p>
-        </div>
-      )}
-      </>
+        )}
+      </div>
       )}
     </div>
   );

@@ -23,7 +23,7 @@ interface OmegaState {
 interface OmegaCtx extends OmegaState {
   draft: string;
   setDraft: (v: string) => void;
-  runQuery: (prompt: string) => Promise<void>;
+  runQuery: (prompt: string, deep?: boolean) => Promise<void>;
   loadSession: (s: any) => void;
   fetchSuggestions: (opts?: { count?: number; exclude?: string[] }) => Promise<void>;
   fetchPrereqs: () => Promise<void>;
@@ -51,14 +51,14 @@ export function OmegaScholarProvider({ room, onStart, children }:
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  const runQuery = useCallback(async (prompt: string) => {
+  const runQuery = useCallback(async (prompt: string, deep = false) => {
     if (!prompt.trim()) return;
     onStart?.(); // parent switches activeTab → "community"
     setState({ status: "running", query: prompt, phases: [], answer: "", session: null, error: null, ...EMPTY_FORGE, ...EMPTY_PREREQS });
     try {
       const res = await fetch("/api/ai/scholar", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, room }),
+        body: JSON.stringify({ prompt, room, deep }),
       });
       // Sessão ausente/expirada: o servidor responde 401 (texto, não NDJSON).
       // Tratamos explicitamente para não travar o stream — a UI mostra o gate de login.

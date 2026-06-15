@@ -25,7 +25,12 @@ export async function POST(req: Request) {
   if (!dbUser) return new Response("Unauthorized", { status: 401 });
   const userId = dbUser.id;
 
-  const { prompt, room } = await req.json();
+  const { prompt, room, deep } = await req.json();
+  // Modo RÁPIDO (default) vs PROFUNDO (toggle do usuário). O custo de tempo está em
+  // abrir o full-text dos papers + sintetizar; no rápido reduzimos o N pra ser ágil.
+  const isDeep = deep === true;
+  const TOP_N = isDeep ? 10 : 4;
+  const FT_CONCURRENCY = isDeep ? 3 : 4;
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -64,8 +69,9 @@ export async function POST(req: Request) {
         const unique = retrieved.papers;
 
         // FULL TEXT (top N — síntese profunda só nos primeiros, por qualidade/velocidade)
-        const top = unique.slice(0, 10);
-        const withText = await mapLimit(top, 3, (p) => resolveFullText(p));
+        // Rápido: menos papers (mais ágil). Profundo: 10 (mais completo, mais lento).
+        const top = unique.slice(0, TOP_N);
+        const withText = await mapLimit(top, FT_CONCURRENCY, (p) => resolveFullText(p));
         const ftCount = withText.filter(
           (p) => p.retrievedText && p.retrievedText.kind !== "abstract"
         ).length;

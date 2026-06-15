@@ -64,3 +64,6 @@ __pycache__/
 service-account*.json
 *[ ]copy.json
 .env*
+
+# Cowork/Claude local cache
+.claude/

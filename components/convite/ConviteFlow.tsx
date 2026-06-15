@@ -1,46 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import CodeInputStep from "./CodeInputStep";
-import ConviteAgent from "./ConviteAgent";
+import InviteCard from "./InviteCard";
 import GoogleFinishStep from "./GoogleFinishStep";
 
-type Step = "code" | "chat" | "google";
+type Step = "card" | "google";
 
 interface Props {
   initialCode?: string;
 }
 
+/**
+ * Fluxo de convite — CARD-ONLY: o cartão coleta os dados e o comprovante, depois
+ * finaliza com o login Google (a porta conversacional foi removida de vez).
+ */
 export default function ConviteFlow({ initialCode }: Props) {
-  const [step, setStep] = useState<Step>("code");
+  const [step, setStep] = useState<Step>("card");
   const [sessionToken, setSessionToken] = useState("");
-  const [inviteCode, setInviteCode] = useState("");
 
-  const handleValidated = (token: string, code: string) => {
-    setSessionToken(token);
-    setInviteCode(code);
-    setStep("chat");
-  };
-
-  const handleChatComplete = () => {
-    setStep("google");
-  };
-
-  if (step === "code") {
+  if (step === "card") {
     return (
-      <CodeInputStep
+      <InviteCard
         initialCode={initialCode}
-        onValidated={handleValidated}
-      />
-    );
-  }
-
-  if (step === "chat") {
-    return (
-      <ConviteAgent
-        sessionToken={sessionToken}
-        inviteCode={inviteCode}
-        onComplete={handleChatComplete}
+        onDone={(token) => { setSessionToken(token); setStep("google"); }}
       />
     );
   }

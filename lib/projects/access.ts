@@ -19,6 +19,11 @@
  *     least-privilege choice for a feature that writes to GitHub.
  */
 
+import { isSuperAdmin } from "@/lib/auth/roles";
+
+/** Contexto do usuário para o gate (super admin sempre passa). */
+export interface AccessContext { email?: string | null; role?: string | null }
+
 // ─── Canonical eligible courses (mirrors the "cyber" track) ────────────────────
 export const ELIGIBLE_COURSES: string[] = [
   "Ciência da Computação",
@@ -73,25 +78,28 @@ export interface EligibilityResult {
   /** Matched canonical course label, when an exact match was found. */
   matched?: string;
   /** Machine reason, useful for telemetry and the UI fallback copy. */
-  reason: "exact" | "keyword" | "no-course" | "out-of-scope" | "gate-disabled";
+  reason: "exact" | "keyword" | "no-course" | "out-of-scope" | "gate-disabled" | "super-admin";
 }
 
 /**
  * Master switch for the course gate.
  *
- * TEMPORARILY OFF while we validate the room end-to-end (decisão do Martinez,
- * 2026-06-13). The whole eligibility logic below is preserved — to re-enable the
- * Computing-only restriction, set env `PROJECTS_COURSE_GATE=on` (or flip the
- * default here). Nothing else needs to change at the call sites.
+ * LIGADO por padrão (decisão do Martinez, 2026-06-14): a sala Projetos / Zaeon
+ * Code é só para Computação e áreas correlatas — exceto super admins, que sempre
+ * passam. Para desligar o gate (liberar todos), set env `PROJECTS_COURSE_GATE=off`.
  */
-export const PROJECTS_GATE_ENABLED = process.env.PROJECTS_COURSE_GATE === "on";
+export const PROJECTS_GATE_ENABLED = process.env.PROJECTS_COURSE_GATE !== "off";
 
 /**
- * Decide whether a course string grants access to the Projetos IDE.
- * Fail-closed: empty / unknown course → not eligible (when the gate is enabled).
+ * Decide whether a user can access the Projetos IDE.
+ * Ordem: super admin → gate off → curso (exato/keyword). Fail-closed quando o
+ * gate está ligado e o curso é vazio/fora de escopo.
  */
-export function checkEligibility(course: string | null | undefined): EligibilityResult {
-  // Gate disabled → everyone in. (Re-enable via PROJECTS_COURSE_GATE=on.)
+export function checkEligibility(course: string | null | undefined, ctx?: AccessContext): EligibilityResult {
+  // Super admin (allowlist ou role) → passa sempre, independente de curso/gate.
+  if (ctx && isSuperAdmin(ctx)) return { eligible: true, reason: "super-admin" };
+
+  // Gate desligado → todos entram. (Religar removendo PROJECTS_COURSE_GATE=off.)
   if (!PROJECTS_GATE_ENABLED) return { eligible: true, reason: "gate-disabled" };
 
   const norm = normalizeCourse(course);
@@ -107,8 +115,13 @@ export function checkEligibility(course: string | null | undefined): Eligibility
 }
 
 /** Convenience boolean for UI guards. */
-export function isEligibleForProjects(course: string | null | undefined): boolean {
-  return checkEligibility(course).eligible;
+export function isEligibleForProjects(course: string | null | undefined, ctx?: AccessContext): boolean {
+  return checkEligibility(course, ctx).eligible;
+}
+
+/** Helper de alto nível: pode usar o Zaeon Code? (curso elegível OU super admin). */
+export function canUseProjects(p: { course?: string | null; email?: string | null; role?: string | null }): boolean {
+  return checkEligibility(p.course, { email: p.email, role: p.role }).eligible;
 }
 
 /**
@@ -125,8 +138,8 @@ export class ProjectsAccessError extends Error {
   }
 }
 
-export function assertEligibleOrThrow(course: string | null | undefined): void {
-  const res = checkEligibility(course);
+export function assertEligibleOrThrow(course: string | null | undefined, ctx?: AccessContext): void {
+  const res = checkEligibility(course, ctx);
   if (!res.eligible) throw new ProjectsAccessError(res.reason);
 }
 

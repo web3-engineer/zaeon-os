@@ -1,3 +1,4 @@
+import { vertexCredentials } from "@/lib/ai/vertex-credentials";
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/src/lib/auth';
@@ -25,7 +26,7 @@ RULES:
 - Max 300 words in "response".`;
 
 function getModel() {
-  const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS || '{}');
+  const credentials = (() => { const __v = vertexCredentials(); return { project_id: __v.project, client_email: __v.client_email, private_key: __v.private_key }; })(); // robust parse
   const v = new VertexAI({
     project:  credentials.project_id || process.env.GOOGLE_PROJECT_ID,
     location: process.env.GOOGLE_LOCATION || 'us-central1',

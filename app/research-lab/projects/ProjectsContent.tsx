@@ -28,6 +28,7 @@ import {
   FileText, FolderTree, Workflow, Boxes, Sparkles, ShieldCheck,
   ChevronRight, ChevronDown, Cpu, Lock, CheckCircle2, AlertTriangle, Terminal,
   RefreshCw, Save, Plus, FolderGit2, ArrowUp, ExternalLink, Pencil, Trash2, LogOut, Folder, FolderOpen,
+  Brain, Eraser, ListChecks, Circle,
 } from "lucide-react";
 import { useCodeRunner, type Language } from "@/app/agentic-modules/codelab/useCodeRunner";
 import {
@@ -141,6 +142,9 @@ function mapPath(path: string): { lang: Language; monaco: string } {
 interface ProjectMeta { id: string; name: string; updatedAt: number }
 // Project lifecycle — also a meter the agent reads to decide the next move.
 type ProjectStatus = "inicial" | "construindo" | "dev" | "prod";
+// Checklist viva (estilo Golem task-tracking): um item por arquivo planejado.
+type TaskState = "pending" | "doing" | "done" | "failed";
+interface AgentTask { path: string; purpose?: string; state: TaskState }
 interface ProjectSnapshot {
   open: Record<string, OpenFile>;
   tree: TreeItem[];
@@ -155,7 +159,13 @@ interface ProjectSnapshot {
   devUrl?: string | null;   // dev server (localhost) — preenchido pelo executor remoto
   prodUrl?: string | null;  // produção (Vercel)
   committed?: boolean; // já houve ao menos 1 commit/push → libera a publicação na Vercel
+  // Memória de projeto (Golem working memory + Bitloops repo memory): stack,
+  // decisões e resumo. Injetada no contexto do agente; pode ser apagada.
+  memory?: string;
+  tasks?: AgentTask[]; // checklist viva do último build
 }
+// Teto de memória persistida (evita estourar a quota do localStorage).
+const MEMORY_MAX = 2000;
 const STATUS_LABEL: Record<ProjectStatus, string> = {
   inicial: "inicial", construindo: "construindo", dev: "em desenvolvimento", prod: "em produção",
 };
@@ -306,6 +316,9 @@ export default function ProjectsContent() {
   const [devUrl, setDevUrl] = useState<string | null>(null);
   const [prodUrl, setProdUrl] = useState<string | null>(null);
   const [committed, setCommitted] = useState(false);
+  // Memória de projeto + checklist viva (extraídos de Golem/Bitloops).
+  const [memory, setMemory] = useState<string>("");
+  const [tasks, setTasks] = useState<AgentTask[]>([]);
 
   const readRef = workingBranch || defaultBranch || undefined;
   const active: OpenFile | null = activePath ? open[activePath] ?? null : null;
@@ -555,6 +568,16 @@ export default function ProjectsContent() {
     setActivePath(path);
   }, [newFilePath, open, tree]);
 
+  // Raciocínio ligado ao commit (Bitloops): anexa objetivo + memória do agente ao
+  // corpo do commit/PR, para o "porquê" ficar rastreável no histórico do Git.
+  const buildReasoning = useCallback((): string => {
+    const lines: string[] = [];
+    if (protoQuery) lines.push(`Objetivo: ${protoQuery}`);
+    if (memory) lines.push("", "Contexto/decisões do agente:", memory.slice(0, 1200));
+    lines.push("", "🤖 Gerado pela IA agêntica da Zaeon (sala Projetos).");
+    return lines.join("\n");
+  }, [protoQuery, memory]);
+
   // Publish the whole generated workspace to GitHub in one go: ensure a working
   // branch exists, then commit every pending file. This is the "subir para o
   // GitHub" step after the autonomous agent builds the structure locally.
@@ -571,7 +594,8 @@ export default function ProjectsContent() {
       branch = name; setWorkingBranch(name);
       setChat((c) => [...c, { role: "agent", text: `🌿 Branch de trabalho criado: ${name}` }]);
     }
-    const message = commitMsg.trim() || "feat: estrutura inicial gerada pela IA Zaeon";
+    const subject = commitMsg.trim() || "feat: estrutura inicial gerada pela IA Zaeon";
+    const message = `${subject}\n\n${buildReasoning()}`;
     const { ok, data } = await ghAction("commit", { repo, branch, message, files: filesToPush.map((f) => ({ path: f.path, content: f.body })) });
     setPublishing(false);
     if (!ok) { setWsError(data?.error || "Falha ao subir."); return; }
@@ -579,7 +603,7 @@ export default function ProjectsContent() {
     setCommitMsg("");
     setCommitted(true);
     setChat((c) => [...c, { role: "agent", text: `⬆️ Subido para ${repo} @ ${branch}: ${filesToPush.length} arquivo(s). sha ${String(data?.result?.commitSha || "").slice(0, 7)}. Agora dá pra publicar na Vercel.` }]);
-  }, [repo, open, workingBranch, defaultBranch, commitMsg]);
+  }, [repo, open, workingBranch, defaultBranch, commitMsg, buildReasoning]);
 
   // Publica o projeto direto na Vercel (sem VPS) → URL pública = prodUrl.
   const deployToVercel = useCallback(async () => {
@@ -622,11 +646,11 @@ export default function ProjectsContent() {
     if (!repo || !workingBranch) return;
     setOpeningPr(true); setWsError(null);
     const title = commitMsg.trim() || `Zaeon: ${workingBranch}`;
-    const { ok, status, data } = await ghAction("open_pr", { repo, head: workingBranch, base: defaultBranch || undefined, title }, { approved: true });
+    const { ok, status, data } = await ghAction("open_pr", { repo, head: workingBranch, base: defaultBranch || undefined, title, body: buildReasoning() }, { approved: true });
     setOpeningPr(false);
     if (!ok) { setWsError(data?.error || `Falha ao abrir PR (${status}).`); return; }
     setChat((c) => [...c, { role: "agent", text: `🔀 PR aberto: ${data?.result?.url || "(sem url)"} (#${data?.result?.number ?? "?"})` }]);
-  }, [repo, workingBranch, defaultBranch, commitMsg]);
+  }, [repo, workingBranch, defaultBranch, commitMsg, buildReasoning]);
 
   // Delete a file from the repo (working branch only) → updates tree/open.
   const deleteRepoFile = useCallback(async (path: string) => {
@@ -698,7 +722,8 @@ export default function ProjectsContent() {
     if (!repo || !workingBranch || !dirtyFiles.length || !commitMsg.trim()) return;
     setCommitting(true); setWsError(null);
     const files = dirtyFiles.map((f) => ({ path: f.path, content: f.body }));
-    const { ok, data } = await ghAction("commit", { repo, branch: workingBranch, message: commitMsg.trim(), files });
+    const message = `${commitMsg.trim()}\n\n${buildReasoning()}`;
+    const { ok, data } = await ghAction("commit", { repo, branch: workingBranch, message, files });
     setCommitting(false);
     if (!ok) { setWsError(data?.error || "Falha ao commitar."); return; }
     setOpen((prev) => {
@@ -709,7 +734,7 @@ export default function ProjectsContent() {
     setCommitMsg("");
     setCommitted(true);
     setChat((c) => [...c, { role: "agent", text: `✅ Commit em ${workingBranch}: ${files.length} arquivo(s). sha ${String(data?.result?.commitSha || "").slice(0, 7)}` }]);
-  }, [repo, workingBranch, dirtyFiles, commitMsg]);
+  }, [repo, workingBranch, dirtyFiles, commitMsg, buildReasoning]);
 
   // ── Projetos: persistência (localStorage) + troca/novo/excluir ──────────────
   const hydrateFromSnap = useCallback((s: ProjectSnapshot) => {
@@ -718,6 +743,7 @@ export default function ProjectsContent() {
     setWorkingBranch(s.workingBranch || null); setProtoQuery(s.protoQuery || "");
     setProjStatus(s.status || "inicial"); setProjProgress(s.progress || 0);
     setDevUrl(s.devUrl ?? null); setProdUrl(s.prodUrl ?? null); setCommitted(!!s.committed);
+    setMemory(s.memory || ""); setTasks(s.tasks || []);
     setPlan([]); setDiagram(null);
   }, []);
 
@@ -740,16 +766,16 @@ export default function ProjectsContent() {
   useEffect(() => {
     if (!hydratedRef.current || !projectId) return;
     const t = setTimeout(() => {
-      saveSnap(projectId, { open, tree, activePath, chat, repo, defaultBranch, workingBranch, protoQuery, status: projStatus, progress: projProgress, devUrl, prodUrl, committed });
+      saveSnap(projectId, { open, tree, activePath, chat, repo, defaultBranch, workingBranch, protoQuery, status: projStatus, progress: projProgress, devUrl, prodUrl, committed, memory, tasks });
       const name = protoQuery || repo || "Novo projeto";
       setProjects((prev) => { const next = prev.map((p) => (p.id === projectId ? { ...p, name, updatedAt: Date.now() } : p)); saveProjIndex(next); return next; });
     }, 600);
     return () => clearTimeout(t);
-  }, [open, tree, activePath, chat, repo, defaultBranch, workingBranch, protoQuery, projStatus, projProgress, devUrl, prodUrl, committed, projectId]);
+  }, [open, tree, activePath, chat, repo, defaultBranch, workingBranch, protoQuery, projStatus, projProgress, devUrl, prodUrl, committed, memory, tasks, projectId]);
 
   const flushCurrent = useCallback(() => {
-    if (projectId) saveSnap(projectId, { open, tree, activePath, chat, repo, defaultBranch, workingBranch, protoQuery, status: projStatus, progress: projProgress, devUrl, prodUrl, committed });
-  }, [projectId, open, tree, activePath, chat, repo, defaultBranch, workingBranch, protoQuery, projStatus, projProgress, devUrl, prodUrl, committed]);
+    if (projectId) saveSnap(projectId, { open, tree, activePath, chat, repo, defaultBranch, workingBranch, protoQuery, status: projStatus, progress: projProgress, devUrl, prodUrl, committed, memory, tasks });
+  }, [projectId, open, tree, activePath, chat, repo, defaultBranch, workingBranch, protoQuery, projStatus, projProgress, devUrl, prodUrl, committed, memory, tasks]);
 
   const newProject = useCallback(() => {
     flushCurrent();
@@ -759,6 +785,7 @@ export default function ProjectsContent() {
     setOpen({}); setTree([]); setActivePath(""); setChat([]); setProtoQuery("");
     setWorkingBranch(null); setPlan([]); setDiagram(null); setShowPreview(false); setPreviewHtml(null);
     setProjStatus("inicial"); setProjProgress(0); setDevUrl(null); setProdUrl(null); setCommitted(false);
+    setMemory(""); setTasks([]);
     setSearchMode(true);
   }, [flushCurrent]);
 
@@ -768,7 +795,7 @@ export default function ProjectsContent() {
     setProjectId(id);
     const snap = loadSnap(id);
     if (snap) hydrateFromSnap(snap);
-    else { setOpen({}); setTree([]); setActivePath(""); setChat([]); setProtoQuery(""); setWorkingBranch(null); setPlan([]); setDiagram(null); setShowPreview(false); setPreviewHtml(null); }
+    else { setOpen({}); setTree([]); setActivePath(""); setChat([]); setProtoQuery(""); setWorkingBranch(null); setPlan([]); setDiagram(null); setShowPreview(false); setPreviewHtml(null); setMemory(""); setTasks([]); }
   }, [projectId, flushCurrent, hydrateFromSnap]);
 
   const deleteProject = useCallback((id: string) => {
@@ -778,9 +805,17 @@ export default function ProjectsContent() {
     saveProjIndex(remaining); setProjects(remaining);
     if (id === projectId) {
       if (remaining.length) { const t = [...remaining].sort((a, b) => b.updatedAt - a.updatedAt)[0]; setProjectId(t.id); const s = loadSnap(t.id); if (s) hydrateFromSnap(s); }
-      else { const nid = newProjectId(); const meta = { id: nid, name: "Novo projeto", updatedAt: Date.now() }; setProjects([meta]); saveProjIndex([meta]); setProjectId(nid); setOpen({}); setTree([]); setActivePath(""); setChat([]); setProtoQuery(""); setWorkingBranch(null); }
+      else { const nid = newProjectId(); const meta = { id: nid, name: "Novo projeto", updatedAt: Date.now() }; setProjects([meta]); saveProjIndex([meta]); setProjectId(nid); setOpen({}); setTree([]); setActivePath(""); setChat([]); setProtoQuery(""); setWorkingBranch(null); setMemory(""); setTasks([]); }
     }
   }, [projects, projectId, hydrateFromSnap]);
+
+  // ── Memória de projeto (Golem working memory + Bitloops repo memory) ─────────
+  // Apaga a memória e o checklist do projeto atual (a "lógica de apagar de memória").
+  const clearMemory = useCallback(() => {
+    if (typeof window !== "undefined" && !window.confirm("Limpar a memória do agente neste projeto? (decisões/stack que ele lembra; não apaga os arquivos)")) return;
+    setMemory(""); setTasks([]);
+    setChat((c) => [...c, { role: "agent", text: "🧹 Memória do projeto apagada. Vou recomeçar o contexto do zero no próximo pedido." }]);
+  }, []);
 
   // Anima o código surgindo no editor (efeito "sendo escrito em tempo real").
   const typeFileIn = useCallback(async (path: string, content: string) => {
@@ -826,19 +861,33 @@ export default function ProjectsContent() {
       setProjects((prev) => { const next = [meta, ...prev]; saveProjIndex(next); return next; });
       setProjectId(id);
       setOpen({}); setTree([]); setActivePath(""); setChat([]); setWorkingBranch(null); setDevUrl(null); setProdUrl(null);
+      setMemory(""); setTasks([]);
     }
     setProtoQuery(goal); setSearchMode(false); setSearchDraft("");
-    setProtoBusy(true); setPlan([]); setDiagram(null); setRightTab("agente");
+    setProtoBusy(true); setPlan([]); setDiagram(null); setTasks([]); setRightTab("agente");
     setProjStatus("construindo"); setProjProgress(6);
+    // ── Memória local do run (Bitloops/Golem): acumula decisões e é injetada nos
+    // prompts pra reduzir retrabalho; persiste ao final via setMemory. ──────────
+    let memBuf = memory || "";
+    const remember = (line: string) => { memBuf = (memBuf ? memBuf + "\n" : "") + line; if (memBuf.length > MEMORY_MAX) memBuf = memBuf.slice(memBuf.length - MEMORY_MAX); };
+    // ── Guardrails (Golem): teto de chamadas + gate de falhas consecutivas. ─────
+    const MAX_CALLS = 26;
+    let calls = 0;
+    let aborted = false;
 
     const say = (text: string, extra: Partial<ChatMsg> = {}) =>
       setChat((c) => [...c, { role: "agent", text, ...extra }]);
     const agentCall = async (payload: Record<string, any>): Promise<any> => {
+      // Guardrail: nunca passa do teto de chamadas por run (evita loop infinito).
+      if (calls >= MAX_CALLS) { aborted = true; return { ok: false, error: "limite de chamadas do agente atingido (guardrail)" }; }
+      calls++;
       // Force the fast Gemini (flash) tier so every call fits the 10s Vercel cap
       // (avoids routing the analysis step to the slower pro/opus tier).
+      // Injeta a memória do projeto como contexto (quando o passo não traz um próprio).
+      const withCtx = memBuf && !payload.context ? { context: `MEMÓRIA DO PROJETO:\n${memBuf}`, ...payload } : payload;
       const res = await fetch("/api/projects/agent", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ forceModel: model === "auto" ? "gemini" : model, ...payload }),
+        body: JSON.stringify({ forceModel: model === "auto" ? "gemini" : model, ...withCtx }),
       });
       const data = await res.json().catch(() => ({}));
       return { ok: res.ok, ...data };
@@ -875,41 +924,73 @@ export default function ProjectsContent() {
       entry = (plan.entry || "").replace(/^\s*(python3?|node|deno|bun|sh|bash)\s+/i, "").trim() || undefined;
       if (plan.content) say(plan.content, { routing: plan.routing ? `${plan.routing.model} · ${plan.routing.provider}` : undefined });
       say("Vou criar:\n" + planned.map((f) => `• ${f.path}${f.purpose ? ` — ${f.purpose}` : ""}`).join("\n"));
+      // Memória: registra objetivo + stack escolhida (entra no contexto dos próximos passos).
+      remember(`Objetivo: ${goal}`);
+      if (entry) remember(`Arquivo de entrada: ${entry}`);
+      if (plan.content) remember(`Plano: ${String(plan.content).slice(0, 240)}`);
+      // Checklist viva: um item por arquivo planejado (pending → doing → done/failed).
+      setTasks(planned.map((f) => ({ path: f.path, purpose: f.purpose, state: "pending" as TaskState })));
+      const markTask = (path: string, state: TaskState) => setTasks((prev) => prev.map((t) => (t.path === path ? { ...t, state } : t)));
       setProjProgress(12);
 
       // ── Phase 2 — build FILE BY FILE (one small call each, com retry) ───────
       const planCtx = planned.map((f) => `- ${f.path}: ${f.purpose || ""}`).join("\n");
       const failed: string[] = [];
       const genOne = async (path: string): Promise<string | undefined> => {
+        let prev = "";
         for (let t = 1; t <= 2; t++) {
+          if (aborted) return undefined;
           const builtCtx = files.map((f) => `### ${f.path}\n${f.content}`).join("\n\n").slice(0, 5000);
+          const remaining = planned.filter((p) => p.path !== path && !files.some((f) => f.path === p.path)).map((p) => p.path);
+          const nudge = t > 1 ? "\n\nATENÇÃO: a tentativa anterior veio vazia ou repetida — gere conteúdo NOVO, específico e completo para ESTE arquivo." : "";
           const gf = await agentCall({
             task: "genfile", level: "implementation", targetPath: path,
-            prompt: `Objetivo do projeto: ${goal}\n\nArquivos planejados:\n${planCtx}\n\nJá criados:\n${builtCtx || "(nenhum ainda)"}\n\nGere o conteúdo COMPLETO de "${path}".`,
+            prompt: `Objetivo do projeto: ${goal}\n\nArquivos planejados:\n${planCtx}\n\nFalta criar: ${remaining.join(", ") || "(só este)"}\n\nJá criados:\n${builtCtx || "(nenhum ainda)"}\n\nGere o conteúdo COMPLETO de "${path}".${nudge}`,
           });
           const c: string | undefined = gf?.file?.content;
-          if (gf.ok && typeof c === "string" && c.trim()) return c;
+          if (gf.ok && typeof c === "string" && c.trim()) {
+            // Stale/duplicate guard (Golem): rejeita conteúdo idêntico a outro arquivo
+            // ou à tentativa anterior — sintoma de modelo "travado".
+            const dup = (prev && c.trim() === prev.trim()) || files.some((f) => f.content.trim() === c.trim());
+            if (dup && t < 2) { prev = c; say(`… ${path} veio repetido, tentando variar…`); continue; }
+            return c;
+          }
+          prev = c || prev;
           if (t < 2) say(`… ${path} veio vazio, tentando de novo…`);
         }
         return undefined;
       };
       let doneCount = 0;
+      let consecFails = 0; // gate de falhas consecutivas (Golem tool-error gate)
       for (const pf of planned) {
+        if (aborted) { say("⛔ Parei: atingi o teto de chamadas do agente neste run (guardrail anti-loop)."); break; }
+        markTask(pf.path, "doing");
         say(`⏺ Criando ${pf.path}…`);
         const content = await genOne(pf.path);
-        if (!content) { failed.push(pf.path); say(`⚠️ Não consegui criar ${pf.path} após 2 tentativas — vou tentar recuperar antes de testar.`); continue; }
+        if (!content) {
+          failed.push(pf.path); markTask(pf.path, "failed"); consecFails++;
+          say(`⚠️ Não consegui criar ${pf.path} após 2 tentativas — vou tentar recuperar antes de testar.`);
+          if (consecFails >= 3) { aborted = true; say("⛔ Três arquivos seguidos falharam — pausando o build pra não rodar à toa. Me diga como prefere seguir."); break; }
+          continue;
+        }
+        consecFails = 0;
         files.push({ path: pf.path, content });
         await typeFileIn(pf.path, content); // código surgindo em tempo real no editor
+        markTask(pf.path, "done");
         doneCount++;
         setProjProgress(12 + Math.round((doneCount / planned.length) * 68)); // 12 → 80
         say(`✓ ${pf.path} — ${content.split("\n").length} linhas`);
       }
       // Segunda passada nos que faltaram — não declaramos sucesso com arquivos faltando.
       for (const path of [...failed]) {
+        if (aborted) break;
         say(`⏺ Recriando ${path}…`);
         const content = await genOne(path);
-        if (content) { files.push({ path, content }); await typeFileIn(path, content); failed.splice(failed.indexOf(path), 1); say(`✓ ${path} recriado`); }
+        if (content) { files.push({ path, content }); await typeFileIn(path, content); markTask(path, "done"); failed.splice(failed.indexOf(path), 1); say(`✓ ${path} recriado`); }
       }
+      // Memória: registra o resultado do build (entra no contexto de pedidos futuros).
+      remember(`Arquivos criados (${files.length}): ${files.map((f) => f.path).join(", ")}`);
+      if (failed.length) remember(`Faltaram: ${failed.join(", ")}`);
       setProjProgress((p) => Math.max(p, 82));
       if (!files.length) { say("⚠️ Nenhum arquivo foi criado."); return; }
       if (failed.length) say(`⚠️ Faltaram: ${failed.join(", ")} — o app pode não funcionar 100%. Posso tentar recriá-los de novo se você pedir.`);
@@ -952,9 +1033,10 @@ export default function ProjectsContent() {
     } catch (e: any) {
       say(`Erro: ${e.message}`);
     } finally {
+      setMemory(memBuf);   // persiste a memória acumulada deste run
       setProtoBusy(false);
     }
-  }, [protoBusy, model, run, open, protoQuery, flushCurrent, typeFileIn]);
+  }, [protoBusy, model, run, open, protoQuery, memory, flushCurrent, typeFileIn]);
 
   // ── Agent panel (per-file chat) ─────────────────────────────────────────────
   const taskFor = useCallback((text: string): string => {
@@ -975,9 +1057,10 @@ export default function ProjectsContent() {
     setChat((c) => [...c, { role: "user", text: q }]);
     setPlan([]); setDiagram(null);
     try {
+      const mem = memory ? `MEMÓRIA DO PROJETO:\n${memory}\n\n` : "";
       const ctx = active
-        ? `Repo: ${repo || "—"} @ ${readRef || "—"}\nArquivo ativo: ${active.path}\n\`\`\`\n${active.body.slice(0, 4000)}\n\`\`\``
-        : `Repo: ${repo || "—"} @ ${readRef || "—"}\n(nenhum arquivo aberto)`;
+        ? `${mem}Repo: ${repo || "—"} @ ${readRef || "—"}\nArquivo ativo: ${active.path}\n\`\`\`\n${active.body.slice(0, 4000)}\n\`\`\``
+        : `${mem}Repo: ${repo || "—"} @ ${readRef || "—"}\n(nenhum arquivo aberto)`;
       const res = await fetch("/api/projects/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1003,7 +1086,7 @@ export default function ProjectsContent() {
     } catch (e: any) {
       setChat((c) => [...c, { role: "agent", text: `Erro: ${e.message}` }]);
     } finally { setBusy(false); }
-  }, [prompt, busy, level, model, active, repo, readRef, taskFor]);
+  }, [prompt, busy, level, model, active, repo, readRef, memory, taskFor]);
 
   // ─── Gate fallback ───────────────────────────────────────────────────────────
   if (eligible === false) {
@@ -1457,6 +1540,38 @@ export default function ProjectsContent() {
             </div>
           ) : (
           <>
+          {/* Strip fixo: memória do projeto (com Limpar) + checklist viva do build */}
+          {(tasks.length > 0 || memory) && (
+            <div className="px-3 pt-2.5 pb-2 flex flex-col gap-2 border-b border-black/5 dark:border-white/5">
+              {memory && (
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-bold text-cyan-700 dark:text-cyan-200 shrink-0"
+                    style={{ background: "rgba(34,211,238,0.14)", border: "1px solid rgba(34,211,238,0.3)" }}>
+                    <Brain size={9} /> memória
+                  </span>
+                  <span className="text-[8px] text-slate-500 font-mono truncate flex-1" title={memory}>{memory.split("\n")[0]}</span>
+                  <button onClick={clearMemory} title="Limpar memória do agente (não apaga arquivos)"
+                    className="shrink-0 p-1 rounded-md text-slate-500 hover:text-rose-400 transition-colors"><Eraser size={11} /></button>
+                </div>
+              )}
+              {tasks.length > 0 && (
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">
+                    <ListChecks size={10} /> Checklist — {tasks.filter((t) => t.state === "done").length}/{tasks.length}
+                  </div>
+                  {tasks.map((t) => (
+                    <div key={t.path} className="flex items-center gap-1.5 text-[9px] font-mono pl-1" title={t.purpose || t.path}>
+                      {t.state === "done" ? <CheckCircle2 size={10} className="text-cyan-400 shrink-0" />
+                        : t.state === "doing" ? <Loader2 size={10} className="text-violet-400 animate-spin shrink-0" />
+                        : t.state === "failed" ? <AlertTriangle size={10} className="text-rose-400 shrink-0" />
+                        : <Circle size={10} className="text-slate-400 dark:text-slate-600 shrink-0" />}
+                      <span className={`truncate ${t.state === "done" ? "text-slate-400 dark:text-slate-500 line-through" : "text-slate-700 dark:text-slate-300"}`}>{t.path}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <div className="relative flex-1 min-h-0">
           <div className="absolute inset-0 overflow-y-auto custom-scrollbar p-3 flex flex-col gap-3">
             {chat.length === 0 && (

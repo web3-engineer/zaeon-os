@@ -25,6 +25,8 @@ export function buildUserUpdateData(input: MigrateInput): Record<string, unknown
     inviteCodeUsed: input.inviteCode,
     myInviteCode: input.myInviteCode,
     referredBy: input.referredBy ?? null,
+    // Toda submissão de convite entra na fila do admin como "pending" (Node Queue).
+    kycStatus: "pending",
   };
 
   if (input.role === "teacher" && input.subject) {

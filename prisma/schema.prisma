@@ -414,3 +414,31 @@ model PastResearchChat {
 
   @@index([userId, researchId])
 }
+
+// ─── Sala de Estudos — feed "Meus Estudos" (mini-Notion) ───
+model StudySpace {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  title     String   @default("Meus Estudos")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("study_spaces")
+}
+
+model StudyItem {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  spaceId   String   @db.ObjectId
+  type      String   // ref | insight | synthesis | base | suggestion | pdf | video | note | link
+  title     String   @default("")
+  payload   Json?    // texto, url, videoId, pdfUrl, etc.
+  summary   String?  // resumo generativo (Flash)
+  placement String   @default("library") // "library" (biblioteca, à direita) | "feed" (no canvas central)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([userId, spaceId])
+  @@map("study_items")
+}

@@ -22,6 +22,7 @@ import {
 // 🔥 ADICIONADO: Mic e MicOff
 import { Bot, Mic, MicOff } from "lucide-react";
 import ZaeonLogo from "@/components/main/ZaeonLogo";
+import ZaeonTriangle from "@/components/main/ZaeonTriangle";
 import type { AIState } from "@/components/main/ZaeonLogo";
 
 const TypewriterText = ({ text, onComplete }: { text: string, onComplete: () => void }) => {
@@ -55,7 +56,7 @@ interface LoungeChatWidgetProps {
 // Mock do perfil da Zaeon para o Chat
 const ZAEON_AGENT = {
     id: 'zaeon-agent',
-    name: 'Zaeon OS',
+    name: 'Zaeon',
     image: null,
     isAgent: true
 };
@@ -103,6 +104,7 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
     const activeChatRef = useRef(activeChat);
     const [unreadCount, setUnreadCount] = useState(0);
     const [flash, setFlash] = useState(false);
+    const [deepMode, setDeepMode] = useState(false); // pensamento profundo (Gemini Pro em chunks)
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -114,7 +116,7 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                 const firstName = userName ? userName.split(" ")[0] : "Operador";
 
                 setZaeonMessages([
-                    { id: 'intro', senderId: 'zaeon-agent', text: `Bem-vindo de volta, ${firstName}! Os sistemas estão online. Precisa de ajuda com alguma coisa hoje?` }
+                    { id: 'intro', senderId: 'zaeon-agent', text: `Oi, ${firstName}. Que bom te ver por aqui. Eu sou a Zaeon e fico do seu lado pra ajudar no que você precisar — me conta, o que você quer fazer hoje?` }
                 ]);
 
                 if (!isOpen) {
@@ -293,26 +295,46 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
 
                 const userName = session?.user?.name || "Operador";
 
-                // 3. Dispara para a rota com Contexto, Memória e Histórico
-                const res = await fetch('/api/ai/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        prompt: text,
-                        agent: "zaeon",
-                        userData: savedOnboardingData, // 🔥 Memória injetada!
-                        history: chatHistoryForGemini, // 🔥 Histórico do chat injetado!
-                        systemContext: `Você é a Zaeon. O usuário com quem você está falando se chama ${userName}. O usuário está neste momento na rota/página: ${pathname}. Se ele perguntar sobre o que ele pode fazer aqui ou pedir ajuda contextual, use essa rota como base para explicar a interface ou funcionalidades desta área específica do sistema.`
-                    })
-                });
+                if (deepMode) {
+                    // 🔥 MODO PROFUNDO — Gemini Pro em CHUNKS (plano → resposta), cada chamada curta.
+                    const ctx = `Usuário: ${userName}. Página: ${pathname}.`;
+                    const planRes = await fetch('/api/ai/deepthink', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ step: 'plan', prompt: text, context: ctx }),
+                    });
+                    const planData = await planRes.json().catch(() => ({}));
+                    const ansRes = await fetch('/api/ai/deepthink', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ step: 'answer', prompt: text, plan: planData.plan || '', context: ctx }),
+                    });
+                    const ansData = await ansRes.json().catch(() => ({}));
+                    const msgId = Date.now();
+                    setCurrentlyTypingMsgId(msgId);
+                    setZaeonMessages(prev => [...prev, { id: msgId, senderId: 'zaeon-agent', text: ansData.text || "Não consegui aprofundar agora. Tenta de novo?" }]);
+                    setAiState("executing");
+                } else {
+                    // 3. Dispara para a rota com Contexto, Memória e Histórico (Flash)
+                    const res = await fetch('/api/ai/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            prompt: text,
+                            agent: "zaeon",
+                            userData: savedOnboardingData, // 🔥 Memória injetada!
+                            history: chatHistoryForGemini, // 🔥 Histórico do chat injetado!
+                            systemContext: `Você é a Zaeon. O usuário com quem você está falando se chama ${userName}. O usuário está neste momento na rota/página: ${pathname}. Se ele perguntar sobre o que ele pode fazer aqui ou pedir ajuda contextual, use essa rota como base para explicar a interface ou funcionalidades desta área específica do sistema.`
+                        })
+                    });
 
-                if (!res.ok) throw new Error("Falha de comunicação com o núcleo neural.");
+                    if (!res.ok) throw new Error("Falha de comunicação com o núcleo neural.");
 
-                const data = await res.json();
-                const msgId = Date.now();
-                setCurrentlyTypingMsgId(msgId);
-                setZaeonMessages(prev => [...prev, { id: msgId, senderId: 'zaeon-agent', text: data.text }]);
-                setAiState("executing");
+                    const data = await res.json();
+                    const msgId = Date.now();
+                    setCurrentlyTypingMsgId(msgId);
+                    // data.summon (quando a Zaeon convoca um agente) vira um card de handoff.
+                    setZaeonMessages(prev => [...prev, { id: msgId, senderId: 'zaeon-agent', text: data.text, summon: data.summon }]);
+                    setAiState("executing");
+                }
             } catch (error) {
                 const msgId = Date.now();
                 setCurrentlyTypingMsgId(msgId);
@@ -382,48 +404,41 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
             layout
             initial={false}
             animate={{
-                height: isOpen ? 450 : 48,
-                width: isOpen ? 320 : 200,
+                height: isOpen ? 450 : 60,
+                width: isOpen ? 320 : 60,
             }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className={`fixed bottom-0 z-[999] rounded-t-3xl flex flex-col overflow-hidden ${glassContainer} 
+            className={`fixed z-[999] flex flex-col overflow-hidden ${glassContainer} ${isOpen ? 'bottom-0 rounded-t-3xl' : 'bottom-5 rounded-full shadow-2xl'}
             ${widgetPosition === 'right' ? 'right-4 sm:right-8' : 'left-4 sm:left-8'}`}
             style={{ willChange: "width, height" }}
         >
             <div
                 onClick={() => setIsOpen(!isOpen)}
-                className={`h-12 flex items-center justify-between px-5 cursor-pointer shrink-0 transition-all border-b border-slate-200 dark:border-white/5 ${flash
-                    ? "bg-cyan-500/30 dark:bg-cyan-500/40 shadow-[inset_0_0_20px_rgba(6,182,212,0.5)]"
-                    : "bg-white/50 dark:bg-black/20 hover:bg-slate-100 dark:hover:bg-white/5"
-                    }`}
+                title={isOpen ? undefined : "Falar com a Zaeon"}
+                className={isOpen
+                    ? `h-12 flex items-center justify-between px-5 cursor-pointer shrink-0 transition-all border-b border-slate-200 dark:border-white/5 ${flash ? "bg-cyan-500/30 dark:bg-cyan-500/40 shadow-[inset_0_0_20px_rgba(6,182,212,0.5)]" : "bg-white/50 dark:bg-black/20 hover:bg-slate-100 dark:hover:bg-white/5"}`
+                    : `h-full w-full flex items-center justify-center cursor-pointer relative transition-all ${flash ? "bg-cyan-500/30" : ""}`}
             >
-                <div className="flex items-center gap-3 relative">
-                    <AnimatePresence>
-                        {unreadCount > 0 && !isOpen && (
-                            <motion.div
-                                initial={{ scale: 0, y: 10, opacity: 0 }}
-                                animate={{ scale: 1, y: 0, opacity: 1 }}
-                                exit={{ scale: 0, opacity: 0 }}
-                                className="absolute -top-3 -left-2 bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)] text-white text-[9px] font-black px-1.5 py-0.5 rounded-full z-50"
-                            >
-                                +{unreadCount}
-                            </motion.div>
+                {!isOpen ? (
+                    /* FECHADO — só o ícone da Zaeon girando (presença forte) */
+                    <div className="relative flex items-center justify-center">
+                        {(unreadCount > 0 || incomingRequest) && (
+                            <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping z-10" />
                         )}
-                    </AnimatePresence>
-
-                    <div className="relative flex items-center justify-center w-6 h-6 rounded-full bg-cyan-500/10">
-                        {((incomingRequest || unreadCount > 0) && !isOpen) && (
-                            <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full animate-ping" />
-                        )}
-                        <ChatBubbleLeftRightIcon className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                        <ZaeonTriangle size={34} />
                     </div>
-                    <span className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-slate-200">
-                        {isOpen ? (activeChat ? activeChat.name : "Rede Neural") : "Chat"}
-                    </span>
-                </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3 relative">
+                        <div className="relative flex items-center justify-center w-6 h-6 rounded-full bg-cyan-500/10">
+                            <ZaeonTriangle size={16} />
+                        </div>
+                        <span className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-slate-200">
+                            {activeChat ? activeChat.name : "Rede Neural"}
+                        </span>
+                    </div>
 
-                <div className="flex items-center gap-2">
-                    {isOpen && (
+                    <div className="flex items-center gap-2">
                         <button
                             onClick={(e) => { e.stopPropagation(); setWidgetPosition(p => p === 'right' ? 'left' : 'right'); }}
                             className="text-slate-400 hover:text-cyan-500 transition-colors p-1"
@@ -431,15 +446,12 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                         >
                             <ArrowsRightLeftIcon className="w-4 h-4" />
                         </button>
-                    )}
-                    {isOpen ? (
                         <button className="text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors p-1">
                             <MinusIcon className="w-5 h-5" />
                         </button>
-                    ) : (incomingRequest || unreadCount > 0) ? (
-                        <BellAlertIcon className="w-5 h-5 text-red-500 animate-pulse" />
-                    ) : null}
-                </div>
+                    </div>
+                  </>
+                )}
             </div>
 
             <AnimatePresence mode="wait">
@@ -461,7 +473,7 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                                     </button>
                                     <div className={`relative w-8 h-8 rounded-full overflow-hidden border bg-slate-200 dark:bg-black shrink-0 flex items-center justify-center ${activeChat.isAgent ? 'border-cyan-400 bg-cyan-100 dark:bg-cyan-900/30' : 'border-slate-300 dark:border-white/20'}`}>
                                         {activeChat.isAgent ? (
-                                            <ZaeonLogo aiState={aiState} className="w-6 h-6" />
+                                            <ZaeonTriangle size={22} />
                                         ) : activeChat.image ? (
                                             <Image src={activeChat.image} alt={activeChat.name} fill sizes="32px" className="object-cover" />
                                         ) : (
@@ -471,7 +483,7 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                                     <div className="flex flex-col truncate">
                                         <span className="text-[11px] font-bold text-slate-800 dark:text-white truncate">{activeChat.name}</span>
                                         <span className={`text-[9px] font-medium ${activeChat.isAgent ? 'text-cyan-500' : 'text-slate-500 dark:text-slate-400'}`}>
-                                            {activeChat.isAgent ? 'Assistente Neural' : 'Chat Seguro'}
+                                            {activeChat.isAgent ? 'Sempre por perto' : 'Chat Seguro'}
                                         </span>
                                     </div>
                                 </div>
@@ -491,7 +503,7 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                                                     {!isMe && (
                                                         <div className={`relative w-6 h-6 rounded-full overflow-hidden shrink-0 border flex items-center justify-center ${activeChat.isAgent ? 'border-cyan-400 bg-cyan-100 dark:bg-cyan-900/30' : 'border-slate-300 dark:border-white/10 bg-slate-200 dark:bg-black'}`}>
                                                             {activeChat.isAgent ? (
-                                                                <ZaeonLogo aiState="idle" className="w-4 h-4" />
+                                                                <ZaeonTriangle size={16} />
                                                             ) : activeChat.image ? (
                                                                 <Image src={activeChat.image} alt={activeChat.name} fill sizes="24px" className="object-cover" />
                                                             ) : (
@@ -510,6 +522,18 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                                                                 msg.text
                                                             )}
                                                         </div>
+                                                        {!isMe && msg.summon && (
+                                                            <div className="mt-2 w-full">
+                                                                <div className="text-[9px] uppercase tracking-widest text-cyan-600 dark:text-cyan-400 font-black mb-1">{msg.summon.agent}</div>
+                                                                <button
+                                                                    onClick={() => { router.push(msg.summon.route); setIsOpen(false); }}
+                                                                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-[11px] font-bold text-white transition-transform hover:scale-[1.02]"
+                                                                    style={{ background: "linear-gradient(135deg,#0ea5e9,#22d3ee)" }}
+                                                                >
+                                                                    <span>{msg.summon.cta}</span><span>→</span>
+                                                                </button>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -519,7 +543,7 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                                         <div className="flex justify-start w-full">
                                             <div className="flex items-end gap-2 max-w-[85%]">
                                                 <div className="relative w-6 h-6 rounded-full overflow-hidden shrink-0 border border-cyan-400 bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center">
-                                                    <ZaeonLogo aiState={aiState} className="w-4 h-4" />
+                                                    <ZaeonTriangle size={16} />
                                                 </div>
                                                 <div className="px-3 py-2.5 rounded-2xl rounded-bl-sm bg-white dark:bg-[#1e293b] border border-cyan-200 dark:border-cyan-500/20 flex gap-1 items-center shadow-sm">
                                                     <span className="w-1 h-1 bg-cyan-400 rounded-full animate-bounce"></span>
@@ -547,6 +571,17 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
+
+                                    {activeChat?.isAgent && (
+                                        <button
+                                            onClick={() => setDeepMode(v => !v)}
+                                            title="Pensamento profundo — raciocínio em etapas (mais lento)"
+                                            className={`self-start inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${deepMode ? "text-white" : "text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-white/5"}`}
+                                            style={deepMode ? { background: "linear-gradient(135deg,#7c3aed,#06b6d4)" } : undefined}
+                                        >
+                                            ✦ {deepMode ? "Modo profundo ligado" : "Pensar mais a fundo"}
+                                        </button>
+                                    )}
 
                                     <div className="flex items-center gap-2 bg-white dark:bg-[#0f172a] rounded-full border border-slate-300 dark:border-white/10 p-1 pl-4 shadow-inner focus-within:border-cyan-400 dark:focus-within:border-cyan-500/50 transition-colors">
                                         <input
@@ -613,12 +648,12 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                                                 className="flex items-center gap-3 p-2.5 rounded-2xl cursor-pointer transition-colors group border border-cyan-400/30 dark:border-cyan-500/30 bg-gradient-to-r from-cyan-50 to-white dark:from-cyan-950/20 dark:to-transparent mb-1 hover:shadow-md"
                                             >
                                                 <div className="relative w-10 h-10 rounded-full border border-cyan-300 dark:border-cyan-400/50 bg-cyan-100 dark:bg-cyan-900/50 flex items-center justify-center shrink-0 shadow-inner">
-                                                    <ZaeonLogo aiState="idle" className="w-7 h-7" />
+                                                    <ZaeonTriangle size={26} />
                                                     <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-slate-900 rounded-full animate-pulse"></span>
                                                 </div>
                                                 <div className="flex flex-col flex-1 overflow-hidden">
                                                     <span className="text-[11px] font-black text-cyan-700 dark:text-cyan-300 truncate">Zaeon OS</span>
-                                                    <span className="text-[9px] text-cyan-600/70 dark:text-cyan-400/70 truncate">Assistente & Colega Neural</span>
+                                                    <span className="text-[9px] text-cyan-600/70 dark:text-cyan-400/70 truncate">Sua parceira na Zaeon</span>
                                                 </div>
                                             </div>
 

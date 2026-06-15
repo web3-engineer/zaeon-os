@@ -14,7 +14,7 @@ import { Web3Provider } from "@/src/context/Web3Context";
 // --- COMPONENTES GLOBAIS ---
 import GlobalClickSound from "@/components/main/GlobalClickSound";
 import { Navbar } from "@/components/main/navbar";
-// 🔥 NOVO: IMPORTANDO O WIDGET GLOBAL DE CHAT 🔥
+// 🔥 Chat global da Zaeon (IA + Colegas/Professores, troca de lado).
 import { LoungeChatWidget } from "@/components/sub/LoungeChatWidget";
 
 import "../src/i18n";
@@ -72,7 +72,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                             <Navbar />
                             {children}
 
-                            {/* 🔥 WIDGET DE CHAT GLOBAL INJETADO AQUI 🔥 */}
+                            {/* 🔥 CHAT GLOBAL DA ZAEON (IA + Colegas/Professores) 🔥 */}
                             <LoungeChatWidget />
 
                         </Web3Provider>

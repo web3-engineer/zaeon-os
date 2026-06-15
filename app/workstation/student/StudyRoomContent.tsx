@@ -1,9 +1,10 @@
 "use client";
 
 import {
-    useState, useRef, useLayoutEffect, useEffect, Suspense,
+    useState, useRef, useLayoutEffect, useEffect, useMemo, Suspense,
 } from "react";
 import dynamic from "next/dynamic";
+import { NotebookPen } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -178,6 +179,8 @@ function NoRoomFound() {
 }
 
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
+const MeusEstudosFeed = dynamic(() => import("@/components/study/MeusEstudosFeed"), { ssr: false });
+
 export default function StudyRoomContent({ flushTop = false }: { flushTop?: boolean } = {}) {
     const { data: session } = useSession();
 
@@ -185,7 +188,14 @@ export default function StudyRoomContent({ flushTop = false }: { flushTop?: bool
     const room   = getRoomForCourse(course);
     const meta   = ROOM_META[room] ?? ROOM_META["lounge"];
     const tabs   = ROOM_TABS[room] ?? [];
+    // "Meus Estudos" (feed mini-Notion) é a aba padrão, injetada antes das demais.
+    const allTabs = useMemo(() => [
+        { id: "meus-estudos", label: "Meus Estudos", icon: NotebookPen },
+        ...tabs,
+    ], [tabs]);
 
+    // Padrão = a aba de pesquisa/estudos (onde a pesquisa acontece). "Meus Estudos"
+    // fica disponível, mas não rouba o lugar da pesquisa.
     const [activeTab, setActiveTab] = useState(tabs[0]?.id ?? "community");
 
     // ── Tab indicator measurement ────────────────────────────────────────────
@@ -197,7 +207,7 @@ export default function StudyRoomContent({ flushTop = false }: { flushTop?: bool
     const [ready, setReady] = useState(false);
 
     const measureIndicator = () => {
-        const idx     = tabs.findIndex(t => t.id === activeTab);
+        const idx     = allTabs.findIndex(t => t.id === activeTab);
         const el      = tabRefs.current[idx];
         const header  = tabHeaderRef.current;
         if (!el || !header) return;
@@ -213,13 +223,13 @@ export default function StudyRoomContent({ flushTop = false }: { flushTop?: bool
     };
 
     // Run after paint so refs are populated
-    useLayoutEffect(() => { measureIndicator(); }, [activeTab, tabs]);
+    useLayoutEffect(() => { measureIndicator(); }, [activeTab, allTabs]);
 
     // Also re-measure on window resize
     useEffect(() => {
         window.addEventListener("resize", measureIndicator);
         return () => window.removeEventListener("resize", measureIndicator);
-    }, [activeTab, tabs]);
+    }, [activeTab, allTabs]);
 
     const ActiveComponent = DYNAMIC_COMPONENTS[room]?.[activeTab];
 
@@ -240,15 +250,14 @@ export default function StudyRoomContent({ flushTop = false }: { flushTop?: bool
                 visual: switching a tab slides the indicator along the card
                 top border, clearly signalling which section is active.
             */}
-            <div className="flex-1 mx-6 mt-4 mb-6 flex flex-col rounded-[2rem] overflow-hidden bg-white/50 dark:bg-slate-950/40 backdrop-blur-3xl border border-white/40 dark:border-white/10 shadow-2xl min-h-0">
+            <div className={`flex-1 ${flushTop ? "mx-0 mt-3 mb-0" : "mx-6 mt-4 mb-6"} flex flex-col rounded-[2rem] overflow-hidden bg-white/50 dark:bg-slate-950/40 backdrop-blur-3xl border border-white/40 dark:border-white/10 shadow-2xl min-h-0`}>
 
                 {/* Tab bar header */}
                 <div ref={tabHeaderRef} className="relative flex-shrink-0 z-10 bg-white/50 dark:bg-slate-950/40">
 
                     {/* Tab buttons row */}
                     <div className="flex overflow-x-auto no-scrollbar px-3 pt-3 gap-0.5">
-                        {tabs.map((tab, i) => {
-                            const Icon     = tab.icon;
+                        {allTabs.map((tab, i) => {
                             const isActive = activeTab === tab.id;
                             return (
                                 <button
@@ -270,7 +279,6 @@ export default function StudyRoomContent({ flushTop = false }: { flushTop?: bool
                                         boxShadow: "inset 0 1px 0 rgba(255,255,255,0.42), 0 8px 18px -8px rgba(139,92,246,0.8)",
                                     } : undefined}
                                 >
-                                    <Icon size={12} strokeWidth={isActive ? 2.2 : 1.5} />
                                     {tab.label}
                                 </button>
                             );
@@ -309,7 +317,9 @@ export default function StudyRoomContent({ flushTop = false }: { flushTop?: bool
                     style={{ transform: "translateZ(0)" }}
                 >
                     <div className="absolute inset-0 overflow-y-auto" style={{ isolation: "isolate" }}>
-                        {activeTab === "community" ? (
+                        {activeTab === "meus-estudos" ? (
+                            <MeusEstudosFeed />
+                        ) : activeTab === "community" ? (
                             <OmegaScholarWorkspace />
                         ) : activeTab === "projects" ? (
                             <ProFeaturePanel
