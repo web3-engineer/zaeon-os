@@ -10,21 +10,20 @@ interface OmegaScholarBarProps {
 }
 
 export default function OmegaScholarBar({ flushTop = false, onOpenResults }: OmegaScholarBarProps) {
-  const { runQuery, status, error, draft, setDraft } = useOmegaScholar();
+  const { runQuery, status, error, draft, setDraft, startedAt } = useOmegaScholar();
   const busy = status === "running";
 
   // ── Elapsed timer ──────────────────────────────────────────────────────────
+  // Usa o startedAt do contexto (persistido) → o tempo NÃO reinicia ao sair e voltar.
   const [elapsed, setElapsed] = useState(0);
-  const startRef = useRef<number | null>(null);
   useEffect(() => {
     if (status === "running") {
-      startRef.current = Date.now();
-      setElapsed(0);
-      const id = setInterval(() => setElapsed(Math.floor((Date.now() - (startRef.current ?? Date.now())) / 1000)), 1000);
+      const base = startedAt ?? Date.now();
+      setElapsed(Math.floor((Date.now() - base) / 1000));
+      const id = setInterval(() => setElapsed(Math.floor((Date.now() - base) / 1000)), 1000);
       return () => clearInterval(id);
     }
-    startRef.current = null;
-  }, [status]);
+  }, [status, startedAt]);
 
   // ── Contador de "tokens" (estilo Claude Code) enquanto pesquisa ──────────────
   const [tokens, setTokens] = useState(0);

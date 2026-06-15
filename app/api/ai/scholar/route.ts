@@ -14,7 +14,9 @@ import { cacheDel } from "@/src/lib/cache";
 import { canDeepThink } from "@/lib/ai/deepThinkAccess";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+// Vercel: Hobby e Pro (padrão) limitam a função a 60s. 300 era rejeitado/cortado em prod
+// (a pesquisa "morria" no meio e não carregava). 60s + modo rápido (TOP_N=4) cabe no limite.
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);

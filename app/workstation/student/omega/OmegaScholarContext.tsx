@@ -11,6 +11,7 @@ interface OmegaState {
   answer: string;
   session: any | null;
   error: string | null;
+  startedAt: number | null; // quando a pesquisa começou (timer contínuo mesmo ao sair/voltar)
   // Suggestion Forge (engine 8003)
   suggestions: Suggestion[] | null;
   suggestionsCoverage: string | null;
@@ -42,7 +43,9 @@ const EMPTY_PREREQS = { prereqs: null, prereqsSummary: null, loadingPrereqs: fal
 export function OmegaScholarProvider({ room, onStart, children }:
   { room?: string; onStart?: () => void; children: ReactNode }) {
   const [state, setState] = useState<OmegaState>({
-    status: "idle", query: "", phases: [], answer: "", session: null, error: null, ...EMPTY_FORGE, ...EMPTY_PREREQS });
+    status: "idle", query: "", phases: [], answer: "", session: null, error: null, startedAt: null, ...EMPTY_FORGE, ...EMPTY_PREREQS });
+
+  const RUN_KEY = "zaeon.omega.run"; // lembra a pesquisa em curso p/ resumir ao voltar
 
   // Draft do input da barra, elevado ao contexto para o dock de sugestão observá-lo.
   const [draft, setDraft] = useState("");
@@ -54,7 +57,9 @@ export function OmegaScholarProvider({ room, onStart, children }:
   const runQuery = useCallback(async (prompt: string, deep = false) => {
     if (!prompt.trim()) return;
     onStart?.(); // parent switches activeTab → "community"
-    setState({ status: "running", query: prompt, phases: [], answer: "", session: null, error: null, ...EMPTY_FORGE, ...EMPTY_PREREQS });
+    const startedAt = Date.now();
+    try { localStorage.setItem(RUN_KEY, JSON.stringify({ query: prompt, startedAt })); } catch { /* ignore */ }
+    setState({ status: "running", query: prompt, phases: [], answer: "", session: null, error: null, startedAt, ...EMPTY_FORGE, ...EMPTY_PREREQS });
     try {
       const res = await fetch("/api/ai/scholar", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -81,8 +86,8 @@ export function OmegaScholarProvider({ room, onStart, children }:
         setState((s) => {
           if (ev.type === "phase") return { ...s, phases: [...s.phases, { phase: ev.phase, message: (ev as any).message ?? ev.phase }] };
           if (ev.type === "answer") return { ...s, answer: ev.text };
-          if (ev.type === "done") return { ...s, status: "done", session: ev.session };
-          if (ev.type === "error") return { ...s, status: "error", error: ev.message };
+          if (ev.type === "done") { try { localStorage.removeItem(RUN_KEY); } catch { /* ignore */ } return { ...s, status: "done", session: ev.session }; }
+          if (ev.type === "error") { try { localStorage.removeItem(RUN_KEY); } catch { /* ignore */ } return { ...s, status: "error", error: ev.message }; }
           return s;
         });
       };
@@ -105,12 +110,66 @@ export function OmegaScholarProvider({ room, onStart, children }:
     // Hidrata sugestões já persistidas (ForgeResponse em ScholarSession.suggestions), se houver.
     const stored: ForgeResponse | null = s?.suggestions ?? null;
     setState({
-      status: "done", query: s.query, phases: [], answer: s?.thread?.answer ?? "", session: s, error: null,
+      status: "done", query: s.query, phases: [], answer: s?.thread?.answer ?? "", session: s, error: null, startedAt: null,
       suggestions: stored?.suggestions ?? null,
       suggestionsCoverage: stored?.coverage_summary ?? null,
       loadingSuggestions: false,
       ...EMPTY_PREREQS,
     });
+  }, []);
+
+  // ── RESUMO AO VOLTAR ──────────────────────────────────────────────────────
+  // Ao remontar (saiu e voltou), retoma a pesquisa em curso (poll até concluir) ou
+  // restaura a última concluída — em vez de zerar a barra e ficar em branco.
+  const resumedRef = useRef(false);
+  useEffect(() => {
+    if (resumedRef.current) return;
+    resumedRef.current = true;
+    if (stateRef.current.status !== "idle") return;
+
+    let run: { query: string; startedAt: number } | null = null;
+    try { const raw = localStorage.getItem(RUN_KEY); if (raw) run = JSON.parse(raw); } catch { /* ignore */ }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch("/api/ai/scholar/sessions");
+        if (!r.ok) return;
+        const d = await r.json();
+        const list = Array.isArray(d.sessions) ? d.sessions : [];
+        if (!list.length) return;
+        const latest = list[0]; // mais recente (orderBy createdAt desc)
+        const ageMs = Date.now() - new Date(latest.createdAt).getTime();
+
+        if (latest.status === "running") {
+          if (ageMs > 90_000) { try { localStorage.removeItem(RUN_KEY); } catch { /* ignore */ } return; } // morreu no servidor
+          setState((s) => ({ ...s, status: "running", query: latest.query, startedAt: run?.startedAt ?? new Date(latest.createdAt).getTime() }));
+          const poll = async () => {
+            if (cancelled) return;
+            try {
+              const sr = await fetch(`/api/ai/scholar/sessions?id=${latest.id}`);
+              const sd = sr.ok ? await sr.json() : null;
+              const full = sd?.session;
+              if (full?.status === "done") { try { localStorage.removeItem(RUN_KEY); } catch { /* ignore */ } if (!cancelled) loadSession(full); return; }
+              if (full?.status === "error" || (Date.now() - new Date(latest.createdAt).getTime()) > 120_000) {
+                try { localStorage.removeItem(RUN_KEY); } catch { /* ignore */ }
+                if (!cancelled) setState((s) => ({ ...s, status: "error", error: "A pesquisa anterior foi interrompida. Tente de novo." }));
+                return;
+              }
+            } catch { /* tenta de novo */ }
+            if (!cancelled) setTimeout(poll, 4000);
+          };
+          setTimeout(poll, 3000);
+        } else if (latest.status === "done" && ageMs < 30 * 60_000) {
+          // restaura a última pesquisa concluída recente (continuidade)
+          const sr = await fetch(`/api/ai/scholar/sessions?id=${latest.id}`);
+          const sd = sr.ok ? await sr.json() : null;
+          if (sd?.session && !cancelled) loadSession(sd.session);
+        }
+      } catch { /* offline */ }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchSuggestions = useCallback(async (opts?: { count?: number; exclude?: string[] }) => {
