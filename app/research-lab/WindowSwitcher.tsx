@@ -9,6 +9,9 @@ interface WindowSwitcherProps {
   /** Tipo de trabalho — o pill "Minha pesquisa" vira "Meu TCC/Artigo/Relatório". */
   workType?: string | null;
   onWorkType?: (t: string) => void;
+  /** Ler a pesquisa em voz — vira o ▶/⏹ no lugar do caderninho da aba do trabalho. */
+  onReadResearch?: () => void;
+  isReadingResearch?: boolean;
 }
 
 const WORK_TYPES = ["Artigo", "Relatório", "TCC"] as const;
@@ -20,6 +23,8 @@ export default function WindowSwitcher({
   onClose,
   workType,
   onWorkType,
+  onReadResearch,
+  isReadingResearch,
 }: WindowSwitcherProps) {
   return (
     <div
@@ -45,7 +50,19 @@ export default function WindowSwitcher({
                   : { color: "#b8b8d0", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)" }
               }
             >
-              <span>{w.emoji}</span>
+              {isResearch && onReadResearch ? (
+                <span
+                  role="button"
+                  aria-label={isReadingResearch ? "Parar leitura" : "Ouvir a pesquisa"}
+                  title={isReadingResearch ? "Parar a leitura" : "Ouvir a pesquisa em voz"}
+                  onClick={(e) => { e.stopPropagation(); onReadResearch(); }}
+                  className={`flex items-center justify-center w-4 leading-none transition-transform hover:scale-110 ${isReadingResearch ? "text-cyan-300" : ""}`}
+                >
+                  {isReadingResearch ? "⏹" : "▶"}
+                </span>
+              ) : (
+                <span>{w.emoji}</span>
+              )}
               <span>{isResearch && workType ? `Meu ${workType}` : w.label}</span>
               {/* Qualquer aba que não seja a do trabalho pode ser fechada (documento OU pdf que falhou). */}
               {w.type !== "research" && (

@@ -154,7 +154,7 @@ function playFillerAudio(url: string, ac: AbortController): Promise<void> {
 
 /** Lê uma SEQUÊNCIA de textos em ordem (modo leitura do estudo inteiro), com
  *  PIPELINE: pré-sintetiza o próximo pedaço enquanto o atual toca → sem demora entre blocos. */
-export async function speakSequence(parts: string[], opts?: { voice?: string; gender?: "f" | "m" }) {
+export async function speakSequence(parts: string[], opts?: { voice?: string; gender?: "f" | "m"; filler?: boolean }) {
   stop(); // mata fala/sequência anterior
   const myCtrl = new AbortController();
   ctrl = myCtrl; // stop() aborta a sequência inteira
@@ -171,21 +171,25 @@ export async function speakSequence(parts: string[], opts?: { voice?: string; ge
   const ensure = (idx: number) => { if (idx < chunks.length && !synth[idx]) synth[idx] = synthChunk(chunks[idx], voiceId, myCtrl); };
   for (let k = 0; k <= LOOKAHEAD; k++) ensure(k);
 
-  // COLD-START: enquanto o 1º pedaço REAL sintetiza (~3-5s), toca curingas prontas (áudio
-  // fixo, zero latência) pra não deixar o usuário no silêncio. Cada curinga toca INTEIRA; a
-  // voz real só entra quando o pedaço estiver pronto E a curinga acabar (sem sobreposição).
-  // Latência longa → encadeia outra curinga até o real ficar pronto. Sem clipes → não roda.
-  let chunk0Ready = false;
-  synth[0]!.then(() => { chunk0Ready = true; }).catch(() => { chunk0Ready = true; });
-  // janela curta: se o 1º pedaço vier rápido, nem toca curinga (sem delay artificial).
-  await Promise.race([synth[0]!.catch(() => {}), new Promise((r) => setTimeout(r, 450))]);
-  let lastFiller: string | null = null;
-  while (!chunk0Ready && !myCtrl.signal.aborted) {
-    const url = await pickFiller(voiceId, lastFiller); // curinga NA MESMA voz do usuário
-    if (!url) break;
-    lastFiller = url;
-    set({ speaking: true, loading: false, text: "…" }); // curinga É áudio → ondas ligadas
-    await playFillerAudio(url, myCtrl);
+  // COLD-START (só com opts.filler — leitura de DOCUMENTO INTEIRO): enquanto o 1º pedaço
+  // REAL sintetiza (~3-5s), toca curingas prontas (áudio fixo, zero latência) pra não deixar
+  // o usuário no silêncio. Cada curinga toca INTEIRA; a voz real só entra quando o pedaço
+  // estiver pronto E a curinga acabar (sem sobreposição). Latência longa → encadeia outra.
+  // NÃO usar em fala curta (título, resposta de chat) nem na sala de estudos — só onde o
+  // texto é longo o bastante pra valer o disfarce. Sem clipes → não roda.
+  if (opts?.filler) {
+    let chunk0Ready = false;
+    synth[0]!.then(() => { chunk0Ready = true; }).catch(() => { chunk0Ready = true; });
+    // janela curta: se o 1º pedaço vier rápido, nem toca curinga (sem delay artificial).
+    await Promise.race([synth[0]!.catch(() => {}), new Promise((r) => setTimeout(r, 450))]);
+    let lastFiller: string | null = null;
+    while (!chunk0Ready && !myCtrl.signal.aborted) {
+      const url = await pickFiller(voiceId, lastFiller); // curinga NA MESMA voz do usuário
+      if (!url) break;
+      lastFiller = url;
+      set({ speaking: true, loading: false, text: "…" }); // curinga É áudio → ondas ligadas
+      await playFillerAudio(url, myCtrl);
+    }
   }
 
   for (let i = 0; i < chunks.length; i++) {
