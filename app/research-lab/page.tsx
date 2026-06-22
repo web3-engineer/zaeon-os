@@ -1457,7 +1457,26 @@ export default function HomeworkPage({
     }
   };
 
-  // Arrastar uma pesquisa sobre outra → resumo da RELAÇÃO. Nível por modo (Vercel/Groq ↔ Gemini).
+  // Baixa um PDF salvo pelo proxy e devolve base64 (ou null se falhar — upload/blob/403/400).
+  const fetchPdfBase64 = async (pdfUrl: string): Promise<string | null> => {
+    try {
+      const res = await fetch(`/api/ai/scholar/pdf?url=${encodeURIComponent(pdfUrl)}`);
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      return await new Promise<string | null>((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onload = () => resolve((reader.result as string).split(",")[1] || null);
+        reader.onerror = () => resolve(null);
+      });
+    } catch {
+      return null;
+    }
+  };
+
+  // Arrastar uma pesquisa sobre outra → resumo da RELAÇÃO.
+  // Tenta a comparação RICA (os 2 PDFs inteiros → Gemini multimodal). Se algum PDF não
+  // baixar (upload/blob/403), cai no nível metadados (título+abstract) — sem 400.
   const handleRelateFiles = async (sourceId: string, targetId: string) => {
     const a = libraryFiles.find((f) => f.id === sourceId);
     const b = libraryFiles.find((f) => f.id === targetId);
@@ -1483,15 +1502,29 @@ export default function HomeworkPage({
     }));
     showToast("Nova aba de relação aberta — carregando ✨");
     try {
-      const mode = capabilities().heavyRag ? "gemini" : "vercel";
+      // Baixa os dois PDFs em paralelo. Ambos OK → comparação rica (Gemini lê os PDFs
+      // inteiros); senão → metadados (o route faz o fallback, sem 400).
+      const [aPdf, bPdf] = await Promise.all([
+        fetchPdfBase64(a.pdfUrl),
+        fetchPdfBase64(b.pdfUrl),
+      ]);
+      const bothPdfs = !!aPdf && !!bPdf;
       const res = await fetch("/api/ai/relate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode,
-          a: { pdfUrl: a.pdfUrl, title: a.title },
-          b: { pdfUrl: b.pdfUrl, title: b.title },
-        }),
+        body: JSON.stringify(
+          bothPdfs
+            ? {
+                mode: "gemini",
+                a: { pdfUrl: a.pdfUrl, title: a.title, fileData: aPdf },
+                b: { pdfUrl: b.pdfUrl, title: b.title, fileData: bPdf },
+              }
+            : {
+                mode: "vercel",
+                a: { pdfUrl: a.pdfUrl, title: a.title },
+                b: { pdfUrl: b.pdfUrl, title: b.title },
+              },
+        ),
       });
       const d = await res.json();
       setRelSummaries((prev) => ({
