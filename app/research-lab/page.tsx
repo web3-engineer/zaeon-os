@@ -62,7 +62,7 @@ import OnboardingGuide from "@/components/onboard/OnboardingGuide";
 import { startTour } from "@/lib/onboarding/tour";
 import { capabilities } from "@/lib/runtime/mode";
 import { useLibraryFiles, type LibraryFile } from "@/lib/useLibraryFiles";
-import { speak as ttsSpeak } from "@/lib/voice/ttsController";
+import { speakSequence as ttsSpeakSequence } from "@/lib/voice/ttsController";
 import RichText from "@/components/research/RichText";
 import { useWindowStore } from "@/lib/useWindowStore";
 
@@ -1786,11 +1786,12 @@ export default function HomeworkPage({
 
     if (msgId != null) setVoiceLoadingId(msgId);
     try {
-      // MESMO caminho do chat widget (useTTS → ttsController): quebra o texto em pedaços
-      // de ~420 chars, um POST /api/ai/voice por pedaço → o Gemini-TTS responde rápido e
-      // não estoura o timeout do proxy (era a causa do 503 com texto longo na sala).
-      void audioRef; // (legado — o áudio agora é gerido pelo ttsController global)
-      await ttsSpeak(clean);
+      // speakSequence QUEBRA o resumo em pedaços de ~420 chars (1 POST /api/ai/voice por
+      // pedaço). O resumo é LONGO; mandado inteiro, o Gemini-TTS estoura 30s e dá 503
+      // "aborted" (o speak() comum manda tudo de uma vez — por isso só funcionava com
+      // textos curtos, tipo o chat widget). Em pedaços curtos, cada chamada responde rápido.
+      void audioRef; // (legado — o áudio é gerido pelo ttsController global)
+      await ttsSpeakSequence([clean]);
     } catch {
       showToast("Voz indisponível agora.");
     } finally {

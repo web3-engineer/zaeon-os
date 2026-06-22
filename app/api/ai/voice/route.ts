@@ -42,7 +42,9 @@ export async function POST(req: Request) {
   // CAMINHO PRINCIPAL: Gemini-TTS no Vertex (voz feminina pt-BR, no crédito GenAI).
   let geminiErr = "";
   try {
-    const out = await synthGeminiTTS(text, voice);
+    // 12s: se o Gemini-TTS pendurar (modelo/região), falha rápido e cai pro Piper
+    // em vez de estourar 30s e devolver 503 "aborted".
+    const out = await synthGeminiTTS(text, voice, 12_000);
     return json(out, 200);
   } catch (e) {
     // segue para o fallback offline (Piper) sem derrubar a tela.
