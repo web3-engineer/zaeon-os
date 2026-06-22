@@ -11,6 +11,8 @@
  *
  * Caminho neural: POST /api/ai/voice (Kokoro/Piper). Fallback: speechSynthesis do navegador.
  */
+import { pickFiller } from "./fillers";
+
 export type TTSState = { speaking: boolean; loading: boolean; text: string | null };
 
 let audio: HTMLAudioElement | null = null;
@@ -138,6 +140,18 @@ function playPrepared(item: Prepared, ac: AbortController, gender: "f" | "m" = "
   });
 }
 
+// Toca uma CURINGA (áudio fixo) inteira e resolve no fim — mascara o cold-start da voz real.
+function playFillerAudio(url: string, ac: AbortController): Promise<void> {
+  return new Promise((resolve) => {
+    if (ac.signal.aborted) return resolve();
+    const a = new Audio(url);
+    audio = a;
+    a.onended = () => { if (audio === a) audio = null; resolve(); };
+    a.onerror = () => { if (audio === a) audio = null; resolve(); }; // clipe faltando → segue
+    a.play().catch(() => { if (audio === a) audio = null; resolve(); });
+  });
+}
+
 /** Lê uma SEQUÊNCIA de textos em ordem (modo leitura do estudo inteiro), com
  *  PIPELINE: pré-sintetiza o próximo pedaço enquanto o atual toca → sem demora entre blocos. */
 export async function speakSequence(parts: string[], opts?: { voice?: string; gender?: "f" | "m" }) {
@@ -156,6 +170,23 @@ export async function speakSequence(parts: string[], opts?: { voice?: string; ge
   const synth: (Promise<Prepared> | undefined)[] = [];
   const ensure = (idx: number) => { if (idx < chunks.length && !synth[idx]) synth[idx] = synthChunk(chunks[idx], voiceId, myCtrl); };
   for (let k = 0; k <= LOOKAHEAD; k++) ensure(k);
+
+  // COLD-START: enquanto o 1º pedaço REAL sintetiza (~3-5s), toca curingas prontas (áudio
+  // fixo, zero latência) pra não deixar o usuário no silêncio. Cada curinga toca INTEIRA; a
+  // voz real só entra quando o pedaço estiver pronto E a curinga acabar (sem sobreposição).
+  // Latência longa → encadeia outra curinga até o real ficar pronto. Sem clipes → não roda.
+  let chunk0Ready = false;
+  synth[0]!.then(() => { chunk0Ready = true; }).catch(() => { chunk0Ready = true; });
+  // janela curta: se o 1º pedaço vier rápido, nem toca curinga (sem delay artificial).
+  await Promise.race([synth[0]!.catch(() => {}), new Promise((r) => setTimeout(r, 450))]);
+  let lastFiller: string | null = null;
+  while (!chunk0Ready && !myCtrl.signal.aborted) {
+    const url = await pickFiller(lastFiller);
+    if (!url) break;
+    lastFiller = url;
+    set({ speaking: true, loading: false, text: "…" }); // curinga É áudio → ondas ligadas
+    await playFillerAudio(url, myCtrl);
+  }
 
   for (let i = 0; i < chunks.length; i++) {
     if (myCtrl.signal.aborted) return;
