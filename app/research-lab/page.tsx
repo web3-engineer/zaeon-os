@@ -774,6 +774,58 @@ export default function HomeworkPage({
     examiner: { role: "ai" | "user"; text: string }[];
   }>({ examiner: [] });
 
+  // ─── Chat de PDF POR JANELA (corrige: o resumo de um trabalho vazava pra TODAS as abas) ───
+  // Os singletons (pdfChatHistory/activeFileContext/pdfCache/liteContext) são a CÓPIA DE
+  // TRABALHO da aba ATIVA. Como só a aba ativa fica visível, ao trocar de aba salvamos a
+  // cópia da anterior e restauramos a da nova → cada aba de documento mostra a SUA. Escopo
+  // restrito a janelas abertas por "play" de um doc salvo (editor/Conversar/relações intactos).
+  const docWinsRef = useRef<
+    Record<
+      string,
+      {
+        chat: { role: "ai" | "user"; text: string }[];
+        fileContext: string | null;
+        cache: { name: string; expireTime: string } | null;
+        lite: string | null;
+      }
+    >
+  >({});
+  const playedDocIdsRef = useRef<Set<string>>(new Set());
+  const prevWinRef = useRef<string>(wActiveId);
+  // refs espelhando os singletons — pra ler no efeito sem re-disparar a cada mensagem.
+  const chatValRef = useRef(pdfChatHistory);
+  chatValRef.current = pdfChatHistory;
+  const fileCtxValRef = useRef(activeFileContext);
+  fileCtxValRef.current = activeFileContext;
+  const cacheValRef = useRef(pdfCache);
+  cacheValRef.current = pdfCache;
+  const liteValRef = useRef(liteContext);
+  liteValRef.current = liteContext;
+
+  useEffect(() => {
+    const prev = prevWinRef.current;
+    const next = wActiveId;
+    if (prev === next) return;
+    // Salva a aba anterior (se for um doc tocado).
+    if (playedDocIdsRef.current.has(prev)) {
+      docWinsRef.current[prev] = {
+        chat: chatValRef.current,
+        fileContext: fileCtxValRef.current,
+        cache: cacheValRef.current,
+        lite: liteValRef.current,
+      };
+    }
+    // Restaura a nova (se for um doc tocado) — senão deixa os singletons como estão.
+    if (playedDocIdsRef.current.has(next)) {
+      const s = docWinsRef.current[next];
+      setPdfChatHistory(s?.chat ?? []);
+      setActiveFileContext(s?.fileContext ?? null);
+      setPdfCache(s?.cache ?? null);
+      setLiteContext(s?.lite ?? null);
+    }
+    prevWinRef.current = next;
+  }, [wActiveId]);
+
   // --- LOADING & ACTION STATES ---
   const [isPdfTyping, setIsPdfTyping] = useState(false);
   const [isExaminerTyping, setIsExaminerTyping] = useState(false);
@@ -1364,6 +1416,7 @@ export default function HomeworkPage({
     pdfUrl: string;
   }) => {
     if (isPdfTyping || processingFileId) return;
+    playedDocIdsRef.current.add(file.id); // esta janela participa do chat-por-janela
     setProcessingFileId(file.id);
     setProcessingStage("pdf");
     setIsPdfTyping(true);
