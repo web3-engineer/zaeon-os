@@ -1701,11 +1701,20 @@ export default function HomeworkPage({
             ? await post({ cacheName: recreated.name })
             : await post(activeFileContext ? { fileData: activeFileContext } : {});
         }
+        // Turno cacheado falhou sem ser cacheExpired (ex.: 500) → tenta inline uma vez,
+        // pra não engolir a pergunta em silêncio.
+        if (!data?.text && !data?.cacheExpired && activeFileContext) {
+          data = await post({ fileData: activeFileContext });
+        }
       } else {
         data = await post(activeFileContext ? { fileData: activeFileContext } : {});
       }
-      if (data?.text)
+      if (data?.text) {
         setPdfChatHistory((prev) => [...prev, { role: "ai", text: data.text }]);
+      } else if (!data?.cacheExpired) {
+        // resposta sem texto (erro do servidor) → avisa em vez de sumir com o turno
+        showToast("Não consegui responder agora.");
+      }
     } catch (e) {
       console.error(e);
       showToast("Falha de conexão.");
