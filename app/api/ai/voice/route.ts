@@ -2,6 +2,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { guard } from "@/src/lib/ratelimit";
+import { geminiTTS, geminiTTSAvailable } from "@/lib/voice/gemini-tts";
+import { resolveGeminiVoiceName } from "@/lib/voice/gemini-voices";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -32,23 +34,19 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({} as any));
   const text = typeof body.text === "string" ? body.text.trim() : "";
-  // TEMPORÁRIO: o Kokoro (vozes femininas) é inviável na CPU do VPS (~8s+ por trecho)
-  // → 503. Até existir uma voz feminina rápida, forçamos o Piper (natural-br): ~0,2s,
-  // sempre responde. (Trocar/remover quando a voz feminina rápida entrar.)
-  const voice = "natural-br";
-  void body.voice;
+  const voiceId = typeof body.voice === "string" ? body.voice : undefined;
   if (text.length < 1) return json({ error: "Texto vazio." }, 400);
   if (text.length > 4000) return json({ error: "Texto muito longo (máx. 4000)." }, 400);
 
-  // Sintetiza UMA vez, com timeout próprio. Devolve o JSON da engine ou null (falhou).
-  async function synth(voiceId: string | undefined, timeoutMs: number): Promise<any | null> {
+  // FALLBACK: síntese pelo engine Python (Piper). Devolve o JSON ou null (falhou).
+  async function synth(engineVoice: string | undefined, timeoutMs: number): Promise<any | null> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const res = await fetch(`${VOICE_URL}/synthesize`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, voice: voiceId }),
+        body: JSON.stringify({ text, voice: engineVoice }),
         signal: controller.signal,
       });
       clearTimeout(timer);
@@ -61,11 +59,17 @@ export async function POST(req: Request) {
     }
   }
 
-  // 1ª tentativa: a voz pedida (pode ser Kokoro, mais lenta na CPU do VPS).
-  let data = await synth(voice, 45_000);
-  // Fallback: se a voz pedida falhar/estourar o tempo e não for já o Piper rápido,
-  // tenta 'natural-br' (Piper) — garante áudio em vez de 503 silencioso.
-  if (!data && voice !== "natural-br") data = await synth("natural-br", 30_000);
+  // 1) Gemini-TTS — voz premium dentro do crédito GenAI do Google. Feminina pt-BR
+  //    por padrão; mapeia a voz escolhida quando for do catálogo Gemini. Saída já
+  //    vem como WAV ({ audio_base64, mime:"audio/wav" }) → drop-in pro ttsController.
+  let data: any = null;
+  if (geminiTTSAvailable()) {
+    const g = await geminiTTS(text, { voiceName: resolveGeminiVoiceName(voiceId), timeoutMs: 25_000 });
+    if (g) data = g;
+  }
+  // 2) Fallback: Piper (natural-br) — garante áudio se o Gemini falhar/estourar o
+  //    tempo, ou se o modelo TTS ainda não estiver habilitado no projeto/região.
+  if (!data) data = await synth("natural-br", 30_000);
   if (!data) return json({ error: "Engine de voz indisponível." }, 503);
   return json(data, 200);
 }

@@ -1,23 +1,15 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
+import { publicGeminiVoices, ZAEON_DEFAULT_VOICE_ID } from "@/lib/voice/gemini-voices";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Catálogo de vozes (GET) — espelha o voice-engine (/voices). Se o engine estiver
-// offline, devolvemos um catálogo estático equivalente ao engine.py → VOICES, pra
-// a UI de escolha de voz nunca ficar vazia.
+// Catálogo de vozes (GET). Lidera com as vozes do Gemini-TTS (premium, no crédito
+// Google; feminina pt-BR é o default). Tenta anexar as vozes do engine Python
+// (Piper/Kokoro) como fallback selecionável — best-effort: se o engine estiver
+// offline, devolve só as do Gemini, então a UI nunca fica vazia.
 const VOICE_URL = process.env.VOICE_ENGINE_URL ?? "http://localhost:8004";
-
-const FALLBACK = {
-  default: "natural-br",
-  voices: [
-    { id: "natural-br", label: "Natural (pt-BR)", gender: "m", lang: "pt-BR", tier: "free" },
-    { id: "aura-f", label: "Aura (feminina, Kokoro)", gender: "f", lang: "pt-BR", tier: "free" },
-    { id: "aura-m", label: "Áureo (masculina, Kokoro)", gender: "m", lang: "pt-BR", tier: "free" },
-    { id: "nova-f", label: "Nova (feminina, Kokoro)", gender: "f", lang: "pt-BR", tier: "premium" },
-  ],
-};
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
@@ -27,6 +19,9 @@ export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return new Response("Unauthorized", { status: 401 });
 
+  const voices: any[] = [...publicGeminiVoices()];
+
+  // anexa as vozes do engine (Piper) como fallback, se disponível
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 4000);
   try {
@@ -34,11 +29,15 @@ export async function GET() {
     clearTimeout(timer);
     if (res.ok) {
       const data = await res.json().catch(() => null);
-      if (data?.voices?.length) return json(data, 200);
+      if (Array.isArray(data?.voices)) {
+        for (const v of data.voices) {
+          if (v?.id && !voices.some((x) => x.id === v.id)) voices.push({ ...v, tier: v.tier || "free" });
+        }
+      }
     }
   } catch {
     clearTimeout(timer);
   }
-  // engine offline / sem dados → catálogo estático
-  return json(FALLBACK, 200);
+
+  return json({ default: ZAEON_DEFAULT_VOICE_ID, voices }, 200);
 }

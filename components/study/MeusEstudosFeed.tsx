@@ -22,6 +22,7 @@ import {
 import VoiceModeSwitch from "@/components/voice/VoiceModeSwitch";
 import SpeakButton from "@/components/voice/SpeakButton";
 import VoicePlayButton from "@/components/voice/VoicePlayButton";
+import StudioDock from "@/components/studio/StudioDock";
 import { useTTS } from "@/lib/voice/useTTS";
 import { takeHandoff } from "@/lib/agents/handoff";
 import { missionDone } from "@/lib/agents/mission";
@@ -672,6 +673,9 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
             label={tts.speaking ? "Parar a leitura" : "Ouvir o estudo inteiro"}
           />
         </div>
+
+        {/* ── STUDIO DA ZAEON: transforma o estudo em guia/FAQ/flashcards/mapa/linha do tempo ── */}
+        <StudioDock spaceId={spaceId} />
 
         {/* ── BARRINHA-AGENTE: só aparece ao clicar no ⟁ (some enquanto a Zaeon pensa). ── */}
         {barOpen && !zaeonBusy && (
