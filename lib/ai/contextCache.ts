@@ -134,9 +134,12 @@ export async function generateWithCache(opts: {
   });
   if (res.status === 404 || res.status === 403 || res.status === 400) {
     const detail = await res.text().catch(() => "");
-    if (res.status === 404 || /cache/i.test(detail)) {
-      throw new CacheMissError(`cache_miss_${res.status}`);
-    }
+    // Cache sumiu/expirou: 404 sempre; 400/403 só quando a mensagem aponta o cache
+    // ausente/expirado/inválido (evita confundir um PERMISSION_DENIED real com cache-miss).
+    const cacheGone =
+      res.status === 404 ||
+      /(not[_ ]?found|expired|deleted|cached?content.*(invalid|not exist|expired|delet))/i.test(detail);
+    if (cacheGone) throw new CacheMissError(`cache_miss_${res.status}`);
     throw new Error(`cache_gen_http_${res.status}`);
   }
   if (!res.ok) throw new Error(`cache_gen_http_${res.status}`);
