@@ -830,6 +830,10 @@ export default function HomeworkPage({
 
   // --- LOADING & ACTION STATES ---
   const [isPdfTyping, setIsPdfTyping] = useState(false);
+  // Erro do resumo (mostra mensagem + botão "Tentar de novo" no painel) e o último
+  // arquivo tocado, pra o retry reabrir exatamente ele.
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const lastPlayedFileRef = useRef<{ id: string; title: string; pdfUrl: string } | null>(null);
   const [isExaminerTyping, setIsExaminerTyping] = useState(false);
   const [isCitationTyping, setIsCitationTyping] = useState(false);
   const [isSystemProcessing, setIsSystemProcessing] = useState(false);
@@ -1433,6 +1437,8 @@ export default function HomeworkPage({
     setActiveSection("pdf");
     setInternalDoc(null); // sai do modo "documento gerado" ao abrir um arquivo da biblioteca
     setPdfCache(null); // cache do PDF anterior não vale mais
+    setPdfError(null); // limpa erro anterior
+    lastPlayedFileRef.current = file; // pro botão "Tentar de novo"
 
     // MODO LEVE (Vercel): resume do abstract/metadados — NÃO baixa o PDF, sem 502, via Groq.
     if (!capabilities().heavyRag) {
@@ -1452,7 +1458,7 @@ export default function HomeworkPage({
           { role: "ai", text: d.text || "Não consegui resumir agora." },
         ]);
       } catch {
-        showToast("Erro ao gerar o resumo leve.");
+        setPdfError("Não consegui gerar o resumo agora.");
       } finally {
         setIsPdfTyping(false);
         setProcessingFileId(null);
@@ -1490,7 +1496,7 @@ export default function HomeworkPage({
             },
           ]);
         } catch {
-          showToast("Não consegui abrir esse arquivo agora.");
+          setPdfError("Não consegui abrir esse arquivo agora.");
         }
         return; // o finally externo limpa os estados de processamento
       }
@@ -1531,13 +1537,22 @@ export default function HomeworkPage({
       });
       const data = await response.json();
       if (data.text) setPdfChatHistory([{ role: "ai", text: data.text }]);
+      else setPdfError("A IA não retornou o resumo. Tente de novo.");
     } catch (e) {
-      showToast("Erro ao abrir o arquivo salvo.");
+      setPdfError("Erro ao abrir o arquivo. Toque em tentar de novo.");
     } finally {
       setIsPdfTyping(false);
       setProcessingFileId(null);
       setProcessingStage(null);
     }
+  };
+
+  // Reabre o último arquivo tocado — botão "Tentar de novo" do painel de resumo.
+  const retryPlaySavedDoc = () => {
+    const f = lastPlayedFileRef.current;
+    if (!f) return;
+    setPdfError(null);
+    void handlePlaySavedDoc(f);
   };
 
   // Baixa um PDF salvo pelo proxy e devolve base64 (ou null se falhar — upload/blob/403/400).
@@ -2473,10 +2488,19 @@ export default function HomeworkPage({
                       ref={pdfChatRef}
                       className="flex-1 px-5 py-3 overflow-y-auto space-y-2 custom-scrollbar bg-slate-50 dark:bg-black/50"
                     >
-                      {pdfChatHistory.length === 0 && (
-                        <span className="text-xs text-black dark:text-white font-medium italic">
-                          Nenhum resumo gerado.
-                        </span>
+                      {/* ERRO + tentar de novo (substitui o antigo "Nenhum resumo gerado") */}
+                      {pdfError && !isPdfTyping && (
+                        <div className="flex flex-col items-start gap-2 p-3 rounded-2xl bg-red-50 dark:bg-red-500/10 border border-red-300/60 dark:border-red-400/20">
+                          <p className="text-[12px] text-red-700 dark:text-red-300 font-medium leading-snug">
+                            ⚠️ {pdfError}
+                          </p>
+                          <button
+                            onClick={retryPlaySavedDoc}
+                            className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wide px-3.5 py-1.5 rounded-full bg-red-600 hover:bg-red-500 text-white transition-colors"
+                          >
+                            ↻ Tentar de novo
+                          </button>
+                        </div>
                       )}
                       {pdfChatHistory.map((msg, i) => {
                         if (msg.role !== "ai")
@@ -2536,9 +2560,28 @@ export default function HomeworkPage({
                           </div>
                         );
                       })}
+                      {/* ESTADO DE ESPERA RICO — mostra o que a Aura está fazendo + três pontinhos. */}
                       {isPdfTyping && (
-                        <div className="text-[10px] font-bold animate-pulse text-cyan-600 ml-12">
-                          Aura está a analisar...
+                        <div className="flex items-center gap-3 px-1 py-2">
+                          <img
+                            src="/agents/aura.png"
+                            alt="Aura"
+                            className="w-7 h-7 rounded-full shrink-0 ring-2 ring-cyan-400/40"
+                          />
+                          <div className="flex flex-col gap-1.5">
+                            <span className="text-[12px] font-bold text-cyan-700 dark:text-cyan-300">
+                              {processingStage === "pdf"
+                                ? "Baixando e lendo o documento"
+                                : processingStage === "ai"
+                                  ? "Escrevendo o resumo"
+                                  : "Aura está pensando"}
+                            </span>
+                            <span className="flex items-center gap-1" aria-hidden>
+                              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-bounce" style={{ animationDelay: "0ms" }} />
+                              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-bounce" style={{ animationDelay: "150ms" }} />
+                              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-bounce" style={{ animationDelay: "300ms" }} />
+                            </span>
+                          </div>
                         </div>
                       )}
                     </div>
