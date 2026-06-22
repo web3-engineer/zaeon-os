@@ -1,7 +1,8 @@
 // Relação entre DOIS trabalhos (arrastar uma pesquisa sobre a outra).
 // Dois níveis (ver lib/runtime/mode):
-//   - mode "vercel"  → SIMPLES: relação a partir dos metadados (título+abstract) via Groq. Sem PDF, sem 502.
+//   - mode "vercel"  → SIMPLES: relação a partir dos metadados (título+abstract) via Gemini Flash (Vertex). Sem PDF, sem 502.
 //   - mode "gemini"  → SOFISTICADO: agente Gemini (Vertex) com acesso aos DOIS PDFs inteiros.
+//   - texto interno  → docs gerados (sem PDF): relaciona pelo corpo dos dois via Gemini Flash.
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
@@ -11,11 +12,12 @@ import { vertexCredentials } from "@/lib/ai/vertex-credentials";
 import { geminiText } from "@/lib/ai/gemini-text";
 import { cacheJson, hashKey } from "@/src/lib/cache";
 import { guard } from "@/src/lib/ratelimit";
+import { extractDocText, buildRelateTextContext } from "@/lib/ai/docContext";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-interface DocRef { pdfUrl?: string; title?: string; abstract?: string; authors?: string[]; fileData?: string }
+interface DocRef { pdfUrl?: string; title?: string; abstract?: string; authors?: string[]; fileData?: string; text?: string; content?: string }
 
 const SYSTEM = `Você é a Aura, parceira de pesquisa da Zaeon — conversa como uma colega esperta e gente boa,
 não como um robô. Recebe dois trabalhos e explica, em português do Brasil e em TEXTO CORRIDO (sem listas
@@ -52,7 +54,22 @@ export async function POST(req: Request) {
     const a: DocRef = body.a || {};
     const b: DocRef = body.b || {};
 
-    // ───────── NÍVEL SIMPLES (Vercel): metadados → Groq ─────────
+    // ───────── NÍVEL TEXTO (docs INTERNOS gerados): corpo dos dois → Gemini ─────────
+    // Estudos/pesquisas do usuário já têm o texto no app/banco — não há PDF p/ baixar
+    // (era a causa do 403). Se ambos trazem texto, relaciona direto, sem proxy de PDF.
+    const aText = extractDocText({ text: a.text ?? a.content });
+    const bText = extractDocText({ text: b.text ?? b.content });
+    if (aText && bText) {
+        try {
+            const ctx = buildRelateTextContext({ title: a.title, text: aText }, { title: b.title, text: bText });
+            const text = await geminiText({ system: SYSTEM, prompt: ctx, temperature: 0.5 });
+            return NextResponse.json({ text, mode: "text" });
+        } catch {
+            return NextResponse.json({ error: "ai_error", text: "Falha ao relacionar os documentos." }, { status: 502 });
+        }
+    }
+
+    // ───────── NÍVEL SIMPLES (Vercel): metadados → Gemini Flash ─────────
     if (mode === "vercel") {
         const [ma, mb] = await Promise.all([resolveMeta(dbUser.id, a), resolveMeta(dbUser.id, b)]);
         if (!ma.title && !ma.abstract && !mb.title && !mb.abstract) {

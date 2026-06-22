@@ -8,9 +8,13 @@
  */
 import { prisma } from "@/src/lib/prisma";
 import { geminiJson } from "@/lib/scholar/gemini";
-import { geminiTTSMulti } from "@/lib/voice/gemini-tts";
-import { ZAEON_VOICE_F, ZAEON_VOICE_M } from "@/lib/voice/gemini-voices";
+import { synthGeminiTTSMulti } from "@/lib/studio/podcast-tts";
 import { concatWav } from "@/lib/studio/wav";
+
+// Vozes dos 2 apresentadores (nomes prebuilt do Gemini-TTS; override por env).
+// Default feminino = "Kore" (mesmo default do catálogo de voz da casa).
+const VOICE_F = process.env.ZAEON_TTS_VOICE_F || "Kore";
+const VOICE_M = process.env.ZAEON_TTS_VOICE_M || "Charon";
 import { writeStudioFile } from "@/lib/studio/storage";
 import {
   defaultHosts,
@@ -43,12 +47,12 @@ export async function runPodcastGeneration(
     );
 
     // 2) voz — multi-speaker (até 2 vozes); chunk por tamanho, concatena os WAVs
-    const speakers = hosts.map((h) => ({ speaker: h.name, voiceName: h.gender === "f" ? ZAEON_VOICE_F : ZAEON_VOICE_M }));
+    const speakers = hosts.map((h) => ({ speaker: h.name, voiceName: h.gender === "f" ? VOICE_F : VOICE_M }));
     const chunks = chunkTurnsForTTS(transcript, 2500);
     const wavs: Buffer[] = [];
     for (const text of chunks) {
-      const audio = await geminiTTSMulti(text, speakers, { timeoutMs: 120_000 });
-      if (audio?.audio_base64) wavs.push(Buffer.from(audio.audio_base64, "base64"));
+      const wav = await synthGeminiTTSMulti(text, speakers, 120_000);
+      if (wav) wavs.push(wav);
     }
     if (!wavs.length) throw new Error("TTS multi-speaker não retornou áudio (modelo Gemini-TTS habilitado no projeto?)");
 

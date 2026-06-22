@@ -1,6 +1,6 @@
 /**
  * Montadores/parsers PUROS do corpo da requisição do Gemini-TTS (Vertex REST).
- * Sem rede — o wrapper com auth+fetch fica em lib/voice/gemini-tts.ts.
+ * Sem rede — o wrapper multi-locutor (auth+fetch) fica em lib/studio/podcast-tts.ts.
  *
  * Forma da chamada (generateContent com responseModalities=["AUDIO"]):
  *   - 1 voz:      speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName
