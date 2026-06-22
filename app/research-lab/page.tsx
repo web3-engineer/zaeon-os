@@ -702,6 +702,7 @@ export default function HomeworkPage({
   // Conversar com o DOCUMENTO GERADO (estudo/pesquisa do editor): usa o texto que o app
   // já tem (docContent), não o proxy de PDF (que dá 403 p/ docs internos). → /api/ai/doc/chat.
   const [internalDoc, setInternalDoc] = useState<{ title: string; content: string } | null>(null);
+  const [crossPickerOpen, setCrossPickerOpen] = useState(false); // dropdown "Cruzar com pesquisa salva"
   const { files: libraryFiles, save: saveLibraryFile } = useLibraryFiles();
   // Window store SUBIDO pra cá — pra o merge também abrir abas (não só o play).
   const {
@@ -1489,6 +1490,59 @@ export default function HomeworkPage({
     }
   };
 
+  // Cruzar o DOCUMENTO GERADO (texto do editor) com uma PESQUISA SALVA — relação pelo
+  // TEXTO dos dois (sem PDF, sem 403). Carrega o conteúdo da sessão (mesmo formato do
+  // deep-link ?session=) e manda os dois corpos pro /api/ai/relate (modo texto).
+  const handleCrossDocWithSession = async (sid: string, sTitle: string) => {
+    setCrossPickerOpen(false);
+    if (!docContent.trim()) {
+      showToast("Escreva algo no documento primeiro.");
+      return;
+    }
+    const relId = "rel-" + generateSafeId();
+    const shortA = docTitle.length > 12 ? docTitle.slice(0, 12) + "…" : docTitle;
+    const shortB = sTitle.length > 12 ? sTitle.slice(0, 12) + "…" : sTitle;
+    const title = `${docTitle} × ${sTitle}`;
+    wAddWindow({ id: relId, label: `${shortA} × ${shortB}`, emoji: "🔗", type: "document" });
+    setRelSummaries((prev) => ({ ...prev, [relId]: { title, text: "", loading: true } }));
+    showToast("Cruzando os dois documentos — carregando ✨");
+    try {
+      const sr = await fetch(`/api/ai/scholar/sessions?id=${encodeURIComponent(sid)}`);
+      const sd = sr.ok ? await sr.json() : null;
+      const s = sd?.session ?? sd;
+      const otherText =
+        (typeof s?.thread?.answer === "string" && s.thread.answer) ||
+        (typeof s?.thread?.synthesized === "string" && s.thread.synthesized) ||
+        (typeof s?.thread === "string" && s.thread) ||
+        "";
+      if (!otherText) {
+        setRelSummaries((prev) => ({
+          ...prev,
+          [relId]: { title, text: "Essa pesquisa salva não tem conteúdo pra cruzar.", loading: false },
+        }));
+        return;
+      }
+      const res = await fetch("/api/ai/relate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          a: { title: docTitle, text: docContent },
+          b: { title: sTitle, text: otherText },
+        }),
+      });
+      const d = await res.json();
+      setRelSummaries((prev) => ({
+        ...prev,
+        [relId]: { title, text: d.text || "Não consegui relacionar agora.", loading: false },
+      }));
+    } catch {
+      setRelSummaries((prev) => ({
+        ...prev,
+        [relId]: { title, text: "Erro ao cruzar os documentos.", loading: false },
+      }));
+    }
+  };
+
   // 🔥 FETCH CORRECTO PARA CHAT AURA
   const handlePdfQuestion = async () => {
     if (!pdfPrompt.trim() || (!activeFileContext && !liteContext && !internalDoc))
@@ -2252,6 +2306,37 @@ export default function HomeworkPage({
                         >
                           💬 Conversar
                         </button>
+                        {/* CRUZAR COM UMA PESQUISA SALVA — relação pelo texto dos dois (sem PDF/403). */}
+                        <div className="relative" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => setCrossPickerOpen((o) => !o)}
+                            className="px-6 py-2.5 rounded-full text-[11px] font-black flex items-center gap-2 border-2 border-violet-500 text-violet-600 dark:text-violet-300 hover:bg-violet-500/10 uppercase tracking-widest transition-colors justify-center"
+                          >
+                            🔗 Cruzar
+                          </button>
+                          {crossPickerOpen && (
+                            <div className="absolute bottom-full mb-2 left-0 z-20 w-64 max-h-60 overflow-y-auto custom-scrollbar rounded-2xl bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-white/10 shadow-2xl p-2">
+                              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 px-2 py-1">
+                                Cruzar com pesquisa salva
+                              </p>
+                              {sessions.length === 0 && (
+                                <p className="text-[11px] text-slate-500 px-2 py-2">
+                                  Nenhuma pesquisa salva ainda.
+                                </p>
+                              )}
+                              {sessions.map((s) => (
+                                <button
+                                  key={s.id}
+                                  onClick={() => handleCrossDocWithSession(s.id, s.title)}
+                                  className="w-full text-left px-2 py-2 rounded-lg text-[12px] text-slate-700 dark:text-white/80 hover:bg-violet-500/10 truncate"
+                                  title={s.title}
+                                >
+                                  {s.title}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                         {/* BOTÃO SALVAR QUE ABRE O MODAL */}
                         <button
                           onClick={(e) => {
