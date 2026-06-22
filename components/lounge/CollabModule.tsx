@@ -471,6 +471,13 @@ function CollabEditor({ docId, myId, contacts, onClose }: { docId: string; myId:
       peerTimer.current = setTimeout(() => setPeer(null), 4000);
     });
     ch.bind("doc-deleted", () => { onClose(); });
+    ch.bind("member-joined", () => {
+      // novo colega entrou → recarrega os membros pra a foto dele aparecer na hora.
+      fetch(`/api/collab/${docId}`, { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d: DocFull | null) => { if (d?.members) setDoc((prev) => (prev ? { ...prev, members: d.members } : prev)); })
+        .catch(() => { /* ignore */ });
+    });
     return () => { pusher.unsubscribe(`collab-${docId}`); pusher.disconnect(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docId, myId]);

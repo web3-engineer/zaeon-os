@@ -300,6 +300,22 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                 setTimeout(() => setFlash(false), 1500);
             }
         });
+        // Aviso da Zaeon (ex.: alguém aceitou seu convite no Lounge) → mensagem da
+        // Zaeon + abre o widget + atualiza a lista de colegas (virou conexão).
+        channel.bind('zaeon-notice', (payload: any) => {
+            const text = payload?.text;
+            if (typeof text === "string" && text.trim()) {
+                setZaeonMessages(prev => [...prev, { id: `cn-${Date.now()}`, senderId: 'zaeon-agent', text }]);
+                setActiveChat(ZAEON_AGENT);
+                setIsOpen(true);
+                setFlash(true);
+                setTimeout(() => setFlash(false), 1500);
+            }
+            fetch(`/api/network/friends?t=${Date.now()}`, { cache: 'no-store' })
+                .then(r => (r.ok ? r.json() : null))
+                .then(d => { if (d?.friends) setFriends(d.friends); })
+                .catch(() => { /* ignore */ });
+        });
         return () => { pusher.unsubscribe(`user_${realUserId}`); pusher.disconnect(); };
     }, [realUserId]);
 
