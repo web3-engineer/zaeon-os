@@ -25,6 +25,7 @@ import VoicePlayButton from "@/components/voice/VoicePlayButton";
 import StudioDock from "@/components/studio/StudioDock";
 import StudioBlock, { type StudioBlockData } from "@/components/studio/StudioBlock";
 import { detectHeadingShortcut } from "@/lib/study/blockMarkdown";
+import { prevEditableId } from "@/lib/study/blockOrder";
 import { useTTS } from "@/lib/voice/useTTS";
 import { takeHandoff } from "@/lib/agents/handoff";
 import { missionDone } from "@/lib/agents/mission";
@@ -257,6 +258,14 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
   const addBlock = async (variant: "h1" | "h2" | "text") => {
     const it = await addItem({ type: "note", title: "", payload: { text: "", variant }, placement: "feed", order: nextOrder() });
     if (it) setFocusId(it.id);
+  };
+
+  // Enter (B1.2): cria um bloco de texto LOGO DEPOIS do atual e foca nele.
+  // Mesma `order` do atual → o desempate por createdAt coloca o novo logo abaixo
+  // (sem reindex; 1 escrita). Continuar digitando top-down funciona naturalmente.
+  const addBlockAfter = async (it: Item) => {
+    const n = await addItem({ type: "note", title: "", payload: { text: "", variant: "text" }, placement: "feed", order: ord(it) });
+    if (n) setFocusId(n.id);
   };
 
   // Caractere CJK aleatório (glitch do título)
@@ -648,7 +657,15 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
       : "text-[16px] sm:text-[17px] leading-[1.7] text-slate-700 dark:text-slate-200/90";
     const ph = variant === "h1" ? "Título" : variant === "h2" ? "Subtítulo" : "Escreva…";
     const onKey = (e: React.KeyboardEvent) => {
-      if (e.key === "Backspace" && text === "") { e.preventDefault(); removeItem(it.id); }
+      // Enter = novo bloco abaixo; Shift+Enter = quebra de linha no mesmo bloco.
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void addBlockAfter(it); return; }
+      // Backspace em bloco vazio = remove e foca o bloco editável anterior (fusão).
+      if (e.key === "Backspace" && text === "") {
+        e.preventDefault();
+        const prev = prevEditableId(feed, it.id);
+        removeItem(it.id);
+        if (prev) setFocusId(prev);
+      }
     };
     return (
       <div className="group relative -mx-2 px-2 py-0.5 rounded-lg hover:bg-black/[0.015] dark:hover:bg-white/[0.02]">
