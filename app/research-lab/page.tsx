@@ -1290,23 +1290,30 @@ export default function HomeworkPage({
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const confirmUpload = () => {
+  const confirmUpload = async () => {
     if (!pendingUpload) return;
+    const file = pendingUpload;
     const id = generateSafeId();
-    const url = URL.createObjectURL(pendingUpload);
+    // blob URL só pra USO/preview NESTA sessão — NUNCA persistir (morre no reload).
+    const sessionUrl = URL.createObjectURL(file);
     setStudyFiles((prev) => [
       ...prev,
-      { id, title: pendingUpload.name, url, file: pendingUpload },
+      { id, title: file.name, url: sessionUrl, file },
     ]);
-    // CORREÇÃO: o upload caía só em studyFiles (que não renderiza). Salva na biblioteca
-    // → aparece como DocIcon em "Documentos" (useLibraryFiles sincroniza os painéis via evento).
-    saveLibraryFile({
-      id,
-      title: pendingUpload.name,
-      pdfUrl: url,
-      source: "upload",
-      savedAt: Date.now(),
-    });
+    // Persistência na biblioteca: data: URL (base64) sobrevive ao reload. A blob:
+    // antiga dava "WebKitBlobResource error 1" ao recarregar. Guarda de quota: se o
+    // arquivo for grande demais p/ o localStorage, fica só na sessão (sem persistir).
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result || ""));
+        r.onerror = () => reject(r.error);
+        r.readAsDataURL(file);
+      });
+      saveLibraryFile({ id, title: file.name, pdfUrl: dataUrl, source: "upload", savedAt: Date.now() });
+    } catch {
+      /* arquivo grande / quota excedida → mantém só na sessão */
+    }
     setPendingUpload(null);
   };
 

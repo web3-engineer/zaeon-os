@@ -33,7 +33,13 @@ export function renameLibraryFile(list: LibraryFile[], id: string, title: string
 
 function read(): LibraryFile[] {
   if (typeof window === "undefined") return [];
-  try { return JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { return []; }
+  try {
+    const list = JSON.parse(localStorage.getItem(KEY) || "[]");
+    if (!Array.isArray(list)) return [];
+    // blob: URLs morrem ao recarregar a página → descarta entradas mortas de sessões
+    // anteriores (senão renderizam e dão "WebKitBlobResource error 1" no console).
+    return list.filter((f) => f && typeof f.pdfUrl === "string" && !f.pdfUrl.startsWith("blob:"));
+  } catch { return []; }
 }
 function write(list: LibraryFile[]) {
   localStorage.setItem(KEY, JSON.stringify(list));
