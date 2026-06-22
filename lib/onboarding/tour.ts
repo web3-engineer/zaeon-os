@@ -28,7 +28,19 @@ export const TOUR_STEPS: TourStep[] = [
 
   // — Sala de Estudos (= onde a pesquisa de estudo acontece) — avança ao CLICAR no ícone
   { id: "estudos", hint: "📚 Comece pela sua Sala de Estudos", target: '[data-tour="estudos"]', clickTarget: true, tab: "sala-de-estudos",
-    say: "Clica em **Estudos** aqui na lateral 👇 — é onde eu pesquiso e escrevo estudos pra você. (No 'Meus Estudos' fica o caderno de blocos e a biblioteca, mas isso é pra depois.)" },
+    say: "Clica em **Estudos** aqui na lateral 👇 — sua sala de estudos. Antes de pesquisar, deixa eu te mostrar rapidinho o **caderno** e o **Studio**." },
+
+  // — Meus Estudos: o caderno editável (escrita livre estilo Notion)
+  { id: "meus-estudos", info: true, tab: "sala-de-estudos", hint: "📓 Meus Estudos — seu caderno", cta: "Mostra mais",
+    say: "No **Meus Estudos** você escreve livre, como num Notion. **Enter** cria um bloco novo; comece com **#** que vira título. E dá pra **arrastar os blocos** pela alça do lado pra reordenar. ✍️" },
+
+  // — Studio da Zaeon: transforma o estudo em várias formas
+  { id: "studio-dock", info: true, tab: "sala-de-estudos", hint: "⟁ Studio — vira podcast, mapa, vídeo…", cta: "Que demais",
+    say: "Esse é o **Studio da Zaeon** ⟁: com um clique eu viro seu estudo em **podcast com 2 vozes**, **mapa mental**, **guia**, **flashcards**, **linha do tempo**, **imagem** ou **vídeo** — e tudo **encaixa no caderno**, pra abrir e fechar quando quiser." },
+
+  // — Menu "/" + chat multimodal
+  { id: "slash", info: true, tab: "sala-de-estudos", hint: '⌨️ Digite "/" pra inserir no ponto', cta: "Entendi",
+    say: "Dica de ouro: digite **\"/\"** em qualquer ponto do texto pra inserir ali mesmo — um título ou um módulo do Studio (tipo **/mapa mental**) bem no meio do estudo. E no meu chat você pode **mandar uma foto** que eu analiso, ou pedir **\"gere uma imagem\"**. 🪄" },
 
   // — Pesquisar um estudo (tema sugerido) — avança quando a pesquisa COMEÇA
   { id: "pesquisar", hint: "🔎 Pesquise um tema — deixei um pronto", target: '[data-academic-input="true"]', advanceEvent: "zaeon:research:start", prefill: "história do Brasil",
