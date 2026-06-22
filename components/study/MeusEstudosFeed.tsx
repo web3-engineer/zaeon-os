@@ -23,6 +23,7 @@ import VoiceModeSwitch from "@/components/voice/VoiceModeSwitch";
 import SpeakButton from "@/components/voice/SpeakButton";
 import VoicePlayButton from "@/components/voice/VoicePlayButton";
 import StudioDock from "@/components/studio/StudioDock";
+import StudioBlock, { type StudioBlockData } from "@/components/studio/StudioBlock";
 import { useTTS } from "@/lib/voice/useTTS";
 import { takeHandoff } from "@/lib/agents/handoff";
 import { missionDone } from "@/lib/agents/mission";
@@ -104,6 +105,10 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
   // biblioteca: adicionar nota/link
   const [showAdd, setShowAdd] = useState(false);
   const [note, setNote] = useState("");
+
+  // Studio: preview isolado (biblioteca) + marca de "salvo" por bloco
+  const [studioPreview, setStudioPreview] = useState<Item | null>(null);
+  const [savedStudio, setSavedStudio] = useState<Record<string, boolean>>({});
 
   // Zaeon generativa: "estude sobre…" → escreve o estudo no feed em tempo real
   const [zaeonCmd, setZaeonCmd] = useState("");
@@ -222,6 +227,7 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
     const title = spaces.find((s) => s.id === spaceId)?.title?.trim();
     if (title && title !== "Novo estudo" && title !== "Meus Estudos") parts.push(title);
     for (const it of feed) {
+      if (it.type === "studio") continue; // módulos do Studio não entram na leitura do estudo
       if (it.type === "note") { const t = (it.payload?.text || "").trim(); if (t) parts.push(t); }
       else if (it.title) parts.push(it.title);
     }
@@ -357,6 +363,25 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
     return () => window.removeEventListener("zaeon:study:add", onAdd);
   }, [addItem]);
 
+  // Studio → ENCAIXA no caderno: cada geração vira um bloco colapsável no feed.
+  useEffect(() => {
+    const onEmbed = (e: any) => {
+      const d = e?.detail;
+      if (!d?.studioKind) return;
+      const feedNow = itemsRef.current.filter((i) => i.placement === "feed");
+      const order = feedNow.length ? Math.max(...feedNow.map((i) => (typeof i.order === "number" ? i.order : 0))) + 1 : 0;
+      addItem({
+        type: "studio",
+        title: d.title || "",
+        payload: { studioKind: d.studioKind, data: d.data ?? null, artifactId: d.artifactId, dataUrl: d.dataUrl, collapsed: false },
+        placement: "feed",
+        order,
+      });
+    };
+    window.addEventListener("zaeon:study:embed", onEmbed);
+    return () => window.removeEventListener("zaeon:study:embed", onEmbed);
+  }, [addItem]);
+
   // "Estudar esse tema" (botão da pesquisa): gera um estudo a partir do tema, mesmo
   // já estando no research-lab (o feed fica sempre montado, só escondido → handoff
   // de mount não basta). O StudyThisButton dispara este evento.
@@ -404,6 +429,17 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
   const toLibrary = async (id: string) => {
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, placement: "library" } : i)));
     await fetch("/api/study/items", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, placement: "library" }) });
+  };
+
+  // Studio: abre/fecha o bloco (persiste) e salva uma cópia isolada na biblioteca.
+  const toggleStudioCollapsed = (it: Item) => {
+    const payload = { ...it.payload, collapsed: !it.payload?.collapsed };
+    setItems((prev) => prev.map((x) => (x.id === it.id ? { ...x, payload } : x)));
+    fetch("/api/study/items", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: it.id, payload }) });
+  };
+  const saveStudioToLibrary = async (it: Item) => {
+    await addItem({ type: "studio", title: it.title, payload: { ...it.payload, collapsed: true }, placement: "library" });
+    setSavedStudio((prev) => ({ ...prev, [it.id]: true }));
   };
   // Joga um registro na lixeira da sala de pesquisa (localStorage zaeon.trash + evento de sync).
   const trashPush = (id: string, title: string) => {
@@ -491,6 +527,21 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
 
   // ── render de um bloco do caderno ──────────────────────────────────────────
   const renderBlock = (it: Item, idx?: number) => {
+    // BLOCO DO STUDIO (guia/mapa/podcast/vídeo…) → cartão colapsável inline.
+    if (it.type === "studio") {
+      const p = it.payload || {};
+      const block: StudioBlockData = { studioKind: p.studioKind, title: it.title, data: p.data, artifactId: p.artifactId, dataUrl: p.dataUrl };
+      return (
+        <StudioBlock
+          block={block}
+          collapsed={!!p.collapsed}
+          saved={!!savedStudio[it.id]}
+          onToggle={() => toggleStudioCollapsed(it)}
+          onRemove={() => removeItem(it.id)}
+          onSaveLibrary={() => saveStudioToLibrary(it)}
+        />
+      );
+    }
     const variant: "h1" | "h2" | "text" = it.payload?.variant || "text";
     const text: string = it.payload?.text ?? "";
     const isMedia = MEDIA.has(it.type);
@@ -815,17 +866,21 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
               <p className="px-1 pt-1 text-[11px] font-black uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">Salvos</p>
               {library.map((it) => {
                 const Icon = typeIcon(it.type);
+                const isStudio = it.type === "studio";
                 return (
                   <div key={it.id}
-                    draggable
-                    onDragStart={(e) => { e.dataTransfer.setData(DT, it.id); e.dataTransfer.effectAllowed = "move"; }}
-                    className="group flex items-center gap-2 rounded-xl border p-2 cursor-grab active:cursor-grabbing bg-white border-slate-200 shadow-sm hover:border-cyan-400/50 dark:bg-white/[0.04] dark:border-white/10 dark:shadow-none"
-                    title="Arraste para o caderno"
+                    draggable={!isStudio}
+                    onDragStart={isStudio ? undefined : (e) => { e.dataTransfer.setData(DT, it.id); e.dataTransfer.effectAllowed = "move"; }}
+                    onClick={isStudio ? () => setStudioPreview(it) : undefined}
+                    className={`group flex items-center gap-2 rounded-xl border p-2 bg-white border-slate-200 shadow-sm hover:border-cyan-400/50 dark:bg-white/[0.04] dark:border-white/10 dark:shadow-none ${isStudio ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}`}
+                    title={isStudio ? "Ver isolado" : "Arraste para o caderno"}
                   >
-                    <GripVertical size={13} className="text-slate-300 dark:text-white/20 shrink-0" />
+                    {isStudio
+                      ? <span className="text-cyan-600 dark:text-cyan-300 shrink-0 text-[13px] leading-none">⟁</span>
+                      : <GripVertical size={13} className="text-slate-300 dark:text-white/20 shrink-0" />}
                     <Icon size={14} className="text-cyan-600 dark:text-cyan-300 shrink-0" />
                     <span className="flex-1 min-w-0 text-[13px] font-medium text-slate-700 dark:text-white/90 truncate">{it.title || it.payload?.text?.slice(0, 40) || it.type}</span>
-                    <button onClick={() => removeItem(it.id)} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-400 shrink-0"><Trash2 size={12} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); removeItem(it.id); }} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-400 shrink-0"><Trash2 size={12} /></button>
                   </div>
                 );
               })}
@@ -837,6 +892,19 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
           )}
         </div>
       </div>
+      )}
+
+      {/* Preview isolado de um módulo do Studio salvo na biblioteca */}
+      {studioPreview && (
+        <div className="fixed inset-0 z-[120] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setStudioPreview(null)}>
+          <div className="w-full max-w-2xl max-h-[85vh] overflow-y-auto custom-scrollbar" onClick={(e) => e.stopPropagation()}>
+            <StudioBlock
+              block={{ studioKind: studioPreview.payload?.studioKind, title: studioPreview.title, data: studioPreview.payload?.data, artifactId: studioPreview.payload?.artifactId, dataUrl: studioPreview.payload?.dataUrl }}
+              collapsed={false}
+            />
+            <button onClick={() => setStudioPreview(null)} className="mx-auto mt-1 block text-[12px] font-bold text-white/85 hover:text-white">fechar</button>
+          </div>
+        </div>
       )}
 
       {/* barra de loading indeterminada (segmento que vai e volta) */}
