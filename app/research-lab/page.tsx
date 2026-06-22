@@ -1399,8 +1399,32 @@ export default function HomeworkPage({
         `/api/ai/scholar/pdf?url=${encodeURIComponent(file.pdfUrl)}`,
       );
       if (!res.ok) {
-        showToast("Não consegui abrir esse arquivo agora.");
-        return;
+        // O proxy de PDF falhou (400/403: upload/blob ou paper fora das referências).
+        // Em vez de travar, cai no resumo LEVE por metadados → dá pra conversar pelo
+        // abstract em vez de não abrir nada.
+        setProcessingStage("ai");
+        setDocTitle(file.title);
+        try {
+          const r = await fetch("/api/ai/summarize-lite", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pdfUrl: file.pdfUrl, title: file.title }),
+          });
+          const d = await r.json();
+          setActiveFileContext(null);
+          setLiteContext(d.context || null);
+          setPdfChatHistory([
+            {
+              role: "ai",
+              text:
+                d.text ||
+                "Não consegui abrir o PDF, mas posso conversar pelos metadados deste trabalho.",
+            },
+          ]);
+        } catch {
+          showToast("Não consegui abrir esse arquivo agora.");
+        }
+        return; // o finally externo limpa os estados de processamento
       }
       const blob = await res.blob();
       const base64Data: string = await new Promise((resolve, reject) => {

@@ -69,8 +69,11 @@ export async function POST(req: Request) {
         }
     }
 
-    // ───────── NÍVEL SIMPLES (Vercel): metadados → Gemini Flash ─────────
-    if (mode === "vercel") {
+    // ───────── NÍVEL METADADOS: título+abstract → Gemini Flash ─────────
+    // Vale para o modo "vercel" E para o modo "gemini" SEM os PDFs (fileData). O cliente
+    // de arrastar-pra-cruzar manda só pdfUrl+title (sem baixar o PDF), então sem este
+    // fallback o modo "gemini" devolvia 400 missing_pdf e o "cruzar" nunca funcionava.
+    if (mode === "vercel" || !a.fileData || !b.fileData) {
         const [ma, mb] = await Promise.all([resolveMeta(dbUser.id, a), resolveMeta(dbUser.id, b)]);
         if (!ma.title && !ma.abstract && !mb.title && !mb.abstract) {
             return NextResponse.json({ error: "no_metadata", text: "Sem metadados pra relacionar. Use o nível Gemini (com os PDFs)." }, { status: 404 });
@@ -88,9 +91,7 @@ export async function POST(req: Request) {
     }
 
     // ───────── NÍVEL SOFISTICADO (Gemini): os 2 PDFs inteiros ─────────
-    if (!a.fileData || !b.fileData) {
-        return NextResponse.json({ error: "missing_pdf", text: "O nível Gemini precisa dos dois PDFs (fileData A e B)." }, { status: 400 });
-    }
+    // (só chega aqui com fileData A e B presentes — caso contrário caiu no metadados acima)
     try {
         const { project, client_email, private_key, location } = vertexCredentials();
         const vertexAI = new VertexAI({
