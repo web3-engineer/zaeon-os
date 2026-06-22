@@ -1443,7 +1443,6 @@ export default function HomeworkPage({
     // MODO LEVE (Vercel): resume do abstract/metadados — NÃO baixa o PDF, sem 502, via Groq.
     if (!capabilities().heavyRag) {
       setProcessingStage("ai");
-      setDocTitle(file.title);
       try {
         const r = await fetch("/api/ai/summarize-lite", {
           method: "POST",
@@ -1476,7 +1475,6 @@ export default function HomeworkPage({
         // Em vez de travar, cai no resumo LEVE por metadados → dá pra conversar pelo
         // abstract em vez de não abrir nada.
         setProcessingStage("ai");
-        setDocTitle(file.title);
         try {
           const r = await fetch("/api/ai/summarize-lite", {
             method: "POST",
@@ -1509,7 +1507,6 @@ export default function HomeworkPage({
       });
       setActiveFileContext(base64Data);
       setProcessingStage("ai");
-      setDocTitle(file.title);
       // Cacheia o PDF uma vez (Vertex) → os turnos seguintes usam o cacheName (sem reenviar
       // o PDF). Falhou/pequeno demais → cache null e seguimos inline (base64Data).
       let cache: { name: string; expireTime: string } | null = null;
