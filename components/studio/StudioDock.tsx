@@ -93,7 +93,7 @@ export default function StudioDock({ spaceId }: { spaceId?: string }) {
   const generateAsync = async (kind: "podcast" | "video") => {
     if (!spaceId) { setError("Abra um estudo primeiro para usar o Studio."); return; }
     setBusy(kind); setError(null); cancelPoll.current = false;
-    const maxMs = kind === "video" ? 8 * 60 * 1000 : 6 * 60 * 1000;
+    const maxMs = kind === "video" ? 12 * 60 * 1000 : 10 * 60 * 1000;
     try {
       const res = await fetch(`/api/studio/${kind}`, {
         method: "POST",
