@@ -699,6 +699,9 @@ export default function HomeworkPage({
     null,
   );
   const [liteContext, setLiteContext] = useState<string | null>(null); // resumo leve (Vercel): metadados, sem PDF
+  // Conversar com o DOCUMENTO GERADO (estudo/pesquisa do editor): usa o texto que o app
+  // já tem (docContent), não o proxy de PDF (que dá 403 p/ docs internos). → /api/ai/doc/chat.
+  const [internalDoc, setInternalDoc] = useState<{ title: string; content: string } | null>(null);
   const { files: libraryFiles, save: saveLibraryFile } = useLibraryFiles();
   // Window store SUBIDO pra cá — pra o merge também abrir abas (não só o play).
   const {
@@ -1362,6 +1365,7 @@ export default function HomeworkPage({
     setProcessingStage("pdf");
     setIsPdfTyping(true);
     setActiveSection("pdf");
+    setInternalDoc(null); // sai do modo "documento gerado" ao abrir um arquivo da biblioteca
 
     // MODO LEVE (Vercel): resume do abstract/metadados — NÃO baixa o PDF, sem 502, via Groq.
     if (!capabilities().heavyRag) {
@@ -1487,7 +1491,8 @@ export default function HomeworkPage({
 
   // 🔥 FETCH CORRECTO PARA CHAT AURA
   const handlePdfQuestion = async () => {
-    if (!pdfPrompt.trim() || (!activeFileContext && !liteContext)) return;
+    if (!pdfPrompt.trim() || (!activeFileContext && !liteContext && !internalDoc))
+      return;
     const currentPrompt = pdfPrompt;
     setPdfPrompt("");
     setPdfChatHistory((prev) => [
@@ -1501,6 +1506,25 @@ export default function HomeworkPage({
         role: m.role === "ai" ? "model" : "user",
         parts: [{ text: m.text }],
       }));
+
+      // DOCUMENTO INTERNO GERADO → conversa pelo texto (sem PDF, sem 403). Gemini/Vertex.
+      if (internalDoc && !activeFileContext) {
+        const r = await fetch("/api/ai/doc/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question: currentPrompt,
+            title: internalDoc.title,
+            content: internalDoc.content,
+            history: historyForGemini,
+          }),
+        });
+        const d = await r.json();
+        if (d.text)
+          setPdfChatHistory((prev) => [...prev, { role: "ai", text: d.text }]);
+        setIsPdfTyping(false);
+        return;
+      }
 
       const response = await fetch("/api/ai/chat", {
         method: "POST",
@@ -2205,6 +2229,29 @@ export default function HomeworkPage({
                       </div>
 
                       <div className="flex gap-3">
+                        {/* CONVERSAR COM ESTE DOCUMENTO — chat pelo texto gerado (sem PDF/403). */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!docContent.trim()) {
+                              showToast("Escreva algo no documento primeiro.");
+                              return;
+                            }
+                            setActiveFileContext(null);
+                            setLiteContext(null);
+                            setInternalDoc({ title: docTitle, content: docContent });
+                            setPdfChatHistory([
+                              {
+                                role: "ai",
+                                text: `Pode perguntar o que quiser sobre **${docTitle}** — respondo com base no que está escrito aqui.`,
+                              },
+                            ]);
+                            showToast("Conversa aberta — pergunte sobre o documento 💬");
+                          }}
+                          className="px-6 py-2.5 rounded-full text-[11px] font-black flex items-center gap-2 border-2 border-cyan-500 text-cyan-600 dark:text-cyan-300 hover:bg-cyan-500/10 uppercase tracking-widest transition-colors justify-center"
+                        >
+                          💬 Conversar
+                        </button>
                         {/* BOTÃO SALVAR QUE ABRE O MODAL */}
                         <button
                           onClick={(e) => {
@@ -2320,7 +2367,7 @@ export default function HomeworkPage({
                         onChange={setPdfPrompt}
                         onSend={handlePdfQuestion}
                         isTyping={isPdfTyping}
-                        placeholder="Pergunte ao PDF..."
+                        placeholder={internalDoc ? "Pergunte sobre este documento..." : "Pergunte ao PDF..."}
                       />
                     </div>
                   </div>
