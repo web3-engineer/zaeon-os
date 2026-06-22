@@ -1,16 +1,52 @@
-[
-  "/agents/voice-fillers/filler-01.wav",
-  "/agents/voice-fillers/filler-02.wav",
-  "/agents/voice-fillers/filler-03.wav",
-  "/agents/voice-fillers/filler-04.wav",
-  "/agents/voice-fillers/filler-05.wav",
-  "/agents/voice-fillers/filler-06.wav",
-  "/agents/voice-fillers/filler-07.wav",
-  "/agents/voice-fillers/filler-08.wav",
-  "/agents/voice-fillers/filler-09.wav",
-  "/agents/voice-fillers/filler-10.wav",
-  "/agents/voice-fillers/filler-11.wav",
-  "/agents/voice-fillers/filler-12.wav",
-  "/agents/voice-fillers/filler-13.wav",
-  "/agents/voice-fillers/filler-14.wav"
-]
+{
+  "kore": [
+    "/agents/voice-fillers/kore/filler-01.wav",
+    "/agents/voice-fillers/kore/filler-02.wav",
+    "/agents/voice-fillers/kore/filler-03.wav",
+    "/agents/voice-fillers/kore/filler-04.wav",
+    "/agents/voice-fillers/kore/filler-05.wav",
+    "/agents/voice-fillers/kore/filler-06.wav",
+    "/agents/voice-fillers/kore/filler-07.wav",
+    "/agents/voice-fillers/kore/filler-08.wav"
+  ],
+  "aoede": [
+    "/agents/voice-fillers/aoede/filler-01.wav",
+    "/agents/voice-fillers/aoede/filler-02.wav",
+    "/agents/voice-fillers/aoede/filler-03.wav",
+    "/agents/voice-fillers/aoede/filler-04.wav",
+    "/agents/voice-fillers/aoede/filler-05.wav",
+    "/agents/voice-fillers/aoede/filler-06.wav",
+    "/agents/voice-fillers/aoede/filler-07.wav",
+    "/agents/voice-fillers/aoede/filler-08.wav"
+  ],
+  "leda": [
+    "/agents/voice-fillers/leda/filler-01.wav",
+    "/agents/voice-fillers/leda/filler-02.wav",
+    "/agents/voice-fillers/leda/filler-03.wav",
+    "/agents/voice-fillers/leda/filler-04.wav",
+    "/agents/voice-fillers/leda/filler-05.wav",
+    "/agents/voice-fillers/leda/filler-06.wav",
+    "/agents/voice-fillers/leda/filler-07.wav",
+    "/agents/voice-fillers/leda/filler-08.wav"
+  ],
+  "callirrhoe": [
+    "/agents/voice-fillers/callirrhoe/filler-01.wav",
+    "/agents/voice-fillers/callirrhoe/filler-02.wav",
+    "/agents/voice-fillers/callirrhoe/filler-03.wav",
+    "/agents/voice-fillers/callirrhoe/filler-04.wav",
+    "/agents/voice-fillers/callirrhoe/filler-05.wav",
+    "/agents/voice-fillers/callirrhoe/filler-06.wav",
+    "/agents/voice-fillers/callirrhoe/filler-07.wav",
+    "/agents/voice-fillers/callirrhoe/filler-08.wav"
+  ],
+  "charon": [
+    "/agents/voice-fillers/charon/filler-01.wav",
+    "/agents/voice-fillers/charon/filler-02.wav",
+    "/agents/voice-fillers/charon/filler-03.wav",
+    "/agents/voice-fillers/charon/filler-04.wav",
+    "/agents/voice-fillers/charon/filler-05.wav",
+    "/agents/voice-fillers/charon/filler-06.wav",
+    "/agents/voice-fillers/charon/filler-07.wav",
+    "/agents/voice-fillers/charon/filler-08.wav"
+  ]
+}

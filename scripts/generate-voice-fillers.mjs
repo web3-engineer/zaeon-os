@@ -1,16 +1,18 @@
 #!/usr/bin/env node
 /**
- * Gera os CLIPES DE CURINGA da voz (frases-isca que tocam na hora enquanto a fala real
- * sintetiza). Roda UMA vez, com as credenciais Vertex no ambiente. Salva os .wav em
- * public/agents/voice-fillers/ e escreve o manifest.json que o app lê em runtime.
+ * Gera os CLIPES DE CURINGA da voz, UM CONJUNTO POR VOZ do catálogo. As curingas são
+ * frases-isca que tocam na hora enquanto a fala real sintetiza (cold-start ~3-5s). Como
+ * cada voz tem o seu conjunto, a curinga sai SEMPRE na mesma voz que o usuário escolheu —
+ * sem trocar de voz no meio (mantém a personalidade do agente).
+ *
+ * Saída: public/agents/voice-fillers/<id-da-voz>/filler-NN.wav  + manifest.json indexado:
+ *   { "kore": ["/agents/voice-fillers/kore/filler-01.wav", ...], "aoede": [...], ... }
  *
  * Uso (na máquina/VPS com as GOOGLE_* setadas):
- *   node --env-file=.env scripts/generate-voice-fillers.mjs        (Node 20+)
- *   # ou exporte GOOGLE_CREDENTIALS / GOOGLE_PROJECT_ID / GOOGLE_CLIENT_EMAIL /
- *   #   GOOGLE_PRIVATE_KEY / GOOGLE_LOCATION e rode: node scripts/generate-voice-fillers.mjs
+ *   node --env-file=.env scripts/generate-voice-fillers.mjs
  *
- * Modelo via GEMINI_TTS_MODEL (default gemini-2.5-flash-tts). Se der timeout/erro aqui,
- * é o mesmo problema do cold-start em produção — mas offline dá pra esperar.
+ * Idempotente (pula o que já existe), com throttle e retry no 429 (quota por minuto).
+ * Modelo via GEMINI_TTS_MODEL (default gemini-2.5-flash-tts).
  */
 import { writeFile, mkdir, readdir } from "node:fs/promises";
 import { existsSync, statSync } from "node:fs";
@@ -20,25 +22,27 @@ import { GoogleAuth } from "google-auth-library";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Frases criativas/engraçadas — a Aura "ganhando tempo" com humor e calor (pt-BR).
+// MESMO conjunto p/ toda voz, pra cada voz ter a mesma variedade de curingas.
 const PHRASES = [
   "Peraí, peraí… deixa eu ler isso com o carinho que merece, já tô voltando.",
   "Calma que coisa boa não se faz na correria — tô quase, juro.",
   "Hmm, deixa eu juntar as peças aqui na minha cabeça, segura essa.",
   "Tô mergulhando de cabeça nesse texto, me dá só um segundinho.",
-  "Opa, deixa eu organizar a bagunça das ideias aqui rapidinho.",
-  "Já tô vendo umas coisas interessantes — peraí que eu te conto direito.",
   "Respira comigo… tô formatando uma resposta caprichada pra você.",
-  "Tô garimpando o ouro que tem nesse documento, segura aí.",
   "Quase lá! Só não quero falar bobagem, então deixa eu conferir.",
-  "Deixa eu dar aquela espiada final antes de te entregar isso, tá?",
   "Tô processando tudo aqui nos bastidores — já já a mágica acontece.",
-  "Pera que eu tô caprichando — você merece uma resposta certinha.",
   "Segura a emoção que a melhor parte tá vindo, tô finalizando.",
-  "Deixa eu pensar nisso com a atenção que o assunto pede, volto já.",
 ];
 
-// Vozes variadas (catálogo de lib/voice/gemini-tts.ts) — alternadas pra dar variedade.
-const VOICES = ["Kore", "Aoede", "Leda", "Callirrhoe", "Charon"];
+// Catálogo de vozes (espelha lib/voice/gemini-tts.ts → GEMINI_VOICES). id = chave usada
+// pelo app (zaeon.voice.id); gemini = nome prebuilt da voz no Vertex.
+const VOICES = [
+  { id: "kore", gemini: "Kore" },
+  { id: "aoede", gemini: "Aoede" },
+  { id: "leda", gemini: "Leda" },
+  { id: "callirrhoe", gemini: "Callirrhoe" },
+  { id: "charon", gemini: "Charon" },
+];
 
 const stripQuotes = (s) => (s || "").replace(/^["']|["']$/g, "");
 function vertexCredentials() {
@@ -96,10 +100,9 @@ async function main() {
     `https://${location}-aiplatform.googleapis.com/v1/projects/${project}` +
     `/locations/${location}/publishers/google/models/${model}:generateContent`;
 
-  const outDir = path.resolve("public/agents/voice-fillers");
-  await mkdir(outDir, { recursive: true });
+  const baseDir = path.resolve("public/agents/voice-fillers");
 
-  // 1 chamada com retry no 429 (quota por minuto). Espera e tenta de novo até 3x.
+  // 1 chamada com retry no 429 (quota por minuto). Espera e tenta até 3x.
   async function callTTS(text, voiceName) {
     for (let attempt = 0; attempt < 3; attempt++) {
       const res = await fetch(url, {
@@ -114,48 +117,52 @@ async function main() {
         }),
         signal: AbortSignal.timeout(90_000),
       });
-      if (res.status === 429) {
-        process.stdout.write("(429, esperando 35s) ");
-        await sleep(35_000);
-        continue;
-      }
+      if (res.status === 429) { process.stdout.write("(429, +35s) "); await sleep(35_000); continue; }
       return res;
     }
     return null;
   }
 
-  for (let i = 0; i < PHRASES.length; i++) {
-    const voiceName = VOICES[i % VOICES.length];
-    const n = String(i + 1).padStart(2, "0");
-    const outPath = path.join(outDir, `filler-${n}.wav`);
-    // IDEMPOTENTE: já existe e tem tamanho → pula (não re-bilha o que já saiu).
-    if (existsSync(outPath) && statSync(outPath).size > 2000) {
-      console.log(`[${n}/${PHRASES.length}] já existe — pulando`);
-      continue;
+  for (const voice of VOICES) {
+    const dir = path.join(baseDir, voice.id);
+    await mkdir(dir, { recursive: true });
+    for (let i = 0; i < PHRASES.length; i++) {
+      const n = String(i + 1).padStart(2, "0");
+      const outPath = path.join(dir, `filler-${n}.wav`);
+      if (existsSync(outPath) && statSync(outPath).size > 2000) {
+        console.log(`[${voice.id} ${n}/${PHRASES.length}] já existe — pulando`);
+        continue;
+      }
+      process.stdout.write(`[${voice.id} ${n}/${PHRASES.length}] ${voice.gemini} `);
+      try {
+        const res = await callTTS(PHRASES[i], voice.gemini);
+        if (!res) { console.log("desistiu (429 repetido)"); continue; }
+        if (!res.ok) { console.log("FALHOU", res.status, (await res.text()).slice(0, 140)); continue; }
+        const data = await res.json();
+        const inline = data?.candidates?.[0]?.content?.parts?.find((p) => p?.inlineData?.data)?.inlineData;
+        if (!inline?.data) { console.log("sem áudio"); continue; }
+        const mime = inline.mimeType || "audio/L16;rate=24000";
+        const wav = /wav|mpeg|mp3|ogg/i.test(mime) ? Buffer.from(inline.data, "base64") : pcmToWav(inline.data, parsePcmRate(mime));
+        await writeFile(outPath, wav);
+        console.log("ok", `(${(wav.length / 1024).toFixed(0)}kb)`);
+      } catch (e) {
+        console.log("ERRO", e?.message || e);
+      }
+      await sleep(7_000); // throttle: respeita a quota por minuto
     }
-    process.stdout.write(`[${n}/${PHRASES.length}] ${voiceName} — "${PHRASES[i].slice(0, 40)}…" `);
-    try {
-      const res = await callTTS(PHRASES[i], voiceName);
-      if (!res) { console.log("desistiu (429 repetido)"); continue; }
-      if (!res.ok) { console.log("FALHOU", res.status, (await res.text()).slice(0, 160)); continue; }
-      const data = await res.json();
-      const inline = data?.candidates?.[0]?.content?.parts?.find((p) => p?.inlineData?.data)?.inlineData;
-      if (!inline?.data) { console.log("sem áudio"); continue; }
-      const mime = inline.mimeType || "audio/L16;rate=24000";
-      const wav = /wav|mpeg|mp3|ogg/i.test(mime) ? Buffer.from(inline.data, "base64") : pcmToWav(inline.data, parsePcmRate(mime));
-      await writeFile(outPath, wav);
-      console.log("ok", `(${(wav.length / 1024).toFixed(0)}kb)`);
-    } catch (e) {
-      console.log("ERRO", e?.message || e);
-    }
-    await sleep(6_000); // throttle: respeita a quota por minuto
   }
 
-  // manifest a partir do que EXISTE no disco (acumula entre rodadas).
-  const files = (await readdir(outDir)).filter((f) => /^filler-\d+\.wav$/.test(f)).sort();
-  const manifest = files.map((f) => `/agents/voice-fillers/${f}`);
-  await writeFile(path.join(outDir, "manifest.json"), JSON.stringify(manifest, null, 2));
-  console.log(`\n✓ ${manifest.length}/${PHRASES.length} curingas no disco. manifest.json atualizado.`);
+  // Manifest INDEXADO POR VOZ, a partir do que existe no disco.
+  const manifest = {};
+  for (const voice of VOICES) {
+    const dir = path.join(baseDir, voice.id);
+    if (!existsSync(dir)) continue;
+    const files = (await readdir(dir)).filter((f) => /^filler-\d+\.wav$/.test(f)).sort();
+    if (files.length) manifest[voice.id] = files.map((f) => `/agents/voice-fillers/${voice.id}/${f}`);
+  }
+  await writeFile(path.join(baseDir, "manifest.json"), JSON.stringify(manifest, null, 2));
+  const total = Object.values(manifest).reduce((a, l) => a + l.length, 0);
+  console.log(`\n✓ ${total} curingas em ${Object.keys(manifest).length} vozes. manifest.json atualizado.`);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

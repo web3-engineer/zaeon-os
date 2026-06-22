@@ -181,7 +181,7 @@ export async function speakSequence(parts: string[], opts?: { voice?: string; ge
   await Promise.race([synth[0]!.catch(() => {}), new Promise((r) => setTimeout(r, 450))]);
   let lastFiller: string | null = null;
   while (!chunk0Ready && !myCtrl.signal.aborted) {
-    const url = await pickFiller(lastFiller);
+    const url = await pickFiller(voiceId, lastFiller); // curinga NA MESMA voz do usuário
     if (!url) break;
     lastFiller = url;
     set({ speaking: true, loading: false, text: "…" }); // curinga É áudio → ondas ligadas
