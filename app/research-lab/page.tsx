@@ -62,6 +62,7 @@ import OnboardingGuide from "@/components/onboard/OnboardingGuide";
 import { startTour } from "@/lib/onboarding/tour";
 import { capabilities } from "@/lib/runtime/mode";
 import { useLibraryFiles, type LibraryFile } from "@/lib/useLibraryFiles";
+import { speak as ttsSpeak } from "@/lib/voice/ttsController";
 import RichText from "@/components/research/RichText";
 import { useWindowStore } from "@/lib/useWindowStore";
 
@@ -1820,24 +1821,11 @@ export default function HomeworkPage({
 
     if (msgId != null) setVoiceLoadingId(msgId);
     try {
-      const res = await fetch("/api/ai/voice", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: clean }),
-      });
-      if (!res.ok) {
-        showToast("Voz indisponível agora.");
-        return;
-      }
-      const data = await res.json().catch(() => null);
-      if (data?.audio_base64) {
-        audioRef.current?.pause();
-        const audio = new Audio(
-          `data:${data.mime || "audio/wav"};base64,${data.audio_base64}`,
-        );
-        audioRef.current = audio;
-        await audio.play().catch(() => {});
-      }
+      // MESMO caminho do chat widget (useTTS → ttsController): quebra o texto em pedaços
+      // de ~420 chars, um POST /api/ai/voice por pedaço → o Gemini-TTS responde rápido e
+      // não estoura o timeout do proxy (era a causa do 503 com texto longo na sala).
+      void audioRef; // (legado — o áudio agora é gerido pelo ttsController global)
+      await ttsSpeak(clean);
     } catch {
       showToast("Voz indisponível agora.");
     } finally {
