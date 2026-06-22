@@ -50,19 +50,25 @@ export async function runPodcastGeneration(
       hosts,
     );
 
-    // 2) voz — sintetiza CADA TURNO com a voz do locutor (single-voice, confiável)
-    //    e concatena os WAVs. Não depende de multi-speaker no modelo.
+    // 2) voz — sintetiza cada turno com a voz do locutor (single-voice, confiável),
+    //    EM PARALELO (lotes), mantendo a ordem, e concatena. Sequencial estourava o
+    //    tempo (30 turnos × 45s); em lotes de 5 o podcast fica em ~1–2 min.
     const voiceFor = (speaker: string) => (speaker === hosts[1].name ? VOICE_M : VOICE_F);
-    const wavs: Buffer[] = [];
-    for (const turn of transcript) {
-      if (!turn.text.trim()) continue;
-      try {
-        const a = await synthGeminiTTS(turn.text, voiceFor(turn.speaker), 45_000);
-        if (a?.audio_base64) wavs.push(Buffer.from(a.audio_base64, "base64"));
-      } catch (e) {
-        console.warn("[podcast] turno falhou:", (e as Error)?.message);
-      }
+    const turns = transcript.filter((t) => t.text.trim());
+    const CONC = 5;
+    const parts: (Buffer | null)[] = new Array(turns.length).fill(null);
+    for (let i = 0; i < turns.length; i += CONC) {
+      const batch = turns.slice(i, i + CONC);
+      const got = await Promise.all(
+        batch.map((t) =>
+          synthGeminiTTS(t.text, voiceFor(t.speaker), 30_000)
+            .then((a) => (a?.audio_base64 ? Buffer.from(a.audio_base64, "base64") : null))
+            .catch((e) => { console.warn("[podcast] turno falhou:", (e as Error)?.message); return null; }),
+        ),
+      );
+      got.forEach((b, j) => { parts[i + j] = b; });
     }
+    const wavs = parts.filter((b): b is Buffer => b !== null);
     if (!wavs.length) throw new Error("Síntese de voz do podcast falhou (verifique GEMINI_TTS_MODEL).");
 
     const merged = concatWav(wavs);
