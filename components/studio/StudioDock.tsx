@@ -121,6 +121,20 @@ export default function StudioDock({ spaceId }: { spaceId?: string }) {
     }
   };
 
+  // Menu "/" do caderno: gera um módulo sem clicar no dock (encaixa no cursor).
+  useEffect(() => {
+    const onGen = (e: any) => {
+      const kind = e?.detail?.kind;
+      if (!kind || busy) return;
+      if (kind === "podcast" || kind === "video") void generateAsync(kind);
+      else if (kind === "image") void generateImage();
+      else void generateText(kind);
+    };
+    window.addEventListener("zaeon:studio:generate", onGen);
+    return () => window.removeEventListener("zaeon:studio:generate", onGen);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spaceId, busy]);
+
   const pill = "shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12.5px] font-bold transition-colors disabled:opacity-50";
   const pillText = `${pill} text-slate-700 dark:text-white/85 bg-slate-100/80 dark:bg-white/[0.06] hover:bg-cyan-500/10 hover:text-cyan-700 dark:hover:text-cyan-200 border border-transparent hover:border-cyan-400/40`;
 
