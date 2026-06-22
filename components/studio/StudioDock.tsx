@@ -10,14 +10,14 @@
  * Salvar usa o evento zaeon:study:add (já ouvido pelo MeusEstudosFeed).
  */
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Save, Download, RefreshCw, X, Check, Mic } from "lucide-react";
+import { Loader2, Save, Download, RefreshCw, X, Check, Mic, ImageIcon } from "lucide-react";
 import {
-  GuideView, FaqView, FlashcardsView, MindmapView, TimelineView, PodcastView,
+  GuideView, FaqView, FlashcardsView, MindmapView, TimelineView, PodcastView, ImageView,
 } from "@/components/studio/StudioArtifactViews";
 import { artifactToText } from "@/lib/studio/artifact-text";
 import type { TextKind } from "@/lib/studio/transformations";
 
-type DockKind = TextKind | "podcast";
+type DockKind = TextKind | "podcast" | "image";
 
 interface DockAction {
   kind: TextKind;
@@ -38,6 +38,7 @@ interface ArtifactState {
   title: string;
   meta: any;
   audioUrl?: string;
+  dataUrl?: string;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -50,6 +51,7 @@ function renderView(a: ArtifactState) {
     case "mindmap": return <MindmapView data={a.meta} />;
     case "timeline": return <TimelineView data={a.meta} />;
     case "podcast": return <PodcastView audioUrl={a.audioUrl || ""} data={a.meta} />;
+    case "image": return <ImageView dataUrl={a.dataUrl || ""} prompt={a.meta?.prompt} />;
     default: return null;
   }
 }
@@ -121,9 +123,33 @@ export default function StudioDock({ spaceId }: { spaceId?: string }) {
     setBusy(null);
   };
 
+  // ── imagem (Imagen, síncrono: gera a partir do estudo) ──
+  const generateImage = async () => {
+    if (!spaceId) { setError("Abra um estudo primeiro para usar o Studio."); return; }
+    setBusy("image"); setError(null); setSaved(false);
+    try {
+      const res = await fetch("/api/studio/image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ spaceId }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.dataUrl) {
+        setError(data?.error || "Não consegui gerar a imagem.");
+      } else {
+        setArtifact({ kind: "image", title: data.title || "Imagem", meta: data.meta, dataUrl: data.dataUrl });
+      }
+    } catch {
+      setError("Falha de rede ao gerar a imagem.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const regenerate = () => {
     if (!artifact) return;
     if (artifact.kind === "podcast") void generatePodcast(true);
+    else if (artifact.kind === "image") void generateImage();
     else void generateText(artifact.kind, true);
   };
 
@@ -132,6 +158,10 @@ export default function StudioDock({ spaceId }: { spaceId?: string }) {
     if (artifact.kind === "podcast") {
       window.dispatchEvent(new CustomEvent("zaeon:study:add", {
         detail: { type: "ref", title: artifact.title, payload: { url: artifact.audioUrl, text: "Podcast gerado pela Zaeon" } },
+      }));
+    } else if (artifact.kind === "image") {
+      window.dispatchEvent(new CustomEvent("zaeon:study:add", {
+        detail: { type: "image", title: artifact.title, payload: { dataUrl: artifact.dataUrl } },
       }));
     } else {
       const text = artifactToText(artifact.kind, artifact.meta);
@@ -146,6 +176,15 @@ export default function StudioDock({ spaceId }: { spaceId?: string }) {
     if (!artifact) return;
     if (artifact.kind === "podcast") {
       if (artifact.audioUrl) window.open(`${artifact.audioUrl}?download=1`, "_blank");
+      return;
+    }
+    if (artifact.kind === "image") {
+      if (artifact.dataUrl) {
+        const a = document.createElement("a");
+        a.href = artifact.dataUrl;
+        a.download = `${artifact.title.replace(/[^\w.-]+/g, "_").slice(0, 60) || "imagem"}.png`;
+        a.click();
+      }
       return;
     }
     const text = artifactToText(artifact.kind, artifact.meta);
@@ -177,6 +216,15 @@ export default function StudioDock({ spaceId }: { spaceId?: string }) {
           >
             {busy === "podcast" ? <Loader2 size={13} className="animate-spin" /> : <Mic size={13} />}
             Podcast
+          </button>
+          <button
+            onClick={() => generateImage()}
+            disabled={busy !== null}
+            title="Gerar imagem didática (Imagen)"
+            className={`${pill} text-slate-700 dark:text-white/85 bg-slate-100/80 dark:bg-white/[0.06] hover:bg-cyan-500/10 hover:text-cyan-700 dark:hover:text-cyan-200 border border-transparent hover:border-cyan-400/40`}
+          >
+            {busy === "image" ? <Loader2 size={13} className="animate-spin" /> : <ImageIcon size={13} />}
+            Imagem
           </button>
           {ACTIONS.map((a) => (
             <button

@@ -170,6 +170,18 @@ export function PodcastView({ audioUrl, data }: { audioUrl: string; data: any })
   );
 }
 
+export function ImageView({ dataUrl, prompt }: { dataUrl: string; prompt?: string }) {
+  return (
+    <div className="space-y-2">
+      <div className={`${card} p-2`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={dataUrl} alt={prompt || "imagem gerada"} className="w-full rounded-xl" />
+      </div>
+      {prompt && <p className="text-[11px] italic text-slate-500 dark:text-white/50">{prompt}</p>}
+    </div>
+  );
+}
+
 export function MindmapView({ data }: { data: any }) {
   const nodes: MmNode[] = (data?.nodes || []).map((n: any) => ({ id: String(n.id), label: String(n.label), parent: n.parent ?? null }));
   const { nodes: pos, links, width, height } = layoutMindmap(nodes);

@@ -20,7 +20,7 @@ import {
     ArrowsRightLeftIcon
 } from "@heroicons/react/24/outline";
 // 🔥 ADICIONADO: Mic e MicOff
-import { Bot, Mic, MicOff, PhoneCall, PhoneOff } from "lucide-react";
+import { Bot, Mic, MicOff, PhoneCall, PhoneOff, Paperclip, X as XIcon } from "lucide-react";
 import ZaeonLogo from "@/components/main/ZaeonLogo";
 import ZaeonTriangle from "@/components/main/ZaeonTriangle";
 import SpeakButton from "@/components/voice/SpeakButton";
@@ -86,6 +86,9 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
     // Abre JÁ na conversa com a Zaeon (sem passo extra de clicar no perfil dela).
     const [activeChat, setActiveChat] = useState<any | null>(ZAEON_AGENT);
     const [messageInput, setMessageInput] = useState("");
+    // Multimodal: imagem anexada (foto → análise por Vision) e estado de geração.
+    const [pendingImage, setPendingImage] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [realUserId, setRealUserId] = useState<string>(fallbackId);
 
@@ -358,9 +361,27 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
     }, [isOpen, activeChat]);
 
     // 🔥 5. FUNÇÃO DE ENVIAR MENSAGEM (Híbrida: Humano vs Zaeon) 🔥
+    // Foto anexada → vira data URL base64 (enviada como fileData pro Gemini Vision).
+    const handleImagePick = (file?: File | null) => {
+        if (!file) return;
+        if (!file.type.startsWith("image/")) return;
+        if (file.size > 6 * 1024 * 1024) { setPendingImage(null); alert("Imagem muito grande (máx. 6MB)."); return; }
+        const reader = new FileReader();
+        reader.onload = () => setPendingImage(typeof reader.result === "string" ? reader.result : null);
+        reader.readAsDataURL(file);
+    };
+
+    // Detecta pedido de GERAR imagem ("gere/crie/desenhe uma imagem/diagrama de…").
+    const isImageRequest = (t: string): boolean => {
+        const s = t.toLowerCase();
+        return /(gerar|gere|gera|criar|crie|cria|desenh\w*|ilustr\w*|fa[cç]a|fazer)/.test(s) &&
+            /(imagem|figura|ilustra\w*|desenho|diagrama|foto|gr[áa]fico)/.test(s);
+    };
+
     const handleSendMessage = async (textArg?: string) => {
         const text = (typeof textArg === "string" ? textArg : messageInput).trim();
         if (!text || !activeChat) return;
+        const attachedImage = pendingImage; // captura antes de limpar o input/preview
 
         // Para o reconhecimento atual (a fala já virou texto); não desliga a conversa.
         try { recognitionRef.current?.stop(); } catch { /* ignore */ }
@@ -372,13 +393,38 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
             id: `opt_${Date.now()}`,
             senderId: realUserId,
             text: text,
+            ...(attachedImage ? { image: attachedImage } : {}),
         };
 
         if (activeChat.isAgent) {
             // ---> FLUXO ZAEON (IA) <---
             setZaeonMessages(prev => [...prev, optimisticMsg]);
+            setPendingImage(null); // anexo consumido
             setIsZaeonTyping(true);
             setAiState("thinking");
+
+            // ATALHO: pedido de GERAR imagem (Imagen) — sem anexo e sem modo profundo.
+            if (!deepMode && !attachedImage && isImageRequest(text)) {
+                try {
+                    const r = await fetch('/api/studio/image', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ prompt: text }),
+                    });
+                    const d = await r.json().catch(() => null);
+                    const msgId = Date.now();
+                    if (r.ok && d?.dataUrl) {
+                        setZaeonMessages(prev => [...prev, { id: msgId, senderId: 'zaeon-agent', text: "Aqui está a imagem que você pediu 👇", image: d.dataUrl }]);
+                    } else {
+                        setZaeonMessages(prev => [...prev, { id: msgId, senderId: 'zaeon-agent', text: d?.error || "Não consegui gerar a imagem agora. Tenta de novo?" }]);
+                    }
+                } catch {
+                    setZaeonMessages(prev => [...prev, { id: Date.now(), senderId: 'zaeon-agent', text: "Falha ao gerar a imagem." }]);
+                } finally {
+                    setIsZaeonTyping(false);
+                    setAiState("idle");
+                }
+                return;
+            }
 
             try {
                 // 1. Resgata a memória do utilizador gravada no Onboarding
@@ -395,7 +441,7 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
 
                 const userName = session?.user?.name || "Operador";
 
-                if (deepMode) {
+                if (deepMode && !attachedImage) {
                     // 🔥 MODO PROFUNDO — Gemini Pro em CHUNKS (plano → resposta), cada chamada curta.
                     const ctx = `Usuário: ${userName}. Página: ${pathname}.`;
                     const planRes = await fetch('/api/ai/deepthink', {
@@ -421,6 +467,7 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                             prompt: text,
                             agent: "zaeon",
                             voiceMode, // passivo | ativo (personalidade da fala)
+                            ...(attachedImage ? { fileData: attachedImage } : {}), // 🔥 foto → Gemini Vision
                             userData: savedOnboardingData, // 🔥 Memória injetada!
                             history: chatHistoryForGemini, // 🔥 Histórico do chat injetado!
                             agentContext: getAgentContext(), // 🔥 World-state durável do workspace!
@@ -721,6 +768,10 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                                                     )}
                                                     <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                                                         <div className={`p-2.5 text-[11px] shadow-sm backdrop-blur-md ${isMe ? 'bg-cyan-500 text-white rounded-2xl rounded-br-sm' : activeChat.isAgent ? 'bg-white dark:bg-[#1e293b] text-slate-800 dark:text-slate-200 border border-cyan-200 dark:border-cyan-500/20 rounded-2xl rounded-bl-sm' : 'bg-white dark:bg-[#1e293b] text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-white/5 rounded-2xl rounded-bl-sm'}`}>
+                                                            {msg.image && (
+                                                                // eslint-disable-next-line @next/next/no-img-element
+                                                                <img src={msg.image} alt="imagem" className="mb-1.5 rounded-lg max-h-48 w-auto" />
+                                                            )}
                                                             {msg.id === currentlyTypingMsgId ? (
                                                                 <TypewriterText text={msg.text} onComplete={() => {
                                                                     setCurrentlyTypingMsgId(null);
@@ -805,6 +856,14 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                                         </div>
                                     )}
 
+                                    {pendingImage && activeChat?.isAgent && (
+                                        <div className="flex items-center gap-2 mb-1.5 pl-1">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img src={pendingImage} alt="anexo" className="h-10 w-10 rounded-lg object-cover border border-cyan-300/40" />
+                                            <span className="text-[10px] text-slate-500 dark:text-slate-400 flex-1">Imagem anexada — a Zaeon vai analisar.</span>
+                                            <button onClick={() => setPendingImage(null)} title="Remover" className="text-slate-400 hover:text-rose-400"><XIcon size={13} /></button>
+                                        </div>
+                                    )}
                                     <div className="flex items-center gap-2 bg-white dark:bg-[#0f172a] rounded-full border border-slate-300 dark:border-white/10 p-1 pl-4 shadow-inner focus-within:border-cyan-400 dark:focus-within:border-cyan-500/50 transition-colors">
                                         <input
                                             type="text"
@@ -815,6 +874,27 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                                             disabled={isZaeonTyping}
                                             className="flex-1 bg-transparent text-[11px] focus:outline-none text-slate-700 dark:text-white placeholder:text-slate-400 disabled:opacity-50"
                                         />
+
+                                        {/* ANEXAR IMAGEM (Vision) — só no chat com a Zaeon */}
+                                        {activeChat?.isAgent && (
+                                            <>
+                                                <input
+                                                    ref={fileInputRef}
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="hidden"
+                                                    onChange={(e) => { handleImagePick(e.target.files?.[0]); e.currentTarget.value = ""; }}
+                                                />
+                                                <button
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                    disabled={isZaeonTyping}
+                                                    title="Anexar imagem (a Zaeon analisa)"
+                                                    className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-cyan-500 transition-all shrink-0 disabled:opacity-50"
+                                                >
+                                                    <Paperclip size={14} />
+                                                </button>
+                                            </>
+                                        )}
 
                                         {/* BOTÃO DE VOZ */}
                                         <button

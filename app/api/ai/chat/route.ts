@@ -232,22 +232,27 @@ export async function POST(req: Request) {
         });
 
         const parts: any[] = [];
-        if (fileData) {
-            // PDFs grandes estouram o limite inline do Gemini → o agente "não lê" o PDF.
-            // Fallback: acima de ~13MB, extrai o TEXTO (pdfjs) e manda como texto, pra o
-            // agente ainda conseguir conversar sobre o documento.
-            const approxChars = typeof fileData === "string" ? fileData.length : 0;
-            const TOO_BIG = approxChars > 18_000_000; // ~13.5MB em base64
-            if (TOO_BIG) {
+        if (fileData && typeof fileData === "string") {
+            // Aceita data URL ("data:<mime>;base64,XXXX") — usado por imagem (Vision) —
+            // OU base64 cru (fluxo legado de PDF, sem prefixo → assume application/pdf).
+            let mime = "application/pdf";
+            let b64 = fileData;
+            const m = /^data:([^;]+);base64,(.*)$/s.exec(fileData);
+            if (m) { mime = m[1]; b64 = m[2]; }
+
+            // PDFs grandes estouram o limite inline do Gemini → extrai o TEXTO (pdfjs).
+            const TOO_BIG = b64.length > 18_000_000; // ~13.5MB em base64
+            if (mime === "application/pdf" && TOO_BIG) {
                 try {
                     const { extractPdfParagraphs } = await import("@/lib/scholar/pdf");
-                    const bytes = Uint8Array.from(Buffer.from(fileData, "base64"));
+                    const bytes = Uint8Array.from(Buffer.from(b64, "base64"));
                     const paras = await extractPdfParagraphs(bytes).catch(() => [] as any[]);
                     const text = (paras as any[]).map((p) => p.text).join("\n\n").slice(0, 30000);
                     if (text) parts.push({ text: `=== TEXTO EXTRAÍDO DO PDF (documento grande — texto puro, sem layout) ===\n${text}` });
                 } catch { /* se a extração falhar, segue sem o PDF (responde com o que tiver) */ }
             } else {
-                parts.push({ inlineData: { data: fileData, mimeType: "application/pdf" } });
+                // imagem (Gemini Vision) ou PDF dentro do limite → inline com o mime certo
+                parts.push({ inlineData: { data: b64, mimeType: mime } });
             }
         }
         parts.push({ text: prompt });
