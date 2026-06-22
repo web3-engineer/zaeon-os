@@ -1516,11 +1516,12 @@ export default function HomeworkPage({
       emoji: "🔗",
       type: "document",
     });
+    wSetActiveId(relId); // mostra a aba de relação na hora (antes abria passiva → parecia que "nada acontecia")
     setRelSummaries((prev) => ({
       ...prev,
       [relId]: { title, text: "", loading: true },
     }));
-    showToast("Nova aba de relação aberta — carregando ✨");
+    showToast("Cruzando os dois trabalhos — carregando ✨");
     try {
       // Baixa os dois PDFs em paralelo. Ambos OK → comparação rica (Gemini lê os PDFs
       // inteiros); senão → metadados (o route faz o fallback, sem 400).
@@ -1581,6 +1582,7 @@ export default function HomeworkPage({
     const shortB = sTitle.length > 12 ? sTitle.slice(0, 12) + "…" : sTitle;
     const title = `${docTitle} × ${sTitle}`;
     wAddWindow({ id: relId, label: `${shortA} × ${shortB}`, emoji: "🔗", type: "document" });
+    wSetActiveId(relId); // mostra a aba de relação na hora
     setRelSummaries((prev) => ({ ...prev, [relId]: { title, text: "", loading: true } }));
     showToast("Cruzando os dois documentos — carregando ✨");
     try {

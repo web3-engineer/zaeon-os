@@ -40,12 +40,14 @@ export async function POST(req: Request) {
   if (text.length > 4000) return json({ error: "Texto muito longo (máx. 4000)." }, 400);
 
   // CAMINHO PRINCIPAL: Gemini-TTS no Vertex (voz feminina pt-BR, no crédito GenAI).
+  let geminiErr = "";
   try {
     const out = await synthGeminiTTS(text, voice);
     return json(out, 200);
   } catch (e) {
     // segue para o fallback offline (Piper) sem derrubar a tela.
-    console.warn("[ai/voice] gemini-tts falhou, tentando Piper:", (e as Error)?.message);
+    geminiErr = (e as Error)?.message || String(e);
+    console.warn("[ai/voice] gemini-tts falhou, tentando Piper:", geminiErr);
   }
 
   // FALLBACK: engine Python (Piper "natural-br"). Garante áudio em vez de 503 silencioso.
@@ -66,5 +68,7 @@ export async function POST(req: Request) {
   } catch {
     clearTimeout(timer);
   }
-  return json({ error: "Engine de voz indisponível." }, 503);
+  // DIAGNÓSTICO TEMPORÁRIO: expõe o motivo real da falha do Gemini-TTS no corpo do 503
+  // (mensagem do Vertex, sem segredo) pra identificar modelo/região/allowlist. Remover depois.
+  return json({ error: "Engine de voz indisponível.", detail: geminiErr }, 503);
 }
