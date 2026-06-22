@@ -1,6 +1,7 @@
 // Resumo LEVE (modo Vercel) — sem baixar o PDF. Resume do título + abstract + autores
-// que já estão nas sessões de pesquisa do usuário. Usa Groq (só API key; sem Vertex/sem 502).
-// O resumo PROFUNDO (baixa o PDF inteiro) fica pro modo container — ver lib/runtime/mode.
+// que já estão nas sessões de pesquisa do usuário. Usa Gemini Flash (Vertex, via geminiText
+// → fatura no crédito GenAI). O resumo PROFUNDO (baixa o PDF inteiro) fica pro modo
+// container — ver lib/runtime/mode.
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";

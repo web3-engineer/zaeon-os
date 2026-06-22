@@ -1,7 +1,8 @@
 // Relação entre DOIS trabalhos (arrastar uma pesquisa sobre a outra).
 // Dois níveis (ver lib/runtime/mode):
-//   - mode "vercel"  → SIMPLES: relação a partir dos metadados (título+abstract) via Groq. Sem PDF, sem 502.
+//   - mode "vercel"  → SIMPLES: relação a partir dos metadados (título+abstract) via Gemini Flash (Vertex). Sem PDF, sem 502.
 //   - mode "gemini"  → SOFISTICADO: agente Gemini (Vertex) com acesso aos DOIS PDFs inteiros.
+//   - texto interno  → docs gerados (sem PDF): relaciona pelo corpo dos dois via Gemini Flash.
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
@@ -68,7 +69,7 @@ export async function POST(req: Request) {
         }
     }
 
-    // ───────── NÍVEL SIMPLES (Vercel): metadados → Groq ─────────
+    // ───────── NÍVEL SIMPLES (Vercel): metadados → Gemini Flash ─────────
     if (mode === "vercel") {
         const [ma, mb] = await Promise.all([resolveMeta(dbUser.id, a), resolveMeta(dbUser.id, b)]);
         if (!ma.title && !ma.abstract && !mb.title && !mb.abstract) {
