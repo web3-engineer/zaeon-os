@@ -736,3 +736,10 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 **2. Placeholder scan:** No TBD/TODO; every code step shows complete code; commands have expected output. ✓
 
 **3. Type consistency:** `createPdfCache`/`generateWithCache` signatures in Task 2 match their uses in Tasks 3-4. `pdfCache: { name; expireTime }` shape consistent across Task 5. `{ cacheName }` request field and `{ cacheExpired }`/`{ text }` responses consistent between Tasks 3-5. ✓
+
+---
+
+## Post-merge follow-ups (from final whole-branch review)
+
+- **`systemInstruction` placement:** `generateWithCache` sends `systemText` (persona + context) as a leading **user** text part. Moving it to a top-level `systemInstruction` field on the `generateContent` body would improve instruction-following fidelity (persona treated as system, not user). Vertex *may* allow `systemInstruction` alongside `cachedContent` when the cache itself defines none (ours doesn't) — **verify against the live Vertex API before changing**; if rejected, leave as-is. Not merge-blocking (current behavior is functional).
+- **Proactive cache refresh:** the client stores `pdfCache.expireTime` but only recreates reactively (on a server `cacheExpired`). Optionally recreate just before expiry, or drop the unused field.
