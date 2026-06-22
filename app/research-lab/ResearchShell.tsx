@@ -39,6 +39,9 @@ interface ResearchShellProps {
   onWorkType?: (t: string) => void;
   /** Arrastar um doc sobre outro → relacionar as pesquisas. */
   onRelate?: (sourceId: string, targetId: string) => void;
+  /** Ler a pesquisa (texto do editor) em voz — botão play/stop na aba da pesquisa. */
+  onReadResearch?: () => void;
+  isReadingResearch?: boolean;
   /** Window store (subido pro page.tsx) — abas de play E de merge. */
   windows: WindowEntry[];
   activeId: string;
@@ -73,6 +76,8 @@ export default function ResearchShell({
   workType,
   onWorkType,
   onRelate,
+  onReadResearch,
+  isReadingResearch,
   windows,
   activeId,
   onSelectWindow,
@@ -185,6 +190,8 @@ export default function ResearchShell({
           onClose={removeWindow}
           workType={workType}
           onWorkType={onWorkType}
+          onReadResearch={onReadResearch}
+          isReadingResearch={isReadingResearch}
         />
 
         {/* Sheet area — all windows mounted, inactive ones hidden via display:none */}

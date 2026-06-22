@@ -62,7 +62,7 @@ import OnboardingGuide from "@/components/onboard/OnboardingGuide";
 import { startTour } from "@/lib/onboarding/tour";
 import { capabilities } from "@/lib/runtime/mode";
 import { useLibraryFiles, type LibraryFile } from "@/lib/useLibraryFiles";
-import { speakSequence as ttsSpeakSequence } from "@/lib/voice/ttsController";
+import { speakSequence as ttsSpeakSequence, stop as ttsStop } from "@/lib/voice/ttsController";
 import RichText from "@/components/research/RichText";
 import { useWindowStore } from "@/lib/useWindowStore";
 
@@ -1791,11 +1791,25 @@ export default function HomeworkPage({
       // "aborted" (o speak() comum manda tudo de uma vez — por isso só funcionava com
       // textos curtos, tipo o chat widget). Em pedaços curtos, cada chamada responde rápido.
       void audioRef; // (legado — o áudio é gerido pelo ttsController global)
-      await ttsSpeakSequence([clean]);
+      await ttsSpeakSequence([clean]); // sem curinga (resumo não é "documento inteiro")
     } catch {
       showToast("Voz indisponível agora.");
     } finally {
       if (msgId != null) setVoiceLoadingId(null);
+    }
+  };
+
+  // Ler a PESQUISA inteira (texto do editor) em voz — COM curinga de cold-start (é documento
+  // longo). Play/stop no lugar do caderninho da aba (WindowSwitcher), na voz escolhida.
+  const [readingResearch, setReadingResearch] = useState(false);
+  const readResearch = async () => {
+    if (readingResearch) { ttsStop(); setReadingResearch(false); return; }
+    if (!docContent.trim()) { showToast("Escreva algo na pesquisa primeiro."); return; }
+    setReadingResearch(true);
+    try {
+      await ttsSpeakSequence([docContent], { filler: true });
+    } finally {
+      setReadingResearch(false);
     }
   };
 
@@ -2329,6 +2343,8 @@ export default function HomeworkPage({
                 workType={workType}
                 onWorkType={switchWorkType}
                 onRelate={handleRelateFiles}
+                onReadResearch={readResearch}
+                isReadingResearch={readingResearch}
                 onViewDoc={handleViewDoc}
                 pdfDocs={pdfDocs}
                 onCite={handleSaveCite}
