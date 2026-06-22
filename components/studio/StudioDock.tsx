@@ -10,14 +10,14 @@
  * Salvar usa o evento zaeon:study:add (já ouvido pelo MeusEstudosFeed).
  */
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Save, Download, RefreshCw, X, Check, Mic, ImageIcon } from "lucide-react";
+import { Loader2, Save, Download, RefreshCw, X, Check, Mic, ImageIcon, Film } from "lucide-react";
 import {
-  GuideView, FaqView, FlashcardsView, MindmapView, TimelineView, PodcastView, ImageView,
+  GuideView, FaqView, FlashcardsView, MindmapView, TimelineView, PodcastView, ImageView, VideoView,
 } from "@/components/studio/StudioArtifactViews";
 import { artifactToText } from "@/lib/studio/artifact-text";
 import type { TextKind } from "@/lib/studio/transformations";
 
-type DockKind = TextKind | "podcast" | "image";
+type DockKind = TextKind | "podcast" | "image" | "video";
 
 interface DockAction {
   kind: TextKind;
@@ -39,6 +39,7 @@ interface ArtifactState {
   meta: any;
   audioUrl?: string;
   dataUrl?: string;
+  videoUrl?: string;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -52,6 +53,7 @@ function renderView(a: ArtifactState) {
     case "timeline": return <TimelineView data={a.meta} />;
     case "podcast": return <PodcastView audioUrl={a.audioUrl || ""} data={a.meta} />;
     case "image": return <ImageView dataUrl={a.dataUrl || ""} prompt={a.meta?.prompt} />;
+    case "video": return <VideoView url={a.videoUrl || ""} />;
     default: return null;
   }
 }
@@ -146,9 +148,45 @@ export default function StudioDock({ spaceId }: { spaceId?: string }) {
     }
   };
 
+  // ── vídeo (assíncrono: cria → polling → toca) ──
+  const finishVideo = (d: any) => {
+    setArtifact({ kind: "video", title: d.title || "Vídeo", meta: d.meta, videoUrl: `/api/studio/${d.id}/file` });
+    setBusy(null);
+  };
+
+  const generateVideo = async (force = false) => {
+    if (!spaceId) { setError("Abra um estudo primeiro para usar o Studio."); return; }
+    setBusy("video"); setError(null); setSaved(false); cancelPoll.current = false;
+    try {
+      const res = await fetch("/api/studio/video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ spaceId, force }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.id) { setError(data?.error || "Não consegui iniciar o vídeo."); setBusy(null); return; }
+      if (data.status === "done") { finishVideo(data); return; }
+
+      const started = Date.now();
+      while (Date.now() - started < 8 * 60 * 1000) {
+        await sleep(3000);
+        if (cancelPoll.current) return;
+        const r = await fetch(`/api/studio/${data.id}`);
+        const d = await r.json().catch(() => null);
+        if (!d) continue;
+        if (d.status === "done") { finishVideo(d); return; }
+        if (d.status === "error") { setError(d.error || "Falha ao gerar o vídeo."); setBusy(null); return; }
+      }
+      setError("O vídeo demorou demais. Tente de novo."); setBusy(null);
+    } catch {
+      setError("Falha de rede ao gerar o vídeo."); setBusy(null);
+    }
+  };
+
   const regenerate = () => {
     if (!artifact) return;
     if (artifact.kind === "podcast") void generatePodcast(true);
+    else if (artifact.kind === "video") void generateVideo(true);
     else if (artifact.kind === "image") void generateImage();
     else void generateText(artifact.kind, true);
   };
@@ -158,6 +196,10 @@ export default function StudioDock({ spaceId }: { spaceId?: string }) {
     if (artifact.kind === "podcast") {
       window.dispatchEvent(new CustomEvent("zaeon:study:add", {
         detail: { type: "ref", title: artifact.title, payload: { url: artifact.audioUrl, text: "Podcast gerado pela Zaeon" } },
+      }));
+    } else if (artifact.kind === "video") {
+      window.dispatchEvent(new CustomEvent("zaeon:study:add", {
+        detail: { type: "ref", title: artifact.title, payload: { url: artifact.videoUrl, text: "Vídeo gerado pela Zaeon" } },
       }));
     } else if (artifact.kind === "image") {
       window.dispatchEvent(new CustomEvent("zaeon:study:add", {
@@ -176,6 +218,10 @@ export default function StudioDock({ spaceId }: { spaceId?: string }) {
     if (!artifact) return;
     if (artifact.kind === "podcast") {
       if (artifact.audioUrl) window.open(`${artifact.audioUrl}?download=1`, "_blank");
+      return;
+    }
+    if (artifact.kind === "video") {
+      if (artifact.videoUrl) window.open(`${artifact.videoUrl}?download=1`, "_blank");
       return;
     }
     if (artifact.kind === "image") {
@@ -226,6 +272,15 @@ export default function StudioDock({ spaceId }: { spaceId?: string }) {
             {busy === "image" ? <Loader2 size={13} className="animate-spin" /> : <ImageIcon size={13} />}
             Imagem
           </button>
+          <button
+            onClick={() => generateVideo()}
+            disabled={busy !== null}
+            title="Gerar vídeo-resumo (slides + narração)"
+            className={`${pill} text-slate-700 dark:text-white/85 bg-slate-100/80 dark:bg-white/[0.06] hover:bg-cyan-500/10 hover:text-cyan-700 dark:hover:text-cyan-200 border border-transparent hover:border-cyan-400/40`}
+          >
+            {busy === "video" ? <Loader2 size={13} className="animate-spin" /> : <Film size={13} />}
+            Vídeo
+          </button>
           {ACTIONS.map((a) => (
             <button
               key={a.kind}
@@ -244,6 +299,11 @@ export default function StudioDock({ spaceId }: { spaceId?: string }) {
       {busy === "podcast" && !artifact && (
         <p className="mt-2 pl-1 text-[12px] text-cyan-600 dark:text-cyan-300 flex items-center gap-1.5">
           <Loader2 size={12} className="animate-spin" /> Gravando o podcast (roteiro + 2 vozes)… isso leva alguns instantes.
+        </p>
+      )}
+      {busy === "video" && !artifact && (
+        <p className="mt-2 pl-1 text-[12px] text-cyan-600 dark:text-cyan-300 flex items-center gap-1.5">
+          <Loader2 size={12} className="animate-spin" /> Montando o vídeo (roteiro + imagens + narração)… pode levar 1–2 minutos.
         </p>
       )}
       {error && <p className="mt-2 pl-1 text-[12px] text-rose-600 dark:text-rose-300">{error}</p>}

@@ -170,6 +170,15 @@ export function PodcastView({ audioUrl, data }: { audioUrl: string; data: any })
   );
 }
 
+export function VideoView({ url }: { url: string }) {
+  return (
+    <div className={`${card} p-2`}>
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+      <video controls src={url} className="w-full rounded-xl" preload="metadata" />
+    </div>
+  );
+}
+
 export function ImageView({ dataUrl, prompt }: { dataUrl: string; prompt?: string }) {
   return (
     <div className="space-y-2">

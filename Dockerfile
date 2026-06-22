@@ -49,7 +49,8 @@ ENV NODE_ENV=production \
 # openssl + ca-certificates no RUNTIME (não só no build): o Prisma detecta a versão do
 # openssl em runtime pra localizar o Query Engine. Sem isso a detecção caía em
 # debian-openssl-1.1.x e não achava o engine → toda query Prisma dava 500.
-RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
+# ffmpeg: montagem do Vídeo Overview do Studio (slides Imagen + narração → mp4).
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 RUN useradd --create-home --uid 10001 zaeon
