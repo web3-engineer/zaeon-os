@@ -1,6 +1,11 @@
 /**
- * Geração do podcast (IMPURA): roteiro (Gemini) → voz multi-speaker (Gemini-TTS) →
- * concatena os WAVs → grava em .studio/<id>.wav e marca o artefato como done.
+ * Geração do podcast (IMPURA): roteiro (Gemini) → voz TURNO-A-TURNO (Gemini-TTS,
+ * voz única por locutor — o caminho que já funciona) → concatena os WAVs → grava em
+ * .studio/<id>.wav e marca o artefato como done.
+ *
+ * Por que turno-a-turno e não multi-speaker numa tacada: o modelo de TTS em uso faz
+ * 1 voz com confiabilidade, mas o multi-speaker pode não estar disponível. Sintetizar
+ * cada fala com a voz do seu locutor garante o podcast funcionando.
  *
  * Roda em FIRE-AND-FORGET: a rota cria o artefato (queued) e chama isto sem await;
  * o cliente faz polling em /api/studio/[id]. Funciona porque o app é um servidor
@@ -8,13 +13,8 @@
  */
 import { prisma } from "@/src/lib/prisma";
 import { geminiJson } from "@/lib/scholar/gemini";
-import { synthGeminiTTSMulti } from "@/lib/studio/podcast-tts";
+import { synthGeminiTTS } from "@/lib/voice/gemini-tts";
 import { concatWav } from "@/lib/studio/wav";
-
-// Vozes dos 2 apresentadores (nomes prebuilt do Gemini-TTS; override por env).
-// Default feminino = "Kore" (mesmo default do catálogo de voz da casa).
-const VOICE_F = process.env.ZAEON_TTS_VOICE_F || "Kore";
-const VOICE_M = process.env.ZAEON_TTS_VOICE_M || "Charon";
 import { writeStudioFile } from "@/lib/studio/storage";
 import {
   defaultHosts,
@@ -22,9 +22,13 @@ import {
   buildTranscriptPrompt,
   normalizeOutline,
   normalizeTranscript,
-  chunkTurnsForTTS,
   type PodcastOptions,
 } from "@/lib/studio/podcast";
+
+// Vozes dos 2 apresentadores (nomes prebuilt do Gemini-TTS; override por env).
+// Feminina = Leda (voz premium padrão da casa); masculina = Charon.
+const VOICE_F = process.env.ZAEON_TTS_VOICE_F || "Leda";
+const VOICE_M = process.env.ZAEON_TTS_VOICE_M || "Charon";
 
 export async function runPodcastGeneration(
   artId: string,
@@ -46,15 +50,20 @@ export async function runPodcastGeneration(
       hosts,
     );
 
-    // 2) voz — multi-speaker (até 2 vozes); chunk por tamanho, concatena os WAVs
-    const speakers = hosts.map((h) => ({ speaker: h.name, voiceName: h.gender === "f" ? VOICE_F : VOICE_M }));
-    const chunks = chunkTurnsForTTS(transcript, 2500);
+    // 2) voz — sintetiza CADA TURNO com a voz do locutor (single-voice, confiável)
+    //    e concatena os WAVs. Não depende de multi-speaker no modelo.
+    const voiceFor = (speaker: string) => (speaker === hosts[1].name ? VOICE_M : VOICE_F);
     const wavs: Buffer[] = [];
-    for (const text of chunks) {
-      const wav = await synthGeminiTTSMulti(text, speakers, 120_000);
-      if (wav) wavs.push(wav);
+    for (const turn of transcript) {
+      if (!turn.text.trim()) continue;
+      try {
+        const a = await synthGeminiTTS(turn.text, voiceFor(turn.speaker), 45_000);
+        if (a?.audio_base64) wavs.push(Buffer.from(a.audio_base64, "base64"));
+      } catch (e) {
+        console.warn("[podcast] turno falhou:", (e as Error)?.message);
+      }
     }
-    if (!wavs.length) throw new Error("TTS multi-speaker não retornou áudio (modelo Gemini-TTS habilitado no projeto?)");
+    if (!wavs.length) throw new Error("Síntese de voz do podcast falhou (verifique GEMINI_TTS_MODEL).");
 
     const merged = concatWav(wavs);
     await writeStudioFile(artId, "wav", merged);

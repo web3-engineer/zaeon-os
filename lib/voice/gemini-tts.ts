@@ -31,7 +31,7 @@ export const GEMINI_VOICES: GeminiVoice[] = [
   { id: "charon", gemini: "Charon", label: "Charon (masculina, pt-BR)", gender: "m", lang: "pt-BR" },
 ];
 
-export const DEFAULT_GEMINI_VOICE_ID = "kore";
+export const DEFAULT_GEMINI_VOICE_ID = "leda";
 
 const GEMINI_TTS_MODEL = process.env.GEMINI_TTS_MODEL || "gemini-2.5-flash-tts";
 
