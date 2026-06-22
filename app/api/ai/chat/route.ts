@@ -5,6 +5,7 @@ import { GEMINI_MODEL_FLASH } from '@/lib/ai/model';
 import { vertexCredentials } from '@/lib/ai/vertex-credentials';
 import { guard } from '@/src/lib/ratelimit';
 import { sanitizeHistory } from '@/lib/ai/history';
+import { generateWithCache, CacheMissError } from "@/lib/ai/contextCache";
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -201,7 +202,7 @@ export async function POST(req: Request) {
         const rl = await guard(req, "ai-chat", "ai-heavy");
         if (!rl.ok) return rl.response;
         // 🔥 NOVO: Recebendo userData + history + agentContext do frontend
-        const { prompt, agent, systemContext, fileData, userData, voiceMode, history, agentContext } = await req.json();
+        const { prompt, agent, systemContext, fileData, userData, voiceMode, history, agentContext, cacheName } = await req.json();
         const agentKey = agent?.toLowerCase() || "aura";
 
         // Histórico da conversa (memória entre turnos). Ver lib/ai/history.ts.
@@ -285,6 +286,26 @@ export async function POST(req: Request) {
                 ? `MODO VOZ ATIVO: você pode conversar com leveza, calor e personalidade sobre o assunto — comente brevemente — e AO MESMO TEMPO acione o agente certo para executar. NÃO narre tarefas técnicas; converse com naturalidade enquanto age. Seja humana e concisa.`
                 : `MODO VOZ PASSIVO: receba o comando e EXECUTE com o mínimo de conversa. Seja breve e direto, acione o agente certo sem rodeios nem narração.`;
             finalSystemInstruction += `\n\n=== MODO DE VOZ ===\n${directive}`;
+        }
+
+        // CHAT VIA CACHE: o PDF está num cachedContent do Vertex → mandamos só o
+        // systemInstruction + histórico + pergunta (sem reenviar o PDF). ~90% menos
+        // tokens por turno. Cache expirou → { cacheExpired: true } e o cliente recria.
+        if (typeof cacheName === "string" && cacheName) {
+            try {
+                const text = await generateWithCache({
+                    cacheName,
+                    systemText: finalSystemInstruction,
+                    prompt,
+                    history: chatHistory,
+                });
+                return NextResponse.json({ text });
+            } catch (e: any) {
+                if (e instanceof CacheMissError) {
+                    return NextResponse.json({ cacheExpired: true });
+                }
+                return NextResponse.json({ success: false, error: e?.message }, { status: 500 });
+            }
         }
 
         const chat = generativeModel.startChat({
