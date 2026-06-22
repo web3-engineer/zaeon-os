@@ -19,3 +19,19 @@ export function prevEditableId(blocks: BlockRef[], id: string): string | null {
   }
   return null;
 }
+
+/**
+ * Reordenação por arrastar: move `fromId` para a posição de `toId` (fica ANTES do
+ * alvo). Devolve a nova ordem dos ids. Sem efeito se ids forem iguais/inexistentes.
+ */
+export function moveBlock(ids: string[], fromId: string, toId: string): string[] {
+  if (fromId === toId) return ids.slice();
+  const from = ids.indexOf(fromId);
+  const to = ids.indexOf(toId);
+  if (from < 0 || to < 0) return ids.slice();
+  const out = ids.slice();
+  out.splice(from, 1);
+  const insertAt = out.indexOf(toId);
+  out.splice(insertAt, 0, fromId);
+  return out;
+}

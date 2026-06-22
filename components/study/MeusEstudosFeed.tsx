@@ -25,7 +25,7 @@ import VoicePlayButton from "@/components/voice/VoicePlayButton";
 import StudioDock from "@/components/studio/StudioDock";
 import StudioBlock, { type StudioBlockData } from "@/components/studio/StudioBlock";
 import { detectHeadingShortcut } from "@/lib/study/blockMarkdown";
-import { prevEditableId } from "@/lib/study/blockOrder";
+import { prevEditableId, moveBlock } from "@/lib/study/blockOrder";
 import { useTTS } from "@/lib/voice/useTTS";
 import { takeHandoff } from "@/lib/agents/handoff";
 import { missionDone } from "@/lib/agents/mission";
@@ -115,6 +115,7 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
   const [error, setError] = useState<string | null>(null);
   const [spaceMenu, setSpaceMenu] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [dragId, setDragId] = useState<string | null>(null); // bloco do feed sendo arrastado p/ reordenar
   const [busyId, setBusyId] = useState<string | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [editingYt, setEditingYt] = useState<string | null>(null); // bloco-vídeo em modo edição do link
@@ -561,6 +562,22 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
     if (id) toFeed(id);
   };
 
+  // Reordenar blocos do caderno por arrastar (alça à esquerda). Reindexa o feed
+  // (0..N) e persiste só o que mudou. Não toca no Studio — só a ordem dos itens.
+  const reorderTo = (targetId: string) => {
+    const from = dragId; setDragId(null);
+    if (!from || from === targetId) return;
+    const next = moveBlock(feed.map((b) => b.id), from, targetId);
+    const orderById = new Map<string, number>(next.map((id, i) => [id, i]));
+    setItems((prev) => prev.map((it) => (orderById.has(it.id) ? { ...it, order: orderById.get(it.id)! } : it)));
+    for (const b of feed) {
+      const no = orderById.get(b.id);
+      if (no != null && no !== (typeof b.order === "number" ? b.order : 0)) {
+        fetch("/api/study/items", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: b.id, order: no }) });
+      }
+    }
+  };
+
   // ── render de um bloco do caderno ──────────────────────────────────────────
   const renderBlock = (it: Item, idx?: number) => {
     // BLOCO DO STUDIO (guia/mapa/podcast/vídeo…) → cartão colapsável inline.
@@ -836,7 +853,25 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
             </div>
           ) : (
             <div className={`p-6 sm:p-8 max-w-2xl flex flex-col ${libOpen ? "mx-auto" : "lg:pl-10"}`}>
-              {feed.map((it, idx) => <div key={it.id}>{renderBlock(it, idx)}</div>)}
+              {feed.map((it, idx) => (
+                <div
+                  key={it.id}
+                  className="relative group/blk"
+                  onDragOver={(e) => { if (dragId && dragId !== it.id) e.preventDefault(); }}
+                  onDrop={(e) => { if (dragId) { e.preventDefault(); e.stopPropagation(); reorderTo(it.id); } }}
+                >
+                  <span
+                    draggable
+                    onDragStart={(e) => { setDragId(it.id); e.dataTransfer.effectAllowed = "move"; try { e.dataTransfer.setData("text/plain", it.id); } catch { /* */ } }}
+                    onDragEnd={() => setDragId(null)}
+                    title="Arraste para reordenar"
+                    className="absolute -left-6 top-2 z-10 opacity-0 group-hover/blk:opacity-100 cursor-grab active:cursor-grabbing text-slate-300 hover:text-cyan-500 dark:text-white/20 dark:hover:text-cyan-400"
+                  >
+                    <GripVertical size={14} />
+                  </span>
+                  {renderBlock(it, idx)}
+                </div>
+              ))}
               <div className="mt-4 pt-2"><AddBar /></div>
             </div>
           )}
