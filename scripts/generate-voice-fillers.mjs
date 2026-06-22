@@ -12,9 +12,12 @@
  * Modelo via GEMINI_TTS_MODEL (default gemini-2.5-flash-tts). Se der timeout/erro aqui,
  * é o mesmo problema do cold-start em produção — mas offline dá pra esperar.
  */
-import { writeFile, mkdir } from "node:fs/promises";
+import { writeFile, mkdir, readdir } from "node:fs/promises";
+import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { GoogleAuth } from "google-auth-library";
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Frases criativas/engraçadas — a Aura "ganhando tempo" com humor e calor (pt-BR).
 const PHRASES = [
@@ -95,18 +98,15 @@ async function main() {
 
   const outDir = path.resolve("public/agents/voice-fillers");
   await mkdir(outDir, { recursive: true });
-  const manifest = [];
 
-  for (let i = 0; i < PHRASES.length; i++) {
-    const voiceName = VOICES[i % VOICES.length];
-    const n = String(i + 1).padStart(2, "0");
-    process.stdout.write(`[${n}/${PHRASES.length}] ${voiceName} — "${PHRASES[i].slice(0, 40)}…" `);
-    try {
+  // 1 chamada com retry no 429 (quota por minuto). Espera e tenta de novo até 3x.
+  async function callTTS(text, voiceName) {
+    for (let attempt = 0; attempt < 3; attempt++) {
       const res = await fetch(url, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: PHRASES[i] }] }],
+          contents: [{ role: "user", parts: [{ text }] }],
           generationConfig: {
             responseModalities: ["AUDIO"],
             speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } },
@@ -114,23 +114,48 @@ async function main() {
         }),
         signal: AbortSignal.timeout(90_000),
       });
+      if (res.status === 429) {
+        process.stdout.write("(429, esperando 35s) ");
+        await sleep(35_000);
+        continue;
+      }
+      return res;
+    }
+    return null;
+  }
+
+  for (let i = 0; i < PHRASES.length; i++) {
+    const voiceName = VOICES[i % VOICES.length];
+    const n = String(i + 1).padStart(2, "0");
+    const outPath = path.join(outDir, `filler-${n}.wav`);
+    // IDEMPOTENTE: já existe e tem tamanho → pula (não re-bilha o que já saiu).
+    if (existsSync(outPath) && statSync(outPath).size > 2000) {
+      console.log(`[${n}/${PHRASES.length}] já existe — pulando`);
+      continue;
+    }
+    process.stdout.write(`[${n}/${PHRASES.length}] ${voiceName} — "${PHRASES[i].slice(0, 40)}…" `);
+    try {
+      const res = await callTTS(PHRASES[i], voiceName);
+      if (!res) { console.log("desistiu (429 repetido)"); continue; }
       if (!res.ok) { console.log("FALHOU", res.status, (await res.text()).slice(0, 160)); continue; }
       const data = await res.json();
       const inline = data?.candidates?.[0]?.content?.parts?.find((p) => p?.inlineData?.data)?.inlineData;
       if (!inline?.data) { console.log("sem áudio"); continue; }
       const mime = inline.mimeType || "audio/L16;rate=24000";
       const wav = /wav|mpeg|mp3|ogg/i.test(mime) ? Buffer.from(inline.data, "base64") : pcmToWav(inline.data, parsePcmRate(mime));
-      const file = `filler-${n}.wav`;
-      await writeFile(path.join(outDir, file), wav);
-      manifest.push(`/agents/voice-fillers/${file}`);
+      await writeFile(outPath, wav);
       console.log("ok", `(${(wav.length / 1024).toFixed(0)}kb)`);
     } catch (e) {
       console.log("ERRO", e?.message || e);
     }
+    await sleep(6_000); // throttle: respeita a quota por minuto
   }
 
+  // manifest a partir do que EXISTE no disco (acumula entre rodadas).
+  const files = (await readdir(outDir)).filter((f) => /^filler-\d+\.wav$/.test(f)).sort();
+  const manifest = files.map((f) => `/agents/voice-fillers/${f}`);
   await writeFile(path.join(outDir, "manifest.json"), JSON.stringify(manifest, null, 2));
-  console.log(`\n✓ ${manifest.length}/${PHRASES.length} curingas geradas. manifest.json atualizado.`);
+  console.log(`\n✓ ${manifest.length}/${PHRASES.length} curingas no disco. manifest.json atualizado.`);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });
