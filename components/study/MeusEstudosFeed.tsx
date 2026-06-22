@@ -24,6 +24,7 @@ import SpeakButton from "@/components/voice/SpeakButton";
 import VoicePlayButton from "@/components/voice/VoicePlayButton";
 import StudioDock from "@/components/studio/StudioDock";
 import StudioBlock, { type StudioBlockData } from "@/components/studio/StudioBlock";
+import { detectHeadingShortcut } from "@/lib/study/blockMarkdown";
 import { useTTS } from "@/lib/voice/useTTS";
 import { takeHandoff } from "@/lib/agents/handoff";
 import { missionDone } from "@/lib/agents/mission";
@@ -413,9 +414,18 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
   };
   const editText = (id: string, text: string) => {
     const vid = soloYt(text); // colou um link do YouTube sozinho → já vira vídeo
-    setItems((prev) => prev.map((i) => (i.id === id
-      ? { ...i, title: text.slice(0, 80), payload: { ...i.payload, text, ...(vid ? { videoId: vid, url: text.trim() } : { videoId: undefined }) } }
-      : i)));
+    setItems((prev) => prev.map((i) => {
+      if (i.id !== id) return i;
+      // Markdown (B1): "# "/"## " no início de um bloco de TEXTO vira título/subtítulo.
+      const head = (i.payload?.variant ?? "text") === "text" ? detectHeadingShortcut(text) : null;
+      const finalText = head ? head.text : text;
+      const variant = head ? head.variant : i.payload?.variant;
+      return {
+        ...i,
+        title: finalText.slice(0, 80),
+        payload: { ...i.payload, text: finalText, ...(variant ? { variant } : {}), ...(vid ? { videoId: vid, url: text.trim() } : { videoId: undefined }) },
+      };
+    }));
     if (vid) setEditingYt(null);
     persist(id);
   };
