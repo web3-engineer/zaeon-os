@@ -82,6 +82,6 @@ export async function POST(req: Request) {
       where: { id: art.id },
       data: { status: "error", error: String(e?.message || e).slice(0, 500) },
     });
-    return NextResponse.json({ error: "Não consegui gerar a imagem.", id: art.id }, { status: 502 });
+    return NextResponse.json({ error: String(e?.message || "Não consegui gerar a imagem."), id: art.id }, { status: 502 });
   }
 }

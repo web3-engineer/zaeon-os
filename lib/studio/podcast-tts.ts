@@ -51,7 +51,10 @@ export async function synthGeminiTTSMulti(
       body: JSON.stringify(buildMultiSpeakerTtsBody(clean, speakers.slice(0, 2))),
       signal: controller.signal,
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn("[podcast-tts] HTTP", res.status, (await res.text().catch(() => "")).slice(0, 300));
+      return null;
+    }
 
     const json = await res.json().catch(() => null);
     const parsed = parseTtsResponse(json);
@@ -60,7 +63,8 @@ export async function synthGeminiTTSMulti(
     const raw = Buffer.from(parsed.data, "base64");
     // PCM L16 cru → WAV (ou já é um container tocável).
     return isWav(raw) ? raw : pcmToWav(raw, parseAudioMime(parsed.mimeType));
-  } catch {
+  } catch (e) {
+    console.warn("[podcast-tts] erro:", (e as Error)?.message);
     return null;
   } finally {
     clearTimeout(timer);

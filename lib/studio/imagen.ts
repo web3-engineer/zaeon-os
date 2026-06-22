@@ -52,10 +52,14 @@ export async function generateImage(
       body: JSON.stringify(buildImagenBody(clean.slice(0, 1500), opts)),
       signal: controller.signal,
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn("[imagen] HTTP", res.status, (await res.text().catch(() => "")).slice(0, 300));
+      return null;
+    }
     const json = await res.json().catch(() => null);
     return parseImagenResponse(json);
-  } catch {
+  } catch (e) {
+    console.warn("[imagen] erro:", (e as Error)?.message);
     return null;
   } finally {
     clearTimeout(timer);

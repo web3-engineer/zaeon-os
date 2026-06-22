@@ -54,9 +54,9 @@ export async function runVideoGeneration(artId: string, content: string, options
     const clips: string[] = [];
     for (let i = 0; i < script.length; i++) {
       const sec = script[i];
-      const img = await generateImage(sec.imagePrompt || sec.narration, { aspectRatio: "16:9" });
-      const narr = await synthGeminiTTS(sec.narration).catch(() => null);
-      if (!img?.data || !narr?.audio_base64) continue; // cena sem mídia → pula
+      const img = await generateImage(sec.imagePrompt || sec.narration, { aspectRatio: "16:9" }, 45_000);
+      const narr = await synthGeminiTTS(sec.narration, undefined, 45_000).catch(() => null);
+      if (!img?.data || !narr?.audio_base64) { console.warn(`[video] cena ${i} sem mídia (img=${!!img?.data} narr=${!!narr?.audio_base64})`); continue; }
       const imgPath = path.join(tmp, `s${i}.png`);
       const audPath = path.join(tmp, `s${i}.wav`);
       const clipPath = path.join(tmp, `s${i}.mp4`);
