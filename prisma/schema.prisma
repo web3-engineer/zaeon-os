@@ -533,3 +533,28 @@ model VoiceJob {
   @@index([userId, status])
   @@map("voice_jobs")
 }
+
+// ─── ZAEON Studio — "formas mastigadas" geradas a partir dos estudos ───
+// Cada ação do Studio (podcast, vídeo, mapa mental, linha do tempo, guia, FAQ,
+// flashcards, imagem, trilha, narração) vira um StudioArtifact. Binários
+// (áudio/vídeo/imagem) ficam em .studio/<id>.<storageRef> e são servidos por
+// /api/studio/[id]/file; conteúdo textual/JSON (transcrição, nós do mapa,
+// eventos, cards) fica em `meta`. Cache por (sourceIds + kind): o Play reusa.
+model StudioArtifact {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  ownerId    String   @db.ObjectId
+  sourceIds  String[] @default([])      // StudyItem/StudySpace de origem
+  kind       String                      // podcast | video | mindmap | timeline | guide | faq | flashcards | image | soundtrack | narration
+  status     String   @default("queued") // queued | running | done | error
+  title      String   @default("")
+  mime       String?                     // audio/wav, video/mp4, image/png, application/json…
+  storageRef String?                     // extensão do arquivo em .studio (ex.: "wav"); null = só `meta`
+  meta       Json?                       // conteúdo do artefato + opções de geração
+  error      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([ownerId, kind])
+  @@index([ownerId, createdAt])
+  @@map("studio_artifacts")
+}

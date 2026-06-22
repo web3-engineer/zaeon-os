@@ -1,0 +1,25 @@
+ZAEON OS — NOTICE
+
+This product includes patterns and prompt strategies adapted from third-party
+open-source projects.
+
+------------------------------------------------------------------------------
+open-notebook (https://github.com/lfnovo/open-notebook) — MIT License
+------------------------------------------------------------------------------
+The ZAEON Studio feature set (lib/studio/*, app/api/studio/*) adapts ideas from
+open-notebook, in particular:
+
+  - The podcast pipeline (outline -> transcript -> multi-speaker synthesis) and
+    its prompt strategy, adapted in lib/studio/podcast.ts from
+    open-notebook's prompts/podcast/outline.jinja and transcript.jinja.
+  - The content "transformations" concept (study guide, FAQ, summary, etc.),
+    adapted in lib/studio/transformations.ts from open-notebook's default
+    transformation definitions.
+
+The patterns were re-implemented for the Zaeon stack on Google GenAI models
+(Gemini for scripting + Gemini-TTS for voice). No source code was copied
+verbatim. open-notebook is distributed under the MIT License; the original
+copyright and permission notice apply to the upstream work.
+
+MIT License — Copyright (c) the open-notebook authors. See the upstream
+repository for the full license text.
