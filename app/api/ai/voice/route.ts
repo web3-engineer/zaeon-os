@@ -2,11 +2,14 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { guard } from "@/src/lib/ratelimit";
+import { synthGeminiTTS } from "@/lib/voice/gemini-tts";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-// Proxy para o engine Python de voz (não roda na Vercel; ver voice-engine/).
+// Fallback offline: engine Python de voz (Piper "natural-br"). Caminho PRINCIPAL é
+// o Gemini-TTS no Vertex (voz feminina, no crédito GenAI). O engine só entra se o
+// Gemini-TTS falhar — resiliência, sem 503 silencioso.
 const VOICE_URL = process.env.VOICE_ENGINE_URL ?? "http://localhost:8004";
 
 function json(data: unknown, status: number) {
@@ -32,40 +35,36 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({} as any));
   const text = typeof body.text === "string" ? body.text.trim() : "";
-  // TEMPORÁRIO: o Kokoro (vozes femininas) é inviável na CPU do VPS (~8s+ por trecho)
-  // → 503. Até existir uma voz feminina rápida, forçamos o Piper (natural-br): ~0,2s,
-  // sempre responde. (Trocar/remover quando a voz feminina rápida entrar.)
-  const voice = "natural-br";
-  void body.voice;
+  const voice = typeof body.voice === "string" ? body.voice : undefined;
   if (text.length < 1) return json({ error: "Texto vazio." }, 400);
   if (text.length > 4000) return json({ error: "Texto muito longo (máx. 4000)." }, 400);
 
-  // Sintetiza UMA vez, com timeout próprio. Devolve o JSON da engine ou null (falhou).
-  async function synth(voiceId: string | undefined, timeoutMs: number): Promise<any | null> {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      const res = await fetch(`${VOICE_URL}/synthesize`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, voice: voiceId }),
-        signal: controller.signal,
-      });
-      clearTimeout(timer);
-      if (!res.ok) return null;
-      const data = await res.json().catch(() => null);
-      return data?.audio_base64 ? data : null;
-    } catch {
-      clearTimeout(timer);
-      return null;
-    }
+  // CAMINHO PRINCIPAL: Gemini-TTS no Vertex (voz feminina pt-BR, no crédito GenAI).
+  try {
+    const out = await synthGeminiTTS(text, voice);
+    return json(out, 200);
+  } catch (e) {
+    // segue para o fallback offline (Piper) sem derrubar a tela.
+    console.warn("[ai/voice] gemini-tts falhou, tentando Piper:", (e as Error)?.message);
   }
 
-  // 1ª tentativa: a voz pedida (pode ser Kokoro, mais lenta na CPU do VPS).
-  let data = await synth(voice, 45_000);
-  // Fallback: se a voz pedida falhar/estourar o tempo e não for já o Piper rápido,
-  // tenta 'natural-br' (Piper) — garante áudio em vez de 503 silencioso.
-  if (!data && voice !== "natural-br") data = await synth("natural-br", 30_000);
-  if (!data) return json({ error: "Engine de voz indisponível." }, 503);
-  return json(data, 200);
+  // FALLBACK: engine Python (Piper "natural-br"). Garante áudio em vez de 503 silencioso.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30_000);
+  try {
+    const res = await fetch(`${VOICE_URL}/synthesize`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, voice: "natural-br" }),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (res.ok) {
+      const data = await res.json().catch(() => null);
+      if (data?.audio_base64) return json(data, 200);
+    }
+  } catch {
+    clearTimeout(timer);
+  }
+  return json({ error: "Engine de voz indisponível." }, 503);
 }
