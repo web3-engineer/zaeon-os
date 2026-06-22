@@ -7,7 +7,7 @@
  * cru → embrulhamos num header WAV aqui e devolvemos {audio_base64, mime:"audio/wav"}.
  *
  * Auth reusa lib/ai/vertex-credentials.ts (mesmo service account do resto da IA).
- * Modelo via env GEMINI_TTS_MODEL (default gemini-2.5-flash-preview-tts).
+ * Modelo via env GEMINI_TTS_MODEL (default gemini-2.5-flash-tts).
  */
 import { GoogleAuth } from "google-auth-library";
 import { vertexCredentials } from "../ai/vertex-credentials";
@@ -33,7 +33,7 @@ export const GEMINI_VOICES: GeminiVoice[] = [
 
 export const DEFAULT_GEMINI_VOICE_ID = "kore";
 
-const GEMINI_TTS_MODEL = process.env.GEMINI_TTS_MODEL || "gemini-2.5-flash-preview-tts";
+const GEMINI_TTS_MODEL = process.env.GEMINI_TTS_MODEL || "gemini-2.5-flash-tts";
 
 /** Extrai a taxa de amostragem de um mime tipo "audio/L16;rate=24000". Default 24000. */
 export function parsePcmRate(mime?: string): number {

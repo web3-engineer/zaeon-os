@@ -14,7 +14,7 @@ import { vertexCredentials } from "@/lib/ai/vertex-credentials";
 import { buildMultiSpeakerTtsBody, parseTtsResponse, type SpeakerVoice } from "@/lib/studio/gemini-tts-request";
 import { pcmToWav, parseAudioMime, isWav } from "@/lib/studio/wav";
 
-const GEMINI_TTS_MODEL = process.env.GEMINI_TTS_MODEL || "gemini-2.5-flash-preview-tts";
+const GEMINI_TTS_MODEL = process.env.GEMINI_TTS_MODEL || "gemini-2.5-flash-tts";
 
 /**
  * Sintetiza um trecho rotulado ("Ana: ...\nLéo: ...") com até 2 vozes.
