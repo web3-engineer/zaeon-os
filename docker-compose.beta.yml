@@ -37,6 +37,7 @@ services:
       voice-engine: { condition: service_started }
       abnt-service: { condition: service_started }
     expose: ["3000"]            # público é só o Caddy
+    volumes: ["studio_data:/app/.studio"]   # artefatos do Studio (podcast/imagem) — persistem entre deploys
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
@@ -104,3 +105,4 @@ volumes:
   caddy_data:
   caddy_config:
   hf_cache:        # pesos do Kokoro (HuggingFace) — evita re-download a cada restart
+  studio_data:     # artefatos do Studio (podcast/imagem) gerados em /app/.studio
