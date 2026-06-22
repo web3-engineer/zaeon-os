@@ -59,7 +59,24 @@ function AutoGrow({ value, onChange, onKeyDown, placeholder, className, autoFocu
   placeholder?: string; className?: string; autoFocus?: boolean;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => { const el = ref.current; if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }, [value]);
+  // Ajusta a altura ao conteúdo. SÓ fixa quando há layout (visível): escondido
+  // (display:none ao trocar de sala) scrollHeight=0 → NÃO colapsa pra 0px (senão o
+  // texto fica "lá, mas invisível" até reabrir o arquivo).
+  const measure = useCallback(() => {
+    const el = ref.current; if (!el) return;
+    el.style.height = "auto";
+    const h = el.scrollHeight;
+    if (h > 0) el.style.height = h + "px";
+  }, []);
+  useEffect(() => { measure(); }, [value, measure]);
+  // Re-mede quando o bloco volta a ficar VISÍVEL (ex.: voltar pra Sala de Estudos).
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver((ents) => { if (ents.some((e) => e.isIntersecting)) measure(); });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [measure]);
   useEffect(() => { if (autoFocus && ref.current) { ref.current.focus(); const v = ref.current.value; ref.current.setSelectionRange(v.length, v.length); } }, [autoFocus]);
   return (
     <textarea ref={ref} value={value} rows={1} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} onKeyDown={onKeyDown}
