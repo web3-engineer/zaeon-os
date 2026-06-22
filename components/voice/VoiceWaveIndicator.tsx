@@ -21,7 +21,9 @@ export default function VoiceWaveIndicator({
   className?: string;
 }) {
   const { speaking, loading, stop } = useTTS();
-  const active = speaking || loading;
+  // Ondas SÓ quando o áudio realmente está saindo (speaking && !loading). Durante o
+  // carregamento (loading) fica no estado discreto ⟁ — nada de ondas antes do som.
+  const active = speaking && !loading;
   const bars = [0, 1, 2, 3, 4, 5, 6, 7, 8]; // mais barras = onda mais detalhada
   // alturas-base variadas (perfil de onda), além da animação
   const profile = [0.45, 0.8, 0.55, 1, 0.65, 0.9, 0.5, 0.75, 0.4];
