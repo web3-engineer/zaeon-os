@@ -26,6 +26,7 @@ import StudioDock from "@/components/studio/StudioDock";
 import StudioBlock, { type StudioBlockData } from "@/components/studio/StudioBlock";
 import { detectHeadingShortcut } from "@/lib/study/blockMarkdown";
 import { prevEditableId, moveBlock } from "@/lib/study/blockOrder";
+import { filterSlash, type SlashOption } from "@/lib/study/slashMenu";
 import { useTTS } from "@/lib/voice/useTTS";
 import { takeHandoff } from "@/lib/agents/handoff";
 import { missionDone } from "@/lib/agents/mission";
@@ -116,6 +117,11 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
   const [spaceMenu, setSpaceMenu] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null); // bloco do feed sendo arrastado p/ reordenar
+  // Menu "/" (B1.3): bloco com o menu aberto, texto digitado após a "/" e item destacado.
+  const [slashFor, setSlashFor] = useState<string | null>(null);
+  const [slashQuery, setSlashQuery] = useState("");
+  const [slashIndex, setSlashIndex] = useState(0);
+  const pendingAfterId = useRef<string | null>(null); // próximo embed do Studio encaixa após este bloco
   const [busyId, setBusyId] = useState<string | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [editingYt, setEditingYt] = useState<string | null>(null); // bloco-vídeo em modo edição do link
@@ -397,7 +403,13 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
       const d = e?.detail;
       if (!d?.studioKind) return;
       const feedNow = itemsRef.current.filter((i) => i.placement === "feed");
-      const order = feedNow.length ? Math.max(...feedNow.map((i) => (typeof i.order === "number" ? i.order : 0))) + 1 : 0;
+      // Se veio de um menu "/", encaixa LOGO APÓS o bloco do cursor (mesma order +
+      // createdAt novo). Senão, vai pro fim do caderno (comportamento do dock — intacto).
+      const afterId = pendingAfterId.current; pendingAfterId.current = null;
+      const afterBlock = afterId ? feedNow.find((i) => i.id === afterId) : null;
+      const order = afterBlock
+        ? (typeof afterBlock.order === "number" ? afterBlock.order : 0)
+        : (feedNow.length ? Math.max(...feedNow.map((i) => (typeof i.order === "number" ? i.order : 0))) + 1 : 0);
       addItem({
         type: "studio",
         title: d.title || "",
@@ -440,6 +452,9 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
     }, 600);
   };
   const editText = (id: string, text: string) => {
+    // Menu "/": abre quando o bloco começa com "/", filtra pelo resto, fecha senão.
+    if (text.startsWith("/")) { setSlashFor(id); setSlashQuery(text.slice(1)); setSlashIndex(0); }
+    else if (slashFor === id) { setSlashFor(null); }
     const vid = soloYt(text); // colou um link do YouTube sozinho → já vira vídeo
     setItems((prev) => prev.map((i) => {
       if (i.id !== id) return i;
@@ -578,6 +593,23 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
     }
   };
 
+  // Menu "/": ESTRUTURA transforma o bloco atual; STUDIO gera o módulo e encaixa
+  // logo após este bloco (dispara o dock via evento; não mexe na geração em si).
+  const selectSlash = (it: Item, opt: SlashOption) => {
+    setSlashFor(null); setSlashQuery(""); setSlashIndex(0);
+    if (opt.kind === "struct") {
+      const variant = opt.key as "h1" | "h2" | "text";
+      setItems((prev) => prev.map((x) => (x.id === it.id ? { ...x, title: "", payload: { ...x.payload, text: "", variant } } : x)));
+      persist(it.id);
+      setFocusId(it.id);
+    } else {
+      setItems((prev) => prev.map((x) => (x.id === it.id ? { ...x, title: "", payload: { ...x.payload, text: "" } } : x)));
+      persist(it.id);
+      pendingAfterId.current = it.id; // o próximo embed encaixa aqui
+      window.dispatchEvent(new CustomEvent("zaeon:studio:generate", { detail: { kind: opt.key } }));
+    }
+  };
+
   // ── render de um bloco do caderno ──────────────────────────────────────────
   const renderBlock = (it: Item, idx?: number) => {
     // BLOCO DO STUDIO (guia/mapa/podcast/vídeo…) → cartão colapsável inline.
@@ -691,6 +723,14 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
       : "text-[16px] sm:text-[17px] leading-[1.7] text-slate-700 dark:text-slate-200/90";
     const ph = variant === "h1" ? "Título" : variant === "h2" ? "Subtítulo" : "Escreva…";
     const onKey = (e: React.KeyboardEvent) => {
+      // Menu "/" aberto: setas navegam, Enter escolhe, Esc fecha (intercepta o Enter normal).
+      if (slashFor === it.id) {
+        const opts = filterSlash(slashQuery);
+        if (e.key === "ArrowDown") { e.preventDefault(); setSlashIndex((n) => Math.min(opts.length - 1, n + 1)); return; }
+        if (e.key === "ArrowUp") { e.preventDefault(); setSlashIndex((n) => Math.max(0, n - 1)); return; }
+        if (e.key === "Enter") { e.preventDefault(); const o = opts[slashIndex] || opts[0]; if (o) selectSlash(it, o); return; }
+        if (e.key === "Escape") { e.preventDefault(); setSlashFor(null); return; }
+      }
       // Enter = novo bloco abaixo; Shift+Enter = quebra de linha no mesmo bloco.
       if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void addBlockAfter(it); return; }
       // Backspace em bloco vazio = remove e foca o bloco editável anterior (fusão).
@@ -870,6 +910,23 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
                     <GripVertical size={14} />
                   </span>
                   {renderBlock(it, idx)}
+                  {slashFor === it.id && (
+                    <div className="absolute left-2 top-9 z-30 w-56 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0a1020] shadow-xl py-1 max-h-64 overflow-y-auto custom-scrollbar">
+                      {filterSlash(slashQuery).map((opt, i) => (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          onMouseDown={(e) => { e.preventDefault(); selectSlash(it, opt); }}
+                          className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-[12.5px] ${i === slashIndex ? "bg-cyan-500/10 text-cyan-700 dark:text-cyan-200" : "text-slate-700 dark:text-white/80"} hover:bg-cyan-500/10`}
+                        >
+                          <span>{opt.emoji}</span>
+                          <span className="flex-1">{opt.label}</span>
+                          {opt.kind === "studio" && <span className="text-[9px] uppercase tracking-wide text-slate-400">studio</span>}
+                        </button>
+                      ))}
+                      {filterSlash(slashQuery).length === 0 && <div className="px-3 py-1.5 text-[12px] text-slate-400">nada encontrado</div>}
+                    </div>
+                  )}
                 </div>
               ))}
               <div className="mt-4 pt-2"><AddBar /></div>
