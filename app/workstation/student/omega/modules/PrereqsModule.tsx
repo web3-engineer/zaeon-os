@@ -5,6 +5,7 @@ import { BookOpen, RefreshCw } from "lucide-react";
 import { useOmegaScholar } from "../OmegaScholarContext";
 import ThinkingStream from "@/components/research/ThinkingStream";
 import GlitchReveal from "@/components/research/GlitchReveal";
+import SpeakButton from "@/components/voice/SpeakButton";
 
 const DEPTH_STYLES: Record<string, string> = {
   "básico": "text-teal-300 bg-teal-400/10 border-teal-400/25",
@@ -36,14 +37,17 @@ export default function PrereqsModule() {
         <p className="text-[11px] font-bold text-slate-500 dark:text-white/50 inline-flex items-center gap-1.5">
           <BookOpen size={13} className="text-cyan-400" /> Conhecimentos prévios para entender esta pesquisa
         </p>
-        {prereqs && !loadingPrereqs && (
-          <button
-            onClick={() => void fetchPrereqs()}
-            className="inline-flex items-center gap-1 text-[11px] font-bold text-violet-600 dark:text-violet-300 hover:underline"
-          >
-            <RefreshCw size={12} /> recalcular
-          </button>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {prereqsSummary && <SpeakButton text={prereqsSummary} size={14} title="Ouvir a base" />}
+          {prereqs && !loadingPrereqs && (
+            <button
+              onClick={() => void fetchPrereqs()}
+              className="inline-flex items-center gap-1 text-[11px] font-bold text-violet-600 dark:text-violet-300 hover:underline"
+            >
+              <RefreshCw size={12} /> recalcular
+            </button>
+          )}
+        </div>
       </div>
 
       {loadingPrereqs && <ThinkingStream running label="mapeando o que você precisa saber" />}
@@ -63,7 +67,7 @@ export default function PrereqsModule() {
                 {p.depth}
               </span>
             </div>
-            <p className="text-xs text-slate-500 dark:text-white/55 leading-relaxed">
+            <p className="text-base md:text-lg text-slate-500 dark:text-white/55 leading-relaxed">
               <span className="text-slate-400 dark:text-white/35">por quê: </span>
               {p.why}
             </p>
