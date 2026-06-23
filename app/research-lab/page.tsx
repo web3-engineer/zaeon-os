@@ -115,6 +115,7 @@ import { useSavedCitations } from "@/lib/useSavedCitations";
 import { applyCitationDrop } from "@/lib/citationInsert";
 import { extractCitationBlock } from "@/lib/scholar/chatCitation";
 import ResearchShell from "./ResearchShell";
+import ResearchReadingView from "./ResearchReadingView";
 
 // --- COMPONENTS ---
 import ResearchCardPDF from "@/components/ui/ResearchCardPDF";
@@ -2385,6 +2386,11 @@ export default function HomeworkPage({
                       ref={editorRef}
                       className="relative flex-1 px-8 md:px-12 py-8 overflow-y-auto custom-scrollbar flex flex-col gap-4"
                     >
+                      {/* KARAOKÊ: ao ler a pesquisa em voz (▶ da aba), cobre o editor com a
+                          camada de leitura que destaca o trecho falado. */}
+                      {readingResearch && (
+                        <ResearchReadingView text={docContent} onStop={readResearch} />
+                      )}
                       {/* Barrinha sutil: pisca ao soltar uma citação */}
                       {citInsertFlash && (
                         <div

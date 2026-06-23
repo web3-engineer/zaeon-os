@@ -67,7 +67,7 @@ function splitSentences(text: string): string[] {
 // Monta os pedaços da LEITURA otimizados para baixa latência:
 //  - 1º pedaço = só a 1ª frase (áudio começa quase na hora);
 //  - demais agrupam frases até ~420 chars (menos requisições, fala fluida).
-function buildSpeechChunks(parts: string[], max = 420): string[] {
+export function buildSpeechChunks(parts: string[], max = 420): string[] {
   const sentences = parts.flatMap((p) => splitSentences(cleanForSpeech(p)));
   const chunks: string[] = [];
   let cur = "";
