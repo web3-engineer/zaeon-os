@@ -65,8 +65,6 @@ export const TOUR_STEPS: TourStep[] = [
   // — Sala de Pesquisa: ferramentas (com destaque no elemento, igual ao foco da sidebar)
   { id: "play", info: true, hint: "▶️ Ouça/leia um documento", target: '[data-tour="docs-panel"]', cta: "Entendi",
     say: "Chegamos na **Sala de Pesquisa** 💜. Neste painel ficam **seus documentos** — dá um **play** num deles pra ouvir ou ler com calma." },
-  { id: "comparar", info: true, hint: "🔗 Compare dois documentos", target: '[data-tour="docs-panel"]', cta: "Boa",
-    say: "Quer cruzar ideias? **Arraste um documento sobre o outro** que eu **comparo** os dois e te entrego um resumo da relação." },
   { id: "citacoes", info: true, hint: "🔖 Citações ABNT · 🗑️ lixeira", target: '[data-tour="dock"]', cta: "Perfeito",
     say: "Aqui embaixo: **Citações** (cada trecho salvo vira ABNT, clica pra inserir no texto), **Minhas coisas** (pastas/biblioteca) e a **Lixeira** — o que você apaga dá pra restaurar." },
   { id: "tipo", info: true, hint: "🎓 TCC · Artigo · Relatório", target: '[data-tour="tipo"]', cta: "Entendi",

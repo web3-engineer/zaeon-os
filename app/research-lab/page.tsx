@@ -1593,79 +1593,9 @@ export default function HomeworkPage({
     }
   };
 
-  // Arrastar uma pesquisa sobre outra → resumo da RELAÇÃO.
-  // Tenta a comparação RICA (os 2 PDFs inteiros → Gemini multimodal). Se algum PDF não
-  // baixar (upload/blob/403), cai no nível metadados (título+abstract) — sem 400.
-  const handleRelateFiles = async (sourceId: string, targetId: string) => {
-    const a = libraryFiles.find((f) => f.id === sourceId);
-    const b = libraryFiles.find((f) => f.id === targetId);
-    if (!a || !b) {
-      showToast("Não achei um dos documentos.");
-      return;
-    }
-    // PASSIVO: abre uma ABA NOVA "A × B" (deletável) com barrinha sutil. Não troca a view —
-    // a aba aparece e o usuário clica quando quiser (regra: docs/RESEARCH_ROOM_RULES.md).
-    const relId = "rel-" + generateSafeId();
-    const shortA = a.title.length > 12 ? a.title.slice(0, 12) + "…" : a.title;
-    const shortB = b.title.length > 12 ? b.title.slice(0, 12) + "…" : b.title;
-    const title = `${a.title} × ${b.title}`;
-    wAddWindow({
-      id: relId,
-      label: `${shortA} × ${shortB}`,
-      emoji: "🔗",
-      type: "document",
-    });
-    wSetActiveId(relId); // mostra a aba de relação na hora (antes abria passiva → parecia que "nada acontecia")
-    setRelSummaries((prev) => ({
-      ...prev,
-      [relId]: { title, text: "", loading: true },
-    }));
-    showToast("Cruzando os dois trabalhos — carregando ✨");
-    try {
-      // Baixa os dois PDFs em paralelo. Ambos OK → comparação rica (Gemini lê os PDFs
-      // inteiros); senão → metadados (o route faz o fallback, sem 400).
-      const [aPdf, bPdf] = await Promise.all([
-        fetchPdfBase64(a.pdfUrl),
-        fetchPdfBase64(b.pdfUrl),
-      ]);
-      const bothPdfs = !!aPdf && !!bPdf;
-      const res = await fetch("/api/ai/relate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          bothPdfs
-            ? {
-                mode: "gemini",
-                a: { pdfUrl: a.pdfUrl, title: a.title, fileData: aPdf },
-                b: { pdfUrl: b.pdfUrl, title: b.title, fileData: bPdf },
-              }
-            : {
-                mode: "vercel",
-                a: { pdfUrl: a.pdfUrl, title: a.title },
-                b: { pdfUrl: b.pdfUrl, title: b.title },
-              },
-        ),
-      });
-      const d = await res.json();
-      setRelSummaries((prev) => ({
-        ...prev,
-        [relId]: {
-          title,
-          text: d.text || "Não consegui relacionar agora.",
-          loading: false,
-        },
-      }));
-    } catch {
-      setRelSummaries((prev) => ({
-        ...prev,
-        [relId]: {
-          title,
-          text: "Erro ao relacionar os documentos.",
-          loading: false,
-        },
-      }));
-    }
-  };
+  // DESATIVADO: a comparação "arraste um documento sobre o outro" não estava funcionando
+  // de forma confiável e foi removida da UI (sem prop onRelate; ver DocIcon). A rota
+  // /api/ai/relate continua existindo, mas não é mais acionada pela folha.
 
   // 🔥 FETCH CORRECTO PARA CHAT AURA
   const handlePdfQuestion = async () => {
@@ -2334,7 +2264,6 @@ export default function HomeworkPage({
                 flipped={isChatLeft}
                 workType={workType}
                 onWorkType={switchWorkType}
-                onRelate={handleRelateFiles}
                 onReadResearch={readResearch}
                 isReadingResearch={readingResearch}
                 onViewDoc={handleViewDoc}
