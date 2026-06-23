@@ -141,7 +141,7 @@ export default function ResearchSuggestionPanel({ docTitle = "", onSelectTitle, 
           {/* ── EMPTY STATE ── */}
           {!result && !loading && !error && !authRequired && (
             <p className="text-center text-[11px] text-slate-400 dark:text-white/30 leading-relaxed py-2">
-              Clique em <strong className="text-slate-600 dark:text-white/50">Gerar sugestão ✦</strong> — a Zaeon propõe a partir do seu estudo.
+              Clique em <strong className="text-slate-600 dark:text-white/50">Gerar sugestão ✦</strong> — a Aura propõe a partir do seu estudo.
             </p>
           )}
         </div>
