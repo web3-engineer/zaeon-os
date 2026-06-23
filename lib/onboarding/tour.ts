@@ -30,6 +30,10 @@ export const TOUR_STEPS: TourStep[] = [
   { id: "estudos", hint: "📚 Comece pela sua Sala de Estudos", target: '[data-tour="estudos"]', clickTarget: true, tab: "sala-de-estudos",
     say: "Clica em **Estudos** aqui na lateral 👇 — sua sala de estudos. Antes de pesquisar, deixa eu te mostrar rapidinho o **caderno** e o **Studio**." },
 
+  // — Mover o chat de lado: libera a visão do Meus Estudos (o dock do chat tapava a aba)
+  { id: "chat-side", info: true, tab: "sala-de-estudos", hint: "↔️ Mova o chat pro outro lado", target: '[data-tour="layout-toggle"]', cta: "Entendi",
+    say: "Detalhe importante: se o chat estiver tapando o seu **Meus Estudos**, clica aqui no **Layout** ↔️ que eu pulo pro outro lado da tela — aí você enxerga o caderno inteiro. 👌" },
+
   // — Meus Estudos: o caderno editável (escrita livre estilo Notion)
   { id: "meus-estudos", info: true, tab: "sala-de-estudos", hint: "📓 Meus Estudos — seu caderno", cta: "Mostra mais",
     say: "No **Meus Estudos** você escreve livre, como num Notion. **Enter** cria um bloco novo; comece com **#** que vira título. E dá pra **arrastar os blocos** pela alça do lado pra reordenar. ✍️" },
