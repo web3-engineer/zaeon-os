@@ -24,7 +24,7 @@ export type TourStep = {
 export const TOUR_STEPS: TourStep[] = [
   // — Abertura (voz): o Bento "liga" e recebe a pessoa
   { id: "hello", info: true, hint: "👋 Bem-vindo! Vamos começar?", cta: "Bora! 🚀",
-    say: "Oi! Eu sou o Bento 🎙️ — que bom te receber. Vou te dar uma volta rapidinha, conversando, e a gente desbloqueia uma fase nova nos seus estudos. Pode me chamar aqui no cantinho quando quiser. Bora?" },
+    say: "Oi! 🎙️ Que bom te receber. Vou te dar uma volta rapidinha, conversando, e a gente desbloqueia uma fase nova nos seus estudos. Pode me chamar aqui no cantinho quando quiser. Bora?" },
 
   // — Sala de Estudos (= onde a pesquisa de estudo acontece) — avança ao CLICAR no ícone
   { id: "estudos", hint: "📚 Comece pela sua Sala de Estudos", target: '[data-tour="estudos"]', clickTarget: true, tab: "sala-de-estudos",
