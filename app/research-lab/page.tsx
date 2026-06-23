@@ -1300,23 +1300,14 @@ export default function HomeworkPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Tour guiado da Zaeon: começa quando vem ?onboard=1 (card de boas-vindas) e o
+  // Tour guiado de onboarding: começa quando vem ?onboard=1 (card de boas-vindas) e o
   // usuário ainda não fez (localStorage). O registro no servidor (User.tourDone) é
-  // feito ao concluir/pular. Garante a aba inicial = Sala de Estudos.
+  // feito ao concluir/pular — UMA VEZ por usuário. Garante a aba inicial = Sala de Estudos.
   useEffect(() => {
     try {
       const onboardParam = new URLSearchParams(window.location.search).get("onboard");
-      const replayOn = localStorage.getItem("zaeon.tourReplay") === "1";
       const done = localStorage.getItem("zaeon.tourDone") === "1";
-      // ?onboard=replay → liga o replay persistente (testar à vontade até dar o Ok).
-      if (onboardParam === "replay") {
-        setActiveTab("sala-de-estudos");
-        setTimeout(() => startTour({ replay: true }), 600);
-      } else if (replayOn) {
-        // Replay ligado: reabre o tour a cada visita, ignorando o "feito".
-        setActiveTab("sala-de-estudos");
-        setTimeout(() => startTour(), 600);
-      } else if (onboardParam === "1" && !done) {
+      if (onboardParam === "1" && !done) {
         setActiveTab("sala-de-estudos");
         setTimeout(() => startTour(), 600);
       }

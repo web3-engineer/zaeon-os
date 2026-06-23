@@ -1,16 +1,16 @@
 "use client";
 
 /**
- * Tour guiado da Zaeon (onboarding). Roteiro DECLARATIVO: a Zaeon "puxa assunto" no
- * chat widget (autonomia), enquanto o overlay destaca o elemento da vez. Golden path:
+ * Tour guiado de onboarding. Roteiro DECLARATIVO: o Bento "puxa assunto" no chat
+ * widget (autonomia), enquanto o overlay destaca o elemento da vez. Golden path:
  * Estudos → pesquisar → resultado → gerar pesquisa → Sala de Pesquisa → Lounge.
  *
  * Estado em memória + localStorage; ao concluir/pular, marca no servidor
- * (/api/onboard/tour → User.tourDone, visível no dashboard) — uma vez por usuário.
+ * (/api/onboard/tour → User.tourDone, visível no dashboard) — UMA VEZ por usuário.
  */
 export type TourStep = {
   id: string;
-  say: string;               // fala da Zaeon (vai pro chat widget + VOZ)
+  say: string;               // fala do Bento (vai pro chat widget + VOZ)
   hint: string;              // textinho curto (com emoji) no card, descrevendo a função
   target?: string;           // seletor do elemento a destacar (coachmark)
   clickTarget?: boolean;     // avança ao CLICAR no próprio elemento destacado (sem botão)
@@ -22,9 +22,9 @@ export type TourStep = {
 };
 
 export const TOUR_STEPS: TourStep[] = [
-  // — Abertura (voz): a Zaeon "liga" e se apresenta
-  { id: "hello", info: true, hint: "👋 Oi! Eu sou a Zaeon", cta: "Bora! 🚀",
-    say: "Oi! 🎙️ É a Zaeon falando — que honra te receber. Vou te dar uma volta rapidinha, conversando, e a gente desbloqueia uma fase nova nos seus estudos. Pode me ouvir aqui no cantinho a qualquer hora. Bora?" },
+  // — Abertura (voz): o Bento "liga" e recebe a pessoa
+  { id: "hello", info: true, hint: "👋 Bem-vindo! Vamos começar?", cta: "Bora! 🚀",
+    say: "Oi! Eu sou o Bento 🎙️ — que bom te receber. Vou te dar uma volta rapidinha, conversando, e a gente desbloqueia uma fase nova nos seus estudos. Pode me chamar aqui no cantinho quando quiser. Bora?" },
 
   // — Sala de Estudos (= onde a pesquisa de estudo acontece) — avança ao CLICAR no ícone
   { id: "estudos", hint: "📚 Comece pela sua Sala de Estudos", target: '[data-tour="estudos"]', clickTarget: true, tab: "sala-de-estudos",
@@ -91,26 +91,8 @@ function sayCurrent() {
   try { window.dispatchEvent(new CustomEvent("zaeon:onboard:say", { detail: s.say })); } catch { /* */ }
 }
 
-// ── MODO REPLAY (pra mim, testando): o tour reaparece a cada visita até eu dar o "Ok".
-//    Concluir/pular NÃO marca como feito enquanto o replay estiver ligado.
-export function isTourReplay(): boolean {
-  try { return localStorage.getItem("zaeon.tourReplay") === "1"; } catch { return false; }
-}
-export function setTourReplay(on: boolean) {
-  try {
-    if (on) { localStorage.setItem("zaeon.tourReplay", "1"); localStorage.removeItem("zaeon.tourDone"); }
-    else localStorage.removeItem("zaeon.tourReplay");
-  } catch { /* */ }
-}
-/** "Dei o Ok" — para o replay, marca como feito e encerra. */
-export function stopTourReplay() {
-  setTourReplay(false);
-  finishTour();
-}
-
-export function startTour(opts?: { replay?: boolean }) {
+export function startTour() {
   if (typeof window === "undefined") return;
-  if (opts?.replay) setTourReplay(true);
   state = { active: true, index: 0 };
   persist(); emit();
   setTimeout(sayCurrent, 400); // deixa o chat widget montar
@@ -127,8 +109,7 @@ export function skipTour() { finishTour(); }
 export function finishTour() {
   state = { active: false, index: 0 };
   persist(); emit();
-  // Em replay, NÃO marca como feito → reaparece na próxima visita (até dar o Ok).
-  if (isTourReplay()) return;
+  // Onboarding é UMA VEZ por usuário: ao concluir/pular, marca como feito (local + servidor).
   try { localStorage.setItem("zaeon.tourDone", "1"); } catch { /* */ }
   try { fetch("/api/onboard/tour", { method: "POST" }); } catch { /* */ }
 }
