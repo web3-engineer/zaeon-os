@@ -121,7 +121,8 @@ export default function CollabModule() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [plan, setPlan] = useState<string>("free");
   // Duas colunas independentes (Estudos | Pesquisas) — cada uma abre/fecha sozinha.
-  const [openTrays, setOpenTrays] = useState<Record<"study" | "research", boolean>>({ study: true, research: true });
+  // Começam FECHADAS: o usuário expande a bandeja que quiser.
+  const [openTrays, setOpenTrays] = useState<Record<"study" | "research", boolean>>({ study: false, research: false });
   const [creating, setCreating] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);

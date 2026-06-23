@@ -299,8 +299,8 @@ export default function LoungeEarth() {
                 {/* Texto sobre o globo */}
                 <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none px-6">
                     <div className="text-center -translate-y-24 sm:-translate-y-28">
-                        <p className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-slate-800 dark:text-white drop-shadow-[0_2px_24px_rgba(34,211,238,0.55)]">em breve, seremos globais</p>
-                        <p className="text-sm sm:text-base font-mono uppercase tracking-[0.4em] text-cyan-600 dark:text-cyan-300 mt-2">— 2027 —</p>
+                        <p className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.7),0_2px_24px_rgba(34,211,238,0.55)]">em breve, seremos globais</p>
+                        <p className="text-sm sm:text-base font-mono uppercase tracking-[0.4em] text-cyan-200 dark:text-cyan-300 mt-2 drop-shadow-[0_1px_6px_rgba(0,0,0,0.7)]">— 2027 —</p>
                     </div>
                 </div>
 

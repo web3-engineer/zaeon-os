@@ -14,6 +14,7 @@ export interface LibraryFile {
   authors?: string[];
   year?: number;
   savedAt: number;
+  folderId?: string;     // pasta da biblioteca onde o arquivo está arquivado (ver useFolders)
 }
 
 const KEY = "zaeon.libraryFiles";
@@ -29,6 +30,11 @@ export function renameLibraryFile(list: LibraryFile[], id: string, title: string
   const t = title.trim();
   if (!t) return list;
   return list.map((f) => (f.id === id ? { ...f, title: t } : f));
+}
+
+// Pure: arquiva (ou desarquiva, folderId=null) um arquivo numa pasta. Exported for tests.
+export function setLibraryFileFolder(list: LibraryFile[], id: string, folderId: string | null): LibraryFile[] {
+  return list.map((f) => (f.id === id ? { ...f, folderId: folderId ?? undefined } : f));
 }
 
 function read(): LibraryFile[] {
@@ -58,6 +64,7 @@ export function useLibraryFiles() {
   const save = useCallback((f: LibraryFile) => { write(upsertLibraryFile(read(), f)); }, []);
   const rename = useCallback((id: string, title: string) => { write(renameLibraryFile(read(), id, title)); }, []);
   const remove = useCallback((id: string) => { write(read().filter((x) => x.id !== id)); }, []);
+  const moveToFolder = useCallback((id: string, folderId: string | null) => { write(setLibraryFileFolder(read(), id, folderId)); }, []);
   const clear = useCallback(() => { write([]); }, []);
-  return { files, save, rename, remove, clear };
+  return { files, save, rename, remove, moveToFolder, clear };
 }

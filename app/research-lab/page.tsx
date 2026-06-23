@@ -37,8 +37,9 @@ const ProjectsContent = dynamic(
 // ── Sidebar liquid-glass: estilo dos botões (mesma lógica das "pills") ──────────
 // Vidro translúcido + borda suave + tint no hover; ativo = vidro colorido + ring + glow.
 const NAV_BASE = "group flex items-center gap-3 p-2 rounded-2xl border backdrop-blur-md transition-all duration-300";
-// Sidebar é cinza-quase-preto → ícones ociosos esmaecidos (cinza claro), sem fundo.
-const NAV_IDLE = "bg-transparent border-transparent text-white/45 hover:text-white/90 hover:bg-white/[0.07] hover:border-white/10";
+// Ociosos: mesma textura glass-clara de quando um módulo é escolhido (ícone CLARO, não
+// esmaecido), só sem o neon — assim todos os ícones têm o mesmo acabamento.
+const NAV_IDLE = "bg-white/[0.05] border-white/10 text-white/85 hover:text-white hover:bg-white/[0.09] hover:border-white/20";
 const NAV_ACTIVE: Record<string, string> = {
   purple: "bg-purple-500/15 dark:bg-purple-400/20 border-purple-400/50 text-purple-700 dark:text-purple-100 ring-1 ring-purple-400/40 shadow-[0_8px_24px_-8px_rgba(168,85,247,0.55)]",
   blue: "bg-blue-500/15 dark:bg-blue-400/20 border-blue-400/50 text-blue-700 dark:text-blue-100 ring-1 ring-blue-400/40 shadow-[0_8px_24px_-8px_rgba(59,130,246,0.55)]",
@@ -50,9 +51,9 @@ const NAV_ACTIVE: Record<string, string> = {
 // uniforme em claro e escuro — sem mais um arco-íris de cores por aba.
 // Selecionado: no ESCURO = mesma pill branca-glass das abas da Sala de Estudos;
 // no CLARO = charcoal acinzentado (tom do frame de pesquisa, não um preto chapado).
-// Selecionado = pílula BRANCA-glass sobre a sidebar escura (o branco é só do ativo).
+// Selecionado = mesma textura glass-clara dos outros + um leve NEON AZUL (borda/tint/glow ciano).
 const NAV_ACTIVE_PILL =
-  "bg-white/[0.16] text-white border-white/30 ring-1 ring-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_8px_18px_-8px_rgba(0,0,0,0.6)]";
+  "bg-cyan-400/[0.12] text-white border-cyan-300/70 ring-1 ring-cyan-400/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_0_16px_-2px_rgba(34,211,238,0.65)]";
 function navItem(active: boolean, accent: keyof typeof NAV_ACTIVE) {
   void accent; // accent mantido por compatibilidade; o ativo agora é sempre a pill preta
   return `${NAV_BASE} ${active ? NAV_ACTIVE_PILL : NAV_IDLE}`;

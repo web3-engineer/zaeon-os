@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { upsertLibraryFile, renameLibraryFile, type LibraryFile } from "./useLibraryFiles";
+import { upsertLibraryFile, renameLibraryFile, setLibraryFileFolder, type LibraryFile } from "./useLibraryFiles";
 const f = (id: string): LibraryFile => ({ id, title: "T", pdfUrl: "http://x/p.pdf", savedAt: 1 });
 describe("upsertLibraryFile", () => {
   it("adds newest first", () => {
@@ -25,5 +25,17 @@ describe("renameLibraryFile", () => {
   it("no-op when id not found", () => {
     const list = [f("1")];
     expect(renameLibraryFile(list, "x", "Y").map(x => x.title)).toEqual(["T"]);
+  });
+});
+
+describe("setLibraryFileFolder", () => {
+  it("archives only the matching file into the folder", () => {
+    const out = setLibraryFileFolder([f("1"), f("2")], "2", "fold-a");
+    expect(out.find(x => x.id === "2")!.folderId).toBe("fold-a");
+    expect(out.find(x => x.id === "1")!.folderId).toBeUndefined();
+  });
+  it("unarchives when folderId is null (folderId becomes undefined)", () => {
+    const out = setLibraryFileFolder([{ ...f("1"), folderId: "fold-a" }], "1", null);
+    expect(out[0].folderId).toBeUndefined();
   });
 });

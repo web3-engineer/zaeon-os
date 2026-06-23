@@ -48,7 +48,8 @@ export default function DocIcon({ file, onPlay, processingId, onDelete, onView }
       draggable={!busy}
       onDragStart={(e) => {
         e.dataTransfer.setData("text/zaeon-file", file.id);
-        e.dataTransfer.effectAllowed = "copy";
+        // copy = ver na folha · move = arquivar numa pasta (ambos os destinos permitidos).
+        e.dataTransfer.effectAllowed = "copyMove";
         setDragging(true);
       }}
       onDragEnd={() => setDragging(false)}
