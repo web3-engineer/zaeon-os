@@ -102,13 +102,12 @@ Em ordem cronológica (vários PRs):
 
 ## 5. O que FALTA (pendências combinadas com o dono)
 
-1. **Persona "Zion" (bug):** a Aura ainda chama o **usuário** de "Zion"/"Zaeon". A regra atual
-   (`AGENT_PERSONAS.aura` em `app/api/ai/chat/route.ts`, bloco "REGRA DE RESUMO") é fraca.
-   Adicionar regra explícita: _"Zaeon é a PLATAFORMA, Zion é a orquestradora — NUNCA chame o
-   USUÁRIO por esses nomes; use o primeiro nome real (`userData.name`) ou nome nenhum."_
-   (Há também `AGENT_PERSONAS.zion`.)
-2. **Foto da Aura:** `public/agents/aura.png` está **FALTANDO** (avatar quebrado). É só colocar
-   um PNG quadrado nesse caminho (referenciado em `app/research-lab/page.tsx` ~3x, `MeusEstudosFeed`).
+1. ~~**Persona "Zion" (bug):** a Aura chamava o usuário de "Zion"/"Zaeon".~~ ✅ **RESOLVIDO.**
+   Roster canônico agora vive em `lib/ai/personas.ts` (Bento/Aura/Nina/Caio/Téo) com um
+   `PERSONA_PREAMBLE` compartilhado: _"Zaeon é a PLATAFORMA (o coletivo); cada agente tem nome
+   próprio; nunca chame o USUÁRIO de Zaeon/nome de agente — use `userData.name` ou nome nenhum."_
+   O nome **"Zion" foi removido** do código (orquestrador → **Bento**).
+2. ~~**Foto da Aura:** `public/agents/aura.png` FALTANDO.~~ ✅ **RESOLVIDO** (PNG quadrado on-brand adicionado).
 3. **Persistir a aba da página de pesquisa:** refresh sempre cai na aba "pesquisa"; o dono quer
    cair na **última aba usada**. Estado `activeTab` em `app/research-lab/page.tsx` (~linha 646);
    persistir em `localStorage` e restaurar no mount — **cuidado** com o deep-link `?tab=` que já

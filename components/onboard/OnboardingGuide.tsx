@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * OnboardingGuide — overlay do tour da Zaeon. A CONVERSA é por VOZ + chat widget
+ * OnboardingGuide — overlay do tour (Bento conduz). A CONVERSA é por VOZ + chat widget
  * (eventos zaeon:onboard:say). Aqui a gente só DESTACA o elemento e mostra um
  * cardzinho com a FUNÇÃO (emoji + texto curto). O tour avança pela AÇÃO:
  *  - clickTarget  → quando o usuário clica no próprio elemento destacado;
@@ -11,7 +11,7 @@
  */
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { TOUR_STEPS, getTour, subscribeTour, nextTour, skipTour, isTourReplay, stopTourReplay } from "@/lib/onboarding/tour";
+import { TOUR_STEPS, getTour, subscribeTour, nextTour, skipTour } from "@/lib/onboarding/tour";
 
 export default function OnboardingGuide() {
   const [mounted, setMounted] = useState(false);
@@ -92,17 +92,16 @@ export default function OnboardingGuide() {
           <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-violet-500 transition-all" style={{ width: `${((tour.index + 1) / total) * 100}%` }} />
         </div>
         <div className="flex items-center justify-between gap-2">
-          <button onClick={isTourReplay() ? stopTourReplay : skipTour} className="text-[11px] font-bold text-slate-400 hover:text-slate-600 dark:hover:text-white/80">
-            {isTourReplay() ? "✓ Ok, não repetir" : "Pular tour"}
+          <button onClick={skipTour} className="text-[11px] font-bold text-slate-400 hover:text-slate-600 dark:hover:text-white/80">
+            Pular tour
           </button>
           {step.info ? (
             <button onClick={() => nextTour()} className="px-4 py-2 rounded-full text-white text-[11px] font-black uppercase tracking-wide hover:scale-[1.03] transition-transform" style={{ background: "linear-gradient(135deg,#06b6d4,#7c3aed)" }}>
               {step.cta || "Ok"}
             </button>
           ) : (
-            <span className="text-[10px] font-bold text-cyan-600 dark:text-cyan-300 inline-flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" /> faça a ação ✦
-            </span>
+            // Passo guiado por AÇÃO: cue visual sutil (sem texto), o tour avança quando a ação acontece.
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" aria-hidden />
           )}
         </div>
       </div>

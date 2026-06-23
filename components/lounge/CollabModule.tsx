@@ -587,7 +587,7 @@ function CollabEditor({ docId, myId, contacts, onClose }: { docId: string; myId:
     try {
       const r = await fetch("/api/ai/chat", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: `Escreva um trecho de estudo claro e didático em PT-BR sobre: ${cmd}. Texto corrido (pode ter um subtítulo curto). Sem preâmbulo.`, agent: "zaeon" }),
+        body: JSON.stringify({ prompt: `Escreva um trecho de estudo claro e didático em PT-BR sobre: ${cmd}. Texto corrido (pode ter um subtítulo curto). Sem preâmbulo.`, agent: "nina" }),
       });
       const d = await r.json().catch(() => ({}));
       const gen = (d.text || "").trim();
