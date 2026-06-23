@@ -47,16 +47,16 @@ export const TOUR_STEPS: TourStep[] = [
     say: "Dica de ouro: digite **\"/\"** em qualquer ponto do texto pra inserir ali mesmo — um título ou um módulo do Studio (tipo **/mapa mental**) bem no meio do estudo. E no meu chat você pode **mandar uma foto** que eu analiso, ou pedir **\"gere uma imagem\"**. 🪄" },
 
   // — Pesquisar um estudo (tema sugerido) — avança quando a pesquisa COMEÇA
-  { id: "pesquisar", hint: "🔎 Pesquise um tema — deixei um pronto", target: '[data-academic-input="true"]', advanceEvent: "zaeon:research:start", prefill: "história do Brasil",
-    say: "Pra começar fácil, já deixei um tema na barra: **história do Brasil**. É só apertar **Enter** que eu pesquiso e monto o estudo. 🎙️" },
+  { id: "pesquisar", hint: "↵ Aperte Enter pra estudar o tema", target: '[data-academic-input="true"]', advanceEvent: "zaeon:research:start", prefill: "história do Brasil",
+    say: "Pra começar fácil, já deixei um tema na barra: **história do Brasil**. É só apertar **Enter** que eu pesquiso e monto o estudo desse tema. 🎙️" },
 
   // — Enquanto pesquisa: voz puxando papo — avança quando o estudo FICA PRONTO
   { id: "esperando", hint: "🎧 Eu te faço companhia por voz", advanceEvent: "zaeon:research:done",
     say: "Enquanto eu trabalho, te faço companhia 😄 — e sim, eu converso por voz de verdade! Me conta: você curte mais história, exatas, ou tá começando agora?" },
 
-  // — Resultado: destaca as abas; explica salvar refs/trabalhos
-  { id: "resultado", info: true, hint: "📑 Referências · Insights · Base", target: '[data-tour="result-tabs"]', cta: "Salvei 👍",
-    say: "Pronto! 🎉 Olha as abas **Referências**, **Insights** e **Base**. Salva pelo menos **1 referência** e uns **2 trabalhos** — vão te servir na pesquisa." },
+  // — Resultado: destaca as abas Referências/Insights/Base; foco em salvar referências
+  { id: "resultado", info: true, hint: "Role as referências para baixo até encontrar algumas que você queira salvar.", target: '[data-tour="result-tabs"]', cta: "Salvei 👍",
+    say: "Pronto! 🎉 Aqui ficam as **Referências**, os **Insights** e a **Base**. Role as referências para baixo até encontrar algumas que você queira salvar — elas vão te servir na pesquisa." },
 
   // — Gerar pesquisa — avança quando o esboço é criado (Iniciar pesquisa → newdoc)
   { id: "gerar", hint: "✨ Gere a pesquisa a partir do estudo", target: '[data-tour="gerar"]', advanceEvent: "zaeon:research:newdoc",
