@@ -10,10 +10,10 @@ const LoungePortals = dynamic(
   { ssr: false },
 );
 
-export default function StudentLoungeContent() {
+export default function StudentLoungeContent({ focusMode = false }: { focusMode?: boolean } = {}) {
   return (
     <div className="w-full h-full">
-      <LoungePortals />
+      <LoungePortals focusMode={focusMode} />
     </div>
   );
 }

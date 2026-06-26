@@ -188,7 +188,9 @@ const AppleSpinner = () => (
     </div>
 );
 
-export default function LoungeEarth() {
+// focusMode (vem do shell da research-lab): esconde o hero do globo e faz o conteúdo
+// ocupar a tela toda — modo de trabalho sem distração. Como rota normal, focusMode = false.
+export default function LoungeEarth({ focusMode = false }: { focusMode?: boolean } = {}) {
     const { data: session } = useSession();
     const router = useRouter(); // Roteador Global
 
@@ -286,7 +288,8 @@ export default function LoungeEarth() {
 
     return (
         <div className="relative w-full min-h-screen font-sans bg-transparent">
-            {/* O Resto do seu Layout Global (Canvas e Cabeçalhos) continua idêntico aqui */}
+            {/* Hero do globo (Canvas + frases) — escondido em FOCUS MODE pra não distrair. */}
+            {!focusMode && (
             <div className="fixed inset-0 z-0 flex flex-col items-center pointer-events-auto bg-transparent">
                 <div className="absolute top-10 w-full flex flex-col items-center z-10 pointer-events-none">
                     <h1 className="text-[10px] font-black uppercase tracking-[1em] text-slate-500 dark:text-white/40 flex items-center gap-4 drop-shadow-md">
@@ -311,13 +314,17 @@ export default function LoungeEarth() {
                     <OrbitControls enableZoom={false} enablePan={false} rotateSpeed={0.6} />
                 </Canvas>
             </div>
+            )}
 
             <div className="relative z-10 w-full flex flex-col pointer-events-none">
+                {/* Espaçador-hero (mostra o globo). Em focus mode some → conteúdo cobre a tela. */}
+                {!focusMode && (
                 <div className="w-full h-[60vh] flex flex-col items-center justify-end pb-8">
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1, duration: 1 }}>
                         <ArrowDownIcon className="w-5 h-5 text-cyan-500 animate-bounce drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
                     </motion.div>
                 </div>
+                )}
 
                 <div className="w-full min-h-screen bg-white/5 dark:bg-[#010816]/20 backdrop-blur-3xl border-t border-white/20 dark:border-white/10 rounded-t-[3rem] shadow-[0_-20px_60px_-15px_rgba(0,0,0,0.5)] px-4 pt-16 pb-32 transition-colors duration-1000 pointer-events-auto relative">
                     <div className="absolute top-4 left-1/2 -translate-x-1/2 w-24 h-1.5 bg-slate-300 dark:bg-white/20 rounded-full opacity-50"></div>

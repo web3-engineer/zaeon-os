@@ -2557,7 +2557,7 @@ export default function HomeworkPage({
 
           {activeTab === "lounge" && (
             <div className="w-full h-full overflow-y-auto custom-scrollbar">
-              {isTeacher ? <TeacherLoungeContent /> : <StudentLoungeContent />}
+              {isTeacher ? <TeacherLoungeContent /> : <StudentLoungeContent focusMode={isFocusMode} />}
             </div>
           )}
 
