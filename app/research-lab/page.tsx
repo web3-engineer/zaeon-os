@@ -1812,23 +1812,27 @@ export default function HomeworkPage({
     if (!clean) return;
 
     if (msgId != null) setVoiceLoadingId(msgId);
+    setSummaryRead(clean); // liga o karaokê INLINE no painel do resumo (mesmos pedaços da voz)
     try {
       // speakSequence QUEBRA o resumo em pedaços de ~420 chars (1 POST /api/ai/voice por
       // pedaço). O resumo é LONGO; mandado inteiro, o Gemini-TTS estoura 30s e dá 503
       // "aborted" (o speak() comum manda tudo de uma vez — por isso só funcionava com
       // textos curtos, tipo o chat widget). Em pedaços curtos, cada chamada responde rápido.
       void audioRef; // (legado — o áudio é gerido pelo ttsController global)
-      await ttsSpeakSequence([clean]); // sem curinga (resumo não é "documento inteiro")
+      await ttsSpeakSequence([clean]); // mesmos pedaços do TCC → voz sai certa e o karaokê casa
     } catch {
       showToast("Voz indisponível agora.");
     } finally {
       if (msgId != null) setVoiceLoadingId(null);
+      setSummaryRead(null); // leitura terminou → tira o destaque
     }
   };
 
   // Ler a PESQUISA inteira (texto do editor) em voz — COM curinga de cold-start (é documento
   // longo). Play/stop no lugar do caderninho da aba (WindowSwitcher), na voz escolhida.
   const [readingResearch, setReadingResearch] = useState(false);
+  // Karaokê INLINE do resumo por voz: o texto sendo lido no painel do resumo (sem sair dele).
+  const [summaryRead, setSummaryRead] = useState<string | null>(null);
   const readResearch = async () => {
     if (readingResearch) { ttsStop(); setReadingResearch(false); return; }
     if (!docContent.trim()) { showToast("Escreva algo na pesquisa primeiro."); return; }
@@ -2528,7 +2532,12 @@ export default function HomeworkPage({
                   </div>
                 }
                 documentWindowContent={
-                  <div className="h-full flex flex-col bg-white dark:bg-[#0f172a]">
+                  <div className="relative h-full flex flex-col bg-white dark:bg-[#0f172a]">
+                    {/* Karaokê INLINE do resumo por voz — fica DENTRO deste painel (absolute
+                        inset-0), destaca trecho a trecho e NÃO sai do tamanho do painel. */}
+                    {summaryRead && (
+                      <ResearchReadingView text={summaryRead} onStop={() => { ttsStop(); setSummaryRead(null); }} />
+                    )}
                     <div className="flex items-center justify-end px-4 pt-3 shrink-0">
                       <button
                         onClick={() => setVoiceOn((v) => !v)}
