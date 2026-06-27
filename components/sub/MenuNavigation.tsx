@@ -702,9 +702,6 @@ export default function MenuNavigation() {
               (
                 <motion.ul key="main" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col gap-2 w-full h-full justify-center overflow-y-auto custom-scrollbar pr-1">
 
-                  {/* (Card de boas-vindas "Conta verificada" removido — o tour agora
-                       começa sozinho pra quem nunca fez, e o admin liga/desliga em Opções) */}
-
                   {/* Mesma ordem da sidebar: Estudos · Pesquisas · Projetos (gated) · Lounge */}
                   {renderModule("estudos", "Estudos", recent.studies, "Novo estudo", "/research-lab?tab=sala-de-estudos", "menu-estudos")}
 

@@ -111,6 +111,7 @@ import SavedCitationsSection from "./SavedCitationsSection";
 import LibrarySavedFiles from "./LibrarySavedFiles";
 import { useSavedCitations } from "@/lib/useSavedCitations";
 import { applyCitationDrop } from "@/lib/citationInsert";
+import { insertImageMarker, sanitizeFigureTitle } from "@/lib/imageInsert";
 import { extractCitationBlock } from "@/lib/scholar/chatCitation";
 import ResearchShell from "./ResearchShell";
 import ResearchReadingView from "./ResearchReadingView";
@@ -1326,23 +1327,14 @@ export default function HomeworkPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Tour guiado da Zaeon: começa quando vem ?onboard=1 (card de boas-vindas) e o
+  // Tour guiado de onboarding: começa quando vem ?onboard=1 (card de boas-vindas) e o
   // usuário ainda não fez (localStorage). O registro no servidor (User.tourDone) é
-  // feito ao concluir/pular. Garante a aba inicial = Sala de Estudos.
+  // feito ao concluir/pular — UMA VEZ por usuário. Garante a aba inicial = Sala de Estudos.
   useEffect(() => {
     try {
       const onboardParam = new URLSearchParams(window.location.search).get("onboard");
-      const replayOn = localStorage.getItem("zaeon.tourReplay") === "1";
       const done = localStorage.getItem("zaeon.tourDone") === "1";
-      // ?onboard=replay → liga o replay persistente (testar à vontade até dar o Ok).
-      if (onboardParam === "replay") {
-        setActiveTab("sala-de-estudos");
-        setTimeout(() => startTour({ replay: true }), 600);
-      } else if (replayOn) {
-        // Replay ligado: reabre o tour a cada visita, ignorando o "feito".
-        setActiveTab("sala-de-estudos");
-        setTimeout(() => startTour(), 600);
-      } else if (onboardParam === "1" && !done) {
+      if (onboardParam === "1" && !done) {
         setActiveTab("sala-de-estudos");
         setTimeout(() => startTour(), 600);
       }
@@ -1606,7 +1598,11 @@ export default function HomeworkPage({
   // Seleção no PDF gerou uma citação → salva na aba de citações.
   const handleSaveCite = (c: import("@/lib/useSavedCitations").SavedCitation) => {
     savePersistedCitation(c);
-    showToast("Citação salva na aba Citações.");
+    showToast(
+      c.incomplete
+        ? "Citação salva — falta a fonte para creditar (complete no painel)."
+        : "Citação salva na aba Citações.",
+    );
   };
 
   // Nível do engine de citação conforme o runtime (Vercel simples vs container robusto).
@@ -1628,79 +1624,9 @@ export default function HomeworkPage({
     }
   };
 
-  // Arrastar uma pesquisa sobre outra → resumo da RELAÇÃO.
-  // Tenta a comparação RICA (os 2 PDFs inteiros → Gemini multimodal). Se algum PDF não
-  // baixar (upload/blob/403), cai no nível metadados (título+abstract) — sem 400.
-  const handleRelateFiles = async (sourceId: string, targetId: string) => {
-    const a = libraryFiles.find((f) => f.id === sourceId);
-    const b = libraryFiles.find((f) => f.id === targetId);
-    if (!a || !b) {
-      showToast("Não achei um dos documentos.");
-      return;
-    }
-    // PASSIVO: abre uma ABA NOVA "A × B" (deletável) com barrinha sutil. Não troca a view —
-    // a aba aparece e o usuário clica quando quiser (regra: docs/RESEARCH_ROOM_RULES.md).
-    const relId = "rel-" + generateSafeId();
-    const shortA = a.title.length > 12 ? a.title.slice(0, 12) + "…" : a.title;
-    const shortB = b.title.length > 12 ? b.title.slice(0, 12) + "…" : b.title;
-    const title = `${a.title} × ${b.title}`;
-    wAddWindow({
-      id: relId,
-      label: `${shortA} × ${shortB}`,
-      emoji: "🔗",
-      type: "document",
-    });
-    wSetActiveId(relId); // mostra a aba de relação na hora (antes abria passiva → parecia que "nada acontecia")
-    setRelSummaries((prev) => ({
-      ...prev,
-      [relId]: { title, text: "", loading: true },
-    }));
-    showToast("Cruzando os dois trabalhos — carregando ✨");
-    try {
-      // Baixa os dois PDFs em paralelo. Ambos OK → comparação rica (Gemini lê os PDFs
-      // inteiros); senão → metadados (o route faz o fallback, sem 400).
-      const [aPdf, bPdf] = await Promise.all([
-        fetchPdfBase64(a.pdfUrl),
-        fetchPdfBase64(b.pdfUrl),
-      ]);
-      const bothPdfs = !!aPdf && !!bPdf;
-      const res = await fetch("/api/ai/relate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          bothPdfs
-            ? {
-                mode: "gemini",
-                a: { pdfUrl: a.pdfUrl, title: a.title, fileData: aPdf },
-                b: { pdfUrl: b.pdfUrl, title: b.title, fileData: bPdf },
-              }
-            : {
-                mode: "vercel",
-                a: { pdfUrl: a.pdfUrl, title: a.title },
-                b: { pdfUrl: b.pdfUrl, title: b.title },
-              },
-        ),
-      });
-      const d = await res.json();
-      setRelSummaries((prev) => ({
-        ...prev,
-        [relId]: {
-          title,
-          text: d.text || "Não consegui relacionar agora.",
-          loading: false,
-        },
-      }));
-    } catch {
-      setRelSummaries((prev) => ({
-        ...prev,
-        [relId]: {
-          title,
-          text: "Erro ao relacionar os documentos.",
-          loading: false,
-        },
-      }));
-    }
-  };
+  // DESATIVADO: a comparação "arraste um documento sobre o outro" não estava funcionando
+  // de forma confiável e foi removida da UI (sem prop onRelate; ver DocIcon). A rota
+  // /api/ai/relate continua existindo, mas não é mais acionada pela folha.
 
   // 🔥 FETCH CORRECTO PARA CHAT AURA
   const handlePdfQuestion = async () => {
@@ -1917,6 +1843,83 @@ export default function HomeworkPage({
     setCitInsertFlash(true);
     setTimeout(() => setCitInsertFlash(false), 650);
     showToast("Citação inserida — referência adicionada às Referências.");
+  };
+
+  // Arrastar IMAGEM (biblioteca ou desktop) → marcador de figura da engine.
+  const IMG_MAX_BYTES = 8 * 1024 * 1024;
+  const isImageName = (s: string) => /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(s || "");
+  const readFileAsDataUri = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result || ""));
+      r.onerror = () => reject(r.error);
+      r.readAsDataURL(file);
+    });
+  const urlToDataUri = async (url: string): Promise<string> => {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return readFileAsDataUri(new File([blob], "img", { type: blob.type }));
+  };
+
+  const insertDroppedImage = async (
+    filename: string,
+    cursor: number,
+    getUri: () => Promise<string>,
+    size?: number,
+  ) => {
+    if (size && size > IMG_MAX_BYTES) {
+      showToast("Imagem muito grande para embutir (máx. 8 MB).");
+      return;
+    }
+    let dataUri = "";
+    try {
+      dataUri = await getUri();
+    } catch {
+      showToast("Não consegui ler a imagem.");
+      return;
+    }
+    if (!dataUri.startsWith("data:image")) {
+      showToast("Arquivo não é uma imagem válida.");
+      return;
+    }
+    if (dataUri.length > IMG_MAX_BYTES * 1.4) {
+      showToast("Imagem muito grande para embutir (máx. 8 MB).");
+      return;
+    }
+    const title = sanitizeFigureTitle(filename);
+    setDocContent((prev) =>
+      insertImageMarker(prev, Math.min(cursor, prev.length), { title, dataUri }),
+    );
+    setCitInsertFlash(true);
+    setTimeout(() => setCitInsertFlash(false), 650);
+    showToast("Imagem inserida como figura — ajuste o título/fonte no texto.");
+  };
+
+  // Handler único do editor: citação (intacto) → imagem do desktop → imagem da biblioteca.
+  const handleEditorDrop = (e: React.DragEvent<HTMLTextAreaElement>) => {
+    if (e.dataTransfer.getData("text/zaeon-citation")) {
+      handleCitationDrop(e);
+      return;
+    }
+    // Lê tudo de forma SÍNCRONA (dataTransfer some após await).
+    const ta = textareaRef.current;
+    const cursor = ta ? (ta.selectionStart ?? docContent.length) : docContent.length;
+    const imgFile = Array.from(e.dataTransfer.files || []).find((f) =>
+      f.type.startsWith("image/"),
+    );
+    if (imgFile) {
+      e.preventDefault();
+      void insertDroppedImage(imgFile.name, cursor, () => readFileAsDataUri(imgFile), imgFile.size);
+      return;
+    }
+    const fileId = e.dataTransfer.getData("text/zaeon-file");
+    if (fileId) {
+      const lib = libraryFiles.find((f) => f.id === fileId);
+      if (lib && (isImageName(lib.title) || isImageName(lib.pdfUrl))) {
+        e.preventDefault();
+        void insertDroppedImage(lib.title, cursor, () => urlToDataUri(lib.pdfUrl));
+      }
+    }
   };
 
   // 🔥 FETCH CORRECTO PARA O EXAMINER (Quiz)
@@ -2383,7 +2386,6 @@ export default function HomeworkPage({
                 flipped={isChatLeft}
                 workType={workType}
                 onWorkType={switchWorkType}
-                onRelate={handleRelateFiles}
                 onReadResearch={readResearch}
                 isReadingResearch={readingResearch}
                 onViewDoc={handleViewDoc}
@@ -2454,15 +2456,12 @@ export default function HomeworkPage({
                           onChange={(e) => setDocContent(e.target.value)}
                           onDragOver={(e) => {
                             // Vários navegadores NÃO listam tipos MIME custom no dragover
-                            // (só no drop) → checar types.includes("text/zaeon-citation")
-                            // falhava, o preventDefault não rodava e o navegador RECUSAVA o
-                            // drop. Permitimos o drop sempre; o handler decide se é citação.
+                            // (só no drop): permitimos o drop sempre e o handleEditorDrop
+                            // decide se é citação, imagem da biblioteca ou do desktop.
                             e.preventDefault();
-                            if (e.dataTransfer.types.includes("text/zaeon-citation")) {
-                              e.dataTransfer.dropEffect = "copy";
-                            }
+                            e.dataTransfer.dropEffect = "copy";
                           }}
-                          onDrop={handleCitationDrop}
+                          onDrop={handleEditorDrop}
                           style={{
                             fontSize: `${Math.round(17 * editorZoom)}px`,
                           }}

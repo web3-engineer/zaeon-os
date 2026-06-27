@@ -25,10 +25,9 @@ interface DocIconProps {
   onView?: (file: LibraryFile) => void;
 }
 
-export default function DocIcon({ file, onPlay, processingId, onRelate, onDelete, onView }: DocIconProps) {
+export default function DocIcon({ file, onPlay, processingId, onDelete, onView }: DocIconProps) {
   const busy = processingId === file.id;
   const emoji = docEmoji(file);
-  const [dragOver, setDragOver] = useState(false);
   const [dragging, setDragging] = useState(false);
   // ＋ verde só aparece se o doc é REALMENTE visualizável (blob morto / sem PDF → não mostra).
   const [viewable, setViewable] = useState<boolean>(/^https?:/i.test(file.pdfUrl));
@@ -45,35 +44,18 @@ export default function DocIcon({ file, onPlay, processingId, onRelate, onDelete
 
   return (
     <div
-      // Arraste nativo: só dispara ao SEGURAR e mover o mouse (não no clique).
+      // Arraste nativo: segura e move pra levar o doc pra folha (ver o PDF).
       draggable={!busy}
       onDragStart={(e) => {
         e.dataTransfer.setData("text/zaeon-file", file.id);
-        // "copyLink" permite os dois destinos: relacionar (link) e ver na folha (copy).
-        e.dataTransfer.effectAllowed = "copyLink";
+        e.dataTransfer.effectAllowed = "copy";
         setDragging(true);
       }}
       onDragEnd={() => setDragging(false)}
-      onDragOver={(e) => {
-        if (onRelate) {
-          e.preventDefault();
-          e.dataTransfer.dropEffect = "link";
-          setDragOver(true);
-        }
-      }}
-      onDragLeave={() => setDragOver(false)}
-      onDrop={(e) => {
-        e.preventDefault();
-        setDragOver(false);
-        const src = e.dataTransfer.getData("text/zaeon-file");
-        if (src && src !== file.id) onRelate?.(src, file.id);
-      }}
-      title="Arraste pra folha para ver o PDF · sobre outro documento para relacionar · ▶ para conversar"
+      title="Arraste pra folha para ver o PDF · ▶ para conversar"
       className={`group relative rounded-[14px] p-3 pb-2 text-center transition-all duration-200 bg-white/5 border hover:-translate-y-0.5 ${
         dragging
           ? "border-emerald-400 ring-2 ring-emerald-400/60 scale-[1.04] cursor-grabbing"
-          : dragOver
-          ? "border-cyan-400 ring-2 ring-cyan-400/50 scale-[1.04] cursor-copy"
           : "border-white/[0.11] hover:border-emerald-400/40 cursor-grab active:cursor-grabbing"
       }`}
       style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.14)" }}

@@ -65,6 +65,24 @@ TABLE_LABEL         = "Tabela"
 QUADRO_LABEL        = "Quadro"
 FONT_SIZE_TABLE_PT  = 10             # conteúdo de células (menor, uniforme)
 
+# ── Notas de rodapé (NBR 14724) ────────────────────────────────
+# Marcador inline no texto:  texto^[conteúdo da nota]
+FOOTNOTES_CONTENT_TYPE = (
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml"
+)
+FOOTNOTES_REL_TYPE = (
+    "http://schemas.openxmlformats.org/officeDocument/2006/relationships/footnotes"
+)
+
+# ── Bookmarks (alvos de PAGEREF no sumário/listas) ─────────────
+BM_SECTION    = "sec"
+BM_REFERENCES = "refs"
+BM_FIGURE     = "fig"
+BM_TABLE      = "tab"
+BM_QUADRO     = "quadro"
+BM_APPENDIX   = "apx"
+BM_ANNEX      = "anx"
+
 # ── Referências (NBR 6023:2018) ────────────────────────────────
 REFERENCES_TITLE = "REFERÊNCIAS"
 # Alinhadas à esquerda, sem recuo, espaço simples, separadas por linha em branco

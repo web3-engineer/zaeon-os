@@ -23,6 +23,7 @@ from models import (
     SectionData,
     SubsectionData,
     ReferenceData,
+    AppendixData,
 )
 
 
@@ -193,13 +194,21 @@ def test_long_prose_not_treated_as_quote():
 
 # ── Sumário real (NOVO) ────────────────────────────────────────
 
-def test_sumario_has_real_toc_field():
+def test_sumario_entries_use_pageref():
     doc = _build()
     xml = _body_xml(doc)
-    assert "TOC" in xml and 'w:instrText' in xml, "campo TOC real ausente"
-    # o texto-instrução não pode vazar para o PDF (LibreOffice headless e o
-    # fallback ReportLab não atualizam o campo, então mostram o cache)
-    assert "Atualize o sum" not in xml, "instrução de atualização vaza para o PDF"
+    # números de página via PAGEREF (resolvidos no layout pelo Word/LibreOffice)
+    assert "PAGEREF" in xml, "sumário deve usar PAGEREF para números de página"
+    assert "Atualize o sum" not in xml, "não deve vazar texto-instrução"
+    # bookmarks-alvo presentes nos títulos
+    assert R.BM_SECTION + "1" in xml and R.BM_REFERENCES in xml
+
+
+def test_section_titles_have_bookmark():
+    doc = _build()
+    p = next((p for p in doc.paragraphs if p.text.strip() == "1 INTRODUÇÃO"), None)
+    assert p is not None
+    assert "bookmarkStart" in p._p.xml, "título de seção precisa de bookmark (alvo do PAGEREF)"
 
 
 def test_sumario_cached_entries_present():
@@ -210,9 +219,9 @@ def test_sumario_cached_entries_present():
     # "1 INTRODUÇÃO" aparece como título do corpo E como entrada do sumário
     intro_count = sum(1 for t in texts if "1 INTRODUÇÃO" in t)
     assert intro_count >= 2, "entradas em cache do sumário ausentes"
-    # subseção e referências também entram no sumário
+    # subseção e referências também entram no sumário (título do corpo + entrada)
     assert sum(1 for t in texts if "1.1 CONTEXTO" in t) >= 2
-    assert sum(1 for t in texts if t.strip() == "REFERÊNCIAS") >= 2
+    assert sum(1 for t in texts if "REFERÊNCIAS" in t) >= 2
 
 
 def test_section_titles_have_outline_level():
@@ -259,7 +268,10 @@ def _fig_doc(content):
 def test_figure_caption_top_image_and_source_bottom():
     doc = _fig_doc(f"Veja a figura a seguir.\n\n"
                    f"![Mapa do Brasil|Fonte: IBGE (2020)]({FIG_PNG})\n\nTexto após.")
-    cap = _find_para(doc, "Figura 1 – Mapa do Brasil")
+    # legenda do CORPO (centralizada, 10pt) — não a entrada da Lista de Ilustrações
+    cap = next((p for p in doc.paragraphs
+                if "Figura 1 – Mapa do Brasil" in p.text
+                and p.alignment == WD_ALIGN_PARAGRAPH.CENTER), None)
     assert cap is not None, "legenda da figura ausente"
     assert cap.alignment == WD_ALIGN_PARAGRAPH.CENTER
     assert cap.runs[0].font.size == Pt(R.FONT_SIZE_SMALL_PT)  # 10pt
@@ -324,7 +336,10 @@ def _cell_edges(cell):
 
 def test_tabela_caption_top_source_bottom():
     doc = _tab_doc(TABELA)
-    cap = _find_para(doc, "Tabela 1 – Distribuição de alunos por turma")
+    # legenda do CORPO (10pt) — não a entrada da Lista de Tabelas (12pt)
+    cap = next((p for p in doc.paragraphs
+                if "Tabela 1 – Distribuição de alunos por turma" in p.text
+                and p.runs and p.runs[0].font.size == Pt(R.FONT_SIZE_SMALL_PT)), None)
     assert cap is not None, "legenda da tabela ausente"
     assert cap.runs[0].font.size == Pt(R.FONT_SIZE_SMALL_PT)
     assert "–" in cap.text  # travessão
@@ -366,6 +381,32 @@ def test_tabela_quadro_independent_numbering():
     assert _find_para(doc, "Tabela 1 – Distribuição de alunos por turma") is not None
     assert _find_para(doc, "Quadro 1 – Comparação entre abordagens") is not None
     assert _find_para(doc, "Tabela 2 – Distribuição de alunos por turma") is not None
+
+
+def test_list_of_illustrations_with_figures_and_quadros():
+    content = (f"![Mapa do Brasil|própria]({FIG_PNG})\n\n"
+               f"%%quadro Comparação de métodos\n| C | X | Y |\n| Custo | A | B |")
+    doc = _build(sections=[SectionData(type="d", title="Dev", content=content)])
+    assert _find_para(doc, "LISTA DE ILUSTRAÇÕES") is not None
+    texts = [p.text for p in doc.paragraphs]
+    assert any("Figura 1 – Mapa do Brasil" in t for t in texts)
+    assert any("Quadro 1 – Comparação de métodos" in t for t in texts)
+    assert "PAGEREF" in _body_xml(doc), "lista deve usar PAGEREF"
+    caps = [p for p in doc.paragraphs if "Figura 1 – Mapa do Brasil" in p.text]
+    assert any("bookmarkStart" in p._p.xml for p in caps), "legenda da figura precisa de bookmark"
+
+
+def test_list_of_tables_present():
+    content = "%%tabela Dados coletados\n| Ano | Valor |\n| 2020 | 10 |"
+    doc = _build(sections=[SectionData(type="d", title="Dev", content=content)])
+    assert _find_para(doc, "LISTA DE TABELAS") is not None
+    assert any("Tabela 1 – Dados coletados" in p.text for p in doc.paragraphs)
+
+
+def test_no_lists_when_no_floats():
+    doc = _build(sections=[SectionData(type="i", title="Intro", content="Apenas texto comum.")])
+    assert _find_para(doc, "LISTA DE ILUSTRAÇÕES") is None
+    assert _find_para(doc, "LISTA DE TABELAS") is None
 
 
 def test_table_marker_not_left_as_raw_text():
@@ -428,6 +469,121 @@ def test_reference_fallback_to_text_when_unstructured():
     ref = ReferenceData(text="TEXTO PRE FORMATADO COMPLETO ABNT.")
     doc = _build(references=[ref])
     assert _find_para(doc, "TEXTO PRE FORMATADO COMPLETO ABNT.") is not None
+
+
+def test_appendices_and_annexes_rendered():
+    doc = _build(
+        apendices=[AppendixData(title="Questionário aplicado", content="Conteúdo do questionário.")],
+        anexos=[AppendixData(title="Parecer do comitê", content="Texto do parecer.")],
+    )
+    assert _find_para(doc, "APÊNDICE A – QUESTIONÁRIO APLICADO") is not None
+    assert _find_para(doc, "Conteúdo do questionário.") is not None
+    assert _find_para(doc, "ANEXO A – PARECER DO COMITÊ") is not None
+    assert _find_para(doc, "Texto do parecer.") is not None
+
+
+def test_appendices_appear_in_sumario():
+    doc = _build(apendices=[AppendixData(title="Questionário", content="x")])
+    texts = [p.text for p in doc.paragraphs]
+    # entrada no sumário + título no corpo
+    assert sum(1 for t in texts if "APÊNDICE A" in t) >= 2
+
+
+def test_alineas_lettered_with_punctuation():
+    content = ("Os objetivos específicos são:\n\n"
+               "- analisar os dados coletados\n"
+               "- propor um modelo conceitual\n"
+               "- validar os resultados obtidos")
+    doc = _build(sections=[SectionData(type="d", title="Dev", content=content)])
+    texts = [p.text for p in doc.paragraphs]
+    assert "a) analisar os dados coletados;" in texts
+    assert "b) propor um modelo conceitual;" in texts
+    assert "c) validar os resultados obtidos." in texts  # última com ponto final
+
+
+def test_alineas_not_triggered_for_inline_dash():
+    content = "Este texto tem um - hífen no meio e não é uma lista de alíneas."
+    doc = _build(sections=[SectionData(type="d", title="Dev", content=content)])
+    assert not any(p.text.strip().startswith("a)") for p in doc.paragraphs)
+
+
+def _footnotes_blob(doc):
+    for p in doc.part.package.iter_parts():
+        if "footnotes.xml" in str(p.partname):
+            return p.blob.decode("utf-8")
+    return None
+
+
+def test_footnote_creates_part_and_reference():
+    content = "Afirmação importante^[Esta é uma nota explicativa de rodapé.] seguida de texto."
+    doc = _build(sections=[SectionData(type="d", title="Dev", content=content)])
+    blob = _footnotes_blob(doc)
+    assert blob is not None, "parte footnotes.xml ausente"
+    assert "footnoteReference" in doc.element.body.xml, "referência de nota ausente no corpo"
+    assert "Esta é uma nota explicativa de rodapé." in blob
+
+
+def test_footnote_text_is_10pt():
+    doc = _build(sections=[SectionData(type="d", title="Dev", content="X^[nota curta]")])
+    blob = _footnotes_blob(doc)
+    assert f'w:sz w:val="{R.FONT_SIZE_NOTE_PT * 2}"' in blob  # 10pt = 20 meios-pontos
+
+
+def test_footnote_marker_not_left_as_raw_text():
+    doc = _build(sections=[SectionData(type="d", title="Dev", content="Texto^[nota] e mais.")])
+    assert not any("^[" in p.text for p in doc.paragraphs), "marcador de nota vazou como texto"
+
+
+def test_no_footnotes_part_when_absent():
+    doc = _build(sections=[SectionData(type="d", title="Dev", content="Sem notas aqui.")])
+    assert _footnotes_blob(doc) is None
+
+
+def _header_xml(section):
+    paras = section.header.paragraphs
+    return paras[0]._p.xml if paras else ""
+
+
+def test_pagination_three_sections():
+    # capa | pré-textual | textual+pós-textual
+    doc = _build()
+    assert len(doc.sections) == 3
+
+
+def test_pretextual_section_restarts_numbering_at_1():
+    # folha de rosto = página 1 (capa não é contada)
+    doc = _build()
+    sectPr = doc.sections[1]._sectPr
+    pg = sectPr.find(qn('w:pgNumType'))
+    assert pg is not None and pg.get(qn('w:start')) == '1', "pré-textual deve reiniciar em 1"
+
+
+def test_textual_section_continues_numbering_not_restart():
+    # a parte textual NÃO pode reiniciar em 1 (intro deve mostrar a contagem acumulada)
+    doc = _build()
+    pg = doc.sections[2]._sectPr.find(qn('w:pgNumType'))
+    start = pg.get(qn('w:start')) if pg is not None else None
+    assert start is None, "seção textual não pode reiniciar a numeração"
+
+
+def test_page_number_only_visible_in_textual_section():
+    doc = _build()
+    assert 'PAGE' not in _header_xml(doc.sections[0]), "capa não pode ter número"
+    assert 'PAGE' not in _header_xml(doc.sections[1]), "pré-textual não exibe número"
+    assert 'PAGE' in _header_xml(doc.sections[2]), "texto deve exibir número"
+
+
+def test_textual_page_number_top_right():
+    doc = _build()
+    p = doc.sections[2].header.paragraphs[0]
+    assert p.alignment == WD_ALIGN_PARAGRAPH.RIGHT
+
+
+def test_all_sections_keep_abnt_margins():
+    doc = _build()
+    for s in doc.sections:
+        assert cm_eq(s.left_margin, 3.0) and cm_eq(s.top_margin, 3.0)
+        assert cm_eq(s.right_margin, 2.0) and cm_eq(s.bottom_margin, 2.0)
 
 
 def test_reference_alphabetical_order():

@@ -380,7 +380,7 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
       setZaeonStatus("Pronto! ✨");
       setTimeout(() => setZaeonStatus(""), 2500);
     } catch {
-      setZaeonStatus("Falha ao falar com a Zaeon.");
+      setZaeonStatus("Falha ao falar com a Nina.");
       setTimeout(() => setZaeonStatus(""), 4000);
     } finally { setZaeonBusy(false); setGenTitle(null); }
   };
@@ -801,7 +801,7 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
               {/* ⟁ da Zaeon: abre/fecha a barra de novo estudo */}
               <button
                 onClick={() => setBarOpen((v) => !v)}
-                title={barOpen ? "Fechar a Zaeon" : "Pedir um estudo à Zaeon"}
+                title={barOpen ? "Fechar a Nina" : "Pedir um estudo à Nina"}
                 aria-pressed={barOpen}
                 className={`shrink-0 self-center w-11 h-11 rounded-full flex items-center justify-center text-lg leading-none transition-all ${barOpen ? "text-white shadow-md" : "text-cyan-600 dark:text-cyan-300 hover:bg-cyan-500/10"}`}
                 style={barOpen ? { background: "linear-gradient(135deg,#2563eb,#06b6d4)" } : undefined}
@@ -863,10 +863,10 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
               onChange={(e) => setZaeonCmd(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") zaeonStudy(); if (e.key === "Escape") setBarOpen(false); }}
               disabled={zaeonBusy}
-              placeholder="Zaeon, estude sobre…"
+              placeholder="Nina, estude sobre…"
               className="flex-1 min-w-0 bg-transparent text-[12.5px] text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/35 focus:outline-none disabled:opacity-60 py-1"
             />
-            <VoiceModeSwitch onTranscript={(t) => setZaeonCmd(t)} title="Falar para a Zaeon" size={14} />
+            <VoiceModeSwitch onTranscript={(t) => setZaeonCmd(t)} title="Falar para a Nina" size={14} />
             <button onClick={() => zaeonStudy()} disabled={zaeonBusy || !zaeonCmd.trim()}
               className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-white disabled:opacity-40 shadow-sm"
               style={{ background: "linear-gradient(135deg,#2563eb,#06b6d4)" }} title="Criar estudo">
@@ -996,7 +996,7 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
             <>
               <div className="flex items-center gap-1 px-1 pt-0.5">
                 <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">Estudos</p>
-                <button onClick={newSpace} title="Novo estudo (abre a Zaeon pra começar)" className="ml-auto text-slate-400 hover:text-cyan-500"><Plus size={13} /></button>
+                <button onClick={newSpace} title="Novo estudo (abre a Nina pra começar)" className="ml-auto text-slate-400 hover:text-cyan-500"><Plus size={13} /></button>
               </div>
               {spaces.map((sp) => (
                 <div key={`sp-${sp.id}`}

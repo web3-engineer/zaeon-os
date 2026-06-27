@@ -243,7 +243,7 @@ Zaeon generativa) num **runtime de autonomia**:
   conforme são gerados. Reconectar = retomar de onde parou.
 - **Ferramentas (tool-calling) unificadas:** `study_action`, `update_schedule` (já existe),
   `research`, `write_document`, `code` — a Zaeon decide e executa, escrevendo no destino certo.
-  Ver `docs/STUDY_ROOM_ACTIONS.md` e `docs/ZION_CONTEXT.md`.
+  Ver `docs/STUDY_ROOM_ACTIONS.md` e `docs/BENTO_CONTEXT.md`.
 - **Guardrails:** anti-loop, teto de passos, timeout por etapa (já temos no Zaeon Code; generalizar).
 - **Voz fecha o loop:** comando falado → job de autonomia → texto aparece na tela + Zaeon narra.
 

@@ -62,7 +62,7 @@ export default function CitationsPanel() {
             }}
             title={draggable ? "Arraste para o seu texto" : "Complete a referência para poder arrastar"}
             className={`group relative rounded-[10px] p-2.5 transition-colors ${draggable ? "cursor-grab active:cursor-grabbing hover:bg-white/[0.09]" : ""}`}
-            style={{ background: "rgba(255,255,255,0.05)", border: cit.incomplete ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.10)" }}
+            style={{ background: cit.incomplete ? "rgba(239,68,68,0.08)" : "rgba(255,255,255,0.05)", border: cit.incomplete ? "1px solid rgba(239,68,68,0.55)" : "1px solid rgba(255,255,255,0.10)" }}
           >
             {/* STATUS (canto inferior ESQUERDO): ＋ = ainda não usada · ✓ = já colada no trabalho */}
             {!cit.incomplete && (
@@ -91,14 +91,14 @@ export default function CitationsPanel() {
 
             {cit.incomplete ? (
               <>
-                <p className="text-[8.5px] font-black uppercase tracking-widest text-amber-300 mb-1">⚠ Rascunho — faltam dados</p>
+                <p className="text-[8.5px] font-black uppercase tracking-widest text-red-400 mb-1">🔴 Sem fonte válida — não está sendo creditada</p>
                 <p className="text-[10px] text-white/70 italic leading-snug line-clamp-3">"{(cit.sourceText || cit.quote || "").slice(0, 140)}"</p>
                 <button
                   onClick={() => setCompleting(cit)}
                   className="mt-2 text-[9px] font-black uppercase tracking-wide px-2.5 py-1 rounded-full text-white"
-                  style={{ background: "linear-gradient(180deg,#f59e0b,#b45309)" }}
+                  style={{ background: "linear-gradient(180deg,#ef4444,#b91c1c)" }}
                 >
-                  Completar referência
+                  Creditar fonte
                 </button>
               </>
             ) : (

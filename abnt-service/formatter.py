@@ -8,10 +8,15 @@ import re
 import urllib.request
 from docx import Document
 from docx.shared import Pt, Cm
-from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
+from docx.enum.text import (
+    WD_ALIGN_PARAGRAPH, WD_LINE_SPACING, WD_TAB_ALIGNMENT, WD_TAB_LEADER,
+)
 from docx.enum.table import WD_TABLE_ALIGNMENT
+from docx.enum.section import WD_SECTION
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
+from docx.opc.part import Part
+from docx.opc.packuri import PackURI
 
 import abnt_rules as R
 from models import DocumentPayload
@@ -28,8 +33,12 @@ def build_abnt_document(payload: DocumentPayload) -> bytes:
     _setup_page(doc)
     _setup_base_style(doc, font)
 
+    # ── Seção 1: CAPA (não contada, sem numeração) ──
     _add_cover_page(doc, payload, font)
-    doc.add_page_break()
+
+    # ── Seção 2: PRÉ-TEXTUAIS (contadas a partir da folha de rosto = pág. 1) ──
+    pretextual = _new_section(doc)
+    _set_section_start_page(pretextual, 1)  # capa não conta; folha de rosto = 1
 
     _add_title_page(doc, payload, font)
     doc.add_page_break()
@@ -41,17 +50,36 @@ def build_abnt_document(payload: DocumentPayload) -> bytes:
         _add_abstract(doc, payload.abstract, payload.keywords, font)
         doc.add_page_break()
 
-    _add_table_of_contents(doc, payload.sections, bool(payload.references), font)
-    doc.add_page_break()
+    # Listas de ilustrações/tabelas (quando houver) — antes do sumário
+    illustrations, tables = _collect_floats(payload.sections)
+    if illustrations:
+        _add_list_of_illustrations(doc, illustrations, font)
+        doc.add_page_break()
+    if tables:
+        _add_list_of_tables(doc, tables, font)
+        doc.add_page_break()
+
+    _add_table_of_contents(doc, payload.sections, bool(payload.references),
+                           payload.apendices, payload.anexos, font)
+
+    # ── Seção 3: TEXTUAL + PÓS-TEXTUAL (numeração visível, contagem contínua) ──
+    textual = _new_section(doc)
+    _set_section_continue(textual)  # não reinicia (continua da folha de rosto)
 
     counters = {"figura": 0, "year": payload.cover.year if payload.cover else None}
     for i, section in enumerate(payload.sections, start=1):
         _add_body_section(doc, section, i, font, counters)
 
     doc.add_page_break()
-    _add_references(doc, payload.references, font)
+    _add_references(doc, payload.references, font, counters)
+
+    _add_appendices(doc, payload.apendices, "APÊNDICE", R.BM_APPENDIX, font, counters)
+    _add_appendices(doc, payload.anexos, "ANEXO", R.BM_ANNEX, font, counters)
 
     _add_page_numbers(doc)
+
+    if counters.get("footnotes"):
+        _build_footnotes_part(doc, counters["footnotes"], font)
 
     buf = io.BytesIO()
     doc.save(buf)
@@ -60,6 +88,43 @@ def build_abnt_document(payload: DocumentPayload) -> bytes:
 
 
 # ── Configuração de página ─────────────────────────────────────
+
+def _setup_section(section):
+    section.page_width  = Cm(R.PAGE_WIDTH_CM)
+    section.page_height = Cm(R.PAGE_HEIGHT_CM)
+    section.left_margin   = Cm(R.MARGIN_LEFT_CM)
+    section.right_margin  = Cm(R.MARGIN_RIGHT_CM)
+    section.top_margin    = Cm(R.MARGIN_TOP_CM)
+    section.bottom_margin = Cm(R.MARGIN_BOTTOM_CM)
+
+
+def _new_section(doc: Document):
+    """Quebra de seção (nova página) com a mesma configuração de página ABNT."""
+    section = doc.add_section(WD_SECTION.NEW_PAGE)
+    _setup_section(section)
+    return section
+
+
+def _set_section_start_page(section, start: int):
+    sectPr = section._sectPr
+    pgNumType = sectPr.find(qn('w:pgNumType'))
+    if pgNumType is None:
+        pgNumType = OxmlElement('w:pgNumType')
+        sectPr.append(pgNumType)
+    pgNumType.set(qn('w:start'), str(start))
+
+
+def _set_section_continue(section):
+    """Remove o 'start' herdado (add_section copia o sectPr anterior) para a
+    numeração continuar em vez de reiniciar."""
+    sectPr = section._sectPr
+    pgNumType = sectPr.find(qn('w:pgNumType'))
+    if pgNumType is not None:
+        if qn('w:start') in pgNumType.attrib:
+            del pgNumType.attrib[qn('w:start')]
+        if not pgNumType.attrib:
+            sectPr.remove(pgNumType)
+
 
 def _setup_page(doc: Document):
     section = doc.sections[0]
@@ -245,79 +310,146 @@ def _keywords_line(doc: Document, label: str, terms: list, font: str):
     r_kw.font.size = Pt(R.FONT_SIZE_BODY_PT)
 
 
-# ── Sumário (campo TOC real, NBR 6027) ─────────────────────────
+# ── Sumário (NBR 6027) — entradas com PAGEREF (números reais no PDF) ──
 
-def _add_table_of_contents(doc: Document, sections: list, has_refs: bool, font: str):
-    """Insere um campo de Sumário real (TOC) que Word/LibreOffice atualizam a
-    partir dos níveis de tópico (outlineLvl) das seções, com numeração de página.
-
-    O RESULTADO EM CACHE do campo já contém as entradas (nº + título) das seções,
-    pois a conversão headless para PDF (LibreOffice/--convert-to e o fallback
-    ReportLab) NÃO atualiza campos — então o cache é o que aparece no PDF.
-    Ao abrir o .docx, o campo é recalculado e ganha os números de página."""
+def _add_table_of_contents(doc: Document, sections: list, has_refs: bool,
+                           apendices: list, anexos: list, font: str):
+    """Sumário com entradas (nº + título), líder pontilhado e número de página
+    via campo PAGEREF a um bookmark em cada título. LibreOffice/Word resolvem o
+    PAGEREF no layout — o PDF headless já mostra os números de página corretos."""
     _section_title(doc, "SUMÁRIO", font)
 
-    entries = []  # (nível, texto)
+    entries = []  # (nível, texto, bookmark)
     for i, sec in enumerate(sections, start=1):
-        entries.append((0, f"{i} {sec.title.upper()}"))
+        entries.append((0, f"{i} {sec.title.upper()}", f"{R.BM_SECTION}{i}"))
         for j, sub in enumerate(getattr(sec, "subsections", []) or [], start=1):
-            entries.append((1, f"{i}.{j} {sub.title.upper()}"))
+            entries.append((1, f"{i}.{j} {sub.title.upper()}", f"{R.BM_SECTION}{i}sub{j}"))
     if has_refs:
-        entries.append((0, R.REFERENCES_TITLE))
+        entries.append((0, R.REFERENCES_TITLE, R.BM_REFERENCES))
+    for idx, ap in enumerate(apendices or []):
+        entries.append((0, f"APÊNDICE {chr(65 + idx)}{R.FIGURE_CAPTION_DELIM}{ap.title.upper()}",
+                        f"{R.BM_APPENDIX}{idx}"))
+    for idx, ax in enumerate(anexos or []):
+        entries.append((0, f"ANEXO {chr(65 + idx)}{R.FIGURE_CAPTION_DELIM}{ax.title.upper()}",
+                        f"{R.BM_ANNEX}{idx}"))
 
-    _emit_toc_field(doc, entries, font)
+    for level, text, bm in entries:
+        _index_entry(doc, text, bm, font, level)
     _enable_update_fields(doc)
 
 
-def _emit_toc_field(doc: Document, entries: list, font: str):
-    """Campo TOC cujo resultado em cache são parágrafos com as entradas.
-    Estrutura: fldChar(begin) instrText fldChar(separate) <entradas> fldChar(end)."""
-    instr = ' TOC \\o "1-3" \\h \\z \\u '
-
-    if not entries:
-        entries = [(0, "")]
-
-    paras = []
-    for level, _text in entries:
-        p = doc.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-        p.paragraph_format.first_line_indent = Cm(0)
-        if level > 0:
-            p.paragraph_format.left_indent = Cm(0.75 * level)
-        paras.append(p)
-
-    # abertura do campo no início do 1º parágrafo
-    _field_char_run(paras[0], "begin", font)
-    _instr_run(paras[0], instr, font)
-    _field_char_run(paras[0], "separate", font)
-
-    # resultado em cache: as entradas (uma por parágrafo)
-    for (_level, text), p in zip(entries, paras):
-        r = p.add_run(text)
-        r.font.name = font
-        r.font.size = Pt(R.FONT_SIZE_BODY_PT)
-
-    # fechamento do campo no fim do último parágrafo
-    _field_char_run(paras[-1], "end", font)
+def _add_appendices(doc: Document, items: list, label: str, bm_prefix: str,
+                    font: str, counters: dict):
+    """Emite apêndices/anexos pós-textuais: 'APÊNDICE A – TÍTULO' (nova página) +
+    conteúdo. Cada um vira alvo de bookmark para aparecer no sumário."""
+    for idx, item in enumerate(items or []):
+        doc.add_page_break()
+        title = f"{label} {chr(65 + idx)}{R.FIGURE_CAPTION_DELIM}{item.title.upper()}"
+        tp = _section_title(doc, title, font, outline_level=0)
+        if counters is not None:
+            _add_bookmark(tp, f"{bm_prefix}{idx}", counters)
+        for block in _split_paragraphs(item.content):
+            _add_paragraph(doc, block, font, counters)
 
 
-def _field_char_run(paragraph, char_type: str, font: str):
-    r = paragraph.add_run()
+# ── Listas de Ilustrações e Tabelas (NBR 14724) ────────────────
+
+def _collect_floats(sections: list):
+    """Pré-varre as seções (na ordem do texto) coletando figuras/quadros (→ Lista
+    de Ilustrações) e tabelas (→ Lista de Tabelas). A numeração espelha exatamente
+    a da renderização do corpo (mesmos contadores por tipo)."""
+    illustrations, tables = [], []
+    c = {"figura": 0, "tabela": 0, "quadro": 0}
+
+    def scan(content: str):
+        for block in _split_paragraphs(content or ""):
+            if _is_figure(block):
+                m = _FIGURE_RE.match(block.strip())
+                title = m.group("alt").partition("|")[0].strip()
+                c["figura"] += 1
+                illustrations.append((R.FIGURE_LABEL, c["figura"], title, f"{R.BM_FIGURE}{c['figura']}"))
+            elif _is_table_block(block):
+                kind, title, _fonte, rows = _parse_table_block(block)
+                if not rows:
+                    continue
+                if kind == "tabela":
+                    c["tabela"] += 1
+                    tables.append((R.TABLE_LABEL, c["tabela"], title, f"{R.BM_TABLE}{c['tabela']}"))
+                else:
+                    c["quadro"] += 1
+                    illustrations.append((R.QUADRO_LABEL, c["quadro"], title, f"{R.BM_QUADRO}{c['quadro']}"))
+
+    for sec in sections:
+        scan(sec.content)
+        for sub in getattr(sec, "subsections", []) or []:
+            scan(sub.content)
+    return illustrations, tables
+
+
+def _add_list_of_illustrations(doc: Document, items: list, font: str):
+    _section_title(doc, "LISTA DE ILUSTRAÇÕES", font)
+    for label, num, title, bm in items:
+        _index_entry(doc, f"{label} {num}{R.FIGURE_CAPTION_DELIM}{title}", bm, font)
+    _enable_update_fields(doc)
+
+
+def _add_list_of_tables(doc: Document, items: list, font: str):
+    _section_title(doc, "LISTA DE TABELAS", font)
+    for label, num, title, bm in items:
+        _index_entry(doc, f"{label} {num}{R.FIGURE_CAPTION_DELIM}{title}", bm, font)
+    _enable_update_fields(doc)
+
+
+def _index_entry(doc: Document, text: str, bookmark: str, font: str, level: int = 0):
+    """Linha de índice: 'texto ......... <página>' (tab à direita + líder pontilhado)."""
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    p.paragraph_format.first_line_indent = Cm(0)
+    p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+    if level > 0:
+        p.paragraph_format.left_indent = Cm(0.5 * level)
+    usable = R.PAGE_WIDTH_CM - R.MARGIN_LEFT_CM - R.MARGIN_RIGHT_CM  # 16 cm (margem direita)
+    p.paragraph_format.tab_stops.add_tab_stop(Cm(usable), WD_TAB_ALIGNMENT.RIGHT, WD_TAB_LEADER.DOTS)
+    r = p.add_run(text + "\t")
     r.font.name = font
     r.font.size = Pt(R.FONT_SIZE_BODY_PT)
-    fld = OxmlElement('w:fldChar')
-    fld.set(qn('w:fldCharType'), char_type)
-    r._r.append(fld)
+    _add_field(p, f' PAGEREF {bookmark} \\h ', "0", font)
 
 
-def _instr_run(paragraph, text: str, font: str):
-    r = paragraph.add_run()
-    r.font.name = font
-    r.font.size = Pt(R.FONT_SIZE_BODY_PT)
-    instr = OxmlElement('w:instrText')
-    instr.set(qn('xml:space'), 'preserve')
-    instr.text = text
-    r._r.append(instr)
+def _add_field(paragraph, instr: str, placeholder: str, font: str, bold: bool = False):
+    """Campo Word: fldChar(begin) instrText fldChar(separate) <placeholder> fldChar(end)."""
+    def fld_run():
+        run = paragraph.add_run()
+        run.font.name = font
+        run.font.size = Pt(R.FONT_SIZE_BODY_PT)
+        run.bold = bold
+        return run._r
+    begin = OxmlElement('w:fldChar'); begin.set(qn('w:fldCharType'), 'begin'); fld_run().append(begin)
+    it = OxmlElement('w:instrText'); it.set(qn('xml:space'), 'preserve'); it.text = instr; fld_run().append(it)
+    sep = OxmlElement('w:fldChar'); sep.set(qn('w:fldCharType'), 'separate'); fld_run().append(sep)
+    ph = paragraph.add_run(placeholder)
+    ph.font.name = font
+    ph.font.size = Pt(R.FONT_SIZE_BODY_PT)
+    ph.bold = bold
+    end = OxmlElement('w:fldChar'); end.set(qn('w:fldCharType'), 'end'); fld_run().append(end)
+
+
+def _add_bookmark(paragraph, name: str, counters: dict):
+    """Marca o parágrafo com um bookmark (alvo de PAGEREF no sumário/listas)."""
+    bid = counters.get("bmid", 0) + 1
+    counters["bmid"] = bid
+    p_elem = paragraph._p
+    pPr = p_elem.find(qn('w:pPr'))
+    start = OxmlElement('w:bookmarkStart')
+    start.set(qn('w:id'), str(bid))
+    start.set(qn('w:name'), name)
+    end = OxmlElement('w:bookmarkEnd')
+    end.set(qn('w:id'), str(bid))
+    if pPr is not None:
+        pPr.addnext(start)   # bookmarkStart logo após o pPr (ordem válida)
+    else:
+        p_elem.insert(0, start)
+    p_elem.append(end)
 
 
 def _enable_update_fields(doc: Document):
@@ -366,14 +498,18 @@ def _set_outline_level(paragraph, level: int):
 
 def _add_body_section(doc: Document, section_data, number: int, font: str, counters: dict = None):
     title_text = f"{number} {section_data.title.upper()}"
-    _section_title(doc, title_text, font, outline_level=0)
+    tp = _section_title(doc, title_text, font, outline_level=0)
+    if counters is not None:
+        _add_bookmark(tp, f"{R.BM_SECTION}{number}", counters)
 
     for block in _split_paragraphs(section_data.content):
         _add_paragraph(doc, block, font, counters)
 
     for j, sub in enumerate(section_data.subsections, start=1):
         sub_title = f"{number}.{j} {sub.title.upper()}"
-        _subsection_title(doc, sub_title, font)
+        stp = _subsection_title(doc, sub_title, font)
+        if counters is not None:
+            _add_bookmark(stp, f"{R.BM_SECTION}{number}sub{j}", counters)
         for block in _split_paragraphs(sub.content):
             _add_paragraph(doc, block, font, counters)
 
@@ -387,6 +523,9 @@ def _add_paragraph(doc: Document, text: str, font: str, counters: dict = None):
     if counters is not None and _is_figure(text):
         _add_figure(doc, text, font, counters)
         return
+    if _is_alinea_block(text):
+        _add_alineas(doc, text, font)
+        return
     if _is_long_quote(text):
         _add_long_quote(doc, text, font)
     else:
@@ -395,9 +534,7 @@ def _add_paragraph(doc: Document, text: str, font: str, counters: dict = None):
         p.paragraph_format.first_line_indent = Cm(R.PARAGRAPH_INDENT_CM)
         p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.MULTIPLE
         p.paragraph_format.line_spacing = R.LINE_SPACING_BODY
-        run = p.add_run(text)
-        run.font.name = font
-        run.font.size = Pt(R.FONT_SIZE_BODY_PT)
+        _add_text_with_footnotes(p, text, font, counters)
 
 
 def _add_long_quote(doc: Document, text: str, font: str):
@@ -450,6 +587,111 @@ def _split_paragraphs(content: str) -> list:
     return [b.strip() for b in content.split("\n\n") if b.strip()]
 
 
+# ── Alíneas (NBR 6024) — lista markdown "- item" → a) b) c) ────
+
+_ALINEA_LINE_RE = re.compile(r'^[-*]\s+\S')
+
+
+def _is_alinea_block(text: str) -> bool:
+    lines = [l.strip() for l in text.strip().split("\n") if l.strip()]
+    return len(lines) >= 2 and all(_ALINEA_LINE_RE.match(l) for l in lines)
+
+
+def _add_alineas(doc: Document, text: str, font: str):
+    """Renderiza alíneas NBR 6024: a) b) c) minúsculas, recuo, ';' em cada e '.'
+    na última."""
+    items = [re.sub(r'^[-*]\s+', '', l.strip())
+             for l in text.strip().split("\n") if l.strip()]
+    for idx, item in enumerate(items):
+        letter = chr(ord('a') + idx) if idx < 26 else f"a{idx}"
+        content = item.rstrip('.;, ')
+        punct = '.' if idx == len(items) - 1 else ';'
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        p.paragraph_format.left_indent = Cm(R.PARAGRAPH_INDENT_CM)  # recuo das alíneas
+        p.paragraph_format.first_line_indent = Cm(0)
+        p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.MULTIPLE
+        p.paragraph_format.line_spacing = R.LINE_SPACING_BODY
+        r = p.add_run(f"{letter}) {content}{punct}")
+        r.font.name = font
+        r.font.size = Pt(R.FONT_SIZE_BODY_PT)
+
+
+# ── Notas de rodapé (NBR 14724) — marcador inline ^[nota] ──────
+
+_FOOTNOTE_RE = re.compile(r'\^\[(.+?)\]', re.DOTALL)
+
+
+def _add_text_with_footnotes(p, text: str, font: str, counters: dict = None):
+    """Adiciona o texto do parágrafo, convertendo marcadores ^[nota] em notas
+    de rodapé reais (referência sobrescrita no corpo + nota na parte footnotes)."""
+    def body_run(s):
+        r = p.add_run(s)
+        r.font.name = font
+        r.font.size = Pt(R.FONT_SIZE_BODY_PT)
+
+    if counters is None or '^[' not in text:
+        body_run(text)
+        return
+
+    pos = 0
+    for m in _FOOTNOTE_RE.finditer(text):
+        if text[pos:m.start()]:
+            body_run(text[pos:m.start()])
+        _add_footnote_ref(p, m.group(1).strip(), font, counters)
+        pos = m.end()
+    if text[pos:]:
+        body_run(text[pos:])
+
+
+def _add_footnote_ref(p, note: str, font: str, counters: dict):
+    notes = counters.setdefault("footnotes", [])
+    notes.append(note)
+    fid = len(notes)
+    run = p.add_run()
+    run.font.name = font
+    rpr = run._r.get_or_add_rPr()
+    va = OxmlElement('w:vertAlign')
+    va.set(qn('w:val'), 'superscript')
+    rpr.append(va)
+    ref = OxmlElement('w:footnoteReference')
+    ref.set(qn('w:id'), str(fid))
+    run._r.append(ref)
+
+
+def _xml_escape(s: str) -> str:
+    return (s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _build_footnotes_part(doc: Document, notes: list, font: str):
+    """Cria a parte word/footnotes.xml (10pt, espaço simples) e a relaciona ao
+    documento. Inclui os separators reservados (id -1 e 0); notas começam em 1."""
+    sz = R.FONT_SIZE_NOTE_PT * 2  # meios-pontos
+    items = [
+        '<w:footnote w:type="separator" w:id="-1"><w:p><w:r><w:separator/></w:r></w:p></w:footnote>',
+        '<w:footnote w:type="continuationSeparator" w:id="0"><w:p><w:r><w:continuationSeparator/></w:r></w:p></w:footnote>',
+    ]
+    for i, note in enumerate(notes, start=1):
+        items.append(
+            f'<w:footnote w:id="{i}"><w:p>'
+            f'<w:pPr><w:spacing w:line="240" w:lineRule="auto"/></w:pPr>'
+            f'<w:r><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:footnoteRef/></w:r>'
+            f'<w:r><w:rPr><w:rFonts w:ascii="{_xml_escape(font)}" w:hAnsi="{_xml_escape(font)}"/>'
+            f'<w:sz w:val="{sz}"/></w:rPr>'
+            f'<w:t xml:space="preserve"> {_xml_escape(note)}</w:t></w:r>'
+            f'</w:p></w:footnote>'
+        )
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<w:footnotes xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        + "".join(items) +
+        '</w:footnotes>'
+    )
+    part = Part(PackURI('/word/footnotes.xml'), R.FOOTNOTES_CONTENT_TYPE,
+                xml.encode('utf-8'), doc.part.package)
+    doc.part.relate_to(part, R.FOOTNOTES_REL_TYPE)
+
+
 # ── Figuras / Ilustrações (NBR 14724:2024) ─────────────────────
 # Marcador (markdown estendido):  ![Título|Fonte](url)
 #   - "Fonte" é opcional; "própria"/"autor" → "elaborado pelo próprio autor".
@@ -481,6 +723,7 @@ def _add_figure(doc: Document, text: str, font: str, counters: dict):
     r = cap.add_run(f"{R.FIGURE_LABEL} {number}{R.FIGURE_CAPTION_DELIM}{title.strip()}")
     r.font.name = font
     r.font.size = Pt(R.FONT_SIZE_SMALL_PT)
+    _add_bookmark(cap, f"{R.BM_FIGURE}{number}", counters)  # alvo da Lista de Ilustrações
 
     # Imagem centralizada (degrada para um aviso se o download/decodificação falhar)
     img = doc.add_paragraph()
@@ -601,6 +844,8 @@ def _add_table_block(doc: Document, text: str, font: str, counters: dict):
     rc = cap.add_run(f"{label} {number}{R.FIGURE_CAPTION_DELIM}{title}")
     rc.font.name = font
     rc.font.size = Pt(R.FONT_SIZE_SMALL_PT)
+    bm_prefix = R.BM_TABLE if kind == "tabela" else R.BM_QUADRO
+    _add_bookmark(cap, f"{bm_prefix}{number}", counters)  # alvo da Lista de Tabelas/Ilustrações
 
     ncols = max(len(r) for r in rows)
     table = doc.add_table(rows=len(rows), cols=ncols)
@@ -669,8 +914,10 @@ def _set_cell_borders(cell, top: bool = False, bottom: bool = False):
 
 # ── Referências ────────────────────────────────────────────────
 
-def _add_references(doc: Document, references: list, font: str):
-    _section_title(doc, R.REFERENCES_TITLE, font, outline_level=0)
+def _add_references(doc: Document, references: list, font: str, counters: dict = None):
+    tp = _section_title(doc, R.REFERENCES_TITLE, font, outline_level=0)
+    if counters is not None:
+        _add_bookmark(tp, R.BM_REFERENCES, counters)
 
     access_date = _today_abnt()
     ordered = sorted(references, key=_ref_sort_key)  # ordenação alfabética (NBR 6023)
@@ -797,6 +1044,7 @@ def _section_title(doc: Document, title: str, font: str, outline_level: int = No
     run.font.size = Pt(R.FONT_SIZE_BODY_PT)
     if outline_level is not None:  # entra no sumário (somente seções do texto)
         _set_outline_level(p, outline_level)
+    return p
 
 
 def _subsection_title(doc: Document, title: str, font: str, outline_level: int = 1):
@@ -811,6 +1059,7 @@ def _subsection_title(doc: Document, title: str, font: str, outline_level: int =
     run.font.size = Pt(R.FONT_SIZE_BODY_PT)
     if outline_level is not None:
         _set_outline_level(p, outline_level)
+    return p
 
 
 def _blank_line(doc: Document, font: str):
@@ -826,37 +1075,29 @@ def _blank_line(doc: Document, font: str):
 # ── Numeração de páginas ───────────────────────────────────────
 
 def _add_page_numbers(doc: Document):
-    """
-    Adiciona numeração de páginas no canto superior direito (header).
-    Começa a exibir a partir da 1ª página (capa).
-    """
-    for section in doc.sections:
+    """Numeração no canto superior direito, visível SOMENTE na parte textual
+    (última seção). Capa e pré-textuais ficam sem número (NBR 14724)."""
+    last = len(doc.sections) - 1
+    for i, section in enumerate(doc.sections):
         header = section.header
         header.is_linked_to_previous = False
-
-        # Limpa conteúdo anterior do header
         for para in header.paragraphs:
             para.clear()
-
-        if header.paragraphs:
-            p = header.paragraphs[0]
-        else:
-            p = header.add_paragraph()
-
+        p = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         p.paragraph_format.first_line_indent = Cm(0)
+
+        if i != last:
+            continue  # capa e pré-textuais: header vazio (sem número)
 
         run = p.add_run()
         fldChar1 = OxmlElement('w:fldChar')
         fldChar1.set(qn('w:fldCharType'), 'begin')
-
         instrText = OxmlElement('w:instrText')
         instrText.set(qn('xml:space'), 'preserve')
         instrText.text = 'PAGE'
-
         fldChar2 = OxmlElement('w:fldChar')
         fldChar2.set(qn('w:fldCharType'), 'end')
-
         run._r.append(fldChar1)
         run._r.append(instrText)
         run._r.append(fldChar2)

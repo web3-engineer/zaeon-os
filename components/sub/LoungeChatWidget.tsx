@@ -63,10 +63,10 @@ interface LoungeChatWidgetProps {
     defaultOpen?: boolean;
 }
 
-// Mock do perfil da Zaeon para o Chat
+// Mock do perfil do agente do chat (o Bento — rosto amigável que orquestra a Zaeon).
 const ZAEON_AGENT = {
     id: 'zaeon-agent',
-    name: 'Zaeon',
+    name: 'Bento',
     image: null,
     isAgent: true
 };
@@ -481,13 +481,13 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             prompt: text,
-                            agent: "zaeon",
+                            agent: "bento",
                             voiceMode, // passivo | ativo (personalidade da fala)
                             ...(attachedImage ? { fileData: attachedImage } : {}), // 🔥 foto → Gemini Vision
                             userData: savedOnboardingData, // 🔥 Memória injetada!
                             history: chatHistoryForGemini, // 🔥 Histórico do chat injetado!
                             agentContext: getAgentContext(), // 🔥 World-state durável do workspace!
-                            systemContext: `Você é a Zaeon. O usuário com quem você está falando se chama ${userName}. O usuário está neste momento na rota/página: ${pathname}. Se ele perguntar sobre o que ele pode fazer aqui ou pedir ajuda contextual, use essa rota como base para explicar a interface ou funcionalidades desta área específica do sistema.`
+                            systemContext: `Você é o Bento (NUNCA "Zaeon" — Zaeon é a plataforma, o coletivo dos agentes). O usuário com quem você está falando se chama ${userName} — chame-o por esse primeiro nome, nunca por "Zaeon". O usuário está neste momento na rota/página: ${pathname}. Se ele perguntar sobre o que pode fazer aqui ou pedir ajuda contextual, use essa rota como base para explicar a interface ou funcionalidades desta área específica do sistema.`
                         })
                     });
 
@@ -631,7 +631,7 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
         >
             <div
                 onClick={() => setIsOpen(!isOpen)}
-                title={isOpen ? undefined : "Falar com a Zaeon"}
+                title={isOpen ? undefined : "Falar com o Bento"}
                 className={isOpen
                     ? `h-12 flex items-center justify-between px-5 cursor-pointer shrink-0 transition-all border-b border-slate-200 dark:border-white/5 ${flash ? "bg-cyan-500/30 dark:bg-cyan-500/40 shadow-[inset_0_0_20px_rgba(6,182,212,0.5)]" : "bg-white/50 dark:bg-black/20 hover:bg-slate-100 dark:hover:bg-white/5"}`
                     : `h-full w-full flex items-center justify-center cursor-pointer relative transition-all ${flash ? "bg-cyan-500/30" : ""}`}
@@ -659,7 +659,7 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                   <>
                     <div className="flex items-center gap-3 relative">
                         <span className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-slate-200">
-                            {activeChat && !activeChat.isAgent ? activeChat.name : "Rede Neural"}
+                            {activeChat && !activeChat.isAgent ? activeChat.name : "Bento"}
                         </span>
                     </div>
 
@@ -715,7 +715,7 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                         className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!activeChat && activeTab === 'friends' ? 'bg-white dark:bg-[#1e293b] text-cyan-600 dark:text-cyan-400 shadow-sm border border-slate-200 dark:border-transparent' : 'text-slate-500 hover:bg-slate-200/60 dark:hover:bg-white/5'}`}>
                         <UsersIcon className="w-3.5 h-3.5" /> Colegas
                     </button>
-                    <button onClick={() => setActiveChat(ZAEON_AGENT)} title="Zaeon"
+                    <button onClick={() => setActiveChat(ZAEON_AGENT)} title="Bento"
                         className={`flex-1 flex items-center justify-center py-1.5 rounded-xl transition-all ${activeChat?.isAgent ? 'bg-cyan-500/15 shadow-sm border border-cyan-400/30' : 'hover:bg-slate-200/60 dark:hover:bg-white/5'}`}>
                         <ZaeonTriangle size={18} spinning={false} />
                     </button>
