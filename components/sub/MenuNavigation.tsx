@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   ChevronRightIcon, ChevronDownIcon, ArrowLeftIcon, ArrowRightStartOnRectangleIcon
 } from "@heroicons/react/24/outline";
-import { Bot, Send, ShieldCheck, Loader2, Mic, MicOff, Crown, Trash2 } from "lucide-react";
+import { Bot, Send, ShieldCheck, Loader2, Mic, MicOff, Crown, Trash2, GraduationCap } from "lucide-react";
 import { isSuperAdmin } from "@/lib/auth/roles";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -14,7 +14,7 @@ import Image from "next/image";
 import ZaeonLogo from "@/components/main/ZaeonLogo";
 import InviteButton from "@/components/sub/InviteButton";
 import VoicePicker from "@/components/settings/VoicePicker";
-import { startTour } from "@/lib/onboarding/tour";
+import { startTour, isTourReplay, setTourReplay, stopTourReplay } from "@/lib/onboarding/tour";
 
 type ModuleKey = "estudos" | "pesquisas" | "projetos" | "lounge";
 interface RecentItem { id: string; title: string; href: string }
@@ -82,6 +82,13 @@ export default function MenuNavigation() {
   // não só na 1ª sessão. Some quando o usuário conclui o onboarding.
   const [showWelcome, setShowWelcome] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false); // escolha de voz retraída por padrão
+  // Switch de Tutoriais (só super admin): liga/desliga o tour (replay) e roda na hora.
+  const [tutorialsOn, setTutorialsOn] = useState(false);
+  useEffect(() => { try { setTutorialsOn(isTourReplay()); } catch { /* ignore */ } }, []);
+  const toggleTutorials = () => {
+    if (tutorialsOn) { stopTourReplay(); setTutorialsOn(false); }            // desliga
+    else { setTourReplay(true); setTutorialsOn(true); setIsOptionsOpen(false); startTour(); } // liga + roda agora
+  };
   useEffect(() => {
     if (status !== "authenticated") return;
     let alive = true;
@@ -614,6 +621,31 @@ export default function MenuNavigation() {
                     <div className={accentBar(false)} />
                     <span className="text-sm tracking-tight pl-2 truncate">Acessar convite</span>
                     <ChevronRightIcon className="h-4 w-4 opacity-30 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                )}
+
+                {/* TUTORIAIS (escondido) — só super admin: liga/desliga o tour e roda na hora.
+                    Usuário comum não vê isto; ele passa pelo tour uma vez (card de boas-vindas). */}
+                {isFounder && (
+                  <div className={`${cardBase} cursor-default`}>
+                    <span className="flex items-center gap-3 pl-2 min-w-0">
+                      <GraduationCap size={16} className="text-cyan-500 dark:text-cyan-300 shrink-0" />
+                      <span className="flex flex-col min-w-0">
+                        <span className="text-sm tracking-tight truncate">Tutoriais</span>
+                        <span className="text-[9px] uppercase font-bold tracking-tighter text-slate-400 dark:text-white/40">
+                          {tutorialsOn ? "Ligado — roda a cada visita" : "Desligado"}
+                        </span>
+                      </span>
+                    </span>
+                    <button
+                      onClick={toggleTutorials}
+                      role="switch"
+                      aria-checked={tutorialsOn}
+                      title={tutorialsOn ? "Desligar tutoriais" : "Ligar tutoriais (roda agora)"}
+                      className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${tutorialsOn ? "bg-cyan-500" : "bg-slate-300 dark:bg-white/15"}`}
+                    >
+                      <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${tutorialsOn ? "translate-x-5" : ""}`} />
+                    </button>
                   </div>
                 )}
 
