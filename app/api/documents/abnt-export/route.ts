@@ -38,6 +38,8 @@ interface ABNTExportRequest {
         content: string;
         subsections: Array<{ title: string; content: string }>;
     }>;
+    apendices?: Array<{ title: string; content: string }>;  // pós-textuais (opcional)
+    anexos?: Array<{ title: string; content: string }>;
 }
 
 async function generateMetaWithGemini(request: ABNTExportRequest): Promise<{
@@ -313,6 +315,8 @@ export async function POST(req: Request) {
                 doi: c.doi ?? null,
                 url: c.url ?? null,
             })),
+            apendices: body.apendices || [],
+            anexos: body.anexos || [],
             validation: structured.validation,
             format: body.format,
             font_choice: body.fontChoice || 'Times New Roman',

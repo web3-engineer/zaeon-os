@@ -4,7 +4,6 @@ import * as pdfjsLib from "pdfjs-dist";
 import "pdfjs-dist/web/pdf_viewer.css";
 import type { LibraryFile } from "@/lib/useLibraryFiles";
 import type { SavedCitation } from "@/lib/useSavedCitations";
-import MetadataModal, { type MetaInitial } from "./MetadataModal";
 
 if (typeof window !== "undefined" && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
   pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -36,7 +35,6 @@ export default function PdfViewer({ file, onCite }: PdfViewerProps) {
   const pdfMeta = useRef<{ title?: string; authors?: string[] }>({});
   // hint da Aura + recorte sugerido + id da última citação (pra Aplicar atualizar a mesma nota)
   const [hint, setHint] = useState<{ msg: string; suggestedText: string; citId: string } | null>(null);
-  const [needMeta, setNeedMeta] = useState<{ initial: MetaInitial; sourceText: string; page?: number } | null>(null);
   const lastText = useRef<string>("");
 
   // ─────────── Render do PDF (pdf.js direto) ───────────
@@ -140,8 +138,26 @@ export default function PdfViewer({ file, onCite }: PdfViewerProps) {
         }).then((res) => res.json());
 
         if (r?.needsMetadata) {
-          // não inventa referência → pede os dados manualmente
-          setNeedMeta({ initial: r.have || {}, sourceText: text, page });
+          // NÃO bloqueia: salva como rascunho VERMELHO (incompleto) — o usuário
+          // credita a fonte depois pelo painel (sinal vermelho → modal).
+          onCite({
+            id: presetId || newId(),
+            abnt: "",
+            quote: `"${text}"`,
+            title: pdfMeta.current.title || file.title || "Citação",
+            authors: pdfMeta.current.authors || file.authors || [],
+            year: file.year,
+            venue: file.venue,
+            doi: file.doi,
+            url: file.url,
+            pdfUrl: file.pdfUrl,
+            sourceText: text,
+            page,
+            have: r.have || undefined,
+            incomplete: true,
+            savedAt: Date.now(),
+          });
+          window.getSelection?.()?.removeAllRanges();
           setCiting(false);
           return;
         }
@@ -228,18 +244,6 @@ export default function PdfViewer({ file, onCite }: PdfViewerProps) {
           )}
           <button onClick={() => setHint(null)} className="text-white/40 hover:text-white/80 text-sm leading-none shrink-0">×</button>
         </div>
-      )}
-
-      {/* Modal de metadados manuais (quando não dá pra cruzar) */}
-      {needMeta && (
-        <MetadataModal
-          sourceText={needMeta.sourceText}
-          page={needMeta.page}
-          initial={needMeta.initial}
-          fileMeta={{ title: pdfMeta.current.title || file.title, pdfUrl: file.pdfUrl, url: file.url }}
-          onResolved={(c) => { onCite(c); setNeedMeta(null); window.getSelection?.()?.removeAllRanges(); }}
-          onCancel={() => setNeedMeta(null)}
-        />
       )}
     </div>
   );

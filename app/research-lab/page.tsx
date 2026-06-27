@@ -113,6 +113,7 @@ import SavedCitationsSection from "./SavedCitationsSection";
 import LibrarySavedFiles from "./LibrarySavedFiles";
 import { useSavedCitations } from "@/lib/useSavedCitations";
 import { applyCitationDrop } from "@/lib/citationInsert";
+import { insertImageMarker, sanitizeFigureTitle } from "@/lib/imageInsert";
 import { extractCitationBlock } from "@/lib/scholar/chatCitation";
 import ResearchShell from "./ResearchShell";
 import ResearchReadingView from "./ResearchReadingView";
@@ -1586,7 +1587,11 @@ export default function HomeworkPage({
   // Seleção no PDF gerou uma citação → salva na aba de citações.
   const handleSaveCite = (c: import("@/lib/useSavedCitations").SavedCitation) => {
     savePersistedCitation(c);
-    showToast("Citação salva na aba Citações.");
+    showToast(
+      c.incomplete
+        ? "Citação salva — falta a fonte para creditar (complete no painel)."
+        : "Citação salva na aba Citações.",
+    );
   };
 
   // Nível do engine de citação conforme o runtime (Vercel simples vs container robusto).
@@ -1823,6 +1828,83 @@ export default function HomeworkPage({
     setCitInsertFlash(true);
     setTimeout(() => setCitInsertFlash(false), 650);
     showToast("Citação inserida — referência adicionada às Referências.");
+  };
+
+  // Arrastar IMAGEM (biblioteca ou desktop) → marcador de figura da engine.
+  const IMG_MAX_BYTES = 8 * 1024 * 1024;
+  const isImageName = (s: string) => /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(s || "");
+  const readFileAsDataUri = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result || ""));
+      r.onerror = () => reject(r.error);
+      r.readAsDataURL(file);
+    });
+  const urlToDataUri = async (url: string): Promise<string> => {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return readFileAsDataUri(new File([blob], "img", { type: blob.type }));
+  };
+
+  const insertDroppedImage = async (
+    filename: string,
+    cursor: number,
+    getUri: () => Promise<string>,
+    size?: number,
+  ) => {
+    if (size && size > IMG_MAX_BYTES) {
+      showToast("Imagem muito grande para embutir (máx. 8 MB).");
+      return;
+    }
+    let dataUri = "";
+    try {
+      dataUri = await getUri();
+    } catch {
+      showToast("Não consegui ler a imagem.");
+      return;
+    }
+    if (!dataUri.startsWith("data:image")) {
+      showToast("Arquivo não é uma imagem válida.");
+      return;
+    }
+    if (dataUri.length > IMG_MAX_BYTES * 1.4) {
+      showToast("Imagem muito grande para embutir (máx. 8 MB).");
+      return;
+    }
+    const title = sanitizeFigureTitle(filename);
+    setDocContent((prev) =>
+      insertImageMarker(prev, Math.min(cursor, prev.length), { title, dataUri }),
+    );
+    setCitInsertFlash(true);
+    setTimeout(() => setCitInsertFlash(false), 650);
+    showToast("Imagem inserida como figura — ajuste o título/fonte no texto.");
+  };
+
+  // Handler único do editor: citação (intacto) → imagem do desktop → imagem da biblioteca.
+  const handleEditorDrop = (e: React.DragEvent<HTMLTextAreaElement>) => {
+    if (e.dataTransfer.getData("text/zaeon-citation")) {
+      handleCitationDrop(e);
+      return;
+    }
+    // Lê tudo de forma SÍNCRONA (dataTransfer some após await).
+    const ta = textareaRef.current;
+    const cursor = ta ? (ta.selectionStart ?? docContent.length) : docContent.length;
+    const imgFile = Array.from(e.dataTransfer.files || []).find((f) =>
+      f.type.startsWith("image/"),
+    );
+    if (imgFile) {
+      e.preventDefault();
+      void insertDroppedImage(imgFile.name, cursor, () => readFileAsDataUri(imgFile), imgFile.size);
+      return;
+    }
+    const fileId = e.dataTransfer.getData("text/zaeon-file");
+    if (fileId) {
+      const lib = libraryFiles.find((f) => f.id === fileId);
+      if (lib && (isImageName(lib.title) || isImageName(lib.pdfUrl))) {
+        e.preventDefault();
+        void insertDroppedImage(lib.title, cursor, () => urlToDataUri(lib.pdfUrl));
+      }
+    }
   };
 
   // 🔥 FETCH CORRECTO PARA O EXAMINER (Quiz)
@@ -2358,16 +2440,17 @@ export default function HomeworkPage({
                           value={docContent}
                           onChange={(e) => setDocContent(e.target.value)}
                           onDragOver={(e) => {
+                            const t = e.dataTransfer.types;
                             if (
-                              e.dataTransfer.types.includes(
-                                "text/zaeon-citation",
-                              )
+                              t.includes("text/zaeon-citation") ||
+                              t.includes("text/zaeon-file") ||
+                              t.includes("Files")
                             ) {
                               e.preventDefault();
                               e.dataTransfer.dropEffect = "copy";
                             }
                           }}
-                          onDrop={handleCitationDrop}
+                          onDrop={handleEditorDrop}
                           style={{
                             fontSize: `${Math.round(17 * editorZoom)}px`,
                           }}

@@ -76,23 +76,35 @@ export default function CitationPopover({ pos, onClose }: CitationPopoverProps) 
 
       {/* Citation list */}
       <div className="flex flex-col gap-1.5 max-h-64 overflow-y-auto">
-        {citations.map((cit) => (
+        {citations.map((cit) => {
+          const draggable = !cit.incomplete && !!(cit.quote || cit.abnt);
+          return (
           <div
             key={cit.id}
-            draggable
-            onDragStart={(e) => {
-              const payload = JSON.stringify({ quote: cit.quote || cit.abnt, abnt: cit.abnt });
-              e.dataTransfer.setData("text/zaeon-citation", payload);
-              e.dataTransfer.setData("text/plain", cit.quote || cit.abnt);
-              e.dataTransfer.effectAllowed = "copy";
-            }}
-            title="Arraste para o seu texto"
-            className="rounded-[9px] p-2 cursor-grab active:cursor-grabbing transition-colors hover:bg-white/10"
+            draggable={draggable}
+            onDragStart={
+              draggable
+                ? (e) => {
+                    const payload = JSON.stringify({ quote: cit.quote || cit.abnt, abnt: cit.abnt });
+                    e.dataTransfer.setData("text/zaeon-citation", payload);
+                    e.dataTransfer.setData("text/plain", cit.quote || cit.abnt);
+                    e.dataTransfer.effectAllowed = "copy";
+                  }
+                : undefined
+            }
+            title={draggable ? "Arraste para o seu texto" : "Credite a fonte no painel de citações para usar"}
+            className={`rounded-[9px] p-2 transition-colors ${draggable ? "cursor-grab active:cursor-grabbing hover:bg-white/10" : ""}`}
             style={{
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.10)",
+              background: cit.incomplete ? "rgba(239,68,68,0.08)" : "rgba(255,255,255,0.06)",
+              border: cit.incomplete ? "1px solid rgba(239,68,68,0.5)" : "1px solid rgba(255,255,255,0.10)",
             }}
           >
+            {cit.incomplete ? (
+              <p className="text-[9px] text-red-400 leading-snug">
+                🔴 Sem fonte válida — credite no painel de citações.
+              </p>
+            ) : (
+            <>
             <div className="flex items-start gap-2">
               <span className="text-white/25 text-[11px] leading-none mt-0.5 select-none">⠿</span>
               <p className="text-[10px] text-white/85 leading-snug flex-1 line-clamp-3">
@@ -116,8 +128,11 @@ export default function CitationPopover({ pos, onClose }: CitationPopoverProps) 
                 {cit.year ? ` (${cit.year})` : ""}
               </p>
             )}
+            </>
+            )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {citations.length > 0 && (
