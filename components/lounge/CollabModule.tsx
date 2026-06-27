@@ -121,11 +121,20 @@ export default function CollabModule() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [plan, setPlan] = useState<string>("free");
   // Duas colunas independentes (Estudos | Pesquisas) — cada uma abre/fecha sozinha.
-  const [openTrays, setOpenTrays] = useState<Record<"study" | "research", boolean>>({ study: true, research: true });
+  // Começam MINIMIZADAS: só expandem o conteúdo quando o usuário clica na setinha.
+  const [openTrays, setOpenTrays] = useState<Record<"study" | "research", boolean>>({ study: false, research: false });
   const [creating, setCreating] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [confirmDel, setConfirmDel] = useState<Collab | null>(null);
+  // Modo foco da sala: quando ativo, a sidebar sobe pra top-4. O painel cheio do
+  // lounge precisa subir junto (antes ficava preso em top-96 → desalinhado/bugado).
+  const [focusMode, setFocusMode] = useState(false);
+  useEffect(() => {
+    const onFocus = (e: any) => setFocusMode(!!e?.detail);
+    window.addEventListener("zaeon-focus-mode", onFocus);
+    return () => window.removeEventListener("zaeon-focus-mode", onFocus);
+  }, []);
 
   const isPro = plan && plan !== "free";
 
@@ -200,8 +209,9 @@ export default function CollabModule() {
     return (
       <>
         <Portal>
-          {/* Tela cheia da SALA — respeita a navbar (topo) e a sidebar (esquerda), não cobre. */}
-          <div className="fixed z-[200] top-[96px] left-[84px] right-4 bottom-4 bg-slate-100 dark:bg-[#030014] flex flex-col rounded-[20px]">
+          {/* Tela cheia da SALA — respeita a navbar (topo) e a sidebar (esquerda), não cobre.
+              No modo foco a sidebar sobe pra top-4, então o painel sobe junto (alinhado). */}
+          <div className={`fixed z-[200] ${focusMode ? "top-4" : "top-[96px]"} left-[84px] right-4 bottom-4 bg-slate-100 dark:bg-[#030014] flex flex-col rounded-[20px] transition-[top] duration-500`}>
             <CollabEditor docId={openId} myId={myId} contacts={contacts} onClose={() => { setOpenId(null); loadCollabs(); }} />
           </div>
         </Portal>

@@ -438,7 +438,13 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
   useEffect(() => {
     const onRun = (e: any) => {
       const t = e?.detail?.topic;
-      if (t && spaceId && !zaeonBusy) void typeIntoBarAndRun(String(t)).catch(() => { /* ignore */ });
+      if (t && spaceId && !zaeonBusy) {
+        const topic = String(t);
+        // avisa quem disparou (ex.: o Play da Base) quando o estudo terminar de gerar.
+        void typeIntoBarAndRun(topic)
+          .then(() => { try { window.dispatchEvent(new CustomEvent("zaeon:study:done", { detail: { topic } })); } catch { /* ignore */ } })
+          .catch(() => { try { window.dispatchEvent(new CustomEvent("zaeon:study:done", { detail: { topic, error: true } })); } catch { /* ignore */ } });
+      }
     };
     window.addEventListener("zaeon:study:run", onRun);
     return () => window.removeEventListener("zaeon:study:run", onRun);

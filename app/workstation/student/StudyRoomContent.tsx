@@ -194,6 +194,24 @@ export default function StudyRoomContent({ flushTop = false }: { flushTop?: bool
     // fica disponível, mas não rouba o lugar da pesquisa.
     const [activeTab, setActiveTab] = useState(tabs[0]?.id ?? "community");
 
+    // Deep-link do menu inicial: ?space=<id> → abre direto em "Meus Estudos"
+    // (o MeusEstudosFeed resolve qual estudo carregar pelo mesmo param). Sem isso,
+    // clicar num estudo no menu caía na aba "Estudos" genérica, não no estudo.
+    useEffect(() => {
+        try {
+            if (new URLSearchParams(window.location.search).get("space")) {
+                setActiveTab("meus-estudos");
+            }
+        } catch { /* ignore */ }
+    }, []);
+
+    // "Estudar esse tema" / handoff de voz pode pedir a aba Meus Estudos em runtime.
+    useEffect(() => {
+        const onSetSub = (e: any) => { if (e?.detail === "meus-estudos") setActiveTab("meus-estudos"); };
+        window.addEventListener("zaeon:set-subtab", onSetSub);
+        return () => window.removeEventListener("zaeon:set-subtab", onSetSub);
+    }, []);
+
     // ── Tab indicator measurement ────────────────────────────────────────────
     // We track each tab button's position to drive an animated underline
     // that "locks" the content card to whichever tab is active.
