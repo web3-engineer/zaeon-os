@@ -2449,12 +2449,12 @@ export default function HomeworkPage({
                           value={docContent}
                           onChange={(e) => setDocContent(e.target.value)}
                           onDragOver={(e) => {
-                            if (
-                              e.dataTransfer.types.includes(
-                                "text/zaeon-citation",
-                              )
-                            ) {
-                              e.preventDefault();
+                            // Vários navegadores NÃO listam tipos MIME custom no dragover
+                            // (só no drop) → checar types.includes("text/zaeon-citation")
+                            // falhava, o preventDefault não rodava e o navegador RECUSAVA o
+                            // drop. Permitimos o drop sempre; o handler decide se é citação.
+                            e.preventDefault();
+                            if (e.dataTransfer.types.includes("text/zaeon-citation")) {
                               e.dataTransfer.dropEffect = "copy";
                             }
                           }}
