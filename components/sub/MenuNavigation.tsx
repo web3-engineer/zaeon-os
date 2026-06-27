@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   ChevronRightIcon, ChevronDownIcon, ArrowLeftIcon, ArrowRightStartOnRectangleIcon
 } from "@heroicons/react/24/outline";
-import { Bot, Send, ShieldCheck, Loader2, Mic, MicOff, Crown, Trash2, GraduationCap } from "lucide-react";
+import { Bot, Send, ShieldCheck, Loader2, Mic, MicOff, Crown, Trash2, GraduationCap, UserPlus } from "lucide-react";
 import { isSuperAdmin } from "@/lib/auth/roles";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -14,7 +14,7 @@ import Image from "next/image";
 import ZaeonLogo from "@/components/main/ZaeonLogo";
 import InviteButton from "@/components/sub/InviteButton";
 import VoicePicker from "@/components/settings/VoicePicker";
-import { startTour, isTourReplay, setTourReplay, stopTourReplay } from "@/lib/onboarding/tour";
+import { startTour, getTour, isTourReplay, setTourReplay, stopTourReplay } from "@/lib/onboarding/tour";
 
 type ModuleKey = "estudos" | "pesquisas" | "projetos" | "lounge";
 interface RecentItem { id: string; title: string; href: string }
@@ -78,9 +78,6 @@ export default function MenuNavigation() {
   // Pesquisas = os DOCS salvos (TCC/Artigo/Relatório) — cada tipo é uma sessão (localStorage).
   const [researchDocs, setResearchDocs] = useState<RecentItem[]>([]);
   const [loadingRecent, setLoadingRecent] = useState(false);
-  // Card de boas-vindas: aparece pra QUEM NUNCA fez o tour (User.tourDone=false no servidor),
-  // não só na 1ª sessão. Some quando o usuário conclui o onboarding.
-  const [showWelcome, setShowWelcome] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false); // escolha de voz retraída por padrão
   // Switch de Tutoriais (só super admin): liga/desliga o tour (replay) e roda na hora.
   const [tutorialsOn, setTutorialsOn] = useState(false);
@@ -89,16 +86,21 @@ export default function MenuNavigation() {
     if (tutorialsOn) { stopTourReplay(); setTutorialsOn(false); }            // desliga
     else { setTourReplay(true); setTutorialsOn(true); setIsOptionsOpen(false); startTour(); } // liga + roda agora
   };
+  // Onboarding do usuário comum: quem ainda NÃO fez o tour (User.tourDone=false) começa
+  // AUTOMATICAMENTE — sem card de boas-vindas (removido). O OnboardingGuide global mostra
+  // o 1º passo no menu (destaca Estudos). Roda 1x; concluir/pular marca tourDone no servidor.
+  const autoTourRef = useRef(false);
   useEffect(() => {
     if (status !== "authenticated") return;
     let alive = true;
-    fetch("/api/onboard/tour").then((r) => (r.ok ? r.json() : null)).then((d) => { if (alive && d) setShowWelcome(!d.tourDone); }).catch(() => { /* offline */ });
+    fetch("/api/onboard/tour").then((r) => (r.ok ? r.json() : null)).then((d) => {
+      if (alive && d && !d.tourDone && !autoTourRef.current) {
+        autoTourRef.current = true;
+        try { if (!getTour().active) startTour(); } catch { /* ignore */ }
+      }
+    }).catch(() => { /* offline */ });
     return () => { alive = false; };
   }, [status]);
-  // O tour agora COMEÇA no menu (passo 1 destaca os Estudos aqui). Não navega: o
-  // OnboardingGuide global mostra o card; ao abrir a Sala de Estudos, o tour avança.
-  const startOnboard = () => { setShowWelcome(false); startTour(); };
-  const dismissWelcome = () => { setShowWelcome(false); }; // esconde só nesta sessão; volta até concluir o tour
 
   useEffect(() => {
     try { setInviteAccessed(localStorage.getItem("zaeon.inviteAccessed") === "1"); } catch { /* ignore */ }
@@ -615,14 +617,15 @@ export default function MenuNavigation() {
 
                 {/* (Convite saiu daqui: virou um card próprio à direita do menu, no hero-content) */}
 
-                {/* ACESSAR CONVITE — quando a pessoa já acessou um convite */}
-                {inviteAccessed && (
-                  <div onClick={() => router.push("/convite")} className={cardBase}>
-                    <div className={accentBar(false)} />
-                    <span className="text-sm tracking-tight pl-2 truncate">Acessar convite</span>
-                    <ChevronRightIcon className="h-4 w-4 opacity-30 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                )}
+                {/* CONVITE — agora vive SÓ aqui nas Opções (saiu do menu/hero). Sempre disponível. */}
+                <div onClick={() => router.push("/convite")} className={cardBase}>
+                  <div className={accentBar(false)} />
+                  <span className="flex items-center gap-3 pl-2 min-w-0">
+                    <UserPlus size={16} className="text-cyan-600 dark:text-cyan-300 shrink-0" />
+                    <span className="text-sm tracking-tight truncate">{inviteAccessed ? "Acessar convite" : "Convidar amigos"}</span>
+                  </span>
+                  <ChevronRightIcon className="h-4 w-4 opacity-30 group-hover:opacity-100 transition-opacity shrink-0" />
+                </div>
 
                 {/* TUTORIAIS (escondido) — só super admin: liga/desliga o tour e roda na hora.
                     Usuário comum não vê isto; ele passa pelo tour uma vez (card de boas-vindas). */}
@@ -699,36 +702,8 @@ export default function MenuNavigation() {
               (
                 <motion.ul key="main" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col gap-2 w-full h-full justify-center overflow-y-auto custom-scrollbar pr-1">
 
-                  {/* CARD DE BOAS-VINDAS — check verde animado + iniciar onboarding */}
-                  {showWelcome && (
-                    <li className="w-full">
-                      <div className="relative overflow-hidden rounded-2xl border border-emerald-300/60 dark:border-emerald-400/25 bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-500/10 dark:to-white/[0.02] p-4">
-                        <button onClick={dismissWelcome} aria-label="Fechar" className="absolute top-2.5 right-3 text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg leading-none">×</button>
-                        <div className="flex items-start gap-3">
-                          <span className="w-10 h-10 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0 zaeon-welcome-pop">
-                            <svg viewBox="0 0 24 24" className="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M20 6L9 17l-5-5" className="zaeon-welcome-check" />
-                            </svg>
-                          </span>
-                          <div className="min-w-0 pr-4">
-                            <p className="text-[13px] font-black text-slate-900 dark:text-white">Conta verificada</p>
-                            <p className="text-[11.5px] text-slate-600 dark:text-white/65 leading-relaxed mt-0.5">
-                              Vejo um baita potencial em você. É uma honra te ajudar a desbloquear uma nova fase — bora começar?
-                            </p>
-                            <button onClick={startOnboard} className="mt-2.5 inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-white text-[11px] font-black uppercase tracking-wide hover:scale-[1.03] transition-transform" style={{ background: "linear-gradient(135deg,#10b981,#06b6d4)" }}>
-                              Iniciar ✦
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                      <style jsx global>{`
-                        .zaeon-welcome-check { stroke-dasharray: 28; stroke-dashoffset: 28; animation: zaeon-check-draw 0.6s ease-out 0.15s forwards; }
-                        @keyframes zaeon-check-draw { to { stroke-dashoffset: 0; } }
-                        .zaeon-welcome-pop { animation: zaeon-pop 0.4s ease-out; }
-                        @keyframes zaeon-pop { 0% { transform: scale(0.5); opacity: 0; } 60% { transform: scale(1.12); } 100% { transform: scale(1); opacity: 1; } }
-                      `}</style>
-                    </li>
-                  )}
+                  {/* (Card de boas-vindas "Conta verificada" removido — o tour agora
+                       começa sozinho pra quem nunca fez, e o admin liga/desliga em Opções) */}
 
                   {/* Mesma ordem da sidebar: Estudos · Pesquisas · Projetos (gated) · Lounge */}
                   {renderModule("estudos", "Estudos", recent.studies, "Novo estudo", "/research-lab?tab=sala-de-estudos", "menu-estudos")}

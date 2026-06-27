@@ -9,8 +9,6 @@ import { SparklesIcon, UserIcon } from "@heroicons/react/24/outline";
 // Componentes Internos
 import MenuNavigation from "@/components/sub/MenuNavigation";
 import StarBackground from "@/components/main/star-background";
-import InviteButton from "@/components/sub/InviteButton";
-import { UserPlus } from "lucide-react";
 
 // Público-alvo que rotaciona no fim da frase ("...para <público>").
 const TARGET_WORDS = [
@@ -172,16 +170,7 @@ export default function HeroPage() {
               <div className="w-full max-w-[500px] shrink-0">
                 <MenuNavigation />
               </div>
-              {/* Convite = card próprio à direita, centralizado na linha do menu (mais simétrico) */}
-              {status === "authenticated" && (
-                <div className="hidden lg:flex w-56 shrink-0 flex-col">
-                  <div className="rounded-[28px] p-4 backdrop-blur-2xl bg-white/40 dark:bg-cyan-950/10 border border-slate-200 dark:border-white/10 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.15)] dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]">
-                    <p className="text-[11px] font-black uppercase tracking-widest text-slate-600 dark:text-white/55 mb-1.5 flex items-center gap-1.5"><UserPlus size={13} /> Convide</p>
-                    <p className="text-[11px] text-slate-500 dark:text-white/50 mb-3 leading-relaxed">Traga um amigo pra Zaeon e cresçam juntos.</p>
-                    <InviteButton variant="menu" />
-                  </div>
-                </div>
-              )}
+              {/* (Convite saiu daqui — agora vive só dentro de Opções, no menu) */}
             </div>
           </motion.div>
         )}
