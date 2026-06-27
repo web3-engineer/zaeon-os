@@ -12,16 +12,16 @@ import StarBackground from "@/components/main/star-background";
 import InviteButton from "@/components/sub/InviteButton";
 import { UserPlus } from "lucide-react";
 
+// Público-alvo que rotaciona no fim da frase ("...para <público>").
 const TARGET_WORDS = [
-  "Mentes produtivas.",
-  "Estudantes.",
-  "Professores.",
-  "Empresários.",
-  "Faculdades.",
-  "Universidades.",
-  "Empresas.",
-  "Gestores."
-
+  "você.",
+  "curiosos.",
+  "estudantes.",
+  "professores.",
+  "coordenadores.",
+  "empresários.",
+  "nerds.",
+  "geeks.",
 ];
 
 export default function HeroPage() {
@@ -30,6 +30,9 @@ export default function HeroPage() {
 
   const [showChatbox, setShowChatbox] = useState(false);
   const [wordIndex, setWordIndex] = useState(0);
+  // Trocadilho: "A gente" pisca pra "Agentes" de vez em quando (sincronizado com o verbo
+  // facilita↔facilitam). Fica a maior parte do tempo em "A gente" e dá flashes de "Agentes".
+  const [agenteOn, setAgenteOn] = useState(false);
 
   // Redireciona diretamente para o chat caso já esteja logado
   useEffect(() => {
@@ -38,12 +41,25 @@ export default function HeroPage() {
     }
   }, [status]);
 
-  // Rotaciona a palavra em destaque a cada 3 segundos
+  // Rotaciona o público em destaque a cada 3 segundos
   useEffect(() => {
     const interval = setInterval(() => {
       setWordIndex((prev) => (prev + 1) % TARGET_WORDS.length);
     }, 3000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Flicker "A gente" → "Agentes": ~2,8s em "A gente", ~0,8s em "Agentes" (loop).
+  useEffect(() => {
+    let to: ReturnType<typeof setTimeout>;
+    let on = false;
+    const tick = () => {
+      on = !on;
+      setAgenteOn(on);
+      to = setTimeout(tick, on ? 800 : 2800);
+    };
+    to = setTimeout(tick, 2800);
+    return () => clearTimeout(to);
   }, []);
 
   return (
@@ -73,7 +89,14 @@ export default function HeroPage() {
           className="relative flex flex-col items-start justify-center"
         >
           <h1 className="text-3xl sm:text-4xl md:text-[3.5rem] font-light tracking-tighter text-slate-900 dark:text-white leading-[1.2] z-10 relative">
-            Agentes autônomos para <br className="hidden md:block" />
+            {/* Trocadilho: "A gente facilita" ↔ "Agentes facilitam" (sincronizado) */}
+            <span
+              className="cyber-glitch relative inline-block font-semibold text-cyan-600 dark:text-cyan-400"
+              data-text={agenteOn ? "Agentes" : "A gente"}
+            >
+              {agenteOn ? "Agentes" : "A gente"}
+            </span>{" "}
+            {agenteOn ? "facilitam" : "facilita"} a vida para <br className="hidden md:block" />
 
             {/* Altura mínima garantida para evitar saltos no layout durante a troca de palavras */}
             <div className="min-h-[1.2em] flex items-center justify-start mt-2 md:mt-4">

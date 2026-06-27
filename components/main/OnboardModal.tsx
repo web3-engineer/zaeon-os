@@ -465,15 +465,16 @@ const ZaeonAuthModal = ({ isOpen, onClose, role }: ZaeonAuthModalProps) => {
                                 )}
 
                                 <div className="w-full mt-4">
-                                    <button onClick={handleInitialize} disabled={!isReadyToSign} className={`w-full relative group font-bold py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-3 border ${isReadyToSign ? 'bg-white text-black hover:scale-[1.02] border-gray-200' : 'bg-gray-100 dark:bg-white/5 text-gray-400 dark:text-gray-500 border-transparent cursor-not-allowed'}`}>
+                                    <button onClick={handleInitialize} disabled={!isReadyToSign} className={`w-full relative group overflow-hidden font-black py-4 rounded-full transition-transform flex items-center justify-center gap-3 ${isReadyToSign ? 'text-white hover:scale-[1.02] shadow-[0_14px_34px_-12px_rgba(34,211,238,0.55)]' : 'text-white/60 cursor-not-allowed'}`} style={isReadyToSign ? { background: 'linear-gradient(135deg, rgba(124,58,237,0.95), rgba(6,182,212,0.95))' } : { background: 'rgba(120,120,140,0.22)' }}>
+                                        {isReadyToSign && <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />}
                                         {isSubmitting ? (
-                                            <Loader2 className="animate-spin" size={18} />
+                                            <Loader2 className="animate-spin relative z-10" size={18} />
                                         ) : isGuest ? (
-                                            <ShieldCheck size={18} className="text-black" />
+                                            <ShieldCheck size={18} className="relative z-10" />
                                         ) : (
-                                            <Image src="https://authjs.dev/img/providers/google.svg" alt="G" width={20} height={20} />
+                                            <span className="relative z-10 inline-flex items-center justify-center w-6 h-6 rounded-full bg-white shrink-0"><Image src="https://authjs.dev/img/providers/google.svg" alt="G" width={16} height={16} /></span>
                                         )}
-                                        <span className="text-xs tracking-wider uppercase">{loginButtonText}</span>
+                                        <span className="relative z-10 text-xs tracking-widest uppercase">{loginButtonText}</span>
                                     </button>
 
                                     {/* MENSAGEM DE AVISO PARA GUESTS */}

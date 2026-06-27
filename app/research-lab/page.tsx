@@ -2289,7 +2289,7 @@ export default function HomeworkPage({
                 researchWindowContent={
                   <div
                     onClick={() => setActiveSection("doc")}
-                    className={`h-full flex flex-col bg-white dark:bg-[#0f172a] overflow-hidden transition-all border-4 ${activeSection === "doc" ? "border-cyan-500 ring-8 ring-cyan-500/10" : "border-transparent"}`}
+                    className={`h-full flex flex-col bg-white dark:bg-[#0f172a] overflow-hidden transition-all border-4 ${readingResearch ? "border-cyan-500 ring-8 ring-cyan-500/10" : "border-transparent"}`}
                   >
                     {/* CABEÇALHO DA FOLHA — só o título (texto). Abas e tipo vivem nos pills, ACIMA da linha. */}
                     <div className="h-14 flex items-center px-8 shrink-0 border-b border-slate-100 dark:border-white/5 bg-transparent">

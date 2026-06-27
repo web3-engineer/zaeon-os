@@ -28,6 +28,7 @@ import { detectHeadingShortcut } from "@/lib/study/blockMarkdown";
 import { prevEditableId, moveBlock } from "@/lib/study/blockOrder";
 import { filterSlash, type SlashOption } from "@/lib/study/slashMenu";
 import { useTTS } from "@/lib/voice/useTTS";
+import ResearchReadingView from "@/app/research-lab/ResearchReadingView";
 import { takeHandoff } from "@/lib/agents/handoff";
 import { missionDone } from "@/lib/agents/mission";
 
@@ -127,6 +128,14 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
   const [editingYt, setEditingYt] = useState<string | null>(null); // bloco-vídeo em modo edição do link
   const [libOpen, setLibOpen] = useState(true); // biblioteca retraída/expandida
   const tts = useTTS(); // controlador global de voz (modo leitura do estudo inteiro)
+  // Karaokê do estudo: mesmos pedaços que estão sendo falados, com o trecho atual destacado.
+  const [readingParts, setReadingParts] = useState<string[]>([]);
+  const prevSpeakingRef = useRef(false);
+  useEffect(() => {
+    // leitura terminou (speaking true→false) → limpa o karaokê (não vaza p/ voz do Studio/chat).
+    if (prevSpeakingRef.current && !tts.speaking) setReadingParts([]);
+    prevSpeakingRef.current = tts.speaking;
+  }, [tts.speaking]);
 
   // biblioteca: adicionar nota/link
   const [showAdd, setShowAdd] = useState(false);
@@ -248,7 +257,7 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
   // de novo (ou em qualquer lugar que pare a voz) interrompe. Usa a sequência do
   // controlador global (chunking automático p/ textos longos).
   const readWholeStudy = () => {
-    if (tts.speaking) { tts.stop(); return; }
+    if (tts.speaking) { tts.stop(); setReadingParts([]); return; }
     const parts: string[] = [];
     const title = spaces.find((s) => s.id === spaceId)?.title?.trim();
     if (title && title !== "Novo estudo" && title !== "Meus Estudos") parts.push(title);
@@ -265,6 +274,7 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
         voice = localStorage.getItem("zaeon.voice.id") || undefined;
         gender = (localStorage.getItem("zaeon.voice.gender") as "f" | "m") || undefined;
       } catch { /* ignore */ }
+      setReadingParts(parts); // alimenta o karaokê com os MESMOS pedaços
       tts.speakSequence(parts, { voice, gender });
     }
   };
@@ -825,6 +835,14 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
             label={tts.speaking ? "Parar a leitura" : "Ouvir o estudo inteiro"}
           />
         </div>
+
+        {/* KARAOKÊ: modo leitura sobre o estudo, com o trecho falado destacado
+            (mesmos pedaços do speakSequence; respeita navbar/dock). */}
+        {tts.speaking && readingParts.length > 0 && (
+          <div className="fixed top-[96px] left-[84px] right-4 bottom-4 z-[400] rounded-3xl overflow-hidden border border-cyan-500/30 shadow-2xl">
+            <ResearchReadingView text={readingParts.join("\n")} onStop={() => { tts.stop(); setReadingParts([]); }} />
+          </div>
+        )}
 
         {/* ── STUDIO DA ZAEON: transforma o estudo em guia/FAQ/flashcards/mapa/linha do tempo ── */}
         <StudioDock spaceId={spaceId} />

@@ -194,7 +194,10 @@ export async function speakSequence(parts: string[], opts?: { voice?: string; ge
 
   for (let i = 0; i < chunks.length; i++) {
     if (myCtrl.signal.aborted) return;
-    const prepared = await synth[i]!;
+    let prepared = await synth[i]!;
+    // Se a síntese voltou null (cold-start/timeout do 1º request → era o bug da "1ª estrofe
+    // omitida": playPrepared(null) resolvia em silêncio e pulava o pedaço), tenta 1x de novo.
+    if (!prepared && !myCtrl.signal.aborted) prepared = await synthChunk(chunks[i], voiceId, myCtrl);
     if (myCtrl.signal.aborted) return;
     ensure(i + 1); ensure(i + 1 + LOOKAHEAD); // mantém o buffer cheio à frente
     set({ speaking: true, loading: false, text: chunks[i] });
