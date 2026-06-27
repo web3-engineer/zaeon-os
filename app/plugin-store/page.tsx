@@ -24,8 +24,9 @@ interface Plugin {
     name: string;
     author: string;
     description: string;
-    category: "Essencial" | "Agentes" | "Mentorias" | "Blockchain";
+    category: "Essencial" | "Agentes" | "Mentorias";
     tag?: string;
+    imageUrl?: string;
     price: number;
     actionUrl: string;
     isLocked: boolean;
@@ -58,13 +59,13 @@ export default function PluginStorePage() {
     const router = useRouter();
     const [mounted, setMounted] = useState(false);
     const [search, setSearch] = useState("");
-    const [category, setCategory] = useState("All");
+    const [category, setCategory] = useState("Todos");
     const [plugins, setPlugins] = useState<Plugin[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [access, setAccess] = useState<Access | null>(null);
     const [showGate, setShowGate] = useState(false); // modal de elegibilidade
 
-    const categories = ["All", "Essencial", "Agentes", "Mentorias", "Blockchain"];
+    const categories = ["Todos", "Essencial", "Agentes", "Mentorias"];
 
     useEffect(() => {
         setMounted(true);
@@ -101,7 +102,7 @@ export default function PluginStorePage() {
 
     const filteredPlugins = plugins.filter(
         (p) =>
-            (category === "All" || p.category === category) &&
+            (category === "Todos" || p.category === category) &&
             p.name.toLowerCase().includes(search.toLowerCase()),
     );
 
@@ -129,7 +130,7 @@ export default function PluginStorePage() {
                                 <ArrowLeftIcon className="w-5 h-5" />
                             </button>
                             <div className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-400 dark:text-cyan-900/80">
-                                Zaeon <span className="text-cyan-600 dark:text-cyan-500">Modules</span>
+                                Zaeon <span className="text-cyan-600 dark:text-cyan-500">Plugins</span>
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -140,7 +141,7 @@ export default function PluginStorePage() {
                                     <ShieldCheckIcon className="w-3.5 h-3.5" /> Admin Supremo
                                 </span>
                             ) : (
-                                <span className="text-[10px] font-black text-slate-400 dark:text-white/20 uppercase tracking-widest mr-2">Secure Link</span>
+                                <span className="text-[10px] font-black text-slate-400 dark:text-white/20 uppercase tracking-widest mr-2">Conexão segura</span>
                             )}
                         </div>
                     </div>
@@ -152,14 +153,14 @@ export default function PluginStorePage() {
                 {/* TÍTULO E BUSCA */}
                 <div className="flex flex-col md:flex-row justify-between items-center gap-8">
                     <div className="space-y-1 text-center md:text-left">
-                        <h1 className="text-6xl font-black tracking-tighter text-slate-950 dark:text-white leading-none">Plugin Store</h1>
-                        <p className="text-[11px] font-bold uppercase tracking-[0.4em] text-cyan-600 dark:text-cyan-400 pl-1">Upgrade your workstation equipment</p>
+                        <h1 className="text-6xl font-black tracking-tighter text-slate-950 dark:text-white leading-none">Loja de Plugins</h1>
+                        <p className="text-[11px] font-bold uppercase tracking-[0.4em] text-cyan-600 dark:text-cyan-400 pl-1">Turbine sua estação de trabalho</p>
                     </div>
                     <div className="relative w-full max-w-md">
                         <MagnifyingGlassIcon className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                         <input
                             type="text"
-                            placeholder="Search modules..."
+                            placeholder="Buscar plugins..."
                             className="w-full pl-14 pr-6 py-4 rounded-[22px] bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 outline-none focus:ring-2 ring-cyan-500 transition-all text-sm shadow-inner dark:shadow-none"
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -171,7 +172,7 @@ export default function PluginStorePage() {
 
                 {/* CATEGORIAS */}
                 <div>
-                    <div className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 dark:text-white/30 mb-4 pl-1">Todos os módulos</div>
+                    <div className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 dark:text-white/30 mb-4 pl-1">Categorias</div>
                     <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar">
                         {categories.map((cat) => (
                             <button
@@ -194,7 +195,7 @@ export default function PluginStorePage() {
                     {isLoading ? (
                         <div className="col-span-full py-32 text-center">
                             <div className="inline-block w-8 h-8 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mb-4" />
-                            <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-40">Connecting to Grid...</p>
+                            <p className="text-[10px] font-black uppercase tracking-[0.5em] opacity-40">Conectando…</p>
                         </div>
                     ) : filteredPlugins.length === 0 ? (
                         <div className="col-span-full py-24 text-center text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400 dark:text-white/30">
@@ -328,7 +329,6 @@ function PluginCard({ plugin, cardStyle }: { plugin: Plugin; cardStyle: string }
         switch (plugin.category) {
             case "Agentes": return <RocketLaunchIcon className="w-6 h-6" />;
             case "Mentorias": return <AcademicCapIcon className="w-6 h-6" />;
-            case "Blockchain": return <CubeTransparentIcon className="w-6 h-6" />;
             default: return <PuzzlePieceIcon className="w-6 h-6" />;
         }
     };
@@ -345,8 +345,17 @@ function PluginCard({ plugin, cardStyle }: { plugin: Plugin; cardStyle: string }
                         <LockClosedIcon className="w-8 h-8 text-slate-900 dark:text-cyan-400" />
                     </div>
                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white text-center px-8 leading-relaxed drop-shadow-md">
-                        {plugin.unlockRequirement || "Access Denied"}
+                        {plugin.unlockRequirement || "Acesso negado"}
                     </span>
+                </div>
+            )}
+
+            {/* CAPA: imagem do plugin (se houver). Cai pro ícone da categoria quando vazio. */}
+            {plugin.imageUrl && (
+                <div className="-mx-6 -mt-6 mb-6 h-36 overflow-hidden rounded-t-[32px] relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={plugin.imageUrl} alt={plugin.name} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-white/80 dark:from-[#030014]/80 to-transparent" />
                 </div>
             )}
 
@@ -363,7 +372,7 @@ function PluginCard({ plugin, cardStyle }: { plugin: Plugin; cardStyle: string }
 
             <div className="space-y-3 flex-1">
                 <h3 className="text-2xl font-black tracking-tighter text-slate-950 dark:text-white leading-tight">{plugin.name}</h3>
-                <p className="text-[10px] font-bold text-slate-400 dark:text-cyan-800 uppercase tracking-widest">Dev: {plugin.author}</p>
+                <p className="text-[10px] font-bold text-slate-400 dark:text-cyan-800 uppercase tracking-widest">Por: {plugin.author}</p>
                 <p className={`text-sm text-slate-600 dark:text-slate-400 leading-relaxed mt-4 line-clamp-3 ${plugin.isLocked ? "blur-sm" : ""}`}>
                     {plugin.description}
                 </p>
@@ -371,8 +380,8 @@ function PluginCard({ plugin, cardStyle }: { plugin: Plugin; cardStyle: string }
 
             <div className="mt-10 pt-6 border-t border-slate-200 dark:border-white/5 flex items-center justify-between">
                 <div className="flex flex-col">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Investment</span>
-                    <span className="text-lg font-black text-slate-950 dark:text-white">{plugin.price === 0 ? "FREE" : `$${plugin.price}`}</span>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Valor</span>
+                    <span className="text-lg font-black text-slate-950 dark:text-white">{plugin.price === 0 ? "Grátis" : `R$ ${plugin.price}`}</span>
                 </div>
                 <button
                     disabled={plugin.isLocked}
@@ -382,7 +391,7 @@ function PluginCard({ plugin, cardStyle }: { plugin: Plugin; cardStyle: string }
                             : "bg-slate-950 dark:bg-cyan-500 text-white dark:text-black hover:scale-105 active:scale-95 shadow-xl shadow-cyan-500/20"
                     }`}
                 >
-                    {plugin.isLocked ? "Locked" : "Activate"}
+                    {plugin.isLocked ? "Bloqueado" : "Ativar"}
                 </button>
             </div>
         </motion.div>

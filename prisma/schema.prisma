@@ -255,8 +255,9 @@ model Plugin {
   name              String
   author            String   @default("Zaeon Core")
   description       String
-  category          String   // Essencial, Agentes, Mentorias, Blockchain
+  category          String   // Essencial, Agentes, Mentorias
   tag               String?  // Livre, Alunos, VIP
+  imageUrl          String?  // capa do plugin (URL); fallback p/ ícone por categoria
   price             Float    @default(0)
   actionUrl         String
   isLocked          Boolean  @default(false)
