@@ -57,9 +57,7 @@ function navItem(active: boolean, accent: keyof typeof NAV_ACTIVE) {
   void accent; // accent mantido por compatibilidade; o ativo agora é sempre a pill preta
   return `${NAV_BASE} ${active ? NAV_ACTIVE_PILL : NAV_IDLE}`;
 }
-import ResearchRoomTour from "@/components/onboard/ResearchRoomTour";
-import OnboardingGuide from "@/components/onboard/OnboardingGuide";
-import { startTour } from "@/lib/onboarding/tour";
+import { startTour, getTour, nextTour, TOUR_STEPS } from "@/lib/onboarding/tour";
 import { capabilities } from "@/lib/runtime/mode";
 import { useLibraryFiles, type LibraryFile } from "@/lib/useLibraryFiles";
 import { speakSequence as ttsSpeakSequence, stop as ttsStop } from "@/lib/voice/ttsController";
@@ -1243,6 +1241,19 @@ export default function HomeworkPage({
   useEffect(() => {
     try { localStorage.setItem("zaeon.lab.lastTab", activeTab); } catch { /* ignore */ }
   }, [activeTab]);
+
+  // O tour de onboarding COMEÇA no menu inicial (passo "menu-estudos"). Quando a
+  // pessoa abre a Sala de Estudos (chega aqui no lab), avança pro passo de pesquisar.
+  useEffect(() => {
+    try {
+      const t = getTour();
+      if (t.active && TOUR_STEPS[t.index]?.onMenu) {
+        setActiveTab("sala-de-estudos");
+        setTimeout(() => nextTour(), 300);
+      }
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Deep-link ?session=<id> (vindo do menu inicial → Pesquisas): abre a ABA PESQUISA e
   // carrega aquela pesquisa salva como DOCUMENTO (título + conteúdo) na folha de escrita.
@@ -3249,10 +3260,8 @@ export default function HomeworkPage({
         )}
       </AnimatePresence>
 
-      {/* Interactive onboarding tour for first-time users */}
-      {showTour && <ResearchRoomTour onComplete={() => setShowTour(false)} />}
-      {/* Tour guiado da Zaeon (golden path) */}
-      <OnboardingGuide />
+      {/* Tour guiado da Zaeon (golden path) agora é GLOBAL (montado no layout),
+          pra começar no menu inicial e continuar aqui. (Tour antigo removido.) */}
     </div>
   );
 }

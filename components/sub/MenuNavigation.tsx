@@ -14,6 +14,7 @@ import Image from "next/image";
 import ZaeonLogo from "@/components/main/ZaeonLogo";
 import InviteButton from "@/components/sub/InviteButton";
 import VoicePicker from "@/components/settings/VoicePicker";
+import { startTour } from "@/lib/onboarding/tour";
 
 type ModuleKey = "estudos" | "pesquisas" | "projetos" | "lounge";
 interface RecentItem { id: string; title: string; href: string }
@@ -87,7 +88,9 @@ export default function MenuNavigation() {
     fetch("/api/onboard/tour").then((r) => (r.ok ? r.json() : null)).then((d) => { if (alive && d) setShowWelcome(!d.tourDone); }).catch(() => { /* offline */ });
     return () => { alive = false; };
   }, [status]);
-  const startOnboard = () => { setShowWelcome(false); router.push("/research-lab?tab=sala-de-estudos&onboard=1"); };
+  // O tour agora COMEÇA no menu (passo 1 destaca os Estudos aqui). Não navega: o
+  // OnboardingGuide global mostra o card; ao abrir a Sala de Estudos, o tour avança.
+  const startOnboard = () => { setShowWelcome(false); startTour(); };
   const dismissWelcome = () => { setShowWelcome(false); }; // esconde só nesta sessão; volta até concluir o tour
 
   useEffect(() => {
@@ -336,10 +339,10 @@ export default function MenuNavigation() {
 
   // Um módulo expansível (Pesquisas/Estudos/Projetos) — SEM ícones, só o título e as
   // últimas interações. Clicar num item leva direto ao documento; "+ novo" abre a sala.
-  const renderModule = (id: ModuleKey, label: string, items: RecentItem[], newLabel: string, newHref: string) => {
+  const renderModule = (id: ModuleKey, label: string, items: RecentItem[], newLabel: string, newHref: string, tourId?: string) => {
     const open = openModule === id;
     return (
-      <li className="w-full">
+      <li className="w-full" data-tour={tourId}>
         <div onClick={() => setOpenModule(open ? null : id)} className={cardBase}>
           <div className={accentBar(open)} />
           <span className="text-sm tracking-tight pl-2 truncate font-semibold">{label}</span>
@@ -696,7 +699,7 @@ export default function MenuNavigation() {
                   )}
 
                   {/* Mesma ordem da sidebar: Estudos · Pesquisas · Projetos (gated) · Lounge */}
-                  {renderModule("estudos", "Estudos", recent.studies, "Novo estudo", "/research-lab?tab=sala-de-estudos")}
+                  {renderModule("estudos", "Estudos", recent.studies, "Novo estudo", "/research-lab?tab=sala-de-estudos", "menu-estudos")}
 
                   {/* PESQUISAS — só os docs salvos (TCC/Artigo/Relatório). Sem nenhum → só "Nova pesquisa". */}
                   {renderModule("pesquisas", "Pesquisas", researchDocs, "Nova pesquisa", "/research-lab?tab=pesquisa")}
