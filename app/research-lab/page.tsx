@@ -640,9 +640,18 @@ export default function HomeworkPage({
   // em "pesquisa", o default). SSR cai no default; o cliente corrige no mount.
   const initialTab = (() => {
     if (typeof window === "undefined") return "pesquisa";
-    const t = new URLSearchParams(window.location.search).get("tab");
+    const params = new URLSearchParams(window.location.search);
     const VALID = ["pesquisa", "sala-de-estudos", "pesquisas", "lounge", "pevem", "projetos", "news", "profile"];
-    return t && VALID.includes(t) ? t : "pesquisa";
+    const t = params.get("tab");
+    if (t && VALID.includes(t)) return t;                           // deep-link explícito de aba ganha
+    if (params.get("session") || params.get("worktype")) return "pesquisa"; // deep-links de pesquisa
+    if (params.get("onboard")) return "sala-de-estudos";            // tour começa nos Estudos
+    // PERSISTÊNCIA: volta pra ÚLTIMA sala visitada. 1ª vez de todas → Sala de Estudos (aba Estudos).
+    try {
+      const saved = localStorage.getItem("zaeon.lab.lastTab");
+      if (saved && VALID.includes(saved)) return saved;
+    } catch { /* ignore */ }
+    return "sala-de-estudos";
   })();
   const [activeTab, setActiveTab] = useState<
     | "pesquisa"
@@ -1228,6 +1237,12 @@ export default function HomeworkPage({
       setActiveTab(tabParam as any);
     }
   }, []);
+
+  // PERSISTÊNCIA da sala: guarda a última aba visitada. Ao voltar ao laboratório
+  // (sem deep-link), o initialTab restaura daqui — cai exatamente onde parou.
+  useEffect(() => {
+    try { localStorage.setItem("zaeon.lab.lastTab", activeTab); } catch { /* ignore */ }
+  }, [activeTab]);
 
   // Deep-link ?session=<id> (vindo do menu inicial → Pesquisas): abre a ABA PESQUISA e
   // carrega aquela pesquisa salva como DOCUMENTO (título + conteúdo) na folha de escrita.
