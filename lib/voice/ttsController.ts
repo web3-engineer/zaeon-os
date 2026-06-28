@@ -214,3 +214,27 @@ export async function speak(text: string, opts?: { voice?: string; gender?: "f" 
   // Gemini-TTS com texto longo → 503 "aborted". Por isso só funcionava com texto curto.
   return speakSequence([text], opts);
 }
+
+// ── FILA DE FALA (onboarding) ──────────────────────────────────────────────
+// Avançar um card do tour NÃO pode cortar a fala anterior (cada `speak` chama
+// `stop()` internamente). `speakQueued` ENFILEIRA: a próxima fala só começa quando
+// a atual termina. `clearSpeechQueue` (no skip/fim do tour) esvazia a fila.
+let speakQueue: { text: string; opts?: { voice?: string; gender?: "f" | "m" } }[] = [];
+let draining = false;
+
+export function clearSpeechQueue() { speakQueue = []; }
+
+export async function speakQueued(text: string, opts?: { voice?: string; gender?: "f" | "m" }) {
+  if (!text || !text.trim()) return;
+  speakQueue.push({ text, opts });
+  if (draining) return;
+  draining = true;
+  try {
+    while (speakQueue.length) {
+      const next = speakQueue.shift()!;
+      await speakSequence([next.text], next.opts); // espera terminar antes da próxima (não corta)
+    }
+  } finally {
+    draining = false;
+  }
+}

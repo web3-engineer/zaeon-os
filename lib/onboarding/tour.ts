@@ -27,26 +27,32 @@ export type TourStep = {
 // exemplo fixo "história do Brasil" → vira o chat de lado → percorre Referências/
 // Insights/Base → gera a pesquisa → Sala de Pesquisa (player do doc salvo + citações).
 export const TOUR_STEPS: TourStep[] = [
-  // — 1) FOCO NO CHAT: 1º destaque é só o chat (o resto fica obscurecido pelo overlay).
-  //    A Zaeon se apresenta e mostra que dá pra jogar o chat pro outro lado.
-  { id: "chat", onMenu: true, target: '[data-tour="chat-flip"]', advanceEvent: "zaeon:chat:flipped-right",
-    hint: "💬 Me jogue pro lado direito",
-    say: "Oi! Sou eu, a Zaeon — e já te liguei pra gente conversar **por voz** enquanto eu te mostro tudo. 🎙️ Pra eu não te atrapalhar, **clica no botãozinho de virar** ali no meu cabeçalho e **me joga pro lado direito**. Esse passinho é obrigatório, vai por mim que fica bem melhor. 💜" },
+  // — BEAT 1) APRESENTAR: foco só no chat; a Zaeon se apresenta e diz o que vem. Avança com
+  //   um "Vamos lá" leve (a fala não é cortada — o TTS enfileira; ver item 5).
+  { id: "apresentar", onMenu: true, target: '[data-tour="chat-widget"]', info: true, cta: "Vamos lá",
+    hint: "👋 Oi! Eu sou a Zaeon",
+    say: "Oi! Sou eu, a **Zaeon** 💜 — e já te liguei pra gente conversar **por voz** enquanto eu te mostro tudo. 🎙️ Em um minutinho você vai saber pesquisar, gerar um trabalho em ABNT e criar seus estudos. Bora?" },
 
-  // — 1b) MINIMIZAR: depois do flip, o chat aberto fica no meio — peço pra minimizar (obrigatório).
+  // — BEAT 2) JOGAR PRO LADO (flip-right): ação OBRIGATÓRIA.
+  { id: "flip", onMenu: true, target: '[data-tour="chat-flip"]', advanceEvent: "zaeon:chat:flipped-right",
+    hint: "↔ Me jogue pro lado direito",
+    say: "Primeiro, **me joga pro lado direito** ali no **botãozinho de virar (↔)** do meu cabeçalho — fica bem melhor pra eu te mostrar as coisas." },
+
+  // — BEAT 3) MINIMIZAR: ação OBRIGATÓRIA. Depois disto o chat fica minimizado (não reabre).
   { id: "chat-min", onMenu: true, target: '[data-tour="chat-widget"]', advanceEvent: "zaeon:chat:minimized",
     hint: "➖ Me minimize no cantinho",
-    say: "Agora me **minimiza** ali no cantinho pra gente ter a tela toda — é só tocar no **traço (–)** do meu topo. 😊" },
+    say: "Perfeito! Agora me **minimiza** no **traço (–)** do meu topo pra gente ter a tela toda. 😊" },
 
   // — 2) MENU inicial: por onde começar. Destaca Estudos. Avança quando abre a Sala de Estudos.
   { id: "menu-estudos", onMenu: true, advanceEvent: "zaeon:study:new", target: '[data-tour="menu-estudos"]',
     hint: "📚 Abra Estudos e crie um novo",
     say: "Agora abre os seus **Estudos** neste menu e clica em **Novo estudo** — é onde tudo começa. Só sigo quando você criar um de verdade. 😉" },
 
-  // — 3) Sala de Estudos / aba Estudos: exemplo FIXO e obrigatório na barra.
-  { id: "pesquisar", tab: "sala-de-estudos", target: '[data-academic-input="true"]', advanceEvent: "zaeon:research:start", prefill: "história do Brasil",
-    hint: "🔎 Pesquise o exemplo (passo obrigatório)",
-    say: "Já deixei um exemplo fixo na barra: **história do Brasil**. Esse passo é obrigatório — aperta **Enter** que eu pesquiso e monto o estudo. 🎙️" },
+  // — 3) Sala de Estudos / aba Estudos: pesquisa LIVRE (qualquer tema). O gate de verdade é
+  //   salvar um PDF (passo "salvar"). Sem prefill/exemplo obrigatório.
+  { id: "pesquisar", tab: "sala-de-estudos", target: '[data-academic-input="true"]', advanceEvent: "zaeon:research:start",
+    hint: "🔎 Pesquise o que você quiser",
+    say: "Agora pesquisa **o que você quiser** — um tema da sua aula, um interesse, qualquer coisa. Escreve na barra e aperta **Enter** que eu busco e organizo pra você. 🎙️" },
 
   // — 4) Enquanto termina, te faço companhia por voz — avança quando o estudo FICA PRONTO.
   { id: "esperando", advanceEvent: "zaeon:research:done",
@@ -61,8 +67,8 @@ export const TOUR_STEPS: TourStep[] = [
 
   // — 5b) Salvar: SEM destaque (página normal). Avança sozinho quando salva ≥1 referência.
   { id: "salvar", advanceEvents: ["zaeon:savedCitations", "zaeon:libraryFiles"],
-    hint: "💾 Salve ao menos 1 referência",
-    say: "Agora salva **pelo menos 1 referência** na sua biblioteca — é ela que vai te servir na pesquisa daqui a pouco. Pode salvar com calma; eu te espero. 😉" },
+    hint: "💾 Salve ao menos 1 PDF",
+    say: "Salva **pelo menos um PDF** na sua biblioteca — é com ele que a gente vai **gerar a pesquisa** daqui a pouco. Pode salvar com calma; eu te espero. 😉" },
 
   // — 6) Gerar pesquisa — avança quando o esboço é criado (Iniciar pesquisa → newdoc).
   { id: "gerar", target: '[data-tour="gerar"]', advanceEvent: "zaeon:research:newdoc",

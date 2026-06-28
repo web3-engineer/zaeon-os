@@ -26,6 +26,7 @@ import ZaeonTriangle from "@/components/main/ZaeonTriangle";
 import SpeakButton from "@/components/voice/SpeakButton";
 import { useVoiceMode } from "@/lib/voice/voiceMode";
 import useTTS from "@/lib/voice/useTTS";
+import { speakQueued, clearSpeechQueue } from "@/lib/voice/ttsController";
 import VoiceOrbModal from "@/components/voice/VoiceOrbModal";
 import VoiceWaveIndicator from "@/components/voice/VoiceWaveIndicator";
 import { setHandoff } from "@/lib/agents/handoff";
@@ -118,6 +119,8 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
     const finalRef = useRef("");            // transcrição final da fala atual
     const sendRef = useRef<(t?: string) => void>(() => {}); // ponte p/ enviar sem stale-closure
     const prevSpeakingRef = useRef(false);
+    const onbActiveRef = useRef(false);     // tour ativo (lido em listeners com deps [])
+    const onboardMinRef = useRef(false);    // beat "minimizar" cumprido → manter chat minimizado
 
     // Estados para Modo Professor
     const [studentSearchQuery, setStudentSearchQuery] = useState("");
@@ -140,12 +143,15 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
             const text = e?.detail;
             if (typeof text !== "string" || !text.trim()) return;
             setActiveChat(ZAEON_AGENT);
-            setIsOpen(true);
+            // BUG (item 2): depois do beat "minimizar", NÃO reabrir o chat a cada fala — a
+            // mensagem entra no histórico e a voz toca, mas o widget fica minimizado (FAB).
+            if (!onboardMinRef.current) setIsOpen(true);
             // Sensação de "ligação": entra no modo voz ativo → o overlay de chamada
             // aparece enquanto a Zaeon fala (ela puxa assunto com firmeza).
             try { setVoiceModeState("active"); } catch { /* ok */ }
             setZaeonMessages((prev) => [...prev, { id: `ob-${Date.now()}`, senderId: "zaeon-agent", text }]);
-            try { tts.speak(text); } catch { /* voz é bônus */ }
+            // FILA (item 5): enfileira — avançar um card não corta a fala anterior.
+            try { speakQueued(text); } catch { /* voz é bônus */ }
         };
         window.addEventListener("zaeon:onboard:say", onSay);
         return () => window.removeEventListener("zaeon:onboard:say", onSay);
@@ -285,6 +291,9 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
     useEffect(() => {
         const onStart = () => {
             setOnboarding(true);
+            onbActiveRef.current = true;
+            onboardMinRef.current = false; // tour novo começa com o chat aberto (beats 1-2)
+            try { localStorage.removeItem("zaeon.onboard.min"); } catch { /* */ }
             setOrbMinimized(false);
             setActiveChat(ZAEON_AGENT);
             setIsOpen(true);
@@ -295,16 +304,31 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
         };
         const onStop = () => {
             setOnboarding(false);
+            onbActiveRef.current = false;
+            onboardMinRef.current = false;
+            try { localStorage.removeItem("zaeon.onboard.min"); } catch { /* */ }
             setCallOn(false);
             wantListenRef.current = false;
             stopListening();
-            try { tts.stop(); } catch { /* */ }
+            // Encerrar o tour PODE parar a voz e esvaziar a fila (intencional — item 5.4).
+            try { clearSpeechQueue(); tts.stop(); } catch { /* */ }
         };
+        // Beat "minimizar" cumprido → trava o chat minimizado (não reabrir a cada fala).
+        const onMinimized = () => {
+            if (!onbActiveRef.current) return;
+            onboardMinRef.current = true;
+            try { localStorage.setItem("zaeon.onboard.min", "1"); } catch { /* */ }
+        };
+        // Item 2.4: ao montar (ex.: depois de navegar pra outra página/sala durante o tour),
+        // respeita o "minimizado" — senão o chat reabria sozinho na próxima fala.
+        try { if (localStorage.getItem("zaeon.onboard.min") === "1") { onboardMinRef.current = true; onbActiveRef.current = true; } } catch { /* */ }
         window.addEventListener("zaeon:onboard:start", onStart);
         window.addEventListener("zaeon:onboard:stop", onStop);
+        window.addEventListener("zaeon:chat:minimized", onMinimized);
         return () => {
             window.removeEventListener("zaeon:onboard:start", onStart);
             window.removeEventListener("zaeon:onboard:stop", onStop);
+            window.removeEventListener("zaeon:chat:minimized", onMinimized);
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
