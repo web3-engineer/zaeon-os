@@ -1152,6 +1152,15 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
                 <StudentAulasModule />
             </div>
 
+            {/* COLLECTIVE BUILD ZONE — Pro-gated (CollectiveZone component above kept, not rendered) */}
+            <div className="w-full flex justify-center pb-20 relative z-20">
+                <ProFeaturePanel
+                    title="Collective Build Node"
+                    description="Ambiente coletivo para criar trabalhos em tempo real com seus amigos — disponível apenas no Pro."
+                    tooltip="Recurso Pro — em breve"
+                />
+            </div>
+
             {/* NEURAL EDITOR (Garantido no final) */}
 
         </div>
