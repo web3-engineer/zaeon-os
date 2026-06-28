@@ -560,3 +560,106 @@ model StudioArtifact {
   @@index([ownerId, createdAt])
   @@map("studio_artifacts")
 }
+
+// ─── Aulas (LMS leve) — Turma é a entidade dona do vínculo professor↔alunos. ───
+// FKs são ObjectId "cru" (sem @relation), como `referredBy` no User — as queries
+// cruzam manualmente nas rotas (evita back-relations e não mexe no model User).
+model Turma {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  professorId String   @db.ObjectId
+  name        String   // "Cálculo I", "História 9ºB"…
+  createdAt   DateTime @default(now())
+
+  @@index([professorId])
+  @@map("turmas")
+}
+
+model TurmaMember {     // aluno↔turma (pivot); a relação que importa
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  turmaId   String   @db.ObjectId
+  studentId String   @db.ObjectId
+  joinedAt  DateTime @default(now())
+
+  @@unique([turmaId, studentId])
+  @@index([studentId])
+  @@map("turma_members")
+}
+
+model TurmaInvite {     // convite por token (rotulado pela turma/aula no card do chat)
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  turmaId   String    @db.ObjectId
+  token     String    @unique
+  label     String
+  uses      Int       @default(0)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([turmaId])
+  @@map("turma_invites")
+}
+
+model Aula {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  professorId String    @db.ObjectId
+  turmaId     String?   @db.ObjectId         // null enquanto rascunho geral
+  title       String
+  body        String?                        // markdown (base generativa)
+  youtubeIds  String[]  @default([])         // vídeos indexados
+  status      String    @default("draft")    // draft | sent
+  sentAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([professorId])
+  @@index([turmaId])
+  @@map("aulas")
+}
+
+model AulaQuiz {
+  id         String  @id @default(auto()) @map("_id") @db.ObjectId
+  aulaId     String  @unique @db.ObjectId
+  title      String
+  passingPct Int     @default(70)
+
+  @@map("aula_quizzes")
+}
+
+model AulaQuestion {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  quizId   String   @db.ObjectId
+  text     String
+  type     String   // choice | input | open | voice
+  options  Json?    // [{text,isCorrect,explanation}] (choice)
+  accepted String[] @default([]) // respostas aceitas (input)
+  marks    Int      @default(1)
+  order    Int
+
+  @@index([quizId])
+  @@map("aula_questions")
+}
+
+model AulaQuizSubmission {   // tentativa + nota (assertividade)
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  quizId     String   @db.ObjectId
+  studentId  String   @db.ObjectId
+  percentage Float
+  passed     Boolean
+  answers    Json     // [{questionId, answer, audioUrl?, transcript?, isCorrect, marks, marksOutOf}]
+  createdAt  DateTime @default(now())
+
+  @@index([quizId])
+  @@index([studentId])
+  @@map("aula_quiz_submissions")
+}
+
+model AulaProgress {        // progresso/completude por aluno por aula
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  aulaId    String   @db.ObjectId
+  studentId String   @db.ObjectId
+  status    String   @default("new") // new | in_progress | completed
+  readingMs Int      @default(0)     // tempo de leitura (modo foco)
+  updatedAt DateTime @updatedAt
+
+  @@unique([aulaId, studentId])
+  @@index([studentId])
+  @@map("aula_progress")
+}
