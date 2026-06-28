@@ -61,6 +61,8 @@ import { startTour, getTour, nextTour, TOUR_STEPS } from "@/lib/onboarding/tour"
 import { capabilities } from "@/lib/runtime/mode";
 import { useLibraryFiles, type LibraryFile } from "@/lib/useLibraryFiles";
 import { speakSequence as ttsSpeakSequence, stop as ttsStop } from "@/lib/voice/ttsController";
+import { useTTS } from "@/lib/voice/useTTS";
+import VoicePlayButton from "@/components/voice/VoicePlayButton";
 import RichText from "@/components/research/RichText";
 import { useWindowStore } from "@/lib/useWindowStore";
 
@@ -691,6 +693,16 @@ export default function HomeworkPage({
   const [editorZoom, setEditorZoom] = useState(1); // zoom da fonte do editor (0.7–2.2)
   const editorRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Editor "inteligente": preserva scroll + caret por trabalho (workType), pra voltar
+  // exatamente onde estava ao sair pro chat/PDF e voltar (item 10 do handoff).
+  const caretStoreRef = useRef<Record<string, { scroll: number; start: number; end: number }>>({});
+  const saveEditorCaret = () => {
+    const ta = textareaRef.current; if (!ta) return;
+    const key = workType || "default";
+    const data = { scroll: ta.scrollTop, start: ta.selectionStart ?? 0, end: ta.selectionEnd ?? 0 };
+    caretStoreRef.current[key] = data;
+    try { localStorage.setItem(`zaeon.research.caret.${key}`, JSON.stringify(data)); } catch { /* */ }
+  };
   const [citInsertFlash, setCitInsertFlash] = useState(false); // barrinha sutil ao soltar citação
   const [isWorkTypeMenuOpen, setIsWorkTypeMenuOpen] = useState(false);
   const [docTitle, setDocTitle] = useState("minha_pesquisa.pdf");
@@ -701,6 +713,22 @@ export default function HomeworkPage({
   const [hintOpen, setHintOpen] = useState(true);
   const [reviewMode, setReviewMode] = useState(false);
   const [activeProject, setActiveProject] = useState<any>(null);
+
+  // Restaura scroll + caret do editor quando ele volta a ficar visível (mesmo trabalho).
+  // Sessão diferente (outro workType sem posição salva) → começa do topo.
+  useEffect(() => {
+    if (reviewMode) return;
+    const ta = textareaRef.current; if (!ta) return;
+    const key = workType || "default";
+    let data = caretStoreRef.current[key];
+    if (!data) { try { const raw = localStorage.getItem(`zaeon.research.caret.${key}`); if (raw) data = JSON.parse(raw); } catch { /* */ } }
+    if (!data) return;
+    const id = requestAnimationFrame(() => {
+      try { ta.scrollTop = data!.scroll; ta.setSelectionRange(data!.start, data!.end); } catch { /* */ }
+    });
+    return () => cancelAnimationFrame(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reviewMode, workType]);
 
   // --- DATA STATES ---
   const [studyFiles, setStudyFiles] = useState<StudyDoc[]>([]);
@@ -872,7 +900,6 @@ export default function HomeworkPage({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfChatRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [voiceOn, setVoiceOn] = useState(false);
   const [voiceLoadingId, setVoiceLoadingId] = useState<number | null>(null);
   const examinerChatRef = useRef<HTMLDivElement>(null);
 
@@ -1077,11 +1104,12 @@ export default function HomeworkPage({
   }, [status]);
 
   useEffect(() => {
-    if (pdfChatRef.current)
-      pdfChatRef.current.scrollTo({
-        top: pdfChatRef.current.scrollHeight,
-        behavior: "smooth",
-      });
+    const el = pdfChatRef.current;
+    if (!el) return;
+    // rAF: espera o layout medir a altura antes de pular pro FIM (instantâneo) — assim,
+    // ao abrir/voltar pro painel, a conversa já aparece no fim, não no começo.
+    const id = requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+    return () => cancelAnimationFrame(id);
   }, [pdfChatHistory, isPdfTyping, activePdfTab]);
   useEffect(() => {
     if (examinerChatRef.current)
@@ -1091,16 +1119,19 @@ export default function HomeworkPage({
       });
   }, [specialistChatHistory.examiner, isExaminerTyping]);
 
-  // Voz automática: fala a última resposta da Aura quando o toggle está ligado.
-  useEffect(() => {
-    if (!voiceOn) return;
-    const last = pdfChatHistory[pdfChatHistory.length - 1];
-    if (last && last.role === "ai") {
-      const { clean } = extractCitationBlock(last.text);
-      void playVoice(clean || last.text);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pdfChatHistory.length, voiceOn]);
+  // Voz GLOBAL da Aura: lê a ÚLTIMA resposta sob demanda (botão Play característico em cima),
+  // pelo controlador único (ttsController via useTTS) → nunca toca duas vozes ao mesmo tempo.
+  const auraTts = useTTS();
+  const toggleAuraVoice = () => {
+    if (auraTts.speaking || auraTts.loading) { auraTts.stop(); return; }
+    const lastAi = [...pdfChatHistory].reverse().find((m) => m.role === "ai");
+    if (!lastAi) return;
+    const { clean } = extractCitationBlock(lastAi.text);
+    void auraTts.speakSequence([clean || lastAi.text]);
+  };
+  // Sem voz sobreposta: ao trocar de aba (chat/citações) ou desmontar o painel, corta a fala.
+  useEffect(() => { ttsStop(); }, [activePdfTab]);
+  useEffect(() => () => { ttsStop(); }, []);
 
   // Zoom do editor por Ctrl/Cmd + scroll (passive:false p/ não deixar a PÁGINA dar zoom)
   useEffect(() => {
@@ -2453,6 +2484,9 @@ export default function HomeworkPage({
                           ref={textareaRef}
                           value={docContent}
                           onChange={(e) => setDocContent(e.target.value)}
+                          onSelect={saveEditorCaret}
+                          onScroll={saveEditorCaret}
+                          onBlur={saveEditorCaret}
                           onDragOver={(e) => {
                             // Vários navegadores NÃO listam tipos MIME custom no dragover
                             // (só no drop): permitimos o drop sempre e o handleEditorDrop
@@ -2537,15 +2571,14 @@ export default function HomeworkPage({
                       <ResearchReadingView text={summaryRead} onStop={() => { ttsStop(); setSummaryRead(null); }} />
                     )}
                     <div className="flex items-center justify-end px-4 pt-3 shrink-0">
-                      <button
-                        onClick={() => setVoiceOn((v) => !v)}
-                        title="Aura fala cada nova resposta"
-                        className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wide px-3 py-1.5 rounded-full border transition-colors ${voiceOn ? "bg-cyan-600 text-white border-cyan-600" : "text-slate-500 dark:text-white/50 border-slate-300/60 dark:border-white/15 hover:border-cyan-400/50"}`}
-                      >
-                        {voiceOn
-                          ? "🔊 Voz automática: ON"
-                          : "🔈 Voz automática: OFF"}
-                      </button>
+                      <VoicePlayButton
+                        playing={auraTts.speaking}
+                        loading={auraTts.loading}
+                        onClick={toggleAuraVoice}
+                        disabled={!pdfChatHistory.some((m) => m.role === "ai")}
+                        size={40}
+                        label={auraTts.speaking ? "Parar a leitura" : "Ouvir a última resposta da Aura"}
+                      />
                     </div>
                     <div
                       ref={pdfChatRef}
@@ -2590,15 +2623,6 @@ export default function HomeworkPage({
                               agentImg="/agents/aura.png"
                               userImg={session?.user?.image}
                             />
-                            <button
-                              onClick={() =>
-                                playVoice(parsed.clean || msg.text, i)
-                              }
-                              disabled={voiceLoadingId === i}
-                              className="ml-12 mb-1 inline-flex items-center gap-1 text-[10px] font-bold text-cyan-700 dark:text-cyan-300 hover:underline disabled:opacity-50"
-                            >
-                              {voiceLoadingId === i ? "🔊 …" : "🔊 ouvir"}
-                            </button>
                             {parsed.citation && (
                               <div className="ml-12 mt-1 mb-2 p-3 rounded-2xl bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-300/60 dark:border-cyan-400/20">
                                 <p className="text-[8px] font-black uppercase tracking-widest text-cyan-700 dark:text-cyan-300 mb-1">
