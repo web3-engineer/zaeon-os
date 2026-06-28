@@ -38,7 +38,7 @@ services:
     depends_on:
       redis: { condition: service_started }
       voice-engine: { condition: service_started }
-      abnt-service: { condition: service_started }
+      abnt-service: { condition: service_healthy }
       pdf-loader: { condition: service_started }
     expose: ["3000"]            # público é só o Caddy
     volumes: ["studio_data:/app/.studio"]   # artefatos do Studio (podcast/imagem) — persistem entre deploys
@@ -74,6 +74,12 @@ services:
     container_name: zaeon_abnt
     expose: ["8001"]
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8001/health', timeout=5).status==200 else 1)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
     deploy:
       resources:
         limits: { memory: 1200m }

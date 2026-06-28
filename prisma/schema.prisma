@@ -421,6 +421,22 @@ model ScholarSession {
   @@index([userId])
 }
 
+// "Minhas coisas" da Sala de Pesquisa: o TRABALHO real do usuário (título + texto do
+// editor). Diferente de ScholarSession (histórico de BUSCAS, criado a cada pesquisa) —
+// só ações de pesquisa/escrita na Sala de Pesquisa criam um ResearchWork.
+model ResearchWork {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  title     String?
+  content   String?
+  workType  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("research_works")
+}
+
 model PastResearchChat {
   id               String   @id @default(auto()) @map("_id") @db.ObjectId
   userId           String   @db.ObjectId
