@@ -22,8 +22,9 @@ const ENV_SUPERS: string[] = (
 
 /** Fundadores — sempre super admin (case-insensitive). Allowlist do código + ENV. */
 export const SUPER_ADMINS: string[] = [
+  "donmartinezcaiudoceu@gmail.com",   // fundador (Gmail) — acesso a Tutoriais + modo CEO
+  "donmartinez@aluno.unilab.edu.br",  // fundador (institucional)
   "zaeondao@gmail.com",
-  "donmartinez@aluno.unilab.edu.br",
   "martinez@zaeon.space",
   ...ENV_SUPERS,
 ];

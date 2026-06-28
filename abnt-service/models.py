@@ -53,6 +53,8 @@ class DocumentPayload(BaseModel):
     keywords: List[str] = []         # palavras-chave do abstract
     sections: List[SectionData]
     references: List[ReferenceData] = []
+    apendices: List[AppendixData] = []  # pós-textuais (APÊNDICE A, B, …)
+    anexos: List[AppendixData] = []     # pós-textuais (ANEXO A, B, …)
     validation: Optional[ValidationData] = None
     format: str = Field(..., description="pdf | docx")
     font_choice: str = Field(default="Times New Roman", description="Times New Roman | Arial")

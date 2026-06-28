@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * OnboardingGuide — overlay do tour da Zaeon. A CONVERSA é por VOZ + chat widget
+ * OnboardingGuide — overlay do tour (Zaeon conduz). A CONVERSA é por VOZ + chat widget
  * (eventos zaeon:onboard:say). Aqui a gente só DESTACA o elemento e mostra um
  * cardzinho com a FUNÇÃO (emoji + texto curto). O tour avança pela AÇÃO:
  *  - clickTarget  → quando o usuário clica no próprio elemento destacado;
@@ -11,7 +11,7 @@
  */
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { TOUR_STEPS, getTour, subscribeTour, nextTour, skipTour, isTourReplay, stopTourReplay } from "@/lib/onboarding/tour";
+import { getActiveSteps, getTour, subscribeTour, nextTour, skipTour } from "@/lib/onboarding/tour";
 
 export default function OnboardingGuide() {
   const [mounted, setMounted] = useState(false);
@@ -21,7 +21,8 @@ export default function OnboardingGuide() {
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => subscribeTour(setTour), []);
 
-  const step = tour.active ? TOUR_STEPS[tour.index] : null;
+  const steps = getActiveSteps();
+  const step = tour.active ? steps[tour.index] : null;
 
   // Mede (e re-mede) o elemento destacado.
   useEffect(() => {
@@ -46,25 +47,51 @@ export default function OnboardingGuide() {
     return () => el.removeEventListener("click", onClick);
   }, [step?.target, step?.clickTarget, tour.index]);
 
-  // Avança quando a AÇÃO acontece (evento real da app).
+  // Avança quando a AÇÃO acontece (evento real da app). Aceita 1 ou VÁRIOS eventos
+  // (qualquer um deles avança) — ex.: salvar referência dispara libraryFiles OU savedCitations.
   useEffect(() => {
-    if (!step?.advanceEvent) return;
+    const events = [
+      ...(step?.advanceEvent ? [step.advanceEvent] : []),
+      ...(step?.advanceEvents || []),
+    ];
+    if (!events.length) return;
     const onEvt = () => nextTour();
-    window.addEventListener(step.advanceEvent, onEvt as EventListener, { once: true });
-    return () => window.removeEventListener(step.advanceEvent!, onEvt as EventListener);
-  }, [step?.advanceEvent, tour.index]);
+    events.forEach((ev) => window.addEventListener(ev, onEvt as EventListener, { once: true }));
+    return () => events.forEach((ev) => window.removeEventListener(ev, onEvt as EventListener));
+  }, [step?.advanceEvent, step?.advanceEvents, tour.index]);
 
   if (!mounted || !step) return null;
 
-  const total = TOUR_STEPS.length;
+  const total = steps.length;
   const pad = 8;
   const ring = rect
     ? { top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2 }
     : null;
 
-  const chip = ring
-    ? { top: Math.min(window.innerHeight - 130, ring.top + ring.height + 10), left: Math.max(12, Math.min(window.innerWidth - 320, ring.left)) }
-    : { top: window.innerHeight - 140, left: window.innerWidth / 2 - 160 };
+  // Posiciona o card CONSCIENTE do espaço: nunca sobre o anel. Alvo colado à direita
+  // (ex.: dock) → card à ESQUERDA; alvo na metade inferior → card ACIMA; senão, abaixo.
+  const cardW = 300, cardH = 170;
+  const clampX = (x: number) => Math.max(12, Math.min(window.innerWidth - cardW - 12, x));
+  const clampY = (y: number) => Math.max(12, Math.min(window.innerHeight - cardH - 12, y));
+  let chip: { top: number; left: number };
+  if (!ring) {
+    chip = { top: window.innerHeight - 160, left: window.innerWidth / 2 - cardW / 2 };
+  } else {
+    const ringRight = ring.left + ring.width;
+    const ringBottom = ring.top + ring.height;
+    const spaceRight = window.innerWidth - ringRight;
+    const spaceBelow = window.innerHeight - ringBottom;
+    if (spaceRight < cardW + 24 && ring.left > cardW + 24) {
+      // colado à direita → à esquerda do anel, centralizado verticalmente nele
+      chip = { top: clampY(ring.top + ring.height / 2 - cardH / 2), left: ring.left - cardW - 12 };
+    } else if (spaceBelow < cardH + 24 && ring.top > cardH + 24) {
+      // colado embaixo → acima do anel
+      chip = { top: ring.top - cardH - 10, left: clampX(ring.left) };
+    } else {
+      // padrão: abaixo do anel
+      chip = { top: clampY(ringBottom + 10), left: clampX(ring.left) };
+    }
+  }
 
   return createPortal(
     <div className="fixed inset-0 z-[1200] pointer-events-none">
@@ -92,17 +119,16 @@ export default function OnboardingGuide() {
           <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-violet-500 transition-all" style={{ width: `${((tour.index + 1) / total) * 100}%` }} />
         </div>
         <div className="flex items-center justify-between gap-2">
-          <button onClick={isTourReplay() ? stopTourReplay : skipTour} className="text-[11px] font-bold text-slate-400 hover:text-slate-600 dark:hover:text-white/80">
-            {isTourReplay() ? "✓ Ok, não repetir" : "Pular tour"}
+          <button onClick={skipTour} className="text-[11px] font-bold text-slate-400 hover:text-slate-600 dark:hover:text-white/80">
+            Pular tour
           </button>
           {step.info ? (
             <button onClick={() => nextTour()} className="px-4 py-2 rounded-full text-white text-[11px] font-black uppercase tracking-wide hover:scale-[1.03] transition-transform" style={{ background: "linear-gradient(135deg,#06b6d4,#7c3aed)" }}>
               {step.cta || "Ok"}
             </button>
           ) : (
-            <span className="text-[10px] font-bold text-cyan-600 dark:text-cyan-300 inline-flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" /> faça a ação ✦
-            </span>
+            // Passo guiado por AÇÃO: cue visual sutil (sem texto), o tour avança quando a ação acontece.
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" aria-hidden />
           )}
         </div>
       </div>

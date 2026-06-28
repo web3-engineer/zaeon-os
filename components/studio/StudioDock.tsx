@@ -9,7 +9,7 @@
  * Comunicação com o feed via evento window "zaeon:study:embed".
  */
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Mic, ImageIcon, Film } from "lucide-react";
+import { Loader2, Mic, ImageIcon, Film, ChevronDown } from "lucide-react";
 import type { TextKind } from "@/lib/studio/transformations";
 
 type DockKind = TextKind | "podcast" | "image" | "video";
@@ -32,6 +32,7 @@ export default function StudioDock({ spaceId }: { spaceId?: string }) {
   const [busy, setBusy] = useState<DockKind | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [open, setOpen] = useState(false); // dock começa MINIMIZADO: só o botão ⟁ Studio
   const cancelPoll = useRef(false);
 
   useEffect(() => () => { cancelPoll.current = true; }, []);
@@ -139,31 +140,43 @@ export default function StudioDock({ spaceId }: { spaceId?: string }) {
   const pillText = `${pill} text-slate-700 dark:text-white/85 bg-slate-100/80 dark:bg-white/[0.06] hover:bg-cyan-500/10 hover:text-cyan-700 dark:hover:text-cyan-200 border border-transparent hover:border-cyan-400/40`;
 
   return (
-    <div className="mb-3">
+    <div className="mb-3" data-tour="studio-dock">
       <div className="rounded-2xl p-[1.5px] bg-gradient-to-r from-blue-500/30 via-cyan-400/30 to-violet-500/30">
         <div className="rounded-[15px] bg-white/70 dark:bg-white/[0.05] backdrop-blur-2xl border border-white/70 dark:border-white/10 px-2.5 py-2 flex items-center gap-2 overflow-x-auto custom-scrollbar">
-          <span className="shrink-0 text-[11px] font-black uppercase tracking-wide text-cyan-600/90 dark:text-cyan-300/90 pl-1 pr-1 flex items-center gap-1">
-            <span className="animate-[spin_16s_linear_infinite] motion-reduce:animate-none">⟁</span> Studio
-          </span>
-          {/* 1) Podcast (carro-chefe) */}
-          <button onClick={() => generateAsync("podcast")} disabled={busy !== null} title="Gerar podcast com 2 vozes"
-            className={`${pill} text-white border border-transparent`} style={{ background: "linear-gradient(135deg,#2563eb,#06b6d4)" }}>
-            {busy === "podcast" ? <Loader2 size={13} className="animate-spin" /> : <Mic size={13} />} Podcast
+          {/* Botãozinho ⟁ Studio: minimizado por padrão; clica e abre as opções. */}
+          <button
+            onClick={() => setOpen((v) => !v)}
+            title={open ? "Minimizar o Studio" : "Abrir o Studio"}
+            aria-expanded={open}
+            className="shrink-0 text-[11px] font-black uppercase tracking-wide text-cyan-600/90 dark:text-cyan-300/90 pl-1 pr-1 flex items-center gap-1 hover:text-cyan-700 dark:hover:text-cyan-200 transition-colors"
+          >
+            <span className={`${busy ? "animate-[spin_4s_linear_infinite]" : "animate-[spin_16s_linear_infinite]"} motion-reduce:animate-none`}>⟁</span> Studio
+            <ChevronDown size={12} className={`transition-transform ${open ? "" : "-rotate-90"}`} />
           </button>
-          {/* 2) Guia · Mapa mental · Linha do tempo · Flashcards · FAQ */}
-          {TEXT_ACTIONS.map((a) => (
-            <button key={a.kind} onClick={() => generateText(a.kind)} disabled={busy !== null} title={`Gerar ${a.label}`} className={pillText}>
-              {busy === a.kind ? <Loader2 size={13} className="animate-spin" /> : <span>{a.emoji}</span>} {a.label}
-            </button>
-          ))}
-          {/* 3) Imagem */}
-          <button onClick={() => generateImage()} disabled={busy !== null} title="Gerar imagem didática (Imagen)" className={pillText}>
-            {busy === "image" ? <Loader2 size={13} className="animate-spin" /> : <ImageIcon size={13} />} Imagem
-          </button>
-          {/* 4) Vídeo */}
-          <button onClick={() => generateAsync("video")} disabled={busy !== null} title="Gerar vídeo-resumo (slides + narração)" className={pillText}>
-            {busy === "video" ? <Loader2 size={13} className="animate-spin" /> : <Film size={13} />} Vídeo
-          </button>
+
+          {open && (
+            <>
+              {/* 1) Podcast (carro-chefe) */}
+              <button onClick={() => generateAsync("podcast")} disabled={busy !== null} title="Gerar podcast com 2 vozes"
+                className={`${pill} text-white border border-transparent`} style={{ background: "linear-gradient(135deg,#2563eb,#06b6d4)" }}>
+                {busy === "podcast" ? <Loader2 size={13} className="animate-spin" /> : <Mic size={13} />} Podcast
+              </button>
+              {/* 2) Guia · Mapa mental · Linha do tempo · Flashcards · FAQ */}
+              {TEXT_ACTIONS.map((a) => (
+                <button key={a.kind} onClick={() => generateText(a.kind)} disabled={busy !== null} title={`Gerar ${a.label}`} className={pillText}>
+                  {busy === a.kind ? <Loader2 size={13} className="animate-spin" /> : <span>{a.emoji}</span>} {a.label}
+                </button>
+              ))}
+              {/* 3) Imagem */}
+              <button onClick={() => generateImage()} disabled={busy !== null} title="Gerar imagem didática (Imagen)" className={pillText}>
+                {busy === "image" ? <Loader2 size={13} className="animate-spin" /> : <ImageIcon size={13} />} Imagem
+              </button>
+              {/* 4) Vídeo */}
+              <button onClick={() => generateAsync("video")} disabled={busy !== null} title="Gerar vídeo-resumo (slides + narração)" className={pillText}>
+                {busy === "video" ? <Loader2 size={13} className="animate-spin" /> : <Film size={13} />} Vídeo
+              </button>
+            </>
+          )}
         </div>
       </div>
 

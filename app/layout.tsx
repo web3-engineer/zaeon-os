@@ -16,6 +16,8 @@ import GlobalClickSound from "@/components/main/GlobalClickSound";
 import { Navbar } from "@/components/main/navbar";
 // 🔥 Chat global da Zaeon (IA + Colegas/Professores, troca de lado).
 import { LoungeChatWidget } from "@/components/sub/LoungeChatWidget";
+// Tour de onboarding (global): começa no menu inicial e segue pro research-lab.
+import OnboardingGuide from "@/components/onboard/OnboardingGuide";
 
 import "../src/i18n";
 import "./globals.css";
@@ -74,6 +76,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
                             {/* 🔥 CHAT GLOBAL DA ZAEON (IA + Colegas/Professores) 🔥 */}
                             <LoungeChatWidget />
+
+                            {/* Tour de onboarding — global pra começar no menu e seguir pro lab */}
+                            <OnboardingGuide />
 
                         </Web3Provider>
                     </AuthProvider>

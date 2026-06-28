@@ -62,7 +62,7 @@ export default function CitationsPanel() {
             }}
             title={draggable ? "Arraste para o seu texto" : "Complete a referência para poder arrastar"}
             className={`group relative rounded-[10px] p-2.5 transition-colors ${draggable ? "cursor-grab active:cursor-grabbing hover:bg-white/[0.09]" : ""}`}
-            style={{ background: "rgba(255,255,255,0.05)", border: cit.incomplete ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.10)" }}
+            style={{ background: cit.incomplete ? "rgba(239,68,68,0.08)" : "rgba(255,255,255,0.05)", border: cit.incomplete ? "1px solid rgba(239,68,68,0.55)" : "1px solid rgba(255,255,255,0.10)" }}
           >
             {/* STATUS (canto inferior ESQUERDO): ＋ = ainda não usada · ✓ = já colada no trabalho */}
             {!cit.incomplete && (
@@ -91,14 +91,14 @@ export default function CitationsPanel() {
 
             {cit.incomplete ? (
               <>
-                <p className="text-[8.5px] font-black uppercase tracking-widest text-amber-300 mb-1">⚠ Rascunho — faltam dados</p>
+                <p className="text-[8.5px] font-black uppercase tracking-widest text-red-400 mb-1">🔴 Sem fonte válida — não está sendo creditada</p>
                 <p className="text-[10px] text-white/70 italic leading-snug line-clamp-3">"{(cit.sourceText || cit.quote || "").slice(0, 140)}"</p>
                 <button
                   onClick={() => setCompleting(cit)}
                   className="mt-2 text-[9px] font-black uppercase tracking-wide px-2.5 py-1 rounded-full text-white"
-                  style={{ background: "linear-gradient(180deg,#f59e0b,#b45309)" }}
+                  style={{ background: "linear-gradient(180deg,#ef4444,#b91c1c)" }}
                 >
-                  Completar referência
+                  Creditar fonte
                 </button>
               </>
             ) : (
@@ -107,6 +107,21 @@ export default function CitationsPanel() {
                   <span className="text-white/25 text-[11px] leading-none mt-0.5 select-none">⠿</span>
                   <p className="text-[10px] text-white/85 leading-snug flex-1 line-clamp-4">{cit.abnt}</p>
                 </div>
+                {cit.page && cit.pdfUrl && (
+                  <button
+                    onClick={() =>
+                      window.dispatchEvent(
+                        new CustomEvent("zaeon:gotoSource", {
+                          detail: { pdfUrl: cit.pdfUrl, page: cit.page },
+                        }),
+                      )
+                    }
+                    title="Ir à fonte no PDF (precisa estar aberto)"
+                    className="mt-1.5 text-[9px] font-bold text-cyan-300/90 hover:text-cyan-200 inline-flex items-center gap-1"
+                  >
+                    ↗ ir à fonte (p. {cit.page})
+                  </button>
+                )}
                 {cit.suggestion && cit.suggestedText && (
                   <div className="mt-2 pt-2 border-t border-white/10">
                     <p className="text-[9px] text-violet-300/90 leading-snug mb-1">✦ {cit.suggestion}</p>

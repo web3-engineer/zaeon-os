@@ -12,9 +12,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSession } from 'next-auth/react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import NextImage from 'next/image';
-import { ProFeaturePanel } from '@/components/ui/ProFeaturePanel';
 import VoiceModeSwitch from '@/components/voice/VoiceModeSwitch';
 import SpeakButton from '@/components/voice/SpeakButton';
+import StudentAulasModule from '@/components/aulas/StudentAulasModule';
 
 // --- INITIAL DATA ---
 const initialSchedule: any[] = []; 
@@ -328,7 +328,8 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
     const [now, setNow] = useState<Date | null>(null);
     useEffect(() => {
         setNow(new Date());
-        const t = setInterval(() => setNow(new Date()), 60_000);
+        // 10s: relógio vivo (ponteiro de minuto anda) sem pesar. Antes era 60s (parado).
+        const t = setInterval(() => setNow(new Date()), 10_000);
         return () => clearInterval(t);
     }, []);
 
@@ -377,6 +378,9 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
     ]);
     const [zaeonInput, setZaeonInput] = useState("");
     const [isZaeonProcessing, setIsZaeonProcessing] = useState(false);
+    const [chatMin, setChatMin] = useState(false); // Fase 6/B2: chat minimizável (estado persistido)
+    useEffect(() => { try { setChatMin(localStorage.getItem("zaeon.aula.chatMin") === "1"); } catch { /* */ } }, []);
+    useEffect(() => { try { localStorage.setItem("zaeon.aula.chatMin", chatMin ? "1" : "0"); } catch { /* */ } }, [chatMin]);
 
     const [storedPdfs, setStoredPdfs] = useState<StoredDoc[]>([]);
     const [selectedDay, setSelectedDay] = useState<number>(0);
@@ -386,7 +390,7 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
     
     // STATE - AI MODULES NO BACKPACK (Apenas 1 módulo inicial agora)
     const [userModules, setUserModules] = useState<UserModule[]>([
-        { id: 1, title: "Personal Backpack", items: [] }
+        { id: 1, title: "Acesse outros modelos", items: [] }
     ]);
     
     // REF PARA JANELAS FLUTUANTES (Re-Foco)
@@ -455,7 +459,7 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
             
             if (savedModules) {
                 const parsedModules = JSON.parse(savedModules).filter((m: any) => m.id !== 2);
-                setUserModules(parsedModules.length > 0 ? parsedModules : [{ id: 1, title: "Personal Backpack", items: [] }]);
+                setUserModules(parsedModules.length > 0 ? parsedModules : [{ id: 1, title: "Acesse outros modelos", items: [] }]);
             }
 
             setIsDataLoaded(true);
@@ -476,7 +480,7 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
                         if (d.library) setStoredPdfs(d.library);
                         if (d.personalModules) {
                              const p = d.personalModules.filter((m:any) => m.id !== 2);
-                             setUserModules(p.length ? p : [{ id: 1, title: "Personal Backpack", items: [] }]);
+                             setUserModules(p.length ? p : [{ id: 1, title: "Acesse outros modelos", items: [] }]);
                         }
                         setIsDataLoaded(true);
                     } else {
@@ -768,6 +772,38 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
         return "Ação de agenda não reconhecida.";
     };
 
+    // Fase 4: o agente do chat acessa as AULAS do aluno (listar / abrir).
+    const applyLessonTool = async (args: any): Promise<string> => {
+        const action = String(args?.action || 'list').toLowerCase();
+        try {
+            if (action === 'open') {
+                const topic = String(args?.topic || args?.title || '').trim();
+                try { window.dispatchEvent(new CustomEvent('zaeon:aula:open', { detail: { topic } })); } catch { /* ignore */ }
+                return topic ? `Abrindo sua aula sobre "${topic}" aqui embaixo.` : 'Abri o módulo das suas aulas aqui embaixo.';
+            }
+            const r = await fetch('/api/aulas');
+            if (!r.ok) return 'Não consegui buscar suas aulas agora.';
+            const d = await r.json();
+            const aulas = Array.isArray(d.aulas) ? d.aulas : [];
+            if (!aulas.length) return 'Você ainda não tem aulas enviadas pelos professores.';
+            return `Você tem ${aulas.length} aula(s): ${aulas.slice(0, 6).map((a: any) => a.title).join('; ')}.`;
+        } catch { return 'Falha ao acessar as aulas.'; }
+    };
+
+    // Fase 4: aviso de aula nova chega no chat (uma vez por montagem).
+    const lessonNoticeRef = useRef(false);
+    useEffect(() => {
+        const onNotice = (e: any) => {
+            if (lessonNoticeRef.current) return;
+            const count = Number(e?.detail?.count || 0);
+            if (count <= 0) return;
+            lessonNoticeRef.current = true;
+            setLiquidChatHistory(prev => [...prev, { role: 'agent', text: `📚 Você tem ${count} aula${count > 1 ? 's' : ''} nova${count > 1 ? 's' : ''} esperando aqui embaixo. Quer que eu abra?` }]);
+        };
+        window.addEventListener('zaeon:aula:notice', onNotice);
+        return () => window.removeEventListener('zaeon:aula:notice', onNotice);
+    }, []);
+
     const handleZaeonMessage = async () => {
         if (!zaeonInput.trim()) return;
         const msg = zaeonInput;
@@ -790,11 +826,14 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
             const response = await fetch('/api/ai/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: msg, agent: "core_active", systemContext: `${dateContext}\n${agendaContext} ${libraryContext}${convoContext}` }),
+                body: JSON.stringify({ prompt: msg, agent: "core_active", systemContext: `${dateContext}\n${agendaContext} ${libraryContext}\nAULAS: o aluno recebe aulas dos professores. Use a ferramenta 'lessons' (action='list' para listar; action='open' com 'topic' para abrir uma aula) quando ele perguntar sobre as aulas dele.${convoContext}` }),
             });
             const data = await response.json();
             if (data?.toolCall?.name === 'update_schedule') {
                 const applied = applyScheduleTool(data.toolCall.args);
+                setLiquidChatHistory(prev => [...prev, { role: 'agent', text: applied }]);
+            } else if (data?.toolCall?.name === 'lessons') {
+                const applied = await applyLessonTool(data.toolCall.args);
                 setLiquidChatHistory(prev => [...prev, { role: 'agent', text: applied }]);
             } else {
                 setLiquidChatHistory(prev => [...prev, { role: 'agent', text: data.text || "Pronto." }]);
@@ -802,39 +841,8 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
         } catch (e) { setLiquidChatHistory(prev => [...prev, { role: 'agent', text: "Conexão offline." }]); } finally { setIsZaeonProcessing(false); }
     };
 
-    const handleUserModuleDrop = (e: React.DragEvent, moduleId: number) => {
-        e.preventDefault();
-        const files = Array.from(e.dataTransfer.files);
-        const newItems: UserItem[] = files.map(f => ({
-            id: Math.random().toString(36).substr(2, 9), type: 'file', name: f.name, meta: (f.size / 1024 / 1024).toFixed(1) + 'mb'
-        }));
-        setUserModules(prev => prev.map(m => m.id === moduleId ? { ...m, items: [...m.items, ...newItems] } : m));
-    };
-
-    const deleteUserItem = (moduleId: number, itemId: string) => { setUserModules(prev => prev.map(m => m.id === moduleId ? { ...m, items: m.items.filter(i => i.id !== itemId) } : m)); };
-
-    const handleAddLink = (moduleId: number) => { const url = prompt("Enter URL:"); if (url) { const name = prompt("Link Name:") || "Link"; setUserModules(prev => prev.map(m => m.id === moduleId ? { ...m, items: [...m.items, { id: Math.random().toString(36).substr(2, 9), type: 'link', name, meta: url }] } : m)); } };
-
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, moduleId: number) => {
-        if (e.target.files) {
-            const files = Array.from(e.target.files);
-            const newItems: UserItem[] = files.map(f => ({ id: Math.random().toString(36).substr(2, 9), type: 'file', name: f.name, meta: (f.size / 1024 / 1024).toFixed(1) + 'mb' }));
-            setUserModules(prev => prev.map(m => m.id === moduleId ? { ...m, items: [...m.items, ...newItems] } : m));
-        }
-    };
-
-    const handleLibraryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            const files = Array.from(e.target.files);
-            const pdfs = files.filter(f => f.type === 'application/pdf').map(f => ({ id: Math.random().toString(36).substr(2, 9), title: f.name, type: 'pdf' as const, size: (f.size / 1024 / 1024).toFixed(1) + 'mb' }));
-            setStoredPdfs(prev => [...prev, ...pdfs]);
-        }
-    };
-
-    // Nova função: Deletar arquivo de PDF da Library
-    const handleDeletePdf = (id: string) => {
-        setStoredPdfs(prev => prev.filter(pdf => pdf.id !== id));
-    };
+    // (Livraria + backpack removidos no Lote 8 — o espaço virou o módulo de aulas geradas.
+    //  storedPdfs/userModules permanecem só como persistência legada + contexto do chat.)
 
     // Agora com Sábado e Domingo inclusos
     const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -849,6 +857,10 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
     const currentClass = (DAY_NOW != null && HOUR_NOW != null)
         ? classes.find((c: any) => (c.days || []).includes(DAY_NOW) && Number(c.hour) <= HOUR_NOW && HOUR_NOW < Number(c.endHour))
         : null;
+    // Relógio vivo (Parte C): hora digital, ponteiros e destaque de "hoje".
+    const isToday = DAY_NOW != null && DAY_NOW === selectedDay + 1;
+    const clockHHMM = now ? `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}` : '--:--';
+    const minuteAngle = now ? -90 + (now.getMinutes() / 60) * 360 : -90;
 
     return (
         <div ref={constraintsRef} onClick={handleBackgroundClick} className="relative min-h-screen w-full flex flex-col items-start px-6 pt-8 pb-8 bg-transparent font-sans selection:bg-cyan-500/30 text-slate-900 dark:text-white transition-colors duration-500 overflow-x-hidden">
@@ -892,71 +904,39 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
 
             <div className="w-full max-w-[1180px] pb-10 flex items-start justify-start gap-6 flex-wrap z-20 relative">
 
-                {/* FIOS DE ENERGIA — religam chat -> livraria/plugins -> agenda */}
-                <div className="hidden lg:block absolute z-0 pointer-events-none" style={{ left: 399, top: 58, width: 26, height: 24 }}>
-                    <svg width="26" height="24" className="overflow-visible">
-                        <line x1="0" y1="12" x2="26" y2="12" stroke="rgba(139,92,246,0.25)" strokeWidth="3" />
-                        <motion.line x1="0" y1="12" x2="26" y2="12" stroke="#8b5cf6" strokeWidth="3" strokeDasharray="5 12" initial={{ strokeDashoffset: 0 }} animate={{ strokeDashoffset: -34 }} transition={{ duration: 1.1, repeat: Infinity, ease: 'linear' }} style={{ filter: 'drop-shadow(0 0 6px rgba(139,92,246,0.95))' }} />
-                        <motion.circle cy="12" r="2.5" fill="#22d3ee" animate={{ cx: [0, 26] }} transition={{ duration: 1.1, repeat: Infinity, ease: 'linear' }} style={{ filter: 'drop-shadow(0 0 5px #22d3ee)' }} />
-                    </svg>
-                </div>
-                <div className="hidden lg:block absolute z-0 pointer-events-none" style={{ left: 713, top: 58, width: 26, height: 24 }}>
-                    <svg width="26" height="24" className="overflow-visible">
-                        <line x1="0" y1="12" x2="26" y2="12" stroke="rgba(34,211,238,0.25)" strokeWidth="3" />
-                        <motion.line x1="0" y1="12" x2="26" y2="12" stroke="#22d3ee" strokeWidth="3" strokeDasharray="5 12" initial={{ strokeDashoffset: 0 }} animate={{ strokeDashoffset: -34 }} transition={{ duration: 1.1, repeat: Infinity, ease: 'linear', delay: 0.25 }} style={{ filter: 'drop-shadow(0 0 6px rgba(34,211,238,0.95))' }} />
-                        <motion.circle cy="12" r="2.5" fill="#8b5cf6" animate={{ cx: [0, 26] }} transition={{ duration: 1.1, repeat: Infinity, ease: 'linear', delay: 0.25 }} style={{ filter: 'drop-shadow(0 0 5px #8b5cf6)' }} />
-                    </svg>
-                </div>
+                {/* (Fios de energia removidos no Lote 8 — apontavam pra Livraria, que saiu.) */}
 
-                {/* CHAT ZAEON (limpo, sem divisorias) */}
-                <div className="w-[400px] h-[440px] bg-[#0f172a]/95 dark:bg-black/40 backdrop-blur-xl border border-white/15 rounded-[2.4rem] shadow-[0_0_50px_-10px_rgba(139,92,246,0.55),0_0_95px_-30px_rgba(34,211,238,0.45)] flex flex-col overflow-hidden relative z-10">
-                    <div className="px-6 pt-5 pb-1 flex items-center shrink-0">
+                {/* CHAT ZAEON (limpo, sem divisorias) — Fase 6: minimizável + balões padrão Zaeon */}
+                <div className={`w-[400px] ${chatMin ? 'h-auto' : 'h-[440px]'} bg-[#0f172a]/95 dark:bg-black/40 backdrop-blur-xl border border-white/15 rounded-[2.4rem] shadow-[0_0_50px_-10px_rgba(139,92,246,0.55),0_0_95px_-30px_rgba(34,211,238,0.45)] flex flex-col overflow-hidden relative z-10`}>
+                    <div className="px-6 pt-5 pb-1 flex items-center gap-2 shrink-0">
                         <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#8b5cf6] to-[#22d3ee] shadow-[0_4px_14px_rgba(139,92,246,0.45)] flex items-center justify-center text-white text-[17px] leading-none font-bold select-none">&#10177;</div>
+                        <span className="text-xs font-bold text-white/70 tracking-wide">Zaeon</span>
+                        <button onClick={() => setChatMin((v) => !v)} className="ml-auto p-1 rounded-lg text-white/35 hover:text-white/80 transition-colors" title={chatMin ? 'Abrir chat' : 'Minimizar chat'} aria-label={chatMin ? 'Abrir chat' : 'Minimizar chat'}>
+                            {chatMin ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </button>
                     </div>
-                    <div ref={zaeonChatScrollRef} className="flex-1 overflow-y-auto px-5 py-3 space-y-3 scrollbar-hide">
-                        {liquidChatHistory.map((m, i) => (
-                            <div key={i} className={`group flex items-end gap-1.5 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed shadow-sm ${m.role === 'user' ? 'bg-[#8b5cf6] text-white font-semibold' : 'bg-white/[0.08] text-white/90'}`}>{m.text}</div>
-                                {m.role === 'agent' && <span className="opacity-0 group-hover:opacity-100 transition-opacity"><SpeakButton text={m.text} size={12} /></span>}
+                    {!chatMin && (
+                        <>
+                            <div ref={zaeonChatScrollRef} className="flex-1 overflow-y-auto px-5 py-3 space-y-3 scrollbar-hide">
+                                {liquidChatHistory.map((m, i) => (
+                                    <div key={i} className={`group flex items-end gap-1.5 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed shadow-sm ${m.role === 'user' ? 'text-white font-semibold' : 'bg-white/[0.08] text-white/90'}`} style={m.role === 'user' ? { background: 'linear-gradient(135deg,#8b5cf6,#22d3ee)' } : undefined}>{m.text}</div>
+                                        {m.role === 'agent' && <span className="opacity-0 group-hover:opacity-100 transition-opacity"><SpeakButton text={m.text} size={12} /></span>}
+                                    </div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
-                    <div className="px-4 pb-4 pt-1 shrink-0">
-                        <div className="flex items-center gap-1.5 bg-white/[0.06] rounded-full pl-4 pr-1.5 py-1.5">
-                            <input value={zaeonInput} onChange={(e) => setZaeonInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleZaeonMessage()} className="bg-transparent flex-1 text-xs text-white outline-none placeholder:text-white/30" placeholder="Pergunte a Zaeon..." disabled={isZaeonProcessing} />
-                            <VoiceModeSwitch onTranscript={(t) => setZaeonInput(t)} title="Falar para a Zaeon" size={14} />
-                            <button onClick={handleZaeonMessage} disabled={isZaeonProcessing} className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#8b5cf6] to-[#22d3ee] flex items-center justify-center hover:scale-105 active:scale-95 transition-transform shadow-md disabled:opacity-40"><ArrowUp size={15} strokeWidth={2.2} className="text-white" /></button>
-                        </div>
-                    </div>
-                </div>
-
-                {/* LIVRARIA + PLUGINS (faixas horizontais finas) */}
-                <div className="w-[290px] flex flex-col gap-3 z-10">
-                    <div onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const files = Array.from(e.dataTransfer.files); const pdfs = files.filter(f => f.type === 'application/pdf').map(f => ({ id: Math.random().toString(36).substr(2, 9), title: f.name, type: 'pdf' as const, size: (f.size / 1024 / 1024).toFixed(1) + 'mb' })); setStoredPdfs(prev => [...prev, ...pdfs]); }} className="bg-[#0f172a]/95 dark:bg-black/40 backdrop-blur-xl border border-white/15 rounded-2xl px-4 py-3 flex flex-col gap-2 shadow-[0_0_34px_-12px_rgba(139,92,246,0.5)]">
-                        <div className="flex items-center gap-2">
-                            <Database size={12} className="text-[#22d3ee]" />
-                            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-white/80">Livraria</span>
-                            <span className="ml-auto text-[8px] font-mono text-white/40">{storedPdfs.length}</span>
-                        </div>
-                        <div className="flex gap-2 items-center overflow-x-auto scrollbar-hide py-0.5">
-                            {storedPdfs.map(pdf => (
-                                <div key={pdf.id} className="group/item w-14 h-14 bg-white/10 dark:bg-white/[0.04] rounded-xl border border-white/20 flex flex-col items-center justify-center gap-0.5 p-1 relative shrink-0">
-                                    <button onClick={(e) => { e.stopPropagation(); handleDeletePdf(pdf.id); }} className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-rose-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover/item:opacity-100 transition-opacity z-20"><X size={9} strokeWidth={3} /></button>
-                                    <FileText size={16} className="text-[#22d3ee]" />
-                                    <span className="text-[6.5px] text-white/80 font-bold truncate w-full block text-center px-0.5">{pdf.title}</span>
+                            <div className="px-4 pb-4 pt-1 shrink-0">
+                                <div className="flex items-center gap-1.5 bg-white/[0.06] rounded-full pl-4 pr-1.5 py-1.5">
+                                    <input value={zaeonInput} onChange={(e) => setZaeonInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleZaeonMessage()} className="bg-transparent flex-1 text-xs text-white outline-none placeholder:text-white/30" placeholder="Pergunte a Zaeon..." disabled={isZaeonProcessing} />
+                                    <VoiceModeSwitch onTranscript={(t) => setZaeonInput(t)} title="Falar para a Zaeon" size={14} />
+                                    <button onClick={handleZaeonMessage} disabled={isZaeonProcessing} className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#8b5cf6] to-[#22d3ee] flex items-center justify-center hover:scale-105 active:scale-95 transition-transform shadow-md disabled:opacity-40"><ArrowUp size={15} strokeWidth={2.2} className="text-white" /></button>
                                 </div>
-                            ))}
-                            <label className="w-12 h-14 rounded-xl border border-dashed border-white/25 flex items-center justify-center text-white/55 hover:border-[#8b5cf6] hover:text-[#8b5cf6] cursor-pointer transition-all shrink-0"><input type="file" className="hidden" accept=".pdf" onChange={handleLibraryUpload} /><Plus size={16} /></label>
-                        </div>
-                    </div>
-                    <div className="bg-[#0f172a]/95 dark:bg-black/40 backdrop-blur-xl border border-white/15 rounded-2xl px-4 py-3 flex items-center gap-2 shadow-[0_0_34px_-12px_rgba(34,211,238,0.45)]">
-                        <Puzzle size={12} className="text-[#8b5cf6]" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.18em] text-white/80">Plugins</span>
-                        <span className="ml-auto text-[8px] font-bold uppercase tracking-widest text-white/30">Em breve</span>
-                    </div>
+                            </div>
+                        </>
+                    )}
                 </div>
 
-                {/* AGENDA RADIAL (relogio de fatias; dia no centro com setas) */}
+{/* AGENDA RADIAL (relogio de fatias; dia no centro com setas) */}
                 <div className="flex-1 min-w-[300px] self-start flex flex-col items-center gap-3 z-10" onClick={(e) => e.stopPropagation()}>
                     <div className="w-full max-w-[320px] bg-[#0f172a]/95 dark:bg-black/40 backdrop-blur-xl border border-white/15 rounded-[2.4rem] p-5 shadow-[0_0_50px_-10px_rgba(139,92,246,0.55),0_0_95px_-30px_rgba(34,211,238,0.45)] flex flex-col items-center gap-3 relative">
                         <div className="w-full flex items-center">
@@ -971,14 +951,32 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
                                 {classesToRender.filter((c: any) => (c.days || []).includes(selectedDay + 1)).map((cls: any) => {
                                     const h0 = Math.max(AG_MIN, Math.min(AG_MAX - 0.25, Number(cls.hour) || AG_MIN));
                                     const h1 = Math.max(h0 + 0.25, Math.min(AG_MAX, Number(cls.endHour) || h0 + 1));
+                                    const isNow = !!(isToday && currentClass && currentClass.id === cls.id); // aula AGORA → glow
                                     return (
-                                        <path key={cls.id} d={agDonut(150,150,86,120,h0,h1)} fill={colorHex(cls.color)} onClick={(e) => { e.stopPropagation(); setColorPickId((p) => (p === cls.id ? null : cls.id)); }} className={`cursor-pointer transition-all hover:opacity-100 ${colorPickId === cls.id ? 'opacity-100' : 'opacity-85'} ${glitchClassId === cls.id ? 'agenda-glitch' : ''}`} style={{ stroke: colorPickId === cls.id ? '#fff' : 'rgba(0,0,0,0.18)', strokeWidth: colorPickId === cls.id ? 2 : 1 }} />
+                                        <path key={cls.id} d={agDonut(150,150,86,120,h0,h1)} fill={colorHex(cls.color)} onClick={(e) => { e.stopPropagation(); setColorPickId((p) => (p === cls.id ? null : cls.id)); }} className={`cursor-pointer transition-all hover:opacity-100 ${(isNow || colorPickId === cls.id) ? 'opacity-100' : 'opacity-85'} ${glitchClassId === cls.id ? 'agenda-glitch' : ''}`} style={{ stroke: (isNow || colorPickId === cls.id) ? '#fff' : 'rgba(0,0,0,0.18)', strokeWidth: isNow ? 2.5 : colorPickId === cls.id ? 2 : 1, filter: isNow ? 'drop-shadow(0 0 6px rgba(255,255,255,0.85))' : undefined }} />
                                     );
                                 })}
-                                {DAY_NOW === selectedDay + 1 && HOUR_NOW != null && HOUR_NOW >= AG_MIN && HOUR_NOW <= AG_MAX && (() => { const p = agPolar(150,150,120, agAngle(HOUR_NOW as number)); return <g><line x1="150" y1="150" x2={p.x} y2={p.y} stroke="#fff" strokeWidth="2" className="opacity-70" /><circle cx={p.x} cy={p.y} r="3" fill="#22d3ee" /></g>; })()}
-                                <circle cx="150" cy="150" r="4" fill="#fff" className="opacity-80" />
-                                <text x="150" y="148" textAnchor="middle" dominantBaseline="middle" onClick={() => setDayNavOpen((o) => !o)} fill="#fff" fontSize="17" fontWeight="800" style={{ cursor: 'pointer' }}>{DAYS_FULL[selectedDay]}</text>
-                                <text x="150" y="168" textAnchor="middle" onClick={() => setDayNavOpen((o) => !o)} fill="rgba(255,255,255,0.42)" fontSize="8.5" fontWeight="700" style={{ cursor: 'pointer' }}>{classesToRender.filter((c: any) => (c.days || []).includes(selectedDay + 1)).length} evento(s)</text>
+                                {/* Ponteiros vivos — só no dia de HOJE (relógio de verdade). */}
+                                {isToday && HOUR_NOW != null && (() => {
+                                    const hourA = agAngle(HOUR_NOW as number);
+                                    const mh = agPolar(150,150,116, minuteAngle);
+                                    const hh = agPolar(150,150,78, hourA);
+                                    const inRange = (HOUR_NOW as number) >= AG_MIN && (HOUR_NOW as number) <= AG_MAX;
+                                    const mark = inRange ? agPolar(150,150,120, hourA) : null;
+                                    return (
+                                        <g>
+                                            <line x1="150" y1="150" x2={mh.x} y2={mh.y} stroke="#fff" strokeWidth="2" strokeLinecap="round" className="opacity-80" />
+                                            <line x1="150" y1="150" x2={hh.x} y2={hh.y} stroke="#22d3ee" strokeWidth="3.5" strokeLinecap="round" />
+                                            {mark && <circle cx={mark.x} cy={mark.y} r="3.5" fill="#22d3ee" stroke="#fff" strokeWidth="1" />}
+                                        </g>
+                                    );
+                                })()}
+                                {/* Miolo: disco escuro + hora digital + dia (hoje em destaque). */}
+                                <circle cx="150" cy="150" r="33" fill="rgba(10,15,28,0.72)" />
+                                <circle cx="150" cy="150" r="3.5" fill="#fff" className="opacity-90" />
+                                <text x="150" y="139" textAnchor="middle" dominantBaseline="middle" onClick={() => setDayNavOpen((o) => !o)} fill={isToday ? '#22d3ee' : '#fff'} fontSize="11.5" fontWeight="800" style={{ cursor: 'pointer' }}>{DAYS_FULL[selectedDay]}{isToday ? ' · hoje' : ''}</text>
+                                <text x="150" y="161" textAnchor="middle" dominantBaseline="middle" fill="#fff" fontSize="21" fontWeight="900" style={{ letterSpacing: '1px' }}>{clockHHMM}</text>
+                                <text x="150" y="178" textAnchor="middle" onClick={() => setDayNavOpen((o) => !o)} fill="rgba(255,255,255,0.45)" fontSize="8" fontWeight="700" style={{ cursor: 'pointer' }}>{classesToRender.filter((c: any) => (c.days || []).includes(selectedDay + 1)).length} evento(s)</text>
                             </svg>
                             {dayNavOpen && (
                                 <>
@@ -1028,88 +1026,9 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
             </div>
 
             
-            {/* 5. BACKPACK MINIMALISTA (AGORA NA DIREITA PARA NÃO SOBREPOR AS IAs) */}
-            <div className="w-full flex justify-end gap-8 pb-32 pr-4 lg:pr-20 flex-wrap relative z-20 max-w-[1400px]">
-                {userModules.map((mod) => (
-                    <motion.div 
-                        key={mod.id} 
-                        drag 
-                        dragConstraints={constraintsRef} 
-                        className="h-auto min-h-[160px] min-w-[280px] max-w-[400px] flex-1 bg-white/70 dark:bg-black/60 backdrop-blur-3xl border border-white/40 dark:border-white/10 rounded-[1.8rem] p-5 flex flex-col relative shadow-xl" 
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="flex flex-col h-28 mb-2 shrink-0">
-                            <div className="flex items-center justify-between mb-3 border-b border-emerald-200/50 dark:border-white/20 pb-2">
-                                <div className="flex items-center gap-2 w-full"><Briefcase size={14} className="text-emerald-500" /><span className="text-[10px] font-black uppercase tracking-widest">{mod.title}</span></div>
-                                <span className="text-[8px] text-slate-400 dark:text-white/40 font-mono ml-2 whitespace-nowrap">{mod.items.length} ITEMS</span>
-                            </div>
-                            <div className="flex gap-2 items-center h-full overflow-x-auto scrollbar-hide pr-2">
-                                {mod.items.map((item) => (
-                                    <motion.div key={item.id} initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} onPointerDown={(e) => e.stopPropagation()} onClick={() => item.type === 'link' && window.open(item.meta, '_blank')} className={`group/file w-16 h-20 rounded-xl border flex flex-col items-center justify-center gap-1 p-2 relative cursor-pointer transition-all shrink-0 shadow-sm ${item.type === 'link' ? 'bg-blue-50/40 dark:bg-blue-900/10 border-blue-200/50 dark:border-blue-500/20' : 'bg-emerald-50/30 dark:bg-emerald-900/10 border-emerald-200/50 dark:border-emerald-500/20'}`}>
-                                        <button onClick={(e) => { e.stopPropagation(); deleteUserItem(mod.id, item.id); }} className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover/file:opacity-100 shadow-lg hover:scale-110 transition-all z-30 border border-white/50"><X size={10} strokeWidth={3} /></button>
-                                        {item.type === 'link' ? <Globe size={20} className="text-blue-500 dark:text-blue-400 relative z-10" /> : <FileText size={20} className="text-emerald-600 dark:text-emerald-400 drop-shadow-sm" />}
-                                        <span className="text-[7px] text-slate-900 dark:text-white font-black text-center truncate w-full block px-0.5 mt-1">{item.name}</span>
-                                    </motion.div>
-                                ))}
-                                <div className="flex flex-col gap-1 shrink-0 ml-1">
-                                    <label onClick={(e) => e.stopPropagation()} className="w-8 h-8 rounded-lg border border-dashed border-emerald-300/50 dark:border-white/20 flex items-center justify-center text-emerald-500 dark:text-white hover:bg-emerald-50 dark:hover:bg-white/10 hover:border-emerald-500 cursor-pointer transition-all"><input type="file" className="hidden" multiple onChange={(e) => handleFileUpload(e, mod.id)} /><Plus size={14} /></label>
-                                    <button onClick={(e) => {e.stopPropagation(); handleAddLink(mod.id);}} className="w-8 h-8 rounded-lg border border-dashed border-blue-300/50 dark:border-white/20 flex items-center justify-center text-blue-500 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-white/10 hover:border-blue-500 cursor-pointer transition-all"><Globe size={14} /></button>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Barra AI Launcher Minimalista com Re-Foco */}
-                        <div className="pt-3 mt-auto flex items-center justify-between border-t border-slate-200/50 dark:border-white/10">
-                            <div className="flex items-center gap-1.5">
-                                <Bot size={12} className="text-indigo-500" />
-                                <span className="text-[8px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">AI Nodes</span>
-                            </div>
-                            <div className="flex gap-2">
-                                {aiServices.map((ai) => (
-                                    <button 
-                                        key={ai.id}
-                                        onClick={(e) => { 
-                                            e.stopPropagation(); 
-                                            const w = 420; 
-                                            const h = 750;
-                                            const left = 50; 
-                                            const top = 100;
-
-                                            // Lógica de RE-FOCO
-                                            if (aiWindows.current[ai.id] && !aiWindows.current[ai.id]?.closed) {
-                                                aiWindows.current[ai.id]?.focus();
-                                            } else {
-                                                aiWindows.current[ai.id] = window.open(
-                                                    ai.url, 
-                                                    ai.name, 
-                                                    `width=${w},height=${h},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no`
-                                                );
-                                            }
-                                        }}
-                                        className={`w-9 h-9 rounded-full ${ai.color} text-white flex items-center justify-center shadow-md hover:scale-110 hover:shadow-xl transition-all border border-white/20 overflow-hidden`}
-                                        title={`Launch ${ai.name}`}
-                                    >
-                                        {ai.logo ? (
-                                            <NextImage src={ai.logo} alt={ai.name} width={20} height={20} className="w-5 h-5 object-contain invert opacity-90" onError={(e) => e.currentTarget.style.display='none'} />
-                                        ) : (
-                                            ai.fallbackIcon && <ai.fallbackIcon size={14} strokeWidth={3} />
-                                        )}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                    </motion.div>
-                ))}
-            </div>
-
-            {/* COLLECTIVE BUILD ZONE — Pro-gated (CollectiveZone component above kept, not rendered) */}
-            <div className="w-full flex justify-center pb-20 relative z-20">
-                <ProFeaturePanel
-                    title="Collective Build Node"
-                    description="Ambiente coletivo para criar trabalhos em tempo real com seus amigos — disponível apenas no Pro."
-                    tooltip="Recurso Pro — em breve"
-                />
+{/* MÓDULO DE AULAS DO ALUNO (Fase 3) — aulas enviadas pelos professores */}
+            <div className="w-full max-w-[1180px] mb-12 z-20 relative">
+                <StudentAulasModule />
             </div>
 
             {/* NEURAL EDITOR (Garantido no final) */}

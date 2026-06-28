@@ -38,6 +38,8 @@ interface ABNTExportRequest {
         content: string;
         subsections: Array<{ title: string; content: string }>;
     }>;
+    apendices?: Array<{ title: string; content: string }>;  // pós-textuais (opcional)
+    anexos?: Array<{ title: string; content: string }>;
 }
 
 async function generateMetaWithGemini(request: ABNTExportRequest): Promise<{
@@ -331,7 +333,7 @@ export async function POST(req: Request) {
             console.error('[ABNT] Python service unreachable:', err);
             return NextResponse.json(
                 {
-                    error: 'Serviço ABNT indisponível. Certifique-se de que o abnt-service está rodando em localhost:8001.',
+                    error: 'O formatador está reiniciando, tente em instantes.',
                     warnings: structured.validation?.warnings || [],
                 },
                 { status: 503 }

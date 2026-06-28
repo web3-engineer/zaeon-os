@@ -6,8 +6,6 @@ import {
     Briefcase,
     Search,
     Bot,
-    Coffee,
-    Wallet,
     PanelLeftClose,
     PanelLeftOpen,
     Focus,
@@ -25,8 +23,6 @@ import CorrectionContent from "@/app/workstation/teacher/CorrectionContent";
 import WorkAreaContent from "@/app/workstation/teacher/WorkAreaContent";
 import ResearchAreaContent from "@/app/workstation/teacher/ResearchAreaContent";
 import AgenticAreaContent from "@/app/workstation/teacher/AgenticAreaContent";
-import LoungeContent from "@/app/workstation/teacher/LoungeContent";
-import FinancesContent from "@/app/workstation/teacher/FinancesContent";
 import HomeworkPage from "@/app/research-lab/page";
 
 export default function TeacherWorkstation() {
@@ -96,8 +92,6 @@ export default function TeacherWorkstation() {
         { id: "research", label: "Pesquisa",           icon: FlaskConical  },
         { id: "repos",    label: "Repositórios",       icon: Library       },
         { id: "agentic",  label: "Pesquisa Agêntica",  icon: Bot           },
-        { id: "lounge",   label: "Lounge",             icon: Coffee        },
-        { id: "finances", label: "Finanças",           icon: Wallet        },
     ];
 
     const renderModuleContent = () => {
@@ -109,8 +103,6 @@ export default function TeacherWorkstation() {
             case "research": return <HomeworkPage isEmbedded={true} />;
             case "repos":    return <ResearchAreaContent />;
             case "agentic":  return <AgenticAreaContent />;
-            case "lounge":   return <LoungeContent />;
-            case "finances": return <FinancesContent />;
             default:         return <div className="p-8 text-black/80 dark:text-white/80 font-medium">Selecione um módulo no menu lateral.</div>;
         }
     };

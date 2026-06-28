@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { BookMarked, Lightbulb, BookOpen } from "lucide-react";
+import { BookMarked, Lightbulb, BookOpen, Layers } from "lucide-react";
 import { useOmegaScholar } from "./OmegaScholarContext";
 import OmegaScholarBar from "./OmegaScholarBar";
 import ActivityThread from "./ActivityThread";
 import GenerateResearchPanel from "@/components/research/GenerateResearchPanel";
 import ReferencesModule from "./modules/ReferencesModule";
+import ResultadosModule from "./modules/ResultadosModule";
 import InsightsModule from "./modules/InsightsModule";
 import PrereqsModule from "./modules/PrereqsModule";
 import OmegaRelatedResearch from "./OmegaRelatedResearch";
@@ -14,6 +15,7 @@ import AuthGateNotice from "@/components/research/AuthGateNotice";
 
 const TABS = [
   { id: "refs", label: "Referências", icon: BookMarked },
+  { id: "results", label: "Resultados", icon: Layers },
   { id: "insights", label: "Insights", icon: Lightbulb },
   { id: "prereqs", label: "Base", icon: BookOpen },
 ];
@@ -70,7 +72,7 @@ export default function OmegaScholarWorkspace() {
           <div data-tour="result-tabs" className="mb-4 flex w-fit max-w-full overflow-x-auto no-scrollbar gap-1.5">
             {TABS.map((t) => {
               const Icon = t.icon; const on = mod === t.id;
-              const count = t.id === "refs" ? s.references?.length : undefined;
+              const count = t.id === "refs" ? s.references?.length : t.id === "results" ? s.results?.length : undefined;
               return (
                 <button key={t.id} onClick={() => setMod(t.id)}
                   className={`inline-flex items-center gap-1.5 text-xs font-semibold whitespace-nowrap px-3.5 py-2 rounded-xl transition-colors motion-reduce:transition-none ${on
@@ -82,6 +84,7 @@ export default function OmegaScholarWorkspace() {
             })}
           </div>
           {mod === "refs" && <ReferencesModule references={s.references ?? []} evidence={s.evidence ?? []} />}
+          {mod === "results" && <ResultadosModule results={s.results ?? []} />}
           {mod === "insights" && <InsightsModule insights={s.insights} />}
           {mod === "prereqs" && <PrereqsModule />}
 

@@ -113,8 +113,10 @@ export function buildAbnt(m: CiteMeta): string {
   if (pub.length) parts.push(`${pub.join(", ")}.`);
   else if (m.publisher) parts.push(`${m.publisher}, ${m.year ?? ""}.`.trim());
 
+  // DOI tem prioridade; só usa "Disponível em" quando não há DOI (alinha com o
+  // formatador do worker → o preview do painel bate com a referência exportada).
   if (m.doi) parts.push(`DOI: ${m.doi.replace(/^https?:\/\/(dx\.)?doi\.org\//, "")}.`);
-  if (m.url) parts.push(`Disponível em: ${m.url}. Acesso em: ${acessoHoje()}.`);
+  else if (m.url) parts.push(`Disponível em: ${m.url}. Acesso em: ${acessoHoje()}.`);
 
   return parts.join(" ").replace(/\s+/g, " ").trim();
 }

@@ -141,18 +141,31 @@ export async function POST(req: Request) {
         // tema (ex.: física em busca de "haskell"). Se vier pouco, mostra pouco.
         const displayReferences = r.references;
 
+        // Aba "Resultados": TODOS os artigos descobertos/deduplicados (não só os citados).
+        // Remove o texto pesado (retrievedText) pra não inchar payload/banco. Cap em 80.
+        const displayResults = unique.slice(0, 80).map((p) => ({
+          id: p.id, title: p.title, authors: p.authors, year: p.year, venue: p.venue,
+          doi: p.doi, arxivId: p.arxivId, url: p.url, pdfUrl: p.pdfUrl,
+          abstract: p.abstract, citationCount: p.citationCount, openAccess: p.openAccess, sources: p.sources,
+        }));
+
+        // const separada (não literal inline) → o campo novo `results` não dispara o
+        // excess-property check do TS enquanto o client do Prisma não é regenerado.
+        // O `prisma generate` (deploy/local) reconhece o campo em runtime.
+        const updateData: any = {
+          status: "done",
+          domain: plan.domain || null,
+          references: displayReferences as any,
+          results: displayResults as any,
+          evidence: r.evidence as any,
+          insights: r.insights as any,
+          gaps: r.gaps as any,
+          files: r.files as any,
+          thread: { answer: r.answer } as any,
+        };
         const saved = await prisma.scholarSession.update({
           where: { id: created.id },
-          data: {
-            status: "done",
-            domain: plan.domain || null,
-            references: displayReferences as any,
-            evidence: r.evidence as any,
-            insights: r.insights as any,
-            gaps: r.gaps as any,
-            files: r.files as any,
-            thread: { answer: r.answer } as any,
-          },
+          data: updateData,
         });
         console.log("[scholar] ✓ DONE:", created.id);
         send({ type: "done", session: saved });

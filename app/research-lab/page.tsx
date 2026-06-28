@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { BRAZILIAN_UNIVERSITIES } from "@/constants/universities";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useSession } from "next-auth/react";
@@ -57,12 +58,12 @@ function navItem(active: boolean, accent: keyof typeof NAV_ACTIVE) {
   void accent; // accent mantido por compatibilidade; o ativo agora é sempre a pill preta
   return `${NAV_BASE} ${active ? NAV_ACTIVE_PILL : NAV_IDLE}`;
 }
-import ResearchRoomTour from "@/components/onboard/ResearchRoomTour";
-import OnboardingGuide from "@/components/onboard/OnboardingGuide";
-import { startTour } from "@/lib/onboarding/tour";
+import { startTour, getTour, nextTour, TOUR_STEPS } from "@/lib/onboarding/tour";
 import { capabilities } from "@/lib/runtime/mode";
 import { useLibraryFiles, type LibraryFile } from "@/lib/useLibraryFiles";
 import { speakSequence as ttsSpeakSequence, stop as ttsStop } from "@/lib/voice/ttsController";
+import { useTTS } from "@/lib/voice/useTTS";
+import VoicePlayButton from "@/components/voice/VoicePlayButton";
 import RichText from "@/components/research/RichText";
 import { useWindowStore } from "@/lib/useWindowStore";
 
@@ -113,6 +114,7 @@ import SavedCitationsSection from "./SavedCitationsSection";
 import LibrarySavedFiles from "./LibrarySavedFiles";
 import { useSavedCitations } from "@/lib/useSavedCitations";
 import { applyCitationDrop } from "@/lib/citationInsert";
+import { insertImageMarker, sanitizeFigureTitle } from "@/lib/imageInsert";
 import { extractCitationBlock } from "@/lib/scholar/chatCitation";
 import ResearchShell from "./ResearchShell";
 import ResearchReadingView from "./ResearchReadingView";
@@ -640,9 +642,18 @@ export default function HomeworkPage({
   // em "pesquisa", o default). SSR cai no default; o cliente corrige no mount.
   const initialTab = (() => {
     if (typeof window === "undefined") return "pesquisa";
-    const t = new URLSearchParams(window.location.search).get("tab");
+    const params = new URLSearchParams(window.location.search);
     const VALID = ["pesquisa", "sala-de-estudos", "pesquisas", "lounge", "pevem", "projetos", "news", "profile"];
-    return t && VALID.includes(t) ? t : "pesquisa";
+    const t = params.get("tab");
+    if (t && VALID.includes(t)) return t;                           // deep-link explícito de aba ganha
+    if (params.get("session") || params.get("worktype")) return "pesquisa"; // deep-links de pesquisa
+    if (params.get("onboard")) return "sala-de-estudos";            // tour começa nos Estudos
+    // PERSISTÊNCIA: volta pra ÚLTIMA sala visitada. 1ª vez de todas → Sala de Estudos (aba Estudos).
+    try {
+      const saved = localStorage.getItem("zaeon.lab.lastTab");
+      if (saved && VALID.includes(saved)) return saved;
+    } catch { /* ignore */ }
+    return "sala-de-estudos";
   })();
   const [activeTab, setActiveTab] = useState<
     | "pesquisa"
@@ -683,6 +694,16 @@ export default function HomeworkPage({
   const [editorZoom, setEditorZoom] = useState(1); // zoom da fonte do editor (0.7–2.2)
   const editorRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Editor "inteligente": preserva scroll + caret por trabalho (workType), pra voltar
+  // exatamente onde estava ao sair pro chat/PDF e voltar (item 10 do handoff).
+  const caretStoreRef = useRef<Record<string, { scroll: number; start: number; end: number }>>({});
+  const saveEditorCaret = () => {
+    const ta = textareaRef.current; if (!ta) return;
+    const key = workType || "default";
+    const data = { scroll: ta.scrollTop, start: ta.selectionStart ?? 0, end: ta.selectionEnd ?? 0 };
+    caretStoreRef.current[key] = data;
+    try { localStorage.setItem(`zaeon.research.caret.${key}`, JSON.stringify(data)); } catch { /* */ }
+  };
   const [citInsertFlash, setCitInsertFlash] = useState(false); // barrinha sutil ao soltar citação
   const [isWorkTypeMenuOpen, setIsWorkTypeMenuOpen] = useState(false);
   const [docTitle, setDocTitle] = useState("minha_pesquisa.pdf");
@@ -693,6 +714,22 @@ export default function HomeworkPage({
   const [hintOpen, setHintOpen] = useState(true);
   const [reviewMode, setReviewMode] = useState(false);
   const [activeProject, setActiveProject] = useState<any>(null);
+
+  // Restaura scroll + caret do editor quando ele volta a ficar visível (mesmo trabalho).
+  // Sessão diferente (outro workType sem posição salva) → começa do topo.
+  useEffect(() => {
+    if (reviewMode) return;
+    const ta = textareaRef.current; if (!ta) return;
+    const key = workType || "default";
+    let data = caretStoreRef.current[key];
+    if (!data) { try { const raw = localStorage.getItem(`zaeon.research.caret.${key}`); if (raw) data = JSON.parse(raw); } catch { /* */ } }
+    if (!data) return;
+    const id = requestAnimationFrame(() => {
+      try { ta.scrollTop = data!.scroll; ta.setSelectionRange(data!.start, data!.end); } catch { /* */ }
+    });
+    return () => cancelAnimationFrame(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reviewMode, workType]);
 
   // --- DATA STATES ---
   const [studyFiles, setStudyFiles] = useState<StudyDoc[]>([]);
@@ -737,22 +774,26 @@ export default function HomeworkPage({
     text: c.abnt,
   }));
 
-  // Saved research sessions — for the 📁 folder panel in ResearchShell
+  // "Minhas coisas" (painel 📁): os TRABALHOS reais do usuário (ResearchWork), não o
+  // histórico de buscas (ScholarSession = as antigas "pesquisas fantasmas").
   const [sessions, setSessions] = useState<
     { id: string; title: string; updatedAt?: string }[]
   >([]);
-  useEffect(() => {
-    fetch("/api/ai/scholar/sessions")
+  const [currentWorkId, setCurrentWorkId] = useState<string | null>(null);
+  const currentWorkIdRef = useRef<string | null>(null);
+  currentWorkIdRef.current = currentWorkId;
+  const loadWorks = useCallback(() => {
+    fetch("/api/research-works")
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data?.sessions)) {
           setSessions(
             data.sessions.map(
-              (s: { id: string; title?: string; createdAt?: string }) => ({
+              (s: { id: string; title?: string; updatedAt?: string }) => ({
                 id: s.id,
                 title: s.title ?? "Pesquisa sem título",
-                updatedAt: s.createdAt
-                  ? new Date(s.createdAt).toLocaleDateString("pt-BR")
+                updatedAt: s.updatedAt
+                  ? new Date(s.updatedAt).toLocaleDateString("pt-BR")
                   : undefined,
               }),
             ),
@@ -761,6 +802,7 @@ export default function HomeworkPage({
       })
       .catch(() => {});
   }, []);
+  useEffect(() => { loadWorks(); }, [loadWorks]);
   const [citationContent, setCitationContent] = useState<string | null>(null);
   const [activeCitationText, setActiveCitationText] = useState<string | null>(
     null,
@@ -864,7 +906,6 @@ export default function HomeworkPage({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfChatRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [voiceOn, setVoiceOn] = useState(false);
   const [voiceLoadingId, setVoiceLoadingId] = useState<number | null>(null);
   const examinerChatRef = useRef<HTMLDivElement>(null);
 
@@ -1069,11 +1110,12 @@ export default function HomeworkPage({
   }, [status]);
 
   useEffect(() => {
-    if (pdfChatRef.current)
-      pdfChatRef.current.scrollTo({
-        top: pdfChatRef.current.scrollHeight,
-        behavior: "smooth",
-      });
+    const el = pdfChatRef.current;
+    if (!el) return;
+    // rAF: espera o layout medir a altura antes de pular pro FIM (instantâneo) — assim,
+    // ao abrir/voltar pro painel, a conversa já aparece no fim, não no começo.
+    const id = requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+    return () => cancelAnimationFrame(id);
   }, [pdfChatHistory, isPdfTyping, activePdfTab]);
   useEffect(() => {
     if (examinerChatRef.current)
@@ -1083,16 +1125,19 @@ export default function HomeworkPage({
       });
   }, [specialistChatHistory.examiner, isExaminerTyping]);
 
-  // Voz automática: fala a última resposta da Aura quando o toggle está ligado.
-  useEffect(() => {
-    if (!voiceOn) return;
-    const last = pdfChatHistory[pdfChatHistory.length - 1];
-    if (last && last.role === "ai") {
-      const { clean } = extractCitationBlock(last.text);
-      void playVoice(clean || last.text);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pdfChatHistory.length, voiceOn]);
+  // Voz GLOBAL da Aura: lê a ÚLTIMA resposta sob demanda (botão Play característico em cima),
+  // pelo controlador único (ttsController via useTTS) → nunca toca duas vozes ao mesmo tempo.
+  const auraTts = useTTS();
+  const toggleAuraVoice = () => {
+    if (auraTts.speaking || auraTts.loading) { auraTts.stop(); return; }
+    const lastAi = [...pdfChatHistory].reverse().find((m) => m.role === "ai");
+    if (!lastAi) return;
+    const { clean } = extractCitationBlock(lastAi.text);
+    void auraTts.speakSequence([clean || lastAi.text]);
+  };
+  // Sem voz sobreposta: ao trocar de aba (chat/citações) ou desmontar o painel, corta a fala.
+  useEffect(() => { ttsStop(); }, [activePdfTab]);
+  useEffect(() => () => { ttsStop(); }, []);
 
   // Zoom do editor por Ctrl/Cmd + scroll (passive:false p/ não deixar a PÁGINA dar zoom)
   useEffect(() => {
@@ -1169,16 +1214,63 @@ export default function HomeworkPage({
   };
   workTypeRef.current = workType; // mantém o ref do tipo ativo p/ handlers de evento
 
-  // "Minhas coisas": novo trabalho (zera a folha do tipo atual) e excluir uma pesquisa salva.
+  // Cria um ResearchWork e o torna o trabalho ATUAL (ao iniciar pesquisa ou "novo trabalho").
+  const createWork = useCallback(async (init?: { title?: string; content?: string; workType?: string }) => {
+    try {
+      const data = { title: init?.title ?? "", content: init?.content ?? "", workType: init?.workType ?? workTypeRef.current ?? undefined };
+      const r = await fetch("/api/research-works", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+      if (r.ok) {
+        const w = await r.json();
+        setCurrentWorkId(w.id);
+        setSessions((prev) => [
+          { id: w.id, title: (w.title && w.title.trim()) || "Pesquisa sem título", updatedAt: new Date().toLocaleDateString("pt-BR") },
+          ...prev.filter((s) => s.id !== w.id),
+        ]);
+        return w.id as string;
+      }
+    } catch { /* */ }
+    return null;
+  }, []);
+
+  // "Minhas coisas": NOVO trabalho (cria work + folha limpa), ABRIR e EXCLUIR um trabalho.
   const handleNewWork = () => {
-    setDocTitle("minha_pesquisa.pdf");
+    setDocTitle("");
     setDocContent(templateFor(workType));
+    setCurrentWorkId(null);
+    void createWork({ workType: workType ?? undefined });
   };
+  const handleOpenWork = useCallback(async (id: string) => {
+    try {
+      const r = await fetch(`/api/research-works?id=${id}`);
+      if (!r.ok) return;
+      const w = await r.json();
+      setDocTitle(w.title || "");
+      setDocContent(w.content || templateFor(workTypeRef.current ?? "TCC"));
+      if (w.workType) setWorkType(w.workType);
+      setCurrentWorkId(id);
+      setActiveTab("pesquisa");
+    } catch { /* */ }
+  }, []);
   const handleDeleteWork = (id: string) => {
-    fetch(`/api/ai/scholar/sessions?id=${id}`, { method: "DELETE" })
-      .then(() => setSessions((prev) => prev.filter((s) => s.id !== id)))
+    fetch(`/api/research-works?id=${id}`, { method: "DELETE" })
+      .then(() => { setSessions((prev) => prev.filter((s) => s.id !== id)); if (currentWorkIdRef.current === id) setCurrentWorkId(null); })
       .catch(() => {});
   };
+
+  // Autosave (debounce ~1s) do trabalho ATUAL → ResearchWork. Só salva quando há work ativo,
+  // então abrir a Sala de Estudos / a folha-template NÃO cria trabalho fantasma.
+  useEffect(() => {
+    const id = currentWorkId;
+    if (!id) return;
+    const t = setTimeout(() => {
+      const data = { id, title: docTitle, content: docContent, workType };
+      fetch("/api/research-works", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((w) => { if (w) setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, title: (w.title && w.title.trim()) || "Pesquisa sem título" } : s))); })
+        .catch(() => {});
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [docTitle, docContent, workType, currentWorkId]);
 
   useEffect(() => {
     return () => {
@@ -1227,6 +1319,24 @@ export default function HomeworkPage({
     ) {
       setActiveTab(tabParam as any);
     }
+  }, []);
+
+  // PERSISTÊNCIA da sala: guarda a última aba visitada. Ao voltar ao laboratório
+  // (sem deep-link), o initialTab restaura daqui — cai exatamente onde parou.
+  useEffect(() => {
+    try { localStorage.setItem("zaeon.lab.lastTab", activeTab); } catch { /* ignore */ }
+  }, [activeTab]);
+
+  // O tour de onboarding COMEÇA no menu inicial (passos "chat" e "menu-estudos", ambos
+  // onMenu). Ao chegar aqui no lab (a pessoa abriu a Sala de Estudos), pula TODOS os
+  // passos de menu de uma vez e cai no passo de pesquisar (que já preenche a barra).
+  useEffect(() => {
+    try {
+      let guard = 0;
+      while (getTour().active && TOUR_STEPS[getTour().index]?.onMenu && guard++ < 12) nextTour();
+      if (getTour().active) setActiveTab("sala-de-estudos");
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Deep-link ?session=<id> (vindo do menu inicial → Pesquisas): abre a ABA PESQUISA e
@@ -1281,6 +1391,8 @@ export default function HomeworkPage({
         }
         if (!workTypeRef.current) setWorkType("TCC");
         setActiveTab("pesquisa");
+        // Inicia um TRABALHO real em "Minhas coisas" (o autosave preenche o conteúdo).
+        void createWork({ title: t.trim().slice(0, 120), workType: workTypeRef.current ?? "TCC" });
       }
     };
     window.addEventListener("zaeon:research:newdoc", onNewDoc);
@@ -1300,23 +1412,14 @@ export default function HomeworkPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Tour guiado da Zaeon: começa quando vem ?onboard=1 (card de boas-vindas) e o
+  // Tour guiado de onboarding: começa quando vem ?onboard=1 (card de boas-vindas) e o
   // usuário ainda não fez (localStorage). O registro no servidor (User.tourDone) é
-  // feito ao concluir/pular. Garante a aba inicial = Sala de Estudos.
+  // feito ao concluir/pular — UMA VEZ por usuário. Garante a aba inicial = Sala de Estudos.
   useEffect(() => {
     try {
       const onboardParam = new URLSearchParams(window.location.search).get("onboard");
-      const replayOn = localStorage.getItem("zaeon.tourReplay") === "1";
       const done = localStorage.getItem("zaeon.tourDone") === "1";
-      // ?onboard=replay → liga o replay persistente (testar à vontade até dar o Ok).
-      if (onboardParam === "replay") {
-        setActiveTab("sala-de-estudos");
-        setTimeout(() => startTour({ replay: true }), 600);
-      } else if (replayOn) {
-        // Replay ligado: reabre o tour a cada visita, ignorando o "feito".
-        setActiveTab("sala-de-estudos");
-        setTimeout(() => startTour(), 600);
-      } else if (onboardParam === "1" && !done) {
+      if (onboardParam === "1" && !done) {
         setActiveTab("sala-de-estudos");
         setTimeout(() => startTour(), 600);
       }
@@ -1580,7 +1683,11 @@ export default function HomeworkPage({
   // Seleção no PDF gerou uma citação → salva na aba de citações.
   const handleSaveCite = (c: import("@/lib/useSavedCitations").SavedCitation) => {
     savePersistedCitation(c);
-    showToast("Citação salva na aba Citações.");
+    showToast(
+      c.incomplete
+        ? "Citação salva — falta a fonte para creditar (complete no painel)."
+        : "Citação salva na aba Citações.",
+    );
   };
 
   // Nível do engine de citação conforme o runtime (Vercel simples vs container robusto).
@@ -1602,79 +1709,9 @@ export default function HomeworkPage({
     }
   };
 
-  // Arrastar uma pesquisa sobre outra → resumo da RELAÇÃO.
-  // Tenta a comparação RICA (os 2 PDFs inteiros → Gemini multimodal). Se algum PDF não
-  // baixar (upload/blob/403), cai no nível metadados (título+abstract) — sem 400.
-  const handleRelateFiles = async (sourceId: string, targetId: string) => {
-    const a = libraryFiles.find((f) => f.id === sourceId);
-    const b = libraryFiles.find((f) => f.id === targetId);
-    if (!a || !b) {
-      showToast("Não achei um dos documentos.");
-      return;
-    }
-    // PASSIVO: abre uma ABA NOVA "A × B" (deletável) com barrinha sutil. Não troca a view —
-    // a aba aparece e o usuário clica quando quiser (regra: docs/RESEARCH_ROOM_RULES.md).
-    const relId = "rel-" + generateSafeId();
-    const shortA = a.title.length > 12 ? a.title.slice(0, 12) + "…" : a.title;
-    const shortB = b.title.length > 12 ? b.title.slice(0, 12) + "…" : b.title;
-    const title = `${a.title} × ${b.title}`;
-    wAddWindow({
-      id: relId,
-      label: `${shortA} × ${shortB}`,
-      emoji: "🔗",
-      type: "document",
-    });
-    wSetActiveId(relId); // mostra a aba de relação na hora (antes abria passiva → parecia que "nada acontecia")
-    setRelSummaries((prev) => ({
-      ...prev,
-      [relId]: { title, text: "", loading: true },
-    }));
-    showToast("Cruzando os dois trabalhos — carregando ✨");
-    try {
-      // Baixa os dois PDFs em paralelo. Ambos OK → comparação rica (Gemini lê os PDFs
-      // inteiros); senão → metadados (o route faz o fallback, sem 400).
-      const [aPdf, bPdf] = await Promise.all([
-        fetchPdfBase64(a.pdfUrl),
-        fetchPdfBase64(b.pdfUrl),
-      ]);
-      const bothPdfs = !!aPdf && !!bPdf;
-      const res = await fetch("/api/ai/relate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          bothPdfs
-            ? {
-                mode: "gemini",
-                a: { pdfUrl: a.pdfUrl, title: a.title, fileData: aPdf },
-                b: { pdfUrl: b.pdfUrl, title: b.title, fileData: bPdf },
-              }
-            : {
-                mode: "vercel",
-                a: { pdfUrl: a.pdfUrl, title: a.title },
-                b: { pdfUrl: b.pdfUrl, title: b.title },
-              },
-        ),
-      });
-      const d = await res.json();
-      setRelSummaries((prev) => ({
-        ...prev,
-        [relId]: {
-          title,
-          text: d.text || "Não consegui relacionar agora.",
-          loading: false,
-        },
-      }));
-    } catch {
-      setRelSummaries((prev) => ({
-        ...prev,
-        [relId]: {
-          title,
-          text: "Erro ao relacionar os documentos.",
-          loading: false,
-        },
-      }));
-    }
-  };
+  // DESATIVADO: a comparação "arraste um documento sobre o outro" não estava funcionando
+  // de forma confiável e foi removida da UI (sem prop onRelate; ver DocIcon). A rota
+  // /api/ai/relate continua existindo, mas não é mais acionada pela folha.
 
   // 🔥 FETCH CORRECTO PARA CHAT AURA
   const handlePdfQuestion = async () => {
@@ -1786,23 +1823,27 @@ export default function HomeworkPage({
     if (!clean) return;
 
     if (msgId != null) setVoiceLoadingId(msgId);
+    setSummaryRead(clean); // liga o karaokê INLINE no painel do resumo (mesmos pedaços da voz)
     try {
       // speakSequence QUEBRA o resumo em pedaços de ~420 chars (1 POST /api/ai/voice por
       // pedaço). O resumo é LONGO; mandado inteiro, o Gemini-TTS estoura 30s e dá 503
       // "aborted" (o speak() comum manda tudo de uma vez — por isso só funcionava com
       // textos curtos, tipo o chat widget). Em pedaços curtos, cada chamada responde rápido.
       void audioRef; // (legado — o áudio é gerido pelo ttsController global)
-      await ttsSpeakSequence([clean]); // sem curinga (resumo não é "documento inteiro")
+      await ttsSpeakSequence([clean]); // mesmos pedaços do TCC → voz sai certa e o karaokê casa
     } catch {
       showToast("Voz indisponível agora.");
     } finally {
       if (msgId != null) setVoiceLoadingId(null);
+      setSummaryRead(null); // leitura terminou → tira o destaque
     }
   };
 
   // Ler a PESQUISA inteira (texto do editor) em voz — COM curinga de cold-start (é documento
   // longo). Play/stop no lugar do caderninho da aba (WindowSwitcher), na voz escolhida.
   const [readingResearch, setReadingResearch] = useState(false);
+  // Karaokê INLINE do resumo por voz: o texto sendo lido no painel do resumo (sem sair dele).
+  const [summaryRead, setSummaryRead] = useState<string | null>(null);
   const readResearch = async () => {
     if (readingResearch) { ttsStop(); setReadingResearch(false); return; }
     if (!docContent.trim()) { showToast("Escreva algo na pesquisa primeiro."); return; }
@@ -1887,6 +1928,83 @@ export default function HomeworkPage({
     setCitInsertFlash(true);
     setTimeout(() => setCitInsertFlash(false), 650);
     showToast("Citação inserida — referência adicionada às Referências.");
+  };
+
+  // Arrastar IMAGEM (biblioteca ou desktop) → marcador de figura da engine.
+  const IMG_MAX_BYTES = 8 * 1024 * 1024;
+  const isImageName = (s: string) => /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(s || "");
+  const readFileAsDataUri = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result || ""));
+      r.onerror = () => reject(r.error);
+      r.readAsDataURL(file);
+    });
+  const urlToDataUri = async (url: string): Promise<string> => {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return readFileAsDataUri(new File([blob], "img", { type: blob.type }));
+  };
+
+  const insertDroppedImage = async (
+    filename: string,
+    cursor: number,
+    getUri: () => Promise<string>,
+    size?: number,
+  ) => {
+    if (size && size > IMG_MAX_BYTES) {
+      showToast("Imagem muito grande para embutir (máx. 8 MB).");
+      return;
+    }
+    let dataUri = "";
+    try {
+      dataUri = await getUri();
+    } catch {
+      showToast("Não consegui ler a imagem.");
+      return;
+    }
+    if (!dataUri.startsWith("data:image")) {
+      showToast("Arquivo não é uma imagem válida.");
+      return;
+    }
+    if (dataUri.length > IMG_MAX_BYTES * 1.4) {
+      showToast("Imagem muito grande para embutir (máx. 8 MB).");
+      return;
+    }
+    const title = sanitizeFigureTitle(filename);
+    setDocContent((prev) =>
+      insertImageMarker(prev, Math.min(cursor, prev.length), { title, dataUri }),
+    );
+    setCitInsertFlash(true);
+    setTimeout(() => setCitInsertFlash(false), 650);
+    showToast("Imagem inserida como figura — ajuste o título/fonte no texto.");
+  };
+
+  // Handler único do editor: citação (intacto) → imagem do desktop → imagem da biblioteca.
+  const handleEditorDrop = (e: React.DragEvent<HTMLTextAreaElement>) => {
+    if (e.dataTransfer.getData("text/zaeon-citation")) {
+      handleCitationDrop(e);
+      return;
+    }
+    // Lê tudo de forma SÍNCRONA (dataTransfer some após await).
+    const ta = textareaRef.current;
+    const cursor = ta ? (ta.selectionStart ?? docContent.length) : docContent.length;
+    const imgFile = Array.from(e.dataTransfer.files || []).find((f) =>
+      f.type.startsWith("image/"),
+    );
+    if (imgFile) {
+      e.preventDefault();
+      void insertDroppedImage(imgFile.name, cursor, () => readFileAsDataUri(imgFile), imgFile.size);
+      return;
+    }
+    const fileId = e.dataTransfer.getData("text/zaeon-file");
+    if (fileId) {
+      const lib = libraryFiles.find((f) => f.id === fileId);
+      if (lib && (isImageName(lib.title) || isImageName(lib.pdfUrl))) {
+        e.preventDefault();
+        void insertDroppedImage(lib.title, cursor, () => urlToDataUri(lib.pdfUrl));
+      }
+    }
   };
 
   // 🔥 FETCH CORRECTO PARA O EXAMINER (Quiz)
@@ -2353,7 +2471,6 @@ export default function HomeworkPage({
                 flipped={isChatLeft}
                 workType={workType}
                 onWorkType={switchWorkType}
-                onRelate={handleRelateFiles}
                 onReadResearch={readResearch}
                 isReadingResearch={readingResearch}
                 onViewDoc={handleViewDoc}
@@ -2373,9 +2490,7 @@ export default function HomeworkPage({
                 sessions={sessions}
                 onNewWork={handleNewWork}
                 onDeleteWork={handleDeleteWork}
-                onOpenSession={() => {
-                  setActiveTab("sala-de-estudos");
-                }}
+                onOpenSession={handleOpenWork}
                 researchWindowContent={
                   <div
                     onClick={() => setActiveSection("doc")}
@@ -2422,17 +2537,17 @@ export default function HomeworkPage({
                           ref={textareaRef}
                           value={docContent}
                           onChange={(e) => setDocContent(e.target.value)}
+                          onSelect={saveEditorCaret}
+                          onScroll={saveEditorCaret}
+                          onBlur={saveEditorCaret}
                           onDragOver={(e) => {
-                            if (
-                              e.dataTransfer.types.includes(
-                                "text/zaeon-citation",
-                              )
-                            ) {
-                              e.preventDefault();
-                              e.dataTransfer.dropEffect = "copy";
-                            }
+                            // Vários navegadores NÃO listam tipos MIME custom no dragover
+                            // (só no drop): permitimos o drop sempre e o handleEditorDrop
+                            // decide se é citação, imagem da biblioteca ou do desktop.
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = "copy";
                           }}
-                          onDrop={handleCitationDrop}
+                          onDrop={handleEditorDrop}
                           style={{
                             fontSize: `${Math.round(17 * editorZoom)}px`,
                           }}
@@ -2502,17 +2617,21 @@ export default function HomeworkPage({
                   </div>
                 }
                 documentWindowContent={
-                  <div className="h-full flex flex-col bg-white dark:bg-[#0f172a]">
+                  <div className="relative h-full flex flex-col bg-white dark:bg-[#0f172a]">
+                    {/* Karaokê INLINE do resumo por voz — fica DENTRO deste painel (absolute
+                        inset-0), destaca trecho a trecho e NÃO sai do tamanho do painel. */}
+                    {summaryRead && (
+                      <ResearchReadingView text={summaryRead} onStop={() => { ttsStop(); setSummaryRead(null); }} />
+                    )}
                     <div className="flex items-center justify-end px-4 pt-3 shrink-0">
-                      <button
-                        onClick={() => setVoiceOn((v) => !v)}
-                        title="Aura fala cada nova resposta"
-                        className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wide px-3 py-1.5 rounded-full border transition-colors ${voiceOn ? "bg-cyan-600 text-white border-cyan-600" : "text-slate-500 dark:text-white/50 border-slate-300/60 dark:border-white/15 hover:border-cyan-400/50"}`}
-                      >
-                        {voiceOn
-                          ? "🔊 Voz automática: ON"
-                          : "🔈 Voz automática: OFF"}
-                      </button>
+                      <VoicePlayButton
+                        playing={auraTts.speaking}
+                        loading={auraTts.loading}
+                        onClick={toggleAuraVoice}
+                        disabled={!pdfChatHistory.some((m) => m.role === "ai")}
+                        size={40}
+                        label={auraTts.speaking ? "Parar a leitura" : "Ouvir a última resposta da Aura"}
+                      />
                     </div>
                     <div
                       ref={pdfChatRef}
@@ -2557,15 +2676,6 @@ export default function HomeworkPage({
                               agentImg="/agents/aura.png"
                               userImg={session?.user?.image}
                             />
-                            <button
-                              onClick={() =>
-                                playVoice(parsed.clean || msg.text, i)
-                              }
-                              disabled={voiceLoadingId === i}
-                              className="ml-12 mb-1 inline-flex items-center gap-1 text-[10px] font-bold text-cyan-700 dark:text-cyan-300 hover:underline disabled:opacity-50"
-                            >
-                              {voiceLoadingId === i ? "🔊 …" : "🔊 ouvir"}
-                            </button>
                             {parsed.citation && (
                               <div className="ml-12 mt-1 mb-2 p-3 rounded-2xl bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-300/60 dark:border-cyan-400/20">
                                 <p className="text-[8px] font-black uppercase tracking-widest text-cyan-700 dark:text-cyan-300 mb-1">
@@ -2820,8 +2930,8 @@ export default function HomeworkPage({
                       </motion.div>
                     ))}
                   </div>
-                  <p className="text-[10px] text-slate-400 uppercase tracking-widest animate-pulse">
-                    Aguarde — formatando conforme ABNT NBR 14724:2011...
+                  <p className="text-[10px] text-slate-600 dark:text-slate-300 uppercase tracking-widest animate-pulse">
+                    Aguarde — formatando seu trabalho…
                   </p>
                 </div>
               )}
@@ -2835,11 +2945,11 @@ export default function HomeworkPage({
                         Passo 1 de 2
                       </span>
                     </div>
-                    <h3 className="text-xl font-black text-black dark:text-white">
-                      Exportar com ABNT
+                    <h3 className="text-2xl font-black text-black dark:text-white">
+                      Exportar seu trabalho
                     </h3>
-                    <p className="text-[11px] font-bold text-slate-500 mt-1 uppercase tracking-wider">
-                      Preencha os metadados do trabalho
+                    <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mt-1 uppercase tracking-wider">
+                      Formatação acadêmica automática
                     </p>
                   </div>
 
@@ -2863,6 +2973,7 @@ export default function HomeworkPage({
                         Instituição *
                       </label>
                       <input
+                        list="zaeon-universities"
                         value={abntMeta.institution}
                         onChange={(e) =>
                           setAbntMeta((prev) => ({
@@ -2870,9 +2981,15 @@ export default function HomeworkPage({
                             institution: e.target.value,
                           }))
                         }
-                        placeholder="Universidade Federal..."
+                        placeholder="Busque sua instituição"
                         className="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-black dark:text-white text-sm focus:border-cyan-500 outline-none transition-colors"
                       />
+                      {/* Busca por nome/sigla das instituições reais; permite digitar "outra" livremente. */}
+                      <datalist id="zaeon-universities">
+                        {BRAZILIAN_UNIVERSITIES.map((u) => (
+                          <option key={u.id} value={u.name}>{u.acronym} — {u.city}/{u.state}</option>
+                        ))}
+                      </datalist>
                     </div>
 
                     {workType === "TCC" && (
@@ -2907,7 +3024,7 @@ export default function HomeworkPage({
                               city: e.target.value,
                             }))
                           }
-                          placeholder="São Paulo"
+                          placeholder=""
                           className="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-black dark:text-white text-sm focus:border-cyan-500 outline-none transition-colors"
                         />
                       </div>
@@ -2944,7 +3061,7 @@ export default function HomeworkPage({
                                 fontChoice: f,
                               }))
                             }
-                            className={`flex-1 py-2.5 rounded-xl text-[11px] font-black border-2 transition-all ${abntMeta.fontChoice === f ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-950/30 text-cyan-600 dark:text-cyan-400" : "border-slate-200 dark:border-white/10 text-slate-500"}`}
+                            className={`flex-1 py-2.5 rounded-xl text-[11px] font-black border-2 transition-all ${abntMeta.fontChoice === f ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-950/30 text-cyan-600 dark:text-cyan-400" : "border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300"}`}
                           >
                             {f}
                           </button>
@@ -2962,7 +3079,7 @@ export default function HomeworkPage({
                         className="w-full py-3 px-4 rounded-2xl text-[11px] font-black border-2 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:border-cyan-500 hover:text-cyan-500 flex items-center gap-3 transition-all"
                       >
                         <CloudArrowUpIcon className="w-5 h-5 text-cyan-500 shrink-0" />
-                        Salvar na Nuvem (sem formatação ABNT)
+                        Salvar rascunho (sem formatar)
                       </button>
                     </div>
                   </div>
@@ -2975,7 +3092,7 @@ export default function HomeworkPage({
                         !abntMeta.city.trim() ||
                         !abntMeta.year.trim()
                       }
-                      className="px-8 py-3 rounded-full text-[11px] font-black bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white uppercase tracking-widest shadow-xl transition-all flex items-center gap-2"
+                      className="px-8 py-3 rounded-full text-[11px] font-black bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-500 hover:to-cyan-400 disabled:opacity-40 text-white uppercase tracking-widest shadow-xl shadow-cyan-500/20 transition-all flex items-center gap-2"
                     >
                       Próximo → Formato
                     </button>
@@ -3001,14 +3118,14 @@ export default function HomeworkPage({
                     <h3 className="text-xl font-black text-black dark:text-white">
                       Escolha o formato
                     </h3>
-                    <p className="text-[11px] font-bold text-slate-500 mt-1">
-                      O documento será formatado automaticamente pela IA com
-                      todas as regras ABNT NBR 14724:2011.
+                    <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mt-1">
+                      A IA formata o documento automaticamente.{" "}
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-white/10 text-[9px] uppercase tracking-wider text-slate-500 dark:text-slate-400">padrão acadêmico · NBR 14724</span>
                     </p>
                   </div>
 
                   {/* Resumo dos metadados */}
-                  <div className="mb-4 p-3 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-[10px] text-slate-500 space-y-0.5">
+                  <div className="mb-4 p-3 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-[10px] text-slate-600 dark:text-slate-300 space-y-0.5">
                     <p>
                       <span className="font-black text-black dark:text-white">
                         Instituição:
@@ -3135,7 +3252,7 @@ export default function HomeworkPage({
                         <div className="font-black text-sm text-black dark:text-white">
                           PDF — ABNT
                         </div>
-                        <div className="text-[10px] text-slate-500 font-normal normal-case mt-0.5">
+                        <div className="text-[10px] text-slate-600 dark:text-slate-300 font-normal normal-case mt-0.5">
                           Download em PDF com formatação acadêmica completa
                         </div>
                       </div>
@@ -3152,7 +3269,7 @@ export default function HomeworkPage({
                         <div className="font-black text-sm text-black dark:text-white">
                           Word (.docx) — ABNT
                         </div>
-                        <div className="text-[10px] text-slate-500 font-normal normal-case mt-0.5">
+                        <div className="text-[10px] text-slate-600 dark:text-slate-300 font-normal normal-case mt-0.5">
                           Download editável com todas as normas aplicadas
                         </div>
                       </div>
@@ -3234,10 +3351,8 @@ export default function HomeworkPage({
         )}
       </AnimatePresence>
 
-      {/* Interactive onboarding tour for first-time users */}
-      {showTour && <ResearchRoomTour onComplete={() => setShowTour(false)} />}
-      {/* Tour guiado da Zaeon (golden path) */}
-      <OnboardingGuide />
+      {/* Tour guiado da Zaeon (golden path) agora é GLOBAL (montado no layout),
+          pra começar no menu inicial e continuar aqui. (Tour antigo removido.) */}
     </div>
   );
 }

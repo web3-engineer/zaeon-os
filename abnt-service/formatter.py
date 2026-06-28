@@ -12,6 +12,8 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
+from docx.opc.part import Part
+from docx.opc.packuri import PackURI
 
 import abnt_rules as R
 from models import DocumentPayload
@@ -28,8 +30,12 @@ def build_abnt_document(payload: DocumentPayload) -> bytes:
     _setup_page(doc)
     _setup_base_style(doc, font)
 
+    # ── Seção 1: CAPA (não contada, sem numeração) ──
     _add_cover_page(doc, payload, font)
-    doc.add_page_break()
+
+    # ── Seção 2: PRÉ-TEXTUAIS (contadas a partir da folha de rosto = pág. 1) ──
+    pretextual = _new_section(doc)
+    _set_section_start_page(pretextual, 1)  # capa não conta; folha de rosto = 1
 
     _add_title_page(doc, payload, font)
     doc.add_page_break()
@@ -49,9 +55,15 @@ def build_abnt_document(payload: DocumentPayload) -> bytes:
         _add_body_section(doc, section, i, font, counters)
 
     doc.add_page_break()
-    _add_references(doc, payload.references, font)
+    _add_references(doc, payload.references, font, counters)
+
+    _add_appendices(doc, payload.apendices, "APÊNDICE", R.BM_APPENDIX, font, counters)
+    _add_appendices(doc, payload.anexos, "ANEXO", R.BM_ANNEX, font, counters)
 
     _add_page_numbers(doc)
+
+    if counters.get("footnotes"):
+        _build_footnotes_part(doc, counters["footnotes"], font)
 
     buf = io.BytesIO()
     doc.save(buf)
@@ -60,6 +72,43 @@ def build_abnt_document(payload: DocumentPayload) -> bytes:
 
 
 # ── Configuração de página ─────────────────────────────────────
+
+def _setup_section(section):
+    section.page_width  = Cm(R.PAGE_WIDTH_CM)
+    section.page_height = Cm(R.PAGE_HEIGHT_CM)
+    section.left_margin   = Cm(R.MARGIN_LEFT_CM)
+    section.right_margin  = Cm(R.MARGIN_RIGHT_CM)
+    section.top_margin    = Cm(R.MARGIN_TOP_CM)
+    section.bottom_margin = Cm(R.MARGIN_BOTTOM_CM)
+
+
+def _new_section(doc: Document):
+    """Quebra de seção (nova página) com a mesma configuração de página ABNT."""
+    section = doc.add_section(WD_SECTION.NEW_PAGE)
+    _setup_section(section)
+    return section
+
+
+def _set_section_start_page(section, start: int):
+    sectPr = section._sectPr
+    pgNumType = sectPr.find(qn('w:pgNumType'))
+    if pgNumType is None:
+        pgNumType = OxmlElement('w:pgNumType')
+        sectPr.append(pgNumType)
+    pgNumType.set(qn('w:start'), str(start))
+
+
+def _set_section_continue(section):
+    """Remove o 'start' herdado (add_section copia o sectPr anterior) para a
+    numeração continuar em vez de reiniciar."""
+    sectPr = section._sectPr
+    pgNumType = sectPr.find(qn('w:pgNumType'))
+    if pgNumType is not None:
+        if qn('w:start') in pgNumType.attrib:
+            del pgNumType.attrib[qn('w:start')]
+        if not pgNumType.attrib:
+            sectPr.remove(pgNumType)
+
 
 def _setup_page(doc: Document):
     section = doc.sections[0]
@@ -373,7 +422,9 @@ def _add_body_section(doc: Document, section_data, number: int, font: str, count
 
     for j, sub in enumerate(section_data.subsections, start=1):
         sub_title = f"{number}.{j} {sub.title.upper()}"
-        _subsection_title(doc, sub_title, font)
+        stp = _subsection_title(doc, sub_title, font)
+        if counters is not None:
+            _add_bookmark(stp, f"{R.BM_SECTION}{number}sub{j}", counters)
         for block in _split_paragraphs(sub.content):
             _add_paragraph(doc, block, font, counters)
 
@@ -395,9 +446,7 @@ def _add_paragraph(doc: Document, text: str, font: str, counters: dict = None):
         p.paragraph_format.first_line_indent = Cm(R.PARAGRAPH_INDENT_CM)
         p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.MULTIPLE
         p.paragraph_format.line_spacing = R.LINE_SPACING_BODY
-        run = p.add_run(text)
-        run.font.name = font
-        run.font.size = Pt(R.FONT_SIZE_BODY_PT)
+        _add_text_with_footnotes(p, text, font, counters)
 
 
 def _add_long_quote(doc: Document, text: str, font: str):
@@ -826,37 +875,29 @@ def _blank_line(doc: Document, font: str):
 # ── Numeração de páginas ───────────────────────────────────────
 
 def _add_page_numbers(doc: Document):
-    """
-    Adiciona numeração de páginas no canto superior direito (header).
-    Começa a exibir a partir da 1ª página (capa).
-    """
-    for section in doc.sections:
+    """Numeração no canto superior direito, visível SOMENTE na parte textual
+    (última seção). Capa e pré-textuais ficam sem número (NBR 14724)."""
+    last = len(doc.sections) - 1
+    for i, section in enumerate(doc.sections):
         header = section.header
         header.is_linked_to_previous = False
-
-        # Limpa conteúdo anterior do header
         for para in header.paragraphs:
             para.clear()
-
-        if header.paragraphs:
-            p = header.paragraphs[0]
-        else:
-            p = header.add_paragraph()
-
+        p = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         p.paragraph_format.first_line_indent = Cm(0)
+
+        if i != last:
+            continue  # capa e pré-textuais: header vazio (sem número)
 
         run = p.add_run()
         fldChar1 = OxmlElement('w:fldChar')
         fldChar1.set(qn('w:fldCharType'), 'begin')
-
         instrText = OxmlElement('w:instrText')
         instrText.set(qn('xml:space'), 'preserve')
         instrText.text = 'PAGE'
-
         fldChar2 = OxmlElement('w:fldChar')
         fldChar2.set(qn('w:fldCharType'), 'end')
-
         run._r.append(fldChar1)
         run._r.append(instrText)
         run._r.append(fldChar2)

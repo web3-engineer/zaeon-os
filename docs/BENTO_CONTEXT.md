@@ -1,8 +1,8 @@
-# ZION_CONTEXT — mapa de features e agentes da Zaeon OS
+# BENTO_CONTEXT — mapa de features e agentes da Zaeon OS
 
-> Fonte de verdade do contexto que orienta a **Zion** (agente orquestrador) a
+> Fonte de verdade do contexto que orienta a **Bento** (agente orquestrador) a
 > entender a plataforma inteira sem se perder. Mantido à mão; também serve de base
-> para o admin alimentar contexto dinâmico (ver docs/ZION_ADMIN_CONTEXT_FEED_PLAN.md).
+> para o admin alimentar contexto dinâmico (ver docs/BENTO_ADMIN_CONTEXT_FEED_PLAN.md).
 >
 > Atualizado: 2026-06-15.
 
@@ -21,7 +21,7 @@ por convite e plano Plus grátis para estudantes.
 ## Agentes (personas em `app/api/ai/chat/route.ts`)
 | Agente | Papel | Onde |
 |---|---|---|
-| **Zion** | Orquestrador central: conhece todos os agentes/salas, faz onboarding e guia o usuário. | Ícone ⟁ global (FAB) |
+| **Bento** | Orquestrador central: conhece todos os agentes/salas, faz onboarding e guia o usuário. | Ícone ⟁ global (FAB) |
 | **Aura** | IA principal de pesquisa: dialoga sobre PDFs, orquestra, sugere pautas/citações. | Sala de Pesquisa |
 | **Scholar** | Citações ABNT (trechos verbatim + referências). | Pesquisa |
 | **Examiner** | Cria perguntas a partir do PDF para testar o usuário. | Pesquisa |
@@ -83,4 +83,4 @@ seguindo o plano). Toggle "Pensar mais a fundo" no chat. O default segue **Flash
 ## Convenção visual
 - Liquid glass; **paleta azul→ciano da Zaeon** (`#0ea5e9`→`#22d3ee`); roxo reduzido.
 - Sinais: roxo=processando, ciano=conectado/estável, vermelho=erro, verde=pronto.
-- Ícone característico: triângulo **⟁** (barra de pesquisa e, agora, o FAB da Zion).
+- Ícone característico: triângulo **⟁** (barra de pesquisa e, agora, o FAB da Bento).

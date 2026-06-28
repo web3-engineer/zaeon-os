@@ -255,8 +255,9 @@ model Plugin {
   name              String
   author            String   @default("Zaeon Core")
   description       String
-  category          String   // Essencial, Agentes, Mentorias, Blockchain
+  category          String   // Essencial, Agentes, Mentorias
   tag               String?  // Livre, Alunos, VIP
+  imageUrl          String?  // capa do plugin (URL); fallback p/ ícone por categoria
   price             Float    @default(0)
   actionUrl         String
   isLocked          Boolean  @default(false)
@@ -407,7 +408,8 @@ model ScholarSession {
   domain     String?
   status     String   @default("running") // running | done | error
   thread     Json?    // progress phases + synthesized answer
-  references Json?    // Paper[]  (see lib/scholar/types.ts)
+  references Json?    // Paper[] VERIFICADAS (curadas, mostradas na aba Referências)
+  results    Json?    // Paper[] TODOS os descobertos/deduplicados (aba Resultados)
   evidence   Json?    // EvidenceRecord[]  (only verified shown as fact)
   insights   Json?    // { summary, trends[], contradictions[] }
   gaps       Json?    // { description, rqCards[] }  (mantido para auditoria; fora da UI desde Sugestão)
@@ -417,6 +419,22 @@ model ScholarSession {
   updatedAt  DateTime @updatedAt
 
   @@index([userId])
+}
+
+// "Minhas coisas" da Sala de Pesquisa: o TRABALHO real do usuário (título + texto do
+// editor). Diferente de ScholarSession (histórico de BUSCAS, criado a cada pesquisa) —
+// só ações de pesquisa/escrita na Sala de Pesquisa criam um ResearchWork.
+model ResearchWork {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  title     String?
+  content   String?
+  workType  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("research_works")
 }
 
 model PastResearchChat {
@@ -439,6 +457,7 @@ model StudySpace {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   userId    String   @db.ObjectId
   title     String   @default("Meus Estudos")
+  kind      String   @default("study") // study (Meus Estudos) | aula (canvas de criação de aula do professor)
   members   String[] @default([])   // co-autores (Lounge) — userIds com acesso de leitura/escrita
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -557,4 +576,109 @@ model StudioArtifact {
   @@index([ownerId, kind])
   @@index([ownerId, createdAt])
   @@map("studio_artifacts")
+}
+
+// ─── Aulas (LMS leve) — Turma é a entidade dona do vínculo professor↔alunos. ───
+// FKs são ObjectId "cru" (sem @relation), como `referredBy` no User — as queries
+// cruzam manualmente nas rotas (evita back-relations e não mexe no model User).
+model Turma {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  professorId String   @db.ObjectId
+  name        String   // "Cálculo I", "História 9ºB"…
+  createdAt   DateTime @default(now())
+
+  @@index([professorId])
+  @@map("turmas")
+}
+
+model TurmaMember {     // aluno↔turma (pivot); a relação que importa
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  turmaId   String   @db.ObjectId
+  studentId String   @db.ObjectId
+  joinedAt  DateTime @default(now())
+
+  @@unique([turmaId, studentId])
+  @@index([studentId])
+  @@map("turma_members")
+}
+
+model TurmaInvite {     // convite por token (rotulado pela turma/aula no card do chat)
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  turmaId   String    @db.ObjectId
+  token     String    @unique
+  label     String
+  uses      Int       @default(0)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([turmaId])
+  @@map("turma_invites")
+}
+
+model Aula {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  professorId String    @db.ObjectId
+  turmaId     String?   @db.ObjectId         // null enquanto rascunho geral
+  title       String
+  body        String?                        // markdown (base generativa)
+  youtubeIds  String[]  @default([])         // vídeos indexados
+  status      String    @default("draft")    // draft | sent
+  sentAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([professorId])
+  @@index([turmaId])
+  @@map("aulas")
+}
+
+model AulaQuiz {
+  id         String  @id @default(auto()) @map("_id") @db.ObjectId
+  aulaId     String  @unique @db.ObjectId
+  title      String
+  passingPct Int     @default(70)
+
+  @@map("aula_quizzes")
+}
+
+model AulaQuestion {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  quizId   String   @db.ObjectId
+  text     String
+  type     String   // choice | input | open | voice | roulette | cloze | dragwords | … (ver lib/aulas/blockTypes)
+  options  Json?    // [{text,isCorrect,explanation}] (choice)
+  accepted String[] @default([]) // respostas aceitas (input)
+  marks    Int      @default(1)  // PONTOS do item (editável no painel de pontuação — Lote 9)
+  noPaste  Boolean  @default(false) // resposta escrita: bloqueia colar (anti-cola casual)
+  config   Json?    // dados específicos do módulo (roleta pool/rounds, cloze, dragwords, memória, ramificado)
+  order    Int
+
+  @@index([quizId])
+  @@map("aula_questions")
+}
+
+model AulaQuizSubmission {   // tentativa + nota (assertividade)
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  quizId     String   @db.ObjectId
+  studentId  String   @db.ObjectId
+  percentage Float
+  passed     Boolean
+  answers    Json     // [{questionId, answer, audioUrl?, transcript?, isCorrect, marks, marksOutOf}]
+  createdAt  DateTime @default(now())
+
+  @@index([quizId])
+  @@index([studentId])
+  @@map("aula_quiz_submissions")
+}
+
+model AulaProgress {        // progresso/completude por aluno por aula
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  aulaId    String   @db.ObjectId
+  studentId String   @db.ObjectId
+  status    String   @default("new") // new | in_progress | completed
+  readingMs Int      @default(0)     // tempo de leitura (modo foco)
+  updatedAt DateTime @updatedAt
+
+  @@unique([aulaId, studentId])
+  @@index([studentId])
+  @@map("aula_progress")
 }
