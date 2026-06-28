@@ -253,9 +253,8 @@ export default function PdfViewer({ file, onCite }: PdfViewerProps) {
         </div>
       )}
 
-      {/* Barra: instrução + zoom */}
+      {/* Barra: zoom + voz (instrução removida a pedido) */}
       <div className="shrink-0 px-3 py-1.5 text-[10px] text-white/55 border-b border-white/10 flex items-center gap-2 bg-[#2c2c34]">
-        <span className="truncate">✦ Selecione um trecho — a Aura salva a citação em ABNT.</span>
         {citing && <span className="text-cyan-300 animate-pulse">cruzando fonte…</span>}
         {loadingDoc && !citing && <span className="text-white/40">abrindo…</span>}
         <div className="ml-auto flex items-center gap-1 shrink-0">

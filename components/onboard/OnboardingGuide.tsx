@@ -46,13 +46,18 @@ export default function OnboardingGuide() {
     return () => el.removeEventListener("click", onClick);
   }, [step?.target, step?.clickTarget, tour.index]);
 
-  // Avança quando a AÇÃO acontece (evento real da app).
+  // Avança quando a AÇÃO acontece (evento real da app). Aceita 1 ou VÁRIOS eventos
+  // (qualquer um deles avança) — ex.: salvar referência dispara libraryFiles OU savedCitations.
   useEffect(() => {
-    if (!step?.advanceEvent) return;
+    const events = [
+      ...(step?.advanceEvent ? [step.advanceEvent] : []),
+      ...(step?.advanceEvents || []),
+    ];
+    if (!events.length) return;
     const onEvt = () => nextTour();
-    window.addEventListener(step.advanceEvent, onEvt as EventListener, { once: true });
-    return () => window.removeEventListener(step.advanceEvent!, onEvt as EventListener);
-  }, [step?.advanceEvent, tour.index]);
+    events.forEach((ev) => window.addEventListener(ev, onEvt as EventListener, { once: true }));
+    return () => events.forEach((ev) => window.removeEventListener(ev, onEvt as EventListener));
+  }, [step?.advanceEvent, step?.advanceEvents, tour.index]);
 
   if (!mounted || !step) return null;
 

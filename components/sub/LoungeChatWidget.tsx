@@ -33,6 +33,7 @@ import { useMission, startMission } from "@/lib/agents/mission";
 import { getAgentContext, hydrateAgentContext, setAgentContext, pushAgentAction } from "@/lib/agent/context";
 import { startPlan, usePlan, setStepStatus, advancePlan, finishPlan, type AgentStep } from "@/lib/agent/actions";
 import UpgradeCard from "@/components/ui/UpgradeCard";
+import { isSuperAdminEmail } from "@/lib/auth/roles";
 import type { AIState } from "@/components/main/ZaeonLogo";
 
 const TypewriterText = ({ text, onComplete }: { text: string, onComplete: () => void }) => {
@@ -77,7 +78,7 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
     const { data: session, status } = useSession();
     // @ts-ignore
     const fallbackId = session?.user?.id || "";
-    const isTeacher = (session?.user as any)?.role === "teacher" || (session?.user as any)?.role === "professor";
+    const isTeacher = (session?.user as any)?.role === "teacher" || (session?.user as any)?.role === "professor" || isSuperAdminEmail((session?.user as any)?.email);
 
     const [isOpen, setIsOpen] = useState(defaultOpen);
     const [widgetPosition, setWidgetPosition] = useState<'right' | 'left'>('left'); // default: encaixado no canto da sidebar (esquerda). Movível.
@@ -110,6 +111,8 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
     const recognitionRef = useRef<any>(null);
     const wantListenRef = useRef(false);   // conversa por voz ativa (reabre o mic a cada turno)
     const [callOn, setCallOn] = useState(false); // "em chamada" (modo conversa mãos-livres)
+    const [onboarding, setOnboarding] = useState(false); // tour ativo → ligação automática + overlay leve
+    const [orbMinimized, setOrbMinimized] = useState(false); // call rodando com o orb full-screen escondido
     const [voiceAllowed, setVoiceAllowed] = useState(true); // gating: voz é premium (Pulse+)
     const [showUpgrade, setShowUpgrade] = useState(false);
     const finalRef = useRef("");            // transcrição final da fala atual
@@ -162,6 +165,16 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
     const openH = isMobile ? Math.round((typeof window !== "undefined" ? window.innerHeight : 800) * 0.84) : 450;
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    // Autofocus: ao abrir o widget no chat com a Zaeon, foca o input sozinho (sem clicar).
+    // Delay pra esperar a animação do framer-motion terminar.
+    useEffect(() => {
+        if (isOpen && activeChat?.isAgent) {
+            const t = setTimeout(() => inputRef.current?.focus(), 120);
+            return () => clearTimeout(t);
+        }
+    }, [isOpen, activeChat?.isAgent]);
 
     // 🔥 SAUDAÇÃO INICIAL DO AGENTE + NOTIFICAÇÃO
     useEffect(() => {
@@ -265,6 +278,40 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
         wantListenRef.current = true;
         startListening();
     };
+
+    // ONBOARDING: ao iniciar o tour, abre o widget e LIGA automaticamente pra Zaeon (sem o gate
+    // premium de voz), com overlay LEVE (ondas dentro do chat, sem cobrir os botões). Ao terminar,
+    // encerra a chamada e limpa tudo.
+    useEffect(() => {
+        const onStart = () => {
+            setOnboarding(true);
+            setOrbMinimized(false);
+            setActiveChat(ZAEON_AGENT);
+            setIsOpen(true);
+            // Liga a chamada direto, sem requireVoice() (durante o tour a voz é sempre permitida).
+            setCallOn(true);
+            setVoiceModeState("active");
+            wantListenRef.current = true;
+            startListening();
+        };
+        const onStop = () => {
+            setOnboarding(false);
+            setCallOn(false);
+            wantListenRef.current = false;
+            stopListening();
+            try { tts.stop(); } catch { /* */ }
+        };
+        window.addEventListener("zaeon:onboard:start", onStart);
+        window.addEventListener("zaeon:onboard:stop", onStop);
+        return () => {
+            window.removeEventListener("zaeon:onboard:start", onStart);
+            window.removeEventListener("zaeon:onboard:stop", onStop);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Quando a chamada termina, o orb minimizado deixa de fazer sentido → reseta.
+    useEffect(() => { if (!callOn) setOrbMinimized(false); }, [callOn]);
 
     // Conversa contínua: quando a Zaeon TERMINA de falar (modo ativo), reabre o mic pro próximo turno.
     useEffect(() => {
@@ -678,7 +725,15 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                         )}
                         <button
                             data-tour="chat-flip"
-                            onClick={(e) => { e.stopPropagation(); setWidgetPosition(p => p === 'right' ? 'left' : 'right'); }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setWidgetPosition(p => {
+                                    const next = p === 'right' ? 'left' : 'right';
+                                    // Onboarding: virar PRA DIREITA é o passo obrigatório do tour.
+                                    if (next === 'right') { try { window.dispatchEvent(new CustomEvent("zaeon:chat:flipped-right")); } catch { /* */ } }
+                                    return next;
+                                });
+                            }}
                             className="text-slate-400 hover:text-cyan-500 transition-colors p-1"
                             title="Mudar Lado do Widget"
                         >
@@ -833,6 +888,12 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                                             </div>
                                         </div>
                                     )}
+                                    {/* Onboarding: feedback de voz LEVE dentro do chat (não cobre os botões do header). */}
+                                    {onboarding && (isListening || tts.speaking || tts.loading) && (
+                                        <div className="flex justify-center py-2">
+                                            <VoiceWaveIndicator size={20} />
+                                        </div>
+                                    )}
                                     <div ref={messagesEndRef} />
                                 </div>
 
@@ -884,6 +945,8 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                                     )}
                                     <div className="flex items-center gap-2 bg-white dark:bg-[#0f172a] rounded-full border border-slate-300 dark:border-white/10 p-1 pl-4 shadow-inner focus-within:border-cyan-400 dark:focus-within:border-cyan-500/50 transition-colors">
                                         <input
+                                            ref={inputRef}
+                                            autoFocus
                                             type="text"
                                             value={messageInput}
                                             onChange={(e) => setMessageInput(e.target.value)}
@@ -1011,10 +1074,14 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
             />
 
             <VoiceOrbModal
-                open={isListening || (voiceMode === "active" && (isZaeonTyping || tts.loading || tts.speaking))}
+                open={!orbMinimized && !onboarding && (isListening || (voiceMode === "active" && (isZaeonTyping || tts.loading || tts.speaking)))}
                 state={isListening ? "listening" : (isZaeonTyping || tts.loading) ? "thinking" : "speaking"}
                 caption={isListening ? (messageInput || "Pode falar — estou te ouvindo.") : undefined}
-                onClose={() => { wantListenRef.current = false; if (isListening) stopListening(); tts.stop(); }}
+                onClose={() => {
+                    // Em chamada: NÃO encerra — só minimiza o orb (a call segue rodando no FAB).
+                    if (callOn) { setOrbMinimized(true); return; }
+                    wantListenRef.current = false; if (isListening) stopListening(); tts.stop();
+                }}
             />
 
             <style jsx global>{`

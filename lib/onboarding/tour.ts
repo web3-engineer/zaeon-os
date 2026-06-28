@@ -15,6 +15,7 @@ export type TourStep = {
   target?: string;           // seletor do elemento a destacar (coachmark)
   clickTarget?: boolean;     // avança ao CLICAR no próprio elemento destacado (sem botão)
   advanceEvent?: string;     // avança quando este window event dispara (ação concluída)
+  advanceEvents?: string[];  // idem, porém aceita VÁRIOS eventos (qualquer um avança)
   prefill?: string;          // pré-preenche a barra de pesquisa ao entrar no passo
   tab?: string;              // garante a aba certa (dispara zaeon:set-tab)
   info?: boolean;            // passo só explicativo → mostra um "Ok" leve pra seguir
@@ -28,14 +29,14 @@ export type TourStep = {
 export const TOUR_STEPS: TourStep[] = [
   // — 1) FOCO NO CHAT: 1º destaque é só o chat (o resto fica obscurecido pelo overlay).
   //    A Zaeon se apresenta e mostra que dá pra jogar o chat pro outro lado.
-  { id: "chat", onMenu: true, info: true, cta: "Vamos lá ✦", target: '[data-tour="chat-widget"]',
-    hint: "💬 Aqui é a Zaeon — sua IA",
-    say: "Oi! Esse cantinho aqui é o **nosso chat** — sou eu, a Zaeon, te acompanhando em tudo, inclusive **por voz**. Dica: se eu estiver cobrindo a sua tela, é só **me jogar pro outro lado** no botãozinho de virar. Bora começar?" },
+  { id: "chat", onMenu: true, target: '[data-tour="chat-flip"]', advanceEvent: "zaeon:chat:flipped-right",
+    hint: "💬 Me jogue pro lado direito",
+    say: "Oi! Sou eu, a Zaeon — e já te liguei pra gente conversar **por voz** enquanto eu te mostro tudo. 🎙️ Pra eu não te atrapalhar, **clica no botãozinho de virar** ali no meu cabeçalho e **me joga pro lado direito**. Esse passinho é obrigatório, vai por mim que fica bem melhor. 💜" },
 
   // — 2) MENU inicial: por onde começar. Destaca Estudos. Avança quando abre a Sala de Estudos.
-  { id: "menu-estudos", onMenu: true, info: true, cta: "Abrir Estudos ✦", target: '[data-tour="menu-estudos"]',
-    hint: "📚 Comece pelos seus Estudos",
-    say: "Agora abre os seus **Estudos** neste menu e clica em **Novo estudo** — é onde tudo começa." },
+  { id: "menu-estudos", onMenu: true, advanceEvent: "zaeon:study:new", target: '[data-tour="menu-estudos"]',
+    hint: "📚 Abra Estudos e crie um novo",
+    say: "Agora abre os seus **Estudos** neste menu e clica em **Novo estudo** — é onde tudo começa. Só sigo quando você criar um de verdade. 😉" },
 
   // — 3) Sala de Estudos / aba Estudos: exemplo FIXO e obrigatório na barra.
   { id: "pesquisar", tab: "sala-de-estudos", target: '[data-academic-input="true"]', advanceEvent: "zaeon:research:start", prefill: "história do Brasil",
@@ -45,7 +46,7 @@ export const TOUR_STEPS: TourStep[] = [
   // — 4) Enquanto termina, te faço companhia por voz — avança quando o estudo FICA PRONTO.
   { id: "esperando", advanceEvent: "zaeon:research:done",
     hint: "🎧 Eu te faço companhia por voz",
-    say: "Enquanto eu trabalho, te faço companhia 😄 — e sim, converso por voz de verdade! Me conta: história, exatas, ou tá começando agora?" },
+    say: "Enquanto eu monto seu estudo, deixa eu te fazer companhia com uma piadinha pra passar o tempo 😄: por que o livro de matemática estava triste? Porque tinha **problemas demais**! 📘 ...tá, eu sei, foi de doer. Já já fica pronto, viu?" },
 
   // — 5a) Resultado: mostra as abas UMA vez (cta "Entendi") e depois solta — a página fica
   //    normal pra pessoa salvar com calma.
@@ -54,7 +55,7 @@ export const TOUR_STEPS: TourStep[] = [
     say: "Pronto! 🎉 Aqui ficam **Referências**, **Insights** e **Base**. Dá uma olhada nelas." },
 
   // — 5b) Salvar: SEM destaque (página normal). Avança sozinho quando salva ≥1 referência.
-  { id: "salvar", advanceEvent: "zaeon:savedCitations",
+  { id: "salvar", advanceEvents: ["zaeon:savedCitations", "zaeon:libraryFiles"],
     hint: "💾 Salve ao menos 1 referência",
     say: "Agora salva **pelo menos 1 referência** na sua biblioteca — é ela que vai te servir na pesquisa daqui a pouco. Pode salvar com calma; eu te espero. 😉" },
 
@@ -130,6 +131,7 @@ export function startTour(opts?: { replay?: boolean }) {
   if (opts?.replay) setTourReplay(true);
   state = { active: true, index: 0 };
   persist(); emit();
+  try { window.dispatchEvent(new CustomEvent("zaeon:onboard:start")); } catch { /* */ }
   setTimeout(sayCurrent, 400); // deixa o chat widget montar
 }
 
@@ -144,6 +146,7 @@ export function skipTour() { finishTour(); }
 export function finishTour() {
   state = { active: false, index: 0 };
   persist(); emit();
+  try { window.dispatchEvent(new CustomEvent("zaeon:onboard:stop")); } catch { /* */ }
   // Em replay, NÃO marca como feito → reaparece na próxima visita (até dar o Ok).
   if (isTourReplay()) return;
   try { localStorage.setItem("zaeon.tourDone", "1"); } catch { /* */ }
