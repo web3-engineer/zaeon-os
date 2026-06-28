@@ -6,8 +6,9 @@
 # Mongo é Atlas externo (DATABASE_URL/MONGODB_URI no .env). Sem postgres/agentes/
 # observabilidade (isso fica no docker-compose.yml completo, pra depois).
 #
-# Orçamento de RAM (limites): web 1.5g + voz 3g + abnt 1.2g + redis 0.38g + caddy 0.25g
-#   ≈ 6.3g  → cabe em 8g com swap de segurança (ver docs/BETA_DEPLOY.md).
+# Orçamento de RAM (limites): web 1.5g + voz 3g + abnt 1.2g + pdf 0.9g + redis 0.38g
+#   + caddy 0.25g ≈ 7.2g  → cabe em 8g com swap de segurança (ver docs/BETA_DEPLOY.md).
+#   pdf-loader em modo FAST (sem OCR/Hybrid); ligar Hybrid só com 16 GB.
 #
 # Subir:   docker compose -f docker-compose.beta.yml up -d --build
 # Logs:    docker compose -f docker-compose.beta.yml logs -f web caddy voice-engine
@@ -32,10 +33,12 @@ services:
       REDIS_URL: redis://redis:6379/0
       VOICE_ENGINE_URL: http://voice-engine:8004   # proxy /api/ai/voice
       ABNT_SERVICE_URL: http://abnt-service:8001    # exportação ABNT
+      PDF_LOADER_URL: http://pdf-loader:8005        # leitura estruturada de PDF
     depends_on:
       redis: { condition: service_started }
       voice-engine: { condition: service_started }
       abnt-service: { condition: service_started }
+      pdf-loader: { condition: service_started }
     expose: ["3000"]            # público é só o Caddy
     volumes: ["studio_data:/app/.studio"]   # artefatos do Studio (podcast/imagem) — persistem entre deploys
     restart: unless-stopped
@@ -72,6 +75,17 @@ services:
     deploy:
       resources:
         limits: { memory: 1200m }
+
+  # ── pdf-loader (FastAPI + opendataloader-pdf, modo FAST). Leitura estruturada de PDF. ──
+  #    Sem OCR/Hybrid nesta VPS (RAM). Só rede interna (não publica porta).
+  pdf-loader:
+    build: { context: ./pdf-loader, dockerfile: Dockerfile }
+    container_name: zaeon_pdf
+    expose: ["8005"]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { memory: 896m }
 
   redis:
     image: redis:7-alpine

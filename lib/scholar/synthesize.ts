@@ -25,7 +25,12 @@ export async function synthesize(query: string, papers: Paper[]): Promise<RawSyn
     .map((p) => ({
       paperId: p.id,
       title: p.title,
-      text: (p.retrievedText?.paragraphs ?? []).map((x) => x.text).join("\n\n").slice(0, 6000),
+      // Prefere o markdown estruturado (pdf-loader: títulos/tabelas na ordem certa);
+      // cai pros parágrafos crus quando não houver.
+      text: (
+        p.retrievedText?.markdown?.trim() ||
+        (p.retrievedText?.paragraphs ?? []).map((x) => x.text).join("\n\n")
+      ).slice(0, 6000),
     }));
   const user = `Pergunta: ${query}
 

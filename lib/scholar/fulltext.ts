@@ -1,6 +1,6 @@
 import type { Paper } from "./types";
 import { isSafePublicHttpUrl } from "./ssrf";
-import { extractPdfParagraphs } from "./pdf";
+import { extractPdfParagraphs, extractPdfStructured } from "./pdf";
 import { unpaywallPdfUrl } from "./sources/unpaywall";
 import { europePmcFullText } from "./sources/europepmc";
 
@@ -23,6 +23,22 @@ export async function resolveFullText(paper: Paper): Promise<Paper> {
   if (pdfUrl) {
     const bytes = await fetchPdfBytes(pdfUrl);
     if (bytes) {
+      // 1a) Leitura ESTRUTURADA (pdf-loader): ordem multi-coluna, tabelas, markdown + bbox.
+      const structured = await extractPdfStructured(bytes);
+      if (structured?.paragraphs.length) {
+        return {
+          ...paper,
+          pdfUrl,
+          openAccess: true,
+          retrievedText: {
+            kind: "pdf",
+            paragraphs: structured.paragraphs,
+            markdown: structured.markdown,
+            blocks: structured.blocks,
+          },
+        };
+      }
+      // 1b) Fallback: pdf.js cru (serviço indisponível/timeout → nunca derruba a pesquisa).
       const paragraphs = await extractPdfParagraphs(bytes).catch(() => []);
       if (paragraphs.length) {
         return { ...paper, pdfUrl, openAccess: true, retrievedText: { kind: "pdf", paragraphs } };

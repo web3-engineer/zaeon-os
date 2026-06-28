@@ -6,9 +6,19 @@ export interface Paragraph {
   text: string;
 }
 
+// Bloco estruturado (pdf-loader): tipo + posição na página → citação rastreável.
+export interface Block {
+  type: "heading" | "paragraph" | "table" | "figure";
+  page?: number;
+  bbox?: [number, number, number, number]; // [left, bottom, right, top] em pontos PDF
+  text: string;
+}
+
 export interface RetrievedText {
   kind: "pdf" | "fulltext" | "abstract";
   paragraphs: Paragraph[];
+  markdown?: string; // texto estruturado (títulos/tabelas) — alimenta o LLM
+  blocks?: Block[];  // blocos com bbox/página — clique → fonte no PDF
 }
 
 export interface Paper {
