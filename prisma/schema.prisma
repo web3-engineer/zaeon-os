@@ -644,10 +644,12 @@ model AulaQuestion {
   id       String   @id @default(auto()) @map("_id") @db.ObjectId
   quizId   String   @db.ObjectId
   text     String
-  type     String   // choice | input | open | voice
+  type     String   // choice | input | open | voice | roulette | cloze | dragwords | … (ver lib/aulas/blockTypes)
   options  Json?    // [{text,isCorrect,explanation}] (choice)
   accepted String[] @default([]) // respostas aceitas (input)
-  marks    Int      @default(1)
+  marks    Int      @default(1)  // PONTOS do item (editável no painel de pontuação — Lote 9)
+  noPaste  Boolean  @default(false) // resposta escrita: bloqueia colar (anti-cola casual)
+  config   Json?    // dados específicos do módulo (roleta pool/rounds, cloze, dragwords, memória, ramificado)
   order    Int
 
   @@index([quizId])

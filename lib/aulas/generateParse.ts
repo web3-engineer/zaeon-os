@@ -115,3 +115,62 @@ export function buildAula(raw: string, command: string): ParsedAula | null {
 
   return { title, body: body.slice(0, 12000), youtubeIds, quiz: { title: quizTitle, passingPct, questions } };
 }
+
+// ── GERAÇÃO POR BLOCO (Lote 9 — /api/aulas/generate-block) ──────────────────
+export type ParsedBlock = {
+  type: string;            // base: choice | input | open | voice | roulette
+  text: string;
+  options?: QuizOption[];
+  accepted: string[];
+  marks: number;           // pontos sugeridos
+  noPaste?: boolean;
+  config?: { pool: { text: string; type: "choice" | "input"; options?: QuizOption[]; accepted: string[] }[]; rounds: number };
+};
+
+function normRoulettePool(raw: any) {
+  return (Array.isArray(raw) ? raw : [])
+    .filter((q: any) => q && typeof q.text === "string" && q.text.trim())
+    .slice(0, 10)
+    .map((q: any) => {
+      const opts = normOptions(q.options);
+      const isChoice = !!opts && opts.length >= 2 && opts.some((o) => o.isCorrect);
+      const accepted = Array.isArray(q.accepted) ? q.accepted.filter((x: any) => typeof x === "string" && x.trim()).map((x: string) => x.slice(0, 200)) : [];
+      return isChoice
+        ? { text: String(q.text).slice(0, 400), type: "choice" as const, options: opts!, accepted: [] as string[] }
+        : { text: String(q.text).slice(0, 400), type: "input" as const, accepted };
+    })
+    .filter((q) => q.type === "choice" || q.accepted.length > 0); // só auto-corrigíveis
+}
+
+/** raw do modelo -> 1 bloco de pergunta do `kind` pedido, ou null se degenerado. */
+export function buildQuestionBlock(raw: string, kind: string): ParsedBlock | null {
+  const parsed = extractJson(raw);
+  if (!parsed) return null;
+  const text = typeof parsed.text === "string" ? parsed.text.trim() : "";
+  const marks = Number.isFinite(parsed.marks) && parsed.marks > 0 ? Math.min(20, Math.floor(parsed.marks)) : 1;
+  const accepted = Array.isArray(parsed.accepted)
+    ? parsed.accepted.filter((x: any) => typeof x === "string" && x.trim()).map((x: string) => x.slice(0, 200))
+    : [];
+
+  if (kind === "q-choice") {
+    const options = normOptions(parsed.options);
+    if (!text || !options || options.length < 2 || !options.some((o) => o.isCorrect)) return null;
+    return { type: "choice", text: text.slice(0, 600), options, accepted: [], marks };
+  }
+  if (kind === "q-written") {
+    if (!text) return null;
+    return { type: accepted.length ? "input" : "open", text: text.slice(0, 600), accepted, marks, noPaste: true };
+  }
+  if (kind === "q-voice") {
+    if (!text) return null;
+    return { type: "voice", text: text.slice(0, 600), accepted, marks };
+  }
+  if (kind === "q-roulette") {
+    const pool = normRoulettePool(parsed.config?.pool ?? parsed.pool);
+    if (pool.length < 2) return null;
+    const rRaw = parsed.config?.rounds ?? parsed.rounds;
+    const rounds = Number.isFinite(rRaw) ? Math.max(1, Math.min(pool.length, Math.floor(rRaw))) : Math.min(3, pool.length);
+    return { type: "roulette", text: (text || "Roleta de perguntas").slice(0, 200), accepted: [], marks, config: { pool, rounds } };
+  }
+  return null; // tipos scaffold ainda não geram bloco
+}

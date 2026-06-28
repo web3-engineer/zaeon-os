@@ -9,17 +9,20 @@
  * Concluir → marca concluída (AulaProgress). Tempo de leitura medido em modo foco.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BookOpen, Loader2, CheckCircle2, Sparkles, Mic, Square, GraduationCap } from "lucide-react";
+import { BookOpen, Loader2, CheckCircle2, Sparkles, Mic, Square, GraduationCap, Volume2, Dices, Trash2, X } from "lucide-react";
 import MiniMarkdown from "./MiniMarkdown";
 import { useVoiceAnswer } from "./useVoiceAnswer";
+import { speak as ttsSpeak } from "@/lib/voice/ttsController";
 import type { Aula, QuizMeta, Question, Progress, SubmitResult } from "./types";
 
 type Detail = { aula: Aula; quiz: QuizMeta | null; questions: Question[]; progress: Progress };
-type AnswerState = { answer?: string; choiceIndex?: number; transcript?: string; audioUrl?: string };
+type AnswerState = { answer?: string; choiceIndex?: number; transcript?: string; audioUrl?: string; picks?: { index: number; choiceIndex?: number; answer?: string }[] };
 
 export default function StudentAulasModule() {
   const [aulas, setAulas] = useState<Aula[]>([]);
   const [progressByAula, setProgressByAula] = useState<Record<string, string>>({});
+  const [role, setRole] = useState<string>("");          // "teacher" | "student" (de /api/aulas)
+  const [confirmDel, setConfirmDel] = useState<string | null>(null); // id em confirmação de apagar
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
@@ -37,6 +40,7 @@ export default function StudentAulasModule() {
         const d = await r.json();
         const list: Aula[] = Array.isArray(d.aulas) ? d.aulas : [];
         setAulas(list);
+        setRole(typeof d.role === "string" ? d.role : "");
         const seed: Record<string, string> = {};
         for (const a of list) seed[a.id] = (a as any).progressStatus || "new";
         setProgressByAula(seed);
@@ -112,6 +116,18 @@ export default function StudentAulasModule() {
 
   const isNew = (a: Aula) => (progressByAula[a.id] ?? "new") === "new";
 
+  // Apagar aula (só professor dono — DELETE já é teacher-only no backend). Confirm leve.
+  const removeAula = async (id: string) => {
+    try {
+      const r = await fetch(`/api/aulas/${id}`, { method: "DELETE" });
+      if (r.ok) {
+        setAulas((prev) => prev.filter((a) => a.id !== id));
+        if (openId === id) { setOpenId(null); setDetail(null); }
+      }
+    } catch { /* ignore */ }
+    setConfirmDel(null);
+  };
+
   return (
     <div className="w-full max-w-3xl mx-auto">
       <div className="flex items-center gap-2 mb-3">
@@ -131,16 +147,29 @@ export default function StudentAulasModule() {
           const fresh = isNew(a);
           const done = progressByAula[a.id] === "completed";
           return (
-            <button key={a.id} onClick={() => open(a.id)}
-              className={`group text-left rounded-2xl border p-3.5 transition-all ${openId === a.id ? "border-cyan-400/60 bg-cyan-500/10" : fresh ? "border-cyan-400/40 bg-cyan-500/[0.06] shadow-[0_0_18px_-6px_rgba(34,211,238,0.5)]" : "border-white/10 bg-white/[0.03] hover:border-white/20"}`}>
-              <div className="flex items-center gap-2">
+            <div key={a.id}
+              className={`group relative rounded-2xl border p-3.5 transition-all ${openId === a.id ? "border-cyan-400/60 bg-cyan-500/10" : fresh ? "border-cyan-400/40 bg-cyan-500/[0.06] shadow-[0_0_18px_-6px_rgba(34,211,238,0.5)]" : "border-white/10 bg-white/[0.03] hover:border-white/20"}`}>
+              <button onClick={() => open(a.id)} className="w-full text-left flex items-center gap-2">
                 <BookOpen size={15} className={fresh ? "text-cyan-300" : "text-white/50"} />
                 <span className="flex-1 min-w-0 truncate text-[13.5px] font-bold text-white/90">{a.title}</span>
                 {done ? <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wide text-emerald-300"><CheckCircle2 size={12} /> concluída</span>
                   : fresh ? <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wide text-cyan-300"><Sparkles size={11} /> nova</span>
                   : <span className="text-[10px] font-black uppercase tracking-wide text-amber-300/80">em andamento</span>}
-              </div>
-            </button>
+              </button>
+              {/* Apagar (só professor): ícone no hover → confirm leve inline. */}
+              {role === "teacher" && (
+                confirmDel === a.id ? (
+                  <div className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-[#0b1220] border border-rose-400/40 px-1.5 py-0.5">
+                    <span className="text-[10px] text-white/70 px-1">Apagar?</span>
+                    <button onClick={() => removeAula(a.id)} className="text-rose-300 hover:text-rose-200 px-1 text-[11px] font-black">Sim</button>
+                    <button onClick={() => setConfirmDel(null)} className="text-white/50 hover:text-white/80"><X size={12} /></button>
+                  </div>
+                ) : (
+                  <button onClick={() => setConfirmDel(a.id)} title="Apagar aula"
+                    className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity text-white/40 hover:text-rose-400"><Trash2 size={13} /></button>
+                )
+              )}
+            </div>
           );
         })}
       </div>
@@ -217,9 +246,26 @@ function QuestionView({ q, idx, state, onChange, graded, locked }: {
     }
   };
 
+  // Resposta ESCRITA: bloqueia colar (anti-cola casual). Honesto: NÃO é à prova de devtools.
+  const noPaste = q.noPaste
+    ? {
+        onPaste: (e: React.ClipboardEvent) => e.preventDefault(),
+        onDrop: (e: React.DragEvent) => e.preventDefault(),
+        onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+        onKeyDown: (e: React.KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v") e.preventDefault(); },
+      }
+    : {};
+
   return (
     <div className={`rounded-xl border ${border} bg-white/[0.02] p-3.5`}>
-      <p className="text-[13.5px] font-semibold text-white/90 mb-2.5"><span className="text-white/40 mr-1">{idx + 1}.</span>{q.text}</p>
+      <div className="flex items-start gap-2 mb-2.5">
+        <p className="flex-1 text-[13.5px] font-semibold text-white/90"><span className="text-white/40 mr-1">{idx + 1}.</span>{q.text}</p>
+        {q.type === "voice" && (
+          <button type="button" title="Ouvir a pergunta" onClick={() => { try { ttsSpeak(q.text); } catch { /* */ } }}
+            className="shrink-0 text-cyan-300/80 hover:text-cyan-200"><Volume2 size={15} /></button>
+        )}
+        {q.marks > 0 && <span className="shrink-0 text-[10px] font-black uppercase tracking-wide text-cyan-300/70 bg-cyan-500/10 rounded-full px-2 py-0.5">{q.marks} pt{q.marks > 1 ? "s" : ""}</span>}
+      </div>
 
       {q.type === "choice" && q.options && (
         <div className="flex flex-col gap-1.5">
@@ -233,13 +279,13 @@ function QuestionView({ q, idx, state, onChange, graded, locked }: {
       )}
 
       {q.type === "input" && (
-        <input value={state.answer || ""} disabled={locked} onChange={(e) => onChange({ answer: e.target.value })}
-          placeholder="Sua resposta…" className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-[13px] text-white placeholder:text-white/30 focus:outline-none focus:border-cyan-400/50" />
+        <input value={state.answer || ""} disabled={locked} onChange={(e) => onChange({ answer: e.target.value })} {...noPaste}
+          placeholder={q.noPaste ? "Digite (colar bloqueado)…" : "Sua resposta…"} className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-[13px] text-white placeholder:text-white/30 focus:outline-none focus:border-cyan-400/50" />
       )}
 
       {q.type === "open" && (
-        <textarea value={state.answer || ""} disabled={locked} onChange={(e) => onChange({ answer: e.target.value })} rows={3}
-          placeholder="Responda com suas palavras…" className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-[13px] text-white placeholder:text-white/30 focus:outline-none focus:border-cyan-400/50 resize-none" />
+        <textarea value={state.answer || ""} disabled={locked} onChange={(e) => onChange({ answer: e.target.value })} rows={3} {...noPaste}
+          placeholder={q.noPaste ? "Responda com suas palavras (colar bloqueado)…" : "Responda com suas palavras…"} className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-[13px] text-white placeholder:text-white/30 focus:outline-none focus:border-cyan-400/50 resize-none" />
       )}
 
       {q.type === "voice" && (
@@ -255,11 +301,80 @@ function QuestionView({ q, idx, state, onChange, graded, locked }: {
         </div>
       )}
 
+      {q.type === "roulette" && <RouletteView q={q} state={state} onChange={onChange} locked={locked} />}
+
       {graded && (
         <p className={`mt-2 text-[11.5px] font-bold ${graded.marksOutOf === 0 ? "text-white/40" : graded.isCorrect ? "text-emerald-300" : "text-rose-300"}`}>
           {graded.marksOutOf === 0 ? "Resposta registrada (avaliação manual)." : graded.isCorrect ? "Correta ✓" : "Incorreta ✗"}
         </p>
       )}
+    </div>
+  );
+}
+
+// ROLETA: gira o pool, mostra a pergunta sorteada, o aluno responde, repete por `rounds`.
+function RouletteView({ q, state, onChange, locked }: { q: Question; state: AnswerState; onChange: (p: AnswerState) => void; locked: boolean }) {
+  const pool = q.config?.pool || [];
+  const rounds = Math.max(1, Math.min(q.config?.rounds || 1, pool.length));
+  const picks = state.picks || [];
+  const [spinning, setSpinning] = useState(false);
+  const [current, setCurrent] = useState<number | null>(null);
+  const [typed, setTyped] = useState("");
+  const done = picks.length >= rounds;
+
+  const spin = () => {
+    if (spinning || done || locked) return;
+    const used = new Set(picks.map((p) => p.index));
+    const avail = pool.map((_, i) => i).filter((i) => !used.has(i));
+    if (!avail.length) return;
+    setSpinning(true); setTyped("");
+    let ticks = 0;
+    const iv = setInterval(() => {
+      setCurrent(avail[Math.floor(Math.random() * avail.length)]);
+      if (++ticks > 8) { clearInterval(iv); setCurrent(avail[Math.floor(Math.random() * avail.length)]); setSpinning(false); }
+    }, 90);
+  };
+
+  const record = (patch: { choiceIndex?: number; answer?: string }) => {
+    if (current == null) return;
+    onChange({ picks: [...picks, { index: current, ...patch }] });
+    setCurrent(null); setTyped("");
+  };
+
+  const pq = current != null ? pool[current] : null;
+  const showQ = pq && !spinning;
+
+  return (
+    <div className="rounded-xl border border-violet-400/25 bg-violet-500/[0.06] p-3">
+      <p className="text-[11px] font-black uppercase tracking-wide text-violet-300/80 mb-2">Rodada {Math.min(picks.length + (showQ ? 1 : 0), rounds)} de {rounds}</p>
+      {!done && !showQ && (
+        <button type="button" disabled={spinning || locked} onClick={spin}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-black disabled:opacity-50"
+          style={{ background: "linear-gradient(135deg,#7c3aed,#06b6d4)" }}>
+          <Dices size={15} className={spinning ? "animate-spin" : ""} /> {spinning ? "Girando…" : "Girar a roleta"}
+        </button>
+      )}
+      {showQ && pq && (
+        <div className="mt-1">
+          <p className="text-[13px] font-semibold text-white/90 mb-2">{pq.text}</p>
+          {pq.type === "choice" && pq.options ? (
+            <div className="flex flex-col gap-1.5">
+              {pq.options.map((o, i) => (
+                <button key={i} disabled={locked} onClick={() => record({ choiceIndex: i, answer: o.text })}
+                  className="text-left rounded-lg px-2.5 py-1.5 text-[13px] text-white/80 bg-white/5 hover:bg-cyan-500/15">{o.text}</button>
+              ))}
+            </div>
+          ) : (
+            <div className="flex gap-1.5">
+              <input value={typed} disabled={locked} onChange={(e) => setTyped(e.target.value)} placeholder="Sua resposta…"
+                className="flex-1 rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-[13px] text-white placeholder:text-white/30 focus:outline-none focus:border-cyan-400/50" />
+              <button disabled={locked || !typed.trim()} onClick={() => record({ answer: typed })}
+                className="px-3 rounded-lg text-white text-sm font-bold disabled:opacity-40" style={{ background: "linear-gradient(135deg,#7c3aed,#06b6d4)" }}>OK</button>
+            </div>
+          )}
+        </div>
+      )}
+      {done && <p className="text-[12.5px] text-emerald-300/90 font-bold">Roleta concluída ✓ ({picks.length} resposta{picks.length > 1 ? "s" : ""})</p>}
     </div>
   );
 }

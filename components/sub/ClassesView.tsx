@@ -841,39 +841,8 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
         } catch (e) { setLiquidChatHistory(prev => [...prev, { role: 'agent', text: "Conexão offline." }]); } finally { setIsZaeonProcessing(false); }
     };
 
-    const handleUserModuleDrop = (e: React.DragEvent, moduleId: number) => {
-        e.preventDefault();
-        const files = Array.from(e.dataTransfer.files);
-        const newItems: UserItem[] = files.map(f => ({
-            id: Math.random().toString(36).substr(2, 9), type: 'file', name: f.name, meta: (f.size / 1024 / 1024).toFixed(1) + 'mb'
-        }));
-        setUserModules(prev => prev.map(m => m.id === moduleId ? { ...m, items: [...m.items, ...newItems] } : m));
-    };
-
-    const deleteUserItem = (moduleId: number, itemId: string) => { setUserModules(prev => prev.map(m => m.id === moduleId ? { ...m, items: m.items.filter(i => i.id !== itemId) } : m)); };
-
-    const handleAddLink = (moduleId: number) => { const url = prompt("Enter URL:"); if (url) { const name = prompt("Link Name:") || "Link"; setUserModules(prev => prev.map(m => m.id === moduleId ? { ...m, items: [...m.items, { id: Math.random().toString(36).substr(2, 9), type: 'link', name, meta: url }] } : m)); } };
-
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, moduleId: number) => {
-        if (e.target.files) {
-            const files = Array.from(e.target.files);
-            const newItems: UserItem[] = files.map(f => ({ id: Math.random().toString(36).substr(2, 9), type: 'file', name: f.name, meta: (f.size / 1024 / 1024).toFixed(1) + 'mb' }));
-            setUserModules(prev => prev.map(m => m.id === moduleId ? { ...m, items: [...m.items, ...newItems] } : m));
-        }
-    };
-
-    const handleLibraryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            const files = Array.from(e.target.files);
-            const pdfs = files.filter(f => f.type === 'application/pdf').map(f => ({ id: Math.random().toString(36).substr(2, 9), title: f.name, type: 'pdf' as const, size: (f.size / 1024 / 1024).toFixed(1) + 'mb' }));
-            setStoredPdfs(prev => [...prev, ...pdfs]);
-        }
-    };
-
-    // Nova função: Deletar arquivo de PDF da Library
-    const handleDeletePdf = (id: string) => {
-        setStoredPdfs(prev => prev.filter(pdf => pdf.id !== id));
-    };
+    // (Livraria + backpack removidos no Lote 8 — o espaço virou o módulo de aulas geradas.
+    //  storedPdfs/userModules permanecem só como persistência legada + contexto do chat.)
 
     // Agora com Sábado e Domingo inclusos
     const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -935,21 +904,7 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
 
             <div className="w-full max-w-[1180px] pb-10 flex items-start justify-start gap-6 flex-wrap z-20 relative">
 
-                {/* FIOS DE ENERGIA — religam chat -> livraria/plugins -> agenda */}
-                <div className="hidden lg:block absolute z-0 pointer-events-none" style={{ left: 399, top: 58, width: 26, height: 24 }}>
-                    <svg width="26" height="24" className="overflow-visible">
-                        <line x1="0" y1="12" x2="26" y2="12" stroke="rgba(139,92,246,0.25)" strokeWidth="3" />
-                        <motion.line x1="0" y1="12" x2="26" y2="12" stroke="#8b5cf6" strokeWidth="3" strokeDasharray="5 12" initial={{ strokeDashoffset: 0 }} animate={{ strokeDashoffset: -34 }} transition={{ duration: 1.1, repeat: Infinity, ease: 'linear' }} style={{ filter: 'drop-shadow(0 0 6px rgba(139,92,246,0.95))' }} />
-                        <motion.circle cy="12" r="2.5" fill="#22d3ee" animate={{ cx: [0, 26] }} transition={{ duration: 1.1, repeat: Infinity, ease: 'linear' }} style={{ filter: 'drop-shadow(0 0 5px #22d3ee)' }} />
-                    </svg>
-                </div>
-                <div className="hidden lg:block absolute z-0 pointer-events-none" style={{ left: 713, top: 58, width: 26, height: 24 }}>
-                    <svg width="26" height="24" className="overflow-visible">
-                        <line x1="0" y1="12" x2="26" y2="12" stroke="rgba(34,211,238,0.25)" strokeWidth="3" />
-                        <motion.line x1="0" y1="12" x2="26" y2="12" stroke="#22d3ee" strokeWidth="3" strokeDasharray="5 12" initial={{ strokeDashoffset: 0 }} animate={{ strokeDashoffset: -34 }} transition={{ duration: 1.1, repeat: Infinity, ease: 'linear', delay: 0.25 }} style={{ filter: 'drop-shadow(0 0 6px rgba(34,211,238,0.95))' }} />
-                        <motion.circle cy="12" r="2.5" fill="#8b5cf6" animate={{ cx: [0, 26] }} transition={{ duration: 1.1, repeat: Infinity, ease: 'linear', delay: 0.25 }} style={{ filter: 'drop-shadow(0 0 5px #8b5cf6)' }} />
-                    </svg>
-                </div>
+                {/* (Fios de energia removidos no Lote 8 — apontavam pra Livraria, que saiu.) */}
 
                 {/* CHAT ZAEON (limpo, sem divisorias) — Fase 6: minimizável + balões padrão Zaeon */}
                 <div className={`w-[400px] ${chatMin ? 'h-auto' : 'h-[440px]'} bg-[#0f172a]/95 dark:bg-black/40 backdrop-blur-xl border border-white/15 rounded-[2.4rem] shadow-[0_0_50px_-10px_rgba(139,92,246,0.55),0_0_95px_-30px_rgba(34,211,238,0.45)] flex flex-col overflow-hidden relative z-10`}>
@@ -981,33 +936,7 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
                     )}
                 </div>
 
-                {/* LIVRARIA + PLUGINS (faixas horizontais finas) */}
-                <div className="w-[290px] flex flex-col gap-3 z-10">
-                    <div onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const files = Array.from(e.dataTransfer.files); const pdfs = files.filter(f => f.type === 'application/pdf').map(f => ({ id: Math.random().toString(36).substr(2, 9), title: f.name, type: 'pdf' as const, size: (f.size / 1024 / 1024).toFixed(1) + 'mb' })); setStoredPdfs(prev => [...prev, ...pdfs]); }} className="bg-[#0f172a]/95 dark:bg-black/40 backdrop-blur-xl border border-white/15 rounded-2xl px-4 py-3 flex flex-col gap-2 shadow-[0_0_34px_-12px_rgba(139,92,246,0.5)]">
-                        <div className="flex items-center gap-2">
-                            <Database size={12} className="text-[#22d3ee]" />
-                            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-white/80">Livraria</span>
-                            <span className="ml-auto text-[8px] font-mono text-white/40">{storedPdfs.length}</span>
-                        </div>
-                        <div className="flex gap-2 items-center overflow-x-auto scrollbar-hide py-0.5">
-                            {storedPdfs.map(pdf => (
-                                <div key={pdf.id} className="group/item w-14 h-14 bg-white/10 dark:bg-white/[0.04] rounded-xl border border-white/20 flex flex-col items-center justify-center gap-0.5 p-1 relative shrink-0">
-                                    <button onClick={(e) => { e.stopPropagation(); handleDeletePdf(pdf.id); }} className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-rose-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover/item:opacity-100 transition-opacity z-20"><X size={9} strokeWidth={3} /></button>
-                                    <FileText size={16} className="text-[#22d3ee]" />
-                                    <span className="text-[6.5px] text-white/80 font-bold truncate w-full block text-center px-0.5">{pdf.title}</span>
-                                </div>
-                            ))}
-                            <label className="w-12 h-14 rounded-xl border border-dashed border-white/25 flex items-center justify-center text-white/55 hover:border-[#8b5cf6] hover:text-[#8b5cf6] cursor-pointer transition-all shrink-0"><input type="file" className="hidden" accept=".pdf" onChange={handleLibraryUpload} /><Plus size={16} /></label>
-                        </div>
-                    </div>
-                    <div className="bg-[#0f172a]/95 dark:bg-black/40 backdrop-blur-xl border border-white/15 rounded-2xl px-4 py-3 flex items-center gap-2 shadow-[0_0_34px_-12px_rgba(34,211,238,0.45)]">
-                        <Puzzle size={12} className="text-[#8b5cf6]" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.18em] text-white/80">Plugins</span>
-                        <span className="ml-auto text-[8px] font-bold uppercase tracking-widest text-white/30">Em breve</span>
-                    </div>
-                </div>
-
-                {/* AGENDA RADIAL (relogio de fatias; dia no centro com setas) */}
+{/* AGENDA RADIAL (relogio de fatias; dia no centro com setas) */}
                 <div className="flex-1 min-w-[300px] self-start flex flex-col items-center gap-3 z-10" onClick={(e) => e.stopPropagation()}>
                     <div className="w-full max-w-[320px] bg-[#0f172a]/95 dark:bg-black/40 backdrop-blur-xl border border-white/15 rounded-[2.4rem] p-5 shadow-[0_0_50px_-10px_rgba(139,92,246,0.55),0_0_95px_-30px_rgba(34,211,238,0.45)] flex flex-col items-center gap-3 relative">
                         <div className="w-full flex items-center">
@@ -1097,82 +1026,7 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
             </div>
 
             
-            {/* 5. BACKPACK MINIMALISTA (AGORA NA DIREITA PARA NÃO SOBREPOR AS IAs) */}
-            <div className="w-full flex justify-end gap-8 pb-32 pr-4 lg:pr-20 flex-wrap relative z-20 max-w-[1400px]">
-                {userModules.map((mod) => (
-                    <motion.div 
-                        key={mod.id} 
-                        drag 
-                        dragConstraints={constraintsRef} 
-                        className="h-auto min-h-[160px] min-w-[280px] max-w-[400px] flex-1 bg-white/70 dark:bg-black/60 backdrop-blur-3xl border border-white/40 dark:border-white/10 rounded-[1.8rem] p-5 flex flex-col relative shadow-xl" 
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="flex flex-col h-28 mb-2 shrink-0">
-                            <div className="flex items-center justify-between mb-3 border-b border-emerald-200/50 dark:border-white/20 pb-2">
-                                <div className="flex items-center gap-2 w-full"><Briefcase size={14} className="text-emerald-500" /><span className="text-[10px] font-black uppercase tracking-widest">{mod.title}</span></div>
-                                <span className="text-[8px] text-slate-400 dark:text-white/40 font-mono ml-2 whitespace-nowrap">{mod.items.length} ITEMS</span>
-                            </div>
-                            <div className="flex gap-2 items-center h-full overflow-x-auto scrollbar-hide pr-2">
-                                {mod.items.map((item) => (
-                                    <motion.div key={item.id} initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} onPointerDown={(e) => e.stopPropagation()} onClick={() => item.type === 'link' && window.open(item.meta, '_blank')} className={`group/file w-16 h-20 rounded-xl border flex flex-col items-center justify-center gap-1 p-2 relative cursor-pointer transition-all shrink-0 shadow-sm ${item.type === 'link' ? 'bg-blue-50/40 dark:bg-blue-900/10 border-blue-200/50 dark:border-blue-500/20' : 'bg-emerald-50/30 dark:bg-emerald-900/10 border-emerald-200/50 dark:border-emerald-500/20'}`}>
-                                        <button onClick={(e) => { e.stopPropagation(); deleteUserItem(mod.id, item.id); }} className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover/file:opacity-100 shadow-lg hover:scale-110 transition-all z-30 border border-white/50"><X size={10} strokeWidth={3} /></button>
-                                        {item.type === 'link' ? <Globe size={20} className="text-blue-500 dark:text-blue-400 relative z-10" /> : <FileText size={20} className="text-emerald-600 dark:text-emerald-400 drop-shadow-sm" />}
-                                        <span className="text-[7px] text-slate-900 dark:text-white font-black text-center truncate w-full block px-0.5 mt-1">{item.name}</span>
-                                    </motion.div>
-                                ))}
-                                <div className="flex flex-col gap-1 shrink-0 ml-1">
-                                    <label onClick={(e) => e.stopPropagation()} className="w-8 h-8 rounded-lg border border-dashed border-emerald-300/50 dark:border-white/20 flex items-center justify-center text-emerald-500 dark:text-white hover:bg-emerald-50 dark:hover:bg-white/10 hover:border-emerald-500 cursor-pointer transition-all"><input type="file" className="hidden" multiple onChange={(e) => handleFileUpload(e, mod.id)} /><Plus size={14} /></label>
-                                    <button onClick={(e) => {e.stopPropagation(); handleAddLink(mod.id);}} className="w-8 h-8 rounded-lg border border-dashed border-blue-300/50 dark:border-white/20 flex items-center justify-center text-blue-500 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-white/10 hover:border-blue-500 cursor-pointer transition-all"><Globe size={14} /></button>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Barra AI Launcher Minimalista com Re-Foco */}
-                        <div className="pt-3 mt-auto flex items-center justify-between border-t border-slate-200/50 dark:border-white/10">
-                            <div className="flex items-center gap-1.5">
-                                <Bot size={12} className="text-indigo-500" />
-                                <span className="text-[8px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">AI Nodes</span>
-                            </div>
-                            <div className="flex gap-2">
-                                {aiServices.map((ai) => (
-                                    <button 
-                                        key={ai.id}
-                                        onClick={(e) => { 
-                                            e.stopPropagation(); 
-                                            const w = 420; 
-                                            const h = 750;
-                                            const left = 50; 
-                                            const top = 100;
-
-                                            // Lógica de RE-FOCO
-                                            if (aiWindows.current[ai.id] && !aiWindows.current[ai.id]?.closed) {
-                                                aiWindows.current[ai.id]?.focus();
-                                            } else {
-                                                aiWindows.current[ai.id] = window.open(
-                                                    ai.url, 
-                                                    ai.name, 
-                                                    `width=${w},height=${h},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no`
-                                                );
-                                            }
-                                        }}
-                                        className={`w-9 h-9 rounded-full ${ai.color} text-white flex items-center justify-center shadow-md hover:scale-110 hover:shadow-xl transition-all border border-white/20 overflow-hidden`}
-                                        title={`Launch ${ai.name}`}
-                                    >
-                                        {ai.logo ? (
-                                            <NextImage src={ai.logo} alt={ai.name} width={20} height={20} className="w-5 h-5 object-contain invert opacity-90" onError={(e) => e.currentTarget.style.display='none'} />
-                                        ) : (
-                                            ai.fallbackIcon && <ai.fallbackIcon size={14} strokeWidth={3} />
-                                        )}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                    </motion.div>
-                ))}
-            </div>
-
-            {/* MÓDULO DE AULAS DO ALUNO (Fase 3) — aulas enviadas pelos professores */}
+{/* MÓDULO DE AULAS DO ALUNO (Fase 3) — aulas enviadas pelos professores */}
             <div className="w-full max-w-[1180px] mb-12 z-20 relative">
                 <StudentAulasModule />
             </div>
