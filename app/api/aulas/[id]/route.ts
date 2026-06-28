@@ -20,17 +20,28 @@ async function loadQuiz(aulaId: string) {
   return { quiz, questions };
 }
 
-// remove gabarito p/ o aluno (não vaza respostas certas)
+// remove gabarito p/ o aluno (não vaza respostas certas) — inclui marks/noPaste/config
+// (roleta), mas tira isCorrect/explanation das opções (inclusive do pool da roleta).
+function stripOptions(opts: any): any {
+  return Array.isArray(opts) ? opts.map((o) => ({ text: o.text })) : undefined;
+}
+function stripConfig(config: any): any {
+  if (!config || typeof config !== "object") return undefined;
+  const pool = Array.isArray(config.pool)
+    ? config.pool.map((p: any) => ({ text: p.text, type: p.type, options: stripOptions(p.options) }))
+    : undefined;
+  return { ...(pool ? { pool } : {}), ...(typeof config.rounds === "number" ? { rounds: config.rounds } : {}) };
+}
 function stripAnswers(questions: any[]) {
   return questions.map((q) => ({
     id: q.id,
     text: q.text,
     type: q.type,
     marks: q.marks,
+    noPaste: !!q.noPaste,
     order: q.order,
-    options: Array.isArray(q.options)
-      ? (q.options as any[]).map((o) => ({ text: o.text }))
-      : undefined,
+    options: stripOptions(q.options),
+    ...(q.config ? { config: stripConfig(q.config) } : {}),
   }));
 }
 
