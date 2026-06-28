@@ -33,6 +33,11 @@ export const TOUR_STEPS: TourStep[] = [
     hint: "💬 Me jogue pro lado direito",
     say: "Oi! Sou eu, a Zaeon — e já te liguei pra gente conversar **por voz** enquanto eu te mostro tudo. 🎙️ Pra eu não te atrapalhar, **clica no botãozinho de virar** ali no meu cabeçalho e **me joga pro lado direito**. Esse passinho é obrigatório, vai por mim que fica bem melhor. 💜" },
 
+  // — 1b) MINIMIZAR: depois do flip, o chat aberto fica no meio — peço pra minimizar (obrigatório).
+  { id: "chat-min", onMenu: true, target: '[data-tour="chat-widget"]', advanceEvent: "zaeon:chat:minimized",
+    hint: "➖ Me minimize no cantinho",
+    say: "Agora me **minimiza** ali no cantinho pra gente ter a tela toda — é só tocar no **traço (–)** do meu topo. 😊" },
+
   // — 2) MENU inicial: por onde começar. Destaca Estudos. Avança quando abre a Sala de Estudos.
   { id: "menu-estudos", onMenu: true, advanceEvent: "zaeon:study:new", target: '[data-tour="menu-estudos"]',
     hint: "📚 Abra Estudos e crie um novo",
@@ -51,8 +56,8 @@ export const TOUR_STEPS: TourStep[] = [
   // — 5a) Resultado: mostra as abas UMA vez (cta "Entendi") e depois solta — a página fica
   //    normal pra pessoa salvar com calma.
   { id: "subabas", info: true, target: '[data-tour="result-tabs"]', cta: "Entendi",
-    hint: "📑 Referências · Insights · Base",
-    say: "Pronto! 🎉 Aqui ficam **Referências**, **Insights** e **Base**. Dá uma olhada nelas." },
+    hint: "📑 Resultados · Referências · Insights · Base",
+    say: "Pronto! 🎉 Aqui ficam **Resultados** (tudo que eu achei), **Referências** (as que verifiquei), **Insights** e **Base**. Dá uma olhada nelas." },
 
   // — 5b) Salvar: SEM destaque (página normal). Avança sozinho quando salva ≥1 referência.
   { id: "salvar", advanceEvents: ["zaeon:savedCitations", "zaeon:libraryFiles"],
@@ -69,10 +74,15 @@ export const TOUR_STEPS: TourStep[] = [
     hint: "▶️ Ouça/leia o documento salvo",
     say: "Chegamos na **Sala de Pesquisa** 💜. Olha aqui o **documento que você salvou** — dá um **play** nele pra ouvir ou ler com calma." },
 
+  // — 7b) Arrastar PDF: ensina a soltar um PDF no painel pra abrir e ler (antes de citar).
+  { id: "arrasta-pdf", info: true, target: '[data-tour="docs-panel"]', cta: "Mostro depois",
+    hint: "📄 Arraste um PDF aqui pra ler",
+    say: "Dica de ouro: **arrasta um PDF** aqui pra dentro que eu abro pra você **ler** — e dá pra **ouvir** também. 📄" },
+
   // — 8) Citações: mesma lógica — salvar pra usar. Arraste pro texto.
   { id: "citacoes", info: true, target: '[data-tour="dock"]', cta: "Perfeito",
     hint: "🔖 Citações ABNT — arraste pro texto",
-    say: "E aqui as **Citações**: cada trecho que você salvou já vira **ABNT**. Você **arrasta a citação pro documento** (ou clica) e ela entra formatada. Do lado também ficam **Minhas coisas** e a **Lixeira**." },
+    say: "Olha na **dock aqui do lado**: o **🔖 abre as Citações salvas** — é de lá que você **arrasta pro texto** e o trecho entra já em **ABNT**. Do lado também ficam **Minhas coisas** e a **Lixeira**." },
 
   // — 9) Tipo de trabalho.
   { id: "tipo", info: true, target: '[data-tour="tipo"]', cta: "Entendi",

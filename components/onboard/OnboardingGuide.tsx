@@ -67,9 +67,30 @@ export default function OnboardingGuide() {
     ? { top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2 }
     : null;
 
-  const chip = ring
-    ? { top: Math.min(window.innerHeight - 130, ring.top + ring.height + 10), left: Math.max(12, Math.min(window.innerWidth - 320, ring.left)) }
-    : { top: window.innerHeight - 140, left: window.innerWidth / 2 - 160 };
+  // Posiciona o card CONSCIENTE do espaço: nunca sobre o anel. Alvo colado à direita
+  // (ex.: dock) → card à ESQUERDA; alvo na metade inferior → card ACIMA; senão, abaixo.
+  const cardW = 300, cardH = 170;
+  const clampX = (x: number) => Math.max(12, Math.min(window.innerWidth - cardW - 12, x));
+  const clampY = (y: number) => Math.max(12, Math.min(window.innerHeight - cardH - 12, y));
+  let chip: { top: number; left: number };
+  if (!ring) {
+    chip = { top: window.innerHeight - 160, left: window.innerWidth / 2 - cardW / 2 };
+  } else {
+    const ringRight = ring.left + ring.width;
+    const ringBottom = ring.top + ring.height;
+    const spaceRight = window.innerWidth - ringRight;
+    const spaceBelow = window.innerHeight - ringBottom;
+    if (spaceRight < cardW + 24 && ring.left > cardW + 24) {
+      // colado à direita → à esquerda do anel, centralizado verticalmente nele
+      chip = { top: clampY(ring.top + ring.height / 2 - cardH / 2), left: ring.left - cardW - 12 };
+    } else if (spaceBelow < cardH + 24 && ring.top > cardH + 24) {
+      // colado embaixo → acima do anel
+      chip = { top: ring.top - cardH - 10, left: clampX(ring.left) };
+    } else {
+      // padrão: abaixo do anel
+      chip = { top: clampY(ringBottom + 10), left: clampX(ring.left) };
+    }
+  }
 
   return createPortal(
     <div className="fixed inset-0 z-[1200] pointer-events-none">

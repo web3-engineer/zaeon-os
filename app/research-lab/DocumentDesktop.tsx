@@ -5,7 +5,7 @@ import CitationsPanel from "./CitationsPanel";
 import DraggableDock from "./DraggableDock";
 import type { DockItem } from "./DraggableDock";
 import { useTrash } from "@/lib/useTrash";
-import { useState } from "react";
+import { useState, type DragEvent } from "react";
 
 interface DocumentDesktopProps {
   processingFileId: string | null;
@@ -58,6 +58,26 @@ export default function DocumentDesktop({
   const handleDelete = (f: LibraryFile) => { removeLibraryFile(f.id); trash(f); };
   const handleRestore = (id: string) => { const it = restore(id); if (it) { const { deletedAt, ...rest } = it; saveLibraryFile(rest); } };
 
+  // A5: arrastar um PDF pra dentro do painel → salva (data: URL persiste) e abre no leitor.
+  const [dragOver, setDragOver] = useState(false);
+  const handleDropPdf = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragOver(false);
+    const pdfs = Array.from(e.dataTransfer.files || []).filter((f) => f.type === "application/pdf" || /\.pdf$/i.test(f.name));
+    if (!pdfs.length) return;
+    pdfs.forEach((file, idx) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = String(reader.result || "");
+        if (!dataUrl.startsWith("data:")) return;
+        const lf: LibraryFile = { id: `pdf-${Date.now()}-${idx}`, title: file.name.replace(/\.pdf$/i, ""), pdfUrl: dataUrl, savedAt: Date.now() };
+        saveLibraryFile(lf);
+        if (idx === 0) onView?.(lf); // abre o 1º no leitor
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   // Honest two-stage progress: 25% while downloading PDF, 70% while AI analyses, 100% when done.
   const progress = processingStage === "pdf" ? 25 : processingStage === "ai" ? 70 : 100;
   const stageLabel =
@@ -94,7 +114,10 @@ export default function DocumentDesktop({
   return (
     <div
       data-tour="docs-panel"
-      className={`rounded-[18px] flex flex-col p-3 overflow-hidden min-h-0 ${flipped ? "order-1" : ""}`}
+      onDragOver={(e) => { if (Array.from(e.dataTransfer.types).includes("Files")) { e.preventDefault(); setDragOver(true); } }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={handleDropPdf}
+      className={`rounded-[18px] flex flex-col p-3 overflow-hidden min-h-0 ${flipped ? "order-1" : ""} ${dragOver ? "ring-2 ring-cyan-400/70" : ""}`}
       style={{
         background: "rgba(255,255,255,0.045)",
         border: "1px solid rgba(255,255,255,0.10)",

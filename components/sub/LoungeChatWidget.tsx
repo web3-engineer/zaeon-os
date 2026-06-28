@@ -288,11 +288,10 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
             setOrbMinimized(false);
             setActiveChat(ZAEON_AGENT);
             setIsOpen(true);
-            // Liga a chamada direto, sem requireVoice() (durante o tour a voz é sempre permitida).
+            // Modo onboarding: a ligação é SÓ FALA (TTS). NÃO escuta o usuário — o mic ligado
+            // atrapalharia (capta ruído, dispara turnos). A escuta volta no onboard:stop.
             setCallOn(true);
             setVoiceModeState("active");
-            wantListenRef.current = true;
-            startListening();
         };
         const onStop = () => {
             setOnboarding(false);
@@ -315,8 +314,8 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
 
     // Conversa contínua: quando a Zaeon TERMINA de falar (modo ativo), reabre o mic pro próximo turno.
     useEffect(() => {
-        if (prevSpeakingRef.current && !tts.speaking && wantListenRef.current && !isZaeonTyping && !isListening) {
-            const t = setTimeout(() => { if (wantListenRef.current) startListening(); }, 350);
+        if (!onboarding && prevSpeakingRef.current && !tts.speaking && wantListenRef.current && !isZaeonTyping && !isListening) {
+            const t = setTimeout(() => { if (wantListenRef.current && !onboarding) startListening(); }, 350);
             prevSpeakingRef.current = tts.speaking;
             return () => clearTimeout(t);
         }
@@ -739,7 +738,11 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                         >
                             <ArrowsRightLeftIcon className="w-4 h-4" />
                         </button>
-                        <button className="text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors p-1">
+                        <button
+                            onClick={() => { setIsOpen(false); try { window.dispatchEvent(new CustomEvent("zaeon:chat:minimized")); } catch { /* */ } }}
+                            className="text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors p-1"
+                            title="Minimizar"
+                        >
                             <MinusIcon className="w-5 h-5" />
                         </button>
                     </div>
