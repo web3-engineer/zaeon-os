@@ -101,14 +101,16 @@ export const TOUR_STEPS: TourStep[] = [
     hint: "⌨️ Digite / pra criar rapidinho",
     say: "E aqui, digitando **/** num bloco, você cria qualquer coisa rapidinho — título, texto, ou um módulo do Studio. ⌨️" },
 
-  { id: "voltar-pesquisa", info: true, tab: "pesquisa", cta: "Ver minha pesquisa",
-    hint: "✨ Sua pesquisa está pronta",
-    say: "Tá pronta! ✨ Te trouxe de volta pra você ver a **pesquisa** que eu montei enquanto a gente passeava nos Estudos." },
+  // — 6c) VOLTA pra ESTUDOS (não Pesquisa!): o esboço com o botão "Iniciar" vive na aba
+  //   Estudos. Guia a volta clicando na aba (clickTarget) — antes ficava preso em Meus Estudos.
+  { id: "voltar-estudos", target: '[data-tour="tab-community"]', clickTarget: true,
+    hint: "↩️ Volta pra Estudos ver o esboço",
+    say: "Beleza! Agora **volta pra Estudos** (clica na aba aqui) — o esboço da sua **pesquisa** tá lá esperando você apertar **Iniciar**. 💜" },
 
-  // — 6c) Iniciar pesquisa — abre o esboço completo (newdoc) e te leva pra Sala de Pesquisa.
+  // — 6d) Iniciar pesquisa — abre o esboço completo (newdoc) e te leva pra Sala de Pesquisa.
   { id: "iniciar", target: '[data-tour="gerar"]', advanceEvent: "zaeon:research:newdoc",
     hint: "🚀 Inicie a pesquisa",
-    say: "Agora é só **Iniciar pesquisa →** — vou te levar pra **Sala de Pesquisa** 💜 pra abrir o esboço completo e começar a escrever. 🚀" },
+    say: "Olha o esboço aqui esperando! Agora é só **Iniciar pesquisa →** — vou te levar pra **Sala de Pesquisa** 💜 pra abrir o trabalho completo e começar a escrever. 🚀" },
 
   // — 7) Sala de Pesquisa: PRIMEIRO o player do documento que você salvou na sala de estudos.
   { id: "play", info: true, target: '[data-tour="docs-panel"]', cta: "Entendi",
@@ -126,28 +128,38 @@ export const TOUR_STEPS: TourStep[] = [
     say: "Olha na **dock aqui do lado**: o **🔖 abre as Citações salvas** — é de lá que você **arrasta pro texto** e o trecho entra já em **ABNT**. Do lado também ficam **Minhas coisas** e a **Lixeira**." },
 
   // — 9) Tipo de trabalho.
-  { id: "tipo", info: true, target: '[data-tour="tipo"]', cta: "Entendi",
+  // — ÚLTIMO passo do tour principal: tipo de trabalho (o Lounge tem o seu próprio mini-tour).
+  { id: "tipo", info: true, target: '[data-tour="tipo"]', cta: "Boa jornada! 🚀",
     hint: "🎓 TCC · Artigo · Relatório",
-    say: "Aqui você troca entre **TCC, Artigo e Relatório** — cada um é uma sessão própria, salva e publica em ABNT. 😉" },
+    say: "Por fim: aqui você troca entre **TCC, Artigo e Relatório** — cada um é uma sessão própria, salva e publica em ABNT. É isso! Estou aqui no chat sempre que precisar. Boa jornada! 🚀" },
+];
 
-  // — 10) Lounge: missão final — avança ao CLICAR.
-  { id: "lounge", target: '[data-tour="lounge"]', clickTarget: true, tab: "lounge",
-    hint: "🤝 Crie em grupo no Lounge",
-    say: "Última missão ✦: vai no **Lounge** e crie um estudo ou pesquisa **em conjunto** pra compartilhar com um amigo. É só me chamar quando precisar. Boa jornada! 🚀" },
+// ── MINI-TOUR DO LOUNGE (separado, SILENCIOSO — sem voz/chat) ──────────────
+// Roda 1x ao entrar no Lounge (independente do tour principal). Só cards, guiado por ação.
+export const LOUNGE_TOUR_STEPS: TourStep[] = [
+  { id: "lounge-tray", target: '[data-tour="lounge-tray"]', clickTarget: true,
+    hint: "📂 Abra uma bandeja de Estudos ou Pesquisas", say: "" },
+  { id: "lounge-play", target: '[data-tour="lounge-play"]', clickTarget: true,
+    hint: "▶️ Dê play num item pra criar uma sala em grupo", say: "" },
+  { id: "lounge-invite", info: true, target: '[data-tour="lounge-invite"]', cta: "Entendi",
+    hint: "🤝 Clica em Convidar e manda o link pro seu amigo", say: "" },
 ];
 
 type TourState = { active: boolean; index: number };
 let state: TourState = { active: false, index: 0 };
+let activeSteps: TourStep[] = TOUR_STEPS;   // qual roteiro está rodando
+let silent = false;                          // mini-tour do Lounge não fala
 const subs = new Set<(s: TourState) => void>();
 const emit = () => subs.forEach((f) => f(state));
 
 export function getTour(): TourState { return state; }
+export function getActiveSteps(): TourStep[] { return activeSteps; }
 export function subscribeTour(cb: (s: TourState) => void) { subs.add(cb); cb(state); return () => { subs.delete(cb); }; }
 
 function persist() { try { localStorage.setItem("zaeon.tour", JSON.stringify(state)); } catch { /* */ } }
 
 function sayCurrent() {
-  const s = TOUR_STEPS[state.index];
+  const s = activeSteps[state.index];
   if (!s) return;
   if (s.tab) { try { window.dispatchEvent(new CustomEvent("zaeon:set-tab", { detail: s.tab })); } catch { /* */ } }
   if (s.subtab) { try { window.dispatchEvent(new CustomEvent("zaeon:set-subtab", { detail: s.subtab })); } catch { /* */ } }
@@ -156,9 +168,10 @@ function sayCurrent() {
   if (s.prefill) {
     const fire = () => { try { window.dispatchEvent(new CustomEvent("zaeon:tour:prefill", { detail: s.prefill })); } catch { /* */ } };
     fire();
-    [250, 700, 1400, 2400].forEach((ms) => setTimeout(() => { if (TOUR_STEPS[state.index]?.id === s.id) fire(); }, ms));
+    [250, 700, 1400, 2400].forEach((ms) => setTimeout(() => { if (activeSteps[state.index]?.id === s.id) fire(); }, ms));
   }
-  try { window.dispatchEvent(new CustomEvent("zaeon:onboard:say", { detail: s.say })); } catch { /* */ }
+  // Mini-tour silencioso: NÃO fala (só os cards). O tour principal manda a fala (gated por pref no chat).
+  if (!silent && s.say) { try { window.dispatchEvent(new CustomEvent("zaeon:onboard:say", { detail: s.say })); } catch { /* */ } }
 }
 
 // ── MODO REPLAY (pra mim, testando): o tour reaparece a cada visita até eu dar o "Ok".
@@ -181,16 +194,33 @@ export function stopTourReplay() {
 export function startTour(opts?: { replay?: boolean }) {
   if (typeof window === "undefined") return;
   if (opts?.replay) setTourReplay(true);
+  activeSteps = TOUR_STEPS; silent = false;
   state = { active: true, index: 0 };
   persist(); emit();
   try { window.dispatchEvent(new CustomEvent("zaeon:onboard:start")); } catch { /* */ }
   // Roteiro é FIXO → pré-sintetiza TODAS as falas em background (mata o cold-start da voz).
-  try { prewarmSpeech(TOUR_STEPS.map((s) => s.say)); } catch { /* */ }
+  // SÓ se a voz do onboarding estiver ligada (pref OFF por padrão — item 4 do Lote 7).
+  try {
+    const voiceOn = (() => { try { return localStorage.getItem("zaeon.onboard.voice") === "on"; } catch { return false; } })();
+    if (voiceOn) prewarmSpeech(TOUR_STEPS.map((s) => s.say));
+  } catch { /* */ }
   setTimeout(sayCurrent, 400); // deixa o chat widget montar
 }
 
+/** Mini-tour do Lounge: silencioso, roda 1x (localStorage zaeon.tourLounge). */
+export function startLoungeTour() {
+  if (typeof window === "undefined") return;
+  if (state.active) return; // não atropela um tour em andamento (ex.: o principal)
+  try { if (localStorage.getItem("zaeon.tourLounge") === "1") return; } catch { /* */ }
+  activeSteps = LOUNGE_TOUR_STEPS; silent = true;
+  state = { active: true, index: 0 };
+  emit();
+  // SEM onboard:start (nada de chat/ligação) — só os cards do overlay.
+  setTimeout(sayCurrent, 300);
+}
+
 export function nextTour() {
-  if (state.index + 1 >= TOUR_STEPS.length) { finishTour(); return; }
+  if (state.index + 1 >= activeSteps.length) { finishTour(); return; }
   state = { active: true, index: state.index + 1 };
   persist(); emit(); sayCurrent();
 }
@@ -198,8 +228,16 @@ export function nextTour() {
 export function skipTour() { finishTour(); }
 
 export function finishTour() {
+  const wasLounge = activeSteps === LOUNGE_TOUR_STEPS;
   state = { active: false, index: 0 };
-  persist(); emit();
+  emit();
+  if (wasLounge) {
+    // Mini-tour do Lounge: marca o SEU done (não o principal), não dispara onboard:stop.
+    activeSteps = TOUR_STEPS; silent = false;
+    try { localStorage.setItem("zaeon.tourLounge", "1"); } catch { /* */ }
+    return;
+  }
+  persist();
   try { window.dispatchEvent(new CustomEvent("zaeon:onboard:stop")); } catch { /* */ }
   // Em replay, NÃO marca como feito → reaparece na próxima visita (até dar o Ok).
   if (isTourReplay()) return;

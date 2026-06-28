@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * OnboardingGuide — overlay do tour (Bento conduz). A CONVERSA é por VOZ + chat widget
+ * OnboardingGuide — overlay do tour (Zaeon conduz). A CONVERSA é por VOZ + chat widget
  * (eventos zaeon:onboard:say). Aqui a gente só DESTACA o elemento e mostra um
  * cardzinho com a FUNÇÃO (emoji + texto curto). O tour avança pela AÇÃO:
  *  - clickTarget  → quando o usuário clica no próprio elemento destacado;
@@ -11,7 +11,7 @@
  */
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { TOUR_STEPS, getTour, subscribeTour, nextTour, skipTour } from "@/lib/onboarding/tour";
+import { getActiveSteps, getTour, subscribeTour, nextTour, skipTour } from "@/lib/onboarding/tour";
 
 export default function OnboardingGuide() {
   const [mounted, setMounted] = useState(false);
@@ -21,7 +21,8 @@ export default function OnboardingGuide() {
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => subscribeTour(setTour), []);
 
-  const step = tour.active ? TOUR_STEPS[tour.index] : null;
+  const steps = getActiveSteps();
+  const step = tour.active ? steps[tour.index] : null;
 
   // Mede (e re-mede) o elemento destacado.
   useEffect(() => {
@@ -61,7 +62,7 @@ export default function OnboardingGuide() {
 
   if (!mounted || !step) return null;
 
-  const total = TOUR_STEPS.length;
+  const total = steps.length;
   const pad = 8;
   const ring = rect
     ? { top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2 }

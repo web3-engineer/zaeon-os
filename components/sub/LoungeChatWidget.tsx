@@ -65,10 +65,10 @@ interface LoungeChatWidgetProps {
     defaultOpen?: boolean;
 }
 
-// Mock do perfil do agente do chat (o Bento — rosto amigável que orquestra a Zaeon).
+// Mock do perfil do agente do chat (a Zaeon — a anfitriã, rosto do chat).
 const ZAEON_AGENT = {
     id: 'zaeon-agent',
-    name: 'Bento',
+    name: 'Zaeon',
     image: null,
     isAgent: true
 };
@@ -144,14 +144,17 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
             if (typeof text !== "string" || !text.trim()) return;
             setActiveChat(ZAEON_AGENT);
             // BUG (item 2): depois do beat "minimizar", NÃO reabrir o chat a cada fala — a
-            // mensagem entra no histórico e a voz toca, mas o widget fica minimizado (FAB).
+            // mensagem entra no histórico; o widget fica minimizado (FAB).
             if (!onboardMinRef.current) setIsOpen(true);
-            // Sensação de "ligação": entra no modo voz ativo → o overlay de chamada
-            // aparece enquanto a Zaeon fala (ela puxa assunto com firmeza).
-            try { setVoiceModeState("active"); } catch { /* ok */ }
+            // A Zaeon SEMPRE "escreve" (texto entra no histórico) — funciona 100% sem voz.
             setZaeonMessages((prev) => [...prev, { id: `ob-${Date.now()}`, senderId: "zaeon-agent", text }]);
-            // FILA (item 5): enfileira — avançar um card não corta a fala anterior.
-            try { speakQueued(text); } catch { /* voz é bônus */ }
+            // VOZ OPT-IN (item 4): só FALA se o usuário ligou a voz do onboarding (pref OFF por
+            // padrão; ligável no menu inicial ou no toggle de voz do chat). Lê fresh a cada fala.
+            const voiceOn = (() => { try { return localStorage.getItem("zaeon.onboard.voice") === "on"; } catch { return false; } })();
+            if (voiceOn) {
+                try { setVoiceModeState("active"); } catch { /* ok */ }
+                try { speakQueued(text); } catch { /* voz é bônus */ } // fila: avançar card não corta
+            }
         };
         window.addEventListener("zaeon:onboard:say", onSay);
         return () => window.removeEventListener("zaeon:onboard:say", onSay);
@@ -297,10 +300,13 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
             setOrbMinimized(false);
             setActiveChat(ZAEON_AGENT);
             setIsOpen(true);
-            // Modo onboarding: a ligação é SÓ FALA (TTS). NÃO escuta o usuário — o mic ligado
-            // atrapalharia (capta ruído, dispara turnos). A escuta volta no onboard:stop.
-            setCallOn(true);
-            setVoiceModeState("active");
+            // VOZ OPT-IN (item 4): a "ligação" (fala + overlay) só liga se o usuário pediu voz
+            // (pref OFF por padrão). Sem voz, o tour roda 100% por texto/cards. Nunca escuta.
+            const voiceOn = (() => { try { return localStorage.getItem("zaeon.onboard.voice") === "on"; } catch { return false; } })();
+            if (voiceOn) {
+                setCallOn(true);
+                setVoiceModeState("active");
+            }
         };
         const onStop = () => {
             setOnboarding(false);
@@ -551,13 +557,13 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             prompt: text,
-                            agent: "bento",
+                            agent: "zaeon",
                             voiceMode, // passivo | ativo (personalidade da fala)
                             ...(attachedImage ? { fileData: attachedImage } : {}), // 🔥 foto → Gemini Vision
                             userData: savedOnboardingData, // 🔥 Memória injetada!
                             history: chatHistoryForGemini, // 🔥 Histórico do chat injetado!
                             agentContext: getAgentContext(), // 🔥 World-state durável do workspace!
-                            systemContext: `Você é o Bento (NUNCA "Zaeon" — Zaeon é a plataforma, o coletivo dos agentes). O usuário com quem você está falando se chama ${userName} — chame-o por esse primeiro nome, nunca por "Zaeon". O usuário está neste momento na rota/página: ${pathname}. Se ele perguntar sobre o que pode fazer aqui ou pedir ajuda contextual, use essa rota como base para explicar a interface ou funcionalidades desta área específica do sistema.`
+                            systemContext: `Você é a Zaeon, a anfitriã que acompanha o usuário ${userName} (chame-o por esse primeiro nome). Você É a Zaeon — pode se apresentar assim. O usuário está neste momento na rota/página: ${pathname}. Se ele perguntar sobre o que pode fazer aqui ou pedir ajuda contextual, use essa rota como base para explicar a interface ou funcionalidades desta área específica do sistema.`
                         })
                     });
 
@@ -702,7 +708,7 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
         >
             <div
                 onClick={() => setIsOpen(!isOpen)}
-                title={isOpen ? undefined : "Falar com o Bento"}
+                title={isOpen ? undefined : "Falar com a Zaeon"}
                 className={isOpen
                     ? `h-12 flex items-center justify-between px-5 cursor-pointer shrink-0 transition-all border-b border-slate-200 dark:border-white/5 ${flash ? "bg-cyan-500/30 dark:bg-cyan-500/40 shadow-[inset_0_0_20px_rgba(6,182,212,0.5)]" : "bg-white/50 dark:bg-black/20 hover:bg-slate-100 dark:hover:bg-white/5"}`
                     : `h-full w-full flex items-center justify-center cursor-pointer relative transition-all ${flash ? "bg-cyan-500/30" : ""}`}
@@ -730,7 +736,7 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                   <>
                     <div className="flex items-center gap-3 relative">
                         <span className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-slate-200">
-                            {activeChat && !activeChat.isAgent ? activeChat.name : "Bento"}
+                            {activeChat && !activeChat.isAgent ? activeChat.name : "Zaeon"}
                         </span>
                     </div>
 
@@ -799,7 +805,7 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                         className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!activeChat && activeTab === 'friends' ? 'bg-white dark:bg-[#1e293b] text-cyan-600 dark:text-cyan-400 shadow-sm border border-slate-200 dark:border-transparent' : 'text-slate-500 hover:bg-slate-200/60 dark:hover:bg-white/5'}`}>
                         <UsersIcon className="w-3.5 h-3.5" /> Colegas
                     </button>
-                    <button onClick={() => setActiveChat(ZAEON_AGENT)} title="Bento"
+                    <button onClick={() => setActiveChat(ZAEON_AGENT)} title="Zaeon"
                         className={`flex-1 flex items-center justify-center py-1.5 rounded-xl transition-all ${activeChat?.isAgent ? 'bg-cyan-500/15 shadow-sm border border-cyan-400/30' : 'hover:bg-slate-200/60 dark:hover:bg-white/5'}`}>
                         <ZaeonTriangle size={18} spinning={false} />
                     </button>
@@ -951,7 +957,7 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                                                 ✦ {deepMode ? "Modo profundo ligado" : "Pensar mais a fundo"}
                                             </button>
                                             <button
-                                                onClick={() => { if (voiceMode !== "active" && !requireVoice()) return; setVoiceModeState(voiceMode === "active" ? "passive" : "active"); }}
+                                                onClick={() => { if (voiceMode !== "active" && !requireVoice()) return; const next = voiceMode === "active" ? "passive" : "active"; setVoiceModeState(next); try { localStorage.setItem("zaeon.onboard.voice", next === "active" ? "on" : "off"); } catch { /* item 4.3: toggle do chat também controla a voz do onboarding */ } }}
                                                 title={voiceMode === "active" ? "Voz ativa: conversa e age (fala as respostas)" : "Voz passiva: recebe e executa, sem falar"}
                                                 aria-pressed={voiceMode === "active"}
                                                 className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${voiceMode === "active" ? "text-white" : "text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-white/5"}`}

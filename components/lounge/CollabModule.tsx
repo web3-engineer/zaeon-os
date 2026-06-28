@@ -18,6 +18,7 @@ import { motion } from "framer-motion";
 import { useSession } from "next-auth/react";
 import PusherClient from "pusher-js";
 import { useSavedCitations } from "@/lib/useSavedCitations";
+import { startLoungeTour } from "@/lib/onboarding/tour";
 import DocumentDesktop from "@/app/research-lab/DocumentDesktop";
 import {
   Play, Link as LinkIcon, Copy, Check, Send, X, Users, ArrowLeft, ChevronDown,
@@ -125,6 +126,12 @@ export default function CollabModule() {
   const [openTrays, setOpenTrays] = useState<Record<"study" | "research", boolean>>({ study: false, research: false });
   const [creating, setCreating] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+
+  // Mini-tour do Lounge (silencioso, 1x): dispara ao montar, depois que os anchors existem.
+  useEffect(() => {
+    const t = setTimeout(() => { try { startLoungeTour(); } catch { /* */ } }, 700);
+    return () => clearTimeout(t);
+  }, []);
   const [toast, setToast] = useState<string | null>(null);
   const [confirmDel, setConfirmDel] = useState<Collab | null>(null);
   // Modo foco da sala: quando ativo, a sidebar sobe pra top-4. O painel cheio do
@@ -229,7 +236,7 @@ export default function CollabModule() {
           const expanded = openTrays[t.key];
           return (
             <div key={t.key} className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/50 dark:bg-white/[0.03] overflow-hidden">
-              <button onClick={() => setOpenTrays((p) => ({ ...p, [t.key]: !p[t.key] }))} className="w-full flex items-center gap-3 px-4 py-3">
+              <button data-tour={t.key === "study" ? "lounge-tray" : undefined} onClick={() => setOpenTrays((p) => ({ ...p, [t.key]: !p[t.key] }))} className="w-full flex items-center gap-3 px-4 py-3">
                 <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-${t.accent}-500/15 text-${t.accent}-500`}><t.icon size={16} /></div>
                 <span className="text-[12px] font-black uppercase tracking-widest text-slate-700 dark:text-white/80 flex-1 text-left">{t.label}</span>
                 <span className="text-[12px] font-mono text-slate-400 dark:text-white/40 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/5">{t.count}</span>
@@ -324,7 +331,7 @@ function ResearchCard({ s, creating, onPlay, theme }: { s: Source; creating: boo
 
 function PlayBtn({ creating, onClick, grad }: { creating: boolean; onClick: () => void; grad?: string }) {
   return (
-    <button onClick={onClick} disabled={creating} title="Gerar convite de colaboração"
+    <button data-tour="lounge-play" onClick={onClick} disabled={creating} title="Gerar convite de colaboração"
       className="w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0 transition-transform hover:scale-105 disabled:opacity-50"
       style={{ background: grad || "linear-gradient(135deg,#0ea5e9,#22d3ee)" }}>
       {creating ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} className="ml-0.5" />}
@@ -628,7 +635,7 @@ function CollabEditor({ docId, myId, contacts, onClose }: { docId: string; myId:
             </span>
           ))}
         </div>
-        <button onClick={reinvite} className="px-3 py-1.5 rounded-full text-[12px] font-black uppercase tracking-wide inline-flex items-center gap-1.5 text-white shrink-0" style={{ background: "linear-gradient(135deg,#0ea5e9,#22d3ee)" }}><UserPlus size={12} /> Convidar</button>
+        <button data-tour="lounge-invite" onClick={reinvite} className="px-3 py-1.5 rounded-full text-[12px] font-black uppercase tracking-wide inline-flex items-center gap-1.5 text-white shrink-0" style={{ background: "linear-gradient(135deg,#0ea5e9,#22d3ee)" }}><UserPlus size={12} /> Convidar</button>
       </div>
 
       {research ? (

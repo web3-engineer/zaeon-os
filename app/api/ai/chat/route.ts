@@ -45,7 +45,7 @@ const lessonsTool: FunctionDeclaration = {
     }
 };
 
-// --- SUMMON TOOL (o Bento convoca um agente especialista) ---
+// --- SUMMON TOOL (a Zaeon convoca um agente especialista) ---
 const summonAgentTool: FunctionDeclaration = {
     name: "summon_agent",
     description: "Convoca um agente especialista e JÁ EXECUTA a ação na sala certa. Use SEMPRE que a pessoa pedir para ESTUDAR um assunto, PESQUISAR/ler literatura, ESCREVER um texto, ou PROGRAMAR algo — em vez de só responder em texto. Preencha o 'topic' com o assunto exato.",
@@ -59,7 +59,7 @@ const summonAgentTool: FunctionDeclaration = {
     }
 };
 
-// --- OPEN ROOM TOOL (o Bento NAVEGA entre salas por voz/texto, em tempo real) ---
+// --- OPEN ROOM TOOL (a Zaeon NAVEGA entre salas por voz/texto, em tempo real) ---
 const openRoomTool: FunctionDeclaration = {
     name: "open_room",
     description: "Abre/troca para uma SALA da plataforma quando a pessoa pedir pra ir, abrir, voltar ou mudar de sala (ex.: 'me leva pra pesquisa', 'volta pro lounge', 'abre meus estudos'). Use quando NÃO há uma tarefa a executar — só navegação. Se houver tarefa (estudar/pesquisar/escrever/programar um tema), use summon_agent.",
@@ -72,7 +72,7 @@ const openRoomTool: FunctionDeclaration = {
     }
 };
 
-// Mapa de salas → aba/rota (navegação do Bento entre as salas do research-lab).
+// Mapa de salas → aba/rota (navegação da Zaeon entre as salas do research-lab).
 const ROOM_MAP: Record<string, { tab: string; label: string }> = {
     "pesquisa": { tab: "pesquisa", label: "Pesquisa" },
     "estudos": { tab: "sala-de-estudos", label: "Sala de Estudos" },
@@ -89,7 +89,7 @@ const ROOM_MAP: Record<string, { tab: string; label: string }> = {
     "profile": { tab: "profile", label: "Perfil" },
 };
 
-// Mapa habilidade → agente/sala/rota (handoff do Bento pro agente certo).
+// Mapa habilidade → agente/sala/rota (handoff da Zaeon pro agente certo).
 const SUMMON_MAP: Record<string, { agent: string; route: string; cta: string; verb: string }> = {
     study: { agent: "Nina · Sala de Estudos", route: "/research-lab?tab=sala-de-estudos", cta: "Abrir a Sala de Estudos", verb: "estudar" },
     research: { agent: "Aura · Pesquisa", route: "/research-lab?tab=pesquisa", cta: "Abrir a Pesquisa", verb: "pesquisar" },
@@ -137,9 +137,11 @@ export async function POST(req: Request) {
         });
 
         const scheduleAgents = ["zenita", "core_active"];
+        // "bento" virou "zaeon" (a anfitriã); aceitamos os dois como alias (compat).
+        const isHost = agentKey === "zaeon" || agentKey === "bento";
         const tools = scheduleAgents.includes(agentKey)
             ? [{ functionDeclarations: [updateScheduleTool, lessonsTool] }]
-            : agentKey === "bento"
+            : isHost
                 ? [{ functionDeclarations: [summonAgentTool, openRoomTool] }]
                 : undefined;
         const generativeModel = vertexAI.getGenerativeModel({

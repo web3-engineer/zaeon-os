@@ -82,6 +82,16 @@ export default function MenuNavigation() {
   // Switch de Tutoriais (só super admin): liga/desliga o tour (replay) e roda na hora.
   const [tutorialsOn, setTutorialsOn] = useState(false);
   useEffect(() => { try { setTutorialsOn(isTourReplay()); } catch { /* ignore */ } }, []);
+  // Voz do tutorial (item 4 Lote 7): OPT-IN, OFF por padrão. Pra TODOS (não só founder).
+  const [onbVoiceOn, setOnbVoiceOn] = useState(false);
+  useEffect(() => { try { setOnbVoiceOn(localStorage.getItem("zaeon.onboard.voice") === "on"); } catch { /* */ } }, []);
+  const toggleOnbVoice = () => {
+    setOnbVoiceOn((v) => {
+      const nv = !v;
+      try { localStorage.setItem("zaeon.onboard.voice", nv ? "on" : "off"); } catch { /* */ }
+      return nv;
+    });
+  };
   const toggleTutorials = () => {
     if (tutorialsOn) { stopTourReplay(); setTutorialsOn(false); }            // desliga
     else { setTourReplay(true); setTutorialsOn(true); setIsOptionsOpen(false); startTour(); } // liga + roda agora
@@ -625,6 +635,29 @@ export default function MenuNavigation() {
                     <span className="text-sm tracking-tight truncate">{inviteAccessed ? "Acessar convite" : "Convidar amigos"}</span>
                   </span>
                   <ChevronRightIcon className="h-4 w-4 opacity-30 group-hover:opacity-100 transition-opacity shrink-0" />
+                </div>
+
+                {/* VOZ DO TUTORIAL — opt-in, OFF por padrão. Visível pra todos: ninguém leva voz
+                    sem querer (ex.: alguém numa sala de aula). */}
+                <div className={`${cardBase} cursor-default`}>
+                  <span className="flex items-center gap-3 pl-2 min-w-0">
+                    {onbVoiceOn ? <Mic size={16} className="text-cyan-500 dark:text-cyan-300 shrink-0" /> : <MicOff size={16} className="text-slate-400 shrink-0" />}
+                    <span className="flex flex-col min-w-0">
+                      <span className="text-sm tracking-tight truncate">Voz do tutorial</span>
+                      <span className="text-[9px] uppercase font-bold tracking-tighter text-slate-400 dark:text-white/40">
+                        {onbVoiceOn ? "Ligada — a Zaeon fala no tour" : "Desligada — tour só em texto"}
+                      </span>
+                    </span>
+                  </span>
+                  <button
+                    onClick={toggleOnbVoice}
+                    role="switch"
+                    aria-checked={onbVoiceOn}
+                    title={onbVoiceOn ? "Desligar a voz do tutorial" : "Ligar a voz do tutorial"}
+                    className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${onbVoiceOn ? "bg-cyan-500" : "bg-slate-300 dark:bg-white/15"}`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${onbVoiceOn ? "translate-x-5" : ""}`} />
+                  </button>
                 </div>
 
                 {/* TUTORIAIS (escondido) — só super admin: liga/desliga o tour e roda na hora.
