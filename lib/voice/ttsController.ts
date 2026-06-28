@@ -106,9 +106,17 @@ function chunkText(text: string, max = 3200): string[] {
 // Resultado da síntese de um pedaço: áudio neural pronto, ou fallback do navegador.
 type Prepared = { kind: "audio"; url: string } | { kind: "browser"; text: string } | null;
 
+// CACHE de síntese (memória): roteiro do onboarding é fixo → pré-sintetizar mata o
+// cold-start. Key = voz + texto do chunk. Só guarda áudio premium (não null).
+const synthCache = new Map<string, { kind: "audio"; url: string }>();
+const synthKey = (text: string, voiceId?: string) => `${voiceId || ""}|${text}`;
+
 // SÓ sintetiza (não toca) — devolve o áudio pronto. Permite pré-carregar o próximo
 // pedaço enquanto o atual ainda está tocando (pipeline = sem gaps entre blocos).
 async function synthChunk(text: string, voiceId: string | undefined, ac: AbortController): Promise<Prepared> {
+  const key = synthKey(text, voiceId);
+  const cached = synthCache.get(key);
+  if (cached) return cached; // latência ~zero quando pré-aquecido (prewarmSpeech)
   try {
     const res = await fetch("/api/ai/voice", {
       method: "POST",
@@ -119,7 +127,11 @@ async function synthChunk(text: string, voiceId: string | undefined, ac: AbortCo
     if (ac.signal.aborted) return null;
     if (res.ok) {
       const data = await res.json().catch(() => null);
-      if (data?.audio_base64) return { kind: "audio", url: `data:${data.mime || "audio/wav"};base64,${data.audio_base64}` };
+      if (data?.audio_base64) {
+        const prepared = { kind: "audio" as const, url: `data:${data.mime || "audio/wav"};base64,${data.audio_base64}` };
+        synthCache.set(key, prepared);
+        return prepared;
+      }
     }
   } catch { /* engine indisponível */ }
   return null; // SEM fallback do navegador (nada de voz do Google) — só a voz premium
@@ -237,4 +249,26 @@ export async function speakQueued(text: string, opts?: { voice?: string; gender?
   } finally {
     draining = false;
   }
+}
+
+// ── PREWARM (onboarding) ───────────────────────────────────────────────────
+// Pré-sintetiza um roteiro FIXO em background e popula o `synthCache` → quando o
+// passo toca, o áudio já está pronto (latência ~zero). Chunka cada texto SEPARADO
+// (igual ao playback: speak([text]) → buildSpeechChunks([text])) pra a key bater.
+export function prewarmSpeech(texts: string[], opts?: { voice?: string }) {
+  if (typeof window === "undefined") return;
+  const voiceId = opts?.voice || pref("zaeon.voice.id");
+  const chunks = Array.from(new Set(texts.flatMap((t) => buildSpeechChunks([t])))).filter(Boolean);
+  const dummy = new AbortController(); // nunca aborta — prewarm não deve ser cortado
+  let i = 0;
+  const CONC = 3; // throttle leve pra não estourar o engine/rate-limit
+  const worker = async (): Promise<void> => {
+    while (i < chunks.length) {
+      const c = chunks[i++];
+      if (synthCache.has(synthKey(c, voiceId))) continue;
+      try { await synthChunk(c, voiceId, dummy); } catch { /* */ }
+    }
+  };
+  // fire-and-forget: roda em background enquanto o usuário lê/interage.
+  void Promise.all(Array.from({ length: CONC }, worker));
 }

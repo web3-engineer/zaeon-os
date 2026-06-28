@@ -215,10 +215,14 @@ export default function StudyRoomContent({ flushTop = false }: { flushTop?: bool
     }, []);
 
     // "Estudar esse tema" / handoff de voz pode pedir a aba Meus Estudos em runtime.
+    // Aceita set-subtab (legado) E set-tab (tour) — só para os ids de aba DESTA sala
+    // (community/classes/meus-estudos/students); ids do research-lab são ignorados aqui.
     useEffect(() => {
-        const onSetSub = (e: any) => { if (e?.detail === "meus-estudos") setActiveTab("meus-estudos"); };
+        const SALA_IDS = new Set(["meus-estudos", "community", "classes", "students"]);
+        const onSetSub = (e: any) => { const d = e?.detail; if (SALA_IDS.has(d)) setActiveTab(d); };
         window.addEventListener("zaeon:set-subtab", onSetSub);
-        return () => window.removeEventListener("zaeon:set-subtab", onSetSub);
+        window.addEventListener("zaeon:set-tab", onSetSub);
+        return () => { window.removeEventListener("zaeon:set-subtab", onSetSub); window.removeEventListener("zaeon:set-tab", onSetSub); };
     }, []);
 
     // ── Tab indicator measurement ────────────────────────────────────────────
@@ -282,6 +286,7 @@ export default function StudyRoomContent({ flushTop = false }: { flushTop?: bool
                             return (
                                 <button
                                     key={tab.id}
+                                    data-tour={`tab-${tab.id}`}
                                     ref={el => { tabRefs.current[i] = el; }}
                                     onClick={() => setActiveTab(tab.id)}
                                     className={`

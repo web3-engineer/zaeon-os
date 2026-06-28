@@ -1,5 +1,7 @@
 "use client";
 
+import { prewarmSpeech } from "@/lib/voice/ttsController";
+
 /**
  * Tour guiado da Zaeon (onboarding). Roteiro DECLARATIVO: a Zaeon "puxa assunto" no
  * chat widget (autonomia), enquanto o overlay destaca o elemento da vez. Golden path:
@@ -49,16 +51,21 @@ export const TOUR_STEPS: TourStep[] = [
     hint: "📚 Abra Estudos e crie um novo",
     say: "Agora abre os seus **Estudos** neste menu e clica em **Novo estudo** — é onde tudo começa. Só sigo quando você criar um de verdade. 😉" },
 
-  // — 3) Sala de Estudos / aba Estudos: pesquisa LIVRE (qualquer tema). O gate de verdade é
-  //   salvar um PDF (passo "salvar"). Sem prefill/exemplo obrigatório.
+  // — 2b) DESTAQUE da aba Estudos antes de buscar (nada "aparece do nada"): coachmark na aba.
+  { id: "sala-estudos", tab: "sala-de-estudos", target: '[data-tour="tab-community"]', clickTarget: true,
+    hint: "🏛️ Essa é a sua Sala de Estudos",
+    say: "Essa é a sua **Sala de Estudos** — clica aqui na aba **Estudos**, é onde a pesquisa acontece." },
+
+  // — 3) Aba Estudos: pesquisa LIVRE (qualquer tema). O gate de verdade é salvar um PDF
+  //   (passo "salvar"). A busca também dispara um ESTUDO SEU em paralelo (Meus Estudos).
   { id: "pesquisar", tab: "sala-de-estudos", target: '[data-academic-input="true"]', advanceEvent: "zaeon:research:start",
     hint: "🔎 Pesquise o que você quiser",
-    say: "Agora pesquisa **o que você quiser** — um tema da sua aula, um interesse, qualquer coisa. Escreve na barra e aperta **Enter** que eu busco e organizo pra você. 🎙️" },
+    say: "Agora pesquisa **o que você quiser** — um tema da sua aula, um interesse, qualquer coisa. Escreve na barra e aperta **Enter** que eu busco os estudos online **e** já começo a montar um **estudo seu** sobre o tema. 🎙️" },
 
-  // — 4) Enquanto termina, te faço companhia por voz — avança quando o estudo FICA PRONTO.
+  // — 4) Enquanto termina, te faço companhia por voz — avança quando a busca FICA PRONTA.
   { id: "esperando", advanceEvent: "zaeon:research:done",
     hint: "🎧 Eu te faço companhia por voz",
-    say: "Enquanto eu monto seu estudo, deixa eu te fazer companhia com uma piadinha pra passar o tempo 😄: por que o livro de matemática estava triste? Porque tinha **problemas demais**! 📘 ...tá, eu sei, foi de doer. Já já fica pronto, viu?" },
+    say: "Enquanto eu trago os estudos online (e monto o seu em **Meus Estudos**), deixa eu te fazer companhia 😄: por que o livro de matemática estava triste? Porque tinha **problemas demais**! 📘 ...tá, eu sei, foi de doer. Já já fica pronto!" },
 
   // — 5a) Resultado: mostra as abas UMA vez (cta "Entendi") e depois solta — a página fica
   //    normal pra pessoa salvar com calma.
@@ -77,14 +84,14 @@ export const TOUR_STEPS: TourStep[] = [
     hint: "✨ Gere a pesquisa (pode deixar rodando)",
     say: "Agora clica em **Gerar pesquisa ✦** — eu transformo isso num esboço real (intro, metodologia, a lacuna). Pode **deixar rodando**, que eu cuido. ✍️" },
 
-  // — 6b) DESVIO p/ Meus Estudos enquanto a pesquisa gera: ensina o canvas + Studio.
-  { id: "desvio-estudos", info: true, subtab: "meus-estudos", cta: "Bora",
-    hint: "📚 Vamos aos seus Estudos",
-    say: "Enquanto eu monto sua pesquisa (deixa rodando!), bora dar uma olhada nos seus **Estudos** — é aqui que você cria seu próprio material." },
+  // — 6b) DESVIO p/ Meus Estudos: aqui está o ESTUDO SEU que nasceu da sua busca + o Studio.
+  { id: "desvio-estudos", info: true, subtab: "meus-estudos", cta: "Bora ver",
+    hint: "📚 O seu estudo já nasceu aqui",
+    say: "Enquanto a pesquisa gera (deixa rodando!), bora ver os seus **Estudos** — lembra que eu comecei a montar um **estudo seu** sobre o tema da busca? Tá aqui." },
 
   { id: "estudo-apareceu", info: true, target: '[data-tour="quick-bar"]', cta: "Massa!",
-    hint: "🎉 Seu estudo aparece aqui",
-    say: "Olha ele aqui ó, já apareceu! 🎉 Daqui você cria quantos estudos quiser, de qualquer assunto." },
+    hint: "🎉 Seu estudo, montado do seu tema",
+    say: "Olha ele aqui ó — montei do **tema que você pesquisou**! 🎉 Daqui você cria quantos estudos quiser, de qualquer assunto." },
 
   { id: "studio", info: true, target: '[data-tour="studio-dock"]', cta: "Entendi",
     hint: "🎛️ Studio: podcast, mapa, vídeo…",
@@ -98,10 +105,10 @@ export const TOUR_STEPS: TourStep[] = [
     hint: "✨ Sua pesquisa está pronta",
     say: "Tá pronta! ✨ Te trouxe de volta pra você ver a **pesquisa** que eu montei enquanto a gente passeava nos Estudos." },
 
-  // — 6c) Iniciar pesquisa — abre o esboço completo (newdoc) na folha de escrita.
+  // — 6c) Iniciar pesquisa — abre o esboço completo (newdoc) e te leva pra Sala de Pesquisa.
   { id: "iniciar", target: '[data-tour="gerar"]', advanceEvent: "zaeon:research:newdoc",
     hint: "🚀 Inicie a pesquisa",
-    say: "Agora é só **Iniciar pesquisa →** pra abrir o esboço completo e começar a escrever. 🚀" },
+    say: "Agora é só **Iniciar pesquisa →** — vou te levar pra **Sala de Pesquisa** 💜 pra abrir o esboço completo e começar a escrever. 🚀" },
 
   // — 7) Sala de Pesquisa: PRIMEIRO o player do documento que você salvou na sala de estudos.
   { id: "play", info: true, target: '[data-tour="docs-panel"]', cta: "Entendi",
@@ -177,6 +184,8 @@ export function startTour(opts?: { replay?: boolean }) {
   state = { active: true, index: 0 };
   persist(); emit();
   try { window.dispatchEvent(new CustomEvent("zaeon:onboard:start")); } catch { /* */ }
+  // Roteiro é FIXO → pré-sintetiza TODAS as falas em background (mata o cold-start da voz).
+  try { prewarmSpeech(TOUR_STEPS.map((s) => s.say)); } catch { /* */ }
   setTimeout(sayCurrent, 400); // deixa o chat widget montar
 }
 

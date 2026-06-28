@@ -78,6 +78,10 @@ export function OmegaScholarProvider({ room, onStart, children }:
     try { localStorage.setItem(RUN_KEY, JSON.stringify({ query: prompt, startedAt })); } catch { /* ignore */ }
     setState({ status: "running", query: prompt, phases: [], answer: "", session: null, error: null, startedAt, ...EMPTY_FORGE, ...EMPTY_PREREQS });
     try { window.dispatchEvent(new CustomEvent("zaeon:research:start", { detail: prompt })); } catch { /* onboarding */ }
+    // Estudo PARALELO: a busca em "Estudos" (papers online) também gera um ESTUDO do usuário
+    // sobre o MESMO tema em "Meus Estudos". O MeusEstudosFeed (sempre montado, só escondido)
+    // escuta zaeon:study:run, enfileira e escreve ao vivo. Vale pra todo mundo, não só no tour.
+    try { window.dispatchEvent(new CustomEvent("zaeon:study:run", { detail: { topic: prompt } })); } catch { /* */ }
     try {
       const res = await fetch("/api/ai/scholar", {
         method: "POST", headers: { "Content-Type": "application/json" },
