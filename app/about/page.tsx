@@ -305,9 +305,9 @@ const MoleculeSection = () => {
                     Como funciona
                 </p>
                 <h2 className="text-3xl md:text-5xl font-black text-white tracking-tighter">
-                    Três camadas.{" "}
+                    Três funções simples.{" "}
                     <span className="text-cyan-400 drop-shadow-[0_0_20px_rgba(34,211,238,0.4)]">
-                        Um ecossistema.
+                        modo solo ou coletivo, você decide.
                     </span>
                 </h2>
             </motion.div>
@@ -473,8 +473,8 @@ export default function AboutUsPage() {
                 {/* Hero Title */}
                 <CyberTitle
                     startAnimations={true}
-                    secondaryText="PLATAFORMA DE AGENTES IA"
-                    mainText="ZAEON"
+                    secondaryText="ONDE O CONHECIMENTO"
+                    mainText="GANHA VIDA"
                     scrollText="Descubra mais"
                 />
 
@@ -482,17 +482,15 @@ export default function AboutUsPage() {
                 <TextBlock align="left" glowColor="cyan" direction="none" customBg="bg-black/80">
                     <h2 className="text-2xl md:text-4xl font-black text-white mb-6 tracking-tight uppercase flex items-center gap-4">
                         <span className="w-2 h-10 bg-gradient-to-b from-cyan-400 to-blue-600 rounded-full shadow-[0_0_20px_rgba(34,211,238,0.5)]" />
-                        Para qualquer profissão. Para qualquer rotina.
+                        Só existe uma saída do futuro distópico que te aguarda : Educação.
                     </h2>
                     <p className="font-medium text-white/95">
-                        A Zaeon é onde você cria, contrata e usa agentes de inteligência artificial
-                        para te ajudar no dia a dia — seja você designer, advogado, médico, professor,
-                        empreendedor ou simplesmente curioso.
+                        A internet se perdeu no próprio algoritmo e só quer te entreter. A gente reescreveu ela pra te transformar. Aqui, conhecimento não é uma aba aberta — é um time de agentes trabalhando no seu futuro 24 horas por dia.
                     </p>
                     <p className="text-white/80">
                         Cada agente tem voz, personalidade e habilidades definidas por quem o criou.{" "}
                         <span className="text-cyan-400 font-bold drop-shadow-[0_0_5px_rgba(34,211,238,0.3)]">
-                            Não existe profissão que não caiba aqui.
+                            Não é uma ferramenta que você usa. É um organismo que cresce com você.
                         </span>
                     </p>
                 </TextBlock>
@@ -514,17 +512,14 @@ export default function AboutUsPage() {
 
                     <TextBlock align="right" glowColor="purple" direction="right" customBg="bg-indigo-950/80">
                         <h2 className="text-2xl md:text-4xl font-black text-white mb-6 tracking-tight uppercase flex items-center justify-end gap-4">
-                            Seus projetos. Sua propriedade.
+                            Toda mente merece uma equipe.
                             <span className="w-2 h-10 bg-gradient-to-b from-purple-400 to-indigo-600 rounded-full shadow-[0_0_20px_rgba(168,85,247,0.5)]" />
                         </h2>
                         <p className="text-xl md:text-3xl font-extralight italic text-white drop-shadow-md">
-                            Crie. Colabore. Compartilhe no seu ritmo.
+                            Toda vida merece ser transformada.
                         </p>
                         <p className="text-base text-white/70 mt-4 leading-relaxed">
-                            Tudo que você desenvolve com seus agentes é protegido como propriedade
-                            intelectual privada. Você decide o que entra no mural da comunidade — seja
-                            um experimento bem-sucedido, uma ideia em desenvolvimento ou um negócio
-                            pronto para crescer.
+                            na Zaeon você não vence na vida sozinho. Você comanda agentes com voz, jeito e talento próprios, que aprendem o seu mundo e trabalham nele.
                         </p>
                     </TextBlock>
                 </div>
