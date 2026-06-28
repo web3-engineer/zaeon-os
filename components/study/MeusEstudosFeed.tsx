@@ -882,10 +882,10 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
           />
         </div>
 
-        {/* KARAOKÊ: modo leitura sobre o estudo, com o trecho falado destacado
-            (mesmos pedaços do speakSequence; respeita navbar/dock). */}
+        {/* KARAOKÊ: modo leitura INLINE — cobre só o painel do estudo (container `relative`
+            acima), igual à Sala de Pesquisa. Não tampa navbar/sidebar/dock. */}
         {tts.speaking && readingParts.length > 0 && (
-          <div className="fixed top-[96px] left-[84px] right-4 bottom-4 z-[400] rounded-3xl overflow-hidden border border-cyan-500/30 shadow-2xl">
+          <div className="absolute inset-0 z-[40] rounded-3xl overflow-hidden border border-cyan-500/30 shadow-2xl">
             <ResearchReadingView text={readingParts.join("\n")} onStop={() => { tts.stop(); setReadingParts([]); }} />
           </div>
         )}

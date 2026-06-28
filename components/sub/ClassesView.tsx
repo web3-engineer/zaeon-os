@@ -328,7 +328,8 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
     const [now, setNow] = useState<Date | null>(null);
     useEffect(() => {
         setNow(new Date());
-        const t = setInterval(() => setNow(new Date()), 60_000);
+        // 10s: relógio vivo (ponteiro de minuto anda) sem pesar. Antes era 60s (parado).
+        const t = setInterval(() => setNow(new Date()), 10_000);
         return () => clearInterval(t);
     }, []);
 
@@ -885,6 +886,10 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
     const currentClass = (DAY_NOW != null && HOUR_NOW != null)
         ? classes.find((c: any) => (c.days || []).includes(DAY_NOW) && Number(c.hour) <= HOUR_NOW && HOUR_NOW < Number(c.endHour))
         : null;
+    // Relógio vivo (Parte C): hora digital, ponteiros e destaque de "hoje".
+    const isToday = DAY_NOW != null && DAY_NOW === selectedDay + 1;
+    const clockHHMM = now ? `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}` : '--:--';
+    const minuteAngle = now ? -90 + (now.getMinutes() / 60) * 360 : -90;
 
     return (
         <div ref={constraintsRef} onClick={handleBackgroundClick} className="relative min-h-screen w-full flex flex-col items-start px-6 pt-8 pb-8 bg-transparent font-sans selection:bg-cyan-500/30 text-slate-900 dark:text-white transition-colors duration-500 overflow-x-hidden">
@@ -1015,14 +1020,32 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
                                 {classesToRender.filter((c: any) => (c.days || []).includes(selectedDay + 1)).map((cls: any) => {
                                     const h0 = Math.max(AG_MIN, Math.min(AG_MAX - 0.25, Number(cls.hour) || AG_MIN));
                                     const h1 = Math.max(h0 + 0.25, Math.min(AG_MAX, Number(cls.endHour) || h0 + 1));
+                                    const isNow = !!(isToday && currentClass && currentClass.id === cls.id); // aula AGORA → glow
                                     return (
-                                        <path key={cls.id} d={agDonut(150,150,86,120,h0,h1)} fill={colorHex(cls.color)} onClick={(e) => { e.stopPropagation(); setColorPickId((p) => (p === cls.id ? null : cls.id)); }} className={`cursor-pointer transition-all hover:opacity-100 ${colorPickId === cls.id ? 'opacity-100' : 'opacity-85'} ${glitchClassId === cls.id ? 'agenda-glitch' : ''}`} style={{ stroke: colorPickId === cls.id ? '#fff' : 'rgba(0,0,0,0.18)', strokeWidth: colorPickId === cls.id ? 2 : 1 }} />
+                                        <path key={cls.id} d={agDonut(150,150,86,120,h0,h1)} fill={colorHex(cls.color)} onClick={(e) => { e.stopPropagation(); setColorPickId((p) => (p === cls.id ? null : cls.id)); }} className={`cursor-pointer transition-all hover:opacity-100 ${(isNow || colorPickId === cls.id) ? 'opacity-100' : 'opacity-85'} ${glitchClassId === cls.id ? 'agenda-glitch' : ''}`} style={{ stroke: (isNow || colorPickId === cls.id) ? '#fff' : 'rgba(0,0,0,0.18)', strokeWidth: isNow ? 2.5 : colorPickId === cls.id ? 2 : 1, filter: isNow ? 'drop-shadow(0 0 6px rgba(255,255,255,0.85))' : undefined }} />
                                     );
                                 })}
-                                {DAY_NOW === selectedDay + 1 && HOUR_NOW != null && HOUR_NOW >= AG_MIN && HOUR_NOW <= AG_MAX && (() => { const p = agPolar(150,150,120, agAngle(HOUR_NOW as number)); return <g><line x1="150" y1="150" x2={p.x} y2={p.y} stroke="#fff" strokeWidth="2" className="opacity-70" /><circle cx={p.x} cy={p.y} r="3" fill="#22d3ee" /></g>; })()}
-                                <circle cx="150" cy="150" r="4" fill="#fff" className="opacity-80" />
-                                <text x="150" y="148" textAnchor="middle" dominantBaseline="middle" onClick={() => setDayNavOpen((o) => !o)} fill="#fff" fontSize="17" fontWeight="800" style={{ cursor: 'pointer' }}>{DAYS_FULL[selectedDay]}</text>
-                                <text x="150" y="168" textAnchor="middle" onClick={() => setDayNavOpen((o) => !o)} fill="rgba(255,255,255,0.42)" fontSize="8.5" fontWeight="700" style={{ cursor: 'pointer' }}>{classesToRender.filter((c: any) => (c.days || []).includes(selectedDay + 1)).length} evento(s)</text>
+                                {/* Ponteiros vivos — só no dia de HOJE (relógio de verdade). */}
+                                {isToday && HOUR_NOW != null && (() => {
+                                    const hourA = agAngle(HOUR_NOW as number);
+                                    const mh = agPolar(150,150,116, minuteAngle);
+                                    const hh = agPolar(150,150,78, hourA);
+                                    const inRange = (HOUR_NOW as number) >= AG_MIN && (HOUR_NOW as number) <= AG_MAX;
+                                    const mark = inRange ? agPolar(150,150,120, hourA) : null;
+                                    return (
+                                        <g>
+                                            <line x1="150" y1="150" x2={mh.x} y2={mh.y} stroke="#fff" strokeWidth="2" strokeLinecap="round" className="opacity-80" />
+                                            <line x1="150" y1="150" x2={hh.x} y2={hh.y} stroke="#22d3ee" strokeWidth="3.5" strokeLinecap="round" />
+                                            {mark && <circle cx={mark.x} cy={mark.y} r="3.5" fill="#22d3ee" stroke="#fff" strokeWidth="1" />}
+                                        </g>
+                                    );
+                                })()}
+                                {/* Miolo: disco escuro + hora digital + dia (hoje em destaque). */}
+                                <circle cx="150" cy="150" r="33" fill="rgba(10,15,28,0.72)" />
+                                <circle cx="150" cy="150" r="3.5" fill="#fff" className="opacity-90" />
+                                <text x="150" y="139" textAnchor="middle" dominantBaseline="middle" onClick={() => setDayNavOpen((o) => !o)} fill={isToday ? '#22d3ee' : '#fff'} fontSize="11.5" fontWeight="800" style={{ cursor: 'pointer' }}>{DAYS_FULL[selectedDay]}{isToday ? ' · hoje' : ''}</text>
+                                <text x="150" y="161" textAnchor="middle" dominantBaseline="middle" fill="#fff" fontSize="21" fontWeight="900" style={{ letterSpacing: '1px' }}>{clockHHMM}</text>
+                                <text x="150" y="178" textAnchor="middle" onClick={() => setDayNavOpen((o) => !o)} fill="rgba(255,255,255,0.45)" fontSize="8" fontWeight="700" style={{ cursor: 'pointer' }}>{classesToRender.filter((c: any) => (c.days || []).includes(selectedDay + 1)).length} evento(s)</text>
                             </svg>
                             {dayNavOpen && (
                                 <>
