@@ -17,7 +17,8 @@ export type TourStep = {
   advanceEvent?: string;     // avança quando este window event dispara (ação concluída)
   advanceEvents?: string[];  // idem, porém aceita VÁRIOS eventos (qualquer um avança)
   prefill?: string;          // pré-preenche a barra de pesquisa ao entrar no passo
-  tab?: string;              // garante a aba certa (dispara zaeon:set-tab)
+  tab?: string;              // garante a aba certa do research-lab (dispara zaeon:set-tab)
+  subtab?: string;           // sub-aba da Sala de Estudos (dispara zaeon:set-subtab; ex.: "meus-estudos")
   info?: boolean;            // passo só explicativo → mostra um "Ok" leve pra seguir
   cta?: string;              // rótulo do botão (só quando info)
   onMenu?: boolean;          // passo que vive no MENU inicial (não no research-lab)
@@ -70,10 +71,37 @@ export const TOUR_STEPS: TourStep[] = [
     hint: "💾 Salve ao menos 1 PDF",
     say: "Salva **pelo menos um PDF** na sua biblioteca — é com ele que a gente vai **gerar a pesquisa** daqui a pouco. Pode salvar com calma; eu te espero. 😉" },
 
-  // — 6) Gerar pesquisa — avança quando o esboço é criado (Iniciar pesquisa → newdoc).
-  { id: "gerar", target: '[data-tour="gerar"]', advanceEvent: "zaeon:research:newdoc",
-    hint: "✨ Gere a pesquisa a partir do estudo",
-    say: "Agora **Gerar pesquisa** → **Iniciar pesquisa** — eu transformo seu estudo num esboço real: introdução, metodologia e a lacuna. ✍️" },
+  // — 6) Gerar pesquisa — avança quando a geração COMEÇA (draftstart). A geração roda em
+  //   background (store resiliente, lib/research/draftRun) e sobrevive ao desvio abaixo.
+  { id: "gerar", target: '[data-tour="gerar"]', advanceEvent: "zaeon:research:draftstart",
+    hint: "✨ Gere a pesquisa (pode deixar rodando)",
+    say: "Agora clica em **Gerar pesquisa ✦** — eu transformo isso num esboço real (intro, metodologia, a lacuna). Pode **deixar rodando**, que eu cuido. ✍️" },
+
+  // — 6b) DESVIO p/ Meus Estudos enquanto a pesquisa gera: ensina o canvas + Studio.
+  { id: "desvio-estudos", info: true, subtab: "meus-estudos", cta: "Bora",
+    hint: "📚 Vamos aos seus Estudos",
+    say: "Enquanto eu monto sua pesquisa (deixa rodando!), bora dar uma olhada nos seus **Estudos** — é aqui que você cria seu próprio material." },
+
+  { id: "estudo-apareceu", info: true, target: '[data-tour="quick-bar"]', cta: "Massa!",
+    hint: "🎉 Seu estudo aparece aqui",
+    say: "Olha ele aqui ó, já apareceu! 🎉 Daqui você cria quantos estudos quiser, de qualquer assunto." },
+
+  { id: "studio", info: true, target: '[data-tour="studio-dock"]', cta: "Entendi",
+    hint: "🎛️ Studio: podcast, mapa, vídeo…",
+    say: "Esse é o **Studio**: de um clique ele gera **podcast, mapa mental, vídeo, flashcards, linha do tempo…** a partir do seu estudo. 🎛️" },
+
+  { id: "quickbar", info: true, target: '[data-tour="quick-bar"]', cta: "Show",
+    hint: "⌨️ Digite / pra criar rapidinho",
+    say: "E aqui, digitando **/** num bloco, você cria qualquer coisa rapidinho — título, texto, ou um módulo do Studio. ⌨️" },
+
+  { id: "voltar-pesquisa", info: true, tab: "pesquisa", cta: "Ver minha pesquisa",
+    hint: "✨ Sua pesquisa está pronta",
+    say: "Tá pronta! ✨ Te trouxe de volta pra você ver a **pesquisa** que eu montei enquanto a gente passeava nos Estudos." },
+
+  // — 6c) Iniciar pesquisa — abre o esboço completo (newdoc) na folha de escrita.
+  { id: "iniciar", target: '[data-tour="gerar"]', advanceEvent: "zaeon:research:newdoc",
+    hint: "🚀 Inicie a pesquisa",
+    say: "Agora é só **Iniciar pesquisa →** pra abrir o esboço completo e começar a escrever. 🚀" },
 
   // — 7) Sala de Pesquisa: PRIMEIRO o player do documento que você salvou na sala de estudos.
   { id: "play", info: true, target: '[data-tour="docs-panel"]', cta: "Entendi",
@@ -115,6 +143,7 @@ function sayCurrent() {
   const s = TOUR_STEPS[state.index];
   if (!s) return;
   if (s.tab) { try { window.dispatchEvent(new CustomEvent("zaeon:set-tab", { detail: s.tab })); } catch { /* */ } }
+  if (s.subtab) { try { window.dispatchEvent(new CustomEvent("zaeon:set-subtab", { detail: s.subtab })); } catch { /* */ } }
   // PREFILL: a barra de pesquisa (OmegaScholarBar) monta DEPOIS da navegação menu→lab,
   // então um único evento se perde. Re-dispara algumas vezes até a barra existir e pegar.
   if (s.prefill) {

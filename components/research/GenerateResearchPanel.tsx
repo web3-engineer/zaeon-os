@@ -5,9 +5,9 @@
  * via /api/ai/research-draft. Mostra só o título (glitch) + um trecho do resumo; o botão
  * "Iniciar pesquisa" abre o esboço completo na aba Pesquisa.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import GlitchReveal from "./GlitchReveal";
-import type { DraftFields } from "@/lib/abntTemplate";
+import { getDraftState, subscribeDraft, runDraft, hydrateDraft, type DraftState } from "@/lib/research/draftRun";
 
 interface Props {
   topic: string;
@@ -15,26 +15,15 @@ interface Props {
 }
 
 export default function GenerateResearchPanel({ topic, references = [] }: Props) {
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ title: string; fields: DraftFields } | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // Estado vem do STORE singleton (lib/research/draftRun) → sobrevive a trocar de aba.
+  const [st, setSt] = useState<DraftState>(getDraftState());
+  useEffect(() => { hydrateDraft(); return subscribeDraft(setSt); }, []);
+  const loading = st.status === "loading";
+  const result = st.result;
+  const error = st.status === "error" ? st.error : null;
 
   async function generate() {
-    if (!topic.trim() || loading) return;
-    setLoading(true); setError(null);
-    try {
-      const r = await fetch("/api/ai/research-draft", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: topic.trim(), references }),
-      });
-      const d = await r.json().catch(() => ({}));
-      if (r.ok && d.fields) setResult({ title: d.title || topic, fields: d.fields });
-      else setError(d.error || "Não consegui gerar agora. Tente de novo.");
-    } catch {
-      setError("Erro de conexão ao gerar a pesquisa.");
-    } finally {
-      setLoading(false);
-    }
+    await runDraft(topic, references);
   }
 
   function start() {

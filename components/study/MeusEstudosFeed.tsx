@@ -915,7 +915,7 @@ export default function MeusEstudosFeed({ collabSpaceId, mode = "study" }: { col
           </button>
         )}
         {/* ── CABEÇALHO: pílula liquid-glass (⟁ + título grande) + Play funcional ── */}
-        <div className="flex items-center gap-2.5 mb-3">
+        <div className="flex items-center gap-2.5 mb-3" data-tour="quick-bar">
           <div className="flex-1 min-w-0 rounded-[28px] p-[1.5px] bg-gradient-to-r from-blue-500/40 via-cyan-400/40 to-violet-500/40 dark:from-blue-400/40 dark:via-cyan-400/40 dark:to-violet-400/40 shadow-[0_12px_36px_-16px_rgba(37,99,235,0.45)]">
             <div className="rounded-[27px] flex items-center gap-2.5 px-2 py-2 bg-white/70 dark:bg-white/[0.05] backdrop-blur-2xl border border-white/70 dark:border-white/10">
               {/* ⟁ da Zaeon: abre/fecha a barra de novo estudo */}

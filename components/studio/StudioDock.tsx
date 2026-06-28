@@ -140,7 +140,7 @@ export default function StudioDock({ spaceId }: { spaceId?: string }) {
   const pillText = `${pill} text-slate-700 dark:text-white/85 bg-slate-100/80 dark:bg-white/[0.06] hover:bg-cyan-500/10 hover:text-cyan-700 dark:hover:text-cyan-200 border border-transparent hover:border-cyan-400/40`;
 
   return (
-    <div className="mb-3">
+    <div className="mb-3" data-tour="studio-dock">
       <div className="rounded-2xl p-[1.5px] bg-gradient-to-r from-blue-500/30 via-cyan-400/30 to-violet-500/30">
         <div className="rounded-[15px] bg-white/70 dark:bg-white/[0.05] backdrop-blur-2xl border border-white/70 dark:border-white/10 px-2.5 py-2 flex items-center gap-2 overflow-x-auto custom-scrollbar">
           {/* Botãozinho ⟁ Studio: minimizado por padrão; clica e abre as opções. */}
