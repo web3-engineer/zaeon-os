@@ -15,6 +15,7 @@ import NextImage from 'next/image';
 import { ProFeaturePanel } from '@/components/ui/ProFeaturePanel';
 import VoiceModeSwitch from '@/components/voice/VoiceModeSwitch';
 import SpeakButton from '@/components/voice/SpeakButton';
+import StudentAulasModule from '@/components/aulas/StudentAulasModule';
 
 // --- INITIAL DATA ---
 const initialSchedule: any[] = []; 
@@ -377,6 +378,7 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
     ]);
     const [zaeonInput, setZaeonInput] = useState("");
     const [isZaeonProcessing, setIsZaeonProcessing] = useState(false);
+    const [chatMin, setChatMin] = useState(false); // Fase 6: chat minimizável numa barra horizontal
 
     const [storedPdfs, setStoredPdfs] = useState<StoredDoc[]>([]);
     const [selectedDay, setSelectedDay] = useState<number>(0);
@@ -768,6 +770,38 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
         return "Ação de agenda não reconhecida.";
     };
 
+    // Fase 4: o agente do chat acessa as AULAS do aluno (listar / abrir).
+    const applyLessonTool = async (args: any): Promise<string> => {
+        const action = String(args?.action || 'list').toLowerCase();
+        try {
+            if (action === 'open') {
+                const topic = String(args?.topic || args?.title || '').trim();
+                try { window.dispatchEvent(new CustomEvent('zaeon:aula:open', { detail: { topic } })); } catch { /* ignore */ }
+                return topic ? `Abrindo sua aula sobre "${topic}" aqui embaixo.` : 'Abri o módulo das suas aulas aqui embaixo.';
+            }
+            const r = await fetch('/api/aulas');
+            if (!r.ok) return 'Não consegui buscar suas aulas agora.';
+            const d = await r.json();
+            const aulas = Array.isArray(d.aulas) ? d.aulas : [];
+            if (!aulas.length) return 'Você ainda não tem aulas enviadas pelos professores.';
+            return `Você tem ${aulas.length} aula(s): ${aulas.slice(0, 6).map((a: any) => a.title).join('; ')}.`;
+        } catch { return 'Falha ao acessar as aulas.'; }
+    };
+
+    // Fase 4: aviso de aula nova chega no chat (uma vez por montagem).
+    const lessonNoticeRef = useRef(false);
+    useEffect(() => {
+        const onNotice = (e: any) => {
+            if (lessonNoticeRef.current) return;
+            const count = Number(e?.detail?.count || 0);
+            if (count <= 0) return;
+            lessonNoticeRef.current = true;
+            setLiquidChatHistory(prev => [...prev, { role: 'agent', text: `📚 Você tem ${count} aula${count > 1 ? 's' : ''} nova${count > 1 ? 's' : ''} esperando aqui embaixo. Quer que eu abra?` }]);
+        };
+        window.addEventListener('zaeon:aula:notice', onNotice);
+        return () => window.removeEventListener('zaeon:aula:notice', onNotice);
+    }, []);
+
     const handleZaeonMessage = async () => {
         if (!zaeonInput.trim()) return;
         const msg = zaeonInput;
@@ -790,11 +824,14 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
             const response = await fetch('/api/ai/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: msg, agent: "core_active", systemContext: `${dateContext}\n${agendaContext} ${libraryContext}${convoContext}` }),
+                body: JSON.stringify({ prompt: msg, agent: "core_active", systemContext: `${dateContext}\n${agendaContext} ${libraryContext}\nAULAS: o aluno recebe aulas dos professores. Use a ferramenta 'lessons' (action='list' para listar; action='open' com 'topic' para abrir uma aula) quando ele perguntar sobre as aulas dele.${convoContext}` }),
             });
             const data = await response.json();
             if (data?.toolCall?.name === 'update_schedule') {
                 const applied = applyScheduleTool(data.toolCall.args);
+                setLiquidChatHistory(prev => [...prev, { role: 'agent', text: applied }]);
+            } else if (data?.toolCall?.name === 'lessons') {
+                const applied = await applyLessonTool(data.toolCall.args);
                 setLiquidChatHistory(prev => [...prev, { role: 'agent', text: applied }]);
             } else {
                 setLiquidChatHistory(prev => [...prev, { role: 'agent', text: data.text || "Pronto." }]);
@@ -908,26 +945,34 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
                     </svg>
                 </div>
 
-                {/* CHAT ZAEON (limpo, sem divisorias) */}
-                <div className="w-[400px] h-[440px] bg-[#0f172a]/95 dark:bg-black/40 backdrop-blur-xl border border-white/15 rounded-[2.4rem] shadow-[0_0_50px_-10px_rgba(139,92,246,0.55),0_0_95px_-30px_rgba(34,211,238,0.45)] flex flex-col overflow-hidden relative z-10">
-                    <div className="px-6 pt-5 pb-1 flex items-center shrink-0">
+                {/* CHAT ZAEON (limpo, sem divisorias) — Fase 6: minimizável + balões padrão Zaeon */}
+                <div className={`w-[400px] ${chatMin ? 'h-auto' : 'h-[440px]'} bg-[#0f172a]/95 dark:bg-black/40 backdrop-blur-xl border border-white/15 rounded-[2.4rem] shadow-[0_0_50px_-10px_rgba(139,92,246,0.55),0_0_95px_-30px_rgba(34,211,238,0.45)] flex flex-col overflow-hidden relative z-10`}>
+                    <div className="px-6 pt-5 pb-1 flex items-center gap-2 shrink-0">
                         <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#8b5cf6] to-[#22d3ee] shadow-[0_4px_14px_rgba(139,92,246,0.45)] flex items-center justify-center text-white text-[17px] leading-none font-bold select-none">&#10177;</div>
+                        <span className="text-xs font-bold text-white/70 tracking-wide">Zaeon</span>
+                        <button onClick={() => setChatMin((v) => !v)} className="ml-auto p-1 rounded-lg text-white/35 hover:text-white/80 transition-colors" title={chatMin ? 'Abrir chat' : 'Minimizar chat'} aria-label={chatMin ? 'Abrir chat' : 'Minimizar chat'}>
+                            {chatMin ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </button>
                     </div>
-                    <div ref={zaeonChatScrollRef} className="flex-1 overflow-y-auto px-5 py-3 space-y-3 scrollbar-hide">
-                        {liquidChatHistory.map((m, i) => (
-                            <div key={i} className={`group flex items-end gap-1.5 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed shadow-sm ${m.role === 'user' ? 'bg-[#8b5cf6] text-white font-semibold' : 'bg-white/[0.08] text-white/90'}`}>{m.text}</div>
-                                {m.role === 'agent' && <span className="opacity-0 group-hover:opacity-100 transition-opacity"><SpeakButton text={m.text} size={12} /></span>}
+                    {!chatMin && (
+                        <>
+                            <div ref={zaeonChatScrollRef} className="flex-1 overflow-y-auto px-5 py-3 space-y-3 scrollbar-hide">
+                                {liquidChatHistory.map((m, i) => (
+                                    <div key={i} className={`group flex items-end gap-1.5 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`max-w-[85%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed shadow-sm ${m.role === 'user' ? 'text-white font-semibold' : 'bg-white/[0.08] text-white/90'}`} style={m.role === 'user' ? { background: 'linear-gradient(135deg,#8b5cf6,#22d3ee)' } : undefined}>{m.text}</div>
+                                        {m.role === 'agent' && <span className="opacity-0 group-hover:opacity-100 transition-opacity"><SpeakButton text={m.text} size={12} /></span>}
+                                    </div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
-                    <div className="px-4 pb-4 pt-1 shrink-0">
-                        <div className="flex items-center gap-1.5 bg-white/[0.06] rounded-full pl-4 pr-1.5 py-1.5">
-                            <input value={zaeonInput} onChange={(e) => setZaeonInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleZaeonMessage()} className="bg-transparent flex-1 text-xs text-white outline-none placeholder:text-white/30" placeholder="Pergunte a Zaeon..." disabled={isZaeonProcessing} />
-                            <VoiceModeSwitch onTranscript={(t) => setZaeonInput(t)} title="Falar para a Zaeon" size={14} />
-                            <button onClick={handleZaeonMessage} disabled={isZaeonProcessing} className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#8b5cf6] to-[#22d3ee] flex items-center justify-center hover:scale-105 active:scale-95 transition-transform shadow-md disabled:opacity-40"><ArrowUp size={15} strokeWidth={2.2} className="text-white" /></button>
-                        </div>
-                    </div>
+                            <div className="px-4 pb-4 pt-1 shrink-0">
+                                <div className="flex items-center gap-1.5 bg-white/[0.06] rounded-full pl-4 pr-1.5 py-1.5">
+                                    <input value={zaeonInput} onChange={(e) => setZaeonInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleZaeonMessage()} className="bg-transparent flex-1 text-xs text-white outline-none placeholder:text-white/30" placeholder="Pergunte a Zaeon..." disabled={isZaeonProcessing} />
+                                    <VoiceModeSwitch onTranscript={(t) => setZaeonInput(t)} title="Falar para a Zaeon" size={14} />
+                                    <button onClick={handleZaeonMessage} disabled={isZaeonProcessing} className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#8b5cf6] to-[#22d3ee] flex items-center justify-center hover:scale-105 active:scale-95 transition-transform shadow-md disabled:opacity-40"><ArrowUp size={15} strokeWidth={2.2} className="text-white" /></button>
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 {/* LIVRARIA + PLUGINS (faixas horizontais finas) */}
@@ -1101,6 +1146,11 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
 
                     </motion.div>
                 ))}
+            </div>
+
+            {/* MÓDULO DE AULAS DO ALUNO (Fase 3) — aulas enviadas pelos professores */}
+            <div className="w-full max-w-[1180px] mb-12 z-20 relative">
+                <StudentAulasModule />
             </div>
 
             {/* COLLECTIVE BUILD ZONE — Pro-gated (CollectiveZone component above kept, not rendered) */}

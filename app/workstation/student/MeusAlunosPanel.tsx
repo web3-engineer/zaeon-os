@@ -13,12 +13,52 @@ interface Turma {
   createdAt?: string;
 }
 
+interface StudentMetric {
+  studentId: string;
+  name: string;
+  email: string;
+  image: string | null;
+  avgGrade: number | null;
+  readingMs: number;
+  completed: number;
+  interest: number;
+}
+
+function fmtReading(ms: number): string {
+  const min = Math.round(ms / 60000);
+  if (min < 1) return "—";
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  return `${h}h ${min % 60}min`;
+}
+
 export default function MeusAlunosPanel() {
   const [turmas, setTurmas] = useState<Turma[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [invite, setInvite] = useState<{ turmaId: string; url: string } | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [students, setStudents] = useState<Record<string, StudentMetric[]>>({});
+  const [loadingStudents, setLoadingStudents] = useState(false);
+
+  const toggleStudents = async (turmaId: string) => {
+    if (expanded === turmaId) { setExpanded(null); return; }
+    setExpanded(turmaId);
+    if (students[turmaId]) return;
+    setLoadingStudents(true);
+    try {
+      const r = await fetch(`/api/turmas/${turmaId}/students`);
+      if (r.ok) {
+        const d = await r.json();
+        setStudents((prev) => ({ ...prev, [turmaId]: Array.isArray(d?.students) ? d.students : [] }));
+      }
+    } catch {
+      /* silencioso */
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -109,18 +149,71 @@ export default function MeusAlunosPanel() {
           {turmas.map((t) => (
             <li
               key={t.id}
-              className="flex items-center gap-3 p-3 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10"
+              className="flex flex-col p-3 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10"
             >
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-black text-black dark:text-white truncate">{t.name}</p>
-                <p className="text-[11px] text-slate-500 dark:text-white/40">{t.memberCount ?? 0} aluno(s)</p>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-black text-black dark:text-white truncate">{t.name}</p>
+                  <p className="text-[11px] text-slate-500 dark:text-white/40">{t.memberCount ?? 0} aluno(s)</p>
+                </div>
+                <button
+                  onClick={() => void toggleStudents(t.id)}
+                  className="shrink-0 text-[10px] font-black uppercase tracking-wide px-3 py-1.5 rounded-full border border-slate-300 dark:border-white/15 text-slate-600 dark:text-white/60 hover:bg-slate-50 dark:hover:bg-white/5"
+                >
+                  {expanded === t.id ? "Ocultar" : "Ver alunos"}
+                </button>
+                <button
+                  onClick={() => void makeInvite(t.id)}
+                  className="shrink-0 text-[10px] font-black uppercase tracking-wide px-3 py-1.5 rounded-full border border-cyan-500/40 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-950/30"
+                >
+                  Convidar
+                </button>
               </div>
-              <button
-                onClick={() => void makeInvite(t.id)}
-                className="shrink-0 text-[10px] font-black uppercase tracking-wide px-3 py-1.5 rounded-full border border-cyan-500/40 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-950/30"
-              >
-                Convidar
-              </button>
+
+              {expanded === t.id && (
+                <div className="mt-3 pt-3 border-t border-slate-200 dark:border-white/10">
+                  {loadingStudents && !students[t.id] ? (
+                    <p className="text-[11px] text-slate-400 dark:text-white/30">Carregando alunos…</p>
+                  ) : !students[t.id] || students[t.id].length === 0 ? (
+                    <p className="text-[11px] text-slate-400 dark:text-white/30 italic">Nenhum aluno entrou nesta turma ainda. Use o convite acima.</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left">
+                        <thead>
+                          <tr className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-white/30">
+                            <th className="py-1 pr-3">Aluno</th>
+                            <th className="py-1 px-2 text-center">Nota</th>
+                            <th className="py-1 px-2 text-center">Leitura</th>
+                            <th className="py-1 px-2 text-center">Concluídas</th>
+                            <th className="py-1 px-2 text-center">Interesse</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {students[t.id].map((s) => (
+                            <tr key={s.studentId} className="border-t border-slate-100 dark:border-white/5">
+                              <td className="py-2 pr-3">
+                                <p className="text-[12px] font-bold text-black dark:text-white truncate max-w-[160px]">{s.name}</p>
+                                <p className="text-[10px] text-slate-400 dark:text-white/30 truncate max-w-[160px]">{s.email}</p>
+                              </td>
+                              <td className="py-2 px-2 text-center text-[12px] font-black text-black dark:text-white">{s.avgGrade == null ? "—" : `${s.avgGrade}%`}</td>
+                              <td className="py-2 px-2 text-center text-[11px] text-slate-600 dark:text-white/60">{fmtReading(s.readingMs)}</td>
+                              <td className="py-2 px-2 text-center text-[11px] text-slate-600 dark:text-white/60">{s.completed}</td>
+                              <td className="py-2 px-2">
+                                <div className="flex items-center gap-1.5">
+                                  <div className="flex-1 h-1.5 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden">
+                                    <div className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-violet-500" style={{ width: `${Math.max(4, s.interest)}%` }} />
+                                  </div>
+                                  <span className="text-[10px] text-slate-500 dark:text-white/40 w-8 text-right">{s.interest}%</span>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
             </li>
           ))}
         </ul>

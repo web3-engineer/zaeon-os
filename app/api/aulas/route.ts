@@ -34,7 +34,11 @@ export async function GET() {
     where: { turmaId: { in: turmaIds }, status: "sent" },
     orderBy: { sentAt: "desc" },
   });
-  return NextResponse.json({ aulas, role: "student" });
+  // Anexa o status de progresso do aluno (new | in_progress | completed) por aula.
+  const progs = await prisma.aulaProgress.findMany({ where: { studentId: me.id, aulaId: { in: aulas.map((a) => a.id) } }, select: { aulaId: true, status: true } });
+  const pById = new Map(progs.map((p) => [p.aulaId, p.status]));
+  const withProgress = aulas.map((a) => ({ ...a, progressStatus: pById.get(a.id) || "new" }));
+  return NextResponse.json({ aulas: withProgress, role: "student" });
 }
 
 export async function POST(req: Request) {

@@ -31,6 +31,20 @@ const updateScheduleTool: FunctionDeclaration = {
     }
 };
 
+// --- LESSONS TOOL (o agente acessa as AULAS do aluno) ---
+const lessonsTool: FunctionDeclaration = {
+    name: "lessons",
+    description: "Acessa as AULAS do aluno (enviadas pelos professores). Use action='list' para listar as aulas do aluno; action='open' para abrir/rolar até uma aula específica pelo tema/título.",
+    parameters: {
+        type: "OBJECT" as any,
+        properties: {
+            action: { type: "STRING" as any, description: "Ação: 'list' (listar minhas aulas) ou 'open' (abrir uma aula)." },
+            topic: { type: "STRING" as any, description: "Tema ou título da aula a abrir (quando action='open')." }
+        },
+        required: ["action"]
+    }
+};
+
 // --- SUMMON TOOL (o Bento convoca um agente especialista) ---
 const summonAgentTool: FunctionDeclaration = {
     name: "summon_agent",
@@ -124,7 +138,7 @@ export async function POST(req: Request) {
 
         const scheduleAgents = ["zenita", "core_active"];
         const tools = scheduleAgents.includes(agentKey)
-            ? [{ functionDeclarations: [updateScheduleTool] }]
+            ? [{ functionDeclarations: [updateScheduleTool, lessonsTool] }]
             : agentKey === "bento"
                 ? [{ functionDeclarations: [summonAgentTool, openRoomTool] }]
                 : undefined;

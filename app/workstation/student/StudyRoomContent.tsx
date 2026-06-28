@@ -177,6 +177,7 @@ function NoRoomFound() {
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
 const MeusEstudosFeed = dynamic(() => import("@/components/study/MeusEstudosFeed"), { ssr: false });
 const MeusAlunosPanel = dynamic(() => import("@/app/workstation/student/MeusAlunosPanel"), { ssr: false });
+const AulaAuthoringPanel = dynamic(() => import("@/components/aulas/AulaAuthoringPanel"), { ssr: false });
 
 export default function StudyRoomContent({ flushTop = false }: { flushTop?: boolean } = {}) {
     const { data: session } = useSession();
@@ -339,6 +340,8 @@ export default function StudyRoomContent({ flushTop = false }: { flushTop?: bool
                             <OmegaScholarWorkspace />
                         ) : activeTab === "students" ? (
                             <MeusAlunosPanel />
+                        ) : activeTab === "classes" && isTeacher ? (
+                            <AulaAuthoringPanel />
                         ) : !ActiveComponent ? (
                             <NoRoomFound />
                         ) : (
