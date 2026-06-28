@@ -102,7 +102,15 @@ export default function PdfViewer({ file, onCite }: PdfViewerProps) {
         }
         if (!cancelled) setLoadingDoc(false);
       } catch (e: any) {
-        if (!cancelled) { setLoadError(e?.message || "Não foi possível abrir este PDF."); setLoadingDoc(false); }
+        if (!cancelled) {
+          // 403/502 do proxy = a fonte saiu do ar ou recusou o download → mensagem acionável.
+          const status = Number(e?.status);
+          const msg = status === 403 || status === 502 || status === 404
+            ? "Não consegui reabrir este arquivo — talvez a fonte tenha saído do ar. Baixe o PDF de novo e salve na biblioteca."
+            : (e?.message || "Não foi possível abrir este PDF.");
+          setLoadError(msg);
+          setLoadingDoc(false);
+        }
       }
     })();
 

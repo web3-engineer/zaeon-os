@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { BRAZILIAN_UNIVERSITIES } from "@/constants/universities";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useSession } from "next-auth/react";
@@ -745,22 +746,26 @@ export default function HomeworkPage({
     text: c.abnt,
   }));
 
-  // Saved research sessions — for the 📁 folder panel in ResearchShell
+  // "Minhas coisas" (painel 📁): os TRABALHOS reais do usuário (ResearchWork), não o
+  // histórico de buscas (ScholarSession = as antigas "pesquisas fantasmas").
   const [sessions, setSessions] = useState<
     { id: string; title: string; updatedAt?: string }[]
   >([]);
-  useEffect(() => {
-    fetch("/api/ai/scholar/sessions")
+  const [currentWorkId, setCurrentWorkId] = useState<string | null>(null);
+  const currentWorkIdRef = useRef<string | null>(null);
+  currentWorkIdRef.current = currentWorkId;
+  const loadWorks = useCallback(() => {
+    fetch("/api/research-works")
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data?.sessions)) {
           setSessions(
             data.sessions.map(
-              (s: { id: string; title?: string; createdAt?: string }) => ({
+              (s: { id: string; title?: string; updatedAt?: string }) => ({
                 id: s.id,
                 title: s.title ?? "Pesquisa sem título",
-                updatedAt: s.createdAt
-                  ? new Date(s.createdAt).toLocaleDateString("pt-BR")
+                updatedAt: s.updatedAt
+                  ? new Date(s.updatedAt).toLocaleDateString("pt-BR")
                   : undefined,
               }),
             ),
@@ -769,6 +774,7 @@ export default function HomeworkPage({
       })
       .catch(() => {});
   }, []);
+  useEffect(() => { loadWorks(); }, [loadWorks]);
   const [citationContent, setCitationContent] = useState<string | null>(null);
   const [activeCitationText, setActiveCitationText] = useState<string | null>(
     null,
@@ -1177,16 +1183,63 @@ export default function HomeworkPage({
   };
   workTypeRef.current = workType; // mantém o ref do tipo ativo p/ handlers de evento
 
-  // "Minhas coisas": novo trabalho (zera a folha do tipo atual) e excluir uma pesquisa salva.
+  // Cria um ResearchWork e o torna o trabalho ATUAL (ao iniciar pesquisa ou "novo trabalho").
+  const createWork = useCallback(async (init?: { title?: string; content?: string; workType?: string }) => {
+    try {
+      const data = { title: init?.title ?? "", content: init?.content ?? "", workType: init?.workType ?? workTypeRef.current ?? undefined };
+      const r = await fetch("/api/research-works", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+      if (r.ok) {
+        const w = await r.json();
+        setCurrentWorkId(w.id);
+        setSessions((prev) => [
+          { id: w.id, title: (w.title && w.title.trim()) || "Pesquisa sem título", updatedAt: new Date().toLocaleDateString("pt-BR") },
+          ...prev.filter((s) => s.id !== w.id),
+        ]);
+        return w.id as string;
+      }
+    } catch { /* */ }
+    return null;
+  }, []);
+
+  // "Minhas coisas": NOVO trabalho (cria work + folha limpa), ABRIR e EXCLUIR um trabalho.
   const handleNewWork = () => {
-    setDocTitle("minha_pesquisa.pdf");
+    setDocTitle("");
     setDocContent(templateFor(workType));
+    setCurrentWorkId(null);
+    void createWork({ workType: workType ?? undefined });
   };
+  const handleOpenWork = useCallback(async (id: string) => {
+    try {
+      const r = await fetch(`/api/research-works?id=${id}`);
+      if (!r.ok) return;
+      const w = await r.json();
+      setDocTitle(w.title || "");
+      setDocContent(w.content || templateFor(workTypeRef.current ?? "TCC"));
+      if (w.workType) setWorkType(w.workType);
+      setCurrentWorkId(id);
+      setActiveTab("pesquisa");
+    } catch { /* */ }
+  }, []);
   const handleDeleteWork = (id: string) => {
-    fetch(`/api/ai/scholar/sessions?id=${id}`, { method: "DELETE" })
-      .then(() => setSessions((prev) => prev.filter((s) => s.id !== id)))
+    fetch(`/api/research-works?id=${id}`, { method: "DELETE" })
+      .then(() => { setSessions((prev) => prev.filter((s) => s.id !== id)); if (currentWorkIdRef.current === id) setCurrentWorkId(null); })
       .catch(() => {});
   };
+
+  // Autosave (debounce ~1s) do trabalho ATUAL → ResearchWork. Só salva quando há work ativo,
+  // então abrir a Sala de Estudos / a folha-template NÃO cria trabalho fantasma.
+  useEffect(() => {
+    const id = currentWorkId;
+    if (!id) return;
+    const t = setTimeout(() => {
+      const data = { id, title: docTitle, content: docContent, workType };
+      fetch("/api/research-works", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((w) => { if (w) setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, title: (w.title && w.title.trim()) || "Pesquisa sem título" } : s))); })
+        .catch(() => {});
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [docTitle, docContent, workType, currentWorkId]);
 
   useEffect(() => {
     return () => {
@@ -1307,6 +1360,8 @@ export default function HomeworkPage({
         }
         if (!workTypeRef.current) setWorkType("TCC");
         setActiveTab("pesquisa");
+        // Inicia um TRABALHO real em "Minhas coisas" (o autosave preenche o conteúdo).
+        void createWork({ title: t.trim().slice(0, 120), workType: workTypeRef.current ?? "TCC" });
       }
     };
     window.addEventListener("zaeon:research:newdoc", onNewDoc);
@@ -2404,9 +2459,7 @@ export default function HomeworkPage({
                 sessions={sessions}
                 onNewWork={handleNewWork}
                 onDeleteWork={handleDeleteWork}
-                onOpenSession={() => {
-                  setActiveTab("sala-de-estudos");
-                }}
+                onOpenSession={handleOpenWork}
                 researchWindowContent={
                   <div
                     onClick={() => setActiveSection("doc")}
@@ -2853,8 +2906,8 @@ export default function HomeworkPage({
                       </motion.div>
                     ))}
                   </div>
-                  <p className="text-[10px] text-slate-400 uppercase tracking-widest animate-pulse">
-                    Aguarde — formatando conforme ABNT NBR 14724:2011...
+                  <p className="text-[10px] text-slate-600 dark:text-slate-300 uppercase tracking-widest animate-pulse">
+                    Aguarde — formatando seu trabalho…
                   </p>
                 </div>
               )}
@@ -2868,11 +2921,11 @@ export default function HomeworkPage({
                         Passo 1 de 2
                       </span>
                     </div>
-                    <h3 className="text-xl font-black text-black dark:text-white">
-                      Exportar com ABNT
+                    <h3 className="text-2xl font-black text-black dark:text-white">
+                      Exportar seu trabalho
                     </h3>
-                    <p className="text-[11px] font-bold text-slate-500 mt-1 uppercase tracking-wider">
-                      Preencha os metadados do trabalho
+                    <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mt-1 uppercase tracking-wider">
+                      Formatação acadêmica automática
                     </p>
                   </div>
 
@@ -2896,6 +2949,7 @@ export default function HomeworkPage({
                         Instituição *
                       </label>
                       <input
+                        list="zaeon-universities"
                         value={abntMeta.institution}
                         onChange={(e) =>
                           setAbntMeta((prev) => ({
@@ -2903,9 +2957,15 @@ export default function HomeworkPage({
                             institution: e.target.value,
                           }))
                         }
-                        placeholder="Universidade Federal..."
+                        placeholder="Busque sua instituição"
                         className="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-black dark:text-white text-sm focus:border-cyan-500 outline-none transition-colors"
                       />
+                      {/* Busca por nome/sigla das instituições reais; permite digitar "outra" livremente. */}
+                      <datalist id="zaeon-universities">
+                        {BRAZILIAN_UNIVERSITIES.map((u) => (
+                          <option key={u.id} value={u.name}>{u.acronym} — {u.city}/{u.state}</option>
+                        ))}
+                      </datalist>
                     </div>
 
                     {workType === "TCC" && (
@@ -2940,7 +3000,7 @@ export default function HomeworkPage({
                               city: e.target.value,
                             }))
                           }
-                          placeholder="São Paulo"
+                          placeholder=""
                           className="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-black dark:text-white text-sm focus:border-cyan-500 outline-none transition-colors"
                         />
                       </div>
@@ -2977,7 +3037,7 @@ export default function HomeworkPage({
                                 fontChoice: f,
                               }))
                             }
-                            className={`flex-1 py-2.5 rounded-xl text-[11px] font-black border-2 transition-all ${abntMeta.fontChoice === f ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-950/30 text-cyan-600 dark:text-cyan-400" : "border-slate-200 dark:border-white/10 text-slate-500"}`}
+                            className={`flex-1 py-2.5 rounded-xl text-[11px] font-black border-2 transition-all ${abntMeta.fontChoice === f ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-950/30 text-cyan-600 dark:text-cyan-400" : "border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300"}`}
                           >
                             {f}
                           </button>
@@ -2995,7 +3055,7 @@ export default function HomeworkPage({
                         className="w-full py-3 px-4 rounded-2xl text-[11px] font-black border-2 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:border-cyan-500 hover:text-cyan-500 flex items-center gap-3 transition-all"
                       >
                         <CloudArrowUpIcon className="w-5 h-5 text-cyan-500 shrink-0" />
-                        Salvar na Nuvem (sem formatação ABNT)
+                        Salvar rascunho (sem formatar)
                       </button>
                     </div>
                   </div>
@@ -3008,7 +3068,7 @@ export default function HomeworkPage({
                         !abntMeta.city.trim() ||
                         !abntMeta.year.trim()
                       }
-                      className="px-8 py-3 rounded-full text-[11px] font-black bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white uppercase tracking-widest shadow-xl transition-all flex items-center gap-2"
+                      className="px-8 py-3 rounded-full text-[11px] font-black bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-500 hover:to-cyan-400 disabled:opacity-40 text-white uppercase tracking-widest shadow-xl shadow-cyan-500/20 transition-all flex items-center gap-2"
                     >
                       Próximo → Formato
                     </button>
@@ -3034,14 +3094,14 @@ export default function HomeworkPage({
                     <h3 className="text-xl font-black text-black dark:text-white">
                       Escolha o formato
                     </h3>
-                    <p className="text-[11px] font-bold text-slate-500 mt-1">
-                      O documento será formatado automaticamente pela IA com
-                      todas as regras ABNT NBR 14724:2011.
+                    <p className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mt-1">
+                      A IA formata o documento automaticamente.{" "}
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-white/10 text-[9px] uppercase tracking-wider text-slate-500 dark:text-slate-400">padrão acadêmico · NBR 14724</span>
                     </p>
                   </div>
 
                   {/* Resumo dos metadados */}
-                  <div className="mb-4 p-3 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-[10px] text-slate-500 space-y-0.5">
+                  <div className="mb-4 p-3 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-[10px] text-slate-600 dark:text-slate-300 space-y-0.5">
                     <p>
                       <span className="font-black text-black dark:text-white">
                         Instituição:
@@ -3080,13 +3140,13 @@ export default function HomeworkPage({
                   <div className="mb-4 p-3 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-[9px] font-black uppercase tracking-[0.3em] text-cyan-500">
-                        Formatação ABNT (NBR 14724)
+                        Formatação acadêmica
                       </p>
-                      <span className="inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-wider text-slate-400">
-                        <LockClosedIcon className="w-2.5 h-2.5" /> Padrão da norma
+                      <span className="inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        <LockClosedIcon className="w-2.5 h-2.5" /> NBR 14724
                       </span>
                     </div>
-                    <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] text-slate-500">
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] text-slate-600 dark:text-slate-300">
                       <p>
                         <span className="font-black text-black dark:text-white">
                           Fonte:
@@ -3144,7 +3204,7 @@ export default function HomeworkPage({
                         à esquerda, espaço simples, espaço entre entradas
                       </p>
                     </div>
-                    <p className="mt-2 text-[9px] text-slate-400 leading-relaxed">
+                    <p className="mt-2 text-[9px] text-slate-500 dark:text-slate-400 leading-relaxed">
                       Aplicado automaticamente conforme a NBR 14724. Apenas a{" "}
                       <span className="text-cyan-600 dark:text-cyan-400 font-black">
                         fonte
@@ -3168,7 +3228,7 @@ export default function HomeworkPage({
                         <div className="font-black text-sm text-black dark:text-white">
                           PDF — ABNT
                         </div>
-                        <div className="text-[10px] text-slate-500 font-normal normal-case mt-0.5">
+                        <div className="text-[10px] text-slate-600 dark:text-slate-300 font-normal normal-case mt-0.5">
                           Download em PDF com formatação acadêmica completa
                         </div>
                       </div>
@@ -3185,7 +3245,7 @@ export default function HomeworkPage({
                         <div className="font-black text-sm text-black dark:text-white">
                           Word (.docx) — ABNT
                         </div>
-                        <div className="text-[10px] text-slate-500 font-normal normal-case mt-0.5">
+                        <div className="text-[10px] text-slate-600 dark:text-slate-300 font-normal normal-case mt-0.5">
                           Download editável com todas as normas aplicadas
                         </div>
                       </div>
