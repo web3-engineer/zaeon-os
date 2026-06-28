@@ -63,5 +63,29 @@ export async function POST(req: Request) {
     status: "draft",
   };
   const aula = await prisma.aula.create({ data });
+
+  // Lote 9 fatia 2: cria o QUIZ + perguntas (blocos interativos) junto da aula, se vierem.
+  const rawQs = Array.isArray(body.questions) ? (body.questions as any[]) : [];
+  if (rawQs.length) {
+    const quizData = { aulaId: aula.id, title: `Quiz — ${title}`.slice(0, 160), passingPct: 70 };
+    const quiz = await prisma.aulaQuiz.create({ data: quizData });
+    const QT = new Set(["choice", "input", "open", "voice", "roulette"]);
+    let order = 0;
+    for (const q of rawQs) {
+      if (!q || typeof q.text !== "string" || !q.text.trim()) continue;
+      const qData = {
+        quizId: quiz.id,
+        text: String(q.text).slice(0, 600),
+        type: QT.has(q.type) ? q.type : "open",
+        options: Array.isArray(q.options) ? (q.options as object) : undefined,
+        accepted: Array.isArray(q.accepted) ? q.accepted.filter((x: any) => typeof x === "string").map((x: string) => String(x).slice(0, 200)) : [],
+        marks: Number.isFinite(q.marks) && q.marks > 0 ? Math.min(20, Math.floor(q.marks)) : 1,
+        noPaste: !!q.noPaste,
+        config: q.config && typeof q.config === "object" ? (q.config as object) : undefined,
+        order: order++,
+      };
+      await prisma.aulaQuestion.create({ data: qData });
+    }
+  }
   return NextResponse.json({ aula });
 }

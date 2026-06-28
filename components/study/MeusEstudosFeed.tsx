@@ -23,6 +23,7 @@ import VoiceModeSwitch from "@/components/voice/VoiceModeSwitch";
 import SpeakButton from "@/components/voice/SpeakButton";
 import VoicePlayButton from "@/components/voice/VoicePlayButton";
 import StudioDock from "@/components/studio/StudioDock";
+import AulaQuestionsPanel, { type AuthQ } from "@/components/aulas/AulaQuestionsPanel";
 import StudioBlock, { type StudioBlockData } from "@/components/studio/StudioBlock";
 import { detectHeadingShortcut } from "@/lib/study/blockMarkdown";
 import { prevEditableId, moveBlock } from "@/lib/study/blockOrder";
@@ -266,6 +267,7 @@ export default function MeusEstudosFeed({ collabSpaceId, mode = "study" }: { col
   const [turmas, setTurmas] = useState<{ id: string; name: string }[]>([]);
   const [sending, setSending] = useState(false);
   const [sendMsg, setSendMsg] = useState("");
+  const [teachQuestions, setTeachQuestions] = useState<AuthQ[]>([]); // perguntas interativas (fatia 2)
   const feedToMarkdown = (): string => {
     const lines: string[] = [];
     for (const it of feed) {
@@ -290,10 +292,10 @@ export default function MeusEstudosFeed({ collabSpaceId, mode = "study" }: { col
   const sendToTurma = async (turmaId: string) => {
     const title = (spaces.find((s) => s.id === spaceId)?.title || "Aula").slice(0, 200);
     const body = feedToMarkdown();
-    if (!body.trim()) { setSendMsg("Monte a aula antes de enviar."); return; }
+    if (!body.trim() && teachQuestions.length === 0) { setSendMsg("Monte a aula (conteúdo ou perguntas) antes de enviar."); return; }
     setSending(true);
     try {
-      const r = await fetch("/api/aulas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, body }) });
+      const r = await fetch("/api/aulas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, body, questions: teachQuestions }) });
       if (!r.ok) { setSendMsg("Não consegui criar a aula."); return; }
       const d = await r.json();
       const aulaId = d?.aula?.id;
@@ -883,11 +885,18 @@ export default function MeusEstudosFeed({ collabSpaceId, mode = "study" }: { col
           </button>
         )}
         {teach && sendOpen && (
-          <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => !sending && setSendOpen(false)}>
-            <div className="w-[320px] max-w-[90%] rounded-2xl border border-white/15 bg-[#0b1220] p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-              <p className="text-sm font-black text-white mb-1">Enviar aula</p>
-              <p className="text-[12px] text-white/45 mb-3">Escolha a turma. O conteúdo do canvas vira a aula que o aluno recebe.</p>
-              <div className="flex flex-col gap-1.5 max-h-[240px] overflow-y-auto">
+          <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-3" onClick={() => !sending && setSendOpen(false)}>
+            <div className="w-[560px] max-w-full max-h-full overflow-y-auto rounded-2xl border border-white/15 bg-[#0b1220] p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <p className="text-sm font-black text-white mb-1">Pontuação & envio da aula</p>
+              <p className="text-[12px] text-white/45 mb-3">O conteúdo do canvas vira a aula. Adicione as perguntas (gere ou crie), defina os pontos e escolha a turma.</p>
+
+              {/* PERGUNTAS + PONTUAÇÃO (fatia 2) */}
+              <div className="mb-4">
+                <AulaQuestionsPanel value={teachQuestions} onChange={setTeachQuestions} />
+              </div>
+
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-white/45 mb-1.5">Enviar para a turma</p>
+              <div className="flex flex-col gap-1.5 max-h-[200px] overflow-y-auto">
                 {turmas.length === 0 ? (
                   <p className="text-[12px] text-white/40 italic py-2">Nenhuma turma. Crie uma em “Meus Alunos” primeiro.</p>
                 ) : turmas.map((t) => (
