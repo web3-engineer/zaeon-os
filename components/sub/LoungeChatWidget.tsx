@@ -614,6 +614,7 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
         <>
         <AgentActionRunner side={widgetPosition} />
         <motion.div
+            data-tour="chat-widget"
             layout
             initial={false}
             animate={{
@@ -676,6 +677,7 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                             </button>
                         )}
                         <button
+                            data-tour="chat-flip"
                             onClick={(e) => { e.stopPropagation(); setWidgetPosition(p => p === 'right' ? 'left' : 'right'); }}
                             className="text-slate-400 hover:text-cyan-500 transition-colors p-1"
                             title="Mudar Lado do Widget"

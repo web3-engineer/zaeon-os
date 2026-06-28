@@ -1243,15 +1243,14 @@ export default function HomeworkPage({
     try { localStorage.setItem("zaeon.lab.lastTab", activeTab); } catch { /* ignore */ }
   }, [activeTab]);
 
-  // O tour de onboarding COMEÇA no menu inicial (passo "menu-estudos"). Quando a
-  // pessoa abre a Sala de Estudos (chega aqui no lab), avança pro passo de pesquisar.
+  // O tour de onboarding COMEÇA no menu inicial (passos "chat" e "menu-estudos", ambos
+  // onMenu). Ao chegar aqui no lab (a pessoa abriu a Sala de Estudos), pula TODOS os
+  // passos de menu de uma vez e cai no passo de pesquisar (que já preenche a barra).
   useEffect(() => {
     try {
-      const t = getTour();
-      if (t.active && TOUR_STEPS[t.index]?.onMenu) {
-        setActiveTab("sala-de-estudos");
-        setTimeout(() => nextTour(), 300);
-      }
+      let guard = 0;
+      while (getTour().active && TOUR_STEPS[getTour().index]?.onMenu && guard++ < 12) nextTour();
+      if (getTour().active) setActiveTab("sala-de-estudos");
     } catch { /* ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -26,32 +26,37 @@ export type TourStep = {
 // exemplo fixo "história do Brasil" → vira o chat de lado → percorre Referências/
 // Insights/Base → gera a pesquisa → Sala de Pesquisa (player do doc salvo + citações).
 export const TOUR_STEPS: TourStep[] = [
-  // — 1) MENU inicial: NÃO é "eu sou a Zaeon" — é "por onde começar". Destaca Estudos.
-  //    Avança quando a pessoa abre a Sala de Estudos (research-lab detecta no mount).
-  { id: "menu-estudos", onMenu: true, info: true, cta: "Bora aprender ✦", target: '[data-tour="menu-estudos"]',
-    hint: "📚 Comece pelos seus Estudos",
-    say: "Vamos começar aprendendo a estudar por aqui 😊. Abre os seus **Estudos** neste menu e clica em **Novo estudo** — é onde tudo começa." },
+  // — 1) FOCO NO CHAT: 1º destaque é só o chat (o resto fica obscurecido pelo overlay).
+  //    A Zaeon se apresenta e mostra que dá pra jogar o chat pro outro lado.
+  { id: "chat", onMenu: true, info: true, cta: "Vamos lá ✦", target: '[data-tour="chat-widget"]',
+    hint: "💬 Aqui é a Zaeon — sua IA",
+    say: "Oi! Esse cantinho aqui é o **nosso chat** — sou eu, a Zaeon, te acompanhando em tudo, inclusive **por voz**. Dica: se eu estiver cobrindo a sua tela, é só **me jogar pro outro lado** no botãozinho de virar. Bora começar?" },
 
-  // — 2) Sala de Estudos / aba Estudos: exemplo FIXO e obrigatório na barra.
+  // — 2) MENU inicial: por onde começar. Destaca Estudos. Avança quando abre a Sala de Estudos.
+  { id: "menu-estudos", onMenu: true, info: true, cta: "Abrir Estudos ✦", target: '[data-tour="menu-estudos"]',
+    hint: "📚 Comece pelos seus Estudos",
+    say: "Agora abre os seus **Estudos** neste menu e clica em **Novo estudo** — é onde tudo começa." },
+
+  // — 3) Sala de Estudos / aba Estudos: exemplo FIXO e obrigatório na barra.
   { id: "pesquisar", tab: "sala-de-estudos", target: '[data-academic-input="true"]', advanceEvent: "zaeon:research:start", prefill: "história do Brasil",
     hint: "🔎 Pesquise o exemplo (passo obrigatório)",
     say: "Já deixei um exemplo fixo na barra: **história do Brasil**. Esse passo é obrigatório — aperta **Enter** que eu pesquiso e monto o estudo. 🎙️" },
-
-  // — 3) O chat começa do lado ESQUERDO, cobrindo a visão. Destaca o botão de virar de lado.
-  { id: "chat-flip", target: '[data-tour="layout-toggle"]', clickTarget: true,
-    hint: "↔️ Jogue o chat pro outro lado",
-    say: "Repara: meu chat começou do lado **esquerdo**, meio na frente da tela. Clica aqui 👇 pra me jogar pro **outro lado** e liberar sua visão. É seu espaço, do seu jeito." },
 
   // — 4) Enquanto termina, te faço companhia por voz — avança quando o estudo FICA PRONTO.
   { id: "esperando", advanceEvent: "zaeon:research:done",
     hint: "🎧 Eu te faço companhia por voz",
     say: "Enquanto eu trabalho, te faço companhia 😄 — e sim, converso por voz de verdade! Me conta: história, exatas, ou tá começando agora?" },
 
-  // — 5) Resultado: percorre Referências/Insights/Base. Salvar é obrigatório (vira o doc
-  //    que você vai abrir na Sala de Pesquisa). Termina apontando pro Gerar pesquisa.
-  { id: "subabas", info: true, target: '[data-tour="result-tabs"]', cta: "Salvei 👍",
+  // — 5a) Resultado: mostra as abas UMA vez (cta "Entendi") e depois solta — a página fica
+  //    normal pra pessoa salvar com calma.
+  { id: "subabas", info: true, target: '[data-tour="result-tabs"]', cta: "Entendi",
     hint: "📑 Referências · Insights · Base",
-    say: "Pronto! 🎉 Passa pelas abas **Referências**, **Insights** e **Base**. Salva pelo menos **1 referência** e o **documento** — é obrigatório, porque é ele que vai aparecer pra você na Sala de Pesquisa daqui a pouco. Depois clica em **Gerar pesquisa**." },
+    say: "Pronto! 🎉 Aqui ficam **Referências**, **Insights** e **Base**. Dá uma olhada nelas." },
+
+  // — 5b) Salvar: SEM destaque (página normal). Avança sozinho quando salva ≥1 referência.
+  { id: "salvar", advanceEvent: "zaeon:savedCitations",
+    hint: "💾 Salve ao menos 1 referência",
+    say: "Agora salva **pelo menos 1 referência** na sua biblioteca — é ela que vai te servir na pesquisa daqui a pouco. Pode salvar com calma; eu te espero. 😉" },
 
   // — 6) Gerar pesquisa — avança quando o esboço é criado (Iniciar pesquisa → newdoc).
   { id: "gerar", target: '[data-tour="gerar"]', advanceEvent: "zaeon:research:newdoc",
@@ -93,7 +98,13 @@ function sayCurrent() {
   const s = TOUR_STEPS[state.index];
   if (!s) return;
   if (s.tab) { try { window.dispatchEvent(new CustomEvent("zaeon:set-tab", { detail: s.tab })); } catch { /* */ } }
-  if (s.prefill) { try { window.dispatchEvent(new CustomEvent("zaeon:tour:prefill", { detail: s.prefill })); } catch { /* */ } }
+  // PREFILL: a barra de pesquisa (OmegaScholarBar) monta DEPOIS da navegação menu→lab,
+  // então um único evento se perde. Re-dispara algumas vezes até a barra existir e pegar.
+  if (s.prefill) {
+    const fire = () => { try { window.dispatchEvent(new CustomEvent("zaeon:tour:prefill", { detail: s.prefill })); } catch { /* */ } };
+    fire();
+    [250, 700, 1400, 2400].forEach((ms) => setTimeout(() => { if (TOUR_STEPS[state.index]?.id === s.id) fire(); }, ms));
+  }
   try { window.dispatchEvent(new CustomEvent("zaeon:onboard:say", { detail: s.say })); } catch { /* */ }
 }
 
