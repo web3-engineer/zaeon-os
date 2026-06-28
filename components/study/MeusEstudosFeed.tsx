@@ -239,11 +239,11 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
   // Handoff da Zaeon (chat/voz): se ela mandou ESTUDAR um tópico, executa quando o espaço estiver pronto.
   const handoffDoneRef = useRef(false);
   useEffect(() => {
-    if (handoffDoneRef.current || !spaceId) return;
+    if (handoffDoneRef.current) return;
     const ho = takeHandoff(["study"]);
     if (ho?.topic) { handoffDoneRef.current = true; typeIntoBarAndRun(ho.topic).then(() => missionDone()).catch(() => missionDone("error")); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [spaceId]);
+  }, []);
 
   useEffect(() => { setTitleDraft(spaces.find((s) => s.id === spaceId)?.title || ""); }, [spaceId, spaces]);
 
@@ -325,31 +325,52 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
     try { await fetch("/api/study/spaces", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: useId, title: t }) }); } catch { /* ignore */ }
   };
 
+  // Garante um espaço de estudo: usa o atual ou cria um novo. Assim um usuário sem
+  // nenhum estudo (spaceId === "") ainda consegue gerar (botão/voz/chat) — antes o
+  // pedido era abortado em silêncio.
+  const ensureSpaceId = useCallback(async (): Promise<string> => {
+    if (spaceId) return spaceId;
+    try {
+      const rs = await fetch("/api/study/spaces", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: "Novo estudo" }) });
+      if (rs.ok) {
+        const s = await rs.json();
+        setSpaces((prev) => [...prev, s]);
+        setSpaceId(s.id);
+        setItems([]);
+        return s.id as string;
+      }
+    } catch { /* ignore */ }
+    return "";
+  }, [spaceId]);
+
   // ── ZAEON GENERATIVA: comando em linguagem natural → blocos no feed (ao vivo) ──
   const zaeonStudy = async (override?: string) => {
     const cmd = (override ?? zaeonCmd).trim();
-    if (!cmd || zaeonBusy || !spaceId) return;
+    if (!cmd || zaeonBusy) return;
     setZaeonBusy(true); setZaeonCmd(""); setZaeonStatus("Zaeon está pensando…"); setGenTitle(cmd); setBarOpen(false);
-
-    // Cada pedido à Zaeon = um NOVO estudo. Só escreve no atual se ele estiver VAZIO
-    // (ex.: estudo recém-criado pelo "+"). Assim não sobrescreve nem empilha no aberto.
-    let targetId = spaceId;
-    let freshBase = false;
-    const currentHasContent = itemsRef.current.some((i) => i.placement === "feed");
-    if (currentHasContent && !collabSpaceId) {
-      try {
-        const rs = await fetch("/api/study/spaces", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: cmd.slice(0, 80) }) });
-        if (rs.ok) {
-          const s = await rs.json();
-          targetId = s.id; freshBase = true;
-          setSpaces((prev) => [...prev, s]);
-          setSpaceId(s.id);
-          setItems([]);
-        }
-      } catch { /* se falhar, escreve no atual mesmo */ }
-    }
-
     try {
+      // Garante um caderno mesmo se o usuário ainda não tem nenhum.
+      const sid = spaceId || (await ensureSpaceId());
+      if (!sid) { setZaeonStatus("Não consegui criar seu caderno agora. Tente de novo."); setTimeout(() => setZaeonStatus(""), 4000); return; }
+
+      // Cada pedido à Zaeon = um NOVO estudo. Só escreve no atual se ele estiver VAZIO
+      // (ex.: estudo recém-criado pelo "+"). Assim não sobrescreve nem empilha no aberto.
+      let targetId = sid;
+      let freshBase = false;
+      const currentHasContent = itemsRef.current.some((i) => i.placement === "feed");
+      if (currentHasContent && !collabSpaceId) {
+        try {
+          const rs = await fetch("/api/study/spaces", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: cmd.slice(0, 80) }) });
+          if (rs.ok) {
+            const s = await rs.json();
+            targetId = s.id; freshBase = true;
+            setSpaces((prev) => [...prev, s]);
+            setSpaceId(s.id);
+            setItems([]);
+          }
+        } catch { /* se falhar, escreve no atual mesmo */ }
+      }
+
       const r = await fetch("/api/study/agent", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ command: cmd, spaceId: targetId }) });
       const d = await r.json().catch(() => ({}));
       if (!r.ok || !Array.isArray(d.blocks) || d.blocks.length === 0) {
@@ -400,6 +421,28 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
     await zaeonStudy(topic);
   };
 
+  // Fila de pedidos: garante que um pedido (botão "Estudar esse tema"/voz/chat) NUNCA
+  // seja descartado em silêncio — nem quando o espaço ainda não carregou, nem quando já
+  // há uma geração em curso. O feed fica sempre montado (só escondido), então estes
+  // listeners vivem mesmo fora da aba.
+  const pendingTopicRef = useRef<string | null>(null);
+  const runningRef = useRef(false);
+  const flushPending = useCallback(() => {
+    if (runningRef.current || zaeonBusy) return;
+    const topic = pendingTopicRef.current;
+    if (!topic) return;
+    pendingTopicRef.current = null;
+    runningRef.current = true;
+    void typeIntoBarAndRun(topic)
+      .then(() => { try { window.dispatchEvent(new CustomEvent("zaeon:study:done", { detail: { topic } })); } catch { /* ignore */ } })
+      .catch(() => { try { window.dispatchEvent(new CustomEvent("zaeon:study:done", { detail: { topic, error: true } })); } catch { /* ignore */ } })
+      .finally(() => { runningRef.current = false; flushPending(); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zaeonBusy]);
+
+  // Re-tenta a fila quando a geração em curso libera (zaeonBusy: true -> false).
+  useEffect(() => { flushPending(); }, [zaeonBusy, flushPending]);
+
   // colar de outras abas (refs/insights/etc.) → cai na biblioteca
   useEffect(() => {
     const onAdd = (e: any) => { const d = e?.detail; if (d?.type) addItem({ type: d.type, title: d.title || "", payload: d.payload ?? null }); };
@@ -432,24 +475,19 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
     return () => window.removeEventListener("zaeon:study:embed", onEmbed);
   }, [addItem]);
 
-  // "Estudar esse tema" (botão da pesquisa): gera um estudo a partir do tema, mesmo
-  // já estando no research-lab (o feed fica sempre montado, só escondido → handoff
-  // de mount não basta). O StudyThisButton dispara este evento.
+  // "Estudar esse tema" (botão da pesquisa / Play da Base / voz): enfileira o tópico e
+  // deixa a fila resolver (cria espaço se preciso, espera a geração atual terminar).
+  // O feed fica sempre montado (só escondido), então isto funciona mesmo fora da aba.
   useEffect(() => {
     const onRun = (e: any) => {
       const t = e?.detail?.topic;
-      if (t && spaceId && !zaeonBusy) {
-        const topic = String(t);
-        // avisa quem disparou (ex.: o Play da Base) quando o estudo terminar de gerar.
-        void typeIntoBarAndRun(topic)
-          .then(() => { try { window.dispatchEvent(new CustomEvent("zaeon:study:done", { detail: { topic } })); } catch { /* ignore */ } })
-          .catch(() => { try { window.dispatchEvent(new CustomEvent("zaeon:study:done", { detail: { topic, error: true } })); } catch { /* ignore */ } });
-      }
+      if (!t) return;
+      pendingTopicRef.current = String(t);
+      flushPending();
     };
     window.addEventListener("zaeon:study:run", onRun);
     return () => window.removeEventListener("zaeon:study:run", onRun);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [spaceId, zaeonBusy]);
+  }, [flushPending]);
 
   const saveNote = async () => {
     const t = note.trim(); if (!t) return;
