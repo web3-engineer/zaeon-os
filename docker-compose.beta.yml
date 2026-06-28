@@ -6,8 +6,9 @@
 # Mongo é Atlas externo (DATABASE_URL/MONGODB_URI no .env). Sem postgres/agentes/
 # observabilidade (isso fica no docker-compose.yml completo, pra depois).
 #
-# Orçamento de RAM (limites): web 1.5g + voz 3g + abnt 1.2g + pdf 0.9g + redis 0.38g
-#   + caddy 0.25g ≈ 7.2g  → cabe em 8g com swap de segurança (ver docs/BETA_DEPLOY.md).
+# Orçamento de RAM (limites): web 1.5g + voz 1g + abnt 1.2g + redis 0.38g + caddy 0.25g
+#   + pdf-loader 0.896g ≈ 5.2g → folga ~2.8g em 8g.
+#   Voz padrão = Gemini-TTS (nuvem); voice-engine local só fallback Piper (Kokoro lazy).
 #   pdf-loader em modo FAST (sem OCR/Hybrid); ligar Hybrid só com 16 GB.
 #
 # Subir:   docker compose -f docker-compose.beta.yml up -d --build
@@ -58,13 +59,14 @@ services:
     container_name: zaeon_voice
     environment:
       KOKORO_LANG: p
+      ZAEON_TTS_DEFAULT: natural-br   # default Piper (Kokoro lazy, não infla RAM)
       HF_HOME: /app/.hf
     volumes: ["hf_cache:/app/.hf"]   # cacheia os pesos do modelo entre restarts
     expose: ["8004"]
     restart: unless-stopped
     deploy:
       resources:
-        limits: { memory: 3g }
+        limits: { memory: 1g }   # era 3g (Kokoro); voz padrão é Gemini-TTS (nuvem), local só fallback Piper
 
   # ── ABNT (FastAPI + LibreOffice headless) ──
   abnt-service:
