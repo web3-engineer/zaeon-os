@@ -64,11 +64,21 @@ services:
         limits: { memory: 3g }
 
   # ── ABNT (FastAPI + LibreOffice headless) ──
+  # web depende deste com condition: service_started (não service_healthy):
+  # se o abnt demorar/falhar no 1º boot (build do LibreOffice, OOM), o site sobe
+  # mesmo assim e a exportação degrada com 503 amigável. O healthcheck abaixo é
+  # só observabilidade (docker compose ps mostra healthy/unhealthy).
   abnt-service:
     build: { context: ./abnt-service, dockerfile: Dockerfile }
     container_name: zaeon_abnt
     expose: ["8001"]
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8001/health', timeout=5).status==200 else 1)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
     deploy:
       resources:
         limits: { memory: 1200m }

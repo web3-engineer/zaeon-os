@@ -62,8 +62,15 @@ def _convert_with_libreoffice(docx_bytes: bytes) -> bytes:
         with open(docx_path, "wb") as f:
             f.write(docx_bytes)
 
+        # -env:UserInstallation força um perfil gravável e isolado por conversão.
+        # Sem isso o soffice headless pode travar quando ~/.config não é gravável
+        # (container read-only / HOME inexistente). timeout evita pendurar o worker;
+        # se algo falhar, o RuntimeError abaixo cai no fallback ReportLab.
+        lo_profile = os.path.join(tmp_dir, "lo_profile")
         result = subprocess.run(
-            [_get_libreoffice_cmd(), "--headless", "--convert-to", "pdf",
+            [_get_libreoffice_cmd(),
+             f"-env:UserInstallation=file://{lo_profile}",
+             "--headless", "--convert-to", "pdf",
              "--outdir", tmp_dir, docx_path],
             capture_output=True,
             timeout=60,
