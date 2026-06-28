@@ -8,7 +8,7 @@ import { NotebookPen } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    Users, BookOpen,
+    Users, BookOpen, GraduationCap,
     FlaskConical, Newspaper, User, Lock,
 } from "lucide-react";
 import { OmegaScholarProvider } from "./omega/OmegaScholarContext";
@@ -176,6 +176,7 @@ function NoRoomFound() {
 
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
 const MeusEstudosFeed = dynamic(() => import("@/components/study/MeusEstudosFeed"), { ssr: false });
+const MeusAlunosPanel = dynamic(() => import("@/app/workstation/student/MeusAlunosPanel"), { ssr: false });
 
 export default function StudyRoomContent({ flushTop = false }: { flushTop?: boolean } = {}) {
     const { data: session } = useSession();
@@ -184,11 +185,17 @@ export default function StudyRoomContent({ flushTop = false }: { flushTop?: bool
     const room   = getRoomForCourse(course);
     const meta   = ROOM_META[room] ?? ROOM_META["lounge"];
     const tabs   = ROOM_TABS[room] ?? [];
+    const isTeacher =
+        (session?.user as any)?.role === "teacher" ||
+        (session?.user as any)?.role === "professor" ||
+        !!(session?.user as any)?.isAdmin;
     // "Meus Estudos" (feed mini-Notion) é a aba padrão, injetada antes das demais.
+    // "Meus Alunos" só aparece pro professor (gate isTeacher), ao lado de "Aulas".
     const allTabs = useMemo(() => [
         { id: "meus-estudos", label: "Meus Estudos", icon: NotebookPen },
         ...tabs,
-    ], [tabs]);
+        ...(isTeacher ? [{ id: "students", label: "Meus Alunos", icon: GraduationCap }] : []),
+    ], [tabs, isTeacher]);
 
     // Padrão = a aba de pesquisa/estudos (onde a pesquisa acontece). "Meus Estudos"
     // fica disponível, mas não rouba o lugar da pesquisa.
@@ -330,6 +337,8 @@ export default function StudyRoomContent({ flushTop = false }: { flushTop?: bool
                         </div>
                         {activeTab === "meus-estudos" ? null : activeTab === "community" ? (
                             <OmegaScholarWorkspace />
+                        ) : activeTab === "students" ? (
+                            <MeusAlunosPanel />
                         ) : !ActiveComponent ? (
                             <NoRoomFound />
                         ) : (

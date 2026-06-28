@@ -105,9 +105,11 @@ export default function StudentWorkstation() {
     }
   }, [isFocusMode]);
 
-  // Professores vão para a workstation deles
+  // Professores vão para a workstation deles — EXCETO na Sala de Estudos ("sala"),
+  // onde o professor cria/envia aulas e vê "Meus Alunos" (aba gated por isTeacher).
   useEffect(() => {
     if (status === "authenticated" && isTeacher) {
+      if (currentModule === "sala") return; // professor pode entrar na Sala
       const dest = currentModule === "research" ? "research" : "profile";
       router.replace(`/workstation/teacher/${dest}`);
     }
