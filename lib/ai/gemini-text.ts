@@ -18,6 +18,8 @@ export async function geminiText(opts: {
   history?: { role: string; parts: { text: string }[] }[];
   /** Tempo máximo (ms) antes de desistir — evita pendurar a função até o 504 do Vercel. */
   timeoutMs?: number;
+  /** Força saída em JSON puro (responseMimeType). Use em rotas que parseiam JSON. */
+  json?: boolean;
 }): Promise<string> {
   const { project, client_email, private_key, location } = vertexCredentials();
   const vertexAI = new VertexAI({
@@ -27,7 +29,10 @@ export async function geminiText(opts: {
   });
   const model = vertexAI.getGenerativeModel({
     model: opts.model || GEMINI_MODEL_FLASH,
-    generationConfig: { temperature: opts.temperature ?? 0.5 },
+    generationConfig: {
+      temperature: opts.temperature ?? 0.5,
+      ...(opts.json ? { responseMimeType: "application/json" } : {}),
+    },
   });
   const chat = model.startChat({
     ...(opts.system ? { systemInstruction: { role: "system", parts: [{ text: opts.system }] } } : {}),
