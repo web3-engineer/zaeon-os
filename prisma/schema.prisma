@@ -457,6 +457,7 @@ model StudySpace {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   userId    String   @db.ObjectId
   title     String   @default("Meus Estudos")
+  kind      String   @default("study") // study (Meus Estudos) | aula (canvas de criação de aula do professor)
   members   String[] @default([])   // co-autores (Lounge) — userIds com acesso de leitura/escrita
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

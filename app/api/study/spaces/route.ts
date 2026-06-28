@@ -19,13 +19,19 @@ async function uid(): Promise<string | null> {
   return u?.id ?? null;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   const userId = await uid();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  // Inclui os espaços COMPARTILHADOS comigo (Lounge) além dos meus.
-  let spaces = await prisma.studySpace.findMany({ where: { OR: [{ userId }, { members: { has: userId } }] }, orderBy: { createdAt: "asc" } });
-  if (!spaces.some((s) => s.userId === userId)) {
-    const s = await prisma.studySpace.create({ data: { userId, title: "Meus Estudos" } });
+  // kind separa "Meus Estudos" (study) do canvas de criação de AULA (aula). Docs antigos
+  // não têm o campo → tratamos ausência como "study" (retrocompat).
+  const kind = new URL(req.url).searchParams.get("kind") === "aula" ? "aula" : "study";
+  const access = { OR: [{ userId }, { members: { has: userId } }] };
+  // study = tudo que NÃO é aula (inclui docs antigos sem o campo `kind`); aula = kind:"aula".
+  const kindFilter = kind === "aula" ? { kind: "aula" } : { NOT: { kind: "aula" } };
+  let spaces = await prisma.studySpace.findMany({ where: { AND: [access, kindFilter] }, orderBy: { createdAt: "asc" } });
+  // Só auto-cria um espaço padrão no modo estudo (não criar "aula" fantasma).
+  if (kind === "study" && !spaces.some((s) => s.userId === userId)) {
+    const s = await prisma.studySpace.create({ data: { userId, title: "Meus Estudos", kind: "study" } });
     spaces = [s, ...spaces];
   }
   return NextResponse.json(spaces);
@@ -36,7 +42,9 @@ export async function POST(req: Request) {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await req.json().catch(() => ({} as any));
   const title = (typeof body.title === "string" && body.title.trim()) || "Novo espaço";
-  const s = await prisma.studySpace.create({ data: { userId, title: title.slice(0, 80) } });
+  const kind = body.kind === "aula" ? "aula" : "study";
+  const data = { userId, title: title.slice(0, 80), kind };
+  const s = await prisma.studySpace.create({ data });
   return NextResponse.json(s);
 }
 

@@ -378,7 +378,9 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
     ]);
     const [zaeonInput, setZaeonInput] = useState("");
     const [isZaeonProcessing, setIsZaeonProcessing] = useState(false);
-    const [chatMin, setChatMin] = useState(false); // Fase 6: chat minimizável numa barra horizontal
+    const [chatMin, setChatMin] = useState(false); // Fase 6/B2: chat minimizável (estado persistido)
+    useEffect(() => { try { setChatMin(localStorage.getItem("zaeon.aula.chatMin") === "1"); } catch { /* */ } }, []);
+    useEffect(() => { try { localStorage.setItem("zaeon.aula.chatMin", chatMin ? "1" : "0"); } catch { /* */ } }, [chatMin]);
 
     const [storedPdfs, setStoredPdfs] = useState<StoredDoc[]>([]);
     const [selectedDay, setSelectedDay] = useState<number>(0);

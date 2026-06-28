@@ -17,7 +17,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Plus, Trash2, Sparkles, Youtube, Loader2, ChevronDown, NotebookPen,
   X, GripVertical, ArrowLeftToLine, FileText, StickyNote, Link2, Heading1, Heading2, Pilcrow, Pencil,
-  PanelRightClose, PanelRightOpen, Image as ImageIcon, Music, Paperclip, UploadCloud, Play, Square,
+  PanelRightClose, PanelRightOpen, Image as ImageIcon, Music, Paperclip, UploadCloud, Play, Square, Send,
 } from "lucide-react";
 import VoiceModeSwitch from "@/components/voice/VoiceModeSwitch";
 import SpeakButton from "@/components/voice/SpeakButton";
@@ -108,7 +108,14 @@ function VideoCard({ id, title }: { id: string; title?: string }) {
   );
 }
 
-export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: string } = {}) {
+export default function MeusEstudosFeed({ collabSpaceId, mode = "study" }: { collabSpaceId?: string; mode?: "study" | "teach" } = {}) {
+  // mode="teach" (Parte D): MESMO canvas (blocos + "/" + Studio), com chapéu de PROFESSOR.
+  // Só muda as cópias e o `kind` do espaço (aula, separado de Meus Estudos).
+  const teach = mode === "teach";
+  const spaceKind = teach ? "aula" : "study";
+  const L = teach
+    ? { newTitle: "Nova aula", titlePh: "Aula sem título", barPh: "Comece a montar sua aula… (use / para blocos e Studio)", newTip: "Nova aula" }
+    : { newTitle: "Novo estudo", titlePh: "Meus Estudos", barPh: "Nina, estude sobre…", newTip: "Novo estudo (abre a Nina pra começar)" };
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [spaceId, setSpaceId] = useState("");
   const [titleDraft, setTitleDraft] = useState("");
@@ -185,7 +192,7 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
   const loadSpaces = useCallback(async () => {
     setError(null);
     try {
-      const r = await fetch("/api/study/spaces");
+      const r = await fetch(`/api/study/spaces?kind=${spaceKind}`);
       if (!r.ok) throw new Error(`status ${r.status}`);
       const data: Space[] = await r.json();
       setSpaces(data);
@@ -202,7 +209,7 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
       setError("Não consegui carregar seus estudos. Se você acabou de atualizar, reinicie o servidor (next dev).");
       setLoading(false);
     }
-  }, [collabSpaceId]);
+  }, [collabSpaceId, spaceKind]);
 
   useEffect(() => { void loadSpaces(); }, [loadSpaces]);
 
@@ -252,6 +259,51 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
   const feed = items.filter((i) => i.placement === "feed")
     .sort((a, b) => (ord(a) - ord(b)) || String(a.createdAt || "").localeCompare(String(b.createdAt || "")));
   const nextOrder = () => (feed.length ? Math.max(...feed.map(ord)) + 1 : 0);
+
+  // Parte D5 (só professor / teach): ENVIAR a aula — serializa os blocos do canvas em
+  // markdown e cria/entrega uma Aula via /api/aulas (o aluno recebe pelo fluxo existente).
+  const [sendOpen, setSendOpen] = useState(false);
+  const [turmas, setTurmas] = useState<{ id: string; name: string }[]>([]);
+  const [sending, setSending] = useState(false);
+  const [sendMsg, setSendMsg] = useState("");
+  const feedToMarkdown = (): string => {
+    const lines: string[] = [];
+    for (const it of feed) {
+      if (it.type === "note") {
+        const t = (it.payload?.text || "").trim(); if (!t) continue;
+        const v = it.payload?.variant;
+        lines.push(v === "h1" ? `# ${t}` : v === "h2" ? `## ${t}` : t);
+      } else if (it.type === "link" && it.payload?.url) {
+        lines.push(`[${it.title || it.payload.url}](${it.payload.url})`);
+      } else if (it.type === "studio") {
+        lines.push(`> 📦 Módulo: ${it.title || it.payload?.studioKind || "Studio"}`);
+      } else if (it.title) {
+        lines.push(it.title);
+      }
+    }
+    return lines.join("\n\n");
+  };
+  const openSend = async () => {
+    setSendMsg(""); setSendOpen(true);
+    try { const r = await fetch("/api/turmas"); if (r.ok) { const d = await r.json(); setTurmas(Array.isArray(d.turmas) ? d.turmas : Array.isArray(d) ? d : []); } } catch { /* */ }
+  };
+  const sendToTurma = async (turmaId: string) => {
+    const title = (spaces.find((s) => s.id === spaceId)?.title || "Aula").slice(0, 200);
+    const body = feedToMarkdown();
+    if (!body.trim()) { setSendMsg("Monte a aula antes de enviar."); return; }
+    setSending(true);
+    try {
+      const r = await fetch("/api/aulas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, body }) });
+      if (!r.ok) { setSendMsg("Não consegui criar a aula."); return; }
+      const d = await r.json();
+      const aulaId = d?.aula?.id;
+      if (aulaId) {
+        const rs = await fetch(`/api/aulas/${aulaId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "send", turmaId }) });
+        if (rs.ok) { setSendMsg("Aula enviada 🚀"); setTimeout(() => setSendOpen(false), 1200); return; }
+      }
+      setSendMsg("Aula criada, mas falhou ao enviar.");
+    } catch { setSendMsg("Falha de rede ao enviar."); } finally { setSending(false); }
+  };
 
   // MODO LEITURA: lê o estudo INTEIRO em voz, bloco a bloco, na ordem. Clicar
   // de novo (ou em qualquer lugar que pare a voz) interrompe. Usa a sequência do
@@ -331,7 +383,7 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
   const ensureSpaceId = useCallback(async (): Promise<string> => {
     if (spaceId) return spaceId;
     try {
-      const rs = await fetch("/api/study/spaces", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: "Novo estudo" }) });
+      const rs = await fetch("/api/study/spaces", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: L.newTitle, kind: spaceKind }) });
       if (rs.ok) {
         const s = await rs.json();
         setSpaces((prev) => [...prev, s]);
@@ -360,7 +412,7 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
       const currentHasContent = itemsRef.current.some((i) => i.placement === "feed");
       if (currentHasContent && !collabSpaceId) {
         try {
-          const rs = await fetch("/api/study/spaces", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: cmd.slice(0, 80) }) });
+          const rs = await fetch("/api/study/spaces", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: cmd.slice(0, 80), kind: spaceKind }) });
           if (rs.ok) {
             const s = await rs.json();
             targetId = s.id; freshBase = true;
@@ -585,7 +637,7 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
   const newSpace = async () => {
     setError(null);
     try {
-      const r = await fetch("/api/study/spaces", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: "Novo estudo" }) });
+      const r = await fetch("/api/study/spaces", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: L.newTitle, kind: spaceKind }) });
       if (!r.ok) throw new Error();
       const s = await r.json();
       setSpaces((p) => [...p, s]); setSpaceId(s.id); setSpaceMenu(false); setTitleDraft(s.title); setLoading(true);
@@ -822,6 +874,34 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
     <div onPaste={onPaste} className={`h-full flex flex-col ${navRight ? "lg:flex-row-reverse" : "lg:flex-row"}`}>
       {/* ── CADERNO (centro) ── */}
       <div className="flex-1 min-w-0 flex flex-col p-5 sm:p-6 relative">
+        {/* ENVIAR PARA TURMA (só professor / teach) — entrega a aula montada no canvas. */}
+        {teach && (
+          <button onClick={openSend} title="Enviar esta aula para uma turma"
+            className="absolute z-[45] bottom-5 right-5 inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-white text-sm font-black shadow-lg shadow-cyan-500/25"
+            style={{ background: "linear-gradient(135deg,#7c3aed,#06b6d4)" }}>
+            <Send size={15} /> Enviar para turma
+          </button>
+        )}
+        {teach && sendOpen && (
+          <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => !sending && setSendOpen(false)}>
+            <div className="w-[320px] max-w-[90%] rounded-2xl border border-white/15 bg-[#0b1220] p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <p className="text-sm font-black text-white mb-1">Enviar aula</p>
+              <p className="text-[12px] text-white/45 mb-3">Escolha a turma. O conteúdo do canvas vira a aula que o aluno recebe.</p>
+              <div className="flex flex-col gap-1.5 max-h-[240px] overflow-y-auto">
+                {turmas.length === 0 ? (
+                  <p className="text-[12px] text-white/40 italic py-2">Nenhuma turma. Crie uma em “Meus Alunos” primeiro.</p>
+                ) : turmas.map((t) => (
+                  <button key={t.id} disabled={sending} onClick={() => sendToTurma(t.id)}
+                    className="text-left px-3 py-2 rounded-xl border border-white/10 bg-white/[0.03] hover:border-cyan-400/50 text-[13px] text-white/90 disabled:opacity-50">
+                    {t.name}
+                  </button>
+                ))}
+              </div>
+              {sendMsg && <p className="text-[12px] text-cyan-300/90 mt-3">{sendMsg}</p>}
+              <button onClick={() => setSendOpen(false)} className="mt-3 text-[12px] text-white/40 hover:text-white/70">Fechar</button>
+            </div>
+          </div>
+        )}
         {/* BOTÃO FLUTUANTE "Estudar esse tema" — surge quando há algo digitado na barra ⟁
             (e a Zaeon não está ocupada). Estilo about-us. Gera o estudo a partir do tema. */}
         {zaeonCmd.trim() && !zaeonBusy && (
@@ -865,7 +945,7 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
                   onBlur={saveTitle}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLTextAreaElement).blur(); } }}
                   rows={1}
-                  placeholder="Meus Estudos"
+                  placeholder={L.titlePh}
                   className="flex-1 min-w-0 resize-none overflow-hidden bg-transparent border-0 outline-none py-0.5 text-[26px] leading-tight font-black tracking-tight text-[#0b3a66] dark:text-white placeholder:text-[#0b3a66]/35 dark:placeholder:text-white/30"
                 />
               )}
@@ -903,7 +983,7 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
               onChange={(e) => setZaeonCmd(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") zaeonStudy(); if (e.key === "Escape") setBarOpen(false); }}
               disabled={zaeonBusy}
-              placeholder="Nina, estude sobre…"
+              placeholder={L.barPh}
               className="flex-1 min-w-0 bg-transparent text-[12.5px] text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/35 focus:outline-none disabled:opacity-60 py-1"
             />
             <VoiceModeSwitch onTranscript={(t) => setZaeonCmd(t)} title="Falar para a Nina" size={14} />
@@ -1036,7 +1116,7 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
             <>
               <div className="flex items-center gap-1 px-1 pt-0.5">
                 <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">Estudos</p>
-                <button onClick={newSpace} title="Novo estudo (abre a Nina pra começar)" className="ml-auto text-slate-400 hover:text-cyan-500"><Plus size={13} /></button>
+                <button onClick={newSpace} title={L.newTip} className="ml-auto text-slate-400 hover:text-cyan-500"><Plus size={13} /></button>
               </div>
               {spaces.map((sp) => (
                 <div key={`sp-${sp.id}`}

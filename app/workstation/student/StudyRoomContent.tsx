@@ -178,7 +178,6 @@ function NoRoomFound() {
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
 const MeusEstudosFeed = dynamic(() => import("@/components/study/MeusEstudosFeed"), { ssr: false });
 const MeusAlunosPanel = dynamic(() => import("@/app/workstation/student/MeusAlunosPanel"), { ssr: false });
-const AulaAuthoringPanel = dynamic(() => import("@/components/aulas/AulaAuthoringPanel"), { ssr: false });
 
 export default function StudyRoomContent({ flushTop = false }: { flushTop?: boolean } = {}) {
     const { data: session } = useSession();
@@ -343,7 +342,22 @@ export default function StudyRoomContent({ flushTop = false }: { flushTop?: bool
                         ) : activeTab === "students" ? (
                             <MeusAlunosPanel />
                         ) : activeTab === "classes" && isTeacher ? (
-                            <AulaAuthoringPanel />
+                            // Professor: a MESMA Sala de Aula (chat + livraria + relógio) e, ABAIXO,
+                            // o canvas vivo de criação de aula (Parte B1 + D) — não um form pobre.
+                            <div className="min-h-full">
+                                {ActiveComponent ? (
+                                    <Suspense fallback={<TabLoader />}><ActiveComponent /></Suspense>
+                                ) : <NoRoomFound />}
+                                <div className="border-t border-white/10 mt-2">
+                                    <div className="px-5 pt-4 pb-1">
+                                        <h3 className="text-sm font-black uppercase tracking-[0.16em] text-white/70">Criar aula</h3>
+                                        <p className="text-[12px] text-white/40">Monte a aula como um estudo: blocos, menu “/” e Studio. Toque no ＋ pra começar uma nova.</p>
+                                    </div>
+                                    <div className="h-[88vh]">
+                                        <MeusEstudosFeed mode="teach" />
+                                    </div>
+                                </div>
+                            </div>
                         ) : !ActiveComponent ? (
                             <NoRoomFound />
                         ) : (
