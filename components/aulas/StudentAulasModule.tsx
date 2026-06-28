@@ -9,7 +9,7 @@
  * Concluir → marca concluída (AulaProgress). Tempo de leitura medido em modo foco.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BookOpen, Loader2, CheckCircle2, Sparkles, Mic, Square, GraduationCap } from "lucide-react";
+import { BookOpen, Loader2, CheckCircle2, Sparkles, Mic, Square, GraduationCap, Trash2, X } from "lucide-react";
 import MiniMarkdown from "./MiniMarkdown";
 import { useVoiceAnswer } from "./useVoiceAnswer";
 import type { Aula, QuizMeta, Question, Progress, SubmitResult } from "./types";
@@ -20,6 +20,8 @@ type AnswerState = { answer?: string; choiceIndex?: number; transcript?: string;
 export default function StudentAulasModule() {
   const [aulas, setAulas] = useState<Aula[]>([]);
   const [progressByAula, setProgressByAula] = useState<Record<string, string>>({});
+  const [role, setRole] = useState<string>("");          // "teacher" | "student" (de /api/aulas)
+  const [confirmDel, setConfirmDel] = useState<string | null>(null); // id em confirmação de apagar
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
@@ -37,6 +39,7 @@ export default function StudentAulasModule() {
         const d = await r.json();
         const list: Aula[] = Array.isArray(d.aulas) ? d.aulas : [];
         setAulas(list);
+        setRole(typeof d.role === "string" ? d.role : "");
         const seed: Record<string, string> = {};
         for (const a of list) seed[a.id] = (a as any).progressStatus || "new";
         setProgressByAula(seed);
@@ -112,6 +115,18 @@ export default function StudentAulasModule() {
 
   const isNew = (a: Aula) => (progressByAula[a.id] ?? "new") === "new";
 
+  // Apagar aula (só professor dono — DELETE já é teacher-only no backend). Confirm leve.
+  const removeAula = async (id: string) => {
+    try {
+      const r = await fetch(`/api/aulas/${id}`, { method: "DELETE" });
+      if (r.ok) {
+        setAulas((prev) => prev.filter((a) => a.id !== id));
+        if (openId === id) { setOpenId(null); setDetail(null); }
+      }
+    } catch { /* ignore */ }
+    setConfirmDel(null);
+  };
+
   return (
     <div className="w-full max-w-3xl mx-auto">
       <div className="flex items-center gap-2 mb-3">
@@ -131,16 +146,29 @@ export default function StudentAulasModule() {
           const fresh = isNew(a);
           const done = progressByAula[a.id] === "completed";
           return (
-            <button key={a.id} onClick={() => open(a.id)}
-              className={`group text-left rounded-2xl border p-3.5 transition-all ${openId === a.id ? "border-cyan-400/60 bg-cyan-500/10" : fresh ? "border-cyan-400/40 bg-cyan-500/[0.06] shadow-[0_0_18px_-6px_rgba(34,211,238,0.5)]" : "border-white/10 bg-white/[0.03] hover:border-white/20"}`}>
-              <div className="flex items-center gap-2">
+            <div key={a.id}
+              className={`group relative rounded-2xl border p-3.5 transition-all ${openId === a.id ? "border-cyan-400/60 bg-cyan-500/10" : fresh ? "border-cyan-400/40 bg-cyan-500/[0.06] shadow-[0_0_18px_-6px_rgba(34,211,238,0.5)]" : "border-white/10 bg-white/[0.03] hover:border-white/20"}`}>
+              <button onClick={() => open(a.id)} className="w-full text-left flex items-center gap-2">
                 <BookOpen size={15} className={fresh ? "text-cyan-300" : "text-white/50"} />
                 <span className="flex-1 min-w-0 truncate text-[13.5px] font-bold text-white/90">{a.title}</span>
                 {done ? <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wide text-emerald-300"><CheckCircle2 size={12} /> concluída</span>
                   : fresh ? <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wide text-cyan-300"><Sparkles size={11} /> nova</span>
                   : <span className="text-[10px] font-black uppercase tracking-wide text-amber-300/80">em andamento</span>}
-              </div>
-            </button>
+              </button>
+              {/* Apagar (só professor): ícone no hover → confirm leve inline. */}
+              {role === "teacher" && (
+                confirmDel === a.id ? (
+                  <div className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-[#0b1220] border border-rose-400/40 px-1.5 py-0.5">
+                    <span className="text-[10px] text-white/70 px-1">Apagar?</span>
+                    <button onClick={() => removeAula(a.id)} className="text-rose-300 hover:text-rose-200 px-1 text-[11px] font-black">Sim</button>
+                    <button onClick={() => setConfirmDel(null)} className="text-white/50 hover:text-white/80"><X size={12} /></button>
+                  </div>
+                ) : (
+                  <button onClick={() => setConfirmDel(a.id)} title="Apagar aula"
+                    className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity text-white/40 hover:text-rose-400"><Trash2 size={13} /></button>
+                )
+              )}
+            </div>
           );
         })}
       </div>
