@@ -107,6 +107,21 @@ export default function CitationsPanel() {
                   <span className="text-white/25 text-[11px] leading-none mt-0.5 select-none">⠿</span>
                   <p className="text-[10px] text-white/85 leading-snug flex-1 line-clamp-4">{cit.abnt}</p>
                 </div>
+                {cit.page && cit.pdfUrl && (
+                  <button
+                    onClick={() =>
+                      window.dispatchEvent(
+                        new CustomEvent("zaeon:gotoSource", {
+                          detail: { pdfUrl: cit.pdfUrl, page: cit.page },
+                        }),
+                      )
+                    }
+                    title="Ir à fonte no PDF (precisa estar aberto)"
+                    className="mt-1.5 text-[9px] font-bold text-cyan-300/90 hover:text-cyan-200 inline-flex items-center gap-1"
+                  >
+                    ↗ ir à fonte (p. {cit.page})
+                  </button>
+                )}
                 {cit.suggestion && cit.suggestedText && (
                   <div className="mt-2 pt-2 border-t border-white/10">
                     <p className="text-[9px] text-violet-300/90 leading-snug mb-1">✦ {cit.suggestion}</p>

@@ -4,6 +4,8 @@ import * as pdfjsLib from "pdfjs-dist";
 import "pdfjs-dist/web/pdf_viewer.css";
 import type { LibraryFile } from "@/lib/useLibraryFiles";
 import type { SavedCitation } from "@/lib/useSavedCitations";
+import { speakSequence, stop as ttsStop, cleanForSpeech } from "@/lib/voice/ttsController";
+import ResearchReadingView from "./ResearchReadingView";
 
 if (typeof window !== "undefined" && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
   pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -36,6 +38,9 @@ export default function PdfViewer({ file, onCite }: PdfViewerProps) {
   // hint da Aura + recorte sugerido + id da última citação (pra Aplicar atualizar a mesma nota)
   const [hint, setHint] = useState<{ msg: string; suggestedText: string; citId: string } | null>(null);
   const lastText = useRef<string>("");
+  // Voz no PDF: lê o markdown estruturado (pdf-loader) com karaokê inline.
+  const [readText, setReadText] = useState<string | null>(null);
+  const [loadingRead, setLoadingRead] = useState(false);
 
   // ─────────── Render do PDF (pdf.js direto) ───────────
   useEffect(() => {
@@ -199,6 +204,47 @@ export default function PdfViewer({ file, onCite }: PdfViewerProps) {
     runCite(text, currentPage());
   }, [runCite]);
 
+  // Ouvir o PDF: busca o markdown estruturado (pdf-loader) e lê em voz, com o mesmo
+  // karaokê inline do resumo (ResearchReadingView). Reler/parar no mesmo botão.
+  const readAloud = useCallback(async () => {
+    if (readText) { ttsStop(); setReadText(null); return; }
+    setLoadingRead(true);
+    try {
+      const r = await fetch(`/api/ai/scholar/pdf-structured?url=${encodeURIComponent(file.pdfUrl)}`);
+      if (!r.ok) { setHint({ msg: "Não consegui preparar a leitura deste PDF.", suggestedText: "", citId: "" }); return; }
+      const data = await r.json();
+      const md = (data?.markdown || "").trim();
+      if (!md) { setHint({ msg: "Este PDF não tem texto estruturado pra ler.", suggestedText: "", citId: "" }); return; }
+      const speech = cleanForSpeech(md);
+      setReadText(speech);            // liga o karaokê inline (mesmos pedaços da voz)
+      await speakSequence([speech]);  // 1 POST /api/ai/voice por pedaço (~420 chars)
+    } catch {
+      setHint({ msg: "Voz indisponível agora.", suggestedText: "", citId: "" });
+    } finally {
+      setLoadingRead(false);
+      setReadText(null);             // terminou a leitura → tira o overlay
+    }
+  }, [file.pdfUrl, readText]);
+
+  // Citação clicável: outro componente dispara zaeon:gotoSource {pdfUrl, page} → rola
+  // até a página da fonte e dá um flash. Só age se o PDF aberto for o da citação.
+  useEffect(() => {
+    const onGoto = (e: Event) => {
+      const d = (e as CustomEvent).detail || {};
+      if (d.pdfUrl !== file.pdfUrl) return;
+      const page = Number(d.page);
+      if (!page) return;
+      const el = pagesRef.current?.querySelector<HTMLElement>(`.zaeon-pdf-page[data-page="${page}"]`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.style.transition = "box-shadow .3s ease";
+      el.style.boxShadow = "0 0 0 4px rgba(34,211,238,0.75)";
+      setTimeout(() => { el.style.boxShadow = ""; }, 1500);
+    };
+    window.addEventListener("zaeon:gotoSource", onGoto as EventListener);
+    return () => window.removeEventListener("zaeon:gotoSource", onGoto as EventListener);
+  }, [file.pdfUrl]);
+
   return (
     <div className="relative h-full flex flex-col bg-[#3a3a44]">
       {(loadingDoc || citing) && (
@@ -213,6 +259,9 @@ export default function PdfViewer({ file, onCite }: PdfViewerProps) {
         {citing && <span className="text-cyan-300 animate-pulse">cruzando fonte…</span>}
         {loadingDoc && !citing && <span className="text-white/40">abrindo…</span>}
         <div className="ml-auto flex items-center gap-1 shrink-0">
+          <button onClick={readAloud} disabled={loadingRead} title="Ouvir o PDF em voz" className="mr-1 px-2 h-6 rounded-[7px] text-[9px] font-black uppercase tracking-wide text-white/80 hover:bg-white/10 disabled:opacity-50">
+            {readText ? "⏹ Parar" : loadingRead ? "🔊 …" : "🔊 Ouvir"}
+          </button>
           <button onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.15).toFixed(2)))} className="w-6 h-6 rounded-[7px] text-white/70 hover:bg-white/10 font-black leading-none">−</button>
           <span className="text-[9px] tabular-nums text-white/50 w-9 text-center">{Math.round(zoom * 100)}%</span>
           <button onClick={() => setZoom((z) => Math.min(2.5, +(z + 0.15).toFixed(2)))} className="w-6 h-6 rounded-[7px] text-white/70 hover:bg-white/10 font-black leading-none">+</button>
@@ -244,6 +293,11 @@ export default function PdfViewer({ file, onCite }: PdfViewerProps) {
           )}
           <button onClick={() => setHint(null)} className="text-white/40 hover:text-white/80 text-sm leading-none shrink-0">×</button>
         </div>
+      )}
+
+      {/* Karaokê inline da leitura por voz (mesmo padrão do resumo). */}
+      {readText && (
+        <ResearchReadingView text={readText} onStop={() => { ttsStop(); setReadText(null); }} />
       )}
     </div>
   );
