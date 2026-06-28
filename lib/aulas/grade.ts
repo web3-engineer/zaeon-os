@@ -7,19 +7,23 @@
  * obtidos sobre o total auto-corrigível.
  */
 export type GradeOption = { text: string; isCorrect: boolean };
+export type PoolQuestion = { type: string; options?: GradeOption[]; accepted?: string[] };
 export type GradeQuestion = {
   id?: string;
-  type: string; // choice | input | open | voice
-  marks?: number;
+  type: string; // choice | input | open | voice | roulette | …
+  marks?: number; // PONTOS do item
   options?: GradeOption[];
   accepted?: string[];
+  config?: { pool?: PoolQuestion[]; rounds?: number } | null; // roleta etc.
 };
+export type RoulettePick = { index: number; answer?: string; choiceIndex?: number; transcript?: string };
 export type SubmittedAnswer = {
   questionId: string;
   answer?: string;        // texto digitado ou texto da opção escolhida
   choiceIndex?: number;   // alternativa escolhida (choice)
   transcript?: string;    // transcrição da resposta por voz
   audioUrl?: string;
+  picks?: RoulettePick[]; // roleta: respostas das perguntas sorteadas
 };
 export type GradedAnswer = {
   questionId: string;
@@ -66,34 +70,53 @@ export function gradeSubmission(
     const a = byId.get(qid);
     const marks = Number.isFinite(q.marks) && (q.marks as number) > 0 ? (q.marks as number) : 1;
     let marksOutOf = 0;
+    let earnedThis = 0; // suporta crédito PARCIAL (roleta)
     let isCorrect = false;
 
     if (q.type === "choice" && Array.isArray(q.options) && q.options.length) {
       marksOutOf = marks;
       if (a) {
-        if (typeof a.choiceIndex === "number") {
-          isCorrect = !!q.options[a.choiceIndex]?.isCorrect;
-        } else if (typeof a.answer === "string") {
-          const correct = q.options.filter((o) => o.isCorrect).map((o) => o.text);
-          isCorrect = matchesAccepted(a.answer, correct);
-        }
+        if (typeof a.choiceIndex === "number") isCorrect = !!q.options[a.choiceIndex]?.isCorrect;
+        else if (typeof a.answer === "string") isCorrect = matchesAccepted(a.answer, q.options.filter((o) => o.isCorrect).map((o) => o.text));
       }
+      earnedThis = isCorrect ? marks : 0;
     } else if (q.type === "input" || (q.type === "voice" && (q.accepted?.length ?? 0) > 0)) {
       marksOutOf = marks;
-      const text = a?.transcript || a?.answer || "";
-      isCorrect = matchesAccepted(text, q.accepted ?? []);
+      isCorrect = matchesAccepted(a?.transcript || a?.answer || "", q.accepted ?? []);
+      earnedThis = isCorrect ? marks : 0;
+    } else if (q.type === "roulette") {
+      // Roleta: nota = pontos × (acertos / perguntas respondidas) — crédito parcial.
+      marksOutOf = marks;
+      const pool = Array.isArray(q.config?.pool) ? q.config!.pool! : [];
+      const picks = Array.isArray(a?.picks) ? a!.picks! : [];
+      if (picks.length) {
+        let correct = 0;
+        for (const pk of picks) {
+          const pq = pool[pk?.index];
+          if (!pq) continue;
+          if (pq.type === "choice" && Array.isArray(pq.options)) {
+            const ok = typeof pk.choiceIndex === "number"
+              ? !!pq.options[pk.choiceIndex]?.isCorrect
+              : matchesAccepted(String(pk.answer || ""), pq.options.filter((o) => o.isCorrect).map((o) => o.text));
+            if (ok) correct++;
+          } else if (matchesAccepted(String(pk.answer || pk.transcript || ""), Array.isArray(pq.accepted) ? pq.accepted : [])) {
+            correct++;
+          }
+        }
+        isCorrect = correct === picks.length;
+        earnedThis = Math.round((marks * correct) / picks.length);
+      }
     } else {
-      // open, ou voice sem gabarito → avaliação manual (não pontua aqui)
+      // open, voice sem gabarito, ou tipos ainda manuais → avaliação manual (não pontua aqui).
       marksOutOf = 0;
-      isCorrect = false;
     }
 
-    if (marksOutOf > 0 && isCorrect) earned += marks;
+    earned += earnedThis;
     totalOut += marksOutOf;
     graded.push({
       questionId: qid,
       isCorrect,
-      marks: marksOutOf > 0 && isCorrect ? marks : 0,
+      marks: earnedThis,
       marksOutOf,
       ...(a?.answer != null ? { answer: a.answer } : {}),
       ...(a?.transcript != null ? { transcript: a.transcript } : {}),

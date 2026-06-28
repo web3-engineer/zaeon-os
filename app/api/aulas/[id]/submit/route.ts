@@ -31,15 +31,17 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         ...(typeof a?.choiceIndex === "number" ? { choiceIndex: a.choiceIndex } : {}),
         ...(a?.transcript != null ? { transcript: String(a.transcript) } : {}),
         ...(a?.audioUrl != null ? { audioUrl: String(a.audioUrl) } : {}),
+        ...(Array.isArray(a?.picks) ? { picks: a.picks } : {}), // roleta (Lote 9)
       }))
     : [];
 
   const gq: GradeQuestion[] = questions.map((q) => ({
     id: q.id,
     type: q.type,
-    marks: q.marks,
+    marks: q.marks, // PONTOS do item (painel de pontuação)
     options: Array.isArray(q.options) ? (q.options as any[]) : undefined,
     accepted: q.accepted,
+    config: (q as any).config ?? null, // roleta: pool/rounds
   }));
   const result = gradeSubmission(gq, answers, quiz.passingPct);
 
