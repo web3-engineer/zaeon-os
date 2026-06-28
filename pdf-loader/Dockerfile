@@ -1,7 +1,8 @@
 # Zaeon pdf-loader — leitura estruturada de PDF (opendataloader-pdf, Apache 2.0).
 # Núcleo é Java (CLI shaded jar); o SDK Python dispara a JVM. FastAPI fina por cima.
 # MODO FAST fixo nesta VPS (sem OCR/Hybrid) — ver PDF_LOADER_HYBRID.
-FROM python:3.11-slim
+# bookworm (Debian 12): tem openjdk-17-jre-headless (o slim padrão já é trixie, que não tem).
+FROM python:3.11-slim-bookworm
 
 WORKDIR /app
 ENV PYTHONUNBUFFERED=1 \
