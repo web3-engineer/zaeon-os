@@ -408,7 +408,8 @@ model ScholarSession {
   domain     String?
   status     String   @default("running") // running | done | error
   thread     Json?    // progress phases + synthesized answer
-  references Json?    // Paper[]  (see lib/scholar/types.ts)
+  references Json?    // Paper[] VERIFICADAS (curadas, mostradas na aba Referências)
+  results    Json?    // Paper[] TODOS os descobertos/deduplicados (aba Resultados)
   evidence   Json?    // EvidenceRecord[]  (only verified shown as fact)
   insights   Json?    // { summary, trends[], contradictions[] }
   gaps       Json?    // { description, rqCards[] }  (mantido para auditoria; fora da UI desde Sugestão)
