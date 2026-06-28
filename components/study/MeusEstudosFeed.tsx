@@ -552,6 +552,8 @@ export default function MeusEstudosFeed({ collabSpaceId }: { collabSpaceId?: str
       const s = await r.json();
       setSpaces((p) => [...p, s]); setSpaceId(s.id); setSpaceMenu(false); setTitleDraft(s.title); setLoading(true);
       setBarOpen(true); // novo estudo já abre a Zaeon pra começar com uma pesquisa inicial
+      // Onboarding: avança o passo "menu-estudos" só quando o usuário cria um estudo de verdade.
+      try { window.dispatchEvent(new CustomEvent("zaeon:study:new", { detail: { id: s.id } })); } catch { /* */ }
     } catch { setError("Não consegui criar um novo estudo agora. Reinicie o servidor (next dev) e tente de novo."); }
   };
   const delSpace = async (id: string) => {

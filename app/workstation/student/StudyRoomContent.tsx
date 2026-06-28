@@ -11,6 +11,7 @@ import {
     Users, BookOpen, GraduationCap,
     FlaskConical, Newspaper, User, Lock,
 } from "lucide-react";
+import { isSuperAdminEmail } from "@/lib/auth/roles";
 import { OmegaScholarProvider } from "./omega/OmegaScholarContext";
 import OmegaScholarWorkspace from "./omega/OmegaScholarWorkspace";
 import StudyRoomSuggestionDock from "./omega/StudyRoomSuggestionDock";
@@ -189,7 +190,8 @@ export default function StudyRoomContent({ flushTop = false }: { flushTop?: bool
     const isTeacher =
         (session?.user as any)?.role === "teacher" ||
         (session?.user as any)?.role === "professor" ||
-        !!(session?.user as any)?.isAdmin;
+        !!(session?.user as any)?.isAdmin ||
+        isSuperAdminEmail((session?.user as any)?.email);
     // "Meus Estudos" (feed mini-Notion) é a aba padrão, injetada antes das demais.
     // "Meus Alunos" só aparece pro professor (gate isTeacher), ao lado de "Aulas".
     const allTabs = useMemo(() => [
