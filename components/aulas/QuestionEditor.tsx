@@ -138,6 +138,35 @@ export default function QuestionEditor({ q, onSet, onDel, controls, idx }: {
           <button onClick={() => onSet({ config: { ...(q.config || {}), pairs: [...(q.config?.pairs || []), { a: "", b: "" }] } })} className="self-start text-[11px] text-cyan-300/80 hover:text-cyan-200 inline-flex items-center gap-1"><Plus size={11} /> par</button>
         </div>
       )}
+
+      {q.type === "branching" && (
+        <div className="flex flex-col gap-2">
+          {(q.config?.nodes || []).map((n, ni) => (
+            <div key={n.id} className="rounded-lg border border-white/10 bg-white/[0.02] p-2 flex flex-col gap-1.5">
+              <div className="flex items-center gap-2"><span className="text-[10px] font-black text-white/40">{n.id}{ni === 0 ? " (início)" : ""}</span>
+                {(q.config?.nodes || []).length > 1 && <button onClick={() => onSet({ config: { ...(q.config || {}), nodes: (q.config?.nodes || []).filter((_, j) => j !== ni) } })} className="ml-auto text-white/30 hover:text-rose-400"><Trash2 size={12} /></button>}
+              </div>
+              <textarea value={n.content} onChange={(e) => onSet({ config: { ...(q.config || {}), nodes: (q.config?.nodes || []).map((x, j) => j === ni ? { ...x, content: e.target.value } : x) } })} rows={2}
+                placeholder="Texto do nó…" className="w-full rounded-md bg-white/5 border border-white/10 px-2 py-1 text-[12.5px] text-white resize-none focus:outline-none focus:border-cyan-400/50" />
+              {n.choices.map((c, ci) => (
+                <div key={ci} className="flex items-center gap-1.5 pl-2">
+                  <input value={c.label} onChange={(e) => onSet({ config: { ...(q.config || {}), nodes: (q.config?.nodes || []).map((x, j) => j === ni ? { ...x, choices: x.choices.map((y, k) => k === ci ? { ...y, label: e.target.value } : y) } : x) } })}
+                    placeholder="Escolha" className="flex-1 rounded-md bg-white/5 border border-white/10 px-2 py-1 text-[12px] text-white focus:outline-none focus:border-cyan-400/50" />
+                  <span className="text-white/30 text-[11px]">→</span>
+                  <select value={c.nextId} onChange={(e) => onSet({ config: { ...(q.config || {}), nodes: (q.config?.nodes || []).map((x, j) => j === ni ? { ...x, choices: x.choices.map((y, k) => k === ci ? { ...y, nextId: e.target.value } : y) } : x) } })}
+                    className="rounded-md bg-white/5 border border-white/10 px-1.5 py-1 text-[12px] text-white focus:outline-none">
+                    <option value="">(fim)</option>
+                    {(q.config?.nodes || []).map((d) => <option key={d.id} value={d.id}>{d.id}</option>)}
+                  </select>
+                  <button onClick={() => onSet({ config: { ...(q.config || {}), nodes: (q.config?.nodes || []).map((x, j) => j === ni ? { ...x, choices: x.choices.filter((_, k) => k !== ci) } : x) } })} className="text-white/30 hover:text-rose-400"><Trash2 size={11} /></button>
+                </div>
+              ))}
+              <button onClick={() => onSet({ config: { ...(q.config || {}), nodes: (q.config?.nodes || []).map((x, j) => j === ni ? { ...x, choices: [...x.choices, { label: "", nextId: "" }] } : x) } })} className="self-start text-[11px] text-cyan-300/80 hover:text-cyan-200 pl-2">+ escolha</button>
+            </div>
+          ))}
+          <button onClick={() => { const id = "n" + Math.random().toString(36).slice(2, 7); onSet({ config: { ...(q.config || {}), nodes: [...(q.config?.nodes || []), { id, content: "", choices: [] }] } }); }} className="self-start text-[11px] text-cyan-300/80 hover:text-cyan-200 inline-flex items-center gap-1"><Plus size={11} /> nó</button>
+        </div>
+      )}
     </div>
   );
 }

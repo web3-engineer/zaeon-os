@@ -36,6 +36,7 @@ function stripConfig(config: any): any {
   // flashcards/memória: sem gabarito escondido → repassa direto.
   if (Array.isArray(config.cards)) return { cards: config.cards.map((c: any) => ({ front: String(c?.front ?? ""), back: String(c?.back ?? "") })) };
   if (Array.isArray(config.pairs)) return { pairs: config.pairs.map((p: any) => ({ a: String(p?.a ?? ""), b: String(p?.b ?? "") })) };
+  if (Array.isArray(config.nodes)) return { nodes: config.nodes };
   const pool = Array.isArray(config.pool)
     ? config.pool.map((p: any) => ({ text: p.text, type: p.type, options: stripOptions(p.options) }))
     : undefined;

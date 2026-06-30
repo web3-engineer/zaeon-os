@@ -124,7 +124,7 @@ export type ParsedBlock = {
   accepted: string[];
   marks: number;           // pontos sugeridos
   noPaste?: boolean;
-  config?: { pool?: { text: string; type: "choice" | "input"; options?: QuizOption[]; accepted: string[] }[]; rounds?: number; text?: string; sentence?: string; words?: string[]; cards?: { front: string; back: string }[]; pairs?: { a: string; b: string }[] };
+  config?: { pool?: { text: string; type: "choice" | "input"; options?: QuizOption[]; accepted: string[] }[]; rounds?: number; text?: string; sentence?: string; words?: string[]; cards?: { front: string; back: string }[]; pairs?: { a: string; b: string }[]; nodes?: { id: string; content: string; choices: { label: string; nextId: string }[] }[] };
 };
 
 function normRoulettePool(raw: any) {
@@ -200,6 +200,20 @@ export function buildQuestionBlock(raw: string, kind: string): ParsedBlock | nul
       .filter((p: any) => p.a.trim() && p.b.trim()) : [];
     if (pairs.length < 2) return null;
     return { type: "memory", text: String(parsed.title || "Jogo da memória").slice(0, 200), marks, accepted: [], config: { pairs } };
+  }
+  if (kind === "branching") {
+    const raw2 = parsed.config?.nodes ?? parsed.nodes;
+    const nodes = Array.isArray(raw2) ? raw2
+      .map((n: any, i: number) => ({
+        id: String(n?.id ?? "").trim() || `n${i + 1}`,
+        content: String(n?.content ?? "").slice(0, 600),
+        choices: Array.isArray(n?.choices) ? n.choices
+          .map((c: any) => ({ label: String(c?.label ?? "").slice(0, 160), nextId: String(c?.nextId ?? "").trim() }))
+          .filter((c: any) => c.label.trim()) : [],
+      }))
+      .filter((n: any) => n.content.trim()) : [];
+    if (nodes.length < 1) return null;
+    return { type: "branching", text: String(parsed.title || "Cenário ramificado").slice(0, 200), marks, accepted: [], config: { nodes } };
   }
   return null; // tipos scaffold ainda não geram bloco
 }

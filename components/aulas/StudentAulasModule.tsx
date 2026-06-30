@@ -16,6 +16,7 @@ import { speak as ttsSpeak } from "@/lib/voice/ttsController";
 import WordDrag from "./WordDrag";
 import { FlipCard } from "@/components/studio/StudioArtifactViews";
 import { buildMemoryDeck, isMatch } from "@/lib/aulas/memoryDeck";
+import { startNodeId, findNode, nextNodeId } from "@/lib/aulas/branching";
 import type { Aula, QuizMeta, Question, Progress, SubmitResult } from "./types";
 
 type Detail = { aula: Aula; quiz: QuizMeta | null; questions: Question[]; progress: Progress };
@@ -339,8 +340,9 @@ function QuestionView({ q, idx, state, onChange, graded, locked }: {
 
       {q.type === "flashcards" && <FlashcardsPlay q={q} />}
       {q.type === "memory" && <MemoryGame q={q} />}
+      {q.type === "branching" && <BranchingPlay q={q} />}
 
-      {graded && q.type !== "flashcards" && q.type !== "memory" && (
+      {graded && q.type !== "flashcards" && q.type !== "memory" && q.type !== "branching" && (
         <p className={`mt-2 text-[11.5px] font-bold ${graded.marksOutOf === 0 ? "text-white/40" : graded.isCorrect ? "text-emerald-300" : "text-rose-300"}`}>
           {graded.marksOutOf === 0 ? "Resposta registrada (avaliação manual)." : graded.isCorrect ? "Correta ✓" : "Incorreta ✗"}
         </p>
@@ -350,6 +352,33 @@ function QuestionView({ q, idx, state, onChange, graded, locked }: {
 }
 
 // LACUNAS (cloze/dragwords): mostra a frase com as lacunas e o WordDrag (arrastar/tocar/teclar/digitar).
+// CENÁRIO RAMIFICADO: navega por escolhas até um nó terminal. Não avaliável.
+function BranchingPlay({ q }: { q: Question }) {
+  const nodes = q.config?.nodes || [];
+  const [cur, setCur] = useState<string | null>(startNodeId(nodes));
+  const node = cur ? findNode(nodes, cur) : null;
+  if (!node) return <p className="text-[12px] text-white/40 italic">Cenário vazio.</p>;
+  const open = node.choices.filter((c) => findNode(nodes, c.nextId));
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-[13px] text-white/85 leading-relaxed whitespace-pre-wrap">{node.content}</p>
+      {open.length > 0 ? (
+        <div className="flex flex-col gap-1.5">
+          {node.choices.map((c, i) => findNode(nodes, c.nextId) ? (
+            <button key={i} type="button" onClick={() => setCur(nextNodeId(nodes, node.id, i))}
+              className="text-left rounded-lg border border-cyan-400/30 bg-cyan-500/5 hover:bg-cyan-500/15 px-3 py-2 text-[12.5px] text-white transition-colors">{c.label || "(continuar)"}</button>
+          ) : null)}
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <span className="text-[12px] font-bold text-emerald-300">Fim do cenário 🌿</span>
+          <button type="button" onClick={() => setCur(startNodeId(nodes))} className="text-[11px] text-cyan-300/80 hover:text-cyan-200 underline">recomeçar</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // FLASHCARDS: cards de revisão (vira pra ver o verso). Não avaliável.
 function FlashcardsPlay({ q }: { q: Question }) {
   const cards = q.config?.cards || [];
