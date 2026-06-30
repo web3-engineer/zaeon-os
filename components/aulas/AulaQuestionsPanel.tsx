@@ -25,7 +25,7 @@ export type AuthQ = {
   accepted?: string[];
   marks: number;
   noPaste?: boolean;
-  config?: { pool?: AuthPoolQ[]; rounds?: number; text?: string; sentence?: string; words?: string[] };
+  config?: { pool?: AuthPoolQ[]; rounds?: number; text?: string; sentence?: string; words?: string[]; cards?: { front: string; back: string }[]; pairs?: { a: string; b: string }[] };
 };
 
 const newId = () => `q-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -39,6 +39,8 @@ export function blank(kind: string): AuthQ {
   if (kind === "q-roulette") { base.type = "roulette"; base.config = { pool: [{ text: "", type: "input", accepted: [] }], rounds: 1 }; }
   if (kind === "q-cloze") { base.type = "cloze"; base.config = { text: "" }; }
   if (kind === "q-dragwords") { base.type = "dragwords"; base.config = { sentence: "", words: [] }; }
+  if (kind === "flashcards") { base.type = "flashcards"; base.config = { cards: [{ front: "", back: "" }] }; }
+  if (kind === "game-memory") { base.type = "memory"; base.config = { pairs: [{ a: "", b: "" }, { a: "", b: "" }] }; }
   return base;
 }
 

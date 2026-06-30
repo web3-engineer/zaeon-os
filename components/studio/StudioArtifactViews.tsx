@@ -61,7 +61,7 @@ export function FaqView({ data }: { data: any }) {
   );
 }
 
-function FlipCard({ front, back }: { front: string; back: string }) {
+export function FlipCard({ front, back }: { front: string; back: string }) {
   const [flipped, setFlipped] = useState(false);
   return (
     <button

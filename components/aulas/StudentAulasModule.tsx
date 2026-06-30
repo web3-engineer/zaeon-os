@@ -8,12 +8,14 @@
  * texto OU por voz (grava na voz do aluno → audioUrl + transcript) e nota final.
  * Concluir → marca concluída (AulaProgress). Tempo de leitura medido em modo foco.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, Loader2, CheckCircle2, Sparkles, Mic, Square, GraduationCap, Volume2, Dices, Trash2, X } from "lucide-react";
 import MiniMarkdown from "./MiniMarkdown";
 import { useVoiceAnswer } from "./useVoiceAnswer";
 import { speak as ttsSpeak } from "@/lib/voice/ttsController";
 import WordDrag from "./WordDrag";
+import { FlipCard } from "@/components/studio/StudioArtifactViews";
+import { buildMemoryDeck, isMatch } from "@/lib/aulas/memoryDeck";
 import type { Aula, QuizMeta, Question, Progress, SubmitResult } from "./types";
 
 type Detail = { aula: Aula; quiz: QuizMeta | null; questions: Question[]; progress: Progress };
@@ -335,7 +337,10 @@ function QuestionView({ q, idx, state, onChange, graded, locked }: {
 
       {(q.type === "cloze" || q.type === "dragwords") && <FillBlanksView q={q} state={state} onChange={onChange} locked={locked} />}
 
-      {graded && (
+      {q.type === "flashcards" && <FlashcardsPlay q={q} />}
+      {q.type === "memory" && <MemoryGame q={q} />}
+
+      {graded && q.type !== "flashcards" && q.type !== "memory" && (
         <p className={`mt-2 text-[11.5px] font-bold ${graded.marksOutOf === 0 ? "text-white/40" : graded.isCorrect ? "text-emerald-300" : "text-rose-300"}`}>
           {graded.marksOutOf === 0 ? "Resposta registrada (avaliação manual)." : graded.isCorrect ? "Correta ✓" : "Incorreta ✗"}
         </p>
@@ -345,6 +350,52 @@ function QuestionView({ q, idx, state, onChange, graded, locked }: {
 }
 
 // LACUNAS (cloze/dragwords): mostra a frase com as lacunas e o WordDrag (arrastar/tocar/teclar/digitar).
+// FLASHCARDS: cards de revisão (vira pra ver o verso). Não avaliável.
+function FlashcardsPlay({ q }: { q: Question }) {
+  const cards = q.config?.cards || [];
+  if (!cards.length) return null;
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {cards.map((c, i) => <FlipCard key={i} front={c.front} back={c.back} />)}
+    </div>
+  );
+}
+
+// MEMÓRIA: grid de cartas viradas; vira 2, se forem par ficam. Não avaliável.
+function MemoryGame({ q }: { q: Question }) {
+  const pairs = q.config?.pairs || [];
+  const deck = useMemo(() => buildMemoryDeck(pairs, q.id || "seed"), [pairs, q.id]);
+  const [flipped, setFlipped] = useState<number[]>([]);
+  const [matched, setMatched] = useState<Set<string>>(new Set());
+  const onFlip = (idx: number) => {
+    if (flipped.includes(idx) || matched.has(deck[idx].id) || flipped.length === 2) return;
+    const next = [...flipped, idx];
+    setFlipped(next);
+    if (next.length === 2) {
+      const a = deck[next[0]], b = deck[next[1]];
+      if (isMatch(a, b)) { setMatched((m) => new Set([...m, a.id, b.id])); setTimeout(() => setFlipped([]), 450); }
+      else setTimeout(() => setFlipped([]), 900);
+    }
+  };
+  const done = deck.length > 0 && matched.size === deck.length;
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+        {deck.map((c, i) => {
+          const show = flipped.includes(i) || matched.has(c.id);
+          return (
+            <button key={c.id} type="button" onClick={() => onFlip(i)}
+              className={`aspect-[4/3] rounded-lg border text-[12px] px-1 flex items-center justify-center text-center transition-colors ${matched.has(c.id) ? "border-emerald-400/50 bg-emerald-500/10 text-emerald-100" : show ? "border-cyan-400/50 bg-cyan-500/10 text-white" : "border-white/10 bg-white/[0.04] text-transparent hover:border-cyan-400/30"}`}>
+              {show ? c.text : "?"}
+            </button>
+          );
+        })}
+      </div>
+      {done && <p className="text-[12px] font-bold text-emerald-300">Memória completa! 🎉</p>}
+    </div>
+  );
+}
+
 function FillBlanksView({ q, state, onChange, locked }: { q: Question; state: AnswerState; onChange: (p: AnswerState) => void; locked: boolean }) {
   const parts = q.config?.parts || [];
   const bank = q.config?.bank || [];
