@@ -24,7 +24,7 @@ export type RoulettePoolQ = { text: string; type: "choice" | "input"; options?: 
 export type Question = {
   id: string;
   text: string;
-  type: "choice" | "input" | "open" | "voice" | "roulette" | "cloze" | "dragwords";
+  type: "choice" | "input" | "open" | "voice" | "roulette" | "cloze" | "dragwords" | "flashcards" | "memory";
   options?: QuizOption[];
   accepted?: string[];
   marks: number;       // PONTOS do item
@@ -33,6 +33,8 @@ export type Question = {
     pool?: RoulettePoolQ[]; rounds?: number; // roleta
     parts?: Array<{ t: "text"; s: string } | { t: "blank"; i: number }>; // cloze/dragwords (sanitizado)
     bank?: string[]; allowType?: boolean;
+    cards?: { front: string; back: string }[]; // flashcards
+    pairs?: { a: string; b: string }[];        // memória
   } | null;
   order: number;
 };

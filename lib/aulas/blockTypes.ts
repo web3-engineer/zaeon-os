@@ -33,11 +33,11 @@ export const AULA_BLOCKS: AulaBlockDef[] = [
   // ── jogos interativos (scaffold — registrados, render/edição completos entram depois) ──
   { kind: "q-cloze", label: "Completar lacunas", emoji: "🧩", evaluable: true, ready: true, baseType: "cloze",
     genHint: 'Gere um texto com lacunas marcadas como *palavra* (a palavra entre asteriscos é a resposta). Tema dado pelo professor.' },
-  { kind: "flashcards", label: "Cards de revisão", emoji: "🃏", evaluable: false, ready: false, baseType: "flashcards",
+  { kind: "flashcards", label: "Cards de revisão", emoji: "🃏", evaluable: false, ready: true, baseType: "flashcards",
     genHint: 'Gere config.cards = [{front,back}] (pergunta↔resposta) de revisão sobre o tema.' },
   { kind: "q-dragwords", label: "Arrastar palavras", emoji: "✋", evaluable: true, ready: true, baseType: "dragwords",
     genHint: 'Gere config.sentence com vãos e config.words (banco de palavras) para arrastar ao lugar certo.' },
-  { kind: "game-memory", label: "Jogo da memória", emoji: "🧠", evaluable: false, ready: false, baseType: "memory",
+  { kind: "game-memory", label: "Jogo da memória", emoji: "🧠", evaluable: false, ready: true, baseType: "memory",
     genHint: 'Gere config.pairs = [{a,b}] (termo↔definição) para o jogo da memória.' },
   { kind: "branching", label: "Cenário ramificado", emoji: "🌿", evaluable: false, ready: false, baseType: "branching",
     genHint: 'Gere config.nodes = [{id,content,choices:[{label,nextId}]}] — um grafo de decisões simples sobre o tema.' },

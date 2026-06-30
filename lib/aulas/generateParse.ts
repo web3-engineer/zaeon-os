@@ -124,7 +124,7 @@ export type ParsedBlock = {
   accepted: string[];
   marks: number;           // pontos sugeridos
   noPaste?: boolean;
-  config?: { pool?: { text: string; type: "choice" | "input"; options?: QuizOption[]; accepted: string[] }[]; rounds?: number; text?: string; sentence?: string; words?: string[] };
+  config?: { pool?: { text: string; type: "choice" | "input"; options?: QuizOption[]; accepted: string[] }[]; rounds?: number; text?: string; sentence?: string; words?: string[]; cards?: { front: string; back: string }[]; pairs?: { a: string; b: string }[] };
 };
 
 function normRoulettePool(raw: any) {
@@ -184,6 +184,22 @@ export function buildQuestionBlock(raw: string, kind: string): ParsedBlock | nul
     const wordsRaw = parsed.config?.words ?? parsed.words;
     const words = Array.isArray(wordsRaw) ? wordsRaw.filter((x: any) => typeof x === "string" && x.trim()).map((x: string) => x.trim().slice(0, 60)) : [];
     return { type: "dragwords", text: String(parsed.title || "Arraste as palavras").slice(0, 200), marks, accepted: [], config: { sentence: sentence.slice(0, 2000), words } };
+  }
+  if (kind === "flashcards") {
+    const raw2 = parsed.config?.cards ?? parsed.cards;
+    const cards = Array.isArray(raw2) ? raw2
+      .map((c: any) => ({ front: String(c?.front ?? "").slice(0, 300), back: String(c?.back ?? "").slice(0, 300) }))
+      .filter((c: any) => c.front.trim() || c.back.trim()) : [];
+    if (cards.length < 1) return null;
+    return { type: "flashcards", text: String(parsed.title || "Cards de revisão").slice(0, 200), marks, accepted: [], config: { cards } };
+  }
+  if (kind === "game-memory") {
+    const raw2 = parsed.config?.pairs ?? parsed.pairs;
+    const pairs = Array.isArray(raw2) ? raw2
+      .map((p: any) => ({ a: String(p?.a ?? "").slice(0, 120), b: String(p?.b ?? "").slice(0, 120) }))
+      .filter((p: any) => p.a.trim() && p.b.trim()) : [];
+    if (pairs.length < 2) return null;
+    return { type: "memory", text: String(parsed.title || "Jogo da memória").slice(0, 200), marks, accepted: [], config: { pairs } };
   }
   return null; // tipos scaffold ainda não geram bloco
 }

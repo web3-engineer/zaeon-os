@@ -4,12 +4,11 @@ import { buildQuestionBlock } from "./generateParse";
 import { gradeSubmission, type GradeQuestion } from "./grade";
 
 describe("blockTypes registry", () => {
-  it("has the ready types (4 perguntas + cloze/dragwords da fatia 2a)", () => {
-    expect(READY_BLOCKS.map((b) => b.kind).sort()).toEqual(["q-choice", "q-cloze", "q-dragwords", "q-roulette", "q-voice", "q-written"]);
+  it("has the ready types (perguntas + cloze/dragwords + flashcards/memória)", () => {
+    expect(READY_BLOCKS.map((b) => b.kind).sort()).toEqual(["flashcards", "game-memory", "q-choice", "q-cloze", "q-dragwords", "q-roulette", "q-voice", "q-written"]);
   });
-  it("os 3 jogos restantes seguem scaffold (not ready)", () => {
-    const scaffold = AULA_BLOCKS.filter((b) => !b.ready).map((b) => b.kind);
-    expect(scaffold.sort()).toEqual(["branching", "flashcards", "game-memory"]);
+  it("só o cenário ramificado segue scaffold", () => {
+    expect(AULA_BLOCKS.filter((b) => !b.ready).map((b) => b.kind)).toEqual(["branching"]);
   });
   it("flashcards/memory/branching are not evaluable", () => {
     expect(EVALUABLE_KINDS.has("flashcards")).toBe(false);

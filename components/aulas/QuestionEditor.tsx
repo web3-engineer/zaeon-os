@@ -107,6 +107,37 @@ export default function QuestionEditor({ q, onSet, onDel, controls, idx }: {
           <p className="text-[11px] text-white/40">Lacunas detectadas: {((q.config?.sentence || "").match(/\*[^*]+\*/g) || []).length} — o aluno arrasta as palavras.</p>
         </div>
       )}
+
+      {q.type === "flashcards" && (
+        <div className="flex flex-col gap-1.5">
+          {(q.config?.cards || []).map((c, i) => (
+            <div key={i} className="flex items-center gap-1.5">
+              <input value={c.front} onChange={(e) => onSet({ config: { ...(q.config || {}), cards: (q.config?.cards || []).map((x, j) => j === i ? { ...x, front: e.target.value } : x) } })}
+                placeholder="Frente" className="flex-1 rounded-md bg-white/5 border border-white/10 px-2 py-1 text-[12.5px] text-white focus:outline-none focus:border-cyan-400/50" />
+              <input value={c.back} onChange={(e) => onSet({ config: { ...(q.config || {}), cards: (q.config?.cards || []).map((x, j) => j === i ? { ...x, back: e.target.value } : x) } })}
+                placeholder="Verso" className="flex-1 rounded-md bg-white/5 border border-white/10 px-2 py-1 text-[12.5px] text-white focus:outline-none focus:border-cyan-400/50" />
+              {(q.config?.cards || []).length > 1 && <button onClick={() => onSet({ config: { ...(q.config || {}), cards: (q.config?.cards || []).filter((_, j) => j !== i) } })} className="text-white/30 hover:text-rose-400"><Trash2 size={12} /></button>}
+            </div>
+          ))}
+          <button onClick={() => onSet({ config: { ...(q.config || {}), cards: [...(q.config?.cards || []), { front: "", back: "" }] } })} className="self-start text-[11px] text-cyan-300/80 hover:text-cyan-200 inline-flex items-center gap-1"><Plus size={11} /> card</button>
+        </div>
+      )}
+
+      {q.type === "memory" && (
+        <div className="flex flex-col gap-1.5">
+          {(q.config?.pairs || []).map((p, i) => (
+            <div key={i} className="flex items-center gap-1.5">
+              <input value={p.a} onChange={(e) => onSet({ config: { ...(q.config || {}), pairs: (q.config?.pairs || []).map((x, j) => j === i ? { ...x, a: e.target.value } : x) } })}
+                placeholder="Termo" className="flex-1 rounded-md bg-white/5 border border-white/10 px-2 py-1 text-[12.5px] text-white focus:outline-none focus:border-cyan-400/50" />
+              <span className="text-white/30 text-[12px]">↔</span>
+              <input value={p.b} onChange={(e) => onSet({ config: { ...(q.config || {}), pairs: (q.config?.pairs || []).map((x, j) => j === i ? { ...x, b: e.target.value } : x) } })}
+                placeholder="Par" className="flex-1 rounded-md bg-white/5 border border-white/10 px-2 py-1 text-[12.5px] text-white focus:outline-none focus:border-cyan-400/50" />
+              {(q.config?.pairs || []).length > 2 && <button onClick={() => onSet({ config: { ...(q.config || {}), pairs: (q.config?.pairs || []).filter((_, j) => j !== i) } })} className="text-white/30 hover:text-rose-400"><Trash2 size={12} /></button>}
+            </div>
+          ))}
+          <button onClick={() => onSet({ config: { ...(q.config || {}), pairs: [...(q.config?.pairs || []), { a: "", b: "" }] } })} className="self-start text-[11px] text-cyan-300/80 hover:text-cyan-200 inline-flex items-center gap-1"><Plus size={11} /> par</button>
+        </div>
+      )}
     </div>
   );
 }

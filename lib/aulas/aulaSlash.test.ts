@@ -2,16 +2,16 @@ import { describe, it, expect } from "vitest";
 import { AULA_SLASH_OPTIONS, filterAulaSlash } from "@/lib/aulas/aulaSlash";
 
 describe("aula slash options", () => {
-  it("expõe os tipos prontos com kind aula (4 perguntas + cloze/dragwords)", () => {
-    expect(AULA_SLASH_OPTIONS).toHaveLength(6);
+  it("expõe os tipos prontos com kind aula (perguntas + cloze/dragwords + flashcards/memória)", () => {
+    expect(AULA_SLASH_OPTIONS).toHaveLength(8);
     expect(AULA_SLASH_OPTIONS.every((o) => o.kind === "aula")).toBe(true);
-    expect(AULA_SLASH_OPTIONS.map((o) => o.key).sort()).toEqual(["q-choice", "q-cloze", "q-dragwords", "q-roulette", "q-voice", "q-written"]);
+    expect(AULA_SLASH_OPTIONS.map((o) => o.key).sort()).toEqual(["flashcards", "game-memory", "q-choice", "q-cloze", "q-dragwords", "q-roulette", "q-voice", "q-written"]);
   });
   it("filtra sem acento/case por label e key", () => {
     expect(filterAulaSlash("voz").map((o) => o.key)).toContain("q-voice");
     expect(filterAulaSlash("ESCOLHA").map((o) => o.key)).toContain("q-choice");
     expect(filterAulaSlash("q-roulette").map((o) => o.key)).toEqual(["q-roulette"]);
-    expect(filterAulaSlash("")).toHaveLength(6);
+    expect(filterAulaSlash("")).toHaveLength(8);
   });
   it("sem match → vazio", () => {
     expect(filterAulaSlash("zzz")).toEqual([]);

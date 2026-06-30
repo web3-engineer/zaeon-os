@@ -33,6 +33,9 @@ function stripConfig(config: any): any {
     const m = typeof config.text === "string" ? parseCloze(config.text) : parseDragwords(config);
     return { parts: m.parts, bank: shuffleSeeded(m.bank, String(config.text || config.sentence || "")), allowType: typeof config.text === "string" };
   }
+  // flashcards/memória: sem gabarito escondido → repassa direto.
+  if (Array.isArray(config.cards)) return { cards: config.cards.map((c: any) => ({ front: String(c?.front ?? ""), back: String(c?.back ?? "") })) };
+  if (Array.isArray(config.pairs)) return { pairs: config.pairs.map((p: any) => ({ a: String(p?.a ?? ""), b: String(p?.b ?? "") })) };
   const pool = Array.isArray(config.pool)
     ? config.pool.map((p: any) => ({ text: p.text, type: p.type, options: stripOptions(p.options) }))
     : undefined;
