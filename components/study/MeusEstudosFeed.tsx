@@ -24,6 +24,7 @@ import SpeakButton from "@/components/voice/SpeakButton";
 import VoicePlayButton from "@/components/voice/VoicePlayButton";
 import StudioDock from "@/components/studio/StudioDock";
 import AulaQuestionsPanel, { type AuthQ, blank as blankQ } from "@/components/aulas/AulaQuestionsPanel";
+import { EVALUABLE_KINDS, aulaBlock } from "@/lib/aulas/blockTypes";
 import QuestionEditor from "@/components/aulas/QuestionEditor";
 import StudioBlock, { type StudioBlockData } from "@/components/studio/StudioBlock";
 import { detectHeadingShortcut } from "@/lib/study/blockMarkdown";
@@ -923,6 +924,32 @@ export default function MeusEstudosFeed({ collabSpaceId, mode = "study" }: { col
             <div className="w-[560px] max-w-full max-h-full overflow-y-auto rounded-2xl border border-white/15 bg-[#0b1220] p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
               <p className="text-sm font-black text-white mb-1">Pontuação & envio da aula</p>
               <p className="text-[12px] text-white/45 mb-3">O conteúdo do canvas vira a aula. Adicione as perguntas (gere ou crie), defina os pontos e escolha a turma.</p>
+
+              {/* PONTUAÇÃO DA AULA (fatia 3): blocos de pergunta avaliáveis do canvas + total. */}
+              {(() => {
+                const evalBlocks = feed.filter((it) => it.type === "aula-question" && EVALUABLE_KINDS.has(it.payload?.kind));
+                if (!evalBlocks.length) return null;
+                const total = evalBlocks.reduce((s, it) => s + (Number(it.payload?.marks) || 0), 0);
+                return (
+                  <div className="mb-3 rounded-2xl border border-white/12 bg-[#0a0f1c]/60 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[11px] font-black uppercase tracking-[0.14em] text-white/60">Pontuação da aula</span>
+                      <span className="ml-auto text-[11px] font-black text-cyan-300 bg-cyan-500/10 rounded-full px-2.5 py-0.5">{total} pt{total !== 1 ? "s" : ""}</span>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      {evalBlocks.map((it) => (
+                        <div key={it.id} className="flex items-center gap-2 text-[12.5px] text-white/80">
+                          <span className="truncate">{aulaBlock(it.payload?.kind)?.emoji} {aulaBlock(it.payload?.kind)?.label} — <span className="text-white/50">{(it.payload?.text || "").slice(0, 40) || "sem enunciado"}</span></span>
+                          <input type="number" min={0} max={20} value={Number(it.payload?.marks) || 0}
+                            onChange={(e) => { const m = Math.max(0, Math.min(20, parseInt(e.target.value) || 0)); setItems((prev) => prev.map((x) => x.id === it.id ? { ...x, payload: { ...x.payload, marks: m } } : x)); persist(it.id); }}
+                            className="ml-auto w-14 rounded-md bg-white/5 border border-white/10 px-1.5 py-0.5 text-[12px] text-white text-center focus:outline-none focus:border-cyan-400/50" />
+                          <span className="text-[10px] text-white/40">pts</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* PERGUNTAS + PONTUAÇÃO (fatia 2) */}
               <div className="mb-4">

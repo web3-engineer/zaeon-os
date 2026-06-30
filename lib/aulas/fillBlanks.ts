@@ -37,13 +37,16 @@ export function parseDragwords(cfg: { sentence?: string; words?: string[] }): Fi
   return { parts, answers, bank: [...answers, ...extra] };
 }
 
-export function gradeBlanks(answers: string[], submitted: (string | null)[]): { correct: number; total: number } {
+export function gradeBlanks(answers: string[], submitted: (string | null)[]): { correct: number; total: number; perBlank: boolean[] } {
+  const perBlank: boolean[] = [];
   let correct = 0;
   for (let i = 0; i < answers.length; i++) {
     const s = normalize(submitted[i] ?? "");
-    if (s && s === normalize(answers[i])) correct++;
+    const ok = !!s && s === normalize(answers[i]);
+    perBlank.push(ok);
+    if (ok) correct++;
   }
-  return { correct, total: answers.length };
+  return { correct, total: answers.length, perBlank };
 }
 
 /** Embaralhamento determinístico (Fisher-Yates com PRNG mulberry32 semeado pela string). */

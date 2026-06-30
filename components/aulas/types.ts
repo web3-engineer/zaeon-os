@@ -52,5 +52,6 @@ export type GradedAnswer = {
   answer?: string;
   transcript?: string;
   audioUrl?: string;
+  blanksCorrect?: boolean[]; // cloze/dragwords: acerto por lacuna
 };
 export type SubmitResult = { submissionId: string; percentage: number; passed: boolean; graded: GradedAnswer[] };

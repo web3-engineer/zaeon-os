@@ -38,6 +38,7 @@ export type GradedAnswer = {
   answer?: string;
   transcript?: string;
   audioUrl?: string;
+  blanksCorrect?: boolean[]; // cloze/dragwords: acerto por lacuna
 };
 export type GradeResult = { percentage: number; passed: boolean; graded: GradedAnswer[] };
 
@@ -67,6 +68,7 @@ export function gradeSubmission(
     let marksOutOf = 0;
     let earnedThis = 0; // suporta crédito PARCIAL (roleta)
     let isCorrect = false;
+    let blanksCorrect: boolean[] | undefined; // cloze/dragwords
 
     if (q.type === "choice" && Array.isArray(q.options) && q.options.length) {
       marksOutOf = marks;
@@ -107,9 +109,10 @@ export function gradeSubmission(
       const total = model.answers.length;
       if (total > 0) {
         marksOutOf = marks;
-        const { correct } = gradeBlanks(model.answers, Array.isArray(a?.blanks) ? a!.blanks! : []);
-        isCorrect = correct === total;
-        earnedThis = Math.round((marks * correct) / total);
+        const gb = gradeBlanks(model.answers, Array.isArray(a?.blanks) ? a!.blanks! : []);
+        isCorrect = gb.correct === total;
+        earnedThis = Math.round((marks * gb.correct) / total);
+        blanksCorrect = gb.perBlank;
       }
     } else {
       // open, voice sem gabarito, ou tipos ainda manuais → avaliação manual (não pontua aqui).
@@ -126,6 +129,7 @@ export function gradeSubmission(
       ...(a?.answer != null ? { answer: a.answer } : {}),
       ...(a?.transcript != null ? { transcript: a.transcript } : {}),
       ...(a?.audioUrl != null ? { audioUrl: a.audioUrl } : {}),
+      ...(blanksCorrect ? { blanksCorrect } : {}),
     });
   }
 
