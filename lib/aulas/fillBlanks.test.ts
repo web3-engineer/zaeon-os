@@ -32,9 +32,9 @@ describe("parseDragwords", () => {
 
 describe("gradeBlanks", () => {
   it("crédito parcial, posição a posição, normalizado", () => {
-    expect(gradeBlanks(["Brasília", "Brasil"], ["brasilia", "Brasil"])).toEqual({ correct: 2, total: 2 });
-    expect(gradeBlanks(["a", "b", "c"], ["a", "x", "c"])).toEqual({ correct: 2, total: 3 });
-    expect(gradeBlanks(["a"], [null])).toEqual({ correct: 0, total: 1 });
+    expect(gradeBlanks(["Brasília", "Brasil"], ["brasilia", "Brasil"])).toEqual({ correct: 2, total: 2, perBlank: [true, true] });
+    expect(gradeBlanks(["a", "b", "c"], ["a", "x", "c"])).toEqual({ correct: 2, total: 3, perBlank: [true, false, true] });
+    expect(gradeBlanks(["a"], [null])).toEqual({ correct: 0, total: 1, perBlank: [false] });
   });
 });
 

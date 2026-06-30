@@ -12,6 +12,11 @@ describe("gradeSubmission cloze/dragwords", () => {
     const r = gradeSubmission([q], [{ questionId: "d1", blanks: ["a", "b"] }], 70);
     expect(r.graded[0]).toMatchObject({ marks: 2, marksOutOf: 2, isCorrect: true });
   });
+  it("cloze grava blanksCorrect por-lacuna", () => {
+    const q: GradeQuestion = { id: "c3", type: "cloze", marks: 2, config: { text: "*um* e *dois*" } };
+    const r = gradeSubmission([q], [{ questionId: "c3", blanks: ["um", "x"] }], 70);
+    expect((r.graded[0] as any).blanksCorrect).toEqual([true, false]);
+  });
   it("sem lacunas → manual (marksOutOf 0)", () => {
     const q: GradeQuestion = { id: "c2", type: "cloze", marks: 3, config: { text: "sem lacuna" } };
     const r = gradeSubmission([q], [{ questionId: "c2", blanks: [] }], 70);

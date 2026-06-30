@@ -265,7 +265,7 @@ export default function StudentAulasModule() {
 
 function QuestionView({ q, idx, state, onChange, graded, locked }: {
   q: Question; idx: number; state: AnswerState; onChange: (p: AnswerState) => void;
-  graded?: { isCorrect: boolean; marksOutOf: number }; locked: boolean;
+  graded?: { isCorrect: boolean; marksOutOf: number; blanksCorrect?: boolean[] }; locked: boolean;
 }) {
   const voice = useVoiceAnswer();
   const border = graded ? (graded.marksOutOf === 0 ? "border-white/10" : graded.isCorrect ? "border-emerald-400/40" : "border-rose-400/40") : "border-white/10";
@@ -336,7 +336,7 @@ function QuestionView({ q, idx, state, onChange, graded, locked }: {
 
       {q.type === "roulette" && <RouletteView q={q} state={state} onChange={onChange} locked={locked} />}
 
-      {(q.type === "cloze" || q.type === "dragwords") && <FillBlanksView q={q} state={state} onChange={onChange} locked={locked} />}
+      {(q.type === "cloze" || q.type === "dragwords") && <FillBlanksView q={q} state={state} onChange={onChange} locked={locked} graded={graded} />}
 
       {q.type === "flashcards" && <FlashcardsPlay q={q} />}
       {q.type === "memory" && <MemoryGame q={q} />}
@@ -425,7 +425,7 @@ function MemoryGame({ q }: { q: Question }) {
   );
 }
 
-function FillBlanksView({ q, state, onChange, locked }: { q: Question; state: AnswerState; onChange: (p: AnswerState) => void; locked: boolean }) {
+function FillBlanksView({ q, state, onChange, locked, graded }: { q: Question; state: AnswerState; onChange: (p: AnswerState) => void; locked: boolean; graded?: { blanksCorrect?: boolean[] } }) {
   const parts = q.config?.parts || [];
   const bank = q.config?.bank || [];
   const nBlanks = parts.filter((p) => p.t === "blank").length;
@@ -438,7 +438,7 @@ function FillBlanksView({ q, state, onChange, locked }: { q: Question; state: An
           : <span key={i} className="inline-block mx-1 px-2 min-w-[56px] border-b-2 border-cyan-400/50 text-cyan-200 text-center">{value[p.i] || "____"}</span>)}
       </p>
       <WordDrag slots={nBlanks} bank={bank} value={value} allowType={q.config?.allowType}
-        locked={locked} onChange={(vv) => onChange({ blanks: vv })} />
+        locked={locked} correct={graded?.blanksCorrect} onChange={(vv) => onChange({ blanks: vv })} />
     </div>
   );
 }
