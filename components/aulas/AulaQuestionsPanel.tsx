@@ -25,7 +25,7 @@ export type AuthQ = {
   accepted?: string[];
   marks: number;
   noPaste?: boolean;
-  config?: { pool?: AuthPoolQ[]; rounds?: number; text?: string; sentence?: string; words?: string[]; cards?: { front: string; back: string }[]; pairs?: { a: string; b: string }[] };
+  config?: { pool?: AuthPoolQ[]; rounds?: number; text?: string; sentence?: string; words?: string[]; cards?: { front: string; back: string }[]; pairs?: { a: string; b: string }[]; nodes?: { id: string; content: string; choices: { label: string; nextId: string }[] }[] };
 };
 
 const newId = () => `q-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -41,6 +41,7 @@ export function blank(kind: string): AuthQ {
   if (kind === "q-dragwords") { base.type = "dragwords"; base.config = { sentence: "", words: [] }; }
   if (kind === "flashcards") { base.type = "flashcards"; base.config = { cards: [{ front: "", back: "" }] }; }
   if (kind === "game-memory") { base.type = "memory"; base.config = { pairs: [{ a: "", b: "" }, { a: "", b: "" }] }; }
+  if (kind === "branching") { base.type = "branching"; base.config = { nodes: [{ id: "n1", content: "", choices: [] }] }; }
   return base;
 }
 

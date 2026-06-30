@@ -24,7 +24,7 @@ export type RoulettePoolQ = { text: string; type: "choice" | "input"; options?: 
 export type Question = {
   id: string;
   text: string;
-  type: "choice" | "input" | "open" | "voice" | "roulette" | "cloze" | "dragwords" | "flashcards" | "memory";
+  type: "choice" | "input" | "open" | "voice" | "roulette" | "cloze" | "dragwords" | "flashcards" | "memory" | "branching";
   options?: QuizOption[];
   accepted?: string[];
   marks: number;       // PONTOS do item
@@ -35,6 +35,7 @@ export type Question = {
     bank?: string[]; allowType?: boolean;
     cards?: { front: string; back: string }[]; // flashcards
     pairs?: { a: string; b: string }[];        // memória
+    nodes?: { id: string; content: string; choices: { label: string; nextId: string }[] }[]; // ramificado
   } | null;
   order: number;
 };

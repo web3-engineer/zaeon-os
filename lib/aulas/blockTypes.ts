@@ -39,7 +39,7 @@ export const AULA_BLOCKS: AulaBlockDef[] = [
     genHint: 'Gere config.sentence com vãos e config.words (banco de palavras) para arrastar ao lugar certo.' },
   { kind: "game-memory", label: "Jogo da memória", emoji: "🧠", evaluable: false, ready: true, baseType: "memory",
     genHint: 'Gere config.pairs = [{a,b}] (termo↔definição) para o jogo da memória.' },
-  { kind: "branching", label: "Cenário ramificado", emoji: "🌿", evaluable: false, ready: false, baseType: "branching",
+  { kind: "branching", label: "Cenário ramificado", emoji: "🌿", evaluable: false, ready: true, baseType: "branching",
     genHint: 'Gere config.nodes = [{id,content,choices:[{label,nextId}]}] — um grafo de decisões simples sobre o tema.' },
 ];
 

@@ -74,7 +74,7 @@ export async function POST(req: Request) {
   if (rawQs.length) {
     const quizData = { aulaId: aula.id, title: `Quiz — ${title}`.slice(0, 160), passingPct: 70 };
     const quiz = await prisma.aulaQuiz.create({ data: quizData });
-    const QT = new Set(["choice", "input", "open", "voice", "roulette", "cloze", "dragwords", "flashcards", "memory"]);
+    const QT = new Set(["choice", "input", "open", "voice", "roulette", "cloze", "dragwords", "flashcards", "memory", "branching"]);
     const idByRef: Record<string, string> = {};
     let order = 0;
     for (const q of rawQs) {
