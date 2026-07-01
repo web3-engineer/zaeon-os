@@ -636,6 +636,12 @@ export default function HomeworkPage({
   const { t } = useTranslation();
   const { data: session, status } = useSession();
 
+  // T4: registra esta sala como "última sala" pra o voltar da Sala de Plugins retornar aqui.
+  useEffect(() => {
+    if (isEmbedded) return;
+    try { sessionStorage.setItem("zaeon.lastRoom", window.location.pathname + window.location.search); } catch { /* */ }
+  }, [isEmbedded]);
+
   // --- TAB STATES ---
   // Inicializa JÁ a partir do ?tab= da URL (deep-link do menu inicial), pra a aba certa
   // nascer no 1º render — sem depender de efeito (que tinha corrida e fazia "Estudos" cair

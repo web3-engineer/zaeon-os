@@ -32,9 +32,9 @@ export type TourStep = {
 export const TOUR_STEPS: TourStep[] = [
   // — BEAT 1) APRESENTAR: foco só no chat; a Zaeon se apresenta e diz o que vem. Avança com
   //   um "Vamos lá" leve (a fala não é cortada — o TTS enfileira; ver item 5).
-  { id: "apresentar", onMenu: true, target: '[data-tour="chat-widget"]', info: true, cta: "Vamos lá",
-    hint: "👋 Que bom te ver — bora começar?",
-    say: "Oi, que bom te ver por aqui! 💜 Já te liguei pra gente conversar **por voz** enquanto eu te mostro tudo. 🎙️ Em um minutinho você vai saber **pesquisar**, **gerar um trabalho em ABNT** e **criar seus estudos**. Bora?" },
+  { id: "apresentar", onMenu: true, target: '[data-tour="chat-widget"]', advanceEvent: "zaeon:onboard:answered",
+    hint: "📞 Atenda a ligação da Zaeon para começar o tutorial",
+    say: "Oi! Que alegria te ter aqui. 💜 Vou ficar do seu lado nos primeiros passos — em pouquinho você vai estar pesquisando, criando e dando vida às suas ideias. Vamos juntos, no seu ritmo?" },
 
   // — BEAT 2) JOGAR PRO LADO (flip-right): ação OBRIGATÓRIA.
   { id: "flip", onMenu: true, target: '[data-tour="chat-flip"]', advanceEvent: "zaeon:chat:flipped-right",
@@ -42,7 +42,7 @@ export const TOUR_STEPS: TourStep[] = [
     say: "Primeiro, **me joga pro lado direito** ali no **botãozinho de virar (↔)** do meu cabeçalho — fica bem melhor pra eu te mostrar as coisas." },
 
   // — BEAT 3) MINIMIZAR: ação OBRIGATÓRIA. Depois disto o chat fica minimizado (não reabre).
-  { id: "chat-min", onMenu: true, target: '[data-tour="chat-widget"]', advanceEvent: "zaeon:chat:minimized",
+  { id: "chat-min", onMenu: true, target: '[data-tour="chat-min-btn"]', advanceEvent: "zaeon:chat:minimized",
     hint: "➖ Me minimize no cantinho",
     say: "Perfeito! Agora me **minimiza** no **traço (–)** do meu topo pra gente ter a tela toda. 😊" },
 
@@ -51,12 +51,9 @@ export const TOUR_STEPS: TourStep[] = [
     hint: "📚 Abra Estudos e crie um novo",
     say: "Agora abre os seus **Estudos** neste menu e clica em **Novo estudo** — é onde tudo começa. Só sigo quando você criar um de verdade. 😉" },
 
-  // — 2b) DESTAQUE da aba Estudos antes de buscar (nada "aparece do nada"): coachmark na aba.
-  { id: "sala-estudos", tab: "sala-de-estudos", target: '[data-tour="tab-community"]', clickTarget: true,
-    hint: "🏛️ Essa é a sua Sala de Estudos",
-    say: "Essa é a sua **Sala de Estudos** — clica aqui na aba **Estudos**, é onde a pesquisa acontece." },
-
-  // — 3) Aba Estudos: pesquisa LIVRE (qualquer tema). O gate de verdade é salvar um PDF
+  // — 3) Aba Estudos: pesquisa LIVRE (o passo "sala-estudos" foi removido — T3: travava o tour,
+  //   pois o card caía sobre a barra de busca e o clickTarget na aba não disparava; o passo
+  //   "pesquisar" abaixo já garante a aba via `tab` e avança em zaeon:research:start). (qualquer tema). O gate de verdade é salvar um PDF
   //   (passo "salvar"). A busca também dispara um ESTUDO SEU em paralelo (Meus Estudos).
   { id: "pesquisar", tab: "sala-de-estudos", target: '[data-academic-input="true"]', advanceEvent: "zaeon:research:start",
     hint: "🔎 Pesquise o que você quiser",

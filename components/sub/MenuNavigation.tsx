@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   ChevronRightIcon, ChevronDownIcon, ArrowLeftIcon, ArrowRightStartOnRectangleIcon
 } from "@heroicons/react/24/outline";
-import { Bot, Send, ShieldCheck, Loader2, Mic, MicOff, Crown, Trash2, GraduationCap, UserPlus } from "lucide-react";
+import { Bot, Send, ShieldCheck, Loader2, Mic, MicOff, Crown, Trash2, GraduationCap } from "lucide-react";
 import { isSuperAdmin } from "@/lib/auth/roles";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -46,10 +46,6 @@ export default function MenuNavigation() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
-  // ESTADOS PARA O MICROFONE
-  const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef<any>(null);
-
   // Dados do Perfil Extraídos pela IA (Foco Acadêmico/Produtividade)
   const [userData, setUserData] = useState({
     name: '',
@@ -68,7 +64,6 @@ export default function MenuNavigation() {
   const isFounder = isSuperAdmin({ email: session?.user?.email, role: (session?.user as any)?.role });
   // Acesso ao Zaeon Code (mostra "Iniciar novo projeto") + flag de convite acessado.
   const [canUseProjects, setCanUseProjects] = useState(false);
-  const [inviteAccessed, setInviteAccessed] = useState(false);
 
   // Menu reformado: módulos expansíveis com as últimas interações do usuário.
   const [deletingAcc, setDeletingAcc] = useState(false);
@@ -113,7 +108,6 @@ export default function MenuNavigation() {
   }, [status]);
 
   useEffect(() => {
-    try { setInviteAccessed(localStorage.getItem("zaeon.inviteAccessed") === "1"); } catch { /* ignore */ }
     if (status !== "authenticated") { setCanUseProjects(false); return; }
     let alive = true;
     fetch("/api/projects/access")
@@ -212,49 +206,10 @@ export default function MenuNavigation() {
     }
   }, [isOnboardMode, messages.length]);
 
-  // Lógica de Reconhecimento de Voz
-  useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = i18n.language === 'pt' ? 'pt-BR' : 'en-US';
-
-      recognitionRef.current.onresult = (event: any) => {
-        let transcript = "";
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
-        }
-        setInputValue(transcript);
-      };
-
-      recognitionRef.current.onerror = (event: any) => {
-        console.error("Erro no reconhecimento de voz:", event.error);
-        setIsListening(false);
-      };
-
-      recognitionRef.current.onend = () => {
-        setIsListening(false);
-      };
-    }
-  }, [i18n.language]);
-
-  const toggleListening = () => {
-    if (isListening) {
-      recognitionRef.current?.stop();
-      setIsListening(false);
-    } else {
-      setInputValue("");
-      recognitionRef.current?.start();
-      setIsListening(true);
-    }
-  };
+  // (reconhecimento de voz removido da tela inicial — a voz fica no chat widget global)
 
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
-
-    if (isListening) toggleListening();
 
     const userText = inputValue;
     setMessages(prev => [...prev, { role: 'user', text: userText }]);
@@ -517,20 +472,6 @@ export default function MenuNavigation() {
               <div className="mt-auto pt-2 border-t border-slate-200 dark:border-white/5">
                 {step === 0 ? (
                   <div className="flex flex-col gap-2">
-                    <AnimatePresence>
-                      {isListening && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 5 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0 }}
-                          className="flex justify-center items-center gap-2 mb-1"
-                        >
-                          <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-pulse" />
-                          <span className="text-[9px] font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-tighter">Zaeon está a ouvir...</span>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
                     <div className="flex items-center gap-2 bg-white dark:bg-black/40 rounded-xl p-1.5 border border-slate-300 dark:border-white/10 focus-within:border-cyan-400 dark:focus-within:border-cyan-500/50 transition-colors shadow-sm dark:shadow-inner">
                       <input
                         autoFocus
@@ -539,26 +480,9 @@ export default function MenuNavigation() {
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                         disabled={isTyping}
-                        placeholder={isListening ? "Fale agora..." : "Pergunte a Zaeon..."}
+                        placeholder="Pergunte a Zaeon..."
                         className="flex-1 bg-transparent border-none outline-none text-[11px] text-slate-800 dark:text-white px-3 placeholder:text-slate-400"
                       />
-
-                      <button
-                        onClick={toggleListening}
-                        disabled={isTyping}
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isListening
-                          ? "bg-red-500/20 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.3)]"
-                          : "bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-cyan-500"
-                          }`}
-                      >
-                        {isListening ? (
-                          <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1 }}>
-                            <MicOff size={14} />
-                          </motion.div>
-                        ) : (
-                          <Mic size={14} />
-                        )}
-                      </button>
 
                       <button
                         onClick={handleSendMessage}
@@ -625,17 +549,10 @@ export default function MenuNavigation() {
                   <ChevronRightIcon className="h-4 w-4 opacity-30 text-slate-600 dark:text-white" />
                 </div>
 
-                {/* (Convite saiu daqui: virou um card próprio à direita do menu, no hero-content) */}
-
-                {/* CONVITE — agora vive SÓ aqui nas Opções (saiu do menu/hero). Sempre disponível. */}
-                <div onClick={() => router.push("/convite")} className={cardBase}>
-                  <div className={accentBar(false)} />
-                  <span className="flex items-center gap-3 pl-2 min-w-0">
-                    <UserPlus size={16} className="text-cyan-600 dark:text-cyan-300 shrink-0" />
-                    <span className="text-sm tracking-tight truncate">{inviteAccessed ? "Acessar convite" : "Convidar amigos"}</span>
-                  </span>
-                  <ChevronRightIcon className="h-4 w-4 opacity-30 group-hover:opacity-100 transition-opacity shrink-0" />
-                </div>
+                {/* CONVITE (T5) — convidar amigos = COMPARTILHAR meu link (código do usuário +
+                    "Copiar link de convite"), não o resgate por dígitos. Reusa o InviteButton
+                    (busca /api/convite/meu-codigo). /convite segue como landing do convidado. */}
+                <InviteButton variant="menu" />
 
                 {/* VOZ DO TUTORIAL — opt-in, OFF por padrão. Visível pra todos: ninguém leva voz
                     sem querer (ex.: alguém numa sala de aula). */}

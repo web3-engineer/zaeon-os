@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
+import { skipTour } from "@/lib/onboarding/tour";
 import PusherClient from "pusher-js";
 import {
     ChatBubbleLeftRightIcon,
@@ -114,6 +115,9 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
     const wantListenRef = useRef(false);   // conversa por voz ativa (reabre o mic a cada turno)
     const [callOn, setCallOn] = useState(false); // "em chamada" (modo conversa mãos-livres)
     const [onboarding, setOnboarding] = useState(false); // tour ativo → ligação automática + overlay leve
+    const [ringing, setRinging] = useState(false); // T2a: "chamada recebida" do onboarding (atender/recusar)
+    const ringingRef = useRef(false);
+    const pendingSayRef = useRef<string[]>([]); // falas que chegam durante a chamada → flush ao atender
     const [orbMinimized, setOrbMinimized] = useState(false); // call rodando com o orb full-screen escondido
     const [voiceAllowed, setVoiceAllowed] = useState(true); // gating: voz é premium (Pulse+)
     const [showUpgrade, setShowUpgrade] = useState(false);
@@ -143,6 +147,7 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
         const onSay = (e: any) => {
             const text = e?.detail;
             if (typeof text !== "string" || !text.trim()) return;
+            if (ringingRef.current) { pendingSayRef.current.push(text); return; } // T2a: segura a fala até atender
             setActiveChat(ZAEON_AGENT);
             // BUG (item 2): depois do beat "minimizar", NÃO reabrir o chat a cada fala — a
             // mensagem entra no histórico; o widget fica minimizado (FAB).
@@ -313,13 +318,8 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
             setOrbMinimized(false);
             setActiveChat(ZAEON_AGENT);
             setIsOpen(true);
-            // VOZ OPT-IN (item 4): a "ligação" (fala + overlay) só liga se o usuário pediu voz
-            // (pref OFF por padrão). Sem voz, o tour roda 100% por texto/cards. Nunca escuta.
-            const voiceOn = (() => { try { return localStorage.getItem("zaeon.onboard.voice") === "on"; } catch { return false; } })();
-            if (voiceOn) {
-                setCallOn(true);
-                setVoiceModeState("active");
-            }
+            // T2a: começa como "chamada recebida" — só conecta (voz/fala) quando o usuário Atende.
+            ringingRef.current = true; setRinging(true);
         };
         const onStop = () => {
             setOnboarding(false);
@@ -327,6 +327,7 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
             onboardMinRef.current = false;
             try { localStorage.removeItem("zaeon.onboard.min"); } catch { /* */ }
             setCallOn(false);
+            ringingRef.current = false; setRinging(false);
             wantListenRef.current = false;
             stopListening();
             // Encerrar o tour PODE parar a voz e esvaziar a fila (intencional — item 5.4).
@@ -710,6 +711,27 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
     };
     const openMission = () => { if (mission?.route) { router.push(mission.route); setIsOpen(false); } };
 
+    // T2a: atender/recusar a "ligação" do onboarding.
+    const answerCall = () => {
+        ringingRef.current = false; setRinging(false);
+        const voiceOn = (() => { try { return localStorage.getItem("zaeon.onboard.voice") === "on"; } catch { return false; } })();
+        if (voiceOn) { setCallOn(true); setVoiceModeState("active"); }
+        // conecta: solta PRIMEIRO as falas que chegaram enquanto tocava (a saudação do BEAT 1),
+        // ANTES de dispatchar "answered" — senão o avanço síncrono do tour insere o BEAT 2 antes.
+        const pend = pendingSayRef.current; pendingSayRef.current = [];
+        if (pend.length) {
+            setActiveChat(ZAEON_AGENT); setIsOpen(true);
+            setZaeonMessages((prev) => [...prev, ...pend.map((t, i) => ({ id: `ob-${Date.now()}-${i}`, senderId: "zaeon-agent", text: t }))]);
+            if (voiceOn) pend.forEach((t) => { try { speakQueued(t); } catch { /* */ } });
+        }
+        try { window.dispatchEvent(new CustomEvent("zaeon:onboard:answered")); } catch { /* */ }
+    };
+    const declineCall = () => {
+        ringingRef.current = false; setRinging(false);
+        pendingSayRef.current = [];
+        try { skipTour(); } catch { /* */ } // pula o tour (finishTour → onboard:stop)
+    };
+
     return (
         <>
         <AgentActionRunner side={widgetPosition} />
@@ -793,6 +815,7 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                             <ArrowsRightLeftIcon className="w-4 h-4" />
                         </button>
                         <button
+                            data-tour="chat-min-btn"
                             onClick={() => { setIsOpen(false); try { window.dispatchEvent(new CustomEvent("zaeon:chat:minimized")); } catch { /* */ } }}
                             className="text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors p-1"
                             title="Minimizar"
@@ -803,6 +826,23 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
                   </>
                 )}
             </div>
+
+            {/* T2a: CHAMADA RECEBIDA do onboarding — atender pra começar o tutorial. */}
+            {ringing && (
+                <div className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-5 p-6 text-center backdrop-blur-xl bg-[#0a0f1c]/85">
+                    <div className="w-20 h-20 rounded-full bg-cyan-500/15 flex items-center justify-center animate-pulse">
+                        <span className="text-3xl">📞</span>
+                    </div>
+                    <div>
+                        <p className="text-[15px] font-black text-white">Zaeon está te ligando…</p>
+                        <p className="text-[12px] text-white/50 mt-1">Atenda para começar o tutorial</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <button onClick={answerCall} className="px-5 py-2.5 rounded-full text-white font-bold text-sm hover:scale-[1.03] transition-transform" style={{ background: "linear-gradient(135deg,#10b981,#06b6d4)" }}>Atender</button>
+                        <button onClick={declineCall} className="px-5 py-2.5 rounded-full text-white/70 font-bold text-sm border border-white/15 hover:bg-white/10 transition-colors">Agora não</button>
+                    </div>
+                </div>
+            )}
 
             {/* CARTÃO DE MISSÃO — o que a Zaeon está executando agora (cockpit reativo) */}
             {isOpen && mission && (

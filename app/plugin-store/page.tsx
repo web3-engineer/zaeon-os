@@ -124,7 +124,17 @@ export default function PluginStorePage() {
                     <div className="flex items-center justify-between h-full px-6">
                         <div className="flex items-center gap-4">
                             <button
-                                onClick={() => router.push("/")}
+                                onClick={() => {
+                                    // T4: volta pra última sala de onde veio (?from ou zaeon.lastRoom), não pra home.
+                                    let dest = "/";
+                                    try {
+                                        const from = new URLSearchParams(window.location.search).get("from");
+                                        const last = sessionStorage.getItem("zaeon.lastRoom");
+                                        const cand = from || last || "";
+                                        if (cand && !cand.startsWith("/plugin-store")) dest = cand;
+                                    } catch { /* */ }
+                                    router.push(dest);
+                                }}
                                 className="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 dark:text-white/70 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-cyan-600 transition-all border border-transparent hover:border-slate-200 dark:hover:border-white/10"
                             >
                                 <ArrowLeftIcon className="w-5 h-5" />
