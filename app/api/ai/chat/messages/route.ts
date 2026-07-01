@@ -85,7 +85,7 @@ export async function POST(req: Request) {
         const session = await getServerSession(authOptions);
         if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-        const { targetId, text } = await req.json();
+        const { targetId, text, clientMsgId } = await req.json();
         if (!targetId || !text) return NextResponse.json({ error: "Invalid data" }, { status: 400 });
 
         const user = await prisma.user.findUnique({ where: { email: session.user.email } });
@@ -103,14 +103,16 @@ export async function POST(req: Request) {
         const roomKey = getRoomKey(user.id, targetId);
         await redis.del(roomKey);
 
-        // Dispara o evento 'new-message' para o canal exclusivo do destinatário
+        // Dispara o evento 'new-message' para o canal exclusivo do destinatário e do próprio remetente (sync)
+        const pusherPayload = { ...newMessage, clientMsgId };
         try {
-            await pusher.trigger(`user_${targetId}`, 'new-message', newMessage);
+            await pusher.trigger(`user_${targetId}`, 'new-message', pusherPayload);
+            await pusher.trigger(`user_${user.id}`, 'new-message', pusherPayload);
         } catch (pusherError) {
             console.error("Erro ao disparar evento no Pusher:", pusherError);
         }
 
-        return NextResponse.json(newMessage);
+        return NextResponse.json(pusherPayload);
     } catch (error) {
         console.error("Erro interno:", error);
         return NextResponse.json({ error: "Erro interno" }, { status: 500 });

@@ -45,7 +45,19 @@ export default function ZaeonBiologyRoom() {
     const [isDarkMode, setIsDarkMode] = useState(true);
     const [isMinimized, setIsMinimized] = useState(false);
     
-    const [activeTab, setActiveTab] = useState("classes");
+    const initialTab = (() => {
+        if (typeof window === "undefined") return "classes";
+        try {
+            const saved = localStorage.getItem("zaeon.bio.lastTab");
+            if (saved) return saved;
+        } catch { /* ignore */ }
+        return "classes";
+    })();
+    const [activeTab, setActiveTab] = useState(initialTab);
+
+    useEffect(() => {
+        try { localStorage.setItem("zaeon.bio.lastTab", activeTab); } catch { /* ignore */ }
+    }, [activeTab]);
     
     // --- TABS (BASE INICIAL UNIFICADA) ---
     // Usando os mesmos IDs do Lounge para manter a compatibilidade do layoutState no BD

@@ -143,12 +143,12 @@ export default function InviteCard({ initialCode = "", onDone }: Props) {
 
   // ── tokens de tema (azul/ciano Zaeon, menos roxo) ───────────────────────────
   const GRAD = "linear-gradient(135deg,#0ea5e9,#22d3ee)";      // sky → cyan
-  const pageBg = dark ? "#030014" : "#eef3f9";
-  const cardBg = dark ? "rgba(13,12,26,0.72)" : "rgba(255,255,255,0.92)";
-  const cardBorder = dark ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(15,23,42,0.10)";
+  const pageBg = dark ? "#030014" : "#f8fafc";
+  const cardBg = dark ? "rgba(13,12,26,0.72)" : "rgba(255,255,255,0.98)";
+  const cardBorder = dark ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(15,23,42,0.12)";
   const heroBg = dark
     ? "linear-gradient(150deg, rgba(14,165,233,0.24), rgba(6,182,212,0.16))"
-    : "linear-gradient(150deg, rgba(14,165,233,0.16), rgba(6,182,212,0.10))";
+    : "linear-gradient(150deg, rgba(14,165,233,0.12), rgba(6,182,212,0.06))";
 
   const fieldCls =
     "w-full rounded-2xl px-4 py-3 text-sm transition-colors focus:outline-none " +
@@ -216,8 +216,8 @@ export default function InviteCard({ initialCode = "", onDone }: Props) {
                 </div>
                 <input autoFocus value={code} maxLength={9} onChange={(e) => setCode(e.target.value.toUpperCase())}
                   placeholder="XXXX-XXXX"
-                  className="w-full rounded-2xl px-5 py-4 text-center text-xl font-mono tracking-[0.3em] focus:outline-none bg-slate-100 text-slate-900 placeholder:text-slate-300 border border-slate-200 focus:border-cyan-500/60 dark:bg-white/5 dark:text-white dark:placeholder:text-white/20 dark:border-white/12 dark:focus:border-cyan-400/60" />
-                {error && <p className="text-[12px] text-rose-500 dark:text-rose-400 text-center">{error}</p>}
+                  className="w-full rounded-2xl px-5 py-4 text-center text-xl font-mono tracking-[0.3em] focus:outline-none bg-slate-100 text-slate-900 placeholder:text-slate-400 border border-slate-200 focus:border-cyan-500/60 dark:bg-white/5 dark:text-white dark:placeholder:text-white/20 dark:border-white/12 dark:focus:border-cyan-400/60" />
+                {error && <p className="text-[12px] text-rose-600 dark:text-rose-400 text-center">{error}</p>}
                 <button type="submit" disabled={validating || code.length < 9}
                   className="w-full py-3.5 rounded-2xl text-white font-black uppercase tracking-widest text-[12px] disabled:opacity-40 transition-transform hover:scale-[1.02]" style={{ background: GRAD }}>
                   {validating ? <Loader2 size={15} className="inline animate-spin" /> : "Validar convite"}
@@ -312,8 +312,8 @@ export default function InviteCard({ initialCode = "", onDone }: Props) {
                       <span className="block text-sm font-bold truncate text-slate-900 dark:text-white">{uni.acronym} · {uni.state}</span>
                       <span className="block text-[10px] truncate text-slate-500 dark:text-white/45">{uni.name}</span>
                     </span>
-                  ) : <span className="flex-1 text-sm text-slate-400 dark:text-white/40">Selecione sua universidade…</span>}
-                  <ChevronRight size={15} className={`text-slate-400 dark:text-white/30 transition-transform ${pickerOpen ? "rotate-90" : ""}`} />
+                  ) : <span className="flex-1 text-sm text-slate-500 dark:text-white/40">Selecione sua universidade…</span>}
+                  <ChevronRight size={15} className={`text-slate-500 dark:text-white/30 transition-transform ${pickerOpen ? "rotate-90" : ""}`} />
                 </button>
 
                 <AnimatePresence>
@@ -321,7 +321,7 @@ export default function InviteCard({ initialCode = "", onDone }: Props) {
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
                       <div className="rounded-2xl border p-2 bg-slate-50 border-slate-200 dark:bg-black/40 dark:border-white/10">
                         <div className="relative mb-2">
-                          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/30" />
+                          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-white/30" />
                           <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)}
                             placeholder="Buscar sigla, nome, cidade ou estado…"
                             className="w-full rounded-xl pl-9 pr-3 py-2 text-[12px] focus:outline-none bg-white text-slate-900 placeholder:text-slate-400 border border-slate-200 focus:border-cyan-500/50 dark:bg-white/5 dark:text-white dark:placeholder:text-white/25 dark:border-white/10 dark:focus:border-cyan-400/40" />

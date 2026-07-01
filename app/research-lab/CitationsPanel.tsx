@@ -92,7 +92,7 @@ export default function CitationsPanel() {
             {cit.incomplete ? (
               <>
                 <p className="text-[8.5px] font-black uppercase tracking-widest text-red-400 mb-1">🔴 Sem fonte válida — não está sendo creditada</p>
-                <p className="text-[10px] text-white/70 italic leading-snug line-clamp-3">"{(cit.sourceText || cit.quote || "").slice(0, 140)}"</p>
+                <p className="text-[10px] text-white/70 italic leading-snug line-clamp-3">&quot;{(cit.sourceText || cit.quote || "").slice(0, 140)}&quot;</p>
                 <button
                   onClick={() => setCompleting(cit)}
                   className="mt-2 text-[9px] font-black uppercase tracking-wide px-2.5 py-1 rounded-full text-white"

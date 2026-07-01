@@ -68,11 +68,13 @@ export default function OnboardingGuide() {
     ? { top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2 }
     : null;
 
-  // Posiciona o card CONSCIENTE do espaço: nunca sobre o anel. Alvo colado à direita
-  // (ex.: dock) → card à ESQUERDA; alvo na metade inferior → card ACIMA; senão, abaixo.
+  // Posiciona o card CONSCIENTE do espaço: NUNCA sobre o anel (não pode cobrir o alvo,
+  // ex.: a barra de pesquisa — senão o usuário não consegue digitar). Regra: SEMPRE
+  // PREFERE ABAIXO do anel ("mais pra baixo dela"); só cai pra esquerda/acima se abaixo
+  // realmente não couber E o fallback também não sobrepuser o anel.
   const cardW = 300, cardH = 170;
+  const gap = 10;
   const clampX = (x: number) => Math.max(12, Math.min(window.innerWidth - cardW - 12, x));
-  const clampY = (y: number) => Math.max(12, Math.min(window.innerHeight - cardH - 12, y));
   let chip: { top: number; left: number };
   if (!ring) {
     chip = { top: window.innerHeight - 160, left: window.innerWidth / 2 - cardW / 2 };
@@ -80,16 +82,24 @@ export default function OnboardingGuide() {
     const ringRight = ring.left + ring.width;
     const ringBottom = ring.top + ring.height;
     const spaceRight = window.innerWidth - ringRight;
-    const spaceBelow = window.innerHeight - ringBottom;
-    if (spaceRight < cardW + 24 && ring.left > cardW + 24) {
-      // colado à direita → à esquerda do anel, centralizado verticalmente nele
-      chip = { top: clampY(ring.top + ring.height / 2 - cardH / 2), left: ring.left - cardW - 12 };
-    } else if (spaceBelow < cardH + 24 && ring.top > cardH + 24) {
-      // colado embaixo → acima do anel
-      chip = { top: ring.top - cardH - 10, left: clampX(ring.left) };
+    const spaceBelow = window.innerHeight - ringBottom;   // espaço livre abaixo do anel
+    const spaceAbove = ring.top;                          // espaço livre acima do anel
+    // clampY que respeita um piso (topY): nunca arrasta o card pra cima do piso (não invade o anel).
+    const clampYBelow = (y: number, topY: number) =>
+      Math.max(topY, Math.min(window.innerHeight - cardH - 12, y));
+    if (spaceBelow >= cardH + gap + 12) {
+      // PREFERIDO: cabe abaixo do anel → começa logo abaixo do bottom (nunca sobe pra cima dele).
+      chip = { top: clampYBelow(ringBottom + gap, ringBottom + gap), left: clampX(ring.left) };
+    } else if (spaceRight < cardW + 24 && ring.left > cardW + 24) {
+      // colado à direita (ex.: dock) → à esquerda do anel, centralizado verticalmente nele.
+      chip = { top: Math.max(12, Math.min(window.innerHeight - cardH - 12, ring.top + ring.height / 2 - cardH / 2)), left: ring.left - cardW - 12 };
+    } else if (spaceAbove >= cardH + gap + 12) {
+      // sem espaço abaixo, mas cabe acima → ancora pelo bottom do card no topo do anel (não invade).
+      chip = { top: ring.top - cardH - gap, left: clampX(ring.left) };
     } else {
-      // padrão: abaixo do anel
-      chip = { top: clampY(ringBottom + 10), left: clampX(ring.left) };
+      // sem espaço limpo em nenhum lado: mantém ABAIXO e gruda no rodapé, mas SEMPRE
+      // começando abaixo do bottom do anel (jamais cobre o alvo/input).
+      chip = { top: clampYBelow(ringBottom + gap, ringBottom + gap), left: clampX(ring.left) };
     }
   }
 

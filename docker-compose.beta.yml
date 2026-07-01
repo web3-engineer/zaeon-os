@@ -38,7 +38,7 @@ services:
     depends_on:
       redis: { condition: service_started }
       voice-engine: { condition: service_started }
-      abnt-service: { condition: service_healthy }
+      abnt-service: { condition: service_started }   # NÃO bloquear o site se o ABNT demorar/falhar (export degrada com 503; healthcheck segue p/ observabilidade)
       pdf-loader: { condition: service_started }
     expose: ["3000"]            # público é só o Caddy
     volumes: ["studio_data:/app/.studio"]   # artefatos do Studio (podcast/imagem) — persistem entre deploys

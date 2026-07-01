@@ -42,7 +42,19 @@ export default function ZaeonComputerScienceRoom() {
     const [inputValue, setInputValue] = useState('');
     const [isError, setIsError] = useState(false);
 
-    const [activeTab, setActiveTab] = useState("classes");
+    const initialTab = (() => {
+        if (typeof window === "undefined") return "classes";
+        try {
+            const saved = localStorage.getItem("zaeon.cyber.lastTab");
+            if (saved) return saved;
+        } catch { /* ignore */ }
+        return "classes";
+    })();
+    const [activeTab, setActiveTab] = useState(initialTab);
+
+    useEffect(() => {
+        try { localStorage.setItem("zaeon.cyber.lastTab", activeTab); } catch { /* ignore */ }
+    }, [activeTab]);
     const [isFocusMode, setIsFocusMode] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false);
 

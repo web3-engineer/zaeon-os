@@ -33,8 +33,8 @@ export const TOUR_STEPS: TourStep[] = [
   // — BEAT 1) APRESENTAR: foco só no chat; a Zaeon se apresenta e diz o que vem. Avança com
   //   um "Vamos lá" leve (a fala não é cortada — o TTS enfileira; ver item 5).
   { id: "apresentar", onMenu: true, target: '[data-tour="chat-widget"]', info: true, cta: "Vamos lá",
-    hint: "👋 Oi! Eu sou a Zaeon",
-    say: "Oi! Sou eu, a **Zaeon** 💜 — e já te liguei pra gente conversar **por voz** enquanto eu te mostro tudo. 🎙️ Em um minutinho você vai saber pesquisar, gerar um trabalho em ABNT e criar seus estudos. Bora?" },
+    hint: "👋 Que bom te ver — bora começar?",
+    say: "Oi, que bom te ver por aqui! 💜 Já te liguei pra gente conversar **por voz** enquanto eu te mostro tudo. 🎙️ Em um minutinho você vai saber **pesquisar**, **gerar um trabalho em ABNT** e **criar seus estudos**. Bora?" },
 
   // — BEAT 2) JOGAR PRO LADO (flip-right): ação OBRIGATÓRIA.
   { id: "flip", onMenu: true, target: '[data-tour="chat-flip"]', advanceEvent: "zaeon:chat:flipped-right",

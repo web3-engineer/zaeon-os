@@ -32,7 +32,8 @@ import VoiceWaveIndicator from "@/components/voice/VoiceWaveIndicator";
 import { setHandoff } from "@/lib/agents/handoff";
 import { useMission, startMission } from "@/lib/agents/mission";
 import { getAgentContext, hydrateAgentContext, setAgentContext, pushAgentAction } from "@/lib/agent/context";
-import { startPlan, usePlan, setStepStatus, advancePlan, finishPlan, type AgentStep } from "@/lib/agent/actions";
+import { setStepStatus, advancePlan, finishPlan, type AgentStep } from "@/lib/agent/actions";
+import { startTour } from "@/lib/onboarding/tour";
 import UpgradeCard from "@/components/ui/UpgradeCard";
 import { isSuperAdminEmail } from "@/lib/auth/roles";
 import type { AIState } from "@/components/main/ZaeonLogo";
@@ -207,6 +208,18 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
         }
     }, [status, session, zaeonMessages.length, isOpen]);
 
+    // 🔥 ATIVAR ONBOARDING AO LOGAR
+    useEffect(() => {
+        if (status === "authenticated") {
+            try {
+                if (!localStorage.getItem("zaeon.tourDone") && !localStorage.getItem("zaeon.tourStarted")) {
+                    localStorage.setItem("zaeon.tourStarted", "1");
+                    setTimeout(() => startTour(), 2000);
+                }
+            } catch { /* ignore */ }
+        }
+    }, [status]);
+
     useEffect(() => {
         activeChatRef.current = activeChat;
         if (isOpen) setUnreadCount(0);
@@ -368,8 +381,19 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
         const pusher = new PusherClient(pusherKey, { cluster: pusherCluster });
         const channel = pusher.subscribe(`user_${realUserId}`);
         channel.bind('new-message', (newMessage: any) => {
-            if (activeChatRef.current?.id === newMessage.senderId) {
-                setChatHistory(prev => prev.find(msg => msg.id === newMessage.id) ? prev : [...prev, newMessage]);
+            const isActiveChat = activeChatRef.current?.id === newMessage.senderId || activeChatRef.current?.id === newMessage.receiverId;
+            if (isActiveChat) {
+                setChatHistory(prev => {
+                    if (newMessage.clientMsgId) {
+                        const idx = prev.findIndex(msg => msg.id === newMessage.clientMsgId);
+                        if (idx !== -1) {
+                            const newHistory = [...prev];
+                            newHistory[idx] = { ...newHistory[idx], id: newMessage.id };
+                            return newHistory;
+                        }
+                    }
+                    return prev.find(msg => msg.id === newMessage.id) ? prev : [...prev, newMessage];
+                });
             } else {
                 setUnreadCount(prev => prev + 1);
                 setFlash(true);
@@ -619,7 +643,7 @@ export const LoungeChatWidget = ({ defaultOpen = false }: LoungeChatWidgetProps)
             setChatHistory(prev => [...prev, optimisticMsg]);
             try {
                 await fetch('/api/ai/chat/messages', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetId: activeChat.id, text })
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetId: activeChat.id, text, clientMsgId: msgId })
                 });
             } catch (error) { console.error(error); }
         }

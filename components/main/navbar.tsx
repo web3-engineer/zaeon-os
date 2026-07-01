@@ -177,10 +177,11 @@ export const Navbar = () => {
   const getTrackName = () => TRACKS[currentTrackIndex].split('/').pop()?.replace('.mp3', '') || 'Track';
   const getLinkClassName = (path: string) => {
     const active = pathname.startsWith(path);
-    return `transition-all uppercase tracking-[0.2em] text-[10px] font-black ${active ? "text-cyan-500 scale-110" : "text-foreground/50 hover:text-cyan-400"}`;
+    return `transition-all uppercase tracking-[0.15em] text-[11px] font-black ${active ? "text-cyan-500 scale-110" : "text-foreground/70 hover:text-cyan-500"}`;
   };
 
   if (!mounted) return null;
+  if (pathname === "/convite") return null;
 
   return (
     <div 

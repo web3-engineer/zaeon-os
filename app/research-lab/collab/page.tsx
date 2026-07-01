@@ -55,7 +55,21 @@ const STARTUP_DATE = new Date("2026-01-15T00:00:00");
 
 export default function AdminControlRoom() {
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState<"monitor" | "credentials" | "agents" | "reports" | "payments">("credentials");
+    const initialTab = (() => {
+        if (typeof window === "undefined") return "credentials";
+        try {
+            const saved = localStorage.getItem("zaeon.collab.lastTab");
+            if (saved && ["monitor", "credentials", "agents", "reports", "payments"].includes(saved)) {
+                return saved as any;
+            }
+        } catch { /* ignore */ }
+        return "credentials";
+    })();
+    const [activeTab, setActiveTab] = useState<"monitor" | "credentials" | "agents" | "reports" | "payments">(initialTab);
+
+    useEffect(() => {
+        try { localStorage.setItem("zaeon.collab.lastTab", activeTab); } catch { /* ignore */ }
+    }, [activeTab]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
     const [isFocusMode, setIsFocusMode] = useState(false);

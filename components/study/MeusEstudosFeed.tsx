@@ -39,7 +39,7 @@ type Space = { id: string; title: string };
 const GRAD = "linear-gradient(135deg,#0ea5e9,#22d3ee)";
 const LAST_KEY = "zaeon.study.lastSpace";
 const DT = "application/x-zaeon-item";
-const MEDIA = new Set(["ref", "insight", "synthesis", "base", "suggestion", "pdf", "video", "link", "image", "audio", "file"]);
+const MEDIA = new Set(["ref", "insight", "synthesis", "base", "suggestion", "pdf", "video", "link", "image", "audio", "file", "markdown"]);
 
 /** Extrai o ID de um vídeo do YouTube de qualquer formato de link (ou null). */
 function ytId(input: string): string | null {
@@ -54,7 +54,7 @@ const soloYt = (t: string): string | null => {
   return ytId(s);
 };
 const typeIcon = (t: string) =>
-  t === "video" ? Youtube : t === "link" ? Link2 : t === "image" ? ImageIcon : t === "audio" ? Music : t === "file" ? Paperclip : t === "pdf" || t === "ref" ? FileText : StickyNote;
+  t === "video" ? Youtube : t === "link" ? Link2 : t === "image" ? ImageIcon : t === "audio" ? Music : t === "file" ? Paperclip : t === "pdf" || t === "ref" ? FileText : t === "markdown" ? FileText : StickyNote;
 
 /** Textarea que cresce com o conteúdo (sem barra de rolagem por bloco). */
 function AutoGrow({ value, onChange, onKeyDown, placeholder, className, autoFocus }: {
@@ -663,7 +663,7 @@ export default function MeusEstudosFeed({ collabSpaceId, mode = "study" }: { col
     const reader = new FileReader();
     reader.onload = async () => {
       const dataUrl = String(reader.result || "");
-      const kind = file.type.startsWith("image/") ? "image" : file.type.startsWith("audio/") ? "audio" : file.type === "application/pdf" ? "pdf" : "file";
+      const kind = file.type.startsWith("image/") ? "image" : file.type.startsWith("audio/") ? "audio" : file.type === "application/pdf" ? "pdf" : (file.name.endsWith(".md") || file.type === "text/markdown") ? "markdown" : "file";
       await addItem({ type: kind, title: file.name, payload: { dataUrl, name: file.name, mime: file.type, size: file.size }, placement, order });
       resolve();
     };
@@ -766,6 +766,22 @@ export default function MeusEstudosFeed({ collabSpaceId, mode = "study" }: { col
           </div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={it.payload.dataUrl} alt={it.title || "imagem"} className="max-h-[420px] w-auto rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm" />
+        </div>
+      );
+    }
+    // MARKDOWN → Bloco estilizado e distinguível
+    if (it.type === "markdown" && it.payload?.dataUrl) {
+      return (
+        <div className="group relative my-3 rounded-2xl border-2 p-4 bg-violet-50 border-violet-400 dark:bg-violet-900/20 dark:border-violet-500 shadow-md">
+          <div className="flex items-center gap-2 mb-2">
+            <FileText size={18} className="text-violet-600 dark:text-violet-300" />
+            <a href={it.payload.dataUrl} download={it.payload?.name || it.title || "documento.md"} className="text-sm font-bold text-violet-900 dark:text-violet-100 hover:underline">{it.title || it.payload?.name || "documento.md"}</a>
+            <span className="ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-violet-200 text-violet-800 dark:bg-violet-800 dark:text-violet-200">MARKDOWN</span>
+          </div>
+          <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100">
+            <button onClick={() => toLibrary(it.id)} title="Voltar p/ biblioteca" className="text-violet-400 hover:text-violet-600 dark:hover:text-violet-300"><ArrowLeftToLine size={13} /></button>
+            <button onClick={() => removeItem(it.id)} title="Remover" className="text-violet-400 hover:text-rose-500"><X size={14} /></button>
+          </div>
         </div>
       );
     }
@@ -1161,14 +1177,15 @@ export default function MeusEstudosFeed({ collabSpaceId, mode = "study" }: { col
                     draggable={!isStudio}
                     onDragStart={isStudio ? undefined : (e) => { e.dataTransfer.setData(DT, it.id); e.dataTransfer.effectAllowed = "move"; }}
                     onClick={isStudio ? () => setStudioPreview(it) : undefined}
-                    className={`group flex items-center gap-2 rounded-xl border p-2 bg-white border-slate-200 shadow-sm hover:border-cyan-400/50 dark:bg-white/[0.04] dark:border-white/10 dark:shadow-none ${isStudio ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}`}
+                    className={`group flex items-center gap-2 rounded-xl border p-2 shadow-sm hover:border-cyan-400/50 dark:shadow-none ${isStudio ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"} ${it.type === "markdown" ? "bg-violet-50 border-violet-400 dark:bg-violet-900/20 dark:border-violet-500" : "bg-white border-slate-200 dark:bg-white/[0.04] dark:border-white/10"}`}
                     title={isStudio ? "Ver isolado" : "Arraste para o caderno"}
                   >
                     {isStudio
                       ? <span className="text-cyan-600 dark:text-cyan-300 shrink-0 text-[13px] leading-none">⟁</span>
                       : <GripVertical size={13} className="text-slate-300 dark:text-white/20 shrink-0" />}
-                    <Icon size={14} className="text-cyan-600 dark:text-cyan-300 shrink-0" />
+                    <Icon size={14} className={it.type === "markdown" ? "text-violet-600 dark:text-violet-300 shrink-0" : "text-cyan-600 dark:text-cyan-300 shrink-0"} />
                     <span className="flex-1 min-w-0 text-[13px] font-medium text-slate-700 dark:text-white/90 truncate">{it.title || it.payload?.text?.slice(0, 40) || it.type}</span>
+                    {it.type === "markdown" && <span className="text-[9px] font-black tracking-widest px-1.5 py-0.5 rounded bg-violet-200 text-violet-800 dark:bg-violet-800 dark:text-violet-200 shrink-0">MD</span>}
                     <button onClick={(e) => { e.stopPropagation(); removeItem(it.id); }} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-400 shrink-0"><Trash2 size={12} /></button>
                   </div>
                 );
@@ -1177,7 +1194,7 @@ export default function MeusEstudosFeed({ collabSpaceId, mode = "study" }: { col
           )}
 
           {loading || library.length > 0 ? null : (
-            <p className="text-[13px] text-slate-400 dark:text-white/30 p-2 leading-relaxed">Salve referências, vídeos e trabalhos aqui (pelo "+" ou pela pesquisa). Depois arraste pro caderno.</p>
+            <p className="text-[13px] text-slate-400 dark:text-white/30 p-2 leading-relaxed">Salve referências, vídeos e trabalhos aqui (pelo &quot;+&quot; ou pela pesquisa). Depois arraste pro caderno.</p>
           )}
         </div>
       </div>
