@@ -12,6 +12,7 @@ import { studioGenerateTool, normalizeStudioKind, studioLabel, researchGenerateT
 // linha e o cliente executa a AÇÃO (gera o artefato no Studio). Ver StudyCoworkChat.
 const STUDIO_SENTINEL = "@@STUDIO_ACTION@@";
 const RESEARCH_SENTINEL = "@@RESEARCH_ACTION@@";   // Sala de Pesquisa: gerar trabalho no doc
+const STRUCTURED_SENTINEL = "@@STRUCTURED@@";      // resposta rica: cliente renderiza StructuredAnswerView (não datilografa)
 import { buildPersona, DEFAULT_AGENT_ID } from "@/lib/ai/personas";
 
 export const maxDuration = 60;
@@ -285,7 +286,16 @@ export async function POST(req: Request) {
                         } else if (out.mode === "research") {
                             controller.enqueue(encoder.encode(RESEARCH_SENTINEL + JSON.stringify({ type: "research", kind: out.kind, topic: out.topic, text: out.text })));
                         } else {
-                            controller.enqueue(encoder.encode(out.text));
+                            // Modo texto: se o StructuredAnswer é rico (tem conceitos/evidência/próximos-passos),
+                            // emite o objeto inteiro atrás da sentinela → o cliente renderiza estruturado (chips,
+                            // fontes, próximos-passos clicáveis) em vez de espremer tudo em texto. Sem esses campos,
+                            // mantém o markdown de sempre (retrocompat total).
+                            const rich = (answer.conceitos?.length || answer.evidencia?.length || answer.proximos_passos?.length);
+                            if (rich) {
+                                controller.enqueue(encoder.encode(STRUCTURED_SENTINEL + JSON.stringify(answer)));
+                            } else {
+                                controller.enqueue(encoder.encode(out.text));
+                            }
                         }
                     } catch (e: any) {
                         // erro fatal → mensagem amigável (guardrail: nunca string à mão)

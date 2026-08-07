@@ -13,13 +13,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import CoworkComposer from "@/components/study/CoworkComposer";
 import AuraThinking from "@/components/study/AuraThinking";
+import StructuredAnswerView from "@/components/study/StructuredAnswerView";
 import { researchWorkType } from "@/lib/agent/tools";
+import type { StructuredAnswer } from "@/lib/agent/contracts";
 import { appendTranscript, hydrateTranscript } from "@/lib/agent/transcriptClient";
 
-type Msg = { id: string; role: "user" | "assistant"; text: string };
+type Msg = { id: string; role: "user" | "assistant"; text: string; answer?: StructuredAnswer };
 
 // Deve bater com RESEARCH_SENTINEL de app/api/ai/chat/route.ts.
 const RESEARCH_SENTINEL = "@@RESEARCH_ACTION@@";
+// Resposta rica do harness (StructuredAnswer) → renderiza estruturado. Bate com chat/route.ts.
+const STRUCTURED_SENTINEL = "@@STRUCTURED@@";
 // L0 (docs/MEMORY_AND_PERSISTENCE.md): antes a conversa da Sala de Pesquisa ZERAVA
 // (sem persistência + desmonta ao trocar de aba). Agora espelha o thread e o rascunho.
 const THREAD_KEY_R = "zaeon.research.thread.v1";
@@ -123,7 +127,7 @@ export default function ResearchChat({
 
     const history = messages.map((m) => ({
       role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.text }],
+      parts: [{ text: m.text || m.answer?.nucleo || "" }],
     }));
     const asstId = uid();
     setMessages((prev) => [
@@ -134,6 +138,7 @@ export default function ResearchChat({
     setInput("");
     setSending(true);
     const patch = (text: string) => setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, text } : m)));
+    const patchAnswer = (answer: StructuredAnswer) => setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, answer } : m)));
 
     try {
       const r = await fetch("/api/ai/chat", {
@@ -158,11 +163,29 @@ export default function ResearchChat({
         const { done, value } = await reader.read();
         if (done) break;
         acc += dec.decode(value, { stream: true });
-        const si = acc.indexOf(RESEARCH_SENTINEL);
-        target = si >= 0 ? acc.slice(0, si) : acc;   // datilografa só o visível
+        // datilografa só o visível — para na sentinela mais próxima (research OU estruturado).
+        const res = acc.indexOf(RESEARCH_SENTINEL);
+        const str = acc.indexOf(STRUCTURED_SENTINEL);
+        const cut = [res, str].filter((x) => x >= 0).sort((a, b) => a - b)[0];
+        target = cut !== undefined ? acc.slice(0, cut) : acc;
       }
+      const stI = acc.indexOf(STRUCTURED_SENTINEL);
       const si = acc.indexOf(RESEARCH_SENTINEL);
-      if (si >= 0) {
+      if (stI >= 0) {
+        // Resposta rica do harness: renderiza StructuredAnswerView (sem datilografia).
+        target = ""; ended = true;
+        let ans: StructuredAnswer | null = null;
+        try { ans = JSON.parse(acc.slice(stI + STRUCTURED_SENTINEL.length)); } catch { /* ignore */ }
+        if (ans?.nucleo) {
+          patchAnswer(ans);
+          appendTranscript("pesquisa", null, [
+            { role: "user", text: prompt },
+            { role: "assistant", text: ans.nucleo },
+          ]);
+        } else {
+          patch("Sem resposta agora.");
+        }
+      } else if (si >= 0) {
         // TOOL-LOOP: research_generate → gera o trabalho e encaixa no documento.
         target = ""; ended = true;
         let action: any = null;
@@ -197,6 +220,20 @@ export default function ResearchChat({
         <div className="ml-4 sm:ml-8 lg:ml-14 mr-0 sm:mr-2 py-5 flex flex-col gap-4">
           {messages.map((m) => {
             const isUser = m.role === "user";
+            if (!isUser && m.answer) {
+              // Resposta rica do harness: estruturada (núcleo + conceitos + fontes + próximos-passos).
+              return (
+                <div key={m.id} className="flex justify-start">
+                  <div className="max-w-[88%] w-full">
+                    <StructuredAnswerView
+                      answer={m.answer}
+                      onConcept={(c) => setInput(c)}
+                      onNext={(s) => setInput(s)}
+                    />
+                  </div>
+                </div>
+              );
+            }
             return (
               <div key={m.id} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
                 <div

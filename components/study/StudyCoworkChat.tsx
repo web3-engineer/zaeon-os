@@ -28,6 +28,8 @@ import AuraThinking from "@/components/study/AuraThinking";
 import StudyArtifactCard from "@/components/study/StudyArtifactCard";
 import StudioPalette from "@/components/study/StudioPalette";
 import StudioBlock, { type StudioBlockData } from "@/components/studio/StudioBlock";
+import StructuredAnswerView from "@/components/study/StructuredAnswerView";
+import type { StructuredAnswer } from "@/lib/agent/contracts";
 import { appendTranscript, hydrateTranscript } from "@/lib/agent/transcriptClient";
 
 const MeusEstudosFeed = dynamic(() => import("@/components/study/MeusEstudosFeed"), { ssr: false });
@@ -38,6 +40,9 @@ const LAST_SPACE_KEY = "zaeon.study.lastSpace";
 // Sentinela do tool-loop (Fase 0): o backend emite isto quando a Aura chama
 // studio_generate; o cliente executa a geração. Deve bater com a de chat/route.ts.
 const STUDIO_SENTINEL = "@@STUDIO_ACTION@@";
+// Resposta rica do harness: o backend emite isto + o StructuredAnswer JSON quando há
+// conceitos/evidência/próximos-passos → renderiza estruturado em vez de datilografar texto.
+const STRUCTURED_SENTINEL = "@@STRUCTURED@@";
 
 type Space = { id: string; title: string };
 type Msg = {
@@ -45,6 +50,7 @@ type Msg = {
   role: "user" | "assistant";
   kind: "text" | "study" | "studio";
   text?: string;
+  answer?: StructuredAnswer;   // resposta estruturada rica (renderiza StructuredAnswerView)
   studyId?: string;
   studyTitle?: string;
   studioBlock?: StudioBlockData;
@@ -240,8 +246,8 @@ export default function StudyCoworkChat({ active = true }: { active?: boolean })
     setQuickThinking(isQuickPrompt(prompt));
 
     const history = msgsRef.current
-      .filter((m) => m.kind === "text" && m.text)
-      .map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.text as string }] }));
+      .filter((m) => m.kind === "text" && (m.text || m.answer))
+      .map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: (m.text ?? m.answer?.nucleo ?? "") as string }] }));
 
     // mensagem da assistente entra vazia e vai sendo preenchida aos poucos (streaming)
     const asstId = uid();
@@ -255,6 +261,8 @@ export default function StudyCoworkChat({ active = true }: { active?: boolean })
 
     const patchAsst = (text: string) =>
       setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, text } : m)));
+    const patchAsstAnswer = (answer: StructuredAnswer) =>
+      setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, answer } : m)));
 
     const focusTitles = focusIds.map(spaceTitle);
     // MODO ACADÊMICO = FLEXÍVEL na Sala de Estudos (o rigor pleno é da Sala de Pesquisa).
@@ -316,12 +324,30 @@ export default function StudyCoworkChat({ active = true }: { active?: boolean })
           const { done, value } = await reader.read();
           if (done) break;
           acc += dec.decode(value, { stream: true });
-          const si = acc.indexOf(STUDIO_SENTINEL);
-          target = si >= 0 ? acc.slice(0, si) : acc;   // datilografa só o visível
+          // datilografa só o visível — para na sentinela mais próxima (studio OU estruturado).
+          const stu = acc.indexOf(STUDIO_SENTINEL);
+          const str = acc.indexOf(STRUCTURED_SENTINEL);
+          const cut = [stu, str].filter((x) => x >= 0).sort((a, b) => a - b)[0];
+          target = cut !== undefined ? acc.slice(0, cut) : acc;
         }
 
+        const stI = acc.indexOf(STRUCTURED_SENTINEL);
         const si = acc.indexOf(STUDIO_SENTINEL);
-        if (si >= 0) {
+        if (stI >= 0) {
+          // Resposta rica do harness: não datilografa; renderiza StructuredAnswerView.
+          target = ""; ended = true;
+          let ans: StructuredAnswer | null = null;
+          try { ans = JSON.parse(acc.slice(stI + STRUCTURED_SENTINEL.length)); } catch { /* ignore */ }
+          if (ans?.nucleo) {
+            patchAsstAnswer(ans);
+            appendTranscript("estudos", focusIds[0] ?? null, [
+              { role: "user", text: prompt },
+              { role: "assistant", text: ans.nucleo },
+            ]);
+          } else {
+            patchAsst("Sem resposta agora.");
+          }
+        } else if (si >= 0) {
           // TOOL-LOOP (Fase 0): ação — não datilografa; encerra e trata.
           target = ""; ended = true;
           let action: any = null;
@@ -417,6 +443,21 @@ export default function StudyCoworkChat({ active = true }: { active?: boolean })
               messages.map((m) => {
                 if (m.kind === "text") {
                   const isUser = m.role === "user";
+                  if (!isUser && m.answer) {
+                    // Resposta rica do harness: núcleo + conceitos (chips) + evidências +
+                    // próximos-passos clicáveis. Clicar num conceito/passo injeta novo prompt.
+                    return (
+                      <div key={m.id} className="flex justify-start">
+                        <div className="max-w-[85%] w-full">
+                          <StructuredAnswerView
+                            answer={m.answer}
+                            onConcept={(c) => setInput(c)}
+                            onNext={(s) => setInput(s)}
+                          />
+                        </div>
+                      </div>
+                    );
+                  }
                   return (
                     <div key={m.id} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
                       <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 font-tech text-[22px] leading-[1.65] whitespace-pre-wrap
