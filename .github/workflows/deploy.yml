@@ -5,11 +5,12 @@ name: Deploy (VPS)
 # os secrets do VPS estiverem configurados (guard abaixo) — assim não falha à toa.
 #
 # Secrets necessários (Settings → Secrets and variables → Actions):
-#   VPS_HOST       → 187.77.226.64
-#   VPS_PORT       → 22022
+#   VPS_HOST       → 75.119.140.97   (VPS própria desde 2026-09; era 187.77.226.64 na Hostinger)
+#   VPS_PORT       → 22 (ou a porta SSH da box)
 #   VPS_USER       → root
 #   VPS_SSH_KEY    → chave PRIVADA SSH (conteúdo completo) com acesso ao VPS
-#   DEPLOY_PATH    → caminho do repo no VPS (ex.: /opt/zaeon-os)
+#   DEPLOY_PATH    → caminho do repo no VPS (ex.: /opt/zaeon-os — o que o bootstrap-vps.sh usa)
+# Provisionamento da box: scripts/bootstrap-vps.sh · runbook: docs/MIGRACAO_VPS_NOVA.md
 
 on:
   push:
