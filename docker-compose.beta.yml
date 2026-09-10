@@ -1,15 +1,20 @@
 # ───────────────────────────────────────────────────────────────────────────
-# Compose da BETA — VPS 2 vCPU / 8 GB.  web + redis + caddy + voz + abnt.
+# Compose da BETA — box-agnóstico (RAM via .env).  web + redis + caddy + voz + abnt.
 #   web (Next + Socket.IO) · redis · caddy (proxy/HTTPS) · voice-engine (Kokoro,
 #   CPU-only) · abnt-service (LibreOffice). Voz é gated por perfil no admin.
 #
 # Mongo é Atlas externo (DATABASE_URL/MONGODB_URI no .env). Sem postgres/agentes/
 # observabilidade (isso fica no docker-compose.yml completo, pra depois).
 #
-# Orçamento de RAM (limites): web 1.5g + voz 1g + abnt 1.2g + redis 0.38g + caddy 0.25g
-#   + pdf-loader 0.896g ≈ 5.2g → folga ~2.8g em 8g.
+# Orçamento de RAM — dirigido por env, igual ao IP no deploy.yml: o compose não
+# assume o tamanho da box. Os DEFAULTS abaixo são o perfil conservador de 8 GB
+#   (web 1.5g + voz 1g + abnt 1.2g + pdf 0.9g + redis 0.38g + caddy 0.25g ≈ 5.2g),
+# então subir este arquivo numa box pequena continua seguro. Numa box maior,
+# escreva o perfil no .env — o scripts/vps-bringup.sh faz isso sozinho:
+#   MEM_WEB=4g  MEM_VOICE=3g  MEM_ABNT=2g  MEM_PDF=2g  MEM_REDIS=512m   (≈11.75g/24g)
+# Limite é TETO, não reserva: o container só usa o que precisa.
 #   Voz padrão = Gemini-TTS (nuvem); voice-engine local só fallback Piper (Kokoro lazy).
-#   pdf-loader em modo FAST (sem OCR/Hybrid); ligar Hybrid só com 16 GB.
+#   pdf-loader segue em modo FAST; com 24 GB dá pra avaliar Hybrid/OCR depois.
 #
 # Subir:   docker compose -f docker-compose.beta.yml up -d --build
 # Logs:    docker compose -f docker-compose.beta.yml logs -f web caddy voice-engine
@@ -53,7 +58,7 @@ services:
       start_period: 60s
     deploy:
       resources:
-        limits: { memory: 1536m }
+        limits: { memory: "${MEM_WEB:-1536m}" }
 
   # ── Voz neural (Kokoro, CPU-only). Gated por perfil (admin → aba "Voz"). ──
   voice-engine:
@@ -68,7 +73,7 @@ services:
     restart: unless-stopped
     deploy:
       resources:
-        limits: { memory: 1g }   # era 3g (Kokoro); voz padrão é Gemini-TTS (nuvem), local só fallback Piper
+        limits: { memory: "${MEM_VOICE:-1g}" }   # voz padrão = Gemini-TTS (nuvem); local só fallback Piper (Kokoro lazy). MEM_VOICE=3g dá folga pro Kokoro.
 
   # ── ABNT (FastAPI + LibreOffice headless) ──
   # web depende deste com condition: service_started (não service_healthy):
@@ -88,7 +93,7 @@ services:
       start_period: 90s
     deploy:
       resources:
-        limits: { memory: 1200m }
+        limits: { memory: "${MEM_ABNT:-1200m}" }
 
   # ── pdf-loader (FastAPI + opendataloader-pdf, modo FAST). Leitura estruturada de PDF. ──
   #    Sem OCR/Hybrid nesta VPS (RAM). Só rede interna (não publica porta).
@@ -99,7 +104,7 @@ services:
     restart: unless-stopped
     deploy:
       resources:
-        limits: { memory: 896m }
+        limits: { memory: "${MEM_PDF:-896m}" }
 
   redis:
     image: redis:7-alpine
@@ -109,7 +114,7 @@ services:
     restart: unless-stopped
     deploy:
       resources:
-        limits: { memory: 384m }
+        limits: { memory: "${MEM_REDIS:-384m}" }
 
   caddy:
     image: caddy:2-alpine
@@ -119,6 +124,10 @@ services:
     environment:
       BETA_DOMAIN: ${BETA_DOMAIN:-beta.zaeon.space}
       ACME_EMAIL: ${ACME_EMAIL:-admin@zaeon.space}
+      # Bring-up de box nova: antes do DNS apontar, o Caddy não emite cert e o web
+      # não publica porta. Setar BOOTSTRAP_HOST=<ip> no .env libera o health por IP
+      # em HTTP puro (ver Caddyfile). Ausente = localhost = inócuo em produção.
+      BOOTSTRAP_HOST: ${BOOTSTRAP_HOST:-localhost}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

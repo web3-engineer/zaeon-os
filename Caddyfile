@@ -8,6 +8,7 @@
 	# auto_https off
 }
 
+# ── Site público (HTTPS, cert automático) ─────────────────────────────────
 {$BETA_DOMAIN} {
 	encode zstd gzip
 
@@ -16,6 +17,29 @@
 
 	reverse_proxy web:3000 {
 		# Repassa os headers reais pro Next/NextAuth atrás do proxy.
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-Host {host}
+		header_up X-Real-IP {remote_host}
+	}
+}
+
+# ── Bootstrap pré-DNS (HTTP puro, sem TLS) ────────────────────────────────
+# Numa box nova o Caddy NÃO consegue emitir o certificado de {$BETA_DOMAIN}
+# enquanto o DNS não apontar pra cá (o desafio ACME precisa resolver o domínio).
+# Antes disso, o `web` só escuta em rede interna (expose, não ports) — ou seja,
+# não há como verificar a stack pelo IP. Este bloco resolve isso: defina
+# BOOTSTRAP_HOST=<ip-da-box> no .env e o Caddy passa a atender por IP em HTTP.
+#
+#     curl http://<ip>/healthz      → ok
+#     curl http://<ip>/api/health   → {"status":"ok",...}
+#
+# Sem a variável, o default é `localhost`: o bloco existe mas só responde de
+# dentro da própria box, o que é inócuo em produção. Remova BOOTSTRAP_HOST do
+# .env depois que o DNS estiver apontado — o site público é o de cima, com TLS.
+http://{$BOOTSTRAP_HOST:localhost} {
+	respond /healthz "ok" 200
+
+	reverse_proxy web:3000 {
 		header_up X-Forwarded-Proto {scheme}
 		header_up X-Forwarded-Host {host}
 		header_up X-Real-IP {remote_host}
