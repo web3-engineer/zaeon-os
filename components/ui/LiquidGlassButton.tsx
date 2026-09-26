@@ -130,9 +130,18 @@ export default function LiquidGlassButton({
                     // O vidro em si. saturate puxa a cor do vídeo pra dentro do material,
                     // que é o que diferencia vidro de plástico fosco.
                     "backdrop-blur-2xl backdrop-saturate-[1.8]",
+                    // Vidro claro e vidro escuro sao materiais DIFERENTES, nao o
+                    // mesmo com opacidade trocada: no escuro o vidro CLAREIA o que
+                    // esta atras, no claro ele ESCURECE. Um preenchimento branco a
+                    // 7% sobre fundo branco nao existe; ciano a 20% com texto
+                    // branco sobre fundo claro tambem nao. Por isso cada tom tem
+                    // duas receitas.
                     tom === "destaque"
-                        ? "bg-cyan-400/[0.20] hover:bg-cyan-400/[0.28] active:bg-cyan-400/[0.34]"
-                        : "bg-white/[0.07] hover:bg-white/[0.12] active:bg-white/[0.16]",
+                        ? // cyan-700, nao 600: branco em 11px sobre cyan-600/90 composto com fundo
+                          // branco da 3,22:1, e a AA exige 4,5:1 para texto pequeno.
+                          // cyan-700/95 da 4,87:1. Medido, nao estimado no olho.
+                          "bg-cyan-700/95 hover:bg-cyan-700 active:bg-cyan-800 dark:bg-cyan-400/[0.20] dark:hover:bg-cyan-400/[0.28] dark:active:bg-cyan-400/[0.34]"
+                        : "bg-black/[0.06] hover:bg-black/[0.10] active:bg-black/[0.14] ring-1 ring-black/10 dark:ring-0 dark:bg-white/[0.07] dark:hover:bg-white/[0.12] dark:active:bg-white/[0.16]",
                     "transition-[transform,background-color] duration-300 ease-out",
                     "focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black",
                     "cursor-pointer select-none",
@@ -164,7 +173,9 @@ export default function LiquidGlassButton({
                     className="pointer-events-none absolute inset-0 rounded-full"
                     style={{
                         boxShadow:
-                            "inset 0 1px 1px rgba(255,255,255,.35), inset 0 -10px 22px -12px rgba(0,0,0,.85)",
+                            tom === "destaque"
+                                ? "inset 0 1px 1px rgba(255,255,255,.55), inset 0 -10px 22px -12px rgba(0,0,0,.45)"
+                                : "inset 0 1px 1px rgba(255,255,255,.35), inset 0 -10px 22px -12px rgba(0,0,0,.35)",
                     }}
                 />
 
@@ -195,8 +206,10 @@ export default function LiquidGlassButton({
 
                 <span
                     className={[
-                        "relative z-10 flex items-center justify-center gap-3 font-medium text-white uppercase",
-                        "drop-shadow-[0_1px_6px_rgba(0,0,0,0.55)]",
+                        "relative z-10 flex items-center justify-center gap-3 font-medium uppercase",
+                        tom === "destaque"
+                            ? "text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.35)]"
+                            : "text-slate-900 dark:text-white dark:drop-shadow-[0_1px_6px_rgba(0,0,0,0.55)]",
                         tamanho === "lg"
                             ? "text-[15px] sm:text-base tracking-[0.22em]"
                             : "text-[11px] tracking-[0.18em]",
