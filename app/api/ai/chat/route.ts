@@ -266,6 +266,76 @@ export async function POST(req: Request) {
         // =================================================================
         if (stream === true && agentKey === "aura" && process.env.AURA_HARNESS !== "0" && !fileData) {
             const encoder = new TextEncoder();
+            const turnParams = () => ({
+                prompt: String(prompt || ""),
+                surface: surface ?? null,
+                systemContext,
+                history: (chatHistory as any[]).map((h) => ({ role: h.role, text: h?.parts?.[0]?.text ?? "" })),
+                agentContext: (agentContext && typeof agentContext === "object") ? agentContext : null,
+                mentor: activeMentor ? { slug: activeMentor.slug, wing: activeMentor.wing } : null,
+            });
+
+            // ── FASE 3: MODO BACKGROUND (CHAT_BG=1) ─────────────────────────────────────
+            // O turno vai pra fila e roda no WORKER até o fim; este stream só ACOMPANHA o
+            // ChatTurn. Quem fica na sala vê igual a hoje; quem sai não perde a resposta —
+            // reengata por GET /api/ai/chat/turns/:id (o turnId vai no header).
+            // Sem sessão / sem Redis / sem bullmq / enfileirar falhou → cai no inline abaixo
+            // (anônimo continua funcionando exatamente como antes da flag).
+            if (process.env.CHAT_BG === "1") {
+                const [{ resolveUserId }, store, { enqueueChatJob }] = await Promise.all([
+                    import("@/lib/agent/transcript"),
+                    import("@/lib/agent/chat-turn-store"),
+                    import("@/lib/queue/chat"),
+                ]);
+                const bgUserId = await resolveUserId().catch(() => null);
+                if (bgUserId) {
+                    const ac: any = (agentContext && typeof agentContext === "object") ? agentContext : {};
+                    const turn = await store.createTurn({
+                        userId: bgUserId,
+                        surface: store.toChatSurface(surface),
+                        scopeId: store.sanitizeScopeId(ac.cartolinaScopeId),
+                        prompt: String(prompt || "").slice(0, 20000),
+                    });
+                    const ok = await enqueueChatJob({ turnId: turn.id, userId: bgUserId, ...turnParams() }).catch(() => false);
+                    if (ok) {
+                        const [{ acompanharTurno }, { serializarProgresso }, { messageForError }] = await Promise.all([
+                            import("@/lib/agent/chat-turn-tail"),
+                            import("@/lib/agent/progresso"),
+                            import("@/lib/agent/errors"),
+                        ]);
+                        let fechado = false;
+                        const rsBg = new ReadableStream<Uint8Array>({
+                            async start(controller) {
+                                const emit = (c: string) => { if (!fechado) { try { controller.enqueue(encoder.encode(c)); } catch { fechado = true; } } };
+                                // 1º sinal de vida na hora (o worker ainda nem pegou o job)
+                                const acordar = serializarProgresso({ fase: "acordar", rotulo: "Acordando a Aura" });
+                                emit(acordar);
+                                await acompanharTurno({
+                                    load: () => store.getTurnForUser(turn.id, bgUserId),
+                                    emit,
+                                    mensagemDeErro: messageForError,
+                                    parar: () => fechado,
+                                    prefixoJaEnviado: acordar, // o worker grava o mesmo "Acordando" no parcial
+                                });
+                                if (!fechado) { fechado = true; try { controller.close(); } catch { /* já fechado */ } }
+                            },
+                            cancel() { fechado = true; }, // aluno saiu da sala: só o acompanhamento para
+                        });
+                        return new Response(rsBg, {
+                            headers: {
+                                "Content-Type": "text/plain; charset=utf-8",
+                                "Cache-Control": "no-cache, no-transform",
+                                "X-Accel-Buffering": "no",
+                                "X-Chat-Turn-Id": turn.id,
+                                "Access-Control-Expose-Headers": "X-Chat-Turn-Id",
+                            },
+                        });
+                    }
+                    // fila indisponível: o turno já criado é marcado e o pedido segue inline
+                    await store.saveError(turn.id, "fila indisponível — atendido inline").catch(() => {});
+                }
+            }
+
             // TUDO o que precede a trajetória mora DENTRO do start(), de propósito.
             //
             // Antes, os imports, o resolveUserId, o wakeUpContext da memória e a árvore de
@@ -299,15 +369,7 @@ export async function POST(req: Request) {
                             import("@/lib/agent/transcript"),
                         ]);
                         const userId = await resolveUserId().catch(() => null); // dono do turno (memória filtra por isto)
-                        const out = await runChatTurn(null, {
-                            prompt: String(prompt || ""),
-                            surface: surface ?? null,
-                            userId,
-                            systemContext,
-                            history: (chatHistory as any[]).map((h) => ({ role: h.role, text: h?.parts?.[0]?.text ?? "" })),
-                            agentContext: (agentContext && typeof agentContext === "object") ? agentContext : null,
-                            mentor: activeMentor ? { slug: activeMentor.slug, wing: activeMentor.wing } : null,
-                        }, (chunk) => { if (enfileirar) enfileirar(chunk); });
+                        const out = await runChatTurn(null, { ...turnParams(), userId }, (chunk) => { if (enfileirar) enfileirar(chunk); });
                         controller.enqueue(encoder.encode(outputToWire(out)));
                     } catch (e: any) {
                         // erro fatal → mensagem amigável (guardrail: nunca string à mão)

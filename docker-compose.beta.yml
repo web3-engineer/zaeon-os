@@ -50,6 +50,7 @@ services:
       # BACKGROUND da Sala de Pesquisa: DESLIGADO por enquanto (modo inline, já testado).
       # Pra ligar: mude SCHOLAR_BG p/ "1" AQUI e suba o worker com `--profile worker`.
       SCHOLAR_BG: "0"
+      CHAT_BG: "0"          # Fase 3: chat da Aura em background. Só ligue com o worker de pé.
       SCHOLAR_WORKER: "0"
     depends_on:
       redis: { condition: service_started }

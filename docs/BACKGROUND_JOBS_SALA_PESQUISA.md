@@ -123,3 +123,25 @@ que MORRE no meio não depende disso: o BullMQ devolve job "stalled" pra fila so
 Este PR **não muda nada em runtime**: o route continua inline (agora via `runChatTurn(null, …)`). O
 modo background (`CHAT_BG=1`), os endpoints `/api/ai/chat/turns` e o reengate no cliente são o PR 2.
 Antes de ligar: `npx prisma db push` (modelo novo `ChatTurn`).
+
+## Fase 3 — PR 2: modo background ligável (feito)
+
+```
+POST /api/ai/chat (aura+harness+stream+!file, CHAT_BG=1, com sessão)
+   ├─ cria ChatTurn(queued) + enfileira na fila "chat"  →  header X-Chat-Turn-Id
+   └─ abre um stream que ACOMPANHA o ChatTurn (chat-turn-tail: repassa o parcial novo a
+      cada 400ms; no done, o MESMO payload final de sempre) — quem fica na sala vê igual
+aluno sai da sala → o stream cai, o WORKER segue e grava answer no ChatTurn
+aluno volta → StudyCoworkChat acha a mensagem `pendente` com turnId (persistida no L0)
+   └─ polla GET /api/ai/chat/turns/:id (1,5s, teto 10 min) → aplica pelo mesmo `aplicarFinal`
+```
+
+- **Fallback idêntico a hoje:** `CHAT_BG` ausente/`0`, usuário anônimo, sem Redis, sem bullmq ou
+  enfileirar falhou → inline (`runChatTurn(null, …)`).
+- **Endpoints:** `GET /api/ai/chat/turns?surface=&scopeId=` (últimos 20, sem payload) e
+  `GET /api/ai/chat/turns/:id` (`{ status, partial, wire, erro }`). Só do dono (de outro = 404),
+  `guard()`. O erro sai **amigável** (`messageForError`); o cru fica só no banco.
+- **Dedupe:** enquanto o `send()` vivo é dono do turno, o reengate não pega o mesmo turno.
+
+**Ligar em prod:** `prisma db push` → worker de pé (`--profile worker`) → `CHAT_BG=1` no `web`.
+Nunca ligue `CHAT_BG` sem o worker rodando: os turnos ficariam `queued` até o reaper.
