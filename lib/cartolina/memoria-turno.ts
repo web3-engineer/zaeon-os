@@ -8,7 +8,7 @@
  */
 import { cartolinaMemoriaOn, createBoard, findOwnBoard, patchBoard } from "@/lib/cartolina/store";
 import { bussola, rascunhosFromStructured, fundirNoBoard } from "@/lib/cartolina/fromStructured";
-import { sanitizeScopeId } from "@/lib/cartolina/route-auth";
+import { sanitizeScopeId } from "@/lib/cartolina/scope"; // puro: não arrasta rota/sessão pro worker
 import type { StructuredAnswer } from "@/lib/agent/contracts";
 
 /** Texto da bússola pra injetar no systemContext ("" se desligado/sem board/sem conversa). */

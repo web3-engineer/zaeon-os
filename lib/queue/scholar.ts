@@ -39,7 +39,7 @@ export function getRedisConnection(): IORedis | null {
 }
 
 /** Carrega bullmq sob demanda; devolve null se não estiver instalado (degrada em silêncio). */
-async function loadBullmq(): Promise<any | null> {
+export async function loadBullmq(): Promise<any | null> {
   try {
     const spec = "bull" + "mq"; // esconde do bundler → import só em runtime
     return await import(/* webpackIgnore: true */ spec as any);

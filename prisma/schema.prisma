@@ -497,6 +497,28 @@ model CartolinaComentario {
   @@index([cartolinaId, cardId, createdAt])
 }
 
+// Um turno do chat da Aura que roda no WORKER (fila "chat", CHAT_BG=1) — sair da sala
+// no meio não perde a resposta: o turno conclui no servidor e fica aqui pro cliente
+// reengatar (mesmo aparelho ou outro). Mesmo padrão de status do ScholarSession.
+// `answer` guarda o HarnessOutput inteiro ({ mode, ... }) — não só o StructuredAnswer —
+// porque o turno pode terminar como studio/research/texto, e o cliente precisa saber qual.
+model ChatTurn {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  surface   String   // "estudos" | "pesquisa" (co-working da Aura)
+  scopeId   String?  // threadId/spaceId da conversa (agrupa turnos)
+  prompt    String
+  status    String   @default("queued") // queued | running | done | error
+  answer    Json?    // HarnessOutput final (mode structured → o mesmo shape do @@STRUCTURED@@)
+  partial   String?  // eventos @@PROGRESS@@ acumulados enquanto roda (o cliente rederiva a fase)
+  error     String?  // erro CRU (log); o cliente só vê messageForError(error)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, surface, scopeId, createdAt])
+  @@index([status, updatedAt]) // reaper: presos em queued/running
+}
+
 // "Minhas coisas" da Sala de Pesquisa: o TRABALHO real do usuário (título + texto do
 // editor). Diferente de ScholarSession (histórico de BUSCAS, criado a cada pesquisa) —
 // só ações de pesquisa/escrita na Sala de Pesquisa criam um ResearchWork.

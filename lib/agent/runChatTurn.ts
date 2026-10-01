@@ -1,0 +1,119 @@
+/**
+ * lib/agent/runChatTurn.ts — UM turno do harness da Aura, extraído do /api/ai/chat pra
+ * rodar em DOIS lugares (espelha lib/scholar/pipeline.ts):
+ *   - inline no request (hoje, e fallback de CHAT_BG): turnId = null, `emit` → stream;
+ *   - no WORKER da fila "chat" (CHAT_BG=1): turnId = o ChatTurn, `emit` → parcial no banco.
+ *
+ * O laço é o de sempre — buildHarnessDeps + runTrajectoryTraced. Nada foi reimplementado:
+ * este arquivo é o bloco que vivia dentro do ReadableStream do route, com as dependências
+ * da REQUISIÇÃO trocadas por parâmetros. A troca que importa é o dono do turno: no worker
+ * não existe sessão NextAuth, então o `userId` chega pronto (o route o derivou da sessão).
+ *
+ * Contrato do `emit`: recebe pedaços de PROTOCOLO (eventos @@PROGRESS@@\n). O payload final
+ * NÃO passa por ele — volta como retorno (HarnessOutput), e quem chamou decide onde escrever
+ * (outputToWire no stream; `answer` no ChatTurn). Assim o parcial persistido nunca contém
+ * a resposta pela metade.
+ */
+import { buildHarnessDeps, resolveHarnessOutput, type HarnessOutput } from "@/lib/agent/aura-harness";
+import { runTrajectoryTraced } from "@/lib/agent/trajectory";
+import * as mem from "@/lib/agent/memory-provider";
+import { serializarProgresso } from "@/lib/agent/progresso";
+import { markRunning, saveDone, saveError } from "@/lib/agent/chat-turn-store";
+import type { Wing } from "@/lib/agent/memory";
+
+export type ChatTurnParams = {
+  prompt: string;
+  /** Superfície crua do cliente ("sala-de-estudos", "pesquisa"…) — o harness decide o modo por ela. */
+  surface: string | null;
+  /** Dono do turno, derivado da SESSÃO pelo route. null = anônimo (sem memória). */
+  userId: string | null;
+  /** systemContext já com o mentor na frente (o route resolve, como sempre fez). */
+  systemContext?: string;
+  history: Array<{ role: string; text: string }>;
+  /** World-state do cliente (AgentContext). Só JSON: atravessa a fila. */
+  agentContext?: Record<string, unknown> | null;
+  mentor?: { slug: string; wing: Wing } | null;
+};
+
+export async function runChatTurn(
+  turnId: string | null,
+  params: ChatTurnParams,
+  emit: (chunk: string) => void,
+): Promise<HarnessOutput> {
+  const { userId, surface, mentor } = params;
+  const prompt = String(params.prompt || "");
+  // Tudo que o turno narrou até aqui — vai junto com a resposta pro banco, pra quem
+  // reengatar depois ver as mesmas fases que quem ficou na sala viu.
+  let narrado = "";
+  const narrar = (chunk: string) => {
+    narrado += chunk;
+    try { emit(chunk); } catch { /* canal fechado/abortado: o turno segue, progresso é enfeite */ }
+  };
+
+  if (turnId) await markRunning(turnId);
+  try {
+    const ac: any = params.agentContext && typeof params.agentContext === "object" ? params.agentContext : {};
+    const hctx: any = {
+      ...ac,
+      userId: userId || undefined,
+      activeTab: surface || ac.activeTab || "sala-de-estudos", // academicMode vem daqui (pesquisa→enforced)
+      plan: "free",     // memória/studio/research = free; gate de plano é só compute pesado (PR03)
+      execMode: "auto", // HITL "guiado" entra no PR07
+      currentGoal: ac.currentGoal || prompt.slice(0, 200),
+      // Mentor ativo: andar de memória "<slug>/<userId>" (isola por mentor E por usuário).
+      mentor: mentor?.slug,
+      wing: mentor?.wing.label,
+    };
+    // Só anuncia quando é verdade: sem dono do turno não há memória pra reler.
+    if (userId) narrar(serializarProgresso({ fase: "memoria", rotulo: "Retomando a conversa" }));
+    // wakeUp (L3, A8): recall + perfil pinado → systemContext. Best-effort; "" se o L3 não ligou.
+    const memBlock = userId
+      ? await mem.wakeUpContext({ userId, surface: hctx.activeTab, hint: prompt, wingLabel: mentor?.wing.label }).catch(() => "")
+      : "";
+    // Cartolina → agente (a "bússola"): o que já foi estudado nesta conversa e o que está em
+    // aberto. "" com CARTOLINA_MEMORIA off / sem board / sem conversa.
+    const cartolina = await import("@/lib/cartolina/memoria-turno");
+    const cartolinaBlock = await cartolina.bussolaParaTurno(userId, ac.cartolinaScopeId);
+    // Árvore de habilidades: posição do aluno no tópico + guardrail pedagógico. Best-effort.
+    const skillTopic = typeof ac.skillTopic === "string" && ac.skillTopic.trim() ? String(ac.skillTopic).trim() : null;
+    const skillNodeId = typeof ac.skillNodeId === "string" && ac.skillNodeId.trim() ? String(ac.skillNodeId).trim() : null;
+    const skillBlock = userId && skillTopic
+      ? await import("@/lib/skilltree/progress").then((m) => m.treeContextBlock(userId, skillTopic, skillNodeId)).catch(() => "")
+      : "";
+    const deps = buildHarnessDeps(hctx, {
+      systemContext: [params.systemContext, memBlock, cartolinaBlock, skillBlock].filter(Boolean).join("\n\n") || undefined,
+      history: params.history,
+      // O CANAL DE PROGRESSO: cada fase do trajectory (plan → reason → draft…) vira um
+      // evento. Uma falha do canal nunca derruba a resposta.
+      onStep(step) {
+        if (step?.kind !== "say") return;
+        const rotulo = String(step.label ?? "").trim();
+        if (!rotulo) return;
+        narrar(serializarProgresso({ fase: String(step.detail ?? ""), rotulo }));
+      },
+    });
+    const { answer, state } = await runTrajectoryTraced(prompt, hctx, deps);
+    const out = resolveHarnessOutput(state, answer, surface, prompt);
+    // Chat → cartolina: os cards do turno vão pro board da conversa (fire-and-forget).
+    if (userId) void cartolina.fixarTurno({ userId, scopeId: ac.cartolinaScopeId, prompt, answer, msgId: ac.cartolinaMsgId });
+    // L3 write (A7, fire-and-forget): deriva o turno em drawers verbatim. Nunca bloqueia.
+    if (userId) {
+      void mem.writeTurnMemory({
+        userId, surface: hctx.activeTab, scopeId: ac.currentStudyId ?? ac.currentResearchId ?? null,
+        prompt, answer, wing: mentor?.wing,
+      });
+    }
+    // Árvore: o mentor SOBE a maestria quando o aluno demonstra domínio do nó em foco.
+    if (userId && skillTopic && skillNodeId) {
+      void import("@/lib/skilltree/assess")
+        .then((m) => m.assessAndUpdate({ userId, topicSlug: skillTopic, nodeId: skillNodeId, message: prompt }))
+        .catch(() => null);
+    }
+    if (turnId) await saveDone(turnId, out, narrado);
+    return out;
+  } catch (e: any) {
+    // O erro CRU vai pro banco (diagnóstico); quem mostra ao aluno passa por messageForError.
+    if (turnId) await saveError(turnId, String(e?.message ?? e)).catch(() => {});
+    throw e;
+  }
+}

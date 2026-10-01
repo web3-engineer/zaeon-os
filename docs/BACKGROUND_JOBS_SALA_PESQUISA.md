@@ -97,3 +97,29 @@ da pesquisa — o `StudioArtifact.status` (queued/running/done) já está pronto
 na sala). Torná-lo retomável exige persistir cada turno como sessão (como o scholar) —
 fase 3.
 ```
+
+
+---
+## Fase 3 — chat da Aura retomável (PR 1: fundação, feita)
+
+O turno do harness foi extraído para `lib/agent/runChatTurn.ts` e roda em DOIS lugares (mesmo
+padrão do `lib/scholar/pipeline.ts`): inline no request (hoje; `turnId=null`, nada persiste) ou
+no worker da fila `chat` (persistindo em `ChatTurn`).
+
+| Peça | O quê |
+|---|---|
+| `prisma` `ChatTurn` | `status` queued→running→done/error, `answer` (HarnessOutput inteiro), `partial` (eventos @@PROGRESS@@) |
+| `lib/agent/chat-turn-store.ts` | toda leitura por id exige `userId` (anti-IDOR) |
+| `lib/agent/chat-turn-wire.ts` | HarnessOutput → texto de protocolo (route, worker e cliente usam o MESMO) |
+| `lib/queue/chat.ts` | fila `chat`; mesma conexão e mesmo carregador opcional do bullmq; `jobId = turnId`; `attempts: 1` |
+| `lib/queue/chat-worker.ts` | `processChatJob`: roda o turno, grava o parcial com throttle de 300ms (writes encadeados) |
+| `lib/queue/reaper.ts` | no boot do worker: ChatTurn/ScholarSession em queued/running com `updatedAt` > 15 min → `error` |
+| `instrumentation.ts` | `SCHOLAR_WORKER=1` sobe também o `Worker("chat")` (`CHAT_WORKER_CONCURRENCY`, default 4) |
+
+**Por que `attempts: 1`** (o scholar usa 2): turno que falhou já está como `error` no banco e o
+aluno já viu a mensagem; retentar reabriria o turno por baixo dele e gastaria modelo de novo. Worker
+que MORRE no meio não depende disso: o BullMQ devolve job "stalled" pra fila sozinho.
+
+Este PR **não muda nada em runtime**: o route continua inline (agora via `runChatTurn(null, …)`). O
+modo background (`CHAT_BG=1`), os endpoints `/api/ai/chat/turns` e o reengate no cliente são o PR 2.
+Antes de ligar: `npx prisma db push` (modelo novo `ChatTurn`).

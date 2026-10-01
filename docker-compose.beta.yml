@@ -93,6 +93,7 @@ services:
       SCHOLAR_BG: "1"
       SCHOLAR_WORKER: "1"
       SCHOLAR_WORKER_CONCURRENCY: "3"
+      CHAT_WORKER_CONCURRENCY: "4"     # Fase 3: turnos do chat da Aura na fila "chat"
     depends_on:
       redis: { condition: service_started }
     restart: unless-stopped

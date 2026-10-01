@@ -10,9 +10,8 @@ import { studioGenerateTool, normalizeStudioKind, studioLabel, researchGenerateT
 
 // Sentinela do stream: turno de tool-call não tem texto; o servidor emite esta
 // linha e o cliente executa a AÇÃO (gera o artefato no Studio). Ver StudyCoworkChat.
-const STUDIO_SENTINEL = "@@STUDIO_ACTION@@";
-const RESEARCH_SENTINEL = "@@RESEARCH_ACTION@@";   // Sala de Pesquisa: gerar trabalho no doc
-const STRUCTURED_SENTINEL = "@@STRUCTURED@@";      // harness: StructuredAnswer inteiro (render rico + artifacts inline)
+// As sentinelas moram em lib/agent/chat-turn-wire.ts (a mesma fonte do worker e do cliente).
+import { STUDIO_SENTINEL, RESEARCH_SENTINEL, outputToWire } from "@/lib/agent/chat-turn-wire";
 import { buildPersona, DEFAULT_AGENT_ID } from "@/lib/ai/personas";
 
 export const maxDuration = 60;
@@ -292,82 +291,24 @@ export async function POST(req: Request) {
                     const { serializarProgresso } = await import("@/lib/agent/progresso");
                     enfileirar(serializarProgresso({ fase: "acordar", rotulo: "Acordando a Aura" }));
                     try {
-                        const [{ buildHarnessDeps, resolveHarnessOutput }, { runTrajectoryTraced }, mem, { resolveUserId }] = await Promise.all([
-                            import("@/lib/agent/aura-harness"),
-                            import("@/lib/agent/trajectory"),
-                            import("@/lib/agent/memory-provider"),
+                        // O turno em si mora em lib/agent/runChatTurn.ts — o MESMO código que o
+                        // worker da fila "chat" roda quando CHAT_BG=1. Aqui é o modo inline
+                        // (turnId null: nada persiste), idêntico ao de antes da extração.
+                        const [{ runChatTurn }, { resolveUserId }] = await Promise.all([
+                            import("@/lib/agent/runChatTurn"),
                             import("@/lib/agent/transcript"),
                         ]);
                         const userId = await resolveUserId().catch(() => null); // dono do turno (memória filtra por isto)
-                        const ac: any = (agentContext && typeof agentContext === "object") ? agentContext : {};
-                        const hctx: any = {
-                            ...ac,
-                            userId: userId || undefined,
-                            activeTab: surface || ac.activeTab || "sala-de-estudos", // academicMode vem daqui (pesquisa→enforced)
-                            plan: "free",     // memória/studio/research = free; gate de plano é só compute pesado (PR03)
-                            execMode: "auto", // HITL "guiado" entra no PR07
-                            currentGoal: ac.currentGoal || String(prompt || "").slice(0, 200),
-                            // Mentor ativo: andar de memória "<slug>/<userId>" (isola por mentor E por usuário).
-                            mentor: activeMentor?.slug,
-                            wing: activeMentor?.wing.label,
-                        };
-                        // Só anuncia quando é verdade: sem dono do turno não há memória pra reler.
-                        if (userId) enfileirar(serializarProgresso({ fase: "memoria", rotulo: "Retomando a conversa" }));
-                        // wakeUp (L3, A8): recall + perfil pinado → systemContext. Best-effort; "" se o L3 não ligou.
-                        const memBlock = userId ? await mem.wakeUpContext({ userId, surface: hctx.activeTab, hint: String(prompt || ""), wingLabel: activeMentor?.wing.label }).catch(() => "") : "";
-                        // Cartolina → agente (a "bússola"): o que já foi estudado nesta conversa e o
-                        // que está em aberto. "" com CARTOLINA_MEMORIA off / sem board / sem conversa.
-                        const cartolinaMod = await import("@/lib/cartolina/memoria-turno");
-                        const cartolinaBlock = await cartolinaMod.bussolaParaTurno(userId, ac.cartolinaScopeId);
-                        // Árvore de habilidades: posição do aluno no tópico (dominados/disponíveis/nó em foco) +
-                        // guardrail pedagógico → o mentor conduz pro próximo nó. Best-effort ("" sem tópico/L3).
-                        const skillTopic = typeof ac.skillTopic === "string" && ac.skillTopic.trim() ? String(ac.skillTopic).trim() : null;
-                        const skillNodeId = typeof ac.skillNodeId === "string" && ac.skillNodeId.trim() ? String(ac.skillNodeId).trim() : null;
-                        const skillBlock = userId && skillTopic
-                            ? await import("@/lib/skilltree/progress").then((m) => m.treeContextBlock(userId, skillTopic, skillNodeId)).catch(() => "")
-                            : "";
-                        const deps = buildHarnessDeps(hctx, {
-                            systemContext: [systemContext, memBlock, cartolinaBlock, skillBlock].filter(Boolean).join("\n\n") || undefined,
+                        const out = await runChatTurn(null, {
+                            prompt: String(prompt || ""),
+                            surface: surface ?? null,
+                            userId,
+                            systemContext,
                             history: (chatHistory as any[]).map((h) => ({ role: h.role, text: h?.parts?.[0]?.text ?? "" })),
-                            // O CANAL DE PROGRESSO. Um turno elaborated são três chamadas de modelo
-                            // em sequência (plan → reason → draft), cinco se o crítico mandar revisar
-                            // — e até aqui o aluno via tela parada o tempo todo, porque este gancho
-                            // nunca era passado e todo `emit` do trajectory morria num `?.()`.
-                            //
-                            // `emit` é síncrono e `controller.enqueue` também: dá pra narrar de
-                            // dentro do laço sem esperar nada. E uma falha do canal nunca derruba a
-                            // resposta — progresso é enfeite, a resposta é o produto.
-                            onStep(step) {
-                                if (!enfileirar || step?.kind !== "say") return;
-                                const rotulo = String(step.label ?? "").trim();
-                                if (!rotulo) return;
-                                try {
-                                    enfileirar(serializarProgresso({ fase: String(step.detail ?? ""), rotulo }));
-                                } catch { /* stream fechado/abortado: segue sem narrar */ }
-                            },
-                        });
-                        const { answer, state } = await runTrajectoryTraced(String(prompt || ""), hctx, deps);
-                        const out = resolveHarnessOutput(state, answer, surface, String(prompt || ""));
-                        // L3 write (A7, fire-and-forget): deriva o turno em drawers verbatim. Nunca bloqueia.
-                        // Chat → cartolina: os cards do turno vão pro board da conversa (fire-and-forget).
-                        if (userId) void cartolinaMod.fixarTurno({ userId, scopeId: ac.cartolinaScopeId, prompt: String(prompt || ""), answer, msgId: ac.cartolinaMsgId });
-                        if (userId) void mem.writeTurnMemory({ userId, surface: hctx.activeTab, scopeId: ac.currentStudyId ?? ac.currentResearchId ?? null, prompt: String(prompt || ""), answer, wing: activeMentor?.wing });
-                        // Árvore: o mentor SOBE a maestria quando o aluno demonstra domínio do nó em foco
-                        // (juiz Flash, fire-and-forget — nunca atrasa nem derruba a resposta).
-                        if (userId && skillTopic && skillNodeId) {
-                            void import("@/lib/skilltree/assess")
-                                .then((m) => m.assessAndUpdate({ userId, topicSlug: skillTopic, nodeId: skillNodeId, message: String(prompt || "") }))
-                                .catch(() => null);
-                        }
-                        if (out.mode === "studio") {
-                            controller.enqueue(encoder.encode(STUDIO_SENTINEL + JSON.stringify({ type: "studio", kind: out.kind, topic: out.topic, text: out.text })));
-                        } else if (out.mode === "research") {
-                            controller.enqueue(encoder.encode(RESEARCH_SENTINEL + JSON.stringify({ type: "research", kind: out.kind, topic: out.topic, text: out.text })));
-                        } else if (out.mode === "structured") {
-                            controller.enqueue(encoder.encode(STRUCTURED_SENTINEL + JSON.stringify(out.answer)));
-                        } else {
-                            controller.enqueue(encoder.encode(out.text)); // fallback texto (retrocompat)
-                        }
+                            agentContext: (agentContext && typeof agentContext === "object") ? agentContext : null,
+                            mentor: activeMentor ? { slug: activeMentor.slug, wing: activeMentor.wing } : null,
+                        }, (chunk) => { if (enfileirar) enfileirar(chunk); });
+                        controller.enqueue(encoder.encode(outputToWire(out)));
                     } catch (e: any) {
                         // erro fatal → mensagem amigável (guardrail: nunca string à mão)
                         controller.enqueue(encoder.encode(messageForError(String(e?.message ?? e))));

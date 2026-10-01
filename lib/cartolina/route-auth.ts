@@ -20,12 +20,8 @@ export async function entrar(req: Request, bucket: string, limite: "ai-heavy" | 
   return { userId };
 }
 
-/** scopeId vem do cliente: só id curto e sem espaço. */
-export function sanitizeScopeId(v: unknown): string | null {
-  if (typeof v !== "string") return null;
-  const s = v.trim();
-  return /^[\w:.-]{1,128}$/.test(s) ? s : null;
-}
+// Reexportado daqui por compatibilidade com as rotas; a definição é pura em scope.ts.
+export { sanitizeScopeId } from "@/lib/cartolina/scope";
 
 /** Falha do store → resposta HTTP. not_found cobre "não existe" E "sem acesso". */
 export function falha(reason: "not_found" | "forbidden" | "invalid" | "conflict"): Response {

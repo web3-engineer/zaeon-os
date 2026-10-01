@@ -17,7 +17,7 @@ export default defineConfig({
     // pode diluir nem bloquear o portão das unidades novas.
     coverage: {
       provider: "v8",
-      include: ["lib/cartolina/**/*.ts", "lib/harness/caderno/**/*.ts", "lib/ui/globo.ts", "components/lounge/CartolinaComentarios.tsx", "components/lounge/useCartolinaCowork.ts"],
+      include: ["lib/cartolina/**/*.ts", "lib/harness/caderno/**/*.ts", "lib/ui/globo.ts", "lib/agent/runChatTurn.ts", "lib/agent/chat-turn-wire.ts", "lib/queue/chat.ts", "lib/queue/chat-worker.ts", "lib/queue/reaper.ts", "components/lounge/CartolinaComentarios.tsx", "components/lounge/useCartolinaCowork.ts"],
       exclude: ["**/*.test.*"],
       thresholds: { lines: 80, functions: 80, statements: 80, branches: 70 },
     },
