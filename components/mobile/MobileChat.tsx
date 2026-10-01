@@ -115,6 +115,8 @@ export default function MobileChat({ surface }: { surface: Surface }) {
       </header>
 
       <main className="flex-1 px-4 py-4" aria-live="polite" aria-busy={ocupado}>
+        {/* h1 só pra leitor de tela: o título visual é o toggle Estudos/Pesquisa do cabeçalho */}
+        <h1 className="sr-only">{surface === "estudos" ? "Estudos com a Aura" : "Pesquisa científica"}</h1>
         {surface === "estudos" ? (
           <ol className="flex flex-col gap-4">
             {aura.mensagens.length === 0 && (
@@ -123,7 +125,7 @@ export default function MobileChat({ surface }: { surface: Surface }) {
             {aura.mensagens.map((m) => (
               <li key={m.id} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
                 {m.role === "user" ? (
-                  <div className="max-w-[85%] rounded-2xl bg-cyan-700 px-4 py-2.5 text-[15px] text-white dark:bg-cyan-600">{m.text}</div>
+                  <div className="max-w-[85%] rounded-2xl bg-cyan-700 px-4 py-2.5 text-[15px] text-white">{m.text}</div>
                 ) : (
                   <div className={`w-full rounded-2xl border px-4 py-3 text-[15px] leading-relaxed ${m.erro ? "border-amber-400/60 bg-amber-50 dark:bg-amber-500/10" : "border-slate-200 bg-white dark:border-white/10 dark:bg-white/[0.04]"}`}>
                     {m.fase && m.chegando && <p className="mb-1 text-xs text-slate-500 dark:text-white/50">{m.fase}…</p>}
@@ -150,7 +152,7 @@ export default function MobileChat({ surface }: { surface: Surface }) {
             {scholar.status === "idle" && !scholar.query && (
               <p className="mt-16 text-center text-slate-500 dark:text-white/50">Pesquise em artigos científicos.</p>
             )}
-            {scholar.query && <div className="self-end max-w-[85%] rounded-2xl bg-cyan-700 px-4 py-2.5 text-[15px] text-white dark:bg-cyan-600">{scholar.query}</div>}
+            {scholar.query && <div className="self-end max-w-[85%] rounded-2xl bg-cyan-700 px-4 py-2.5 text-[15px] text-white">{scholar.query}</div>}
             {scholar.status === "running" && (
               <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm dark:border-white/10 dark:bg-white/[0.04]">
                 <p className="font-medium">{scholar.phases.at(-1)?.message ?? "Começando a pesquisa…"}</p>

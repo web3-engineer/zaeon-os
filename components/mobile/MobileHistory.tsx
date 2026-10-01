@@ -63,7 +63,7 @@ export function MobileHistory({ aberto, onFechar, surface, conversas, onAbrirCon
           <>
             <button type="button" onClick={() => { onNovaConversa(); onFechar(); }} className={`${item} font-semibold text-cyan-800 dark:text-cyan-300`}>+ Nova conversa</button>
             <ul className="mt-1">
-              {conversas.length === 0 && <li className="px-3 py-2 text-sm text-slate-500">Nenhuma conversa ainda.</li>}
+              {conversas.length === 0 && <li className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">Nenhuma conversa ainda.</li>}
               {conversas.map((c) => (
                 <li key={c.id}><button type="button" onClick={() => { onAbrirConversa(c.id); onFechar(); }} className={item}>{c.titulo}</button></li>
               ))}
@@ -71,11 +71,11 @@ export function MobileHistory({ aberto, onFechar, surface, conversas, onAbrirCon
           </>
         ) : (
           <ul>
-            {pesquisas.length === 0 && <li className="px-3 py-2 text-sm text-slate-500">Nenhuma pesquisa ainda.</li>}
+            {pesquisas.length === 0 && <li className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">Nenhuma pesquisa ainda.</li>}
             {pesquisas.map((p) => (
               <li key={p.id}>
                 <button type="button" onClick={() => { onAbrirPesquisa(p.id); onFechar(); }} className={item}>
-                  {p.query}{p.status !== "done" ? <span className="ml-2 text-xs text-slate-500">({p.status === "error" ? "falhou" : "em andamento"})</span> : null}
+                  {p.query}{p.status !== "done" ? <span className="ml-2 text-xs text-slate-500 dark:text-slate-400">({p.status === "error" ? "falhou" : "em andamento"})</span> : null}
                 </button>
               </li>
             ))}

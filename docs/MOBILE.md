@@ -56,3 +56,23 @@ Componentes: `components/mobile/` — `MobileChat`, `MobileComposer`, `MobileAct
 
 ## Ligar
 `NEXT_PUBLIC_MOBILE_UI=1` (**valor de build**: precisa rebuild).
+
+## Definition of Done (handoff Fase 3 + Mobile) — onde cada item foi feito
+| Item | Onde | Status |
+|---|---|---|
+| `ChatTurn` no schema + `prisma generate`/`db push` documentado | PR 1 · `docs/BACKGROUND_JOBS_SALA_PESQUISA.md` | ✅ (o `db push` roda no deploy com `db_push=true`) |
+| Chat de Estudos retomável: sai no meio, conclui no servidor, volta e vê | PR 2 | ✅ testado (unit/rota/hook); ciclo com Redis real **não** rodado |
+| Fila `chat` na infra BullMQ; worker no mesmo container; reaper | PR 1 | ✅ boot real verificado (reaper + 2 workers) |
+| `/m/estudos` e `/m/pesquisa` de coluna única, geração de artefato + poll | PR 4 | ✅ verificado em Chrome a 390px |
+| Alternância mobile ⇄ completo, preferência persistida | PR 4 (cookie `zaeon:ui`) | ✅ |
+| `npm run test` verde, cobertura ≥ 80% nos arquivos novos, `tsc` limpo | todos | ✅ por arquivo (PR 5) |
+| Desktop intacto (regressão) | PR 3 (`OmegaScholarProvider` em jsdom) + builds | ✅ testes; clique manual no desktop **não** feito (sem Vertex local) |
+| Tudo atrás de flag | `CHAT_BG`, `NEXT_PUBLIC_MOBILE_UI` (+ `SCHOLAR_WORKER`) | ✅ off por padrão |
+| Sem segredos; rotas com sessão + rate-limit | `/api/ai/chat/turns*` | ✅ IDOR testado; erro cru nunca sai |
+
+**Acessibilidade verificada em navegador real (PR 5):** axe-core com cálculo REAL de contraste no
+Chrome headless, regras WCAG 2.0 A/AA + 2.1 AA + best-practice, nos dois temas, em 12 estados
+(`/m`, `/m/estudos` com conversa, `/m/pesquisa`, sheet de ações aberto, drawer de histórico aberto):
+**0 violações**. As 4 que o jsdom não via foram corrigidas: bolha do usuário no escuro (3,68:1 →
+5,36:1), texto do drawer no escuro (4,23:1 → ~7:1), `<h1>` (só leitor de tela) e o composer
+como landmark nomeado.
