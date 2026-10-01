@@ -17,6 +17,10 @@ export interface CartolinaCard {
   x: number; y: number; w: number; rot?: number;
   /** Memória por região: as mensagens do chat que geraram este card (tap → abre a conversa). */
   msgIds?: string[];
+  /** Prancha desenhada pela Aura: PRIMITIVAS validadas (o SVG é recompilado no cliente). */
+  desenho?: import("@/lib/harness/caderno/compile").Desenho;
+  /** Fallback da prancha: StudioArtifact de imagem (servido por /api/cartolina/:id/imagem/:artId). */
+  imagemId?: string;
 }
 
 /** O que a Aura devolve (antes do layout). */

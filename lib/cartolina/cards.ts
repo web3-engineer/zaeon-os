@@ -4,6 +4,7 @@
  * colaborador não pode quebrar a tela do outro (nem inflar o documento).
  */
 import { TIPOS, type CartolinaCard } from "@/lib/caderno/cartolina-tipos";
+import { validarDesenho } from "@/lib/harness/caderno/compile";
 
 export const MAX_CARDS = 200;
 const MAX_TEXTO = 4000;
@@ -45,6 +46,12 @@ export function sanitizeCard(raw: unknown): CartolinaCard | null {
     const ids = c.msgIds.filter((m): m is string => typeof m === "string" && m.length <= MAX_ID && ID_RE.test(m)).slice(0, 20);
     if (ids.length) card.msgIds = ids;
   }
+  // Desenho é RE-VALIDADO a cada escrita (vem do cliente): primitiva forjada morre aqui.
+  if (card.tipo === "prancha" && c.desenho) {
+    const d = validarDesenho(c.desenho);
+    if (d) card.desenho = d;
+  }
+  if (typeof c.imagemId === "string" && /^[a-f0-9]{24}$/i.test(c.imagemId)) card.imagemId = c.imagemId;
   return card;
 }
 

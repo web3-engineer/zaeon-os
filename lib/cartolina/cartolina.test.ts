@@ -211,3 +211,19 @@ describe("cards · mesclarRemoto (polling)", () => {
     expect(mesclarRemoto(L, R, new Set(["novo"])).map((c) => c.id)).toEqual(["a", "b", "deB", "novo"]);
   });
 });
+
+describe("cards · desenho/imagemId", () => {
+  const prims = [{ t: "circulo", c: [5, 5], r: 3 }, { t: "linha", de: [0, 0], ate: [9, 9] }, { t: "seta", de: [1, 1], ate: [5, 5] }];
+  it("desenho do cliente é RE-validado: primitiva forjada some", () => {
+    const c = sanitizeCard(card("p", { tipo: "prancha", desenho: { primitivas: [...prims, { t: "script", src: "x" }] } }))!;
+    expect(c.desenho!.primitivas).toHaveLength(3);
+  });
+  it("desenho imprestável é descartado; só pranchas têm desenho", () => {
+    expect(sanitizeCard(card("p", { tipo: "prancha", desenho: { primitivas: [] } }))!.desenho).toBeUndefined();
+    expect(sanitizeCard(card("n", { desenho: { primitivas: prims } }))!.desenho).toBeUndefined();
+  });
+  it("imagemId só se for ObjectId", () => {
+    expect(sanitizeCard(card("p", { imagemId: "a".repeat(24) }))!.imagemId).toBe("a".repeat(24));
+    expect(sanitizeCard(card("p", { imagemId: "../../etc" }))!.imagemId).toBeUndefined();
+  });
+});

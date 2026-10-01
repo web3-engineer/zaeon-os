@@ -15,6 +15,12 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CartolinaCard } from "@/lib/caderno/cartolina-tipos";
+import { compilarSvg, type Desenho } from "@/lib/harness/caderno/compile";
+import dynamic from "next/dynamic";
+import { temWebGL } from "@/lib/ui/globo";
+
+// three.js só baixa quando a cartolina aparece (e nunca no SSR).
+const GloboFundo = dynamic(() => import("@/components/lounge/GloboFundo"), { ssr: false, loading: () => null });
 import { mesclarRemoto } from "@/lib/cartolina/cards";
 import { useCartolinaCowork } from "@/components/lounge/useCartolinaCowork";
 import { CartolinaComentarios, Avatar } from "@/components/lounge/CartolinaComentarios";
@@ -44,6 +50,13 @@ function useIsMobile() {
   return m;
 }
 
+// Prancha desenhada pela Aura (primitivas validadas → SVG). compilarSvg só emite tags/atributos
+// da whitelist e escapa todo texto: o innerHTML é seguro POR CONSTRUÇÃO (ver compile.test.ts).
+function PranchaDesenhada({ desenho, id }: { desenho: Desenho; id: string }) {
+  const svg = useMemo(() => compilarSvg(desenho, { animar: true, idHachura: `h-${id}` }), [desenho, id]);
+  return <div className="prancha-svg" dangerouslySetInnerHTML={{ __html: svg }} />;
+}
+
 function Prancha() {
   return (
     <svg viewBox="0 0 320 200" width="100%" aria-hidden="true">
@@ -57,9 +70,10 @@ function Prancha() {
   );
 }
 
-function CardView({ c, onReveal, revealed, onAbrirConversa, nComentarios, onComentarios }: {
+function CardView({ c, onReveal, revealed, onAbrirConversa, nComentarios, onComentarios, boardId, onDesenhar, desenhando }: {
   c: Card; onReveal: (id: string) => void; revealed: boolean; onAbrirConversa?: (msgId: string) => void;
   nComentarios?: number; onComentarios?: (id: string) => void;
+  boardId?: string | null; onDesenhar?: (id: string) => void; desenhando?: boolean;
 }) {
   const base: React.CSSProperties = { width: c.w, transform: `rotate(${c.rot ?? 0}deg)` };
   if (c.tipo === "titulo") {
@@ -78,7 +92,22 @@ function CardView({ c, onReveal, revealed, onAbrirConversa, nComentarios, onCome
       {c.titulo && <div style={{ fontWeight: 700, color: INK, marginBottom: 6 }}>{c.titulo}</div>}
       {c.tipo === "prancha" ? (
         <>
-          <Prancha />
+          {c.desenho ? <PranchaDesenhada desenho={c.desenho} id={c.id} />
+            : c.imagemId && boardId ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={`/api/cartolina/${boardId}/imagem/${c.imagemId}`} alt={c.legenda || c.titulo || "ilustração"} loading="lazy" style={{ width: "100%", borderRadius: 6, border: `1px solid ${INK_SOFT}55`, filter: "sepia(.35)" }} />
+            ) : <Prancha />}
+          {!c.desenho && !c.imagemId && onDesenhar && (
+            <button
+              type="button" data-ui className="cal" disabled={desenhando}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => onDesenhar(c.id)}
+              aria-label={`Pedir pra Aura desenhar "${c.legenda || c.titulo || "esta prancha"}"`}
+              style={{ minHeight: 44, fontSize: 14, color: ACCENT, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0, opacity: desenhando ? 0.6 : 1 }}
+            >
+              {desenhando ? "desenhando…" : "✒ desenhar com a Aura"}
+            </button>
+          )}
           {c.legenda && <div className="cal" style={{ fontSize: 14, color: INK_SOFT, marginTop: 4 }}>{c.legenda}</div>}
         </>
       ) : c.tipo === "video" ? (
@@ -130,6 +159,8 @@ function CardView({ c, onReveal, revealed, onAbrirConversa, nComentarios, onCome
 const PERSISTIR = process.env.NEXT_PUBLIC_CARTOLINA_MEMORIA === "1";
 // Coworking (compartilhar/comentar/polling): exige a persistência também.
 const COWORK = PERSISTIR && process.env.NEXT_PUBLIC_CARTOLINA_COWORK === "1";
+// Prancha LLM→SVG (PR0): botão "desenhar" nas pranchas sem desenho.
+const CADERNO = PERSISTIR && process.env.NEXT_PUBLIC_CADERNO_ENABLED === "1";
 const SALVAR_APOS_MS = 800;
 
 export default function LoungeCartolina({ embedded = false, surface = "lounge", scopeId, boardId: boardIdProp, abrirDeInicio = false, onAbrirConversa, onFechar }: {
@@ -161,6 +192,7 @@ export default function LoungeCartolina({ embedded = false, surface = "lounge", 
   const [papel, setPapel] = useState<string | null>(null);
   const [comentandoCard, setComentandoCard] = useState<string | null>(null);
   const [linkCopiado, setLinkCopiado] = useState<string | null>(null);
+  const [desenhando, setDesenhando] = useState<string | null>(null);
   const sujos = useRef<Set<string>>(new Set());
   const cardsRef = useRef<Card[]>(cards);
   cardsRef.current = cards;
@@ -202,6 +234,18 @@ export default function LoungeCartolina({ embedded = false, surface = "lounge", 
     for (const c of cowork.comentarios) m[c.cardId] = (m[c.cardId] ?? 0) + 1;
     return m;
   }, [cowork.comentarios]);
+  // Desenhar sob demanda (não no load): cada prancha custa uma chamada de modelo.
+  const desenhar = useCallback(async (cardId: string) => {
+    if (!boardId.current || desenhando) return;
+    setDesenhando(cardId);
+    try {
+      const r = await fetch(`/api/cartolina/${boardId.current}/prancha`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cardId }) });
+      const d = await r.json().catch(() => null);
+      if (r.ok && d?.card) setCards((cs) => cs.map((c) => (c.id === cardId ? d.card : c)));
+    } catch { /* fica o esboço fixo; o botão continua lá pra tentar de novo */ }
+    finally { setDesenhando(null); }
+  }, [desenhando]);
+
   const compartilhar = useCallback(async (p: "editor" | "leitor") => {
     const url = await cowork.compartilhar(p);
     if (!url) return;
@@ -226,6 +270,17 @@ export default function LoungeCartolina({ embedded = false, surface = "lounge", 
     timer.current = setTimeout(salvar, SALVAR_APOS_MS);
   }, [salvar]);
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); salvar(); }, [salvar]); // ao sair, grava o pendente
+
+  // Globo 3D só com WebGL e sem pedido de menos movimento; senão fica o SVG (que já é o fallback).
+  const [globo3d, setGlobo3d] = useState(false);
+  const [globoPronto, setGloboPronto] = useState(false); // canvas criado (chunk do three chegou)
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setGlobo3d(!mq.matches && temWebGL());
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   const reveal = useCallback((id: string) => setRevealed((r) => ({ ...r, [id]: !r[id] })), []);
 
@@ -276,7 +331,10 @@ export default function LoungeCartolina({ embedded = false, surface = "lounge", 
 
   return (
     <div style={{ position: embedded ? "absolute" : "fixed", inset: 0, overflow: "hidden", background: "#030712" }}>
-      <style>{`
+      {/* dangerouslySetInnerHTML e não {`…`}: como filho de texto, o SSR do React escapa as
+          aspas do font-family (&#x27;) mas o navegador lê <style> cru — o texto diverge e a
+          hidratação quebra (React #425/#422). CSS constante, sem dado de usuário. */}
+      <style dangerouslySetInnerHTML={{ __html: `
         .cal { font-family: 'Snell Roundhand','Segoe Script','Brush Script MT',cursive; }
         .cad-card { position: relative; background: rgba(243,231,206,.96); border: 1px solid ${INK_SOFT}66; border-radius: 10px; padding: 16px 16px 14px; box-shadow: 0 22px 44px -22px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.6); }
         .cad-tag { position:absolute; top:-10px; left:14px; background:${ACCENT}; color:#fff; font-size:12px; padding:1px 10px; border-radius:999px; box-shadow:0 4px 10px -4px ${ACCENT}; }
@@ -284,13 +342,18 @@ export default function LoungeCartolina({ embedded = false, surface = "lounge", 
         .marker { animation: pulse 2.4s ease-in-out infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulse { 0%,100% { opacity:.4 } 50% { opacity:1 } }
+        .prancha-svg .tinta { stroke-dasharray: 600; stroke-dashoffset: 600; animation: tinta 1.4s ease-out forwards; }
+        .prancha-svg .tinta:nth-child(odd) { animation-delay: .15s; }
+        @keyframes tinta { to { stroke-dashoffset: 0; } }
+        @media (prefers-reduced-motion: reduce) { .prancha-svg .tinta { animation: none; stroke-dashoffset: 0; } .globe-grid, .marker { animation: none; } }
         .star { position:absolute; width:2px; height:2px; background:#fff; border-radius:50%; }
-      `}</style>
+      ` }} />
 
       {/* GLOBO + MARCADORES (sem texto) */}
       <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", background: "radial-gradient(130% 100% at 50% 20%, #0b1b3a 0%, #030712 70%)" }}>
         {[...Array(44)].map((_, i) => <span key={i} className="star" style={{ left: `${(i * 97) % 100}%`, top: `${(i * 53) % 100}%`, opacity: 0.15 + ((i * 7) % 6) / 12 }} />)}
-        <svg viewBox="0 0 400 400" width="min(70vmin,620px)" height="min(70vmin,620px)" style={{ filter: "drop-shadow(0 0 60px rgba(14,116,144,.35))" }}>
+        {globo3d && <div style={{ position: "absolute", left: "50%", top: "50%", width: "min(80vmin,700px)", height: "min(80vmin,700px)", transform: "translate(-50%,-50%)" }}><GloboFundo pausado={open} onPronto={() => setGloboPronto(true)} /></div>}
+        <svg viewBox="0 0 400 400" width="min(70vmin,620px)" height="min(70vmin,620px)" style={{ filter: "drop-shadow(0 0 60px rgba(14,116,144,.35))", ...(globo3d && globoPronto ? { visibility: "hidden" } : null) }}>
           <defs><radialGradient id="globo" cx="40%" cy="35%" r="75%"><stop offset="0%" stopColor="#164e63" /><stop offset="70%" stopColor="#0a2540" /><stop offset="100%" stopColor="#030712" /></radialGradient></defs>
           <circle cx="200" cy="200" r="150" fill="url(#globo)" stroke={ACCENT} strokeWidth="1" opacity="0.9" />
           <g className="globe-grid" stroke={ACCENT} strokeOpacity="0.35" fill="none" strokeWidth="0.7" opacity="0.5">
@@ -355,13 +418,13 @@ export default function LoungeCartolina({ embedded = false, surface = "lounge", 
           <div onPointerDown={onBoardDown} onWheel={onWheel} style={{ position: "absolute", inset: 0, top: 56, overflow: isMobile ? "auto" : "hidden", cursor: isMobile ? "auto" : "grab", backgroundImage: `radial-gradient(${INK_SOFT}22 1px, transparent 1px)`, backgroundSize: "26px 26px" }}>
             {isMobile ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 26, padding: "28px 18px 60px", maxWidth: 520, margin: "0 auto" }}>
-                {cards.map((c) => <div key={c.id}><CardView c={{ ...c, rot: 0, w: Math.min(c.w, 480) }} onReveal={reveal} revealed={!!revealed[c.id]} onAbrirConversa={onAbrirConversa} nComentarios={contagem[c.id]} onComentarios={COWORK && boardAtivo ? setComentandoCard : undefined} /></div>)}
+                {cards.map((c) => <div key={c.id}><CardView c={{ ...c, rot: 0, w: Math.min(c.w, 480) }} onReveal={reveal} revealed={!!revealed[c.id]} onAbrirConversa={onAbrirConversa} nComentarios={contagem[c.id]} onComentarios={COWORK && boardAtivo ? setComentandoCard : undefined} boardId={boardAtivo} onDesenhar={CADERNO && boardAtivo && papel !== "leitor" ? desenhar : undefined} desenhando={desenhando === c.id} /></div>)}
               </div>
             ) : (
               <div style={{ position: "absolute", inset: 0, transform: `translate(${view.x}px,${view.y}px) scale(${view.scale})`, transformOrigin: "0 0" }}>
                 {cards.map((c) => (
                   <div key={c.id} data-card onPointerDown={(e) => onCardDown(e, c)} style={{ position: "absolute", left: c.x, top: c.y, cursor: "grab", touchAction: "none" }}>
-                    <CardView c={c} onReveal={reveal} revealed={!!revealed[c.id]} onAbrirConversa={onAbrirConversa} nComentarios={contagem[c.id]} onComentarios={COWORK && boardAtivo ? setComentandoCard : undefined} />
+                    <CardView c={c} onReveal={reveal} revealed={!!revealed[c.id]} onAbrirConversa={onAbrirConversa} nComentarios={contagem[c.id]} onComentarios={COWORK && boardAtivo ? setComentandoCard : undefined} boardId={boardAtivo} onDesenhar={CADERNO && boardAtivo && papel !== "leitor" ? desenhar : undefined} desenhando={desenhando === c.id} />
                   </div>
                 ))}
               </div>
