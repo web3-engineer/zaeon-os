@@ -84,3 +84,25 @@ describe("useAuraChat", () => {
     expect(localStorage.getItem(chaveL0("estudos", "A"))).toBe("[]");
   });
 });
+
+describe("useAuraChat · modo BG e HTTP", () => {
+  it("turno em BG: guarda turnId/pendente durante o stream e pinta a fase", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(respostaStream(['@@PROGRESS@@{"fase":"plan","rotulo":"Planejando"}\n', S], { headers: { "X-Chat-Turn-Id": "T5" } }) as any);
+    const { result } = renderHook(() => useAuraChat({ scopeId: "bg" }));
+    await act(async () => { await result.current.enviar("x"); });
+    const a = result.current.mensagens[1];
+    expect(a).toMatchObject({ turnId: "T5", pendente: false, answer: { nucleo: "Luz é onda e partícula" } });
+  });
+  it("HTTP de erro: mensagem amigável diferente da de rede", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("x", { status: 500 }) as any);
+    const { result } = renderHook(() => useAuraChat({ scopeId: "h" }));
+    await act(async () => { await result.current.enviar("x"); });
+    expect(result.current.mensagens[1]).toMatchObject({ erro: true, text: "Não consegui responder agora. Tente de novo." });
+  });
+  it("vazio ou enquanto envia: não manda nada", async () => {
+    const f = vi.spyOn(globalThis, "fetch");
+    const { result } = renderHook(() => useAuraChat({ scopeId: "v" }));
+    await act(async () => { await result.current.enviar("   "); });
+    expect(f).not.toHaveBeenCalled();
+  });
+});

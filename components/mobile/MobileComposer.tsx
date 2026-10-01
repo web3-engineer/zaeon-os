@@ -26,6 +26,8 @@ export function MobileComposer({ valor, onMudar, onEnviar, onMais, desabilitado,
   const podeEnviar = !desabilitado && !!valor.trim();
   return (
     <form
+      // nomeado = landmark "form": quem usa leitor de tela pula direto pro campo
+      aria-label="Escrever mensagem"
       onSubmit={(e) => { e.preventDefault(); if (podeEnviar) onEnviar(); }}
       className={`sticky bottom-0 z-20 border-t ${VIDRO} px-3 pt-2`}
       style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}

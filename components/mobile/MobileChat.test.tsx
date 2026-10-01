@@ -5,7 +5,7 @@ import axe from "axe-core";
 import { respostaStream } from "@/lib/chat/test-utils";
 
 vi.mock("next/link", () => ({ default: ({ href, children, ...p }: any) => <a href={href} {...p}>{children}</a> }));
-vi.mock("@/components/studio/StudioBlock", () => ({ default: ({ block }: any) => <div data-testid="studio">{block.studioKind}:{block.title}</div> }));
+vi.mock("@/components/studio/StudioBlock", () => ({ default: ({ block, collapsed, onToggle }: any) => <div data-testid="studio" data-collapsed={String(collapsed)} onClick={onToggle}>{block.studioKind}:{block.title}</div> }));
 import MobileChat from "@/components/mobile/MobileChat";
 
 const S = '@@STRUCTURED@@{"nucleo":"A luz é uma onda eletromagnética.","conceitos":["fóton"]}';
@@ -57,7 +57,11 @@ describe("MobileChat · Estudos", () => {
       fireEvent.click(screen.getByRole("button", { name: /Flashcards/ }));
       expect(await screen.findByText(/você pode sair, ele continua/)).toBeTruthy();
       await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
-      expect((await screen.findByTestId("studio")).textContent).toBe("flashcards:Cartões");
+      const viewer = await screen.findByTestId("studio");
+      expect(viewer.textContent).toBe("flashcards:Cartões");
+      expect(viewer.getAttribute("data-collapsed")).toBe("false"); // nasce aberto
+      fireEvent.click(viewer);
+      expect(screen.getByTestId("studio").getAttribute("data-collapsed")).toBe("true");
     } finally { vi.useRealTimers(); }
   });
   it("erro de rede vira bolha de aviso", async () => {
@@ -112,5 +116,38 @@ describe("MobileChat · Pesquisa", () => {
     digitarEEnviar("x");
     const link = await screen.findByRole("link", { name: "Entrar" });
     expect(link.getAttribute("href")).toBe("/login?callbackUrl=/m/pesquisa");
+  });
+});
+
+describe("MobileChat · interações", () => {
+  it("tocar num conceito da resposta envia 'Me explica <conceito>'", async () => {
+    const f = rotear(() => respostaStream([S]));
+    render(<MobileChat surface="estudos" />);
+    digitarEEnviar("luz");
+    await screen.findByText(/onda eletromagnética/);
+    fireEvent.click(screen.getByRole("button", { name: /fóton/ }));
+    await waitFor(() => expect(f.mock.calls.filter(([u]) => String(u) === "/api/ai/chat")).toHaveLength(2));
+    expect(JSON.parse((f.mock.calls.at(-1)![1] as any).body).prompt).toBe("Me explica fóton");
+  });
+  it("histórico: nova conversa zera a tela; abrir uma conversa antiga traz as mensagens dela", async () => {
+    rotear(() => respostaStream(["resposta A"]));
+    render(<MobileChat surface="estudos" />);
+    digitarEEnviar("conversa A");
+    await screen.findByText("resposta A");
+    fireEvent.click(screen.getByRole("button", { name: "Abrir histórico" }));
+    fireEvent.click(screen.getByRole("button", { name: "+ Nova conversa" }));
+    await waitFor(() => expect(screen.queryByText("resposta A")).toBeNull());
+    fireEvent.click(screen.getByRole("button", { name: "Abrir histórico" }));
+    fireEvent.click(screen.getByRole("button", { name: "conversa A" }));
+    expect(await screen.findByText("resposta A")).toBeTruthy();
+  });
+  it("artefato: falha ao criar o estudo vira aviso; pronto pode recolher/abrir", async () => {
+    rotear((u) => (u === "/api/ai/chat" ? respostaStream(["r"]) : u === "/api/study/spaces" ? j({}, 401) : j({})));
+    render(<MobileChat surface="estudos" />);
+    digitarEEnviar("x");
+    await screen.findByText("r");
+    fireEvent.click(screen.getByRole("button", { name: "Mais ações" }));
+    fireEvent.click(screen.getByRole("button", { name: /Mapa mental/ }));
+    expect(await screen.findByText(/Não consegui gerar mapa mental agora/)).toBeTruthy();
   });
 });

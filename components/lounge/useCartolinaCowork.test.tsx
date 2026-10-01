@@ -61,3 +61,29 @@ describe("useCartolinaCowork", () => {
     expect(url).toBe(window.location.origin + "/estudo/b1?convite=t");
   });
 });
+
+describe("useCartolinaCowork · bordas", () => {
+  it("voltar pra aba (visibilitychange) puxa na hora, sem esperar o tick", async () => {
+    const onBoard = vi.fn();
+    renderHook(() => useCartolinaCowork({ ativo: true, boardId: "b1", onBoard }));
+    await waitFor(() => expect(onBoard).toHaveBeenCalledTimes(1));
+    board = { ...board, rev: 7 };
+    await act(async () => { document.dispatchEvent(new Event("visibilitychange")); });
+    await waitFor(() => expect(onBoard).toHaveBeenCalledTimes(2));
+  });
+  it("rede caída: comentar devolve false, compartilhar null, membros ficam vazios — nada lança", async () => {
+    (globalThis as any).fetch = vi.fn().mockRejectedValue(new Error("offline"));
+    const { result } = renderHook(() => useCartolinaCowork({ ativo: true, boardId: "b1", onBoard: vi.fn() }));
+    let ok: boolean | null = null, url: string | null = "x";
+    await act(async () => { ok = await result.current.comentar("a", "oi"); url = await result.current.compartilhar("leitor"); });
+    expect(ok).toBe(false);
+    expect(url).toBeNull();
+    expect(result.current.membros).toEqual([]);
+  });
+  it("sem board: ações são no-op", async () => {
+    const { result } = renderHook(() => useCartolinaCowork({ ativo: true, boardId: null, onBoard: vi.fn() }));
+    let ok: boolean | null = null, url: string | null = "x";
+    await act(async () => { ok = await result.current.comentar("a", "x"); url = await result.current.compartilhar("editor"); });
+    expect([ok, url]).toEqual([false, null]);
+  });
+});
