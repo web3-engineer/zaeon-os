@@ -44,7 +44,8 @@ import { parseStructuredStream, STRUCTURED_SENTINEL } from "@/lib/agent/structur
 import { separarProgresso, faseCorrente } from "@/lib/agent/progresso";
 import { typeStep, safeCut } from "@/lib/ui/typewriter";
 import { appendTranscript, hydrateTranscript } from "@/lib/agent/transcriptClient";
-import { esperarTurno, TURNO_HEADER } from "@/lib/chat/turnoRetomavel";
+import { esperarTurno } from "@/lib/chat/turnoRetomavel";
+import { pedirAura } from "@/lib/chat/auraClient";
 import type { SkillNodeState } from "@/lib/skilltree/types";
 import type { SkillTreeData } from "@/components/study/SkillTreePanel";
 
@@ -623,6 +624,7 @@ export default function StudyCoworkChat({ active = true }: { active?: boolean })
     const patchAsst = (text: string) =>
       setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, text } : m)));
     let turnoVivo: string | null = null;
+    let pararDatilografia = () => {}; // o `finally` garante que o laço de rAF nunca fica girando
 
     const focusTitles = focusIds.map(spaceTitle);
     // MODO ACADÊMICO = FLEXÍVEL na Sala de Estudos (o rigor pleno é da Sala de Pesquisa).
@@ -644,98 +646,67 @@ export default function StudyCoworkChat({ active = true }: { active?: boolean })
       + flexClause;
 
     try {
-      const r = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt,
-          agent: "aura",
-          history,
-          systemContext,
-          stream: true,
-          agentContext: {
-            activeTab: "sala-de-estudos",
-            currentStudyId: focusIds[0],
-            focusedStudyIds: focusIds,
-            // posição do aluno na árvore de habilidades → o mentor sabe onde você está (harness)
-            skillTopic: skillNode?.topicSlug ?? tree?.topicSlug,
-            skillNodeId: skillNode?.nodeId,
-            // Cartolina = memória da conversa: o board é o da ABA (conversa) ativa, e o card
-            // lembra de qual resposta veio (tap no card → volta pra essa mensagem).
-            cartolinaScopeId: abaAtivaRef.current ?? undefined,
-            cartolinaMsgId: asstId,
-          },
-          mentor: activeMentor ?? undefined,   // slug do mentor ativo → Aura com a voz da área
-        }),
+      let target = "";       // parte VISÍVEL alvo (sem a sentinela)
+      let shown = 0;         // quantas letras já reveladas
+      let ended = false;
+      pararDatilografia = () => { ended = true; };
+      // Datilografia (B2): revela em ordem, por frame (rAF), com TETO de letras por
+      // frame — os chunks do stream viram digitação contínua, sem "despejar" blocos.
+      // ATENÇÃO: todo caminho de saída marca `ended`, senão este laço gira pra sempre.
+      const typed = new Promise<void>((resolve) => {
+        const tick = () => {
+          if (shown < target.length) {
+            shown = safeCut(target, shown + typeStep(target.length - shown));
+            patchAsst(target.slice(0, shown));
+          } else if (ended) {
+            resolve();
+            return;
+          }
+          requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
       });
 
-      if (!r.ok || !r.body) {
-        patchAsst("Não consegui responder agora. Tente de novo.");
-      } else {
+      // Rede (fetch → stream → espera do worker em modo BG) mora em lib/chat/auraClient.ts,
+      // o MESMO núcleo do chat mobile (useAuraChat). Aqui fica só o que é desta tela.
+      const res = await pedirAura({
+        prompt,
+        history,
+        systemContext,
+        agentContext: {
+          activeTab: "sala-de-estudos",
+          currentStudyId: focusIds[0],
+          focusedStudyIds: focusIds,
+          // posição do aluno na árvore de habilidades → o mentor sabe onde você está (harness)
+          skillTopic: skillNode?.topicSlug ?? tree?.topicSlug,
+          skillNodeId: skillNode?.nodeId,
+          // Cartolina = memória da conversa: o board é o da ABA (conversa) ativa, e o card
+          // lembra de qual resposta veio (tap no card → volta pra essa mensagem).
+          cartolinaScopeId: abaAtivaRef.current ?? undefined,
+          cartolinaMsgId: asstId,
+        },
+        mentor: activeMentor ?? undefined,   // slug do mentor ativo → Aura com a voz da área
+      }, {
         // CHAT_BG: o turno roda no worker; o id fica na mensagem pra reengatar se o aluno sair.
-        const turnId = r.headers.get(TURNO_HEADER);
-        if (turnId) {
-          // este send() É o dono do turno enquanto estiver vivo: o reengate não pega o mesmo
-          // turno em paralelo (aplicaria o fim duas vezes — transcrição/artefato duplicados)
+        // Este send() É o dono do turno enquanto estiver vivo: o reengate não pega o mesmo
+        // turno em paralelo (aplicaria o fim duas vezes — transcrição/artefato duplicados).
+        onTurnId: (turnId) => {
           retomando.current.add(turnId);
           turnoVivo = turnId;
           setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, turnId, pendente: true } : m)));
-        }
-        const reader = r.body.getReader();
-        const dec = new TextDecoder();
-        let acc = "";          // texto cru recebido (protocolo + conteúdo)
-        let limpo = "";        // o mesmo, sem os eventos de progresso
-        let faseVista = "";    // última fase já pintada — evita setState a cada chunk
-        let target = "";       // parte VISÍVEL alvo (sem a sentinela)
-        let shown = 0;         // quantas letras já reveladas
-        let ended = false;
-
-        // Datilografia (B2): revela em ordem, por frame (rAF), com TETO de letras por
-        // frame — os chunks do stream viram digitação contínua, sem "despejar" blocos.
-        const typed = new Promise<void>((resolve) => {
-          const tick = () => {
-            if (shown < target.length) {
-              shown = safeCut(target, shown + typeStep(target.length - shown));
-              patchAsst(target.slice(0, shown));
-            } else if (ended) {
-              resolve();
-              return;
-            }
-            requestAnimationFrame(tick);
-          };
-          requestAnimationFrame(tick);
-        });
-
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          acc += dec.decode(value, { stream: true });
-          // O progresso sai do fio ANTES de qualquer outra conta: se ficasse no acumulado,
-          // a sentinela viraria texto datilografado na tela e contaminaria o fallback.
-          const { limpo: lp, eventos } = separarProgresso(acc);
-          limpo = lp;
-          const f = faseCorrente(eventos);
-          if (f && f.rotulo !== faseVista) {
-            faseVista = f.rotulo;
-            setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, fase: f.rotulo } : m)));
-          }
+        },
+        onFase: (rotulo) => setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, fase: rotulo } : m))),
+        onLimpo: (limpo) => {
           const cut = [limpo.indexOf(STUDIO_SENTINEL), limpo.indexOf(STRUCTURED_SENTINEL)].filter((i) => i >= 0);
           target = cut.length ? limpo.slice(0, Math.min(...cut)) : limpo;   // datilografa só o visível
-        }
+        },
+      });
 
-        // O stream do modo BG fecha sem payload quando o acompanhamento estoura o teto (o
-        // turno continua no worker): segue esperando pelo turno, com a fase na bolha.
-        const temPayload = (x: string) => !!parseStructuredStream(x) || x.includes(STUDIO_SENTINEL) || !!x.trim();
-        if (turnId && !temPayload(limpo)) {
-          const res = await esperarTurno(turnId, {
-            onParcial: (p) => {
-              const f = faseCorrente(separarProgresso(p).eventos);
-              if (f) setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, fase: f.rotulo } : m)));
-            },
-          });
-          if (res.tipo === "pronto") limpo = separarProgresso(res.acumulado).limpo;
-          else if (res.tipo === "erro") limpo = res.mensagem;
-        }
+      if (!res.ok) {
+        target = ""; ended = true;
+        patchAsst(res.motivo === "rede" ? "Falha de rede ao falar com a Aura." : "Não consegui responder agora. Tente de novo.");
+      } else {
+        const limpo = res.limpo;
         // Ação/estrutura não datilografa; texto simples deixa a digitação alcançar o fim.
         if (parseStructuredStream(limpo) || limpo.includes(STUDIO_SENTINEL)) { target = ""; ended = true; }
         else { target = limpo; ended = true; await typed; }
@@ -744,6 +715,7 @@ export default function StudyCoworkChat({ active = true }: { active?: boolean })
     } catch {
       patchAsst("Falha de rede ao falar com a Aura.");
     } finally {
+      pararDatilografia();
       if (turnoVivo) retomando.current.delete(turnoVivo);
       avisarEscritorio(activeMentor, "ocioso");
       setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, fase: undefined, ...(m.streaming ? { streaming: false } : null) } : m)));

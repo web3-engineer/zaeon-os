@@ -4,6 +4,7 @@ import type { ScholarEvent, Suggestion, ForgeResponse } from "@/lib/scholar/type
 import type { Prereq } from "@/lib/scholar/prereqs";
 import { takeHandoff } from "@/lib/agents/handoff";
 import { missionDone } from "@/lib/agents/mission";
+import { iniciarPesquisa, acompanharSessao, lerNdjsonScholar } from "@/lib/scholar/scholarClient";
 
 interface Phase { phase: string; message: string; }
 interface OmegaState {
@@ -83,74 +84,34 @@ export function OmegaScholarProvider({ room, onStart, children }:
     // escuta zaeon:study:run, enfileira e escreve ao vivo. Vale pra todo mundo, não só no tour.
     try { window.dispatchEvent(new CustomEvent("zaeon:study:run", { detail: { topic: prompt } })); } catch { /* */ }
     try {
-      const res = await fetch("/api/ai/scholar", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, room, deep }),
-        signal: ac.signal,
-      });
-      // Sessão ausente/expirada: o servidor responde 401 (texto, não NDJSON).
-      // Tratamos explicitamente para não travar o stream — a UI mostra o gate de login.
-      if (res.status === 401) {
-        setState((s) => ({ ...s, status: "unauthorized", error: null }));
-        return;
-      }
-      if (!res.ok) {
-        setState((s) => ({ ...s, status: "error", error: `Erro ${res.status}` }));
-        return;
-      }
+      // Rede em lib/scholar/scholarClient.ts — o MESMO núcleo do mobile (useScholar).
+      const inicio = await iniciarPesquisa({ prompt, room, deep, signal: ac.signal });
+      // Sessão ausente/expirada → a UI mostra o gate de login.
+      if (inicio.tipo === "unauthorized") { setState((s) => ({ ...s, status: "unauthorized", error: null })); return; }
+      if (inicio.tipo === "http") { setState((s) => ({ ...s, status: "error", error: `Erro ${inicio.status}` })); return; }
+      if (inicio.tipo === "invalido") { setState((s) => ({ ...s, status: "error", error: "Falha ao iniciar a pesquisa." })); return; }
 
       // ── MODO BACKGROUND ──────────────────────────────────────────────────────
-      // Servidor respondeu JSON {sessionId} (202): o worker roda o pipeline no servidor
-      // ATÉ O FIM, mesmo se o usuário sair da sala. Aqui a gente só POLLA a sessão e
-      // renderiza thread.events como fases. Sair e voltar reengata pelo mesmo poll (o DB
-      // é a fonte da verdade).
-      const ctype = res.headers.get("content-type") || "";
-      if (res.status === 202 || ctype.includes("application/json")) {
-        const j = await res.json().catch(() => null);
-        const sessionId = j?.sessionId;
-        if (!sessionId) { setState((s) => ({ ...s, status: "error", error: "Falha ao iniciar a pesquisa." })); return; }
-        const started = Date.now();
-        let lastLen = -1;
-        while (true) {
-          if (ac.signal.aborted) return;
-          await new Promise((r) => setTimeout(r, 1500));
-          if (ac.signal.aborted) return;
-          let full: any = null;
-          try {
-            const sr = await fetch(`/api/ai/scholar/sessions?id=${sessionId}`, { signal: ac.signal });
-            full = sr.ok ? (await sr.json())?.session : null;
-          } catch (e: any) { if (e?.name === "AbortError") return; }
-          if (full) {
-            const events = Array.isArray(full?.thread?.events) ? full.thread.events : [];
-            if (events.length !== lastLen) {
-              lastLen = events.length;
-              const phases = events.filter((e: any) => e.type === "phase").map((e: any) => ({ phase: e.phase, message: e.message ?? e.phase }));
-              setState((s) => ({ ...s, phases: phases.length ? phases : s.phases, answer: full?.thread?.answer ?? s.answer }));
-            }
-            if (full.status === "done") {
-              try { localStorage.removeItem(RUN_KEY); } catch { /* ignore */ }
-              try { window.dispatchEvent(new CustomEvent("zaeon:research:done")); } catch { /* onboarding */ }
-              loadSession(full);
-              return;
-            }
-            if (full.status === "error") {
-              try { localStorage.removeItem(RUN_KEY); } catch { /* ignore */ }
-              setState((s) => ({ ...s, status: "error", error: full?.thread?.error ?? "Erro na pesquisa" }));
-              return;
-            }
-          }
-          if (Date.now() - started > 10 * 60_000) { setState((s) => ({ ...s, status: "error", error: "A pesquisa demorou demais." })); return; }
+      // 202 {sessionId}: o worker roda o pipeline no servidor ATÉ O FIM, mesmo se o usuário
+      // sair da sala. Aqui só acompanhamos a sessão (o DB é a fonte da verdade).
+      if (inicio.tipo === "bg") {
+        const fim = await acompanharSessao(inicio.sessionId, {
+          signal: ac.signal,
+          onProgresso: ({ phases, answer }) => setState((s) => ({ ...s, phases: phases.length ? phases : s.phases, answer: answer ?? s.answer })),
+        });
+        if (fim.tipo === "cancelado") return;
+        try { localStorage.removeItem(RUN_KEY); } catch { /* ignore */ }
+        if (fim.tipo === "done") {
+          try { window.dispatchEvent(new CustomEvent("zaeon:research:done")); } catch { /* onboarding */ }
+          loadSession(fim.session);
+        } else {
+          setState((s) => ({ ...s, status: "error", error: fim.tipo === "erro" ? fim.mensagem : "A pesquisa demorou demais." }));
         }
+        return;
       }
 
-      if (!res.body) throw new Error("Sem stream");
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = "";
-      const dispatch = (line: string) => {
-        if (!line.trim()) return;
-        let ev: ScholarEvent;
-        try { ev = JSON.parse(line) as ScholarEvent; } catch { return; }
+      // ── MODO INLINE (legado): NDJSON ─────────────────────────────────────────
+      await lerNdjsonScholar(inicio.body, (ev) => {
         setState((s) => {
           if (ev.type === "phase") return { ...s, phases: [...s.phases, { phase: ev.phase, message: (ev as any).message ?? ev.phase }] };
           if (ev.type === "answer") return { ...s, answer: ev.text };
@@ -158,17 +119,7 @@ export function OmegaScholarProvider({ room, onStart, children }:
           if (ev.type === "error") { try { localStorage.removeItem(RUN_KEY); } catch { /* ignore */ } return { ...s, status: "error", error: ev.message }; }
           return s;
         });
-      };
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        const lines = buf.split("\n"); buf = lines.pop() ?? "";
-        for (const line of lines) dispatch(line);
-      }
-      // Flush any trailing line not terminated by a newline (robust to servers
-      // that don't append a final \n — e.g. a last `done` event).
-      if (buf) dispatch(buf);
+      });
     } catch (e: any) {
       // Usuário parou a pesquisa (abort) → volta pro estado limpo, sem erro.
       if (e?.name === "AbortError") { setState((s) => ({ ...s, status: "idle", error: null })); return; }
@@ -227,28 +178,19 @@ export function OmegaScholarProvider({ room, onStart, children }:
         if (latest.status === "running" || latest.status === "queued") {
           if (ageMs > 10 * 60_000) { try { localStorage.removeItem(RUN_KEY); } catch { /* ignore */ } return; } // velho demais
           setState((s) => ({ ...s, status: "running", query: latest.query, startedAt: run?.startedAt ?? new Date(latest.createdAt).getTime() }));
-          const poll = async () => {
-            if (cancelled) return;
-            try {
-              const sr = await fetch(`/api/ai/scholar/sessions?id=${latest.id}`);
-              const sd = sr.ok ? await sr.json() : null;
-              const full = sd?.session;
-              // progresso ao vivo: renderiza as fases já gravadas na sessão
-              const events = Array.isArray(full?.thread?.events) ? full.thread.events : [];
-              if (events.length && !cancelled) {
-                const phases = events.filter((e: any) => e.type === "phase").map((e: any) => ({ phase: e.phase, message: e.message ?? e.phase }));
-                setState((s) => ({ ...s, phases: phases.length ? phases : s.phases, answer: full?.thread?.answer ?? s.answer }));
-              }
-              if (full?.status === "done") { try { localStorage.removeItem(RUN_KEY); } catch { /* ignore */ } if (!cancelled) loadSession(full); return; }
-              if (full?.status === "error" || (Date.now() - new Date(latest.createdAt).getTime()) > 10 * 60_000) {
-                try { localStorage.removeItem(RUN_KEY); } catch { /* ignore */ }
-                if (!cancelled) setState((s) => ({ ...s, status: "error", error: full?.thread?.error ?? "A pesquisa anterior foi interrompida. Tente de novo." }));
-                return;
-              }
-            } catch { /* tenta de novo */ }
-            if (!cancelled) setTimeout(poll, 3000);
-          };
-          setTimeout(poll, 2000);
+          const fim = await acompanharSessao(latest.id, {
+            cancelado: () => cancelled,
+            primeiroAtrasoMs: 2000,
+            intervaloMs: 3000,
+            desde: new Date(latest.createdAt).getTime(),
+            erroPadrao: "A pesquisa anterior foi interrompida. Tente de novo.",
+            // progresso ao vivo: renderiza as fases já gravadas na sessão
+            onProgresso: ({ phases, answer }) => { if (!cancelled) setState((s) => ({ ...s, phases: phases.length ? phases : s.phases, answer: answer ?? s.answer })); },
+          });
+          if (fim.tipo === "cancelado") return;
+          try { localStorage.removeItem(RUN_KEY); } catch { /* ignore */ }
+          if (fim.tipo === "done") loadSession(fim.session);
+          else setState((s) => ({ ...s, status: "error", error: fim.tipo === "erro" ? fim.mensagem : "A pesquisa anterior foi interrompida. Tente de novo." }));
         } else if (latest.status === "done" && ageMs < 30 * 60_000) {
           // restaura a última pesquisa concluída recente (continuidade)
           const sr = await fetch(`/api/ai/scholar/sessions?id=${latest.id}`);
