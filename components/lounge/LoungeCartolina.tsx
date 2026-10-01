@@ -54,7 +54,7 @@ function Prancha() {
   );
 }
 
-function CardView({ c, onReveal, revealed }: { c: Card; onReveal: (id: string) => void; revealed: boolean }) {
+function CardView({ c, onReveal, revealed, onAbrirConversa }: { c: Card; onReveal: (id: string) => void; revealed: boolean; onAbrirConversa?: (msgId: string) => void }) {
   const base: React.CSSProperties = { width: c.w, transform: `rotate(${c.rot ?? 0}deg)` };
   if (c.tipo === "titulo") {
     return (
@@ -93,6 +93,18 @@ function CardView({ c, onReveal, revealed }: { c: Card; onReveal: (id: string) =
       {c.tipo === "exercicio" && revealed && (
         <div style={{ marginTop: 6, fontSize: 13, color: INK_SOFT, borderTop: `1px dashed ${INK_SOFT}55`, paddingTop: 6 }}>{c.resposta}</div>
       )}
+      {/* Memória por região: o card sabe de qual resposta nasceu → volta pra ela no chat. */}
+      {onAbrirConversa && c.msgIds?.length ? (
+        <button
+          type="button" data-ui className="cal"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => onAbrirConversa(c.msgIds![c.msgIds!.length - 1])}
+          aria-label={`Abrir na conversa a resposta que gerou "${c.titulo ?? "este card"}"`}
+          style={{ marginTop: 10, minHeight: 44, fontSize: 14, color: ACCENT, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}
+        >
+          ↩ ver na conversa
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -101,9 +113,22 @@ function CardView({ c, onReveal, revealed }: { c: Card; onReveal: (id: string) =
 const PERSISTIR = process.env.NEXT_PUBLIC_CARTOLINA_MEMORIA === "1";
 const SALVAR_APOS_MS = 800;
 
-export default function LoungeCartolina({ embedded = false, surface = "lounge", scopeId }: { embedded?: boolean; surface?: "estudos" | "lounge"; scopeId?: string }) {
+export default function LoungeCartolina({ embedded = false, surface = "lounge", scopeId, abrirDeInicio = false, onAbrirConversa, onFechar }: {
+  embedded?: boolean; surface?: "estudos" | "lounge"; scopeId?: string;
+  /** Sala de Estudos abre o board já aberto (o globo/aba puxável é do lounge). */
+  abrirDeInicio?: boolean;
+  onAbrirConversa?: (msgId: string) => void;
+  onFechar?: () => void;
+}) {
   const isMobile = useIsMobile();
-  const [open, setOpen] = useState(false);
+  const [open, setOpenRaw] = useState(abrirDeInicio);
+  const setOpen = useCallback((v: boolean | ((o: boolean) => boolean)) => {
+    setOpenRaw((o) => {
+      const n = typeof v === "function" ? v(o) : v;
+      if (!n && onFechar) setTimeout(onFechar, 0); // fora do setState
+      return n;
+    });
+  }, [onFechar]);
   const [cards, setCards] = useState<Card[]>(CARDS0);
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [view, setView] = useState({ x: 40, y: 20, scale: 1 });
@@ -265,13 +290,13 @@ export default function LoungeCartolina({ embedded = false, surface = "lounge", 
           <div onPointerDown={onBoardDown} onWheel={onWheel} style={{ position: "absolute", inset: 0, top: 56, overflow: isMobile ? "auto" : "hidden", cursor: isMobile ? "auto" : "grab", backgroundImage: `radial-gradient(${INK_SOFT}22 1px, transparent 1px)`, backgroundSize: "26px 26px" }}>
             {isMobile ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 26, padding: "28px 18px 60px", maxWidth: 520, margin: "0 auto" }}>
-                {cards.map((c) => <div key={c.id}><CardView c={{ ...c, rot: 0, w: Math.min(c.w, 480) }} onReveal={reveal} revealed={!!revealed[c.id]} /></div>)}
+                {cards.map((c) => <div key={c.id}><CardView c={{ ...c, rot: 0, w: Math.min(c.w, 480) }} onReveal={reveal} revealed={!!revealed[c.id]} onAbrirConversa={onAbrirConversa} /></div>)}
               </div>
             ) : (
               <div style={{ position: "absolute", inset: 0, transform: `translate(${view.x}px,${view.y}px) scale(${view.scale})`, transformOrigin: "0 0" }}>
                 {cards.map((c) => (
                   <div key={c.id} data-card onPointerDown={(e) => onCardDown(e, c)} style={{ position: "absolute", left: c.x, top: c.y, cursor: "grab", touchAction: "none" }}>
-                    <CardView c={c} onReveal={reveal} revealed={!!revealed[c.id]} />
+                    <CardView c={c} onReveal={reveal} revealed={!!revealed[c.id]} onAbrirConversa={onAbrirConversa} />
                   </div>
                 ))}
               </div>

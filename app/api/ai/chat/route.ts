@@ -315,6 +315,10 @@ export async function POST(req: Request) {
                         if (userId) enfileirar(serializarProgresso({ fase: "memoria", rotulo: "Retomando a conversa" }));
                         // wakeUp (L3, A8): recall + perfil pinado → systemContext. Best-effort; "" se o L3 não ligou.
                         const memBlock = userId ? await mem.wakeUpContext({ userId, surface: hctx.activeTab, hint: String(prompt || ""), wingLabel: activeMentor?.wing.label }).catch(() => "") : "";
+                        // Cartolina → agente (a "bússola"): o que já foi estudado nesta conversa e o
+                        // que está em aberto. "" com CARTOLINA_MEMORIA off / sem board / sem conversa.
+                        const cartolinaMod = await import("@/lib/cartolina/memoria-turno");
+                        const cartolinaBlock = await cartolinaMod.bussolaParaTurno(userId, ac.cartolinaScopeId);
                         // Árvore de habilidades: posição do aluno no tópico (dominados/disponíveis/nó em foco) +
                         // guardrail pedagógico → o mentor conduz pro próximo nó. Best-effort ("" sem tópico/L3).
                         const skillTopic = typeof ac.skillTopic === "string" && ac.skillTopic.trim() ? String(ac.skillTopic).trim() : null;
@@ -323,7 +327,7 @@ export async function POST(req: Request) {
                             ? await import("@/lib/skilltree/progress").then((m) => m.treeContextBlock(userId, skillTopic, skillNodeId)).catch(() => "")
                             : "";
                         const deps = buildHarnessDeps(hctx, {
-                            systemContext: [systemContext, memBlock, skillBlock].filter(Boolean).join("\n\n") || undefined,
+                            systemContext: [systemContext, memBlock, cartolinaBlock, skillBlock].filter(Boolean).join("\n\n") || undefined,
                             history: (chatHistory as any[]).map((h) => ({ role: h.role, text: h?.parts?.[0]?.text ?? "" })),
                             // O CANAL DE PROGRESSO. Um turno elaborated são três chamadas de modelo
                             // em sequência (plan → reason → draft), cinco se o crítico mandar revisar
@@ -345,6 +349,8 @@ export async function POST(req: Request) {
                         const { answer, state } = await runTrajectoryTraced(String(prompt || ""), hctx, deps);
                         const out = resolveHarnessOutput(state, answer, surface, String(prompt || ""));
                         // L3 write (A7, fire-and-forget): deriva o turno em drawers verbatim. Nunca bloqueia.
+                        // Chat → cartolina: os cards do turno vão pro board da conversa (fire-and-forget).
+                        if (userId) void cartolinaMod.fixarTurno({ userId, scopeId: ac.cartolinaScopeId, prompt: String(prompt || ""), answer, msgId: ac.cartolinaMsgId });
                         if (userId) void mem.writeTurnMemory({ userId, surface: hctx.activeTab, scopeId: ac.currentStudyId ?? ac.currentResearchId ?? null, prompt: String(prompt || ""), answer, wing: activeMentor?.wing });
                         // Árvore: o mentor SOBE a maestria quando o aluno demonstra domínio do nó em foco
                         // (juiz Flash, fire-and-forget — nunca atrasa nem derruba a resposta).

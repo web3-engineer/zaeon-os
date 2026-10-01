@@ -49,6 +49,9 @@ import type { SkillTreeData } from "@/components/study/SkillTreePanel";
 
 const MeusEstudosFeed = dynamic(() => import("@/components/study/MeusEstudosFeed"), { ssr: false });
 // Árvore de habilidades GENERATIVA (React Flow) — opt-in, drawer ao lado da conversa.
+// A cartolina (memória visual da conversa) só carrega quando o aluno abre — e só com a flag.
+const LoungeCartolina = dynamic(() => import("@/components/lounge/LoungeCartolina"), { ssr: false });
+const CARTOLINA_ON = process.env.NEXT_PUBLIC_CARTOLINA_MEMORIA === "1";
 const SkillTreePanel = dynamic(() => import("@/components/study/SkillTreePanel"), { ssr: false });
 
 const DT = "application/x-zaeon-item";
@@ -115,6 +118,7 @@ export default function StudyCoworkChat({ active = true }: { active?: boolean })
   // aba tem histórico próprio, e a antiga vira a aba #1 na primeira carga (ver threads.ts).
   const [threads, setThreads] = useState<Thread[]>([]);
   const [abaAtiva, setAbaAtiva] = useState<string | null>(null);
+  const [cartolinaAberta, setCartolinaAberta] = useState(false);
   const abaAtivaRef = useRef<string | null>(null);
   abaAtivaRef.current = abaAtiva;
   // Espelho das abas pra ler o valor atual dentro de callbacks sem recriá-los.
@@ -554,6 +558,10 @@ export default function StudyCoworkChat({ active = true }: { active?: boolean })
             // posição do aluno na árvore de habilidades → o mentor sabe onde você está (harness)
             skillTopic: skillNode?.topicSlug ?? tree?.topicSlug,
             skillNodeId: skillNode?.nodeId,
+            // Cartolina = memória da conversa: o board é o da ABA (conversa) ativa, e o card
+            // lembra de qual resposta veio (tap no card → volta pra essa mensagem).
+            cartolinaScopeId: abaAtivaRef.current ?? undefined,
+            cartolinaMsgId: asstId,
           },
           mentor: activeMentor ?? undefined,   // slug do mentor ativo → Aura com a voz da área
         }),
@@ -731,6 +739,30 @@ export default function StudyCoworkChat({ active = true }: { active?: boolean })
               onTree={setTree}
               onNodeChat={onNodeChat}
               onClose={() => setTreeOpen(false)}
+            />
+          </div>
+        )}
+
+        {/* Cartolina da conversa: botão + board por cima do chat. Tap num card → volta à resposta. */}
+        {CARTOLINA_ON && abaAtiva && (
+          <button
+            type="button"
+            onClick={() => setCartolinaAberta(true)}
+            aria-label="Abrir a cartolina desta conversa"
+            title="Cartolina desta conversa"
+            className="absolute z-20 right-4 top-3 min-h-[44px] min-w-[44px] px-3 rounded-full flex items-center gap-1.5 text-sm
+              bg-white/90 dark:bg-white/10 border border-slate-200 dark:border-white/15 shadow-lg backdrop-blur-xl
+              text-slate-700 dark:text-white/85 hover:text-cyan-600 dark:hover:text-cyan-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500"
+          >
+            <FileText size={16} /> Cartolina
+          </button>
+        )}
+        {CARTOLINA_ON && cartolinaAberta && abaAtiva && (
+          <div className="absolute inset-0 z-40">
+            <LoungeCartolina
+              embedded surface="estudos" scopeId={abaAtiva} abrirDeInicio
+              onFechar={() => setCartolinaAberta(false)}
+              onAbrirConversa={(msgId) => { setCartolinaAberta(false); requestAnimationFrame(() => ancorar(msgId)); }}
             />
           </div>
         )}
