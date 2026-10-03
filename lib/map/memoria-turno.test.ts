@@ -16,7 +16,7 @@ import { bussolaParaTurno, fixarTurno } from "@/lib/map/memoria-turno";
 import { nosFromStructured, projetarCards } from "@/lib/map/grafo";
 
 const ans = (x: any = {}) => ({ nucleo: "n", ...x });
-const mapaDe = (nos: any[], extra: any = {}) => ({ id: "m1", titulo: "Estudo", objetivo: "", nos, arestas: [], ...extra });
+const mapaDe = (nos: any[], extra: any = {}) => ({ id: "m1", titulo: "Estudo", objetivo: "", nos, arestas: [], backbone: [], tipoTopico: "exploratorio", modoValidacao: "nenhuma", criterioCompletude: "", ...extra });
 
 describe("memoria-turno unificada", () => {
   beforeEach(() => {
@@ -44,6 +44,10 @@ describe("memoria-turno unificada", () => {
     st.findMapa.mockResolvedValue(mapaDe(nosFromStructured(ans({ conceitos: ["Clorofila"] }) as any), { objetivo: "Fotossíntese" }));
     const t = await bussolaParaTurno("u", "t1");
     expect(t).toMatch(/CÉREBRO/); expect(t).toMatch(/Clorofila/); expect(t).toMatch(/Objetivo do estudo: Fotossíntese/);
+    expect(t).not.toMatch(/Percurso:/); // sem backbone ainda
+    const nos = nosFromStructured(ans({ conceitos: ["Clorofila"] }) as any);
+    st.findMapa.mockResolvedValue(mapaDe(nos, { backbone: [nos[0]!.id], tipoTopico: "conceitual", modoValidacao: "quiz" }));
+    expect(await bussolaParaTurno("u", "t1")).toMatch(/Percurso: Faltam 1 de 1 .*quiz/);
     st.findMapa.mockResolvedValue(null); st.bussolaAntiga.mockResolvedValue("cartolina");
     expect(await bussolaParaTurno("u", "t1")).toBe("cartolina");
   });
@@ -77,6 +81,7 @@ describe("memoria-turno unificada", () => {
     st.patchBoard.mockResolvedValue({ ok: true });
     const r = await fixarTurno({ userId: "u", scopeId: "t1", prompt: "p", answer: ans({ conceitos: ["luz", "água"] }) as any, msgId: "m2" });
     expect(r!.tocados).toEqual([nos1[0]!.id]); expect(r!.novos).toHaveLength(1);
+    expect(st.patchMapa.mock.calls[0][1](mapa)).toMatchObject({ completudeAprendizado: 1, completudeConclusao: 0 });
     const ups = st.patchBoard.mock.calls[0][2].upsert;
     expect(ups).toHaveLength(2);
     expect(ups.find((c: any) => c.id === nos1[0]!.id)).toMatchObject({ x: 777, msgIds: ["m1", "m2"] });
