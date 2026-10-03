@@ -31,6 +31,7 @@ services:
         NEXT_PUBLIC_AGENTS_ADMIN: ${NEXT_PUBLIC_AGENTS_ADMIN:-0}
         NEXT_PUBLIC_AGENT_AVATARS: ${NEXT_PUBLIC_AGENT_AVATARS:-0}
         NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM: ${NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM:-0}
+        NEXT_PUBLIC_MAP_HARNESS: ${NEXT_PUBLIC_MAP_HARNESS:-0}
     container_name: zaeon_web
     # .env = base (vive no VPS). .env.secrets = segredos de runtime escritos pelo
     # deploy a partir dos GitHub Actions secrets (ex.: GOOGLE_CREDENTIALS). O último vence.

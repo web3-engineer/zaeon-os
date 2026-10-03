@@ -22,6 +22,9 @@ import { parseStructuredStream, STRUCTURED_SENTINEL } from "@/lib/agent/structur
 import { separarProgresso, faseCorrente } from "@/lib/agent/progresso";
 import { TCC_CROSS_ON, avisarTccMudou, tccApi } from "@/lib/tcc/client";
 import ThreadTabs from "@/components/study/ThreadTabs";
+import BolinhaCerebro from "@/components/cerebro/BolinhaCerebro";
+import CerebroPanel from "@/components/cerebro/CerebroPanel";
+import { useCerebro } from "@/components/cerebro/useCerebro";
 import {
   carregarThreads, salvarThreads, criarThread, fecharThread, renomearThread, tocarThread,
   carregarMensagens, salvarMensagens, threadAtiva, marcarAtiva, tituloAPartirDe,
@@ -97,6 +100,9 @@ export default function ResearchChat({
   const [abaAtiva, setAbaAtiva] = useState<string | null>(null);
   const threadsRef = useRef<Thread[]>([]);
   const abaAtivaRef = useRef<string | null>(null);
+  // Cérebro da conversa ativa (HANDOFF_CEREBRO_AURA §3): bolinha + painel, atrás de NEXT_PUBLIC_MAP_HARNESS.
+  const [cerebroAberto, setCerebroAberto] = useState(false);
+  const cerebro = useCerebro(comAbas ? abaAtiva : null, { aberto: cerebroAberto });
 
   useEffect(() => {
     const el = listRef.current;
@@ -238,7 +244,11 @@ export default function ResearchChat({
       const r = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, agent: "aura", surface: "pesquisa", history, systemContext: SYS(wt), stream: true }),
+        body: JSON.stringify({
+          prompt, agent: "aura", surface: "pesquisa", history, systemContext: SYS(wt), stream: true,
+          // Memória por conversa: o grafo/cartolina é o da ABA ativa e o nó lembra de qual resposta veio.
+          agentContext: { activeTab: "pesquisa", cartolinaScopeId: abaAtivaRef.current ?? undefined, cartolinaMsgId: asstId },
+        }),
       });
       if (!r.ok || !r.body) { patch("Não consegui responder agora. Tente de novo."); return; }
 
@@ -306,23 +316,48 @@ export default function ResearchChat({
     } finally {
       setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, fase: undefined } : m)));
       setSending(false);
+      if (cerebro.ligado) setTimeout(() => void cerebro.refetch(), 1500); // o gatekeeper/fixar são fire-and-forget no servidor
     }
-  }, [input, sending, messages, wt, runResearchGenerate, modoTcc, tccWorkId]);
+  }, [input, sending, messages, wt, runResearchGenerate, modoTcc, tccWorkId, cerebro]);
 
   return (
-    <div ref={rootRef} className="h-full flex flex-col bg-white/95 dark:bg-[#0a0f1c]/95 text-slate-900 dark:text-white">
+    <div ref={rootRef} className="relative h-full flex flex-col bg-white/95 dark:bg-[#0a0f1c]/95 text-slate-900 dark:text-white">
       {/* Temas da conversa (um por aba) + ＋ pra começar outro. Ficam sob a pill "Chat" da sala. */}
       {comAbas && (
-        <div className="shrink-0 px-4 sm:px-6 pt-3">
-          <ThreadTabs
-            threads={threads}
-            ativa={abaAtiva}
-            aoTrocar={trocarAba}
-            aoCriar={novaAba}
-            aoFechar={fecharAba}
-            ocupada={sending ? abaAtiva : null}
-          />
+        <div className="shrink-0 px-4 sm:px-6 pt-3 flex items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <ThreadTabs
+              threads={threads}
+              ativa={abaAtiva}
+              aoTrocar={trocarAba}
+              aoCriar={novaAba}
+              aoFechar={fecharAba}
+              ocupada={sending ? abaAtiva : null}
+            />
+          </div>
+          {cerebro.ligado && (
+            <BolinhaCerebro
+              estado={cerebro.estado}
+              completude={cerebro.mapa?.completudeAprendizado ?? 0}
+              aberto={cerebroAberto}
+              onClick={() => {
+                if (cerebro.estado === "sugerida" || cerebro.estado === "vazia") { void cerebro.gerar(); setCerebroAberto(true); }
+                else setCerebroAberto((v) => !v);
+              }}
+            />
+          )}
         </div>
+      )}
+      {cerebro.ligado && cerebroAberto && (
+        <CerebroPanel
+          st={cerebro}
+          onFechar={() => setCerebroAberto(false)}
+          onAbrirMensagem={(msgId) => {
+            setCerebroAberto(false);
+            // tap no nó → rola até a mensagem que o originou
+            requestAnimationFrame(() => rootRef.current?.querySelector<HTMLElement>(`[data-msg-id="${CSS.escape(msgId)}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" }));
+          }}
+        />
       )}
       {/* Conversa — bolhas com cara de manuscrito (serif, texto justificado).
           Sem cabeçalho/X: a alternância chat ↔ trabalho é feita pela pill ⟁ Chat. */}
@@ -332,7 +367,7 @@ export default function ResearchChat({
             const isUser = m.role === "user";
             if (!isUser && m.answer) {
               return (
-                <div key={m.id} className="flex justify-start">
+                <div key={m.id} data-msg-id={m.id} className="flex justify-start">
                   <div className="max-w-[88%] w-full">
                     {/* Clicar num conceito/próximo passo proposto pela IA já ENVIA (sem clicar no input nem Enter). */}
                     <StructuredAnswerView answer={m.answer} onConcept={(c) => void send(`Explique: ${c}`)} onNext={(s) => void send(s)} />
@@ -341,7 +376,7 @@ export default function ResearchChat({
               );
             }
             return (
-              <div key={m.id} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+              <div key={m.id} data-msg-id={m.id} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
                 <div
                   className={`max-w-[88%] px-4 py-3 font-serif text-[22px] leading-[1.65] whitespace-pre-wrap ${
                     isUser

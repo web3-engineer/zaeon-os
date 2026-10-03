@@ -116,13 +116,14 @@ jobs:
           NEXT_PUBLIC_AGENT_AVATARS: ${{ vars.NEXT_PUBLIC_AGENT_AVATARS || '' }}
           # Sala de Pesquisa unificada (mesma mecânica; rollback = Variable "0" + redeploy).
           NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM: ${{ vars.NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM || '' }}
+          NEXT_PUBLIC_MAP_HARNESS: ${{ vars.NEXT_PUBLIC_MAP_HARNESS || '' }}
         with:
           host: ${{ secrets.VPS_HOST }}
           port: ${{ secrets.VPS_PORT }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           command_timeout: 25m
-          envs: GOOGLE_CREDENTIALS_B64,GOOGLE_PROJECT_ID_VALUE,WITH_VOICE,DB_PUSH,DEPLOY_BRANCH,APP_URL,BETA_DOMAIN,ACME_EMAIL,NEXT_PUBLIC_ESCRITORIO_COWORK,NEXT_PUBLIC_AGENTS_ADMIN,NEXT_PUBLIC_AGENT_AVATARS,NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM
+          envs: GOOGLE_CREDENTIALS_B64,GOOGLE_PROJECT_ID_VALUE,WITH_VOICE,DB_PUSH,DEPLOY_BRANCH,APP_URL,BETA_DOMAIN,ACME_EMAIL,NEXT_PUBLIC_ESCRITORIO_COWORK,NEXT_PUBLIC_AGENTS_ADMIN,NEXT_PUBLIC_AGENT_AVATARS,NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM,NEXT_PUBLIC_MAP_HARNESS
           script: |
             set -euo pipefail
             cd "${{ secrets.DEPLOY_PATH }}"
@@ -174,7 +175,7 @@ jobs:
 
             # Flags do escritório: só exporta o que veio preenchido (string vazia no shell
             # SOBRESCREVERIA o .env do compose e viraria o default 0).
-            for k in NEXT_PUBLIC_ESCRITORIO_COWORK NEXT_PUBLIC_AGENTS_ADMIN NEXT_PUBLIC_AGENT_AVATARS NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM; do
+            for k in NEXT_PUBLIC_ESCRITORIO_COWORK NEXT_PUBLIC_AGENTS_ADMIN NEXT_PUBLIC_AGENT_AVATARS NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM NEXT_PUBLIC_MAP_HARNESS; do
               if [ -n "${!k:-}" ]; then export "$k"; echo "→ flag de build $k=${!k}"; else unset "$k"; fi
             done
 

@@ -7,6 +7,7 @@
  */
 import type { ScholarJobData } from "@/lib/queue/scholar";
 import type { ChatJobData } from "@/lib/queue/chat";
+import type { CerebroJobData } from "@/lib/map/queue";
 
 /** Worker do canal coworking. Nunca lança: falha aqui não pode derrubar o boot nem os outros workers. */
 export async function iniciarWorkerCanalOpcional() {
@@ -100,4 +101,14 @@ export async function iniciarWorkers() {
   );
   chatWorker.on("failed", (job, err) => console.error("[worker] chat job failed", job?.id, err?.message));
   console.log(`[worker] Chat worker ATIVO (concurrency=${chatConcurrency})`);
+
+  // ── Cérebro: chain worker (generateMap no clique da bolinha) — MESMO container/conexão ─────
+  const { CEREBRO_QUEUE, processCerebroJob } = await import("@/lib/map/queue");
+  const cerebroWorker = new Worker<CerebroJobData>(
+    CEREBRO_QUEUE,
+    async (job) => processCerebroJob(job.data),
+    { connection: connection as any, concurrency: Number(process.env.CEREBRO_WORKER_CONCURRENCY || 2) },
+  );
+  cerebroWorker.on("failed", (job, err) => console.error("[worker] cerebro job failed", job?.id, err?.message));
+  console.log("[worker] Cérebro worker ATIVO");
 }

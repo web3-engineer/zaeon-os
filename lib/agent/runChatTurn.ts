@@ -108,6 +108,12 @@ export async function runChatTurn(
     // Chat → memória: o turno entra no grafo do estudo (e a cartolina recebe a projeção) — ÚNICO
     // ponto de escrita por turno. Fire-and-forget. Seções que foram pro TCC não viram notas soltas.
     if (userId) void cartolina.fixarTurno({ userId, scopeId: ac.cartolinaScopeId, prompt, answer: tcc ? { ...answer, work: undefined } : answer, msgId: ac.cartolinaMsgId });
+    // GATEKEEPER do cérebro (§2): barato, decide se a conversa é estudável (bolinha azul). Fire-and-forget.
+    if (userId) {
+      void import("@/lib/map/gatekeeper")
+        .then((g) => g.gatekeeperDoTurno({ userId, scopeId: typeof ac.cartolinaScopeId === "string" ? ac.cartolinaScopeId : null, prompt, history: params.history, answer }))
+        .catch(() => null);
+    }
     // L3 write (A7, fire-and-forget): deriva o turno em drawers verbatim. Nunca bloqueia.
     if (userId) {
       void mem.writeTurnMemory({

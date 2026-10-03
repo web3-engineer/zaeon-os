@@ -91,6 +91,10 @@ export async function fixarTurno(input: FixarInput): Promise<FixarResultado> {
         console.warn("[cerebro] projeção na cartolina falhou:", e?.message ?? e);
       }
     }
+    // 3) REAÇÃO AO VIVO (§3): o painel aberto acende o que mudou. Best-effort.
+    if (novos.length || tocados.length) {
+      void import("@/lib/map/realtime").then((r) => r.avisarTurno({ mapaId: mapa.id, novos, tocados, completudeAprendizado: mapa.completudeAprendizado, completudeConclusao: mapa.completudeConclusao })).catch(() => {});
+    }
     return { mapaId: mapa.id, novos, tocados };
   } catch (e: any) {
     console.warn("[cerebro] fixarTurno falhou:", e?.message ?? e);
