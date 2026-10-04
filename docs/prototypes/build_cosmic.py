@@ -47,6 +47,8 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Zaeon — Map
   #load .logo{color:#cfe6ff;font-size:16px;font-weight:700;letter-spacing:.28em}
   #load .bar{width:220px;height:6px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
   #load .fill{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#9fe8ff,#49b6ff);transition:width .35s cubic-bezier(.3,.8,.3,1)}
+  #monLabel{position:fixed;transform:translate(-50%,-100%);z-index:22;display:none;pointer-events:none;white-space:nowrap;font-size:12.5px;font-weight:700;letter-spacing:.03em;color:#06121c;background:linear-gradient(180deg,#b8f0ff,#5cc4ff);padding:6px 12px;border-radius:999px;box-shadow:0 0 18px rgba(90,200,255,.7)}
+  #monLabel.far{background:rgba(20,30,50,.75);color:#bfe6ff;box-shadow:none;border:1px solid rgba(120,200,255,.35)}
   #studyBtn{position:fixed;left:50%;bottom:92px;transform:translateX(-50%) scale(.9);z-index:21;display:none;cursor:pointer;color:#06121c;font-weight:800;font-size:14px;letter-spacing:.02em;padding:12px 22px;border-radius:999px;border:none;background:linear-gradient(180deg,#9fe8ff,#49b6ff);box-shadow:0 0 26px rgba(90,200,255,.75);transition:transform .18s,box-shadow .18s;opacity:0}
   #studyBtn.on{display:block;opacity:1;transform:translateX(-50%) scale(1);animation:pulseBtn 1.8s ease-in-out infinite}
   @keyframes pulseBtn{0%,100%{box-shadow:0 0 22px rgba(90,200,255,.6)}50%{box-shadow:0 0 36px rgba(120,220,255,.95)}}
@@ -69,6 +71,7 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Zaeon — Map
 <div id="hint">WASD/clique p/ andar · Shift correr · Espaço pular · perto de um colega p/ falar · na base p/ estudar</div>
 <div id="load"><div class="bar"><div class="fill"></div></div></div>
 <button id="studyBtn">✦ Estudar</button>
+<div id="monLabel"></div>
 <div id="opening">abrindo a Sala de Estudos…</div>
 <div class="chat"><div class="to" id="chatTo"></div><div class="log" id="chatLog"></div><input id="chatInput" placeholder="Falar…  (Enter)"></div>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
@@ -155,6 +158,11 @@ const scrGlow=new THREE.Mesh(new THREE.PlaneGeometry(2.3,1.35),new THREE.MeshBas
 const scr=new THREE.Mesh(new THREE.PlaneGeometry(2.1,1.2),new THREE.MeshBasicMaterial({color:0x0a2436,transparent:true,opacity:.6,side:THREE.DoubleSide})); scr.position.set(0,1.85,-1.44); office.add(scr);
 const scrEdge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(2.1,1.2)),new THREE.LineBasicMaterial({color:0x66e6ff,transparent:true,opacity:.85})); scrEdge.position.copy(scr.position); office.add(scrEdge);
 const txtLines=[]; for(let i=0;i<6;i++){const w=.3+Math.random()*1.4; const ln=new THREE.Mesh(new THREE.PlaneGeometry(w,.07),new THREE.MeshBasicMaterial({color:0x8fe8ff,transparent:true,opacity:.5,blending:THREE.AdditiveBlending})); ln.position.set(-1.0+w/2,2.3-i*0.17,-1.43); office.add(ln); txtLines.push(ln);}
+/* ===== constantes de level design da BASE (fixa/canônica — singleton do cenário) ===== */
+const BASE_POSITION=OFF, BASE_ROTATION=office.rotation.y;
+const BASE_COLLIDER_R=1.5;   // raio sólido (plano XZ)
+const BASE_INTERACT_R=3.4;   // raio de ativação do estudo + clique no monitor
+const MONITOR_MESH=scr;      // mesh clicável do monitor
 const deskLight=new THREE.PointLight(0x9fd8ff,1.6,11); deskLight.position.set(0,2.6,-0.4); office.add(deskLight);
 // CRISTAIS em volta da base (octaedros emissivos, pulsam e flutuam)
 const crystals=[]; const cryCols=[0x66e6ff,0xb98cff,0x9affd0,0xffd36b];
@@ -239,9 +247,16 @@ addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=
   camAz=drag.az-dx*0.006; camPitch=Math.max(-0.05,Math.min(1.25,drag.pitch+dy*0.005));});
 addEventListener('pointerup',e=>{if(drag&&!moved)click(e.clientX,e.clientY);drag=null;});
 R.domElement.addEventListener('wheel',e=>{e.preventDefault();camDist=Math.min(24,Math.max(6,camDist*(e.deltaY>0?1.1:0.9)));},{passive:false});
-function click(mx,my){if(!me)return;const ndc=new THREE.Vector2((mx/W())*2-1,-(my/H())*2+1);ray.setFromCamera(ndc,cam);
+const monLabel=document.getElementById('monLabel'); let monHover=false;
+const nearBaseNow=()=>!!me&&me.pos.distanceTo(baseXZ)<BASE_INTERACT_R;
+function pointerOnMonitor(mx,my){if(menuMode||!me)return false;ray.setFromCamera(new THREE.Vector2((mx/W())*2-1,-(my/H())*2+1),cam);return ray.intersectObject(MONITOR_MESH,false).length>0;}
+R.domElement.addEventListener('pointermove',e=>{if(drag)return;monHover=pointerOnMonitor(e.clientX,e.clientY);R.domElement.style.cursor=(monHover&&nearBaseNow())?'pointer':'';});
+R.domElement.addEventListener('pointerleave',()=>{monHover=false;R.domElement.style.cursor='';});
+function click(mx,my){if(!me)return;
+  if(pointerOnMonitor(mx,my)&&nearBaseNow()){onEnterStudyRoom();return;}   // 1º: monitor (em hover e perto)
+  const ndc=new THREE.Vector2((mx/W())*2-1,-(my/H())*2+1);ray.setFromCamera(ndc,cam);
   for(const a of avatars){if(a===me)continue; if(me.pos.distanceTo(a.pos)<3.0){const hit=ray.intersectObjects(a.meshes,true); if(hit.length){startTalk(a);return;}}}
-  const h=ray.intersectObject(floor); if(h.length){me.target=h[0].point.clone();me.target.y=0; talkingTo=null;}}
+  const h=ray.intersectObject(floor); if(h.length){me.target=clampOutside(h[0].point.clone());me.target.y=0; talkingTo=null;}}
 function startTalk(a){talkingTo=a; me.target=null; document.getElementById('chatTo').textContent='💬 falando com '+a.name; chatInput.focus();
   const greet=["opa, e aí?","salve! bora?","oi ✦ tudo certo?"]; say(a,greet[(Math.random()*greet.length)|0]);
   a.faceTarget=Math.atan2(me.pos.x-a.pos.x,me.pos.z-a.pos.z)+Math.PI;}
@@ -249,9 +264,12 @@ function startTalk(a){talkingTo=a; me.target=null; document.getElementById('chat
 /* ===== estudo com a IA = ativa por PROXIMIDADE da base (não troca de cena) ===== */
 let studying=false;
 const studyBtn=document.getElementById('studyBtn'), opening=document.getElementById('opening');
-studyBtn.onclick=()=>{opening.style.display='flex'; try{if(window.parent&&window.parent!==window)window.parent.postMessage({type:'zaeon:enter-study'},'*');}catch(e){} setTimeout(()=>opening.style.display='none',1600);};
+// intenção de entrar na Sala de Estudos (botão Estudar OU clique no monitor); o app liga à rota real via postMessage
+function onEnterStudyRoom(){opening.style.display='flex'; try{if(window.parent&&window.parent!==window)window.parent.postMessage({type:'zaeon:enter-study'},'*');}catch(e){} setTimeout(()=>opening.style.display='none',1600);}
+studyBtn.onclick=onEnterStudyRoom;
 // colisão: não atravessa a base (desliza na borda do círculo)
-const COLLIDERS=[{x:OFF.x,z:OFF.z,r:1.5}];
+const COLLIDERS=[{x:BASE_POSITION.x,z:BASE_POSITION.z,r:BASE_COLLIDER_R}];
+function clampOutside(p){for(const c of COLLIDERS){const dx=p.x-c.x,dz=p.z-c.z,d=Math.hypot(dx,dz); if(d<c.r){if(d>1e-4){p.x=c.x+dx/d*c.r;p.z=c.z+dz/d*c.r;}else{p.x=c.x+c.r;p.z=c.z;}}} return p;}
 function applyCollision(p){for(const c of COLLIDERS){const dx=p.x-c.x,dz=p.z-c.z,d=Math.hypot(dx,dz); if(d<c.r&&d>1e-4){p.x=c.x+dx/d*c.r; p.z=c.z+dz/d*c.r;}}}
 // sentar na cadeira
 const baseXZ=new THREE.Vector3(OFF.x,0,OFF.z);
@@ -294,7 +312,7 @@ function loop(now){const dt=Math.min(0.05,clock.getDelta()),t=now*0.001;
     const spd=keys.shift?7.5:4;
     if(ix||iz){const sa=Math.sin(camAz),ca=Math.cos(camAz);let wx=ix*ca+iz*sa,wz=-ix*sa+iz*ca;const m=Math.hypot(wx,wz)||1;wx/=m;wz/=m;me.pos.x+=wx*dt*spd;me.pos.z+=wz*dt*spd;me.target=null;meMoving=true;me.faceTarget=Math.atan2(wx,wz)+Math.PI;talkingTo=null;}
     else if(me&&me.target){const dx=me.target.x-me.pos.x,dz=me.target.z-me.pos.z,d=Math.hypot(dx,dz);if(d>0.12){me.pos.x+=dx/d*dt*4;me.pos.z+=dz/d*dt*4;meMoving=true;me.faceTarget=Math.atan2(dx,dz)+Math.PI;}else me.target=null;}
-    const nearBase=!!me&&me.pos.distanceTo(baseXZ)<3.4;
+    const nearBase=!!me&&me.pos.distanceTo(baseXZ)<BASE_INTERACT_R;
     const wantSit=nearBase&&!meMoving&&(!me||!me.target)&&grounded;
     sitT+=((wantSit?1:0)-sitT)*Math.min(1,dt*3);
     if(me){ if(sitT>0.05){me.pos.lerp(seatWorld,Math.min(1,dt*3)); me.faceTarget=SEAT_FACE;} else applyCollision(me.pos); }
@@ -303,7 +321,7 @@ function loop(now){const dt=Math.min(0.05,clock.getDelta()),t=now*0.001;
   // colegas vagam
   avatars.forEach(a=>{let moving=false;
     if(a===me){moving=meMoving;}
-    else{const px=a.pos.x,pz=a.pos.z;const[cx,cz,sp,ph]=a.wparam;a.pos.x=cx+Math.cos(t*sp+ph)*2.2;a.pos.z=cz+Math.sin(t*sp*1.2+ph)*1.6;const dx=a.pos.x-px,dz=a.pos.z-pz;moving=Math.hypot(dx,dz)>0.004;if(moving)a.faceTarget=Math.atan2(dx,dz)+Math.PI;}
+    else{const px=a.pos.x,pz=a.pos.z;const[cx,cz,sp,ph]=a.wparam;a.pos.x=cx+Math.cos(t*sp+ph)*2.2;a.pos.z=cz+Math.sin(t*sp*1.2+ph)*1.6;applyCollision(a.pos);const dx=a.pos.x-px,dz=a.pos.z-pz;moving=Math.hypot(dx,dz)>0.004;if(moving)a.faceTarget=Math.atan2(dx,dz)+Math.PI;}
     a.grp.position.set(a.pos.x,0,a.pos.z);
     // crossfade idle<->walk
     const isRun=(a===me)&&moving&&keys.shift, k=Math.min(1,dt*8);
@@ -323,9 +341,14 @@ function loop(now){const dt=Math.min(0.05,clock.getDelta()),t=now*0.001;
   // base de estudo: ativa por PROXIMIDADE (estado de estudo/escrita c/ a IA)
   {const pa=upGeo.attributes.position.array; for(let i=0;i<upN;i++){const d=upData[i]; d.y+=d.sp*dt; if(d.y>15){d.y=0;d.a=Math.random()*6.283;d.r=0.25+Math.random()*0.9;} const rr=d.r*(0.5+d.y*0.06), ang=d.a+d.y*d.dr*0.35; pa[i*3]=Math.cos(ang)*rr; pa[i*3+1]=d.y; pa[i*3+2]=Math.sin(ang)*rr;} upGeo.attributes.position.needsUpdate=true; upPts.material.size=0.3+0.08*Math.sin(t*3);}
   beamCore.material.opacity=0.6+0.3*Math.sin(t*2.2);
-  if(me){studying=me.pos.distanceTo(new THREE.Vector3(OFF.x,0,OFF.z))<3.4; deskLight.intensity=1.5+(studying?1.4:0);
+  if(me){studying=me.pos.distanceTo(baseXZ)<BASE_INTERACT_R; deskLight.intensity=1.5+(studying?1.4:0);
     studyBtn.classList.toggle('on',studying);
     document.getElementById('chatTo').textContent=talkingTo?('💬 falando com '+talkingTo.name):'';}
+  { const hv=monHover&&!menuMode, near=nearBaseNow(), pulse=0.5+0.5*Math.sin(t*5);
+    scrEdge.material.opacity=hv?(near?0.75+0.25*pulse:0.95):0.85; scrEdge.material.color.setHex(hv&&near?0xffffff:0x66e6ff);
+    scrGlow.material.opacity=hv?(near?0.3+0.12*pulse:0.2):0.13;
+    if(hv){const p=proj(new THREE.Vector3(0,1.85+0.85,-1.44).applyEuler(new THREE.Euler(0,BASE_ROTATION,0)).add(BASE_POSITION)); monLabel.textContent=near?'⏎ Entrar na Sala de Estudos':'Chegue perto para entrar'; monLabel.classList.toggle('far',!near); monLabel.style.left=Math.min(W()-110,Math.max(110,p.x))+'px'; monLabel.style.top=p.y+'px'; monLabel.style.display=p.vis?'block':'none';}
+    else monLabel.style.display='none'; }
   txtLines.forEach((ln,i)=>ln.material.opacity=(studying?0.6:0.28)+0.22*(0.5+0.5*Math.sin(t*2+i)));
   crystals.forEach(c=>{c.m.position.y=c.baseY+Math.sin(t*1.2+c.ph)*0.12; c.m.rotation.y+=dt*0.6; c.m.material.emissiveIntensity=1.0+0.6*(0.5+0.5*Math.sin(t*2.5+c.ph));});
   for(let i=SPEECH.length-1;i>=0;i--){const s=SPEECH[i];if(now>s.until){s.el.remove();SPEECH.splice(i,1);continue;}const p=proj(new THREE.Vector3(s.av.pos.x,2.4,s.av.pos.z));s.el.style.left=p.x+'px';s.el.style.top=p.y+'px';s.el.style.display=p.vis?'block':'none';}
