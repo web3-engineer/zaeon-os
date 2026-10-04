@@ -3,7 +3,7 @@
 # Ceu = shader de nebulosa do dono (visio.VR) irradiando do buraco negro + estrelas redondas.
 # Avatares = CORPO HUMANO real (GLB rigado) renderizado como SER DE LUZ (holografico) + caminhada.
 # UI = so chat. RPG: chega perto + clica no personagem pra falar.
-HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Zaeon — Mapa Cósmico</title>
+HTML = r"""<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Zaeon — Mapa Cósmico</title>
 <style>
   :root{color-scheme:dark} *{box-sizing:border-box}
   html{scroll-behavior:smooth}
@@ -47,6 +47,20 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Zaeon — Map
   #load .logo{color:#cfe6ff;font-size:16px;font-weight:700;letter-spacing:.28em}
   #load .bar{width:220px;height:6px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
   #load .fill{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#9fe8ff,#49b6ff);transition:width .35s cubic-bezier(.3,.8,.3,1)}
+  /* MOBILE / touch: joystick + correr/pular, chat compacto no topo, LOD (menos partículas, DPR menor) */
+  #touchUI{display:none}
+  body.touch #touchUI{display:block}
+  body.touch #touchUI.off{display:none}
+  #joy{position:fixed;left:max(22px,env(safe-area-inset-left));bottom:max(26px,env(safe-area-inset-bottom));width:116px;height:116px;border-radius:50%;z-index:25;touch-action:none;background:rgba(120,170,255,.10);border:1px solid rgba(140,190,255,.35);backdrop-filter:blur(4px)}
+  #joy i{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#d8f4ff,#49b6ff);box-shadow:0 0 18px rgba(90,200,255,.6);pointer-events:none}
+  .tbtn{position:fixed;z-index:25;width:62px;height:62px;border-radius:50%;border:1px solid rgba(140,190,255,.45);background:rgba(20,40,80,.55);color:#dff3ff;font-weight:800;font-size:12px;touch-action:none;backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;user-select:none}
+  .tbtn.on{background:linear-gradient(180deg,#9fe8ff,#49b6ff);color:#06121c}
+  #btnJump{right:max(22px,env(safe-area-inset-right));bottom:max(30px,env(safe-area-inset-bottom))}
+  #btnRun{right:max(94px,calc(env(safe-area-inset-right) + 72px));bottom:max(30px,env(safe-area-inset-bottom))}
+  body.touch .chat{left:10px;right:auto;top:64px;bottom:auto;width:min(68vw,270px)}
+  body.touch .chat .log{max-height:64px}
+  body.touch #hint{max-width:92vw;white-space:normal;text-align:center}
+  body.touch #studyBtn{bottom:168px}
   #monLabel{position:fixed;transform:translate(-50%,-100%);z-index:22;display:none;pointer-events:none;white-space:nowrap;font-size:12.5px;font-weight:700;letter-spacing:.03em;color:#06121c;background:linear-gradient(180deg,#b8f0ff,#5cc4ff);padding:6px 12px;border-radius:999px;box-shadow:0 0 18px rgba(90,200,255,.7)}
   #monLabel.far{background:rgba(20,30,50,.75);color:#bfe6ff;box-shadow:none;border:1px solid rgba(120,200,255,.35)}
   #studyBtn{position:fixed;left:50%;bottom:92px;transform:translateX(-50%) scale(.9);z-index:21;display:none;cursor:pointer;color:#06121c;font-weight:800;font-size:14px;letter-spacing:.02em;padding:12px 22px;border-radius:999px;border:none;background:linear-gradient(180deg,#9fe8ff,#49b6ff);box-shadow:0 0 26px rgba(90,200,255,.75);transition:transform .18s,box-shadow .18s;opacity:0}
@@ -71,6 +85,7 @@ HTML = r"""<!doctype html><html><head><meta charset="utf-8"><title>Zaeon — Map
 <div id="hint">WASD/clique p/ andar · Shift correr · Espaço pular · perto de um colega p/ falar · na base p/ estudar</div>
 <div id="load"><div class="bar"><div class="fill"></div></div></div>
 <button id="studyBtn">✦ Estudar</button>
+<div id="touchUI" class="off"><div id="joy"><i id="joyKnob"></i></div><button class="tbtn" id="btnRun" aria-label="Correr">CORRER</button><button class="tbtn" id="btnJump" aria-label="Pular">PULAR</button></div>
 <div id="monLabel"></div>
 <div id="opening">abrindo a Sala de Estudos…</div>
 <div class="chat"><div class="to" id="chatTo"></div><div class="log" id="chatLog"></div><input id="chatInput" placeholder="Falar…  (Enter)"></div>
@@ -81,7 +96,10 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {clone as skClone} from 'three/addons/utils/SkeletonUtils.js';
 
 const W=()=>innerWidth,H=()=>innerHeight;
-const R=new THREE.WebGLRenderer({antialias:true}); R.setPixelRatio(Math.min(2,devicePixelRatio||1)); R.setSize(W(),H()); R.autoClear=false; R.outputColorSpace=THREE.SRGBColorSpace;
+// celular/tablet: controles touch + LOD (menos partículas, DPR menor, sem antialias)
+const TOUCH=matchMedia('(pointer:coarse)').matches||('ontouchstart' in window), LOW=TOUCH||Math.min(innerWidth,innerHeight)<520;
+if(TOUCH)document.body.classList.add('touch');
+const R=new THREE.WebGLRenderer({antialias:!LOW}); R.setPixelRatio(Math.min(LOW?1.5:2,devicePixelRatio||1)); R.setSize(W(),H()); R.autoClear=false; R.outputColorSpace=THREE.SRGBColorSpace;
 document.getElementById('stage').appendChild(R.domElement);
 addEventListener('resize',()=>{cam.aspect=W()/H();cam.updateProjectionMatrix();R.setSize(W(),H());});
 // barra de loading estilo macOS
@@ -124,7 +142,7 @@ const cam=new THREE.PerspectiveCamera(45,W()/H(),0.1,900);
 scene.add(new THREE.HemisphereLight(0x5566aa,0x0a0a16,0.9));
 const key=new THREE.DirectionalLight(0x99bbff,0.6); key.position.set(4,9,6); scene.add(key);
 // estrelas redondas
-const SN=1500,spv=new Float32Array(SN*3);
+const SN=LOW?700:1500,spv=new Float32Array(SN*3);
 for(let i=0;i<SN;i++){const u=Math.random(),v=Math.random(),th=u*6.283,ph=Math.acos(2*v-1),rr=160*Math.cbrt(Math.random());spv[i*3]=rr*Math.sin(ph)*Math.cos(th);spv[i*3+1]=Math.abs(rr*Math.sin(ph)*Math.sin(th))*0.9+6;spv[i*3+2]=rr*Math.cos(ph);}
 const sg=new THREE.BufferGeometry(); sg.setAttribute('position',new THREE.BufferAttribute(spv,3));
 const stars=new THREE.Points(sg,new THREE.PointsMaterial({color:0xffffff,size:0.9,map:starTex,sizeAttenuation:true,transparent:true,opacity:0.9,depthWrite:false,blending:THREE.AdditiveBlending}));
@@ -171,7 +189,7 @@ for(let i=0;i<7;i++){const ang=i/7*6.283, rad=2.5+Math.random()*0.6, h=0.35+Math
   c.scale.y=1.6+Math.random(); c.position.set(Math.cos(ang)*rad,h,Math.sin(ang)*rad); office.add(c); crystals.push({m:c,baseY:h,ph:Math.random()*6.28});}
 // FEIXE DE LUZ CÓSMICA saindo da base (marco visível de longe)
 // NEURÔNIOS subindo da base (vivo e fluido, estilo cérebro) — corkscrew que sobe e se espalha
-const upN=160, upPos=new Float32Array(upN*3), upData=[];
+const upN=LOW?80:160, upPos=new Float32Array(upN*3), upData=[];
 for(let i=0;i<upN;i++)upData.push({a:Math.random()*6.283, r:0.25+Math.random()*0.9, y:Math.random()*15, sp:1.3+Math.random()*1.9, dr:0.5+Math.random()*0.7});
 const upGeo=new THREE.BufferGeometry(); upGeo.setAttribute('position',new THREE.BufferAttribute(upPos,3));
 const upPts=new THREE.Points(upGeo,new THREE.PointsMaterial({size:0.34,map:starTex,transparent:true,opacity:0.92,depthWrite:false,blending:THREE.AdditiveBlending,color:0x8fe8ff})); office.add(upPts);
@@ -188,7 +206,7 @@ chair.position.set(0,0,-0.15); office.add(chair);
 /* ===== avatares: corpo humano real (GLB) como SER DE LUZ ===== */
 const GLB='https://threejs.org/examples/models/gltf/Soldier.glb';
 const avatars=[]; let me=null;
-function neuronsFor(color){const Mn=240,np=new Float32Array(Mn*3);for(let i=0;i<Mn;i++){const y=0.2+Math.random()*1.6,r=0.3+Math.random()*0.5,a=Math.random()*6.28;np[i*3]=Math.cos(a)*r;np[i*3+1]=y;np[i*3+2]=Math.sin(a)*r;}
+function neuronsFor(color){const Mn=LOW?110:240,np=new Float32Array(Mn*3);for(let i=0;i<Mn;i++){const y=0.2+Math.random()*1.6,r=0.3+Math.random()*0.5,a=Math.random()*6.28;np[i*3]=Math.cos(a)*r;np[i*3+1]=y;np[i*3+2]=Math.sin(a)*r;}
   const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(np,3));
   return new THREE.Points(g,new THREE.PointsMaterial({size:0.12,map:starTex,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,color}));}
 new GLTFLoader().load(GLB,(gltf)=>{
@@ -228,12 +246,22 @@ let nextChat=performance.now()+4000;
 // câmera orbital LIVRE (horizontal + vertical), baixa p/ ver o personagem + estrelas + buraco negro atrás
 let camAz=0,camPitch=0.16,camDist=9; const camT=new THREE.Vector3(0,1.2,0);
 function updateCam(){
-  if(menuMode){ cam.position.lerp(new THREE.Vector3(OFF.x-2.6,2.5,OFF.z+4.8),0.06); camT.lerp(new THREE.Vector3(OFF.x,1.4,OFF.z-0.6),0.06); cam.lookAt(camT.x,camT.y,camT.z); return; }
+  if(menuMode){ const pm=Math.min(2.4,Math.max(1,0.9/cam.aspect)); /* retrato: afasta p/ caber a base */ cam.position.lerp(new THREE.Vector3(OFF.x-2.6*pm,2.5+0.9*(pm-1),OFF.z+4.8*pm),0.06); camT.lerp(new THREE.Vector3(OFF.x,pm>1?0.1:1.4,OFF.z-0.6),0.06); cam.lookAt(camT.x,camT.y,camT.z); return; }
   camT.lerp(new THREE.Vector3(me.pos.x,1.2,me.pos.z),0.12);
   const cp=Math.cos(camPitch),sp=Math.sin(camPitch);
   cam.position.set(camT.x+Math.sin(camAz)*cp*camDist, Math.max(0.6,camT.y+sp*camDist+0.8), camT.z+Math.cos(camAz)*cp*camDist);
   cam.lookAt(camT.x,camT.y+0.8,camT.z);}
 const keys={}; const typing=()=>document.activeElement&&document.activeElement.tagName==='INPUT';
+// joystick virtual (touch): arrasta o knob p/ andar; botões CORRER (liga/desliga) e PULAR
+const joy={x:0,y:0,on:false}; { const el=document.getElementById('joy'),kn=document.getElementById('joyKnob'); let pid=null; const RR=40;
+  const set=e=>{const b=el.getBoundingClientRect(),cx=b.left+b.width/2,cy=b.top+b.height/2;let dx=e.clientX-cx,dy=e.clientY-cy;const d=Math.hypot(dx,dy);if(d>RR){dx=dx/d*RR;dy=dy/d*RR;}kn.style.transform='translate('+dx+'px,'+dy+'px)';joy.x=dx/RR;joy.y=dy/RR;joy.on=Math.hypot(joy.x,joy.y)>0.15;};
+  const end=()=>{pid=null;joy.x=joy.y=0;joy.on=false;kn.style.transform='';};
+  el.addEventListener('pointerdown',e=>{e.stopPropagation();pid=e.pointerId;try{el.setPointerCapture(pid);}catch(_){} set(e);});
+  el.addEventListener('pointermove',e=>{e.stopPropagation();if(e.pointerId===pid)set(e);});
+  ['pointerup','pointercancel'].forEach(n=>el.addEventListener(n,e=>{e.stopPropagation();if(e.pointerId===pid)end();}));
+  const bj=document.getElementById('btnJump'),br=document.getElementById('btnRun');
+  bj.addEventListener('pointerdown',e=>{e.stopPropagation();if(!menuMode)tryJump();});
+  br.addEventListener('pointerdown',e=>{e.stopPropagation();keys.shift=!keys.shift;br.classList.toggle('on',!!keys.shift);}); }
 let jumpY=0,jumpVy=0,grounded=true; const GRAV=20, JUMP_V=6.5;
 function tryJump(){if(grounded){jumpVy=JUMP_V;grounded=false;}}
 addEventListener('keydown',e=>{if(typing())return;const k=e.key.toLowerCase();
@@ -241,11 +269,15 @@ addEventListener('keydown',e=>{if(typing())return;const k=e.key.toLowerCase();
   if(k===' '||k==='spacebar'){ if(menuMode)spaceHeld=true; else tryJump(); e.preventDefault(); return;}
   if(["w","a","s","d","arrowup","arrowdown","arrowleft","arrowright"].includes(k)){keys[k]=true;e.preventDefault();}});
 addEventListener('keyup',e=>{const k=e.key.toLowerCase(); if(k==='shift'){keys.shift=false;return;} if(k===' '||k==='spacebar'){spaceHeld=false;return;} keys[k]=false;});
+const ptrs=new Map(); let pinch0=0,dist0=0; R.domElement.style.touchAction='pan-y';
 let drag=null,moved=false; const ray=new THREE.Raycaster();
-R.domElement.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,az:camAz,pitch:camPitch};moved=false;});
-addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>3)moved=true;
+R.domElement.addEventListener('pointerdown',e=>{ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY}); if(ptrs.size===2){const [a,b]=[...ptrs.values()];pinch0=Math.hypot(a.x-b.x,a.y-b.y);dist0=camDist;} drag={x:e.clientX,y:e.clientY,az:camAz,pitch:camPitch};moved=false;});
+addEventListener('pointermove',e=>{if(ptrs.has(e.pointerId))ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===2&&pinch0){const [a,b]=[...ptrs.values()];camDist=Math.min(24,Math.max(6,dist0*pinch0/Math.max(20,Math.hypot(a.x-b.x,a.y-b.y))));moved=true;return;}
+  if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>3)moved=true;
   camAz=drag.az-dx*0.006; camPitch=Math.max(-0.05,Math.min(1.25,drag.pitch+dy*0.005));});
-addEventListener('pointerup',e=>{if(drag&&!moved)click(e.clientX,e.clientY);drag=null;});
+addEventListener('pointerup',e=>{const was=ptrs.size; ptrs.delete(e.pointerId); if(ptrs.size<2)pinch0=0; if(drag&&!moved&&was===1)click(e.clientX,e.clientY);if(!ptrs.size)drag=null;});
+addEventListener('pointercancel',e=>{ptrs.delete(e.pointerId);if(!ptrs.size){drag=null;pinch0=0;}});
 R.domElement.addEventListener('wheel',e=>{e.preventDefault();camDist=Math.min(24,Math.max(6,camDist*(e.deltaY>0?1.1:0.9)));},{passive:false});
 const monLabel=document.getElementById('monLabel'); let monHover=false;
 const nearBaseNow=()=>!!me&&me.pos.distanceTo(baseXZ)<BASE_INTERACT_R;
@@ -287,10 +319,12 @@ const PHRASES=["O conhecimento que não dorme <b>trabalha por você</b>.","Toda 
 document.querySelector('.chat').style.display='none';
 function play(go){ if(!menuMode)return; menuMode=false; menuUI.classList.add('off'); holdT=0; holdfill.style.width='0%';
   document.getElementById('hint').style.display=''; document.querySelector('.chat').style.display=''; document.getElementById('studyBtn').style.display='';
+  document.getElementById('touchUI').classList.remove('off'); R.domElement.style.touchAction='none';
   window.scrollTo({top:0,behavior:'smooth'});
   if(go){try{if(window.parent&&window.parent!==window)window.parent.postMessage({type:'zaeon:menu',go},'*');}catch(e){}}
 }
 gmenu.querySelectorAll('button').forEach(b=>b.onclick=()=>play(b.dataset.go));
+if(TOUCH){const sp=document.querySelector('.spacep');if(sp)sp.innerHTML='toque numa opção para viajar pro cyberespaço';document.getElementById('hint').textContent='joystick p/ andar · toque no chão p/ ir · pinça p/ zoom';}
 if(/[?&]play=1/.test(location.search))play('viajar'); // tela cheia: a sessão já começou na janela
 
 /* ===== loop ===== */
@@ -310,6 +344,7 @@ function loop(now){const dt=Math.min(0.05,clock.getDelta()),t=now*0.001;
   if(!menuMode){
     let ix=0,iz=0; if(keys.w||keys.arrowup)iz-=1;if(keys.s||keys.arrowdown)iz+=1;if(keys.a||keys.arrowleft)ix-=1;if(keys.d||keys.arrowright)ix+=1;
     const spd=keys.shift?7.5:4;
+    if(joy.on){ix+=joy.x;iz+=joy.y;}
     if(ix||iz){const sa=Math.sin(camAz),ca=Math.cos(camAz);let wx=ix*ca+iz*sa,wz=-ix*sa+iz*ca;const m=Math.hypot(wx,wz)||1;wx/=m;wz/=m;me.pos.x+=wx*dt*spd;me.pos.z+=wz*dt*spd;me.target=null;meMoving=true;me.faceTarget=Math.atan2(wx,wz)+Math.PI;talkingTo=null;}
     else if(me&&me.target){const dx=me.target.x-me.pos.x,dz=me.target.z-me.pos.z,d=Math.hypot(dx,dz);if(d>0.12){me.pos.x+=dx/d*dt*4;me.pos.z+=dz/d*dt*4;meMoving=true;me.faceTarget=Math.atan2(dx,dz)+Math.PI;}else me.target=null;}
     const nearBase=!!me&&me.pos.distanceTo(baseXZ)<BASE_INTERACT_R;
@@ -337,7 +372,7 @@ function loop(now){const dt=Math.min(0.05,clock.getDelta()),t=now*0.001;
   const proj=v=>{const p=v.clone().project(cam);return{x:(p.x*.5+.5)*W(),y:(-p.y*.5+.5)*H(),vis:p.z<1};};
   avatars.forEach(a=>{const s=proj(new THREE.Vector3(a.pos.x,2.1,a.pos.z));a.tag.style.left=s.x+'px';a.tag.style.top=s.y+'px';a.tag.style.display=(menuMode||!s.vis)?'none':'block';
     const near=a!==me&&me&&me.pos.distanceTo(a.pos)<3.0; a.tag.classList.toggle('near',near); a.tag.textContent=(near?'💬 ':'')+a.name;});
-  if(menuMode){const mp=proj(monitorWorld); gmenu.style.display=mp.vis?'flex':'none'; if(mp.vis){gmenu.style.left=mp.x+'px'; gmenu.style.top=mp.y+'px';}} else gmenu.style.display='none';
+  if(menuMode){ if(cam.aspect<0.8){gmenu.style.display='flex'; gmenu.style.left='50%'; gmenu.style.top='79%';} /* retrato: menu fixo, sempre tocável */ else {const mp=proj(monitorWorld); gmenu.style.display=mp.vis?'flex':'none'; if(mp.vis){gmenu.style.left=mp.x+'px'; gmenu.style.top=mp.y+'px';}} } else gmenu.style.display='none';
   // base de estudo: ativa por PROXIMIDADE (estado de estudo/escrita c/ a IA)
   {const pa=upGeo.attributes.position.array; for(let i=0;i<upN;i++){const d=upData[i]; d.y+=d.sp*dt; if(d.y>15){d.y=0;d.a=Math.random()*6.283;d.r=0.25+Math.random()*0.9;} const rr=d.r*(0.5+d.y*0.06), ang=d.a+d.y*d.dr*0.35; pa[i*3]=Math.cos(ang)*rr; pa[i*3+1]=d.y; pa[i*3+2]=Math.sin(ang)*rr;} upGeo.attributes.position.needsUpdate=true; upPts.material.size=0.3+0.08*Math.sin(t*3);}
   beamCore.material.opacity=0.6+0.3*Math.sin(t*2.2);
