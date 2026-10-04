@@ -42,7 +42,12 @@ export type MapaNo = {
   closet?: string;
   /** Último toque (ms epoch) — memória temporal (Zep): recência pesa na recuperação. */
   tLast?: number;
+  /** RESUMO do tópico (o que é) — gerado pelo modelo no percurso; se faltar, a UI deriva do corpo/closet. */
+  resumo?: string;
+  /** REQUISITO: o que precisa ser atendido pra concluir o tópico (critério de avanço/validação). */
+  req?: string;
 };
+export const MAX_RESUMO_CHARS = 300;
 
 /** Uma gaveta: o trecho verbatim (pergunta + núcleo da resposta) e as mensagens de origem. */
 export type Drawer = { msgIds: string[]; texto: string; ts: number };

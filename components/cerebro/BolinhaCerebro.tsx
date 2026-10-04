@@ -1,6 +1,6 @@
 "use client";
 /**
- * BolinhaCerebro — a bolinha azul da conversa + o botão "🧠 ver cérebro" (HANDOFF §3). Estados:
+ * BolinhaCerebro — a bolinha azul da conversa + o botão "ver mapa" (HANDOFF §3). Estados:
  * oculta (nada) · sugerida (azul fraca pulsando, "gerar") · gerando (anel girando) · ativa (anel de
  * completude) · vazia (traçar percurso). Clique: sugerida/vazia → gera; ativa/gerando → abre o painel.
  */
@@ -24,7 +24,7 @@ export default function BolinhaCerebro({ estado, completude = 0, onClick, aberto
         {estado === "ativa" && <span className="absolute inset-0 grid place-items-center text-[9px] font-black text-cyan-100">{pct}</span>}
         {estado === "gerando" && <span className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-cyan-300" />}
       </span>
-      <span className="whitespace-nowrap">🧠 {ROTULO[estado]}</span>
+      <span className="whitespace-nowrap">{ROTULO[estado]}</span>
     </button>
   );
 }

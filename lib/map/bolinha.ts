@@ -1,7 +1,7 @@
 /**
  * lib/map/bolinha.ts — os ESTADOS da bolinha/painel (HANDOFF_CEREBRO_AURA §3), PUROS e
  * client-safe. "Sempre mostra algo, nunca quebra":
- *   oculta → conversa comum · sugerida → azul fraca pulsando ("gerar cérebro") · gerando →
+ *   oculta → conversa comum · sugerida → azul fraca pulsando ("gerar mapa") · gerando →
  *   loading do backbone · ativa → cérebro vivo · vazia → falhou/sem percurso (re-tentar).
  */
 export type EstadoBolinha = "oculta" | "sugerida" | "gerando" | "ativa" | "vazia";
@@ -15,5 +15,5 @@ export function estadoDaBolinha(i: { estudavel: boolean; mapaId: string | null; 
 }
 
 export const ROTULO: Record<EstadoBolinha, string> = {
-  oculta: "", sugerida: "Gerar cérebro", gerando: "Gerando o cérebro…", ativa: "Ver cérebro", vazia: "Traçar percurso",
+  oculta: "", sugerida: "Gerar mapa", gerando: "Gerando o mapa…", ativa: "Ver mapa", vazia: "Traçar percurso",
 };

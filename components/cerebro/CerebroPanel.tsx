@@ -16,6 +16,7 @@ import { useIsMobile } from "@/lib/ui/useIsMobile";
 import type { MapaNo } from "@/lib/map/tipos";
 import { regioesDoMapa, type RegiaoVisual } from "./CerebroCanvas";
 import { recencia } from "@/lib/map/memoria";
+import { REQ_POR_MODO, requisitoDoNo, resumoDoNo } from "@/lib/map/resumoNo";
 import type { CerebroState } from "./useCerebro";
 
 const CerebroCanvas = dynamic(() => import("./CerebroCanvas"), { ssr: false, loading: () => <div className="h-full w-full bg-[#060a1a]" /> });
@@ -61,39 +62,47 @@ export default function CerebroPanel({ st, onFechar, onGerar, onAbrirMensagem }:
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }}
-      className="absolute inset-0 z-50 flex flex-col bg-[#060a1a] text-[#dbe8ff]" role="dialog" aria-modal="true" aria-label="Cérebro do estudo"
+      className="absolute inset-0 z-50 flex flex-col bg-[#060a1a] text-[#dbe8ff]" role="dialog" aria-modal="true" aria-label="Mapa de conhecimento"
       onMouseDown={(e) => e.stopPropagation()}
     >
       {/* cabeçalho */}
       <div className="flex shrink-0 items-center gap-3 border-b border-white/10 px-4 py-2.5">
-        <span className="text-lg" aria-hidden>🧠</span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-bold">{mapa?.titulo || st.tituloSugerido || "Cérebro do estudo"}</p>
-          <p className="truncate text-[11px] text-[#9fb6e0]">
-            {mapa ? `${ARQUETIPOS[mapa.tipoTopico].rotulo} · ${mapa.objetivo || "objetivo a definir"}` : "arraste pra girar"}
-            <span className="ml-2 text-[#ffd56b]">— amarelo: pra onde ir</span><span className="ml-2 text-[#49b6ff]">· azul: o que já vive aqui</span>
-          </p>
+          <p className="truncate text-[13px] font-bold">{mapa?.titulo || st.tituloSugerido || "Mapa de conhecimento"}</p>
+          {mapa && <p className="truncate text-[11px] text-[#9fb6e0]">{ARQUETIPOS[mapa.tipoTopico].rotulo} · {mapa.objetivo || "objetivo a definir"}</p>}
         </div>
         {st.estado !== "gerando" && mapa && (
           <button onClick={() => void st.gerar()} title={mapa.backbone.length ? "Retraçar o percurso" : ROTULO.vazia} className="rounded-lg border border-white/15 p-1.5 text-[#9fb6e0] hover:text-white"><RefreshCw size={14} /></button>
         )}
-        <button onClick={onFechar} aria-label="Fechar o cérebro" className="rounded-lg border border-white/15 p-1.5 text-[#9fb6e0] hover:text-white"><X size={16} /></button>
+        <button onClick={onFechar} aria-label="Fechar o mapa" className="rounded-lg border border-white/15 p-1.5 text-[#9fb6e0] hover:text-white"><X size={16} /></button>
       </div>
 
       {/* corpo por estado */}
       <div className="relative min-h-0 flex-1">
-        {st.estado === "ativa" && mapa && (mobile ? <Lista regioes={regioes} nos={mapa.nos} aoRegiao={aoRegiao} /> : <CerebroCanvas regioes={regioes} sinapses={sinapses} onRegiao={aoRegiao} />)}
+        {st.estado === "ativa" && mapa && (mobile ? <Lista regioes={regioes} aoRegiao={aoRegiao} /> : <CerebroCanvas regioes={regioes} sinapses={sinapses} onRegiao={aoRegiao} />)}
         {/* FICHA do nó: closet + gavetas (verbatim) + abrir a conversa */}
-        {ficha && (
+        {ficha && st.estado === "ativa" && (
           <motion.aside initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} className="absolute bottom-3 right-3 top-3 z-10 flex w-[min(360px,88vw)] flex-col rounded-2xl border border-[rgba(120,170,255,.25)] bg-[rgba(10,21,38,.92)] backdrop-blur">
             <div className="flex items-start gap-2 border-b border-white/10 px-4 py-3">
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[13px] font-bold">{ficha.label}</p>
-                <p className="text-[11px] text-[#9fb6e0]">{ficha.estado.replace("_", " ")}{ficha.closet && ficha.closet !== ficha.label ? ` · ${ficha.closet}` : ""}</p>
+                <p className="text-[11px] text-[#9fb6e0]">{ficha.estado.replace("_", " ")}</p>
               </div>
               <button onClick={() => setFichaId(null)} aria-label="Fechar ficha" className="rounded-lg border border-white/15 p-1 text-[#9fb6e0] hover:text-white"><X size={14} /></button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+              {/* RESUMO: o que é · o que precisa ser atendido pra concluir · (no último passo) como é validado */}
+              {mapa && (() => {
+                const conclusao = mapa.backbone[mapa.backbone.length - 1] === ficha.id;
+                return (
+                  <div className="mb-3 space-y-2.5 border-b border-white/10 pb-3">
+                    <div><p className="text-[10px] font-bold uppercase tracking-wider text-[#78beff]">O que é</p><p className="text-[12.5px] leading-snug text-[#dbe8ff]">{resumoDoNo(ficha)}</p></div>
+                    <div><p className="text-[10px] font-bold uppercase tracking-wider text-[#ffd56b]">Para concluir</p><p className="text-[12.5px] leading-snug text-[#dbe8ff]">{requisitoDoNo(ficha, { modoValidacao: mapa.modoValidacao, tipoTopico: mapa.tipoTopico, criterioCompletude: mapa.criterioCompletude, ehConclusao: conclusao })}</p></div>
+                    {conclusao && <div><p className="text-[10px] font-bold uppercase tracking-wider text-[#9fe0ff]">Validação</p><p className="text-[12.5px] leading-snug text-[#dbe8ff]">{REQ_POR_MODO[mapa.modoValidacao]}</p></div>}
+                  </div>
+                );
+              })()}
+              {((ficha.drawers?.length ?? 0) > 0 || membros.length > 0) && <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[#49b6ff]">Memória</p>}
               {(ficha.drawers?.length ?? 0) === 0 && membros.length === 0 && <p className="text-[12px] text-[#9fb6e0]">Ainda sem memória aqui — o que você conversar sobre isto vira gaveta.</p>}
               {[ficha, ...membros].map((n) => (n.drawers?.length ? (
                 <div key={n.id} className="mb-3">
@@ -112,11 +121,19 @@ export default function CerebroPanel({ st, onFechar, onGerar, onAbrirMensagem }:
             </div>
           </motion.aside>
         )}
-        {st.estado === "gerando" && <Centro><Sparkles className="animate-pulse text-cyan-300" /><p className="text-sm font-semibold">Gerando o cérebro…</p><p className="text-[12px] text-[#9fb6e0]">classificando o tema e traçando o percurso</p></Centro>}
+        {st.estado === "gerando" && (
+          <Centro>
+            <Sparkles className="animate-pulse text-cyan-300" />
+            <p className="text-sm font-semibold">Gerando o mapa…</p>
+            {/* a barra de progresso só existe durante a GERAÇÃO (nunca no mapa pronto) */}
+            <div role="progressbar" aria-label="Gerando o mapa" className="h-1.5 w-[min(260px,70vw)] overflow-hidden rounded-full bg-white/10"><div className="h-full w-1/3 animate-[cerebro-gerando_1.4s_ease-in-out_infinite] rounded-full bg-gradient-to-r from-cyan-200 to-sky-400" /></div>
+            <style>{`@keyframes cerebro-gerando{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}`}</style>
+          </Centro>
+        )}
         {(st.estado === "sugerida" || st.estado === "vazia" || st.estado === "oculta") && (
           <Centro>
             <p className="text-sm font-semibold">{st.estado === "vazia" ? "Este estudo ainda não tem percurso." : st.estado === "sugerida" ? "Esta conversa parece um estudo." : "Esta conversa ainda não virou um estudo."}</p>
-            <p className="max-w-sm text-[12px] text-[#9fb6e0]">{st.erro ? `Última tentativa falhou: ${st.erro}` : "O cérebro nasce quando você pede: a Aura classifica o tema, traça o percurso e, a cada resposta, acende o que você aprendeu."}</p>
+            {st.erro && <p className="max-w-sm text-[12px] text-[#9fb6e0]">Última tentativa falhou: {st.erro}</p>}
             {st.estado !== "oculta" && <button onClick={gerar} className="mt-2 rounded-xl border border-cyan-300/40 bg-cyan-500/15 px-4 py-2 text-[13px] font-bold text-cyan-100 hover:bg-cyan-500/25">{st.erro ? "Tentar de novo" : ROTULO[st.estado]}</button>}
           </Centro>
         )}
@@ -134,13 +151,6 @@ export default function CerebroPanel({ st, onFechar, onGerar, onAbrirMensagem }:
             {aviso && <span className="rounded-lg bg-black/50 px-2 py-1 text-[11px] text-[#cfe0ff]">{aviso}</span>}
           </div>
         )}
-        {/* barras (sempre que há mapa) */}
-        {mapa && st.estado === "ativa" && !mobile && (
-          <div className="absolute bottom-3 left-3 w-[min(320px,72vw)] rounded-xl border border-[rgba(120,170,255,.22)] bg-[rgba(14,26,54,.6)] p-3 backdrop-blur">
-            <Barra rotulo="Progresso" pct={mapa.completudeAprendizado} cor="linear-gradient(90deg,#2f6fd6,#49b6ff)" />
-            <Barra rotulo={`Conclusão (${mapa.modoValidacao === "humana" ? "prof" : mapa.modoValidacao})`} pct={mapa.completudeConclusao} cor="linear-gradient(90deg,#b5851f,#ffd56b)" />
-          </div>
-        )}
       </div>
     </motion.div>
   );
@@ -149,19 +159,8 @@ export default function CerebroPanel({ st, onFechar, onGerar, onAbrirMensagem }:
 function Centro({ children }: { children: React.ReactNode }) {
   return <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">{children}</div>;
 }
-function Barra({ rotulo, pct, cor }: { rotulo: string; pct: number; cor: string }) {
-  const p = Math.round(Math.max(0, Math.min(1, pct)) * 100);
-  return (
-    <div className="my-1.5">
-      <div className="mb-1 flex justify-between text-[12px] text-[#b9cdf2]"><span>{rotulo}</span><b>{p}%</b></div>
-      <div className="h-2 overflow-hidden rounded-md border border-[rgba(130,170,255,.18)] bg-[rgba(120,160,230,.16)]"><div className="h-full rounded-md transition-[width] duration-1000" style={{ width: `${p}%`, background: cor }} /></div>
-    </div>
-  );
-}
-
 /** Versão mobile: sem canvas. Regiões por estado + barras + "você está aqui". */
-function Lista({ regioes, nos, aoRegiao }: { regioes: RegiaoVisual[]; nos: MapaNo[]; aoRegiao: (r: RegiaoVisual) => void }) {
-  const acesos = nos.filter((n) => n.estado !== "a_conquistar").length;
+function Lista({ regioes, aoRegiao }: { regioes: RegiaoVisual[]; aoRegiao: (r: RegiaoVisual) => void }) {
   return (
     <div className="h-full overflow-y-auto px-4 py-3">
       <ol className="flex flex-col gap-1.5">
@@ -177,7 +176,6 @@ function Lista({ regioes, nos, aoRegiao }: { regioes: RegiaoVisual[]; nos: MapaN
           </li>
         ))}
       </ol>
-      <p className="mt-3 text-[11px] text-[#9fb6e0]">{acesos} de {nos.length} nós acesos.</p>
     </div>
   );
 }

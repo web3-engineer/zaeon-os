@@ -89,7 +89,7 @@ export default function CerebroCanvas({ regioes, sinapses = [], onRegiao }: { re
     const glowCache = (hex: string) => (gc[hex] ??= glow(34, hexRgba(hex, 0.98)));
     const chips = regioesRef.current.map(() => { const d = document.createElement("div"); d.className = "cerebro-node"; labels.appendChild(d); const h = document.createElement("div"); h.className = "cerebro-here"; h.textContent = "você está aqui"; h.style.opacity = "0"; labels.appendChild(h); return { el: d, here: h }; });
     chips.forEach((c, i) => { c.el.onclick = () => onRegiao?.(regioesRef.current[i]!); c.el.style.pointerEvents = onRegiao ? "auto" : "none"; });
-    const project = (p: { x: number; y: number; z: number }) => { const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch); const x = p.x * cy - p.z * sy, z = p.x * sy + p.z * cy, y = p.y; const y2 = y * cp - z * sp, z2 = y * sp + z * cp; const f = 3.0, s = f / (f - z2), scale = Math.min(W, H) * 0.33; return { sx: W / 2 + x * scale * s, sy: H / 2 - y2 * scale * s, s, z: z2 }; };
+    const project = (p: { x: number; y: number; z: number }) => { const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch); const x = p.x * cy - p.z * sy, z = p.x * sy + p.z * cy, y = p.y; const y2 = y * cp - z * sp, z2 = y * sp + z * cp; const f = 3.0, s = f / (f - z2), scale = Math.min(W, H) * 0.42; return { sx: W / 2 + x * scale * s, sy: H / 2 - y2 * scale * s, s, z: z2 }; };
     const bez = (a: P, c: { x: number; y: number; z: number }, b: P, t: number) => { const m = 1 - t, k0 = m * m, k1 = 2 * m * t, k2 = t * t; return { x: k0 * a.x + k1 * c.x + k2 * b.x, y: k0 * a.y + k1 * c.y + k2 * b.y, z: k0 * a.z + k1 * c.z + k2 * b.z }; };
     const anc = [...Array(nReg)].map((_, i) => ancora(i, nReg));
     const draw = () => {
@@ -146,12 +146,25 @@ export default function CerebroCanvas({ regioes, sinapses = [], onRegiao }: { re
       // ── PERCURSO AMARELO (pré-requisito: pra onde ir) ──
       ctx.globalAlpha = 0.9; ctx.lineWidth = 2.2; ctx.strokeStyle = AMARELO; ctx.shadowColor = AMARELO; ctx.shadowBlur = 8; ctx.beginPath();
       proj.slice(0, regs.length).forEach((q, i) => (i ? ctx.lineTo(q.sx, q.sy) : ctx.moveTo(q.sx, q.sy))); ctx.stroke(); ctx.shadowBlur = 0;
+      // ── BOARDS (as palavras) FORA do mapa, ligados ao nó por uma linha: o mapa de partículas fica livre ──
+      const cx = W / 2, cy = H / 2, rx = W * 0.43, ry = H * 0.4;
+      const bx: number[] = [], by: number[] = [], bw: number[] = [];
+      regs.forEach((_, i) => { const q = proj[i]; const c = chips[i]; if (!q || !c) { bx.push(0); by.push(0); bw.push(0); return; } const ang = Math.atan2(q.sy - cy, q.sx - cx); bx.push(cx + Math.cos(ang) * rx); by.push(cy + Math.sin(ang) * ry); bw.push(c.el.offsetWidth || 120); });
+      // sem sobreposição: em cada lado (esq/dir), separa os boards verticalmente
+      for (const lado of [-1, 1]) {
+        const ids = regs.map((_, i) => i).filter((i) => (bx[i]! - cx) * lado >= 0).sort((p, q) => by[p]! - by[q]!);
+        for (let k = 1; k < ids.length; k++) { const prev = ids[k - 1]!, cur = ids[k]!; if (by[cur]! - by[prev]! < 30) by[cur] = by[prev]! + 30; }
+      }
       regs.forEach((n, i) => {
         const q = proj[i]; if (!q) return; const col = SCOL[cores[i]!];
         const puls = cores[i] === "progresso" || cores[i] === "validado" || i === goal ? 1 + 0.28 * Math.sin(t + i) : 1;
         const sz = 16 + 8 * puls; ctx.globalAlpha = 0.98; ctx.drawImage(glowCache(col), q.sx - sz / 2, q.sy - sz / 2, sz, sz);
         const vis = q.z > -0.95, c = chips[i]; if (!c) return;
-        c.el.style.opacity = vis ? "1" : "0.25"; c.el.style.color = col; c.el.style.left = q.sx + "px"; c.el.style.top = q.sy + "px";
+        const hw = bw[i]! / 2, x = Math.min(W - hw - 8, Math.max(hw + 8, bx[i]!)), y = Math.min(H - 18, Math.max(18, by[i]!));
+        // linha conectora: do nó até a borda do board mais próxima
+        const ax = q.sx < x ? x - hw : x + hw;
+        ctx.globalAlpha = vis ? 0.55 : 0.18; ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(q.sx, q.sy); ctx.lineTo(ax, y); ctx.stroke();
+        c.el.style.opacity = vis ? "1" : "0.35"; c.el.style.color = col; c.el.style.left = x + "px"; c.el.style.top = y + "px";
         c.el.innerHTML = `<span class="dot"></span>${escapeHtml(n.label)}${n.gavetas ? ` <small style="color:${AZUL}">${n.gavetas} gaveta${n.gavetas > 1 ? "s" : ""}</small>` : ""}${n.gate ? ' <small>chancela</small>' : ""}${i === goal ? ' <span class="goal">◀ próximo</span>' : ""}`;
         c.here.style.left = q.sx + "px"; c.here.style.top = q.sy + "px"; c.here.style.opacity = n.aqui && vis ? "1" : "0";
       });
@@ -173,13 +186,13 @@ export default function CerebroCanvas({ regioes, sinapses = [], onRegiao }: { re
   return (
     <div ref={wrapRef} className="relative h-full w-full overflow-hidden" style={{ background: "radial-gradient(1200px 820px at 50% 40%,#0a1430 0%,#060a1a 46%,#02040a 100%)" }}>
       <style>{`
-        .cerebro-node{position:absolute;transform:translate(-50%,-150%);font-size:11.5px;white-space:nowrap;padding:4px 9px;border-radius:999px;border:1px solid currentColor;background:rgba(8,16,36,.6);backdrop-filter:blur(4px);transition:opacity .3s;font-weight:600;cursor:default}
+        .cerebro-node{position:absolute;transform:translate(-50%,-50%);font-size:11.5px;white-space:nowrap;padding:4px 9px;border-radius:999px;border:1px solid currentColor;background:rgba(8,16,36,.6);backdrop-filter:blur(4px);transition:opacity .3s;font-weight:600;cursor:default}
         .cerebro-node .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor;box-shadow:0 0 10px currentColor;margin-right:6px;vertical-align:middle}
         .cerebro-node small{color:#9fb6e0;font-weight:500;margin-left:5px;font-size:10px}
         .cerebro-node .goal{color:#bfe6ff;margin-left:6px;font-size:10px;font-weight:700}
         .cerebro-here{position:absolute;transform:translate(-50%,70%);pointer-events:none;color:#9fe0ff;font-size:11px;font-style:italic;font-weight:700;text-shadow:0 0 10px rgba(110,190,255,.6)}
       `}</style>
-      <canvas ref={cvRef} className="block h-full w-full touch-none" aria-label="Cérebro do estudo: regiões por nó do percurso" />
+      <canvas ref={cvRef} className="block h-full w-full touch-none" aria-label="Mapa de conhecimento: um nó por tópico do percurso" />
       <div ref={labelsRef} className="pointer-events-none absolute inset-0 [&>.cerebro-node]:pointer-events-auto" />
     </div>
   );

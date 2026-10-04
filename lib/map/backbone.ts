@@ -10,12 +10,12 @@
  */
 import { ARQUETIPOS } from "@/lib/map/arquetipo";
 import { idDeNo } from "@/lib/map/grafo";
-import { ORDEM_ESTADO, type EstadoNo, type MapaAresta, type MapaNo, type MapaView, type ModoValidacao, type TipoNo, type TipoTopico } from "@/lib/map/tipos";
+import { MAX_RESUMO_CHARS, ORDEM_ESTADO, type EstadoNo, type MapaAresta, type MapaNo, type MapaView, type ModoValidacao, type TipoNo, type TipoTopico } from "@/lib/map/tipos";
 
 export const MIN_PASSOS = 3;
 export const MAX_PASSOS = 12;
 
-export type PassoRaw = { label: string; tipo?: TipoNo; corpo?: string };
+export type PassoRaw = { label: string; tipo?: TipoNo; corpo?: string; resumo?: string; req?: string };
 
 const TIPOS_PASSO = new Set<TipoNo>(["conceito", "passo", "experimento", "entrega", "conclusao", "secao"]);
 
@@ -46,7 +46,8 @@ export function normalizarBackbone(raw: unknown, tipoTopico: TipoTopico, nosExis
     const tipoRaw = String((p as any)?.tipo ?? "").toLowerCase();
     const tipo = (TIPOS_PASSO.has(tipoRaw as TipoNo) ? tipoRaw : "passo") as TipoNo;
     const corpo = typeof (p as any)?.corpo === "string" ? (p as any).corpo.trim().slice(0, 300) : undefined;
-    passos.push({ label: l.slice(0, 120), tipo, corpo });
+    const curto = (v: unknown) => (typeof v === "string" && v.trim() ? v.replace(/\s+/g, " ").trim().slice(0, MAX_RESUMO_CHARS) : undefined);
+    passos.push({ label: l.slice(0, 120), tipo, corpo, resumo: curto((p as any)?.resumo), req: curto((p as any)?.req) });
     if (passos.length >= MAX_PASSOS) break;
   }
   if (passos.length < MIN_PASSOS) return null;
@@ -63,7 +64,7 @@ export function normalizarBackbone(raw: unknown, tipoTopico: TipoTopico, nosExis
     vistos.add(id);
     const ja = existentes.get(id);
     if (ja) nos.push(ja);
-    else nos.push({ id, label: p.label, tipo: p.tipo!, estado: "a_conquistar", peso: p.tipo === ARQUETIPOS[tipoTopico].noConclusao ? 1 : 0.8, msgIds: [], planejado: true, ...(p.corpo ? { corpo: p.corpo } : {}) });
+    else nos.push({ id, label: p.label, tipo: p.tipo!, estado: "a_conquistar", peso: p.tipo === ARQUETIPOS[tipoTopico].noConclusao ? 1 : 0.8, msgIds: [], planejado: true, ...(p.corpo ? { corpo: p.corpo } : {}), ...(p.resumo ? { resumo: p.resumo } : {}), ...(p.req ? { req: p.req } : {}) });
     if (anterior) arestas.push({ de: anterior, para: id, relacao: "pre_requisito", tipoVisual: "percurso", peso: 1 });
     backbone.push(id);
     anterior = id;

@@ -25,9 +25,9 @@ const defaultGenJson: GenJson = async (system, user, opts) => {
 
 export const BACKBONE_SYSTEM =
   "Você é a Aura traçando o PERCURSO de um estudo (PT-BR): a lista ORDENADA de passos que leva do começo até a conclusão. " +
-  "De 5 a 10 passos, cada um um nó curto (label de 2–8 palavras) com \"tipo\" em {conceito, passo, experimento, entrega, conclusao} e \"corpo\" (1 frase do que fazer). " +
+  "De 5 a 10 passos, cada um um nó curto (label de 2–8 palavras) com \"tipo\" em {conceito, passo, experimento, entrega, conclusao}, \"corpo\" (1 frase do que fazer), \"resumo\" (o que é este tópico, 1–2 frases) e \"req\" (o que precisa ser atendido pra concluí-lo, 1 frase objetiva). " +
   "Cada passo pressupõe o anterior (cadeia linear, sem ramos). O ÚLTIMO passo é o que fecha o objetivo. " +
-  "Responda SOMENTE JSON: {\"passos\":[{\"label\":\"…\",\"tipo\":\"…\",\"corpo\":\"…\"}]}";
+  "Responda SOMENTE JSON: {\"passos\":[{\"label\":\"…\",\"tipo\":\"…\",\"corpo\":\"…\",\"resumo\":\"…\",\"req\":\"…\"}]}";
 
 export function promptClassificar(topico: string, contexto?: string): string {
   return `Tópico: ${topico.trim().slice(0, 300)}` + (contexto ? `\nContexto da conversa (resumo): ${contexto.slice(0, 1200)}` : "");

@@ -13,7 +13,7 @@
  */
 import type { StructuredAnswer } from "@/lib/agent/contracts";
 import type { CartolinaCard, CardTipo } from "@/lib/caderno/cartolina-tipos";
-import { MAX_DRAWERS_POR_NO, MAX_DRAWER_CHARS, ORDEM_ESTADO, isEstadoNo, tipoVisualDe, type Drawer, type EstadoNo, type MapaAresta, type MapaNo, type TipoNo } from "@/lib/map/tipos";
+import { MAX_DRAWERS_POR_NO, MAX_DRAWER_CHARS, MAX_RESUMO_CHARS, ORDEM_ESTADO, isEstadoNo, tipoVisualDe, type Drawer, type EstadoNo, type MapaAresta, type MapaNo, type TipoNo } from "@/lib/map/tipos";
 
 export const MAX_NOS_POR_TURNO = 8;
 export const MAX_NOS = 400;
@@ -158,6 +158,7 @@ export function fundirNoGrafo(
         estado: avancaEstado(ja.estado, n.estado),
         msgIds: uniq([...ja.msgIds, ...n.msgIds]).slice(-MAX_MSG_IDS),
         corpo: ja.corpo ?? n.corpo, legenda: ja.legenda ?? n.legenda,
+        ...((ja.resumo ?? n.resumo) ? { resumo: ja.resumo ?? n.resumo } : {}), ...((ja.req ?? n.req) ? { req: ja.req ?? n.req } : {}),
         ...(drawers.length ? { drawers, closet: ja.closet ?? n.closet ?? closetDe(ja), tLast: Math.max(ja.tLast ?? 0, n.tLast ?? 0) || undefined } : {}),
       };
       if (ja.planejado && fundido.estado !== "a_conquistar") realizados.push(n.id);
@@ -296,6 +297,8 @@ export function readNos(json: unknown): MapaNo[] {
       if (ds.length) n.drawers = ds;
     }
     if (typeof r.closet === "string" && r.closet.trim()) n.closet = r.closet.slice(0, 200);
+    if (typeof r.resumo === "string" && r.resumo.trim()) n.resumo = r.resumo.trim().slice(0, MAX_RESUMO_CHARS);
+    if (typeof r.req === "string" && r.req.trim()) n.req = r.req.trim().slice(0, MAX_RESUMO_CHARS);
     if (typeof r.tLast === "number" && Number.isFinite(r.tLast)) n.tLast = r.tLast;
     out.push(n);
     if (out.length >= MAX_NOS) break;
