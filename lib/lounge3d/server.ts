@@ -7,12 +7,17 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { lerConteudo } from "@/lib/lounge3d/sala";
-import { KIND_SALA, corDoUsuario, lounge3dOn, type ConteudoSala } from "@/lib/lounge3d/tipos";
+import { KIND_SALA, corDoUsuario, type ConteudoSala } from "@/lib/lounge3d/tipos";
 
 export const OID = /^[a-f0-9]{24}$/i;
 
+/**
+ * As rotas da sala são do CYBERESPAÇO (/lounge-cosmico), que está em produção sem flag: elas sempre respondem.
+ * O acesso continua protegido por sessão + `members[]` (IDOR → 404). `lounge3dOn()` agora só liga a aba Lounge 3D
+ * da Sala de Pesquisa (UI), não as rotas.
+ */
 export function exigirFlag(): NextResponse | null {
-  return lounge3dOn() || process.env.LOUNGE_3D === "1" ? null : NextResponse.json({ error: "Not found" }, { status: 404 });
+  return null;
 }
 
 export type Eu = { id: string; name: string; image: string | null; color: string };

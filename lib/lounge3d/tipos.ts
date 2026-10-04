@@ -27,6 +27,7 @@ export type Presenca = {
   x: number; z: number;
   facing: number;     // rad
   moving?: boolean;
+  sit?: boolean;      // sentado na cadeira da própria base (cyberespaço)
   ts?: number;
 };
 

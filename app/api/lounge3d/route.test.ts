@@ -24,10 +24,9 @@ describe("/api/lounge3d/[id]", () => {
     m.userFind.mockResolvedValue({ id: ME, name: "Ana", image: null });
   });
 
-  it("flag off → 404; sem sessão → 401; não-membro → 404 (indistinguível de inexistente); kind errado → 404", async () => {
+  it("sem flag a API responde (cyberespaço em produção); sem sessão → 401; não-membro → 404 (indistinguível de inexistente); kind errado → 404", async () => {
     delete process.env.LOUNGE_3D;
-    expect((await GET(new Request("http://x/"), { params: { id: ID } })).status).toBe(404);
-    process.env.LOUNGE_3D = "1"; m.session.mockResolvedValue(null);
+    m.session.mockResolvedValue(null);
     expect((await GET(new Request("http://x/"), { params: { id: ID } })).status).toBe(401);
     m.session.mockResolvedValue({ user: { email: "a@b.c" } });
     m.docFind.mockResolvedValue(doc([OUTRO]));

@@ -5,43 +5,24 @@
  * celular/sem WebGL: notas + chat + presença, sem three) e monta a Cartolina3D (lazy, client-only).
  */
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { temWebGL } from "@/lib/ui/globo";
 import { useIsMobile } from "@/lib/ui/useIsMobile";
 import { useSala3D } from "./useSala3D";
+import { useResolverSala } from "./useResolverSala";
 import { uid } from "@/lib/lounge3d/sala";
 
 const Cartolina3D = dynamic(() => import("./Cartolina3D"), { ssr: false, loading: () => <div className="h-full w-full bg-[#0b1226]" /> });
 
 export default function LoungeSala3D() {
-  const [salaId, setSalaId] = useState<string | null>(null);
-  const [erro, setErro] = useState<string | null>(null);
+  const { salaId, erro, tentarDeNovo } = useResolverSala();
   const mobile = useIsMobile();
   const [webgl, setWebgl] = useState(true);
   useEffect(() => { setWebgl(temWebGL()); }, []);
 
-  const resolver = useCallback(async () => {
-    try {
-      const token = new URLSearchParams(location.search).get("sala");
-      if (token) {
-        const r = await fetch("/api/collab/join", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) });
-        if (r.ok) { const d = await r.json(); if (d?.id) { setSalaId(d.id); return; } }
-      }
-      const r = await fetch("/api/lounge3d", { cache: "no-store" });
-      if (r.status === 404) { setErro("off"); return; }
-      if (r.status === 401) { setErro("login"); return; }
-      const d = await r.json();
-      if (Array.isArray(d.salas) && d.salas.length) { setSalaId(d.salas[0].id); return; }
-      const c = await fetch("/api/lounge3d", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: "Minha sala de estudos" }) });
-      if (!c.ok) throw new Error(String(c.status));
-      setSalaId((await c.json()).sala.id);
-    } catch { setErro("erro"); }
-  }, []);
-  useEffect(() => { void resolver(); }, [resolver]);
-
   if (erro === "login") return <Vazio>Entre na sua conta pra usar a sala de co-working.</Vazio>;
   if (erro === "off") return <Vazio>A sala 3D está desligada.</Vazio>;
-  if (erro) return <Vazio>Não deu pra abrir a sala. <button onClick={() => { setErro(null); void resolver(); }} className="underline">Tentar de novo</button></Vazio>;
+  if (erro) return <Vazio>Não deu pra abrir a sala. <button onClick={tentarDeNovo} className="underline">Tentar de novo</button></Vazio>;
   if (!salaId) return <div className="h-full w-full bg-[#0b1226]" />;
   if (mobile || !webgl) return <Sala2D salaId={salaId} />;
   return <Cartolina3D salaId={salaId} />;

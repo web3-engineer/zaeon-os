@@ -102,4 +102,11 @@ describe("canal e cor", () => {
     expect(salaIdDeCanal("presence-lounge3d-zzz")).toBeNull();
     expect(corDoUsuario(OID)).toBe(corDoUsuario(OID)); expect(corDoUsuario(OID)).toMatch(/^#[0-9a-f]{6}$/);
   });
+
+  it("presença: `sit` só é true quando é exatamente true (cyberespaço)", () => {
+    const base = { userId: "a".repeat(24), name: "Ana", color: "#4aa3ff", x: 1, z: 2, facing: 0 };
+    expect(sanitizarPresenca({ ...base, sit: true })?.sit).toBe(true);
+    expect(sanitizarPresenca({ ...base, sit: "true" })?.sit).toBe(false);
+    expect(sanitizarPresenca(base)?.sit).toBe(false);
+  });
 });

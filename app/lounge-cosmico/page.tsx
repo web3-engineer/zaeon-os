@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useEntrarEstudo } from "@/components/lounge/useEntrarEstudo";
+import dynamic from "next/dynamic";
 import NomeUsuarioForm from "@/components/lounge/NomeUsuarioForm";
 
+const CosmicLounge = dynamic(() => import("@/components/cyber/CosmicLounge"), { ssr: false, loading: () => <div className="h-full w-full bg-[#03030a]" /> });
+
 /**
- * Cyberespaço (Lounge Cósmico) — a "Zaeon" como espaço RPG (protótipo servido em /public/cosmic-map.html).
+ * Cyberespaço (Lounge Cósmico) — a "Zaeon" como espaço RPG (componente three.js `CosmicLounge`; protótipo em docs/prototypes).
  * Hub central: estar aqui é o caminho para o laboratório (Sala de Estudos / research-lab).
  * Rota imersiva: o Navbar global some aqui (lib/ui/loungeHub.ehRotaImersiva).
  * Só é revelado a quem está logado e já escolheu o nome de usuário (passo único); deslogado volta pra landing.
@@ -19,7 +21,6 @@ export default function LoungeCosmicoPage() {
   const { status } = useSession();
   const [fase, setFase] = useState<Fase>("checando");
   const [nomeAtual, setNomeAtual] = useState("");
-  useEntrarEstudo();
 
   useEffect(() => {
     if (status === "unauthenticated") { router.replace("/"); return; }
@@ -41,12 +42,7 @@ export default function LoungeCosmicoPage() {
   if (fase !== "pronto") return <div className="fixed inset-0 z-[200] bg-[#03030a]" />;
   return (
     <div className="fixed inset-0 z-[200] bg-[#03030a]">
-      <iframe
-        src="/cosmic-map.html?play=1"
-        title="Zaeon — Cyberespaço"
-        className="block h-full w-full border-0"
-        allow="autoplay; fullscreen"
-      />
+      <CosmicLounge modo="tela" />
     </div>
   );
 }
