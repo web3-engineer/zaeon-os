@@ -51,7 +51,7 @@ export function criarCidade(opts: { low: boolean; starTex: THREE.Texture }): Cid
 
   // luzes: preenchimento frio no interior + fogo rasante quente
   const fria = add(new THREE.PointLight(0x7fe9ff, 2.2, 120)); fria.position.set(0, 18, 0);
-  const quente = add(new THREE.PointLight(0xff8a3c, 1.6, 110)); quente.position.set(0, 6, 0);
+  const quente = low ? null : add(new THREE.PointLight(0xff8a3c, 1.6, 110)); quente?.position.set(0, 6, 0);   // no `low`, só a fria
 
   // ── ilha monumental (montanha invertida) + camada de rocha + estalactites ──
   const rocha = vidro({ color: 0x0b1a30, emissive: 0x10325e, emissiveIntensity: 0.55, roughness: 0.35, metalness: 0.1, transmission: 0.2, thickness: 2, transparent: true, opacity: 0.97 }, 0.97);
@@ -227,7 +227,7 @@ export function criarCidade(opts: { low: boolean; starTex: THREE.Texture }): Cid
     atualizar(dt, t) {
       ilha.position.y = CIDADE.pisoY + Math.sin(t * 0.3) * 0.25 * vel;
       for (const f of fogos) { const p = 0.72 + 0.28 * Math.sin(t * 1.8 + f.ph) * fogoAmp; f.s.scale.set(3.4 * (0.9 + p * 0.25), 5 * (0.8 + p * 0.4), 1); (f.s.material as THREE.SpriteMaterial).opacity = 0.5 + 0.3 * p; }
-      quente.intensity = 1.4 + 0.3 * Math.sin(t * 1.6) * fogoAmp;
+      if (quente) quente.intensity = 1.4 + 0.3 * Math.sin(t * 1.6) * fogoAmp;
       (brasa.material as THREE.MeshBasicMaterial).opacity = 0.5 + 0.15 * Math.sin(t * 1.4) * fogoAmp;
       pontas.forEach((p, i) => { (p.material as THREE.MeshStandardMaterial).emissiveIntensity = 1.3 + 0.4 * Math.sin(t * 1.2 + i); p.rotation.y += dt * 0.4 * vel; });
       farol.material.opacity = 0.75 + 0.2 * Math.sin(t * 1.1);

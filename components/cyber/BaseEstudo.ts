@@ -117,7 +117,8 @@ export function criarBase(layout: LayoutBase, accent: string, starTex: THREE.Tex
     criarTela(mon, TELA_LATERAL.w, TELA_LATERAL.h, 5, 3);
     asa.updateMatrixWorld(true); lateraisPos.push(mon.getWorldPosition(new THREE.Vector3()).sub(office.getWorldPosition(new THREE.Vector3())).applyQuaternion(office.quaternion.clone().invert()));
   }
-  const luz = new THREE.PointLight(0x9fd8ff, 1.6, 11); luz.position.set(0, 3.1, -0.6); office.add(luz);
+  // luz pontual por base pesa no shader de TODA a cena (uma por pessoa): no `low` (celular) fica só o emissivo
+  const luz = low ? null : new THREE.PointLight(0x9fd8ff, 1.6, 11); if (luz) { luz.position.set(0, 3.1, -0.6); office.add(luz); }
 
   // ── fluxo de ENERGIA: do painel (mãos) até as três telas, em curvas; só com o dono sentado ──
   const origem = new THREE.Vector3(0, ANEL_CTRL.y, ANEL_CTRL.z);
@@ -163,7 +164,7 @@ export function criarBase(layout: LayoutBase, accent: string, starTex: THREE.Tex
         tl.linhas.forEach((m, i) => { m.opacity = (ativa ? 0.6 : 0.28) + 0.22 * (0.5 + 0.5 * Math.sin(t * (2 + 2 * e) + i + k)); });
         tl.barras.forEach((b, i) => { b.scale.y = 0.25 + (0.35 + 0.65 * e) * (0.5 + 0.5 * Math.sin(t * (1.3 + i * 0.37) + k * 1.7 + i)); });
       });
-      luz.intensity = 1.5 + (ativa ? 1.4 : 0) + 1.2 * e;
+      if (luz) luz.intensity = 1.5 + (ativa ? 1.4 : 0) + 1.2 * e;
       cristais.forEach((c) => { c.m.position.y = c.baseY + Math.sin(t * 1.2 + c.ph) * 0.12; c.m.rotation.y += dt * 0.6; (c.m.material as THREE.MeshStandardMaterial).emissiveIntensity = (ativa ? 1.4 : 1.0) + 0.6 * (0.5 + 0.5 * Math.sin(t * 2.5 + c.ph)); });
       (joia.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.9 + 0.6 * e + 0.2 * pulso; joia.rotation.y += dt * (0.3 + 0.9 * e);
       veio.opacity = 0.6 + 0.3 * e; veioLinha.opacity = 0.65 + 0.3 * e;

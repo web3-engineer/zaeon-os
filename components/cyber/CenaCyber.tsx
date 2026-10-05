@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LAB_ENTRADA, MSG_ENTRAR_ESTUDO, ehMsgEntrarEstudo } from "@/lib/ui/loungeHub";
+import { detectarPerfil, precisaGirar, qualidadeDe } from "@/lib/cyber/dispositivo";
 import type { MensagemChat, Presenca } from "@/lib/lounge3d/tipos";
 import { landmarksOn, type POI } from "@/lib/cyber/landmarks";
 import { CyberEngine, type PessoaCyber } from "./engine";
@@ -54,7 +55,27 @@ export default function CenaCyber(p: CenaCyberProps) {
   const [poiAberto, setPoiAberto] = useState<POI | null>(null), [noTopo, setNoTopo] = useState(false), [subindo, setSubindo] = useState(false), [erroTopo, setErroTopo] = useState<string | null>(null);
   const [correndo, setCorrendo] = useState(false), [txt, setTxt] = useState(""), [falha, setFalha] = useState(false);
   const touch = useMemo(() => typeof window !== "undefined" && (matchMedia("(pointer:coarse)").matches || "ontouchstart" in window), []);
-  const low = useMemo(() => touch || (typeof window !== "undefined" && Math.min(innerWidth, innerHeight) < 520), [touch]);
+  // ONDE está rodando (celular × desktop, aparelho fraco) → capas de efeito só onde precisa (lib/cyber/dispositivo)
+  const perfil = useMemo(() => typeof window === "undefined" ? { movel: false, leve: false, fraco: false } : detectarPerfil({
+    coarse: matchMedia("(pointer: coarse)").matches, toques: navigator.maxTouchPoints || 0, ua: navigator.userAgent, largura: innerWidth, altura: innerHeight,
+    memoriaGB: (navigator as Navigator & { deviceMemory?: number }).deviceMemory, nucleos: navigator.hardwareConcurrency || undefined,
+  }), []);
+  const qualidade = useMemo(() => qualidadeDe(perfil), [perfil]);
+  const low = qualidade.leve;
+  // celular: o cyberespaço é NA HORIZONTAL — em pé, pede pra girar e pausa a cena
+  const [girar, setGirar] = useState(false);
+  useEffect(() => {
+    if (!tela) return;
+    const ver = () => setGirar(precisaGirar(perfil, innerWidth, innerHeight));
+    ver(); window.addEventListener("resize", ver); window.addEventListener("orientationchange", ver);
+    return () => { window.removeEventListener("resize", ver); window.removeEventListener("orientationchange", ver); };
+  }, [tela, perfil]);
+  useEffect(() => { engine.current?.pausar(girar); }, [girar, pronto]);
+  /** Android: tela cheia + trava na horizontal (precisa de gesto do usuário); no iPhone só girar resolve */
+  const telaCheiaHorizontal = useCallback(async () => {
+    try { await document.documentElement.requestFullscreen?.({ navigationUI: "hide" }); } catch { /* sem tela cheia */ }
+    try { await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.("landscape"); } catch { /* sem trava (iOS) */ }
+  }, []);
 
   // callbacks sempre frescos sem recriar a engine
   const cb = useRef(p); cb.current = p;
@@ -77,7 +98,7 @@ export default function CenaCyber(p: CenaCyberProps) {
     let cancelado = false, e: CyberEngine | null = null;
     CyberEngine.criar({
       container: cont.current, overlay: overlay.current, els: { menu: null, hold: null, monLabel: monLabel.current },
-      eu: cb.current.eu, membros: cb.current.membros, menu: !tela, low, teclasSempre: tela,
+      eu: cb.current.eu, membros: cb.current.membros, menu: !tela, low, qualidade, teclasSempre: tela,
       remotos: cb.current.remotos, enviarPos: (x) => cb.current.enviarPos?.(x),
       onPerto: setPerto, onFalarCom: setFalandoCom, onEntrarEstudo: entrarEstudo,
       onSessao: () => { setMenu(false); cb.current.onSessaoIniciada?.(); }, onPronto: () => setPronto(true),
@@ -144,7 +165,7 @@ export default function CenaCyber(p: CenaCyberProps) {
             <button type="button" onClick={entrarEstudo} className="absolute left-1/2 z-[21] min-h-[44px] -translate-x-1/2 animate-pulse rounded-full bg-gradient-to-b from-cyan-200 to-sky-400 px-6 text-sm font-extrabold text-slate-950 shadow-[0_0_26px_rgba(90,200,255,.75)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-white" style={{ bottom: touch ? 168 : tela ? 150 : 28 }}>✦ Estudar</button>
           )}
 
-          {tela && (
+          {tela && !(touch && qg.pilotando) && (   // celular pilotando: o chat sai da frente dos atalhos/controles
             <div className="absolute z-20 w-[min(68vw,300px)] rounded-2xl border border-violet-300/25 bg-[#0a081e]/70 p-2.5 backdrop-blur" style={touch ? { left: 10, top: 64 } : { left: 16, bottom: 16 }}>
               <div className="h-4 px-1 text-[10.5px] text-cyan-200">{falandoCom ? `💬 falando com ${falandoCom}` : ""}</div>
               <div className="mb-1.5 flex max-h-[96px] flex-col gap-0.5 overflow-y-auto px-1 text-[12.5px] text-violet-100" aria-live="polite">
@@ -213,6 +234,17 @@ export default function CenaCyber(p: CenaCyberProps) {
       )}
       {aviso2 && <p role="status" className="absolute left-1/2 top-[164px] z-40 -translate-x-1/2 rounded-full bg-[#1a0f08]/90 px-4 py-2 text-xs text-amber-100">{aviso2}</p>}
       <div aria-hidden="true" className={`pointer-events-none absolute inset-0 z-[45] bg-black transition-opacity duration-300 ${fade ? "opacity-100" : "opacity-0"}`} />
+      {/* celular em pé: o cyberespaço roda na horizontal (a cena fica pausada até girar) */}
+      {girar && (
+        <div role="dialog" aria-label="Gire o celular" className="absolute inset-0 z-[60] flex flex-col items-center justify-center gap-5 bg-[#03030a]/95 px-8 text-center text-sky-100">
+          <svg aria-hidden="true" width="84" height="84" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-300">
+            <rect x="7" y="2.5" width="10" height="17" rx="2" /><path d="M19.5 14.5a7.5 7.5 0 0 1-6 6.9" /><path d="m13.5 21.4 1.6-1.9-2.2-.9" />
+          </svg>
+          <p className="text-base font-bold">Gire o celular</p>
+          <p className="max-w-[260px] text-sm text-sky-100/70">O cyberespaço roda na horizontal.</p>
+          <button type="button" onClick={() => void telaCheiaHorizontal()} className="min-h-[44px] rounded-full bg-gradient-to-b from-cyan-200 to-sky-400 px-5 text-sm font-extrabold text-slate-950">Tela cheia na horizontal</button>
+        </div>
+      )}
 
       {noTopo && !menu && (
         <button type="button" onClick={() => engine.current?.descer()} className="absolute left-1/2 top-[110px] z-30 min-h-[44px] -translate-x-1/2 rounded-full border border-sky-300/40 bg-[#070c22]/85 px-5 text-sm font-semibold text-sky-100 backdrop-blur">↓ Descer da Zaeon</button>

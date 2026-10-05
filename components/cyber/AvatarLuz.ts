@@ -77,6 +77,7 @@ export function criarAvatarLuz(armaduraHex: string, starTex: THREE.Texture, low:
       m.frustumCulled = false;
       if (/visor/i.test(m.name)) { m.material = matViseira; return; }   // viseira = luz; o resto = armadura
       m.material = matArmadura; meshes.push(m);
+      if (low) return;   // celular: sem a casca de aura (é uma 2ª malha com skinning por avatar); a armadura já é emissiva
       const sk = m as THREE.SkinnedMesh;
       let casca: THREE.Mesh;
       if (sk.isSkinnedMesh) { const c = new THREE.SkinnedMesh(m.geometry, matAura); c.bind(sk.skeleton, sk.bindMatrix); casca = c; }

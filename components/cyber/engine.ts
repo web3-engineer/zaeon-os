@@ -16,6 +16,7 @@ import { limitarPitch, poseDaCamera } from "@/lib/cyber/camera";
 import { CIDADE, computadorPerto, mundo, noPortalEntrada, noPortalVolta, resolverCidade } from "@/lib/cyber/ceu";
 import { VOO, chaoDoVoo, passoVooSub, pilaresDoMarco, type EstadoVoo, type Pilar } from "@/lib/cyber/voo";
 import { JET, chaoNoAr, passoVertical, resolverNoAr, tetoDoJet, type QGNoAr } from "@/lib/cyber/jet";
+import { pularQuadro, type Qualidade } from "@/lib/cyber/dispositivo";
 import { pousoDoQG, rotaPara, seguirRota, type DestinoRota, type Waypoint } from "@/lib/cyber/rota";
 import { criarCidade, type CidadeHandle } from "./Cidade";
 import { ESCALA_NAVE, criarNave, type NaveHandle } from "./Nave";
@@ -43,6 +44,8 @@ export type CyberOpts = {
   /** começa em modo menu (personagem sentado contemplando; opção do monitor ou ESPAÇO = play). */
   menu: boolean;
   low: boolean;
+  /** capas de efeito por aparelho (lib/cyber/dispositivo): pixel ratio, antialias, limite de fps */
+  qualidade?: Qualidade;
   /** teclado sempre ouvido (tela cheia). Na janela da landing só com o mouse em cima (não rouba ESPAÇO/rolagem da página). */
   teclasSempre: boolean;
   remotos?: { current: Map<string, Presenca> };
@@ -119,6 +122,8 @@ export class CyberEngine {
   private remotos = new Map<string, Ator>();
   private falas: Fala[] = [];
   private raf = 0; private vivo = true; private visivel = true;
+  /** limite de quadros (celular/aparelho fraco) e pausa (celular em pé, esperando girar) */
+  private fpsMax = 0; private ultimoQuadro = 0; private pausado = false;
   private clock = new THREE.Clock();
   private ray = new THREE.Raycaster();
   private rayCam = new THREE.Raycaster();
@@ -151,8 +156,11 @@ export class CyberEngine {
     this.o = opts; this.menu = opts.menu; this.gltf = gltf;
     const { container, low } = opts;
     this.w = Math.max(1, container.clientWidth); this.h = Math.max(1, container.clientHeight);
-    this.R = new THREE.WebGLRenderer({ antialias: !low, powerPreference: "high-performance" });
-    this.R.setPixelRatio(Math.min(low ? 1.25 : 1.5, window.devicePixelRatio || 1));   // tela retina a 2× custava ~78% mais pixels this.R.setSize(this.w, this.h, false);
+    const q = opts.qualidade;
+    this.R = new THREE.WebGLRenderer({ antialias: q ? q.antialias : !low, powerPreference: "high-performance" });
+    this.R.setPixelRatio(Math.min(q ? q.pixelRatioMax : low ? 1.25 : 1.5, window.devicePixelRatio || 1));   // tela retina a 2× custava ~78% mais pixels
+    this.R.setSize(this.w, this.h, false);
+    this.fpsMax = q?.fpsMax ?? 0;
     this.R.autoClear = false; this.R.outputColorSpace = THREE.SRGBColorSpace;
     const cv = this.R.domElement; cv.style.cssText = "position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:" + (opts.menu ? "pan-y" : "none");
     container.appendChild(cv);
@@ -238,6 +246,8 @@ export class CyberEngine {
     this.o.onSessao?.(go);
   }
   setJoystick(x: number, y: number) { this.joy.x = x; this.joy.y = y; this.joy.on = Math.hypot(x, y) > 0.15; }
+  /** pausa a cena (ex.: celular em pé esperando girar) — não renderiza nem simula */
+  pausar(on: boolean) { this.pausado = on; if (!on) this.clock.getDelta(); }
   alternarCorrer(): boolean { this.correr = !this.correr; return this.correr; }
   /** ESPAÇO / botão VOAR (segurar): decola e sobe; soltar cai planando até pousar */
   comandoJet(on: boolean) {
@@ -608,6 +618,8 @@ export class CyberEngine {
   private loop(now: number) {
     if (!this.vivo) return;
     this.raf = requestAnimationFrame((t) => this.loop(t));
+    if (this.pausado || pularQuadro(this.fpsMax, now, this.ultimoQuadro)) return;   // o relógio segue: o dt do próximo quadro cobre o pulo
+    this.ultimoQuadro = now;
     const dtReal = Math.min(VOO.dtMax, this.clock.getDelta()), dt = Math.min(0.05, dtReal), t = now * 0.001;   // o voo usa o dt REAL (independente de FPS)
     if (!this.visivel || document.hidden) return;
     const eu = this.eu, euId = this.o.eu.id;

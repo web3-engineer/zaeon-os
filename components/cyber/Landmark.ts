@@ -72,7 +72,7 @@ function zaeon(poi: POI, { low, starTex }: { low: boolean; starTex: THREE.Textur
 
   // luzes do protótipo: fogo rasante quente + preenchimento frio (relativas ao group, que está em y=altura)
   const fireLight = add(new THREE.PointLight(0xff8a3c, 1.4, 60)); fireLight.position.set(0, 2, 0);
-  const coldLight = add(new THREE.PointLight(0x7fe9ff, 1.1, 40)); coldLight.position.set(0, 6, 0);
+  const coldLight = low ? null : add(new THREE.PointLight(0x7fe9ff, 1.1, 40)); coldLight?.position.set(0, 6, 0);   // no `low`, só a quente
 
   // vidro SEMPRE transparente simples (sem o passe de transmissão do three, que re-renderiza a cena a cada quadro)
   const vidro = (p: THREE.MeshPhysicalMaterialParameters, fallbackOpacity: number) =>

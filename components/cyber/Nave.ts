@@ -76,7 +76,7 @@ export function criarNave(opts: { cor?: string; low: boolean }): NaveHandle {
   const cupula = new THREE.Mesh(new THREE.SphereGeometry(1.32, seg, 16, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x9fe8ff, emissive: 0x0f3a44, emissiveIntensity: 0.3, roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.2, depthWrite: false, side: THREE.DoubleSide }));
   cupula.scale.y = 0.42; cupula.position.y = 0.6; corpo.add(cupula); alvos.push(cupula);
   const aroCupula = new THREE.Mesh(new THREE.TorusGeometry(1.33, 0.035, 6, seg), aditivo(cor.clone().lerp(ALIEN, 0.5), 0.85)); aroCupula.rotation.x = Math.PI / 2; aroCupula.position.y = 0.61; corpo.add(aroCupula);
-  const luzInterna = new THREE.PointLight(ALIEN.getHex(), 0.8, 6); luzInterna.position.set(0, 0.95, 0); corpo.add(luzInterna);
+  const luzInterna = opts.low ? null : new THREE.PointLight(ALIEN.getHex(), 0.8, 6); if (luzInterna) { luzInterna.position.set(0, 0.95, 0); corpo.add(luzInterna); }
 
   // o "EIXO GIRATÓRIO": anel de luzes da borda (gira) + halo externo tracejado (gira ao contrário)
   const NL = opts.low ? 14 : 22, aro = new THREE.Group(); corpo.add(aro);
@@ -225,7 +225,7 @@ export function criarNave(opts: { cor?: string; low: boolean }): NaveHandle {
         }
         jGeo.attributes.position!.needsUpdate = true;
       }
-      luzInterna.intensity = 0.6 + 0.8 * voo;
+      if (luzInterna) luzInterna.intensity = 0.6 + 0.8 * voo;
       // rastro de plasma: partículas escorrendo pra trás, comprimento ∝ velocidade
       const L = 2 + 6 * Math.min(1, vel);
       rMat.opacity = 0.95 * voo * Math.min(1, vel * 2.5); rastro.visible = rMat.opacity > 0.01;
