@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CABINE, COMODOS, ESCADA, TOTAL_ESCADA, pontoDaEscada, MOVEIS_CABINE, MOVEIS_NAVE, NAVE_QG, REATOR, acaoNaNave, alturaDoConves, alturaNoBordo, andarNaNave, comodoEm, docaLivre, paraLocal, paraMundo, pertoDaEntrada, pontoDoTerminal, poseDaDoca, redomaAberta, type Bordo } from "./naveQG";
+import { ESCALA_NAVE_QG, CABINE, COMODOS, RAIO_REDOMA, RAMPA, alturaDaRampa, naPontaDaRampa, naRampaLaFora, pousoNaNave, rampaDaNave, ESCADA, TOTAL_ESCADA, pontoDaEscada, MOVEIS_CABINE, MOVEIS_NAVE, NAVE_QG, REATOR, acaoNaNave, alturaDoConves, alturaNoBordo, andarNaNave, comodoEm, docaLivre, paraLocal, paraMundo, pertoDaEntrada, pontoDoTerminal, poseDaDoca, redomaAberta, type Bordo } from "./naveQG";
 import { CIDADE, mundo, naIlhaPrincipal } from "./ceu";
 
 /** anda em linha reta de `de` até `ate` (passos de 0,25 m), como o engine faz a cada quadro */
@@ -14,8 +14,8 @@ function andar(de: Bordo, ate: { x: number; z: number }, passos = 400): Bordo {
 const centro = (c: { x0: number; x1: number; z0: number; z1: number }) => ({ x: (c.x0 + c.x1) / 2, z: (c.z0 + c.z1) / 2 });
 
 describe("nave-QG: tamanho e planta", () => {
-  it("~77 m de diâmetro; o convés e a cabine cabem dentro do casco", () => {
-    expect(NAVE_QG.raio * 2).toBeGreaterThan(75); expect(NAVE_QG.raio * 2).toBeLessThan(80);
+  it("~68 m de diâmetro; o convés e a cabine cabem dentro do casco", () => {
+    expect(NAVE_QG.raio * 2).toBeGreaterThan(66); expect(NAVE_QG.raio * 2).toBeLessThan(70);
     for (const c of [...COMODOS, CABINE]) for (const [x, z] of [[c.x0, c.z0], [c.x1, c.z0], [c.x0, c.z1], [c.x1, c.z1]]) expect(Math.hypot(x!, z!)).toBeLessThan(NAVE_QG.cascoNoConves - 2);
   });
   it("a casa tem os cômodos pedidos (estar, banheiro, servidores, motor) + reuniões, hall e corredor, sem se sobrepor", () => {
@@ -36,8 +36,8 @@ describe("nave-QG: andar a bordo (casa embaixo, cabine em cima)", () => {
       // corredor → hall → cômodo (pelo vão da porta de cada um)
       let b = andar(porta, { x: 0, z: 0 });
       expect(comodoEm(b)?.id).toBe("hall");
-      const alvo = c.id === "estar" ? { x: 0, z: c.z0 + 3 } : c.id === "servidores" ? { x: c.x0 + 3, z: 0 } : c.id === "reunioes" ? { x: c.x1 - 3, z: 0 } : { x: (c.x0 + c.x1) / 2, z: -8 * (10.2 / 6.3) };
-      if (c.id === "banheiro" || c.id === "motor") { b = andar(porta, { x: 0, z: -8 * (10.2 / 6.3) }); b = andar(b, alvo); }
+      const alvo = c.id === "estar" ? { x: 0, z: c.z0 + 3 } : c.id === "servidores" ? { x: c.x0 + 3, z: 0 } : c.id === "reunioes" ? { x: c.x1 - 3, z: 0 } : { x: (c.x0 + c.x1) / 2, z: -8 * (ESCALA_NAVE_QG / 6.3) };
+      if (c.id === "banheiro" || c.id === "motor") { b = andar(porta, { x: 0, z: -8 * (ESCALA_NAVE_QG / 6.3) }); b = andar(b, alvo); }
       else if (c.id !== "hall") b = andar(b, alvo);
       expect(comodoEm(b, -0.4)?.id).toBe(c.id);
     }
@@ -59,7 +59,7 @@ describe("nave-QG: andar a bordo (casa embaixo, cabine em cima)", () => {
     expect(b.nivel).toBe(1); expect(alturaNoBordo(b)).toBe(NAVE_QG.cabine);
     expect(alturaNoBordo(meio!)).toBeGreaterThan(0.4 * NAVE_QG.cabine); expect(alturaNoBordo(meio!)).toBeLessThan(0.6 * NAVE_QG.cabine);
     // lá em cima: a cabine fica na altura da redoma (bem acima da casa)
-    expect(NAVE_QG.cabine).toBeGreaterThan(9);
+    expect(NAVE_QG.cabine).toBeGreaterThan(8);
     // desce: volta pro vão pelo topo e gira ao contrário
     b = andar(b, pontoDaEscada(TOTAL_ESCADA));
     expect(b.esc).toBeDefined();
@@ -103,6 +103,40 @@ describe("nave-QG: ações (F), redoma e porta", () => {
     expect(pertoDaEntrada(p, saida, alturaDoConves(p))).toBe(true);
     expect(pertoDaEntrada(p, saida, alturaDoConves(p) + 30)).toBe(false);
     expect(pertoDaEntrada(p, paraMundo(p, { x: 0, z: 40 }), alturaDoConves(p))).toBe(false);   // na proa, não
+  });
+});
+
+describe("nave-QG: a rampa e a volta de mochila (ninguém fica preso fora)", () => {
+  it("a RAMPA é chão firme: da porta se desce por ela até o fim, com corrimão nos lados e no fim (não se cai)", () => {
+    let b = andar({ x: 0, z: NAVE_QG.portaDentro.z + 1.4, nivel: 0 }, { x: 0, z: RAMPA.z0 - 5 }, 600);
+    expect(naPontaDaRampa(b)).toBe(true); expect(naRampaLaFora(b)).toBe(true);
+    expect(alturaNoBordo(b)).toBeCloseTo(-NAVE_QG.deck, 0);
+    const meio: Bordo = { x: 0, z: (RAMPA.zCasco + RAMPA.z0) / 2, nivel: 0 };
+    expect(alturaNoBordo(meio)).toBeCloseTo(-NAVE_QG.deck / 2, 1);
+    b = andar(meio, { x: 8, z: meio.z }); expect(Math.abs(b.x)).toBeLessThan(RAMPA.meia);   // corrimão do lado
+    b = andar(b, { x: 0, z: NAVE_QG.portaDentro.z + 1.4 }, 600); expect(comodoEm(b, -0.4)?.id).toBe("corredor");   // e volta pra dentro
+    expect(alturaDaRampa(RAMPA.zCasco + 1)).toBeCloseTo(0, 9);   // o túnel é plano
+  });
+  it("de mochila: pelo vão da REDOMA aberta cai-se no piso da CABINE (com ela fechada, não)", () => {
+    const c = NAVE_QG.cabine, l = { x: 6, z: -9 };
+    expect(Math.hypot(l.x, l.z)).toBeLessThan(RAIO_REDOMA);
+    const b = pousoNaNave(l, c + 0.3, c - 0.1, true)!;
+    expect(b.nivel).toBe(1); expect(b.x).toBeLessThan(CABINE.x1); expect(b.z).toBeGreaterThan(CABINE.z0);
+    expect(pousoNaNave(l, c + 0.3, c - 0.1, false)).toBeNull();
+    expect(pousoNaNave({ x: 30, z: 0 }, c + 0.3, c - 0.1, true)).toBeNull();   // fora do vão
+    expect(pousoNaNave({ x: ESCADA.cx, z: ESCADA.cz }, c + 0.3, c - 0.1, true)).toEqual({ ...NAVE_QG.emPe, nivel: 1 });   // não cai no vão da escada
+  });
+  it("a rampa se ajusta: na DOCA é passarela plana até o piso da Zaeon; pousada, desce até o chão; pairando, tem guarda-corpo no fim", () => {
+    const doca = rampaDaNave(poseDaDoca());
+    expect(doca.desce).toBe("ilha"); expect(Math.abs(doca.queda)).toBeLessThan(0.5);
+    expect(alturaDoConves(poseDaDoca()) + alturaDaRampa(RAMPA.z0, doca.queda)).toBeCloseTo(CIDADE.pisoY, 0);
+    const pousada = rampaDaNave({ x: 300, y: 0, z: 300, yaw: 0 }); expect(pousada.desce).toBe("chao"); expect(pousada.queda).toBeCloseTo(NAVE_QG.deck, 6);
+    expect(rampaDaNave({ x: 300, y: 80, z: 300, yaw: 0 }).desce).toBeNull();
+  });
+  it("de mochila: pousa-se na RAMPA (lá fora)", () => {
+    const z = (RAMPA.zCasco + RAMPA.z0) / 2, h = alturaDaRampa(z);
+    expect(pousoNaNave({ x: 0.2, z }, h + 0.2, h - 0.1, false)).toEqual({ x: 0.2, z, nivel: 0 });
+    expect(pousoNaNave({ x: 5, z }, h + 0.2, h - 0.1, false)).toBeNull();
   });
 });
 

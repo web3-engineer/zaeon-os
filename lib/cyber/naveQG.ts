@@ -1,5 +1,5 @@
 /**
- * Cyberespaço — a NAVE-QG do dono (PURO, sem three): o disco voador virou o QG dele — ~77 m de diâmetro, ESTACIONÁRIO
+ * Cyberespaço — a NAVE-QG do dono (PURO, sem three): o disco voador virou o QG dele — ~68 m de diâmetro, ESTACIONÁRIO
  * (para no ar em qualquer lugar do mapa e dá pra sair com ela pairando) e com um CONVÉS de verdade por dentro:
  *  - em CIMA, a CABINE DE COMANDO (um mezanino logo abaixo da redoma do topo): o leme (F = pilotar), consoles e o
  *    TERMINAL DE ESTUDOS (F = estudar). Largou o leme (F), a REDOMA ABRE — dá pra sair voando de mochila por ela;
@@ -15,12 +15,12 @@
  */
 import type { P2 } from "./colisao";
 import { empurrarParaFora } from "./colisao";
-import { CIDADE, DOCA_ANGULO, ILHOTAS, mundo } from "./ceu";
+import { CIDADE, DOCA_ANGULO, ILHOTAS, mundo, naIlhaPrincipal } from "./ceu";
 export { DOCA_ANGULO };
 import { empurrarDasParedes, empurrarDosRetangulos, paredesDoRetangulo, type Parede } from "./universidade";
 
-/** o modelo do disco tem ~7,56 m de diâmetro em 1× (components/cyber/Nave.ts); a nave-QG tem ~77 m */
-export const ESCALA_NAVE_QG = 10.2;
+/** o modelo do disco tem ~7,56 m de diâmetro em 1× (components/cyber/Nave.ts); a nave-QG tem ~68 m */
+export const ESCALA_NAVE_QG = 9.0;
 /** a planta do convés foi desenhada pra escala 6,3 — `K` estica os CÔMODOS e as posições (os móveis ficam do
  *  tamanho de gente: só o lugar deles escala) */
 const K = ESCALA_NAVE_QG / 6.3;
@@ -81,18 +81,9 @@ const r = (tipo: MovelNave["tipo"], x0: number, x1: number, z0: number, z1: numb
   const cx = ((x0 + x1) / 2) * K, cz = ((z0 + z1) / 2) * K, hx = (x1 - x0) / 2, hz = (z1 - z0) / 2;
   return { tipo, x0: cx - hx, x1: cx + hx, z0: cz - hz, z1: cz + hz, alt, solido };
 };
-/** os móveis (deixam livres as portas, o corredor, o leme, o terminal e a porta de trás) */
+/** a casa é LEVE: lá embaixo só o que é motor e computador — o painel de controle do reator (o reator é redondo —
+ *  REATOR); os cômodos ficam livres (computadores de verdade estão na cabine, lá em cima) */
 export const MOVEIS_NAVE: MovelNave[] = [
-  // sala de estar (proa): sofá em L, mesinha, poltronas, bar e o telão
-  r("sofa", -6.6, -0.6, 11.4, 12.3, 0.85), r("sofa", -8.2, -7.3, 7.6, 12.3, 0.85), r("mesinha", -5, -3, 8.8, 10.2, 0.45),
-  r("poltrona", -1.2, -0.2, 8.4, 9.4, 0.9), r("poltrona", -1.2, -0.2, 10.4, 11.4, 0.9), r("bar", 3.6, 7.8, 11.6, 12.3, 1.1), r("tela", 3.2, 7.2, 4.6, 4.7, 2.6, false),
-  // servidores (estibordo): três fileiras de racks
-  r("rack", 7.4, 12.4, -3.6, -2.8, 2.4), r("rack", 8.6, 12.4, -0.4, 0.4, 2.4), r("rack", 7.4, 12.4, 2.8, 3.6, 2.4),
-  // sala de reuniões (bombordo): a mesa comprida
-  r("mesa", -11.4, -7.4, -1, 1, 0.76),
-  // banheiro: vaso, pia (com espelho) e o box do chuveiro
-  r("vaso", -9.1, -8.3, -11.1, -10.3, 0.5), r("pia", -6.2, -3.6, -11.3, -10.7, 0.9), r("chuveiro", -9.2, -7.2, -6.9, -4.9, 2.3),
-  // motor: o painel de controle do reator (o reator é redondo — REATOR)
   r("painel", 8.4, 9.2, -11, -9.4, 1.2),
 ];
 /** o reator da sala do motor (sólido, redondo) */
@@ -102,8 +93,8 @@ export const REATOR = { ...P(5.6, -8), r: 2.4 };
 /** o mezanino da cabine (a mesma planta do hall, `NAVE_QG.cabine` m acima do convés) */
 export const CABINE = (() => { const h = COMODOS.find((c) => c.id === "hall")!; return { x0: h.x0, x1: h.x1, z0: h.z0, z1: h.z1 }; })();
 /** a ESCADA EM CARACOL: em volta de uma coluna, num canto do hall (livre das 4 portas). O PÉ fica virado pro meio do
- *  hall; sobe girando (1¼ volta) até o TOPO, já no piso da cabine. O vão dela (o círculo) fura o piso da cabine. */
-export const ESCADA = { cx: -4.0, cz: 4.0, rIn: 0.6, rOut: 2.7, voltas: 1.25 };
+ *  hall; sobe girando (2 voltas inteiras) até o TOPO, que sai virado pro mesmo lado — o meio da cabine, o leme. O vão dela (o círculo) fura o piso da cabine. */
+export const ESCADA = { cx: -3.7, cz: 3.7, rIn: 0.55, rOut: 2.4, voltas: 2 };
 const ESC_A0 = Math.atan2(0 - ESCADA.cz, 0 - ESCADA.cx);   // o pé: o ângulo virado pro meio do hall
 const ESC_TOTAL = ESCADA.voltas * Math.PI * 2;
 const angEsc = (l: P2) => Math.atan2(l.z - ESCADA.cz, l.x - ESCADA.cx);
@@ -117,7 +108,7 @@ export const TOTAL_ESCADA = ESC_TOTAL;
 export const MOVEIS_CABINE: MovelNave[] = [
   { tipo: "console", x0: -1.0, x1: 4.0, z0: 4.4, z1: 5.1, alt: 1.1 },
   { tipo: "leme", x0: 1.05, x1: 1.95, z0: 2.2, z1: 3.05, alt: 1.2, solido: false },
-  { tipo: "terminal", x0: -0.6, x1: 3.6, z0: -6.5, z1: -5.6, alt: 0.78 },   // o MEU DESKTOP (onde se abre o laboratório): no fundo, do lado oposto ao leme
+  { tipo: "terminal", x0: -0.6, x1: 3.6, z0: -5.9, z1: -5.0, alt: 0.78 },   // o MEU DESKTOP (onde se abre o laboratório): no fundo, do lado oposto ao leme
   { tipo: "console", x0: 5.4, x1: 6.2, z0: 1.4, z1: 3.0, alt: 1.15 },
 ];
 /** o guarda-corpo da cabine (as bordas do mezanino) e o do vão da escada (aberto só no topo dela) */
@@ -137,10 +128,46 @@ export const comodoEm = (l: P2, folga = 0): Comodo | null => COMODOS.find((c) =>
 /** onde se está a bordo: posição LOCAL e o nível (0 = a casa, no convés — inclusive subindo a escada; 1 = a cabine) */
 export type Bordo = { x: number; z: number; nivel: 0 | 1; esc?: number };   // `esc`: na escada, quanto já girou desde o pé
 /** a altura acima do convés: na cabine, o piso dela; na escada, sobe junto com o degrau; na casa, 0 */
-export function alturaNoBordo(b: Bordo): number {
+export function alturaNoBordo(b: Bordo, queda: number = N.deck): number {
   if (b.nivel === 1) return N.cabine;
-  if (b.esc === undefined) return 0;
+  if (b.esc === undefined) return naRampa(b) ? alturaDaRampa(b.z, queda) : 0;
   return N.cabine * Math.min(1, Math.max(0, b.esc / ESC_TOTAL));
+}
+
+// ───────────── a RAMPA de trás (do corredor, pelo túnel, até lá fora) ─────────────
+/** a rampa é chão firme com CORRIMÃO dos dois lados (quem cai dela é porque pulou de mochila): o túnel (até o casco)
+ *  é plano; dali ela desce `queda` m até o fim (`saida`) — a queda se ajusta a onde a nave está (`rampaDaNave`). */
+export const RAMPA = { meia: 1.3, z0: N.saida.z, z1: COMODOS.find((c) => c.id === "corredor")!.z0, zCasco: -N.cascoNoConves };
+export const naRampa = (l: P2) => Math.abs(l.x) < RAMPA.meia && l.z < RAMPA.z1 + 0.4 && l.z > RAMPA.z0 - 0.4;
+/** a altura do piso da rampa (relativa ao convés): 0 no túnel, descendo até −queda no fim */
+export function alturaDaRampa(z: number, queda: number = N.deck): number { return -queda * Math.min(1, Math.max(0, (RAMPA.zCasco - z) / (RAMPA.zCasco - RAMPA.z0))); }
+/** a rampa conforme onde a nave está: na DOCA ela vira uma PASSARELA plana até o piso da Zaeon (desce-se na ilha);
+ *  POUSADA no chão, desce até o chão; PAIRANDO no ar, desce o padrão e o fim é guarda-corpo (desce null) */
+export function rampaDaNave(p: PoseNave): { queda: number; desce: "ilha" | "chao" | null } {
+  const conves = alturaDoConves(p);
+  if (naIlhaPrincipal(paraMundo(p, N.saida)) && Math.abs(conves - CIDADE.pisoY) < 1.5) return { queda: conves - CIDADE.pisoY, desce: "ilha" };
+  if (p.y < 1.5) return { queda: conves, desce: "chao" };
+  return { queda: N.deck, desce: null };
+}
+/** no trecho da rampa FORA do casco (dá pra pular de mochila dali) */
+export const naRampaLaFora = (b: Bordo | null) => !!b && b.nivel === 0 && b.esc === undefined && naRampa(b) && b.z < RAMPA.zCasco;
+/** encostado no corrimão do fim da rampa (pousada no chão, dali se desce) */
+export const naPontaDaRampa = (b: Bordo | null) => !!b && b.nivel === 0 && b.esc === undefined && naRampa(b) && b.z <= RAMPA.z0 + 0.7;
+/** o raio do vão da redoma (o aro dela, em metros) — de mochila, por ele se cai direto na cabine */
+export const RAIO_REDOMA = 1.32 * ESCALA_NAVE_QG;
+
+/** POUSO DE MOCHILA na nave (local; alturas relativas ao convés): pelo vão da REDOMA aberta cai-se no piso da cabine;
+ *  na RAMPA (lá fora), pousa-se nela. Senão, null. */
+export function pousoNaNave(l: P2, yAnt: number, y: number, redomaAberta: boolean, queda: number = N.deck): Bordo | null {
+  if (redomaAberta && Math.hypot(l.x, l.z) < RAIO_REDOMA && yAnt >= N.cabine - 0.05 && y <= N.cabine) {
+    const q = { x: Math.min(CABINE.x1 - 0.6, Math.max(CABINE.x0 + 0.6, l.x)), z: Math.min(CABINE.z1 - 0.6, Math.max(CABINE.z0 + 0.6, l.z)) };
+    return naColunaDaEscada(q, 0.5) ? { ...N.emPe, nivel: 1 } : { ...q, nivel: 1 };
+  }
+  if (Math.abs(l.x) < RAMPA.meia && l.z < RAMPA.zCasco && l.z > RAMPA.z0) {
+    const h = alturaDaRampa(l.z, queda);
+    if (yAnt >= h - 0.05 && y <= h) return { x: Math.max(-RAMPA.meia + 0.4, Math.min(RAMPA.meia - 0.4, l.x)), z: l.z, nivel: 0 };
+  }
+  return null;
 }
 
 /** um passo a pé DENTRO da nave (local → local): paredes, móveis, reator, a escada (entra só pelo pé, do hall; no
@@ -172,7 +199,11 @@ export function andarNaNave(l: P2, ant: Bordo): Bordo {
     if (noPe && !naColunaDaEscada(ant, 0.35)) return { ...pontoDaEscada(0.05, meioR), nivel: 0, esc: 0.05 };
     q = { x: ant.x, z: ant.z };
   }
-  if (!comodoEm(q, -0.4)) q = comodoEm(ant, -0.4) ? { x: ant.x, z: ant.z } : { ...N.portaDentro };   // escapou pela fresta de uma quina: volta
+  if (naRampa(q) && !comodoEm(q, -0.4)) {   // na RAMPA: corrimão dos lados e no fim
+    if (!naRampa(ant) && !comodoEm(ant, -0.4)) q = { ...N.portaDentro };
+    return { x: Math.max(-RAMPA.meia + 0.4, Math.min(RAMPA.meia - 0.4, q.x)), z: Math.max(RAMPA.z0 + 0.4, q.z), nivel: 0 };
+  }
+  if (!comodoEm(q, -0.4)) q = comodoEm(ant, -0.4) || naRampa(ant) ? { x: ant.x, z: ant.z } : { ...N.portaDentro };   // escapou pela fresta de uma quina: volta
   return { ...q, nivel: 0 };
 }
 
