@@ -11,6 +11,7 @@
  * "🪪 crachá" edita o que aparece no CRACHÁ da landing e da sala de Assistentes (área, linha, o que
  * entrega, emoji, WhatsApp, Instagram, Facebook) com a prévia do crachá ao vivo. Desativar o agente
  * tira ele da vitrine. "+ agente" (mentor) entra sozinho na landing e nos Assistentes.
+ * Acima da lista, o bloco POOL (PoolPainel, Fatia 7): custo R$ 0 comprovado do pool grátis.
  */
 import { useCallback, useEffect, useState } from "react";
 import AgentAvatar from "@/components/agents/AgentAvatar";
@@ -20,6 +21,7 @@ import { AVATAR_LOOKS } from "@/lib/avatars/looks";
 import Cracha from "@/components/agents/Cracha";
 import { nativosVitrine } from "@/lib/agents/nativos";
 import { VIDRO_BOLHA, VIDRO_CHIP, VIDRO_POPOVER, TXT, TXT_2, TXT_MUDO } from "@/lib/canal/vidro";
+import PoolPainel from "./PoolPainel";
 
 type Top = { userId: string; contagem: number; ultimoUso: string; nome: string | null; email: string | null };
 type Agente = {
@@ -158,6 +160,9 @@ export default function AgentsModule({ glassPanel }: { glassPanel: string }) {
           </div>
         </div>
       )}
+
+      {/* Fatia 7 (G8): o pool grátis — leitura, entra visível */}
+      <PoolPainel />
 
       <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pr-1">
         {lista.map((a) => <Card key={`${a.agentKey}-${rev}`} a={a} consumo={consumoDe(a.agentKey)} teto={tokens?.tetos[a.agentKey]} serie={tokens?.serie14d} onPatch={patch} onAvatar={trocarAvatar} onEstudio={() => setEstudio(a)} />)}
