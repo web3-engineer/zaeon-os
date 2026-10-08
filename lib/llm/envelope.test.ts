@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { gerar, gerarJson, ErroLlm, type Deps, type GerarReq } from "./envelope";
+import { gerar, gerarJson, ErroLlm, PoolEsgotadoError, type Deps, type GerarReq } from "./envelope";
 import { USAGE_VAZIO } from "./usage";
 
 const ctx = { agentKey: "aura", surface: "canal" as const };
@@ -179,5 +179,41 @@ describe("Fatia 7 — alvo, jsonValido e pool (G3)", () => {
     const vertex = vi.fn(vertexOk);
     const e = await gerar({ user: "oi", model: "zaeon-pool-lite", rota: "gateway", ctx }, deps({ fetchImpl: f as any, vertex, env: envGw })).catch((x) => x);
     expect(e.classe).toBe("pool_esgotado"); expect(vertex).not.toHaveBeenCalled();
+  });
+});
+
+describe("PoolEsgotadoError (G4)", () => {
+  const envGw = { GATEWAY_URL: "http://g", GATEWAY_KEY_DEFAULT: "k", GEMINI_FREE_API_KEY: "a", GROQ_API_KEY: "b" };
+  const pedir = (f: any, tentativa?: number) =>
+    gerar({ user: "oi", model: "zaeon-pool-lite", rota: "gateway", tentativa, ctx: { agentKey: "aura", surface: "chore" } }, deps({ fetchImpl: f, env: envGw })).catch((x) => x);
+
+  it("429 'No deployments available' SEM Retry-After → backoff nosso (60s × 2^tentativa)", async () => {
+    const f = vi.fn(async () => resposta(429, { error: { message: "No deployments available for selected model" } }));
+    const e0 = await pedir(f, 0);
+    expect(e0).toBeInstanceOf(PoolEsgotadoError); expect(e0).toBeInstanceOf(ErroLlm);
+    expect(e0.retryAfterMs).toBe(60_000); expect(e0.alvosTentados).toEqual(["gemini-free", "groq"]);
+    expect((await pedir(f, 3)).retryAfterMs).toBe(480_000);
+    expect((await pedir(f, 20)).retryAfterMs).toBe(30 * 60_000);
+  });
+  it("com header retry-after → usa o header", async () => {
+    const f = vi.fn(async () => resposta(429, { error: { message: "No deployments available for selected model" } }, { "retry-after": "42" }));
+    expect((await pedir(f)).retryAfterMs).toBe(42_000);
+  });
+  it("429 com retry-after num grupo do pool (sem a frase) também é esgotado", async () => {
+    const f = vi.fn(async () => resposta(429, { error: { message: "Too Many Requests" } }, { "retry-after": "10" }));
+    const e = await pedir(f);
+    expect(e).toBeInstanceOf(PoolEsgotadoError); expect(e.retryAfterMs).toBe(10_000);
+  });
+  it("429 simples em zaeon-flash continua rate_limit (não é pool)", async () => {
+    const f = vi.fn(async () => resposta(429, { error: { message: "Too Many Requests" } }, { "retry-after": "10" }));
+    const e = await gerar({ user: "oi", model: "zaeon-flash", rota: "gateway", ctx }, deps({ fetchImpl: f as any, env: envGw })).catch((x) => x);
+    expect(e).not.toBeInstanceOf(PoolEsgotadoError); expect(e.classe).toBe("rate_limit");
+  });
+  it("ledger grava ok:false com a classe pool_esgotado", async () => {
+    const f = vi.fn(async () => resposta(429, { error: { message: "No deployments available for selected model" } }));
+    const d = deps({ fetchImpl: f as any, env: envGw });
+    await gerar({ user: "oi", model: "zaeon-pool-lite", rota: "gateway", ctx }, d).catch(() => null);
+    await new Promise((x) => setTimeout(x, 0));
+    expect(d.linhas[0]).toMatchObject({ ok: false, erro: "pool_esgotado" });
   });
 });

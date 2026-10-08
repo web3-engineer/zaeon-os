@@ -40,3 +40,12 @@ describe("errors · classifyError", () => {
     expect(classifyError("")).toBe("unknown");
   });
 });
+
+describe("errors · pool_esgotado (Fatia 7 · G4)", () => {
+  it("mensagem própria e classificação do erro cru do envelope/LiteLLM", () => {
+    expect(messageForError("pool_esgotado")).toMatch(/gratuitos.*sem cota/i);
+    expect(classifyError("llm:pool_esgotado: No deployments available for selected model")).toBe("pool_esgotado");
+    expect(classifyError("No deployments available for selected model")).toBe("pool_esgotado");
+    expect(classifyError("429 rate limit")).toBe("rate_limited");
+  });
+});

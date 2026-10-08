@@ -19,6 +19,7 @@ export type ErrorCode =
   | "network"
   | "rate_limited"
   | "agent_budget_exhausted"
+  | "pool_esgotado"
   | "empty"
   | "invalid_output"
   | "unknown";
@@ -37,6 +38,8 @@ const MESSAGES: Record<ErrorCode, string> = {
   network: "Tô sem conexão com o núcleo agora — tenta de novo em instantes.",
   rate_limited: "Muita coisa ao mesmo tempo — espera um segundinho e tenta de novo.",
   agent_budget_exhausted: "Meu limite diário de uso acabou. Volto amanhã — ou peça pra outro mentor.",
+  // G4 (Fatia 7): só para a chore pedida por humano que EXPIROU (nunca ao adiar).
+  pool_esgotado: "Os modelos gratuitos que eu uso pra isso ficaram sem cota por hoje — tento de novo amanhã ou peça pra um mentor.",
   empty: "Não consegui responder agora. Tenta de novo.",
   invalid_output: "Minha resposta saiu embaralhada — tenta de novo.",
   unknown: "Deu um problema aqui. Tenta de novo em instantes.",
@@ -50,6 +53,7 @@ export function classifyError(msg?: string | null): ErrorCode {
   if (!s) return "unknown";
   // teto da virtual key (C6, lei 5): o humano vê que é limite, não ignorância — antes de rate/quota.
   if (/llm:teto|budget (has been |)exceeded|exceededbudget|max_budget|budget_exceeded/.test(s)) return "agent_budget_exhausted";
+  if (/llm:pool_esgotado|no deployments available/.test(s)) return "pool_esgotado";
   if (/timeout|timed out|deadline|etimedout/.test(s)) return "tool_timeout";
   if (/rate.?limit|\b429\b|quota|resource.?exhausted|exhausted/.test(s)) return "rate_limited";
   if (/network|fetch failed|econnrefused|econnreset|enotfound|socket|dns|getaddrinfo/.test(s)) return "network";

@@ -14,7 +14,7 @@
 import { usageDoVertex, usageDoOpenAI, classificarErroLlm, chaveDoAgente, gatewayLigado, type Usage, type ClasseErroLlm, USAGE_VAZIO } from "@/lib/llm/usage";
 import { registrarTokens, type LedgerCtx } from "@/lib/llm/ledger";
 import { GEMINI_MODEL_FLASH } from "@/lib/ai/model";
-import { alvoDe, ehModeloPool, type Alvo } from "@/lib/llm/pool";
+import { alvoDe, ehModeloPool, poolConfigurado, type Alvo } from "@/lib/llm/pool";
 
 export type Rota = "vertex" | "gateway";
 export type { LedgerCtx, Alvo };
@@ -29,6 +29,8 @@ export type GerarReq = {
   timeoutMs?: number;
   maxOutputTokens?: number;
   rota?: Rota;
+  /** Quantas vezes a fila já tentou este job (0 = primeira). Só entra no backoff do PoolEsgotadoError. */
+  tentativa?: number;
   ctx: LedgerCtx;
 };
 export type GerarRes = {
@@ -54,6 +56,32 @@ export class ErroLlm extends Error {
     super(`llm:${classe}: ${String((causa as any)?.message ?? causa).slice(0, 300)}`);
     this.name = "ErroLlm"; this.classe = classe; this.provedor = provedor; this.causa = causa;
   }
+}
+
+/** Teto do backoff do pool (G4). */
+export const POOL_BACKOFF_MAX_MS = 30 * 60_000;
+
+/**
+ * G4 — todos os alvos do pool estouraram (LiteLLM "No deployments available"). NÃO é erro de app:
+ * a fila adia o job (lib/queue/reenfileirar.ts) e ele expira em 24h. O LiteLLM NÃO manda
+ * Retry-After nesse 429 (issue #27823): sem header, o backoff é NOSSO — 60s × 2^tentativa, teto 30min.
+ */
+export class PoolEsgotadoError extends ErroLlm {
+  readonly retryAfterMs: number;
+  readonly alvosTentados: Alvo[];
+  constructor(retryAfterMs: number, alvosTentados: Alvo[], causa: unknown) {
+    super("pool_esgotado", "litellm", causa);
+    this.name = "PoolEsgotadoError"; this.retryAfterMs = retryAfterMs; this.alvosTentados = alvosTentados;
+  }
+}
+
+/** PURO. Header retry-after (s) → ms; senão "try again in N seconds" do corpo; senão 60s × 2^tentativa. Teto 30min. */
+export function retryAfterDoPool(e: unknown, tentativa = 0): number {
+  const hdr = Number((e as any)?.retryAfter);
+  if (Number.isFinite(hdr) && hdr > 0) return Math.min(hdr * 1000, POOL_BACKOFF_MAX_MS);
+  const m = /try again in (\d+(?:\.\d+)?)\s*s/i.exec(String((e as any)?.body ?? (e as any)?.message ?? ""));
+  if (m) return Math.min(Math.ceil(Number(m[1]) * 1000), POOL_BACKOFF_MAX_MS);
+  return Math.min(60_000 * 2 ** Math.max(0, Math.floor(tentativa)), POOL_BACKOFF_MAX_MS);
 }
 
 // ───────────────────────────── transportes (injetáveis p/ teste) ─────────────────────────────
@@ -102,7 +130,7 @@ async function viaGateway(req: GerarReq, modelo: string, url: string, key: strin
   const bruto = await r.text();
   let body: any = null;
   try { body = JSON.parse(bruto); } catch { throw Object.assign(new Error(`gateway: resposta não-JSON (HTTP ${r.status}): ${bruto.slice(0, 80)}`), { status: r.status, naoJson: true }); }
-  if (!r.ok) throw Object.assign(new Error(body?.error?.message ?? body?.message ?? `gateway HTTP ${r.status}`), { status: r.status, body: bruto });
+  if (!r.ok) throw Object.assign(new Error(body?.error?.message ?? body?.message ?? `gateway HTTP ${r.status}`), { status: r.status, body: bruto, retryAfter: r.headers.get("retry-after") });
   return {
     texto: String(body?.choices?.[0]?.message?.content ?? "").trim(),
     usage: usageDoOpenAI(body?.usage),
@@ -171,8 +199,11 @@ export async function gerar(req: GerarReq, deps: Deps = {}): Promise<GerarRes> {
       const { modelId: _id, ...resto } = r;
       return { ...resto, provedor: "litellm", rota: "gateway", ms: agora() - ini, alvo, ...(jv === undefined ? {} : { jsonValido: jv }) };
     } catch (e) {
-      const classe = (e as any)?.naoJson ? "resposta_nao_json" : classificarErroLlm(e);
+      let classe: ClasseErroLlm = (e as any)?.naoJson ? "resposta_nao_json" : classificarErroLlm(e);
+      // 429 com retry-after num grupo do pool = o router esgotou os alvos (G4).
+      if (pool && (classe === "rate_limit" || classe === "cota_esgotada") && (e as any)?.retryAfter) classe = "pool_esgotado";
       gravar("litellm", "gateway", USAGE_VAZIO, false, classe, modelo, alvoDe(modelo));
+      if (classe === "pool_esgotado") throw new PoolEsgotadoError(retryAfterDoPool(e, req.tentativa), poolConfigurado(env), e);
       if (pool || !caiParaVertex(classe)) throw new ErroLlm(classe, "litellm", e);
       console.warn(`[llm] gateway ${classe} — caindo para o Vertex direto (${req.ctx.agentKey})`);
     }
