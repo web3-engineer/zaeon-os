@@ -2,6 +2,8 @@
  * POST /api/canal/[id]/mensagem { texto } — grava a mensagem humana, publica no Pusher e,
  * pra cada @agente conhecido, dispara UM turno do harness daquele agente (fila/inline).
  * Author gate: quem não pode escrever recebe 403 (IDOR coberto em teste).
+ * Fatia 7 (CHORES_QUEUE=1): "@aura resume <url>" é CHORE (pool grátis, 1 mensagem com fonte), não
+ * turno — triagem conservadora (lib/chore/triagem.ts): em dúvida, turno como sempre.
  */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,6 +13,8 @@ import { podeEscrever } from "@/lib/canal/gate";
 import { montarAliases, parseMentions } from "@/lib/canal/mention";
 import { EV_MENSAGEM, publicarPusher, type MensagemWire } from "@/lib/canal/realtime";
 import { dispararTurnos, depsReais } from "@/lib/canal/queue";
+import { pedidoDeChore } from "@/lib/chore/triagem";
+import { choresLigadas, criarDoPedido } from "@/lib/chore/criar";
 
 export const MAX_TEXTO = 4000;
 
@@ -42,6 +46,17 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     createdAt: row.createdAt.toISOString(), autorNome: u.name || "Alguém", autorAvatar: u.image ?? null,
   };
   await publicarPusher(canal.id, EV_MENSAGEM, wire);
+
+  // Chore em vez de turno: 1 por mensagem, do 1º agente mencionado, na thread desta mensagem.
+  const pedido = mencoes.length && choresLigadas() ? pedidoDeChore(texto) : null;
+  if (pedido) {
+    const { dispararChore } = await import("@/lib/queue/chores");
+    const r = await criarDoPedido(prisma as any, { tipo: pedido.tipo, alvo: { url: pedido.url }, agentKey: mencoes[0], canalId: canal.id, parentId: row.id, requesterId: u.id });
+    if (!("erro" in r)) {
+      const via = r.row.status === "queued" ? await dispararChore(r.row) : "existente";
+      return NextResponse.json({ ok: true, mensagem: wire, turnos: [], chore: { id: r.row.id, tipo: r.row.tipo, agentKey: r.row.agentKey, via } }, { status: 201 });
+    }
+  }
 
   const vias = await dispararTurnos(
     mencoes.map((agentKey) => ({ canalId: canal.id, agentKey, userId: u.id, mensagemId: row.id })),

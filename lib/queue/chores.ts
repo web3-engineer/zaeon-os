@@ -75,15 +75,18 @@ async function identidade(prisma: any, agentKey: string): Promise<{ nome: string
   } catch { return { nome: agentKey, avatarUrl: null }; }
 }
 
-/** Humano esperando + chore expirou → 1 linha efêmera (lei 5). Autônoma: silêncio. */
-async function avisarExpirada(row: ChoreRow): Promise<void> {
+/** Falhas que o humano precisa saber (lei 5: fora do ar se declara). As outras ficam no admin. */
+export const MOTIVOS_DECLARAVEIS = ["leitor_dominio_fora_da_lista", "leitor_offline", "skill_offline"] as const;
+
+/** Humano esperando + (expirou | falha declarável) → 1 linha efêmera. Autônoma: silêncio. */
+async function avisarHumano(row: ChoreRow, code: "pool_esgotado" | (typeof MOTIVOS_DECLARAVEIS)[number]): Promise<void> {
   if (!row.requesterId || !row.destino?.canalId) return;
   try {
     const { messageForError } = await import("@/lib/agent/errors");
     const { publicarPusher, EV_MENSAGEM } = await import("@/lib/canal/realtime");
     await publicarPusher(row.destino.canalId, EV_MENSAGEM, {
       id: `efemera-${Date.now()}`, canalId: row.destino.canalId, autorTipo: "agente", autorId: row.agentKey,
-      texto: messageForError("pool_esgotado"), mencoes: [], createdAt: new Date().toISOString(), efemera: true,
+      texto: messageForError(code), mencoes: [], createdAt: new Date().toISOString(), efemera: true,
     });
   } catch { /* best-effort */ }
 }
@@ -100,6 +103,7 @@ export async function processarChore(
   if (!row) return null;
   if (row.status === "done" || row.status === "skipped" || row.status === "expired" || row.status === "failed") return null; // idempotente
   const r = await emSerie(chaveSerie(row), () => runChore(row, deps, { tentativa }));
+  if (r.status === "failed" && (MOTIVOS_DECLARAVEIS as readonly string[]).includes(r.motivo)) await avisarHumano(row, r.motivo as (typeof MOTIVOS_DECLARAVEIS)[number]);
   if (r.status !== "decidir") return r;
   const store = {
     adiar: (ate: Date) => adiar(deps.db, row.id, ate),
@@ -108,7 +112,7 @@ export async function processarChore(
   };
   if (job) {
     const fim = await aplicarDecisao(r.decisao, job, token, store, DelayedErrorCtor); // adiar LANÇA o DelayedError
-    if (fim === "expirado") await avisarExpirada(row);
+    if (fim === "expirado") await avisarHumano(row, "pool_esgotado");
     return r;
   }
   // inline (sem fila): adiar = timer no próprio processo (dev / web sem Redis). Morreu o processo → expira em 24h.
@@ -116,7 +120,7 @@ export async function processarChore(
     await store.adiar(r.decisao.ate);
     const espera = Math.max(1_000, r.decisao.ate.getTime() - Date.now());
     setTimeout(() => { void processarChore(id, deps, null, undefined, DelayedErrorCtor, tentativa + 1).catch(() => undefined); }, espera).unref?.();
-  } else if (r.decisao.acao === "expirar") { await store.expirar(); await avisarExpirada(row); }
+  } else if (r.decisao.acao === "expirar") { await store.expirar(); await avisarHumano(row, "pool_esgotado"); }
   else await store.falhar(r.decisao.classe);
   return r;
 }
