@@ -180,6 +180,11 @@ jobs:
               SERVICES="redis caddy web colyseus searxng"   # colyseus = realtime do cyberespaço (leve, 256m); searxng = busca web (512m)
               NODEPS="--no-deps"     # não puxa voice-engine/abnt (glutões)
             fi
+            # Fatia 7: com CHORES_QUEUE=1 no .env do VPS, o Leitor (perfil "chores") sobe junto — nomeado, o compose habilita o perfil.
+            if [ -n "$SERVICES" ] && grep -Eq "^CHORES_QUEUE=\"?1" .env 2>/dev/null; then
+              SERVICES="$SERVICES leitor-proxy"
+              echo "→ CHORES_QUEUE=1: leitor-proxy entra no deploy"
+            fi
 
             # O Caddy quebra com "a,b" e aceita "a, b". Normaliza o que vier da
             # Variable pra que um esquecimento de espaço não derrube o HTTPS.

@@ -81,6 +81,8 @@ services:
       # Gateway de LLM (PR-G1): vazio = Vertex direto (byte a byte como hoje). "http://litellm:4000" só com
       # `--profile gateway` de pé. Só o turno do canal opta; pesquisa/estudos/mentores seguem no Vertex.
       GATEWAY_URL: ${GATEWAY_URL:-}
+      # Leitor (Fatia 7, G6): vazio = Leitor fora do ar (lei 5). "http://leitor-proxy:8787" só com o perfil chores de pé.
+      LEITOR_PROXY_URL: ${LEITOR_PROXY_URL:-}
     depends_on:
       redis: { condition: service_started }
       voice-engine: { condition: service_started }
@@ -139,6 +141,7 @@ services:
       SCHOLAR_WORKER: "1"
       SCHOLAR_WORKER_CONCURRENCY: "3"
       CHAT_WORKER_CONCURRENCY: "4"     # Fase 3: turnos do chat da Aura na fila "chat"
+      LEITOR_PROXY_URL: ${LEITOR_PROXY_URL:-}   # Fatia 7: chores leem a web SÓ por aqui
     depends_on:
       redis: { condition: service_started }
     restart: unless-stopped
@@ -242,6 +245,26 @@ services:
     deploy:
       resources:
         limits: { memory: 768m }
+
+  # ── LEITOR (Fatia 7, G6) — o ÚNICO que sai para a internet a serviço de chore ──
+  #    SEM env_file, SEM volume do app, SEM credencial: comprometido, consegue… ler a web.
+  #    Allowlist default-deny (LEITOR_ALLOW). Interno (expose). Teste: lib/leitor/compose.test.ts pina isto.
+  #    Ligar: docker compose -f docker-compose.beta.yml --profile chores up -d leitor-proxy
+  leitor-proxy:
+    profiles: ["chores"]
+    build: { context: ./services/leitor-proxy, dockerfile: Dockerfile }
+    container_name: zaeon_leitor_proxy
+    environment:
+      LEITOR_ALLOW: ${LEITOR_ALLOW:-}
+      LEITOR_MAX_BYTES: ${LEITOR_MAX_BYTES:-1048576}
+      LEITOR_MAX_INFLIGHT: ${LEITOR_MAX_INFLIGHT:-8}
+    expose: ["8787"]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: [/tmp]
+    mem_limit: 128m
+    restart: unless-stopped
 
   # ── GATEWAY de LLM (LiteLLM, PR-G1) — perfil "gateway": NÃO sobe no deploy enxuto por acidente ──
   #    Interno (expose, sem ports): só o web fala http://litellm:4000. UI /ui só por ssh -L.

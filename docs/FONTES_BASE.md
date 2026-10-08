@@ -100,6 +100,17 @@ com o motivo registrado: custaram **73 chips em 25/08/2026** (`app/services/warm
 |---|---|---|---|
 | `BerriAI/litellm` (proxy) | MIT (core) | gateway OpenAI-compatible interno, virtual keys por agente com budget/TTL/allowlist, fallback | ADOTAR — gateway/virtual keys |
 
+## 13. Esteira leve — pool grátis + Leitor/Executor (Escritório v2, Fatia 7)
+| Fonte | Licença / termos | O que usamos | Status |
+|---|---|---|---|
+| `BerriAI/litellm` (proxy) | MIT (core) | grupos `zaeon-pool-*` com fallback entre provedores grátis, `model_info.id` → header `x-litellm-model-id` | ADOTAR (já na §12) |
+| *Rule of Two* (Meta AI, 2025) | referência conceitual | quem lê input não confiável não tem credencial nem comunica para fora → Leitor (proxy sem segredo) × Executor (sem internet) | REFERÊNCIA — re-implementado (lib/chore, services/leitor-proxy) |
+| *Lethal trifecta* (Simon Willison, 2025) | referência conceitual | dado não confiável + acesso sensível + saída externa = comprometido; quebrado antes de o conteúdo entrar (plan-then-execute) + sem imagem remota na saída | REFERÊNCIA |
+| Google AI Studio (Gemini Flash-Lite, free tier) | termos lidos em 2026-10-07 — o free tier treina com o conteúdo | primário do pool, **conta dedicada**; só conteúdo público da web | USAR — uma conta por provedor |
+| Cloudflare Workers AI | termos lidos em 2026-10-07 | fallback 1 do pool (`llama-3.1-8b-instruct`) | USAR — uma conta por provedor |
+| Groq | termos lidos em 2026-10-07 | fallback 2 do pool (`openai/gpt-oss-20b`) | USAR — uma conta por provedor |
+| Zhipu (GLM) | termos lidos em 2026-10-07 | comentado/off (provedor fora de BR/EUA; decisão de política) | OFF |
+
 ## Alertas de licença (ler antes de codar)
 - **`human-skill-tree` (app) = AGPL-3.0** → copiar o código do app obrigaria abrir a Zaeon sob AGPL. **Só o padrão/estrutura + as `skills/` (MIT).** Nunca o código do app.
 - **`tambo`** → funciona, mas roda o loop/backend dele → **não acoplar**; usar como referência de API. Base de UI generativa preferida = `vercel/ai` (Apache-2.0) ou nativo.

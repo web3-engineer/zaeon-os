@@ -7,15 +7,21 @@
  * "o que está em prod?": `curl .../api/health` → qual commit está rodando.
  * `gateway`/`provedor` (PR-G1): off (sem GATEWAY_URL) · on · degraded (configurado e caído →
  * a camada autônoma responde pelo Vertex direto). Cache de 60s; nunca derruba o health.
+ * `leitor` (Fatia 7, G6): off · on · degraded do container leitor-proxy. `pool`: alvos grátis com key.
  */
 import { NextResponse } from "next/server";
 import { estadoGateway, provedorAtual } from "@/lib/llm/saude";
+import { estadoLeitor } from "@/lib/leitor/saude";
+import { poolConfigurado } from "@/lib/llm/pool";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const gateway = await estadoGateway().catch(() => "degraded" as const);
+  const [gateway, leitor] = await Promise.all([
+    estadoGateway().catch(() => "degraded" as const),
+    estadoLeitor().catch(() => "degraded" as const),
+  ]);
   return NextResponse.json({
     status: "ok",
     service: "zaeon-web",
@@ -23,6 +29,8 @@ export async function GET() {
     harness: process.env.AURA_HARNESS === "0" ? "off" : "on",
     gateway,
     provedor: provedorAtual(gateway),
+    leitor,
+    pool: poolConfigurado(),
     time: new Date().toISOString(),
   });
 }
