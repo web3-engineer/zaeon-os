@@ -11,7 +11,7 @@
 import * as THREE from "three";
 import { DISTANCIA, FADE_ENTRADA, HOLO_VOZ, VOZ_DROID, silabasDroid, SINTESE, SONS, SONS_ARQUIVO, emendarLoop, recortarCanal, recortePasso, criarLimiteVozes, lerPrefs, respostaImpulso, urlDoSom, type Dist, type NomeSom } from "@/lib/cyber/audio";
 import { nivelDaBoca } from "@/lib/voice/nivelVoz";
-export type LoopSom = { audio: THREE.Audio<GainNode | PannerNode> | null; alvo: number; atual: number; nome: NomeSom; vel?: number; taxa?: number; taxaAtual?: number };
+export type LoopSom = { audio: THREE.Audio<GainNode | PannerNode> | null; alvo: number; atual: number; nome: NomeSom; vel?: number; taxa?: number; taxaAtual?: number; taxaVel?: number };
 
 export type AudioCyberHandle = {
   /** já tem gesto + listener (e os buffers estão carregando/carregados) */
@@ -28,8 +28,9 @@ export type AudioCyberHandle = {
   soltarLoop(l: LoopSom): void;
   /** muda o alvo de volume de um loop (0..1 × o volume base do som); o fade é suave, a cada quadro (`vel` = 1/s; padrão 2,5) */
   volumeLoop(l: LoopSom, alvo: number, vel?: number): void;
-  /** afinação (playbackRate) de um loop, suave — ex.: o jato fica mais agudo subindo */
-  taxaLoop(l: LoopSom, taxa: number): void;
+  /** afinação (playbackRate) de um loop, suave — ex.: o jato fica mais agudo subindo (`vel` = 1/s; padrão 4 — o motor
+   *  da moto usa mais, pra troca de marcha soar seca) */
+  taxaLoop(l: LoopSom, taxa: number, vel?: number): void;
   /** ajusta a distância de um loop posicional (ex.: a nave em que eu estou) */
   distanciaLoop(l: LoopSom, d: Dist): void;
   /** one-shot: posicional num ponto do mundo (`em`) ou 2D (`em` ausente); `seguir` = preso a um objeto que se move
@@ -226,7 +227,7 @@ export function criarAudioCyber(o: { camera: THREE.Camera; cena: THREE.Scene; lo
       loops.splice(i, 1);
     },
     volumeLoop(l, alvo, vel) { l.alvo = Math.max(0, Math.min(1, alvo)); if (vel !== undefined) l.vel = vel; },
-    taxaLoop(l, taxa) { l.taxa = taxa; },
+    taxaLoop(l, taxa, vel) { l.taxa = taxa; if (vel !== undefined) l.taxaVel = vel; },
     distanciaLoop(l, d) { if (l.audio && (l.audio as THREE.PositionalAudio).panner) aplicarDist(l.audio as THREE.PositionalAudio, d); },
     tocar(nome, em, op = {}) {
       if (!listener || !prefs.ligado || !buffers.has(nome) || !vozes.pegar()) return;
@@ -388,7 +389,7 @@ export function criarAudioCyber(o: { camera: THREE.Camera; cena: THREE.Scene; lo
         const a = x.l.audio; if (!a) continue;
         x.l.atual += (x.l.alvo - x.l.atual) * (x.l.vel ? Math.min(1, dt * x.l.vel) : k);
         a.setVolume(x.l.atual * x.volBase * entrada);
-        if (x.l.taxa !== undefined) { const tA = x.l.taxaAtual ?? x.l.taxa; x.l.taxaAtual = tA + (x.l.taxa - tA) * Math.min(1, dt * 4); a.setPlaybackRate(x.l.taxaAtual); }
+        if (x.l.taxa !== undefined) { const tA = x.l.taxaAtual ?? x.l.taxa; x.l.taxaAtual = tA + (x.l.taxa - tA) * Math.min(1, dt * (x.l.taxaVel ?? 4)); a.setPlaybackRate(x.l.taxaAtual); }
       }
     },
     dispose() {

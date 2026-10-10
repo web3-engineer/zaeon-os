@@ -26,6 +26,8 @@ export class Jogador extends Schema {
   /** moto voadora: vaga (−1 = a pé), altura e rumo */ declare motoS: number; declare motoY: number; declare motoYaw: number; declare motoDe: string;
   /** a moto que estacionou (−1 = nenhuma): vaga, posição, rumo */ declare mlS: number; declare mlX: number; declare mlY: number; declare mlZ: number; declare mlYaw: number;
   /** DESCANSO no lounge: 0 em pé, 1 sentado, 2 deitado, +3 com o tablet (lib/cyber/descanso) */ declare desc: number;
+  /** ARENA PvP (lib/cyber/combate): o golpe (seq×4 + nº; 0 = nenhum), a vida, a espada na mão */ declare atk: number; declare hp: number; declare arma: boolean;
+  /** o MOVIMENTO TURBINADO: 0 nada, 1 sprint, 2 dash, 3 guarda, 4 hero landing, 5 decolagem */ declare mov: number;
   constructor() {
     super();
     this.userId = ""; this.name = ""; this.color = "#4aa3ff"; this.fundador = false; this.qg = false;
@@ -36,7 +38,7 @@ export class Jogador extends Schema {
     this.jet = -1; this.alt = -1; this.falando = false; this.pronto = false;
     this.motoS = -1; this.motoY = 0; this.motoYaw = 0; this.motoDe = "";
     this.mlS = -1; this.mlX = 0; this.mlY = 0; this.mlZ = 0; this.mlYaw = 0;
-    this.desc = 0;
+    this.desc = 0; this.atk = 0; this.hp = 100; this.arma = false; this.mov = 0;
   }
   /** a pessoa do TOKEN (identidade e regalias vêm do servidor do app) */
   static de(p: PayloadToken) { const j = new Jogador(); j.userId = p.u; j.name = p.n; j.color = p.c; j.fundador = p.f; j.qg = p.q; return j; }
@@ -50,7 +52,7 @@ defineTypes(Jogador, {
   jet: "float32", alt: "float32", falando: "boolean", pronto: "boolean",
   motoS: "int8", motoY: "float32", motoYaw: "float32", motoDe: "string",
   mlS: "int8", mlX: "float32", mlY: "float32", mlZ: "float32", mlYaw: "float32",
-  desc: "uint8",
+  desc: "uint8", atk: "uint32", hp: "uint8", arma: "boolean", mov: "uint8",
 });
 
 export class EstadoLounge extends Schema {
@@ -89,7 +91,7 @@ export class LoungeRoom extends Room<{ state: EstadoLounge }> {
       j.topo = p.topo; j.ceu = p.ceu;
       j.voando = !!p.voo; if (p.voo) { j.vooY = p.voo.y; j.vooYaw = p.voo.yaw; }
       j.parada = !!p.naveParada; if (p.naveParada) { j.npX = p.naveParada.x; j.npY = p.naveParada.y; j.npZ = p.naveParada.z; j.npYaw = p.naveParada.yaw; }
-      j.jet = p.jet ?? -1; j.alt = p.alt ?? -1; j.desc = p.desc; j.pronto = true;
+      j.jet = p.jet ?? -1; j.alt = p.alt ?? -1; j.desc = p.desc; j.atk = p.atk; j.hp = p.hp; j.arma = p.arma; j.mov = p.mov; j.pronto = true;
       j.motoS = p.moto ? p.moto.s : -1; if (p.moto) { j.motoY = p.moto.y; j.motoYaw = p.moto.yaw; } j.motoDe = p.moto?.de ?? "";
       j.mlS = p.motoLargada ? p.motoLargada.s : -1; if (p.motoLargada) { j.mlX = p.motoLargada.x; j.mlY = p.motoLargada.y; j.mlZ = p.motoLargada.z; j.mlYaw = p.motoLargada.yaw; }
     });

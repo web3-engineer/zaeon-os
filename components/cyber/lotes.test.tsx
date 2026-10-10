@@ -64,7 +64,7 @@ describe("lotes estáticos (o StaticBatch do CS Brasil)", () => {
     expect(raiz.children).toHaveLength(2);   // 1 lote de malhas + 1 lote de linhas
     expect(raiz.children.some((n) => (n as THREE.LineSegments).isLineSegments)).toBe(true);
   });
-  it("TETO de draw calls: a moto (8 no mapa) cabe em 45 depois do lote — eram 62", () => {
+  it("TETO de draw calls: a moto (8 no mapa) cabe em 45 depois do lote (com os efeitos de calor) — eram 62", () => {
     const draws = (r: THREE.Object3D) => { let n = 0; r.traverse((o) => { const x = o as THREE.Mesh; if (x.isMesh || (o as THREE.Line).isLine || (o as THREE.Points).isPoints || (o as THREE.Sprite).isSprite) n += Array.isArray(x.material) ? x.material.length : 1; }); return n; };
     const h = criarMoto({ cor: "#66e6ff", low: false }), antes = draws(h.group);
     fundirEstaticos(h.group, { passo: (k, t) => h.atualizar({ dt: 1 / 30, t, voando: k % 2 === 0, vel: (k % 4) / 3, curva: Math.sin(t), vy: Math.cos(t) * 5, boost: k % 3 === 0 ? 1 : 0, seta: (k % 3) - 1 }), manter: h.alvos });

@@ -25,6 +25,8 @@ export type Pose = {
   /** montado numa moto voadora (qualquer pessoa): vaga 0..7, altura com teto, rumo */ moto: { s: number; y: number; yaw: number; de?: string } | null;
   /** a moto que ESTACIONOU (fica onde desceu): vaga, posição no mapa, rumo */ motoLargada: { s: number; x: number; y: number; z: number; yaw: number } | null;
   /** DESCANSO no lounge: 0 em pé, 1 sentado, 2 deitado, +3 com o tablet (espelha lib/cyber/descanso) */ desc: number;
+  /** ARENA PvP (espelha lib/cyber/combate): o golpe (seq×4 + nº; 0 = nenhum), a vida (0–100), a espada na mão */ atk: number; hp: number; arma: boolean;
+  /** o MOVIMENTO TURBINADO (espelha lib/cyber/movimento): 0 nada, 1 sprint, 2 dash, 3 guarda, 4 hero landing, 5 decolagem */ mov: number;
 };
 const VAGAS_MOTO = 32, TETO_MOTO = ALT;   // chão (4) + Zaeon (12) + 4 mirantes da Zaeon (16) — espelha TOTAL_VAGAS de lib/cyber/motos
 
@@ -49,6 +51,10 @@ export function sanitizarPose(raw: unknown, fundador: boolean): Pose | null {
     topo: fundador && r.topo === true, ceu: r.ceu === true,
     voo, naveParada, jet: num(r.jet, QUEDA, ALT), alt: num(r.alt, 0, ALT), moto: motoDe(r.moto), motoLargada: motoLargadaDe(r.motoLargada),
     desc: typeof r.desc === "number" && Number.isInteger(r.desc) && r.desc >= 0 && r.desc <= 5 ? r.desc : 0,
+    atk: typeof r.atk === "number" && Number.isInteger(r.atk) && r.atk >= 0 && r.atk <= 400000 ? r.atk : 0,
+    hp: typeof r.hp === "number" && Number.isInteger(r.hp) && r.hp >= 0 && r.hp <= 100 ? r.hp : 100,
+    arma: r.arma === 1,
+    mov: typeof r.mov === "number" && Number.isInteger(r.mov) && r.mov >= 0 && r.mov <= 5 ? r.mov : 0,
   };
 }
 function motoDe(v: unknown): Pose["moto"] {

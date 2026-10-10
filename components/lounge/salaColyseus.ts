@@ -21,7 +21,7 @@ type JogadorRemoto = {
   userId: string; name: string; color: string; fundador: boolean;
   x: number; z: number; facing: number; moving: boolean; sit: boolean; topo: boolean; ceu: boolean;
   voando: boolean; vooY: number; vooYaw: number; parada: boolean; npX: number; npY: number; npZ: number; npYaw: number;
-  jet: number; alt: number; falando: boolean; pronto: boolean; motoS: number; motoY: number; motoYaw: number; motoDe: string; mlS: number; mlX: number; mlY: number; mlZ: number; mlYaw: number; desc: number;
+  jet: number; alt: number; falando: boolean; pronto: boolean; motoS: number; motoY: number; motoYaw: number; motoDe: string; mlS: number; mlX: number; mlY: number; mlZ: number; mlYaw: number; desc: number; atk: number; hp: number; arma: boolean; mov: number;
 };
 export type CanalVoz = {
   /** manda offer/answer/ICE pra alguém da sala (por userId) */
@@ -35,7 +35,7 @@ export type CanalVoz = {
 export type ConexaoColyseus = { enviar(p: Pose): void; voz: CanalVoz; sair(): void };
 
 /** os campos de um jogador do estado (os do Schema são acessores — espalhar com {...j} não copia) */
-const CAMPOS: (keyof JogadorRemoto)[] = ["motoS", "motoY", "motoYaw", "motoDe", "mlS", "mlX", "mlY", "mlZ", "mlYaw", "userId", "name", "color", "fundador", "x", "z", "facing", "moving", "sit", "topo", "ceu", "voando", "vooY", "vooYaw", "parada", "npX", "npY", "npZ", "npYaw", "jet", "alt", "falando", "pronto", "desc"];
+const CAMPOS: (keyof JogadorRemoto)[] = ["motoS", "motoY", "motoYaw", "motoDe", "mlS", "mlX", "mlY", "mlZ", "mlYaw", "userId", "name", "color", "fundador", "x", "z", "facing", "moving", "sit", "topo", "ceu", "voando", "vooY", "vooYaw", "parada", "npX", "npY", "npZ", "npYaw", "jet", "alt", "falando", "pronto", "desc", "atk", "hp", "arma", "mov"];
 const copiar = (j: JogadorRemoto): JogadorRemoto => { const o = {} as Record<string, unknown>; for (const k of CAMPOS) o[k] = j[k]; return o as JogadorRemoto; };
 
 export function conectarColyseus(o: {
@@ -70,6 +70,7 @@ export function conectarColyseus(o: {
         ...(j.motoS >= 0 ? { moto: { s: j.motoS, y: j.motoY, yaw: j.motoYaw, ...(j.motoDe ? { de: j.motoDe } : {}) } } : {}),
         ...(j.mlS >= 0 ? { motoLargada: { s: j.mlS, x: j.mlX, y: j.mlY, z: j.mlZ, yaw: j.mlYaw } } : {}),
         ...(j.desc ? { desc: j.desc } : {}),
+        ...(j.mov ? { mov: j.mov } : {}), ...(j.atk ? { atk: j.atk } : {}), ...(typeof j.hp === "number" && j.hp < 100 ? { hp: j.hp } : {}), ...(j.arma ? { arma: 1 } : {}),
         ts: Date.now(),
       });
     }

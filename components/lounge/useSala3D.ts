@@ -189,7 +189,7 @@ export function useSala3D(salaId: string | null, opts: OpcoesSala3D = {}) {
 
   /** O engine chama a cada frame: guarda a pose e só envia quando MUDOU (parado não gasta a cota do Pusher). */
   const enviarPos = useCallback((p: Omit<Presenca, "userId" | "name" | "color">) => {
-    const pose: Pose = { x: p.x, z: p.z, facing: p.facing, moving: !!p.moving, sit: !!p.sit, topo: !!p.topo, ceu: !!p.ceu, ...(p.voo ? { voo: p.voo } : {}), ...(p.naveParada ? { naveParada: p.naveParada } : {}), ...(typeof p.jet === "number" ? { jet: p.jet } : {}), ...(typeof p.alt === "number" ? { alt: p.alt } : {}), ...(p.moto ? { moto: p.moto } : {}), ...(p.motoLargada ? { motoLargada: p.motoLargada } : {}), ...(p.desc ? { desc: p.desc } : {}) };
+    const pose: Pose = { x: p.x, z: p.z, facing: p.facing, moving: !!p.moving, sit: !!p.sit, topo: !!p.topo, ceu: !!p.ceu, ...(p.voo ? { voo: p.voo } : {}), ...(p.naveParada ? { naveParada: p.naveParada } : {}), ...(typeof p.jet === "number" ? { jet: p.jet } : {}), ...(typeof p.alt === "number" ? { alt: p.alt } : {}), ...(p.moto ? { moto: p.moto } : {}), ...(p.motoLargada ? { motoLargada: p.motoLargada } : {}), ...(p.desc ? { desc: p.desc } : {}), ...(p.mov ? { mov: p.mov } : {}), ...(p.atk ? { atk: p.atk } : {}), ...(typeof p.hp === "number" && p.hp < 100 ? { hp: p.hp } : {}), ...(p.arma ? { arma: p.arma } : {}) };
     ultimaPose.current = pose;
     if (poseMudou(ultimaEnviada.current, pose)) emitir(pose, false);
   }, [emitir]);

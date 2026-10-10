@@ -84,3 +84,33 @@ export function sintetizarImpactoHeroi(sr: number): Float32Array {
   }
   return normalizar(fimSemClique(out, 1024), 0.95);
 }
+
+/** GOLPE de espada (~0,4 s): o corte de ar da lâmina — mais agudo e rápido que o dash (passa-banda varrendo 3,2 kHz →
+ *  700 Hz), com um brilho METÁLICO escuro no fim (parciais inarmônicos baixinhos, sem "plim" de brinquedo) */
+export function sintetizarGolpe(sr: number): Float32Array {
+  const n = Math.round(sr * 0.4), out = new Float32Array(n), r = prng(113), ar = svf();
+  for (let i = 0; i < n; i++) {
+    const t = i / sr, w = r() * 2 - 1;
+    const fc = 700 + 2500 * Math.exp(-Math.max(0, t - 0.03) * 14), a = ar(w, fc, 0.45, sr);
+    const env = Math.min(1, t / 0.03) * Math.exp(-Math.max(0, t - 0.06) * 11);
+    let metal = 0; for (const [f, d] of [[1830, 9], [2910, 12], [4470, 15]] as const) metal += Math.sin(2 * Math.PI * f * t) * Math.exp(-t * d);
+    out[i] = sat(a.band * env * 2.2 + metal * 0.05 * Math.min(1, t / 0.02), 1.6);
+  }
+  return normalizar(fimSemClique(out), 0.88);
+}
+
+/** ACERTO (~0,45 s): o golpe pegando — soco grave curto (90 → 45 Hz), o estalo de energia (ruído picotado agudo) e um
+ *  chiado elétrico que some (a espada é de energia) */
+export function sintetizarAcerto(sr: number): Float32Array {
+  const n = Math.round(sr * 0.45), out = new Float32Array(n), r = prng(131), fx = svf();
+  let fase = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / sr, w = r() * 2 - 1;
+    const f = 45 + 45 * Math.exp(-t * 30); fase += (2 * Math.PI * f) / sr;
+    const soco = Math.sin(fase) * Math.min(1, t / 0.002) * Math.exp(-t * 14);
+    const estalo = w * Math.exp(-t * 60);
+    const eletrico = fx(w, 5200, 0.5, sr).band * (0.5 + 0.5 * Math.sign(Math.sin(2 * Math.PI * 57 * t))) * Math.exp(-t * 9);
+    out[i] = sat(soco * 1.2 + estalo * 0.6 + eletrico * 0.35, 2.4);
+  }
+  return normalizar(fimSemClique(out), 0.92);
+}

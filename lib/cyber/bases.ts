@@ -2,10 +2,13 @@
  * Cyberespaço — LEVEL DESIGN das bases de estudo (HANDOFF lounge cósmico §2 e §5.4). PURO, sem three.
  * Uma base por pessoa, privada, FIXA e canônica: a posição só depende da ORDEM do membro na sala
  * (`members[]` do CollabDoc só cresce), então é a mesma pra todo mundo, em toda sessão, e a base
- * continua no mapa mesmo quando a pessoa sai. Bases ficam num anel em volta da praça: próximas, mas espaçadas.
+ * continua no mapa mesmo quando a pessoa sai. Com a cidade (Zaeon) na cena, TODAS as bases ficam NA ZAEON (out/2026: a
+ * praça virou a ARENA PvP — lib/cyber/arena): os fundadores nos lugares deles e o resto num anel de vagas livres na ilha;
+ * sem a cidade (marcos desligados), no anel em volta da praça, como antes.
  */
 import { POIS, baseLivreDosPOIs, marcoNav, type POI } from "./landmarks";
-import { CIDADE, mundo } from "./ceu";
+import { CIDADE, colisoresDaCidade, escadaEm, mundo } from "./ceu";
+import { MIRANTES } from "./terra";
 import { PORTAL_PRACA } from "./praca";
 
 export const BASE_COLLIDER_R = 2.4;   // raio sólido (plano XZ): o trono do computador (asas até ±2,4 m)
@@ -44,6 +47,34 @@ export function baseNoQG(pois: POI[] = POIS): LayoutBase | null {
   return { x: mn.x, z: mn.z, rot: Math.atan2(Math.cos(d), Math.sin(d)), nivel: "qg" };
 }
 
+/** as VAGAS de base na Zaeon pra quem não é fundador (local da ilha, mundo calculado na hora): anéis entre a capela e
+ *  a borda, uma a cada ~16 m, só onde fica LIVRE de tudo — dos sólidos da cidade (com folga), das escadas das salas, do
+ *  buraco negro e de onde se chega, das bases dos fundadores e dos MIRANTES (os telões e o lar da Zaeon). Determinístico */
+let vagasZaeon: { x: number; z: number }[] | null = null;
+export function vagasDeBaseNaZaeon(): { x: number; z: number }[] {
+  if (vagasZaeon) return vagasZaeon;
+  const cs = colisoresDaCidade(), out: { x: number; z: number }[] = [], pt = CIDADE.portalTunel, ch = CIDADE.chegada;
+  for (const r of [112, 134, 156]) {
+    const n = Math.floor((2 * Math.PI * r) / 16);
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2 + r * 0.013, l = { x: Math.cos(a) * r, z: Math.sin(a) * r }, w = mundo(l);
+      if (cs.some((c) => Math.hypot(w.x - c.x, w.z - c.z) < c.r + BASE_PLATAFORMA_R + 2)) continue;
+      if (escadaEm(l, BASE_PLATAFORMA_R + 4)) continue;
+      if (Math.hypot(l.x - pt.x, l.z - pt.z) < 14 || Math.hypot(l.x - ch.x, l.z - ch.z) < 10) continue;
+      if (BASES_CEU_LOCAIS.some((b) => Math.hypot(l.x - b.x, l.z - b.z) < 14)) continue;
+      if (MIRANTES.some((m) => Math.hypot(l.x - m.x, l.z - m.z) < 62)) continue;
+      if (out.some((o) => Math.hypot(l.x - o.x, l.z - o.z) < 13)) continue;
+      out.push(l);
+    }
+  }
+  return (vagasZaeon = out);
+}
+/** a base (na Zaeon) da vaga `i`, virada pro centro da ilha (as vagas acabando, volta a repetir — salas enormes) */
+export function baseNaZaeon(i: number): LayoutBase {
+  const vs = vagasDeBaseNaZaeon(), l = vs[Math.max(0, Math.floor(i)) % vs.length]!, w = mundo(l);
+  return { ...w, rot: virarPara(w, CIDADE.centro), nivel: "ceu" };
+}
+
 /** `rot` deixa o +z local apontando pra praça (o monitor fica nas costas de quem entra). */
 export function posicaoDaBase(indice: number): LayoutBase {
   const i = Math.max(0, Math.floor(indice));
@@ -58,12 +89,13 @@ export function posicaoDaBase(indice: number): LayoutBase {
  * userId → layout, pela ordem dos membros (sem repetidos). Slots do anel que cairiam DENTRO de um ponto de
  * interesse (ex.: a Zaeon em z=-34, a partir do 14º membro) são pulados — a ordem continua determinística.
  */
-export function basesDosMembros(ids: string[], pois: POI[] = POIS, especiais: { ceu?: string[] } = {}): Map<string, LayoutBase> {
+export function basesDosMembros(ids: string[], pois: POI[] = POIS, especiais: { ceu?: string[]; /** a cidade está na cena: todo mundo na Zaeon (a praça é a arena) */ todosNaZaeon?: boolean } = {}): Map<string, LayoutBase> {
   const m = new Map<string, LayoutBase>();
   // especiais: os fundadores na Zaeon (céu) — fora do anel. (O salão da Recepção não é mais base de ninguém: a
   // titularidade do Andrei saiu, a base dele é uma base comum no anel da praça.)
   (especiais.ceu ?? []).forEach((id, i) => { if (ids.includes(id) && !m.has(id)) m.set(id, baseNoCeu(i)); });
   let slot = 0;
+  if (especiais.todosNaZaeon) { for (const id of ids) if (!m.has(id)) m.set(id, baseNaZaeon(slot++)); return m; }
   for (const id of ids) {
     if (m.has(id)) continue;
     let lay = posicaoDaBase(slot++);

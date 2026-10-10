@@ -55,11 +55,17 @@ export const ALTURA_LANCAMENTO = 2;
 /** o LOOK de cada vaga — cor e carenagem — embaralhado (não repete em sequência; 16 cores bem diferentes), o mesmo pra
  *  todo mundo (é da vaga: a moto que você leva continua com a cara dela) */
 const PALETA_MOTO = ["#45d6ff", "#ff6ad5", "#ffc46b", "#9affd0", "#ff5a5a", "#a98bff", "#5aff8a", "#ff9a3c", "#3c8bff", "#f2ff5a", "#ff3c9e", "#5afff2", "#c46bff", "#ffd1a3", "#7dd3ff", "#b6ff3c"];
+/** a carenagem (0 Raio, 1 Tubarão, 2 Gota) de uma vaga / de quem pilota: os três por igual */
+export const estiloDaVaga = (s: number) => ((Math.floor(s) % 3) + 3) % 3;
+/** a carenagem de uma pessoa/IA pelo id (estável; os três tipos por igual na frota) */
+export function estiloDoId(id: string): number { let x = 2166136261; for (let i = 0; i < id.length; i++) x = Math.imul(x ^ id.charCodeAt(i), 16777619) >>> 0; return x % 3; }
 export function lookDaVaga(s: number): { cor: string; estilo: number } {
   const h = (n: number) => { let x = (n + 1) * 2654435761; x = (x ^ (x >>> 13)) >>> 0; return x; };
-  // a cor: uma permutação fixa das 16 (sem duas vizinhas iguais); a carenagem: sorteada pela vaga
+  // a cor: uma permutação fixa das 16 (sem duas vizinhas iguais); a carenagem: os 3 tipos se ALTERNAM (Raio, Tubarão,
+  // Gota) — cada estacionamento fica com os três por igual (o dono, out/2026)
   const ordem = [5, 12, 0, 9, 3, 14, 7, 1, 10, 4, 15, 8, 2, 13, 6, 11];
-  return { cor: PALETA_MOTO[ordem[s % ordem.length]!]!, estilo: h(s) % 3 };
+  void h;
+  return { cor: PALETA_MOTO[ordem[s % ordem.length]!]!, estilo: estiloDaVaga(s) };
 }
 
 export type Vaga = { x: number; z: number; yaw: number; ceu: boolean; alt: number; lote: number };

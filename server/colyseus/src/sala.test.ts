@@ -133,3 +133,12 @@ describe("LoungeRoom (servidor de verdade + clientes do SDK)", () => {
     await espera(() => !jogadores(ultimo)?.has(id(1)));
   });
 });
+
+describe("arena PvP na pose (servidor)", () => {
+  it("o golpe, a vida e a espada passam limpos", () => {
+    const p = sanitizarPose({ x: 0, z: 0, facing: 0, atk: 22, hp: 64, arma: 1 }, false)!;
+    expect(p.atk).toBe(22); expect(p.hp).toBe(64); expect(p.arma).toBe(true); expect(sanitizarPose({ x: 0, z: 0, facing: 0, mov: 2 }, false)!.mov).toBe(2); expect(sanitizarPose({ x: 0, z: 0, facing: 0, mov: 7 }, false)!.mov).toBe(0);
+    const q = sanitizarPose({ x: 0, z: 0, facing: 0, atk: -1, hp: 900, arma: true }, false)!;
+    expect(q.atk).toBe(0); expect(q.hp).toBe(100); expect(q.arma).toBe(false);
+  });
+});

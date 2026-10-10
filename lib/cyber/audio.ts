@@ -7,11 +7,12 @@
  *  - o leito ambiente "abaixa" enquanto a música da intro toca (cross-fade quando ela fadeia).
  */
 import { SINTESE_MOTO, type NomeSomMoto } from "./somMoto";
+import { SINTESE_CORRIDA, type NomeSomCorrida } from "./somCorrida";
 import { SINTESE_ASAS, type NomeSomAsas } from "./asas";
 import { sintetizarBatida, sintetizarRaio } from "./coracao";
 import { sintetizarAmbiente } from "./ambiente";
 import { sintetizarPuxaFio, sintetizarZumbidoFio } from "./somFio";
-import { sintetizarAlerta, sintetizarDash, sintetizarDecola, sintetizarImpactoHeroi } from "./somMovimento";
+import { sintetizarAcerto, sintetizarAlerta, sintetizarDash, sintetizarDecola, sintetizarGolpe, sintetizarImpactoHeroi } from "./somMovimento";
 
 export const PASTA_SONS = "/assets/sounds/cyber/";
 
@@ -20,7 +21,7 @@ export type NomeSom =
   | "ship-takeoff" | "ship-landing" | "ship-touchdown" | "step-1" | "step-2" | "step-3" | "jump" | "land"
   | "near-ping" | "neuron-chime" | "rise" | "cyber-enter" | "study-confirm" | "chat-pop" | "join" | "leave"
   | "jetpack" | "jato-sopro" | "baque" | "droid-agua" | "droid-alien"
-  | NomeSomMoto | NomeSomAsas | "coracao" | "raio" | "ambiente-biblioteca" | "ambiente-jardim" | "fio-zumbido" | "fio-puxa" | "dash" | "alerta" | "decola" | "impacto-heroi";
+  | NomeSomMoto | NomeSomCorrida | NomeSomAsas | "coracao" | "raio" | "ambiente-biblioteca" | "ambiente-jardim" | "fio-zumbido" | "fio-puxa" | "dash" | "alerta" | "decola" | "impacto-heroi" | "golpe" | "acerto";
 
 /** afinação 432 Hz: a faixa do leito (danamusic) é gravada em A=440 (medido: +0,1 cent) — tocada a 432/440 vira A=432 */
 export const TAXA_432 = 432 / 440;
@@ -43,16 +44,30 @@ export const SONS: Record<NomeSom, { modo: "pos" | "2d"; loop: boolean; volume: 
   alerta: { modo: "pos", loop: false, volume: 0.45, sintetico: true },   // (a expiração pesada da guarda)
   decola: { modo: "pos", loop: false, volume: 0.8, sintetico: true },     // a ignição do jato no impulso
   "impacto-heroi": { modo: "pos", loop: false, volume: 1, sintetico: true },   // o estrondo do hero landing (queda alta)
+  golpe: { modo: "pos", loop: false, volume: 0.8, sintetico: true },      // o corte de ar da espada (arena)
+  acerto: { modo: "pos", loop: false, volume: 0.95, sintetico: true },    // o golpe pegando
   // MOTO por estágio (lib/cyber/somMoto, sintetizados): loops de motor (que faz a lenta)/vento/turbina + os one-shots
-  "moto-motor": { modo: "pos", loop: true, volume: 0.55, sintetico: true },
+  "moto-motor": { modo: "pos", loop: true, volume: 0.6, ext: "wav" },   // gravação real (CREDITS.md)
+  "moto-motor-alto": { modo: "pos", loop: true, volume: 0.6, ext: "wav" },   // gravação real (CREDITS.md)
+  "moto-troca": { modo: "pos", loop: false, volume: 0.5, sintetico: true },
+  "moto-pipoco": { modo: "pos", loop: true, volume: 0.85, ext: "wav" },   // o carburador estalando (estouros reais — CREDITS.md)
+  "moto-estrondo": { modo: "pos", loop: false, volume: 1, sintetico: true },
+  "moto-supersonico": { modo: "pos", loop: true, volume: 0.5, sintetico: true },
   "moto-vento": { modo: "pos", loop: true, volume: 0.35, sintetico: true },
   "moto-turbina": { modo: "pos", loop: true, volume: 0.6, sintetico: true },
   "moto-partida": { modo: "pos", loop: false, volume: 0.75, sintetico: true },
   "moto-desliga": { modo: "pos", loop: false, volume: 0.6, sintetico: true },
-  "moto-boost": { modo: "pos", loop: false, volume: 0.85, sintetico: true },
+  "moto-boost": { modo: "pos", loop: false, volume: 0.95, ext: "wav" },   // tiro de escape + rajada (gravações reais — CREDITS.md)
   "moto-freio": { modo: "pos", loop: false, volume: 0.45, sintetico: true },
   "moto-decola": { modo: "pos", loop: false, volume: 0.55, sintetico: true },
   "moto-pouso": { modo: "pos", loop: false, volume: 0.8, sintetico: true },
+  // CORRIDAS (lib/cyber/somCorrida): 2D — são do HUD, não de um lugar
+  "corrida-bip": { modo: "2d", loop: false, volume: 0.55, sintetico: true },
+  "corrida-largada": { modo: "2d", loop: false, volume: 0.65, sintetico: true },
+  "corrida-portao": { modo: "2d", loop: false, volume: 0.45, sintetico: true },
+  "corrida-boost": { modo: "2d", loop: false, volume: 0.55, sintetico: true },
+  "corrida-volta": { modo: "2d", loop: false, volume: 0.6, sintetico: true },
+  "corrida-fim": { modo: "2d", loop: false, volume: 0.7, sintetico: true },
   // ASAS NEGRAS do founder (lib/cyber/asas): a BATIDA é gravada ("large wings flap", CC0 — OpenGameArt/AntumDeluge, de
   // dave.des no Freesound; 1 batida recortada, macia, com passa-baixa); o vento, abrir e fechar são sintetizados
   "asa-bater": { modo: "pos", loop: false, volume: 0.42, ext: "wav", filtro: 3800 },
@@ -136,9 +151,9 @@ export function sintetizarBaque(sr: number): Float32Array {
   for (let i = 0; i < 64; i++) out[n - 1 - i]! *= i / 64;   // fim sem clique
   return normalizar(out, 0.92);
 }
-export const SINTESE: Partial<Record<NomeSom, (sr: number) => Float32Array>> = { "jato-sopro": sintetizarJetpack, baque: sintetizarBaque, ...SINTESE_MOTO, ...SINTESE_ASAS, coracao: sintetizarBatida, raio: sintetizarRaio,
+export const SINTESE: Partial<Record<NomeSom, (sr: number) => Float32Array>> = { "jato-sopro": sintetizarJetpack, baque: sintetizarBaque, ...SINTESE_MOTO, ...SINTESE_CORRIDA, ...SINTESE_ASAS, coracao: sintetizarBatida, raio: sintetizarRaio,
   "ambiente-biblioteca": (sr) => sintetizarAmbiente("biblioteca", sr), "ambiente-jardim": (sr) => sintetizarAmbiente("jardim", sr),
-  "fio-zumbido": sintetizarZumbidoFio, "fio-puxa": sintetizarPuxaFio, dash: sintetizarDash, alerta: sintetizarAlerta, decola: sintetizarDecola, "impacto-heroi": sintetizarImpactoHeroi };
+  "fio-zumbido": sintetizarZumbidoFio, "fio-puxa": sintetizarPuxaFio, dash: sintetizarDash, alerta: sintetizarAlerta, decola: sintetizarDecola, "impacto-heroi": sintetizarImpactoHeroi, golpe: sintetizarGolpe, acerto: sintetizarAcerto };
 
 /** distância: cai com a distância e some longe (cull). A nave de quem PILOTA quase não paneia (rolloff baixo).
  *  Atenção: no modelo "inverse" do Web Audio o `max` NÃO corta (o som só vai ficando fraco, mas se ouve de longe);

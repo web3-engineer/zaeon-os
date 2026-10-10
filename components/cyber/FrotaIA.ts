@@ -26,6 +26,17 @@ import { planejarDia, type PlanoDia } from "@/lib/cyber/frota/plano";
 import { diaDe, fullNoDia, minutoDoDia } from "@/lib/cyber/frota/agenda";
 import { estadoDaIA, type EstadoIA } from "@/lib/cyber/frota/corpo";
 import { criarMotosEstacionadas, type MotoParada } from "./EstacionamentosEstudo";
+import { estiloDoId } from "@/lib/cyber/motos";
+/** pinta a moto (do corpo reaproveitado) na cor da IA: a pintura clara e os frisos de luz */
+function pintarMoto(g: THREE.Object3D, hex: string) {
+  const cor = new THREE.Color(hex), clara = cor.clone().lerp(new THREE.Color(0xffffff), 0.3);
+  g.traverse((n) => {
+    const m = (n as THREE.Mesh).material as THREE.Material | undefined; if (!m || Array.isArray(m)) return;
+    const st = m as THREE.MeshStandardMaterial, b = m as THREE.MeshBasicMaterial;
+    if (st.userData.pintura) { st.color.copy(clara); st.emissive.copy(cor).multiplyScalar(0.14); }
+    else if (b.userData.friso) b.color.copy(cor);
+  });
+}
 import { areaDe, contagemVazia, type AreaId } from "@/lib/cyber/frota/areas";
 import { episodiosDoDia, type Episodio } from "@/lib/cyber/frota/conversas";
 import type { ConfigSalva } from "@/lib/cyber/frota/config";
@@ -60,7 +71,7 @@ const ORCAMENTO_MS = 0.8;
 const TAG = "position:absolute;left:0;top:0;transform:translate(-50%,-100%);font:700 11px system-ui,sans-serif;padding:2px 8px;border-radius:999px;background:rgba(10,8,30,.62);border:1px solid rgba(160,140,255,.3);white-space:nowrap;pointer-events:none;";
 const BALAO = "position:absolute;left:0;top:0;transform:translate(-50%,-100%);max-width:220px;font:500 12.5px system-ui,sans-serif;line-height:1.3;padding:6px 10px;border-radius:14px 14px 14px 4px;background:rgba(255,255,255,.94);color:#0b1020;box-shadow:0 4px 18px rgba(0,0,0,.35);pointer-events:none;display:none;";
 
-type Corpo = { /** dt guardado dos quadros em que a animação pulou (longe: anima um quadro sim, um não) */ animDt: number; /** a moto dela estava parada numa vaga no quadro anterior */ tinhaVaga: boolean; av: AvatarLuzHandle; tag: HTMLDivElement; balao: HTMLDivElement; moto: MotoHandle | null; id: string | null; desvio: P2; yAnt: number; /** a moto: 0..1 materializada */ motoK: number; motoEm: { x: number; y: number; z: number; rumo: number } | null };
+type Corpo = { /** dt guardado dos quadros em que a animação pulou (longe: anima um quadro sim, um não) */ animDt: number; /** de quem é a moto montada (a carenagem é da IA) e as motos do corpo (uma por carenagem) */ motoDe?: string | null; motos?: (MotoHandle | null)[]; /** a moto dela estava parada numa vaga no quadro anterior */ tinhaVaga: boolean; av: AvatarLuzHandle; tag: HTMLDivElement; balao: HTMLDivElement; moto: MotoHandle | null; id: string | null; desvio: P2; yAnt: number; /** a moto: 0..1 materializada */ motoK: number; motoEm: { x: number; y: number; z: number; rumo: number } | null };
 
 /** a fase da animação de cada IA (s): ninguém anda no mesmo passo que o vizinho */
 const faseDe = (id: string) => { let h = 0; for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0; return (Math.abs(h) % 1000) / 100; };
@@ -276,13 +287,19 @@ export function criarFrotaIA(o: { cena: THREE.Scene; overlay: HTMLElement; gltf:
         if (e.pose === "moto" && k.tinhaVaga && k.motoK === 0) k.motoK = 1;
         k.tinhaVaga = !!e.vagaMoto;
         if (e.pose === "moto") {
-          if (!k.moto) { k.moto = loteMoto(criarMoto({ cor: porId.get(k.id)!.cor, low: o.low })); o.cena.add(k.moto.group); }
+          if (k.motoDe !== k.id) {   // (cada IA com a carenagem dela — os 3 tipos por igual; o corpo guarda uma de cada e troca)
+            const est = estiloDoId(k.id); if (k.moto) k.moto.group.visible = false;
+            k.motos ??= [null, null, null]; k.moto = k.motos[est] ??= loteMoto(criarMoto({ cor: "#ffffff", low: o.low, estilo: est })); k.motoDe = k.id;
+            if (!k.moto.group.parent) o.cena.add(k.moto.group);
+            pintarMoto(k.moto!.group, porId.get(k.id)!.cor);
+          }
+          const mt = k.moto!;
           // a moto se MATERIALIZA (cresce em ~0,45 s) ao montar
           k.motoK = Math.min(1, k.motoK + dt / 0.45); const em = k.motoK * k.motoK * (3 - 2 * k.motoK); k.motoEm = { x, y, z, rumo: e.rumo };
-          k.moto.group.visible = true; k.moto.group.position.set(x, y, z); k.moto.group.rotation.y = e.rumo; k.moto.group.scale.setScalar(Math.max(0.02, em));
-          k.moto.atualizar({ dt, t, voando: true, vel: e.moto?.vel ?? 30, curva: e.moto?.curva ?? 0 }); k.moto.group.updateMatrixWorld(true);
-          k.moto.assento.getWorldPosition(w); k.av.group.position.copy(w); k.av.olharPara(e.rumo);
-          k.moto.pontos.maoE.getWorldPosition(montado.maoE); k.moto.pontos.maoD.getWorldPosition(montado.maoD); k.moto.pontos.peE.getWorldPosition(montado.peE); k.moto.pontos.peD.getWorldPosition(montado.peD);
+          mt.group.visible = true; mt.group.position.set(x, y, z); mt.group.rotation.y = e.rumo; mt.group.scale.setScalar(Math.max(0.02, em));
+          mt.atualizar({ dt, t, voando: true, vel: e.moto?.vel ?? 30, curva: e.moto?.curva ?? 0 }); mt.group.updateMatrixWorld(true);
+          mt.assento.getWorldPosition(w); k.av.group.position.copy(w); k.av.olharPara(e.rumo);
+          mt.pontos.maoE.getWorldPosition(montado.maoE); mt.pontos.maoD.getWorldPosition(montado.maoD); mt.pontos.peE.getWorldPosition(montado.peE); mt.pontos.peD.getWorldPosition(montado.peD);
           m = montado;
         } else {
           // desceu: a moto se DESFAZ (encolhe) onde ficou, em ~0,35 s
@@ -338,7 +355,7 @@ export function criarFrotaIA(o: { cena: THREE.Scene; overlay: HTMLElement; gltf:
     mostrar(on) { visivel = on; },
     dispose() {
       if (prazo) clearTimeout(prazo); worker?.terminate(); worker = null;
-      for (const k of corpos) { k.av.dispose(); k.moto?.dispose(); k.tag.remove(); k.balao.remove(); } corpos.length = 0;
+      for (const k of corpos) { k.av.dispose(); for (const m of k.motos ?? [k.moto]) m?.dispose(); k.tag.remove(); k.balao.remove(); } corpos.length = 0;
       for (const m of [silhuetas, motosSil]) { m.geometry.dispose(); m.removeFromParent(); m.dispose(); } matSil.dispose();
       if (tAssar) clearTimeout(tAssar); multidao?.dispose(); multidao = null; estacionadas.dispose();
     },

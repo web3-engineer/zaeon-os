@@ -12,7 +12,7 @@ import * as THREE from "three";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { amostrarPose, duracaoClipe, envelopePouso, misturar, type Dir3, type Pose } from "@/lib/cyber/poses";
 import { impactoDoPouso } from "@/lib/cyber/jet";
-import { bracosDaDecolagem, pesoHeroi, poseAlerta, poseDash, poseHeroi, poseSprint, type PoseAcao } from "@/lib/cyber/posesCombate";
+import { bracosDaDecolagem, pesoHeroi, poseAlerta, poseDash, poseEmpunhaGuarda, poseEmpunhaSolta, poseGolpe, poseHeroi, poseSprint, type PoseAcao, type PoseEspada } from "@/lib/cyber/posesCombate";
 import { fasesDeContato, pisadasEntre } from "@/lib/cyber/audio";
 import { clone as skClone } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { COR_LUZ } from "@/lib/cyber/cores";
@@ -78,7 +78,7 @@ export type AvatarLuzHandle = {
    *  esticadas e abertas, mãos atrás da cabeça). Sentado, os PÉS ficam no chão na frente do móvel (IK — as canelas não
    *  atravessam a frente do sofá). `tablet` (0..1) = o TABLET se materializando nas mãos (partículas → tablet aceso): com
    *  ele, os braços seguram o tablet e a cabeça olha pra tela — em pé, sentado ou deitado. */
-  animar(o: { andando: boolean; correndo?: boolean; sentado?: number; meditando?: number; pilotando?: number; jato?: number; ar?: { vy: number; movendo: boolean; /** velocidade no plano (m/s) — o voo turbo deita o corpo */ vel?: number } | null; /** as poses de AÇÃO (lib/cyber/posesCombate): pesos 0..1 do sprint, do dash e do alerta (`alertaT` = s desde o dash — o fôlego); `heroi` = s desde o HERO LANDING (ou null); `decola` = a decolagem com impulso (s desde o comando e o agachamento) */ acao?: { sprint: number; dash: number; alerta: number; alertaT?: number; heroi?: number | null; decola?: { t: number; espera: number } | null } | null; montado?: Montado | null; dj?: number; danca?: number; surf?: number; puxado?: number; descanso?: { sentar: number; deitar: number; assentoY: number; relaxa?: number } | null; tablet?: number; dt: number; t: number }): void;
+  animar(o: { andando: boolean; correndo?: boolean; sentado?: number; meditando?: number; pilotando?: number; jato?: number; ar?: { vy: number; movendo: boolean; /** velocidade no plano (m/s) — o voo turbo deita o corpo */ vel?: number } | null; /** as poses de AÇÃO (lib/cyber/posesCombate): pesos 0..1 do sprint, do dash e do alerta (`alertaT` = s desde o dash — o fôlego); `heroi` = s desde o HERO LANDING (ou null); `decola` = a decolagem com impulso (s desde o comando e o agachamento) */ acao?: { sprint: number; dash: number; alerta: number; alertaT?: number; heroi?: number | null; decola?: { t: number; espera: number } | null; /** a ESPADA na mão: o golpe do combo agora (fase 0..1 e a janela que corta) e o peso da guarda */ espada?: { golpe: { n: 1 | 2 | 3; u: number; ativo: [number, number] } | null; guarda: number } | null } | null; montado?: Montado | null; dj?: number; danca?: number; surf?: number; puxado?: number; descanso?: { sentar: number; deitar: number; assentoY: number; relaxa?: number } | null; tablet?: number; dt: number; t: number }): void;
   /** quantas PISADAS (pé encostando no chão na animação de andar/correr) desde a última chamada — o som do passo
    *  sai no compasso do pé; `null` = avatar sem pés (sem o modelo): o engine usa a cadência fixa */
   passosNovos(): number | null;
@@ -104,6 +104,9 @@ export type AvatarLuzHandle = {
   detalheVrm(on: boolean): void;
   /** sem a mochila a jato (os PERSONAGENS com corpo VRM próprio — a Nina…): o voo deles é outro assunto */
   semMochila(): void;
+  /** a ARMA na mão direita (a espada — components/cyber/EspadaEspiritual): o avatar a põe na mão a cada `animar`, com
+   *  a lâmina pra onde a pose manda (null = solta) */
+  empunhar(obj: THREE.Object3D | null): void;
   /** o que as asas fizeram desde a última chamada (o engine toca os sons); null = sem asas */
   eventosAsas(): { bateu: number; abriu: boolean; fechou: boolean; modo: ModoAsas } | null;
   dispose(): void;
@@ -304,6 +307,8 @@ export function criarAvatarLuz(armaduraHex: string, starTex: THREE.Texture, low:
   };
   const frente = new THREE.Vector3(), lateral = new THREE.Vector3(), cima = new THREE.Vector3(0, 1, 0), cimaC = new THREE.Vector3(), qG = new THREE.Quaternion();
   const fChao = new THREE.Vector3(), lChao = new THREE.Vector3();   // (os eixos do CHÃO: as poses de ação plantam os pés neles)
+  let arma: THREE.Object3D | null = null;
+  const pMao = new THREE.Vector3(), dLam = new THREE.Vector3(), dPla = new THREE.Vector3(), xLam = new THREE.Vector3(), mLam = new THREE.Matrix4(), qLam = new THREE.Quaternion(), qGrupo = new THREE.Quaternion();
   const pN = new THREE.Vector3(), pH = new THREE.Vector3(), cimaH = new THREE.Vector3(), latH = new THREE.Vector3(), zH = new THREE.Vector3(), pF = new THREE.Vector3(), mBase = new THREE.Matrix4(), qCab = new THREE.Quaternion(), qPesc = new THREE.Quaternion(), qInv = new THREE.Quaternion(), alvoM = new THREE.Vector3(), pGr = new THREE.Vector3(), pConcha = new THREE.Vector3(), pesFixos = [new THREE.Vector3(), new THREE.Vector3()];
   const suave = (x: number) => { const u = Math.max(0, Math.min(1, x)); return u * u * (3 - 2 * u); };
   const polo = new THREE.Vector3(), pA = new THREE.Vector3(), pB = new THREE.Vector3(), pC = new THREE.Vector3(), eixo = new THREE.Vector3(), lado2 = new THREE.Vector3(), cot = new THREE.Vector3();
@@ -482,10 +487,10 @@ export function criarAvatarLuz(armaduraHex: string, starTex: THREE.Texture, low:
       // DESACELERAR o corpo ergue (a "freada" dos super-heróis); na CURVA, inclina pro lado dela (como quem voa de verdade)
       const velAr = ar?.vel ?? (movendo ? 16 : 0), velAnt = velArS;
       velArS += (velAr - velArS) * Math.min(1, dt * 4);
-      turboAr += ((ar ? Math.max(0, Math.min(1, (velArS - 17) / 13)) : 0) - turboAr) * Math.min(1, dt * 3);
+      turboAr += ((ar ? Math.max(0, Math.min(1, (velArS - 17) / 13)) : 0) - turboAr) * Math.min(1, dt * 1.1);   // (o turbo deita o corpo AOS POUCOS — no começo, quase reto)
       const desacel = dt > 0 ? (velAnt - velArS) / dt : 0;
       freioAr += ((ar && desacel > 6 ? Math.min(1, desacel / 25) : 0) - freioAr) * Math.min(1, dt * 5);
-      inclinaVoo += ((ar ? (movendo ? -0.75 - 0.5 * turboAr : caindo ? 0.1 : -0.12) + 0.55 * freioAr : 0) - inclinaVoo) * Math.min(1, dt * 3);
+      inclinaVoo += ((ar ? (movendo ? -0.62 - 0.38 * turboAr * turboAr : caindo ? 0.1 : -0.12) + 0.55 * freioAr : 0) - inclinaVoo) * Math.min(1, dt * 2);
       bancoVoo += ((ar && movendo ? Math.max(-0.55, Math.min(0.55, giroAlvo * 1.6)) : 0) - bancoVoo) * Math.min(1, dt * 4);
       const aVoo = inclinaVoo * wAr, QUADRIL = 1.0;
       corpo.rotation.x += aVoo; corpo.rotation.z += bancoVoo * wAr;
@@ -592,6 +597,53 @@ export function criarAvatarLuz(armaduraHex: string, starTex: THREE.Texture, low:
           ap(h.tronco, lombar, pescoco, wHe); ap(h.cabeca, pescoco, cabeca, wHe * 0.8);
           for (const o of ossos) { ap(h.braco(o.lado), o.braco, o.ante, wHe); ap(h.ante(o.lado), o.ante, o.mao, wHe); }
           for (const o of pernas) { ap(h.coxa!(o.lado), o.coxa, o.canela, wHe, true); ap(h.canela!(o.lado), o.canela, o.pe, wHe, true); ap(h.pe!(o.lado), o.pe, o.dedo, wHe * 0.8, true); }
+        }
+      }
+      // ── a ESPADA na mão (lib/cyber/posesCombate): o GOLPE do combo manda no corpo todo (tronco torcendo, o braço que
+      //    corta, o outro equilibrando, as pernas no golpe pesado); fora do golpe, só o braço direito empunha — solta
+      //    andando, apontada à frente na guarda. A arma vai na mão direita, a lâmina pra onde a pose manda ──
+      const esp = acao?.espada ?? null;
+      if (esp && (ossos.length || pernas.length) && pilotando < 0.05 && !montado) {
+        const g = esp.golpe, pe: (PoseEspada & { duasMaos?: number }) | null = g ? poseGolpe(g.n, g.u, g.ativo) : null, wDuas = pe?.duasMaos ?? 0;
+        const so = poseEmpunhaSolta(), gu = poseEmpunhaGuarda(), wg = Math.max(0, Math.min(1, esp.guarda));
+        const bD = pe ? pe.bracoD : misturar(so.bracoD, gu.bracoD, wg), aD = pe ? pe.anteD : misturar(so.anteD, gu.anteD, wg);
+        const lam = pe ? pe.lamina : misturar(so.lamina, gu.lamina, wg), pla = pe ? pe.plano : misturar(so.plano, gu.plano, wg);
+        if (pe) { corpo.rotation.x += pe.inclina; corpo.position.z += -QUADRIL * Math.sin(pe.inclina); corpo.position.y += QUADRIL * (1 - Math.cos(pe.inclina)) - pe.desce; }
+        corpo.updateWorldMatrix(true, false); corpo.getWorldQuaternion(qG);
+        frente.set(0, 0, -1).applyQuaternion(qG); cimaC.set(0, 1, 0).applyQuaternion(qG); lateral.crossVectors(cimaC, frente).normalize();
+        grupo.updateWorldMatrix(true, false); grupo.getWorldQuaternion(qC2);
+        const fC = fChao.set(0, 0, -1).applyQuaternion(qC2), lC = lChao.crossVectors(cima, fC).normalize();
+        const ap = (v: Dir3, osso: THREE.Object3D | null, filho: THREE.Object3D | null, w: number, chao = false) => {
+          if (!osso || !filho || w <= 0.01) return;
+          if (chao) dirAlvo.copy(fC).multiplyScalar(v[0]).addScaledVector(cima, v[1]).addScaledVector(lC, v[2]).normalize();
+          else dirAlvo.copy(frente).multiplyScalar(v[0]).addScaledVector(cimaC, v[1]).addScaledVector(lateral, v[2]).normalize();
+          apontar(osso, filho, dirAlvo, w);
+        };
+        if (pe) {
+          ap(pe.tronco, lombar, pescoco, 0.9);
+          if (wDuas < 0.99) for (const o of ossos) if (o.lado > 0) { ap(pe.bracoE, o.braco, o.ante, 1 - wDuas); ap(pe.anteE, o.ante, o.mao, 1 - wDuas); }
+          if (pe.pernas) for (const o of pernas) { ap(pe.pernas.coxa(o.lado), o.coxa, o.canela, 1, true); ap(pe.pernas.canela(o.lado), o.canela, o.pe, 1, true); ap(pe.pernas.pe(o.lado), o.pe, o.dedo, 0.8, true); }
+        }
+        const dir = ossos.find((o) => o.lado < 0);
+        if (dir) { ap(bD, dir.braco, dir.ante, 1); ap(aD, dir.ante, dir.mao, 1); }
+        // a arma na mão: a origem dela (o cabo) na mão direita; +y = a lâmina; ±z = a face (perpendicular ao fio)
+        if (arma && dir) {
+          grupo.updateMatrixWorld(true); dir.mao.getWorldPosition(pMao);
+          dLam.copy(frente).multiplyScalar(lam[0]).addScaledVector(cimaC, lam[1]).addScaledVector(lateral, lam[2]).normalize();
+          dPla.copy(frente).multiplyScalar(pla[0]).addScaledVector(cimaC, pla[1]).addScaledVector(lateral, pla[2]);
+          dPla.addScaledVector(dLam, -dPla.dot(dLam)); if (dPla.lengthSq() < 1e-6) dPla.set(0, 1, 0).addScaledVector(dLam, -dLam.y); dPla.normalize();
+          xLam.crossVectors(dLam, dPla).normalize();
+          mLam.makeBasis(xLam, dLam, dPla); qLam.setFromRotationMatrix(mLam);
+          grupo.getWorldQuaternion(qGrupo);
+          arma.quaternion.copy(qGrupo.invert().multiply(qLam));
+          arma.position.copy(grupo.worldToLocal(pMao.clone()));
+          // A DUAS MÃOS: a esquerda vai no CABO, logo abaixo da direita (IK — o cotovelo pra baixo e pra fora)
+          const esq = ossos.find((o) => o.lado > 0);
+          if (esq && wDuas > 0.01) {
+            alvoM.copy(pMao).addScaledVector(dLam, -0.2 * arma.scale.y);
+            polo.copy(lateral).multiplyScalar(0.6).addScaledVector(cimaC, -0.8);
+            ik(esq.braco, esq.ante, esq.mao, alvoM, polo, wDuas);
+          }
         }
       }
       // ── DJ na cabine: fone (pescoço → cabeça), mãos na controladora por IK, balanço no compasso ──
@@ -798,6 +850,7 @@ export function criarAvatarLuz(armaduraHex: string, starTex: THREE.Texture, low:
     semMochila() { mochila.visible = false; },
     poseVrm(p) { poseVrm = p; espelho?.pose(p); },
     detalheVrm(on) { espelho?.detalhe(on); },
+    empunhar(obj) { if (arma && arma !== obj) arma.removeFromParent(); arma = obj; if (obj) grupo.add(obj); },
     eventosAsas() {
       if (!asas) return null;
       const e = { ...evAsas }; evAsas.bateu = 0; evAsas.abriu = false; evAsas.fechou = false;

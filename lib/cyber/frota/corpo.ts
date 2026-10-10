@@ -27,7 +27,6 @@ import { ALTURA_LOUNGE, CIDADE, colisoresDaCidade, daSala, mundo } from "../ceu"
 import { comprimento, pontoNaRota, rotaAPe } from "../caminhos";
 import { NOS } from "../buracos";
 import { PLATAFORMAS } from "../plataformas";
-import { PRACA } from "../praca";
 import { ESTACAO, MEIO_TELOES, MIRANTES, noMirante } from "../terra";
 import { acasoDe, entre, inteiro, embaralhar } from "./aleatorio";
 import type { FlagsFrota } from "./agenda";
@@ -63,7 +62,7 @@ const s3 = (x: number) => { const c = Math.max(0, Math.min(1, x)); return c * c 
 type Ponto = P3 & { id: string; estudo: boolean; /** (passeio a pé) pra onde olha parado aqui e quanto fica (s) */ olha?: number; fica?: number };
 const VISITAS: Ponto[] = [
   ...(["univ", "ufc", "unifor", "uece", "solana"] as const).map((id) => { const P = PLATAFORMAS[id]; return { id, x: P.chegada.x, y: P.y, z: P.chegada.z, estudo: id !== "solana" }; }),
-  { id: "praca", x: PRACA.x + 18, y: PRACA.y, z: PRACA.z + 12, estudo: false },
+  // (a PRAÇA saiu: virou a ARENA PvP — lib/cyber/arena; IA não pousa no meio da luta)
 ];
 /** os PONTOS DE INTERESSE do passeio a pé na Zaeon central (local da ilha): a plateia na frente de cada telão dos
  *  mirantes (PROBLEMAS e SOLUÇÕES — fora do palco, dos cards e do globo) e o SALÃO da capela (em volta do globo).

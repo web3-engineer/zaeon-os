@@ -26,6 +26,8 @@ const LIMITS = {
   // a VOZ da Zaeon no tutorial do cyberespaço (~10–15 falas fixas pré-geradas + as gerativas): limite PRÓPRIO, pra não
   // comer o "ai-heavy" do laboratório
   "cyber-voz": { tokens: 40, window: "60 s" as const },
+  // as CORRIDAS de moto do cyberespaço: gravar o tempo / ler o ranking
+  "cyber-corrida": { tokens: 30, window: "60 s" as const },
 } as const;
 
 type Bucket = keyof typeof LIMITS;

@@ -1344,3 +1344,18 @@ model FrotaFala {
   criadoEm   DateTime @default(now())
   @@map("frota_falas")
 }
+
+/// CORRIDAS de moto (lib/cyber/corrida): cada corrida terminada — o ranking de cada pista é o melhor `ms` de cada usuário
+model CorridaTempo {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  pista    String
+  userId   String   @db.ObjectId
+  nome     String
+  cor      String
+  ms       Int
+  voltas   Int[]
+  criadoEm DateTime @default(now())
+  @@index([pista, ms])
+  @@index([pista, userId])
+  @@map("corrida_tempos")
+}

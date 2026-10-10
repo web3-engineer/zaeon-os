@@ -4,10 +4,10 @@ import { join } from "node:path";
 import { CRISTAIS_PERTO, DISTANCIA, GATILHO_VOO, gatilhoVooInicial, gatilhosVoo, emendarLoop, recortarCanal, recortePasso, fasesDeContato, pisadasEntre, SINTESE, SONS_ARQUIVO, sintetizarBaque, sintetizarJetpack, FADE_ENTRADA, NAVE_DESCIDA, PASSOS, TAXA_432, fatorCristais, eventosNave, somNaveInicial, SONS, cadenciaPasso, criarLimiteVozes, fatorLeito, lerPrefs, urlDoSom, type NomeSom } from "./audio";
 
 describe("áudio do cyberespaço", () => {
-  it("os 25 sons de arquivo existem (22 .ogg + o jato, a batida de asa e a água do Droid em .wav) e os sintetizados têm gerador em public/assets/sounds/cyber e cada um tem modo (posicional × 2D)", () => {
+  it("os 29 sons de arquivo existem (22 .ogg + o jato, a batida de asa, a água do Droid e os 4 da moto — motor, carburador e boost — em .wav) e os sintetizados têm gerador em public/assets/sounds/cyber e cada um tem modo (posicional × 2D)", () => {
     const arquivos = readdirSync(join(process.cwd(), "public/assets/sounds/cyber")).filter((f) => /\.(ogg|wav)$/.test(f)).sort();
     expect(SONS_ARQUIVO.map((n) => urlDoSom(n).split("/").pop()!).sort()).toEqual(arquivos);
-    expect(arquivos).toHaveLength(25);
+    expect(arquivos).toHaveLength(29);
     for (const n of Object.keys(SONS) as NomeSom[]) if (SONS[n].sintetico) expect(SINTESE[n]).toBeTypeOf("function");
     expect(Object.keys(SONS)).not.toContain("whoosh-hyperspace");   // trocado pelo cyber-enter
     expect(urlDoSom("ship-flight")).toBe("/assets/sounds/cyber/ship-flight.ogg");
@@ -18,7 +18,7 @@ describe("áudio do cyberespaço", () => {
     expect(FADE_ENTRADA).toBeGreaterThan(0.5);
   });
   it("leito e UI são 2D; fontes do mundo e a nave são posicionais", () => {
-    const d2: NomeSom[] = ["space-bed", "cyber-enter", "study-confirm", "chat-pop"];
+    const d2: NomeSom[] = ["space-bed", "cyber-enter", "study-confirm", "chat-pop", "corrida-bip", "corrida-largada", "corrida-portao", "corrida-boost", "corrida-volta", "corrida-fim"];   // (os da corrida são do HUD)
     for (const [n, s] of Object.entries(SONS)) expect(s.modo).toBe(d2.includes(n as NomeSom) ? "2d" : "pos");
     for (const n of ["ship-flight", "ship-idle", "space-bed", "blackhole-hum", "crystals"] as NomeSom[]) expect(SONS[n].loop).toBe(true);
   });

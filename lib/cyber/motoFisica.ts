@@ -1,11 +1,16 @@
 /**
  * Cyberespaço — PILOTAGEM da moto voadora (PURO). Não é mais o voo da nave (direção relativa à câmera): é moto.
  *  - W/S = acelera / freia (e dá ré devagar); solto, ela PLANA perdendo velocidade aos poucos (é hover, não pneu);
+ *    no acelerador ela PROGRIDE até 560 km/h (sem teto nos 300: passa dos 500 e encosta nos 560), com CURVA DE POTÊNCIA
+ *    (quase cheia embaixo, caindo perto da máxima: 1 − 0,9·u^2,2, com um piso) — o motor passa as marchas
+ *    (lib/cyber/somMoto `passoCambio`);
  *  - A/D = esterça. A curva é SUTIL e depende da velocidade: devagar ela gira no próprio eixo, rápido ela abre a curva
  *    (o giro máximo cai com a velocidade — como o "MaxSteeringAngle = k / velocidade" dos arcades);
  *  - INCLINA na curva com o ângulo de moto de verdade: tan θ = v·ω / g (v = velocidade, ω = giro em rad/s);
  *  - ADERÊNCIA: a velocidade de lado some aos poucos (a traseira escorrega um pouco na curva; no boost, mais);
- *  - BOOST: tanque que esvazia em `boost.dura` s e recarga sozinho; só pega com a moto andando e no ar;
+ *  - BOOST: tanque que esvazia em `boost.dura` s e recarga sozinho; só pega com a moto andando e no ar. É SUPERSÔNICO:
+ *    acima de `BOOST_SUPER` (300 km/h), ACENDER o boost já ROMPE A BARREIRA DO SOM (o estrondo, o cone de vapor e a onda
+ *    de choque: lib/cyber/somMoto, components/cyber/Moto, VelocidadeTela) e a velocidade pode DOBRAR — até 1000 km/h;
  *  - ALTURA: moto não é nave — sobe no máximo `alturaMax` m acima do CHÃO QUE ESTÁ EMBAIXO (o do mapa, o piso da Zaeon,
  *    o do lounge…), sobe devagar e DESCE mais devagar ainda; passou da borda de algo alto (o chão sumiu lá embaixo),
  *    não sobe mais e desce PLANANDO até voltar pra baixo do teto;
@@ -19,6 +24,8 @@ import { ALTURA_LOUNGE, CIDADE } from "./ceu";
 
 /** o CÉU DA ZAEON pra moto: até a borda da plataforma mais distante (+ folga), o teto é o início da ponta da capela
  *  (+ uma folga pra passar por cima do guarda-corpo das plataformas e pousar nelas) */
+const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
+
 export const ZONA_MOTO_ZAEON = {
   r: Math.max(...Object.values(CIDADE.salas).map((s) => Math.hypot(s.x, s.z) + s.r)) + 40,
   teto: CIDADE.pisoY + ALTURA_LOUNGE + 8,
@@ -30,25 +37,35 @@ export function tetoDaMoto(p: { x: number; z: number }, chao: number): number {
 }
 
 export const PILOTAGEM = {
-  /** velocidade de cruzeiro e com boost (m/s): 34 ≈ 120 km/h, 62 ≈ 220 km/h */
-  vel: 34, velBoost: 62, re: 7,
-  /** aceleração, aceleração no boost e freio (m/s²); `plana` = quanto perde por segundo solta (fração) */
-  acel: 15, acelBoost: 34, freio: 30, plana: 0.45,
+  /** velocidade máxima no acelerador e com boost (m/s): 560 km/h e 1000 km/h */
+  vel: 560 / 3.6, velBoost: 1000 / 3.6, re: 9,
+  /** aceleração (na saída), no boost e freio (m/s²); a curva de potência (`queda`, `expoente`, com `piso` = o mínimo
+   *  perto da máxima); `plana` = quanto perde por segundo solta (fração) */
+  acel: 30, acelBoost: 150, queda: 0.9, expoente: 2.2, piso: 0.12, freio: 85, plana: 0.4,
   /** giro (rad/s): parada/devagar, na velocidade de cruzeiro e no boost; `resposta` = quão rápido o guidão chega lá */
-  giroBaixo: 1.5, giroAlto: 0.38, giroBoost: 0.27, resposta: 4.5,
+  giroBaixo: 1.7, giroAlto: 0.62, giroBoost: 0.4, resposta: 6,
   /** aderência lateral (1/s): quanto da velocidade de lado some por segundo */
   aderencia: 5, aderenciaBoost: 2.6,
+  /** quanto do escorregão a curva COME de velocidade (o resto volta pra frente): baixo = curva fechada sem perder o embalo */
+  esfrega: 0.22,
   /** inclinação máxima (rad, ~36°) e quão rápido ela chega */
-  inclinaMax: 0.63, inclinaResposta: 6,
+  inclinaMax: 0.7, inclinaResposta: 6,
   /** boost: tanque cheio dura `dura` s; recarga em `recarga` s; precisa de `minimo` pra (re)começar */
-  boost: { dura: 3.2, recarga: 5, minimo: 0.2, velMin: 6 },
+  boost: { dura: 5, recarga: 7, minimo: 0.2, velMin: 6 },
   /** o "g" da inclinação: com o g de verdade (9,8) toda curva já deitava no máximo; com um g de jogo maior a moto
    *  deita POUCO devagar e MUITO rápido/no boost (cruzeiro com o guidão todo ≈ 30°, boost ≈ 36°) */
-  g: 22,
+  g: 140,
   /** ALTURA: teto acima do chão de baixo (m) — moto voa BAIXO (o dono pediu: "não deve voar muito acima do chão"); subida e descida (m/s) e quão rápido chega nelas; a descida forçada
    *  (acima do teto, ex.: saiu da borda da Zaeon) vai de `planaMin` a `planaMax` m/s conforme o quanto sobra */
   alturaMax: 8, sobe: 10, desce: 6, inerciaV: 2.4, planaMin: 6, planaMax: 22,
 } as const;
+
+/** a partir de que velocidade (m/s) ACENDER o boost rompe a barreira do som: 300 km/h */
+export const BOOST_SUPER = 300 / 3.6;
+/** o quanto a moto está SUPERSÔNICA (0 = não; com o boost aceso acima de `BOOST_SUPER`: 0,3 na hora … 1 nos 1000 km/h) */
+export const supersonico = (v: number, boost: boolean) => (boost && v >= BOOST_SUPER ? 0.3 + 0.7 * clamp((v - PILOTAGEM.vel) / (PILOTAGEM.velBoost - PILOTAGEM.vel), 0, 1) : 0);
+/** rompeu a barreira do som agora? = o boost ACENDEU (estava apagado, acendeu) com a moto acima de `BOOST_SUPER` */
+export const rompeuBarreira = (boostAntes: boolean, boostAgora: boolean, v: number) => !boostAntes && boostAgora && v >= BOOST_SUPER;
 
 /** o estado da moto = o do voo + o guidão (−1..1, suavizado), a inclinação (rad; < 0 = deita pra ESQUERDA, a
  *  convenção do `rotation.z` do corpo da moto), o tanque de boost (0..1) e se o boost está aceso */
@@ -58,7 +75,6 @@ export type ComandoMoto = { acel: number; giro: number; subir: boolean; descer: 
 
 export const motoParada = (x: number, y: number, z: number, yaw: number): EstadoMoto => ({ x, y, z, yaw, vx: 0, vy: 0, vz: 0, guidao: 0, inclina: 0, tanque: 1, boost: false });
 
-const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 
 /** um passo da moto (dt pequeno; use `passoMotoSub` no loop) */
 export function passoMoto(s: EstadoMoto, c: ComandoMoto, dt: number, solidos: Pilar[] = [], teto: number = VOO.yMax): { s: EstadoMoto; pousado: boolean; chaoY: number } {
@@ -80,7 +96,9 @@ export function passoMoto(s: EstadoMoto, c: ComandoMoto, dt: number, solidos: Pi
   const max = boost ? P.velBoost : P.vel;
   if (rente) frente *= Math.exp(-dt * 6);
   else if (acel > 0) {
-    if (frente < max * acel) frente = Math.min(max * acel, frente + (boost ? P.acelBoost : P.acel) * acel * dt);
+    // curva de potência: quase cheia embaixo, caindo perto da máxima (com um piso, pra chegar nela)
+    const pot = Math.max(P.piso, 1 - P.queda * (Math.max(0, frente) / max) ** P.expoente);
+    if (frente < max * acel) frente = Math.min(max * acel, frente + (boost ? P.acelBoost : P.acel) * acel * pot * dt);
     else frente += (max * acel - frente) * Math.min(1, dt * 1.2);   // acima (o boost acabou): volta pro cruzeiro suave
   } else if (acel < 0) {
     frente = frente > 0 ? Math.max(0, frente + P.freio * acel * dt) : Math.max(-P.re, frente + P.acel * acel * 0.5 * dt);
@@ -95,7 +113,7 @@ export function passoMoto(s: EstadoMoto, c: ComandoMoto, dt: number, solidos: Pi
   // a velocidade NÃO cresce na curva: o que sai do lado volta pra frente só até a velocidade que já tinha, menos um
   // tico de atrito (o "esfregão" da curva)
   const veloc = Math.hypot(frente2, lado2), sobra = lado2 * Math.exp(-dt * (boost ? P.aderenciaBoost : P.aderencia));
-  const esfrega = 1 - 0.6 * Math.abs(lado2 - sobra) / Math.max(1, veloc);
+  const esfrega = 1 - P.esfrega * Math.abs(lado2 - sobra) / Math.max(1, veloc);
   frente2 = Math.sign(frente2 || 1) * Math.sqrt(Math.max(0, veloc * veloc - sobra * sobra)) * esfrega; lado2 = sobra;
   const vx = nfx * frente2 + nlx * lado2, vz = nfz * frente2 + nlz * lado2;
   // vertical: sobe devagar, desce mais devagar ainda; no teto (alturaMax acima do chão de baixo) não sobe mais;
@@ -113,16 +131,23 @@ export function passoMoto(s: EstadoMoto, c: ComandoMoto, dt: number, solidos: Pi
   return { s: { ...r.s, guidao, inclina, tanque, boost }, pousado: r.pousado, chaoY: r.chaoY };
 }
 
-/** o mesmo passo, independente de FPS (subpassos de no máximo `VOO.subpasso`) */
+/** o mesmo passo, independente de FPS: subpassos de no máximo `VOO.subpasso` E de no máximo `PASSO_M` metros (a 1000
+ *  km/h a moto anda 4,6 m num subpasso de 1/60 s — atravessaria parede) */
+const PASSO_M = 1.2;
 export function passoMotoSub(s: EstadoMoto, c: ComandoMoto, dt: number, solidos: Pilar[] = [], teto: number = VOO.yMax): { s: EstadoMoto; pousado: boolean; chaoY: number } {
-  const total = Math.min(VOO.dtMax, Math.max(0, dt)), n = Math.max(1, Math.ceil(total / VOO.subpasso - 1e-9)), h = total / n;
+  const total = Math.min(VOO.dtMax, Math.max(0, dt)), v = Math.hypot(s.vx, s.vz) + 20;
+  const n = Math.max(1, Math.ceil(total / VOO.subpasso - 1e-9), Math.ceil((total * v) / PASSO_M)), h = total / n;
   let r = { s, pousado: false, chaoY: 0 };
   for (let i = 0; i < n; i++) r = passoMoto(r.s, c, h, solidos, teto);
   return r;
 }
 
-/** o quanto de "velocidade" a TELA deve sentir (0..1, e passa de 1 no boost): FOV, blur radial e linhas de velocidade */
+/** a partir de que velocidade (m/s) a TELA sente: 150 km/h */
+export const VEL_SENTE = 150 / 3.6;
+/** o quanto de "velocidade" a TELA deve sentir (0..1, e passa de 1 no boost): FOV, blur radial e linhas de velocidade.
+ *  ZERO abaixo de 150 km/h; a partir daí já entra com as linhas (0,2) e cresce até 300 km/h; o boost soma */
 export function sensacaoDeVelocidade(s: EstadoMoto): number {
   const v = Math.hypot(s.vx, s.vz);
-  return clamp((v - 8) / (PILOTAGEM.vel - 8), 0, 1) * 0.6 + clamp((v - PILOTAGEM.vel) / (PILOTAGEM.velBoost - PILOTAGEM.vel), 0, 1) * 0.4 + (s.boost ? 0.15 : 0);
+  if (v < VEL_SENTE) return 0;
+  return 0.2 + 0.65 * clamp((v - VEL_SENTE) / (PILOTAGEM.vel - VEL_SENTE), 0, 1) + supersonico(v, s.boost) * 0.3 + (s.boost ? 0.1 : 0);
 }

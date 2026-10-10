@@ -47,3 +47,15 @@ Os `.mp3` originais em `public/assets/sounds/` (leberch/freesound/spaceship) sã
 | `droid-alien.ogg` | "Ambient Alien Light sfx" — https://opengameart.org/content/ambient-alien-light-sfx | Dr. Neptune | **CC0 1.0** (domínio público) | sem edição (7,9 s, estéreo) |
 
 Esculpidos no navegador (`AudioCyber.vozDroid`, `lib/cyber/audio.ts` `VOZ_DROID`): formantes em "sílabas", delay com repetição e reverb longo por convolução.
+
+## Motor da moto (gravações reais)
+
+| arquivo | fonte | autor | licença | edição |
+|---|---|---|---|---|
+| `moto-motor-alto.wav` | "Sportsbike Flyby" (superbike 1000 cc numa pista) — https://freesound.org/people/richwise/sounds/361403/ | richwise | **CC0 1.0** (domínio público) | trecho de 6,4–7,85 s (depois da passagem: rotação alta estável), passa-alta 60 Hz, tom TRAVADO em 300 Hz (re-amostragem seguindo o tom medido), volume nivelado, loop de 1,25 s (múltiplo do período, emenda de 0,15 s), AGRESSIVO (grave reforçado + saturação), reverb leve embutido (20 %, 1,6 s, convolução circular), mono 44,1 kHz |
+| `moto-motor.wav` | "XSR700 tickover loop" (marcha lenta) — https://freesound.org/people/richwise/sounds/432304/ | richwise | **CC0 1.0** (domínio público) | trecho de 0,6–4,9 s, passa-alta 25 Hz, volume meio nivelado, loop de 4 s (emenda de 0,25 s), AGRESSIVO (grave reforçado + saturação), reverb leve embutido (18 %, 1,6 s), mono 44,1 kHz |
+
+| `moto-pipoco.wav` (desacelerando) | "Car Antilag" — https://freesound.org/people/modusmogulus/sounds/797835/ · "Large backfiring motorbike passes by." — https://freesound.org/people/mudflea2/sounds/705363/ | modusmogulus · mudflea2 | **CC0 1.0** (ambos) | 17 estouros recortados (148 ms cada, ataque de 2 ms, cauda caindo, passa-alta 45 Hz), espalhados num loop de 3 s em intervalos irregulares (às vezes rajadas de 2–3), força e tom variando (0,78–1,23×), saturação + grave reforçado, reverb 16 % (1,2 s); mono 44,1 kHz |
+| `moto-boost.wav` | o mesmo "Sportsbike Flyby" (o grito da superbike) | richwise | **CC0 1.0** | o grito tocado com a afinação SUBINDO de 0,45× a 2,1× em 0,7 s (exponencial), segura e some; saturado (tanh) + reverb 28 % (1,4 s); 2,2 s mono 44,1 kHz |
+
+O jogo toca os dois afinados na rotação do motor (`lib/cyber/somMoto` `mixDaMoto`/`freqDoMotor`): a lenta embaixo, o grito da superbike da puxada até o corte.

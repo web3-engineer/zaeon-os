@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PILOTAGEM, ZONA_MOTO_ZAEON, motoParada, passoMoto, passoMotoSub, sensacaoDeVelocidade, tetoDaMoto, type ComandoMoto, type EstadoMoto } from "./motoFisica";
+import { BOOST_SUPER, PILOTAGEM, ZONA_MOTO_ZAEON, motoParada, rompeuBarreira, supersonico, passoMoto, passoMotoSub, sensacaoDeVelocidade, tetoDaMoto, type ComandoMoto, type EstadoMoto } from "./motoFisica";
 import * as ceuMod from "./ceu";
 
 const NADA: ComandoMoto = { acel: 0, giro: 0, subir: false, descer: false, boost: false };
@@ -11,14 +11,16 @@ const vel = (s: EstadoMoto) => Math.hypot(s.vx, s.vz);
 describe("pilotagem da moto (dirigibilidade)", () => {
   it("W acelera PRA FRENTE do rumo até a velocidade de cruzeiro (não teleporta: leva uns segundos)", () => {
     const s1 = pilotar(noAr(), { acel: 1 }, 1);
-    expect(vel(s1)).toBeGreaterThan(10); expect(vel(s1)).toBeLessThan(PILOTAGEM.vel);
-    const s = pilotar(noAr(), { acel: 1 }, 5);
-    expect(vel(s)).toBeCloseTo(PILOTAGEM.vel, 0);
-    expect(s.z - 300).toBeGreaterThan(80); expect(Math.abs(s.x - 300)).toBeLessThan(1e-6);
+    expect(vel(s1)).toBeGreaterThan(8); expect(vel(s1)).toBeLessThan(PILOTAGEM.vel);
+    const s = pilotar(noAr(), { acel: 1 }, 14);
+    expect(vel(s)).toBeCloseTo(PILOTAGEM.vel, 0); expect(vel(s) * 3.6).toBeGreaterThan(559);   // chega nos 560 km/h
+    expect(vel(pilotar(noAr(), { acel: 1 }, 2.5))).toBeLessThan(PILOTAGEM.vel * 0.8);   // curva de potência: não chega em 2,5 s
+    const reta = pilotar(noAr(), { acel: 1 }, 5);   // (14 s a 560 km/h passam da borda do mapa)
+    expect(reta.z - 300).toBeGreaterThan(80); expect(Math.abs(reta.x - 300)).toBeLessThan(1e-6);
   });
   it("solta, PLANA perdendo velocidade aos poucos; S freia forte", () => {
-    const rapido = pilotar(noAr(), { acel: 1 }, 5);
-    const plana = pilotar(rapido, {}, 1), freia = pilotar(rapido, { acel: -1 }, 1);
+    const rapido = pilotar(noAr(), { acel: 1 }, 14);
+    const plana = pilotar(rapido, {}, 1), freia = pilotar(rapido, { acel: -1 }, 2);   // de 560 a 0 em ~1,8 s (depois ela dá ré)
     expect(vel(plana)).toBeGreaterThan(PILOTAGEM.vel * 0.55); expect(vel(plana)).toBeLessThan(PILOTAGEM.vel);
     expect(vel(freia)).toBeLessThan(5);
   });
@@ -29,7 +31,7 @@ describe("pilotagem da moto (dirigibilidade)", () => {
     expect(Math.abs(rapido)).toBeLessThan(Math.abs(devagar) * 0.5);
     const curva = pilotar({ ...noAr(), vz: PILOTAGEM.vel }, { acel: 1, giro: 1 }, 3);
     expect(vel(curva)).toBeLessThanOrEqual(PILOTAGEM.vel + 0.01);   // curvar NÃO acelera (antes ganhava energia)
-    expect(vel(curva)).toBeGreaterThan(PILOTAGEM.vel * 0.85);        // e nem trava: perde só um pouco
+    expect(vel(curva)).toBeGreaterThan(PILOTAGEM.vel * 0.75);        // e nem trava: perde só um pouco
     const s = pilotar({ ...noAr(), vz: 30 }, { acel: 1, giro: 1 }, 0.8);
     expect(s.x).toBeLessThan(300);   // rumo +z, direita do piloto = −x
   });
@@ -44,7 +46,7 @@ describe("pilotagem da moto (dirigibilidade)", () => {
     expect(dir.inclina).toBeLessThan(PILOTAGEM.inclinaMax - 0.03);   // no cruzeiro não satura: sobra inclinação pro boost
     const devagar = pilotar({ ...noAr(), vz: 6 }, { acel: 6 / PILOTAGEM.vel, giro: 1 }, 2);
     expect(devagar.inclina).toBeLessThan(dir.inclina * 0.8);       // devagar deita menos
-    const omega = PILOTAGEM.giroAlto, esperado = Math.min(PILOTAGEM.inclinaMax, Math.atan((vel(dir) * omega) / PILOTAGEM.g));
+    const omega = PILOTAGEM.giroBaixo + (PILOTAGEM.giroAlto - PILOTAGEM.giroBaixo) * Math.min(1, vel(dir) / PILOTAGEM.vel), esperado = Math.min(PILOTAGEM.inclinaMax, Math.atan((vel(dir) * omega) / PILOTAGEM.g));
     expect(dir.inclina).toBeCloseTo(esperado, 1);
     expect(Math.abs(pilotar(dir, { acel: 1 }, 2).inclina)).toBeLessThan(0.05);
   });
@@ -56,15 +58,36 @@ describe("pilotagem da moto (dirigibilidade)", () => {
     expect(Math.abs(ladoDepois)).toBeLessThan(Math.abs(lado) * 0.2);
   });
   it("BOOST passa do cruzeiro, esvazia o tanque, apaga sozinho e recarrega", () => {
-    let s = pilotar(noAr(), { acel: 1 }, 4);
-    s = pilotar(s, { acel: 1, boost: true }, 2);
-    expect(s.boost).toBe(true); expect(vel(s)).toBeGreaterThan(PILOTAGEM.vel + 15); expect(s.tanque).toBeLessThan(0.5);
-    s = pilotar(s, { acel: 1, boost: true }, 2);
+    let s = pilotar(noAr(), { acel: 1 }, 9);
+    s = pilotar(s, { acel: 1, boost: true }, 3);
+    expect(s.boost).toBe(true); expect(vel(s)).toBeGreaterThan(PILOTAGEM.vel + 10); expect(s.tanque).toBeLessThan(0.5);
+    s = pilotar(s, { acel: 1, boost: true }, 2.5);
     expect(s.boost).toBe(false); expect(s.tanque).toBeLessThan(PILOTAGEM.boost.minimo);   // acabou: apaga
-    s = pilotar(s, { acel: 1 }, 4);
+    s = pilotar(s, { acel: 1 }, 6);
     expect(vel(s)).toBeLessThan(PILOTAGEM.vel + 2);   // volta pro cruzeiro
     expect(s.tanque).toBeGreaterThan(0.7);
     expect(sensacaoDeVelocidade(s)).toBeGreaterThan(0.5);
+  });
+  it("o acelerador PROGRIDE até os 560 km/h (passa dos 300 e dos 500); o boost acima dos 300 ROMPE a barreira na hora e dobra até os 1000", () => {
+    const km = (s: EstadoMoto) => vel(s) * 3.6;
+    expect(km(pilotar(noAr(), { acel: 1 }, 4))).toBeGreaterThan(300);
+    expect(km(pilotar(noAr(), { acel: 1 }, 8))).toBeGreaterThan(500);
+    const topo = pilotar(noAr(), { acel: 1 }, 14); expect(km(topo)).toBeGreaterThan(555); expect(km(topo)).toBeLessThanOrEqual(560.5);
+    expect(supersonico(vel(topo), false)).toBe(0);
+    // acende o boost: rompe NO QUADRO em que acende
+    const r = passoMotoSub(topo, { ...NADA, acel: 1, boost: true }, 1 / 60).s;
+    expect(rompeuBarreira(topo.boost, r.boost, vel(r))).toBe(true); expect(supersonico(vel(r), r.boost)).toBeGreaterThanOrEqual(0.3);
+    let s = r, max = 0; for (let i = 0; i < 4 * 60; i++) { const b0 = s.boost; s = passoMotoSub(s, { ...NADA, acel: 1, boost: true }, 1 / 60).s; expect(rompeuBarreira(b0, s.boost, vel(s))).toBe(false); max = Math.max(max, vel(s)); }
+    expect(max * 3.6).toBeGreaterThan(990); expect(max * 3.6).toBeLessThan(1001);
+    // devagar (< 300 km/h) o boost acende sem quebrar a barreira
+    const devagar = pilotar(noAr(), { acel: 1 }, 1.5), d2 = passoMotoSub(devagar, { ...NADA, acel: 1, boost: true }, 1 / 60).s;
+    expect(vel(devagar)).toBeLessThan(BOOST_SUPER); expect(d2.boost).toBe(true); expect(rompeuBarreira(devagar.boost, d2.boost, vel(d2))).toBe(false);
+  });
+  it("a 1000 km/h não atravessa um pilar (subpassos de no máximo 1,2 m)", () => {
+    const pilar = { x: 300, z: 340, r: 2, topo: 100, base: 0 };
+    let s = { ...noAr(), vz: PILOTAGEM.velBoost };
+    for (let i = 0; i < 30; i++) s = passoMotoSub(s, { ...NADA, acel: 1, boost: true }, 1 / 30, [pilar]).s;
+    expect(s.z).toBeLessThan(340);
   });
   it("parada não dá boost; no chão não anda (decola primeiro) mas o guidão gira ela no lugar", () => {
     expect(pilotar(noAr(), { boost: true }, 1).boost).toBe(false);
