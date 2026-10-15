@@ -43,6 +43,7 @@ const DIMS_BY_INTENT: Record<IntentId, ScholarDim[]> = {
   criar_trabalho: ["problema", "literatura", "metodologia", "dados_fontes", "analise", "resultados", "escrita", "citacoes"],
   pesquisar_fontes: ["literatura", "dados_fontes", "citacoes"],
   revisar: ["problema", "metodologia", "analise", "escrita", "citacoes"],
+  buscar_livro: [],
 };
 
 // Intenções cuja resposta PRECISA de lastro em fonte (base do `sem_fonte`).

@@ -9,6 +9,7 @@
 import type { AgentContext } from "@/lib/agent/context";
 import { pedeAula } from "@/lib/agent/aprender";
 import { pedeGraficoMatematico } from "@/lib/agent/matematica";
+import { pedeLivro } from "@/lib/livros/busca";
 import {
   INTENTS,
   INTENT_IDS,
@@ -101,6 +102,8 @@ export function classifyHeuristic(objective: string, ctx: AgentContext): RouterR
 
   // 0) AULA interativa (Papermorph) — "me dá uma aula sobre X": é artefato, não trabalho escrito
   if (pedeAula(t)) return decide("gerar_artefato");
+  // 0.4) achar um LIVRO (PDF/link/onde ler) — antes de "fontes": "me manda o pdf do livro X" não é bibliografia
+  if (pedeLivro(objective)) return decide("buscar_livro");
   // 0.5) gráfico de FUNÇÃO / figura de geometria — sai no texto como ```grafico, NÃO como imagem gerada
   if (pedeGraficoMatematico(objective)) return decide("explicar_conceito");
   // 1) trabalho acadêmico completo — "escreva um artigo sobre X"
@@ -135,6 +138,7 @@ const SYSTEM = [
   "- criar_trabalho: pedir trabalho acadêmico completo (artigo, TCC, monografia, relatório, redação).",
   "- pesquisar_fontes: pedir fontes / referências / bibliografia / papers.",
   "- revisar: pedir revisão / crítica / correção de algo do usuário.",
+  "- buscar_livro: pedir um LIVRO específico — achar, link, PDF, baixar, onde ler ('me manda o pdf do livro X').",
   '"kind" só quando intent="criar_trabalho"; senão null.',
 ].join("\n");
 
@@ -157,7 +161,7 @@ export async function classify(objective: string, ctx: AgentContext): Promise<Ro
     const cand = out?.intent;
     // Pedido explícito de aula manda mais que o palpite do modelo (que às vezes lê "aula" como trabalho escrito).
     // Gráfico de função/geometria manda mais que o palpite do modelo (que lê "gráfico" como artefato de imagem).
-    const intent: IntentId = pedeAula(norm(text)) ? "gerar_artefato" : pedeGraficoMatematico(text) ? "explicar_conceito" : isIntentId(cand) ? cand : fallback.intent;
+    const intent: IntentId = pedeAula(norm(text)) ? "gerar_artefato" : pedeLivro(text) ? "buscar_livro" : pedeGraficoMatematico(text) ? "explicar_conceito" : isIntentId(cand) ? cand : fallback.intent;
     const nt = norm(text);
     const kind =
       intent === "criar_trabalho"

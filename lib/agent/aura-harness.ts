@@ -26,6 +26,7 @@ import { normalizeStudioKind } from "@/lib/agent/tools";
 import type { StructuredAnswer, Source } from "@/lib/agent/contracts";
 import { artefatoDeAprender, pedeAula, pedeEngenhariaReversa, DIRETRIZ_ENGENHARIA_REVERSA } from "@/lib/agent/aprender";
 import { DIRETRIZ_MATEMATICA } from "@/lib/agent/matematica";
+import { diretrizLivros, markdownDosLivros, type LivroAchado } from "@/lib/livros/busca";
 
 type GenJson = <T>(system: string, user: string, opts?: { temperature?: number; model?: string; timeoutMs?: number; phase?: string }) => Promise<T>;
 
@@ -96,7 +97,7 @@ export function pickStudioKind(objective: string): string {
   return normalizeStudioKind(t); // default "guide"
 }
 
-const isGatherTool = (t: string) => t === "memory_search" || t === "literature_search" || t === "web_search";
+const isGatherTool = (t: string) => t === "memory_search" || t === "literature_search" || t === "web_search" || t === "book_search";
 
 function evidenceBlock(st: TrajectoryState): string {
   if (!st.evidence.length) return "(nenhuma evidência reunida)";
@@ -160,6 +161,20 @@ function preambleBlock(opts: HarnessOpts): string {
     }
   }
   return bits.length ? bits.join("\n\n") + "\n\n" : "";
+}
+
+/**
+ * buscar_livro: a LISTA com os links vai no fim do `nucleo` (todo cliente renderiza o nucleo com o
+ * ChatMarkdown, que torna os links clicáveis) e inteira em `livros` (pra um cartão no futuro).
+ */
+export function anexarLivros(a: StructuredAnswer, livros: LivroAchado[]): StructuredAnswer {
+  if (!livros.length) return a;
+  const lista = markdownDosLivros(livros);
+  return {
+    ...a,
+    nucleo: [a.nucleo?.trim(), lista].filter(Boolean).join("\n\n"),
+    livros: livros.map(({ titulo, autores, ano, acesso, pdfUrl, lerUrl, paginaUrl, fonte, licenca }) => ({ titulo, autores, ano, acesso, pdfUrl, lerUrl, paginaUrl, fonte, licenca })),
+  };
 }
 
 function asArray(v: unknown): any[] { return Array.isArray(v) ? v : v == null ? [] : [v]; }
@@ -244,6 +259,7 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
   const retryDelay = opts.retryDelayMs ?? 400;
   const modelFor = (heavy: boolean) => (opts.deepThink && heavy ? GEMINI_MODEL_PRO : GEMINI_MODEL_FLASH);
   const observations: Observation[] = []; // A1 · buffer de erros-como-observação
+  let livrosAchados: LivroAchado[] = [];  // book_search (buscar_livro): vai inteiro pro fim do nucleo
   const preamble = preambleBlock(opts); // systemContext + histórico (paridade com o legado)
 
   return {
@@ -280,6 +296,7 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         res = await runTool(name, args, c as ToolContext, { approve: opts.approve });
       }
       if (!res.ok) observations.push({ tool: name, code: res.code, error: res.error }); // A1
+      if (res.ok && res.livros?.length) livrosAchados = res.livros;                   // a lista é do código, não do modelo
       return res;
     },
 
@@ -334,14 +351,16 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         '(ex.: cafeína, glicose, etanol, ácido acético). Só o nome, sem "molécula de". ' +
         'Não liste se a resposta não falar de nenhuma, e nunca invente uma que você não tenha certeza que existe.',
         academic + a5,
+        ...(st.intent === "buscar_livro" ? [diretrizLivros(livrosAchados)] : []),
       ].join("\n");
       const user = `${preamble}Objetivo: ${st.objective}\nRaciocínio: ${st.reasoning ?? ""}\nEvidência:\n${evidenceBlock(st)}${obsBlock(observations)}`;
       try {
         const out = await genJson<Partial<StructuredAnswer>>(sys, user, { temperature: 0.4, model: modelFor(true), timeoutMs: 30_000, phase: "draft" });
-        return normalizeAnswer(out, st);
+        return anexarLivros(normalizeAnswer(out, st), livrosAchados);
       } catch (e: any) {
         // degradado: núcleo honesto via messageForError (nunca string à mão), laço segue.
-        return { nucleo: messageForError(classifyError(String(e?.message ?? e))) };
+        // …mas a lista de livros (se a busca achou) sai mesmo assim: é dado, não depende do modelo
+        return anexarLivros({ nucleo: messageForError(classifyError(String(e?.message ?? e))) }, livrosAchados);
       }
     },
 

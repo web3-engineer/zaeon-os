@@ -78,6 +78,8 @@ export type StructuredAnswer = {
   artifacts?: StudioRef[];                          // Studio gerados (cada um com provenance)
   work?: { kind: WorkKind; sections: { title: string; body: string }[] }; // criar_trabalho
   sources?: Source[];                               // pesquisar_fontes
+  /** buscar_livro: os livros achados e o caminho LEGAL (PDF livre, online, empréstimo, prévia). */
+  livros?: { titulo: string; autores: string[]; ano: number | null; acesso: string; pdfUrl: string | null; lerUrl: string | null; paginaUrl: string; fonte: string; licenca: string | null }[];
   provenance?: ProvenanceRecord;                    // origem rastreável (open-science)
   /** TCC cross-sala (TCC_CROSS): o turno criou/editou o TCC desta conversa → o cliente abre a aba. */
   tcc?: { workId: string; titulo: string; criado: boolean; alteradas: number; gerando?: boolean };
@@ -88,7 +90,7 @@ export type StructuredAnswer = {
 export type CriticLevel = "off" | "leve" | "full";
 export type IntentId =
   | "conversa" | "duvida_rapida" | "explicar_conceito" | "gerar_artefato"
-  | "criar_trabalho" | "pesquisar_fontes" | "revisar";
+  | "criar_trabalho" | "pesquisar_fontes" | "revisar" | "buscar_livro";
 
 export type IntentSpec = {
   id: IntentId;
@@ -113,6 +115,8 @@ export const INTENTS: Record<IntentId, IntentSpec> = {
   gerar_artefato:    { id: "gerar_artefato",    mode: "elaborated", tools: ["studio_generate"],                                                           critic: "leve", required: ["nucleo", "artifacts"], reviseThreshold: 7, maxRevisions: 1 },
   criar_trabalho:    { id: "criar_trabalho",    mode: "research",   tools: ["literature_search", "web_search", "memory_search", "studio_generate", "notebook_read"],    critic: "full", required: ["nucleo", "work", "evidencia", "proximos_passos"], reviseThreshold: 7, maxRevisions: 2, reflections: 2, ensemble: 2 },
   pesquisar_fontes:  { id: "pesquisar_fontes",  mode: "elaborated", tools: ["literature_search", "web_search"],                                                         critic: "leve", required: ["nucleo", "sources"], reviseThreshold: 6, maxRevisions: 1 },
+  // achar UM LIVRO e entregar o caminho legal até ele (lib/livros): 1 busca, sem crítico — a lista sai do código, não do modelo
+  buscar_livro:      { id: "buscar_livro",      mode: "elaborated", tools: ["book_search"],                                                               critic: "off",  required: ["nucleo"] },
   revisar:           { id: "revisar",           mode: "research",   tools: ["examiner", "memory_search"],                                                 critic: "full", required: ["nucleo", "evidencia"], reflections: 2 },
 };
 

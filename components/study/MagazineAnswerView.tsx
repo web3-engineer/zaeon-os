@@ -72,6 +72,8 @@ export function podeVirarRevista(a: StructuredAnswer | undefined, temArtefato: b
   if (!corpo) return false;
   // a revista desenha o corpo em CANVAS: fórmula LaTeX e ```grafico só existem no ChatMarkdown
   if (temMatematica(corpo)) return false;
+  // link clicável (lista de livros, fontes) só existe no ChatMarkdown — o canvas desenha texto puro
+  if (a?.livros?.length || /\[[^\]]+\]\(https?:\/\//.test(corpo)) return false;
   const palavras = contarPalavras(corpo);
   return palavras >= (temArtefato ? MIN_PALAVRAS_COM_ARTEFATO : MIN_PALAVRAS_REVISTA);
 }
