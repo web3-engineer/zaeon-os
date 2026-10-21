@@ -208,6 +208,27 @@ describe("ingerirPdf", () => {
     expect(await buscarPorHash(db, documentos[0].hash)).not.toBeNull();
   });
 
+  it.skipIf(!banco)("corrida sobre 'erro': outro upload cria o documento depois do apagar => vencedor herda as permissões do apagado", async () => {
+    const { deps, extrair, db } = setup();
+    const ruim = await ingerirPdf({ ...deps, extrair: (async () => null) as any }, entrada("t1"));
+    const { acrescentarPermissao } = await import("./store");
+    await acrescentarPermissao(db, ruim.documentoId, { donoId: "u7" });
+    // Enquanto este upload extrai (o documento em erro já foi apagado), o concorrente grava o mesmo hash.
+    const real = extrair.getMockImplementation()!;
+    const comCorrida = vi.fn(async (b: Uint8Array) => {
+      const { createHash } = await import("node:crypto");
+      const hash = createHash("sha256").update(b).digest("hex");
+      await criarDocumento(db, { hash, titulo: "x", nomeArquivo: "x.pdf", paginas: 1, markdown: "", origem: "admin", criadoPor: "u9", permissao: { turmaId: "t9" } });
+      return (real as (x: Uint8Array) => ReturnType<typeof real>)(b);
+    });
+    const r = await ingerirPdf({ ...deps, extrair: comCorrida as any }, entrada("t3"));
+    expect(r.status).toBe("reaproveitado");
+    const { documentos } = await estado(db);
+    expect(documentos).toHaveLength(1);
+    expect([...documentos[0].turma_ids].sort()).toEqual(["t1", "t3", "t9"]);
+    expect(documentos[0].dono_ids).toEqual(["u7"]);
+  });
+
   it.skipIf(!banco)("enfileirar rejeita => erro indexacao_falhou, documento em erro; re-upload reprocessa como novo", async () => {
     const { deps, extrair, db } = setup();
     vi.spyOn(console, "warn").mockImplementation(() => {});

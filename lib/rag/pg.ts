@@ -16,7 +16,9 @@ export function ragPg(): RagDb {
     const url = process.env.RAG_PG_URL;
     if (!url) throw new Error("RAG_PG_URL ausente");
     // connectionTimeoutMillis: tailnet caída falha em 5 s em vez de pendurar a requisição no timeout TCP do SO.
-    const pool = new Pool({ connectionString: url, max: 10, connectionTimeoutMillis: 5000 });
+    // query_timeout + keepAlive: queda NO MEIO de uma query também falha (20 s) em vez de esperar a retransmissão TCP
+    // (~15 min) segurando um client do pool. Do lado do servidor, o papel rag_app tem statement/lock/idle timeouts.
+    const pool = new Pool({ connectionString: url, max: 10, connectionTimeoutMillis: 5000, query_timeout: 20_000, keepAlive: true });
     // Erro num client ocioso (Postgres reiniciou) não pode derrubar o processo.
     pool.on("error", (e) => console.error("[rag/pg] client ocioso falhou:", e.message));
     g.__ragPool = pool;
@@ -46,9 +48,10 @@ export async function transacao<T>(db: RagDb, fn: (tx: RagDb) => Promise<T>): Pr
 
 const CODIGOS_REDE = new Set(["ECONNREFUSED", "ETIMEDOUT", "ENOTFOUND", "ECONNRESET", "EHOSTUNREACH", "ENETUNREACH", "EPIPE", "EAI_AGAIN"]);
 // SQLSTATE: classe 08 (connection exception) EXCETO 08P01 (protocol_violation: "bind message supplies N parameters…" = bug de SQL
-// nosso, não queda do banco), 57P01/57P02/57P03 (desligando / não aceita conexão), 53300 (conexões demais).
-const SQLSTATE_INDISPONIVEL = /^(08(?!P01)|57P0[123]$|53300$)/;
-const MSG_INDISPONIVEL = /RAG_PG_URL ausente|Connection terminated|timeout exceeded when trying to connect|not queryable/i;
+// nosso, não queda do banco), 57P01/57P02/57P03 (desligando / não aceita conexão), 53300 (conexões demais),
+// 57014/55P03 (statement_timeout / lock_timeout do papel rag_app: banco travado ou lento — tente de novo).
+const SQLSTATE_INDISPONIVEL = /^(08(?!P01)|57P0[123]$|53300$|57014$|55P03$)/;
+const MSG_INDISPONIVEL = /RAG_PG_URL ausente|Connection terminated|timeout exceeded when trying to connect|Query read timeout|not queryable/i;
 
 /**
  * O banco da base RAG está fora do ar (tailnet caída, Postgres reiniciando, pool sem conexão, env ausente)?

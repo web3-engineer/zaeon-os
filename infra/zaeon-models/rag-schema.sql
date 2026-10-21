@@ -2,7 +2,9 @@
 -- IDEMPOTENTE: pode rodar quantas vezes quiser (CREATE ... IF NOT EXISTS em tudo).
 --
 -- Produção (superusuário, uma vez e a cada mudança de esquema):
---   psql "$DATABASE_URL_ADMIN" -v senha='<senha do rag_app>' -f infra/zaeon-models/rag-schema.sql
+--   psql "$DATABASE_URL_ADMIN" -v ON_ERROR_STOP=1 -v senha='<senha do rag_app>' -f infra/zaeon-models/rag-schema.sql
+--   (melhor: senha por stdin — `{ printf '\\set senha %s\n' "$P"; cat rag-schema.sql; } | psql ... -f -` — fora do argv).
+--   A senha só é usada ao CRIAR o papel: reaplicar o esquema não troca a senha de produção.
 --
 -- Testes (lib/rag/pgTeste.ts): aplica SÓ a parte acima do marcador "@@PAPEL@@" (e cria extensões + config rag_pt, acima de "@@TABELAS@@", uma vez em public) (sem o papel, que exige a
 -- variável psql :senha e privilégio de criar papéis). Não mexa nesse marcador.
@@ -70,6 +72,16 @@ CREATE INDEX IF NOT EXISTS rag_trechos_doc_ordem      ON rag_trechos (documento_
 -- Papel da aplicação: permissão SÓ nas duas tabelas do RAG. Exige `psql -v senha=...` (ver topo).
 SELECT format('CREATE ROLE rag_app LOGIN PASSWORD %L', :'senha')
  WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'rag_app') \gexec
-SELECT format('ALTER ROLE rag_app PASSWORD %L', :'senha') \gexec
+
+-- Queda da tailnet no meio de uma transação não pode deixar trava pendurada por horas (o `tailscale serve` mantém o lado
+-- loopback aberto): o servidor mata a query lenta, a espera de trava e a transação ociosa.
+ALTER ROLE rag_app SET statement_timeout = '15s';
+ALTER ROLE rag_app SET lock_timeout = '5s';
+ALTER ROLE rag_app SET idle_in_transaction_session_timeout = '30s';
+
+-- O rag_app só entra no banco do RAG (o do LiteLLM e o `postgres` vivem no mesmo cluster).
+SELECT format('REVOKE CONNECT ON DATABASE %I FROM PUBLIC', datname) FROM pg_database
+ WHERE datname IN ('litellm', 'postgres') \gexec
+SELECT format('GRANT CONNECT ON DATABASE %I TO rag_app', current_database()) \gexec
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON rag_documentos, rag_trechos TO rag_app;

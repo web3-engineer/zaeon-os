@@ -132,7 +132,11 @@ async function ingerir(deps: IngerirDeps, e: IngerirEntrada): Promise<IngerirRes
     // "23505" = violação de unicidade do Postgres.
     if ((err as { code?: string })?.code === "23505") {
       const vencedor = await buscarPorHash(db, hash);
-      if (vencedor) return reaproveitar(deps, vencedor, e.permissao, false); // o vencedor já agenda a própria indexação
+      if (vencedor) {
+        // As permissões do documento em "erro" que apagamos acima não podem se perder porque outro upload ganhou a corrida.
+        for (const p of herdadas) await acrescentarPermissao(db, vencedor.id, p);
+        return reaproveitar(deps, vencedor, e.permissao, false); // o vencedor já agenda a própria indexação
+      }
     }
     throw err;
   }

@@ -10,7 +10,7 @@
  * Trecho sem vetor (`embedding IS NULL`) só entra pelo ramo texto. Pergunta que vira `tsquery` vazia (só
  * stopwords/símbolos) simplesmente não contribui no ramo texto (a query não lança).
  */
-import type { EmbedRag } from "./embed";
+import { RAG_EMBED_DIM, type EmbedRag } from "./embed";
 import { transacao, type RagDb } from "./pg";
 import { podeVer, temBase, type EscopoRag } from "./permissao";
 
@@ -110,7 +110,12 @@ async function vetorDaPergunta(embed: EmbedRag, pergunta: string, prazoMs: numbe
   });
   const chamada = (async () => {
     const [v] = await embed([pergunta], "pergunta");
-    return Array.isArray(v) && v.length > 0 ? v : null;
+    // Dimensão errada ou NaN viraria erro de SQL (500); trata como embed falho → só palavra-chave.
+    if (!Array.isArray(v) || v.length !== RAG_EMBED_DIM || !v.every(Number.isFinite)) {
+      console.warn("[rag/busca] embed falhou, seguindo só por palavra-chave:", "vetor inválido");
+      return null;
+    }
+    return v;
   })().catch((e) => {
     console.warn("[rag/busca] embed falhou, seguindo só por palavra-chave:", (e as Error)?.message ?? e);
     return null;

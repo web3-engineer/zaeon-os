@@ -99,7 +99,7 @@ describe("ehBancoIndisponivel", () => {
   it.each(["ECONNREFUSED", "ETIMEDOUT", "ENOTFOUND", "ECONNRESET", "EHOSTUNREACH", "ENETUNREACH", "EPIPE", "EAI_AGAIN"])(
     "código de rede %s => true", (c) => { expect(ehBancoIndisponivel(comCodigo(c))).toBe(true); },
   );
-  it.each(["08000", "08001", "08003", "08004", "08006", "08007", "57P01", "57P02", "57P03", "53300"])("SQLSTATE de conexão/desligamento %s => true", (c) => {
+  it.each(["08000", "08001", "08003", "08004", "08006", "08007", "57P01", "57P02", "57P03", "53300", "57014", "55P03"])("SQLSTATE de conexão/desligamento %s => true", (c) => {
     expect(ehBancoIndisponivel(comCodigo(c))).toBe(true);
   });
   it.each([
@@ -107,6 +107,7 @@ describe("ehBancoIndisponivel", () => {
     "Connection terminated due to connection timeout",
     "timeout exceeded when trying to connect",
     "Client has encountered a connection error and is not queryable",
+    "Query read timeout",
     "RAG_PG_URL ausente",
   ])("mensagem do driver %j => true", (m) => { expect(ehBancoIndisponivel(new Error(m))).toBe(true); });
   it("AggregateError (localhost dual-stack) com ECONNREFUSED dentro => true", () => {

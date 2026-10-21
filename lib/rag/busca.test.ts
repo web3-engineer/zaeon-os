@@ -174,6 +174,18 @@ describe.skipIf(!banco)("buscar — Postgres real", () => {
     expect(semVetor).toEqual([]);
   });
 
+  it.each([
+    ["dimensão errada", [1, 0, 0]],
+    ["NaN", [NaN, ...onehot(0).slice(1)]],
+  ])("vetor da pergunta inválido (%s) ⇒ segue só por palavra-chave, sem erro de SQL", async (_n, v) => {
+    const db = banco!.db;
+    await semear(db, permTurma("tA", "hA"), [{ texto: "mitocôndria produz energia celular", vetor: onehot(0) }]);
+    const aviso = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const r = await buscar(depsDb(db, { embed: async () => [v as number[]] }), { userId: "Y", turmaIds: ["tA"] }, "mitocôndria");
+    aviso.mockRestore();
+    expect(r.map((t) => t.titulo)).toEqual(["Doc hA"]);
+  });
+
   it("RF1 (SQL cru, SEM podeVer): a permissão está no WHERE de CADA ramo — vetor e texto", async () => {
     const db = banco!.db;
     await semear(db, permTurma("tA", "hA"), [{ texto: "mitocôndria produz energia celular", vetor: onehot(0) }]);
