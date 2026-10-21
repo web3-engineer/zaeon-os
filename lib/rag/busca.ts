@@ -1,21 +1,25 @@
 /**
  * lib/rag/busca.ts — busca híbrida (vetor + texto) na base RAG, com a PERMISSÃO dentro do filtro.
  *
- * `$rankFusion` (MongoDB 8.0 / Atlas) funde o ramo `$vectorSearch` e o ramo `$search` (lucene.portuguese).
- * O filtro de turma/dono vai DENTRO dos dois ramos (nunca depois); em cima disso o resultado ainda passa por
- * `podeVer` (cinto + suspensório). Forma verificada no cluster de produção em 2026-10-21:
- * `{ $rankFusion: { input: { pipelines: { <nome>: [ ...estágios ] } } } }`, com `$vectorSearch`/`$search`
- * como PRIMEIRO estágio do respectivo sub-pipeline; score lido depois com `{ $meta: "score" }`.
+ * Postgres + pgvector, uma query só: CTE `vet` (HNSW cosseno sobre `embedding`) e CTE `txt` (`tsv @@
+ * websearch_to_tsquery('rag_pt', ...)`, ordenado por `ts_rank_cd`), fundidas por RRF (`sum(1/(60+rank))`).
+ * A permissão (`turma_ids && turmas OR usuário = ANY(dono_ids)`) vai no WHERE DOS DOIS ramos (nunca depois); em
+ * cima disso o resultado ainda passa por `podeVer` (cinto + suspensório). Valores sempre por parâmetro.
  *
- * Falha do embedder (erro ou prazo) NUNCA derruba a busca: cai para só texto. Falha do aggregate propaga.
+ * Falha do embedder (erro ou prazo) NUNCA derruba a busca: cai para só texto. Falha do SQL propaga.
+ * Trecho sem vetor (`embedding IS NULL`) só entra pelo ramo texto. Pergunta que vira `tsquery` vazia (só
+ * stopwords/símbolos) simplesmente não contribui no ramo texto (a query não lança).
  */
 import type { EmbedRag } from "./embed";
-import { filtroTextual, filtroVetorial, podeVer, temBase, type EscopoRag } from "./permissao";
+import { transacao, type RagDb } from "./pg";
+import { podeVer, temBase, type EscopoRag } from "./permissao";
 
-export const VEC_INDEX = "rag_trechos_vec";
-export const TEXT_INDEX = "rag_trechos_text";
 export const K_PADRAO = 8;
 const PRAZO_EMBED_PADRAO_MS = 3000;
+/** Candidatos por ramo antes da fusão: k × 4. */
+const CANDIDATOS_POR_K = 4;
+/** Constante do RRF. */
+const RRF_K = 60;
 
 export type TrechoAchado = {
   trechoId: string;
@@ -28,92 +32,63 @@ export type TrechoAchado = {
 };
 
 export type BuscaDeps = {
-  colecao: { aggregate(pipeline: unknown[]): Promise<any[]> };
+  db: RagDb;
   embed: EmbedRag;
   contar: (e: EscopoRag) => Promise<{ pessoais: number; deTurma: number }>;
   /** Prazo do embed da pergunta; estourou/falhou ⇒ só texto. Padrão 3000 ms. */
   prazoEmbedMs?: number;
 };
 
-/** Pipeline da busca. Com `vetor`: `$rankFusion` (vetor + texto); sem: só o ramo texto. */
-export function montarPipeline(e: EscopoRag, pergunta: string, vetor: number[] | null, k: number): unknown[] {
-  const ramoTexto: unknown[] = [
-    {
-      $search: {
-        index: TEXT_INDEX,
-        // A permissão é cláusula OBRIGATÓRIA (filter), nunca `should` (que só pontua).
-        compound: { must: [{ text: { query: pergunta, path: "texto" } }], filter: filtroTextual(e) },
-      },
-    },
-    { $limit: k },
-  ];
+/** SQL da busca (PURO). Com `vetor`: vetor + texto fundidos por RRF; sem: só o ramo texto. */
+export function montarSql(e: EscopoRag, pergunta: string, vetor: number[] | null, k: number): { sql: string; params: unknown[] } {
+  const params: unknown[] = [];
+  const p = (v: unknown) => { params.push(v); return `$${params.length}`; };
 
-  const inicio: unknown[] = vetor
-    ? [
-        {
-          $rankFusion: {
-            input: {
-              pipelines: {
-                vector: [
-                  {
-                    $vectorSearch: {
-                      index: VEC_INDEX,
-                      path: "embedding",
-                      queryVector: vetor,
-                      numCandidates: Math.max(100, k * 12),
-                      limit: k,
-                      filter: filtroVetorial(e),
-                    },
-                  },
-                ],
-                texto: ramoTexto,
-              },
-            },
-          },
-        },
-        { $addFields: { score: { $meta: "score" } } },
-      ]
-    : [...ramoTexto, { $addFields: { score: { $meta: "searchScore" } } }];
+  const q = p(pergunta);
+  const t = p(e.turmaIds);
+  const u = p(e.userId);
+  const cand = p(k * CANDIDATOS_POR_K);
+  const lim = p(k);
+  const perm = `(turma_ids && ${t}::text[] OR ${u}::text = ANY(dono_ids))`;
 
-  return [
-    ...inicio,
-    { $limit: k },
-    { $lookup: { from: "rag_documentos", localField: "documentoId", foreignField: "_id", as: "doc" } },
-    {
-      $project: {
-        _id: 1,
-        documentoId: 1,
-        texto: 1,
-        paginaIni: 1,
-        paginaFim: 1,
-        score: 1,
-        turmaIds: 1,
-        donoIds: 1,
-        titulo: { $ifNull: [{ $arrayElemAt: ["$doc.titulo", 0] }, ""] },
-      },
-    },
-  ];
-}
+  const ctes: string[] = [];
+  const uniao: string[] = [];
 
-/** ObjectId pode chegar como string, como `{ $oid }` (extended JSON do `$runCommandRaw`) ou com `toString`. */
-function idStr(v: unknown): string {
-  if (v && typeof v === "object" && "$oid" in (v as Record<string, unknown>)) return String((v as { $oid: unknown }).$oid);
-  return String(v ?? "");
-}
-
-/** Número do extended JSON do `$runCommandRaw`: `{ $numberDouble|$numberInt|$numberLong: "..." }` ou número/string simples. */
-function num(v: unknown): number {
-  if (v && typeof v === "object") {
-    const o = v as Record<string, unknown>;
-    const bruto = o.$numberDouble ?? o.$numberInt ?? o.$numberLong ?? o.$numberDecimal;
-    if (bruto !== undefined) {
-      const n = Number(bruto);
-      return Number.isFinite(n) ? n : 0;
-    }
-    return 0;
+  if (vetor) {
+    const v = p(`[${vetor.join(",")}]`);
+    // O ORDER BY ... LIMIT fica numa subconsulta simples para o planner usar o HNSW (com iterative_scan + filtro).
+    ctes.push(`vet AS (
+      SELECT id, row_number() OVER (ORDER BY dist, id) AS rk
+        FROM (SELECT id, embedding <=> ${v}::vector AS dist
+                FROM rag_trechos
+               WHERE embedding IS NOT NULL AND ${perm}
+               ORDER BY embedding <=> ${v}::vector
+               LIMIT ${cand}::int) s
+    )`);
+    uniao.push("SELECT id, rk FROM vet");
   }
-  const n = Number(v ?? 0);
-  return Number.isFinite(n) ? n : 0;
+
+  ctes.push(`txt AS (
+      SELECT id, row_number() OVER (ORDER BY rnk DESC, id) AS rk
+        FROM (SELECT id, ts_rank_cd(tsv, tq.q) AS rnk
+                FROM rag_trechos, (SELECT websearch_to_tsquery('rag_pt', ${q}) AS q) tq
+               WHERE tsv @@ tq.q AND ${perm}
+               ORDER BY rnk DESC
+               LIMIT ${cand}::int) s
+    )`);
+  uniao.push("SELECT id, rk FROM txt");
+
+  const sql = `WITH ${ctes.join(",\n    ")},
+    fus AS (
+      SELECT id, sum(1.0 / (${RRF_K} + rk)) AS score FROM (${uniao.join(" UNION ALL ")}) r GROUP BY id
+    )
+    SELECT t.id, t.documento_id, d.titulo, t.texto, t.pagina_ini, t.pagina_fim, t.turma_ids, t.dono_ids, f.score::float8 AS score
+      FROM fus f
+      JOIN rag_trechos t ON t.id = f.id
+      JOIN rag_documentos d ON d.id = t.documento_id
+     ORDER BY f.score DESC, t.id
+     LIMIT ${lim}::int`;
+  return { sql, params };
 }
 
 /** Embed da pergunta com prazo; qualquer falha/estouro ⇒ null. O timer é sempre limpo. */
@@ -140,37 +115,29 @@ async function vetorDaPergunta(embed: EmbedRag, pergunta: string, prazoMs: numbe
 }
 
 export async function buscar(deps: BuscaDeps, e: EscopoRag, pergunta: string, k: number = K_PADRAO): Promise<TrechoAchado[]> {
-  // userId vazio casaria com entradas "" em donoIds: sem identidade não há escopo.
+  // userId vazio casaria com entradas "" em dono_ids: sem identidade não há escopo.
   if (!e.userId || e.userId.trim() === "") return [];
   const consulta = pergunta.trim();
   if (!consulta) return [];
   if (!temBase(e, await deps.contar(e))) return [];
 
   const vetor = await vetorDaPergunta(deps.embed, consulta, deps.prazoEmbedMs ?? PRAZO_EMBED_PADRAO_MS);
-  const brutos = await deps.colecao.aggregate(montarPipeline(e, consulta, vetor, k));
+  const { sql, params } = montarSql(e, consulta, vetor, k);
+  const linhas = await transacao(deps.db, async (tx) => {
+    // Busca vetorial filtrada: sem isso o HNSW pode devolver menos de `k` linhas quando o filtro é seletivo.
+    if (vetor) await tx.query("SET LOCAL hnsw.iterative_scan = relaxed_order");
+    return (await tx.query(sql, params)).rows;
+  });
 
-  return brutos
-    .filter((t) => podeVer({ turmaIds: t.turmaIds ?? [], donoIds: t.donoIds ?? [] }, e))
+  return linhas
+    .filter((t) => podeVer({ turmaIds: t.turma_ids ?? [], donoIds: t.dono_ids ?? [] }, e))
     .map((t) => ({
-      trechoId: idStr(t._id ?? t.trechoId),
-      documentoId: idStr(t.documentoId),
+      trechoId: String(t.id ?? ""),
+      documentoId: String(t.documento_id ?? ""),
       titulo: String(t.titulo ?? ""),
       texto: String(t.texto ?? ""),
-      paginaIni: num(t.paginaIni),
-      paginaFim: num(t.paginaFim),
-      score: num(t.score),
+      paginaIni: Number(t.pagina_ini ?? 0) || 0,
+      paginaFim: Number(t.pagina_fim ?? 0) || 0,
+      score: Number(t.score ?? 0) || 0,
     }));
-}
-
-/**
- * Coleção real: aggregate em `rag_trechos` via Prisma (Mongo). Sem teste contra cluster vivo aqui
- * (os índices `rag_trechos_vec`/`rag_trechos_text` vêm de `scripts/atlas-rag-indexes.mongo.js`).
- */
-export function colecaoRagPrisma(prisma: { $runCommandRaw: (cmd: any) => Promise<any> }): BuscaDeps["colecao"] {
-  return {
-    async aggregate(pipeline) {
-      const r = await prisma.$runCommandRaw({ aggregate: "rag_trechos", pipeline, cursor: {} });
-      return (r?.cursor?.firstBatch ?? []) as any[];
-    },
-  };
 }

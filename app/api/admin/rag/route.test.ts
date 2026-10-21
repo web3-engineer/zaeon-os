@@ -13,7 +13,7 @@ vi.mock("@/lib/scholar/pdf", () => ({ extractPdfStructured: vi.fn() }));
 vi.mock("@/lib/rag/pg", () => ({ ragPg: () => ({}) }));
 vi.mock("@/lib/rag/store", () => ({ listarDocumentos: m.listar, removerPermissao: m.remover, contarBase: vi.fn() }));
 vi.mock("@/lib/rag/embed", () => ({ embedVertex: vi.fn() }));
-vi.mock("@/lib/rag/busca", () => ({ buscar: m.buscar, colecaoRagPrisma: () => ({}), K_PADRAO: 8 }));
+vi.mock("@/lib/rag/busca", () => ({ buscar: m.buscar, K_PADRAO: 8 }));
 
 import { GET, POST, DELETE } from "@/app/api/admin/rag/route";
 import { POST as BUSCA } from "@/app/api/admin/rag/busca/route";

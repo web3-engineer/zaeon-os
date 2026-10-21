@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { assertAdmin } from "@/lib/admin/assertAdmin";
-import { buscar, colecaoRagPrisma } from "@/lib/rag/busca";
+import { buscar } from "@/lib/rag/busca";
 import { embedVertex } from "@/lib/rag/embed";
 import { ragPg } from "@/lib/rag/pg";
 import { contarBase } from "@/lib/rag/store";
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
 
   const t0 = Date.now();
   const trechos = await buscar(
-    { colecao: colecaoRagPrisma(prisma as any), embed: embedVertex, contar: (e) => contarBase(ragPg(), e) },
+    { db: ragPg(), embed: embedVertex, contar: (e) => contarBase(ragPg(), e) },
     { userId: usuario.id, turmaIds: [turmaId] },
     pergunta,
   );
