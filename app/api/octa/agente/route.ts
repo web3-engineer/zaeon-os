@@ -2,16 +2,18 @@
  * POST /api/octa/agente — um turno do agente Octa Code sobre o workspace da IDE (lib/octa/agente).
  * Modelo: o REAL do app, via gateway LiteLLM com VIRTUAL KEY por pessoa (budget curto, reaproveitada até vencer) —
  * a master key nunca sai do servidor e nunca chega ao modelo. Sem gateway configurado = 503 explícito.
+ * Qual modelo: lib/octa/modelo (OCTA_MODELO_LOCAL=1 → qwen3-coder da Contabo com o Google de reserva; sem a env = só Google).
  */
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
 import { guard } from "@/src/lib/ratelimit";
-import { rodarAgenteOcta, FERRAMENTAS_GATEWAY, type ChamarModelo, type Workspace } from "@/lib/octa/agente";
-import { emitirVirtualKey, classificarRespostaGateway, octaGatewayConfigurado, gatewayCfg, modeloReal } from "@/lib/octa/litellm";
+import { rodarAgenteOcta, FERRAMENTAS_GATEWAY, type Workspace } from "@/lib/octa/agente";
+import { emitirVirtualKey, classificarRespostaGateway, octaGatewayConfigurado, gatewayCfg } from "@/lib/octa/litellm";
+import { criarChamadorOcta, nomeDoModelo, type ChamarGateway } from "@/lib/octa/modelo";
 
 export const runtime = "nodejs";
-export const maxDuration = 180;
+export const maxDuration = 300; // turno no local (CPU) pode levar até OCTA_LOCAL_ORCAMENTO_MS + a reserva
 
 const MAX_ARQUIVOS = 200;
 const MAX_BYTES = 1_500_000;
@@ -64,22 +66,27 @@ export async function POST(req: Request) {
 
   try {
     const key = await chaveDe(userId, sessionId);
-    const chamar: ChamarModelo = async (msgs) => {
+    const gateway: ChamarGateway = async (model, msgs, signal) => {
       const r = await fetch(`${gatewayCfg().url}/chat/completions`, {
-        method: "POST",
+        method: "POST", signal,
         headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-        body: JSON.stringify({ model: modeloReal("forte"), messages: msgs, tools: FERRAMENTAS_GATEWAY, temperature: 0.2 }),
+        body: JSON.stringify({ model, messages: msgs, tools: FERRAMENTAS_GATEWAY, temperature: 0.2 }),
       });
       const cls = await classificarRespostaGateway(r.clone());
       if (!cls.ok) { if (cls.code === "budget_exceeded") chaves.delete(userId); throw new Error(cls.error); }
       const j: any = await r.json();
       const m = j.choices?.[0]?.message ?? {};
-      return { content: m.content ?? null, tool_calls: m.tool_calls, usage: j.usage };
+      return { content: m.content ?? null, tool_calls: m.tool_calls, usage: j.usage, modeloId: r.headers.get("x-litellm-model-id") };
     };
+    const chamar = criarChamadorOcta(gateway);
     const r = await rodarAgenteOcta({ historico, pedido, workspace, modo, liberados, arquivoAtivo: typeof body.arquivoAtivo === "string" ? body.arquivoAtivo : undefined }, chamar, { sessionId, userId });
+    const servidos = chamar.servidos;
+    console.info(`[octa] ${sessionId} ${servidos.map((x) => `${x.modelo}(${x.modeloId ?? "?"}) ${x.ms}ms${x.motivo ? ` ←${x.motivo}` : ""}`).join(" · ")}`);
+    const ultimo = servidos.at(-1)?.modelo;
     return NextResponse.json({
       resposta: r.resposta, edicoes: r.edicoes, apagados: r.apagados, negados: r.negados,
-      sinais: r.sinais, passos: r.passos, modelo: modeloReal("forte").replace(/^vertex_ai\//, ""),
+      sinais: r.sinais, passos: r.passos, modelo: ultimo && nomeDoModelo(ultimo),
+      servidoPor: servidos.map((x) => ({ modelo: nomeDoModelo(x.modelo), ms: x.ms, motivo: x.motivo })),
       custo: { tokensEntrada: r.custo.tokensEntrada, tokensSaida: r.custo.tokensSaida },
     });
   } catch (e: any) {
