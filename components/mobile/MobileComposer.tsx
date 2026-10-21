@@ -16,12 +16,12 @@ export function MobileComposer({ valor, onMudar, onEnviar, onMais, desabilitado,
   rotuloEnviar?: string;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
-  // auto-grow: volta a 1 linha e cresce até o teto (o resto rola dentro do campo)
+  // auto-grow: volta a 1 linha e cresce até o teto do CSS — 6 linhas, nunca mais que 25% da tela (o resto rola dentro do campo)
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 6 * 24 + 20) + "px";
+    el.style.height = el.scrollHeight + "px";
   }, [valor]);
   const podeEnviar = !desabilitado && !!valor.trim();
   return (
@@ -43,7 +43,7 @@ export function MobileComposer({ valor, onMudar, onEnviar, onMais, desabilitado,
           onChange={(e) => onMudar(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); if (podeEnviar) onEnviar(); } }}
           enterKeyHint="send"
-          className={`${FOCO} min-h-[44px] flex-1 resize-none rounded-2xl border border-slate-300/70 dark:border-white/15 bg-white/80 dark:bg-white/[0.06] px-4 py-2.5 text-[16px] leading-6 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-white/40`}
+          className={`${FOCO} min-h-[44px] max-h-[min(164px,25dvh)] overflow-y-auto flex-1 resize-none rounded-2xl border border-slate-300/70 dark:border-white/15 bg-white/80 dark:bg-white/[0.06] px-4 py-2.5 text-[16px] leading-6 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-white/40`}
         />
         <button type="submit" disabled={!podeEnviar} aria-label={rotuloEnviar}
           className={`${ALVO} ${FOCO} shrink-0 rounded-full bg-cyan-700 text-white text-lg disabled:opacity-40 dark:bg-cyan-500 dark:text-slate-950`}>

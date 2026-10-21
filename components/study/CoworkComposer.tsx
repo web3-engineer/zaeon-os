@@ -104,12 +104,14 @@ export default function CoworkComposer({
     toggleMic();
   };
 
-  // Cresce com o conteúdo, com teto (rola internamente depois disso) — igual ao Claude.
+  // Cresce com o conteúdo até o teto (rola internamente depois disso) — igual ao Claude.
+  // O teto é o max-height do CSS do textarea: 220px, mas nunca mais que 25% da tela — com 220px fixos,
+  // em tela baixa/coluna estreita a caixa cobria quase metade da conversa. O max-height corta o height daqui.
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 220) + "px";
+    el.style.height = el.scrollHeight + "px";
   }, [value]);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -173,7 +175,7 @@ export default function CoworkComposer({
             onKeyDown={onKeyDown}
             rows={1}
             placeholder={placeholder}
-            className="flex-1 min-w-[8rem] resize-none overflow-y-auto bg-transparent outline-none border-0
+            className="flex-1 min-w-[8rem] max-h-[min(220px,25dvh)] resize-none overflow-y-auto bg-transparent outline-none border-0
               font-tech text-[22px] leading-[1.55] py-2 text-slate-800 dark:text-white/90
               placeholder:text-slate-400 dark:placeholder:text-white/30 custom-scrollbar"
           />
