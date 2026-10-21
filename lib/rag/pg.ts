@@ -15,7 +15,8 @@ export function ragPg(): RagDb {
   if (!g.__ragPool) {
     const url = process.env.RAG_PG_URL;
     if (!url) throw new Error("RAG_PG_URL ausente");
-    const pool = new Pool({ connectionString: url, max: 10 });
+    // connectionTimeoutMillis: tailnet caída falha em 5 s em vez de pendurar a requisição no timeout TCP do SO.
+    const pool = new Pool({ connectionString: url, max: 10, connectionTimeoutMillis: 5000 });
     // Erro num client ocioso (Postgres reiniciou) não pode derrubar o processo.
     pool.on("error", (e) => console.error("[rag/pg] client ocioso falhou:", e.message));
     g.__ragPool = pool;

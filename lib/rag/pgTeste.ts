@@ -14,6 +14,8 @@ import type { RagDb } from "./pg";
 const MARCADOR_PAPEL = "-- @@PAPEL@@";
 const SQL = readFileSync(path.join(process.cwd(), "infra/zaeon-models/rag-schema.sql"), "utf8");
 const SQL_TABELAS = SQL.split(MARCADOR_PAPEL)[0];
+// Extensões + config de busca `rag_pt` (acima de @@TABELAS@@): por banco, vivem em public.
+const SQL_BASE = SQL_TABELAS.split("-- @@TABELAS@@")[0];
 const LOCK_EXTENSAO = 748_200_121; // advisory lock: CREATE EXTENSION concorrente entre arquivos de teste dá erro
 
 export type BancoDeTeste = { db: RagDb; limpar(): Promise<void>; fechar(): Promise<void> };
@@ -30,11 +32,12 @@ export async function bancoDeTeste(): Promise<BancoDeTeste | null> {
   const nome = `rag_t_${process.pid}_${Math.random().toString(36).slice(2, 10)}`;
   const admin = new Pool({ connectionString: url, max: 1 });
   try {
-    // A extensão é por banco (fica em public); cria uma vez, sem corrida entre arquivos de teste.
+    // Extensões e config rag_pt são por banco (ficam em public); cria uma vez, sem corrida entre arquivos de teste.
+    // O search_path dos testes (`schema,public`) as enxerga; aplicarSchema() depois cai nos guards (no-op).
     const c = await admin.connect();
     try {
       await c.query("SELECT pg_advisory_lock($1)", [LOCK_EXTENSAO]);
-      await c.query("CREATE EXTENSION IF NOT EXISTS vector SCHEMA public");
+      await c.query(SQL_BASE); // vector, unaccent e a config rag_pt em public, uma vez (sem corrida)
       await c.query("SELECT pg_advisory_unlock($1)", [LOCK_EXTENSAO]);
     } finally { c.release(); }
     await admin.query(`CREATE SCHEMA ${nome}`);

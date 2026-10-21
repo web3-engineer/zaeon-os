@@ -23,7 +23,7 @@ describe("esquema RAG no Postgres", () => {
        WHERE table_schema = current_schema() AND table_name = 'rag_trechos' AND column_name = 'tsv'`,
     );
     expect(tsv.rows[0].is_generated).toBe("ALWAYS");
-    expect(tsv.rows[0].generation_expression).toContain("portuguese");
+    expect(tsv.rows[0].generation_expression).toContain("rag_pt");
 
     const idx = await db.query<{ indexdef: string }>(
       `SELECT indexdef FROM pg_indexes WHERE schemaname = current_schema() AND tablename = 'rag_trechos'`,
@@ -36,7 +36,16 @@ describe("esquema RAG no Postgres", () => {
     expect(defs).toMatch(/\(documento_id, ordem\)/);
   });
 
-  it.skipIf(!banco)("tsv é preenchida a partir do texto (português) e embedding pode ser nulo", async () => {
+  it.skipIf(!banco)("rag_pt ignora acento nos dois sentidos", async () => {
+    const { db } = banco!;
+    const r = await db.query<{ a: boolean; b: boolean }>(
+      `SELECT to_tsvector('rag_pt', 'células') @@ websearch_to_tsquery('rag_pt', 'celula') AS a,
+              to_tsvector('rag_pt', 'celula')  @@ websearch_to_tsquery('rag_pt', 'células') AS b`,
+    );
+    expect(r.rows[0]).toEqual({ a: true, b: true });
+  });
+
+  it.skipIf(!banco)("tsv é preenchida a partir do texto (português, sem acento) e embedding pode ser nulo", async () => {
     const { db, limpar } = banco!;
     await limpar();
     const d = await db.query<{ id: string }>(
@@ -46,10 +55,12 @@ describe("esquema RAG no Postgres", () => {
       `INSERT INTO rag_trechos (documento_id, ordem, texto) VALUES ($1, 0, 'As células estudadas')`,
       [d.rows[0].id],
     );
-    const r = await db.query<{ ok: boolean; semvetor: boolean }>(
-      `SELECT tsv @@ websearch_to_tsquery('portuguese', 'célula') AS ok, embedding IS NULL AS semvetor FROM rag_trechos`,
+    const r = await db.query<{ ok: boolean; sem: boolean; semvetor: boolean }>(
+      `SELECT tsv @@ websearch_to_tsquery('rag_pt', 'célula') AS ok,
+              tsv @@ websearch_to_tsquery('rag_pt', 'celula') AS sem,
+              embedding IS NULL AS semvetor FROM rag_trechos`,
     );
-    expect(r.rows[0]).toEqual({ ok: true, semvetor: true });
+    expect(r.rows[0]).toEqual({ ok: true, sem: true, semvetor: true });
     await limpar();
   });
 

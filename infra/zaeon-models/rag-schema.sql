@@ -4,10 +4,25 @@
 -- Produção (superusuário, uma vez e a cada mudança de esquema):
 --   psql "$DATABASE_URL_ADMIN" -v senha='<senha do rag_app>' -f infra/zaeon-models/rag-schema.sql
 --
--- Testes (lib/rag/pgTeste.ts): aplica SÓ a parte acima do marcador "@@PAPEL@@" (sem o papel, que exige a
+-- Testes (lib/rag/pgTeste.ts): aplica SÓ a parte acima do marcador "@@PAPEL@@" (e cria extensões + config rag_pt, acima de "@@TABELAS@@", uma vez em public) (sem o papel, que exige a
 -- variável psql :senha e privilégio de criar papéis). Não mexa nesse marcador.
 
 CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
+-- Busca por palavra-chave sem acento e com stemming português: "celula" casa "células" (e vice-versa).
+-- A config vive no schema corrente (public em produção); `to_tsvector('rag_pt', ...)` e
+-- `websearch_to_tsquery('rag_pt', ...)` resolvem pelo search_path. Idempotente (guarda: pg_ts_config visível no search_path).
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_ts_config WHERE cfgname = 'rag_pt' AND pg_ts_config_is_visible(oid)) THEN
+    CREATE TEXT SEARCH CONFIGURATION rag_pt (COPY = portuguese);
+    ALTER TEXT SEARCH CONFIGURATION rag_pt
+      ALTER MAPPING FOR hword, hword_part, word WITH unaccent, portuguese_stem;
+  END IF;
+END $$;
+
+-- @@TABELAS@@ -------------------------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS rag_documentos (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -41,7 +56,7 @@ CREATE TABLE IF NOT EXISTS rag_trechos (
   dono_ids     text[] NOT NULL DEFAULT '{}',
   -- NULL = trecho ainda sem vetor (buscável só por palavra-chave).
   embedding    vector(1024),
-  tsv          tsvector GENERATED ALWAYS AS (to_tsvector('portuguese', texto)) STORED,
+  tsv          tsvector GENERATED ALWAYS AS (to_tsvector('rag_pt', texto)) STORED,
   created_at   timestamptz NOT NULL DEFAULT now()
 );
 
