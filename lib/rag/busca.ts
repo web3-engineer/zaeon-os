@@ -3,7 +3,7 @@
  *
  * Postgres + pgvector, uma query só: CTE `vet` (HNSW cosseno sobre `embedding`) e CTE `txt` (`tsv @@
  * websearch_to_tsquery('rag_pt', ...)`, ordenado por `ts_rank_cd`), fundidas por RRF (`sum(1/(60+rank))`).
- * A permissão (`turma_ids && turmas OR usuário = ANY(dono_ids)`) vai no WHERE DOS DOIS ramos (nunca depois); em
+ * A permissão (`turma_ids && turmas OR dono_ids @> ARRAY[usuário]`) vai no WHERE DOS DOIS ramos (nunca depois); em
  * cima disso o resultado ainda passa por `podeVer` (cinto + suspensório). Valores sempre por parâmetro.
  *
  * Falha do embedder (erro ou prazo) NUNCA derruba a busca: cai para só texto. Falha do SQL propaga.
@@ -39,8 +39,14 @@ export type BuscaDeps = {
   prazoEmbedMs?: number;
 };
 
+/** `k` válido: inteiro ≥ 1 (fração ⇒ floor; ≤ 0, NaN ou infinito ⇒ K_PADRAO). */
+export function normalizarK(k: number): number {
+  return Number.isFinite(k) && k >= 1 ? Math.floor(k) : K_PADRAO;
+}
+
 /** SQL da busca (PURO). Com `vetor`: vetor + texto fundidos por RRF; sem: só o ramo texto. */
-export function montarSql(e: EscopoRag, pergunta: string, vetor: number[] | null, k: number): { sql: string; params: unknown[] } {
+export function montarSql(e: EscopoRag, pergunta: string, vetor: number[] | null, kBruto: number): { sql: string; params: unknown[] } {
+  const k = normalizarK(kBruto);
   const params: unknown[] = [];
   const p = (v: unknown) => { params.push(v); return `$${params.length}`; };
 
@@ -49,7 +55,7 @@ export function montarSql(e: EscopoRag, pergunta: string, vetor: number[] | null
   const u = p(e.userId);
   const cand = p(k * CANDIDATOS_POR_K);
   const lim = p(k);
-  const perm = `(turma_ids && ${t}::text[] OR ${u}::text = ANY(dono_ids))`;
+  const perm = `(turma_ids && ${t}::text[] OR dono_ids @> ARRAY[${u}]::text[])`;
 
   const ctes: string[] = [];
   const uniao: string[] = [];
@@ -57,6 +63,8 @@ export function montarSql(e: EscopoRag, pergunta: string, vetor: number[] | null
   if (vetor) {
     const v = p(`[${vetor.join(",")}]`);
     // O ORDER BY ... LIMIT fica numa subconsulta simples para o planner usar o HNSW (com iterative_scan + filtro).
+    // SEM desempate `, id` aqui: o HNSW só serve ORDER BY <distância> puro (com `, id` o planner cai em seq scan + sort,
+    // medido com 12 mil trechos). O desempate vem no row_number() de fora; só empate exato na borda do LIMIT é arbitrário.
     ctes.push(`vet AS (
       SELECT id, row_number() OVER (ORDER BY dist, id) AS rk
         FROM (SELECT id, embedding <=> ${v}::vector AS dist
@@ -73,7 +81,7 @@ export function montarSql(e: EscopoRag, pergunta: string, vetor: number[] | null
         FROM (SELECT id, ts_rank_cd(tsv, tq.q) AS rnk
                 FROM rag_trechos, (SELECT websearch_to_tsquery('rag_pt', ${q}) AS q) tq
                WHERE tsv @@ tq.q AND ${perm}
-               ORDER BY rnk DESC
+               ORDER BY rnk DESC, id
                LIMIT ${cand}::int) s
     )`);
   uniao.push("SELECT id, rk FROM txt");
@@ -114,6 +122,16 @@ async function vetorDaPergunta(embed: EmbedRag, pergunta: string, prazoMs: numbe
   }
 }
 
+/** Roda a query da busca (linhas cruas, SEM `podeVer`) na transação com o `SET LOCAL` do HNSW. */
+export async function executarSql(db: RagDb, e: EscopoRag, pergunta: string, vetor: number[] | null, k: number): Promise<any[]> {
+  const { sql, params } = montarSql(e, pergunta, vetor, k);
+  return transacao(db, async (tx) => {
+    // Busca vetorial filtrada: sem isso o HNSW pode devolver menos de `k` linhas quando o filtro é seletivo.
+    if (vetor) await tx.query("SET LOCAL hnsw.iterative_scan = relaxed_order");
+    return (await tx.query(sql, params)).rows;
+  });
+}
+
 export async function buscar(deps: BuscaDeps, e: EscopoRag, pergunta: string, k: number = K_PADRAO): Promise<TrechoAchado[]> {
   // userId vazio casaria com entradas "" em dono_ids: sem identidade não há escopo.
   if (!e.userId || e.userId.trim() === "") return [];
@@ -122,12 +140,7 @@ export async function buscar(deps: BuscaDeps, e: EscopoRag, pergunta: string, k:
   if (!temBase(e, await deps.contar(e))) return [];
 
   const vetor = await vetorDaPergunta(deps.embed, consulta, deps.prazoEmbedMs ?? PRAZO_EMBED_PADRAO_MS);
-  const { sql, params } = montarSql(e, consulta, vetor, k);
-  const linhas = await transacao(deps.db, async (tx) => {
-    // Busca vetorial filtrada: sem isso o HNSW pode devolver menos de `k` linhas quando o filtro é seletivo.
-    if (vetor) await tx.query("SET LOCAL hnsw.iterative_scan = relaxed_order");
-    return (await tx.query(sql, params)).rows;
-  });
+  const linhas = await executarSql(deps.db, e, consulta, vetor, k);
 
   return linhas
     .filter((t) => podeVer({ turmaIds: t.turma_ids ?? [], donoIds: t.dono_ids ?? [] }, e))

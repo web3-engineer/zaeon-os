@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, it, expect, vi } from "vitest";
-import { buscar, montarSql, K_PADRAO, type BuscaDeps } from "./busca";
+import { buscar, executarSql, montarSql, normalizarK, K_PADRAO, type BuscaDeps } from "./busca";
 import { bancoDeTeste } from "./pgTeste";
 import { criarDocumento, gravarTrechos, registrarVetores, contarBase } from "./store";
 import type { RagDb } from "./pg";
@@ -55,7 +55,7 @@ describe("montarSql (puro)", () => {
     expect(sql).toContain("1.0 / (60 +");
     expect(sql).toContain("JOIN rag_documentos");
     // permissão aparece nos DOIS ramos
-    expect(sql.match(/turma_ids && \$\d+::text\[\] OR \$\d+::text = ANY\(dono_ids\)/g)).toHaveLength(2);
+    expect(sql.match(/turma_ids && \$\d+::text\[\] OR dono_ids @> ARRAY\[\$\d+\]::text\[\]/g)).toHaveLength(2);
     expect(params).toContain("limite de função");
     expect(params).toContain("u1");
     expect(params).toContainEqual(["tA"]);
@@ -70,7 +70,7 @@ describe("montarSql (puro)", () => {
     expect(sql).not.toContain("<=>");
     expect(sql).not.toContain("embedding");
     expect(sql).toContain("websearch_to_tsquery('rag_pt'");
-    expect(sql.match(/turma_ids && \$\d+::text\[\] OR \$\d+::text = ANY\(dono_ids\)/g)).toHaveLength(1);
+    expect(sql.match(/turma_ids && \$\d+::text\[\] OR dono_ids @> ARRAY\[\$\d+\]::text\[\]/g)).toHaveLength(1);
     expect(params).toContain("limite");
   });
 
@@ -78,6 +78,28 @@ describe("montarSql (puro)", () => {
     const { params } = montarSql(e, "x", null, 5);
     expect(params).toContain(20);
     expect(params).toContain(5);
+  });
+});
+
+describe("validação de k e desempate", () => {
+  it("normalizarK: inteiro ≥ 1; fração ⇒ floor; ≤ 0, NaN, infinito ou < 1 ⇒ K_PADRAO", () => {
+    expect(normalizarK(5)).toBe(5);
+    expect(normalizarK(3.9)).toBe(3);
+    for (const ruim of [0, -2, NaN, Infinity, 0.5]) expect(normalizarK(ruim)).toBe(K_PADRAO);
+  });
+
+  it("montarSql usa o k normalizado (candidatos e LIMIT)", () => {
+    expect(montarSql(e, "x", null, 3.9).params).toEqual(expect.arrayContaining([3, 12]));
+    const ruim = montarSql(e, "x", null, NaN).params;
+    expect(ruim).toEqual(expect.arrayContaining([K_PADRAO, K_PADRAO * 4]));
+    expect(ruim.some((v) => typeof v === "number" && Number.isNaN(v))).toBe(false);
+  });
+
+  it("desempate por id: no ramo texto (interno) e no row_number do vetor; ORDER BY interno do vetor fica puro (senão o HNSW não é usado)", () => {
+    const { sql } = montarSql(e, "x", onehot(0), 8);
+    expect(sql).toMatch(/ORDER BY rnk DESC, id\n/);
+    expect(sql).toContain("row_number() OVER (ORDER BY dist, id)");
+    expect(sql).toMatch(/ORDER BY embedding <=> \$\d+::vector\n\s+LIMIT/);
   });
 });
 
@@ -150,6 +172,29 @@ describe.skipIf(!banco)("buscar — Postgres real", () => {
     const semVetor = await buscar(depsDb(db, { embed: async () => { throw new Error("x"); } }), { userId: "estudanteB", turmaIds: ["tB"] }, "mitocôndria");
     aviso.mockRestore();
     expect(semVetor).toEqual([]);
+  });
+
+  it("RF1 (SQL cru, SEM podeVer): a permissão está no WHERE de CADA ramo — vetor e texto", async () => {
+    const db = banco!.db;
+    await semear(db, permTurma("tA", "hA"), [{ texto: "mitocôndria produz energia celular", vetor: onehot(0) }]);
+    await semear(db, permDono("X", "hX"), [{ texto: "mitocôndria segredo do aluno X", vetor: onehot(0) }]);
+    const titulos = async (esc: EscopoRag, vetor: number[] | null) =>
+      (await executarSql(db, esc, "mitocôndria", vetor, 8)).map((r) => r.titulo as string).sort();
+
+    // Ramo vetor isolado: a pergunta não tem palavra em comum, então só o vetor poderia trazer algo.
+    const soVetor = (esc: EscopoRag) => executarSql(db, esc, "zzzinexistente", onehot(0), 8);
+    expect(await soVetor({ userId: "estudanteB", turmaIds: ["tB"] })).toEqual([]);
+    expect(await soVetor({ userId: "Y", turmaIds: [] })).toEqual([]);
+    expect((await soVetor({ userId: "Y", turmaIds: ["tA"] })).map((r) => r.titulo)).toEqual(["Doc hA"]);
+    expect((await soVetor({ userId: "X", turmaIds: [] })).map((r) => r.titulo)).toEqual(["Pessoal hX"]);
+
+    // Ramo texto isolado (vetor null) e os dois juntos (vetor casando tudo).
+    for (const vetor of [null, onehot(0)]) {
+      expect(await titulos({ userId: "estudanteB", turmaIds: ["tB"] }, vetor)).toEqual([]);
+      expect(await titulos({ userId: "Y", turmaIds: [] }, vetor)).toEqual([]);
+      expect(await titulos({ userId: "Y", turmaIds: ["tA"] }, vetor)).toEqual(["Doc hA"]);
+      expect(await titulos({ userId: "X", turmaIds: ["tA"] }, vetor)).toEqual(["Doc hA", "Pessoal hX"]);
+    }
   });
 
   it("RF3: pergunta só com stopwords ou símbolos não lança (ramo texto vazio; vem do vetor)", async () => {

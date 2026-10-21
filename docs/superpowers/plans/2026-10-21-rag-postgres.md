@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Permissão: trecho visível sse `turma_ids && turmasDaPessoa` **ou** `pessoa = ANY(dono_ids)` — condição no `WHERE` **dos dois ramos** da busca (nunca filtrar depois); `podeVer` continua como 2ª checagem.
+- Permissão: trecho visível sse `turma_ids && turmasDaPessoa` **ou** `dono_ids @> ARRAY[pessoa]::text[]` (mesmo sentido de `= ANY`, mas usa o GIN de `dono_ids`) — condição no `WHERE` **dos dois ramos** da busca (nunca filtrar depois); `podeVer` continua como 2ª checagem.
 - Adicionar/remover turma ou dono é **atômico** no SQL (`array_append` sem duplicata / `array_remove`), documento e trechos **na mesma transação**; remoção da última permissão apaga documento + trechos na mesma transação.
 - Embedding `vector(1024)`, cosine; trecho sem vetor = `embedding IS NULL` (buscável só por palavra-chave).
 - Texto: coluna gerada `tsv tsvector GENERATED ALWAYS AS (to_tsvector('rag_pt', texto)) STORED`; consulta com `websearch_to_tsquery('rag_pt', $pergunta)`. `rag_pt` = config de busca própria (`COPY = portuguese` + `unaccent` antes do `portuguese_stem`), criada em `rag-schema.sql`: "celula" casa "células" e vice-versa.
@@ -59,7 +59,7 @@
 
 **Files:** Modify `lib/rag/busca.ts`, `lib/rag/busca.test.ts`; Delete `scripts/atlas-rag-indexes.mongo.js`
 
-**Interfaces:** `buscar(deps, e, pergunta, k?)` igual; `BuscaDeps = { db: RagDb; embed: EmbedRag; contar: (e) => Promise<{pessoais; deTurma}>; prazoEmbedMs? }` (sai `colecao`). Remove `montarPipeline`/`colecaoRagPrisma`; adiciona `montarSql(e, pergunta, vetor: number[] | null, k): { sql: string; params: unknown[] }` (puro, testável). SQL: CTE `vet` (só com vetor: `WHERE embedding IS NOT NULL AND <perm>` `ORDER BY embedding <=> $v LIMIT k*4`, `row_number()` como rank), CTE `txt` (`WHERE tsv @@ websearch_to_tsquery('rag_pt',$q) AND <perm>` `ORDER BY ts_rank_cd(tsv, q) DESC LIMIT k*4`), fusão RRF `sum(1.0/(60+rank))`, `JOIN rag_documentos` pro título, `LIMIT k`. `SET LOCAL hnsw.iterative_scan = relaxed_order` na mesma transação (filtro + HNSW no pgvector 0.8). `<perm>` = `(turma_ids && $t::text[] OR $u = ANY(dono_ids))`.
+**Interfaces:** `buscar(deps, e, pergunta, k?)` igual; `BuscaDeps = { db: RagDb; embed: EmbedRag; contar: (e) => Promise<{pessoais; deTurma}>; prazoEmbedMs? }` (sai `colecao`). Remove `montarPipeline`/`colecaoRagPrisma`; adiciona `montarSql(e, pergunta, vetor: number[] | null, k): { sql: string; params: unknown[] }` (puro, testável). SQL: CTE `vet` (só com vetor: `WHERE embedding IS NOT NULL AND <perm>` `ORDER BY embedding <=> $v LIMIT k*4`, `row_number()` como rank), CTE `txt` (`WHERE tsv @@ websearch_to_tsquery('rag_pt',$q) AND <perm>` `ORDER BY ts_rank_cd(tsv, q) DESC LIMIT k*4`), fusão RRF `sum(1.0/(60+rank))`, `JOIN rag_documentos` pro título, `LIMIT k`. `SET LOCAL hnsw.iterative_scan = relaxed_order` na mesma transação (filtro + HNSW no pgvector 0.8). `<perm>` = `(turma_ids && $t::text[] OR dono_ids @> ARRAY[$u]::text[])`.
 
 - [ ] Step 1: testes contra banco real: aluno de outra turma e outro aluno **não** recebem o trecho *(RF 1)*; pergunta só com stopwords não lança *(RF 3)*; trecho sem vetor aparece só por palavra; embed falha ⇒ só texto + `console.warn`; sem base ⇒ `[]` sem embed; userId vazio ⇒ `[]`; resultado ordenado e com `titulo`, `paginaIni/Fim`. Teste puro de `montarSql` (com e sem vetor; a permissão aparece nos dois ramos).
 - [ ] Step 2: RED → implementar → GREEN.
