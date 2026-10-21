@@ -98,11 +98,11 @@ export async function marcarConversa(db: GatekeeperDb, userId: string, scopeId: 
   await db.conversation.update({ where: { id: conv.id }, data: { estudavel: true, tituloSugerido: sinal.tituloSugerido } });
 }
 
-/** Papel "mini" (qwen3 4B na Contabo; Google se ela falhar/estiver ocupada/LOCAL_MINI=0) — ninguém espera o gatekeeper. */
+/** Papel "curto" (gpt-oss-20b na Contabo, raciocínio baixo; Google se ela falhar/estiver ocupada/LOCAL_CURTO=0) — ninguém espera o gatekeeper. */
 async function genJsonMini(userId: string): Promise<GenJson> {
   const { gerarPapelJson } = await import("@/lib/llm/papeis");
   return async <T,>(system: string, user: string, opts?: { temperature?: number; timeoutMs?: number }) =>
-    (await gerarPapelJson<T>("mini", { system, user, temperature: opts?.temperature, timeoutMs: opts?.timeoutMs, ctx: { agentKey: "aura", surface: "estudos", userId, phase: "gatekeeper" } })).valor;
+    (await gerarPapelJson<T>("curto", { system, user, temperature: opts?.temperature, timeoutMs: opts?.timeoutMs, ctx: { agentKey: "aura", surface: "estudos", userId, phase: "gatekeeper" } })).valor;
 }
 
 /** Ponto de entrada do runChatTurn (fire-and-forget). */

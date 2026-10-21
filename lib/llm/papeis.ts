@@ -1,20 +1,22 @@
 /**
  * lib/llm/papeis.ts — os modelos da Contabo, cada um no papel que a CPU aguenta, com o Google cobrindo o resto.
  *
- *   gerarPapel("mini", req)   → tenta `zaeon-local-mini` (qwen3 4B) no gateway; falhou/timeout/vazio/ocupado →
+ *   gerarPapel("curto", req)  → tenta `zaeon-local-geral` (gpt-oss-20b) no gateway; falhou/timeout/vazio/ocupado →
  *                               o MESMO pedido no Vertex (os modelos de `google`, em ordem). Quem chama não vê a troca.
  *
  * Papéis (números medidos no PR — docs/MODELOS_LOCAIS_PAPEIS.md):
  *   guarda → llama-guard3 8B : moderação da mensagem do aluno, DEPOIS do turno (auditoria, nunca bloqueia).
- *   mini   → qwen3 4B        : classificar/titular curto em segundo plano (gatekeeper do cérebro, juiz da árvore).
+ *   curto  → gpt-oss-20b     : classificar/titular curto em segundo plano (gatekeeper do cérebro, juiz da árvore),
+ *                              reasoning_effort "low" (~50–140 tokens pensando + o JSON: 17–23 s quente).
  *
- * gpt-oss-20b (zaeon-local-geral) ficou SEM papel aqui: no chat, na Pesquisa e nos Estudos não há tarefa longa
- * sem alguém olhando (TCC, cérebro e Scholar têm o aluno vendo o progresso) — a 6 tok/s, todas estourariam.
+ * Por que não o qwen3 4B (zaeon-local-mini): o `qwen3:4b` do Ollama é o build THINKING-2507 — pensa sempre,
+ * ignora /no_think, think:false e reasoning_effort, e gastou 700 tokens (133–175 s) sem chegar ao JSON.
+ * Se o dono puxar o `qwen3:4b-instruct-2507` na Contabo, LOCAL_CURTO_MODELO=zaeon-local-mini troca sem deploy.
  *
  * Regras:
  *   - Só fire-and-forget. A CPU dá 6–9 tok/s e carregar modelo frio leva até ~100 s: nada aqui entra no
  *     caminho de uma resposta em streaming.
- *   - Flag por papel, LIGADA por default quando há gateway: LOCAL_GUARDA / LOCAL_MINI = "0" desliga
+ *   - Flag por papel, LIGADA por default quando há gateway: LOCAL_GUARDA / LOCAL_CURTO = "0" desliga
  *     (vai direto no Google) — basta mudar o .env e recriar o web, sem build.
  *   - Teto de chamadas em voo POR PROCESSO (o Ollama da Contabo roda NUM_PARALLEL=1 e um request abortado
  *     continua lá dentro): passou do teto, o pedido vai direto pro Google em vez de enfileirar na CPU.
@@ -24,16 +26,18 @@ import { gerar, type Deps, type GerarReq, type GerarRes } from "@/lib/llm/envelo
 import { GEMINI_MODEL_FLASH } from "@/lib/ai/model";
 import { gatewayLigado } from "@/lib/llm/usage";
 
-export type Papel = "guarda" | "mini";
+export type Papel = "guarda" | "curto";
 
 type Env = Record<string, string | undefined>;
 
 export type DefPapel = {
   /** Grupo do LiteLLM da VPS (infra/litellm.config.yaml). */
   modeloLocal: string;
+  /** Env que troca o grupo local sem deploy. */
+  envModelo?: string;
   /** Env que desliga o papel ("0"/"off"/"false"). */
   flag: string;
-  /** Teto da tentativa local. Folgado: ninguém espera nenhum deles (frio = até ~100 s). */
+  /** Teto da tentativa local. Folgado: ninguém espera nenhum deles (frio medido: guard 52 s, gpt-oss 112–120 s). */
   timeoutMs: number;
   /** Fallback Google, em ordem: o 1º que responder. */
   google: () => string[];
@@ -41,8 +45,6 @@ export type DefPapel = {
   maxEmVoo: number;
   /** Campos extras do corpo OpenAI pro modelo local (desligar o "pensar" que a CPU não paga). */
   extra?: Record<string, unknown>;
-  /** Anexado ao `user` SÓ na tentativa local (o "/no_think" do Qwen3, que vale mesmo se o gateway largar o extra). */
-  sufixoUser?: string;
 };
 
 /** flash-lite do Vertex (global) — o mesmo da reserva do pool. Override: GEMINI_MODEL_LITE. */
@@ -50,9 +52,9 @@ const LITE = () => process.env.GEMINI_MODEL_LITE || "gemini-3.5-flash-lite";
 
 export const PAPEIS: Record<Papel, DefPapel> = {
   guarda: { modeloLocal: "zaeon-local-guard", flag: "LOCAL_GUARDA", timeoutMs: 90_000, maxEmVoo: 2, google: () => [LITE(), GEMINI_MODEL_FLASH] },
-  mini: {
-    modeloLocal: "zaeon-local-mini", flag: "LOCAL_MINI", timeoutMs: 60_000, maxEmVoo: 2, google: () => [GEMINI_MODEL_FLASH],
-    extra: { reasoning_effort: "none" }, sufixoUser: " /no_think",
+  curto: {
+    modeloLocal: "zaeon-local-geral", envModelo: "LOCAL_CURTO_MODELO", flag: "LOCAL_CURTO", timeoutMs: 150_000, maxEmVoo: 1,
+    google: () => [GEMINI_MODEL_FLASH], extra: { reasoning_effort: "low" },
   },
 };
 
@@ -70,12 +72,16 @@ export function papelLocalLigado(papel: Papel, env: Env = process.env): boolean 
   return gatewayLigado(env) && Boolean(chaveLocal(env));
 }
 
-/** Qwen3/gpt-oss podem devolver o raciocínio no conteúdo — fica só a resposta. */
+/** Qwen3/gpt-oss podem devolver o raciocínio no conteúdo — fica só a resposta. O Qwen3 thinking abre o
+ *  <think> no template, então às vezes só o </think> aparece: tudo antes do último fechamento sai. */
 export function limparPensamento(texto: string): string {
-  return String(texto ?? "").replace(/<think>[\s\S]*?(<\/think>|$)/gi, "").trim();
+  let t = String(texto ?? "");
+  const fim = t.toLowerCase().lastIndexOf("</think>");
+  if (fim >= 0) t = t.slice(fim + "</think>".length);
+  return t.replace(/<think>[\s\S]*$/i, "").trim();
 }
 
-const emVoo: Record<Papel, number> = { guarda: 0, mini: 0 };
+const emVoo: Record<Papel, number> = { guarda: 0, curto: 0 };
 /** Só pra teste. */
 export const _emVoo = emVoo;
 
@@ -107,8 +113,7 @@ export async function gerarPapel(papel: Papel, req: ReqPapel, deps: Deps = {}): 
     emVoo[papel]++;
     try {
       const r = await gerar({
-        ...base, ctx, model: def.modeloLocal, rota: "gateway", timeoutMs: def.timeoutMs,
-        ...(def.sufixoUser && base.user ? { user: base.user + def.sufixoUser } : {}),
+        ...base, ctx, model: (def.envModelo && env[def.envModelo]?.trim()) || def.modeloLocal, rota: "gateway", timeoutMs: def.timeoutMs,
         chaveGateway: chaveLocal(env), ...(def.extra ? { extra: def.extra } : {}),
       }, deps);
       const texto = limparPensamento(r.texto);

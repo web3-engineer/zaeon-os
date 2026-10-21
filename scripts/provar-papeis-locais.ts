@@ -22,19 +22,16 @@ for (const f of [".env", ".env.secrets", ".env.local"]) {
 const args = process.argv.slice(2);
 const FORCAR_FALHA = args.includes("--forcar-falha");
 
-const PROMPTS: Record<string, { messages: { role: string; content: string }[]; max: number }> = {
-  "zaeon-local-mini": {
+const PROMPTS: Record<string, { messages: { role: string; content: string }[]; max: number; extra?: Record<string, unknown> }> = {
+  // papel "curto": o prompt do gatekeeper, raciocínio baixo (o que lib/llm/papeis manda)
+  "zaeon-local-geral": {
     messages: [
       { role: "system", content: 'Você é a Aura decidindo se uma conversa é um ESTUDO. Responda SOMENTE JSON: {"estudavel":true|false,"titulo":"2–6 palavras"}' },
-      { role: "user", content: "Aluno: quero entender como funciona a fotossíntese nas plantas C4 /no_think" },
+      { role: "user", content: "Aluno: quero entender como funciona a fotossíntese nas plantas C4" },
     ],
-    max: 60,
+    max: 600, extra: { reasoning_effort: "low" },
   },
   "zaeon-local-guard": { messages: [{ role: "user", content: "Como eu explico a Segunda Guerra Mundial para uma prova de história?" }], max: 10 },
-  "zaeon-local-geral": {
-    messages: [{ role: "user", content: "Resuma em 3 frases o que é a fotossíntese." }],
-    max: 200,
-  },
 };
 
 async function medirUm(url: string, key: string, model: string): Promise<string> {
@@ -46,7 +43,7 @@ async function medirUm(url: string, key: string, model: string): Promise<string>
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     body: JSON.stringify({
       model, messages: p.messages, max_tokens: p.max, temperature: 0, stream: true, stream_options: { include_usage: true },
-      ...(model === "zaeon-local-mini" ? { reasoning_effort: "none" } : {}),
+      ...(p.extra ?? {}),
     }),
     signal: AbortSignal.timeout(300_000),
   });
@@ -92,7 +89,7 @@ async function papeis() {
   const { avaliarEstudavel } = await import("../lib/map/gatekeeper");
   const { assessMastery } = await import("../lib/skilltree/assess");
   const { gerarPapelJson } = await import("../lib/llm/papeis");
-  console.log(`[papeis] guarda ligado=${papelLocalLigado("guarda")} mini ligado=${papelLocalLigado("mini")} forcarFalha=${FORCAR_FALHA}`);
+  console.log(`[papeis] guarda ligado=${papelLocalLigado("guarda")} curto ligado=${papelLocalLigado("curto")} forcarFalha=${FORCAR_FALHA}`);
   const desde = new Date();
 
   const m1 = await moderar("Como eu explico a Segunda Guerra Mundial para uma prova de história?", { surface: "estudos" });
@@ -100,7 +97,7 @@ async function papeis() {
 
   let infoMini = "";
   const gen = async <T,>(system: string, user: string, o?: { temperature?: number; timeoutMs?: number }) => {
-    const { valor, res } = await gerarPapelJson<T>("mini", { system, user, temperature: o?.temperature, timeoutMs: o?.timeoutMs, ctx: { agentKey: "aura", surface: "estudos", phase: "gatekeeper" } });
+    const { valor, res } = await gerarPapelJson<T>("curto", { system, user, temperature: o?.temperature, timeoutMs: o?.timeoutMs, ctx: { agentKey: "aura", surface: "estudos", phase: "gatekeeper" } });
     infoMini = `alvo=${res.alvo} fallback=${res.fallback ?? "-"} ms=${res.ms}`;
     return valor;
   };
