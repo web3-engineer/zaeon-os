@@ -55,10 +55,13 @@ export async function runChatTurn(
   try {
     // RAG F2: base da turma + pessoal. Dispara já, em paralelo com memória/cartolina/TCC/árvore
     // (não soma latência); import lazy pra o load do módulo nunca tocar o pg. O módulo já não
-    // rejeita, mas se rejeitar vira null — a base nunca derruba o turno.
+    // rejeita, mas se rejeitar (ou o import falhar) loga e vira null — a base nunca derruba o turno.
     const basePromise = import("@/lib/rag/turno")
       .then((m) => m.baseParaTurno({ userId, pergunta: prompt }))
-      .catch(() => null);
+      .catch((e) => {
+        console.error("[rag/chat] base do turno falhou:", (e as Error)?.message ?? String(e));
+        return null;
+      });
     const ac: any = params.agentContext && typeof params.agentContext === "object" ? params.agentContext : {};
     const hctx: any = {
       ...ac,

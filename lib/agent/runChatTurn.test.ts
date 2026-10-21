@@ -94,10 +94,16 @@ describe("runChatTurn", () => {
     expect(h.onStepOpts.systemContext).toBe("SYS\n\nMEM\n\nBUSSOLA");
   });
   it("RAG F2: baseParaTurno rejeitando não derruba o turno — segue com baseConhecimento null", async () => {
-    h.base.mockRejectedValue(new Error("pg fora"));
-    const r = await runChatTurn(null, params(), () => {});
-    expect(r).toBe(out);
-    expect(h.onStepOpts.baseConhecimento).toBeNull();
+    const erro = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      h.base.mockRejectedValue(new Error("pg fora"));
+      const r = await runChatTurn(null, params(), () => {});
+      expect(r).toBe(out);
+      expect(h.onStepOpts.baseConhecimento).toBeNull();
+      expect(erro).toHaveBeenCalledWith("[rag/chat] base do turno falhou:", "pg fora");
+    } finally {
+      erro.mockRestore();
+    }
   });
   it("RAG F2: anônimo chama a base com userId null (o módulo responde sem_usuario)", async () => {
     h.base.mockResolvedValue({ status: "sem_usuario", trechos: [] });

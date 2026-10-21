@@ -65,6 +65,13 @@ describe("examiner · checkSemFonte (a checagem mais barata)", () => {
   it("enforced sem fonte → 1 sem_fonte", () => {
     expect(checkSemFonte({ intent: "explicar_conceito", mode: "elaborated", academicMode: "enforced", draft: draftNoSrc })).toHaveLength(1);
   });
+  it("enforced com SÓ fontesBase (material da turma) → nenhum sem_fonte; sem ela → continua sem_fonte", () => {
+    const daBase: StructuredAnswer = { nucleo: "x", fontesBase: [{ documentoId: "d1", titulo: "Apostila 3", paginas: "4–5" }] };
+    expect(checkSemFonte({ intent: "explicar_conceito", mode: "elaborated", academicMode: "enforced", draft: daBase })).toHaveLength(0);
+    expect(critique({ intent: "explicar_conceito", mode: "elaborated", academicMode: "enforced", draft: daBase }).issues.some((i) => i.tipo === "sem_fonte")).toBe(false);
+    const semBase: StructuredAnswer = { nucleo: "x", fontesBase: [] };
+    expect(checkSemFonte({ intent: "explicar_conceito", mode: "elaborated", academicMode: "enforced", draft: semBase })).toHaveLength(1);
+  });
   it("intenção que exige fonte, COM fonte → nenhum sem_fonte", () => {
     const withSrc: StructuredAnswer = { nucleo: "x", sources: [{ title: "S", url: "u" }] };
     expect(checkSemFonte({ intent: "pesquisar_fontes", mode: "elaborated", academicMode: "flexible", draft: withSrc })).toHaveLength(0);

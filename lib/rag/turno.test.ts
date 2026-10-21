@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, it, expect, vi } from "vitest";
 import {
-  baseParaTurno, relevantes, turmasDaPessoa, _zerarDisjuntor, CORTE_SIMILARIDADE_PADRAO,
+  baseParaTurno, relevantes, turmasDaPessoa, _zerarDisjuntor, CORTE_SIMILARIDADE_PADRAO, corteEfetivo, MAX_PERGUNTA,
   type PrismaTurmas, type TurnoRagDeps,
 } from "./turno";
 import type { BuscaDeps, TrechoAchado } from "./busca";
@@ -92,6 +92,32 @@ describe("relevantes (puro)", () => {
   });
 });
 
+describe("corteEfetivo (RAG_CORTE_SIMILARIDADE)", () => {
+  const com = (v: string | undefined, corte?: number) => {
+    try {
+      vi.stubEnv("RAG_CORTE_SIMILARIDADE", v);
+      return corteEfetivo(corte);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  };
+
+  it("número finito em [0, 1] vale — inclusive \"0\"", () => {
+    expect(com("0")).toBe(0);
+    expect(com("0.7")).toBe(0.7);
+    expect(com("1")).toBe(1);
+  });
+
+  it("fora de [0, 1], não numérico, vazio ou ausente ⇒ padrão 0.62", () => {
+    for (const v of ["62", "-1", "abc", "", "  ", "Infinity", undefined]) expect(com(v)).toBe(CORTE_SIMILARIDADE_PADRAO);
+  });
+
+  it("deps.corte ganha da env", () => {
+    expect(com("0.7", 0.3)).toBe(0.3);
+    expect(com("abc", 0)).toBe(0);
+  });
+});
+
 describe("baseParaTurno — sem banco", () => {
   it("sem usuário ⇒ sem_usuario e não consulta", async () => {
     const prisma = prismaDuble({ u1: ["tA"] });
@@ -102,6 +128,33 @@ describe("baseParaTurno — sem banco", () => {
     expect(prisma.membroMock).not.toHaveBeenCalled();
     expect(prisma.turmaMock).not.toHaveBeenCalled();
     expect(busca).not.toHaveBeenCalled();
+  });
+
+  it("pergunta enorme é cortada em MAX_PERGUNTA (2000) antes da busca", async () => {
+    expect(MAX_PERGUNTA).toBe(2000);
+    const embed = vi.fn(async () => [onehot(0)]);
+    const query = vi.fn(async () => ({ rows: [] }));
+    const busca = () => ({ db: { query } as unknown as RagDb, embed, contar: async () => ({ pessoais: 1, deTurma: 0 }) });
+    const r = await baseParaTurno({ userId: "u1", pergunta: "  " + "mitocôndria ".repeat(1700) }, { prisma: prismaDuble({}), busca });
+    expect(r).toEqual({ status: "sem_trecho", trechos: [] });
+    expect(embed).toHaveBeenCalledTimes(1);
+    const enviada = (embed.mock.calls[0] as unknown as [string[]])[0][0];
+    expect(enviada.length).toBeLessThanOrEqual(MAX_PERGUNTA);
+    expect(enviada.startsWith("mitocôndria")).toBe(true);
+    const sql = query.mock.calls.find((c) => Array.isArray((c as unknown[])[1])) as unknown as [string, unknown[]];
+    expect(String(sql[1][0]).length).toBeLessThanOrEqual(MAX_PERGUNTA);
+  });
+
+  it("cada indisponivel é um objeto novo (ninguém muta o do vizinho)", async () => {
+    const erro = vi.spyOn(console, "error").mockImplementation(() => {});
+    const deps: Partial<TurnoRagDeps> = { prisma: prismaDuble({}), busca: () => { throw new Error("RAG_PG_URL ausente"); }, agora: () => 5 };
+    const a = await baseParaTurno({ userId: "u1", pergunta: "x" }, deps);
+    const b = await baseParaTurno({ userId: "u1", pergunta: "x" }, deps); // disjuntor armado: outro caminho
+    expect(a).toEqual({ status: "indisponivel", trechos: [] });
+    expect(b).toEqual({ status: "indisponivel", trechos: [] });
+    expect(a).not.toBe(b);
+    expect(a.trechos).not.toBe(b.trechos);
+    erro.mockRestore();
   });
 
   it("banco indisponível ⇒ indisponivel, loga, não lança; disjuntor pula a próxima por 60 s", async () => {
@@ -235,8 +288,10 @@ describe.skipIf(!banco)("baseParaTurno — Postgres real", () => {
     try {
       vi.stubEnv("RAG_CORTE_SIMILARIDADE", "0.0001");
       expect((await baseParaTurno({ userId: "u1", pergunta: "campeonato futebol" }, base)).status).toBe("sem_trecho");
-      vi.stubEnv("RAG_CORTE_SIMILARIDADE", "-1");
+      vi.stubEnv("RAG_CORTE_SIMILARIDADE", "0");
       expect((await baseParaTurno({ userId: "u1", pergunta: "campeonato futebol" }, base)).status).toBe("ok");
+      vi.stubEnv("RAG_CORTE_SIMILARIDADE", "-1"); // fora de [0, 1] ⇒ padrão 0.62
+      expect((await baseParaTurno({ userId: "u1", pergunta: "campeonato futebol" }, base)).status).toBe("sem_trecho");
     } finally {
       vi.unstubAllEnvs();
     }

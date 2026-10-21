@@ -63,7 +63,9 @@ function sourceCount(input: ExaminerInput): number {
   return (
     (input.evidence?.length ?? 0) +
     (input.draft.evidencia?.length ?? 0) +
-    (input.draft.sources?.length ?? 0)
+    (input.draft.sources?.length ?? 0) +
+    // RAG F2: trecho do material da turma/pessoal que a busca devolveu também é lastro verificável.
+    (input.draft.fontesBase?.length ?? 0)
   );
 }
 

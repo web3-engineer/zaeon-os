@@ -42,6 +42,12 @@ describe("blocoDaBase — o que entra no prompt", () => {
     expect(b.match(/=== FIM DA BASE ===/g)).toHaveLength(1);
   });
 
+  it("ok: título com markdown entra escapado na linha [Bn]", () => {
+    const b = blocoDaBase(ok([tr({ titulo: "![x](http://t) *a*" })]));
+    expect(b).toContain("[B1] \\!\\[x\\]\\(http://t\\) \\*a\\*, p. 4–5");
+    expect(b).not.toMatch(/[^\\]\]\(/);
+  });
+
   it("sem_base: uma linha franca, sem inventar material", () => {
     const b = blocoDaBase({ status: "sem_base", trechos: [] });
     expect(b).toContain("ainda não tem material");
@@ -100,6 +106,12 @@ describe("anexarFontesBase — só cita o que a busca devolveu", () => {
     expect(out.nucleo).toContain("**Da sua base:** Apostila 3 (p. 4–5)");
   });
 
+  it("sem citacoes_base: o título copiado ESCAPADO do bloco (\"aula\\_03\") também conta", () => {
+    const base = ok([tr({ titulo: "aula_03" })]);
+    const out = anexarFontesBase({ nucleo: "Como diz a aula\\_03 (p. 4)…" }, base, undefined);
+    expect(out.fontesBase?.map((f) => f.titulo)).toEqual(["aula_03"]);
+  });
+
   it("título só no desenvolvimento também conta", () => {
     const out = anexarFontesBase({ nucleo: "N", desenvolvimento: "Nos Slides da aula 2 …" }, dois, []);
     expect(out.fontesBase?.map((f) => f.documentoId)).toEqual(["d2"]);
@@ -126,6 +138,18 @@ describe("anexarFontesBase — só cita o que a busca devolveu", () => {
     const out = anexarFontesBase({ nucleo: "N" }, base, [1, 2, 3]);
     expect(out.fontesBase).toEqual([{ documentoId: "d1", titulo: "Apostila 3", paginas: "3, 7–8" }]);
     expect(out.nucleo).toBe("N\n\n**Da sua base:** Apostila 3 (p. 3, 7–8)");
+  });
+
+  it("título com markdown: o rodapé escapa (não vira imagem/link); fontesBase guarda o título cru", () => {
+    const cru = "![x](http://t) *a* [b](c) `d` <e> _f_ \\g";
+    const out = anexarFontesBase({ nucleo: "N" }, ok([tr({ titulo: cru })]), [1]);
+    expect(out.nucleo).toBe(
+      "N\n\n**Da sua base:** \\!\\[x\\]\\(http://t\\) \\*a\\* \\[b\\]\\(c\\) \\`d\\` \\<e\\> \\_f\\_ \\\\g (p. 4–5)",
+    );
+    const rodape = out.nucleo!.split("**Da sua base:** ")[1];
+    expect(rodape).not.toMatch(/(^|[^\\])\]\(/); // nenhum "](" sem escape
+    expect(rodape).not.toMatch(/(^|[^\\])!\[/); // nenhum "![" sem escape
+    expect(out.fontesBase).toEqual([{ documentoId: "d1", titulo: cru, paginas: "4–5" }]);
   });
 
   it("várias fontes no rodapé, separadas por ·", () => {

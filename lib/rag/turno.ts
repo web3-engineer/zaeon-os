@@ -25,6 +25,8 @@ import { contarBase } from "./store";
 
 /** Similaridade cosseno mínima (medido 2026-10-21: relacionadas 0.64–0.77, não relacionadas ≤ 0.57). */
 export const CORTE_SIMILARIDADE_PADRAO = 0.62;
+/** Teto da pergunta que vai pra busca (embed + tsquery): prompt colado de 20 mil caracteres não vira query enorme. */
+export const MAX_PERGUNTA = 2000;
 const PRAZO_TOTAL_PADRAO_MS = 5000;
 const DISJUNTOR_MS = 60_000;
 
@@ -70,8 +72,15 @@ export function relevantes(trechos: TrechoAchado[], corte: number): TrechoAchado
   return trechos.filter((t) => t.porTexto || (t.similaridade ?? 0) >= corte);
 }
 
-function corteEfetivo(corte: number | undefined): number {
-  return corte ?? (Number(process.env.RAG_CORTE_SIMILARIDADE) || CORTE_SIMILARIDADE_PADRAO);
+/**
+ * Corte em uso: `deps.corte` quando dado; senão `RAG_CORTE_SIMILARIDADE` se for número finito em [0, 1] ("0" vale);
+ * qualquer outra coisa ("62", "abc", vazio, ausente) ⇒ `CORTE_SIMILARIDADE_PADRAO`.
+ */
+export function corteEfetivo(corte?: number): number {
+  if (corte !== undefined) return corte;
+  const bruto = (process.env.RAG_CORTE_SIMILARIDADE ?? "").trim();
+  const n = bruto === "" ? NaN : Number(bruto);
+  return Number.isFinite(n) && n >= 0 && n <= 1 ? n : CORTE_SIMILARIDADE_PADRAO;
 }
 
 /** Prisma real, importado TARDE: testes e o `next build` não tocam no Mongo. */
@@ -86,7 +95,8 @@ function buscaReal(): BuscaDeps {
 
 const msgDe = (e: unknown) => (e as Error)?.message ?? String(e);
 
-const INDISPONIVEL: BaseDoTurno = { status: "indisponivel", trechos: [] };
+/** Sempre um objeto novo: quem recebe pode mutar sem afetar o turno do vizinho. */
+const indisponivel = (): BaseDoTurno => ({ status: "indisponivel", trechos: [] });
 
 /** O trabalho do turno (pode lançar; quem chama embrulha). */
 async function consultar(userId: string, pergunta: string, deps: Partial<TurnoRagDeps>): Promise<BaseDoTurno> {
@@ -127,11 +137,11 @@ export async function baseParaTurno(
   try {
     const userId = entrada.userId;
     if (!userId || userId.trim() === "") return { status: "sem_usuario", trechos: [] };
-    const pergunta = (entrada.pergunta ?? "").trim();
+    const pergunta = (entrada.pergunta ?? "").trim().slice(0, MAX_PERGUNTA).trim();
     if (!pergunta) return { status: "sem_trecho", trechos: [] };
 
     const agora = deps.agora ?? Date.now;
-    if (agora() < disjuntorAte) return INDISPONIVEL;
+    if (agora() < disjuntorAte) return indisponivel();
     const prazoMs = deps.prazoMs ?? PRAZO_TOTAL_PADRAO_MS;
 
     type Fim = { ok: BaseDoTurno } | { erro: unknown } | { estouro: true };
@@ -152,7 +162,7 @@ export async function baseParaTurno(
     if ("estouro" in fim) {
       disjuntorAte = agora() + DISJUNTOR_MS;
       console.error(`[rag/chat] prazo de ${prazoMs} ms estourado, turno segue sem base (RAG desligado por 60 s)`);
-      return INDISPONIVEL;
+      return indisponivel();
     }
     if (ehBancoIndisponivel(fim.erro)) {
       disjuntorAte = agora() + DISJUNTOR_MS;
@@ -160,10 +170,10 @@ export async function baseParaTurno(
     } else {
       console.error("[rag/chat] erro na busca da base, turno segue sem base:", msgDe(fim.erro));
     }
-    return INDISPONIVEL;
+    return indisponivel();
   } catch (e) {
     // Cinto: nada aqui deveria lançar, mas o turno do chat não pode cair por causa do RAG.
     console.error("[rag/chat] erro inesperado, turno segue sem base:", msgDe(e));
-    return INDISPONIVEL;
+    return indisponivel();
   }
 }

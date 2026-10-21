@@ -30,13 +30,22 @@ function semDelimitador(s: string): string {
   return String(s ?? "").replace(/={3,}/g, "==");
 }
 
+/**
+ * Título no markdown do chat: o título vem de quem subiu o PDF (ou do nome do arquivo), então `![x](http://…)` ou
+ * `[a](b)` viraria imagem/link no rodapé. Escapa com barra os caracteres de markdown inline. Só pra EXIBIR —
+ * `fontesBase[].titulo` segue cru (é dado estruturado).
+ */
+export function tituloSemMarkdown(s: string): string {
+  return String(s ?? "").replace(/[\\[\]()!*_`<>]/g, (c) => `\\${c}`);
+}
+
 /** O bloco da base pro `user` do reason/draft. `sem_usuario`/null ⇒ "" (o prompt fica o de antes). */
 export function blocoDaBase(b: BaseDoTurno | null | undefined): string {
   switch (b?.status) {
     case "ok": {
       const trechos = b.trechos
         .map((t, i) =>
-          `[B${i + 1}] ${semDelimitador(t.titulo)}, p. ${faixa(t.paginaIni, t.paginaFim)}\n` +
+          `[B${i + 1}] ${tituloSemMarkdown(semDelimitador(t.titulo))}, p. ${faixa(t.paginaIni, t.paginaFim)}\n` +
           semDelimitador(t.texto.slice(0, TETO_TRECHO_NO_BLOCO)))
         .join("\n\n");
       return [
@@ -107,11 +116,15 @@ export function anexarFontesBase(a: StructuredAnswer, b: BaseDoTurno | null | un
     usados = idx.map((n) => b.trechos[n - 1]);
   } else {
     const corpo = `${a.nucleo ?? ""} ${a.desenvolvimento ?? ""}`.toLowerCase();
-    usados = b.trechos.filter((t) => t.titulo.trim() && corpo.includes(t.titulo.trim().toLowerCase()));
+    // O bloco mostra o título escapado; o modelo pode copiar qualquer das duas formas.
+    usados = b.trechos.filter((t) => {
+      const titulo = t.titulo.trim().toLowerCase();
+      return titulo !== "" && (corpo.includes(titulo) || corpo.includes(tituloSemMarkdown(titulo)));
+    });
   }
   if (!usados.length) return a;
   const fontesBase = agruparPorDocumento(usados);
-  const rodape = "**Da sua base:** " + fontesBase.map((f) => `${f.titulo} (p. ${f.paginas})`).join(" · ");
+  const rodape = "**Da sua base:** " + fontesBase.map((f) => `${tituloSemMarkdown(f.titulo)} (p. ${f.paginas})`).join(" · ");
   return {
     ...a,
     nucleo: [a.nucleo?.trim(), rodape].filter(Boolean).join("\n\n"),
