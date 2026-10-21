@@ -9,7 +9,8 @@ import { prisma } from "@/src/lib/prisma";
 import { assertAdmin } from "@/lib/admin/assertAdmin";
 import { buscar, colecaoRagPrisma } from "@/lib/rag/busca";
 import { embedVertex } from "@/lib/rag/embed";
-import { contarBase, type RagDb } from "@/lib/rag/store";
+import { ragPg } from "@/lib/rag/pg";
+import { contarBase } from "@/lib/rag/store";
 
 export async function POST(req: Request) {
   const a = await assertAdmin();
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
 
   const t0 = Date.now();
   const trechos = await buscar(
-    { colecao: colecaoRagPrisma(prisma as any), embed: embedVertex, contar: (e) => contarBase(prisma as unknown as RagDb, e) },
+    { colecao: colecaoRagPrisma(prisma as any), embed: embedVertex, contar: (e) => contarBase(ragPg(), e) },
     { userId: usuario.id, turmaIds: [turmaId] },
     pergunta,
   );

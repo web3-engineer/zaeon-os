@@ -10,12 +10,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { assertAdmin } from "@/lib/admin/assertAdmin";
 import { ingerirPdf } from "@/lib/rag/ingerir";
-import { listarDocumentos, removerPermissao, type RagDb } from "@/lib/rag/store";
+import { ragPg } from "@/lib/rag/pg";
+import { listarDocumentos, removerPermissao } from "@/lib/rag/store";
 import { extractPdfStructured } from "@/lib/scholar/pdf";
 import { enfileirarIndexacao } from "@/lib/queue/rag";
 
 const MAX_ARQUIVOS = 10;
-const db = prisma as unknown as RagDb;
 
 const negado = (status: 401 | 403) => NextResponse.json({ error: status === 401 ? "Unauthorized" : "Forbidden" }, { status });
 const ehPdf = (f: File) => f.type === "application/pdf" || /\.pdf$/i.test(f.name);
@@ -25,7 +25,7 @@ export async function GET(req: Request) {
   if (!a.ok) return negado(a.status);
   const turmaId = new URL(req.url).searchParams.get("turmaId") ?? "";
   const turmas = await (prisma as any).turma.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } });
-  const documentos = turmaId ? await listarDocumentos(db, { turmaId }) : [];
+  const documentos = turmaId ? await listarDocumentos(ragPg(), { turmaId }) : [];
   return NextResponse.json({ turmas, documentos });
 }
 
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     if (!ehPdf(f)) { out.push({ nomeArquivo: f.name, status: "erro", erro: "nao_pdf" }); continue; }
     try {
       const r = await ingerirPdf(
-        { db, extrair: extractPdfStructured, enfileirar: enfileirarIndexacao },
+        { db: ragPg(), extrair: extractPdfStructured, enfileirar: enfileirarIndexacao },
         { bytes: new Uint8Array(await f.arrayBuffer()), nomeArquivo: f.name, origem: "admin", criadoPor: usuario.id, permissao: { turmaId } },
       );
       out.push({ nomeArquivo: f.name, ...r });
@@ -70,7 +70,7 @@ export async function DELETE(req: Request) {
   // id malformado (não é ObjectId) nem chega ao store: o Prisma lançaria erro de conversão => 500 enganoso.
   if (!/^[a-f0-9]{24}$/i.test(documentoId)) return NextResponse.json({ error: "documento_inexistente" }, { status: 404 });
   try {
-    const resultado = await removerPermissao(db, documentoId, { turmaId });
+    const resultado = await removerPermissao(ragPg(), documentoId, { turmaId });
     return NextResponse.json({ resultado });
   } catch (e) {
     const msg = (e as Error)?.message ?? "";

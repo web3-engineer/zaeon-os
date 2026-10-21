@@ -1,36 +1,38 @@
 /**
- * lib/rag/store.ts — persistência da base RAG (documentos + trechos) com `db` injetável.
+ * lib/rag/store.ts — persistência da base RAG (documentos + trechos) no Postgres + pgvector, com `db` injetável.
  *
- * Permissões são `turmaIds` / `donoIds` (strings simples), gravadas no documento E copiadas em
- * cada trecho (o filtro do índice vetorial/textual olha o trecho). `RagTrecho` não tem relação
- * nem cascade no Prisma: TODA remoção de documento apaga os trechos explicitamente (`apagarDocumento`).
+ * Permissões são `turma_ids` / `dono_ids` (text[]), gravadas no documento E copiadas em cada trecho (a busca filtra
+ * no WHERE do próprio trecho). Toda mudança de permissão é ATÔMICA: SQL de array (`array_append` sem duplicata /
+ * `array_remove`) sobre o documento e os seus trechos, na MESMA transação, com o documento travado (`FOR UPDATE`)
+ * — duas escritas simultâneas no mesmo documento se enfileiram em vez de sobrescrever uma à outra.
+ * `rag_trechos.documento_id` tem `ON DELETE CASCADE`: apagar o documento leva os trechos junto.
  */
-import type { RagDocumento } from "@prisma/client";
+import { transacao, type RagDb } from "./pg";
 import type { TrechoCortado } from "./corte";
 import type { EscopoRag } from "./permissao";
 
-export type RagDocumentoRow = RagDocumento;
+export type { RagDb } from "./pg";
+
+export type RagDocumentoRow = {
+  id: string;
+  hash: string;
+  titulo: string;
+  nomeArquivo: string;
+  paginas: number;
+  markdown: string;
+  status: string; // "indexando" | "pronto" | "erro"
+  erro: string | null;
+  turmaIds: string[];
+  donoIds: string[];
+  origem: string; // "admin" | "chat" | "gerado"
+  criadoPor: string;
+  totalTrechos: number;
+  comVetor: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
 /** Linha de listagem: sem o `markdown` (pesado). */
 export type RagDocumentoLista = Omit<RagDocumentoRow, "markdown">;
-
-/** O pedaço do Prisma que o store usa (injetável em teste). */
-export type RagDb = {
-  ragDocumento: {
-    findUnique(a: { where: { id: string } | { hash: string } }): Promise<any | null>;
-    create(a: { data: Record<string, unknown> }): Promise<any>;
-    update(a: { where: { id: string }; data: Record<string, unknown> }): Promise<any>;
-    findMany(a: { where?: Record<string, unknown>; select?: Record<string, boolean>; orderBy?: Record<string, unknown> }): Promise<any[]>;
-    delete(a: { where: { id: string } }): Promise<any>;
-    count(a: { where?: Record<string, unknown> }): Promise<number>;
-  };
-  ragTrecho: {
-    createMany(a: { data: any[] }): Promise<{ count: number }>;
-    updateMany(a: { where: Record<string, unknown>; data: Record<string, unknown> }): Promise<{ count: number }>;
-    findMany(a: { where?: Record<string, unknown>; select?: Record<string, boolean>; orderBy?: Record<string, unknown>; take?: number }): Promise<any[]>;
-    deleteMany(a: { where: Record<string, unknown> }): Promise<{ count: number }>;
-    update(a: { where: { id: string }; data: Record<string, unknown> }): Promise<any>;
-  };
-};
 
 export type Permissao = { turmaId?: string; donoId?: string };
 
@@ -40,8 +42,22 @@ function validar(p: Permissao): void {
   if (p.turmaId == null && p.donoId == null) throw new Error("permissão sem turmaId nem donoId");
 }
 
+// snake_case do banco → camelCase do tipo. `markdown` fica de fora de propósito (ver LISTA).
+const COLUNAS_LISTA = `id, hash, titulo, nome_arquivo AS "nomeArquivo", paginas, status, erro, turma_ids AS "turmaIds",
+  dono_ids AS "donoIds", origem, criado_por AS "criadoPor", total_trechos AS "totalTrechos", com_vetor AS "comVetor",
+  created_at AS "createdAt", updated_at AS "updatedAt"`;
+const COLUNAS = `${COLUNAS_LISTA}, markdown`;
+
+const naoExiste = (id: string) => new Error(`documento ${id} não existe`);
+
 export async function buscarPorHash(db: RagDb, hash: string): Promise<RagDocumentoRow | null> {
-  return (await db.ragDocumento.findUnique({ where: { hash } })) as RagDocumentoRow | null;
+  const r = await db.query<RagDocumentoRow>(`SELECT ${COLUNAS} FROM rag_documentos WHERE hash = $1`, [hash]);
+  return r.rows[0] ?? null;
+}
+
+export async function buscarPorId(db: RagDb, id: string): Promise<RagDocumentoRow | null> {
+  const r = await db.query<RagDocumentoRow>(`SELECT ${COLUNAS} FROM rag_documentos WHERE id = $1`, [id]);
+  return r.rows[0] ?? null;
 }
 
 export async function criarDocumento(
@@ -49,130 +65,186 @@ export async function criarDocumento(
   d: { hash: string; titulo: string; nomeArquivo: string; paginas: number; markdown: string; origem: string; criadoPor: string; permissao: Permissao },
 ): Promise<RagDocumentoRow> {
   validar(d.permissao);
-  return (await db.ragDocumento.create({
-    data: {
-      hash: d.hash, titulo: d.titulo, nomeArquivo: d.nomeArquivo, paginas: d.paginas, markdown: d.markdown,
-      status: "indexando", origem: d.origem, criadoPor: d.criadoPor,
-      turmaIds: d.permissao.turmaId ? [d.permissao.turmaId] : [],
-      donoIds: d.permissao.donoId ? [d.permissao.donoId] : [],
-    },
-  })) as RagDocumentoRow;
+  // Hash duplicado => violação 23505 (propaga; o ingerir trata como corrida de upload).
+  const r = await db.query<RagDocumentoRow>(
+    `INSERT INTO rag_documentos (hash, titulo, nome_arquivo, paginas, markdown, status, origem, criado_por, turma_ids, dono_ids)
+     VALUES ($1, $2, $3, $4, $5, 'indexando', $6, $7, $8::text[], $9::text[])
+     RETURNING ${COLUNAS}`,
+    [
+      d.hash, d.titulo, d.nomeArquivo, d.paginas, d.markdown, d.origem, d.criadoPor,
+      d.permissao.turmaId ? [d.permissao.turmaId] : [],
+      d.permissao.donoId ? [d.permissao.donoId] : [],
+    ],
+  );
+  return r.rows[0];
 }
 
-/** Grava os trechos (sem vetor ainda), copiando a permissão, e fixa `totalTrechos` no documento. */
+/** Trava a linha do documento até o fim da transação (serializa escritas de permissão/trechos do MESMO documento). */
+async function travar(tx: RagDb, documentoId: string): Promise<void> {
+  const r = await tx.query("SELECT 1 FROM rag_documentos WHERE id = $1 FOR UPDATE", [documentoId]);
+  if (r.rows.length === 0) throw naoExiste(documentoId);
+}
+
+/**
+ * Grava os trechos (sem vetor ainda) e fixa `totalTrechos` no documento. A permissão copiada nos trechos é a do
+ * DOCUMENTO no momento da escrita, lida na mesma transação (um `acrescentarPermissao` que rodou antes de existirem
+ * trechos não os viu); o `perm` recebido só é mantido por compatibilidade de assinatura e é ignorado.
+ */
 export async function gravarTrechos(
   db: RagDb,
   documentoId: string,
   trechos: TrechoCortado[],
-  perm: { turmaIds: string[]; donoIds: string[] },
+  _perm: { turmaIds: string[]; donoIds: string[] },
 ): Promise<number> {
-  if (trechos.length > 0) {
-    await db.ragTrecho.createMany({
-      data: trechos.map((t) => ({
-        documentoId, ordem: t.ordem, texto: t.texto, caminho: t.caminho, paginaIni: t.paginaIni, paginaFim: t.paginaFim,
-        // `embedding: []` explícito: no Mongo o campo precisa existir para `{ isEmpty: true }` casar.
-        turmaIds: [...perm.turmaIds], donoIds: [...perm.donoIds], embedding: [],
-      })),
-    });
-  }
-  // A permissão do DOCUMENTO no momento da escrita manda: um `acrescentarPermissao` concorrente pode ter
-  // rodado antes de existirem trechos (não os viu). Re-sincroniza os trechos com os arrays atuais do documento.
-  const atual = await carregar(db, documentoId);
-  await db.ragTrecho.updateMany({ where: { documentoId }, data: { turmaIds: [...atual.turmaIds], donoIds: [...atual.donoIds] } });
-  await db.ragDocumento.update({ where: { id: documentoId }, data: { totalTrechos: trechos.length } });
+  await transacao(db, async (tx) => {
+    await travar(tx, documentoId);
+    if (trechos.length > 0) {
+      await tx.query(
+        `INSERT INTO rag_trechos (documento_id, ordem, texto, caminho, pagina_ini, pagina_fim, turma_ids, dono_ids)
+         SELECT d.id, t.ordem, t.texto, t.caminho, t.pagina_ini, t.pagina_fim, d.turma_ids, d.dono_ids
+           FROM rag_documentos d,
+                unnest($2::int[], $3::text[], $4::text[], $5::int[], $6::int[]) AS t(ordem, texto, caminho, pagina_ini, pagina_fim)
+          WHERE d.id = $1`,
+        [
+          documentoId,
+          trechos.map((t) => t.ordem), trechos.map((t) => t.texto), trechos.map((t) => t.caminho),
+          trechos.map((t) => t.paginaIni), trechos.map((t) => t.paginaFim),
+        ],
+      );
+    }
+    // Trechos que já existiam (re-gravação) também ficam com as permissões atuais do documento.
+    await tx.query(
+      `UPDATE rag_trechos t SET turma_ids = d.turma_ids, dono_ids = d.dono_ids
+         FROM rag_documentos d WHERE d.id = $1 AND t.documento_id = d.id`,
+      [documentoId],
+    );
+    await tx.query("UPDATE rag_documentos SET total_trechos = $2, updated_at = now() WHERE id = $1", [documentoId, trechos.length]);
+  });
   return trechos.length;
 }
 
-const sem = (xs: string[], x: string | undefined) => (x == null ? xs : xs.filter((y) => y !== x));
-const com = (xs: string[], x: string | undefined) => (x == null || xs.includes(x) ? xs : [...xs, x]);
+/** `SET <col> = CASE ... array_append sem duplicata` — idempotente. `$n` é o parâmetro com o id. */
+const comId = (col: string, n: number) => `${col} = CASE WHEN $${n} = ANY(${col}) THEN ${col} ELSE array_append(${col}, $${n}) END`;
+const semId = (col: string, n: number) => `${col} = array_remove(${col}, $${n})`;
 
-async function carregar(db: RagDb, documentoId: string): Promise<RagDocumentoRow> {
-  const doc = (await db.ragDocumento.findUnique({ where: { id: documentoId } })) as RagDocumentoRow | null;
-  if (!doc) throw new Error(`documento ${documentoId} não existe`);
-  return doc;
+/** Monta o SET de permissão (`turma_ids` e/ou `dono_ids`) e os parâmetros (a partir de $2; $1 é o documento). */
+function montarSet(p: Permissao, f: (col: string, n: number) => string): { set: string; params: string[] } {
+  const partes: string[] = [];
+  const params: string[] = [];
+  if (p.turmaId != null) { params.push(p.turmaId); partes.push(f("turma_ids", params.length + 1)); }
+  if (p.donoId != null) { params.push(p.donoId); partes.push(f("dono_ids", params.length + 1)); }
+  return { set: partes.join(", "), params };
 }
 
-/**
- * Ordem das escritas: na REMOÇÃO os trechos vão primeiro (é neles que o filtro do índice olha) — se a 2ª escrita
- * falhar, o acesso já foi cortado (falha fechada, sem vazamento entre turmas). Na INCLUSÃO, o documento primeiro
- * (se falhar no meio, o retry idempotente completa; ninguém ganha acesso a mais do que o documento declara).
- */
-async function gravarPermissao(db: RagDb, documentoId: string, turmaIds: string[], donoIds: string[], remocao: boolean): Promise<void> {
-  const docOp = () => db.ragDocumento.update({ where: { id: documentoId }, data: { turmaIds, donoIds } });
-  const trechosOp = () => db.ragTrecho.updateMany({ where: { documentoId }, data: { turmaIds, donoIds } });
-  if (remocao) { await trechosOp(); await docOp(); } else { await docOp(); await trechosOp(); }
-}
-
-/** Documento E todos os trechos. Idempotente (sem duplicata). */
+/** Documento E todos os trechos, numa transação. Idempotente (sem duplicata). */
 export async function acrescentarPermissao(db: RagDb, documentoId: string, p: Permissao): Promise<void> {
   validar(p);
-  const doc = await carregar(db, documentoId);
-  await gravarPermissao(db, documentoId, com(doc.turmaIds, p.turmaId), com(doc.donoIds, p.donoId), false);
+  const { set, params } = montarSet(p, comId);
+  await transacao(db, async (tx) => {
+    await travar(tx, documentoId);
+    // Documento primeiro (se algo falhar no meio, o retry idempotente completa; ninguém ganha acesso a mais do que o documento declara).
+    await tx.query(`UPDATE rag_documentos SET ${set}, updated_at = now() WHERE id = $1`, [documentoId, ...params]);
+    await tx.query(`UPDATE rag_trechos SET ${set} WHERE documento_id = $1`, [documentoId, ...params]);
+  });
 }
 
-/** Remove uma permissão; se era a última, apaga o documento e os trechos. */
+/** Remove uma permissão; se era a última, apaga o documento e os trechos — tudo na mesma transação. */
 export async function removerPermissao(db: RagDb, documentoId: string, p: Permissao): Promise<"removida" | "documento_apagado"> {
   validar(p);
-  const doc = await carregar(db, documentoId);
-  const turmaIds = sem(doc.turmaIds, p.turmaId);
-  const donoIds = sem(doc.donoIds, p.donoId);
-  if (turmaIds.length === 0 && donoIds.length === 0) {
-    await apagarDocumento(db, documentoId);
-    return "documento_apagado";
-  }
-  await gravarPermissao(db, documentoId, turmaIds, donoIds, true);
-  return "removida";
+  const { set, params } = montarSet(p, semId);
+  return transacao(db, async (tx) => {
+    await travar(tx, documentoId);
+    // Trechos primeiro (é neles que o filtro da busca olha), depois o documento.
+    await tx.query(`UPDATE rag_trechos SET ${set} WHERE documento_id = $1`, [documentoId, ...params]);
+    const r = await tx.query<{ turma_ids: string[]; dono_ids: string[] }>(
+      `UPDATE rag_documentos SET ${set}, updated_at = now() WHERE id = $1 RETURNING turma_ids, dono_ids`,
+      [documentoId, ...params],
+    );
+    const { turma_ids, dono_ids } = r.rows[0];
+    if (turma_ids.length === 0 && dono_ids.length === 0) {
+      await tx.query("DELETE FROM rag_trechos WHERE documento_id = $1", [documentoId]);
+      await tx.query("DELETE FROM rag_documentos WHERE id = $1", [documentoId]);
+      return "documento_apagado" as const;
+    }
+    return "removida" as const;
+  });
 }
 
-/** Apaga o documento e todos os seus trechos (trechos primeiro: se cair no meio, o retry ainda acha o documento). */
+/** Apaga o documento e todos os seus trechos, numa transação. Documento que já não existe não é erro. */
 export async function apagarDocumento(db: RagDb, documentoId: string): Promise<void> {
-  await db.ragTrecho.deleteMany({ where: { documentoId } });
-  await db.ragDocumento.delete({ where: { id: documentoId } });
+  await transacao(db, async (tx) => {
+    await tx.query("DELETE FROM rag_trechos WHERE documento_id = $1", [documentoId]);
+    await tx.query("DELETE FROM rag_documentos WHERE id = $1", [documentoId]);
+  });
 }
 
 export async function marcarErro(db: RagDb, documentoId: string, erro: string): Promise<void> {
-  await db.ragDocumento.update({ where: { id: documentoId }, data: { status: "erro", erro: String(erro).slice(0, 500) } });
+  const r = await db.query(
+    "UPDATE rag_documentos SET status = 'erro', erro = left($2, 500), updated_at = now() WHERE id = $1",
+    [documentoId, String(erro)],
+  );
+  if (r.rowCount === 0) throw naoExiste(documentoId);
 }
 
-/** Grava os vetores, recalcula `comVetor` e, quando todos os trechos têm vetor, vira "pronto". */
-export async function registrarVetores(db: RagDb, documentoId: string, itens: { trechoId: string; embedding: number[] }[]): Promise<void> {
-  for (const it of itens) {
-    await db.ragTrecho.update({ where: { id: it.trechoId }, data: { embedding: it.embedding } });
+/** Literal pgvector: `[0.1,0.2,...]` (parâmetro de texto, convertido com `::vector` no SQL). */
+function literalVetor(v: number[]): string {
+  if (!Array.isArray(v) || v.length === 0 || v.some((x) => typeof x !== "number" || !Number.isFinite(x))) {
+    throw new Error("embedding inválido (vazio ou com valor não numérico)");
   }
-  const doc = await carregar(db, documentoId);
-  const comVetor = (await db.ragTrecho.findMany({ where: { documentoId, embedding: { isEmpty: false } }, select: { id: true } })).length;
-  const completo = doc.totalTrechos > 0 && comVetor >= doc.totalTrechos;
-  await db.ragDocumento.update({
-    where: { id: documentoId },
-    data: { comVetor, ...(completo && doc.status === "indexando" ? { status: "pronto" } : {}) },
+  return `[${v.join(",")}]`;
+}
+
+/** Grava os vetores, recalcula `com_vetor` e, quando todos os trechos têm vetor, vira "pronto". */
+export async function registrarVetores(db: RagDb, documentoId: string, itens: { trechoId: string; embedding: number[] }[]): Promise<void> {
+  const literais = itens.map((it) => literalVetor(it.embedding));
+  await transacao(db, async (tx) => {
+    if (itens.length > 0) {
+      await tx.query(
+        `UPDATE rag_trechos t SET embedding = v.e::vector
+           FROM unnest($1::uuid[], $2::text[]) AS v(id, e)
+          WHERE t.id = v.id AND t.documento_id = $3`,
+        [itens.map((it) => it.trechoId), literais, documentoId],
+      );
+    }
+    const r = await tx.query(
+      `WITH c AS (SELECT count(*)::int AS n FROM rag_trechos WHERE documento_id = $1 AND embedding IS NOT NULL)
+       UPDATE rag_documentos d
+          SET com_vetor = c.n,
+              status = CASE WHEN d.status = 'indexando' AND d.total_trechos > 0 AND c.n = d.total_trechos THEN 'pronto' ELSE d.status END,
+              updated_at = now()
+         FROM c WHERE d.id = $1`,
+      [documentoId],
+    );
+    if (r.rowCount === 0) throw naoExiste(documentoId);
   });
 }
 
 export async function trechosSemVetor(db: RagDb, documentoId: string, limite: number): Promise<{ id: string; texto: string }[]> {
-  const rows = await db.ragTrecho.findMany({
-    where: { documentoId, embedding: { isEmpty: true } }, select: { id: true, texto: true }, orderBy: { ordem: "asc" }, take: limite,
-  });
-  return rows.map((r) => ({ id: String(r.id), texto: r.texto as string }));
+  const r = await db.query<{ id: string; texto: string }>(
+    "SELECT id, texto FROM rag_trechos WHERE documento_id = $1 AND embedding IS NULL ORDER BY ordem ASC LIMIT $2",
+    [documentoId, limite],
+  );
+  return r.rows.map((x) => ({ id: String(x.id), texto: x.texto }));
 }
-
-const CAMPOS_LISTA = {
-  id: true, hash: true, titulo: true, nomeArquivo: true, paginas: true, status: true, erro: true, turmaIds: true,
-  donoIds: true, origem: true, criadoPor: true, totalTrechos: true, comVetor: true, createdAt: true, updatedAt: true,
-};
 
 /** Sem `markdown`. Turma e dono juntos => união (OU). Sem filtro => todos. */
 export async function listarDocumentos(db: RagDb, f: { turmaId?: string; donoId?: string }): Promise<RagDocumentoLista[]> {
-  const ou: Record<string, unknown>[] = [];
-  if (f.turmaId) ou.push({ turmaIds: { has: f.turmaId } });
-  if (f.donoId) ou.push({ donoIds: { has: f.donoId } });
-  const where = ou.length === 0 ? {} : ou.length === 1 ? ou[0] : { OR: ou };
-  return (await db.ragDocumento.findMany({ where, select: CAMPOS_LISTA, orderBy: { createdAt: "desc" } })) as RagDocumentoLista[];
+  const ou: string[] = [];
+  const params: string[] = [];
+  if (f.turmaId) { params.push(f.turmaId); ou.push(`$${params.length} = ANY(turma_ids)`); }
+  if (f.donoId) { params.push(f.donoId); ou.push(`$${params.length} = ANY(dono_ids)`); }
+  const where = ou.length === 0 ? "" : `WHERE ${ou.join(" OR ")}`;
+  const r = await db.query<RagDocumentoLista>(`SELECT ${COLUNAS_LISTA} FROM rag_documentos ${where} ORDER BY created_at DESC, id`, params);
+  return r.rows;
 }
 
 /** Quantos documentos (não-erro) o escopo enxerga, separando pessoais de turma. */
 export async function contarBase(db: RagDb, e: EscopoRag): Promise<{ pessoais: number; deTurma: number }> {
-  const naoErro = { status: { not: "erro" } };
-  const pessoais = await db.ragDocumento.count({ where: { ...naoErro, donoIds: { has: e.userId } } });
-  const deTurma = e.turmaIds.length === 0 ? 0 : await db.ragDocumento.count({ where: { ...naoErro, turmaIds: { hasSome: e.turmaIds } } });
-  return { pessoais, deTurma };
+  const r = await db.query<{ pessoais: string | number; de_turma: string | number }>(
+    `SELECT count(*) FILTER (WHERE $1::text = ANY(dono_ids)) AS pessoais,
+            count(*) FILTER (WHERE turma_ids && $2::text[]) AS de_turma
+       FROM rag_documentos WHERE status <> 'erro'`,
+    [e.userId, e.turmaIds],
+  );
+  return { pessoais: Number(r.rows[0].pessoais), deTurma: e.turmaIds.length === 0 ? 0 : Number(r.rows[0].de_turma) };
 }

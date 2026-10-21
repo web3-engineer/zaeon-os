@@ -10,6 +10,7 @@ vi.mock("@/src/lib/prisma", () => ({ prisma: { turma: { findMany: m.turmas }, us
 vi.mock("@/lib/rag/ingerir", () => ({ ingerirPdf: m.ingerir }));
 vi.mock("@/lib/queue/rag", () => ({ enfileirarIndexacao: vi.fn() }));
 vi.mock("@/lib/scholar/pdf", () => ({ extractPdfStructured: vi.fn() }));
+vi.mock("@/lib/rag/pg", () => ({ ragPg: () => ({}) }));
 vi.mock("@/lib/rag/store", () => ({ listarDocumentos: m.listar, removerPermissao: m.remover, contarBase: vi.fn() }));
 vi.mock("@/lib/rag/embed", () => ({ embedVertex: vi.fn() }));
 vi.mock("@/lib/rag/busca", () => ({ buscar: m.buscar, colecaoRagPrisma: () => ({}), K_PADRAO: 8 }));

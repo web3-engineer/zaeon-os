@@ -11,8 +11,9 @@ import type { Block } from "@/lib/scholar/types";
 import { cortarEmTrechos } from "./corte";
 import {
   acrescentarPermissao, apagarDocumento, buscarPorHash, criarDocumento, gravarTrechos, marcarErro,
-  type Permissao, type RagDb, type RagDocumentoRow,
+  type Permissao, type RagDocumentoRow,
 } from "./store";
+import type { RagDb } from "./pg";
 
 export const MAX_BYTES = 25 * 1024 * 1024;
 
@@ -108,7 +109,9 @@ export async function ingerirPdf(deps: IngerirDeps, e: IngerirEntrada): Promise<
     });
   } catch (err) {
     // Upload concorrente do mesmo arquivo: o hash é único, o outro ganhou — reaproveita o dele.
-    if ((err as { code?: string })?.code === "P2002") {
+    // "23505" = violação de unicidade do Postgres (a Task 4 finaliza o mapeamento de erros); "P2002" = legado do Prisma.
+    const codigo = (err as { code?: string })?.code;
+    if (codigo === "23505" || codigo === "P2002") {
       const vencedor = await buscarPorHash(db, hash);
       if (vencedor) return reaproveitar(deps, vencedor, e.permissao, false); // o vencedor já agenda a própria indexação
     }

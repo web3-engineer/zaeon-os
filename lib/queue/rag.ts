@@ -7,7 +7,8 @@
  * cada lote já gravado fica; a nova tentativa só manda os trechos que ainda não têm vetor.
  */
 import type { EmbedRag } from "@/lib/rag/embed";
-import { marcarErro, registrarVetores, trechosSemVetor, type RagDb } from "@/lib/rag/store";
+import type { RagDb } from "@/lib/rag/pg";
+import { buscarPorId, marcarErro, registrarVetores, trechosSemVetor } from "@/lib/rag/store";
 
 export const RAG_QUEUE = "rag-index";
 type Env = Record<string, string | undefined>;
@@ -55,15 +56,15 @@ export async function indexarDocumento(
     await registrarVetores(deps.db, documentoId, lote.map((t, i) => ({ trechoId: t.id, embedding: vetores[i] })));
     vetorizados += lote.length;
   }
-  const doc = await deps.db.ragDocumento.findUnique({ where: { id: documentoId } });
+  const doc = await buscarPorId(deps.db, documentoId);
   return { vetorizados, pronto: doc?.status === "pronto" };
 }
 
-/** Deps reais (Prisma + Vertex), importadas sob demanda para o teste unitário não carregar o Prisma. */
+/** Deps reais (Postgres do RAG + Vertex), importadas sob demanda para o teste unitário não abrir conexão. */
 async function depsReais(): Promise<{ db: RagDb; embed: EmbedRag }> {
-  const { prisma } = await import("@/src/lib/prisma");
+  const { ragPg } = await import("@/lib/rag/pg");
   const { embedVertex } = await import("@/lib/rag/embed");
-  return { db: prisma as unknown as RagDb, embed: embedVertex };
+  return { db: ragPg(), embed: embedVertex };
 }
 
 /** Pedaço da Queue do BullMQ que usamos (injetável em teste). */
