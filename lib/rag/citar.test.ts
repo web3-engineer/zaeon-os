@@ -80,6 +80,19 @@ describe("anexarFontesBase — só cita o que a busca devolveu", () => {
     expect(out.nucleo).toBe("Resposta.\n\n**Da sua base:** Slides da aula 2 (p. 2)");
   });
 
+  it("número em string e o rótulo do bloco (\"B2\"/\"b2\") também valem", () => {
+    const a: StructuredAnswer = { nucleo: "Resposta." };
+    expect(anexarFontesBase(a, dois, ["1"]).fontesBase?.map((f) => f.documentoId)).toEqual(["d1"]);
+    expect(anexarFontesBase(a, dois, ["B2"]).fontesBase?.map((f) => f.documentoId)).toEqual(["d2"]);
+    expect(anexarFontesBase(a, dois, [" b2 ", 2]).fontesBase?.map((f) => f.documentoId)).toEqual(["d2"]);
+  });
+
+  it("string que não é inteiro (\"1.5\") ou fora da faixa (\"B9\") é inválida", () => {
+    const a: StructuredAnswer = { nucleo: "Resposta." };
+    expect(anexarFontesBase(a, dois, ["1.5"])).toBe(a);
+    expect(anexarFontesBase(a, dois, ["B9", "B0"])).toBe(a);
+  });
+
   it("sem citacoes_base: cai nos títulos citados no texto (sem diferenciar maiúscula)", () => {
     const a: StructuredAnswer = { nucleo: "Como diz a apostila 3 (p. 4)…", desenvolvimento: "mais" };
     const out = anexarFontesBase(a, dois, undefined);

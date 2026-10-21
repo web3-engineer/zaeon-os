@@ -60,12 +60,23 @@ export function blocoDaBase(b: BaseDoTurno | null | undefined): string {
   }
 }
 
+/** Índice que o modelo mandou: número inteiro, ou string "3"/"B3" (o rótulo do próprio bloco). Outra coisa ⇒ NaN. */
+function comoIndice(v: unknown): number {
+  if (typeof v === "number") return Number.isInteger(v) ? v : NaN;
+  if (typeof v === "string") {
+    const m = /^\s*B?(\d+)\s*$/i.exec(v);
+    return m ? Number(m[1]) : NaN;
+  }
+  return NaN;
+}
+
 /** Índices 1-based válidos (inteiros, na faixa, sem repetição), na ordem em que o modelo citou. */
 function indicesValidos(citacoes: unknown, total: number): number[] {
   if (!Array.isArray(citacoes)) return [];
   const vistos = new Set<number>();
-  for (const n of citacoes) {
-    if (typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= total) vistos.add(n);
+  for (const v of citacoes) {
+    const n = comoIndice(v);
+    if (n >= 1 && n <= total) vistos.add(n); // NaN falha nas duas comparações
   }
   return [...vistos];
 }
