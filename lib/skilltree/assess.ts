@@ -36,9 +36,11 @@ export function sanitizeAssessment(raw: unknown): Assessment {
   return { score: Number.isFinite(score) ? Math.min(1, Math.max(0, score)) : 0, note: typeof (raw as any)?.note === "string" ? (raw as any).note.slice(0, 200) : undefined };
 }
 
+/** Papel "mini" (qwen3 4B na Contabo; Google Flash se ela falhar/estiver ocupada/LOCAL_MINI=0) — juiz silencioso, ninguém espera. */
 const defaultGenJson: GenJson = async (system, user, opts) => {
-  const { geminiJson } = await import("@/lib/scholar/gemini");
-  return geminiJson(system, user, opts);
+  const { gerarPapelJson } = await import("@/lib/llm/papeis");
+  const { valor } = await gerarPapelJson<any>("mini", { system, user, temperature: opts?.temperature, timeoutMs: opts?.timeoutMs, ctx: { agentKey: "aura", surface: "estudos", phase: "assess" } });
+  return valor;
 };
 
 export async function assessMastery(args: { node: SkillNode; topicLabel: string; message: string }, genJson: GenJson = defaultGenJson): Promise<Assessment> {

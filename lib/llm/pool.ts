@@ -22,6 +22,9 @@ export const GRUPOS_POOL = ["zaeon-pool-lite", "zaeon-pool-cf", "zaeon-pool-groq
 /** O model pedido é do pool? (prefixo `zaeon-pool-`) — o envelope usa para NUNCA cair no Vertex. */
 export const ehModeloPool = (model: string | null | undefined): boolean => /^zaeon-pool-/.test(String(model ?? ""));
 
+/** O model pedido é da Contabo (`zaeon-local-*`)? — o envelope NÃO cai no Vertex com esse nome (quem chama escolhe o Google). */
+export const ehModeloLocal = (model: string | null | undefined): boolean => /^zaeon-local-/.test(String(model ?? ""));
+
 /**
  * Tetos do free tier — DECLARATIVOS, para o painel (G8). Conferir no console do provedor e editar
  * aqui quando mudar; o gateway não lê isto (os limites reais são do provedor).

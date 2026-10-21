@@ -1,0 +1,156 @@
+/**
+ * lib/llm/papeis.ts — os modelos da Contabo, cada um no papel que a CPU aguenta, com o Google cobrindo o resto.
+ *
+ *   gerarPapel("mini", req)   → tenta `zaeon-local-mini` (qwen3 4B) no gateway; falhou/timeout/vazio/ocupado →
+ *                               o MESMO pedido no Vertex (os modelos de `google`, em ordem). Quem chama não vê a troca.
+ *
+ * Papéis (números medidos no PR — docs/MODELOS_LOCAIS_PAPEIS.md):
+ *   guarda → llama-guard3 8B : moderação da mensagem do aluno, DEPOIS do turno (auditoria, nunca bloqueia).
+ *   mini   → qwen3 4B        : classificar/titular curto em segundo plano (gatekeeper do cérebro, juiz da árvore).
+ *
+ * gpt-oss-20b (zaeon-local-geral) ficou SEM papel aqui: no chat, na Pesquisa e nos Estudos não há tarefa longa
+ * sem alguém olhando (TCC, cérebro e Scholar têm o aluno vendo o progresso) — a 6 tok/s, todas estourariam.
+ *
+ * Regras:
+ *   - Só fire-and-forget. A CPU dá 6–9 tok/s e carregar modelo frio leva até ~100 s: nada aqui entra no
+ *     caminho de uma resposta em streaming.
+ *   - Flag por papel, LIGADA por default quando há gateway: LOCAL_GUARDA / LOCAL_MINI = "0" desliga
+ *     (vai direto no Google) — basta mudar o .env e recriar o web, sem build.
+ *   - Teto de chamadas em voo POR PROCESSO (o Ollama da Contabo roda NUM_PARALLEL=1 e um request abortado
+ *     continua lá dentro): passou do teto, o pedido vai direto pro Google em vez de enfileirar na CPU.
+ *   - O ledger grava as duas tentativas (alvo "contabo" na que foi pra lá, "vertex" no fallback).
+ */
+import { gerar, type Deps, type GerarReq, type GerarRes } from "@/lib/llm/envelope";
+import { GEMINI_MODEL_FLASH } from "@/lib/ai/model";
+import { gatewayLigado } from "@/lib/llm/usage";
+
+export type Papel = "guarda" | "mini";
+
+type Env = Record<string, string | undefined>;
+
+export type DefPapel = {
+  /** Grupo do LiteLLM da VPS (infra/litellm.config.yaml). */
+  modeloLocal: string;
+  /** Env que desliga o papel ("0"/"off"/"false"). */
+  flag: string;
+  /** Teto da tentativa local. Folgado: ninguém espera nenhum deles (frio = até ~100 s). */
+  timeoutMs: number;
+  /** Fallback Google, em ordem: o 1º que responder. */
+  google: () => string[];
+  /** Chamadas locais simultâneas por processo antes de mandar direto pro Google. */
+  maxEmVoo: number;
+  /** Campos extras do corpo OpenAI pro modelo local (desligar o "pensar" que a CPU não paga). */
+  extra?: Record<string, unknown>;
+  /** Anexado ao `user` SÓ na tentativa local (o "/no_think" do Qwen3, que vale mesmo se o gateway largar o extra). */
+  sufixoUser?: string;
+};
+
+/** flash-lite do Vertex (global) — o mesmo da reserva do pool. Override: GEMINI_MODEL_LITE. */
+const LITE = () => process.env.GEMINI_MODEL_LITE || "gemini-3.5-flash-lite";
+
+export const PAPEIS: Record<Papel, DefPapel> = {
+  guarda: { modeloLocal: "zaeon-local-guard", flag: "LOCAL_GUARDA", timeoutMs: 90_000, maxEmVoo: 2, google: () => [LITE(), GEMINI_MODEL_FLASH] },
+  mini: {
+    modeloLocal: "zaeon-local-mini", flag: "LOCAL_MINI", timeoutMs: 60_000, maxEmVoo: 2, google: () => [GEMINI_MODEL_FLASH],
+    extra: { reasoning_effort: "none" }, sufixoUser: " /no_think",
+  },
+};
+
+const DESLIGADO = /^(0|off|false|nao|não|no)$/i;
+
+/** Key que enxerga os grupos zaeon-local-* no gateway: GATEWAY_KEY_LOCAL > GATEWAY_MASTER_KEY. */
+export function chaveLocal(env: Env = process.env): string | null {
+  return env.GATEWAY_KEY_LOCAL?.trim() || env.GATEWAY_MASTER_KEY?.trim() || null;
+}
+
+/** O papel vai tentar a Contabo? (flag não desligada + gateway + key). */
+export function papelLocalLigado(papel: Papel, env: Env = process.env): boolean {
+  const f = env[PAPEIS[papel].flag]?.trim();
+  if (f && DESLIGADO.test(f)) return false;
+  return gatewayLigado(env) && Boolean(chaveLocal(env));
+}
+
+/** Qwen3/gpt-oss podem devolver o raciocínio no conteúdo — fica só a resposta. */
+export function limparPensamento(texto: string): string {
+  return String(texto ?? "").replace(/<think>[\s\S]*?(<\/think>|$)/gi, "").trim();
+}
+
+const emVoo: Record<Papel, number> = { guarda: 0, mini: 0 };
+/** Só pra teste. */
+export const _emVoo = emVoo;
+
+export type PapelRes = GerarRes & {
+  papel: Papel;
+  /** Por que o local não serviu (undefined = serviu). */
+  fallback?: "desligado" | "ocupado" | "erro" | "vazio";
+};
+
+export type ReqPapel = Omit<GerarReq, "model" | "rota" | "extra" | "chaveGateway" | "timeoutMs"> & {
+  /** Teto da chamada Google do fallback (a local usa o do papel). */
+  timeoutMs?: number;
+  /** Valida a resposta local além de "não vazia" (ex.: JSON parseável). false = cai pro Google. */
+  aceita?: (texto: string) => boolean;
+  /** System SÓ do fallback Google (modelo local que já sabe a tarefa, como o llama-guard). Vence `system`. */
+  systemGoogle?: string;
+};
+
+export async function gerarPapel(papel: Papel, req: ReqPapel, deps: Deps = {}): Promise<PapelRes> {
+  const env = deps.env ?? process.env;
+  const def = PAPEIS[papel];
+  const { aceita, timeoutMs, systemGoogle, ...base } = req;
+  const ctx = { ...base.ctx, phase: base.ctx.phase ?? papel };
+
+  let fallback: PapelRes["fallback"];
+  if (!papelLocalLigado(papel, env)) fallback = "desligado";
+  else if (emVoo[papel] >= def.maxEmVoo) fallback = "ocupado";
+  else {
+    emVoo[papel]++;
+    try {
+      const r = await gerar({
+        ...base, ctx, model: def.modeloLocal, rota: "gateway", timeoutMs: def.timeoutMs,
+        ...(def.sufixoUser && base.user ? { user: base.user + def.sufixoUser } : {}),
+        chaveGateway: chaveLocal(env), ...(def.extra ? { extra: def.extra } : {}),
+      }, deps);
+      const texto = limparPensamento(r.texto);
+      if (texto && (!aceita || aceita(texto))) return { ...r, texto, papel };
+      fallback = "vazio";
+    } catch (e) {
+      fallback = "erro";
+      console.warn(`[papeis] ${papel} local falhou — Google: ${String((e as any)?.message ?? e).slice(0, 160)}`);
+    } finally {
+      emVoo[papel]--;
+    }
+  }
+
+  // Google: o mesmo pedido, rota vertex, modelo de verdade. Erro no último modelo sobe pra quem chamou.
+  const modelos = def.google();
+  let ultimoErro: unknown = null;
+  for (const m of modelos) {
+    try {
+      const r = await gerar({
+        ...base, ctx, model: m, rota: "vertex", ...(timeoutMs ? { timeoutMs } : {}), ...(systemGoogle ? { system: systemGoogle } : {}),
+      }, deps);
+      return { ...r, papel, fallback };
+    } catch (e) {
+      ultimoErro = e;
+    }
+  }
+  throw ultimoErro;
+}
+
+/** = gerarPapel com json:true + parse (cercas ```json toleradas). Resposta local que não parseia cai pro Google. */
+export async function gerarPapelJson<T>(papel: Papel, req: Omit<ReqPapel, "json" | "aceita">, deps: Deps = {}): Promise<{ valor: T; res: PapelRes }> {
+  const res = await gerarPapel(papel, { ...req, json: true, aceita: (t) => parseJson(t) !== undefined }, deps);
+  const valor = parseJson(res.texto);
+  if (valor === undefined) throw new Error(`papel ${papel}: resposta sem JSON (${res.alvo ?? res.provedor})`);
+  return { valor: valor as T, res };
+}
+
+function parseJson(texto: string): unknown {
+  const t = String(texto ?? "").replace(/```(?:json)?/gi, "").replace(/```/g, "").trim();
+  if (!t) return undefined;
+  try { return JSON.parse(t); } catch { /* o 4B às vezes fala antes do objeto */ }
+  const m = /\{[\s\S]*\}/.exec(t);
+  if (!m) return undefined;
+  try { return JSON.parse(m[0]); } catch { return undefined; }
+}

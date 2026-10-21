@@ -134,6 +134,10 @@ export async function runChatTurn(
         prompt, answer, wing: mentor?.wing,
       });
     }
+    // Moderação (llama-guard na Contabo, Google se ela falhar): AUDITORIA depois do turno, nunca bloqueia. Fire-and-forget.
+    void import("@/lib/llm/guarda")
+      .then((g) => g.auditarEntrada({ userId: userId ?? null, surface: surfaceLedger(surface ?? hctx.activeTab), prompt }))
+      .catch(() => null);
     // Uso do agente (card founder): +1 em (mentor|aura, userId). Fire-and-forget; nunca derruba o turno.
     if (userId) {
       void Promise.all([import("@/lib/canal/usage"), import("@/src/lib/prisma")])

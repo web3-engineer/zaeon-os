@@ -217,3 +217,26 @@ describe("PoolEsgotadoError (G4)", () => {
     expect(d.linhas[0]).toMatchObject({ ok: false, erro: "pool_esgotado" });
   });
 });
+
+describe("gerar — modelos da Contabo (zaeon-local-*)", () => {
+  it("gateway falhou → NÃO cai no Vertex com o nome zaeon-local (relança; quem escolhe o Google é lib/llm/papeis)", async () => {
+    const f = vi.fn(async () => resposta(503, { error: { message: "Service Unavailable" } }));
+    const v = vi.fn(vertexOk!);
+    const d = deps({ fetchImpl: f as any, vertex: v as any, env: { GATEWAY_URL: "http://g", GATEWAY_KEY_DEFAULT: "k" } });
+    await expect(gerar({ user: "oi", model: "zaeon-local-mini", rota: "gateway", ctx }, d)).rejects.toBeInstanceOf(ErroLlm);
+    expect(v).not.toHaveBeenCalled();
+    await new Promise((x) => setTimeout(x, 0));
+    expect(d.linhas[0]).toMatchObject({ alvo: "contabo", ok: false });
+  });
+  it("sem gateway → erro, nunca Vertex", async () => {
+    const v = vi.fn(vertexOk!);
+    await expect(gerar({ user: "oi", model: "zaeon-local-guard", rota: "gateway", ctx }, deps({ vertex: v as any }))).rejects.toBeInstanceOf(ErroLlm);
+    expect(v).not.toHaveBeenCalled();
+  });
+  it("extra e chaveGateway vão no request", async () => {
+    const f = vi.fn(async () => resposta(200, okGateway));
+    await gerar({ user: "oi", model: "zaeon-local-mini", rota: "gateway", extra: { reasoning_effort: "none" }, chaveGateway: "sk-local", ctx }, deps({ fetchImpl: f as any, env: { GATEWAY_URL: "http://g", GATEWAY_KEY_AURA: "sk-aura" } }));
+    const [, init] = f.mock.calls[0] as any;
+    expect(init.headers.Authorization).toBe("Bearer sk-local"); expect(JSON.parse(init.body).reasoning_effort).toBe("none");
+  });
+});

@@ -14,7 +14,7 @@
 import { usageDoVertex, usageDoOpenAI, classificarErroLlm, chaveDoAgente, gatewayLigado, type Usage, type ClasseErroLlm, USAGE_VAZIO } from "@/lib/llm/usage";
 import { registrarTokens, type LedgerCtx } from "@/lib/llm/ledger";
 import { GEMINI_MODEL_FLASH } from "@/lib/ai/model";
-import { alvoDe, ehModeloPool, poolConfigurado, type Alvo } from "@/lib/llm/pool";
+import { alvoDe, ehModeloLocal, ehModeloPool, poolConfigurado, type Alvo } from "@/lib/llm/pool";
 
 export type Rota = "vertex" | "gateway";
 export type { LedgerCtx, Alvo };
@@ -31,6 +31,10 @@ export type GerarReq = {
   rota?: Rota;
   /** Quantas vezes a fila já tentou este job (0 = primeira). Só entra no backoff do PoolEsgotadoError. */
   tentativa?: number;
+  /** Só na rota gateway: campos a mais no corpo OpenAI (ex.: reasoning_effort dos modelos da Contabo). */
+  extra?: Record<string, unknown>;
+  /** Só na rota gateway: key explícita (vence a do agente). Os papéis da Contabo usam a key que enxerga zaeon-local-*. */
+  chaveGateway?: string | null;
   ctx: LedgerCtx;
 };
 export type GerarRes = {
@@ -124,6 +128,7 @@ async function viaGateway(req: GerarReq, modelo: string, url: string, key: strin
       model: modelo, messages, temperature: req.temperature ?? (req.json ? 0.2 : 0.5),
       ...(req.maxOutputTokens ? { max_tokens: req.maxOutputTokens } : {}),
       ...(req.json ? { response_format: { type: "json_object" } } : {}),
+      ...(req.extra ?? {}),
     }),
     signal: AbortSignal.timeout(req.timeoutMs ?? DEFAULT_TIMEOUT_MS),
   });
@@ -171,7 +176,7 @@ export async function gerar(req: GerarReq, deps: Deps = {}): Promise<GerarRes> {
   let rota: Rota = req.rota === "gateway" && gatewayLigado(env) ? "gateway" : "vertex";
   let key: string | null = null;
   if (rota === "gateway") {
-    key = chaveDoAgente(req.ctx.agentKey, env) ?? env.GATEWAY_MASTER_KEY?.trim() ?? null;
+    key = req.chaveGateway?.trim() || chaveDoAgente(req.ctx.agentKey, env) || env.GATEWAY_MASTER_KEY?.trim() || null;
     if (!key) {
       if (!avisouSemKey.has(req.ctx.agentKey)) { avisouSemKey.add(req.ctx.agentKey); console.warn(`[llm] agente ${req.ctx.agentKey} sem GATEWAY_KEY_* nem GATEWAY_KEY_DEFAULT — Vertex direto`); }
       rota = "vertex";
@@ -190,6 +195,13 @@ export async function gerar(req: GerarReq, deps: Deps = {}): Promise<GerarRes> {
     gravar("litellm", "gateway", USAGE_VAZIO, false, "provedor_fora", modelo, alvoDe(modelo));
     throw new ErroLlm("provedor_fora", "litellm", e);
   }
+  // Modelo da Contabo (zaeon-local-*) também não cai no Vertex AQUI: o Vertex não conhece esse nome.
+  // Quem chama (lib/llm/papeis) decide o fallback Google com um modelo de verdade.
+  const local = ehModeloLocal(modelo);
+  if (local && rota !== "gateway") {
+    gravar("litellm", "gateway", USAGE_VAZIO, false, "provedor_fora", modelo, "contabo");
+    throw new ErroLlm("provedor_fora", "litellm", new Error("modelo da Contabo exige o gateway (GATEWAY_URL + key)"));
+  }
 
   if (rota === "gateway") {
     try {
@@ -204,7 +216,7 @@ export async function gerar(req: GerarReq, deps: Deps = {}): Promise<GerarRes> {
       if (pool && (classe === "rate_limit" || classe === "cota_esgotada") && (e as any)?.retryAfter) classe = "pool_esgotado";
       gravar("litellm", "gateway", USAGE_VAZIO, false, classe, modelo, alvoDe(modelo));
       if (classe === "pool_esgotado") throw new PoolEsgotadoError(retryAfterDoPool(e, req.tentativa), poolConfigurado(env), e);
-      if (pool || !caiParaVertex(classe)) throw new ErroLlm(classe, "litellm", e);
+      if (pool || local || !caiParaVertex(classe)) throw new ErroLlm(classe, "litellm", e);
       console.warn(`[llm] gateway ${classe} — caindo para o Vertex direto (${req.ctx.agentKey})`);
     }
   }
