@@ -4,7 +4,7 @@ const h = vi.hoisted(() => ({
   deps: null as any, onStepOpts: null as any, traj: vi.fn(), resolve: vi.fn(),
   markRunning: vi.fn(), saveDone: vi.fn(), saveError: vi.fn(),
   wake: vi.fn(), write: vi.fn(), bussola: vi.fn(), fixar: vi.fn(),
-  tccCtx: vi.fn(), tccTurno: vi.fn(), uso: vi.fn(),
+  tccCtx: vi.fn(), tccTurno: vi.fn(), uso: vi.fn(), base: vi.fn(),
 }));
 vi.mock("@/lib/agent/aura-harness", () => ({
   buildHarnessDeps: (ctx: any, opts: any) => { h.onStepOpts = opts; h.deps = { ctx }; return h.deps; },
@@ -15,6 +15,7 @@ vi.mock("@/lib/agent/memory-provider", () => ({ wakeUpContext: h.wake, writeTurn
 vi.mock("@/lib/agent/chat-turn-store", () => ({ markRunning: h.markRunning, saveDone: h.saveDone, saveError: h.saveError }));
 vi.mock("@/lib/map/memoria-turno", () => ({ bussolaParaTurno: h.bussola, fixarTurno: h.fixar }));
 vi.mock("@/lib/tcc/turno", () => ({ tccContextoParaTurno: h.tccCtx, tccDoTurno: h.tccTurno }));
+vi.mock("@/lib/rag/turno", () => ({ baseParaTurno: h.base }));
 vi.mock("@/lib/canal/usage", () => ({ registrarUso: h.uso }));
 vi.mock("@/src/lib/prisma", () => ({ prisma: {} }));
 
@@ -28,6 +29,7 @@ const params = (x: any = {}) => ({ prompt: "o que é luz?", surface: "sala-de-es
 beforeEach(() => {
   Object.values(h).forEach((f: any) => f?.mockReset?.());
   h.wake.mockResolvedValue("MEM"); h.bussola.mockResolvedValue("BUSSOLA");
+  h.base.mockResolvedValue({ status: "ok", trechos: [] });
   h.tccCtx.mockResolvedValue(""); h.tccTurno.mockResolvedValue(null); h.uso.mockResolvedValue(true);
   for (const f of [h.markRunning, h.saveDone, h.saveError]) f.mockResolvedValue(undefined); // como o store real
   // a trajetória "narra" duas fases pelo onStep e devolve a resposta
@@ -72,6 +74,36 @@ describe("runChatTurn", () => {
     expect(h.onStepOpts.systemContext).toBe("SYS\n\nMEM\n\nBUSSOLA");
     expect(h.bussola).toHaveBeenCalledWith("u1", "t1", expect.any(String)); // o prompt alimenta a recuperação de memória
     expect(h.onStepOpts.history).toEqual([{ role: "user", text: "oi" }]);
+  });
+  it("RAG F2: a base é consultada com o dono e o prompt, e o resultado chega em opts.baseConhecimento", async () => {
+    const base = { status: "ok", trechos: [{ texto: "luz é onda" }] };
+    h.base.mockResolvedValue(base);
+    await runChatTurn(null, params(), () => {});
+    expect(h.base).toHaveBeenCalledWith({ userId: "u1", pergunta: "o que é luz?" });
+    expect(h.onStepOpts.baseConhecimento).toBe(base);
+    expect(h.onStepOpts.systemContext).toBe("SYS\n\nMEM\n\nBUSSOLA"); // a base não entra no systemContext
+  });
+  it("RAG F2: a busca dispara ANTES de a memória L3 resolver (em paralelo, sem somar latência)", async () => {
+    let soltar!: (v: string) => void;
+    h.wake.mockReturnValue(new Promise<string>((r) => { soltar = r; }));
+    const p = runChatTurn(null, params(), () => {});
+    await vi.waitFor(() => expect(h.wake).toHaveBeenCalled());
+    await vi.waitFor(() => expect(h.base).toHaveBeenCalled()); // wake ainda pendente
+    soltar("MEM");
+    await p;
+    expect(h.onStepOpts.systemContext).toBe("SYS\n\nMEM\n\nBUSSOLA");
+  });
+  it("RAG F2: baseParaTurno rejeitando não derruba o turno — segue com baseConhecimento null", async () => {
+    h.base.mockRejectedValue(new Error("pg fora"));
+    const r = await runChatTurn(null, params(), () => {});
+    expect(r).toBe(out);
+    expect(h.onStepOpts.baseConhecimento).toBeNull();
+  });
+  it("RAG F2: anônimo chama a base com userId null (o módulo responde sem_usuario)", async () => {
+    h.base.mockResolvedValue({ status: "sem_usuario", trechos: [] });
+    await runChatTurn(null, params({ userId: null }), () => {});
+    expect(h.base).toHaveBeenCalledWith({ userId: null, pergunta: "o que é luz?" });
+    expect(h.onStepOpts.baseConhecimento).toEqual({ status: "sem_usuario", trechos: [] });
   });
   it("o dono do turno vem do PARÂMETRO (o worker não tem sessão) e chega no ctx do harness", async () => {
     await runChatTurn(null, params({ userId: "u9" }), () => {});

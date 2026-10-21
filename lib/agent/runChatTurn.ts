@@ -53,6 +53,12 @@ export async function runChatTurn(
 
   if (turnId) await markRunning(turnId);
   try {
+    // RAG F2: base da turma + pessoal. Dispara já, em paralelo com memória/cartolina/TCC/árvore
+    // (não soma latência); import lazy pra o load do módulo nunca tocar o pg. O módulo já não
+    // rejeita, mas se rejeitar vira null — a base nunca derruba o turno.
+    const basePromise = import("@/lib/rag/turno")
+      .then((m) => m.baseParaTurno({ userId, pergunta: prompt }))
+      .catch(() => null);
     const ac: any = params.agentContext && typeof params.agentContext === "object" ? params.agentContext : {};
     const hctx: any = {
       ...ac,
@@ -88,6 +94,7 @@ export async function runChatTurn(
     const deps = buildHarnessDeps(hctx, {
       systemContext: [params.systemContext, memBlock, cartolinaBlock, tccBlock, skillBlock].filter(Boolean).join("\n\n") || undefined,
       history: params.history,
+      baseConhecimento: await basePromise,
       // C5: cada chamada do turno grava no TokenLedger com quem/onde (mentor em agentKey E mentorSlug, como o registrarUso).
       ledger: { agentKey: mentor?.slug ?? "aura", mentorSlug: mentor?.slug ?? null, userId: userId ?? null, surface: surfaceLedger(surface ?? hctx.activeTab), scopeId: typeof ac.cartolinaScopeId === "string" ? ac.cartolinaScopeId : null },
       // O CANAL DE PROGRESSO: cada fase do trajectory (plan → reason → draft…) vira um
