@@ -99,7 +99,7 @@ describe("ehBancoIndisponivel", () => {
   it.each(["ECONNREFUSED", "ETIMEDOUT", "ENOTFOUND", "ECONNRESET", "EHOSTUNREACH", "ENETUNREACH", "EPIPE", "EAI_AGAIN"])(
     "código de rede %s => true", (c) => { expect(ehBancoIndisponivel(comCodigo(c))).toBe(true); },
   );
-  it.each(["08006", "08001", "57P01", "57P03", "53300"])("SQLSTATE de conexão/desligamento %s => true", (c) => {
+  it.each(["08000", "08001", "08003", "08004", "08006", "08007", "57P01", "57P02", "57P03", "53300"])("SQLSTATE de conexão/desligamento %s => true", (c) => {
     expect(ehBancoIndisponivel(comCodigo(c))).toBe(true);
   });
   it.each([
@@ -115,6 +115,9 @@ describe("ehBancoIndisponivel", () => {
   });
   it("erro encadeado em `cause` => true", () => {
     expect(ehBancoIndisponivel(new Error("falhou", { cause: comCodigo("ECONNREFUSED") }))).toBe(true);
+  });
+  it("08P01 (protocol_violation, ex.: parâmetros do bind != do statement) é bug nosso => false, não 'banco fora do ar'", () => {
+    expect(ehBancoIndisponivel(comCodigo("08P01", "bind message supplies 2 parameters, but prepared statement requires 3"))).toBe(false);
   });
   it.each([
     comCodigo("23505", "duplicate key"), comCodigo("42P01", "relation does not exist"), comCodigo("22P02", "invalid input syntax for type uuid"),

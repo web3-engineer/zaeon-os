@@ -45,8 +45,9 @@ export async function transacao<T>(db: RagDb, fn: (tx: RagDb) => Promise<T>): Pr
 }
 
 const CODIGOS_REDE = new Set(["ECONNREFUSED", "ETIMEDOUT", "ENOTFOUND", "ECONNRESET", "EHOSTUNREACH", "ENETUNREACH", "EPIPE", "EAI_AGAIN"]);
-// SQLSTATE: classe 08 (connection exception), 57P01/57P02/57P03 (desligando / não aceita conexão), 53300 (conexões demais).
-const SQLSTATE_INDISPONIVEL = /^(08|57P0[123]$|53300$)/;
+// SQLSTATE: classe 08 (connection exception) EXCETO 08P01 (protocol_violation: "bind message supplies N parameters…" = bug de SQL
+// nosso, não queda do banco), 57P01/57P02/57P03 (desligando / não aceita conexão), 53300 (conexões demais).
+const SQLSTATE_INDISPONIVEL = /^(08(?!P01)|57P0[123]$|53300$)/;
 const MSG_INDISPONIVEL = /RAG_PG_URL ausente|Connection terminated|timeout exceeded when trying to connect|not queryable/i;
 
 /**
