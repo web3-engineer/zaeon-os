@@ -112,6 +112,10 @@ services:
       - pgvector_data:/var/lib/postgresql/data
       # 1º boot: CREATE EXTENSION vector + CREATE DATABASE litellm.
       - ./initdb:/docker-entrypoint-initdb.d:ro
+    ports:
+      # Só loopback: a VPS chega pelo Tailscale (`tailscale serve --tcp 5432` → 127.0.0.1:5432),
+      # com o papel rag_app (rag-schema.sql). NUNCA 0.0.0.0.
+      - "127.0.0.1:5432:5432"
     mem_limit: 3g
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${ZAEON_PG_USER:-zaeon} -d ${ZAEON_PG_DB:-zaeon_rag}"]
