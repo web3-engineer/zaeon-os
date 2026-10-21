@@ -81,6 +81,8 @@ export type StructuredAnswer = {
   /** buscar_livro: os livros achados e o caminho LEGAL (PDF livre, online, empréstimo, prévia). */
   livros?: { titulo: string; autores: string[]; ano: number | null; acesso: string; pdfUrl: string | null; lerUrl: string | null; paginaUrl: string; fonte: string; licenca: string | null }[];
   provenance?: ProvenanceRecord;                    // origem rastreável (open-science)
+  /** RAG: documentos da base (turma/pessoal) que a resposta citou — só trechos que a busca devolveu. `paginas` = "4" ou "4–5". */
+  fontesBase?: { documentoId: string; titulo: string; paginas: string }[];
   /** TCC cross-sala (TCC_CROSS): o turno criou/editou o TCC desta conversa → o cliente abre a aba. */
   tcc?: { workId: string; titulo: string; criado: boolean; alteradas: number; gerando?: boolean };
 };

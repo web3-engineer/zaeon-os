@@ -27,6 +27,7 @@ import type { StructuredAnswer, Source } from "@/lib/agent/contracts";
 import { artefatoDeAprender, pedeAula, pedeEngenhariaReversa, DIRETRIZ_ENGENHARIA_REVERSA } from "@/lib/agent/aprender";
 import { DIRETRIZ_MATEMATICA } from "@/lib/agent/matematica";
 import { diretrizLivros, markdownDosLivros, type LivroAchado } from "@/lib/livros/busca";
+import { anexarFontesBase, blocoDaBase } from "@/lib/rag/citar";
 
 type GenJson = <T>(system: string, user: string, opts?: { temperature?: number; model?: string; timeoutMs?: number; phase?: string }) => Promise<T>;
 
@@ -45,6 +46,8 @@ export type HarnessOpts = {
   rota?: import("@/lib/llm/envelope").Rota;
   /** Troca de identidade no system (ex.: canal fala com a voz do agente convocado) sem tocar no harness. */
   transformarSystem?: (system: string) => string;
+  /** RAG: a base (turma/pessoal) deste turno. Viaja à parte — o systemContext é cortado em 4000 caracteres. */
+  baseConhecimento?: import("@/lib/rag/turno").BaseDoTurno | null;
 };
 
 type Observation = { tool: string; code?: string; error?: string };
@@ -261,6 +264,9 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
   const observations: Observation[] = []; // A1 · buffer de erros-como-observação
   let livrosAchados: LivroAchado[] = [];  // book_search (buscar_livro): vai inteiro pro fim do nucleo
   const preamble = preambleBlock(opts); // systemContext + histórico (paridade com o legado)
+  const bloco = blocoDaBase(opts.baseConhecimento);
+  const base = bloco ? `${bloco}\n\n` : ""; // depois do preâmbulo, antes do "Objetivo:" (reason e draft)
+  const citaBase = opts.baseConhecimento?.status === "ok";
 
   return {
     classify: (objective, c) => classify(objective, c),
@@ -302,7 +308,7 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
 
     async reason(st) {
       const sys = "Você é a Aura raciocinando ANTES de redigir. Conecte a evidência ao objetivo em 2–4 frases. Se faltou evidência, seja honesto — NUNCA invente fontes. Responda JSON {\"reasoning\":\"...\"}.";
-      const user = `${preamble}Objetivo: ${st.objective}\nModo: ${st.mode} · Acadêmico: ${st.academicMode}\nEvidência:\n${evidenceBlock(st)}${obsBlock(observations)}`;
+      const user = `${preamble}${base}Objetivo: ${st.objective}\nModo: ${st.mode} · Acadêmico: ${st.academicMode}\nEvidência:\n${evidenceBlock(st)}${obsBlock(observations)}`;
       try {
         const r = await genJson<{ reasoning?: string }>(sys, user, { temperature: 0.3, model: modelFor(false), timeoutMs: 15_000, phase: "reason" });
         return String(r?.reasoning ?? "").trim();
@@ -336,7 +342,7 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         "proximos_passos, quando fizer sentido, são passos de ESTUDO (o que entender, ler, " +
         "praticar ou checar a seguir) — jamais ofertas de recurso da plataforma.",
         "Responda SOMENTE JSON válido.",
-        `Campos obrigatórios: ${req}. Preencha TODOS. Schema: {nucleo, desenvolvimento?, conceitos?[], evidencia?[{claim,source:{title,url?}}], proximos_passos?[], sources?[{title,url?}], work?{kind,sections:[{title,body}]}, artifacts?[{studioKind,title}]}.`,
+        `Campos obrigatórios: ${req}. Preencha TODOS. Schema: {nucleo, desenvolvimento?, conceitos?[], evidencia?[{claim,source:{title,url?}}], proximos_passos?[], sources?[{title,url?}], work?{kind,sections:[{title,body}]}, artifacts?[{studioKind,title}]${citaBase ? ", citacoes_base?[n]" : ""}}.`,
         // Ao modelo pedimos EXTRAÇÃO, não decisão de produto: "que substâncias esta
         // resposta menciona?" é pergunta factual, que modelo responde bem. Se a molécula
         // aparece na tela, quem decide é o código (normalizeAnswer) — e o PubChem confirma.
@@ -353,10 +359,12 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         academic + a5,
         ...(st.intent === "buscar_livro" ? [diretrizLivros(livrosAchados)] : []),
       ].join("\n");
-      const user = `${preamble}Objetivo: ${st.objective}\nRaciocínio: ${st.reasoning ?? ""}\nEvidência:\n${evidenceBlock(st)}${obsBlock(observations)}`;
+      const user = `${preamble}${base}Objetivo: ${st.objective}\nRaciocínio: ${st.reasoning ?? ""}\nEvidência:\n${evidenceBlock(st)}${obsBlock(observations)}`;
       try {
         const out = await genJson<Partial<StructuredAnswer>>(sys, user, { temperature: 0.4, model: modelFor(true), timeoutMs: 30_000, phase: "draft" });
-        return anexarLivros(normalizeAnswer(out, st), livrosAchados);
+        // fontes da base: o rodapé sai do código, só com trechos que a busca devolveu (o modelo só aponta os números)
+        const comBase = anexarFontesBase(normalizeAnswer(out, st), opts.baseConhecimento, (out as any)?.citacoes_base);
+        return anexarLivros(comBase, livrosAchados);
       } catch (e: any) {
         // degradado: núcleo honesto via messageForError (nunca string à mão), laço segue.
         // …mas a lista de livros (se a busca achou) sai mesmo assim: é dado, não depende do modelo

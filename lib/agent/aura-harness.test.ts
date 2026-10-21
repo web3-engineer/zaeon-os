@@ -444,3 +444,70 @@ describe("destaques · expressões viram objeto da página", () => {
     expect(a.destaques?.[0]?.rotulo?.length).toBe(40);
   });
 });
+
+describe("base de conhecimento (RAG) · entra no prompt e sai citada", () => {
+  const trecho = {
+    trechoId: "t1", documentoId: "d1", titulo: "Apostila 3", texto: "Entropia é dispersão de energia.",
+    paginaIni: 4, paginaFim: 5, score: 0.03, similaridade: 0.7, porTexto: false,
+  };
+  const baseOk = { status: "ok" as const, trechos: [trecho] };
+  const draftDe = (genJson: ReturnType<typeof smartGen>) =>
+    genJson.mock.calls.find((c) => /Campos obrigat/i.test(String(c[0])))!;
+
+  it("ok: o bloco vai no user do draft (depois do preâmbulo, antes do Objetivo) e o schema ganha citacoes_base", async () => {
+    const genJson = smartGen();
+    const deps = buildHarnessDeps(ctx, { genJson, baseConhecimento: baseOk, systemContext: "CTX" });
+    await deps.draft(stFor());
+    const [sys, user] = draftDe(genJson);
+    expect(String(user)).toContain("[B1] Apostila 3, p. 4–5");
+    const u = String(user);
+    expect(u.indexOf("CTX")).toBeLessThan(u.indexOf("[B1]"));
+    expect(u.indexOf("[B1]")).toBeLessThan(u.indexOf("Objetivo:"));
+    expect(String(sys)).toContain("citacoes_base");
+  });
+
+  it("ok: o reason também enxerga a base", async () => {
+    const genJson = smartGen();
+    const deps = buildHarnessDeps(ctx, { genJson, baseConhecimento: baseOk });
+    await deps.reason(stFor());
+    const reasonCall = genJson.mock.calls.find((c) => /reasoning/i.test(String(c[0])))!;
+    expect(String(reasonCall[1])).toContain("[B1]");
+  });
+
+  it("modelo cita [1] ⇒ fontesBase + rodapé no nucleo", async () => {
+    const genJson = vi.fn(async (system: string): Promise<any> =>
+      /Campos obrigat/i.test(system) ? { nucleo: "x", citacoes_base: [1] } : { reasoning: "R" });
+    const deps = buildHarnessDeps(ctx, { genJson, baseConhecimento: baseOk });
+    const answer = await deps.draft(stFor());
+    expect(answer.fontesBase?.[0]?.titulo).toBe("Apostila 3");
+    expect(answer.nucleo).toContain("**Da sua base:** Apostila 3 (p. 4–5)");
+    expect((answer as any).citacoes_base).toBeUndefined();
+  });
+
+  it("draft falhou ⇒ sem rodapé da base", async () => {
+    const genJson = vi.fn(async () => { throw new Error("fetch failed ECONNREFUSED"); });
+    const deps = buildHarnessDeps(ctx, { genJson, baseConhecimento: baseOk });
+    const answer = await deps.draft(stFor());
+    expect(answer.fontesBase).toBeUndefined();
+    expect(answer.nucleo).not.toContain("Da sua base");
+  });
+
+  it("sem_base: avisa no user, mas o schema NÃO ganha citacoes_base", async () => {
+    const genJson = smartGen();
+    const deps = buildHarnessDeps(ctx, { genJson, baseConhecimento: { status: "sem_base", trechos: [] } });
+    await deps.draft(stFor());
+    const [sys, user] = draftDe(genJson);
+    expect(String(user)).toContain("ainda não tem material");
+    expect(String(sys)).not.toContain("citacoes_base");
+  });
+
+  it("paridade: sem baseConhecimento o prompt é o de antes", async () => {
+    const genJson = smartGen();
+    const deps = buildHarnessDeps(ctx, { genJson });
+    await deps.draft(stFor());
+    const [sys, user] = draftDe(genJson);
+    expect(String(user)).not.toContain("BASE DE CONHECIMENTO");
+    expect(String(user).startsWith("Objetivo:")).toBe(true);
+    expect(String(sys)).not.toContain("citacoes_base");
+  });
+});
