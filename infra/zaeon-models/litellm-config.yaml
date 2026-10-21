@@ -18,10 +18,10 @@ model_list:
       model: ollama_chat/gpt-oss:20b
       api_base: http://ollama:11434
       num_thread: 8                          # ver nota THREADS no topo
-      # Fica carregado 24h (os outros saem com o OLLAMA_KEEP_ALIVE=30m). O load a frio
-      # é ~41 s e o coder ~100 s — acima do LOCAL_LLM_TIMEOUT_MS (60 s): sem isso a 1ª
-      # chamada depois de 30 min parado cai pro Gemini. Custo: 13 GB residentes.
-      keep_alive: "24h"
+      # SEM keep_alive próprio (sai com o OLLAMA_KEEP_ALIVE=30m, como os outros): desde #496/#497 o
+      # gpt-oss não tem papel em prod, e preso 24h ele ocupava 1 dos 3 slots (OLLAMA_MAX_LOADED_MODELS)
+      # e expulsava os que trabalham — guard (todo turno do chat), mini (gatekeeper/juiz) e coder (Octa) —,
+      # que voltavam frios e caíam pro Google. Se ele ganhar papel no caminho de alguém esperando, rever.
 
   - model_name: qwen3-coder                 # especialista de CÓDIGO (Octa / complexo)
     litellm_params:
