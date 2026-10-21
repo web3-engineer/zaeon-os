@@ -168,3 +168,13 @@ Anônimo: sem base.
 - Pesos do `$rankFusion` e prazos de cada chamada.
 - Como a rota de ingestão autentica professor/aluno/admin (seguir `assertAdmin` e os gates de turma existentes).
 - Testes: permissões (aluno A não vê base de B nem de turma alheia) são **obrigatórios** e vêm primeiro.
+
+## 10. Revisão 2026-10-21 — banco do RAG sai do Atlas e vai pro Postgres da Contabo (decisão do dono)
+
+Na ida pra produção (F1), o Atlas recusou os índices de busca: **o plano do cluster tem limite de índices de busca**, e as vagas estão com os 2 índices da memória da Aura (MemPalace nativo — construída, nunca ligada: `configureMemory()` não é chamado; coleção vazia). Em vez de apagar a memória da Aura ou pagar plano maior, **os trechos, vetores e permissões do RAG passam pro Postgres 16 + pgvector 0.8.7 que já roda na Contabo** (`zaeon_pgvector`, a <1 ms da VPS — mesmo datacenter). Sem limite de índices; a memória da Aura pode morar lá depois. **Atlas continua com todo o resto** (usuários, turmas, conversas).
+
+- **Muda:** armazenamento (`rag_documentos`, `rag_trechos` viram tabelas SQL) e busca (uma consulta só: vetor HNSW cosine + texto `tsvector` português, fundidos por RRF na própria SQL). A permissão é condição `WHERE` nos dois ramos. Adicionar/remover turma é **atômico** (`array_append`/`array_remove`) — resolve a corrida de permissões que estava anotada pra antes da F3.
+- **Não muda:** leitor de PDF, corte por estrutura, embedding `gemini-embedding-001` (Vertex), fila `rag-index`, aba do Admin, regras de permissão e limites.
+- **Rede:** Postgres só na tailnet (porta 5432 via `tailscale serve`), papel próprio `rag_app` com permissão só nas tabelas do RAG.
+- **Backup:** dump diário pro servidor de storage (kvm4000, InterServer/EUA) — obrigatório, porque passa a ter dado de aluno. Depende de acesso SSH a ele.
+- As coleções Mongo `rag_documentos`/`rag_trechos` (vazias) e o script dos índices do Atlas saem.
