@@ -1,16 +1,16 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const m = vi.hoisted(() => ({
   admin: { ok: true, email: "a@x.com" } as any,
   ingerir: vi.fn(), listar: vi.fn(), remover: vi.fn(), buscar: vi.fn(),
-  turmas: vi.fn(), usuario: vi.fn(),
+  turmas: vi.fn(), usuario: vi.fn(), ragPg: vi.fn(),
 }));
 vi.mock("@/lib/admin/assertAdmin", () => ({ assertAdmin: async () => m.admin }));
 vi.mock("@/src/lib/prisma", () => ({ prisma: { turma: { findMany: m.turmas }, user: { findUnique: m.usuario }, $runCommandRaw: vi.fn() } }));
 vi.mock("@/lib/rag/ingerir", () => ({ ingerirPdf: m.ingerir }));
 vi.mock("@/lib/queue/rag", () => ({ enfileirarIndexacao: vi.fn() }));
 vi.mock("@/lib/scholar/pdf", () => ({ extractPdfStructured: vi.fn() }));
-vi.mock("@/lib/rag/pg", () => ({ ragPg: () => ({}) }));
+vi.mock("@/lib/rag/pg", async (orig) => ({ ...(await orig<typeof import("@/lib/rag/pg")>()), ragPg: m.ragPg }));
 vi.mock("@/lib/rag/store", () => ({ listarDocumentos: m.listar, removerPermissao: m.remover, contarBase: vi.fn() }));
 vi.mock("@/lib/rag/embed", () => ({ embedVertex: vi.fn() }));
 vi.mock("@/lib/rag/busca", () => ({ buscar: m.buscar, K_PADRAO: 8 }));
@@ -29,6 +29,7 @@ const multipart = (turmaId: string, arquivos: File[]) => {
 beforeEach(() => {
   Object.values(m).forEach((f: any) => f?.mockReset?.());
   m.admin = { ok: true, email: "a@x.com" };
+  m.ragPg.mockReturnValue({});
   m.ingerir.mockResolvedValue({ documentoId: "d1", status: "novo", trechos: 3, paginas: 2 });
   m.listar.mockResolvedValue([{ id: "d1", titulo: "T" }]);
   m.turmas.mockResolvedValue([{ id: "t1", name: "Turma 1" }]);
@@ -96,7 +97,7 @@ describe("POST /api/admin/rag", () => {
 });
 
 describe("DELETE /api/admin/rag", () => {
-  const DOC = "64b0000000000000000000d1";
+  const DOC = "0b1f4c3e-8a52-4d6e-9c1a-2f3b4c5d6e7f";
   it("remove a permissão da turma", async () => {
     const r = await DELETE(new Request(`http://x/api/admin/rag?documentoId=${DOC}&turmaId=t1`, { method: "DELETE" }));
     expect(await r.json()).toEqual({ resultado: "removida" });
@@ -109,7 +110,7 @@ describe("DELETE /api/admin/rag", () => {
     expect(await r.json()).toEqual({ error: "documento_inexistente" });
   });
   it("outro erro => 500 falha_ao_remover (logado)", async () => {
-    m.remover.mockRejectedValue(new Error("mongo caiu"));
+    m.remover.mockRejectedValue(new Error("falha inesperada"));
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     const r = await DELETE(new Request(`http://x/api/admin/rag?documentoId=${DOC}&turmaId=t1`, { method: "DELETE" }));
     expect(r.status).toBe(500);
@@ -117,7 +118,7 @@ describe("DELETE /api/admin/rag", () => {
     expect(log).toHaveBeenCalled();
     log.mockRestore();
   });
-  it.each(["d1", "xyz", "64b0000000000000000000zz", "64b00000000000000000000001"])("documentoId malformado %s => 404 sem chamar o store", async (id) => {
+  it.each(["d1", "xyz", "64b0000000000000000000d1", "0b1f4c3e-8a52-4d6e-9c1a-2f3b4c5d6e7z", "0b1f4c3e-8a52-4d6e-9c1a-2f3b4c5d6e7f0", "------------------------------------", "0b1f4c3e8a524d6e9c1a2f3b4c5d6e7f"])("documentoId malformado %s => 404 sem chamar o store", async (id) => {
     const r = await DELETE(new Request(`http://x/api/admin/rag?documentoId=${id}&turmaId=t1`, { method: "DELETE" }));
     expect(r.status).toBe(404);
     expect(await r.json()).toEqual({ error: "documento_inexistente" });
@@ -139,5 +140,90 @@ describe("POST /api/admin/rag/busca", () => {
   });
   it("pergunta/turma vazia => 400", async () => {
     expect((await BUSCA(new Request("http://x/", { method: "POST", body: JSON.stringify({ turmaId: "t1", pergunta: " " }) }))).status).toBe(400);
+  });
+});
+
+describe("banco da base fora do ar => 503 banco_indisponivel", () => {
+  const recusada = () => Object.assign(new Error("connect ECONNREFUSED 100.113.137.74:5432"), { code: "ECONNREFUSED" });
+  const semEnv = () => { m.ragPg.mockImplementation(() => { throw new Error("RAG_PG_URL ausente"); }); };
+  let log: ReturnType<typeof vi.spyOn>;
+  beforeEach(() => { log = vi.spyOn(console, "error").mockImplementation(() => {}); });
+  afterEach(() => { log.mockRestore(); });
+  const DOC = "0b1f4c3e-8a52-4d6e-9c1a-2f3b4c5d6e7f";
+  const del = () => DELETE(new Request(`http://x/api/admin/rag?documentoId=${DOC}&turmaId=t1`, { method: "DELETE" }));
+  const busca = () => BUSCA(new Request("http://x/", { method: "POST", body: JSON.stringify({ turmaId: "t1", pergunta: "o que?" }) }));
+
+  it("GET: listar rejeita ECONNREFUSED => 503", async () => {
+    m.listar.mockRejectedValue(recusada());
+    const r = await GET(new Request("http://x/api/admin/rag?turmaId=t1"));
+    expect(r.status).toBe(503);
+    expect(await r.json()).toEqual({ error: "banco_indisponivel" });
+    expect(log).toHaveBeenCalled();
+  });
+  it("GET: RAG_PG_URL ausente (ragPg lança) => 503", async () => {
+    semEnv();
+    const r = await GET(new Request("http://x/api/admin/rag?turmaId=t1"));
+    expect(r.status).toBe(503);
+    expect(await r.json()).toEqual({ error: "banco_indisponivel" });
+  });
+  it("GET: erro que não é de conexão continua sendo erro do servidor (não 503)", async () => {
+    m.listar.mockRejectedValue(new Error("bug qualquer"));
+    await expect(GET(new Request("http://x/api/admin/rag?turmaId=t1"))).rejects.toThrow("bug qualquer");
+  });
+  it("POST: ingerirPdf devolve erro banco_indisponivel => 503 (e não continua o lote)", async () => {
+    m.ingerir.mockResolvedValue({ documentoId: "", status: "erro", erro: "banco_indisponivel", trechos: 0, paginas: 0 });
+    const r = await POST(multipart("t1", [pdf("a.pdf"), pdf("b.pdf")]));
+    expect(r.status).toBe(503);
+    expect(await r.json()).toMatchObject({ error: "banco_indisponivel" });
+    expect(m.ingerir).toHaveBeenCalledTimes(1);
+  });
+  it("POST: RAG_PG_URL ausente (ragPg lança) => 503, não leitura_falhou", async () => {
+    semEnv();
+    const r = await POST(multipart("t1", [pdf("a.pdf")]));
+    expect(r.status).toBe(503);
+    expect(await r.json()).toMatchObject({ error: "banco_indisponivel" });
+    expect(log).toHaveBeenCalled();
+  });
+  it("POST: ingerirPdf lança ECONNREFUSED => 503", async () => {
+    m.ingerir.mockRejectedValue(recusada());
+    expect((await POST(multipart("t1", [pdf("a.pdf")]))).status).toBe(503);
+  });
+  it("POST: arquivos já ingeridos antes da queda continuam no corpo do 503", async () => {
+    m.ingerir.mockResolvedValueOnce({ documentoId: "d1", status: "novo", trechos: 3, paginas: 2 });
+    m.ingerir.mockRejectedValueOnce(recusada());
+    const r = await POST(multipart("t1", [pdf("a.pdf"), pdf("b.pdf")]));
+    expect(r.status).toBe(503);
+    const j = await r.json();
+    expect(j.error).toBe("banco_indisponivel");
+    expect(j.resultados).toHaveLength(1);
+    expect(j.resultados[0]).toMatchObject({ nomeArquivo: "a.pdf", status: "novo" });
+  });
+  it("DELETE: remover rejeita ECONNREFUSED => 503 (não falha_ao_remover)", async () => {
+    m.remover.mockRejectedValue(recusada());
+    const r = await del();
+    expect(r.status).toBe(503);
+    expect(await r.json()).toEqual({ error: "banco_indisponivel" });
+    expect(log).toHaveBeenCalled();
+  });
+  it("DELETE: RAG_PG_URL ausente => 503", async () => {
+    semEnv();
+    expect((await del()).status).toBe(503);
+  });
+  it("busca: buscar rejeita ECONNREFUSED => 503", async () => {
+    m.buscar.mockRejectedValue(recusada());
+    const r = await busca();
+    expect(r.status).toBe(503);
+    expect(await r.json()).toEqual({ error: "banco_indisponivel" });
+    expect(log).toHaveBeenCalled();
+  });
+  it("busca: RAG_PG_URL ausente => 503", async () => {
+    semEnv();
+    const r = await busca();
+    expect(r.status).toBe(503);
+    expect(await r.json()).toEqual({ error: "banco_indisponivel" });
+  });
+  it("busca: erro que não é de conexão propaga (500 do Next), não vira 503", async () => {
+    m.buscar.mockRejectedValue(new Error("bug qualquer"));
+    await expect(busca()).rejects.toThrow("bug qualquer");
   });
 });

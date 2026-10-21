@@ -3,6 +3,7 @@
  *  GET    ?turmaId=                    ⇒ { turmas, documentos } (documentos da turma, sem markdown)
  *  POST   multipart turmaId + arquivos ⇒ { resultados } (até 10 PDFs por chamada; a UI manda 1 por vez)
  *  DELETE ?documentoId=&turmaId=       ⇒ { resultado: "removida" | "documento_apagado" }
+ * Postgres da base fora do ar (tailnet/env) em qualquer método ⇒ 503 { error: "banco_indisponivel" } (a UI mostra "tente de novo").
  */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,7 +11,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { assertAdmin } from "@/lib/admin/assertAdmin";
 import { ingerirPdf } from "@/lib/rag/ingerir";
-import { ragPg } from "@/lib/rag/pg";
+import { ehBancoIndisponivel, ragPg } from "@/lib/rag/pg";
 import { listarDocumentos, removerPermissao } from "@/lib/rag/store";
 import { extractPdfStructured } from "@/lib/scholar/pdf";
 import { enfileirarIndexacao } from "@/lib/queue/rag";
@@ -18,6 +19,7 @@ import { enfileirarIndexacao } from "@/lib/queue/rag";
 const MAX_ARQUIVOS = 10;
 
 const negado = (status: 401 | 403) => NextResponse.json({ error: status === 401 ? "Unauthorized" : "Forbidden" }, { status });
+const indisponivel = (extra: Record<string, unknown> = {}) => NextResponse.json({ error: "banco_indisponivel", ...extra }, { status: 503 });
 const ehPdf = (f: File) => f.type === "application/pdf" || /\.pdf$/i.test(f.name);
 
 export async function GET(req: Request) {
@@ -25,7 +27,14 @@ export async function GET(req: Request) {
   if (!a.ok) return negado(a.status);
   const turmaId = new URL(req.url).searchParams.get("turmaId") ?? "";
   const turmas = await (prisma as any).turma.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } });
-  const documentos = turmaId ? await listarDocumentos(ragPg(), { turmaId }) : [];
+  let documentos: Awaited<ReturnType<typeof listarDocumentos>> = [];
+  try {
+    if (turmaId) documentos = await listarDocumentos(ragPg(), { turmaId });
+  } catch (e) {
+    if (!ehBancoIndisponivel(e)) throw e;
+    console.error("[rag/admin] listar: banco indisponível:", (e as Error)?.message);
+    return indisponivel();
+  }
   return NextResponse.json({ turmas, documentos });
 }
 
@@ -51,8 +60,13 @@ export async function POST(req: Request) {
         { db: ragPg(), extrair: extractPdfStructured, enfileirar: enfileirarIndexacao },
         { bytes: new Uint8Array(await f.arrayBuffer()), nomeArquivo: f.name, origem: "admin", criadoPor: usuario.id, permissao: { turmaId } },
       );
+      if (r.erro === "banco_indisponivel") return indisponivel({ resultados: out }); // sem banco, o resto do lote também falharia
       out.push({ nomeArquivo: f.name, ...r });
     } catch (e) {
+      if (ehBancoIndisponivel(e)) {
+        console.error("[rag/admin] ingestão: banco indisponível:", f.name, (e as Error)?.message);
+        return indisponivel({ resultados: out });
+      }
       console.error("[rag/admin] ingestão falhou", f.name, (e as Error)?.message);
       out.push({ nomeArquivo: f.name, documentoId: "", status: "erro", erro: "leitura_falhou", trechos: 0, paginas: 0 });
     }
@@ -67,13 +81,17 @@ export async function DELETE(req: Request) {
   const documentoId = sp.get("documentoId") ?? "";
   const turmaId = sp.get("turmaId") ?? "";
   if (!documentoId || !turmaId) return NextResponse.json({ error: "documentoId_e_turmaId_obrigatorios" }, { status: 400 });
-  // id malformado (não é ObjectId) nem chega ao store: o Prisma lançaria erro de conversão => 500 enganoso.
-  if (!/^[a-f0-9]{24}$/i.test(documentoId)) return NextResponse.json({ error: "documento_inexistente" }, { status: 404 });
+  // id malformado (não é UUID) nem chega ao store: o Postgres lançaria "invalid input syntax for type uuid" => 500 enganoso.
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(documentoId)) return NextResponse.json({ error: "documento_inexistente" }, { status: 404 });
   try {
     const resultado = await removerPermissao(ragPg(), documentoId, { turmaId });
     return NextResponse.json({ resultado });
   } catch (e) {
     const msg = (e as Error)?.message ?? "";
+    if (ehBancoIndisponivel(e)) {
+      console.error("[rag/admin] remover: banco indisponível:", documentoId, msg);
+      return indisponivel();
+    }
     // o store lança `documento <id> não existe` quando o documento sumiu (lista velha / outro admin removeu)
     if (/^documento .+ não existe$/.test(msg)) return NextResponse.json({ error: "documento_inexistente" }, { status: 404 });
     console.error("[rag/admin] remover falhou", documentoId, msg);

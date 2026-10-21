@@ -9,7 +9,7 @@ import { prisma } from "@/src/lib/prisma";
 import { assertAdmin } from "@/lib/admin/assertAdmin";
 import { buscar } from "@/lib/rag/busca";
 import { embedVertex } from "@/lib/rag/embed";
-import { ragPg } from "@/lib/rag/pg";
+import { ehBancoIndisponivel, ragPg } from "@/lib/rag/pg";
 import { contarBase } from "@/lib/rag/store";
 
 export async function POST(req: Request) {
@@ -23,10 +23,17 @@ export async function POST(req: Request) {
   if (!usuario) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const t0 = Date.now();
-  const trechos = await buscar(
-    { db: ragPg(), embed: embedVertex, contar: (e) => contarBase(ragPg(), e) },
-    { userId: usuario.id, turmaIds: [turmaId] },
-    pergunta,
-  );
-  return NextResponse.json({ trechos, ms: Date.now() - t0 });
+  try {
+    const trechos = await buscar(
+      { db: ragPg(), embed: embedVertex, contar: (e) => contarBase(ragPg(), e) },
+      { userId: usuario.id, turmaIds: [turmaId] },
+      pergunta,
+    );
+    return NextResponse.json({ trechos, ms: Date.now() - t0 });
+  } catch (e) {
+    if (!ehBancoIndisponivel(e)) throw e;
+    // Postgres fora do ar (tailnet/env): a UI mostra "banco da base fora do ar — tente de novo", não um 500 genérico.
+    console.error("[rag/admin] busca: banco indisponível:", (e as Error)?.message);
+    return NextResponse.json({ error: "banco_indisponivel" }, { status: 503 });
+  }
 }

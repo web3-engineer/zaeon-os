@@ -22,9 +22,12 @@ const ERROS: Record<string, string> = {
   leitura_falhou: "não consegui ler o PDF",
   indexacao_falhou: "falhou ao indexar — envie de novo",
   nao_pdf: "não é PDF",
+  banco_indisponivel: "banco da base fora do ar — tente de novo",
 };
 /** PURO: código de erro -> português claro (código desconhecido aparece como veio). */
 export const erroLegivel = (c: string | null | undefined): string => (c ? ERROS[c] ?? c : "");
+/** PURO: mensagem para uma resposta HTTP que falhou — 503 é o banco da base fora do ar (a rota responde `banco_indisponivel`). */
+export const erroDeResposta = (status: number, padrao: string): string => (status === 503 ? erroLegivel("banco_indisponivel") : padrao);
 /** PURO: texto de status de um documento da lista. */
 export function statusLegivel(d: Pick<Documento, "status" | "erro" | "comVetor" | "totalTrechos">): string {
   if (d.status === "erro") return `erro: ${erroLegivel(d.erro) || "desconhecido"}`;
@@ -49,7 +52,7 @@ export default function BaseConhecimentoModule({ glassPanel }: { glassPanel?: st
   const carregar = useCallback(async (tid: string) => {
     try {
       const res = await fetch(`/api/admin/rag${tid ? `?turmaId=${encodeURIComponent(tid)}` : ""}`, { cache: "no-store" });
-      if (!res.ok) { setErro(res.status === 401 || res.status === 403 ? "Sem permissão." : "Não consegui carregar a base."); setCarregando(false); return; }
+      if (!res.ok) { setErro(res.status === 401 || res.status === 403 ? "Sem permissão." : erroDeResposta(res.status, "Não consegui carregar a base.")); setCarregando(false); return; }
       const j = await res.json();
       setTurmas(j.turmas ?? []); setDocs(j.documentos ?? []); setErro(null);
       if (!tid && j.turmas?.length) setTurmaId(j.turmas[0].id);
@@ -80,7 +83,7 @@ export default function BaseConhecimentoModule({ glassPanel }: { glassPanel?: st
         const res = await fetch("/api/admin/rag", { method: "POST", body: fd });
         const j = await res.json().catch(() => null);
         const r = j?.resultados?.[0];
-        if (!res.ok || !r) linha = { nome: lote[i].name, estado: "erro", detalhe: "falha no envio" };
+        if (!res.ok || !r) linha = { nome: lote[i].name, estado: "erro", detalhe: erroDeResposta(res.status, "falha no envio") };
         else if (r.status === "erro") linha = { nome: lote[i].name, estado: "erro", detalhe: erroLegivel(r.erro) };
         else if (r.status === "reaproveitado") linha = { nome: lote[i].name, estado: "reaproveitado", detalhe: "já estava na base — liberado para esta turma" };
         else linha = { nome: lote[i].name, estado: "ok", detalhe: `${r.paginas} pág. · ${r.trechos} trechos` };
@@ -95,7 +98,7 @@ export default function BaseConhecimentoModule({ glassPanel }: { glassPanel?: st
   async function remover(d: Documento) {
     if (!window.confirm(`Remover "${d.titulo}" desta turma?`)) return;
     const res = await fetch(`/api/admin/rag?documentoId=${encodeURIComponent(d.id)}&turmaId=${encodeURIComponent(turmaId)}`, { method: "DELETE" });
-    if (!res.ok) setErro("Não consegui remover.");
+    if (!res.ok) setErro(erroDeResposta(res.status, "Não consegui remover."));
     void carregar(turmaId);
   }
 
@@ -104,7 +107,7 @@ export default function BaseConhecimentoModule({ glassPanel }: { glassPanel?: st
     setBuscando(true); setAchados(null);
     try {
       const res = await fetch("/api/admin/rag/busca", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ turmaId, pergunta }) });
-      if (res.ok) setAchados(await res.json()); else setErro("A busca falhou.");
+      if (res.ok) setAchados(await res.json()); else setErro(erroDeResposta(res.status, "A busca falhou."));
     } catch { setErro("A busca falhou."); }
     setBuscando(false);
   }

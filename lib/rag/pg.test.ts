@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { aplicarSchema, bancoDeTeste } from "./pgTeste";
-import { transacao } from "./pg";
+import { ehBancoIndisponivel, transacao } from "./pg";
 
 // Sem RAG_PG_TEST_URL (dev sem Postgres) os testes de banco são pulados; no CI a env existe (service container).
 const banco = await bancoDeTeste();
@@ -91,5 +91,37 @@ describe("esquema RAG no Postgres", () => {
     } finally {
       if (antes !== undefined) process.env.RAG_PG_URL = antes;
     }
+  });
+});
+
+describe("ehBancoIndisponivel", () => {
+  const comCodigo = (code: string, msg = "x") => Object.assign(new Error(msg), { code });
+  it.each(["ECONNREFUSED", "ETIMEDOUT", "ENOTFOUND", "ECONNRESET", "EHOSTUNREACH", "ENETUNREACH", "EPIPE", "EAI_AGAIN"])(
+    "código de rede %s => true", (c) => { expect(ehBancoIndisponivel(comCodigo(c))).toBe(true); },
+  );
+  it.each(["08006", "08001", "57P01", "57P03", "53300"])("SQLSTATE de conexão/desligamento %s => true", (c) => {
+    expect(ehBancoIndisponivel(comCodigo(c))).toBe(true);
+  });
+  it.each([
+    "Connection terminated unexpectedly",
+    "Connection terminated due to connection timeout",
+    "timeout exceeded when trying to connect",
+    "Client has encountered a connection error and is not queryable",
+    "RAG_PG_URL ausente",
+  ])("mensagem do driver %j => true", (m) => { expect(ehBancoIndisponivel(new Error(m))).toBe(true); });
+  it("AggregateError (localhost dual-stack) com ECONNREFUSED dentro => true", () => {
+    const agg = new AggregateError([comCodigo("ECONNREFUSED"), comCodigo("ECONNREFUSED")], "");
+    expect(ehBancoIndisponivel(agg)).toBe(true);
+  });
+  it("erro encadeado em `cause` => true", () => {
+    expect(ehBancoIndisponivel(new Error("falhou", { cause: comCodigo("ECONNREFUSED") }))).toBe(true);
+  });
+  it.each([
+    comCodigo("23505", "duplicate key"), comCodigo("42P01", "relation does not exist"), comCodigo("22P02", "invalid input syntax for type uuid"),
+    new Error("boom"), "texto", null, undefined, {},
+  ])("erro que não é de conexão %j => false", (e) => { expect(ehBancoIndisponivel(e)).toBe(false); });
+  it("ciclo em `cause` não trava", () => {
+    const a: any = new Error("a"); a.cause = a;
+    expect(ehBancoIndisponivel(a)).toBe(false);
   });
 });

@@ -43,3 +43,22 @@ export async function transacao<T>(db: RagDb, fn: (tx: RagDb) => Promise<T>): Pr
     client.release();
   }
 }
+
+const CODIGOS_REDE = new Set(["ECONNREFUSED", "ETIMEDOUT", "ENOTFOUND", "ECONNRESET", "EHOSTUNREACH", "ENETUNREACH", "EPIPE", "EAI_AGAIN"]);
+// SQLSTATE: classe 08 (connection exception), 57P01/57P02/57P03 (desligando / não aceita conexão), 53300 (conexões demais).
+const SQLSTATE_INDISPONIVEL = /^(08|57P0[123]$|53300$)/;
+const MSG_INDISPONIVEL = /RAG_PG_URL ausente|Connection terminated|timeout exceeded when trying to connect|not queryable/i;
+
+/**
+ * O banco da base RAG está fora do ar (tailnet caída, Postgres reiniciando, pool sem conexão, env ausente)?
+ * Distingue "não consegui falar com o banco" de erro de SQL/dados (violação de unicidade, uuid inválido...),
+ * para a ingestão não culpar o PDF e as rotas responderem 503 em vez de 500. Segue `cause` e `AggregateError`.
+ */
+export function ehBancoIndisponivel(e: unknown, fundo = 0): boolean {
+  if (e == null || typeof e !== "object" || fundo > 5) return false;
+  const x = e as { code?: unknown; message?: unknown; cause?: unknown; errors?: unknown };
+  if (typeof x.code === "string" && (CODIGOS_REDE.has(x.code) || SQLSTATE_INDISPONIVEL.test(x.code))) return true;
+  if (typeof x.message === "string" && MSG_INDISPONIVEL.test(x.message)) return true;
+  if (Array.isArray(x.errors) && x.errors.some((i) => ehBancoIndisponivel(i, fundo + 1))) return true;
+  return x.cause !== e && ehBancoIndisponivel(x.cause, fundo + 1);
+}

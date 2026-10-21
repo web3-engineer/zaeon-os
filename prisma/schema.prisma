@@ -775,46 +775,7 @@ model MemoryDrawer {
   @@map("memory_drawers")
 }
 
-// RAG por turma/aluno (F1). Documento-fonte ingerido (PDF → markdown) + seus trechos.
-// Permissão: trecho visível sse turmaIds ∩ turmasDaPessoa ≠ ∅ OU donoIds ∋ pessoa (lib/rag/permissao.ts).
-// Ids de permissão guardados como STRING (hex do ObjectId) — índices Atlas filtram como token.
-model RagDocumento {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  hash         String   @unique // sha256 do arquivo (dedupe)
-  titulo       String
-  nomeArquivo  String
-  paginas      Int
-  markdown     String
-  status       String   // "indexando" | "pronto" | "erro"
-  erro         String?
-  turmaIds     String[]
-  donoIds      String[]
-  origem       String   // "admin" | "chat" | "gerado"
-  criadoPor    String   @db.ObjectId
-  totalTrechos Int      @default(0)
-  comVetor     Int      @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@map("rag_documentos")
-}
-
-model RagTrecho {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  documentoId String   @db.ObjectId
-  ordem       Int
-  texto       String
-  caminho     String   // trilha de títulos (ex.: "Cap. 2 > 2.1 Limites")
-  paginaIni   Int
-  paginaFim   Int
-  turmaIds    String[] // cópia do documento (filtro dentro do índice)
-  donoIds     String[]
-  embedding   Float[]
-  createdAt   DateTime @default(now())
-
-  @@index([documentoId, ordem])
-  @@map("rag_trechos")
-}
+// (RAG por turma/aluno vive no Postgres+pgvector da Contabo — infra/zaeon-models/rag-schema.sql; sem models aqui.)
 
 // Conector MCP (PASSO 7 · §9.11). Credenciais: SÓ `authRef` (NOME da env var) — o segredo vive
 // no env/cofre, NUNCA no Mongo. `discoveredTools` = cache p/ detectar "degradado".

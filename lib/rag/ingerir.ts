@@ -13,7 +13,7 @@ import {
   acrescentarPermissao, apagarDocumento, buscarPorHash, criarDocumento, gravarTrechos, marcarErro,
   type Permissao, type RagDocumentoRow,
 } from "./store";
-import type { RagDb } from "./pg";
+import { ehBancoIndisponivel, type RagDb } from "./pg";
 
 export const MAX_BYTES = 25 * 1024 * 1024;
 
@@ -36,7 +36,7 @@ export type IngerirEntrada = {
 export type IngerirResultado = {
   documentoId: string;
   status: "novo" | "reaproveitado" | "erro";
-  erro?: "grande_demais" | "sem_texto" | "leitura_falhou" | "indexacao_falhou";
+  erro?: "grande_demais" | "sem_texto" | "leitura_falhou" | "indexacao_falhou" | "banco_indisponivel";
   trechos: number;
   paginas: number;
 };
@@ -61,7 +61,27 @@ async function reaproveitar(deps: IngerirDeps, doc: RagDocumentoRow, perm: Permi
   return { documentoId: doc.id, status: "reaproveitado", trechos: doc.totalTrechos, paginas: doc.paginas };
 }
 
+/**
+ * Postgres fora do ar (tailnet caída, reiniciando, RAG_PG_URL ausente) em QUALQUER ponto da ingestão ⇒ `banco_indisponivel`:
+ * erro legível para o admin, nunca "PDF sem texto"/"não consegui ler" (o arquivo não tem culpa). Outros erros propagam.
+ */
 export async function ingerirPdf(deps: IngerirDeps, e: IngerirEntrada): Promise<IngerirResultado> {
+  try {
+    return await ingerir(deps, e);
+  } catch (err) {
+    if (!ehBancoIndisponivel(err)) throw err;
+    console.error("[rag] ingestão: banco indisponível:", (err as Error)?.message ?? err);
+    return { documentoId: "", status: "erro", erro: "banco_indisponivel", trechos: 0, paginas: 0 };
+  }
+}
+
+/** Queda do banco depois de o documento existir: tenta (best-effort) tirá-lo de "indexando" — o reenvio o reprocessa — e propaga. */
+async function propagarQuedaDoBanco(db: RagDb, documentoId: string, err: unknown): Promise<never> {
+  await marcarErro(db, documentoId, "indexacao_falhou").catch(() => {});
+  throw err;
+}
+
+async function ingerir(deps: IngerirDeps, e: IngerirEntrada): Promise<IngerirResultado> {
   const { db } = deps;
   if (e.bytes.byteLength > MAX_BYTES) return { documentoId: "", status: "erro", erro: "grande_demais", trechos: 0, paginas: 0 };
 
@@ -109,9 +129,8 @@ export async function ingerirPdf(deps: IngerirDeps, e: IngerirEntrada): Promise<
     });
   } catch (err) {
     // Upload concorrente do mesmo arquivo: o hash é único, o outro ganhou — reaproveita o dele.
-    // "23505" = violação de unicidade do Postgres (a Task 4 finaliza o mapeamento de erros); "P2002" = legado do Prisma.
-    const codigo = (err as { code?: string })?.code;
-    if (codigo === "23505" || codigo === "P2002") {
+    // "23505" = violação de unicidade do Postgres.
+    if ((err as { code?: string })?.code === "23505") {
       const vencedor = await buscarPorHash(db, hash);
       if (vencedor) return reaproveitar(deps, vencedor, e.permissao, false); // o vencedor já agenda a própria indexação
     }
@@ -124,6 +143,7 @@ export async function ingerirPdf(deps: IngerirDeps, e: IngerirEntrada): Promise<
       for (const p of herdadas) await acrescentarPermissao(db, doc.id, p);
       doc = (await buscarPorHash(db, hash)) ?? doc; // arrays de permissão atualizados para copiar nos trechos
     } catch (err) {
+      if (ehBancoIndisponivel(err)) return propagarQuedaDoBanco(db, doc.id, err);
       console.warn("[rag] ingestão: falha ao herdar permissões", doc.id, (err as Error)?.message ?? err);
       await marcarErro(db, doc.id, "indexacao_falhou");
       return { documentoId: doc.id, status: "erro", erro: "indexacao_falhou", trechos: 0, paginas };
@@ -140,6 +160,7 @@ export async function ingerirPdf(deps: IngerirDeps, e: IngerirEntrada): Promise<
     await deps.enfileirar(doc.id);
     return { documentoId: doc.id, status: "novo", trechos: total, paginas };
   } catch (err) {
+    if (ehBancoIndisponivel(err)) return propagarQuedaDoBanco(db, doc.id, err);
     // Sem isto o documento ficaria "indexando" para sempre e um re-upload viraria "reaproveitado".
     // Em "erro", o re-upload apaga e reprocessa (dedupe ignora documento em erro).
     console.warn("[rag] ingestão: falha após criar o documento", doc.id, (err as Error)?.message ?? err);

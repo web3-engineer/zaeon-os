@@ -226,4 +226,66 @@ describe("ingerirPdf", () => {
     expect(depois[0].status).toBe("indexando");
     expect(depois.find((d) => d.id === r.documentoId)).toBeUndefined();
   });
+
+  // ----- Postgres fora do ar (Review Focus 5): erro legível, nunca "PDF sem texto" -----
+  const ECONNREFUSED = () => Object.assign(new Error("connect ECONNREFUSED 100.113.137.74:5432"), { code: "ECONNREFUSED" });
+
+  it("banco fora do ar desde o início (query rejeita ECONNREFUSED) => banco_indisponivel, sem extrair nem enfileirar", async () => {
+    const db: RagDb = { query: async () => { throw ECONNREFUSED(); } };
+    const extrair = vi.fn(async () => ({ paragraphs: [], blocks: blocos, markdown: "x" }));
+    const enfileirar = vi.fn(async () => "fila" as const);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const r = await ingerirPdf({ db, extrair: extrair as any, enfileirar }, entrada("t1"));
+    expect(r).toEqual({ documentoId: "", status: "erro", erro: "banco_indisponivel", trechos: 0, paginas: 0 });
+    expect(r.erro).not.toBe("sem_texto");
+    expect(r.erro).not.toBe("leitura_falhou");
+    expect(enfileirar).not.toHaveBeenCalled();
+  });
+
+  it("banco fora do ar + PDF sem texto => banco_indisponivel (não sem_texto, não leitura_falhou)", async () => {
+    const db: RagDb = { query: async () => { throw ECONNREFUSED(); } };
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    for (const ret of [{ paragraphs: [], blocks: [], markdown: "" }, null]) {
+      const r = await ingerirPdf({ db, extrair: (async () => ret) as any, enfileirar: vi.fn() }, entrada("t1"));
+      expect(r.erro).toBe("banco_indisponivel");
+    }
+  });
+
+  it("RAG_PG_URL ausente (ragPg() lança) => banco_indisponivel", async () => {
+    const db: RagDb = { query: () => { throw new Error("RAG_PG_URL ausente"); } };
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const r = await ingerirPdf({ db, extrair: (async () => null) as any, enfileirar: vi.fn() }, entrada("t1"));
+    expect(r).toMatchObject({ status: "erro", erro: "banco_indisponivel" });
+  });
+
+  it("timeout/queda do driver pg ('Connection terminated unexpectedly') => banco_indisponivel", async () => {
+    const db: RagDb = { query: async () => { throw new Error("Connection terminated unexpectedly"); } };
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const r = await ingerirPdf({ db, extrair: (async () => null) as any, enfileirar: vi.fn() }, entrada("t1"));
+    expect(r.erro).toBe("banco_indisponivel");
+  });
+
+  it("erro de banco que NÃO é de conexão continua propagando (não vira banco_indisponivel)", async () => {
+    const db: RagDb = { query: async () => { throw Object.assign(new Error('relation "rag_documentos" does not exist'), { code: "42P01" }); } };
+    await expect(ingerirPdf({ db, extrair: (async () => null) as any, enfileirar: vi.fn() }, entrada("t1"))).rejects.toThrow(/does not exist/);
+  });
+
+  it.skipIf(!banco)("banco cai DEPOIS de criar o documento (gravar trechos) => banco_indisponivel e o documento fica em erro (reenviar reprocessa)", async () => {
+    const { deps, db, enfileirar } = setup();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    // Espião herdando do Pool: as queries avulsas (buscarPorHash, criarDocumento, marcarErro best-effort) seguem para o
+    // banco real; só as transações (gravarTrechos) perdem a conexão.
+    const espiao = Object.create(db) as any;
+    espiao.query = (...a: unknown[]) => (db as any).query(...a); // Pool.query chama this.connect (callback): não passar pelo espião
+    espiao.connect = () => Promise.reject(ECONNREFUSED());
+    const r = await ingerirPdf({ ...deps, db: espiao }, entrada("t1"));
+    expect(r).toMatchObject({ status: "erro", erro: "banco_indisponivel", trechos: 0 });
+    expect(enfileirar).not.toHaveBeenCalled();
+    const { documentos } = await estado(db);
+    expect(documentos).toHaveLength(1);
+    expect(documentos[0].status).toBe("erro"); // não fica "indexando" para sempre
+    // banco de volta: o reenvio apaga o documento em erro e reprocessa como novo
+    const r2 = await ingerirPdf(deps, entrada("t1"));
+    expect(r2.status).toBe("novo");
+  });
 });
