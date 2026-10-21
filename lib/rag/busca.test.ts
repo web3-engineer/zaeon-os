@@ -65,6 +65,12 @@ describe("montarSql (puro)", () => {
     expect(sql).not.toContain("u1");
   });
 
+  it("com vetor: devolve a similaridade (1 - dist) e se casou por texto (bool_or)", () => {
+    const { sql } = montarSql(e, "limite", onehot(0), 8);
+    expect(sql).toContain("1 - dist");
+    expect(sql).toContain("bool_or");
+  });
+
   it("sem vetor: só o ramo texto (sem <=> nem CTE vet), permissão presente", () => {
     const { sql, params } = montarSql(e, "limite", null, 8);
     expect(sql).not.toContain("<=>");
@@ -148,6 +154,31 @@ describe.skipIf(!banco)("buscar — Postgres real", () => {
     for (let i = 1; i < r.length; i++) expect(r[i - 1].score).toBeGreaterThanOrEqual(r[i].score);
     // o que casa por vetor E texto vence o que só aparece por vetor
     expect(r.map((x) => x.trechoId)[0]).toBe(ids[0]);
+  });
+
+  it("similaridade e porTexto: trecho idêntico ao vetor tem similaridade ≈ 1; casou por palavra ⇒ porTexto true", async () => {
+    const db = banco!.db;
+    const { ids } = await semear(db, permTurma("tA", "h1"), [
+      { texto: "mitocôndria produz energia", vetor: onehot(0) },
+      { texto: "outro assunto qualquer", vetor: onehot(5) },
+    ]);
+    const r = await buscar(depsDb(db), e, "mitocôndria");
+    const casou = r.find((x) => x.trechoId === ids[0])!;
+    expect(casou.similaridade).toBeCloseTo(1, 5);
+    expect(casou.porTexto).toBe(true);
+    const so = r.find((x) => x.trechoId === ids[1])!;
+    expect(so.similaridade).toBeCloseTo(0, 5);
+    expect(so.porTexto).toBe(false);
+  });
+
+  it("sem vetor (embed falhou): similaridade null em tudo", async () => {
+    const db = banco!.db;
+    await semear(db, permTurma("tA", "h1"), [{ texto: "mitocôndria produz energia", vetor: onehot(0) }]);
+    const aviso = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const r = await buscar(depsDb(db, { embed: async () => { throw new Error("x"); } }), e, "mitocôndria");
+    aviso.mockRestore();
+    expect(r).toHaveLength(1);
+    expect(r.every((x) => x.similaridade === null && x.porTexto === true)).toBe(true);
   });
 
   it("RF1: aluno de outra turma e outro aluno NUNCA recebem o trecho (nos dois ramos)", async () => {

@@ -29,6 +29,10 @@ export type TrechoAchado = {
   paginaIni: number;
   paginaFim: number;
   score: number;
+  /** 1 − distância cosseno do vetor da pergunta; `null` quando o trecho não veio do ramo vetor. */
+  similaridade: number | null;
+  /** O trecho também (ou só) casou pelo ramo texto. */
+  porTexto: boolean;
 };
 
 export type BuscaDeps = {
@@ -66,14 +70,14 @@ export function montarSql(e: EscopoRag, pergunta: string, vetor: number[] | null
     // SEM desempate `, id` aqui: o HNSW só serve ORDER BY <distância> puro (com `, id` o planner cai em seq scan + sort,
     // medido com 12 mil trechos). O desempate vem no row_number() de fora; só empate exato na borda do LIMIT é arbitrário.
     ctes.push(`vet AS (
-      SELECT id, row_number() OVER (ORDER BY dist, id) AS rk
+      SELECT id, row_number() OVER (ORDER BY dist, id) AS rk, 1 - dist AS sim
         FROM (SELECT id, embedding <=> ${v}::vector AS dist
                 FROM rag_trechos
                WHERE embedding IS NOT NULL AND ${perm}
                ORDER BY embedding <=> ${v}::vector
                LIMIT ${cand}::int) s
     )`);
-    uniao.push("SELECT id, rk FROM vet");
+    uniao.push("SELECT id, rk, sim, false AS txt FROM vet");
   }
 
   ctes.push(`txt AS (
@@ -84,13 +88,13 @@ export function montarSql(e: EscopoRag, pergunta: string, vetor: number[] | null
                ORDER BY rnk DESC, id
                LIMIT ${cand}::int) s
     )`);
-  uniao.push("SELECT id, rk FROM txt");
+  uniao.push("SELECT id, rk, NULL::float8 AS sim, true AS txt FROM txt");
 
   const sql = `WITH ${ctes.join(",\n    ")},
     fus AS (
-      SELECT id, sum(1.0 / (${RRF_K} + rk)) AS score FROM (${uniao.join(" UNION ALL ")}) r GROUP BY id
+      SELECT id, sum(1.0 / (${RRF_K} + rk)) AS score, max(sim) AS sim, bool_or(txt) AS por_texto FROM (${uniao.join(" UNION ALL ")}) r GROUP BY id
     )
-    SELECT t.id, t.documento_id, d.titulo, t.texto, t.pagina_ini, t.pagina_fim, t.turma_ids, t.dono_ids, f.score::float8 AS score
+    SELECT t.id, t.documento_id, d.titulo, t.texto, t.pagina_ini, t.pagina_fim, t.turma_ids, t.dono_ids, f.score::float8 AS score, f.sim::float8 AS similaridade, f.por_texto
       FROM fus f
       JOIN rag_trechos t ON t.id = f.id
       JOIN rag_documentos d ON d.id = t.documento_id
@@ -157,5 +161,7 @@ export async function buscar(deps: BuscaDeps, e: EscopoRag, pergunta: string, k:
       paginaIni: Number(t.pagina_ini ?? 0) || 0,
       paginaFim: Number(t.pagina_fim ?? 0) || 0,
       score: Number(t.score ?? 0) || 0,
+      similaridade: t.similaridade == null ? null : Number(t.similaridade),
+      porTexto: t.por_texto === true,
     }));
 }
