@@ -244,6 +244,63 @@ describe("store — permissões concorrentes (atômicas)", () => {
   });
 });
 
+describe("store — vetores × permissões/remoção concorrentes (sem deadlock)", () => {
+  it.skipIf(!banco)("registrarVetores (metade) + acrescentarPermissao em paralelo: sem deadlock; trechos com a turma nova", async () => {
+    const db = banco!.db;
+    for (let rodada = 0; rodada < 15; rodada++) {
+      await db.query("TRUNCATE rag_trechos, rag_documentos");
+      const doc = await docComTrechos(db, `h-${rodada}`, { turmaId: "t1" }, 6);
+      const ts = await trechosDe(db, doc.id);
+      await Promise.all([
+        registrarVetores(db, doc.id, ts.slice(0, 3).map((t) => ({ trechoId: t.id, embedding: vec(0.1) }))),
+        acrescentarPermissao(db, doc.id, { turmaId: `tN${rodada}` }),
+      ]);
+      await registrarVetores(db, doc.id, ts.slice(3).map((t) => ({ trechoId: t.id, embedding: vec(0.2) })));
+      const d = await buscarPorHash(db, `h-${rodada}`);
+      expect(d?.turmaIds).toEqual(["t1", `tN${rodada}`]);
+      expect(d?.comVetor).toBe(6);
+      expect(d?.status).toBe("pronto");
+      for (const t of await trechosDe(db, doc.id)) {
+        expect(t.turma_ids).toEqual(["t1", `tN${rodada}`]);
+        expect(t.tem_vetor).toBe(true);
+      }
+    }
+  });
+
+  it.skipIf(!banco)("2 registrarVetores concorrentes (metades diferentes) => com_vetor = total e 'pronto'", async () => {
+    const db = banco!.db;
+    for (let rodada = 0; rodada < 15; rodada++) {
+      await db.query("TRUNCATE rag_trechos, rag_documentos");
+      const doc = await docComTrechos(db, `h-${rodada}`, { turmaId: "t1" }, 6);
+      const ts = await trechosDe(db, doc.id);
+      await Promise.all([
+        registrarVetores(db, doc.id, ts.slice(0, 3).map((t) => ({ trechoId: t.id, embedding: vec(0.1) }))),
+        registrarVetores(db, doc.id, ts.slice(3).map((t) => ({ trechoId: t.id, embedding: vec(0.2) }))),
+      ]);
+      const d = await buscarPorHash(db, `h-${rodada}`);
+      expect(d?.comVetor).toBe(d?.totalTrechos);
+      expect(d?.comVetor).toBe(6);
+      expect(d?.status).toBe("pronto");
+    }
+  });
+
+  it.skipIf(!banco)("apagarDocumento + acrescentarPermissao em paralelo: sem deadlock (a adição pode falhar com 'não existe')", async () => {
+    const db = banco!.db;
+    for (let rodada = 0; rodada < 15; rodada++) {
+      await db.query("TRUNCATE rag_trechos, rag_documentos");
+      const doc = await docComTrechos(db, `h-${rodada}`, { turmaId: "t1" }, 4);
+      const [apagou, adicionou] = await Promise.allSettled([
+        apagarDocumento(db, doc.id),
+        acrescentarPermissao(db, doc.id, { turmaId: "t2" }),
+      ]);
+      expect(apagou.status).toBe("fulfilled");
+      if (adicionou.status === "rejected") expect(String(adicionou.reason?.message)).toBe(`documento ${doc.id} não existe`);
+      expect(await buscarPorHash(db, `h-${rodada}`)).toBeNull();
+      expect(await trechosDe(db, doc.id)).toEqual([]);
+    }
+  });
+});
+
 describe("store — vetores e status", () => {
   it.skipIf(!banco)("registrarVetores cobrindo todos => 'pronto'; cobrindo metade => continua 'indexando'", async () => {
     const db = banco!.db;

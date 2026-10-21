@@ -170,9 +170,13 @@ export async function removerPermissao(db: RagDb, documentoId: string, p: Permis
   });
 }
 
-/** Apaga o documento e todos os seus trechos, numa transação. Documento que já não existe não é erro. */
+/**
+ * Apaga o documento e todos os seus trechos, numa transação. Documento que já não existe não é erro (idempotente).
+ * Trava o documento ANTES de tocar nos trechos (mesma ordem de lock das demais escritas: sem deadlock).
+ */
 export async function apagarDocumento(db: RagDb, documentoId: string): Promise<void> {
   await transacao(db, async (tx) => {
+    await tx.query("SELECT 1 FROM rag_documentos WHERE id = $1 FOR UPDATE", [documentoId]);
     await tx.query("DELETE FROM rag_trechos WHERE documento_id = $1", [documentoId]);
     await tx.query("DELETE FROM rag_documentos WHERE id = $1", [documentoId]);
   });
@@ -198,6 +202,9 @@ function literalVetor(v: number[]): string {
 export async function registrarVetores(db: RagDb, documentoId: string, itens: { trechoId: string; embedding: number[] }[]): Promise<void> {
   const literais = itens.map((it) => literalVetor(it.embedding));
   await transacao(db, async (tx) => {
+    // Documento travado PRIMEIRO (mesma ordem das permissões ⇒ sem deadlock) e checa existência. Com a trava, o
+    // count abaixo roda DEPOIS de qualquer registrarVetores concorrente ter commitado (sem com_vetor velho).
+    await travar(tx, documentoId);
     if (itens.length > 0) {
       await tx.query(
         `UPDATE rag_trechos t SET embedding = v.e::vector
@@ -206,7 +213,7 @@ export async function registrarVetores(db: RagDb, documentoId: string, itens: { 
         [itens.map((it) => it.trechoId), literais, documentoId],
       );
     }
-    const r = await tx.query(
+    await tx.query(
       `WITH c AS (SELECT count(*)::int AS n FROM rag_trechos WHERE documento_id = $1 AND embedding IS NOT NULL)
        UPDATE rag_documentos d
           SET com_vetor = c.n,
@@ -215,7 +222,6 @@ export async function registrarVetores(db: RagDb, documentoId: string, itens: { 
          FROM c WHERE d.id = $1`,
       [documentoId],
     );
-    if (r.rowCount === 0) throw naoExiste(documentoId);
   });
 }
 
