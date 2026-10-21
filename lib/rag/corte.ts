@@ -31,16 +31,30 @@ function partirTexto(texto: string, max: number): string[] {
   return out.filter(Boolean);
 }
 
-type Titulo = { level?: number; texto: string };
+/** `usado`: já saiu no caminho de algum trecho (o texto do título está na base). */
+type Titulo = { level?: number; texto: string; pagina: number; usado: boolean };
 
 const SEP = " › ";
 const MAX_SEM_NIVEL = 3;
+/** Título maior que isso não é título: o pdf-loader tipa corpo como `heading` quando a fonte é a mesma. */
+export const MAX_TITULO = 150;
+
+/**
+ * "Título" que é corpo de texto: longo demais, ou frases (palavra + pontuação + mais texto, terminando em pontuação).
+ * "1. Introdução" / "Cap. 2 Membrana" continuam títulos (o ponto vem de número/abreviação e não termina em pontuação).
+ */
+export function pareceCorpo(texto: string): boolean {
+  if (texto.length > MAX_TITULO) return true;
+  return /\p{L}{2,}[.!?]\s+\S/u.test(texto) && /[.!?]$/.test(texto);
+}
 
 /**
  * Corta os blocos do pdf-loader em trechos pela estrutura do documento:
  * fecha ao encontrar um título ou ao passar de ALVO_CHARS num limite de bloco;
  * tabela entra inteira (se não couber, fecha o trecho atual e ela vira trecho próprio);
  * figura é ignorada. O caminho é a árvore completa de títulos (pilha por nível).
+ * Nenhum texto some: `heading` que parece corpo vira conteúdo, e título que sai da pilha sem nunca ter
+ * aparecido num caminho (dois títulos seguidos, título no fim) vira um trecho só dele.
  */
 export function cortarEmTrechos(blocks: Block[], titulo: string): TrechoCortado[] {
   const trechos: TrechoCortado[] = [];
@@ -63,8 +77,19 @@ export function cortarEmTrechos(blocks: Block[], titulo: string): TrechoCortado[
       paginaIni,
       paginaFim,
     });
+    for (const t of pilha) t.usado = true;
     partes = [];
     chars = 0;
+  };
+
+  // tira o topo da pilha; se o título nunca entrou num caminho, vira trecho próprio (o caminho já inclui os pais)
+  const desempilhar = () => {
+    const topo = pilha[pilha.length - 1];
+    if (!topo.usado) {
+      adicionar(topo.texto, topo.pagina);
+      fechar();
+    }
+    pilha.pop();
   };
 
   const adicionar = (texto: string, pagina: number) => {
@@ -80,17 +105,24 @@ export function cortarEmTrechos(blocks: Block[], titulo: string): TrechoCortado[
     const texto = (b.text ?? "").trim();
     if (!texto) continue;
 
-    if (b.type === "heading") {
+    if (b.type === "heading" && !pareceCorpo(texto)) {
       fechar();
       const level = typeof b.level === "number" && Number.isFinite(b.level) && b.level >= 1 ? b.level : undefined;
+      const novo: Titulo = { level, texto, pagina: ultimaPagina, usado: false };
       if (level !== undefined) {
         while (pilha.length && (pilha[pilha.length - 1].level === undefined || pilha[pilha.length - 1].level! >= level)) {
-          pilha.pop();
+          desempilhar();
         }
-        pilha.push({ level, texto });
+        pilha.push(novo);
       } else {
         // título sem nível (PDF mal marcado): filho do anterior, só os 3 mais recentes
-        pilha.push({ texto });
+        if (pilha.length >= MAX_SEM_NIVEL && !pilha[0].usado) {
+          // o mais antigo vai cair da pilha sem ter entrado em caminho nenhum: um trecho com o caminho inteiro o guarda
+          const topo = pilha[pilha.length - 1];
+          adicionar(topo.texto, topo.pagina);
+          fechar();
+        }
+        pilha.push(novo);
         if (pilha.length > MAX_SEM_NIVEL) pilha = pilha.slice(-MAX_SEM_NIVEL);
       }
       continue;
@@ -118,5 +150,6 @@ export function cortarEmTrechos(blocks: Block[], titulo: string): TrechoCortado[
     adicionar(texto, ultimaPagina);
   }
   fechar();
+  while (pilha.length) desempilhar(); // títulos no fim, sem conteúdo embaixo
   return trechos;
 }

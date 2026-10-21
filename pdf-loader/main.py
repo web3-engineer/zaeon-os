@@ -159,7 +159,7 @@ def _walk(doc: dict):
             return
         bt = _TYPE_MAP.get(str(node.get("type", "")).lower())
         content = (node.get("content") or "").strip()
-        kids = node.get("kids") or node.get("children") or node.get("elements") or []
+        kids = _filhos(node)
 
         if bt == "table":
             emit_block("table", node, _flatten(node))
@@ -174,8 +174,23 @@ def _walk(doc: dict):
         for k in kids:
             rec(k)
 
-    rec(doc.get("kids") or doc.get("children") or doc.get("elements") or [])
+    rec(_filhos(doc))
     return paragraphs, blocks
+
+
+# Onde o opendataloader guarda os filhos. Lista NÃO usa kids: o nó "list" não tem content e os itens
+# ficam em "list items" (cada item com content + kids próprios p/ sublistas). Sem essa chave os itens
+# saíam no markdown mas sumiam dos blocks — e o RAG nunca os cortava.
+_CHAVES_FILHOS = ("kids", "children", "elements", "list items")
+
+
+def _filhos(node: dict) -> list:
+    out: list = []
+    for chave in _CHAVES_FILHOS:
+        v = node.get(chave)
+        if isinstance(v, list):
+            out.extend(v)
+    return out
 
 
 def _heading_level(raw):
@@ -225,7 +240,7 @@ def _texto(node, sep: str = " ") -> str:
             c = (n.get("content") or "").strip()
             if c:
                 out.append(c)
-            for chave in ("kids", "children", "elements", "rows", "cells"):
+            for chave in (*_CHAVES_FILHOS, "rows", "cells"):
                 rec(n.get(chave) or [])
 
     rec(node)

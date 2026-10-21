@@ -1,0 +1,5 @@
+# Dependências de teste do pdf-loader (não vão para a imagem de produção).
+# Uso: pip install -r requirements-dev.txt && pytest  (o _walk não precisa de Java)
+fastapi==0.115.0
+python-multipart==0.0.9
+pytest==8.3.3

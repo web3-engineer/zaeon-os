@@ -128,5 +128,13 @@ jobs:
           pip install -r requirements.txt -r requirements-dev.txt
           pytest -q
 
+      # Itens de lista sumiam dos blocks[] (o opendataloader os guarda em "list items", não em
+      # kids) e o RAG nunca os cortava. O _walk é puro: não precisa de Java nem do opendataloader.
+      - name: Tests (pytest — pdf-loader)
+        working-directory: pdf-loader
+        run: |
+          pip install -r requirements-dev.txt
+          pytest -q
+
       - name: Build
         run: npx next build
