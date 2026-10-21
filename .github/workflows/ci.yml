@@ -28,6 +28,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
+    # Postgres + pgvector de verdade pros testes do RAG (lib/rag/*.test.ts, via lib/rag/pgTeste.ts): sem ele os
+    # testes de banco (inclusive os de permissão por turma) seriam pulados em silêncio.
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     # Envs de placeholder só p/ o build não quebrar (sem segredos reais).
     # MONGODB_URI é OBRIGATÓRIA: src/lib/db.ts lança erro no import se faltar, e o
     # `next build` importa todas as rotas → sem ela o build do CI fica vermelho.
@@ -37,6 +52,7 @@ jobs:
       MONGODB_URI: "mongodb://placeholder:27017/build"
       NEXTAUTH_SECRET: "ci-placeholder-secret-not-used-in-prod"
       NEXTAUTH_URL: "http://localhost:3000"
+      RAG_PG_TEST_URL: "postgres://postgres:postgres@localhost:5432/postgres"
 
     steps:
       - name: Checkout
