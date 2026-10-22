@@ -98,7 +98,6 @@ export async function runChatTurn(
         narrar(serializarModelo(nomeDoModeloServido(escolhido.grupo, "contabo")));
         const outLocal: HarnessOutput = { mode: "text", text: "" };
         if (userId) {
-          void import("@/lib/llm/guarda").then((g) => g.auditarEntrada({ userId, surface: ledgerTurno.surface, prompt })).catch(() => null);
           void Promise.all([import("@/lib/canal/usage"), import("@/src/lib/prisma")])
             .then(([u, { prisma }]) => u.registrarUso(prisma as any, mentor?.slug ?? "aura", userId)).catch(() => null);
         }
@@ -178,10 +177,7 @@ export async function runChatTurn(
         prompt, answer, wing: mentor?.wing,
       });
     }
-    // Moderação (llama-guard na Contabo, Google se ela falhar): AUDITORIA depois do turno, nunca bloqueia. Fire-and-forget.
-    void import("@/lib/llm/guarda")
-      .then((g) => g.auditarEntrada({ userId: userId ?? null, surface: surfaceLedger(surface ?? hctx.activeTab), prompt }))
-      .catch(() => null);
+    // Moderação: DESLIGADA no chat (decisão do dono, 2026-10-22). lib/llm/guarda continua pronto, sem chamador.
     // Uso do agente (card founder): +1 em (mentor|aura, userId). Fire-and-forget; nunca derruba o turno.
     if (userId) {
       void Promise.all([import("@/lib/canal/usage"), import("@/src/lib/prisma")])
