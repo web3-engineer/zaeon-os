@@ -10,6 +10,8 @@ import { CSS_CARTOLINA, FiltrosRabisco, PAPEL, SkinProvider, corNaSkin, type Ski
 import type { DocBlueprint } from "@/lib/blueprint/tipos";
 import { COR, Modulo, type AcoesModulo } from "./Modulos";
 
+/** o que, dentro de um card, é de clicar/digitar — ali o arrasto NÃO move a prancha */
+const INTERATIVO = "a, button, input, textarea, select, label, [contenteditable], [data-sem-pan]";
 const AZUL = "#0b2c4d", LINHA_FRACA = "rgba(150,205,255,.14)", ALTURA_PADRAO = 150;
 const COR_FIO: Record<Fio["tipo"], string> = { percurso: COR.passo, pratica: "rgba(170,220,255,.75)", critico: COR.critico, figura: COR.figura, avaliacao: COR.avaliacao };
 
@@ -28,7 +30,9 @@ export default function PranchaBlueprint({ id, doc, acoes, onFixar, sobre, skin 
   // ── arrastar (fundo = pan; carimbo = mover e fixar o card) ──
   const arrasto = useRef<{ tipo: "pan" | "card"; id?: string; x0: number; y0: number; ox: number; oy: number } | null>(null);
   const [arrastando, setArrastando] = useState<{ id: string; x: number; y: number } | null>(null);
-  const onPointerDown = (e: React.PointerEvent) => { if (e.button !== 0) return; mexeu.current = true; arrasto.current = { tipo: "pan", x0: e.clientX, y0: e.clientY, ox: cam.x, oy: cam.y }; (e.target as HTMLElement).setPointerCapture?.(e.pointerId); };
+  // arrastar em QUALQUER lugar move a prancha (os cards agora ocupam quase a tela toda — pedido do dono: subir e descer
+  // arrastando); só o que é de clicar/digitar dentro do card fica de fora
+  const onPointerDown = (e: React.PointerEvent) => { if (e.button !== 0 || (e.target as HTMLElement).closest?.(INTERATIVO)) return; mexeu.current = true; arrasto.current = { tipo: "pan", x0: e.clientX, y0: e.clientY, ox: cam.x, oy: cam.y }; (e.target as HTMLElement).setPointerCapture?.(e.pointerId); };
   const comecarCard = (e: React.PointerEvent, c: Caixa) => {
     if (!acoes.podeEditar || e.button !== 0) return; e.stopPropagation();
     arrasto.current = { tipo: "card", id: c.id, x0: e.clientX, y0: e.clientY, ox: c.x, oy: c.y }; (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
@@ -44,11 +48,32 @@ export default function PranchaBlueprint({ id, doc, acoes, onFixar, sobre, skin 
     if (a?.tipo === "card" && arrastando && (Math.abs(arrastando.x - a.ox) > 2 || Math.abs(arrastando.y - a.oy) > 2)) onFixar(arrastando.id, arrastando.x, arrastando.y);
     setArrastando(null);
   };
-  const onWheel = (e: React.WheelEvent) => {
-    mexeu.current = true;
-    const r = raiz.current!.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
-    setCam((c) => { const z = Math.max(0.25, Math.min(2, c.z * (e.deltaY > 0 ? 0.9 : 1.1))); return { z, x: mx - ((mx - c.x) / c.z) * z, y: my - ((my - c.y) / c.z) * z }; });
-  };
+  // a RODA (e os dois dedos do trackpad) ROLA a prancha pra cima/baixo/lados; com Ctrl/⌘ (ou a pinça do trackpad) dá zoom.
+  // Ouvinte nativo não-passivo: sem o preventDefault, o Ctrl+roda dava zoom na PÁGINA do navegador.
+  useEffect(() => {
+    const el = raiz.current; if (!el) return;
+    const roda = (e: WheelEvent) => {
+      if ((e.target as HTMLElement).closest?.("textarea, [data-rola]")) return;
+      e.preventDefault(); mexeu.current = true;
+      if (!e.ctrlKey && !e.metaKey) { setCam((c) => ({ ...c, x: c.x - (e.shiftKey ? e.deltaY : e.deltaX), y: c.y - (e.shiftKey ? 0 : e.deltaY) })); return; }
+      const r = el.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, f = Math.exp(-e.deltaY * 0.01);
+      setCam((c) => { const z = Math.max(0.25, Math.min(2, c.z * f)); return { z, x: mx - ((mx - c.x) / c.z) * z, y: my - ((my - c.y) / c.z) * z }; });
+    };
+    el.addEventListener("wheel", roda, { passive: false });
+    return () => el.removeEventListener("wheel", roda);
+  }, []);
+  // as SETAS / PageUp/PageDown também andam (sem roubar a tecla de quem está digitando)
+  useEffect(() => {
+    const tecla = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement).closest?.(INTERATIVO)) return;
+      const h = raiz.current?.clientHeight ?? 600;
+      const passo = ({ ArrowUp: [0, 90], ArrowDown: [0, -90], ArrowLeft: [90, 0], ArrowRight: [-90, 0], PageUp: [0, h * 0.8], PageDown: [0, -h * 0.8] } as Record<string, [number, number]>)[e.key];
+      if (!passo) return; e.preventDefault(); mexeu.current = true;
+      setCam((c) => ({ ...c, x: c.x + passo[0], y: c.y + passo[1] }));
+    };
+    window.addEventListener("keydown", tecla);
+    return () => window.removeEventListener("keydown", tecla);
+  }, []);
   const pos = (c: Caixa) => (arrastando?.id === c.id ? { ...c, x: arrastando.x, y: arrastando.y } : c);
 
   // ── ENCAIXE: abre no FOCO (a figura + o estudo, grandes — pedido do dono: nada de panorama minúsculo); os lados se veem
@@ -105,8 +130,8 @@ export default function PranchaBlueprint({ id, doc, acoes, onFixar, sobre, skin 
 
   return (
     <SkinProvider value={skin}>
-    <div ref={raiz} className={`relative h-full w-full touch-none select-none overflow-hidden ${papel ? "skin-cartolina" : ""}`} style={{ background: papel ? PAPEL.fundo : AZUL }}
-      onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onWheel={onWheel}>
+    <div ref={raiz} className={`relative h-full w-full cursor-grab touch-none select-none overflow-hidden active:cursor-grabbing ${papel ? "skin-cartolina" : ""}`} style={{ background: papel ? PAPEL.fundo : AZUL }}
+      onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
       {papel && <style>{CSS_CARTOLINA}</style>}
       <FiltrosRabisco />
       {papel ? (
@@ -129,7 +154,7 @@ export default function PranchaBlueprint({ id, doc, acoes, onFixar, sobre, skin 
         {caixas.map((c0) => {
           const c = pos(c0);
           return (
-            <div key={c.id} ref={(el) => medir(c.id, el)} className="absolute" style={{ left: c.x, top: c.y, width: c.w, zIndex: arrastando?.id === c.id ? 50 : 1 }} onPointerDown={(e) => e.stopPropagation()}>
+            <div key={c.id} ref={(el) => medir(c.id, el)} className="absolute" style={{ left: c.x, top: c.y, width: c.w, zIndex: arrastando?.id === c.id ? 50 : 1 }}>
               <Modulo id={c.id} doc={doc} acoes={acoes} onArrastar={acoes.podeEditar ? (e) => comecarCard(e, c0) : undefined} />
             </div>
           );
