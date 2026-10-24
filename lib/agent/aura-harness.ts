@@ -16,6 +16,7 @@ import { diretrizDaSala, salaDoModo } from "@/lib/ai/salaPersona";
 import { GEMINI_MODEL_FLASH, GEMINI_MODEL_PRO } from "@/lib/ai/model";
 import { classify } from "@/lib/agent/router";
 import { previaDoRascunho } from "@/lib/agent/previa";
+import { pensarDa, type NivelPensar } from "@/lib/llm/pensar";
 import { STUDIO_KINDS } from "@/lib/agent/tools";
 import { runToolByName, type ToolContext, type ApproveFn } from "@/lib/agent/runtime";
 import { critiqueForState } from "@/lib/agent/examiner";
@@ -30,7 +31,7 @@ import { DIRETRIZ_MATEMATICA } from "@/lib/agent/matematica";
 import { diretrizLivros, markdownDosLivros, type LivroAchado } from "@/lib/livros/busca";
 import { anexarFontesBase, blocoDaBase } from "@/lib/rag/citar";
 
-type GenJson = <T>(system: string, user: string, opts?: { temperature?: number; model?: string; timeoutMs?: number; phase?: string; /** em stream: o JSON acumulado a cada pedaço */ onTexto?: (acumulado: string) => void }) => Promise<T>;
+type GenJson = <T>(system: string, user: string, opts?: { temperature?: number; model?: string; timeoutMs?: number; phase?: string; /** em stream: o JSON acumulado a cada pedaço */ onTexto?: (acumulado: string) => void; /** o pensar desta fase (lib/llm/pensar) */ pensar?: NivelPensar }) => Promise<T>;
 
 export type HarnessOpts = {
   deepThink?: boolean;
@@ -74,7 +75,7 @@ function envelopeGenJson(opts: HarnessOpts, medido: { total: number }): GenJson 
     const ledger = opts.ledger ?? { agentKey: "aura", surface: "estudos" as const };
     const req = {
       system: opts.transformarSystem ? opts.transformarSystem(system) : system, user, json: true,
-      model: o?.model, temperature: o?.temperature, timeoutMs: o?.timeoutMs, rota: opts.rota ?? "vertex" as const,
+      model: o?.model, temperature: o?.temperature, timeoutMs: o?.timeoutMs, rota: opts.rota ?? "vertex" as const, pensar: o?.pensar,
       ctx: { ...ledger, phase: o?.phase ?? ledger.phase ?? null },
     };
     const { valor, res } = o?.onTexto ? await envelope.gerarJsonStreamRes<any>(req, o.onTexto) : await envelope.gerarJsonRes<any>(req);
@@ -293,7 +294,7 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
           const r = await genJson<{ subquestions?: string[] }>(
             "Você planeja a pesquisa. Gere 2 a 3 SUB-PERGUNTAS/perspectivas distintas que cubram o tema com abrangência. Responda JSON {\"subquestions\":[\"...\"]}.",
             `Tema: ${st.objective}`,
-            { temperature: 0.3, model: modelFor(true), timeoutMs: 15_000, phase: "plan" },
+            { temperature: 0.3, model: modelFor(true), timeoutMs: 15_000, phase: "plan", pensar: pensarDa("plan") },
           );
           if (Array.isArray(r?.subquestions) && r.subquestions.length) subs = r.subquestions.slice(0, 3);
         } catch { /* fallback: só o objetivo */ }
@@ -320,7 +321,7 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
       const sys = "Você é a Aura raciocinando ANTES de redigir. Conecte a evidência ao objetivo em 2–4 frases. Se faltou evidência, seja honesto — NUNCA invente fontes. Responda JSON {\"reasoning\":\"...\"}.";
       const user = `${preamble}${base}Objetivo: ${st.objective}\nModo: ${st.mode} · Acadêmico: ${st.academicMode}\nEvidência:\n${evidenceBlock(st)}${obsBlock(observations)}`;
       try {
-        const r = await genJson<{ reasoning?: string }>(sys, user, { temperature: 0.3, model: modelFor(false), timeoutMs: 15_000, phase: "reason" });
+        const r = await genJson<{ reasoning?: string }>(sys, user, { temperature: 0.3, model: modelFor(false), timeoutMs: 15_000, phase: "reason", pensar: pensarDa("reason") });
         return String(r?.reasoning ?? "").trim();
       } catch {
         return ""; // reasoning é auxiliar — nunca derruba o laço
@@ -376,7 +377,7 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         const prazo = st.intent === "criar_trabalho" ? 90_000 : 30_000;
         // a PRÉVIA: com quem a escute (o chat), o rascunho vai em stream e o texto do `nucleo` sai enquanto nasce
         const onTexto = opts.onPrevia ? (acc: string) => { const t = previaDoRascunho(acc); if (t) opts.onPrevia!(t); } : undefined;
-        const out = await genJson<Partial<StructuredAnswer>>(sys, user, { temperature: 0.4, model: modelFor(true), timeoutMs: prazo, phase: "draft", onTexto });
+        const out = await genJson<Partial<StructuredAnswer>>(sys, user, { temperature: 0.4, model: modelFor(true), timeoutMs: prazo, phase: "draft", onTexto, pensar: pensarDa(st.mode === "quick" ? "draft_rapido" : "draft") });
         // fontes da base: o rodapé sai do código, só com trechos que a busca devolveu (o modelo só aponta os números)
         const comBase = anexarFontesBase(normalizeAnswer(out, st), opts.baseConhecimento, (out as any)?.citacoes_base);
         return anexarLivros(comBase, livrosAchados);

@@ -165,7 +165,8 @@ export async function classify(objective: string, ctx: CtxRoteador): Promise<Rou
     const out = await geminiJson<{ intent?: string; kind?: string }>(
       SYSTEM,
       `Sala="${ctx.activeTab ?? "?"}".${ctx.trabalhos?.total ? ` A conversa já tem ${ctx.trabalhos.total} trabalho(s) escrito(s) (último: ${ctx.trabalhos.kind ?? "artigo"}).` : ""} Pedido:\n${text}`,
-      { temperature: 0, timeoutMs: 8000 },
+      // sem "pensar": é um JSON de uma palavra com prazo de 8 s (o padrão do 3.5-flash pensava ~5 s — lib/llm/pensar)
+      { temperature: 0, timeoutMs: 8000, pensar: (await import("@/lib/llm/pensar")).pensarDa("route") },
     );
     const cand = out?.intent;
     // Pedido explícito de aula manda mais que o palpite do modelo (que às vezes lê "aula" como trabalho escrito).
