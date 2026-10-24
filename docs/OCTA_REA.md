@@ -14,6 +14,15 @@ Pesquisa de segurança, análise de malware, pesquisa de vulnerabilidade e divul
 
 O REA (e, portanto, o Octa com a skill) **não** ajuda a: burlar DRM/verificação de licença/anti-cheat/medidas de proteção; criar cheats; burlar autenticação/controle de acesso em sistemas sem autorização; copiar software proprietário. Esses pedidos são recusados — o guard do Octa (deny-by-default) fica por cima.
 
-## O que falta (fatias 2–3)
-- **Fatia 2 — ponte MCP (portão do dono):** ligar o laço do agente Octa ao MCP `rea-agents`, como o seam do MCP do Appllama. Dá ao Octa as ferramentas REAIS do REA (todas as features, 1:1, porque É o REA).
-- **Fatia 3 — infra:** subir o MCP `rea-agents` num host com os motores (Ghidra/Hopper/IDA p/ binário nativo; binwalk/unblob p/ firmware; PTY p/ comportamento). Os analisadores estáticos (JS/.NET/SQLite/HAR/EVM) não precisam de motor nativo. **Decisão do dono: onde esse host roda** (a VPS 24 GB não tem Ghidra; a Contabo; ou um host dedicado).
+## Fatia 3 — o motor (na Contabo)
+`infra/rea-engine/` — imagem `zaeon-rea-engine` (node:22 + JDK 21 + **Ghidra 12.2** + binwalk/unblob + `rea-agents@6.5.0`) e a **ponte** `bridge.mjs` (HTTP → CLI do REA), publicada SÓ na Tailscale (`100.113.137.74:8799`), token obrigatório.
+- A ponte deriva os comandos do próprio `rea --help` no boot e **nega** as famílias com efeito colateral (capture-/observe-/trace/debug-/adb/push-/pull-/import-/setup/update/annotate-/execute-/cutter-). A análise estática/leitura passa 1:1.
+- Subir/atualizar: `cd infra/rea-engine && scp pra Contabo && docker build -t zaeon-rea-engine:local . && docker run ... -p 100.113.137.74:8799:8799 -e REA_BRIDGE_TOKEN=…`. Artefato analisado vai no corpo (base64), escrito num tmp e apagado; nada de caminho do host.
+
+## Fatia 2 — a ponte no Octa
+`lib/octa/rea.ts` (cliente) + tool `octa_rea` em `lib/octa/agente.ts`. Só aparece com os **dois** portões: `OCTA_REA=1` **e** `REA_BRIDGE_URL`+`REA_BRIDGE_TOKEN`. Mesmo deny-por-família do bridge (defesa em profundidade); o guard do Octa fica por cima. A tool lê um arquivo do projeto como artefato (texto) e devolve a Evidence do REA.
+- Envs no `.env` da VPS: `OCTA_REA=1`, `REA_BRIDGE_URL=http://100.113.137.74:8799`, `REA_BRIDGE_TOKEN=…` (o mesmo da Contabo).
+
+## O que falta (futuro)
+- Upload de BINÁRIO pelo Octa (hoje o workspace é texto; binário/APK/firmware precisam de um caminho de upload).
+- As famílias com efeito colateral (capture/observe/trace/debug/adb) — pedem autorização por-ação.

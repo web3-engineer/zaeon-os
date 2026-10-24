@@ -1,0 +1,18 @@
+# REA engine na Contabo — publica a ponte SÓ na Tailscale (100.113.137.74). docs/OCTA_REA.md.
+services:
+  rea-engine:
+    build: { context: ., args: { REA_VERSION: "6.5.0" } }
+    image: zaeon-rea-engine:local
+    container_name: zaeon_rea_engine
+    cpuset: "0-3"
+    environment:
+      REA_BRIDGE_TOKEN: ${REA_BRIDGE_TOKEN:?defina no .env}
+      REA_BRIDGE_PORT: "8799"
+    ports:
+      - "100.113.137.74:8799:8799"   # só a Tailscale enxerga
+    tmpfs:
+      - /tmp:size=4g
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { memory: 8g }

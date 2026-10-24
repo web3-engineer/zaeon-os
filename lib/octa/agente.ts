@@ -34,6 +34,7 @@ import { precisaAprovacao } from "@/lib/octa/permissao";
 import type { PermissaoOcta } from "@/lib/octa/projetos";
 import type { ErroPublicar, ResultadoPublicar } from "@/lib/octa/publicar";
 import type { ErroCaptura, OpcoesCaptura, ResultadoCaptura } from "@/lib/octa/captura";
+import { chamarRea, comandoRea, REA_EXEMPLOS, reaBridgeConfigurado, resumirRea } from "@/lib/octa/rea";
 
 export type Workspace = Record<string, string>;
 /** Publica o projeto do aluno (a rota fecha userId/email/projetoId aqui dentro; a tool só vê o resultado). */
@@ -126,6 +127,35 @@ export const FERRAMENTAS: ToolDef[] = [
     },
   },
 ];
+
+// ───────────────────────────── ferramentas do REA (engenharia reversa) ─────────────────────────────
+// Só entram com OCTA_REA=1 + REA_BRIDGE_URL/TOKEN (o motor na Contabo, infra/rea-engine). O REA já recusa
+// DRM/anti-cheat/auth/pirataria (DISCLAIMER do REA); o guard do Octa fica por cima. lib/octa/rea.
+export const FERRAMENTAS_REA: ToolDef[] = [
+  {
+    name: "octa_rea", runtime: "ts", risk: "read", minPlan: "free",
+    schema: schema("octa_rea",
+      `Engenharia reversa com o REA (uso LÍCITO: segurança, malware, CTF, interoperabilidade, software próprio/autorizado). Comandos (análise estática do REA, 1:1 — ex.: ${REA_EXEMPLOS.slice(0, 12).join(", ")}…). Captura/observação/trace/debug/adb ficam desligados. Devolve a Evidence do REA.`,
+      { comando: "um comando do REA (ex.: analyze-javascript-application, inspect, decompile, inspect-har)", path: "opcional: arquivo do projeto a analisar (o artefato)", args: "opcional: flags/alvos extras separados por espaço (ex.: --provider ghidra, um endereço, uma URL)" },
+      ["comando"]),
+    async run(a, ctx) {
+      const comando = String(a?.comando ?? "").trim();
+      if (!comandoRea(comando)) return err(`comando com efeito colateral ou inválido (desligado nesta fatia): ${comando}`, "bad_args");
+      const extra = String(a?.args ?? "").trim();
+      const args = extra ? extra.split(/\s+/).slice(0, 24) : [];
+      let artifact: { nome: string; conteudo: string } | undefined;
+      const path = normalizePath(String(a?.path ?? ""));
+      if (path) {
+        if (!(path in ws(ctx))) return err(`arquivo não existe: ${a?.path}`, "not_found");
+        artifact = { nome: path.split("/").pop() || "artifact", conteudo: ws(ctx)[path] };
+      }
+      const r = await chamarRea({ command: comando, args, artifact });
+      return r.ok ? ok(resumirRea(r)) : err(resumirRea(r), "rea_error");
+    },
+  },
+];
+FERRAMENTAS_REA.forEach(registerTool);
+
 FERRAMENTAS.forEach(registerTool);
 
 // ───────────────────────────── ferramentas do fluxo landing ─────────────────────────────
@@ -295,7 +325,11 @@ const paraGateway = (t: ToolDef) => ({
 });
 
 /** Formato de ferramenta do gateway (OpenAI-compatível). As do fluxo landing só entram com `fluxo: "landing"`. */
-export const ferramentasGateway = (fluxo?: "landing") => (fluxo === "landing" ? [...FERRAMENTAS, ...FERRAMENTAS_LANDING] : FERRAMENTAS).map(paraGateway);
+export const ferramentasGateway = (fluxo?: "landing") => {
+  const base = fluxo === "landing" ? [...FERRAMENTAS, ...FERRAMENTAS_LANDING] : [...FERRAMENTAS];
+  if (reaBridgeConfigurado()) base.push(...FERRAMENTAS_REA);   // REA só com o motor ligado (OCTA_REA + bridge)
+  return base.map(paraGateway);
+};
 export const FERRAMENTAS_GATEWAY = ferramentasGateway();
 
 // ───────────────────────────── o laço ─────────────────────────────
