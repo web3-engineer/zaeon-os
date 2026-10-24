@@ -33,6 +33,8 @@ export type GerarReq = {
   rota?: Rota;
   /** Quantas vezes a fila já tentou este job (0 = primeira). Só entra no backoff do PoolEsgotadoError. */
   tentativa?: number;
+  /** O "pensar" do modelo nesta chamada (lib/llm/pensar). Ausente = o padrão do modelo. Só no Vertex direto. */
+  pensar?: import("@/lib/llm/pensar").NivelPensar;
   /** Só na rota gateway: campos a mais no corpo OpenAI (ex.: reasoning_effort dos modelos da Contabo). */
   extra?: Record<string, unknown>;
   /** Só na rota gateway: key explícita (vence a do agente). Os papéis da Contabo usam a key que enxerga zaeon-local-*. */
@@ -102,13 +104,15 @@ const DEFAULT_TIMEOUT_MS = Number(process.env.SCHOLAR_GEMINI_TIMEOUT_MS || 30_00
 /** Vertex direto: reusa makeVertex/extractText/withTimeout de lib/scholar/gemini.ts (import tardio: o SDK é pesado). */
 const vertexReal: TransporteVertex = async (req, modelo) => {
   const { makeVertex, extractText, withTimeout } = await import("@/lib/scholar/gemini");
+  const { thinkingConfigDo } = await import("@/lib/llm/pensar");
   const model = makeVertex().getGenerativeModel({
     model: modelo,
     generationConfig: {
       temperature: req.temperature ?? (req.json ? 0.2 : 0.5),
       ...(req.json ? { responseMimeType: "application/json" } : {}),
       ...(req.maxOutputTokens ? { maxOutputTokens: req.maxOutputTokens } : {}),
-    },
+      ...thinkingConfigDo(modelo, req.pensar),
+    } as any,
     ...(req.system ? { systemInstruction: { role: "system", parts: [{ text: req.system }] } } : {}),
   });
   const contents = contentsDe(req).map((m) => ({ role: m.role, parts: [{ text: m.text }] }));
@@ -125,13 +129,15 @@ const vertexReal: TransporteVertex = async (req, modelo) => {
  *  "pensamento" do modelo ficam de fora (como no extractText). */
 const vertexStreamReal: TransporteVertexStream = async (req, modelo, onTexto) => {
   const { makeVertex, withTimeout } = await import("@/lib/scholar/gemini");
+  const { thinkingConfigDo } = await import("@/lib/llm/pensar");
   const model = makeVertex().getGenerativeModel({
     model: modelo,
     generationConfig: {
       temperature: req.temperature ?? (req.json ? 0.2 : 0.5),
       ...(req.json ? { responseMimeType: "application/json" } : {}),
       ...(req.maxOutputTokens ? { maxOutputTokens: req.maxOutputTokens } : {}),
-    },
+      ...thinkingConfigDo(modelo, req.pensar),
+    } as any,
     ...(req.system ? { systemInstruction: { role: "system", parts: [{ text: req.system }] } } : {}),
   });
   const contents = contentsDe(req).map((m) => ({ role: m.role, parts: [{ text: m.text }] }));

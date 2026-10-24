@@ -62,10 +62,10 @@ export function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promis
  * Mesmo modelo (HEAVY_MODEL), mesma temperatura (0.2), mesmo timeout e os mesmos erros diagnósticos;
  * a diferença é que agora cada chamada grava usage no TokenLedger (best-effort). `ctx` é opcional.
  */
-export async function geminiJson<T>(systemInstruction: string, userPrompt: string, opts?: { temperature?: number; model?: string; timeoutMs?: number; ctx?: import("@/lib/llm/ledger").LedgerCtx }): Promise<T> {
+export async function geminiJson<T>(systemInstruction: string, userPrompt: string, opts?: { temperature?: number; model?: string; timeoutMs?: number; ctx?: import("@/lib/llm/ledger").LedgerCtx; pensar?: import("@/lib/llm/pensar").NivelPensar }): Promise<T> {
   const { gerarJson } = await import("@/lib/llm/envelope");
   return gerarJson<T>({
-    system: systemInstruction, user: userPrompt, json: true, rota: "vertex",
+    system: systemInstruction, user: userPrompt, json: true, rota: "vertex", pensar: opts?.pensar,
     model: opts?.model || HEAVY_MODEL, temperature: opts?.temperature ?? 0.2, timeoutMs: opts?.timeoutMs ?? GEMINI_TIMEOUT_MS,
     ctx: opts?.ctx ?? { agentKey: "aura", surface: "pesquisa" },
   });
