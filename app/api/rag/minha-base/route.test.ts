@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const m = vi.hoisted(() => ({
   userId: "u1" as string | null,
-  ingerir: vi.fn(), listar: vi.fn(), remover: vi.fn(), buscarPorId: vi.fn(), contar: vi.fn(), ragPg: vi.fn(),
+  ingerir: vi.fn(), ingerirTexto: vi.fn(), listar: vi.fn(), remover: vi.fn(), buscarPorId: vi.fn(), contar: vi.fn(), ragPg: vi.fn(),
 }));
 vi.mock("@/lib/agent/transcript", () => ({ resolveUserId: async () => m.userId }));
-vi.mock("@/lib/rag/ingerir", () => ({ ingerirPdf: m.ingerir }));
+vi.mock("@/lib/rag/ingerir", () => ({ ingerirPdf: m.ingerir, ingerirTexto: m.ingerirTexto }));
 vi.mock("@/lib/queue/rag", () => ({ enfileirarIndexacao: vi.fn() }));
 vi.mock("@/lib/scholar/pdf", () => ({ extractPdfStructured: vi.fn() }));
 vi.mock("@/lib/rag/pg", async (orig) => ({ ...(await orig<typeof import("@/lib/rag/pg")>()), ragPg: m.ragPg }));
@@ -33,6 +33,7 @@ beforeEach(() => {
   m.ragPg.mockReturnValue({});
   m.contar.mockResolvedValue(0);
   m.ingerir.mockResolvedValue({ documentoId: DOC, status: "novo", trechos: 3, paginas: 2 });
+  m.ingerirTexto.mockResolvedValue({ documentoId: DOC, status: "novo", trechos: 2, paginas: 1 });
   m.listar.mockResolvedValue([{ id: DOC, titulo: "Apostila", nomeArquivo: "apostila.pdf", paginas: 2, status: "pronto", erro: null, createdAt: "x", hash: "h", donoIds: ["u1"], turmaIds: [] }]);
   m.buscarPorId.mockResolvedValue({ id: DOC, donoIds: ["u1"], turmaIds: [] });
   m.remover.mockResolvedValue("documento_apagado");
@@ -75,10 +76,42 @@ describe("POST", () => {
     expect(r.resultados[0]).toMatchObject({ nomeArquivo: "a.pdf", status: "novo", paginas: 2 });
   });
 
-  it("não-PDF vira erro daquele arquivo, o resto segue", async () => {
+  // MUDANÇA DE COMPORTAMENTO DESTA PR: .txt/.md deixaram de ser recusados na porta. O código de
+  // erro de um formato que não lemos virou `nao_suportado` — "não é PDF" deixou de ser verdade aqui.
+  it("formato que não lemos vira erro daquele arquivo, o resto segue", async () => {
     const r = await (await POST(multipart([pdf("foto.png", "image/png"), pdf("a.pdf")]))).json();
-    expect(r.resultados.map((x: any) => x.erro ?? x.status)).toEqual(["nao_pdf", "novo"]);
+    expect(r.resultados.map((x: any) => x.erro ?? x.status)).toEqual(["nao_suportado", "novo"]);
     expect(m.ingerir).toHaveBeenCalledTimes(1);
+    expect(m.ingerirTexto).not.toHaveBeenCalled();
+  });
+
+  it("ACEITA .txt e .md, pelo caminho de texto, com os blocos da estrutura do arquivo", async () => {
+    const md = new File(["# Membranas\n\n## Estado da Arte\n\nCorpo do texto."], "notas.md", { type: "text/markdown" });
+    const txt = new File(["linha um\n\nlinha dois"], "anotacoes.txt", { type: "" });
+    const r = await (await POST(multipart([md, txt]))).json();
+    expect(r.resultados.map((x: any) => x.erro ?? x.status)).toEqual(["novo", "novo"]);
+    expect(m.ingerir).not.toHaveBeenCalled();          // não passa pelo pdf-loader
+    expect(m.ingerirTexto).toHaveBeenCalledTimes(2);
+
+    const [, entradaMd] = m.ingerirTexto.mock.calls[0];
+    expect(entradaMd.titulo).toBe("Membranas");          // o `# h1` dá o título
+    expect(entradaMd.chave).toBe("notas.md");
+    expect(entradaMd.permissao).toEqual({ donoId: "u1" }); // base PESSOAL, nunca turma
+    expect(entradaMd.origem).toBe("chat");
+    // a estrutura sobrevive: o `## ` virou heading de nível 2, não parágrafo
+    expect(entradaMd.blocos).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: "heading", level: 2, text: "Estado da Arte" }),
+    ]));
+
+    const [, entradaTxt] = m.ingerirTexto.mock.calls[1];
+    expect(entradaTxt.titulo).toBe("anotacoes");         // sem h1: cai no nome do arquivo
+  });
+
+  it("o teto da base vale igual pra texto (não é porta de fuga do limite)", async () => {
+    m.contar.mockResolvedValue(LIMITE_PESSOAL);
+    const r = await (await POST(multipart([new File(["x"], "a.md", { type: "text/markdown" })]))).json();
+    expect(r.resultados[0].erro).toBe("limite_base");
+    expect(m.ingerirTexto).not.toHaveBeenCalled();
   });
 
   it("no teto recusa com limite_base e não ingere (conta a cada arquivo)", async () => {
