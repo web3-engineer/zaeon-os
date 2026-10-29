@@ -1184,6 +1184,50 @@ model CanalSocial {
   @@map("canais_sociais")
 }
 
+// Post para os canais do mundo real (F2 do docs/PLANO_AGENTES_MUNDO_REAL.md): a FILA DE APROVAÇÃO.
+// Nada sai sem um humano dizer sim — conteúdo público é irreversível, então o estado de aprovação é
+// uma coluna, não uma convenção. Máquina de estados em lib/canais/fila (ESTADOS_POST/TRANSICOES).
+//
+// SEPARADO do `Post` (feed interno da Zaeon) de propósito: aquele é conteúdo de usuário dentro do
+// produto; este é conteúdo institucional saindo pro mundo, com id de plataforma, teto diário,
+// trava de PII e trilha de quem aprovou. Misturar os dois tornaria "já saiu?" uma pergunta ambígua.
+model AgentPost {
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  agentKey String                        // quem ASSINA (Opção A: a conta é da Zaeon, a voz é do agente)
+  rede     String                        // instagram | x | linkedin (WhatsApp tem caminho próprio em lib/whatsapp)
+  texto    String                        // corpo CRU, sem assinatura — ela é aplicada no envio, UMA vez
+  midia    String[]                      // URLs de mídia já hospedada (não subimos binário)
+  fonteUrl String?                       // link de origem, quando o post nasce de uma fonte
+  estado   String   @default("rascunho") // rascunho|aprovado|publicando|publicado|recusado|falhou
+
+  // Idempotência da CRIAÇÃO (o envio é protegido pelo claim de `publicando`). OBRIGATÓRIA: no
+  // MongoDB o índice único do Prisma não é esparso, então vários `null` colidiriam entre si.
+  dedupeKey String @unique
+
+  aprovadoPor  String?   // e-mail de quem liberou — trilha, não decoração
+  aprovadoEm   DateTime?
+  recusadoPor  String?
+  recusaMotivo String?
+
+  textoFinal   String?   // o que REALMENTE saiu (assinado e cortado): a verdade do registro
+  idExterno    String?   // id na plataforma; na F2 vem prefixado com "log:" (adapter de ensaio)
+  urlExterna   String?
+  adapterUsado String?   // "log" na F2; a rede nas F3–F5
+  publicadoEm  DateTime?
+
+  tentativas Int     @default(0)
+  ultimoErro String?
+  classeErro String? // ClasseErroCanal — a UI e a fila olham a classe, não a string do provedor
+
+  criadoPor String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([estado, rede])
+  @@index([agentKey])
+  @@map("agent_posts")
+}
+
 // Avatar vivo gerado no ADMIN (Etapa B): um quadro por (agente, estado, tamanho). Os sets da
 // Etapa A ficam em public/avatars (build); este sobrepõe. tamanho: "g" (512) | "p" (160) |
 // "base" (1024, só estado "base" — pra rerolar expressões depois sem trocar o personagem).

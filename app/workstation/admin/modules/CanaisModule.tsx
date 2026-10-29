@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { VIDRO_BOLHA, VIDRO_CHIP, TXT, TXT_2, TXT_MUDO } from "@/lib/canal/vidro";
 import type { ContaView, PainelCanais, Severidade, WhatsAppView } from "@/lib/canais/painel";
+import CanaisFila from "./CanaisFila";
 
 const NOME_REDE: Record<string, string> = { instagram: "Instagram", x: "X", linkedin: "LinkedIn", whatsapp: "WhatsApp" };
 const NOME_CAP: Record<string, string> = { publicar: "publicar", responder: "responder", dm: "mensagem direta" };
@@ -176,6 +177,9 @@ export default function CanaisModule({ glassPanel }: { glassPanel: string }) {
               </span>
             ))}
           </div>
+
+          {/* F2: a fila de aprovação. Recebe as vozes já resolvidas — uma fonte, um nome que assina. */}
+          <CanaisFila vozes={d.vozes.map((v) => ({ agentKey: v.agentKey, nome: v.nome }))} />
         </>
       )}
     </section>
