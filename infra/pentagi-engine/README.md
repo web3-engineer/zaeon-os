@@ -57,9 +57,20 @@ PENTEST_APPROVAL_PUBKEY_FILE=/tmp/custodia/approval.pub.pem   # chave DISTINTA d
 
 As ações de emulação são **sondas de detecção benignas** (registram só status/reflexão, nunca o corpo). Ferramentas pesadas (Caldera/ZAP/sqlmap/Metasploit) são costura que o lab liga aqui, atrás do mesmo gate de aprovação — não vêm no repo.
 
+## Fase 4 — relatório purple (detecção × passou)
+
+Mede se o lado azul pegou a emulação. A detecção vem de uma fonte que o DEFENSOR controla (log de acesso no sandbox; export do SIEM/IDS no lab), nunca do que o atacante diz. `deteccao.ts` tem regras estilo Sigma mapeadas a ATT&CK; `relatorio.ts` cruza o audit do motor com a telemetria e monta a tabela técnica → detectada? → regra.
+
+```sh
+# depois de uma corrida, cruze audit (o que foi feito) × log do defensor:
+npx tsx scripts/pentest/relatorio.ts --audit /tmp/pentest-audit.jsonl --log /blue/access.jsonl
+```
+
+No lab real, a fonte de telemetria é o Wazuh/Suricata/Sigma (costura por env `PENTEST_SIEM_URL`, a implementar quando houver stack azul).
+
 ## Limites honestos
 
 - **Recon (Fase 2):** read-only, baixo impacto, sem aprovação. **Emulação (Fase 3):** benigna, alto impacto, só com aprovação assinada. Nada de exploit weaponizado, dump ou cadeia de exploração.
 - **Pin de IP:** para http o motor fixa a conexão no IP validado. Para **https com host DNS**, o pin de SNI é a Fase 2.1 — até lá, prefira host por IP literal, ou http.
-- **Lado defensivo (detecção × passou) e tetos/kill-de-processos** são a Fase 4.
+- **Tetos por run e kill que mata processos filhos** entram quando houver procedimento de longa duração do lab (Fase 5/QA).
 - O `scope.json` real e as chaves **nunca** entram no git. Este diretório tem só código e o compose do range.
