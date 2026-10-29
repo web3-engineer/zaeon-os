@@ -7,10 +7,12 @@
  *   PENTEST_BRIDGE_TOKEN       token bearer (obrigatório)
  *   PENTEST_SCOPE_PATH         caminho do scope.json (o .sig fica ao lado)
  *   PENTEST_SCOPE_PUBKEY_FILE  arquivo PEM da chave pública do escopo (ou PENTEST_SCOPE_PUBKEY inline)
+ *   PENTEST_APPROVAL_PUBKEY_FILE  arquivo PEM da chave de APROVAÇÃO (distinta; só p/ alto impacto)
  *   PENTEST_KILL_SWITCH        caminho do freio (conteúdo RUN libera; inacessível = fail-closed)
  *   PENTEST_AUDIT_PATH         caminho do audit JSONL confiável do motor
  *
- * Sem token, escopo, chave e kill switch válidos, o motor recusa tudo.
+ * Sem token, escopo, chave e kill switch válidos, o motor recusa tudo. Sem a
+ * chave de aprovação, só o recon (baixo impacto) roda; a emulação é recusada.
  */
 import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
@@ -27,6 +29,8 @@ const killSwitchPath = env("PENTEST_KILL_SWITCH") ?? die("falta PENTEST_KILL_SWI
 const auditPath = env("PENTEST_AUDIT_PATH") ?? die("falta PENTEST_AUDIT_PATH");
 const pubkey = env("PENTEST_SCOPE_PUBKEY_FILE") ? readFileSync(env("PENTEST_SCOPE_PUBKEY_FILE")!, "utf8") : env("PENTEST_SCOPE_PUBKEY");
 if (!pubkey) die("falta PENTEST_SCOPE_PUBKEY_FILE (ou PENTEST_SCOPE_PUBKEY)");
+const approvalPubkey = env("PENTEST_APPROVAL_PUBKEY_FILE") ? readFileSync(env("PENTEST_APPROVAL_PUBKEY_FILE")!, "utf8") : env("PENTEST_APPROVAL_PUBKEY");
+if (!approvalPubkey) console.warn("[pentagi-engine] sem PENTEST_APPROVAL_PUBKEY — só recon; emulação será recusada");
 
 const tokenBuf = Buffer.from(token);
 function tokenOk(header: string | undefined): boolean {
@@ -41,6 +45,7 @@ function loadConfig(): EngineConfig {
     scopeJson: readFileSync(scopePath, "utf8"),
     scopeSignature: readFileSync(`${scopePath}.sig`, "utf8").trim(),
     scopePublicKey: pubkey!,
+    ...(approvalPubkey ? { approvalPublicKey: approvalPubkey } : {}),
     killSwitchPath,
     auditPath,
   };

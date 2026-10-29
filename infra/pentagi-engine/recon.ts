@@ -17,23 +17,27 @@ export async function dnsLookup(host: string): Promise<string[]> {
 }
 
 /**
- * GET de metadados: status + um subconjunto seguro de headers + tamanho do corpo.
- * Nunca segue redirect, timeout curto. Se `connectIp` for dado e o alvo for http,
- * a conexão é FIXADA nesse IP (reescreve o host para o IP já validado e manda o
- * Host original no header) — fecha a janela de TOCTOU entre validar e conectar.
- * Para https com host DNS o pin de SNI fica para a Fase 2.1 (ver README).
+ * fetch com a conexão FIXADA no IP já validado (anti-TOCTOU). Se `connectIp` for
+ * dado e o alvo for http, reescreve o host para o IP e manda o Host original no
+ * header — fecha a janela entre validar e conectar. Para https com host DNS o pin
+ * de SNI fica para a Fase 2.1 (ver README). Nunca segue redirect, timeout curto.
  */
-export async function httpMetadata(url: string, connectIp?: string, timeoutMs = 8000): Promise<ReconResult> {
-  const safeHeaders = ["server", "content-type", "x-powered-by", "x-frame-options", "content-security-policy", "strict-transport-security", "set-cookie", "location", "x-aspnet-version", "via"];
+export async function pinnedFetch(url: string, connectIp: string | undefined, init: { method?: string; headers?: Record<string, string>; timeoutMs?: number } = {}): Promise<Response> {
   const target = new URL(url);
-  const reqHeaders: Record<string, string> = {};
+  const reqHeaders: Record<string, string> = { ...(init.headers ?? {}) };
   let fetchUrl = url;
   if (connectIp && target.protocol === "http:" && target.hostname !== connectIp) {
     reqHeaders["host"] = target.host; // preserva o Host original
     target.hostname = connectIp;
     fetchUrl = target.toString();
   }
-  const res = await fetch(fetchUrl, { method: "GET", redirect: "manual", headers: reqHeaders, signal: AbortSignal.timeout(timeoutMs) });
+  return fetch(fetchUrl, { method: init.method ?? "GET", redirect: "manual", headers: reqHeaders, signal: AbortSignal.timeout(init.timeoutMs ?? 8000) });
+}
+
+/** GET de metadados: status + um subconjunto seguro de headers + tamanho do corpo. */
+export async function httpMetadata(url: string, connectIp?: string, timeoutMs = 8000): Promise<ReconResult> {
+  const safeHeaders = ["server", "content-type", "x-powered-by", "x-frame-options", "content-security-policy", "strict-transport-security", "set-cookie", "location", "x-aspnet-version", "via"];
+  const res = await pinnedFetch(url, connectIp, { timeoutMs });
   const headers: Record<string, string> = {};
   for (const h of safeHeaders) { const v = res.headers.get(h); if (v) headers[h] = v.slice(0, 300); }
   let bodyBytes = 0;

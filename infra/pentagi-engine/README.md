@@ -1,4 +1,4 @@
-# `infra/pentagi-engine` — motor isolado do pentest (Fase 2, recon-only)
+# `infra/pentagi-engine` — motor isolado do pentest (Fase 2 recon + Fase 3 emulação)
 
 Este é o ÚNICO componente que toca a rede. Fica num host de lab fechado (rede
 isolada, sem rota pra internet aberta nem pra prod Zaeon). O app nunca executa
@@ -46,8 +46,20 @@ cd infra/pentagi-engine/range && docker compose down
 
 Verifique o audit a qualquer momento com `verifyAuditFile` de `lib/pentest/audit`.
 
-## Limites honestos desta fase
+## Fase 3 — emulação ATT&CK sob aprovação
 
-- **Só recon read-only.** Nada de exploit, scan intrusivo ou mudança de estado. Emulação (ATT&CK) e alto-impacto-com-aprovação são a Fase 3.
-- **Pin de IP:** para http o motor fixa a conexão no IP validado. Para **https com host DNS**, o pin de SNI é a Fase 2.1 — até lá, prefira alvos com host por IP literal, ou http, para não deixar janela de TOCTOU na conexão TLS.
+As ações `emulate.*` (catálogo fechado em `attack.ts`) são de **alto impacto** e só rodam com uma **aprovação assinada** no corpo do request (`{json, signature}`), validada pela chave `PENTEST_APPROVAL_PUBKEY_FILE` — **distinta** da chave do escopo, ligada a ação+alvo, ≤15 min, anti-replay. Gere a aprovação com `scripts/pentest/sign.ts approval`. Sem essa chave no motor, só o recon roda.
+
+```sh
+# além dos envs da Fase 2, aponte a chave pública de aprovação:
+PENTEST_APPROVAL_PUBKEY_FILE=/tmp/custodia/approval.pub.pem   # chave DISTINTA da do escopo
+```
+
+As ações de emulação são **sondas de detecção benignas** (registram só status/reflexão, nunca o corpo). Ferramentas pesadas (Caldera/ZAP/sqlmap/Metasploit) são costura que o lab liga aqui, atrás do mesmo gate de aprovação — não vêm no repo.
+
+## Limites honestos
+
+- **Recon (Fase 2):** read-only, baixo impacto, sem aprovação. **Emulação (Fase 3):** benigna, alto impacto, só com aprovação assinada. Nada de exploit weaponizado, dump ou cadeia de exploração.
+- **Pin de IP:** para http o motor fixa a conexão no IP validado. Para **https com host DNS**, o pin de SNI é a Fase 2.1 — até lá, prefira host por IP literal, ou http.
+- **Lado defensivo (detecção × passou) e tetos/kill-de-processos** são a Fase 4.
 - O `scope.json` real e as chaves **nunca** entram no git. Este diretório tem só código e o compose do range.
