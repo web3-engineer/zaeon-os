@@ -5,7 +5,13 @@ const m = vi.hoisted(() => ({
   ingerir: vi.fn(), ingerirTexto: vi.fn(), listar: vi.fn(), remover: vi.fn(), buscarPorId: vi.fn(), contar: vi.fn(), ragPg: vi.fn(),
 }));
 vi.mock("@/lib/agent/transcript", () => ({ resolveUserId: async () => m.userId }));
-vi.mock("@/lib/rag/ingerir", () => ({ ingerirPdf: m.ingerir, ingerirTexto: m.ingerirTexto }));
+// `MAX_BYTES` vem do módulo REAL: o teto é um só (lib/rag/ingerir), e a rota o usa pra recusar
+// texto grande ANTES de decodificar. Duplicar o número aqui deixaria os dois lados divergirem.
+vi.mock("@/lib/rag/ingerir", async (orig) => ({
+  ...(await orig<typeof import("@/lib/rag/ingerir")>()),
+  ingerirPdf: m.ingerir,
+  ingerirTexto: m.ingerirTexto,
+}));
 vi.mock("@/lib/queue/rag", () => ({ enfileirarIndexacao: vi.fn() }));
 vi.mock("@/lib/scholar/pdf", () => ({ extractPdfStructured: vi.fn() }));
 vi.mock("@/lib/rag/pg", async (orig) => ({ ...(await orig<typeof import("@/lib/rag/pg")>()), ragPg: m.ragPg }));
@@ -105,6 +111,13 @@ describe("POST", () => {
 
     const [, entradaTxt] = m.ingerirTexto.mock.calls[1];
     expect(entradaTxt.titulo).toBe("anotacoes");         // sem h1: cai no nome do arquivo
+  });
+
+  it("texto grande demais é recusado ANTES de decodificar (não aloca pra depois reclamar)", async () => {
+    const enorme = new File(["x".repeat(26 * 1024 * 1024)], "dump.txt", { type: "text/plain" });
+    const r = await (await POST(multipart([enorme]))).json();
+    expect(r.resultados[0].erro).toBe("grande_demais");
+    expect(m.ingerirTexto).not.toHaveBeenCalled();
   });
 
   it("o teto da base vale igual pra texto (não é porta de fuga do limite)", async () => {

@@ -21,6 +21,8 @@
  */
 
 /** Norma de formatação. Parâmetro desde o começo pra APA/Vancouver serem um dado, não um refactor. */
+import { idUnico } from "@/lib/tcc/secoes";
+
 export const NORMAS = ["abnt"] as const;
 export type Norma = (typeof NORMAS)[number];
 
@@ -100,6 +102,21 @@ export type Slot = {
 export const slugSlot = (caminho: string[]): string =>
   caminho.map((p) => semAcento(p).replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")).filter(Boolean).join("/");
 
+/**
+ * Dois títulos diferentes podem dar o MESMO slug ("RESULTADOS" e "Resultados!"), e o aluno pode
+ * ter dois `# Resultados` no documento dele — `secoesDeMarkdown` lê markdown do usuário, então isso
+ * não é hipótese. Com id repetido, `nenhumVazio` acharia o mesmo preenchimento para os dois slots e
+ * aprovaria um documento incompleto: exatamente o que este módulo existe pra impedir.
+ *
+ * `idUnico` de lib/tcc/secoes já resolve isso (e `novasSecoes` já o usa pelo mesmo motivo) — reusar
+ * mantém a convenção de id do documento igual nos dois lados.
+ */
+const idDoSlot = (caminho: string[], usados: Set<string>): string => {
+  const id = idUnico(slugSlot(caminho), usados);
+  usados.add(id);
+  return id;
+};
+
 export type SecaoDoEsqueleto = { title: string; subs?: string[] };
 
 /**
@@ -112,6 +129,7 @@ export function planoDoDocumento(
   _norma: Norma = "abnt",
 ): Slot[] {
   const slots: Slot[] = [];
+  const usados = new Set<string>();
   for (const item of esqueleto) {
     const sec: SecaoDoEsqueleto = typeof item === "string" ? { title: item } : item;
     const titulo = String(sec.title ?? "").trim();
@@ -120,7 +138,7 @@ export function planoDoDocumento(
     const subs = (sec.subs ?? []).map((s) => String(s ?? "").trim()).filter(Boolean);
 
     slots.push({
-      id: slugSlot([titulo]),
+      id: idDoSlot([titulo], usados),
       titulo,
       caminho: [titulo],
       nivel: 1,
@@ -133,7 +151,7 @@ export function planoDoDocumento(
     for (const sub of subs) {
       const papelSub = papelDoTitulo(sub) === "outro" ? papel : papelDoTitulo(sub);
       slots.push({
-        id: slugSlot([titulo, sub]),
+        id: idDoSlot([titulo, sub], usados),
         titulo: sub,
         caminho: [titulo, sub],
         nivel: 2,
@@ -214,17 +232,42 @@ export function resumoDaCompletude(c: Completude): string {
   return `${c.prontos}/${c.exigidos} prontas — ${partes.join(", ")}`;
 }
 
+export const SEP_CAMINHO = " › ";
+
+/** Todos os caminhos de um esqueleto, SEÇÕES E SUBSEÇÕES — "REFERENCIAL TEÓRICO › Estado da Arte". */
+export function caminhosDoEsqueleto(esqueleto: readonly (string | SecaoDoEsqueleto)[]): string[] {
+  const out: string[] = [];
+  for (const item of esqueleto) {
+    const sec: SecaoDoEsqueleto = typeof item === "string" ? { title: item } : item;
+    const titulo = String(sec.title ?? "").trim();
+    if (!titulo) continue;
+    out.push(titulo);
+    for (const sub of sec.subs ?? []) {
+      const s = String(sub ?? "").trim();
+      if (s) out.push(`${titulo}${SEP_CAMINHO}${s}`);
+    }
+  }
+  return out;
+}
+
 /**
  * As duas fontes de esqueleto batem para este tipo de trabalho? Devolve o que só existe em uma.
  * Não corrige nada: F1 só MEDE a divergência, pra F2 reconciliar com a decisão na mão em vez de
  * descobrir no meio da geração que escreveu para uma seção que o documento salvo não tem.
+ *
+ * Compara CAMINHOS COMPLETOS, não só os títulos de primeiro nível. Comparar só o topo era cego
+ * exatamente na dimensão que mais importa aqui: `ESQUELETO_TCC` e `WORK_SECTIONS.TCC` têm as mesmas
+ * 6 seções, mas só o segundo tem as subseções — e são justamente elas que saem vazias em 100% dos
+ * documentos hoje. Com a comparação rasa, isso aparecia como "os dois batem".
  */
-export function divergencia(a: readonly string[], b: readonly (string | SecaoDoEsqueleto)[]): { soEmA: string[]; soEmB: string[] } {
-  const na = new Set(a.map(semAcento));
-  const titulosB = b.map((x) => (typeof x === "string" ? x : x.title));
-  const nb = new Set(titulosB.map(semAcento));
+export function divergencia(
+  a: readonly (string | SecaoDoEsqueleto)[],
+  b: readonly (string | SecaoDoEsqueleto)[],
+): { soEmA: string[]; soEmB: string[] } {
+  const na = new Set(caminhosDoEsqueleto(a).map((c) => semAcento(c)));
+  const nb = new Set(caminhosDoEsqueleto(b).map((c) => semAcento(c)));
   return {
-    soEmA: a.filter((t) => !nb.has(semAcento(t))),
-    soEmB: titulosB.filter((t) => !na.has(semAcento(t))),
+    soEmA: caminhosDoEsqueleto(a).filter((c) => !nb.has(semAcento(c))),
+    soEmB: caminhosDoEsqueleto(b).filter((c) => !na.has(semAcento(c))),
   };
 }

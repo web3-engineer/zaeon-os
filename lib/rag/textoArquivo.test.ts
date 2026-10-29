@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  EXTENSOES_TEXTO, blocosDeTexto, ehArquivoTexto, semExtensao, textoDeBytes, tituloDeTexto,
+  EXTENSOES_TEXTO, MAX_BLOCOS, blocosDeTexto, ehArquivoTexto, semExtensao, textoDeBytes, tituloDeTexto,
 } from "./textoArquivo";
 import { cortarEmTrechos } from "./corte";
 
@@ -93,6 +93,18 @@ describe("textoArquivo · blocos", () => {
 
   it("tudo em page 1 — arquivo de texto não tem página, e inventar quebraria a citação", () => {
     for (const b of blocosDeTexto("# A\n\nx\n\n## B\n\ny", "A")) expect(b.page).toBe(1);
+  });
+
+  it("muitas linhas curtas NÃO viram milhões de blocos (um log exportado não derruba o processo)", () => {
+    const log = Array.from({ length: MAX_BLOCOS * 3 }, (_, i) => `linha ${i}`).join("\n\n");
+    const b = blocosDeTexto(log, "Log");
+    expect(b.length).toBeLessThanOrEqual(MAX_BLOCOS + 1); // +1: o bloco final com o resto
+  });
+
+  it("e o conteúdo além do teto é PRESERVADO num bloco final, não descartado", () => {
+    const log = Array.from({ length: MAX_BLOCOS * 2 }, (_, i) => `linha ${i}`).join("\n\n");
+    const texto = blocosDeTexto(log, "Log").map((x) => x.text).join("\n");
+    expect(texto).toContain(`linha ${MAX_BLOCOS * 2 - 1}`); // a última linha do arquivo está lá
   });
 });
 

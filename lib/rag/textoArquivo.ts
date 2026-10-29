@@ -57,11 +57,22 @@ export function tituloDeTexto(nome: string, texto: string): string {
 }
 
 /**
+ * Teto de blocos. Um .txt de 24 MB com milhões de linhas curtas (um log exportado, um dump de
+ * dataset — não precisa de má-fé) geraria um array de blocos muito maior que o próprio upload, cada
+ * um com o overhead de um objeto. O corte do RAG junta blocos em trechos de 3.000 caracteres, então
+ * passar deste teto não acrescenta informação recuperável: só memória.
+ */
+export const MAX_BLOCOS = 20_000;
+
+/**
  * Texto → blocos. Markdown ganha `heading` com nível; texto puro vira parágrafos sob um título só.
  * Tudo em `page: 1`: arquivo de texto não tem página, e inventar número quebraria a citação.
  *
  * Linha de cerca (``` / ~~~) suspende a leitura de títulos, e o conteúdo do bloco de código vai
  * junto como parágrafo — é conteúdo, e descartar texto do aluno não é papel desta função.
+ *
+ * Acima de `MAX_BLOCOS` o resto do arquivo entra num único bloco final, em vez de ser descartado:
+ * o conteúdo continua indexável, só perde a granularidade — e o processo não cai.
  */
 export function blocosDeTexto(texto: string, titulo: string): Block[] {
   const linhas = String(texto ?? "").split(/\r?\n/);
@@ -80,7 +91,13 @@ export function blocosDeTexto(texto: string, titulo: string): Block[] {
     buffer = [];
   };
 
-  for (const linha of linhas) {
+  for (let i = 0; i < linhas.length; i++) {
+    // No teto, o resto vira UM bloco e a varredura para: nada é descartado, nada é multiplicado.
+    if (blocks.length >= MAX_BLOCOS) {
+      buffer.push(...linhas.slice(i));
+      break;
+    }
+    const linha = linhas[i];
     if (CERCA.test(linha)) { dentroDeCerca = !dentroDeCerca; buffer.push(linha); continue; }
     if (!dentroDeCerca) {
       const m = ATX.exec(linha);

@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { resolveUserId } from "@/lib/agent/transcript";
-import { ingerirPdf, ingerirTexto } from "@/lib/rag/ingerir";
+import { MAX_BYTES, ingerirPdf, ingerirTexto } from "@/lib/rag/ingerir";
 import { blocosDeTexto, ehArquivoTexto, textoDeBytes, tituloDeTexto } from "@/lib/rag/textoArquivo";
 import { ehBancoIndisponivel, ragPg } from "@/lib/rag/pg";
 import { buscarPorId, contarEnviadosPessoais, listarDocumentos, removerPermissao } from "@/lib/rag/store";
@@ -55,6 +55,13 @@ export async function GET() {
  * ele que faz a citação ser rastreável até o pedaço certo.
  */
 function ingerirArquivoDeTexto(db: ReturnType<typeof ragPg>, bytes: Uint8Array, nomeArquivo: string, userId: string) {
+  // O TETO VEM ANTES DE DECODIFICAR. `ingerirPdf` checa `MAX_BYTES` como primeira coisa que faz; o
+  // caminho de texto passava a decodificação e o corte em blocos ANTES de chegar nessa checagem —
+  // um .txt de 24 MB com milhões de linhas curtas (um log exportado, não precisa de má-fé) alocaria
+  // bem mais que o próprio upload antes de alguém dizer "grande demais".
+  if (bytes.byteLength > MAX_BYTES) {
+    return Promise.resolve({ documentoId: "", status: "erro" as const, erro: "grande_demais" as const, trechos: 0, paginas: 0 });
+  }
   const conteudo = textoDeBytes(bytes);
   const titulo = tituloDeTexto(nomeArquivo, conteudo);
   return ingerirTexto(

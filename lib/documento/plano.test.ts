@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  FATOR_SUBSECAO, MARCA_SEM_FONTE, PISO_PALAVRAS, divergencia, nenhumVazio, palavras,
+  FATOR_SUBSECAO, MARCA_SEM_FONTE, PISO_PALAVRAS, caminhosDoEsqueleto, divergencia, nenhumVazio, palavras,
   papelDoTitulo, planoDoDocumento, resumoDaCompletude, slugSlot, type Preenchimento, type Slot,
 } from "./plano";
 import { ESQUELETO_ARTIGO, ESQUELETO_RELATORIO, ESQUELETO_TCC } from "@/lib/tcc/secoes";
@@ -81,6 +81,26 @@ describe("plano · o plano cobre o documento inteiro", () => {
   it("título vazio no esqueleto é ignorado, não gera slot fantasma", () => {
     expect(planoDoDocumento(["INTRODUÇÃO", "", "   "])).toHaveLength(1);
   });
+
+  it("títulos que colidem no slug ganham ids DISTINTOS — senão um preenchimento valeria por dois", () => {
+    // `secoesDeMarkdown` lê markdown do aluno: dois `# Resultados` no documento dele é caminho real.
+    const plano = planoDoDocumento(["RESULTADOS", "Resultados!", "resultados"]);
+    const ids = plano.map((s) => s.id);
+    expect(new Set(ids).size).toBe(3);
+    expect(ids).toEqual(["resultados", "resultados-2", "resultados-3"]);
+  });
+
+  it("e com id distinto a invariante NÃO é burlada por um preenchimento só", () => {
+    const plano = planoDoDocumento(["RESULTADOS", "RESULTADOS"]);
+    const c = nenhumVazio(plano, [{ slotId: "resultados", corpo: corpo(PISO_PALAVRAS.resultados) }]);
+    expect(c.ok).toBe(false);                       // o segundo continua faltando
+    expect(c.pendencias.map((p) => p.slotId)).toEqual(["resultados-2"]);
+  });
+
+  it("subseção que colide com a seção também recebe id próprio", () => {
+    const plano = planoDoDocumento([{ title: "METODOLOGIA", subs: ["Metodologia"] }]);
+    expect(new Set(plano.map((s) => s.id)).size).toBe(2);
+  });
 });
 
 describe("plano · a invariante nenhumVazio", () => {
@@ -160,18 +180,38 @@ describe("plano · a invariante nenhumVazio", () => {
 });
 
 describe("plano · divergência das duas fontes de esqueleto (medida, não corrigida)", () => {
+  it("compara CAMINHOS, incluindo subseções", () => {
+    expect(caminhosDoEsqueleto(WORK_SECTIONS.TCC)).toContain("REFERENCIAL TEÓRICO › Estado da Arte");
+    expect(caminhosDoEsqueleto(ESQUELETO_TCC)).not.toContain("REFERENCIAL TEÓRICO › Estado da Arte");
+  });
+
   it("Artigo: REFERENCIAL TEÓRICO só existe em lib/tcc/secoes", () => {
     const d = divergencia(ESQUELETO_ARTIGO, WORK_SECTIONS.Artigo);
     expect(d.soEmA).toContain("REFERENCIAL TEÓRICO");
   });
 
-  it("Relatório: OBJETIVOS só existe em WORK_SECTIONS — e é a ÚNICA divergência", () => {
+  it("Relatório: OBJETIVOS só existe em WORK_SECTIONS", () => {
     const d = divergencia(ESQUELETO_RELATORIO, WORK_SECTIONS["Relatório"]);
     expect(d.soEmB).toEqual(["OBJETIVOS"]);
     expect(d.soEmA).toEqual([]); // o resto bate: DESENVOLVIMENTO está nas duas
   });
 
-  it("TCC é a única que bate — por isso a F2 pode começar por ela com segurança", () => {
-    expect(divergencia(ESQUELETO_TCC, WORK_SECTIONS.TCC)).toEqual({ soEmA: [], soEmB: [] });
+  it("TCC NÃO bate: as 6 seções são as mesmas, mas as SUBSEÇÕES só existem num dos dois", () => {
+    // A comparação rasa dizia "os dois batem" e eu usei isso pra afirmar que a F2 poderia começar
+    // pelo TCC com segurança. Era falso na dimensão que mais importa: as subseções de
+    // WORK_SECTIONS.TCC são justamente as que saem vazias em 100% dos documentos hoje. Se a F2
+    // gerasse por este plano e salvasse no documento do `ESQUELETO_TCC`, escreveria pra slots que
+    // o documento salvo não tem.
+    const d = divergencia(ESQUELETO_TCC, WORK_SECTIONS.TCC);
+    expect(d.soEmA).toEqual([]);
+    expect(d.soEmB).toEqual([
+      "REFERENCIAL TEÓRICO › Conceitos Fundamentais",
+      "REFERENCIAL TEÓRICO › Estado da Arte",
+    ]);
+  });
+
+  it("esqueletos realmente iguais seguem dando divergência zero", () => {
+    expect(divergencia(ESQUELETO_TCC, ESQUELETO_TCC)).toEqual({ soEmA: [], soEmB: [] });
+    expect(divergencia(WORK_SECTIONS.TCC, WORK_SECTIONS.TCC)).toEqual({ soEmA: [], soEmB: [] });
   });
 });
