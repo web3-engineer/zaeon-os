@@ -41,6 +41,7 @@ export type StatusTurno = "rodando" | "aguardando_aprovacao" | "pronto" | "erro"
 export type CodigoErroTurno = "falha_modelo" | "budget" | "projeto_inexistente" | "tempo_esgotado";
 
 export type TurnoRow = {
+  reaIdentityVerified?: boolean;
   id: string; userId: string; email: string; projetoId: string; pedido: string; status: StatusTurno; runId: string | null;
   estado: { msgs: MsgModelo[]; aprovado?: boolean } | null; pendente: PendenteOcta | null; resposta: string | null;
   createdAt: Date; updatedAt: Date;
@@ -144,10 +145,11 @@ export async function reapTurnosPresos(db: TurnosDb, agora = new Date(), onde: R
 const estaPreso = (t: TurnoRow, agora: Date) => t.status === "rodando" && new Date(t.updatedAt).getTime() < agora.getTime() - PRESO_MS;
 
 export async function listarEventos(
-  db: TurnosDb, p: { userId: string; turnoId: string; depois: number }, agora = new Date(),
+  db: TurnosDb, p: { userId: string; turnoId: string; depois: number;reaIdentityVerified?:boolean }, agora = new Date(),
 ): Promise<{ status: StatusTurno; eventos: EventoRow[]; pendente: { tool: string; path?: string } | null; resposta: string | null } | null> {
   if (!ID_OBJECT.test(String(p.turnoId))) return null;
   const achado: TurnoRow | null = await db.octaTurno.findFirst({ where: { id: p.turnoId, userId: p.userId } });
+  if(achado?.reaIdentityVerified&&!p.reaIdentityVerified)return null;
   if (!achado) return null;
   let t: TurnoRow = achado;
   // o reaper só roda no boot do worker e ao abrir turno novo; quem está olhando o turno preso também o colhe,
@@ -164,7 +166,7 @@ export async function listarEventos(
 }
 
 // ───────────────────────────── iniciar / aprovar ─────────────────────────────
-export async function iniciarTurno(deps: DepsTurno, p: { userId: string; email: string; projetoId: string; pedido: string }): Promise<{ turnoId: string }> {
+export async function iniciarTurno(deps: DepsTurno, p: { userId: string; email: string; projetoId: string; pedido: string;reaIdentityVerified?:boolean }): Promise<{ turnoId: string }> {
   const agora = deps.agora?.() ?? new Date();
   const projeto = await lerProjeto(deps.db, p.userId, p.projetoId);
   if (!projeto) throw new ErroTurno("projeto_inexistente");
@@ -172,17 +174,18 @@ export async function iniciarTurno(deps: DepsTurno, p: { userId: string; email: 
   const ativo = await deps.db.octaTurno.findFirst({ where: { projetoId: projeto.id, status: { in: ATIVOS } } });
   if (ativo) throw new ErroTurno("turno_ativo", ativo.id);
   const t = await deps.db.octaTurno.create({
-    data: { userId: p.userId, email: p.email, projetoId: projeto.id, pedido: p.pedido, status: "rodando", runId: null, estado: null, pendente: null, resposta: null },
+    data: { userId: p.userId, email: p.email, projetoId: projeto.id, pedido: p.pedido, status: "rodando", runId: null, estado: null, pendente: null, resposta: null,...(p.reaIdentityVerified?{reaIdentityVerified:true}:{}) },
   });
   await disparar(deps, t.id);
   return { turnoId: t.id };
 }
 
 /** Retoma o turno parado em aprovação com a decisão do aluno. Só o dono, só se ainda estiver aguardando. */
-export async function aprovarTurno(deps: DepsTurno, p: { userId: string; turnoId: string; aprovado: boolean }): Promise<void> {
+export async function aprovarTurno(deps: DepsTurno, p: { userId: string; turnoId: string; aprovado: boolean;reaIdentityVerified?:boolean }): Promise<void> {
   if (!ID_OBJECT.test(String(p.turnoId))) throw new ErroTurno("turno_inexistente");
   const t: TurnoRow | null = await deps.db.octaTurno.findFirst({ where: { id: p.turnoId, userId: p.userId } });
   if (!t) throw new ErroTurno("turno_inexistente");
+  if(t.reaIdentityVerified&&!p.reaIdentityVerified)throw new ErroTurno("turno_inexistente");
   if (t.status !== "aguardando_aprovacao" || !t.pendente || !t.estado?.msgs?.length) throw new ErroTurno("nao_aguardando");
   // o laço retoma a 1ª chamada sem resposta da última mensagem do assistente: tem que ser a pendente guardada
   if (primeiraSemResposta(t.estado.msgs) !== t.pendente.toolCallId) throw new ErroTurno("nao_aguardando");
@@ -275,6 +278,14 @@ export async function processarTurno(deps: DepsTurno, turnoId: string): Promise<
       chamar,
       {
         sessionId: `octa-turno-${t.id}`, userId: t.userId, permissao: projeto.permissao, octaPublicar, capturar: deps.capturar,
+        octaReaRecall:t.reaIdentityVerified&&process.env.REA_SUCCESS_MEMORY==="1"?async query=>{
+          if(!await lerProjeto(db,t.userId,t.projetoId))return [];
+          const {proofRuntime}=await import("@/lib/octa/android/runtime");
+          const {PINNED_ENGINE}=await import("@/lib/octa/android/verifier");
+          const a={userId:t.userId,projectId:t.projetoId,runId:randomUUID(),leaseId:randomUUID(),identityVerified:true};
+          const recalled=await proofRuntime().memory.recall(a,PINNED_ENGINE,query);
+          return recalled.map(({lesson,applicability})=>({lessonId:lesson.id,procedure:lesson.procedure,proofRunIds:lesson.proofRunIds,limitations:lesson.limitations,applicability}));
+        }:undefined,
         retomar: t.estado?.msgs ? { msgs: t.estado.msgs, aprovado: t.estado.aprovado === true } : undefined,
         onEvento: async (e, ws) => {
           // grava ANTES de anunciar: quem relê o projeto ao ver o evento já encontra o arquivo
@@ -309,7 +320,7 @@ export async function processarTurno(deps: DepsTurno, turnoId: string): Promise<
 /** Conversa dos últimos turnos prontos do projeto (pedido → resposta): "agora publica" precisa do contexto. */
 async function historico(db: TurnosDb, t: TurnoRow): Promise<{ role: "user" | "assistant"; content: string }[]> {
   const prontos: TurnoRow[] = await db.octaTurno.findMany({ where: { projetoId: t.projetoId, userId: t.userId, status: "pronto" }, orderBy: { createdAt: "desc" }, take: HISTORICO_TURNOS });
-  return prontos.reverse().flatMap((x) => [
+  return prontos.filter(x=>!x.reaIdentityVerified||t.reaIdentityVerified).reverse().flatMap((x) => [
     { role: "user" as const, content: x.pedido.slice(0, 4000) },
     { role: "assistant" as const, content: String(x.resposta ?? "").slice(0, 4000) },
   ]);

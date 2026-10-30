@@ -1579,6 +1579,7 @@ model OctaPublicacao {
 // Um turno do agente Octa no fluxo landing, rodando em job (lib/queue/octa). O estado para retomar depois de uma
 // aprovação (msgs + a tool pendente) mora SÓ aqui — o cliente manda só { aprovado }.
 model OctaTurno {
+  reaIdentityVerified Boolean @default(false) // server sign-in assurance; never a client field
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   userId    String
   email     String   // do dono (sessão) — o job precisa pra achar o GitHub do aluno; nunca vai pro cliente

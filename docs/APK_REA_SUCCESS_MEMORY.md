@@ -1,0 +1,93 @@
+# APK + REA + memória de sucesso — piloto
+
+Esta implementação acrescenta um objetivo estático verificável ao Octa: identificar pacote, versão, única activity, classe/método `marker`, literal retornado e declaração de INTERNET. Não é um analisador universal de APKs. O REA legado continua disponível no seu fluxo anterior. ReverseAPK não foi instalado nem executado; APKs, ADB e emuladores não são executados pelo novo fluxo.
+
+## Autoridade e persistência
+
+O navegador agenda apenas `android-marker-v1` com um artifactId. O servidor resolve identidade e projeto, guarda o handle internamente, descobre a classe no APK, executa três comandos tipados e persiste a Evidence integral antes de normalizar. O verificador compara fatos e fontes ao oracle selado, fora do contexto do modelo. Só APK com hash exatamente registrado no diretório privado de fixtures pode obter recibo verificado; qualquer outro permanece observado/sem gabarito ou falha no objetivo.
+
+Dois proofRuns compatíveis, com recibos distintos e blobs íntegros, permitem promover um procedimento. A chave única inclui dono, projeto, APK, objetivo, engine e verificador. Replay não duplica a lição nem a outbox e não reativa uma lição retirada. A recuperação relê provas, checa ACL/estado e distingue engine atual de `needs_revalidation`. Um processo novo pode recuperar o caso sem histórico do cliente.
+
+Mongo mantém artefatos, tentativas, recibos, lições e outbox. Evidence fica em volume persistente privado, com publicação atômica, hash e tamanho. Web e worker precisam montar **o mesmo volume** em `REA_EVIDENCE_DIR`. Não usar disco efêmero de uma função serverless. A perda do blob invalida o sucesso recuperável; metadados não substituem evidência.
+
+Uploads de usuário no motor expiram em duas horas; é necessário novo upload para reexecutar. Evidências/recibos permanecem no volume e no projeto para auditoria do piloto; retirar uma lição impede uso futuro, sem apagar seu histórico. Limpeza/exclusão operacional do piloto deve remover os blobs e registros correspondentes. Não há promessa de reexecução após expiração do binário.
+
+L3 é uma projeção opcional, com retry pela outbox. Usa `MemoryAPI` sobre a coleção separada `rea_success_drawers`, com `_id` determinístico, para resistir a crash entre escrita e ack. Essas projeções não aparecem na memória genérica de sessões antigas. A recuperação canônica funciona sem embedding/Atlas e nunca depende da projeção para autorizar uma lição. Índices vetorial/textual dessa coleção são opcionais no piloto; sua ausência não elimina o caso canônico.
+
+## Habilitação controlada
+
+Flags continuam desligadas por padrão. O deployment não faz parte desta PR. Schema aditivo: gerar o Prisma e aplicar `prisma db push` ao Mongo de desenvolvimento/ambiente alvo antes de habilitar.
+
+```dotenv
+OCTA_REA=1
+REA_SUCCESS_MEMORY=1
+NEXT_PUBLIC_OCTA_REA=1
+NEXT_PUBLIC_REA_SUCCESS_MEMORY=1
+REA_BRIDGE_URL=http://ENGINE_PRIVADO:8799
+REA_BRIDGE_TOKEN=SECRET_IN_SERVER_VAULT
+REA_EVIDENCE_DIR=/persistent/rea-evidence
+REA_FIXTURE_REGISTRY=/private/rea-fixtures
+REDIS_URL=redis://PRIVATE_REDIS:6379
+REA_WORKER=1
+# Projeção opcional (falha não perde a lição canônica):
+MEMORY_L3=1
+```
+
+As flags `NEXT_PUBLIC_*` são de build. O worker BullMQ usa concorrência global 1, timeout de 10 min, lease/CAS, cancelamento propagado ao grupo de processos e reaper de tentativas abandonadas. Não há fallback silencioso para executar um job em um servidor sem fila. Limite APK: 64 MiB; ingress para bridge deve aceitar o envelope base64 (`4 * ceil(64 MiB / 3) + 65536`). O upload web novo usa binário limitado por streaming, sem confiar só em Content-Length.
+
+**Identidade:** as novas rotas exigem claim de login Google verificado, estabelecido no callback JWT do servidor; e-mail sem senha não o obtém. Sessões anteriores precisam novo login. OAuth passa a exigir PKCE/state. Turnos com capacidade de recuperar memória REA guardam essa garantia, e seu histórico/eventos/retomada não são entregues a uma sessão sem essa identidade. A autorização do projeto é reconfirmada no servidor. O campo `identityVerified` enviado por cliente/modelo não tem autoridade. O login legado por e-mail continua uma limitação de segurança do produto; não habilitar este piloto para contas reais sem revisar os demais caminhos legados de acesso a dados.
+
+O painel usa a paleta e a coluna do chat do Octa, separado em análise, verificação, memória e Overmind. Os badges vêm do servidor. A tool somente de leitura `octa_rea_success` recebe callback fechado ao dono/projeto do turno e devolve procedimento, recibos referenciados e limites; não aceita comandos, verdict ou oracle do modelo.
+
+## Reprodução local
+
+Requer Android SDK platform 35/build-tools 35.0.0 para construir as fixtures originais, um Mongo replica set de teste, volume local persistente e REA/JADX qualificado. O build sela A e B antes da análise e não passa o oracle para descoberta de classe.
+
+```sh
+ANDROID_HOME=/path/to/android-sdk node scripts/rea/build-fixtures.mjs --output .superpowers/rea-fixtures
+docker build --platform linux/amd64 -t zaeon-rea-proof:dev infra/rea-engine
+node --test infra/rea-engine/android-capabilities.test.mjs infra/rea-engine/android-request.test.mjs
+# No ambiente do motor: REA_JADX_MCP_JAR=/opt/rea-android/jadx.jar
+node scripts/rea/qualify.mjs
+```
+
+Definir em ambiente privado `OCTA_REA`, `REA_BRIDGE_URL/TOKEN`, `REA_TEST_DATABASE_URL` e `REA_EVIDENCE_DIR`. Os scripts de prova usam explicitamente o banco de teste, nunca escolhem o banco do produto por fallback.
+
+```sh
+node scripts/rea/prove.mjs --fixture A --fresh-runs 2
+node scripts/rea/recall.mjs --fixture A --promote
+node scripts/rea/recall.mjs --fixture A --new-session
+node scripts/rea/evaluate.mjs --fixture B --compare-memory
+node scripts/rea/evaluate.mjs --backend overmind --fixture A
+```
+
+Resultados privados ficam em `.superpowers/rea-results`, fora do Git. O relatório versionado em `docs/rea-proof/qualification.json` contém apenas hashes/IDs/recibos sintéticos e resultados sanitizados; não contém tokens, handles, locators ou caminhos do host. Builds de APK com timestamp ZIP diferente podem mudar o digest: cada reprodução deve selar e verificar seu próprio artefato; o hash do APK não é prometido como reproduzível byte a byte entre ambientes.
+
+## Overmind: importação não equivale a avaliação
+
+Adapter para SDK/CLI MIT pinado no commit `16db2447dcf1fa96e29251cfe6c6cd63c4a72132` (0.1.112), em processo Python isolado. Nenhum código do servidor AGPL é vendorizado. Contratos examinados: `overmind/dataset_cmd.py`, `overbae/api/dataset_serializers.py`, `eval_views.py` e `eval_serializers.py` nesse commit.
+
+O export só aceita provas sintéticas de A que ainda sustentem lição ativa. B fica fora do dataset de A. Linhas são allowlisted, com resposta observada, referência exclusiva do avaliador e vínculos de prova; sem usuário, sessão, raw Evidence ou segredos. O adapter usa `intent=eval`, request-key estável, roundtrip **exato** dos hashes normalizados, cell/versão congeladas e avaliação `recorded` com conjunto determinístico explícito. Não cria treino ou targets de geração. Mudança de schema ou linhas alteradas/faltantes falha fechada.
+
+```sh
+python3 -m venv .superpowers/overmind-venv
+.superpowers/overmind-venv/bin/pip install -r scripts/rea/overmind-requirements.txt
+.superpowers/overmind-venv/bin/overmind dataset upload --help
+.superpowers/overmind-venv/bin/overmind dataset export --help
+```
+
+Execução remota exige `REA_OVERMIND_EVAL=1`, `OVERMIND_API_URL/KEY/PROJECT_ID`, `REA_OVERMIND_EVAL_SET`, `REA_OVERMIND_PYTHON` e `REA_OVERMIND_MAX_ITEMS` (1–10, suficiente para as linhas congeladas). Configurar o conjunto no Overmind com métrica determinística que compare os fatos observados à referência; revisar a semântica antes de dar o ID ao adapter. Credencial passa só pelo ambiente privado do filho, nunca por argumento de CLI.
+
+O journal local impede relançamento automático de uma avaliação de resultado ambíguo: reconciliar no Overmind antes de repetir. Importação usa o request-key recuperável do SDK. Sem configuração, `evaluate` retorna `pending / overmind_not_configured` e exit 2. Falta ainda executar importação, roundtrip e avaliação **reais** com IDs de dataset/cell/evaluation; mocks não concluem M4. O script não instala ou sobe toda a plataforma como fallback.
+
+## Estado dos marcos e limites
+
+- **M1:** engine nativo e imagem Docker JDK21 qualificados; hash do JADX conferido.
+- **M2:** análises reais independentes e recibos determinísticos de A; detalhe no relatório.
+- **M3:** promoção, leitura em processo novo, drift de engine, outbox, aposentadoria e evidência adulterada exercitados. O embedding externo não foi qualificado neste ambiente.
+- **M4:** adapter implementado e testes de contrato mock; avaliação Overmind remota pendente por ausência de configuração.
+- **M5:** B foi reobservado, INTERNET presente, resposta de A copiada rejeitada, APK inválido recusado. Os dois controles usam o mesmo workflow determinístico de três ferramentas; houve recuperação de procedimento, mas **nenhuma melhora de agente LLM, custo de modelo ou ganho estatístico foi medida**. Esse experimento permanece pendente.
+
+O smoke HTTP/worker usa identidade **simulada e assinada apenas no ambiente local de teste**. Exercita sessão do servidor, ACL, fila, REA real, recibos e memória; não demonstra login OAuth real. Nenhum deploy, conta de aluno, treino ou upload remoto foi executado.
+
+Rollback: desligar as flags, parar novos jobs/exports, cancelar leases pendentes e preservar recibos. Retirar lições impede recall futuro; excluir dados segue a retenção do piloto. Não apagar evidências para transformar falhas em sucessos históricos.

@@ -1,0 +1,13 @@
+{
+  "fixture": "a",
+  "artifactSha256": "a0124afe243b52723d869fe177e6754759c3e1bdf5ddc5120b1017fbf2515bcb",
+  "sourceHash": "73ba5a1f32b3a1b398fe31af0284e66422bab187737645487a2724b071ba15d9",
+  "oracleHash": "4101419cd61adc4b05eb3cbed55fb4debc60a92ceeaa95ed38b4446695218834",
+  "toolchain": {
+    "buildTools": "35.0.0",
+    "platform": "android-35",
+    "java": "openjdk version \"24.0.1\" 2025-04-15\nOpenJDK Runtime Environment (build 24.0.1+9-30)\nOpenJDK 64-Bit Server VM (build 24.0.1+9-30, mixed mode, sharing)",
+    "androidJarSha256": "4566663c3876e022b4fa4ced8c8697c4ab1688267f090114fd92d027b32e619b",
+    "aapt2Sha256": "729a6a8deba828992c50cb448d4ef3947003ec5a0d1deead7534897c8fc3486f"
+  }
+}

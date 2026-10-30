@@ -6,6 +6,7 @@ import { clientPromise } from "@/src/lib/db";
 import { MongoClient, ObjectId } from "mongodb";
 import { isSuperAdminEmail } from "@/lib/auth/roles";
 import { atualizarFotoDoGoogle, fotoDoPerfil } from "@/lib/user/fotoNoLogin";
+import { loginAssurance } from "@/lib/octa/android/access";
 
 // A LISTA VIP
 const ADMIN_EMAILS = [
@@ -51,7 +52,7 @@ export const authOptions: NextAuthOptions = {
         GoogleProvider({
             clientId: process.env.GOOGLE_CLIENT_ID!,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-            checks: ['none'],
+            checks: ['pkce', 'state'],
         }),
         
         // ── ENTRADA POR E-MAIL (sem senha, sem OAuth) ─────────────────────────
@@ -129,8 +130,9 @@ export const authOptions: NextAuthOptions = {
         async signIn({ user }) {
             return Boolean((user?.email || "").trim());
         },
-        async jwt({ token, user }) {
+        async jwt({ token, user, account, profile }) {
             if (user) {
+                token.reaIdentity = loginAssurance(account, profile);
                 token.id = user.id;
                 token.email = user.email;
                 // @ts-ignore
@@ -153,6 +155,10 @@ export const authOptions: NextAuthOptions = {
                 const dbUser = await db.collection("users").findOne({ email: token.email });
                 
                 if (dbUser) {
+                    // Legacy/email-only sessions do not gain APK proof access. Only
+                    // a fresh verified provider login can establish this JWT claim.
+                    (session.user as any).id = dbUser._id.toString();
+                    (session.user as any).reaIdentity = token.id === dbUser._id.toString() && token.reaIdentity === "google_verified" ? "google_verified" : "unverified";
                     session.user.name = dbUser.name || session.user.name;
                     // 🔥 Aqui nós pegamos a foto gigante DIRETO DO BANCO para mostrar na tela, 
                     // sem precisar trafegar ela no Cookie!

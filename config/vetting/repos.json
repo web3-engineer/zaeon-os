@@ -66,7 +66,7 @@
     },
     {
       "repo": "1013503897/jadx-headless-mcp",
-      "licenca": "Apache-2.0 (JADX core); review wrapper before updates",
+      "licenca": "Apache-2.0",
       "veredito": "binario-pinado",
       "versao": "0.7.1",
       "sha256": "6e5eacf500b64292bfb73c49797c1958f6ee44646e43e868039ae7feb573ff75",

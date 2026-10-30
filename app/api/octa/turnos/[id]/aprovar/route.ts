@@ -21,7 +21,7 @@ export async function POST(req: Request, { params }: Ctx) {
   if (typeof body?.aprovado !== "boolean") return NextResponse.json({ error: "aprovado deve ser true ou false" }, { status: 400 });
 
   try {
-    await aprovarTurno(await depsReais(), { userId, turnoId: params.id, aprovado: body.aprovado });
+    await aprovarTurno(await depsReais(), { userId, turnoId: params.id, aprovado: body.aprovado,...((session!.user as any).reaIdentity==="google_verified"?{reaIdentityVerified:true}:{}) });
     return NextResponse.json({ ok: true }, { status: 202 });
   } catch (e) {
     if (e instanceof ErroTurno && e.codigo === "turno_inexistente") return NextResponse.json({ error: "Turno não encontrado" }, { status: 404 });

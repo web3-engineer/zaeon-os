@@ -29,7 +29,7 @@ export async function POST(req: Request) {
   if (!rl.ok) return rl.response;
 
   try {
-    const { turnoId } = await iniciarTurno(await depsReais(), { userId, email, projetoId, pedido });
+    const { turnoId } = await iniciarTurno(await depsReais(), { userId, email, projetoId, pedido,...((session!.user as any).reaIdentity==="google_verified"&&process.env.REA_SUCCESS_MEMORY==="1"?{reaIdentityVerified:true}:{}) });
     return NextResponse.json({ turnoId }, { status: 202 });
   } catch (e) {
     if (e instanceof ErroTurno && e.codigo === "projeto_inexistente") return NextResponse.json({ error: "Projeto não encontrado" }, { status: 404 });

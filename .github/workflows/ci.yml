@@ -110,11 +110,23 @@ jobs:
       # A captura do Octa (lib/octa/captura.test.ts) usa o Google Chrome que já vem no runner ubuntu-latest:
       # sem isto os testes de segurança dela (JS off, allowlist, sem navegação) seriam pulados. --no-sandbox
       # pelo mesmo motivo do container (AppArmor do runner barra user namespaces).
+      - name: REA proof persistence (isolated Mongo replica set)
+        run: |
+          docker run -d --name rea-proof-mongo -p 127.0.0.1:27017:27017 mongo:7 --replSet rs0 --bind_ip_all
+          for attempt in $(seq 1 30); do
+            if docker exec rea-proof-mongo mongosh --quiet --eval 'db.adminCommand({ping:1})' > /dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          docker exec rea-proof-mongo mongosh --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"localhost:27017"}]})'
+          DATABASE_URL='mongodb://127.0.0.1:27017/rea_test?directConnection=true' npx prisma db push --skip-generate
+          node --test infra/rea-engine/android-capabilities.test.mjs infra/rea-engine/android-request.test.mjs
+
       - name: Tests (vitest)
         run: npm test
         env:
           OCTA_CHROMIUM_PATH: /usr/bin/google-chrome
           OCTA_CHROMIUM_SEM_SANDBOX: "1"
+          REA_TEST_DATABASE_URL: "mongodb://127.0.0.1:27017/rea_test?directConnection=true"
 
       - name: Realtime Colyseus — typecheck + testes (sala, token, regras)
         working-directory: server/colyseus
