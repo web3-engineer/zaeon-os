@@ -150,4 +150,4 @@ async function limparCacheVelho() {
 }
 setInterval(limparCacheVelho, 30 * 60_000).unref();
 await carregarCatalogo();
-server.listen(PORT, "0.0.0.0", () => console.log(`[rea-bridge] ouvindo :${PORT} (token ${TOKEN ? "ON" : "AUSENTE!"}, ghidra ${process.env.GHIDRA_INSTALL_DIR ? "ON" : "off"}, ${CATALOGO.size} comandos no catálogo)`));
+server.listen(PORT, process.env.REA_BRIDGE_HOST || "0.0.0.0", () => console.log(`[rea-bridge] ouvindo :${PORT} (token ${TOKEN ? "ON" : "AUSENTE!"}, ghidra ${process.env.GHIDRA_INSTALL_DIR ? "ON" : "off"}, ${CATALOGO.size} comandos no catálogo)`));

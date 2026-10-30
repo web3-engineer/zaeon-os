@@ -27,6 +27,7 @@ export class ProofStore{
   return this.db.reaProofRun.updateMany({where:{id,...this.where(a),state:"running"},data:{state:"cancelled",leaseId:randomUUID()}});
  }
  async recordVerification(a:Access,observation:Observation,receipt:Receipt){
+  if(receipt.proofRunId!==observation.proofRunId||receipt.inputHash!==sha256(canonical(observation))||canonical(receipt.evidenceHashes)!==canonical(observation.evidence.map(r=>r.sha256))||receipt.pass!==receipt.checks.every(c=>c.pass))throw Error("invalid_receipt");
   const run=await this.getRun(a,observation.proofRunId);
   if(!run||run.leaseId!==a.leaseId||run.state!=="evidence_ready"||run.artifactSha256!==observation.artifactSha256)throw Error("stale_lease");
   return this.db.$transaction(async tx=>{
@@ -34,6 +35,13 @@ export class ProofStore{
    if(cas.count!==1)throw Error("stale_lease");
    return tx.reaVerificationReceipt.create({data:{id:receipt.id,...this.where(a),proofRunId:run.id,verifierVersion:receipt.verifierVersion,oracleHash:receipt.oracleHash,pass:receipt.pass,payload:json(receipt)}});
   });
+ }
+ async observe(a:Access,observation:Observation){
+  const r=await this.db.reaProofRun.updateMany({where:{id:observation.proofRunId,...this.where(a),leaseId:a.leaseId,state:"evidence_ready"},data:{state:"observed",observation:json(observation)}});
+  if(r.count!==1)throw Error("stale_lease");
+ }
+ async fail(a:Access,id:string){
+  return this.db.reaProofRun.updateMany({where:{id,...this.where(a),leaseId:a.leaseId,state:{in:["running","evidence_ready"]}},data:{state:"failed"}});
  }
  async promote(a:Access,ids:string[]):Promise<Lesson>{
   const unique=[...new Set(ids)];if(unique.length<2)throw Error("two_independent_runs_required");
