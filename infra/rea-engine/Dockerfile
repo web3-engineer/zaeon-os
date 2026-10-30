@@ -39,6 +39,7 @@ RUN npm i -g rea-agents@${REA_VERSION} && rea --version
 # a ponte fina (HTTP → CLI do REA), roda como usuário sem privilégio
 RUN useradd -m -u 10001 rea && mkdir -p /work && chown rea:rea /work
 COPY bridge.mjs /app/bridge.mjs
+COPY android-request.mjs /app/android-request.mjs
 USER rea
 WORKDIR /work
 ENV REA_BRIDGE_PORT=8799

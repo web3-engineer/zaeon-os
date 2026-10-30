@@ -11,5 +11,5 @@ export type Lesson={id:string;ownerId:string;projectId:string;proofRunIds:string
 export type RecalledLesson={lesson:Lesson;applicability:"valid"|"needs_revalidation"};
 export type DatasetBundle={id:string;version:string;manifestSha256:string;jsonlRef:string;rowHashes:string[];proofRunIds:string[];purpose:"eval";synthetic:true};
 export type ExperimentOutcome={backend:"overmind";projectId:string;datasetId:string;datasetVersion:string;evaluationId:string;manifestSha256:string;returnedRowHashes:string[];status:"completed";resultRef:string}|{backend:"overmind";status:"failed"|"pending";stage:"import"|"evaluation";code:string;datasetId?:string};
-export type AndroidRequest={goal:"overview"|"class"|"method"|"references";className?:string;methodName?:string};
+export type AndroidRequest={goal:"overview"|"search"|"class"|"method"|"references";className?:string;methodName?:string;query?:string};
 
