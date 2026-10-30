@@ -75,7 +75,8 @@ export async function comporMensagem(acao: Acao, c: Contexto, gerar?: Gerar): Pr
     const { valor } = await gerarJsonRes<{ mensagem?: string }>({
       system: req.system, user: req.user, json: true, temperature: 0.7, pensar: "low", timeoutMs: 25_000,
       ctx: { agentKey: "zaeon", surface: "estudos" as const, phase: "whatsapp" },
-    }, terceiro ? { pularVertex: true } : {});
+      // `hfPrimario` só muda o log: sem ele, um disparo servido pelo HF imprimia "Vertex falhou".
+    }, terceiro ? { pularVertex: true, hfPrimario: true } : {});
     return valor;
   });
   try {

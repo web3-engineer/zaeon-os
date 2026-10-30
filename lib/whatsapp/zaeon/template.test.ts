@@ -46,13 +46,34 @@ describe("HF primário nos disparos (DISPAROS_HF, decisão do dono 2026-10-30)",
     conversaWhatsApp: [{ de: "aluno", texto: "oi Ana aqui, travei na meiose" }, { de: "zaeon", texto: "Bom dia, Ana!" }],
   };
   const original = { ...process.env };
+  // `process.env` é especial no Node: `Object.assign(process.env, { X: undefined })` grava a STRING
+  // "undefined" — que `disparosHfPrimario` leria como LIGADO. Então chave sem valor é DELETADA.
+  // (E o restore não reatribui `process.env`: trocá-lo por um objeto comum tirava essa coerção e
+  // fazia os testes seguintes passarem pelo motivo errado, dependendo da ordem de execução.)
+  const porEnv = (env: Record<string, string | undefined>) => {
+    for (const [k, v] of Object.entries(env)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  };
   const comEnv = async (env: Record<string, string | undefined>, c: Contexto = comHistorico) => {
-    Object.assign(process.env, env);
+    porEnv(env);
     const gerar = vi.fn(async (_req: { system: string; user: string }) => ({ mensagem: `Bom dia, ${MARCA_NOME}! Topa revisar meiose?` }));
     const r = await comporMensagem({ tipo: "momento", momento: "manha", chave: "k" }, c, gerar);
     return { r, req: gerar.mock.calls[0][0] };
   };
-  afterEach(() => { process.env = { ...original }; });
+  afterEach(() => {
+    for (const k of Object.keys(process.env)) if (!(k in original)) delete process.env[k];
+    Object.assign(process.env, original);
+  });
+
+  it("a própria plumbing do teste é honesta: chave sem valor SAI do env, não vira \"undefined\"", () => {
+    porEnv({ HF_TOKEN: "hf_x" });
+    expect(process.env.HF_TOKEN).toBe("hf_x");
+    porEnv({ HF_TOKEN: undefined });
+    expect("HF_TOKEN" in process.env).toBe(false);
+    expect(disparosHfPrimario()).toBe(false);
+  });
 
   it("LIGADO: o nome do aluno NÃO sai no prompt — nem na linha Nome:, nem no histórico", async () => {
     const { req } = await comEnv({ HF_TOKEN: "hf_x", DISPAROS_HF: "1" });

@@ -102,7 +102,15 @@ export type TransporteVertex = (req: GerarReq, modelo: string) => Promise<Respos
 export type TransporteVertexStream = (req: GerarReq, modelo: string, onTexto: (acumulado: string) => void) => Promise<RespostaBruta>;
 export type Deps = { vertex?: TransporteVertex; vertexStream?: TransporteVertexStream; fetchImpl?: typeof fetch; env?: Record<string, string | undefined>; registrar?: typeof registrarTokens; agora?: () => number;
   /** o Vertex ACABOU de falhar neste mesmo pedido (o stream): tenta a reserva antes de chamá-lo de novo */
-  pularVertex?: boolean };
+  pularVertex?: boolean;
+  /**
+   * O HF é o caminho ESCOLHIDO deste pedido, não um resgate — o Vertex não foi tentado e não falhou
+   * (disparos com `DISPAROS_HF=1`, lib/llm/reservaHf). Só muda o LOG: sem isto, um disparo que o HF
+   * serviu com sucesso imprimia "Vertex falhou", e quem fosse depurar iria caçar uma falha do Vertex
+   * que nunca houve. `pularVertex` sozinho não distingue os dois casos: o stream também o liga, e lá
+   * o Vertex realmente falhou.
+   */
+  hfPrimario?: boolean };
 
 // ───────────────────────────── disjuntor do Vertex ─────────────────────────────
 // Medido em prod (out/2026, 7 dias): 9% dos rascunhos falharam, cada falha custando o prazo inteiro (30 s) ANTES de a
@@ -336,7 +344,9 @@ export async function gerar(req: GerarReq, deps: Deps = {}): Promise<GerarRes> {
         const nome = modeloSemProvedor(r.modelo || m), jv = jsonValido(r.texto);
         if (!r.texto.trim()) { gravar("huggingface", rota, r.usage, false, "outro", nome, "huggingface"); continue; }
         gravar("huggingface", rota, r.usage, true, null, nome, "huggingface", jv);
-        console.warn(`[llm] Vertex falhou — reserva Hugging Face serviu (${m}, ${req.ctx.agentKey})`);
+        console.warn(deps.hfPrimario
+          ? `[llm] Hugging Face primário serviu (${m}, ${req.ctx.agentKey})`
+          : `[llm] Vertex falhou — reserva Hugging Face serviu (${m}, ${req.ctx.agentKey})`);
         const { modelId: _id, ...resto } = r;
         return { ...resto, modelo: nome, provedor: "huggingface", rota, ms: agora() - ini, alvo: "huggingface", ...(jv === undefined ? {} : { jsonValido: jv }) };
       } catch (e2) {

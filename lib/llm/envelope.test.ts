@@ -287,6 +287,26 @@ describe("gerar — reserva Hugging Face (Vertex falhou)", () => {
     const vazio: Deps["vertex"] = async (_r, modelo) => ({ texto: "", usage: USAGE_VAZIO, finishReason: "SAFETY", modelo });
     expect((await gerar({ user: "oi", ctx }, deps({ vertex: vazio, fetchImpl: vi.fn(async () => okHf("ok")) as any, env: HF }))).alvo).toBe("huggingface");
   });
+  it("hfPrimario: o HF serve SEM o Vertex ser tentado, e o log não acusa falha que não houve", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const vertex = vi.fn(async (_r: any, modelo: string) => ({ texto: '{"via":"vertex"}', usage: USAGE_VAZIO, finishReason: "STOP", modelo }));
+    const d = deps({ vertex: vertex as any, fetchImpl: vi.fn(async () => okHf('{"via":"hf"}')) as any, env: HF });
+    const r = await gerar({ user: "oi", json: true, ctx }, { ...d, pularVertex: true, hfPrimario: true });
+    expect(r).toMatchObject({ provedor: "huggingface", alvo: "huggingface", texto: '{"via":"hf"}' });
+    expect(vertex).not.toHaveBeenCalled();                       // o Vertex nem foi chamado
+    const linha = warn.mock.calls.map((c) => String(c[0])).join("\n");
+    expect(linha).toContain("Hugging Face primário serviu");
+    expect(linha).not.toContain("Vertex falhou");                 // era o log falso
+    await tick();
+    expect(d.linhas.map((l) => [l.alvo, l.ok])).toEqual([["huggingface", true]]); // sem linha de vertex
+    warn.mockRestore();
+  });
+  it("sem hfPrimario o log segue dizendo que o Vertex falhou (porque falhou mesmo)", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await gerar({ user: "oi", ctx }, deps({ vertex: vertex429, fetchImpl: vi.fn(async () => okHf("ok")) as any, env: HF }));
+    expect(warn.mock.calls.map((c) => String(c[0])).join("\n")).toContain("Vertex falhou");
+    warn.mockRestore();
+  });
   it("sem HF_TOKEN ou HF_RESERVA=0 → erro do Vertex como antes, zero fetch", async () => {
     const f = vi.fn();
     await expect(gerar({ user: "oi", ctx }, deps({ vertex: vertex429, fetchImpl: f as any, env: {} }))).rejects.toBeInstanceOf(ErroLlm);
