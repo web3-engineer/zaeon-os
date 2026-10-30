@@ -6,6 +6,8 @@
 import type { Acao } from "./rotina";
 import { contextoEmTexto, type Contexto } from "./contexto";
 import { toWhatsAppText } from "../format";
+import { disparosHfPrimario, historicoParaTerceiro } from "@/lib/llm/reservaHf";
+import { MARCA_NOME, ocultarNome, reporNome } from "./semNome";
 
 /** As instruções do harness da Zaeon no WhatsApp (o "jeito" dela). */
 export const INSTRUCOES_ZAEON = [
@@ -50,24 +52,44 @@ export function mensagemPadrao(acao: Acao, c: Pick<Contexto, "nome" | "estudosRe
 
 type Gerar = (req: { system: string; user: string }) => Promise<{ mensagem?: string }>;
 
-/** compõe a mensagem da Zaeon pra esta ação. `gerar` injetável (teste); o padrão é o envelope do Vertex. */
+/**
+ * O retrato que VAI PRO MODELO. Quando o disparo sai por provedor de terceiro (HF primário), duas
+ * coisas mudam, e nenhuma delas é o conteúdo útil:
+ *   • o nome do aluno vira `{{NOME}}` (reposto na volta) — privacidade de graça, zero perda;
+ *   • o histórico de conversa pode ser cortado por `DISPAROS_HF_SEM_HISTORICO` (default: mantém).
+ * No Vertex (o caminho de sempre) nada disso acontece: o retrato vai inteiro, como sempre foi.
+ */
+export function retratoParaModelo(c: Contexto, opts: { terceiro: boolean; historico: boolean }): string {
+  const base = opts.terceiro && !opts.historico ? { ...c, conversaWhatsApp: [] } : c;
+  const texto = contextoEmTexto(base);
+  return opts.terceiro ? ocultarNome(texto, c.nome) : texto;
+}
+
+/** compõe a mensagem da Zaeon pra esta ação. `gerar` injetável (teste); o padrão é o envelope. */
 export async function comporMensagem(acao: Acao, c: Contexto, gerar?: Gerar): Promise<{ texto: string; doModelo: boolean }> {
+  // `pularVertex` inverte a ordem do envelope: HF primeiro, Vertex como queda. Com DISPAROS_HF off,
+  // tudo segue idêntico ao de antes — inclusive a reserva HF quando o Vertex falha.
+  const terceiro = disparosHfPrimario();
   const g = gerar ?? (async (req) => {
     const { gerarJsonRes } = await import("@/lib/llm/envelope");
     const { valor } = await gerarJsonRes<{ mensagem?: string }>({
       system: req.system, user: req.user, json: true, temperature: 0.7, pensar: "low", timeoutMs: 25_000,
       ctx: { agentKey: "zaeon", surface: "estudos" as const, phase: "whatsapp" },
-    });
+    }, terceiro ? { pularVertex: true } : {});
     return valor;
   });
   try {
     const out = await g({
-      system: `${INSTRUCOES_ZAEON}\nResponda SOMENTE JSON {"mensagem":"..."}.`,
-      user: `OBJETIVO DESTA MENSAGEM:\n${objetivoDa(acao)}\n\nRETRATO DA PESSOA:\n${contextoEmTexto(c)}`,
+      system: `${INSTRUCOES_ZAEON}\nResponda SOMENTE JSON {"mensagem":"..."}.`
+        // A marca só é explicada ao modelo quando ela existe no prompt — senão é instrução morta
+        // convidando o modelo a escrever "{{NOME}}" num texto que nunca teve nome pra esconder.
+        + (terceiro && c.nome ? `\nTrate a pessoa por ${MARCA_NOME} — escreva ${MARCA_NOME} exatamente assim onde o nome dela entraria.` : ""),
+      user: `OBJETIVO DESTA MENSAGEM:\n${objetivoDa(acao)}\n\nRETRATO DA PESSOA:\n${retratoParaModelo(c, { terceiro, historico: historicoParaTerceiro() })}`,
     });
     const t = String(out?.mensagem ?? "").trim();
     // o modelo escreve markdown (**negrito**, ###): o WhatsApp só entende *negrito* — visto no dry-run em prod (24/10)
-    if (t.length >= 20) return { texto: toWhatsAppText(t, 1200), doModelo: true };
+    // `reporNome` SEMPRE roda: se o modelo inventar a marca sem a gente ter pedido, ela não vai pro aluno.
+    if (t.length >= 20) return { texto: toWhatsAppText(reporNome(t, c.nome), 1200), doModelo: true };
   } catch { /* cai no padrão */ }
   return { texto: mensagemPadrao(acao, c), doModelo: false };
 }
