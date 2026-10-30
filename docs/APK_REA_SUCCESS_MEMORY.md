@@ -88,6 +88,8 @@ O journal local impede relançamento automático de uma avaliação de resultado
 - **M4:** adapter implementado e testes de contrato mock; avaliação Overmind remota pendente por ausência de configuração.
 - **M5:** B foi reobservado, INTERNET presente, resposta de A copiada rejeitada, APK inválido recusado. Os dois controles usam o mesmo workflow determinístico de três ferramentas; houve recuperação de procedimento, mas **nenhuma melhora de agente LLM, custo de modelo ou ganho estatístico foi medida**. Esse experimento permanece pendente.
 
+A continuação implementa o [comparador com agente real](rea-proof/agent-comparison.md), acionado por `--compare-agent`. Ele usa sessões e virtual keys separadas, protocolo congelado, ferramentas do runner em modo leitura e verificação de fatos/fontes fora do modelo. A tentativa atual retorna `pending / model_gateway_not_configured`, com zero chamadas: gateway, modelo e orçamento precisam ser carregados pelo executor. Os testes com driver simulado não concluem M5.
+
 O smoke HTTP/worker usa identidade **simulada e assinada apenas no ambiente local de teste**. Exercita sessão do servidor, ACL, fila, REA real, recibos e memória; não demonstra login OAuth real. Nenhum deploy, conta de aluno, treino ou upload remoto foi executado.
 
 O smoke completou duas provas com `android-marker-v1.0.1`, promoveu a lição `23d208f0-5098-4a89-b02d-afd1635242d6` e a recuperou pela API. Uma tentativa intermediária falhou e continua no relatório; não foi convertida em sucesso. O polling inicial expirou e foi retomado pelos registros duráveis do servidor. O painel foi inspecionado com Playwright em largura de celular; a rota de prévia e a identidade simulada não fazem parte do produto.

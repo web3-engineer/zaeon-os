@@ -1,7 +1,9 @@
 import { spawnSync } from "node:child_process";
-const runner = process.argv.includes("--compare-memory")
-  ? "./transfer-runner.ts"
-  : "./evaluate-runner.ts";
+const runner = process.argv.includes("--compare-agent")
+  ? "./agent-evaluate-runner.ts"
+  : process.argv.includes("--compare-memory")
+    ? "./transfer-runner.ts"
+    : "./evaluate-runner.ts";
 const result = spawnSync(
   process.execPath,
   [

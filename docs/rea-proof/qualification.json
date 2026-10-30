@@ -1078,6 +1078,15 @@
       }
     ]
   },
+  "agentComparison": {
+    "kind": "agent_comparison_attempt",
+    "status": "pending",
+    "code": "model_gateway_not_configured",
+    "experimentId": "717c0e9c-a017-485c-ab3b-d22770f307bf",
+    "protocolSha256": null,
+    "executedModelCalls": 0,
+    "comparison": null
+  },
   "limits": [
     "Static analysis only. No APK execution or signature/security certification.",
     "Overmind remote evaluation and LLM-quality improvement remain unqualified until an actual configured experiment completes.",

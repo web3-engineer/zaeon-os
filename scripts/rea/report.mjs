@@ -58,7 +58,8 @@ const recalled = await read(join(root, "a-recall.json"));
 const transfer = await read(join(root, "transfer-b.json"));
 const remote = await read(join(root, "overmind.json"));
 const web = await read(".superpowers/web-smoke/report.json");
-const webRuns=await read(".superpowers/web-smoke/verified-runs.json");
+const webRuns = await read(".superpowers/web-smoke/verified-runs.json");
+const agent = await read(join(root, "agent-comparison.json"));
 const report = {
   schema: "zaeon.rea.qualification.v1",
   qualification,
@@ -94,7 +95,26 @@ const report = {
         outcome: remote.outcome,
       }
     : null,
-  webSmoke: web?{...web,results:webRuns?.map(clean)??[]}:null,
+  webSmoke: web ? { ...web, results: webRuns?.map(clean) ?? [] } : null,
+  agentComparison: agent
+    ? {
+        kind: agent.kind,
+        status: agent.status,
+        code: agent.code ?? null,
+        experimentId: agent.experimentId,
+        protocolSha256: agent.protocolSha256 ?? null,
+        executedModelCalls: agent.executedModelCalls ?? null,
+        comparison: agent.comparison
+          ? {
+              valid: agent.comparison.valid,
+              passDelta: agent.comparison.passDelta,
+              toolCallDelta: agent.comparison.toolCallDelta,
+              tokenDelta: agent.comparison.tokenDelta,
+              costDeltaUsd: agent.comparison.costDeltaUsd,
+            }
+          : null,
+      }
+    : null,
   limits: [
     "Static analysis only. No APK execution or signature/security certification.",
     "Overmind remote evaluation and LLM-quality improvement remain unqualified until an actual configured experiment completes.",

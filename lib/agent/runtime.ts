@@ -85,11 +85,14 @@ export function err(error: string, code?: string): ToolResult {
 }
 
 const TIMEOUT_MS: Record<ToolRuntime, number> = { ts: 20_000, python: 60_000, mcp: 30_000 };
-function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
-  return Promise.race([
-    p,
-    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`tool timeout (${ms}ms)`)), ms)),
-  ]);
+async function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      p,
+      new Promise<never>((_, reject) => { timer=setTimeout(() => reject(new Error(`tool timeout (${ms}ms)`)), ms); }),
+    ]);
+  } finally { clearTimeout(timer); }
 }
 
 // ───────────────────────────── permissão (deny-by-default, §11.2) ─────────────────────────────
