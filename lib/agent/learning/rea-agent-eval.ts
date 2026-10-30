@@ -279,6 +279,8 @@ export type AgentTrial = {
   inputTokens: number;
   outputTokens: number;
   costUsd: number | null;
+  knownCostUsd: number;
+  unknownCostModelCalls: number;
   durationMs: number;
   providerModels: string[];
   deploymentIds: string[];
@@ -339,6 +341,8 @@ export async function runAgentTrial(o: TrialOptions): Promise<AgentTrial> {
     inputTokens = 0,
     outputTokens = 0,
     cost: number | null = 0,
+    knownCostUsd = 0,
+    pricedModelCalls = 0,
     status: AgentTrial["status"] = "completed",
     errorCode: string | undefined,
     finalText = "",
@@ -407,6 +411,10 @@ export async function runAgentTrial(o: TrialOptions): Promise<AgentTrial> {
       outputTokens += reply.outputTokens;
       cost =
         cost === null || reply.costUsd === null ? null : cost + reply.costUsd;
+      if (reply.costUsd !== null) {
+        knownCostUsd += reply.costUsd;
+        pricedModelCalls++;
+      }
       models.add(reply.providerModel);
       if (reply.deploymentId) deployments.add(reply.deploymentId);
       if (
@@ -510,6 +518,8 @@ export async function runAgentTrial(o: TrialOptions): Promise<AgentTrial> {
     inputTokens,
     outputTokens,
     costUsd: cost,
+    knownCostUsd,
+    unknownCostModelCalls: modelCalls - pricedModelCalls,
     durationMs: Date.now() - start,
     providerModels: [...models],
     deploymentIds: [...deployments],
@@ -541,31 +551,57 @@ export async function gradeAgentTrial(
   const calls = await Promise.all(
     trial.trace.map(async (ref) => ({ ref, ...(await read(ref)) })),
   );
-  const last = (op: string, predicate: (v: any) => boolean = () => true) =>
-    calls
-      .filter(
-        (c) =>
-          c.evidence?.operation === op &&
-          predicate(c.evidence.normalized_result),
-      )
-      .at(-1);
-  const method = last("inspect_android_method"),
-    search = last("search_android_classes", (r) =>
-      r.matches?.includes(method?.evidence?.normalized_result?.class_name),
-    ),
-    pkg = last("inspect_android_package");
-  const selected = [pkg, search, method].filter(
-    (c): c is NonNullable<typeof c> => !!c,
-  );
-  const raw = Buffer.from(
-    JSON.stringify({
-      proofRunId: trial.id,
-      documents: selected.map((c) => c.evidence),
-    }),
-  );
-  const ref = await vault.save(trial.access, raw),
-    observation = normalizeEvidence(await vault.read(trial.access, ref), [ref]);
-  const receipt = verifyProof(oracle, observation, oracleHash);
+  type Call = (typeof calls)[number];
+  const candidates = (op: string): (Call | undefined)[] => {
+    const found = calls.filter((c) => c.evidence?.operation === op).reverse();
+    return found.length ? found : [undefined];
+  };
+  const cache = new Map<
+    string,
+    {
+      observation: ReturnType<typeof normalizeEvidence>;
+      receipt: ReturnType<typeof verifyProof>;
+    }
+  >();
+  const evaluate = async (selected: (Call | undefined)[]) => {
+    const key = selected.map((c) => c?.ref.id ?? "missing").join("/");
+    const cached = cache.get(key);
+    if (cached) return cached;
+    const raw = Buffer.from(
+      JSON.stringify({
+        proofRunId: trial.id,
+        documents: selected.filter(Boolean).map((c) => c!.evidence),
+      }),
+    );
+    const ref = await vault.save(trial.access, raw);
+    const observation = normalizeEvidence(await vault.read(trial.access, ref), [
+      ref,
+    ]);
+    const result = {
+      observation,
+      receipt: verifyProof(oracle, observation, oracleHash),
+    };
+    cache.set(key, result);
+    return result;
+  };
+  // Exploration order cannot invalidate earlier complete evidence. Select a
+  // verified bundle, then validate each cited blob against that same objective.
+  let anchor: (Call | undefined)[] = [];
+  let verified: Awaited<ReturnType<typeof evaluate>> | undefined;
+  outer: for (const pkg of candidates("inspect_android_package")) {
+    for (const search of candidates("search_android_classes")) {
+      for (const method of candidates("inspect_android_method")) {
+        const selected = [pkg, search, method],
+          result = await evaluate(selected);
+        if (!verified || result.receipt.pass) {
+          anchor = selected;
+          verified = result;
+        }
+        if (result.receipt.pass) break outer;
+      }
+    }
+  }
+  const { observation, receipt } = verified!;
   let claim: any;
   try {
     claim = JSON.parse(final.text);
@@ -582,23 +618,50 @@ export async function gradeAgentTrial(
   const answer = !!format && canonical(claim.facts) === canonical(oracle.facts);
   const sources =
     !!format &&
-    keys.every((key) => {
-      const ids = claim.evidence?.[key];
-      const valid =
-        key === "className"
-          ? [search?.ref.id, method?.ref.id]
-          : [
-              (["methodSignature", "returnedLiteral"] as string[]).includes(key)
-                ? method?.ref.id
-                : pkg?.ref.id,
-            ];
-      return (
-        Array.isArray(ids) &&
-        ids.length > 0 &&
-        ids.length <= 2 &&
-        ids.every((id) => typeof id === "string" && valid.includes(id))
-      );
-    });
+    (
+      await Promise.all(
+        keys.map(async (key) => {
+          const ids = claim.evidence?.[key];
+          if (!Array.isArray(ids) || !ids.length || ids.length > 2)
+            return false;
+          for (const id of ids) {
+            const cited =
+              typeof id === "string"
+                ? calls.find((c) => c.ref.id === id)
+                : undefined;
+            const op = cited?.evidence?.operation;
+            const index =
+              op === "inspect_android_package"
+                ? 0
+                : op === "search_android_classes"
+                  ? 1
+                  : op === "inspect_android_method"
+                    ? 2
+                    : -1;
+            const allowed =
+              key === "className"
+                ? [1, 2]
+                : [
+                    (
+                      ["methodSignature", "returnedLiteral"] as string[]
+                    ).includes(key)
+                      ? 2
+                      : 0,
+                  ];
+            if (!cited || !allowed.includes(index)) return false;
+            const selected = [...anchor];
+            selected[index] = cited;
+            const result = await evaluate(selected);
+            if (
+              !result.receipt.pass ||
+              result.observation.facts[key] !== claim.facts[key]
+            )
+              return false;
+          }
+          return true;
+        }),
+      )
+    ).every(Boolean);
   const target =
     trial.artifactSha256 === observation.artifactSha256 &&
     trial.artifactSha256 === oracle.artifactSha256;

@@ -19,13 +19,16 @@ import {
   gradeAgentTrial,
   compareAgentTrials,
   type ProcedureSnapshot,
-  type AgentTrial,
   type Condition,
 } from "../../lib/agent/learning/rea-agent-eval";
 import {
   agentEvalConfig,
   openAgentModel,
 } from "../../lib/agent/learning/rea-agent-gateway";
+import {
+  AgentExperimentJournal,
+  runAgentConditions,
+} from "../../lib/agent/learning/rea-agent-journal";
 async function main() {
   if (
     !process.argv.includes("--compare-agent") ||
@@ -100,6 +103,7 @@ async function main() {
   )
     throw Error("fixture_seal_mismatch");
   const db = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
+  const journal = new AgentExperimentJournal(dir);
   let protocolSha256: string | undefined,
     attemptedModelCalls = 0,
     completedModelCalls = 0,
@@ -164,24 +168,26 @@ async function main() {
       handle: await bridge.upload(bytes, scopeKey(access)),
       synthetic: true,
     });
-    const trials: AgentTrial[] = [],
-      cleanup: { condition: Condition; revoked: boolean }[] = [];
-    for (const condition of order) {
-      const trialAccess = {
-        ...access,
-        runId: randomUUID(),
-        leaseId: randomUUID(),
-      };
-      stage = "model";
-      const session = await openAgentModel({
-        userId: access.userId,
-        sessionId: `rea-agent-${id}-${condition}`,
-        model: protocol.model,
-        maxBudgetUsd: protocol.maxBudgetUsd,
-        maxOutputTokens: protocol.maxOutputTokens,
-      });
-      try {
-        const trial = await runAgentTrial({
+    const trials = await runAgentConditions({
+      conditions: order,
+      journal,
+      open: async (condition) => {
+        stage = "model";
+        return openAgentModel({
+          userId: access.userId,
+          sessionId: `rea-agent-${id}-${condition}`,
+          model: protocol.model,
+          maxBudgetUsd: protocol.maxBudgetUsd,
+          maxOutputTokens: protocol.maxOutputTokens,
+        });
+      },
+      run: async (condition, session) => {
+        const trialAccess = {
+          ...access,
+          runId: randomUUID(),
+          leaseId: randomUUID(),
+        };
+        return runAgentTrial({
           access: trialAccess,
           protocol,
           condition,
@@ -213,9 +219,10 @@ async function main() {
             );
           },
         });
-        trials.push(trial);
+      },
+      save: async (condition, trial) => {
         const ref = await vault.save(
-          trialAccess,
+          trial.access,
           Buffer.from(canonical(trial)),
         );
         await writeFile(
@@ -223,10 +230,9 @@ async function main() {
           JSON.stringify({ trial, ref }, null, 2),
           { flag: "wx", mode: 0o600 },
         );
-      } finally {
-        cleanup.push({ condition, revoked: await session.close() });
-      }
-    }
+        return ref;
+      },
+    });
     // Neither model receives an oracle or grading feedback. Only now load B's
     // reference and run deterministic grading on the durable tool/final blobs.
     stage = "verification";
@@ -252,7 +258,13 @@ async function main() {
       protocolRef,
       comparison,
       trials: graded,
-      cleanup,
+      ...journal.snapshot(),
+      attemptedModelCalls,
+      completedModelCalls,
+      executedModelCalls:
+        attemptedModelCalls === completedModelCalls
+          ? completedModelCalls
+          : null,
       targetExecuted: false,
       holdoutPromoted: false,
     };
@@ -302,12 +314,12 @@ async function main() {
           status: t.status,
           receiptId: t.receipt.id,
         })),
-        cleanup,
+        cleanup: journal.snapshot().cleanup,
         targetExecuted: false,
         holdoutPromoted: false,
       }),
     );
-    if (!comparison.valid || cleanup.some((c) => !c.revoked))
+    if (!comparison.valid || journal.snapshot().cleanup.some((c) => !c.revoked))
       process.exitCode = 1;
   } catch {
     const report = {
@@ -315,6 +327,8 @@ async function main() {
       status: "failed",
       stage,
       code: "agent_comparison_failed",
+      ...journal.snapshot(),
+      unresolvedModelCalls: attemptedModelCalls - completedModelCalls,
       protocolSha256,
       attemptedModelCalls,
       completedModelCalls,

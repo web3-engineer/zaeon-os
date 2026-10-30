@@ -107,13 +107,16 @@ Uma revisão independente do branch apontou troca indevida da identidade legada 
 
 Escopos explicitamente não qualificados pela revisão: avaliação remota/semântica da métrica real, ganho LLM, OAuth Google real, deploy, resistência geral a APK hostil e segurança global legada. Permanecem fora das alegações da entrega, com custo de exigir qualificação antes de habilitação real. Os quatro arquivos auxiliares Android formatados depois do snapshot da revisão só tiveram formatação; os testes Node foram repetidos. O worktree e os volumes de teste são preservados para inspeção das evidências; custo: espaço local até limpeza explícita. Não há minors de revisão deixados sem tratamento.
 
+A continuação mantém o mesmo worktree/PR e o escopo aprovado, com custo de uma nova rodada de verificações. Uma revisão independente do comparador identificou fontes anteriores rejeitadas após consultas repetidas e perda do estado de limpeza/custos em falhas posteriores. Ambos os achados Important foram corrigidos com regressões RED→GREEN; não houve achados Critical ou Minor. Cada fonte citada passa por verificação independente, e o journal incremental preserva provas, custo conhecido/desconhecido e resultado de revogação. A revisão não qualifica comportamento real do provedor, limite de gasto ou revogação real sem gateway configurado; custo: M4/M5 permanecem pendentes. Código anterior, identidade de produção e UI não mudaram nesta continuação e mantêm os limites da revisão anterior.
+
 ## Verificação da entrega — 2026-10-30
 
-- Vitest completo: **580 arquivos, 5.148 testes aprovados**, com Mongo7 replica set, Postgres/pgvector e Chromium real; `--maxWorkers=2 --minWorkers=1` neste Mac de 8 GiB.
+- Vitest completo após a revisão da continuação: **583 arquivos, 5.160 testes aprovados**, com Mongo7 replica set, Postgres/pgvector e Chromium real; `--maxWorkers=2 --minWorkers=1` neste Mac de 8 GiB. Uma tentativa usou a porta antiga do Mongo após seu reinício; as duas falhas de conexão foram repetidas na porta atual e a suíte integral acima passou.
 - Captura Chromium isolada: 18/18 aprovados. Execuções anteriores sob carga tiveram timeouts em testes legados; a repetição completa acima passou, sem alterar esses testes.
 - `tsc --noEmit` aprovado com `NODE_OPTIONS=--max-old-space-size=4096`; o heap padrão de 2 GiB havia esgotado memória numa tentativa inicial.
 - Prisma validate/generate, vet-deps, vet-audit, paridade i18n e três testes Node do provider/allowlist aprovados. Sem mudança no lockfile de dependências da aplicação.
 - SDK/CLI Overmind pinado: instalação em venv, upload/export --help e compilação Python aprovados. Tentativa remota real: exit 2, pending, sem credenciais/configuração.
+- Comparador de agente: 31 testes focados aprovados, incluindo repetição/exploração de fontes e falha de revogação seguida de erro ao criar outra chave. Drivers de teste permanecem rotulados mock. Tentativa CLI real: `pending / model_gateway_not_configured`, exit 2, zero chamadas. Recall após reiniciar Mongo recuperou a lição `f0229344-e6a7-48c6-bdc5-a8994b87c187` em processo novo, sem histórico; drift de engine exigiu revalidação.
 - Smoke real HTTP/fila/engine e recibos finais estão em `qualification.json`; login nele é simulado. Build e demais checks de CI são executados na PR, sem deploy.
 
 Rollback: desligar as flags, parar novos jobs/exports, cancelar leases pendentes e preservar recibos. Retirar lições impede recall futuro; excluir dados segue a retenção do piloto. Não apagar evidências para transformar falhas em sucessos históricos.

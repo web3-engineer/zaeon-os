@@ -285,6 +285,71 @@ it("does not report zero cost when a model response is lost", async () => {
     await rm(root, { recursive: true, force: true });
   }
 });
+it("grades cited earlier evidence after repeated reads and unrelated exploration", async () => {
+  const root = await mkdtemp(join(tmpdir(), "rea-agent-"));
+  try {
+    const vault = new EvidenceVault(root),
+      delegate = scriptedDriver();
+    const trial = await runAgentTrial({
+      access: access(),
+      protocol: protocol(),
+      condition: "without_memory",
+      vault,
+      revalidateProcedure: async () => procedure,
+      driver: {
+        kind: "test_double",
+        async invoke(messages) {
+          const n = messages.filter((m) => m.role === "assistant").length;
+          if (n === 3 || n === 4)
+            return {
+              content: null,
+              inputTokens: 10,
+              outputTokens: 10,
+              costUsd: 0.001,
+              providerModel: "test-model",
+              toolCalls: [
+                {
+                  id: `extra-${n}`,
+                  name: n === 3 ? "rea_eval_package" : "rea_eval_method",
+                  arguments: JSON.stringify(
+                    n === 3
+                      ? {}
+                      : {
+                          className: "space.zaeon.Other",
+                          methodName: "unrelated",
+                        },
+                  ),
+                },
+              ],
+            };
+          return delegate.invoke(messages);
+        },
+      },
+      execute: async (r) => {
+        const d =
+          documents()[r.goal === "overview" ? 0 : r.goal === "search" ? 1 : 2];
+        if (r.goal === "method" && r.methodName === "unrelated") {
+          d.normalized_result.class_name = "space.zaeon.Other";
+          d.normalized_result.method.name = "unrelated";
+        }
+        return d;
+      },
+    });
+    const graded = await gradeAgentTrial(
+      trial,
+      oracle,
+      sha256(JSON.stringify(oracle)),
+      vault,
+    );
+    expect(trial.toolCalls).toBe(5);
+    expect(
+      graded.answerChecks.find((c) => c.id === "answer_sources")?.pass,
+    ).toBe(true);
+    expect(graded.pass).toBe(true);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
 it("does not publish a trial if its procedure is withdrawn during the final model call", async () => {
   const root = await mkdtemp(join(tmpdir(), "rea-agent-"));
   try {
