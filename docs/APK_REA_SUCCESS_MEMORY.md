@@ -78,7 +78,7 @@ python3 -m venv .superpowers/overmind-venv
 
 Execução remota exige `REA_OVERMIND_EVAL=1`, `OVERMIND_API_URL/KEY/PROJECT_ID`, `REA_OVERMIND_EVAL_SET`, `REA_OVERMIND_PYTHON` e `REA_OVERMIND_MAX_ITEMS` (1–10, suficiente para as linhas congeladas). Configurar o conjunto no Overmind com métrica determinística que compare os fatos observados à referência; revisar a semântica antes de dar o ID ao adapter. Credencial passa só pelo ambiente privado do filho, nunca por argumento de CLI.
 
-O journal local impede relançamento automático de uma avaliação de resultado ambíguo: reconciliar no Overmind antes de repetir. Importação usa o request-key recuperável do SDK. Sem configuração, `evaluate` retorna `pending / overmind_not_configured` e exit 2. Falta ainda executar importação, roundtrip e avaliação **reais** com IDs de dataset/cell/evaluation; mocks não concluem M4. O script não instala ou sobe toda a plataforma como fallback.
+O journal local impede relançamento automático de uma avaliação de resultado ambíguo: reconciliar no Overmind antes de repetir. Importação usa o request-key recuperável do SDK. O resultado fica associado à lição/revisão/manifest na outbox canônica e alimenta o painel como pending, failed ou completed; retry não duplica nem apaga recibo concluído do mesmo manifest. Sem configuração, `evaluate` retorna `pending / overmind_not_configured` e exit 2. A CLI pinada foi instalada em venv e seus comandos upload/export --help foram exercitados; falta ainda executar importação, roundtrip e avaliação **reais** com IDs de dataset/cell/evaluation. Mocks não concluem M4. O script não instala ou sobe toda a plataforma como fallback.
 
 ## Estado dos marcos e limites
 
@@ -89,5 +89,29 @@ O journal local impede relançamento automático de uma avaliação de resultado
 - **M5:** B foi reobservado, INTERNET presente, resposta de A copiada rejeitada, APK inválido recusado. Os dois controles usam o mesmo workflow determinístico de três ferramentas; houve recuperação de procedimento, mas **nenhuma melhora de agente LLM, custo de modelo ou ganho estatístico foi medida**. Esse experimento permanece pendente.
 
 O smoke HTTP/worker usa identidade **simulada e assinada apenas no ambiente local de teste**. Exercita sessão do servidor, ACL, fila, REA real, recibos e memória; não demonstra login OAuth real. Nenhum deploy, conta de aluno, treino ou upload remoto foi executado.
+
+O smoke completou duas provas com `android-marker-v1.0.1`, promoveu a lição `23d208f0-5098-4a89-b02d-afd1635242d6` e a recuperou pela API. Uma tentativa intermediária falhou e continua no relatório; não foi convertida em sucesso. O polling inicial expirou e foi retomado pelos registros duráveis do servidor. O painel foi inspecionado com Playwright em largura de celular; a rota de prévia e a identidade simulada não fazem parte do produto.
+
+## Decisões e revisão
+
+- O sourceRoot nativo do aplicativo não aceitou o checkout completo: usado worktree Git comum dentro deste projeto, preservando o checkout original sujo. Custo: sem gerenciamento nativo desse worktree; a PR é anexada ao chat.
+- Base atualizada para `8ed7dc3`, em vez da base antiga do handoff. Custo: interfaces novas precisaram ser reconfirmadas.
+- Primeiro teste nativo usou JDK24 instalado; a imagem alvo permaneceu JDK21 e também foi provada. Custo: são ambientes separados, identificados no relatório.
+- Projeção L3 isolada da memória genérica para exigir revalidação canônica e identidade no acesso. Custo: índices Atlas separados; fallback canônico no piloto.
+- A/B medem segurança da transferência de procedimento, sem experimento de agente LLM. Custo: M5 de qualidade/custo permanece aberto; não se afirma melhora.
+- O formato real de método do provedor pode abrir uma classe sem fechar seu wrapper. Normalização aceita esse excerpt completo, mantendo rejeição de comentários/outra classe. As tentativas que reprovaram durante a correção continuam registradas.
+
+Uma revisão independente do branch apontou troca indevida da identidade legada de projetos, falta de persistência do estado Overmind e seleção incorreta de grupo para promoção. As três foram corrigidas com regressões RED→GREEN. O terceiro achado foi elevado de Minor a Important porque impedia a ação válida do aluno. O ID verificado agora vive em `reaUserId`, sem mudar o contrato global de `session.user.id`; acesso a projetos legados por e-mail continua compatível.
+
+Escopos explicitamente não qualificados pela revisão: avaliação remota/semântica da métrica real, ganho LLM, OAuth Google real, deploy, resistência geral a APK hostil e segurança global legada. Permanecem fora das alegações da entrega, com custo de exigir qualificação antes de habilitação real. Os quatro arquivos auxiliares Android formatados depois do snapshot da revisão só tiveram formatação; os testes Node foram repetidos. O worktree e os volumes de teste são preservados para inspeção das evidências; custo: espaço local até limpeza explícita. Não há minors de revisão deixados sem tratamento.
+
+## Verificação da entrega — 2026-10-30
+
+- Vitest completo: **580 arquivos, 5.148 testes aprovados**, com Mongo7 replica set, Postgres/pgvector e Chromium real; `--maxWorkers=2 --minWorkers=1` neste Mac de 8 GiB.
+- Captura Chromium isolada: 18/18 aprovados. Execuções anteriores sob carga tiveram timeouts em testes legados; a repetição completa acima passou, sem alterar esses testes.
+- `tsc --noEmit` aprovado com `NODE_OPTIONS=--max-old-space-size=4096`; o heap padrão de 2 GiB havia esgotado memória numa tentativa inicial.
+- Prisma validate/generate, vet-deps, vet-audit, paridade i18n e três testes Node do provider/allowlist aprovados. Sem mudança no lockfile de dependências da aplicação.
+- SDK/CLI Overmind pinado: instalação em venv, upload/export --help e compilação Python aprovados. Tentativa remota real: exit 2, pending, sem credenciais/configuração.
+- Smoke real HTTP/fila/engine e recibos finais estão em `qualification.json`; login nele é simulado. Build e demais checks de CI são executados na PR, sem deploy.
 
 Rollback: desligar as flags, parar novos jobs/exports, cancelar leases pendentes e preservar recibos. Retirar lições impede recall futuro; excluir dados segue a retenção do piloto. Não apagar evidências para transformar falhas em sucessos históricos.

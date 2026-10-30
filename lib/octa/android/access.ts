@@ -19,17 +19,27 @@ export async function accessForProject(
 ): Promise<Access> {
   if (!session?.user?.email) throw Error("unauthorized");
   const user = session.user;
+  const subject = user.reaUserId ?? user.id;
   if (
     user.reaIdentity !== "google_verified" ||
-    !/^[a-f0-9]{24}$/i.test(user.id ?? "")
+    !/^[a-f0-9]{24}$/i.test(subject ?? "")
   )
     throw Error("verified_identity_required");
   if (!/^[a-f0-9]{24}$/i.test(projectId)) throw Error("not_found");
-  const project = await load(user.id, projectId);
-  if (!project || project.id !== projectId || project.userId !== user.id)
-    throw Error("not_found");
+  // Preserve legacy email ownership without changing session.user.id globally.
+  const owners = [...new Set([String(subject), String(user.id ?? user.email)])];
+  let project: any = null;
+  for (const owner of owners) {
+    const candidate = await load(owner, projectId);
+    if (candidate?.id === projectId && candidate.userId === owner) {
+      project = candidate;
+      break;
+    }
+  }
+  if (!project) throw Error("not_found");
   return {
-    userId: user.id,
+    userId: subject,
+    projectOwnerId: project.userId,
     projectId,
     runId: randomUUID(),
     leaseId: randomUUID(),

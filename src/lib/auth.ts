@@ -157,8 +157,8 @@ export const authOptions: NextAuthOptions = {
                 if (dbUser) {
                     // Legacy/email-only sessions do not gain APK proof access. Only
                     // a fresh verified provider login can establish this JWT claim.
-                    (session.user as any).id = dbUser._id.toString();
                     (session.user as any).reaIdentity = token.id === dbUser._id.toString() && token.reaIdentity === "google_verified" ? "google_verified" : "unverified";
+                    (session.user as any).reaUserId = (session.user as any).reaIdentity === "google_verified" ? dbUser._id.toString() : undefined;
                     session.user.name = dbUser.name || session.user.name;
                     // 🔥 Aqui nós pegamos a foto gigante DIRETO DO BANCO para mostrar na tela, 
                     // sem precisar trafegar ela no Cookie!

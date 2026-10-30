@@ -1,5 +1,6 @@
 /** Server-owned proof contracts. A successful static task is not a runtime/security verdict. */
 export type Access = {
+  projectOwnerId?: string;
   userId: string;
   projectId: string;
   runId: string;

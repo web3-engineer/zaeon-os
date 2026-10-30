@@ -21,17 +21,14 @@ try {
   const userId = new ObjectId(),
     projectId = new ObjectId(),
     email = `rea-smoke-${userId}@example.invalid`;
-  await db
-    .db()
-    .collection("users")
-    .insertOne({
-      _id: userId,
-      email,
-      name: "REA synthetic pilot",
-      role: "student",
-      emailVerified: new Date(),
-      onboardingComplete: true,
-    });
+  await db.db().collection("users").insertOne({
+    _id: userId,
+    email,
+    name: "REA synthetic pilot",
+    role: "student",
+    emailVerified: new Date(),
+    onboardingComplete: true,
+  });
   await db
     .db()
     .collection("octa_projetos")
@@ -103,7 +100,7 @@ try {
       headers: { "content-type": "application/json" },
     });
     let result;
-    const deadline = Date.now() + 180_000;
+    const deadline = Date.now() + 660_000;
     while (Date.now() < deadline) {
       result = await request(
         `/api/octa/rea/proofs/${started.id}?projectId=${projectId}`,

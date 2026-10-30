@@ -1,4 +1,5 @@
 import type { Lesson, Observation, Receipt } from "./types";
+import { canonical, sha256 } from "./evidence";
 export function proofBody(body: any): {
   projectId: string;
   artifactId: string;
@@ -72,6 +73,10 @@ export function publicProof(
     state: run.state,
     artifactSha256: run.artifactSha256,
     verified: !!verified,
+    verifierVersion: receipt?.verifierVersion ?? null,
+    engineFingerprint: observation
+      ? sha256(canonical(observation.engine))
+      : null,
     memory: lesson ? { id: lesson.id, revision: lesson.revision } : null,
     overmind,
     facts: observation?.facts ?? {},

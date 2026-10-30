@@ -2,6 +2,21 @@
 import { useEffect, useRef, useState } from "react";
 import { Microscope, Loader2 } from "lucide-react";
 import type { PublicProof } from "@/lib/octa/android/http";
+export function promotableProofIds(proofs: PublicProof[]): string[] {
+  const groups = new Map<string, PublicProof[]>();
+  for (const proof of proofs.filter((p) => p.verified)) {
+    const key = [
+      proof.artifactSha256,
+      proof.engineFingerprint,
+      proof.verifierVersion,
+    ].join(":");
+    groups.set(key, [...(groups.get(key) ?? []), proof]);
+  }
+  const eligible = [...groups.values()].find(
+    (group) => group.length >= 2 && group.some((p) => !p.memory),
+  );
+  return eligible?.map((p) => p.id) ?? [];
+}
 const errors: Record<string, string> = {
   verified_identity_required:
     "Entre novamente pelo Google para habilitar provas de APK.",
@@ -97,11 +112,7 @@ export default function ReaProofPanel({
   const promote = async () => {
     if (!projectId) return;
     const id = projectId;
-    const verified = proofs.filter((p) => p.verified);
-    const hash = verified[0]?.artifactSha256;
-    const ids = verified
-      .filter((p) => p.artifactSha256 === hash)
-      .map((p) => p.id);
+    const ids = promotableProofIds(proofs);
     setBusy(true);
     try {
       const r = await fetch("/api/octa/rea/proofs/memory", {
@@ -120,13 +131,7 @@ export default function ReaProofPanel({
       setBusy(false);
     }
   };
-  const canPromote = proofs.some(
-    (p) =>
-      p.verified &&
-      !p.memory &&
-      proofs.filter((q) => q.verified && q.artifactSha256 === p.artifactSha256)
-        .length >= 2,
-  );
+  const canPromote = promotableProofIds(proofs).length >= 2;
   return (
     <details className="rounded-lg border border-[#363c46] bg-[#2f343e] text-[11.5px] text-[#a9afbc]">
       <summary className="cursor-pointer px-3 py-2 text-[#dce0e5]">
@@ -196,7 +201,9 @@ export default function ReaProofPanel({
                 ? "avaliação concluída"
                 : p.overmind === "pending"
                   ? "pendente"
-                  : "não avaliado"}
+                  : p.overmind === "failed"
+                    ? "falhou"
+                    : "não avaliado"}
             </summary>
             <p className="mt-2 break-all font-mono text-[10px]">
               SHA-256: {p.artifactSha256}

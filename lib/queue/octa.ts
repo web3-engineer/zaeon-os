@@ -42,6 +42,7 @@ export type CodigoErroTurno = "falha_modelo" | "budget" | "projeto_inexistente" 
 
 export type TurnoRow = {
   reaIdentityVerified?: boolean;
+  reaOwnerId?: string|null;
   id: string; userId: string; email: string; projetoId: string; pedido: string; status: StatusTurno; runId: string | null;
   estado: { msgs: MsgModelo[]; aprovado?: boolean } | null; pendente: PendenteOcta | null; resposta: string | null;
   createdAt: Date; updatedAt: Date;
@@ -166,7 +167,7 @@ export async function listarEventos(
 }
 
 // ───────────────────────────── iniciar / aprovar ─────────────────────────────
-export async function iniciarTurno(deps: DepsTurno, p: { userId: string; email: string; projetoId: string; pedido: string;reaIdentityVerified?:boolean }): Promise<{ turnoId: string }> {
+export async function iniciarTurno(deps: DepsTurno, p: { userId: string; email: string; projetoId: string; pedido: string;reaIdentityVerified?:boolean;reaOwnerId?:string }): Promise<{ turnoId: string }> {
   const agora = deps.agora?.() ?? new Date();
   const projeto = await lerProjeto(deps.db, p.userId, p.projetoId);
   if (!projeto) throw new ErroTurno("projeto_inexistente");
@@ -174,7 +175,7 @@ export async function iniciarTurno(deps: DepsTurno, p: { userId: string; email: 
   const ativo = await deps.db.octaTurno.findFirst({ where: { projetoId: projeto.id, status: { in: ATIVOS } } });
   if (ativo) throw new ErroTurno("turno_ativo", ativo.id);
   const t = await deps.db.octaTurno.create({
-    data: { userId: p.userId, email: p.email, projetoId: projeto.id, pedido: p.pedido, status: "rodando", runId: null, estado: null, pendente: null, resposta: null,...(p.reaIdentityVerified?{reaIdentityVerified:true}:{}) },
+    data: { userId: p.userId, email: p.email, projetoId: projeto.id, pedido: p.pedido, status: "rodando", runId: null, estado: null, pendente: null, resposta: null,...(p.reaIdentityVerified?{reaIdentityVerified:true,reaOwnerId:p.reaOwnerId??p.userId}:{}) },
   });
   await disparar(deps, t.id);
   return { turnoId: t.id };
@@ -282,7 +283,7 @@ export async function processarTurno(deps: DepsTurno, turnoId: string): Promise<
           if(!await lerProjeto(db,t.userId,t.projetoId))return [];
           const {proofRuntime}=await import("@/lib/octa/android/runtime");
           const {PINNED_ENGINE}=await import("@/lib/octa/android/verifier");
-          const a={userId:t.userId,projectId:t.projetoId,runId:randomUUID(),leaseId:randomUUID(),identityVerified:true};
+          const a={userId:t.reaOwnerId??t.userId,projectId:t.projetoId,runId:randomUUID(),leaseId:randomUUID(),identityVerified:true};
           const recalled=await proofRuntime().memory.recall(a,PINNED_ENGINE,query);
           return recalled.map(({lesson,applicability})=>({lessonId:lesson.id,procedure:lesson.procedure,proofRunIds:lesson.proofRunIds,limitations:lesson.limitations,applicability}));
         }:undefined,

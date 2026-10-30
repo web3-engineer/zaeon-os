@@ -866,7 +866,218 @@
       "code": "overmind_not_configured"
     }
   },
-  "webSmoke": null,
+  "webSmoke": {
+    "kind": "real_web_queue_engine_smoke",
+    "identity": "mock_signed_local_identity",
+    "projectId": "6ae41bd5bf2e2e6a87ac1981",
+    "proofIds": [
+      "03b1b82e-009e-4e39-a6cd-bbcca4be3ef2",
+      "3eae7657-51d1-467a-bec7-ec3a5fd271b7"
+    ],
+    "verifierVersion": "android-marker-v1.0.1",
+    "lessonId": "23d208f0-5098-4a89-b02d-afd1635242d6",
+    "recalled": 1,
+    "priorFailures": [
+      "146a19e1-3420-4488-b4c3-b6d6b2af9065"
+    ],
+    "targetExecuted": false,
+    "initialPollTimeout": true,
+    "resumedFromDurableServerState": true,
+    "results": [
+      {
+        "proofRunId": "03b1b82e-009e-4e39-a6cd-bbcca4be3ef2",
+        "artifactSha256": "a0124afe243b52723d869fe177e6754759c3e1bdf5ddc5120b1017fbf2515bcb",
+        "engine": {
+          "rea": "6.5.0",
+          "jadx": "0.7.1",
+          "jarSha256": "6e5eacf500b64292bfb73c49797c1958f6ee44646e43e868039ae7feb573ff75"
+        },
+        "facts": {
+          "packageName": "space.zaeon.rea.fixturea",
+          "versionCode": 1,
+          "activity": "space.zaeon.rea.fixturea.MainActivity",
+          "internetDeclared": false,
+          "className": "space.zaeon.rea.fixturea.ProofMarker",
+          "methodSignature": "marker()Ljava/lang/String;",
+          "returnedLiteral": "ZAEON_REA_FIXTURE_A"
+        },
+        "complete": true,
+        "evidence": [
+          {
+            "id": "435f5296-f64c-46c7-bdb4-5b16f83b67b2",
+            "sha256": "8fff05806fd0ecce0c38cbffcd31d9da26258a0307378004ec64b0f118c8a8d5",
+            "bytes": 13417,
+            "coverage": "complete"
+          }
+        ],
+        "receipt": {
+          "id": "31e7c496-f5c0-431f-b519-386cbcce01e4",
+          "proofRunId": "03b1b82e-009e-4e39-a6cd-bbcca4be3ef2",
+          "inputHash": "b6a26b091353916d7e751778b846d8d8e27656eea9c4c085de2463efbd30930f",
+          "oracleHash": "4101419cd61adc4b05eb3cbed55fb4debc60a92ceeaa95ed38b4446695218834",
+          "evidenceHashes": [
+            "8fff05806fd0ecce0c38cbffcd31d9da26258a0307378004ec64b0f118c8a8d5"
+          ],
+          "verifierVersion": "android-marker-v1.0.1",
+          "checks": [
+            {
+              "id": "oracle_seal",
+              "pass": true,
+              "detail": "matched"
+            },
+            {
+              "id": "artifact",
+              "pass": true,
+              "detail": "matched"
+            },
+            {
+              "id": "engine",
+              "pass": true,
+              "detail": "matched"
+            },
+            {
+              "id": "coverage",
+              "pass": true,
+              "detail": "matched"
+            },
+            {
+              "id": "packageName",
+              "pass": true,
+              "detail": "matched"
+            },
+            {
+              "id": "versionCode",
+              "pass": true,
+              "detail": "matched"
+            },
+            {
+              "id": "activity",
+              "pass": true,
+              "detail": "matched"
+            },
+            {
+              "id": "className",
+              "pass": true,
+              "detail": "matched"
+            },
+            {
+              "id": "methodSignature",
+              "pass": true,
+              "detail": "matched"
+            },
+            {
+              "id": "returnedLiteral",
+              "pass": true,
+              "detail": "matched"
+            },
+            {
+              "id": "internetDeclared",
+              "pass": true,
+              "detail": "matched"
+            }
+          ],
+          "pass": true,
+          "createdAt": "2026-10-30T04:41:48.994Z"
+        }
+      },
+      {
+        "proofRunId": "3eae7657-51d1-467a-bec7-ec3a5fd271b7",
+        "artifactSha256": "a0124afe243b52723d869fe177e6754759c3e1bdf5ddc5120b1017fbf2515bcb",
+        "engine": {
+          "rea": "6.5.0",
+          "jadx": "0.7.1",
+          "jarSha256": "6e5eacf500b64292bfb73c49797c1958f6ee44646e43e868039ae7feb573ff75"
+        },
+        "facts": {
+          "packageName": "space.zaeon.rea.fixturea",
+          "versionCode": 1,
+          "activity": "space.zaeon.rea.fixturea.MainActivity",
+          "internetDeclared": false,
+          "className": "space.zaeon.rea.fixturea.ProofMarker",
+          "methodSignature": "marker()Ljava/lang/String;",
+          "returnedLiteral": "ZAEON_REA_FIXTURE_A"
+        },
+        "complete": true,
+        "evidence": [
+          {
+            "id": "bb6d5178-da2d-409f-a905-00bc2c11f3e6",
+            "sha256": "46f7d0cadd4b00203adffb30b5ab52500adf67d2c8cd43800579feff1ddb577c",
+            "bytes": 13417,
+            "coverage": "complete"
+          }
+        ],
+        "receipt": {
+          "id": "0109b1c8-9bdb-4dc1-9a63-57f9ca5ec368",
+          "proofRunId": "3eae7657-51d1-467a-bec7-ec3a5fd271b7",
+          "inputHash": "04b67373a985dc3a0ae9def85b0c882543a69c41da7305cd44b329be1c89d134",
+          "oracleHash": "4101419cd61adc4b05eb3cbed55fb4debc60a92ceeaa95ed38b4446695218834",
+          "evidenceHashes": [
+            "46f7d0cadd4b00203adffb30b5ab52500adf67d2c8cd43800579feff1ddb577c"
+          ],
+          "verifierVersion": "android-marker-v1.0.1",
+          "checks": [
+            {
+              "id": "oracle_seal",
+              "pass": true,
+              "detail": "matched"
+            },
+            {
+              "id": "artifact",
+              "pass": true,
+              "detail": "matched"
+            },
+            {
+              "id": "engine",
+              "pass": true,
+              "detail": "matched"
+            },
+            {
+              "id": "coverage",
+              "pass": true,
+              "detail": "matched"
+            },
+            {
+              "id": "packageName",
+              "pass": true,
+              "detail": "matched"
+            },
+            {
+              "id": "versionCode",
+              "pass": true,
+              "detail": "matched"
+            },
+            {
+              "id": "activity",
+              "pass": true,
+              "detail": "matched"
+            },
+            {
+              "id": "className",
+              "pass": true,
+              "detail": "matched"
+            },
+            {
+              "id": "methodSignature",
+              "pass": true,
+              "detail": "matched"
+            },
+            {
+              "id": "returnedLiteral",
+              "pass": true,
+              "detail": "matched"
+            },
+            {
+              "id": "internetDeclared",
+              "pass": true,
+              "detail": "matched"
+            }
+          ],
+          "pass": true,
+          "createdAt": "2026-10-30T04:27:30.081Z"
+        }
+      }
+    ]
+  },
   "limits": [
     "Static analysis only. No APK execution or signature/security certification.",
     "Overmind remote evaluation and LLM-quality improvement remain unqualified until an actual configured experiment completes.",

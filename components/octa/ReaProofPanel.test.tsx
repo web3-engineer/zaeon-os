@@ -7,10 +7,30 @@ import {
   fireEvent,
   waitFor,
 } from "@testing-library/react";
-import ReaProofPanel from "./ReaProofPanel";
+import ReaProofPanel, { promotableProofIds } from "./ReaProofPanel";
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+});
+it("selects the compatible pair that enables promotion even when another APK is newer", () => {
+  const proof = (id: string, hash: string) =>
+    ({
+      id,
+      artifactSha256: hash,
+      verified: true,
+      memory: null,
+      verifierVersion: "v1",
+      engineFingerprint: "engine",
+    }) as any;
+  expect(
+    promotableProofIds([proof("B1", "B"), proof("A2", "A"), proof("A1", "A")]),
+  ).toEqual(["A2", "A1"]);
+  expect(
+    promotableProofIds([
+      proof("A2", "A"),
+      { ...proof("A1", "A"), verifierVersion: "older" },
+    ]),
+  ).toEqual([]);
 });
 it("keeps the pilot controls disabled without a project", () => {
   render(<ReaProofPanel projectId={null} />);

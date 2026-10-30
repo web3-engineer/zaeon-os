@@ -6,16 +6,14 @@ const env = {
   REA_BRIDGE_TOKEN: "private",
 };
 it("sends only scoped typed commands and handles unavailable or malformed evidence", async () => {
-  const fetcher = vi
-    .fn()
-    .mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          ok: true,
-          evidence: { operation: "inspect_android_package" },
-        }),
-      ),
-    );
+  const fetcher = vi.fn().mockResolvedValue(
+    new Response(
+      JSON.stringify({
+        ok: true,
+        evidence: { operation: "inspect_android_package" },
+      }),
+    ),
+  );
   const bridge = new AndroidBridge(env, fetcher);
   await bridge.analyze("a".repeat(32), "b".repeat(64), { goal: "overview" });
   expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({

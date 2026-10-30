@@ -13,6 +13,7 @@ import { PINNED_ENGINE, normalizeEvidence } from "./verifier";
 import { SuccessMemory } from "../../agent/learning/rea-success";
 import { publicProof } from "./http";
 import type { Access, Observation } from "./types";
+import { experimentState } from "../../agent/learning/rea-experiment";
 let projectionPromise: Promise<
   import("../../agent/learning/rea-success").ReaProjection
 > | null = null;
@@ -57,8 +58,16 @@ export async function flushProofProjections() {
       },
     });
     if (!row) continue;
-    if (!(await lerProjeto(store.db as any, row.ownerId, row.projectId)))
-      continue;
+    let owns = await lerProjeto(store.db as any, row.ownerId, row.projectId);
+    if (!owns && /^[a-f0-9]{24}$/i.test(row.ownerId)) {
+      const user = await store.db.user.findUnique({
+        where: { id: row.ownerId },
+        select: { email: true },
+      });
+      if (user?.email)
+        owns = await lerProjeto(store.db as any, user.email, row.projectId);
+    }
+    if (!owns) continue;
     const a = {
       userId: row.ownerId,
       projectId: row.projectId,
@@ -144,11 +153,6 @@ export async function proofView(a: Access, id: string) {
       })
     : null;
   // Only a server-recorded completed remote receipt can display completion.
-  const remoteState =
-    (remote?.payload as any)?.outcome?.status === "completed"
-      ? "completed"
-      : remote
-        ? "pending"
-        : "not_evaluated";
+  const remoteState = experimentState(remote);
   return publicProof(run, observation, receipt, lessons, remoteState);
 }

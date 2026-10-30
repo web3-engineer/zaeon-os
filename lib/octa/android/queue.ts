@@ -66,7 +66,13 @@ export async function startProofWorker() {
         artifactId: string;
       };
       const { store, service } = proofRuntime();
-      if (!(await lerProjeto(store.db as any, a.userId, a.projectId))) {
+      if (
+        !(await lerProjeto(
+          store.db as any,
+          a.projectOwnerId ?? a.userId,
+          a.projectId,
+        ))
+      ) {
         await store.fail(a, a.runId);
         return;
       }

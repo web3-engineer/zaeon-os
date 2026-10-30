@@ -10,7 +10,8 @@ import { EvidenceVault, sha256 } from "../../octa/android/evidence";
 import { PINNED_ENGINE } from "../../octa/android/verifier";
 import { ProofService } from "../../octa/android/service";
 import { documents, oracle } from "../../octa/android/test-fixtures";
-import { eligibleRows } from "./rea-dataset";
+import { eligibleRows, exportReaEval } from "./rea-dataset";
+import { recordOvermindOutcome, experimentState } from "./rea-experiment";
 const url = process.env.REA_TEST_DATABASE_URL;
 const db = url ? new PrismaClient({ datasources: { db: { url } } }) : null;
 afterAll(async () => {
@@ -92,6 +93,85 @@ it.skipIf(!url)(
       expect((await fresh.recall(a, PINNED_ENGINE)).length).toBe(1);
       const sealed = { oracle, oracleHash: sha256(JSON.stringify(oracle)) };
       const rows = await eligibleRows(store, vault, a, ids, sealed);
+      const bundle = await exportReaEval(
+        store,
+        vault,
+        a,
+        ids,
+        sealed,
+        join(root, "datasets"),
+      );
+      await recordOvermindOutcome(
+        store,
+        a,
+        lesson.id,
+        lesson.revision,
+        bundle,
+        {
+          backend: "overmind",
+          status: "pending",
+          stage: "import",
+          code: "overmind_not_configured",
+        },
+      );
+      let remote = await store.db.reaLearningOutbox.findFirst({
+        where: { lessonId: lesson.id, destination: "overmind" },
+      });
+      expect(experimentState(remote)).toBe("pending");
+      // Mock completed transport receipt exercises persistence, never real M4.
+      const outcome = {
+        backend: "overmind" as const,
+        status: "completed" as const,
+        projectId: "remote-project",
+        datasetId: "remote-dataset",
+        datasetVersion: "1.0",
+        evaluationId: "remote-evaluation",
+        manifestSha256: bundle.manifestSha256,
+        returnedRowHashes: bundle.rowHashes,
+        resultRef: "eval-runs/remote-evaluation",
+      };
+      await recordOvermindOutcome(
+        store,
+        a,
+        lesson.id,
+        lesson.revision,
+        bundle,
+        outcome,
+      );
+      await recordOvermindOutcome(
+        store,
+        a,
+        lesson.id,
+        lesson.revision,
+        bundle,
+        outcome,
+      );
+      remote = await store.db.reaLearningOutbox.findFirst({
+        where: { lessonId: lesson.id, destination: "overmind" },
+      });
+      expect(experimentState(remote)).toBe("completed");
+      await recordOvermindOutcome(
+        store,
+        a,
+        lesson.id,
+        lesson.revision,
+        bundle,
+        {
+          backend: "overmind",
+          status: "pending",
+          stage: "import",
+          code: "overmind_not_configured",
+        },
+      );
+      remote = await store.db.reaLearningOutbox.findFirst({
+        where: { lessonId: lesson.id, destination: "overmind" },
+      });
+      expect(experimentState(remote)).toBe("completed");
+      expect(
+        await store.db.reaLearningOutbox.count({
+          where: { lessonId: lesson.id, destination: "overmind" },
+        }),
+      ).toBe(1);
       expect(JSON.stringify(rows)).not.toContain(root);
       expect(JSON.stringify(rows)).not.toContain(a.userId);
       await store.db.reaArtifact.update({

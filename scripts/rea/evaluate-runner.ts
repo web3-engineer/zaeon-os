@@ -14,6 +14,7 @@ import {
   eligibleRows,
 } from "../../lib/agent/learning/rea-dataset";
 import { evaluateOvermind } from "../../lib/agent/learning/adapters/overmind";
+import { recordOvermindOutcome } from "../../lib/agent/learning/rea-experiment";
 async function main() {
   if (!process.env.REA_TEST_DATABASE_URL || !process.env.REA_EVIDENCE_DIR)
     throw Error("isolated_database_and_evidence_dir_required");
@@ -58,6 +59,10 @@ async function main() {
       sealed,
       join(output, "datasets"),
     );
+    const lesson = (await store.lessons(a)).find((l) =>
+      ids.every((id: string) => l.proofRunIds.includes(id)),
+    );
+    if (!lesson) throw Error("active_verified_lesson_required");
     const outcome = await evaluateOvermind(bundle, {
       env: process.env,
       eligible: async () => {
@@ -119,6 +124,14 @@ async function main() {
         });
       },
     });
+    await recordOvermindOutcome(
+      store,
+      a,
+      lesson.id,
+      lesson.revision,
+      bundle,
+      outcome,
+    );
     await writeFile(
       join(output, "overmind.json"),
       JSON.stringify(
