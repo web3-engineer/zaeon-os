@@ -63,6 +63,15 @@
       "caminho": "vendor/skills/reverse-engineer-anything",
       "uso": "skill de engenharia reversa (REA) no Octa, atrás de OCTA_REA=1",
       "revisao": "SÓ markdown (SKILL.md + references/ + DISCLAIMER + LICENSE); scripts/native/install.sh NÃO vendorizados; o MCP rea-agents (Ghidra/Hopper/binwalk/PTY) é portão do dono, como o Appllama. DISCLAIMER do REA preservado: uso lícito (pesquisa de segurança, malware, CTF, interoperabilidade, software próprio/autorizado); NÃO burla DRM/anti-cheat/auth nem copia software proprietário. Marca 'REA'/'morluto' não reusada."
+    },
+    {
+      "repo": "1013503897/jadx-headless-mcp",
+      "licenca": "Apache-2.0 (JADX core); review wrapper before updates",
+      "veredito": "binario-pinado",
+      "versao": "0.7.1",
+      "sha256": "6e5eacf500b64292bfb73c49797c1958f6ee44646e43e868039ae7feb573ff75",
+      "uso": "Android REA static provider, isolated process; source identity pinned by rea-agents 6.5.0",
+      "revisao": "Upstream release binary checked against REA audited digest; no APK execution, runtime downloads or arbitrary jar path in user input."
     }
   ]
 }
