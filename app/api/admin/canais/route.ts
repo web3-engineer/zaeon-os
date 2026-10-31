@@ -18,9 +18,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { assertAdmin } from "@/lib/admin/assertAdmin";
 import { agentsAdmin } from "@/lib/canal/flags";
-import { rosterComMentores, mergeProfiles } from "@/lib/agents/roster";
 import { montarPainel, type LinhaCanalAgente, type LinhaCanalSocial, type VozView } from "@/lib/canais/painel";
 import { aprovacaoForcada, canaisExternosLigados } from "@/lib/canais/politica";
+import { vozes } from "@/lib/canais/vozes";
 
 export const TAKE_MAX = 500;
 
@@ -44,7 +44,7 @@ export async function GET() {
         .catch(() => [])
     : Promise.resolve([]);
 
-  const [sociais, agentes, mentores, profiles] = await Promise.all([
+  const [sociais, agentes, elenco] = await Promise.all([
     sociaisQuery,
     prisma.agentChannel.findMany({
       where: { tipo: "whatsapp" },
@@ -54,21 +54,16 @@ export async function GET() {
       },
       take: TAKE_MAX,
     }) as Promise<LinhaCanalAgente[]>,
-    prisma.mentorTemplate.findMany({ select: { slug: true, name: true, course: true, emoji: true, personaText: true, order: true } }),
-    prisma.agentProfile.findMany(),
+    // As "vozes" que podem assinar um post (Opção A) — mesma fonte da fila da F2, pra o nome que
+    // assina na tela ser o mesmo que assina no post. Não promete conexão nenhuma.
+    vozes(prisma),
   ]);
-
-  // As "vozes" que podem assinar um post (Opção A). Mesmo roster do painel de Agents — então o
-  // nome que você renomeou lá é o nome que aparece aqui. Não promete conexão nenhuma.
-  const vozes: VozView[] = mergeProfiles(rosterComMentores(mentores), profiles)
-    .filter((v) => v.ativo)
-    .map((v) => ({ agentKey: v.agentKey, nome: v.nome, tipo: v.tipo, area: v.curso ?? null }));
 
   return NextResponse.json(
     montarPainel({
       sociais,
       agentes,
-      vozes,
+      vozes: elenco.map((v): VozView => ({ agentKey: v.agentKey, nome: v.nome, tipo: v.tipo, area: v.area ?? null })),
       externosLigados: canaisExternosLigados(),
       aprovacaoForcada: aprovacaoForcada(),
     }),
