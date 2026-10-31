@@ -15,7 +15,7 @@ import { prisma } from "@/src/lib/prisma";
 
 export type Surface = "estudos" | "pesquisa" | "aula" | "projetos" | "lounge" | "whatsapp";
 export type Role = "user" | "assistant";
-export type TurnMsg = { role: Role; text: string; meta?: unknown };
+export type TurnMsg = { role: Role; text: string; meta?: unknown; at?: number };
 export type WireMsg = { id: string; role: Role; text: string; meta?: unknown; at: string };
 
 /** Mesmo padrão das outras rotas: sessão → email → id do usuário. */
@@ -55,6 +55,7 @@ export async function appendMessages(conversationId: string, msgs: TurnMsg[]): P
       role: m.role,
       text: m.text ?? "",
       meta: (m.meta ?? undefined) as any,
+      ...(m.at ? { at: new Date(m.at) } : {}),
     })),
   });
   await prisma.conversation.update({ where: { id: conversationId }, data: { updatedAt: new Date() } });
@@ -82,6 +83,54 @@ export async function getRecent(
     .reverse()
     .map((r) => ({ id: r.id, role: r.role as Role, text: r.text, meta: r.meta ?? undefined, at: r.at.toISOString() }));
   return { conversationId: conv.id, messages };
+}
+
+export type DadosConversa = { titulo?: string; parentId?: string; contexto?: string };
+export type ConversaLista = { id: string; titulo: string; parentId?: string; contexto?: string; criadaEm: number; tocadaEm: number };
+
+/** #663: guarda o título e o elo da sub-conversa. Só escreve o que veio, para não apagar o resto. */
+export async function guardarConversa(userId: string, surface: Surface, scopeId: string, d: DadosConversa): Promise<string> {
+  const id = await ensureConversation(userId, surface, scopeId);
+  const data = { ...(d.titulo ? { title: d.titulo } : {}), ...(d.parentId ? { parentScopeId: d.parentId } : {}), ...(d.contexto ? { contextoHerdado: d.contexto } : {}) };
+  if (Object.keys(data).length) await prisma.conversation.update({ where: { id }, data });
+  return id;
+}
+
+/**
+ * #663: as conversas da conta. Só as com título e mensagens: as outras são marcas do mapa (gatekeeper), que nascem
+ * sem mensagens, e as gravações antigas por estudo em foco, que nunca tiveram título e não são conversas da lista.
+ */
+export async function listarConversas(userId: string, surface: Surface): Promise<ConversaLista[]> {
+  const rows = await prisma.conversation.findMany({
+    where: { userId, surface, scopeId: { not: null }, title: { not: null }, messages: { some: {} } },
+    orderBy: { updatedAt: "desc" },
+    take: 200,
+    select: { scopeId: true, title: true, parentScopeId: true, contextoHerdado: true, createdAt: true, updatedAt: true },
+  });
+  return rows.map((r) => ({
+    id: r.scopeId!, titulo: r.title!,
+    ...(r.parentScopeId ? { parentId: r.parentScopeId } : {}),
+    ...(r.contextoHerdado ? { contexto: r.contextoHerdado } : {}),
+    criadaEm: r.createdAt.getTime(), tocadaEm: r.updatedAt.getTime(),
+  }));
+}
+
+/** #663: apaga a conversa, as sub-conversas e as mensagens de todas. Só as da própria conta. */
+export async function apagarConversa(userId: string, surface: Surface, scopeId: string): Promise<void> {
+  const convs = await prisma.conversation.findMany({
+    where: { userId, surface, OR: [{ scopeId }, { parentScopeId: scopeId }] },
+    select: { id: true },
+  });
+  const ids = convs.map((c) => c.id);
+  if (!ids.length) return;
+  await prisma.chatMessage.deleteMany({ where: { conversationId: { in: ids } } });
+  await prisma.conversation.deleteMany({ where: { id: { in: ids }, userId } });
+}
+
+/** #663: editar/regenerar — apaga as mensagens a partir desse instante, com o relógio de quem gravou. */
+export async function cortarMensagens(userId: string, surface: Surface, scopeId: string, desde: number): Promise<void> {
+  const conv = await prisma.conversation.findFirst({ where: { userId, surface, scopeId }, select: { id: true } });
+  if (conv) await prisma.chatMessage.deleteMany({ where: { conversationId: conv.id, at: { gte: new Date(desde) } } });
 }
 
 const SURFACES: Surface[] = ["estudos", "pesquisa", "aula", "projetos", "lounge", "whatsapp"];

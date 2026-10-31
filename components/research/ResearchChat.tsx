@@ -20,8 +20,9 @@ import { useFalaAoChegar, useManifesto, usePublicarPresenca } from "@/components
 import { sinalDoChat } from "@/lib/avatars/presenca";
 import LivrosCartao from "@/components/chat/LivrosCartao";
 import { researchWorkType } from "@/lib/agent/tools";
-import { appendTranscript, hydrateTranscript } from "@/lib/agent/transcriptClient";
+import { hydrateTranscript, type TranscriptWire } from "@/lib/agent/transcriptClient";
 import { useArmazemDaConta } from "@/lib/chat/contaNoNavegador";
+import { apagarNoServidor, blocoDaMensagem, cortarNoServidor, gravarArtefato, gravarTurno, mensagensDoServidor, renomearNoServidor, sincronizarConversas } from "@/lib/chat/conversasServidor";
 import type { Armazem } from "@/lib/chat/threads";
 import StructuredAnswerView from "@/components/study/StructuredAnswerView";
 import type { StructuredAnswer } from "@/lib/agent/contracts";
@@ -59,7 +60,7 @@ import {
 
 // `answer` presente = resposta estruturada do harness (render rico); `text` = nucleo (histórico).
 // `blocos` = artefatos inline da resposta (diagrama, aula, molécula…); `desenhando` = aviso enquanto um demorado sai.
-type Msg = { id: string; role: "user" | "assistant"; text: string; answer?: StructuredAnswer; fase?: string; anexo?: string; blocos?: StudioBlockData[]; desenhando?: string };
+type Msg = { id: string; role: "user" | "assistant"; text: string; at?: number; answer?: StructuredAnswer; fase?: string; anexo?: string; blocos?: StudioBlockData[]; desenhando?: string };
 
 /** Kinds que o servidor gera SEM um estudo de origem (o resto do Studio precisa de um). */
 const SEM_ESTUDO = new Set(["diagram", "mindmap", "molecule", "aula"]);
@@ -70,6 +71,12 @@ const AVISO: Record<string, string> = {
   mindmap: "Desenhando o mapa…",
   aula: "Preparando a aula interativa — plano, roteiro e narração (1 a 3 min)…",
 };
+
+/** #663: a mensagem que veio do servidor, na forma da tela. Diagrama e aula voltam só com o número e abrem por ele. */
+function msgDoServidor(w: TranscriptWire): Msg {
+  const bloco = blocoDaMensagem(w);
+  return { id: w.id, role: w.role, text: w.text, at: Date.parse(w.at) || undefined, ...(bloco ? { blocos: [{ ...bloco, data: null } as unknown as StudioBlockData] } : {}) };
+}
 
 /** O que vai pro localStorage: diagrama/aula são só um id; o resto fica na sessão. */
 const enxugar = (m: Msg): Msg => {
@@ -213,12 +220,16 @@ function ChatDaConta({
         if (guardadas.length) { setMessages(guardadas); hadLocal = true; }
       }
     } catch { /* ignore */ }
-    if (!hadLocal) {
-      (async () => {
-        const wire = await hydrateTranscript("pesquisa", null);
-        if (wire.length) setMessages(wire.map((w) => ({ id: w.id, role: w.role, text: w.text })));
-      })();
-    }
+    // #663: a lista do servidor entra na do navegador; a conversa aberta sem cópia aqui vem de lá
+    (async () => {
+      const juntas = await sincronizarConversas("pesquisa", armazem, ESCOPO_PESQUISA, () => threadsRef.current);
+      if (juntas) { threadsRef.current = juntas; setThreads(juntas); }
+      if (hadLocal) return;
+      const ativa = abaAtivaRef.current;
+      const daConversa = ativa ? await mensagensDoServidor("pesquisa", ativa) : [];
+      const wire = daConversa.length ? daConversa : await hydrateTranscript("pesquisa", null);
+      if (wire.length && abaAtivaRef.current === ativa && !msgsRef.current.length) setMessages(wire.map(msgDoServidor));
+    })();
   }, []);
 
   // Espelha a conversa ATIVA (últimas 60) e o rascunho no localStorage — não perde ao trocar de aba/reload.
@@ -247,7 +258,10 @@ function ChatDaConta({
     if (sending || id === abaAtivaRef.current) return;
     abaAtivaRef.current = id; setAbaAtiva(id);
     marcarAtiva(armazem, id, ESCOPO_PESQUISA);
-    setMessages(carregarMensagens<Msg>(armazem, id, ESCOPO_PESQUISA));
+    const guardadas = carregarMensagens<Msg>(armazem, id, ESCOPO_PESQUISA);
+    setMessages(guardadas);
+    // #663: conversa criada em outro aparelho: as mensagens vêm do servidor
+    if (!guardadas.length) void mensagensDoServidor("pesquisa", id).then((wire) => { if (wire.length && abaAtivaRef.current === id && !msgsRef.current.length) setMessages(wire.map(msgDoServidor)); });
     focarComposer();
     const t = tocarThread(threadsRef.current, id);
     threadsRef.current = t; salvarThreads(armazem, t, ESCOPO_PESQUISA); setThreads(t);
@@ -288,6 +302,7 @@ function ChatDaConta({
   const fecharAba = (id: string) => {
     if (sending) return;
     const { threads: lista, proxima } = fecharThread(armazem, threadsRef.current, id, ESCOPO_PESQUISA);
+    void apagarNoServidor("pesquisa", id, armazem, ESCOPO_PESQUISA);
     threadsRef.current = lista; salvarThreads(armazem, lista, ESCOPO_PESQUISA); setThreads(lista);
     if (id === abaAtivaRef.current) {
       abaAtivaRef.current = proxima; setAbaAtiva(proxima);
@@ -298,6 +313,7 @@ function ChatDaConta({
   const renomearAba = (id: string, titulo: string) => {
     const lista = renomearThread(threadsRef.current, id, titulo);
     threadsRef.current = lista; salvarThreads(armazem, lista, ESCOPO_PESQUISA); setThreads(lista);
+    renomearNoServidor("pesquisa", lista.find((t) => t.id === id));
   };
   // Sub-tema do mesmo nicho: sub-conversa ligada à mãe, herdando o contexto (vai junto em cada envio).
   // Começa vazia, com "Aprofunde: " no composer — a 1ª pergunta batiza a sub-conversa.
@@ -330,6 +346,7 @@ function ChatDaConta({
   const reenviar = (idx: number, texto: string) => {
     if (sending) return;
     const corte = msgsRef.current.slice(0, idx);
+    if (abaAtivaRef.current) cortarNoServidor("pesquisa", abaAtivaRef.current, msgsRef.current[idx]?.at);
     msgsRef.current = corte;   // o send lê o histórico daqui, já cortado
     setMessages(corte);
     setEditando(null);
@@ -392,6 +409,7 @@ function ChatDaConta({
       void gerarArtefato(kind, { spaceId, topic, contexto, sala: "pesquisa", ...(kind === "aula" && pdf ? { pdf } : {}) }).then((r) => {
         // Documento (diagrama/aula): abre a aba em "Documentos"; pedido explícito já mostra ela.
         if (r.tipo === "pronto" && KINDS_EM_ABA.has(r.bloco.studioKind) && r.bloco.artifactId) {
+          gravarArtefato("pesquisa", threadsRef.current.find((t) => t.id === abaAtivaRef.current), { studioKind: r.bloco.studioKind, artifactId: r.bloco.artifactId, title: r.bloco.title || topic });
           abrirDocumento({ sala: "pesquisa", studioKind: r.bloco.studioKind, artifactId: r.bloco.artifactId, titulo: r.bloco.title || topic, data: r.bloco.data, focar: !!art.explicito || !!pdf });
         }
         patchMsg((m) => {
@@ -421,7 +439,7 @@ function ChatDaConta({
     const lendo = anexoRef.current;
     setMessages((prev) => [
       ...prev,
-      { id: uid(), role: "user", text: prompt, anexo: lendo?.nome ?? rotuloDoLote(loteRef.current) },
+      { id: uid(), role: "user", text: prompt, at: Date.now(), anexo: lendo?.nome ?? rotuloDoLote(loteRef.current) },
       { id: asstId, role: "assistant", text: "" },
     ]);
     if (text === undefined) setInput("");   // envio direto preserva o rascunho do composer
@@ -439,7 +457,7 @@ function ChatDaConta({
         const d = await tccApi.revisar(tccWorkId, prompt);
         patch(d.texto);
         if (d.sugestoes.length) avisarTccMudou(tccWorkId);
-        appendTranscript("pesquisa", null, [{ role: "user", text: prompt }, { role: "assistant", text: d.texto }]);
+        gravarTurno("pesquisa", threadsRef.current.find((t) => t.id === abaAtivaRef.current), prompt, d.texto);
       } catch (e: any) {
         patch(e?.status === 403 ? "Você só pode ler este TCC — sugestões ficam com quem edita." : (e?.body?.texto || "Não consegui revisar agora. Tente de novo."));
       } finally {
@@ -502,10 +520,7 @@ function ChatDaConta({
         // (projeção opcional no canvas; a memória de verdade é o cérebro).
         if (structured.kind === "answer" && abaAtivaRef.current) try { empurrarPontos(pontosDaResposta(abaAtivaRef.current, asstId, structured.answer)); } catch { /* ignore */ }
         if (structured.kind === "answer" && structured.answer.artifacts?.length) void materializarArtefatos(asstId, structured.answer, prompt);
-        appendTranscript("pesquisa", null, [
-          { role: "user", text: prompt },
-          { role: "assistant", text },
-        ]);
+        gravarTurno("pesquisa", threadsRef.current.find((t) => t.id === abaAtivaRef.current), prompt, text);
       } else if (si >= 0) {
         // TOOL-LOOP: research_generate → gera o trabalho e encaixa no documento.
         target = ""; ended = true;
@@ -521,10 +536,7 @@ function ChatDaConta({
         target = limpo; ended = true;
         await typed;
         if (!limpo.trim()) patch("Sem resposta agora.");
-        else appendTranscript("pesquisa", null, [
-          { role: "user", text: prompt },
-          { role: "assistant", text: limpo },
-        ]);
+        else gravarTurno("pesquisa", threadsRef.current.find((t) => t.id === abaAtivaRef.current), prompt, limpo);
       }
     } catch {
       patch("Falha de rede ao falar com o agente.");

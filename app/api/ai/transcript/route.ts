@@ -11,7 +11,7 @@
  */
 import { NextResponse } from "next/server";
 import {
-  resolveUserId, ensureConversation, appendMessages, getRecent, isSurface, type TurnMsg,
+  resolveUserId, ensureConversation, guardarConversa, appendMessages, getRecent, isSurface, type TurnMsg,
 } from "@/lib/agent/transcript";
 
 export const runtime = "nodejs";
@@ -45,13 +45,22 @@ export async function POST(req: Request) {
   const raw = Array.isArray(body.messages) ? body.messages : [];
   const messages: TurnMsg[] = raw
     .filter((m: any) => m && (m.role === "user" || m.role === "assistant") && typeof m.text === "string" && m.text.trim())
-    .map((m: any) => ({ role: m.role, text: String(m.text).slice(0, 32000), meta: m.meta }));
+    .map((m: any) => ({ role: m.role, text: String(m.text).slice(0, 32000), meta: m.meta, at: Number(m.at) > 0 ? Number(m.at) : undefined }));
   if (!messages.length) return NextResponse.json({ error: "sem mensagens válidas" }, { status: 400 });
 
   try {
     const conversationId = await ensureConversation(userId, body.surface, body.scopeId, {
       agentId: body.agentId, title: body.title,
     });
+    // #663: a conversa da lista chega com o título e o elo da sub-conversa
+    const c = body.conversa;
+    if (c && typeof body.scopeId === "string") {
+      await guardarConversa(userId, body.surface, body.scopeId, {
+        titulo: typeof c.titulo === "string" ? c.titulo.slice(0, 200) : undefined,
+        parentId: typeof c.parentId === "string" ? c.parentId.slice(0, 200) : undefined,
+        contexto: typeof c.contexto === "string" ? c.contexto.slice(0, 4000) : undefined,
+      });
+    }
     await appendMessages(conversationId, messages);
     return NextResponse.json({ conversationId });
   } catch {
