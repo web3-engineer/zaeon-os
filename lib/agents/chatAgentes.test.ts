@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { agentesDisponiveis, agenteValido, agenteChat } from "./chatAgentes";
+import { agentesDisponiveis, agenteValido, agenteChat, agenteNaTela } from "./chatAgentes";
 
 describe("agentes da aba de conversa", () => {
   it("Octa Code só aparece no seletor depois de adicionado no Marketplace", () => {
@@ -17,5 +17,15 @@ describe("agentes da aba de conversa", () => {
     expect(agenteValido("octa", ["octa-code"])).toBe("octa");
     expect(agenteValido("lixo", ["octa-code"])).toBe("aura");
     expect(agenteValido("nina", [])).toBe("nina");
+  });
+});
+
+describe("agenteNaTela (#666)", () => {
+  it("com o Octa salvo e o chat na tela, a lateral mostra a Aura", () => {
+    expect(agenteNaTela("octa", "sala-de-estudos")).toBe("aura");
+  });
+  it("na IDE, continua o Octa; os agentes de chat não mudam", () => {
+    expect(agenteNaTela("octa", "octa")).toBe("octa");
+    expect(agenteNaTela("nina", "sala-de-estudos")).toBe("nina");
   });
 });

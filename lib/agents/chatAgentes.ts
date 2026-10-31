@@ -35,3 +35,8 @@ export function agentesDisponiveis(plugados: readonly PluginChat[]): AgenteChat[
 export function agenteValido(id: string | null | undefined, plugados: readonly PluginChat[]): AgenteChatId {
   return agentesDisponiveis(plugados).find((a) => a.id === id)?.id ?? "aura";
 }
+
+/** #666: o agente que está na tela. O de IDE (Octa) só vale fora do chat: na Sala de Estudos, quem está na tela é a Aura. */
+export function agenteNaTela(id: AgenteChatId, aba: string): AgenteChatId {
+  return agenteChat(id).tela === "ide" && aba === "sala-de-estudos" ? "aura" : id;
+}
