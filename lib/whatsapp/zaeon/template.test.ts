@@ -1,5 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
-import { comporMensagem, INSTRUCOES_ZAEON, mensagemPadrao, objetivoDa } from "./template";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { comporMensagem, INSTRUCOES_ZAEON, mensagemPadrao, objetivoDa, retratoParaModelo } from "./template";
+import { MARCA_NOME, vazouNome } from "./semNome";
+import { disparosHfPrimario, historicoParaTerceiro } from "@/lib/llm/reservaHf";
 import type { Contexto } from "./contexto";
 
 const ctx: Contexto = {
@@ -35,6 +37,106 @@ describe("template da Zaeon", () => {
     const r2 = await comporMensagem({ tipo: "lembrete", lembrete: { id: "l", texto: "revisar", minutos: 600, dias: [], ativo: true }, chave: "k" }, ctx, async () => ({ mensagem: "ok" }));
     expect(r2.texto).toMatch(/revisar/);
     expect(mensagemPadrao({ tipo: "momento", momento: "noite", chave: "k" }, ctx)).toMatch(/Mitose e meiose/);
+  });
+});
+
+describe("HF primário nos disparos (DISPAROS_HF, decisão do dono 2026-10-30)", () => {
+  const comHistorico: Contexto = {
+    ...ctx,
+    conversaWhatsApp: [{ de: "aluno", texto: "oi Ana aqui, travei na meiose" }, { de: "zaeon", texto: "Bom dia, Ana!" }],
+  };
+  const original = { ...process.env };
+  // `process.env` é especial no Node: `Object.assign(process.env, { X: undefined })` grava a STRING
+  // "undefined" — que `disparosHfPrimario` leria como LIGADO. Então chave sem valor é DELETADA.
+  // (E o restore não reatribui `process.env`: trocá-lo por um objeto comum tirava essa coerção e
+  // fazia os testes seguintes passarem pelo motivo errado, dependendo da ordem de execução.)
+  const porEnv = (env: Record<string, string | undefined>) => {
+    for (const [k, v] of Object.entries(env)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  };
+  const comEnv = async (env: Record<string, string | undefined>, c: Contexto = comHistorico) => {
+    porEnv(env);
+    const gerar = vi.fn(async (_req: { system: string; user: string }) => ({ mensagem: `Bom dia, ${MARCA_NOME}! Topa revisar meiose?` }));
+    const r = await comporMensagem({ tipo: "momento", momento: "manha", chave: "k" }, c, gerar);
+    return { r, req: gerar.mock.calls[0][0] };
+  };
+  afterEach(() => {
+    for (const k of Object.keys(process.env)) if (!(k in original)) delete process.env[k];
+    Object.assign(process.env, original);
+  });
+
+  it("a própria plumbing do teste é honesta: chave sem valor SAI do env, não vira \"undefined\"", () => {
+    porEnv({ HF_TOKEN: "hf_x" });
+    expect(process.env.HF_TOKEN).toBe("hf_x");
+    porEnv({ HF_TOKEN: undefined });
+    expect("HF_TOKEN" in process.env).toBe(false);
+    expect(disparosHfPrimario()).toBe(false);
+  });
+
+  it("LIGADO: o nome do aluno NÃO sai no prompt — nem na linha Nome:, nem no histórico", async () => {
+    const { req } = await comEnv({ HF_TOKEN: "hf_x", DISPAROS_HF: "1" });
+    expect(req.user).not.toMatch(/\bAna\b/);
+    expect(req.user).toContain(MARCA_NOME);
+    expect(req.system).toContain(MARCA_NOME);          // o modelo é instruído a usar a marca
+    expect(vazouNome(req.user, "Ana")).toBe(false);
+    expect(vazouNome(req.system, "Ana")).toBe(false);
+  });
+
+  it("LIGADO: o aluno recebe a mensagem COM o nome dele (a marca é reposta na volta)", async () => {
+    const { r } = await comEnv({ HF_TOKEN: "hf_x", DISPAROS_HF: "1" });
+    expect(r).toEqual({ texto: "Bom dia, Ana! Topa revisar meiose?", doModelo: true });
+    expect(r.texto).not.toContain(MARCA_NOME);
+  });
+
+  it("LIGADO: o conteúdo útil continua indo (não é redação cega)", async () => {
+    const { req } = await comEnv({ HF_TOKEN: "hf_x", DISPAROS_HF: "1" });
+    expect(req.user).toContain("Mitose e meiose");
+    expect(req.user).toContain("19:00 — estudar biologia");
+    expect(req.user).toContain("travei na meiose");    // o histórico vai, por default
+  });
+
+  it("DESLIGADO (default): nada muda — o retrato vai inteiro, com nome, como sempre foi", async () => {
+    const { req, r } = await comEnv({ HF_TOKEN: "hf_x", DISPAROS_HF: undefined });
+    expect(req.user).toContain("Nome: Ana");
+    expect(req.user).not.toContain(MARCA_NOME);
+    expect(req.system).not.toContain(MARCA_NOME);
+    // a marca que o modelo inventou sem a gente pedir ainda assim não chega no aluno
+    expect(r.texto).toBe("Bom dia, Ana! Topa revisar meiose?");
+  });
+
+  it("sem HF_TOKEN a flag não faz nada — não existe HF pra ser primário", async () => {
+    const { req } = await comEnv({ HF_TOKEN: undefined, DISPAROS_HF: "1" });
+    expect(req.user).toContain("Nome: Ana");
+    expect(disparosHfPrimario({ DISPAROS_HF: "1" })).toBe(false);
+    expect(disparosHfPrimario({ DISPAROS_HF: "1", HF_TOKEN: "hf_x" })).toBe(true);
+  });
+
+  it("DISPAROS_HF_SEM_HISTORICO=1 corta a conversa do aluno (e só ela)", async () => {
+    const { req } = await comEnv({ HF_TOKEN: "hf_x", DISPAROS_HF: "1", DISPAROS_HF_SEM_HISTORICO: "1" });
+    expect(req.user).not.toContain("travei na meiose");
+    expect(req.user).not.toContain("Últimas mensagens no WhatsApp");
+    expect(req.user).toContain("Mitose e meiose");     // o resto do retrato fica
+    expect(historicoParaTerceiro({ DISPAROS_HF_SEM_HISTORICO: "1" })).toBe(false);
+    expect(historicoParaTerceiro({})).toBe(true);      // default: mantém
+  });
+
+  it("sem nome no cadastro, nenhuma marca chega no aluno", async () => {
+    const { r, req } = await comEnv({ HF_TOKEN: "hf_x", DISPAROS_HF: "1" }, { ...comHistorico, nome: null });
+    expect(req.system).not.toContain(MARCA_NOME);      // nada a esconder → nada a explicar
+    expect(r.texto).not.toContain(MARCA_NOME);
+    expect(r.texto).toBe("Bom dia! Topa revisar meiose?");
+  });
+
+  it("retratoParaModelo é puro e explícito nas duas dimensões", () => {
+    const comNome = retratoParaModelo(comHistorico, { terceiro: false, historico: true });
+    expect(comNome).toContain("Nome: Ana");
+    const semNomeComHist = retratoParaModelo(comHistorico, { terceiro: true, historico: true });
+    expect(semNomeComHist).not.toMatch(/\bAna\b/);
+    expect(semNomeComHist).toContain("travei na meiose");
+    const semTudo = retratoParaModelo(comHistorico, { terceiro: true, historico: false });
+    expect(semTudo).not.toContain("travei na meiose");
   });
 });
 

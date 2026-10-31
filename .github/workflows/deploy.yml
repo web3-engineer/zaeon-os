@@ -93,6 +93,14 @@ jobs:
           # exigia entrar no servidor. Preenchidos, vão pro .env.secrets (que vence o .env); vazios, o .env decide.
           UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
           UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+          # Reserva/caminho do Hugging Face (lib/llm/reservaHf). O token NUNCA esteve no pipeline: sem
+          # ele no `.env` do VPS, `reservaHfLigada()` é falso e a reserva está DESLIGADA em produção —
+          # inclusive nos disparos. Preenchido, vai pro .env.secrets (que vence o .env); vazio, o .env decide.
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          # Runtime (não entram no bundle): valem sem rebuild, só recriando o web.
+          HF_RESERVA: ${{ vars.HF_RESERVA || '' }}
+          DISPAROS_HF: ${{ vars.DISPAROS_HF || '' }}
+          DISPAROS_HF_SEM_HISTORICO: ${{ vars.DISPAROS_HF_SEM_HISTORICO || '' }}
           # opções (push usa defaults; dispatch respeita os inputs)
           WITH_VOICE: ${{ github.event.inputs.with_voice || vars.DEPLOY_WITH_VOICE || 'false' }}
           DB_PUSH: ${{ github.event.inputs.db_push || 'true' }}
@@ -154,7 +162,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           command_timeout: 25m
-          envs: GOOGLE_CREDENTIALS_B64,GOOGLE_PROJECT_ID_VALUE,OCTA_CRON_SECRET,UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,WITH_VOICE,DB_PUSH,DEPLOY_BRANCH,APP_URL,BETA_DOMAIN,ACME_EMAIL,NEXT_PUBLIC_ESCRITORIO_COWORK,NEXT_PUBLIC_AGENTS_ADMIN,NEXT_PUBLIC_AGENT_AVATARS,NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM,NEXT_PUBLIC_MAP_HARNESS,NEXT_PUBLIC_LOUNGE_3D,NEXT_PUBLIC_CYBER_AVATAR_GLB,NEXT_PUBLIC_CYBER_LANDMARKS,NEXT_PUBLIC_AURA_ECONOMY,NEXT_PUBLIC_REALTIME,NEXT_PUBLIC_VOZ,NEXT_PUBLIC_MOBILE_UI,NEXT_PUBLIC_PROJETOS,NEXT_PUBLIC_MENTORES_TAB,NEXT_PUBLIC_OCTA_CODE,NEXT_PUBLIC_OCTA_REA,MAP_HARNESS,ESTUDO_GATEKEEPER,AURA_ECONOMY,NEXT_PUBLIC_CHAT_UNICO,CHAT_UNICO,NEXT_PUBLIC_BLUEPRINT_PRATICO,BLUEPRINT_PRATICO,GITHUB_TOKEN_BLUEPRINT,NEXT_PUBLIC_VIDEO_DOC,VIDEO_DOC,NEXT_PUBLIC_REA_BLUEPRINT,REA_BLUEPRINT
+          envs: GOOGLE_CREDENTIALS_B64,GOOGLE_PROJECT_ID_VALUE,OCTA_CRON_SECRET,UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,HF_TOKEN,HF_RESERVA,DISPAROS_HF,DISPAROS_HF_SEM_HISTORICO,WITH_VOICE,DB_PUSH,DEPLOY_BRANCH,APP_URL,BETA_DOMAIN,ACME_EMAIL,NEXT_PUBLIC_ESCRITORIO_COWORK,NEXT_PUBLIC_AGENTS_ADMIN,NEXT_PUBLIC_AGENT_AVATARS,NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM,NEXT_PUBLIC_MAP_HARNESS,NEXT_PUBLIC_LOUNGE_3D,NEXT_PUBLIC_CYBER_AVATAR_GLB,NEXT_PUBLIC_CYBER_LANDMARKS,NEXT_PUBLIC_AURA_ECONOMY,NEXT_PUBLIC_REALTIME,NEXT_PUBLIC_VOZ,NEXT_PUBLIC_MOBILE_UI,NEXT_PUBLIC_PROJETOS,NEXT_PUBLIC_MENTORES_TAB,NEXT_PUBLIC_OCTA_CODE,NEXT_PUBLIC_OCTA_REA,MAP_HARNESS,ESTUDO_GATEKEEPER,AURA_ECONOMY,NEXT_PUBLIC_CHAT_UNICO,CHAT_UNICO,NEXT_PUBLIC_BLUEPRINT_PRATICO,BLUEPRINT_PRATICO,GITHUB_TOKEN_BLUEPRINT,NEXT_PUBLIC_VIDEO_DOC,VIDEO_DOC,NEXT_PUBLIC_REA_BLUEPRINT,REA_BLUEPRINT
           script: |
             set -euo pipefail
             cd "${{ secrets.DEPLOY_PATH }}"
@@ -202,6 +210,26 @@ jobs:
               echo "→ Upstash: credencial dos Secrets gravada no .env.secrets"
             else
               echo "→ Upstash: Secrets vazios — vale o .env do VPS"
+            fi
+            # HF: o token é SECRET (vai pro .env.secrets); as três chaves de comportamento são Variables
+            # e entram no mesmo arquivo pra valerem sem rebuild. Cada uma só é gravada se vier preenchida —
+            # linha vazia aqui SOBRESCREVERIA o `.env` do VPS e desligaria o que já estava ligado.
+            if [ -n "${HF_TOKEN:-}" ] || [ -n "${HF_RESERVA:-}" ] || [ -n "${DISPAROS_HF:-}" ] || [ -n "${DISPAROS_HF_SEM_HISTORICO:-}" ]; then
+              grep -vE '^(HF_TOKEN|HF_RESERVA|DISPAROS_HF|DISPAROS_HF_SEM_HISTORICO)=' .env.secrets > .env.secrets.tmp || true
+              {
+                cat .env.secrets.tmp
+                # `|| true` em cada uma: o script roda com `set -e`, e um teste falso sem isso
+                # devolveria 1 e derrubaria o deploy justamente quando a chave está vazia.
+                { [ -n "${HF_TOKEN:-}" ] && echo "HF_TOKEN=${HF_TOKEN}"; } || true
+                { [ -n "${HF_RESERVA:-}" ] && echo "HF_RESERVA=${HF_RESERVA}"; } || true
+                { [ -n "${DISPAROS_HF:-}" ] && echo "DISPAROS_HF=${DISPAROS_HF}"; } || true
+                { [ -n "${DISPAROS_HF_SEM_HISTORICO:-}" ] && echo "DISPAROS_HF_SEM_HISTORICO=${DISPAROS_HF_SEM_HISTORICO}"; } || true
+              } > .env.secrets
+              rm -f .env.secrets.tmp
+              # Nunca imprime o token: só se ele existe, e o estado das chaves de comportamento.
+              echo "→ HF: token=$([ -n "${HF_TOKEN:-}" ] && echo sim || echo '(vale o .env)') reserva=${HF_RESERVA:-'(default)'} disparos=${DISPAROS_HF:-'(off)'}"
+            else
+              echo "→ HF: nada nos Secrets/Variables — vale o .env do VPS"
             fi
 
             # Serviços do deploy: enxuto por padrão; completo se WITH_VOICE=true.
