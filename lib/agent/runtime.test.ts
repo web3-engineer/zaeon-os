@@ -54,6 +54,14 @@ describe("runtime · permit (deny-by-default)", () => {
 
 describe("runtime · runTool (nunca lança)", () => {
   const boom = def({ name: "boom", async run() { throw new Error("estourei"); } });
+  it("libera o timer de prazo quando a ferramenta termina antes do timeout",async()=>{
+    vi.useFakeTimers();
+    try{
+      const result=await runTool(def({timeoutMs:600_000}),{},ctx());
+      expect(result.ok).toBe(true);
+      expect(vi.getTimerCount()).toBe(0);
+    }finally{vi.useRealTimers();}
+  });
 
   it("tool que estoura → {ok:false,error} (não propaga a exceção)", async () => {
     const r = await runTool(boom, {}, ctx());

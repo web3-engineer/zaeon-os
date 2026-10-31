@@ -1623,6 +1623,8 @@ model OctaPublicacao {
 // Um turno do agente Octa no fluxo landing, rodando em job (lib/queue/octa). O estado para retomar depois de uma
 // aprovação (msgs + a tool pendente) mora SÓ aqui — o cliente manda só { aprovado }.
 model OctaTurno {
+  reaIdentityVerified Boolean @default(false) // server sign-in assurance; never a client field
+  reaOwnerId String? // verified subject; legacy userId/email ownership remains unchanged
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   userId    String
   email     String   // do dono (sessão) — o job precisa pra achar o GitHub do aluno; nunca vai pro cliente
@@ -1731,3 +1733,81 @@ model Blueprint {
   @@index([published, order])
   @@map("landing_blueprints")
 }
+
+ // REA static-analysis proofs. Additive pilot collections; no model-authored verdicts.
+ model ReaArtifact {
+   id String @id @default(uuid()) @map("_id")
+   ownerId String
+   projectId String
+   sha256 String
+   name String
+   bytes Int
+   handle String
+   synthetic Boolean @default(false)
+   expiresAt DateTime?
+   createdAt DateTime @default(now())
+   @@index([ownerId, projectId])
+   @@map("rea_artifacts")
+ }
+ model ReaProofRun {
+   id String @id @map("_id")
+   ownerId String
+   projectId String
+   artifactId String
+   artifactSha256 String
+   leaseId String
+   objective String @default("android-marker-v1")
+   state String @default("running")
+   evidence Json?
+   observation Json?
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
+   @@index([ownerId, projectId, createdAt])
+   @@map("rea_proof_runs")
+ }
+ model ReaVerificationReceipt {
+   id String @id @default(uuid()) @map("_id")
+   proofRunId String
+   ownerId String
+   projectId String
+   verifierVersion String
+   oracleHash String
+   pass Boolean
+   payload Json
+   createdAt DateTime @default(now())
+   @@unique([proofRunId, verifierVersion, oracleHash])
+   @@index([ownerId, projectId])
+   @@map("rea_verification_receipts")
+ }
+ model ReaSuccessLesson {
+   id String @id @default(uuid()) @map("_id")
+   ownerId String
+   projectId String
+   artifactSha256 String
+   objectiveHash String
+   engineFingerprint String
+   verifierVersion String
+   state String @default("verified_project")
+   revision Int @default(1)
+   payload Json
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
+   @@unique([ownerId, projectId, artifactSha256, objectiveHash, engineFingerprint, verifierVersion])
+   @@index([ownerId, projectId, state])
+   @@map("rea_success_lessons")
+ }
+ model ReaLearningOutbox {
+   id String @id @default(uuid()) @map("_id")
+   lessonId String
+   lessonRevision Int
+   destination String
+   state String @default("pending")
+   attempts Int @default(0)
+   errorCode String?
+   payload Json?
+   updatedAt DateTime @updatedAt
+   @@unique([lessonId, lessonRevision, destination])
+   @@index([state, destination])
+   @@map("rea_learning_outbox")
+ }
+

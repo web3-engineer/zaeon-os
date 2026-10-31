@@ -35,6 +35,7 @@ import GaleriaDesign from "./GaleriaDesign";
 import { PassosTurno, CartaoAprovacao } from "./PassosTurno";
 import { useTurnoOcta, type EstadoTurno, type StatusTurno } from "./useTurnoOcta";
 import { tipoProjeto } from "@/lib/octa/tipoProjeto";
+import ReaProofPanel from "./ReaProofPanel";
 
 const Monaco = dynamic(() => import("@monaco-editor/react").then((m) => m.default), {
   ssr: false,
@@ -975,6 +976,7 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
                   </>
                 )}
               </div>
+              {REA_ON && process.env.NEXT_PUBLIC_REA_SUCCESS_MEMORY === "1" && <ReaProofPanel projectId={projeto?.id ?? null} />}
               <div className="flex items-end gap-2 rounded-lg px-2 py-1.5" style={{ background: Z.bg, border: `1px solid ${Z.borda}` }}>
                 <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={2} placeholder={projeto ? (turno ? "Espere o Octa terminar…" : "Peça ao Octa… (ex.: uma landing pra minha confeitaria)") : "Peça ao Octa…"}
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void enviar(); } }}

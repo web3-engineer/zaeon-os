@@ -42,3 +42,5 @@ The "light reverse-engineering mode" (lib/agent/aprender.ts) adapts REA's
 intent — understand how a feature works, then recreate it in your own stack —
 as a prompt directive. No REA code, binary-analysis tooling or MCP server is
 included. Copyright (c) 2026 morluto.
+
+Android REA provider: jadx-headless-mcp 0.7.1, SHA-256 pinned to REA 6.5.0 audited metadata. JADX core: skylot/jadx, Apache License 2.0; upstream provider: https://github.com/1013503897/jadx-headless-mcp. The binary is downloaded into the isolated engine image, not vendored as application source. Synthetic REA Android fixtures are original Zaeon test code.

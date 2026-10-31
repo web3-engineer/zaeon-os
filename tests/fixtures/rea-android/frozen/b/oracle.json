@@ -1,0 +1,14 @@
+{
+  "fixtureId": "B",
+  "artifactSha256": "eea0b6e48502952470fd37e39d83d0ecc344d7acec26cf45de88319909cf0eb5",
+  "sourceHash": "491373810962b2151674fbc9b0b5ecaf934f5ee767fa2569b85ae7d14d5cc64c",
+  "facts": {
+    "packageName": "space.zaeon.rea.fixtureb",
+    "versionCode": 2,
+    "activity": "space.zaeon.rea.fixtureb.MainActivity",
+    "className": "space.zaeon.rea.fixtureb.TransferMarker",
+    "methodSignature": "marker()Ljava/lang/String;",
+    "returnedLiteral": "ZAEON_REA_FIXTURE_B",
+    "internetDeclared": true
+  }
+}
