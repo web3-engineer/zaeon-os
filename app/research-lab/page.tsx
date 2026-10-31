@@ -1,5 +1,6 @@
 "use client";
 
+import { useArmazemDaConta } from "@/lib/chat/contaNoNavegador";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { BRAZILIAN_UNIVERSITIES } from "@/constants/universities";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,7 +20,7 @@ import { EVT_PESQUISA_SALVA, contarPalavras } from "@/lib/onboarding/tutorialLab
 import RostoDaAba from "@/components/agents/avatar/RostoDaAba";
 import SeletorDeAgente from "@/components/agents/SeletorDeAgente";
 import OctaIcon from "@/components/octa/OctaIcon";
-import { agenteChat, agentesDisponiveis, agenteValido, type AgenteChatId } from "@/lib/agents/chatAgentes";
+import { agenteChat, agentesDisponiveis, agenteValido, type AgenteChatId, agenteNaTela } from "@/lib/agents/chatAgentes";
 import { avisarPersona } from "@/lib/research/zaeonEventos";
 import { usePluginsChat } from "@/lib/plugins/chatPlugins";
 import { usePresenca } from "@/components/agents/avatar/hooks";
@@ -842,7 +843,9 @@ export default function HomeworkPage({
     const valido = agenteValido(salvo, agentesPlugados);
     setAgenteId(valido); avisarPersona(valido);   // o avatar do painel dos documentos é o do agente (o Octa: nenhum)
   }, [agentesPlugados]);
-  const agente = agenteChat(agenteId);
+  // #666: a lateral mostra o agente que está na tela. O Octa salvo não reabre a IDE sozinho, então no chat vale a Aura.
+  const agente = agenteChat(agenteNaTela(agenteId, activeTab));
+  useEffect(() => { avisarPersona(agente.id); }, [agente.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // "octa" não passa pelo setActiveTab (que só aceita as abas de link/restauração): a IDE só abre por aqui.
   const abrirAgente = (a = agente) => (a.tela === "ide" ? setActiveTabRaw("octa") : irEstudos("meus-estudos"));
   const trocarAgente = async (id: AgenteChatId) => {
@@ -1387,9 +1390,16 @@ export default function HomeworkPage({
 
   // PERSISTÊNCIA POR TIPO — cada formato (TCC/Artigo/Relatório) guarda seu próprio
   // rascunho (sessão). Trocar de tipo NÃO converte: abre a sessão daquele tipo.
+  // #666: os rascunhos são da conta logada. Espera a sessão; trocar de conta limpa a tela antes de ler a área da outra.
+  const areaDaConta = useArmazemDaConta();
+  const docsDaConta = useRef<string | null>(null);
   useEffect(() => {
+    if (!areaDaConta) return;
+    if (docsDaConta.current === areaDaConta.conta) return;
+    if (docsDaConta.current !== null) { docsRef.current = {}; setDocContent(""); setDocTitle(""); }
+    docsDaConta.current = areaDaConta.conta;
     try {
-      const raw = localStorage.getItem("zaeon_research_docs");
+      const raw = areaDaConta.armazem.getItem("zaeon_research_docs");
       if (raw) {
         const d = JSON.parse(raw);
         if (d.docs && typeof d.docs === "object") docsRef.current = d.docs;
@@ -1404,7 +1414,7 @@ export default function HomeworkPage({
         return;
       }
       // Compat: rascunho antigo (único) → migra pra sessão do tipo salvo (ou TCC).
-      const legacy = localStorage.getItem("zaeon_research_draft");
+      const legacy = areaDaConta.armazem.getItem("zaeon_research_draft");
       if (legacy) {
         const d = JSON.parse(legacy);
         const wt: WorkType = d.workType || "TCC";
@@ -1417,16 +1427,18 @@ export default function HomeworkPage({
       }
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [areaDaConta]);
   useEffect(() => {
+    // só grava depois de ler a área desta conta, senão o documento vazio do começo apagaria o rascunho
+    if (!areaDaConta || docsDaConta.current !== areaDaConta.conta) return;
     try {
       if (workType) docsRef.current[workType] = { content: docContent, title: docTitle };
-      localStorage.setItem(
+      areaDaConta.armazem.setItem(
         "zaeon_research_docs",
         JSON.stringify({ docs: docsRef.current, activeWorkType: workType }),
       );
     } catch {}
-  }, [docContent, docTitle, workType]);
+  }, [docContent, docTitle, workType, areaDaConta]);
 
   // Troca o tipo SEM converter: salva a sessão atual e abre a do novo tipo (ou template vazio).
   const switchWorkType = (next: WorkType) => {

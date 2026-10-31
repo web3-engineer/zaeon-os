@@ -13,6 +13,7 @@
  * biblioteca ("library") do caderno ("feed"). Cada bloco salva sozinho (debounce).
  */
 
+import { useArmazemDaConta } from "@/lib/chat/contaNoNavegador";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Plus, Trash2, Sparkles, Youtube, Loader2, ChevronDown, NotebookPen,
@@ -622,12 +623,14 @@ export default function MeusEstudosFeed({ collabSpaceId, mode = "study" }: { col
     setSavedStudio((prev) => ({ ...prev, [it.id]: true }));
   };
   // Joga um registro na lixeira da sala de pesquisa (localStorage zaeon.trash + evento de sync).
+  const areaDaConta = useArmazemDaConta();
   const trashPush = (id: string, title: string) => {
     try {
       const KEY = "zaeon.trash";
-      const list = JSON.parse(localStorage.getItem(KEY) || "[]");
+      if (!areaDaConta) return;
+      const list = JSON.parse(areaDaConta.armazem.getItem(KEY) || "[]");
       const rec = { id: `study-${id}`, title: title || "Item de estudo", pdfUrl: "", source: "Sala de Estudos", savedAt: Date.now(), deletedAt: Date.now() };
-      localStorage.setItem(KEY, JSON.stringify([rec, ...list.filter((x: any) => x.id !== rec.id)]));
+      areaDaConta.armazem.setItem(KEY, JSON.stringify([rec, ...list.filter((x: any) => x.id !== rec.id)]));
       window.dispatchEvent(new CustomEvent("zaeon:trash"));
     } catch { /* ignore */ }
   };
