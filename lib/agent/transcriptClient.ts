@@ -7,14 +7,14 @@
 export type TranscriptRole = "user" | "assistant";
 export type TranscriptWire = { id: string; role: TranscriptRole; text: string; meta?: unknown; at: string };
 
-type AppendMsg = { role: TranscriptRole; text: string; meta?: unknown };
+type AppendMsg = { role: TranscriptRole; text: string; meta?: unknown; at?: number };
 
 /** Grava um turno (normalmente user + assistant). Fire-and-forget: não dá throw, não espera. */
 export function appendTranscript(
   surface: string,
   scopeId: string | null | undefined,
   messages: AppendMsg[],
-  opts?: { agentId?: string; title?: string },
+  opts?: { agentId?: string; title?: string; conversa?: { titulo?: string; parentId?: string; contexto?: string } },
 ): void {
   const clean = messages.filter((m) => m && m.text && m.text.trim());
   if (!clean.length) return;

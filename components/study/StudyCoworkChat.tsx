@@ -81,9 +81,11 @@ import { parseStructuredStream, STRUCTURED_SENTINEL } from "@/lib/agent/structur
 import { separarProgresso, faseCorrente } from "@/lib/agent/progresso";
 import { revelarPorTempo, safeCut } from "@/lib/ui/typewriter";
 import { cronometrarResposta, EVT_TEMPOS, fmtTempos, verTempos, type TemposResposta } from "@/lib/chat/temposResposta";
-import { appendTranscript, hydrateTranscript } from "@/lib/agent/transcriptClient";
+import { hydrateTranscript } from "@/lib/agent/transcriptClient";
 import { useArmazemDaConta } from "@/lib/chat/contaNoNavegador";
-import type { Armazem } from "@/lib/chat/threads";
+import { apagarNoServidor, blocoDaMensagem, cortarNoServidor, gravarArtefato, gravarTurno, mensagensDoServidor, renomearNoServidor, sincronizarConversas } from "@/lib/chat/conversasServidor";
+import type { TranscriptWire } from "@/lib/agent/transcriptClient";
+import { ESCOPO_COWORK, type Armazem } from "@/lib/chat/threads";
 import { esperarTurno } from "@/lib/chat/turnoRetomavel";
 import { pedirAura } from "@/lib/chat/auraClient";
 import { EVT_FEEDBACK } from "@/lib/chat/feedback";
@@ -159,6 +161,12 @@ function enxugarArtefatos(m: Msg): Msg {
 }
 
 const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+/** #663: a mensagem que veio do servidor, na forma da tela. Diagrama e aula voltam só com o número e abrem por ele. */
+function msgDoServidor(w: TranscriptWire): Msg {
+  const bloco = blocoDaMensagem(w);
+  return { id: w.id, role: w.role, kind: "text", text: w.text, at: Date.parse(w.at) || Date.now(), ...(bloco ? { studioBlock: { ...bloco, data: null } as unknown as StudioBlockData } : {}) };
+}
 
 /**
  * O que desta mensagem a Aura precisa reler no próximo turno.
@@ -470,16 +478,17 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
         if (guardadas.length) { setMessages(guardadas); hadLocal = true; }
       }
     } catch { /* ignore */ }
-    if (!hadLocal && deviceNovo) {
-      (async () => {
-        const wire = await hydrateTranscript("estudos", null);
-        if (wire.length) {
-          setMessages(wire.map((w) => ({
-            id: w.id, role: w.role, kind: "text" as const, text: w.text, at: Date.parse(w.at) || Date.now(),
-          })));
-        }
-      })();
-    }
+    // #663: a lista do servidor entra na do navegador; a conversa aberta sem cópia aqui vem de lá
+    (async () => {
+      const juntas = await sincronizarConversas("estudos", armazem, ESCOPO_COWORK, () => threadsRef.current);
+      if (juntas) { threadsRef.current = juntas; setThreads(juntas); }
+      if (hadLocal) return;
+      const ativa = abaAtivaRef.current;
+      const daConversa = ativa ? await mensagensDoServidor("estudos", ativa) : [];
+      // aparelho novo sem nenhuma conversa separada ainda: mostra o histórico antigo, como antes
+      const wire = daConversa.length || !deviceNovo || juntas?.length !== 1 ? daConversa : await hydrateTranscript("estudos", null);
+      if (wire.length && abaAtivaRef.current === ativa && !msgsRef.current.length) setMessages(wire.map(msgDoServidor));
+    })();
   }, []);
 
   // Persiste o thread (só texto + estudos; artefatos pesados do Studio ficam na sessão).
@@ -631,7 +640,10 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     abaAtivaRef.current = id;
     setAbaAtiva(id);
     marcarAtiva(armazem, id);
-    setMessages(carregarMensagens<Msg>(armazem, id));
+    const guardadas = carregarMensagens<Msg>(armazem, id);
+    setMessages(guardadas);
+    // #663: conversa criada em outro aparelho: as mensagens vêm do servidor
+    if (!guardadas.length) void mensagensDoServidor("estudos", id).then((wire) => { if (wire.length && abaAtivaRef.current === id && !msgsRef.current.length) setMessages(wire.map(msgDoServidor)); });
     const t = tocarThread(threadsRef.current, id);
     threadsRef.current = t;
     salvarThreads(armazem, t);
@@ -654,6 +666,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
 
   const fecharAba = useCallback((id: string) => {
     const { threads: lista, proxima } = fecharThread(armazem, threadsRef.current, id);
+    void apagarNoServidor("estudos", id, armazem, ESCOPO_COWORK);
     salvarThreads(armazem, lista);
     threadsRef.current = lista;
     setThreads(lista);
@@ -687,6 +700,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     threadsRef.current = lista;
     salvarThreads(armazem, lista);
     setThreads(lista);
+    renomearNoServidor("estudos", lista.find((t) => t.id === id));
   }, []);
 
   // Sub-tema do mesmo nicho: sub-conversa ligada à mãe, herdando o contexto (vai junto em cada envio).
@@ -801,6 +815,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
       window.dispatchEvent(new CustomEvent("zaeon:study:embed", { detail: { ...r.bloco, attachMsgId, scopeId } }));
       // Documento (diagrama/aula): abre a aba em "Documentos"; pedido explícito já mostra ela.
       if (KINDS_EM_ABA.has(r.bloco.studioKind) && r.bloco.artifactId) {
+        gravarArtefato("estudos", threadsRef.current.find((t) => t.id === scopeId), { studioKind: r.bloco.studioKind, artifactId: r.bloco.artifactId, title: r.bloco.title || topic });
         abrirDocumento({ sala: "estudos", studioKind: r.bloco.studioKind, artifactId: r.bloco.artifactId, titulo: r.bloco.title || topic, data: r.bloco.data, focar: !silencioso, scopeId });
       }
     } else if (r.tipo === "erro" && !r.silencioso && !silencioso) {
@@ -819,6 +834,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   const aplicarFinal = useCallback((asstId: string, limpo: string, prompt: string, abaDoTurno: string | null = abaAtivaRef.current) => {
     const patchAsst = (text: string) =>
       setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, text } : m)));
+    const threadDoTurno = () => threadsRef.current.find((t) => t.id === abaDoTurno);
     const structured = parseStructuredStream(limpo);
     const si = limpo.indexOf(STUDIO_SENTINEL);
     if (structured) {
@@ -849,16 +865,10 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
         }
         // L1 grava o corpo, não a manchete: é esta transcrição que vira memória
         // durável, e memória de manchete não serve pra nada depois.
-        appendTranscript("estudos", focusIds[0] ?? null, [
-          { role: "user", text: prompt },
-          { role: "assistant", text: textoParaHistorico({ kind: "structured", answer: a }) || a.nucleo },
-        ]);
+        gravarTurno("estudos", threadDoTurno(), prompt, textoParaHistorico({ kind: "structured", answer: a }) || a.nucleo);
       } else {
         patchAsst(structured.text);
-        appendTranscript("estudos", focusIds[0] ?? null, [
-          { role: "user", text: prompt },
-          { role: "assistant", text: structured.text },
-        ]);
+        gravarTurno("estudos", threadDoTurno(), prompt, structured.text);
       }
     } else if (si >= 0) {
       // TOOL-LOOP (Fase 0): ação — não datilografa; encerra e trata.
@@ -874,11 +884,8 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
       patchAsst("Sem resposta agora.");
     } else {
       patchAsst(limpo);
-      // L1: grava o turno durável (fire-and-forget). scopeId = estudo focado, se houver.
-      appendTranscript("estudos", focusIds[0] ?? null, [
-        { role: "user", text: prompt },
-        { role: "assistant", text: limpo },
-      ]);
+      // L1: grava o turno durável (fire-and-forget), na conversa que pediu.
+      gravarTurno("estudos", threadDoTurno(), prompt, limpo);
     }
     setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, pendente: false } : m)));
   }, [runStudioAction, focusIds]);
@@ -1088,6 +1095,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   const reenviar = (idx: number, texto: string) => {
     if (sending) return;
     const corte = msgsRef.current.slice(0, idx);
+    if (abaAtivaRef.current) cortarNoServidor("estudos", abaAtivaRef.current, msgsRef.current[idx]?.at);
     msgsRef.current = corte;   // o send lê o histórico daqui, já cortado
     setMessages(corte);
     setEditando(null);

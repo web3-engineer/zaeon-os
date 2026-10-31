@@ -726,6 +726,9 @@ model Conversation {
   estudavel      Boolean  @default(false)
   tituloSugerido String?
   mapaId         String?  @db.ObjectId
+  // #663: sub-conversa da Árvore — o scopeId da conversa-mãe e o trecho herdado dela.
+  parentScopeId    String?
+  contextoHerdado  String?
   messages  ChatMessage[]
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
