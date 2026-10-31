@@ -180,11 +180,22 @@ async function ingerir(deps: IngerirDeps, e: IngerirEntrada): Promise<IngerirRes
  */
 export async function ingerirTexto(
   deps: Omit<IngerirDeps, "extrair">,
-  e: Omit<IngerirEntrada, "bytes" | "nomeArquivo"> & { titulo: string; texto: string; chave: string },
+  e: Omit<IngerirEntrada, "bytes" | "nomeArquivo"> & {
+    titulo: string; texto: string; chave: string;
+    /**
+     * Blocos prontos, quando quem chama já leu a ESTRUTURA do arquivo (`lib/rag/textoArquivo` lê os
+     * `#` do Markdown como heading com nível). Sem isto, o texto virava só parágrafos e
+     * `cortarEmTrechos` perdia o caminho do trecho — que é o que faz a citação ser rastreável.
+     * Ausente: o comportamento de sempre (um heading com o título + um parágrafo por linha vazia).
+     */
+    blocos?: Block[];
+  },
 ): Promise<IngerirResultado> {
   const texto = String(e.texto ?? "").trim();
   const paragrafos = texto.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
-  const blocks: Block[] = [{ type: "heading", level: 1, page: 1, text: e.titulo }, ...paragrafos.map((p) => ({ type: "paragraph" as const, page: 1, text: p }))];
+  const blocks: Block[] = e.blocos?.length
+    ? e.blocos
+    : [{ type: "heading", level: 1, page: 1, text: e.titulo }, ...paragrafos.map((p) => ({ type: "paragraph" as const, page: 1, text: p }))];
   const extrair = (async () => ({ blocks, markdown: `# ${e.titulo}\n\n${texto}` })) as unknown as IngerirDeps["extrair"];
   return ingerirPdf({ ...deps, extrair }, {
     bytes: new TextEncoder().encode(`${e.titulo}\n\n${texto}`), nomeArquivo: e.chave, titulo: e.titulo,

@@ -12,7 +12,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { resolveUserId } from "@/lib/agent/transcript";
-import { ingerirPdf } from "@/lib/rag/ingerir";
+import { MAX_BYTES, ingerirPdf, ingerirTexto } from "@/lib/rag/ingerir";
+import { blocosDeTexto, ehArquivoTexto, textoDeBytes, tituloDeTexto } from "@/lib/rag/textoArquivo";
 import { ehBancoIndisponivel, ragPg } from "@/lib/rag/pg";
 import { buscarPorId, contarEnviadosPessoais, listarDocumentos, removerPermissao } from "@/lib/rag/store";
 import { extractPdfStructured } from "@/lib/scholar/pdf";
@@ -47,6 +48,31 @@ export async function GET() {
   }
 }
 
+/**
+ * Arquivo de texto (.txt/.md) pelo MESMO caminho do PDF — dedupe por hash, corte em trechos, fila
+ * de vetores. A diferença é que os blocos vêm da ESTRUTURA do próprio arquivo (`textoArquivo` lê os
+ * `#` como heading com nível), pro caminho do trecho ("título › capítulo › seção") sobreviver — é
+ * ele que faz a citação ser rastreável até o pedaço certo.
+ */
+function ingerirArquivoDeTexto(db: ReturnType<typeof ragPg>, bytes: Uint8Array, nomeArquivo: string, userId: string) {
+  // O TETO VEM ANTES DE DECODIFICAR. `ingerirPdf` checa `MAX_BYTES` como primeira coisa que faz; o
+  // caminho de texto passava a decodificação e o corte em blocos ANTES de chegar nessa checagem —
+  // um .txt de 24 MB com milhões de linhas curtas (um log exportado, não precisa de má-fé) alocaria
+  // bem mais que o próprio upload antes de alguém dizer "grande demais".
+  if (bytes.byteLength > MAX_BYTES) {
+    return Promise.resolve({ documentoId: "", status: "erro" as const, erro: "grande_demais" as const, trechos: 0, paginas: 0 });
+  }
+  const conteudo = textoDeBytes(bytes);
+  const titulo = tituloDeTexto(nomeArquivo, conteudo);
+  return ingerirTexto(
+    { db, enfileirar: enfileirarIndexacao },
+    {
+      titulo, texto: conteudo, chave: nomeArquivo, blocos: blocosDeTexto(conteudo, titulo),
+      origem: "chat", criadoPor: userId, permissao: { donoId: userId },
+    },
+  );
+}
+
 export async function POST(req: Request) {
   const userId = await usuario();
   if (!userId) return naoLogado();
@@ -58,7 +84,8 @@ export async function POST(req: Request) {
 
   const out: Array<Record<string, unknown>> = [];
   for (const f of arquivos) {
-    if (!ehPdf(f)) { out.push({ nomeArquivo: f.name, documentoId: "", status: "erro", erro: "nao_pdf", trechos: 0, paginas: 0 }); continue; }
+    const texto = ehArquivoTexto(f);
+    if (!ehPdf(f) && !texto) { out.push({ nomeArquivo: f.name, documentoId: "", status: "erro", erro: "nao_suportado", trechos: 0, paginas: 0 }); continue; }
     try {
       const db = ragPg();
       // Conta a cada arquivo: o lote (ou outra aba) pode ter enchido a base no meio do caminho.
@@ -66,10 +93,13 @@ export async function POST(req: Request) {
         out.push({ nomeArquivo: f.name, documentoId: "", status: "erro", erro: "limite_base", trechos: 0, paginas: 0 });
         continue;
       }
-      const r = await ingerirPdf(
-        { db, extrair: extractPdfStructured, enfileirar: enfileirarIndexacao },
-        { bytes: new Uint8Array(await f.arrayBuffer()), nomeArquivo: f.name, origem: "chat", criadoPor: userId, permissao: { donoId: userId } },
-      );
+      const bytes = new Uint8Array(await f.arrayBuffer());
+      const r = texto
+        ? await ingerirArquivoDeTexto(db, bytes, f.name, userId)
+        : await ingerirPdf(
+            { db, extrair: extractPdfStructured, enfileirar: enfileirarIndexacao },
+            { bytes, nomeArquivo: f.name, origem: "chat", criadoPor: userId, permissao: { donoId: userId } },
+          );
       if (r.erro === "banco_indisponivel") return indisponivel({ resultados: out }); // sem banco, o resto do lote também falharia
       out.push({ nomeArquivo: f.name, ...r });
     } catch (e) {
