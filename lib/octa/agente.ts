@@ -47,7 +47,7 @@ type TelaCaptura = "desktop" | "celular";
 type CapturaNova = { tela: TelaCaptura; largura: number; altura: number; jpegBase64: string; miniatura?: string };
 /** Estado de captura do turno. Objeto mutável: o runner passa à tool uma CÓPIA rasa do ctx. */
 type EstadoCaptura = { capturar: CapturarOcta; feitas: number; nova?: CapturaNova };
-type CtxOcta = ToolContext & { octaWs?: Workspace; octaPedido?: string; octaPublicar?: PublicarOcta; octaCaptura?: EstadoCaptura };
+type CtxOcta = ToolContext & { octaWs?: Workspace; octaPedido?: string; octaPublicar?: PublicarOcta; octaCaptura?: EstadoCaptura; octaReaRecall?:(query:string)=>Promise<unknown> };
 
 const MAX_ARQ = 200_000;
 const ws = (ctx: ToolContext): Workspace => (ctx as CtxOcta).octaWs ?? {};
@@ -169,6 +169,18 @@ export const FERRAMENTAS_REA: ToolDef[] = [
   },
 ];
 FERRAMENTAS_REA.forEach(registerTool);
+/** A server-bound callback owns identity/project. Tool arguments cannot select
+ * another project, supply an oracle or write a successful verdict. */
+export const FERRAMENTAS_REA_SUCCESS:ToolDef[]=[{
+ name:"octa_rea_success",runtime:"ts",risk:"read",minPlan:"free",
+ schema:schema("octa_rea_success","Recupera procedimentos REA verificados do projeto atual. Sucesso histórico exige nova evidência para outro APK; nunca copie permissões ou literais de outro artefato.",{query:"procedimento ou objetivo procurado"},["query"]),
+ async run(a,ctx){
+  const recall=(ctx as CtxOcta).octaReaRecall;
+  if(!recall)return err("Identidade verificada e projeto autorizado são necessários.","permission_denied");
+  return ok(JSON.stringify(await recall(String(a?.query??"").slice(0,500))));
+ }
+}];
+FERRAMENTAS_REA_SUCCESS.forEach(registerTool);
 
 FERRAMENTAS.forEach(registerTool);
 
@@ -342,6 +354,7 @@ const paraGateway = (t: ToolDef) => ({
 export const ferramentasGateway = (fluxo?: "landing") => {
   const base = fluxo === "landing" ? [...FERRAMENTAS, ...FERRAMENTAS_LANDING] : [...FERRAMENTAS];
   if (reaBridgeConfigurado()) base.push(...FERRAMENTAS_REA);   // REA só com o motor ligado (OCTA_REA + bridge)
+  if (reaBridgeConfigurado() && process.env.REA_SUCCESS_MEMORY === "1") base.push(...FERRAMENTAS_REA_SUCCESS);
   return base.map(paraGateway);
 };
 export const FERRAMENTAS_GATEWAY = ferramentasGateway();
@@ -395,6 +408,7 @@ export type TipoEventoOcta = "pensando" | "tool" | "arquivo" | "resultado" | "ca
 export type EventoOcta = { tipo: TipoEventoOcta; dados: Record<string, unknown> };
 
 export type OpcoesOcta = {
+  octaReaRecall?: (query:string)=>Promise<unknown>;
   sessionId: string;
   userId?: string;
   /** Nível do projeto. Ausente fora do fluxo landing = comportamento antigo (apagar é negado sem aprovador). */
@@ -512,7 +526,7 @@ export async function rodarAgenteOcta(t: TurnoOcta, chamar: ChamarModelo, opts: 
   const vivo: Workspace = { ...t.workspace };
   const task: OctaTask = { id: opts.sessionId, mode: t.modo, fileLock: t.modo === "change" ? [...t.liberados, PASTA_ARTE] : [] };
   const captura: EstadoCaptura | undefined = landing ? { capturar: opts.capturar ?? capturarPadrao, feitas: 0 } : undefined;
-  const ctx = { plan: "free", execMode: "auto", userId: opts.userId, octaWs: vivo, octaPedido: t.pedido, octaPublicar: landing ? opts.octaPublicar : undefined, octaCaptura: captura } as CtxOcta;
+  const ctx = { plan: "free", execMode: "auto", userId: opts.userId, octaWs: vivo, octaPedido: t.pedido, octaPublicar: landing ? opts.octaPublicar : undefined, octaCaptura: captura,octaReaRecall:opts.octaReaRecall } as CtxOcta;
   // Aprovação de runtime (destrutivo / pós-injeção): só a chamada que o aluno aprovou agora, ou o que o nível dispensa.
   let aprovadaAgora = false;
   const s = novaSessao({

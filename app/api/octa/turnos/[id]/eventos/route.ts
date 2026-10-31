@@ -20,6 +20,6 @@ export async function GET(req: Request, { params }: Ctx) {
   const userId = String((session!.user as any).id ?? email);
   const n = Number(new URL(req.url).searchParams.get("depois"));
   const depois = Number.isInteger(n) && n > 0 ? n : 0;
-  const r = await listarEventos(prisma as unknown as TurnosDb, { userId, turnoId: params.id, depois });
+  const r = await listarEventos(prisma as unknown as TurnosDb, { userId, turnoId: params.id, depois,...((session!.user as any).reaIdentity==="google_verified"?{reaIdentityVerified:true}:{}) });
   return r ? NextResponse.json(r) : NextResponse.json({ error: "Turno não encontrado" }, { status: 404 });
 }

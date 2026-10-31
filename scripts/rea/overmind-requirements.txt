@@ -1,0 +1,2 @@
+# Isolated Python environment only. SDK/CLI is MIT; do not vendor the AGPL server.
+overmind @ git+https://github.com/overmind-core/overmind.git@16db2447dcf1fa96e29251cfe6c6cd63c4a72132#subdirectory=overmind
