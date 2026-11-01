@@ -59,6 +59,7 @@ afterEach(() => { while (dirs.length) rmSync(dirs.pop()!, { recursive: true, for
 const runner: ReconRunner = {
   dnsLookup: async () => ["127.0.0.1"], httpMetadata: async () => ({ status: 200 }),
   tcpPorts: async (_i, p) => ({ open: p }), emulate: async (id) => ({ stub: id }),
+  scan: async (id) => ({ stub: id, tecnica: "nuclei-dast" }),
 };
 function cfg(over: Partial<EngineConfig> = {}): EngineConfig {
   const d = tmp();
@@ -144,6 +145,15 @@ describe("GATE DE RELEASE · degradação (tudo isto TEM que recusar)", () => {
     const approval = signApproval();
     expect((await engineAuthorizeAndRun(cfg({ nonceStore }), { actionId: EMU, target: WEB, approval })).ok).toBe(true);
     expect(reasonOf(await engineAuthorizeAndRun(cfg({ nonceStore }), { actionId: EMU, target: WEB, approval }))).toBe("APPROVAL_REPLAYED");
+  });
+
+  it("scan DAST: recusado sem aprovação (alto impacto, scanner real)", async () => {
+    expect(reasonOf(await engineAuthorizeAndRun(cfg(), { actionId: "scan.web.app", target: WEB }))).toBe("HIGH_IMPACT_APPROVAL_REQUIRED");
+  });
+
+  it("scan DAST: rebinding web fora do escopo é recusado (antes mesmo da aprovação)", async () => {
+    const reb = cfg({ resolve: async () => ["203.0.113.9"] });
+    expect(reasonOf(await engineAuthorizeAndRun(reb, { actionId: "scan.web.app", target: { tipo: "web", url: "http://portal.lab.interno:3000/" } }))).toMatch(/TARGET_DENIED/);
   });
 
   it("audit indisponível = fail-closed (nenhuma ação sem audit)", async () => {

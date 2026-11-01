@@ -57,6 +57,25 @@ PENTEST_APPROVAL_PUBKEY_FILE=/tmp/custodia/approval.pub.pem   # chave DISTINTA d
 
 As ações de emulação são **sondas de detecção benignas** (registram só status/reflexão, nunca o corpo). Ferramentas pesadas (Caldera/ZAP/sqlmap/Metasploit) são costura que o lab liga aqui, atrás do mesmo gate de aprovação — não vêm no repo.
 
+## Fase 3.1 — scan DAST real (Nuclei) sob aprovação
+
+A ação `scan.web.app` é um scanner de vulnerabilidade de app web **de verdade** (Nuclei em modo `-dast`: manda payload da classe OWASP — injeção/XSS/exposição). É de **alto impacto** e passa pelo **mesmo gate** da emulação (aprovação assinada por chave distinta, ligada a ação+alvo, ≤15 min, anti-replay, auditada).
+
+Confinamento de uma ferramenta externa que faz as próprias conexões (`scan.ts`):
+- **uma URL do escopo por vez** — nunca crawler que siga link pra outro host;
+- para http, o alvo é reescrito pro **IP já validado** + header `Host` original (anti-TOCTOU, igual ao recon);
+- **callbacks externos desligados** (`-no-interactsh`) — o scan não vira canal de exfiltração;
+- **allowlist** de classes de template (app/OWASP), tetos de taxa/concorrência/tempo, e **kill da árvore de processos** no timeout;
+- achado cujo host/IP caia **fora do alvo validado é descartado**; o registro guarda só metadados (template, severidade, matched-at) — **nunca** o corpo da resposta.
+
+```sh
+# o host do lab precisa do binário nuclei + templates:
+PENTEST_NUCLEI_BIN=/usr/local/bin/nuclei   # default: "nuclei" no PATH
+PENTEST_SCAN_TIMEOUT_MS=180000             # teto do processo (default 180s)
+```
+
+A garantia **dura** de egress (o SO só deixa o motor falar com o IP do escopo) é amarra do host isolado — mesma história do host fechado. https com host DNS cai na URL original (pin de SNI é o mesmo débito do recon, Fase 2.1). `scan.*` roda pelo servidor e pela bridge sem mudança: é só mais uma ação de alto impacto.
+
 ## Fase 4 — relatório purple (detecção × passou)
 
 Mede se o lado azul pegou a emulação. A detecção vem de uma fonte que o DEFENSOR controla (log de acesso no sandbox; export do SIEM/IDS no lab), nunca do que o atacante diz. `deteccao.ts` tem regras estilo Sigma mapeadas a ATT&CK; `relatorio.ts` cruza o audit do motor com a telemetria e monta a tabela técnica → detectada? → regra.
@@ -70,7 +89,7 @@ No lab real, a fonte de telemetria é o Wazuh/Suricata/Sigma (costura por env `P
 
 ## Limites honestos
 
-- **Recon (Fase 2):** read-only, baixo impacto, sem aprovação. **Emulação (Fase 3):** benigna, alto impacto, só com aprovação assinada. Nada de exploit weaponizado, dump ou cadeia de exploração.
+- **Recon (Fase 2):** read-only, baixo impacto, sem aprovação. **Emulação (Fase 3):** benigna, alto impacto, só com aprovação assinada. **Scan DAST (Fase 3.1):** scanner real (manda payload), alto impacto, só com aprovação + confinado ao alvo validado. Ainda sem exploit weaponizado, dump ou cadeia de exploração — sqlmap/Metasploit seguem como seam do host do lab.
 - **Pin de IP:** para http o motor fixa a conexão no IP validado. Para **https com host DNS**, o pin de SNI é a Fase 2.1 — até lá, prefira host por IP literal, ou http.
 - **Tetos por run e kill que mata processos filhos** entram quando houver procedimento de longa duração do lab (Fase 5/QA).
 - O `scope.json` real e as chaves **nunca** entram no git. Este diretório tem só código e o compose do range.

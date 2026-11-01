@@ -52,6 +52,7 @@ function baseConfig(opts: { kill?: "RUN" | "STOP"; resolveIps?: string[]; approv
     httpMetadata: async () => ({ status: 200, headers: { server: "stub" }, bodyBytes: 10 }),
     tcpPorts: async (_ip, ports) => ({ scanned: ports.length, open: ports }),
     emulate: async (actionId) => ({ stub: actionId, status: 200 }),
+    scan: async (actionId) => ({ stub: actionId, tecnica: "nuclei-dast" }),
   };
   return {
     scopeJson, scopeSignature, scopePublicKey: scopePub,

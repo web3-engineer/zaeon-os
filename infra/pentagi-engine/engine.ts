@@ -18,6 +18,7 @@ import { createHash, type KeyObject } from "node:crypto";
 import { isIP } from "node:net";
 import { dnsLookup, httpMetadata, tcpPorts, type ReconResult } from "./recon";
 import { attackIdDe, EMULACAO, type EmuContext } from "./attack";
+import { SCAN, type ScanContext } from "./scan";
 
 /** Ações de recon da Fase 2 (baixo impacto, sem aprovação). */
 export const PHASE2_RECON = new Set(["recon.dns.lookup", "recon.http.metadata", "recon.tcp.ports"]);
@@ -34,12 +35,14 @@ export type ReconRunner = {
   httpMetadata: (url: string, connectIp?: string) => Promise<ReconResult>;
   tcpPorts: (ip: string, ports: number[]) => Promise<ReconResult>;
   emulate: (actionId: string, ctx: EmuContext) => Promise<ReconResult>;
+  scan: (actionId: string, ctx: ScanContext) => Promise<ReconResult>;
 };
 const defaultRunner: ReconRunner = {
   dnsLookup,
   httpMetadata: (url, connectIp) => httpMetadata(url, connectIp),
   tcpPorts,
   emulate: (actionId, ctx) => EMULACAO[actionId].run(ctx),
+  scan: (actionId, ctx) => SCAN[actionId].run(ctx),
 };
 
 export type EngineConfig = {
@@ -77,7 +80,7 @@ export async function engineAuthorizeAndRun(config: EngineConfig, req: EngineReq
   const actionId = typeof req.actionId === "string" ? req.actionId : "";
   const runner = config.runner ?? defaultRunner;
   const resolve = config.resolve ?? dnsLookup;
-  const attackId = attackIdDe(actionId);
+  const attackId = attackIdDe(actionId) ?? SCAN[actionId]?.attackId;
 
   const audit = async (decision: "allowed" | "denied", reason: string, evidence?: ReconResult): Promise<string | null> => {
     try {
@@ -95,11 +98,13 @@ export async function engineAuthorizeAndRun(config: EngineConfig, req: EngineReq
     return { ok: false, actionId, target, reason, ...(auditHash ? { auditHash } : {}) };
   };
 
-  // 1. ação conhecida? recon (baixo impacto) ou emulação (alto impacto)?
+  // 1. ação conhecida? recon (baixo impacto), ou procedimento de alto impacto (emulação/scan)?
   const ehRecon = PHASE2_RECON.has(actionId);
   const emu = EMULACAO[actionId];
-  if (!ehRecon && !emu) return deny("ACAO_DESCONHECIDA");
-  const impacto = emu || classifyAction(actionId) !== "baixo_impacto" ? "alto_impacto" : "baixo_impacto";
+  const scanEntry = SCAN[actionId];
+  const proc = emu ?? scanEntry; // procedimentos de alto impacto habilitados no catálogo
+  if (!ehRecon && !proc) return deny("ACAO_DESCONHECIDA");
+  const impacto = proc || classifyAction(actionId) !== "baixo_impacto" ? "alto_impacto" : "baixo_impacto";
 
   // 2. kill switch (inacessível/engajado = fail-closed)
   const kill = await checkKillSwitch(config.killSwitchPath);
@@ -135,8 +140,8 @@ export async function engineAuthorizeAndRun(config: EngineConfig, req: EngineReq
   // 5. ALTO IMPACTO exige aprovação assinada por chave DISTINTA, ligada a ação+alvo
   let approver: string | undefined;
   if (impacto === "alto_impacto") {
-    if (!emu) return deny("ALTO_IMPACTO_SEM_PROCEDIMENTO"); // só emulação do catálogo é alto impacto habilitado
-    if (emu.tipoAlvo === "web" && req.target.tipo !== "web") return deny("ACAO_EXIGE_ALVO_WEB");
+    if (!proc) return deny("ALTO_IMPACTO_SEM_PROCEDIMENTO"); // só procedimento do catálogo (emulação/scan) é alto impacto habilitado
+    if (proc.tipoAlvo === "web" && req.target.tipo !== "web") return deny("ACAO_EXIGE_ALVO_WEB");
     if (!config.approvalPublicKey) return deny("APPROVAL_PUBKEY_MISSING");
     if (!req.approval) return deny("HIGH_IMPACT_APPROVAL_REQUIRED");
     if (!isDistinctPublicKey(config.scopePublicKey, config.approvalPublicKey)) return deny("APPROVAL_KEY_NOT_DISTINCT");
@@ -160,9 +165,12 @@ export async function engineAuthorizeAndRun(config: EngineConfig, req: EngineReq
     } else if (actionId === "recon.tcp.ports") {
       if (req.target.tipo !== "rede") return deny("ACAO_EXIGE_ALVO_REDE");
       result = await runner.tcpPorts(connectIp!, scanPorts);
-    } else { // emulação (alto impacto, já aprovada)
+    } else if (emu) { // emulação (alto impacto, já aprovada)
       if (req.target.tipo !== "web") return deny("ACAO_EXIGE_ALVO_WEB");
       result = await runner.emulate(actionId, { url: req.target.url, connectIp });
+    } else { // scan DAST (alto impacto, já aprovado)
+      if (req.target.tipo !== "web") return deny("ACAO_EXIGE_ALVO_WEB");
+      result = await runner.scan(actionId, { url: req.target.url, connectIp });
     }
   } catch (e) {
     return deny(`EXECUCAO_FALHOU:${String((e as Error)?.message ?? e).slice(0, 120)}`);
