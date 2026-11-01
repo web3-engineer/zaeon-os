@@ -23,11 +23,15 @@ function write(a: Armazem | null, list: TrashItem[]) {
   window.dispatchEvent(new CustomEvent(EVT));
 }
 
+const VAZIA: TrashItem[] = [];
+
 export function useTrash() {
   const a = useArmazemDaConta()?.armazem ?? null;
-  const [items, setItems] = useState<TrashItem[]>([]);
+  // a lista anda junto com a conta dona dela: na troca de conta, nenhum render devolve a lista da anterior
+  const [estado, setEstado] = useState<{ a: Armazem | null; lista: TrashItem[] }>({ a, lista: VAZIA });
+  const items = estado.a === a ? estado.lista : VAZIA;
   useEffect(() => {
-    const sync = () => setItems(read(a));
+    const sync = () => setEstado({ a, lista: read(a) });
     sync();
     window.addEventListener(EVT, sync);
     window.addEventListener("storage", sync);
@@ -49,7 +53,7 @@ export function useTrash() {
 
   /** Apaga de vez (sai da lixeira sem voltar). */
   const purge = useCallback((id: string) => { write(a, read(a).filter((x) => x.id !== id)); }, [a]);
-  const clear = useCallback(() => write(a, []), []);
+  const clear = useCallback(() => write(a, []), [a]);
 
   return { items, trash, restore, purge, clear };
 }

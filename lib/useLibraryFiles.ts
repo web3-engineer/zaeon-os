@@ -99,20 +99,25 @@ export function registroDuravel(f: LibraryFile): LibraryFile {
 }
 /** grava e devolve o arquivo JÁ resolvido (pdfUrl utilizável agora); null = não deu pra guardar */
 async function gravar(a: Armazem | null, g: LibraryFile): Promise<LibraryFile | null> {
+  if (!a) return null;   // a sessão ainda carrega: sem conta certa não há onde guardar, e não pode parecer que guardou
   try { write(a, upsertLibraryFile(read(a), g)); } catch { return null; }   // cota do localStorage (só metadados: raro)
   const id = idDaUrlIdb(g.pdfUrl); return id ? { ...g, pdfUrl: urls.get(id) ?? g.pdfUrl } : g;
 }
 
+const VAZIA: LibraryFile[] = [];
+
 export function useLibraryFiles() {
   const a = useArmazemDaConta()?.armazem ?? null;
-  const [files, setFiles] = useState<LibraryFile[]>([]);
+  // a lista anda junto com a conta dona dela: na troca de conta, nenhum render devolve a lista da anterior
+  const [estado, setEstado] = useState<{ a: Armazem | null; lista: LibraryFile[] }>({ a, lista: VAZIA });
+  const files = estado.a === a ? estado.lista : VAZIA;
   useEffect(() => {
     let vivo = true;
     const sync = () => {
-      setFiles(resolver(read(a)));
-      void hidratar(read(a)).then((m) => { if (m && vivo) setFiles(resolver(read(a))); });
+      setEstado({ a, lista: resolver(read(a)) });
+      void hidratar(read(a)).then((m) => { if (m && vivo) setEstado({ a, lista: resolver(read(a)) }); });
     };
-    void migrar(a).then(sync);
+    void migrar(a).then(() => { if (vivo) sync(); });
     sync();
     window.addEventListener(EVT, sync);
     window.addEventListener("storage", sync);
@@ -122,6 +127,7 @@ export function useLibraryFiles() {
   const save = useCallback(async (f: LibraryFile) => gravar(a, await paraGuardar(f)), [a]);
   /** salva um ARQUIVO enviado (sem passar por base64) → o arquivo resolvido, ou null se não coube */
   const saveFile = useCallback(async (meta: Omit<LibraryFile, "pdfUrl">, blob: Blob): Promise<LibraryFile | null> => {
+    if (!a) return null;
     if (await guardarPdf(meta.id, blob)) { lembrar(meta.id, blob); return gravar(a, { ...meta, pdfUrl: urlIdb(meta.id) }); }
     return null;
   }, [a]);

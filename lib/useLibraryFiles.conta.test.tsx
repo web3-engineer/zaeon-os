@@ -50,6 +50,27 @@ describe("useLibraryFiles por conta", () => {
     h.rerender();
     await waitFor(() => expect(h.result.current.files).toEqual([]));
   });
+  it("na troca de conta, nenhum render devolve a lista da conta anterior", async () => {
+    const renders: { email: string | undefined; ids: string[] }[] = [];
+    const h = renderHook(() => { const r = useLibraryFiles(); renders.push({ email: sessao.atual.data?.user?.email, ids: r.files.map((f) => f.id) }); return r; });
+    await act(async () => { await h.result.current.save(arquivo); });
+    await waitFor(() => expect(h.result.current.files).toHaveLength(1));
+    renders.length = 0;
+    entrar("bia@zaeon.com");
+    h.rerender();
+    await act(async () => {});
+    expect(renders.length).toBeGreaterThan(0);
+    for (const r of renders) expect(r).toEqual({ email: "bia@zaeon.com", ids: [] });
+  });
+  it("com a sessão carregando, salvar não finge que guardou", async () => {
+    sessao.atual = { data: null, status: "loading" };
+    const h = renderHook(() => useLibraryFiles());
+    let r: unknown = "x";
+    await act(async () => { r = await h.result.current.saveFile({ id: "p9", title: "T", savedAt: 1 }, new Blob(["x"])); });
+    expect(r).toBeNull();
+    await act(async () => { r = await h.result.current.save(arquivo); });
+    expect(r).toBeNull();
+  });
   it("enquanto a sessão carrega, não mostra nada e não grava", async () => {
     localStorage.setItem(chaveDaConta(ANA, "zaeon.libraryFiles"), JSON.stringify([arquivo]));
     sessao.atual = { data: null, status: "loading" };
@@ -90,6 +111,19 @@ describe("outras listas por conta", () => {
     expect(c2.result.current.citations).toEqual([]);
     expect(w2.result.current.works).toEqual([]);
     expect(t2.result.current.items).toEqual([]);
+  });
+});
+
+describe("lixeira", () => {
+  it("o clear vale para a conta logada, mesmo montado antes de a sessão carregar", async () => {
+    localStorage.setItem(chaveDaConta(ANA, "zaeon.trash"), JSON.stringify([{ ...arquivo, deletedAt: 1 }]));
+    sessao.atual = { data: null, status: "loading" };
+    const h = renderHook(() => useTrash());
+    entrar("ana@zaeon.com");
+    h.rerender();
+    await waitFor(() => expect(h.result.current.items).toHaveLength(1));
+    act(() => h.result.current.clear());
+    expect(JSON.parse(localStorage.getItem(chaveDaConta(ANA, "zaeon.trash"))!)).toEqual([]);
   });
 });
 

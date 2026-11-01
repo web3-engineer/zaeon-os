@@ -313,7 +313,14 @@ export const getThemeClasses = (color: string) => {
     }
 }
 
-export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewProps) {
+/** #666: trocar de conta remonta a tela; o estado da conta anterior não pode ser gravado na seguinte. */
+export default function ClassesView(props: ClassesViewProps) {
+    const area = useArmazemDaConta();
+    if (!area) return null;
+    return <TelaDaConta key={area.conta} {...props} />;
+}
+
+function TelaDaConta({ room, themeColor = 'cyan' }: ClassesViewProps) {
     const t = getThemeClasses(themeColor);
     const { data: session, status } = useSession();
     // #666: o que esta tela guarda no navegador é da conta logada (senão ia até para o servidor da conta seguinte)

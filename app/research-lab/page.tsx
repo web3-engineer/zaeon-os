@@ -1393,11 +1393,14 @@ export default function HomeworkPage({
   // #666: os rascunhos são da conta logada. Espera a sessão; trocar de conta limpa a tela antes de ler a área da outra.
   const areaDaConta = useArmazemDaConta();
   const docsDaConta = useRef<string | null>(null);
+  // estado, e não ref: chega à gravação no MESMO render do rascunho lido; antes dele, ela gravaria a tela da conta anterior
+  const [docsProntosDe, setDocsProntosDe] = useState<string | null>(null);
   useEffect(() => {
     if (!areaDaConta) return;
     if (docsDaConta.current === areaDaConta.conta) return;
-    if (docsDaConta.current !== null) { docsRef.current = {}; setDocContent(""); setDocTitle(""); }
+    if (docsDaConta.current !== null) { docsRef.current = {}; setWorkType(null); setDocContent(ABNT_TEMPLATE); setDocTitle("minha_pesquisa.pdf"); }
     docsDaConta.current = areaDaConta.conta;
+    setDocsProntosDe(areaDaConta.conta);
     try {
       const raw = areaDaConta.armazem.getItem("zaeon_research_docs");
       if (raw) {
@@ -1429,8 +1432,8 @@ export default function HomeworkPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [areaDaConta]);
   useEffect(() => {
-    // só grava depois de ler a área desta conta, senão o documento vazio do começo apagaria o rascunho
-    if (!areaDaConta || docsDaConta.current !== areaDaConta.conta) return;
+    // só grava depois de ler a área desta conta, senão o documento do começo apagaria o rascunho
+    if (!areaDaConta || docsProntosDe !== areaDaConta.conta) return;
     try {
       if (workType) docsRef.current[workType] = { content: docContent, title: docTitle };
       areaDaConta.armazem.setItem(
@@ -1438,7 +1441,7 @@ export default function HomeworkPage({
         JSON.stringify({ docs: docsRef.current, activeWorkType: workType }),
       );
     } catch {}
-  }, [docContent, docTitle, workType, areaDaConta]);
+  }, [docContent, docTitle, workType, areaDaConta, docsProntosDe]);
 
   // Troca o tipo SEM converter: salva a sessão atual e abre a do novo tipo (ou template vazio).
   const switchWorkType = (next: WorkType) => {

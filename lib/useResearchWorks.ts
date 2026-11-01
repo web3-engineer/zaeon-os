@@ -35,11 +35,15 @@ function write(a: Armazem | null, list: ResearchWork[]) {
   window.dispatchEvent(new CustomEvent(EVT));
 }
 
+const VAZIA: ResearchWork[] = [];
+
 export function useResearchWorks() {
   const a = useArmazemDaConta()?.armazem ?? null;
-  const [works, setWorks] = useState<ResearchWork[]>([]);
+  // a lista anda junto com a conta dona dela: na troca de conta, nenhum render devolve a lista da anterior
+  const [estado, setEstado] = useState<{ a: Armazem | null; lista: ResearchWork[] }>({ a, lista: VAZIA });
+  const works = estado.a === a ? estado.lista : VAZIA;
   useEffect(() => {
-    const sync = () => setWorks(read(a));
+    const sync = () => setEstado({ a, lista: read(a) });
     sync();
     window.addEventListener(EVT, sync);
     window.addEventListener("storage", sync);

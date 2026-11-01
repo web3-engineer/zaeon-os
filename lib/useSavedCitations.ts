@@ -44,11 +44,15 @@ function write(a: Armazem | null, list: SavedCitation[]) {
   window.dispatchEvent(new CustomEvent(EVT));
 }
 
+const VAZIA: SavedCitation[] = [];
+
 export function useSavedCitations() {
   const a = useArmazemDaConta()?.armazem ?? null;
-  const [citations, setCitations] = useState<SavedCitation[]>([]);
+  // a lista anda junto com a conta dona dela: na troca de conta, nenhum render devolve a lista da anterior
+  const [estado, setEstado] = useState<{ a: Armazem | null; lista: SavedCitation[] }>({ a, lista: VAZIA });
+  const citations = estado.a === a ? estado.lista : VAZIA;
   useEffect(() => {
-    const sync = () => setCitations(read(a));
+    const sync = () => setEstado({ a, lista: read(a) });
     sync();
     window.addEventListener(EVT, sync);
     window.addEventListener("storage", sync);
