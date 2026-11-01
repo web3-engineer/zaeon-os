@@ -1,5 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { useArmazemDaConta } from "@/lib/chat/contaNoNavegador";
+import type { Armazem } from "@/lib/chat/threads";
 import { dataUrlParaBlob, guardarPdf, idDaUrlIdb, lerPdf, urlIdb } from "./pdfStore";
 
 // Arquivos salvos na biblioteca (aba "pesquisa"). Só arquivos (pdfUrl).
@@ -32,18 +34,20 @@ export function renameLibraryFile(list: LibraryFile[], id: string, title: string
   return list.map((f) => (f.id === id ? { ...f, title: t } : f));
 }
 
-function read(): LibraryFile[] {
-  if (typeof window === "undefined") return [];
+// #666: a lista é da conta logada. Os bytes ficam no IndexedDB, e só se chega neles por ela.
+function read(a: Armazem | null): LibraryFile[] {
+  if (!a) return [];
   try {
-    const list = JSON.parse(localStorage.getItem(KEY) || "[]");
+    const list = JSON.parse(a.getItem(KEY) || "[]");
     if (!Array.isArray(list)) return [];
     // blob: URLs morrem ao recarregar a página → descarta entradas mortas de sessões
     // anteriores (senão renderizam e dão "WebKitBlobResource error 1" no console).
     return list.filter((f) => f && typeof f.pdfUrl === "string" && !f.pdfUrl.startsWith("blob:"));
   } catch { return []; }
 }
-function write(list: LibraryFile[]) {
-  localStorage.setItem(KEY, JSON.stringify(list));
+function write(a: Armazem | null, list: LibraryFile[]) {
+  if (!a) return;
+  a.setItem(KEY, JSON.stringify(list));
   window.dispatchEvent(new CustomEvent(EVT));
 }
 
@@ -68,15 +72,15 @@ async function hidratar(list: LibraryFile[]): Promise<boolean> {
   return mudou;
 }
 /** os data: URL antigos (que entupiam o localStorage) migram pro IndexedDB — uma vez por carga */
-let migrou = false;
-async function migrar(): Promise<void> {
-  if (migrou) return; migrou = true;
-  const list = read(); let mudou = false; const out: LibraryFile[] = [];
+const migradas = new WeakSet<Armazem>();
+async function migrar(a: Armazem | null): Promise<void> {
+  if (!a || migradas.has(a)) return; migradas.add(a);
+  const list = read(a); let mudou = false; const out: LibraryFile[] = [];
   for (const f of list) {
     if (f.pdfUrl.startsWith("data:")) { const b = dataUrlParaBlob(f.pdfUrl); if (b && (await guardarPdf(f.id, b))) { lembrar(f.id, b); out.push({ ...f, pdfUrl: urlIdb(f.id) }); mudou = true; continue; } }
     out.push(f);
   }
-  if (mudou) try { write(out); } catch { /* ignore */ }
+  if (mudou) try { write(a, out); } catch { /* ignore */ }
 }
 /** o registro que vai pro localStorage: PDF local (data:/blob:) → bytes no IndexedDB + `idb:<id>` */
 async function paraGuardar(f: LibraryFile): Promise<LibraryFile> {
@@ -94,34 +98,41 @@ export function registroDuravel(f: LibraryFile): LibraryFile {
   const id = idPorUrl.get(f.pdfUrl); return id ? { ...f, pdfUrl: urlIdb(id) } : f;
 }
 /** grava e devolve o arquivo JÁ resolvido (pdfUrl utilizável agora); null = não deu pra guardar */
-async function gravar(g: LibraryFile): Promise<LibraryFile | null> {
-  try { write(upsertLibraryFile(read(), g)); } catch { return null; }   // cota do localStorage (só metadados: raro)
+async function gravar(a: Armazem | null, g: LibraryFile): Promise<LibraryFile | null> {
+  if (!a) return null;   // a sessão ainda carrega: sem conta certa não há onde guardar, e não pode parecer que guardou
+  try { write(a, upsertLibraryFile(read(a), g)); } catch { return null; }   // cota do localStorage (só metadados: raro)
   const id = idDaUrlIdb(g.pdfUrl); return id ? { ...g, pdfUrl: urls.get(id) ?? g.pdfUrl } : g;
 }
 
+const VAZIA: LibraryFile[] = [];
+
 export function useLibraryFiles() {
-  const [files, setFiles] = useState<LibraryFile[]>([]);
+  const a = useArmazemDaConta()?.armazem ?? null;
+  // a lista anda junto com a conta dona dela: na troca de conta, nenhum render devolve a lista da anterior
+  const [estado, setEstado] = useState<{ a: Armazem | null; lista: LibraryFile[] }>({ a, lista: VAZIA });
+  const files = estado.a === a ? estado.lista : VAZIA;
   useEffect(() => {
     let vivo = true;
     const sync = () => {
-      setFiles(resolver(read()));
-      void hidratar(read()).then((m) => { if (m && vivo) setFiles(resolver(read())); });
+      setEstado({ a, lista: resolver(read(a)) });
+      void hidratar(read(a)).then((m) => { if (m && vivo) setEstado({ a, lista: resolver(read(a)) }); });
     };
-    void migrar().then(sync);
+    void migrar(a).then(() => { if (vivo) sync(); });
     sync();
     window.addEventListener(EVT, sync);
     window.addEventListener("storage", sync);
     return () => { vivo = false; window.removeEventListener(EVT, sync); window.removeEventListener("storage", sync); };
-  }, []);
+  }, [a]);
   /** salva um registro (PDF local em data:/blob: vai pro IndexedDB) → o arquivo resolvido, ou null */
-  const save = useCallback(async (f: LibraryFile) => gravar(await paraGuardar(f)), []);
+  const save = useCallback(async (f: LibraryFile) => gravar(a, await paraGuardar(f)), [a]);
   /** salva um ARQUIVO enviado (sem passar por base64) → o arquivo resolvido, ou null se não coube */
   const saveFile = useCallback(async (meta: Omit<LibraryFile, "pdfUrl">, blob: Blob): Promise<LibraryFile | null> => {
-    if (await guardarPdf(meta.id, blob)) { lembrar(meta.id, blob); return gravar({ ...meta, pdfUrl: urlIdb(meta.id) }); }
+    if (!a) return null;
+    if (await guardarPdf(meta.id, blob)) { lembrar(meta.id, blob); return gravar(a, { ...meta, pdfUrl: urlIdb(meta.id) }); }
     return null;
-  }, []);
-  const rename = useCallback((id: string, title: string) => { write(renameLibraryFile(read(), id, title)); }, []);
-  const remove = useCallback((id: string) => { write(read().filter((x) => x.id !== id)); }, []);   // os bytes ficam (a lixeira restaura)
-  const clear = useCallback(() => { write([]); }, []);
+  }, [a]);
+  const rename = useCallback((id: string, title: string) => { write(a, renameLibraryFile(read(a), id, title)); }, [a]);
+  const remove = useCallback((id: string) => { write(a, read(a).filter((x) => x.id !== id)); }, [a]);   // os bytes ficam (a lixeira restaura)
+  const clear = useCallback(() => { write(a, []); }, [a]);
   return { files, save, saveFile, rename, remove, clear };
 }

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSession } from 'next-auth/react';
+import { useArmazemDaConta } from "@/lib/chat/contaNoNavegador";
 import { useSearchParams, useRouter } from 'next/navigation';
 import NextImage from 'next/image';
 import VoiceModeSwitch from '@/components/voice/VoiceModeSwitch';
@@ -312,9 +313,18 @@ export const getThemeClasses = (color: string) => {
     }
 }
 
-export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewProps) {
+/** #666: trocar de conta remonta a tela; o estado da conta anterior não pode ser gravado na seguinte. */
+export default function ClassesView(props: ClassesViewProps) {
+    const area = useArmazemDaConta();
+    if (!area) return null;
+    return <TelaDaConta key={area.conta} {...props} />;
+}
+
+function TelaDaConta({ room, themeColor = 'cyan' }: ClassesViewProps) {
     const t = getThemeClasses(themeColor);
     const { data: session, status } = useSession();
+    // #666: o que esta tela guarda no navegador é da conta logada (senão ia até para o servidor da conta seguinte)
+    const areaDaConta = useArmazemDaConta();
     const router = useRouter();
     const searchParams = useSearchParams();
     const pendingInvite = searchParams.get('pendingInvite');
@@ -450,16 +460,17 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
     // LOAD DATA
     useEffect(() => {
         if (typeof window === 'undefined') return;
-        if (status === 'loading') return;
+        if (status === 'loading' || !areaDaConta) return;
+        const local = areaDaConta.armazem;
 
         const loadLocal = () => {
-            const savedClasses = localStorage.getItem('zaeon_schedule_data');
-            const savedPluggedDay = localStorage.getItem('zaeon_plugged_day');
-            const savedGadgetOn = localStorage.getItem('zaeon_gadget_on');
+            const savedClasses = local.getItem('zaeon_schedule_data');
+            const savedPluggedDay = local.getItem('zaeon_plugged_day');
+            const savedGadgetOn = local.getItem('zaeon_gadget_on');
             
-            const savedLiquidChat = localStorage.getItem('zaeon_liquid_chat');
-            const savedDocs = localStorage.getItem('zaeon_stored_pdfs');
-            const savedModules = localStorage.getItem('zaeon_user_modules');
+            const savedLiquidChat = local.getItem('zaeon_liquid_chat');
+            const savedDocs = local.getItem('zaeon_stored_pdfs');
+            const savedModules = local.getItem('zaeon_user_modules');
 
             if (savedClasses) setClasses(JSON.parse(savedClasses));
             if (savedPluggedDay) setPluggedDay(JSON.parse(savedPluggedDay));
@@ -505,18 +516,18 @@ export default function ClassesView({ room, themeColor = 'cyan' }: ClassesViewPr
         } else {
             loadLocal();
         }
-    }, [session, status]);
+    }, [session, status, areaDaConta]);
 
 
     // SAVE DATA: Nuvem e Local
     useEffect(() => {
-        if (isDataLoaded) {
-            localStorage.setItem('zaeon_schedule_data', JSON.stringify(classes));
-            localStorage.setItem('zaeon_plugged_day', JSON.stringify(pluggedDay));
-            localStorage.setItem('zaeon_gadget_on', JSON.stringify(gadgetOn));
-            localStorage.setItem('zaeon_liquid_chat', JSON.stringify(liquidChatHistory));
-            localStorage.setItem('zaeon_stored_pdfs', JSON.stringify(storedPdfs));
-            localStorage.setItem('zaeon_user_modules', JSON.stringify(userModules));
+        if (isDataLoaded && areaDaConta) {
+            areaDaConta.armazem.setItem('zaeon_schedule_data', JSON.stringify(classes));
+            areaDaConta.armazem.setItem('zaeon_plugged_day', JSON.stringify(pluggedDay));
+            areaDaConta.armazem.setItem('zaeon_gadget_on', JSON.stringify(gadgetOn));
+            areaDaConta.armazem.setItem('zaeon_liquid_chat', JSON.stringify(liquidChatHistory));
+            areaDaConta.armazem.setItem('zaeon_stored_pdfs', JSON.stringify(storedPdfs));
+            areaDaConta.armazem.setItem('zaeon_user_modules', JSON.stringify(userModules));
 
             if (session?.user?.email) {
                 fetch('/api/workspace', {

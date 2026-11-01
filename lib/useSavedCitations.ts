@@ -1,5 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { useArmazemDaConta } from "@/lib/chat/contaNoNavegador";
+import type { Armazem } from "@/lib/chat/threads";
 
 export interface SavedCitation {
   id: string;            // doi or paper id
@@ -31,26 +33,33 @@ export function upsertCitation(list: SavedCitation[], c: SavedCitation): SavedCi
   return [c, ...list.filter((x) => x.id !== c.id)];
 }
 
-function read(): SavedCitation[] {
-  if (typeof window === "undefined") return [];
-  try { return JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { return []; }
+// #666: a lista é da conta logada; enquanto a sessão carrega (`null`) não há o que mostrar
+function read(a: Armazem | null): SavedCitation[] {
+  if (!a) return [];
+  try { return JSON.parse(a.getItem(KEY) || "[]"); } catch { return []; }
 }
-function write(list: SavedCitation[]) {
-  localStorage.setItem(KEY, JSON.stringify(list));
+function write(a: Armazem | null, list: SavedCitation[]) {
+  if (!a) return;
+  a.setItem(KEY, JSON.stringify(list));
   window.dispatchEvent(new CustomEvent(EVT));
 }
 
+const VAZIA: SavedCitation[] = [];
+
 export function useSavedCitations() {
-  const [citations, setCitations] = useState<SavedCitation[]>([]);
+  const a = useArmazemDaConta()?.armazem ?? null;
+  // a lista anda junto com a conta dona dela: na troca de conta, nenhum render devolve a lista da anterior
+  const [estado, setEstado] = useState<{ a: Armazem | null; lista: SavedCitation[] }>({ a, lista: VAZIA });
+  const citations = estado.a === a ? estado.lista : VAZIA;
   useEffect(() => {
-    const sync = () => setCitations(read());
+    const sync = () => setEstado({ a, lista: read(a) });
     sync();
     window.addEventListener(EVT, sync);
     window.addEventListener("storage", sync);
     return () => { window.removeEventListener(EVT, sync); window.removeEventListener("storage", sync); };
-  }, []);
-  const save = useCallback((c: SavedCitation) => { write(upsertCitation(read(), c)); }, []);
-  const remove = useCallback((id: string) => { write(read().filter((x) => x.id !== id)); }, []);
-  const clear = useCallback(() => { write([]); }, []);
+  }, [a]);
+  const save = useCallback((c: SavedCitation) => { write(a, upsertCitation(read(a), c)); }, [a]);
+  const remove = useCallback((id: string) => { write(a, read(a).filter((x) => x.id !== id)); }, [a]);
+  const clear = useCallback(() => { write(a, []); }, [a]);
   return { citations, save, remove, clear };
 }

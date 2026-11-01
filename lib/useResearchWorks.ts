@@ -1,5 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { useArmazemDaConta } from "@/lib/chat/contaNoNavegador";
+import type { Armazem } from "@/lib/chat/threads";
 
 /**
  * Trabalhos da SALA DE PESQUISA (o documento que o usuário escreve: Artigo/Relatório/TCC).
@@ -22,25 +24,32 @@ export function upsertWork(list: ResearchWork[], w: ResearchWork): ResearchWork[
   return [w, ...list.filter((x) => x.id !== w.id)].sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
-function read(): ResearchWork[] {
-  if (typeof window === "undefined") return [];
-  try { return JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { return []; }
+// #666: a lista é da conta logada; enquanto a sessão carrega (`null`) não há o que mostrar
+function read(a: Armazem | null): ResearchWork[] {
+  if (!a) return [];
+  try { return JSON.parse(a.getItem(KEY) || "[]"); } catch { return []; }
 }
-function write(list: ResearchWork[]) {
-  localStorage.setItem(KEY, JSON.stringify(list));
+function write(a: Armazem | null, list: ResearchWork[]) {
+  if (!a) return;
+  a.setItem(KEY, JSON.stringify(list));
   window.dispatchEvent(new CustomEvent(EVT));
 }
 
+const VAZIA: ResearchWork[] = [];
+
 export function useResearchWorks() {
-  const [works, setWorks] = useState<ResearchWork[]>([]);
+  const a = useArmazemDaConta()?.armazem ?? null;
+  // a lista anda junto com a conta dona dela: na troca de conta, nenhum render devolve a lista da anterior
+  const [estado, setEstado] = useState<{ a: Armazem | null; lista: ResearchWork[] }>({ a, lista: VAZIA });
+  const works = estado.a === a ? estado.lista : VAZIA;
   useEffect(() => {
-    const sync = () => setWorks(read());
+    const sync = () => setEstado({ a, lista: read(a) });
     sync();
     window.addEventListener(EVT, sync);
     window.addEventListener("storage", sync);
     return () => { window.removeEventListener(EVT, sync); window.removeEventListener("storage", sync); };
-  }, []);
-  const save = useCallback((w: ResearchWork) => { write(upsertWork(read(), w)); }, []);
-  const remove = useCallback((id: string) => { write(read().filter((x) => x.id !== id)); }, []);
+  }, [a]);
+  const save = useCallback((w: ResearchWork) => { write(a, upsertWork(read(a), w)); }, [a]);
+  const remove = useCallback((id: string) => { write(a, read(a).filter((x) => x.id !== id)); }, [a]);
   return { works, save, remove };
 }

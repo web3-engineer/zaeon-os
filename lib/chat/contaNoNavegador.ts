@@ -12,7 +12,11 @@ import type { Armazem } from "@/lib/chat/threads";
 export const CONTA_ANONIMA = "anon";
 
 /** O que no navegador pertence a uma conta: as conversas (também as do celular e do Octa), o rascunho e o modo pesquisa de cada conversa. */
-const PREFIXOS_DA_CONTA = ["zaeon.cowork.thread", "zaeon.research.thread", "zaeon.research.draft.v1", "zaeon.chat.modoPesquisa.v1", "zaeon.m.conversa", "zaeon.m.chat.", "zaeon.octa."];
+const PREFIXOS_DA_CONTA = ["zaeon.cowork.thread", "zaeon.research.thread", "zaeon.research.draft.v1", "zaeon.chat.modoPesquisa.v1", "zaeon.m.conversa", "zaeon.m.chat.", "zaeon.octa.",
+  // #666: a biblioteca (os bytes dos PDFs ficam no IndexedDB, e só se chega neles por esta lista), citações, trabalhos, lixeira,
+  // os documentos do editor e o que a tela de aulas guarda
+  "zaeon.libraryFiles", "zaeon.savedCitations", "zaeon.researchWorks", "zaeon.trash", "zaeon_research_docs", "zaeon_research_draft",
+  "zaeon_schedule_data", "zaeon_plugged_day", "zaeon_gadget_on", "zaeon_liquid_chat", "zaeon_stored_pdfs", "zaeon_user_modules"];
 
 /** Resumo do e-mail: a chave identifica a conta sem deixar o e-mail escrito no navegador. */
 function resumo(texto: string, semente: number): string {
@@ -59,9 +63,14 @@ export function armazemDaConta(a: Armazem, conta: string): Armazem {
   };
 }
 
+/** Fora do SessionProvider (só nos testes de componente, o site inteiro está dentro dele) o useSession lança: vale como sem login. */
+function sessaoOuAnonima(): Pick<ReturnType<typeof useSession>, "data" | "status"> {
+  try { return useSession(); } catch { return { data: null, status: "unauthenticated" }; }
+}
+
 /** A área da conta logada. `null` enquanto a sessão carrega: nessa hora não se sabe de quem mostrar. */
 export function useArmazemDaConta(): { conta: string; armazem: Armazem } | null {
-  const { data, status } = useSession();
+  const { data, status } = sessaoOuAnonima();
   const carregando = status === "loading";
   const conta = contaDaSessao(data?.user?.email);
   return useMemo(() => {
