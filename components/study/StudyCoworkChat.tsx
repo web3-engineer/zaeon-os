@@ -83,7 +83,7 @@ import { revelarPorTempo, safeCut } from "@/lib/ui/typewriter";
 import { cronometrarResposta, EVT_TEMPOS, fmtTempos, verTempos, type TemposResposta } from "@/lib/chat/temposResposta";
 import { hydrateTranscript } from "@/lib/agent/transcriptClient";
 import { useArmazemDaConta } from "@/lib/chat/contaNoNavegador";
-import { apagarNoServidor, blocoDaMensagem, cortarNoServidor, gravarArtefato, gravarTurno, mensagensDoServidor, renomearNoServidor, sincronizarConversas } from "@/lib/chat/conversasServidor";
+import { apagarNoServidor, blocoDaMensagem, cortarNoServidor, gravarArtefato, gravarTurno, mensagensDoServidor, renomearNoServidor, sincronizarConversas, type MsgGuardada } from "@/lib/chat/conversasServidor";
 import type { TranscriptWire } from "@/lib/agent/transcriptClient";
 import { ESCOPO_COWORK, type Armazem } from "@/lib/chat/threads";
 import { esperarTurno } from "@/lib/chat/turnoRetomavel";
@@ -480,8 +480,16 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     } catch { /* ignore */ }
     // #663: a lista do servidor entra na do navegador; a conversa aberta sem cópia aqui vem de lá
     (async () => {
-      const juntas = await sincronizarConversas("estudos", armazem, ESCOPO_COWORK, () => threadsRef.current);
+      const juntas = await sincronizarConversas("estudos", armazem, ESCOPO_COWORK, () => threadsRef.current, textoParaHistorico as (m: MsgGuardada) => string);
       if (juntas) { threadsRef.current = juntas; setThreads(juntas); }
+      // a conversa aberta foi apagada em outro aparelho: abre a primeira que sobrou
+      if (juntas?.length && !juntas.some((t) => t.id === abaAtivaRef.current)) {
+        const id = juntas[0].id;
+        const guardadas = carregarMensagens<Msg>(armazem, id);
+        abaAtivaRef.current = id; setAbaAtiva(id); marcarAtiva(armazem, id);
+        msgsRef.current = guardadas; setMessages(guardadas);
+        hadLocal = guardadas.length > 0;
+      }
       if (hadLocal) return;
       const ativa = abaAtivaRef.current;
       const daConversa = ativa ? await mensagensDoServidor("estudos", ativa) : [];

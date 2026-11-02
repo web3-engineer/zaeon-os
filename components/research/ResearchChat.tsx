@@ -224,6 +224,14 @@ function ChatDaConta({
     (async () => {
       const juntas = await sincronizarConversas("pesquisa", armazem, ESCOPO_PESQUISA, () => threadsRef.current);
       if (juntas) { threadsRef.current = juntas; setThreads(juntas); }
+      // a conversa aberta foi apagada em outro aparelho: abre a primeira que sobrou
+      if (juntas?.length && !juntas.some((t) => t.id === abaAtivaRef.current)) {
+        const id = juntas[0].id;
+        const guardadas = carregarMensagens<Msg>(armazem, id, ESCOPO_PESQUISA);
+        abaAtivaRef.current = id; setAbaAtiva(id); marcarAtiva(armazem, id, ESCOPO_PESQUISA);
+        msgsRef.current = guardadas; setMessages(guardadas);
+        hadLocal = guardadas.length > 0;
+      }
       if (hadLocal) return;
       const ativa = abaAtivaRef.current;
       const daConversa = ativa ? await mensagensDoServidor("pesquisa", ativa) : [];
