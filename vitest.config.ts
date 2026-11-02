@@ -11,7 +11,7 @@ export default defineConfig({
   },
   test: {
     // .test.tsx = testes de UI (jsdom, declarado por arquivo com `// @vitest-environment jsdom`).
-    include: ["lib/**/*.test.ts", "app/**/*.test.ts", "lib/**/*.test.tsx", "app/**/*.test.tsx", "components/**/*.test.tsx"],
+    include: ["lib/**/*.test.ts", "app/**/*.test.ts", "infra/**/*.test.ts", "lib/**/*.test.tsx", "app/**/*.test.tsx", "components/**/*.test.tsx"],
     environment: "node",
     // Cobertura (npm run test:coverage) escopada ao que é NOVO — o legado sem teste não
     // pode diluir nem bloquear o portão das unidades novas.
