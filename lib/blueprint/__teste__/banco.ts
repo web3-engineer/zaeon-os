@@ -14,7 +14,7 @@ export function bancoFalso(convEstudavel = false) {
     cartolina: {
       async findFirst({ where }) { await tique(); return linhas.filter((l) => casa(l, where)).sort(ordem)[0] ?? null; },
       async findUnique({ where }) { await tique(); return linhas.find((l) => l.id === where.id) ?? null; },
-      async findMany({ where }) { await tique(); return linhas.filter((l) => casa(l, where)).sort(ordem); },
+      async findMany({ where, take }) { await tique(); const r = linhas.filter((l) => casa(l, where)).sort(ordem); return take ? r.slice(0, take) : r; },
       async create({ data }) { await tique(); const n = ++seq; const l = { ...data, id: n.toString(16).padStart(24, "0"), rev: 0, createdAt: new Date(1000 + n), updatedAt: new Date(1000 + n) }; linhas.push(l); return l; },
       async updateMany({ where, data }) { await tique(); const l = linhas.find((x) => x.id === where.id && x.rev === where.rev); if (!l) return { count: 0 }; Object.assign(l, data, { updatedAt: new Date() }); return { count: 1 }; },
       async deleteMany({ where }) { const i = linhas.findIndex((l) => l.id === where.id); if (i >= 0) linhas.splice(i, 1); return { count: i >= 0 ? 1 : 0 }; },

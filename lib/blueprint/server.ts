@@ -61,9 +61,17 @@ export function resumoDe(l: Linha): ResumoBlueprint {
 }
 
 export async function listarBlueprints(userId: string, db?: BlueprintDb): Promise<ResumoBlueprint[]> {
+  return (await listarPagina(userId, POR_PAGINA, db)).blueprints;
+}
+
+/** #683: a lista vem de 40 em 40 ("ver mais" pede a próxima), até MAX_LISTA */
+export const POR_PAGINA = 40, MAX_LISTA = 400;
+/** os `limite` mais recentes e se há mais depois deles (pede um a mais para saber) */
+export async function listarPagina(userId: string, limite: number, db?: BlueprintDb): Promise<{ blueprints: ResumoBlueprint[]; temMais: boolean }> {
   const d = db ?? (await prismaDb());
-  const rows = await d.cartolina.findMany({ where: { ownerId: userId, surface: SURFACE_BLUEPRINT }, orderBy: { updatedAt: "desc" }, take: 40 });
-  return rows.map(resumoDe);
+  const n = Math.min(MAX_LISTA, Math.max(1, Math.floor(limite) || POR_PAGINA));
+  const rows = await d.cartolina.findMany({ where: { ownerId: userId, surface: SURFACE_BLUEPRINT }, orderBy: { updatedAt: "desc" }, take: n + 1 });
+  return { blueprints: rows.slice(0, n).map(resumoDe), temMais: rows.length > n };
 }
 
 /** o blueprint SÓ se o usuário tem papel nele */

@@ -25,6 +25,9 @@ async function json<T>(url: string, init?: RequestInit): Promise<T | null> {
 
 export function useBlueprint(inicialId?: string | null) {
   const [lista, setLista] = useState<ResumoBlueprint[] | null>(null);
+  // #683: quantos a lista mostra (de 40 em 40) e se o servidor tem mais
+  const [limite, setLimite] = useState(40), [temMais, setTemMais] = useState(false);
+  const limiteRef = useRef(40);
   const [atual, setAtualCru] = useState<BlueprintCliente | null>(null);
   const [selecionado, setSelecionado] = useState<string | null>(inicialId ?? null);
   // os blueprints já abertos nesta visita (voltar num deles não espera o servidor)
@@ -64,13 +67,15 @@ export function useBlueprint(inicialId?: string | null) {
   }, [setAtual]);
 
   const recarregar = useCallback(async () => {
-    const r = await json<{ blueprints: ResumoBlueprint[] }>("/api/blueprint");
+    const r = await json<{ blueprints: ResumoBlueprint[]; temMais?: boolean }>(`/api/blueprint?limite=${limiteRef.current}`);
     if (!r) { setErro(true); return; }
     setErro(false);
+    setTemMais(!!r.temMais);
     const vivos = r.blueprints.filter((b) => !excluidos.current.has(b.id));
     setLista(vivos);
     const alvo = idAtual.current && vivos.some((b) => b.id === idAtual.current) ? idAtual.current : vivos[0]?.id;
-    if (alvo) await abrir(alvo); else setAtual(null);
+    // a lista já chegou: quem espera a recarga ("ver mais") não espera também a prancha
+    if (alvo) void abrir(alvo); else setAtual(null);
   }, [abrir]);
 
   useEffect(() => {
@@ -150,7 +155,13 @@ export function useBlueprint(inicialId?: string | null) {
     return !!ok;
   }, [patch, atual, setAtual]);
 
+  /** #683: "ver mais" — os próximos 40, mais antigos */
+  const verMais = useCallback(async () => {
+    limiteRef.current += 40; setLimite(limiteRef.current);
+    await recarregar();
+  }, [recarregar]);
+
   // #631: clicou e a prancha ainda é a de antes (o servidor não respondeu)
   const carregando = !!selecionado && atual?.id !== selecionado;
-  return { lista, atual, selecionado, carregando, erro, abrir, recarregar, fixar, reorganizar, recompor, recompondo, enviarProva, excluir, renomear, setAtual };
+  return { lista, atual, selecionado, carregando, erro, temMais, limite, verMais, abrir, recarregar, fixar, reorganizar, recompor, recompondo, enviarProva, excluir, renomear, setAtual };
 }

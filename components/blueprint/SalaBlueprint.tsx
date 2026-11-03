@@ -8,7 +8,9 @@ import type { ResumoBlueprint } from "@/lib/blueprint/server";
 import { podeEscrever } from "@/lib/cartolina/access";
 import { COR } from "./Modulos";
 import PranchaBlueprint from "./PranchaBlueprint";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { pedirConversa } from "@/lib/chat/conversasNav";
+import { filtrarBlueprints } from "@/lib/blueprint/busca";
 import { NOME_FASE } from "@/lib/blueprint/tipos";
 import { precisaAvaliar } from "@/lib/blueprint/fases";
 import { useBlueprint } from "./useBlueprint";
@@ -70,6 +72,10 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
   const ligado = papel ? { background: PAPEL.tinta, color: "#efe7d3" } : rosa ? { background: "linear-gradient(135deg,#ff4fa3,#e6007e)", color: "#fff" } : { background: "rgba(127,224,255,.2)", color: "#fff" };
   const desligado = { color: papel ? PAPEL.tintaSuave : rosa ? ROSA.tintaSuave : "rgba(186,230,253,.75)" };
   const { lista, atual } = B;
+  // #683: a busca pelo nome (nos que a lista já trouxe; "ver mais" traz os antigos)
+  const [busca, setBusca] = useState(""), [vendoMais, setVendoMais] = useState(false);
+  const visiveis = useMemo(() => (lista ? filtrarBlueprints(lista, busca) : null), [lista, busca]);
+  const verMais = async () => { setVendoMais(true); await B.verMais(); setVendoMais(false); };
   // #631: a marcação segue o CLIQUE (não espera o servidor) — antes parecia que o clique não tinha pegado
   const marcado = B.selecionado ?? atual?.id;
   // #631: o cronômetro fecha no quadro seguinte ao desenho da prancha nova
@@ -122,8 +128,39 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
         </div>
         <span className="self-center whitespace-nowrap pr-1 font-mono text-[11px] tracking-[0.2em] text-sky-300">BLUEPRINTS</span>
         {lista === null && !B.erro && <span className="self-center font-mono text-[11px] text-sky-200/50">carregando…</span>}
-        {lista?.map((b, k) => (
-          <button key={b.id} type="button" data-tour={k === 0 ? "blueprint-lista" : undefined} onClick={() => void B.abrir(b.id)} className="min-w-[190px] flex-none rounded-[3px] border px-2.5 py-1.5 text-left font-mono transition hover:bg-white/5"
+        {/* #683: a busca e as ações do aberto ficam presas à esquerda: rolar a barra não as esconde */}
+        <div className="sticky left-0 z-[1] -ml-3 flex flex-none items-stretch gap-2 pl-3 pr-2" style={{ background: barra.background }}>
+          {/* #683: buscar pelo nome */}
+          {lista && (lista.length > 1 || busca) && (
+            <div className="flex flex-none items-center self-center">
+              <label htmlFor="bp-busca" className="sr-only">Buscar blueprint pelo nome</label>
+              <input id="bp-busca" type="search" value={busca} onChange={(e) => setBusca(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape") setBusca(""); }}
+                placeholder="buscar…" maxLength={80} className="w-[130px] rounded-sm border bg-black/20 px-2 py-1 font-mono text-[11px] outline-none placeholder:opacity-60"
+                style={{ borderColor: contorno, color: papel ? PAPEL.tinta : rosa ? ROSA.tinta : "#e0f2fe" }} />
+            </div>
+          )}
+          {/* #683: as ações do aberto ficam no COMEÇO da barra (antes ficavam depois do último blueprint, longe) */}
+          {/* voltar à conversa de onde o blueprint nasceu */}
+          {atual?.scopeId && atual.id === marcado && !B.carregando && (
+            <button type="button" onClick={() => pedirConversa({ sala: "estudos", id: atual.scopeId! })} className="flex-none self-center whitespace-nowrap rounded-sm border px-2.5 py-1 font-mono text-[11px] transition hover:bg-white/10" style={{ borderColor: contorno, ...desligado }}>
+              ← abrir a conversa
+            </button>
+          )}
+          {/* #681: renomear e excluir o blueprint aberto (só o dono) */}
+          {doDono && (
+            <div className="flex flex-none flex-col justify-center gap-1 font-mono text-[10.5px]" role="group" aria-label="Ações do blueprint">
+              <button type="button" onClick={() => { setNome(atual!.doc.titulo); setAcao("renomear"); }} aria-pressed={acao === "renomear"} className="rounded-sm border px-2 py-0.5 transition hover:bg-white/10" style={{ borderColor: contorno, ...desligado }}>renomear</button>
+              <button type="button" onClick={() => setAcao("excluir")} aria-pressed={acao === "excluir"} className="rounded-sm border px-2 py-0.5 transition hover:bg-white/10" style={{ borderColor: "rgba(255,77,94,.5)", color: corNaSkin(skin, COR.critico) }}>excluir</button>
+            </div>
+          )}
+        </div>
+        {visiveis && busca.trim() && !visiveis.length && (
+          <span role="status" className="self-center whitespace-nowrap font-mono text-[11px]" style={desligado}>
+            nenhum blueprint com “{busca.trim()}”{B.temMais ? " nos que já carregaram" : ""}
+          </span>
+        )}
+        {visiveis?.map((b, k) => (
+          <button key={b.id} type="button" title={b.titulo} data-tour={k === 0 ? "blueprint-lista" : undefined} onClick={() => void B.abrir(b.id)} className="min-w-[190px] flex-none rounded-[3px] border px-2.5 py-1.5 text-left font-mono transition hover:bg-white/5"
             aria-pressed={marcado === b.id}
             style={{ borderColor: corNaSkin(skin, marcado === b.id ? COR.estudo : "rgba(127,224,255,.25)"), background: marcado === b.id ? (papel || rosa ? "rgba(255,255,255,.5)" : "rgba(127,224,255,.08)") : undefined }}>
             <b className="block max-w-[240px] truncate text-[12px] text-sky-50">{b.titulo}</b>
@@ -133,12 +170,11 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
             <BarrinhaFases b={b} skin={skin} tour={k === 0 ? "blueprint-fases" : undefined} />
           </button>
         ))}
-        {/* #681: renomear e excluir o blueprint aberto (só o dono) */}
-        {doDono && (
-          <div className="flex flex-none flex-col justify-center gap-1 font-mono text-[10.5px]" role="group" aria-label="Ações do blueprint">
-            <button type="button" onClick={() => { setNome(atual!.doc.titulo); setAcao("renomear"); }} aria-pressed={acao === "renomear"} className="rounded-sm border px-2 py-0.5 transition hover:bg-white/10" style={{ borderColor: contorno, ...desligado }}>renomear</button>
-            <button type="button" onClick={() => setAcao("excluir")} aria-pressed={acao === "excluir"} className="rounded-sm border px-2 py-0.5 transition hover:bg-white/10" style={{ borderColor: "rgba(255,77,94,.5)", color: corNaSkin(skin, COR.critico) }}>excluir</button>
-          </div>
+        {/* #683: os mais antigos que os 40 primeiros */}
+        {B.temMais && (
+          <button type="button" onClick={() => void verMais()} disabled={vendoMais} className="flex-none self-center whitespace-nowrap rounded-sm border px-2.5 py-1 font-mono text-[11px] transition hover:bg-white/10 disabled:opacity-50" style={{ borderColor: contorno, ...desligado }}>
+            {vendoMais ? "carregando…" : "ver mais →"}
+          </button>
         )}
       </div>
       {doDono && acao && (
