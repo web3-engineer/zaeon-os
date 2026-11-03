@@ -669,6 +669,13 @@ Decisões que eu **não** tomo sozinho, porque mudam contrato de produto ou gast
    revisão. Fechar isso é política de egresso no VPS.
 3. **Teto de arquivos por conversa.** O dono já fixou **10 por documento** no plano do documento;
    confirmar se vale o mesmo teto para o chat.
+3b. **Cobertura garantida por documento na busca da base** (levantado pelo Sourcery na #672).
+   `K_AMPLO = 40` é teto de RESULTADO, não garantia: em teoria um documento longo pode ocupar os 40
+   e empurrar outro para fora do agrupamento. O que ele não consegue é dominar o prompt
+   (`TRECHOS_POR_DOC = 3` corta por documento), então o ganho da F4 vale pra todo documento que
+   APAREÇA. Garantir de verdade é **k por documento** — uma window function por `documentoId` no
+   SQL —, e a F4 foi desenhada como UMA consulta, sem índice novo e sem reindexação (§4.3). Pagar
+   essa dívida é decisão sua: muda o formato da consulta, não uma flag.
 4. ~~F5 exige instalar o SDK.~~ **Medido e deixado pra você:** o SDK traz 17 dependências diretas,
    incluindo `express` 5, `hono`, `cors` e `express-rate-limit` — a metade SERVIDOR, que não usamos.
    Por isso **não está no `package.json`**: o código funciona sem ele e o `/api/health` diz
