@@ -1214,7 +1214,7 @@ export default function MeusEstudosFeed({ collabSpaceId, mode = "study" }: { col
           )}
 
           {loading || library.length > 0 ? null : (
-            <p className="text-[13px] text-slate-400 dark:text-white/30 p-2 leading-relaxed">Salve referências, vídeos e trabalhos aqui (pelo "+" ou pela pesquisa). Depois arraste pro caderno.</p>
+            <p className="text-[13px] text-slate-400 dark:text-white/30 p-2 leading-relaxed">Salve referências, vídeos e trabalhos aqui (pelo &ldquo;+&rdquo; ou pela pesquisa). Depois arraste pro caderno.</p>
           )}
         </div>
       </div>

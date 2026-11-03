@@ -63,14 +63,21 @@ export function armazemDaConta(a: Armazem, conta: string): Armazem {
   };
 }
 
-/** Fora do SessionProvider (só nos testes de componente, o site inteiro está dentro dele) o useSession lança: vale como sem login. */
-function sessaoOuAnonima(): Pick<ReturnType<typeof useSession>, "data" | "status"> {
+/**
+ * Fora do SessionProvider (só nos testes de componente, o site inteiro está dentro dele) o
+ * useSession lança: vale como sem login.
+ *
+ * O nome COMEÇA COM `use` porque isto É um hook — chama `useSession` dentro. Sem o prefixo o
+ * `react-hooks/rules-of-hooks` acusa, e com razão: a regra não tem como saber que a função é
+ * chamada incondicionalmente de dentro de outro hook. Renomear não muda ordem de hook nenhuma.
+ */
+function useSessaoOuAnonima(): Pick<ReturnType<typeof useSession>, "data" | "status"> {
   try { return useSession(); } catch { return { data: null, status: "unauthenticated" }; }
 }
 
 /** A área da conta logada. `null` enquanto a sessão carrega: nessa hora não se sabe de quem mostrar. */
 export function useArmazemDaConta(): { conta: string; armazem: Armazem } | null {
-  const { data, status } = sessaoOuAnonima();
+  const { data, status } = useSessaoOuAnonima();
   const carregando = status === "loading";
   const conta = contaDaSessao(data?.user?.email);
   return useMemo(() => {
