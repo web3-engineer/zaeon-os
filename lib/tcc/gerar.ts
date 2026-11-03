@@ -11,6 +11,7 @@ import { geminiJson } from "@/lib/scholar/gemini";
 import { ESBOCO_SYS, esbocoUser, type DraftJson } from "@/lib/research/esboco";
 import { aplicarNoTcc, marcarStatus } from "@/lib/tcc/store";
 import { chaveTitulo, type OpSecao, type Secao } from "@/lib/tcc/secoes";
+import { escritaPorSecaoLigada } from "@/lib/documento/escritor";
 
 type Gen = (sys: string, user: string) => Promise<DraftJson>;
 const genPadrao: Gen = (sys, user) =>
@@ -39,8 +40,67 @@ export function opsDoEsboco(secoes: Secao[], d: DraftJson): OpSecao[] {
     .map((s) => ({ op: "substituir" as const, secaoId: s.id, corpo: corpos[chaveTitulo(s.titulo)] }));
 }
 
+/**
+ * F2 (docs/PLANO_DOCUMENTO_COMPLETO.md): UMA CHAMADA POR SEÇÃO, com o esqueleto mandando.
+ *
+ * O esboço continua, mas vira só o NORTE (título, objetivos, metodologia) — não é mais ele que
+ * preenche o documento. Quem escreve é `escreverDocumento`, seção por seção, com o rascunho-até-
+ * agora no pedido. As seções vêm dos TÍTULOS GRAVADOS (a autoridade), enriquecidos com os
+ * subtítulos do template: é por isso que REFERENCIAL TEÓRICO passa a sair com "Conceitos
+ * Fundamentais" e "Estado da Arte" dentro, em vez de vazio como hoje.
+ *
+ * Vai pelo ENVELOPE (lib/llm/envelope), não pelo Vertex direto: são ~5 chamadas por documento, e
+ * no envelope elas pegam o pool grátis, a reserva do HF e o ledger.
+ */
+async function gerarPorSecao(workId: string, userId: string, topic: string, gen: Gen): Promise<void> {
+  const { getTccForUser } = await import("@/lib/tcc/store");
+  const { planoDoDocumento } = await import("@/lib/documento/plano");
+  const { escreverDocumento, esqueletoEnriquecido, promptDaSecao } = await import("@/lib/documento/escritor");
+  const { gerar } = await import("@/lib/llm/envelope");
+
+  // O norte: uma chamada, e se ela falhar a escrita segue sem ela (o tema já basta pra começar).
+  const d = await gen(ESBOCO_SYS, esbocoUser(topic)).catch(() => null);
+  const titulo = d?.titulo?.trim() ? d.titulo.trim().slice(0, 200) : undefined;
+  if (titulo) await aplicarNoTcc(workId, userId, [], "estudos", { titulo }).catch(() => undefined);
+
+  const atual = await getTccForUser(workId, userId);
+  if (!atual) throw new Error("documento não encontrado");
+
+  const plano = planoDoDocumento(esqueletoEnriquecido(atual.secoes.map((s) => s.titulo)));
+  // Lido UMA vez, antes de escrever: o que o aluno já tinha escrito não se sobrescreve.
+  const jaCheias = new Set(atual.secoes.filter((s) => s.corpo.trim()).map((s) => s.titulo));
+
+  const r = await escreverDocumento(
+    {
+      escrever: async (p) => {
+        const { sys, user } = promptDaSecao(p);
+        const res = await gerar({
+          system: sys, user, temperature: 0.5, pensar: "low", timeoutMs: 60_000,
+          ctx: { agentKey: "zaeon", surface: "estudos" as const, phase: "tcc-secao" },
+        });
+        return res.texto;
+      },
+      // Uma operação por seção: o poll do cliente vê o documento crescer, e cada pedaço entra no
+      // histórico com a sua própria linha (igual ao caminho antigo).
+      salvar: async (u, corpo) => {
+        const res = await aplicarNoTcc(workId, userId, (t) => {
+          const s = t.secoes.find((x) => x.titulo === u.slot.titulo);
+          return s ? [{ op: "substituir" as const, secaoId: s.id, corpo }] : [];
+        }, "estudos");
+        return res.ok;
+      },
+      jaEscrita: (u) => jaCheias.has(u.slot.titulo),
+    },
+    { tema: topic, tipo: String(atual.workType ?? "TCC"), plano, norte: d as Record<string, string | undefined> | null },
+  );
+
+  console.info(`[tcc] F2 ${workId}: ${r.escritas} escritas, ${r.aFazer} a fazer, ${r.puladas} puladas`);
+  await marcarStatus(workId, userId, "pronto");
+}
+
 export async function gerarTccEmBackground(workId: string, userId: string, topic: string, gen: Gen = genPadrao): Promise<void> {
   try {
+    if (escritaPorSecaoLigada()) return await gerarPorSecao(workId, userId, topic, gen);
     const d = await gen(ESBOCO_SYS, esbocoUser(topic));
     const titulo = d?.titulo?.trim() ? d.titulo.trim().slice(0, 200) : undefined;
     // Uma seção por vez: o poll do cliente vê o documento crescendo.
