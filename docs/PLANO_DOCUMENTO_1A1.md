@@ -93,6 +93,48 @@ se monta sozinha a partir do que foi realmente citado.
 
 ---
 
+## D4 e D5 entregues (2026-11-03)
+
+### D4 · o anexo vira fonte citável
+
+`fontesDoTurno` passou a receber os anexos, e eles vêm **na frente de tudo**: é o material que a
+pessoa escolheu trazer. Sem página na citação, de propósito — sabemos quantas páginas o arquivo
+*tem*, não de qual delas saiu a afirmação, e citar página errada é pior que não citar página.
+
+De quebra, a D4 consertou um risco que a D3 tinha deixado: as referências eram **remontadas** do
+lado do documento a partir de `answer.evidencia`, e isso dependia de as duas remontagens baterem —
+além de o anexo nem existir no `answer`. Agora o harness, que tem a lista original na mão, mede o
+que foi citado e põe em `answer.referencias`. O caminho antigo ficou como rede.
+
+### D5 · o gráfico no documento é QUADRO, não figura — e isso foi uma correção de rumo
+
+O plano dizia "gráfico vira figura com legenda e fonte". **Não dá, e o motivo é estrutural:** o
+corpo de uma seção é texto puro (o editor mostra num `textarea`) e a exportação vai para um serviço
+Python (`abnt-service /format`) que não recebe imagem em nenhum ponto. Enfiar SVG ali mostraria
+marcação crua ao aluno e sujaria o `.docx`.
+
+Escrever só "Figura 1" sem a figura seria **prometer o que não existe** — exatamente o defeito que
+esta série inteira persegue. Então foi pelo que o canal suporta e que é igualmente honesto: um
+**quadro** com os números de verdade e a linha de fonte. Para "papers por ano" num trabalho
+acadêmico, o quadro é inclusive a forma mais usual.
+
+O quadro é **oferecido**, não imposto: vai no prompt com "se — e só se — couber nesta seção", e
+some das seguintes assim que entra numa. É o "apenas onde couber" do dono, decidido pelo escritor.
+
+**Figura de verdade continua possível, e custa três camadas:** onde a figura mora (schema), o
+editor renderizando, e o `abnt-service` aceitando imagem. É projeto próprio, não uma fase.
+
+**Dois deslizes meus, pegos antes do commit:**
+
+1. eu montava o gráfico, jogava os pontos fora e **parseava o `<desc>` do SVG de volta** pra
+   recuperar a série. Frágil e desnecessário: `GraficoNaResposta` passou a carregar `pontos`.
+2. o primeiro teste do "quadro entra uma vez só" era irreal — eu fazia uma seção COM subtítulos
+   obrigatórios devolver um corpo sem `##`, que o laço **rejeita** e reescreve. O quadro se perdia
+   e o código seguia oferecendo, corretamente. Virou dois testes: o caminho aceito, e o caso do
+   corpo rejeitado (que não pode consumir o quadro, porque ele não entrou no documento).
+
+**Gates:** 5757 testes (619 arquivos, 0 falhas), `tsc` limpo, `eslint` 0.
+
 ## 🔒 Portões do dono
 
 1. **Escrever direto ou sugerir?** O trilho existente grava `status: "sugerida"` — o aluno aprova

@@ -137,6 +137,12 @@ export type PedidoSecao = {
    * honesta era marcar quase tudo. Vazio continua valendo — e aí o ⟨sem fonte⟩ é a resposta certa.
    */
   fontes?: readonly FonteDoc[];
+  /**
+   * D5 · um QUADRO pronto (números reais + linha de fonte) oferecido a ESTA seção. O escritor
+   * decide se cabe — é o "apenas onde couber" do dono. Some das seções seguintes assim que entra
+   * numa, porque cada chamada é independente e não saberia que a outra já o usou.
+   */
+  quadro?: string;
 };
 
 const comprimir = (t: string, max = RESUMO_POR_SECAO): string => {
@@ -209,6 +215,9 @@ export function promptDaSecao(p: PedidoSecao): { sys: string; user: string } {
     instrucaoDoPapel(u.slot.papel),
     `\nO QUE JÁ FOI ESCRITO (resumido, para você dar continuidade e NÃO se repetir nem se contradizer):\n${jaEscrito}`,
     p.fontes?.length ? `\n${blocoDeFontes(p.fontes)}` : "",
+    p.quadro
+      ? `\nQUADRO DISPONÍVEL (números já apurados; NÃO altere nenhum valor). Se — e só se — ele couber\nnesta seção, copie-o inteiro, tal como está, no ponto adequado do texto. Se não couber aqui, ignore.\n\n${p.quadro}`
+      : "",
   ].filter(Boolean).join("\n");
 
   return { sys, user };
@@ -357,11 +366,16 @@ export async function escreverDocumento(
     norte?: Record<string, string | undefined> | null;
     /** D1 · as fontes do trabalho, as MESMAS pra todas as seções (ver lib/documento/fontes). */
     fontes?: readonly FonteDoc[];
+    /** D5 · o quadro a oferecer. Entra em UMA seção só — ver `quadroPendente` no laço. */
+    quadro?: string;
   },
 ): Promise<RelatorioEscrita> {
   const unidades = unidadesDeEscrita(input.plano);
   const r: RelatorioEscrita = { escritas: 0, aFazer: 0, puladas: 0, itens: [], preenchimentos: [] };
   const rascunho: TrechoRascunho[] = [];
+  // D5 · a primeira linha do quadro é a marca pra saber se ele já entrou em alguma seção
+  const marcaDoQuadro = input.quadro?.split("\n")[0]?.trim() ?? "";
+  let quadroPendente = input.quadro;
 
   for (const u of unidades) {
     if (deps.jaEscrita?.(u)) {
@@ -375,7 +389,11 @@ export async function escreverDocumento(
     let ultimoErro: string | undefined;
     for (; tentativas < TENTATIVAS_POR_SECAO; tentativas++) {
       try {
-        const t = String(await deps.escrever({ tema: input.tema, tipo: input.tipo, unidade: u, rascunho, norte: input.norte ?? null, ...(input.fontes?.length ? { fontes: input.fontes } : {}) })).trim();
+        const t = String(await deps.escrever({
+          tema: input.tema, tipo: input.tipo, unidade: u, rascunho, norte: input.norte ?? null,
+          ...(input.fontes?.length ? { fontes: input.fontes } : {}),
+          ...(quadroPendente ? { quadro: quadroPendente } : {}),
+        })).trim();
         if (t) corpo = t;
         if (corpoAceitavel(u, corpo)) break;
         ultimoErro = t ? `abaixo do pedido (${palavras(t)} de ${u.pisoTotal} palavras)` : "o modelo não devolveu texto";
@@ -383,6 +401,9 @@ export async function escreverDocumento(
         ultimoErro = e?.message ?? "a chamada falhou";
       }
     }
+
+    // entrou? então não é mais oferecido — quadro repetido em três seções é pior que nenhum
+    if (quadroPendente && marcaDoQuadro && corpo.includes(marcaDoQuadro)) quadroPendente = undefined;
 
     const aceita = corpoAceitavel(u, corpo);
     // Vazio de verdade → stub MARCADO. Curta mas com conteúdo → fica o que veio: texto do modelo

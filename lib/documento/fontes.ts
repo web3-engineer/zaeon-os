@@ -142,8 +142,16 @@ export function juntarFontes(...listas: readonly (readonly (FonteDoc | null)[])[
 export function fontesDoTurno(
   fontes: readonly { title?: string; authors?: string; year?: number; url?: string; doi?: string }[] = [],
   docsDaBase: readonly { titulo?: string; paginas?: string }[] = [],
+  /**
+   * D4 · os arquivos que a pessoa ANEXOU neste turno. Vêm na frente de tudo: é o material que ela
+   * escolheu trazer, e era o que mais se perdia — o documento nunca soube que o anexo existiu.
+   * Sem página na citação de propósito: sabemos quantas páginas o arquivo TEM, não de qual delas
+   * saiu a afirmação, e citar página errada é pior que não citar página.
+   */
+  anexos: readonly { nome?: string; texto?: string }[] = [],
 ): FonteDoc[] {
   return juntarFontes(
+    anexos.map((a) => fonteDeDocumento({ titulo: a.nome, extrato: a.texto }, "anexo")),
     docsDaBase.map((d) => fonteDeDocumento(d)),
     fontes.map((f) => fonteDePaper(f)),
   );

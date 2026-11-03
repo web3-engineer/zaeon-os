@@ -67,6 +67,31 @@ export type Grafico = {
   unidade?: string;
 };
 
+/**
+ * D5 · O GRÁFICO COMO QUADRO DE TEXTO, pro documento.
+ *
+ * POR QUE NÃO É FIGURA. O corpo de uma seção é TEXTO PURO: o editor mostra num `textarea`, e a
+ * exportação vai pro serviço Python (`abnt-service /format`), que não recebe imagem em nenhum
+ * ponto do caminho. Enfiar o SVG lá dentro mostraria marcação crua ao aluno e sujaria o .docx —
+ * e escrever só "Figura 1" sem a figura seria prometer o que não existe, que é justamente o
+ * defeito que esta série inteira persegue.
+ *
+ * Então vai o que o canal suporta e que é igualmente honesto: um QUADRO com os números de verdade
+ * e a linha de fonte. Pra "papers por ano" num trabalho acadêmico, o quadro é inclusive a forma
+ * mais usual — e nada é prometido que não esteja ali.
+ */
+export function tabelaDoGrafico(g: Grafico, numero = 1): string | null {
+  const pontos = pontosValidos(g.pontos ?? []);
+  if (pontos.length < 2) return null;
+  const u = (g.unidade ?? "").trim();
+  const col = Math.max(...pontos.map((p) => p.label.length), 12);
+  return [
+    `Quadro ${numero} — ${g.titulo}`,
+    ...pontos.map((p) => `${p.label.padEnd(col)}  ${num(p.valor)}${u ? ` ${u}` : ""}`),
+    `Fonte: ${g.fonte}.`,
+  ].join("\n");
+}
+
 /** Escapa texto pra SVG. Rótulo vem de título de documento — ou seja, de conteúdo. */
 export function escaparSvg(s: string): string {
   return String(s ?? "")

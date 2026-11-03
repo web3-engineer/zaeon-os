@@ -70,6 +70,7 @@ export type Destaque = {
 
 import type { FalhaVisivel } from "@/lib/agent/falhas";
 import type { GraficoNaResposta } from "@/lib/agent/graficosDoTurno";
+import type { FonteVerificada } from "@/lib/tcc/store";
 
 export type StructuredAnswer = {
   nucleo: string;                                   // resposta direta (sempre)
@@ -97,6 +98,13 @@ export type StructuredAnswer = {
    * lib/agent/grafico.ts.
    */
   graficos?: GraficoNaResposta[];
+  /**
+   * D4 · as fontes que o texto de `work` CITOU, apuradas pelo próprio harness (que tem a lista
+   * original na mão). Antes o lado do documento remontava a lista a partir de `evidencia` —
+   * funcionava, mas dependia de as duas remontagens baterem, e o ANEXO nem aparecia lá. Com o
+   * campo, o que vale é o que foi medido onde a informação existe.
+   */
+  referencias?: FonteVerificada[];
   /** RAG: documentos da base (turma/pessoal) que a resposta citou — só trechos que a busca devolveu. `paginas` = "4" ou "4–5". */
   fontesBase?: { documentoId: string; titulo: string; paginas: string; publico?: boolean }[];
   /** TCC cross-sala (TCC_CROSS): o turno criou/editou o TCC desta conversa → o cliente abre a aba. */
