@@ -17,7 +17,7 @@
  * abaixo do qual devolve `null`. Dois papers não são uma série temporal; um documento não é
  * cobertura comparada.
  */
-import { svgDoGrafico, type Grafico } from "@/lib/agent/grafico";
+import { pontosValidos, svgDoGrafico, type Grafico, type PontoGrafico } from "@/lib/agent/grafico";
 
 const DESLIGADO = /^(0|off|false|nao|não|no)$/i;
 
@@ -38,6 +38,12 @@ export type GraficoNaResposta = {
   svg: string;
   /** a série em texto — leitor de tela, e a legenda da figura quando isto virar documento */
   alt: string;
+  /**
+   * D5 · os PONTOS, pra quem precisa do número e não do desenho (o quadro do documento). Antes eu
+   * devolvia só o SVG e o consumidor parseava o `<desc>` de volta pra recuperar a série — frágil e
+   * desnecessário: quem monta o gráfico já tem os dados na mão.
+   */
+  pontos: readonly PontoGrafico[];
 };
 
 /** Mínimos pra uma série de ANO valer: menos que isso é frase, não gráfico. */
@@ -52,7 +58,7 @@ export const MAX_GRAFICOS = 2;
 const pronto = (g: Grafico): GraficoNaResposta | null => {
   const svg = svgDoGrafico(g);
   if (!svg) return null;
-  return { titulo: g.titulo, fonte: g.fonte, svg, alt: `${g.titulo} — ${g.fonte}` };
+  return { titulo: g.titulo, fonte: g.fonte, svg, alt: `${g.titulo} — ${g.fonte}`, pontos: pontosValidos(g.pontos) };
 };
 
 /**

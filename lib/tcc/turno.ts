@@ -13,7 +13,7 @@
  */
 import type { IntentId, StructuredAnswer, WorkKind } from "@/lib/agent/contracts";
 import { sanitizeScopeId } from "@/lib/cartolina/route-auth";
-import { aplicarNoTcc, criarTcc, findTccDoEscopo, listarTrabalhosDoEscopo, tccCrossOn, referenciasNovas, type TccView } from "@/lib/tcc/store";
+import { aplicarNoTcc, criarTcc, findTccDoEscopo, listarTrabalhosDoEscopo, tccCrossOn, referenciasNovas, type FonteVerificada, type TccView } from "@/lib/tcc/store";
 import { ESQUELETO_TCC, chaveTitulo, esqueletoDe, opsDeWork, palavras } from "@/lib/tcc/secoes";
 import { researchWorkType } from "@/lib/agent/tools";
 import { cartolinaMemoriaOn, createBoard, findOwnBoard, patchBoard } from "@/lib/cartolina/store";
@@ -272,6 +272,9 @@ async function referenciasDoChat(
   sections: readonly { title: string; body: string }[],
 ): Promise<void> {
   try {
+    // D4 · o harness já mediu, onde a lista original (com os ANEXOS) existe. O caminho de baixo
+    // continua como rede pra quem chega sem o campo — e nunca inventa: se nada casar, nada entra.
+    if (answer.referencias?.length) return gravarReferencias(workId, userId, answer.referencias);
     const { fontesDoTurno, fontesCitadas } = await import("@/lib/documento/fontes");
     const fontes = fontesDoTurno(
       (answer.evidencia ?? []).map((e) => e.source).filter(Boolean) as { title?: string; year?: number }[],
@@ -280,14 +283,19 @@ async function referenciasDoChat(
     if (!fontes.length) return;
     const citadas = fontesCitadas(sections.map((s) => s.body).join("\n"), fontes);
     if (!citadas.length) return;
-    await aplicarNoTcc(workId, userId, (t) => {
-      const { secao, novas } = referenciasNovas(t.secoes, citadas);
-      if (!secao || !novas.length) return [];
-      return [{ op: "substituir" as const, secaoId: secao.id, corpo: [secao.corpo.trim(), ...novas].filter(Boolean).join("\n") }];
-    }, "estudos");
+    await gravarReferencias(workId, userId, citadas);
   } catch (e: any) {
     console.warn("[tcc] referências do chat falharam:", e?.message ?? e);
   }
+}
+
+/** Leva as referências pra seção REFERÊNCIAS (ABNT). O dedupe é do `referenciasNovas`. */
+async function gravarReferencias(workId: string, userId: string, citadas: readonly FonteVerificada[]): Promise<void> {
+  await aplicarNoTcc(workId, userId, (t) => {
+    const { secao, novas } = referenciasNovas(t.secoes, [...citadas]);
+    if (!secao || !novas.length) return [];
+    return [{ op: "substituir" as const, secaoId: secao.id, corpo: [secao.corpo.trim(), ...novas].filter(Boolean).join("\n") }];
+  }, "estudos");
 }
 
 const resumoDoCard = (t: TccView) => ({

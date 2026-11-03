@@ -63,7 +63,7 @@ export function opsDoEsboco(secoes: Secao[], d: DraftJson): OpSecao[] {
  *
  * Nunca lança: documento sem fonte continua sendo gerado (marcado), que é melhor que não gerar.
  */
-async function fontesDoTrabalho(userId: string, topic: string): Promise<FonteDoc[]> {
+async function fontesDoTrabalho(userId: string, topic: string): Promise<{ fontes: FonteDoc[]; quadro?: string }> {
   const [papers, base] = await Promise.all([
     import("@/lib/scholar/retrieve")
       .then((m) => m.retrievePapers(topic, { minResults: 6 }))
@@ -90,8 +90,16 @@ async function fontesDoTrabalho(userId: string, topic: string): Promise<FonteDoc
       ...(p.doi ? { doi: p.doi } : {}),
     })),
   );
-  console.info(`[tcc] fontes do trabalho: ${fontes.length} (${base.length} da base, ${papers.length} papers)`);
-  return fontes;
+  // D5 · o MESMO número que vira gráfico no chat vira QUADRO no documento (lib/agent/grafico):
+  // papers por ano, com a linha de fonte. Zero chamada de modelo — é contagem do que já veio.
+  const { graficoPapersPorAno } = await import("@/lib/agent/graficosDoTurno");
+  const { tabelaDoGrafico } = await import("@/lib/agent/grafico");
+  const g = graficoPapersPorAno(papers.map((p) => ({ year: p.year })));
+  const quadro = g
+    ? tabelaDoGrafico({ forma: "barras", titulo: g.titulo, fonte: g.fonte, pontos: [...g.pontos] }) ?? undefined
+    : undefined;
+  console.info(`[tcc] fontes do trabalho: ${fontes.length} (${base.length} da base, ${papers.length} papers)${quadro ? " + quadro" : ""}`);
+  return { fontes, ...(quadro ? { quadro } : {}) };
 }
 
 async function gerarPorSecao(workId: string, userId: string, topic: string, gen: Gen): Promise<void> {
@@ -112,7 +120,7 @@ async function gerarPorSecao(workId: string, userId: string, topic: string, gen:
   const atual = await getTccForUser(workId, userId);
   if (!atual) throw new Error("documento não encontrado");
 
-  const fontes = await fontesDoTrabalho(userId, topic);
+  const { fontes, quadro } = await fontesDoTrabalho(userId, topic);
   // o que cada seção CITOU de verdade — vira a seção REFERÊNCIAS no fim (D2)
   const citadas: FonteVerificada[] = [];
 
@@ -161,7 +169,7 @@ async function gerarPorSecao(workId: string, userId: string, topic: string, gen:
       },
       jaEscrita: (u) => jaCheias.has(u.slot.titulo),
     },
-    { tema: topic, tipo: String(atual.workType ?? "TCC"), plano, norte: d as Record<string, string | undefined> | null, fontes },
+    { tema: topic, tipo: String(atual.workType ?? "TCC"), plano, norte: d as Record<string, string | undefined> | null, fontes, ...(quadro ? { quadro } : {}) },
   );
 
   // D2 · REFERÊNCIAS: o trilho já existia (`referenciasNovas` + a seção ABNT do template) e só não

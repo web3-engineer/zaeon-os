@@ -87,6 +87,45 @@ describe("escritor · o prompt de UMA seção", () => {
     expect(vistos.every((f) => f?.length === 1)).toBe(true);
   });
 
+  it("D5 · o quadro é OFERECIDO, com a ordem de não alterar valor e de ignorar se não couber", () => {
+    const { user } = promptDaSecao(pedido({ quadro: "Quadro 1 — Papers por ano\n2020  3\nFonte: a busca." }));
+    expect(user).toContain("QUADRO DISPONÍVEL");
+    expect(user).toContain("NÃO altere nenhum valor");
+    expect(user).toContain("Se não couber aqui, ignore");
+    expect(user).toContain("Quadro 1 — Papers por ano");
+  });
+
+  it("D5 · entrou numa seção ACEITA, some das seguintes (quadro repetido é pior que nenhum)", async () => {
+    const quadro = "Quadro 1 — Papers por ano\n2020  3\nFonte: a busca.";
+    const ofertas: (string | undefined)[] = [];
+    let n = 0;
+    await escreverDocumento(
+      {
+        // a 1ª seção (INTRODUÇÃO, sem subtítulos obrigatórios) devolve o quadro e é ACEITA
+        escrever: async (pd) => { ofertas.push(pd.quadro); n++; return (n === 1 ? `${quadro}\n` : "") + "corpo ".repeat(400); },
+        salvar: async () => "gravou",
+      },
+      { tema: "T", tipo: "TCC", plano: planoTcc(), quadro },
+    );
+    expect(ofertas[0]).toBe(quadro);
+    expect(ofertas.length).toBeGreaterThan(1);
+    expect(ofertas.slice(1).some((o) => o === quadro)).toBe(false);
+  });
+
+  it("D5 · corpo REJEITADO não consome o quadro — ele não entrou no documento, então segue em oferta", async () => {
+    // achado escrevendo o teste acima: a seção com subtítulos obrigatórios recusa um corpo sem
+    // `##`, o laço reescreve, e o quadro se perde. Continuar oferecendo é o certo — o que não pode
+    // é a marca "já usei" valer por uma tentativa que foi jogada fora.
+    const quadro = "Quadro 1 — X\n2020  3\nFonte: f.";
+    const ofertas: (string | undefined)[] = [];
+    let n = 0;
+    await escreverDocumento(
+      { escrever: async (pd) => { ofertas.push(pd.quadro); n++; return n === 1 ? `${quadro}\n curto` : "corpo ".repeat(400); }, salvar: async () => "gravou" },
+      { tema: "T", tipo: "TCC", plano: planoTcc(), quadro },
+    );
+    expect(ofertas[1]).toBe(quadro);   // a retentativa ainda recebe o quadro
+  });
+
   it("pede UMA seção, com o piso e a instrução do papel", () => {
     const { sys, user } = promptDaSecao(pedido());
     expect(user).toContain("SEÇÃO A ESCREVER: REFERENCIAL TEÓRICO");

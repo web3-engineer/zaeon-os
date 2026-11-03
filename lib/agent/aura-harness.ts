@@ -36,7 +36,7 @@ import { MAX_VOLTAS_GATHER } from "@/lib/agent/trajectory";
 import { lerAcao, promptDeAcao, resumoDaColeta, resumoDasFalhas, toolVisivel, toolsDoMenu } from "@/lib/agent/acao";
 import { falhasVisiveis } from "@/lib/agent/falhas";
 import { graficosDoTurno } from "@/lib/agent/graficosDoTurno";
-import { blocoDeFontes, fontesDoTurno } from "@/lib/documento/fontes";
+import { blocoDeFontes, fontesCitadas, fontesDoTurno } from "@/lib/documento/fontes";
 import { normalizeStudioKind } from "@/lib/agent/tools";
 import type { StructuredAnswer, Source } from "@/lib/agent/contracts";
 import { artefatoDeAprender, pedeAula, pedeEngenhariaReversa, DIRETRIZ_ENGENHARIA_REVERSA } from "@/lib/agent/aprender";
@@ -588,6 +588,8 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         ? fontesDoTurno(
             st.evidence.map((f) => f.source).filter(Boolean) as { title?: string; year?: number }[],
             (opts.baseConhecimento?.trechos ?? []).map((t) => ({ titulo: t.titulo, paginas: String(t.paginaIni ?? "") })),
+            // D4 · o anexo do turno é fonte citável: é o material que a pessoa escolheu trazer
+            anexosDoCtx(ctx).map((a) => ({ nome: a.nome, texto: a.texto })),
           )
         : [];
       const blocoWork = fontesWork.length
@@ -620,6 +622,13 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         // observações são fato do turno, e `executadas` tira do caminho a tool que deu certo depois.
         const fv = falhasVisiveis(observations, executadas);
         if (fv.length) comBase.falhas = fv;
+        // D4 · as referências do que o `work` citou saem DAQUI, onde a lista original existe — em
+        // vez de o lado do documento remontá-la e torcer pra bater. Anexo só aparece por este
+        // caminho: ele não existe no `answer`.
+        if (fontesWork.length && comBase.work?.sections?.length) {
+          const refs = fontesCitadas(comBase.work.sections.map((x) => x.body).join("\n"), fontesWork);
+          if (refs.length) comBase.referencias = refs;
+        }
         // G3 · gráfico COM RECIBO: a contagem sai do que o turno apurou (papers da busca, trechos
         // por documento da F4). Nenhuma chamada de modelo, e o modelo não digita valor nenhum.
         const gs = graficosDoTurno({

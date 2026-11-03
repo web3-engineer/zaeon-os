@@ -118,6 +118,21 @@ describe("fontesDoTurno · o 1:1 entre o chat e o documento (D3)", () => {
     expect(fontesDoTurno(papers, base)[0]!.origem).toBe("base");
   });
 
+  it("D4 · o ANEXO entra, e na frente de tudo — foi o que a pessoa escolheu trazer", () => {
+    const fontes = fontesDoTurno(papers, base, [{ nome: "artigo-do-professor.pdf", texto: "a enzima rubisco fixa carbono" }]);
+    expect(fontes[0]!.origem).toBe("anexo");
+    expect(fontes[0]!.citacao).toBe("(artigo-do-professor.pdf)");
+    expect(fontes[0]!.extrato).toContain("rubisco");
+    // sem página: sabemos quantas o arquivo TEM, não de qual saiu a afirmação
+    expect(fontes[0]!.citacao).not.toMatch(/p\.\s*\d/);
+    expect(fontes[0]!.abnt).toContain("[referência incompleta");
+  });
+
+  it("D4 · o anexo citado vira bibliografia como qualquer outra fonte", () => {
+    const fontes = fontesDoTurno([], [], [{ nome: "meu.pdf" }]);
+    expect(fontesCitadas("Como mostra o material (meu.pdf), o processo é lento.", fontes).map((f) => f.titulo)).toEqual(["meu.pdf"]);
+  });
+
   it("turno sem fonte nenhuma devolve lista vazia (e aí nada é citado nem referenciado)", () => {
     expect(fontesDoTurno()).toEqual([]);
     expect(fontesDoTurno([], [])).toEqual([]);

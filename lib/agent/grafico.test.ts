@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { COR_SERIE, MAX_PONTOS, descricaoDaSerie, escaparSvg, pontosValidos, svgDoGrafico } from "@/lib/agent/grafico";
+import { COR_SERIE, MAX_PONTOS, descricaoDaSerie, escaparSvg, pontosValidos, svgDoGrafico, tabelaDoGrafico } from "@/lib/agent/grafico";
 import { papersToFindings } from "@/lib/agent/runtime";
 import {
   MAX_GRAFICOS, MIN_ANOS, MIN_DOCS, MIN_PAPERS,
@@ -198,6 +198,39 @@ describe("DADO REAL · o gráfico é ligado ao produtor de verdade, não a um fi
   it("paper SEM ano não vira barra fantasma", () => {
     const fontes = papersToFindings([...papers, { title: "E" }, { title: "F" }]).map((f) => f.source!);
     expect(graficoPapersPorAno(fontes)!.fonte).toContain("4 papers");
+  });
+});
+
+describe("tabelaDoGrafico · o gráfico no DOCUMENTO é quadro, não figura (D5)", () => {
+  const g = { forma: "barras" as const, titulo: "Papers por ano", fonte: "a busca de literatura", pontos: [{ label: "2019", valor: 2 }, { label: "2020", valor: 0 }, { label: "2021", valor: 5 }] };
+
+  it("sai como QUADRO ABNT: título numerado, números reais e linha de fonte", () => {
+    const t = tabelaDoGrafico(g)!;
+    expect(t.split("\n")[0]).toBe("Quadro 1 — Papers por ano");
+    expect(t).toContain("2021");
+    expect(t).toContain("5");
+    expect(t.trimEnd().endsWith("Fonte: a busca de literatura.")).toBe(true);
+    // o corpo da seção é TEXTO: nada de SVG nem de marcação que o aluno veria crua
+    expect(t).not.toContain("<svg");
+    expect(t).not.toContain("<");
+  });
+
+  it("o ano sem paper aparece com ZERO, igual ao gráfico — o vão é a informação", () => {
+    expect(tabelaDoGrafico(g)!).toMatch(/2020\s+0/);
+  });
+
+  it("numera conforme o documento (pode haver quadro antes)", () => {
+    expect(tabelaDoGrafico(g, 3)!.startsWith("Quadro 3 —")).toBe(true);
+  });
+
+  it("menos de dois pontos não vira quadro (mesma regra do desenho)", () => {
+    expect(tabelaDoGrafico({ ...g, pontos: [{ label: "2020", valor: 1 }] })).toBeNull();
+  });
+
+  it("os PONTOS vêm junto do gráfico — ninguém precisa parsear o SVG de volta", () => {
+    const gt = graficoPapersPorAno([{ year: 2019 }, { year: 2019 }, { year: 2020 }, { year: 2022 }])!;
+    expect(gt.pontos.map((p) => `${p.label}:${p.valor}`)).toEqual(["2019:2", "2020:1", "2021:0", "2022:1"]);
+    expect(tabelaDoGrafico({ forma: "barras", titulo: gt.titulo, fonte: gt.fonte, pontos: [...gt.pontos] })).toContain("2019");
   });
 });
 
