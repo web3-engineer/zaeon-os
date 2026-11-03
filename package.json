@@ -119,6 +119,7 @@
   },
   "devDependencies": {
     "@colyseus/core": "^0.18.18",
+    "@colyseus/schema": "^5.0.36",
     "@colyseus/ws-transport": "^0.18.4",
     "@gltf-transform/core": "^4.3.0",
     "@gltf-transform/functions": "^4.3.0",

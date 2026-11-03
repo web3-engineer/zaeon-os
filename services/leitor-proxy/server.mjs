@@ -144,7 +144,6 @@ export function criarServidor(opts = {}) {
     const exigeHttps = bin && !opts.httpNosBytes;
     if (exigeHttps && p.url.protocol !== "https:") throw new Recusa(400, "https_obrigatorio");
     let url = p.url;
-    const host0 = url.hostname.toLowerCase();
     for (let salto = 0; salto <= MAX_REDIRECTS; salto++) {
       const ip = await resolver(url.hostname);
       let r;
@@ -162,10 +161,18 @@ export function criarServidor(opts = {}) {
       }
       let prox;
       try { prox = new URL(r.redirect, url); } catch { throw new Recusa(502, "redirect_invalido"); }
-      // TEXTO: redirect só no mesmo host. BYTES: pode trocar de host, porque sem isso quase nenhum
-      // link real de PDF funciona (doi.org, repositório institucional) — e o salto novo passa pela
-      // allowlist aqui embaixo, pelo DNS e pelo ipBloqueado na volta do laço. É o modelo da Rovinos.
-      if (!bin && prox.hostname.toLowerCase() !== host0) throw new Recusa(400, "redirect_cross_host");
+      // REDIRECT ENTRE HOSTS vale pros DOIS, texto e bytes. Antes o texto exigia o mesmo host — e
+      // isso quebrava a leitura comum, não o caso raro: a comparação é de hostname EXATO, então
+      // apex→www (`who.int` → `www.who.int`, `nih.gov` → `www.nih.gov`) já caía, e `doi.org`, que
+      // SÓ existe pra redirecionar, nunca funcionou. Chegava ao aluno como "o site recusou a
+      // leitura", que não diz nada e não é nem verdade: quem recusou fomos nós.
+      //
+      // Tirar a trava não afrouxa nada, e a justificativa é a que este mesmo comentário já dava
+      // pros bytes: o salto novo passa pela allowlist logo abaixo (`urlPermitida`), e volta pro
+      // laço, onde o host é resolvido por DNS de novo e cada IP passa por `ipBloqueado`. Host fora
+      // da lista continua recusado; IP privado continua recusado. O que muda é só deixar de exigir
+      // que o destino tenha o MESMO NOME do ponto de partida — exigência que protegia zero, porque
+      // o mesmo host pode servir qualquer conteúdo. É o modelo da Rovinos.
       if (exigeHttps && prox.protocol !== "https:") throw new Recusa(400, "https_obrigatorio");
       const q = urlPermitida(prox.toString(), allow);
       if (!q.ok) throw new Recusa(q.status, q.erro);

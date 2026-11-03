@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { COR_SERIE, MAX_PONTOS, descricaoDaSerie, escaparSvg, pontosValidos, svgDoGrafico } from "@/lib/agent/grafico";
+import { papersToFindings } from "@/lib/agent/runtime";
 import {
   MAX_GRAFICOS, MIN_ANOS, MIN_DOCS, MIN_PAPERS,
   graficoCoberturaPorDocumento, graficoLigado, graficoPapersPorAno, graficosDoTurno,
@@ -154,6 +155,49 @@ describe("graficoCoberturaPorDocumento", () => {
     expect(MIN_DOCS).toBe(2);
     expect(graficoCoberturaPorDocumento([{ titulo: "A", trechos: [1, 2] }])).toBeNull();
     expect(graficoCoberturaPorDocumento([{ titulo: "A", trechos: [] }, { titulo: "B", trechos: [1] }])).toBeNull();
+  });
+});
+
+describe("DADO REAL · o gráfico é ligado ao produtor de verdade, não a um fixture meu", () => {
+  // A pergunta do dono: "os gráficos são gerados com dados reais e não esporadicamente?".
+  // Ler o código e afirmar que sim não prova nada — então o teste parte da MESMA função que o
+  // `literature_search` usa pra transformar paper em evidência (`papersToFindings`, runtime.ts).
+  // Se um dia ela parar de carregar o ano, ESTE teste cai, e o gráfico não passa a mentir em
+  // silêncio.
+  const papers = [
+    { title: "A", year: 2019, authors: ["X"], url: "https://doi.org/1" },
+    { title: "B", year: 2019, authors: ["Y"] },
+    { title: "C", year: 2020 },
+    { title: "D", year: 2022, doi: "10.1/d" },
+  ];
+
+  it("paper do literature_search → evidência → gráfico, com a contagem CERTA", () => {
+    const fontes = papersToFindings(papers).map((f) => f.source!).filter(Boolean);
+    const g = graficoPapersPorAno(fontes)!;
+    expect(g).toBeTruthy();
+    expect(g.svg).toContain("2019: 2");   // dois papers em 2019
+    expect(g.svg).toContain("2020: 1");
+    expect(g.svg).toContain("2021: 0");   // sem paper: vão de verdade
+    expect(g.svg).toContain("2022: 1");
+    expect(g.fonte).toContain("4 papers");
+  });
+
+  it("o que NÃO é paper não entra: busca na web e livro não têm ano", () => {
+    // web_search e book_search montam `source` sem `year` (runtime.ts) — então não viram barra, e
+    // o título "Papers por ano" continua verdadeiro. É o que impede o recibo de mentir.
+    // tipado como Source: sem o `year` opcional explícito o tsc recusa o objeto "fraco" (TS2345),
+    // e é exatamente o shape que web_search/book_search devolvem
+    const semAno: { title: string; year?: number }[] =
+      [{ title: "página qualquer" }, { title: "um livro" }, { title: "outra" }, { title: "mais" }];
+    expect(graficoPapersPorAno(semAno)).toBeNull();
+    // misturado: só os papers contam, e o recibo diz o número certo
+    const g = graficoPapersPorAno([...papersToFindings(papers).map((f) => f.source!), ...semAno])!;
+    expect(g.fonte).toContain("4 papers");
+  });
+
+  it("paper SEM ano não vira barra fantasma", () => {
+    const fontes = papersToFindings([...papers, { title: "E" }, { title: "F" }]).map((f) => f.source!);
+    expect(graficoPapersPorAno(fontes)!.fonte).toContain("4 papers");
   });
 });
 

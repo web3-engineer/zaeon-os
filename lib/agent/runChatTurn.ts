@@ -29,6 +29,7 @@ import { criarEmissorPrevia } from "@/lib/agent/previa";
 import { blocoFonteColada, objetivoComFonte, pedidoParaTitulo, separarFonteColada } from "@/lib/agent/fonteColada";
 import { blocoDosAnexos } from "@/lib/agent/anexos";
 import { sinteseLigada } from "@/lib/agent/sintese-flag";
+import { graficoLigado } from "@/lib/agent/graficosDoTurno";
 import { MODELO_PADRAO, modeloDoId, nomeDoModeloServido } from "@/lib/chat/modelos";
 import { markRunning, saveDone, saveError } from "@/lib/agent/chat-turn-store";
 import type { Wing } from "@/lib/agent/memory";
@@ -86,7 +87,10 @@ export async function runChatTurn(
       .then(async (m) => m.baseParaTurno({
         userId, pergunta: objetivo,
         areas: (await import("@/lib/rag/areas")).areasDoTurno(mentor?.slug),
-        ...(sinteseLigada() ? { k: (await import("@/lib/rag/porDocumento")).K_AMPLO } : {}),
+        // o gráfico de cobertura por documento (G3) precisa do MESMO agrupamento, então ele também
+        // pede a consulta larga — senão `HARNESS_GRAFICO=1` com `HARNESS_SINTESE=0` produziria um
+        // gráfico silenciosamente ausente, que é a dependência não declarada de sempre.
+        ...(sinteseLigada() || graficoLigado() ? { k: (await import("@/lib/rag/porDocumento")).K_AMPLO } : {}),
       }))
       .catch((e) => {
         console.error("[rag/chat] base do turno falhou:", (e as Error)?.message ?? String(e));
@@ -183,7 +187,9 @@ export async function runChatTurn(
     const baseCurta = baseDoTurno && sinteseLigada()
       ? { ...baseDoTurno, trechos: (await import("@/lib/rag/porDocumento")).trechosParaCitar(baseDoTurno.trechos) }
       : baseDoTurno;
-    if (baseDoTurno && sinteseLigada() && baseDoTurno.status === "ok") {
+    // o agrupamento serve a DUAS coisas: a síntese cruzada (F4) e o gráfico de cobertura (G3).
+    // Qualquer uma das duas ligada já justifica montá-lo — é barato e é puro.
+    if (baseDoTurno && (sinteseLigada() || graficoLigado()) && baseDoTurno.status === "ok") {
       const { agruparPorDocumento } = await import("@/lib/rag/porDocumento");
       const grupos = agruparPorDocumento(baseDoTurno.trechos);
       if (grupos.length) hctx.docsDaBase = grupos;

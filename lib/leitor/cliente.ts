@@ -22,7 +22,11 @@ export type Baixado = {
 export type ErroLeitor = {
   ok: false;
   code: "leitor_offline" | "leitor_dominio_fora_da_lista" | "leitor_recusou" | "leitor_falhou"
-    | "leitor_grande_demais" | "leitor_tipo_nao_baixavel" | "leitor_https_obrigatorio";
+    | "leitor_grande_demais" | "leitor_tipo_nao_baixavel" | "leitor_https_obrigatorio"
+    // os três abaixo CAÍAM em `leitor_recusou`, e o aluno lia "o site recusou a leitura" — frase
+    // que não diz o que houve, não sugere saída, e nem sequer é verdade (quem recusou fomos nós).
+    // O dono viu exatamente isso num print e teve de perguntar se as flags estavam desligadas.
+    | "leitor_ocupado" | "leitor_loop_redirect" | "leitor_endereco_interno";
   erro: string; status?: number;
 };
 
@@ -45,6 +49,9 @@ const POR_MOTIVO: Record<string, ErroLeitor["code"]> = {
   tipo_nao_baixavel: "leitor_tipo_nao_baixavel",
   tipo_nao_suportado: "leitor_tipo_nao_baixavel",
   https_obrigatorio: "leitor_https_obrigatorio",
+  ocupado: "leitor_ocupado",
+  redirects_demais: "leitor_loop_redirect",
+  ip_bloqueado: "leitor_endereco_interno",
 };
 
 function erroDoProxy(status: number, j: any, url: string): ErroLeitor {
