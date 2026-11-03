@@ -45,6 +45,8 @@ export function useBlueprint(inicialId?: string | null) {
   // #681: a lista não carregou (antes isso aparecia como "nenhum blueprint ainda")
   const [erro, setErro] = useState(false);
   const idAtual = useRef<string | null>(inicialId ?? null);
+  // #681: excluídos nesta visita — uma leitura da lista que saiu antes da exclusão não os traz de volta
+  const excluidos = useRef(new Set<string>());
   const ocupado = useRef<Record<string, number>>({});   // escritas em voo POR blueprint: não sobrescreve o otimista com uma leitura velha
   const emVoo = (id: string) => (ocupado.current[id] ?? 0) > 0;
   const voo = (id: string, d: number) => { ocupado.current[id] = (ocupado.current[id] ?? 0) + d; };
@@ -65,8 +67,9 @@ export function useBlueprint(inicialId?: string | null) {
     const r = await json<{ blueprints: ResumoBlueprint[] }>("/api/blueprint");
     if (!r) { setErro(true); return; }
     setErro(false);
-    setLista(r.blueprints);
-    const alvo = idAtual.current && r.blueprints.some((b) => b.id === idAtual.current) ? idAtual.current : r.blueprints[0]?.id;
+    const vivos = r.blueprints.filter((b) => !excluidos.current.has(b.id));
+    setLista(vivos);
+    const alvo = idAtual.current && vivos.some((b) => b.id === idAtual.current) ? idAtual.current : vivos[0]?.id;
     if (alvo) await abrir(alvo); else setAtual(null);
   }, [abrir]);
 
@@ -88,6 +91,7 @@ export function useBlueprint(inicialId?: string | null) {
     voo(id, -1);
     // com outra escrita ainda em voo, a resposta desta é velha pra ela: mantém o otimista
     if (r?.blueprint && idAtual.current === id && !emVoo(id)) setAtual(r.blueprint);
+    return !!r?.blueprint;
   }, []);
 
   const fixar = useCallback((modulo: string, x: number, y: number) =>
@@ -121,6 +125,7 @@ export function useBlueprint(inicialId?: string | null) {
     const r = await json<{ ok: boolean }>(`/api/blueprint/${id}`, { method: "DELETE" });
     if (!r?.ok) return false;
     guardados.current.delete(id);
+    excluidos.current.add(id);
     const resto = (lista ?? []).filter((b) => b.id !== id);
     setLista(resto);
     if (idAtual.current === id) {
@@ -131,13 +136,19 @@ export function useBlueprint(inicialId?: string | null) {
     return true;
   }, [lista, abrir, setAtual]);
 
-  /** #681: o nome dado pela pessoa (a Zaeon não troca mais) */
-  const renomear = useCallback(async (titulo: string) => {
+  /** #681: o nome dado pela pessoa (a Zaeon não troca mais). Falhou: o nome de antes volta. Devolve se gravou */
+  const renomear = useCallback(async (titulo: string): Promise<boolean> => {
     const limpo = titulo.trim().slice(0, 200), id = idNaTela.current;
-    if (!limpo || !id) return;
+    if (!limpo || !id) return false;
+    const antes = atual?.id === id ? atual.doc : null;
     setLista((l) => l?.map((b) => (b.id === id ? { ...b, titulo: limpo } : b)) ?? l);
-    await patch({ titulo: limpo }, (d) => ({ ...d, titulo: limpo, tituloFixo: true }));
-  }, [patch]);
+    const ok = await patch({ titulo: limpo }, (d) => ({ ...d, titulo: limpo, tituloFixo: true }));
+    if (!ok && antes) {
+      setLista((l) => l?.map((b) => (b.id === id ? { ...b, titulo: antes.titulo } : b)) ?? l);
+      setAtual((a) => (a && a.id === id ? { ...a, doc: { ...a.doc, titulo: antes.titulo, tituloFixo: antes.tituloFixo } } : a));
+    }
+    return !!ok;
+  }, [patch, atual, setAtual]);
 
   // #631: clicou e a prancha ainda é a de antes (o servidor não respondeu)
   const carregando = !!selecionado && atual?.id !== selecionado;

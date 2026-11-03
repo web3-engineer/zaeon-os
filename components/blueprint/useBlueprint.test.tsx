@@ -94,6 +94,7 @@ describe("#681 · excluir e erro ao carregar", () => {
     let ok = false;
     await act(async () => { ok = await result.current.excluir("a"); });
     expect(ok).toBe(true);
+    expect(f.mock.calls.filter((c) => c[1]?.method === "DELETE").map((c) => c[0])).toEqual(["/api/blueprint/a"]);
     expect(result.current.lista!.map((b) => b.id)).toEqual(["b"]);
     expect(result.current.selecionado).toBe("b");
   });
@@ -107,6 +108,20 @@ describe("#681 · excluir e erro ao carregar", () => {
     await act(async () => { ok = await result.current.excluir("a"); });
     expect(ok).toBe(false);
     expect(result.current.lista).toHaveLength(2);
+  });
+  it("renomear que falha volta o nome de antes", async () => {
+    const f = fetch as unknown as ReturnType<typeof vi.fn>;
+    const antes = f.getMockImplementation()!;
+    f.mockImplementation((url: string, o?: RequestInit) => (o?.method === "PATCH" ? Promise.resolve(new Response("{}", { status: 500 })) : antes(url, o)));
+    const { result } = renderHook(() => useBlueprint());
+    await waitFor(() => expect(pendentes.a).toBeTruthy());
+    await soltar("a");
+    await waitFor(() => expect(result.current.atual?.id).toBe("a"));
+    let ok = true;
+    await act(async () => { ok = await result.current.renomear("Novo nome"); });
+    expect(ok).toBe(false);
+    expect(result.current.lista!.find((b) => b.id === "a")!.titulo).toBe("a");
+    expect(result.current.atual!.doc.titulo).toBe("a");
   });
   it("a lista que não carregou é erro, não lista vazia", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("offline"))));

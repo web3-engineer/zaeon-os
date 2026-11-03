@@ -37,7 +37,8 @@ export async function getBoardForUser(id: string, userId: string): Promise<Board
   const row = await prisma.cartolina.findUnique({ where: { id } });
   // o BLUEPRINT PRÁTICO (lib/blueprint) também mora em Cartolina, mas o `cards` dele é um documento, não cards: as rotas
   // genéricas da cartolina (e o coworking por cima delas) não podem lê-lo nem gravá-lo — gravariam `cards: []` por cima
-  if (!row || row.surface === "blueprint") return null;
+  // #681: nem o blueprint excluído (a marca sem conteúdo): convite, comentário ou gravação nele não voltam
+  if (!row || row.surface === "blueprint" || row.surface === "blueprint-excluido") return null;
   let papelMembro: string | null = null;
   if (row.ownerId !== userId) {
     const m = await prisma.cartolinaMembro.findUnique({

@@ -87,7 +87,15 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
     setExcluindo(false);
     if (ok) setAcao(null); else setFalhaAcao("Não deu para excluir agora. Tente de novo.");
   };
-  const salvarNome = () => { if (!nome.trim()) return; void B.renomear(nome); setAcao(null); };
+  // um renomear por vez: a faixa fica aberta até gravar, e volta o nome de antes se falhar
+  const [salvando, setSalvando] = useState(false);
+  const salvarNome = async () => {
+    if (!nome.trim() || salvando) return;
+    setSalvando(true); setFalhaAcao(null);
+    const ok = await B.renomear(nome);
+    setSalvando(false);
+    if (ok) setAcao(null); else setFalhaAcao("Não deu para renomear agora. Tente de novo.");
+  };
   const enviar = async (criticoId: string | null, url: string) => {
     const r = await B.enviarProva(criticoId, url);
     if (r.avaliacao) {
@@ -145,10 +153,10 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
           </>) : (<>
             <label className="sr-only" htmlFor="bp-nome">Novo nome do blueprint</label>
             <input id="bp-nome" autoFocus value={nome} maxLength={200} onChange={(e) => setNome(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") salvarNome(); if (e.key === "Escape") setAcao(null); }}
+              onKeyDown={(e) => { if (e.key === "Enter") void salvarNome(); if (e.key === "Escape" && !salvando) setAcao(null); }}
               className="min-w-0 flex-1 rounded-sm border bg-black/20 px-2 py-1 outline-none" style={{ borderColor: contorno }} />
-            <button type="button" onClick={salvarNome} disabled={!nome.trim()} className="rounded-sm border px-2.5 py-1 disabled:opacity-40" style={{ borderColor: contorno, ...ligado }}>salvar</button>
-            <button type="button" onClick={() => setAcao(null)} className="rounded-sm border px-2.5 py-1" style={{ borderColor: contorno, ...desligado }}>cancelar</button>
+            <button type="button" onClick={() => void salvarNome()} disabled={!nome.trim() || salvando} className="rounded-sm border px-2.5 py-1 disabled:opacity-40" style={{ borderColor: contorno, ...ligado }}>{salvando ? "salvando…" : "salvar"}</button>
+            <button type="button" onClick={() => setAcao(null)} disabled={salvando} className="rounded-sm border px-2.5 py-1" style={{ borderColor: contorno, ...desligado }}>cancelar</button>
           </>)}
           {falhaAcao && <span role="alert" className="w-full text-rose-300">{falhaAcao}</span>}
         </div>

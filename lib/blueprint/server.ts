@@ -85,15 +85,21 @@ export async function blueprintDoUsuario(id: string, userId: string, db?: Bluepr
  */
 export async function excluirBlueprint(id: string, userId: string, db?: BlueprintDb): Promise<{ ok: true } | { ok: false; motivo: "not_found" | "forbidden" | "conflict" }> {
   const d = db ?? (await prismaDb());
-  for (let i = 0; i < 5; i++) {
-    const atual = await blueprintDoUsuario(id, userId, d);
-    if (!atual) return { ok: false, motivo: "not_found" };
-    if (atual.papel !== "dono") return { ok: false, motivo: "forbidden" };
-    const r = await d.cartolina.updateMany({ where: { id, rev: atual.rev }, data: { surface: SURFACE_EXCLUIDO, cards: {} as never, titulo: "", conviteSalt: null, rev: atual.rev + 1 } });
-    if (r.count !== 1) continue;
+  const limpar = async () => {
     await d.cartolinaMembro.deleteMany({ where: { cartolinaId: id } });
     await d.cartolinaComentario.deleteMany({ where: { cartolinaId: id } });
-    return { ok: true };
+    return { ok: true } as const;
+  };
+  for (let i = 0; i < 5; i++) {
+    const atual = await blueprintDoUsuario(id, userId, d);
+    if (!atual) {
+      // já excluído pelo dono (a resposta se perdeu, ou a limpeza falhou no meio): termina a limpeza e vale como feito
+      const marca = OID.test(id) ? await d.cartolina.findUnique({ where: { id } }) : null;
+      return marca?.surface === SURFACE_EXCLUIDO && marca.ownerId === userId ? limpar() : { ok: false, motivo: "not_found" };
+    }
+    if (atual.papel !== "dono") return { ok: false, motivo: "forbidden" };
+    const r = await d.cartolina.updateMany({ where: { id, rev: atual.rev }, data: { surface: SURFACE_EXCLUIDO, cards: {} as never, titulo: "", conviteSalt: null, rev: atual.rev + 1 } });
+    if (r.count === 1) return limpar();
   }
   return { ok: false, motivo: "conflict" };
 }
@@ -193,10 +199,13 @@ export async function blueprintDoTurno(i: EntradaTurno): Promise<"off" | "nao-es
     let linha = await limparDuplicatas(userId, scopeId, db);
     if (!linha) {
       // #681: a pessoa excluiu o blueprint desta conversa: não nasce outro
-      if (await db.cartolina.findFirst({ where: { ownerId: userId, surface: SURFACE_EXCLUIDO, scopeId } })) return "nao-estudo";
+      const excluido = () => db.cartolina.findFirst({ where: { ownerId: userId, surface: SURFACE_EXCLUIDO, scopeId } });
+      if (await excluido()) return "nao-estudo";
       const conv = i.sinal?.estudavel ? null : await db.conversation.findFirst({ where: { userId, surface: SURFACE_CONVERSA, scopeId }, select: { estudavel: true } });
       if (!i.sinal?.estudavel && !conv?.estudavel) return "nao-estudo";
       const id = await garantirBlueprint(userId, scopeId, i.sinal?.tituloSugerido || "Estudo", db);
+      // excluído enquanto este turno criava: o recém-criado sai
+      if (await excluido()) { await db.cartolina.deleteMany({ where: { id } }); return "nao-estudo"; }
       linha = await db.cartolina.findUnique({ where: { id } });
       if (!linha) return "falhou";
     }

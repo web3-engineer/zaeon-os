@@ -59,6 +59,27 @@ describe("excluir", () => {
     expect(await turno(db, { scopeId: "thread-2" })).toBe("composto");
     expect(await listarBlueprints(DONO, db)).toHaveLength(1);
   });
+  it("excluir de novo vale como feito e termina a limpeza que falhou no meio", async () => {
+    const { db, linhas, membros } = bancoFalso();
+    await turno(db);
+    const id = linhas[0]!.id;
+    await excluirBlueprint(id, DONO, db);
+    membros.push({ cartolinaId: id, userId: OUTRO, papel: "editor" });
+    expect(await excluirBlueprint(id, DONO, db)).toEqual({ ok: true });
+    expect(membros).toEqual([]);
+    expect(await excluirBlueprint(id, OUTRO, db)).toEqual({ ok: false, motivo: "not_found" });
+  });
+  it("excluído enquanto o turno criava: o recém-criado sai", async () => {
+    const { db, linhas } = bancoFalso();
+    const criar = db.cartolina.create.bind(db.cartolina);
+    db.cartolina.create = async (a) => {
+      const l = await criar(a);
+      linhas.push({ ...l, id: "f".repeat(24), surface: SURFACE_EXCLUIDO, titulo: "", cards: {}, createdAt: new Date(0) });
+      return l;
+    };
+    expect(await turno(db)).toBe("nao-estudo");
+    expect(linhas.filter((l) => l.surface === "blueprint")).toHaveLength(0);
+  });
   it("o convidado não vê quantos têm acesso", async () => {
     const { db, linhas, membros } = bancoFalso();
     await turno(db);
