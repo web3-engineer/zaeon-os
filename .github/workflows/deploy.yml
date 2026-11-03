@@ -97,6 +97,9 @@ jobs:
           # ele no `.env` do VPS, `reservaHfLigada()` é falso e a reserva está DESLIGADA em produção —
           # inclusive nos disparos. Preenchido, vai pro .env.secrets (que vence o .env); vazio, o .env decide.
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          # #686: a chave do Resend (o código de entrar por e-mail). Preenchida, vai pro .env.secrets; vazia, o .env decide.
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          EMAIL_FROM: ${{ vars.EMAIL_FROM || '' }}
           # Runtime (não entram no bundle): valem sem rebuild, só recriando o web.
           HF_RESERVA: ${{ vars.HF_RESERVA || '' }}
           DISPAROS_HF: ${{ vars.DISPAROS_HF || '' }}
@@ -192,7 +195,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           command_timeout: 25m
-          envs: GOOGLE_CREDENTIALS_B64,GOOGLE_PROJECT_ID_VALUE,OCTA_CRON_SECRET,UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,HF_TOKEN,HF_RESERVA,DISPAROS_HF,DISPAROS_HF_SEM_HISTORICO,WITH_VOICE,DB_PUSH,DEPLOY_BRANCH,APP_URL,BETA_DOMAIN,ACME_EMAIL,NEXT_PUBLIC_ESCRITORIO_COWORK,NEXT_PUBLIC_AGENTS_ADMIN,NEXT_PUBLIC_AGENT_AVATARS,NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM,NEXT_PUBLIC_MAP_HARNESS,NEXT_PUBLIC_LOUNGE_3D,NEXT_PUBLIC_CYBER_AVATAR_GLB,NEXT_PUBLIC_CYBER_LANDMARKS,NEXT_PUBLIC_AURA_ECONOMY,NEXT_PUBLIC_REALTIME,NEXT_PUBLIC_VOZ,NEXT_PUBLIC_MOBILE_UI,NEXT_PUBLIC_PROJETOS,NEXT_PUBLIC_MENTORES_TAB,NEXT_PUBLIC_OCTA_CODE,NEXT_PUBLIC_OCTA_REA,MAP_HARNESS,ESTUDO_GATEKEEPER,AURA_ECONOMY,NEXT_PUBLIC_CHAT_UNICO,DOC_POR_SECAO,CHAT_UNICO,NEXT_PUBLIC_BLUEPRINT_PRATICO,BLUEPRINT_PRATICO,GITHUB_TOKEN_BLUEPRINT,NEXT_PUBLIC_VIDEO_DOC,VIDEO_DOC,NEXT_PUBLIC_REA_BLUEPRINT,REA_BLUEPRINT,HARNESS_CAPACIDADE,HARNESS_ACAO,HARNESS_VOLTAS_ACAO,HARNESS_ANEXO,HARNESS_SINTESE,HARNESS_GRAFICO,MCP_CONECTORES,LEITOR_PROXY_URL,LEITOR_ALLOW,LEITOR_MAX_BYTES,LEITOR_MAX_BYTES_BIN
+          envs: GOOGLE_CREDENTIALS_B64,GOOGLE_PROJECT_ID_VALUE,OCTA_CRON_SECRET,UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,HF_TOKEN,RESEND_API_KEY,EMAIL_FROM,HF_RESERVA,DISPAROS_HF,DISPAROS_HF_SEM_HISTORICO,WITH_VOICE,DB_PUSH,DEPLOY_BRANCH,APP_URL,BETA_DOMAIN,ACME_EMAIL,NEXT_PUBLIC_ESCRITORIO_COWORK,NEXT_PUBLIC_AGENTS_ADMIN,NEXT_PUBLIC_AGENT_AVATARS,NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM,NEXT_PUBLIC_MAP_HARNESS,NEXT_PUBLIC_LOUNGE_3D,NEXT_PUBLIC_CYBER_AVATAR_GLB,NEXT_PUBLIC_CYBER_LANDMARKS,NEXT_PUBLIC_AURA_ECONOMY,NEXT_PUBLIC_REALTIME,NEXT_PUBLIC_VOZ,NEXT_PUBLIC_MOBILE_UI,NEXT_PUBLIC_PROJETOS,NEXT_PUBLIC_MENTORES_TAB,NEXT_PUBLIC_OCTA_CODE,NEXT_PUBLIC_OCTA_REA,MAP_HARNESS,ESTUDO_GATEKEEPER,AURA_ECONOMY,NEXT_PUBLIC_CHAT_UNICO,DOC_POR_SECAO,CHAT_UNICO,NEXT_PUBLIC_BLUEPRINT_PRATICO,BLUEPRINT_PRATICO,GITHUB_TOKEN_BLUEPRINT,NEXT_PUBLIC_VIDEO_DOC,VIDEO_DOC,NEXT_PUBLIC_REA_BLUEPRINT,REA_BLUEPRINT,HARNESS_CAPACIDADE,HARNESS_ACAO,HARNESS_VOLTAS_ACAO,HARNESS_ANEXO,HARNESS_SINTESE,HARNESS_GRAFICO,MCP_CONECTORES,LEITOR_PROXY_URL,LEITOR_ALLOW,LEITOR_MAX_BYTES,LEITOR_MAX_BYTES_BIN
           script: |
             set -euo pipefail
             cd "${{ secrets.DEPLOY_PATH }}"
@@ -260,6 +263,20 @@ jobs:
               echo "→ HF: token=$([ -n "${HF_TOKEN:-}" ] && echo sim || echo '(vale o .env)') reserva=${HF_RESERVA:-'(default)'} disparos=${DISPAROS_HF:-'(off)'}"
             else
               echo "→ HF: nada nos Secrets/Variables — vale o .env do VPS"
+            fi
+
+            # #686: Resend (o código de entrar por e-mail). Só com a chave preenchida: linha vazia apagaria a do .env.
+            if [ -n "${RESEND_API_KEY:-}" ]; then
+              grep -vE '^(RESEND_API_KEY|EMAIL_FROM)=' .env.secrets > .env.secrets.tmp || true
+              {
+                cat .env.secrets.tmp
+                echo "RESEND_API_KEY=${RESEND_API_KEY}"
+                { [ -n "${EMAIL_FROM:-}" ] && echo "EMAIL_FROM=${EMAIL_FROM}"; } || true
+              } > .env.secrets
+              rm -f .env.secrets.tmp
+              echo "→ Resend: chave dos Secrets gravada no .env.secrets"
+            else
+              echo "→ Resend: Secret vazio — vale o .env do VPS"
             fi
 
             # Serviços do deploy: enxuto por padrão; completo se WITH_VOICE=true.

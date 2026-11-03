@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { signIn, signOut, useSession } from "next-auth/react";
+import { useEntrarComCodigo } from "@/lib/auth/useEntrarComCodigo";
 import { limparCopiaDasConversas } from "@/lib/chat/conversasServidor";
 import Image from "next/image";
 import ZaeonLogo from "@/components/main/ZaeonLogo";
@@ -37,10 +38,8 @@ export default function MenuNavigation({ destino = LAB_ROTA }: { destino?: strin
   const { data: session, status } = useSession();
 
   const [index, setIndex] = useState(0);
-  // login por E-MAIL (sem senha, o mesmo da /login: conta nova nasce no 1º envio; fundador/admin só pelo Google)
-  const [emailLogin, setEmailLogin] = useState("");
-  const [entrandoEmail, setEntrandoEmail] = useState(false);
-  const [erroEmail, setErroEmail] = useState<string | null>(null);
+  // login por E-MAIL (#686: com o código de 6 números que chega no e-mail, o mesmo da /login; fundador/admin só pelo Google)
+  const loginEmail = useEntrarComCodigo(() => { if (destino === LOUNGE_ROTA) musica().destravar(); router.push(destino); });
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [workTitle, setWorkTitle] = useState<string | null>(null);
   const [isLoadingResearch, setIsLoadingResearch] = useState(false);
@@ -403,16 +402,8 @@ export default function MenuNavigation({ destino = LAB_ROTA }: { destino?: strin
   // ── DESLOGADO: painel de LOGIN (onboard em linguagem natural foi desativado) ──
   // Só os dois caminhos: Google ou e-mail (o gate de convite saiu do signIn — src/lib/auth.ts).
   if (status !== "authenticated") {
-    const entrarPorEmail = async (ev: React.FormEvent) => {
-      ev.preventDefault();
-      const alvo = emailLogin.trim().toLowerCase();
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(alvo)) { setErroEmail("Confere o e-mail."); return; }
-      setErroEmail(null); setEntrandoEmail(true);
-      const r = await signIn("credentials", { email: alvo, redirect: false });
-      if (r?.ok && !r.error) { if (destino === LOUNGE_ROTA) musica().destravar(); router.push(destino); return; }
-      setEntrandoEmail(false);
-      setErroEmail("Não consegui entrar com esse e-mail. Se for conta de fundador, entre pelo Google.");
-    };
+    // #686: o e-mail manda um código; entrar é com o código
+    const entrarPorEmail = (ev: React.FormEvent) => { ev.preventDefault(); void (loginEmail.etapa === "email" ? loginEmail.mandar() : loginEmail.entrar()); };
     // card de login: VIDRO PRETO nos dois temas (`dark` força o estilo escuro dentro; o fundo preto é explícito
     // porque o vidro escuro de antes era branco 6% — sobre a página clara ficava claro)
     return (
@@ -440,24 +431,49 @@ export default function MenuNavigation({ destino = LAB_ROTA }: { destino?: strin
           </div>
 
           <form onSubmit={entrarPorEmail} className="flex flex-col gap-2.5">
-            <input
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              placeholder="seu@email.com"
-              value={emailLogin}
-              onChange={(e) => setEmailLogin(e.target.value)}
-              aria-label="E-mail"
-              className="w-full rounded-full px-5 py-3 text-[13px] text-slate-900 dark:text-white bg-white/60 dark:bg-white/[0.06] border border-slate-200 dark:border-white/[0.14] outline-none focus:border-cyan-400/70 placeholder:text-slate-500 dark:placeholder:text-white/40"
-            />
+            {loginEmail.etapa === "email" ? (
+              <input
+                id="menu-login-email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                placeholder="seu@email.com"
+                value={loginEmail.email}
+                onChange={(e) => loginEmail.setEmail(e.target.value)}
+                aria-label="E-mail"
+                className="w-full rounded-full px-5 py-3 text-[13px] text-slate-900 dark:text-white bg-white/60 dark:bg-white/[0.06] border border-slate-200 dark:border-white/[0.14] outline-none focus:border-cyan-400/70 placeholder:text-slate-500 dark:placeholder:text-white/40"
+              />
+            ) : (<>
+              <p className="text-center text-[12px] leading-relaxed text-white/80">Mandamos um código de 6 números para <b>{loginEmail.email}</b>.</p>
+              <input
+                id="menu-login-codigo"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                autoFocus
+                placeholder="000000"
+                value={loginEmail.codigo}
+                onChange={(e) => loginEmail.setCodigo(e.target.value)}
+                aria-label="Código do e-mail"
+                className="w-full rounded-full px-5 py-3 text-center text-[17px] font-bold tracking-[0.5em] text-white bg-white/[0.06] border border-white/[0.14] outline-none focus:border-cyan-400/70 placeholder:text-white/30"
+              />
+            </>)}
             <button
               type="submit"
-              disabled={entrandoEmail}
+              disabled={loginEmail.ocupado || (loginEmail.etapa === "codigo" && loginEmail.codigo.length !== 6)}
               className="w-full flex items-center justify-center gap-2 rounded-full py-3.5 text-[13px] font-bold transition-all duration-300 backdrop-blur-xl backdrop-saturate-150 bg-white/50 dark:bg-white/[0.07] border border-white/70 dark:border-white/[0.14] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.8)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.28)] text-slate-800 dark:text-white hover:border-cyan-400/60 dark:hover:border-cyan-300/40 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60"
             >
-              {entrandoEmail ? "Entrando…" : "Entrar com e-mail"}
+              {loginEmail.etapa === "email" ? (loginEmail.ocupado ? "Mandando o código…" : "Receber código no e-mail") : (loginEmail.ocupado ? "Entrando…" : "Entrar")}
             </button>
-            {erroEmail && <p className="text-center text-[12px] text-rose-600 dark:text-rose-300">{erroEmail}</p>}
+            {loginEmail.etapa === "codigo" && (
+              <div className="flex items-center justify-between px-2 text-[11.5px] text-white/60">
+                <button type="button" onClick={loginEmail.trocarEmail} className="underline underline-offset-2 hover:text-white">Trocar e-mail</button>
+                <button type="button" onClick={() => void loginEmail.mandar()} disabled={loginEmail.espera > 0 || loginEmail.ocupado} className="underline underline-offset-2 hover:text-white disabled:no-underline disabled:opacity-60">
+                  {loginEmail.espera > 0 ? `Reenviar em ${loginEmail.espera} s` : "Reenviar código"}
+                </button>
+              </div>
+            )}
+            {loginEmail.erro && <p role="alert" className="text-center text-[12px] text-rose-600 dark:text-rose-300">{loginEmail.erro}</p>}
           </form>
         </nav>
         <div className="px-8 pb-4 text-[10px] text-slate-500 dark:text-white/45 tracking-[0.3em] font-medium mt-auto">

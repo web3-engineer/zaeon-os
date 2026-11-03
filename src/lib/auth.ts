@@ -7,6 +7,7 @@ import { MongoClient, ObjectId } from "mongodb";
 import { isSuperAdminEmail } from "@/lib/auth/roles";
 import { atualizarFotoDoGoogle, fotoDoPerfil } from "@/lib/user/fotoNoLogin";
 import { loginAssurance } from "@/lib/octa/android/access";
+import { colecaoCodigos, conferirCodigo } from "@/lib/auth/codigoLogin";
 
 // A LISTA VIP
 const ADMIN_EMAILS = [
@@ -27,6 +28,15 @@ const SKILLS_INICIAIS = {
  * Nunca lança: web3 não pode derrubar login. Usada pelos DOIS caminhos de entrada
  * (Google via events.createUser, e-mail via authorize).
  */
+/** #686: conta de fundador/admin só entra pelo Google — nem recebe código por e-mail */
+export async function entraSoPeloGoogle(email: string): Promise<boolean> {
+    if (ADMIN_EMAILS.includes(email) || isSuperAdminEmail(email)) return true;
+    const client = (await clientPromise) as MongoClient;
+    const u = await client.db().collection("users").findOne({ email }, { projection: { role: 1 } });
+    const papel = String(u?.role || "").toLowerCase();
+    return papel === "super_admin" || papel === "admin";
+}
+
 async function provisionarWallet(email: string, userId?: string | null): Promise<void> {
     try {
         const { ensureCustodialWallet } = await import("@/lib/solana/wallet");
@@ -55,7 +65,9 @@ export const authOptions: NextAuthOptions = {
             checks: ['pkce', 'state'],
         }),
         
-        // ── ENTRADA POR E-MAIL (sem senha, sem OAuth) ─────────────────────────
+        // ── ENTRADA POR E-MAIL (código de 6 números no e-mail — #686) ─────────
+        // Antes bastava digitar o e-mail: quem sabia o e-mail de alguém entrava na conta dela. Agora a pessoa
+        // pede o código (/api/auth/codigo), recebe na caixa de entrada e só entra — ou a conta só nasce — com ele.
         // Um campo e pronto. Não depende de DNS, de console do Google nem de servidor
         // de e-mail — é o caminho que funciona sempre, inclusive pra testar em produção
         // enquanto o domínio novo sobe. Quem ainda não existe nasce aqui, com a mesma
@@ -66,12 +78,15 @@ export const authOptions: NextAuthOptions = {
         CredentialsProvider({
             name: "E-mail",
             credentials: {
-                email: { label: "Email", type: "text" }
+                email: { label: "Email", type: "text" },
+                codigo: { label: "Código", type: "text" }
             },
             async authorize(credentials) {
                 const email = (credentials?.email || "").trim().toLowerCase();
                 if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
                 if (ADMIN_EMAILS.includes(email) || isSuperAdminEmail(email)) return null;
+                // #686: sem o código certo, não entra nem cria conta
+                if (!(await conferirCodigo(await colecaoCodigos(), email, String(credentials?.codigo ?? "").trim()))) return null;
 
                 const client = (await clientPromise) as MongoClient;
                 const db = client.db();

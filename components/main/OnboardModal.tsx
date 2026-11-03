@@ -160,27 +160,9 @@ const ZaeonAuthModal = ({ isOpen, onClose, role }: ZaeonAuthModalProps) => {
             localStorage.setItem('zaeon_onboarding', JSON.stringify(onboardingData));
             await signIn('google', { callbackUrl: destinationPath });
         } else {
-            // FLUXO (GUEST)
-            try {
-                const res = await fetch('/api/auth/guest-register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(onboardingData)
-                });
-
-                if (res.ok) {
-                    await signIn('credentials', {
-                        email: contactEmail,
-                        callbackUrl: destinationPath
-                    });
-                } else {
-                    alert("Falha ao criar acesso Guest.");
-                    setIsSubmitting(false);
-                }
-            } catch (error) {
-                console.error("Erro no Guest Auth:", error);
-                setIsSubmitting(false);
-            }
+            // FLUXO (GUEST) — #686: entrar por e-mail pede o código; a tela de entrar manda e confere
+            const qs = new URLSearchParams({ email: contactEmail, callbackUrl: destinationPath });
+            window.location.href = `/login?${qs.toString()}`;
         }
     };
 
