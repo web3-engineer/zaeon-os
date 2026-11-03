@@ -34,12 +34,12 @@ type Env = Record<string, string | undefined>;
 const DESLIGADO = /^(0|off|false|nao|não|no)$/i;
 
 /**
- * A escrita por seção está ligada? Fase nova em caminho que já funciona — então nasce DESLIGADA, e
- * sem ela `corposDoEsboco` continua valendo byte a byte. Rollback = apagar a Variable.
+ * A escrita por seção está ligada? LIGADA POR PADRÃO (decisão do dono, 2026-11-03: "queremos tudo
+ * ON"); `DOC_POR_SECAO=0` é o kill-switch e devolve o `corposDoEsboco` byte a byte. É runtime: não
+ * precisa rebuild, só recriar o web.
  */
 export function escritaPorSecaoLigada(env: Env = process.env): boolean {
-  const f = env.DOC_POR_SECAO?.trim();
-  return !!f && !DESLIGADO.test(f);
+  return !DESLIGADO.test(env.DOC_POR_SECAO?.trim() ?? "");
 }
 
 /**

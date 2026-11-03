@@ -413,7 +413,10 @@ export const bookSearchDef: ToolDef = {
  * Sem Leitor, a classe `abrir_pagina` continua no "NÃO executa" e a resposta oferece o caminho real.
  */
 export function registrarAbrirUrl(env: Record<string, string | undefined> = process.env): boolean {
-  if (!env.LEITOR_PROXY_URL?.trim()) return false;
+  // URL **E** allowlist. Só a URL não basta: com `LEITOR_ALLOW` vazia o Leitor nega TODO domínio,
+  // então a tool existiria e falharia em 100% das chamadas — e o cardápio da F0, que é derivado do
+  // registry, anunciaria "abro endereços da web". É a mentira da F0 por outra porta.
+  if (!env.LEITOR_PROXY_URL?.trim() || !env.LEITOR_ALLOW?.trim()) return false;
   registerTool(abrirUrlDef);
   return true;
 }
@@ -426,7 +429,7 @@ registrarAbrirUrl();
  * Metade da infra de pé anunciaria uma capacidade que falha em toda chamada.
  */
 export function registrarBaixarParaBase(env: Record<string, string | undefined> = process.env): boolean {
-  if (!env.LEITOR_PROXY_URL?.trim() || !env.RAG_PG_URL?.trim()) return false;
+  if (!env.LEITOR_PROXY_URL?.trim() || !env.LEITOR_ALLOW?.trim() || !env.RAG_PG_URL?.trim()) return false;
   registerTool(baixarParaBaseDef);
   return true;
 }

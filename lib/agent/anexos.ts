@@ -157,7 +157,11 @@ const DESLIGADO = /^(0|off|false|nao|não|no)$/i;
  * Imagem e PDF escaneado seguem no legado COM A FLAG LIGADA — não é limitação da flag, é que só o
  * caminho multimodal os lê.
  */
+/**
+ * LIGADO POR PADRÃO (decisão do dono, 2026-11-03: "queremos tudo ON"). `HARNESS_ANEXO=0` é o kill-switch.
+ * Antes era o inverso — OFF até alguém pôr a Variable. O caminho antigo continua a um `0` de
+ * distância, e é runtime: não precisa rebuild, só recriar o web.
+ */
 export function anexoNoHarnessLigado(env: Record<string, string | undefined> = process.env): boolean {
-  const f = env.HARNESS_ANEXO?.trim();
-  return !!f && !DESLIGADO.test(f);
+  return !DESLIGADO.test(env.HARNESS_ANEXO?.trim() ?? "");
 }

@@ -32,8 +32,19 @@ describe("docker-compose.beta.yml — leitor-proxy", () => {
     expect(ativo).toMatch(/cap_drop:\s*\[ALL\]/);
     expect(ativo).toMatch(/no-new-privileges:true/);
   });
-  it("só web e worker conhecem LEITOR_PROXY_URL (e vazio por default)", () => {
-    expect(bloco("web")).toMatch(/LEITOR_PROXY_URL:\s*\$\{LEITOR_PROXY_URL:-\}/);
-    expect(bloco("worker")).toMatch(/LEITOR_PROXY_URL:\s*\$\{LEITOR_PROXY_URL:-\}/);
+  it("web e worker apontam pro SERVIÇO do compose por default (o Leitor nasce ligado)", () => {
+    for (const svc of ["web", "worker"]) {
+      expect(bloco(svc), svc).toMatch(/LEITOR_PROXY_URL:\s*\$\{LEITOR_PROXY_URL:-http:\/\/leitor-proxy:8787\}/);
+    }
+  });
+
+  it("A MESMA allowlist nos TRÊS lugares — divergir aqui é a mentira da F0 por descuido", () => {
+    // o web/worker usam a PRESENÇA de LEITOR_ALLOW pra decidir se registram `abrir_url`; o proxy usa
+    // o CONTEÚDO pra decidir o que sai. Se as duas listas divergirem, a tool é anunciada e nega tudo.
+    const padrao = (b: string) => /LEITOR_ALLOW:\s*"\$\{LEITOR_ALLOW:-([^}]*)\}"/.exec(b)?.[1];
+    const doProxy = padrao(bloco("leitor-proxy"));
+    expect(doProxy, "o leitor-proxy precisa de um default de allowlist").toBeTruthy();
+    expect(doProxy).toContain("*.gov.br");
+    for (const svc of ["web", "worker"]) expect(padrao(bloco(svc)), svc).toBe(doProxy);
   });
 });

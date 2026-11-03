@@ -60,8 +60,10 @@ export function conectoresPedidos(env: Env = process.env): { escolhidos: Catalog
     if (vistos.has(n)) continue;
     vistos.add(n);
     const e = MCP_CATALOG.find((c) => c.name.toLowerCase() === n);
-    if (e) escolhidos.push(e);
-    else desconhecidos.push(n);
+    // `indisponivel` cai junto com o nome inventado, de propósito: endpoint que não existe daria 10 s
+    // de handshake condenado por boot. O aviso diz o motivo (está na `note` do catálogo).
+    if (e && !e.indisponivel) escolhidos.push(e);
+    else desconhecidos.push(e?.indisponivel ? `${n} (${e.note ?? "indisponível"})` : n);
   }
   return { escolhidos, desconhecidos };
 }

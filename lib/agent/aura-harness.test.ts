@@ -587,19 +587,20 @@ describe("contrato de capacidade · a flag", () => {
     }
   };
 
-  it("ausente = desligada; 0/off/false/não = desligada; qualquer outro valor = ligada", () => {
-    expect(capacidadeHonestaLigada({})).toBe(false);
-    for (const v of ["0", "off", "false", "nao", "não", "no", "", "   "]) {
+  it("AUSENTE = LIGADA (dono: tudo ON); só 0/off/false/não desligam", () => {
+    expect(capacidadeHonestaLigada({})).toBe(true);
+    for (const v of ["0", "off", "false", "nao", "não", "no"]) {
       expect(capacidadeHonestaLigada({ HARNESS_CAPACIDADE: v }), v).toBe(false);
     }
-    for (const v of ["1", "true", "sim", "on"]) {
+    // vazio NÃO desliga: só a palavra explícita. (O compose manda "1" por padrão, então nem chega.)
+    for (const v of ["1", "true", "sim", "on", "", "   "]) {
       expect(capacidadeHonestaLigada({ HARNESS_CAPACIDADE: v }), v).toBe(true);
     }
   });
 
   it("lê o process.env de verdade (o elo que o deploy depende)", async () => {
-    await comFlag(undefined, () => expect(capacidadeHonestaLigada()).toBe(false));
-    await comFlag("1", () => expect(capacidadeHonestaLigada()).toBe(true));
+    await comFlag(undefined, () => expect(capacidadeHonestaLigada()).toBe(true));
+    await comFlag("0", () => expect(capacidadeHonestaLigada()).toBe(false));
   });
 
   const PROMETE = "A série do IBGE cobre 2010 a 2024. Vou baixar a CSV pra você.";
@@ -611,8 +612,8 @@ describe("contrato de capacidade · a flag", () => {
   const sysDoDraft = (gen: ReturnType<typeof genPromessa>) =>
     String(gen.mock.calls.find((c) => /Campos obrigat/i.test(String(c[0])))?.[0] ?? "");
 
-  it("DESLIGADA: nada de cardápio no prompt e a promessa passa — o caminho de hoje, intacto", async () => {
-    await comFlag(undefined, async () => {
+  it("DESLIGADA (kill-switch =0): nada de cardápio e a promessa passa — o caminho antigo, intacto", async () => {
+    await comFlag("0", async () => {
       const genJson = genPromessa();
       const deps = buildHarnessDeps(ctx, { genJson, retryDelayMs: 0 });
       const a = await deps.draft(stFor());

@@ -8,6 +8,31 @@ import { GET } from "./route";
 
 afterEach(() => vi.unstubAllEnvs());
 
+describe("health · capacidades (o RECIBO de 'tudo ON' — §8 do PLANO_HARNESS_AGENTICO)", () => {
+  it("sem Variable nenhuma, TODAS as flags do harness saem ligadas", async () => {
+    for (const k of ["HARNESS_CAPACIDADE", "HARNESS_ACAO", "HARNESS_ANEXO", "HARNESS_SINTESE", "DOC_POR_SECAO"]) vi.stubEnv(k, "");
+    const c = (await (await GET()).json()).capacidades;
+    expect(c).toMatchObject({ cardapio: true, acao: true, anexo: true, sintese: true, docPorSecao: true, voltas: 2 });
+  });
+
+  it("o kill-switch aparece aqui — é por este endpoint que se confere o rollback", async () => {
+    vi.stubEnv("HARNESS_CAPACIDADE", "0");
+    vi.stubEnv("HARNESS_VOLTAS_ACAO", "0");
+    const c = (await (await GET()).json()).capacidades;
+    expect(c.cardapio).toBe(false);
+    expect(c.acao).toBe(true);     // cada flag é independente: desligar uma não derruba a outra
+    expect(c.voltas).toBe(0);
+  });
+
+  it("as tools do Leitor refletem o REGISTRO, não a flag (promessa precisa de lastro)", async () => {
+    // neste processo de teste ninguém chamou `registrarAbrirUrl`, então elas não existem — e o
+    // health diz isso em vez de prometer. É o mesmo contrato da F0, aplicado ao próprio relatório.
+    const c = (await (await GET()).json()).capacidades;
+    expect(c.abrirUrl).toBe(false);
+    expect(c.baixarParaBase).toBe(false);
+  });
+});
+
 describe("health · escritorio", () => {
   it("CANAL_QUEUE=1 com Redis → 'fila'; sem → 'inline' (e nenhum segredo sai)", async () => {
     vi.stubEnv("CANAL_QUEUE", "1"); vi.stubEnv("REDIS_URL", "redis://segredo:6379");

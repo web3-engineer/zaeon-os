@@ -64,16 +64,16 @@ const comFlag = async (v: string | undefined, fn: () => Promise<void>) => {
 };
 
 describe("a flag", () => {
-  it("ausente/0/off = desligada", () => {
-    expect(sinteseLigada({})).toBe(false);
-    for (const v of ["0", "off", "false", "nao", ""]) expect(sinteseLigada({ HARNESS_SINTESE: v }), v).toBe(false);
+  it("AUSENTE = LIGADA (dono: tudo ON); só 0/off/false/não desligam", () => {
+    expect(sinteseLigada({})).toBe(true);
+    for (const v of ["0", "off", "false", "nao"]) expect(sinteseLigada({ HARNESS_SINTESE: v }), v).toBe(false);
     expect(sinteseLigada({ HARNESS_SINTESE: "1" })).toBe(true);
   });
 });
 
-describe("DESLIGADA · o turno é o de hoje", () => {
+describe("DESLIGADA (=0) · o turno é o antigo", () => {
   it("a fase `reason` segue pulada no caminho elaborado, mesmo com 5 documentos", async () => {
-    await comFlag(undefined, async () => {
+    await comFlag("0", async () => {
       const genJson = gen();
       const deps = buildHarnessDeps(ctxComDocs(5), { genJson, retryDelayMs: 0 });
       expect(deps.pulaRaciocinio!(stFor())).toBe(true);

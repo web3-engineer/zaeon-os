@@ -267,10 +267,13 @@ jobs:
               SERVICES="redis caddy web colyseus searxng"   # colyseus = realtime do cyberespaço (leve, 256m); searxng = busca web (512m)
               NODEPS="--no-deps"     # não puxa voice-engine/abnt (glutões)
             fi
-            # Fatia 7: com CHORES_QUEUE=1 no .env do VPS, o Leitor (perfil "chores") sobe junto — nomeado, o compose habilita o perfil.
-            if [ -n "$SERVICES" ] && grep -Eq "^CHORES_QUEUE=\"?1" .env 2>/dev/null; then
+            # Fatia 7: o Leitor (perfil "chores") — nomeado, o compose habilita o perfil.
+            # O LEITOR SOBE SEMPRE (antes: só com CHORES_QUEUE=1). O web agora anuncia `abrir_url`
+            # quando tem URL+allowlist, e anunciar a capacidade com o proxy DESLIGADO é a mentira
+            # que a F0 existe pra impedir. São 128 MB, read-only, cap_drop ALL.
+            if [ -n "$SERVICES" ]; then
               SERVICES="$SERVICES leitor-proxy"
-              echo "→ CHORES_QUEUE=1: leitor-proxy entra no deploy"
+              echo "→ leitor-proxy entra no deploy (abrir_url/baixar_para_base dependem dele)"
             fi
 
             # Chips de WhatsApp (docs/WHATSAPP_CHIPS.md): WHATSAPP_CHIPS=1 no .env do VPS sobe o adapter + o banco dele
@@ -355,6 +358,23 @@ jobs:
               $DC logs --tail=60 web
               exit 1
             fi
+
+            # RECIBO DO HARNESS no log do deploy (pedido do dono: "confirma no log do deploy").
+            # Lê do /api/health DENTRO do container, ou seja: o estado EFETIVO que o turno vai usar,
+            # não o que as Variables dizem. Sem isto, "tudo ON" seria só uma afirmação minha — e o
+            # loop anterior ("→ flag de build X=…") só imprime flag que TEM Variable, então o padrão
+            # do código (que é como as F0–F4 ligam) não apareceria em lugar nenhum.
+            echo "→ Harness (estado efetivo no container):"
+            $DC exec -T web node -e "
+              fetch('http://localhost:3000/api/health').then(r=>r.json()).then(h=>{
+                const c = h.capacidades || {};
+                const sn = (v) => (v === true ? 'ON' : v === false ? 'off' : String(v));
+                console.log('   cardapio=' + sn(c.cardapio) + '  acao=' + sn(c.acao) + '(' + sn(c.voltas) + ' voltas)' +
+                            '  anexo=' + sn(c.anexo) + '  sintese=' + sn(c.sintese) + '  doc_por_secao=' + sn(c.docPorSecao));
+                console.log('   abrir_url=' + sn(c.abrirUrl) + '  baixar_para_base=' + sn(c.baixarParaBase) +
+                            '  leitor=' + h.leitor + '  mcp=' + h.mcp + '  commit=' + String(h.commit).slice(0,12));
+              }).catch(e=>{ console.log('   (não deu pra ler: ' + e.message + ')'); });
+            " || echo "::warning::não deu pra imprimir o estado do harness"
 
             # O Caddyfile entra MONTADO como ARQUIVO (./Caddyfile:/etc/caddy/Caddyfile:ro). Duas armadilhas:
             #  1) `up -d` não recria o caddy quando só o conteúdo muda, e o Caddy só lê a config na partida;
