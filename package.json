@@ -118,6 +118,8 @@
     "three": "^0.160.1"
   },
   "devDependencies": {
+    "@colyseus/core": "^0.18.18",
+    "@colyseus/ws-transport": "^0.18.4",
     "@gltf-transform/core": "^4.3.0",
     "@gltf-transform/functions": "^4.3.0",
     "@prisma/client": "^6.19.2",
