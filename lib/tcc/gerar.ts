@@ -9,7 +9,8 @@
  */
 import { geminiJson } from "@/lib/scholar/gemini";
 import { ESBOCO_SYS, esbocoUser, type DraftJson } from "@/lib/research/esboco";
-import { aplicarNoTcc, marcarStatus } from "@/lib/tcc/store";
+import { aplicarNoTcc, marcarStatus, referenciasNovas, type FonteVerificada } from "@/lib/tcc/store";
+import { fontesCitadas, type FonteDoc } from "@/lib/documento/fontes";
 import { chaveTitulo, type OpSecao, type Secao } from "@/lib/tcc/secoes";
 import { escritaPorSecaoLigada } from "@/lib/documento/escritor";
 import type { ResultadoSalvar } from "@/lib/documento/escritor";
@@ -53,6 +54,46 @@ export function opsDoEsboco(secoes: Secao[], d: DraftJson): OpSecao[] {
  * Vai pelo ENVELOPE (lib/llm/envelope), não pelo Vertex direto: são ~5 chamadas por documento, e
  * no envelope elas pegam o pool grátis, a reserva do HF e o ledger.
  */
+/**
+ * D1/D2 · AS FONTES DO TRABALHO, reunidas UMA vez pro documento inteiro.
+ *
+ * Nenhuma chamada de MODELO aqui: `retrievePapers` fala com OpenAlex/Crossref/arXiv/PubMed, e a
+ * base é uma consulta SQL. É o que faltava pro escritor — sem fonte na mão, o `sys` dele só podia
+ * marcar ⟨sem fonte⟩, e o documento nascia inteiro marcado.
+ *
+ * Nunca lança: documento sem fonte continua sendo gerado (marcado), que é melhor que não gerar.
+ */
+async function fontesDoTrabalho(userId: string, topic: string): Promise<FonteDoc[]> {
+  const [papers, base] = await Promise.all([
+    import("@/lib/scholar/retrieve")
+      .then((m) => m.retrievePapers(topic, { minResults: 6 }))
+      .then((r) => r.papers ?? [])
+      .catch((e) => { console.warn("[tcc] literatura falhou:", (e as Error)?.message); return []; }),
+    import("@/lib/rag/turno")
+      .then((m) => m.baseParaTurno({ userId, pergunta: topic }))
+      .then((b) => (b.status === "ok" ? b.trechos : []))
+      .catch((e) => { console.warn("[tcc] base falhou:", (e as Error)?.message); return []; }),
+  ]);
+  const { fonteDePaper, fonteDeDocumento, juntarFontes } = await import("@/lib/documento/fontes");
+  // a base do ALUNO vem primeiro: é a bibliografia que ele escolheu, e o teto é curto
+  const fontes = juntarFontes(
+    base.map((t) => fonteDeDocumento({
+      titulo: t.titulo,
+      paginas: t.paginaIni === t.paginaFim ? String(t.paginaIni ?? "") : `${t.paginaIni}–${t.paginaFim}`,
+      extrato: t.texto,
+    })),
+    papers.map((p) => fonteDePaper({
+      title: p.title,
+      authors: p.authors?.join(", "),
+      year: p.year,
+      ...(p.url ? { url: p.url } : {}),
+      ...(p.doi ? { doi: p.doi } : {}),
+    })),
+  );
+  console.info(`[tcc] fontes do trabalho: ${fontes.length} (${base.length} da base, ${papers.length} papers)`);
+  return fontes;
+}
+
 async function gerarPorSecao(workId: string, userId: string, topic: string, gen: Gen): Promise<void> {
   const { getTccForUser } = await import("@/lib/tcc/store");
   const { planoDoDocumento } = await import("@/lib/documento/plano");
@@ -70,6 +111,10 @@ async function gerarPorSecao(workId: string, userId: string, topic: string, gen:
 
   const atual = await getTccForUser(workId, userId);
   if (!atual) throw new Error("documento não encontrado");
+
+  const fontes = await fontesDoTrabalho(userId, topic);
+  // o que cada seção CITOU de verdade — vira a seção REFERÊNCIAS no fim (D2)
+  const citadas: FonteVerificada[] = [];
 
   const plano = planoDoDocumento(esqueletoEnriquecido(atual.secoes.map((s) => s.titulo), atual.workType));
   // Pré-checagem barata, só pra não gastar uma chamada numa seção que já tem texto. A TRAVA de
@@ -105,16 +150,32 @@ async function gerarPorSecao(workId: string, userId: string, topic: string, gen:
           // como uma nova rodada completa um documento que saiu marcado.
           if (s.corpo.trim() && !ehCorpoAFazer(s.corpo)) { motivo = "ja_escrita"; return []; }
           motivo = "gravou";
+          // D2 · o elo: o que esta seção citou entra na bibliografia. Casamento pela string EXATA
+          // que o prompt mandou usar, então nada entra em REFERÊNCIAS sem ter sido citado.
+          for (const f of fontesCitadas(corpo, fontes)) {
+            if (!citadas.some((c) => c.abnt === f.abnt)) citadas.push(f);
+          }
           return [{ op: "substituir" as const, secaoId: s.id, corpo }];
         }, "estudos");
         return res.ok ? motivo : "falhou";
       },
       jaEscrita: (u) => jaCheias.has(u.slot.titulo),
     },
-    { tema: topic, tipo: String(atual.workType ?? "TCC"), plano, norte: d as Record<string, string | undefined> | null },
+    { tema: topic, tipo: String(atual.workType ?? "TCC"), plano, norte: d as Record<string, string | undefined> | null, fontes },
   );
 
-  console.info(`[tcc] F2 ${workId}: ${r.escritas} escritas, ${r.aFazer} a fazer, ${r.puladas} puladas`);
+  // D2 · REFERÊNCIAS: o trilho já existia (`referenciasNovas` + a seção ABNT do template) e só não
+  // era chamado por aqui. Dedupe é dele; a gente só não escreve quando não há o que escrever.
+  if (citadas.length) {
+    await aplicarNoTcc(workId, userId, (t) => {
+      const { secao, novas } = referenciasNovas(t.secoes, citadas);
+      if (!secao || !novas.length) return [];
+      const corpo = [secao.corpo.trim(), ...novas].filter(Boolean).join("\n");
+      return [{ op: "substituir" as const, secaoId: secao.id, corpo }];
+    }, "estudos").catch((e) => console.warn("[tcc] referências falharam:", (e as Error)?.message));
+  }
+
+  console.info(`[tcc] F2 ${workId}: ${r.escritas} escritas, ${r.aFazer} a fazer, ${r.puladas} puladas, ${citadas.length} referências`);
   await marcarStatus(workId, userId, "pronto");
 }
 

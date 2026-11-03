@@ -6,6 +6,7 @@ import {
   type DepsEscritor, type PedidoSecao,
 } from "./escritor";
 import { MARCA_SEM_FONTE, nenhumVazio, planoDoDocumento } from "./plano";
+import { fonteDeDocumento, fonteDePaper, juntarFontes } from "./fontes";
 import { ESQUELETO_TCC } from "@/lib/tcc/secoes";
 import { WORK_SECTIONS } from "@/lib/abntTemplate";
 
@@ -52,6 +53,38 @@ describe("escritor · o prompt de UMA seção", () => {
     unidade: unidadesDeEscrita(planoTcc()).find((x) => x.slot.id === "referencial-teorico")!,
     rascunho: [],
     ...over,
+  });
+
+  it("D1 · SEM fontes, o prompt não promete citação — e o ⟨sem fonte⟩ é a saída certa", () => {
+    const { sys, user } = promptDaSecao(pedido());
+    expect(user).not.toContain("FONTES DISPONÍVEIS");
+    expect(sys).not.toContain("CITE ASSIM");
+    expect(sys).toContain("nunca invente a fonte");   // a regra de sempre continua
+  });
+
+  it("D1 · COM fontes, elas entram no prompt com a citação pronta e o que cada uma diz", () => {
+    const fontes = juntarFontes([
+      fonteDePaper({ title: "Bicamada lipídica", authors: "Ana Lima", year: 2020 }),
+      fonteDeDocumento({ titulo: "Apostila do professor", paginas: "7", extrato: "a membrana é seletiva" }),
+    ]);
+    const { sys, user } = promptDaSecao(pedido({ fontes }));
+    expect(user).toContain("FONTES DISPONÍVEIS");
+    expect(user).toContain("CITE ASSIM: (LIMA, 2020)");
+    expect(user).toContain("DIZ: a membrana é seletiva");
+    // e o sys passa a cobrar a citação, reservando a marca ao que NENHUMA fonte sustenta
+    expect(sys).toContain("copiando EXATAMENTE");
+    expect(sys).toContain("reservado ao que NENHUMA das fontes sustenta");
+  });
+
+  it("D1 · as fontes chegam a TODA seção pelo laço de escrita", async () => {
+    const fontes = juntarFontes([fonteDePaper({ title: "T", authors: "Ana Lima", year: 2020 })]);
+    const vistos: (readonly unknown[] | undefined)[] = [];
+    await escreverDocumento(
+      { escrever: async (pd) => { vistos.push(pd.fontes); return "corpo ".repeat(400); }, salvar: async () => "gravou" },
+      { tema: "T", tipo: "TCC", plano: planoTcc(), fontes },
+    );
+    expect(vistos.length).toBeGreaterThan(1);
+    expect(vistos.every((f) => f?.length === 1)).toBe(true);
   });
 
   it("pede UMA seção, com o piso e a instrução do papel", () => {

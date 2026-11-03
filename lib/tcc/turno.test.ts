@@ -19,6 +19,7 @@ vi.mock("@/lib/agent/transcript", () => ({ resolveUserId: async () => null })); 
 vi.mock("@/src/lib/ratelimit", () => ({ guard: async () => ({ ok: true }) }));
 
 import { contextoDosTrabalhos, pedeNovoTrabalho, trabalhosParaTurno } from "@/lib/tcc/turno";
+import { EXTRATO_SECAO } from "@/lib/tcc/turno";
 import { cardIdDoTcc, contextoDoTcc, ehPedidoDeTcc, fixarCardTcc, tccContextoParaTurno, tccDoTurno, temaDoPedido } from "@/lib/tcc/turno";
 import { corposDoEsboco, gerarTccEmBackground, opsDoEsboco } from "@/lib/tcc/gerar";
 import { aplicarOps } from "@/lib/tcc/secoes";
@@ -136,6 +137,35 @@ describe("tccDoTurno — entrelace Estudos → TCC", () => {
   it("erro no banco nunca derruba o turno", async () => {
     m.findTcc.mockRejectedValue(new Error("db fora"));
     expect(await tccDoTurno({ ...base, answer: ans() as any })).toBeNull();
+  });
+});
+
+describe("D3 · o chat enxerga o CONTEÚDO do documento, não só a contagem", () => {
+  it("cada seção leva um extrato — é o que impede o chat de contradizer a aba ao lado", () => {
+    const t = tcc({
+      titulo: "Fotossíntese",
+      secoes: [
+        { id: "a", titulo: "INTRODUÇÃO", corpo: "A fotossíntese converte luz em energia química nos cloroplastos, e este trabalho trata das plantas C4." },
+        { id: "b", titulo: "METODOLOGIA", corpo: "" },
+      ],
+    });
+    const ctx = contextoDoTcc(t);
+    expect(ctx).toContain("A fotossíntese converte luz em energia química");
+    expect(ctx).toContain("- METODOLOGIA: (vazia)");
+    expect(ctx).toContain("NÃO contradiga");
+    expect(ctx).toContain("está CORRIGINDO");
+  });
+
+  it("seção longa é cortada no teto, e o bloco inteiro respeita o limite", () => {
+    const longo = "palavra ".repeat(400);
+    const ctx = contextoDoTcc(tcc({ secoes: Array.from({ length: 12 }, (_, i) => ({ id: `s${i}`, titulo: `SEÇÃO ${i}`, corpo: longo })) }));
+    expect(ctx).toContain("…");
+    expect(ctx.length).toBeLessThanOrEqual(1200);   // MAX_CONTEXTO
+    expect(EXTRATO_SECAO).toBe(180);
+  });
+
+  it("corpo só com espaços conta como vazia (não vira extrato de nada)", () => {
+    expect(contextoDoTcc(tcc({ secoes: [{ id: "a", titulo: "X", corpo: "   \n  " }] }))).toContain("- X: (vazia)");
   });
 });
 

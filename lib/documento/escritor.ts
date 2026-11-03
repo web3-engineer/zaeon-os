@@ -29,6 +29,7 @@
  */
 import { MARCA_SEM_FONTE, palavras, semAcento, type Preenchimento, type SecaoDoEsqueleto, type Slot } from "@/lib/documento/plano";
 import { WORK_SECTIONS } from "@/lib/abntTemplate";
+import { blocoDeFontes, type FonteDoc } from "@/lib/documento/fontes";
 
 type Env = Record<string, string | undefined>;
 const DESLIGADO = /^(0|off|false|nao|não|no)$/i;
@@ -130,6 +131,12 @@ export type PedidoSecao = {
   rascunho: readonly TrechoRascunho[];
   /** O esboço (uma chamada no começo) serve de norte: título, objetivos, metodologia. */
   norte?: Record<string, string | undefined> | null;
+  /**
+   * D1 · as FONTES que esta seção pode citar (lib/documento/fontes). Sem elas o escritor era cego:
+   * o `sys` proíbe inventar referência e manda marcar ⟨sem fonte⟩, então, sem nada na mão, a saída
+   * honesta era marcar quase tudo. Vazio continua valendo — e aí o ⟨sem fonte⟩ é a resposta certa.
+   */
+  fontes?: readonly FonteDoc[];
 };
 
 const comprimir = (t: string, max = RESUMO_POR_SECAO): string => {
@@ -175,6 +182,15 @@ export function promptDaSecao(p: PedidoSecao): { sys: string; user: string } {
     `Extensão mínima: ${u.pisoTotal} palavras no total desta seção.`,
     "NÃO invente dado, número, autor nem referência. Se faltar fundamentação para uma afirmação,",
     `escreva a afirmação e marque com ${MARCA_SEM_FONTE} no fim da frase — nunca invente a fonte.`,
+    // a instrução só aparece quando HÁ fonte: prometer citação sem ter o que citar é o mesmo
+    // defeito que a rede de honestidade persegue no chat, do lado do documento
+    ...(p.fontes?.length
+      ? [
+          "Você RECEBEU fontes (lista abaixo). Para toda afirmação que uma delas sustente, cite-a",
+          "copiando EXATAMENTE a string indicada em \"CITE ASSIM\" — sem reescrever, sem abreviar.",
+          `${MARCA_SEM_FONTE} fica reservado ao que NENHUMA das fontes sustenta: é o que mostra ao aluno o que ainda falta.`,
+        ]
+      : []),
     "Responda APENAS o texto da seção, sem comentar o que você fez.",
   ].join("\n");
 
@@ -192,6 +208,7 @@ export function promptDaSecao(p: PedidoSecao): { sys: string; user: string } {
     `\nSEÇÃO A ESCREVER: ${u.slot.titulo}`,
     instrucaoDoPapel(u.slot.papel),
     `\nO QUE JÁ FOI ESCRITO (resumido, para você dar continuidade e NÃO se repetir nem se contradizer):\n${jaEscrito}`,
+    p.fontes?.length ? `\n${blocoDeFontes(p.fontes)}` : "",
   ].filter(Boolean).join("\n");
 
   return { sys, user };
@@ -335,7 +352,12 @@ export type DepsEscritor = {
  */
 export async function escreverDocumento(
   deps: DepsEscritor,
-  input: { tema: string; tipo: string; plano: readonly Slot[]; norte?: Record<string, string | undefined> | null },
+  input: {
+    tema: string; tipo: string; plano: readonly Slot[];
+    norte?: Record<string, string | undefined> | null;
+    /** D1 · as fontes do trabalho, as MESMAS pra todas as seções (ver lib/documento/fontes). */
+    fontes?: readonly FonteDoc[];
+  },
 ): Promise<RelatorioEscrita> {
   const unidades = unidadesDeEscrita(input.plano);
   const r: RelatorioEscrita = { escritas: 0, aFazer: 0, puladas: 0, itens: [], preenchimentos: [] };
@@ -353,7 +375,7 @@ export async function escreverDocumento(
     let ultimoErro: string | undefined;
     for (; tentativas < TENTATIVAS_POR_SECAO; tentativas++) {
       try {
-        const t = String(await deps.escrever({ tema: input.tema, tipo: input.tipo, unidade: u, rascunho, norte: input.norte ?? null })).trim();
+        const t = String(await deps.escrever({ tema: input.tema, tipo: input.tipo, unidade: u, rascunho, norte: input.norte ?? null, ...(input.fontes?.length ? { fontes: input.fontes } : {}) })).trim();
         if (t) corpo = t;
         if (corpoAceitavel(u, corpo)) break;
         ultimoErro = t ? `abaixo do pedido (${palavras(t)} de ${u.pisoTotal} palavras)` : "o modelo não devolveu texto";

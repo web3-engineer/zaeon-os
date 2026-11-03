@@ -36,6 +36,7 @@ import { MAX_VOLTAS_GATHER } from "@/lib/agent/trajectory";
 import { lerAcao, promptDeAcao, resumoDaColeta, resumoDasFalhas, toolVisivel, toolsDoMenu } from "@/lib/agent/acao";
 import { falhasVisiveis } from "@/lib/agent/falhas";
 import { graficosDoTurno } from "@/lib/agent/graficosDoTurno";
+import { blocoDeFontes, fontesDoTurno } from "@/lib/documento/fontes";
 import { normalizeStudioKind } from "@/lib/agent/tools";
 import type { StructuredAnswer, Source } from "@/lib/agent/contracts";
 import { artefatoDeAprender, pedeAula, pedeEngenhariaReversa, DIRETRIZ_ENGENHARIA_REVERSA } from "@/lib/agent/aprender";
@@ -579,7 +580,20 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         academic + a5,
         ...(st.intent === "buscar_livro" ? [diretrizLivros(livrosAchados)] : []),
       ].join("\n");
-      const user = `${preamble}${base}Objetivo: ${st.objective}\n${st.reasoning ? `Raciocínio: ${st.reasoning}\n` : ""}Evidência:\n${evidenceBlock(st)}${obsBlock(observations)}`;
+      // D3 · 1:1 com o documento. Quando o turno VAI ESCREVER no trabalho (`criar_trabalho` é a
+      // intenção cujo contrato exige `work`), as fontes do turno entram com a citação PRONTA — as
+      // mesmas que o gerador por seção usaria. Sem isso o chat escrevia no documento sem citar
+      // nada, e a bibliografia só crescia pelo caminho do gerador.
+      const fontesWork = st.intent === "criar_trabalho"
+        ? fontesDoTurno(
+            st.evidence.map((f) => f.source).filter(Boolean) as { title?: string; year?: number }[],
+            (opts.baseConhecimento?.trechos ?? []).map((t) => ({ titulo: t.titulo, paginas: String(t.paginaIni ?? "") })),
+          )
+        : [];
+      const blocoWork = fontesWork.length
+        ? `\n\n${blocoDeFontes(fontesWork)}\nAo escrever \`work.sections\`, cite estas fontes copiando EXATAMENTE a string de "CITE ASSIM".`
+        : "";
+      const user = `${preamble}${base}Objetivo: ${st.objective}\n${st.reasoning ? `Raciocínio: ${st.reasoning}\n` : ""}Evidência:\n${evidenceBlock(st)}${obsBlock(observations)}${blocoWork}`;
       try {
         // trabalho completo (artigo/TCC inteiro em `work.sections`, às vezes a partir de um texto colado) não sai em 30 s:
         // o rascunho estourava o prazo e a Aura respondia "não consegui" — 90 s só pra criar_trabalho
