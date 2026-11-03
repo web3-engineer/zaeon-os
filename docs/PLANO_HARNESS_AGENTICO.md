@@ -718,7 +718,15 @@ conservadora que ainda serve a quem usa a plataforma pra estudar:
 
 Nenhum domínio comercial, nenhum encurtador, nenhum host de upload. **Isto é um portão seu**: a
 lista define a superfície de SSRF do produto, e cada `*.` novo é um pedaço de internet que o modelo
-passa a poder ler. Trocar é Variable `LEITOR_ALLOW` + recriar o `web` — não precisa deploy.
+passa a poder ler.
+
+**Trocar a lista é Variable `LEITOR_ALLOW` + recriar o `leitor-proxy`** — e o `proxy` é o que
+importa, porque **a allowlist só é aplicada lá**. Recriar só o `web` NÃO tira acesso nenhum: o
+`web` usa a sua cópia apenas pra decidir se registra as tools, enquanto o container antigo do
+proxy segue de pé com a lista velha e continua liberando o domínio que você acabou de remover.
+Achado do Sourcery na #672, e era um erro meu de instrução — justamente no passo de **retirar**
+acesso, que é onde errar custa. Na dúvida, recrie os três (`web`, `worker`, `leitor-proxy`); nenhum
+deles precisa rebuild.
 
 Duas travas novas foram junto, pra que o *ON* não recriasse a mentira da F0:
 
@@ -764,6 +772,18 @@ tinha mudado. Os testes do caminho antigo passaram a pedir `DOC_POR_SECAO="0"` (
 kill-switch devolve, então continua coberto) e entrou um teste novo que fixa o **desvio**: sem a
 variável, só a F2 relê o documento, e nenhuma op do esboço antigo é gravada.
 
+### 8.4b O recibo não pode mentir na janela de boot
+
+Terceiro achado do Sourcery, e o cinto vale: o `instrumentation` chama `ligarMcp()` **sem `await`**
+de propósito (um stdio fora do ar custa até 10 s de handshake por conector, e isso atrasaria o
+readiness do container). Nessa janela de alguns segundos `estado` ainda é nulo — e o `/api/health`
+respondia **`off`**, que é indistinguível de "ninguém pediu conector". O recibo do deploy é lido
+exatamente aí, logo ele podia imprimir um `mcp=off` **falso**.
+
+Agora existe o estado `ligando`, e `off` voltou a significar só uma coisa. Hoje, com
+`MCP_CONECTORES` vazia, isso não muda nada em produção — mas um recibo que mente é pior que recibo
+nenhum, e o recibo é a razão desta fase existir.
+
 ### 8.5 "Confirma no log do deploy" — por que precisou de código novo
 
 O deploy já imprimia `→ flag de build X=…`, **mas só para flag que tem Variable**. Como as F0–F4
@@ -787,7 +807,8 @@ só se o container responder. Flag em `ON` com `abrir_url=off` é exatamente a p
 a F0 existe pra matar — e agora ela fica visível no log, não no comportamento do modelo.
 Nenhum segredo, nenhuma URL e nenhum domínio entram nesse bloco; só booleanos e nomes de tool.
 
-**Gates:** 5602 testes passando (+6 nesta fase: 1 no desvio da F2 do documento, 3 no recibo do
-`/api/health`, 1 na recusa de endpoint MCP indisponível, 1 no drift da allowlist no compose),
+**Gates:** 5604 testes passando (+8 nesta fase: 1 no desvio da F2 do documento, 3 no recibo do
+`/api/health`, 1 na recusa de endpoint MCP indisponível, 2 na janela `ligando` do boot, 1 no drift
+da allowlist no compose),
 `tsc --noEmit` limpo fora do `server/colyseus`
 pré-existente (falta `@colyseus/core`, que o CI instala), `eslint` 0, os dois YAML validados.

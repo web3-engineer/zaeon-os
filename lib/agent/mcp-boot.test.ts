@@ -63,6 +63,25 @@ describe("conectoresPedidos · SÓ pelo catálogo", () => {
     for (const d of desconhecidos) expect(d, d).toMatch(/\(.+\)/);   // o motivo vai junto
   });
 
+  it("DURANTE o boot o resumo é 'ligando', não 'off' (o recibo do deploy não pode mentir)", async () => {
+    // o instrumentation chama sem `await`; nesta janela `estado` é nulo e um "off" seria falso
+    let solta: (() => void) | undefined;
+    const presa = new Promise<void>((r) => { solta = r; });
+    const p = ligarMcp({ [ENV_CONECTORES]: "biomcp" }, {
+      connect: async (...a: Parameters<ConnectFn>) => { await presa; return conectaCom(soLeitura)(...a); },
+    });
+    await Promise.resolve();
+    expect(resumoMcp()).toBe("ligando");
+    solta!();
+    await p;
+    expect(resumoMcp()).toBe("on (1 tools)");
+  });
+
+  it("boot que estoura ainda assim sai de 'ligando' (senão o health travava na janela)", async () => {
+    await ligarMcp({ [ENV_CONECTORES]: "biomcp" }, { connect: async () => { throw new Error("fora"); } });
+    expect(resumoMcp()).toBe("degraded");
+  });
+
   it("pedir um endpoint INDISPONÍVEL não gasta handshake — ele nem entra na lista", async () => {
     // sem isto, `fetch`/`git` (pacotes que não existem no npm) custariam 10 s de boot cada
     const connect = vi.fn(conectaCom(soLeitura));

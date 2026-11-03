@@ -85,9 +85,22 @@ export async function sdkPresente(importar?: (m: string) => Promise<unknown>): P
 /** O último estado conhecido — é o que o `/api/health` mostra pro smoke-test do dono. */
 let estado: EstadoMcp | null = null;
 
+/**
+ * Boot EM CURSO. O `instrumentation` chama `ligarMcp()` sem `await` de propósito (um stdio fora do
+ * ar custa até 10 s de handshake POR conector, e isso atrasaria o readiness do container) — então
+ * existe uma janela de alguns segundos em que os conectores estão subindo e `estado` ainda é nulo.
+ *
+ * Sem esta marca o `/api/health` responderia "off" nessa janela, que é indistinguível de "ninguém
+ * pediu conector" — e o recibo do deploy (§8.5) imprimiria um `mcp=off` FALSO justamente no momento
+ * em que ele é lido. Achado do Sourcery na #672, e vale o cinto: um recibo que mente é pior que
+ * nenhum recibo.
+ */
+let ligando = false;
+
 /** SÓ PARA TESTES. */
 export function _zerarEstadoMcp(): void {
   estado = null;
+  ligando = false;
 }
 
 export function estadoMcp(): EstadoMcp | null {
@@ -106,6 +119,17 @@ export async function ligarMcp(
     estado = { ligado: false, sdk: false, conectores: [] };
     return estado;
   }
+  ligando = true;
+  try {
+    estado = await conectarTodos(env, opts);
+  } finally {
+    ligando = false;
+  }
+  return estado;
+}
+
+/** O corpo do boot. Separado só pra que o `finally` do `ligando` envolva TUDO (inclusive o SDK). */
+async function conectarTodos(env: Env, opts: { connect?: ConnectFn; importar?: (m: string) => Promise<unknown> }): Promise<EstadoMcp> {
   const { escolhidos, desconhecidos } = conectoresPedidos(env);
   for (const n of desconhecidos) {
     console.warn(`[mcp] "${n}" não está em MCP_CATALOG — ignorado (acrescentar um servidor é uma linha no catálogo).`);
@@ -114,8 +138,7 @@ export async function ligarMcp(
   const sdk = opts.connect ? true : await sdkPresente(opts.importar);
   if (!sdk) {
     console.warn(`[mcp] ${escolhidos.length} conector(es) pedido(s), mas o SDK não está instalado — rode \`npm i @modelcontextprotocol/sdk\`. Nenhuma tool MCP foi registrada.`);
-    estado = { ligado: true, sdk: false, conectores: [] };
-    return estado;
+    return { ligado: true, sdk: false, conectores: [] };
   }
 
   const conectores: EstadoConector[] = [];
@@ -138,13 +161,15 @@ export async function ligarMcp(
       console.warn(`[mcp] ${cfg.name} falhou no boot:`, erro);
     }
   }
-  estado = { ligado: true, sdk: true, conectores };
-  return estado;
+  return { ligado: true, sdk: true, conectores };
 }
 
-/** O resumo pro `/api/health`: "off" · "sem_sdk" · "on (N tools)" · "degraded". */
+/** O resumo pro `/api/health`: "off" · "ligando" · "sem_sdk" · "on (N tools)" · "degraded". */
 export function resumoMcp(e: EstadoMcp | null = estado): string {
-  if (!e || !e.ligado) return "off";
+  // "ligando" ≠ "off": sem estado ainda E com boot em curso, dizer "off" seria mentir (ver a marca
+  // `ligando`). `ligado: false` é outra coisa — é ninguém ter pedido conector, e esse "off" é fiel.
+  if (!e) return ligando ? "ligando" : "off";
+  if (!e.ligado) return "off";
   if (!e.sdk) return "sem_sdk";
   const tools = e.conectores.reduce((n, c) => n + c.tools, 0);
   const conectados = e.conectores.filter((c) => c.status === "conectado").length;
