@@ -51,9 +51,15 @@ export function escritaPorSecaoLigada(env: Env = process.env): boolean {
  * de trabalho: só o TCC declara subseções hoje, e casar por título em vez de por `workType` faz
  * isto funcionar mesmo num documento cujo tipo o aluno trocou no meio do caminho.
  */
-export function esqueletoEnriquecido(titulos: readonly string[]): SecaoDoEsqueleto[] {
+export function esqueletoEnriquecido(titulos: readonly string[], workType?: string | null): SecaoDoEsqueleto[] {
+  const tabela = (WORK_SECTIONS as Record<string, { title: string; subs?: string[] }[]>)[String(workType ?? "")];
+  // Com o tipo conhecido, SÓ os `subs` dele: o Artigo tem REFERENCIAL TEÓRICO no esqueleto gravado
+  // mas NÃO declara subseções, e herdar as do TCC faria o Artigo exigir uma estrutura que o
+  // template dele não pede. Sem tipo (ou tipo que a tabela não conhece), cai no casamento por
+  // título entre todos os tipos — melhor um palpite do template que nenhum subtítulo.
+  const fontes = tabela ? [tabela] : Object.values(WORK_SECTIONS);
   const subsPorTitulo = new Map<string, string[]>();
-  for (const secoes of Object.values(WORK_SECTIONS)) {
+  for (const secoes of fontes) {
     for (const s of secoes) {
       if (s.subs?.length) subsPorTitulo.set(semAcento(s.title), [...s.subs]);
     }
@@ -263,6 +269,25 @@ export function corpoAFazer(u: Unidade): string {
   return subs ? `${cabeca}\n\n${subs}` : cabeca;
 }
 
+/**
+ * Este corpo é um stub NOSSO (de `corpoAFazer`), e não texto do aluno?
+ *
+ * Importa porque a trava que protege o que o aluno escreveu olha "tem corpo?" — e um stub marcado
+ * TEM corpo. Sem distinguir, um documento que saiu marcado (pool esgotado, por exemplo) nunca mais
+ * poderia ser completado por uma nova rodada: ela pularia justamente as seções que faltam.
+ * Sobrescrever o nosso próprio marcador não destrói trabalho de ninguém.
+ */
+export function ehCorpoAFazer(corpo: string): boolean {
+  const t = String(corpo ?? "").trim();
+  if (!t.startsWith(MARCA_A_FAZER)) return false;
+  // `corpoAFazer` é feito só de linhas-marcador e de `##`. Sobrou QUALQUER linha fora dessa forma?
+  // Então tem prosa de alguém ali — respeita. (Regra exata, não calibrada por contagem de palavras.)
+  const resto = t.split(/\r?\n/)
+    .filter((l) => l.trim() && !l.trim().startsWith(MARCA_A_FAZER) && !/^\s*#{2,6}\s/.test(l))
+    .join(" ");
+  return palavras(resto) === 0;
+}
+
 // ───────────────────────────── a orquestração ─────────────────────────────
 
 export type DesfechoSecao = "escrita" | "curta" | "a_fazer" | "pulada";
@@ -284,12 +309,20 @@ export type RelatorioEscrita = {
   preenchimentos: Preenchimento[];
 };
 
+/**
+ * `ja_escrita` existe porque a checagem que importa é no estado FRESCO, na hora de gravar — não
+ * num retrato tirado antes do laço. A geração leva minutos e o aluno está olhando o documento
+ * crescer: ele pode escrever na METODOLOGIA enquanto a INTRODUÇÃO é gerada, e um retrato velho
+ * diria "vazia" e passaria por cima do texto dele.
+ */
+export type ResultadoSalvar = "gravou" | "ja_escrita" | "falhou";
+
 export type DepsEscritor = {
   /** Uma chamada por seção. Devolve o corpo (string vazia = falhou). */
   escrever(p: PedidoSecao): Promise<string>;
-  /** Grava a seção. `false` = não deu (conflito, sem permissão) — o laço segue pras outras. */
-  salvar(u: Unidade, corpo: string): Promise<boolean>;
-  /** Já tem corpo escrito pelo aluno? Então não se sobrescreve. */
+  /** Grava a seção, recusando se o aluno escreveu nesse meio-tempo. */
+  salvar(u: Unidade, corpo: string): Promise<ResultadoSalvar>;
+  /** Pré-checagem barata: já tem corpo? Economiza a chamada ao modelo. NÃO é a trava — ela é no salvar. */
   jaEscrita?(u: Unidade): boolean;
 };
 
@@ -336,12 +369,22 @@ export async function escreverDocumento(
     const desfecho: DesfechoSecao = aceita ? "escrita" : corpo.trim() ? "curta" : "a_fazer";
 
     const salvou = await deps.salvar(u, paraSalvar);
-    if (salvou) rascunho.push({ titulo: u.slot.titulo, corpo: paraSalvar });
+
+    // O aluno escreveu nesse meio-tempo: o texto dele vence, e isto NÃO é falha nem pendência.
+    if (salvou === "ja_escrita") {
+      r.puladas++;
+      r.itens.push({ slotId: u.slot.id, titulo: u.slot.titulo, desfecho: "pulada", palavras: 0, tentativas, detalhe: "o aluno escreveu aqui enquanto a geração corria" });
+      continue;
+    }
+
+    // Só o que REALMENTE entrou no documento alimenta o rascunho da próxima seção: senão ela daria
+    // continuidade a um texto que não existe.
+    if (salvou === "gravou") rascunho.push({ titulo: u.slot.titulo, corpo: paraSalvar });
     r.preenchimentos.push(...preenchimentosDaUnidade(u, paraSalvar));
     if (desfecho === "escrita") r.escritas++; else if (desfecho === "a_fazer") r.aFazer++;
     r.itens.push({
       slotId: u.slot.id, titulo: u.slot.titulo, desfecho, palavras: palavras(paraSalvar), tentativas,
-      ...(salvou ? {} : { detalhe: "não deu pra gravar" }),
+      ...(salvou === "falhou" ? { detalhe: "não deu pra gravar" } : {}),
       ...(ultimoErro && desfecho !== "escrita" ? { detalhe: ultimoErro } : {}),
     });
   }

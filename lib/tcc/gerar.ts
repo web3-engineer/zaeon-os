@@ -12,6 +12,7 @@ import { ESBOCO_SYS, esbocoUser, type DraftJson } from "@/lib/research/esboco";
 import { aplicarNoTcc, marcarStatus } from "@/lib/tcc/store";
 import { chaveTitulo, type OpSecao, type Secao } from "@/lib/tcc/secoes";
 import { escritaPorSecaoLigada } from "@/lib/documento/escritor";
+import type { ResultadoSalvar } from "@/lib/documento/escritor";
 
 type Gen = (sys: string, user: string) => Promise<DraftJson>;
 const genPadrao: Gen = (sys, user) =>
@@ -55,8 +56,12 @@ export function opsDoEsboco(secoes: Secao[], d: DraftJson): OpSecao[] {
 async function gerarPorSecao(workId: string, userId: string, topic: string, gen: Gen): Promise<void> {
   const { getTccForUser } = await import("@/lib/tcc/store");
   const { planoDoDocumento } = await import("@/lib/documento/plano");
-  const { escreverDocumento, esqueletoEnriquecido, promptDaSecao } = await import("@/lib/documento/escritor");
+  const { ehCorpoAFazer, escreverDocumento, esqueletoEnriquecido, promptDaSecao } =
+    await import("@/lib/documento/escritor");
   const { gerar } = await import("@/lib/llm/envelope");
+  const { gatewayLigado } = await import("@/lib/llm/usage");
+  const { MODELO_POOL } = await import("@/lib/llm/pool");
+  const { GEMINI_MODEL_FLASH } = await import("@/lib/ai/model");
 
   // O norte: uma chamada, e se ela falhar a escrita segue sem ela (o tema já basta pra começar).
   const d = await gen(ESBOCO_SYS, esbocoUser(topic)).catch(() => null);
@@ -66,16 +71,22 @@ async function gerarPorSecao(workId: string, userId: string, topic: string, gen:
   const atual = await getTccForUser(workId, userId);
   if (!atual) throw new Error("documento não encontrado");
 
-  const plano = planoDoDocumento(esqueletoEnriquecido(atual.secoes.map((s) => s.titulo)));
-  // Lido UMA vez, antes de escrever: o que o aluno já tinha escrito não se sobrescreve.
-  const jaCheias = new Set(atual.secoes.filter((s) => s.corpo.trim()).map((s) => s.titulo));
+  const plano = planoDoDocumento(esqueletoEnriquecido(atual.secoes.map((s) => s.titulo), atual.workType));
+  // Pré-checagem barata, só pra não gastar uma chamada numa seção que já tem texto. A TRAVA de
+  // verdade é no `salvar`, contra o estado fresco — este retrato envelhece durante a geração.
+  const jaCheias = new Set(atual.secoes.filter((s) => s.corpo.trim() && !ehCorpoAFazer(s.corpo)).map((s) => s.titulo));
+
+  // Pool grátis quando o gateway está de pé (padrão de lib/chore/tools.ts): são ~5 chamadas por
+  // documento, e sem `rota` o envelope vai pro Vertex PAGO por default.
+  const rota = gatewayLigado() ? ("gateway" as const) : ("vertex" as const);
 
   const r = await escreverDocumento(
     {
       escrever: async (p) => {
         const { sys, user } = promptDaSecao(p);
         const res = await gerar({
-          system: sys, user, temperature: 0.5, pensar: "low", timeoutMs: 60_000,
+          system: sys, user, rota, model: rota === "gateway" ? MODELO_POOL : GEMINI_MODEL_FLASH,
+          temperature: 0.5, pensar: "low", timeoutMs: 60_000,
           ctx: { agentKey: "zaeon", surface: "estudos" as const, phase: "tcc-secao" },
         });
         return res.texto;
@@ -83,11 +94,20 @@ async function gerarPorSecao(workId: string, userId: string, topic: string, gen:
       // Uma operação por seção: o poll do cliente vê o documento crescer, e cada pedaço entra no
       // histórico com a sua própria linha (igual ao caminho antigo).
       salvar: async (u, corpo) => {
+        // A decisão de sobrescrever é tomada DENTRO do callback, sobre o `t` que o `aplicarNoTcc`
+        // acabou de reler — é a mesma garantia que o caminho antigo tinha (ele avaliava
+        // `opsDoEsboco(t.secoes, …)` aqui dentro) e que um retrato de antes do laço perderia.
+        let motivo: ResultadoSalvar = "falhou";
         const res = await aplicarNoTcc(workId, userId, (t) => {
           const s = t.secoes.find((x) => x.titulo === u.slot.titulo);
-          return s ? [{ op: "substituir" as const, secaoId: s.id, corpo }] : [];
+          if (!s) return [];
+          // Corpo do aluno vence. Nosso próprio stub ⟨a escrever⟩ não: sobrescrevê-lo é justamente
+          // como uma nova rodada completa um documento que saiu marcado.
+          if (s.corpo.trim() && !ehCorpoAFazer(s.corpo)) { motivo = "ja_escrita"; return []; }
+          motivo = "gravou";
+          return [{ op: "substituir" as const, secaoId: s.id, corpo }];
         }, "estudos");
-        return res.ok;
+        return res.ok ? motivo : "falhou";
       },
       jaEscrita: (u) => jaCheias.has(u.slot.titulo),
     },

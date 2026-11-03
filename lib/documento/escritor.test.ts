@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   MARCA_A_FAZER, RESUMO_POR_SECAO, TENTATIVAS_POR_SECAO, corpoAFazer, corpoAceitavel,
-  escreverDocumento, partesDoCorpo, preenchimentosDaUnidade, promptDaSecao, unidadesDeEscrita,
+  ehCorpoAFazer, escreverDocumento, esqueletoEnriquecido, partesDoCorpo, preenchimentosDaUnidade,
+  promptDaSecao, unidadesDeEscrita,
   type DepsEscritor, type PedidoSecao,
 } from "./escritor";
 import { MARCA_SEM_FONTE, nenhumVazio, planoDoDocumento } from "./plano";
@@ -161,7 +162,7 @@ describe("escritor · a orquestração", () => {
         const subs = u.subtitulos.map((s) => `## ${s.titulo}\n${texto(s.pisoPalavras)}`).join("\n\n");
         return [texto(u.slot.pisoPalavras), subs].filter(Boolean).join("\n\n");
       },
-      salvar: async (u, corpo) => { salvos.push({ titulo: u.slot.titulo, corpo }); return true; },
+      salvar: async (u, corpo) => { salvos.push({ titulo: u.slot.titulo, corpo }); return "gravou" as const; },
       ...over,
     };
     return { d, salvos };
@@ -249,12 +250,40 @@ describe("escritor · a orquestração", () => {
   });
 
   it("falha ao GRAVAR é registrada e não entra no rascunho das próximas", async () => {
-    const { d } = deps({ salvar: async (u) => u.slot.id !== "introducao" });
+    const { d } = deps({ salvar: async (u) => (u.slot.id === "introducao" ? "falhou" as const : "gravou" as const) });
     const vistos: string[][] = [];
     const escrever = vi.fn(async (p: PedidoSecao) => { vistos.push(p.rascunho.map((x) => x.titulo)); return d.escrever(p); });
     const r = await escreverDocumento({ ...d, escrever }, { tema: "x", tipo: "TCC", plano: planoPlano() });
     expect(r.itens[0].detalhe).toBe("não deu pra gravar");
     expect(vistos[1]).toEqual([]); // a 2ª seção não recebe uma introdução que não foi salva
+  });
+
+  it("REGRESSÃO (achado 🔴): o aluno escreve DURANTE a geração e o texto dele vence", async () => {
+    // O retrato de antes do laço diria "vazia" e passaria por cima. A trava é no `salvar`, sobre o
+    // estado fresco — é a garantia que o caminho antigo tinha (ele filtrava `!s.corpo.trim()`
+    // dentro do callback do `aplicarNoTcc`) e que eu havia perdido.
+    const { d, salvos } = deps();
+    const salvar = vi.fn(async (u: any, corpo: string) => {
+      if (u.slot.id === "metodologia") return "ja_escrita" as const;   // o aluno chegou primeiro
+      salvos.push({ titulo: u.slot.titulo, corpo });
+      return "gravou" as const;
+    });
+    const r = await escreverDocumento({ ...d, salvar }, { tema: "x", tipo: "TCC", plano: planoPlano() });
+    expect(salvos.map((s) => s.titulo)).not.toContain("METODOLOGIA");
+    const met = r.itens.find((i) => i.slotId === "metodologia")!;
+    expect(met.desfecho).toBe("pulada");                 // não é falha nem pendência
+    expect(met.detalhe).toMatch(/aluno escreveu aqui enquanto a geração corria/);
+    expect(r.aFazer).toBe(0);
+    expect(r.puladas).toBe(1);
+  });
+
+  it("o que o aluno escreveu no meio não entra no rascunho das próximas", async () => {
+    const { d } = deps();
+    const vistos: string[][] = [];
+    const salvar = vi.fn(async (u: any) => (u.slot.id === "introducao" ? "ja_escrita" as const : "gravou" as const));
+    const escrever = vi.fn(async (p: PedidoSecao) => { vistos.push(p.rascunho.map((x) => x.titulo)); return d.escrever(p); });
+    await escreverDocumento({ ...d, salvar, escrever }, { tema: "x", tipo: "TCC", plano: planoPlano() });
+    expect(vistos[1]).toEqual([]); // não damos continuidade a um texto que não lemos
   });
 
   it("documento vazio não quebra", async () => {
@@ -268,5 +297,50 @@ describe("escritor · a orquestração", () => {
     expect(c).toContain("## Conceitos Fundamentais");
     expect(c).toContain("## Estado da Arte");
     expect(c.match(new RegExp(MARCA_A_FAZER, "g"))).toHaveLength(3);
+  });
+});
+
+describe("escritor · o stub é NOSSO, o texto é do aluno (achados 🔴 e 🟡)", () => {
+  const u = () => unidadesDeEscrita(planoTcc()).find((x) => x.slot.id === "referencial-teorico")!;
+
+  it("reconhece o próprio stub — senão um documento marcado nunca seria completado", () => {
+    expect(ehCorpoAFazer(corpoAFazer(u()))).toBe(true);
+    const semSubs = unidadesDeEscrita(planoTcc()).find((x) => x.slot.id === "conclusao")!;
+    expect(ehCorpoAFazer(corpoAFazer(semSubs))).toBe(true);
+  });
+
+  it("QUALQUER prosa junto do stub o torna do aluno", () => {
+    const c = `${corpoAFazer(u())}\n\nComecei a escrever aqui.`;
+    expect(ehCorpoAFazer(c)).toBe(false);
+  });
+
+  it("texto do aluno nunca é confundido com stub", () => {
+    expect(ehCorpoAFazer("A bicamada lipídica organiza-se…")).toBe(false);
+    expect(ehCorpoAFazer("")).toBe(false);
+    // menciona a marca no meio do próprio texto: ainda é dele
+    expect(ehCorpoAFazer("vou deixar ⟨a escrever⟩ pra depois, mas já adianto que…")).toBe(false);
+  });
+});
+
+describe("escritor · subtítulos por TIPO de trabalho (achado 🟡)", () => {
+  it("TCC recebe os subtítulos declarados pra ele", () => {
+    const e = esqueletoEnriquecido(["REFERENCIAL TEÓRICO"], "TCC");
+    expect(e[0].subs).toEqual(["Conceitos Fundamentais", "Estado da Arte"]);
+  });
+
+  it("ARTIGO NÃO herda os subtítulos do TCC — o template dele não os declara", () => {
+    // ESQUELETO_ARTIGO tem REFERENCIAL TEÓRICO, mas WORK_SECTIONS.Artigo não declara subs.
+    const e = esqueletoEnriquecido(["REFERENCIAL TEÓRICO"], "Artigo");
+    expect(e[0].subs).toBeUndefined();
+  });
+
+  it("sem tipo (ou tipo desconhecido) cai no casamento por título — melhor que nenhum subtítulo", () => {
+    expect(esqueletoEnriquecido(["REFERENCIAL TEÓRICO"])[0].subs).toEqual(["Conceitos Fundamentais", "Estado da Arte"]);
+    expect(esqueletoEnriquecido(["REFERENCIAL TEÓRICO"], "Monografia")[0].subs).toHaveLength(2);
+  });
+
+  it("a ordem e o conjunto vêm sempre dos títulos GRAVADOS, não do template", () => {
+    const e = esqueletoEnriquecido(["CONCLUSÃO", "INTRODUÇÃO"], "TCC");
+    expect(e.map((x) => x.title)).toEqual(["CONCLUSÃO", "INTRODUÇÃO"]);
   });
 });
