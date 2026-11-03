@@ -185,7 +185,8 @@ Isso vira **invariante testada**, não meta: promessa sem lastro não passa no g
 | Fase | Entrega | Risco | Depende de |
 |---|---|---|---|
 | **F0** ✅ | `lib/agent/capacidades.ts` **puro**: cardápio **gerado do registry** (o que a casa faz E o que não faz, por ausência) no prompt + `promessaSemLastro()` como rede determinística, no padrão do `ofertaDePlataforma`. Mata a mentira **sem capacidade nova**. Limpa a `notebook_read`. Flag `HARNESS_CAPACIDADE`, OFF. | zero | — |
-| **F1** | As ações que faltam, nas primitivas que **já existem e já estão em produção**: `abrir_url` e `baixar_para_base` sobre `lib/scholar/buscaSegura` (`buscarSeguro` revalida o IP a cada redirect) + `lib/rag/ingerir`. E o chat passa a aceitar `.txt`/`.md` (`ehArquivoTexto`), que o servidor já aceita. | baixo | F0 |
+| **F1** ✅ | `abrir_url` **pelo Leitor** (`lib/leitor/cliente`), registrada só quando o Leitor existe; URL colada vira passo de plano e tira o turno do caminho rápido. E o chat passa a aceitar `.txt`/`.md` (`ehArquivoTexto`), que o servidor já aceitava. | baixo | F0 |
+| **F1b** | `baixar_para_base` (bytes → base da pessoa). **Separada da F1 por um motivo de arquitetura, não de esforço** — ver abaixo. | médio | F1 |
 | **F2** | **O modelo escolhe a tool.** Canal de tool-call no envelope (render ↔ parse, fronteira do `deepseek-recipe`) e `gather` reentrante no `trajectory` com teto de passos. É aqui que o laço fica agêntico de verdade. | **médio** | F0, F1 |
 | **F3** | Anexo entra no harness: `fileData` deixa de desligar o laço, `ChatTurnParams` ganha anexos, e nascem `listar_anexos`/`ler_anexo`. Resolve o §4.1 e §4.4. | médio | F2 |
 | **F4** | Pensamento por documento: um passe por documento + uma síntese cruzada antes do draft (RAPTOR-lite, compartilhado com a F4 do plano do documento). Resolve o §4.3. | médio | F3 |
@@ -231,6 +232,58 @@ incompleto.)*
 **Gates:** 452 testes em `lib/agent` (59 novos em `capacidades`, 9 na ligação do harness);
 `tsc --noEmit` limpo; `eslint` 0.
 
+### F1 entregue — e por que `baixar_para_base` virou F1b
+
+**A F1 mudou de desenho na auditoria, pra melhor.** Eu ia escrever o fetch sobre
+`lib/scholar/buscaSegura`. Lendo o repo apareceu o **Leitor** (Fatia 7, G5/G6): um container que já
+existe — `services/leitor-proxy`, sem credencial, sem volume do app, `read_only`, `cap_drop: ALL`,
+`no-new-privileges`, allowlist **default-deny**, DNS e IP conferidos do lado dele — e, em
+`lib/leitor/cliente.ts`, a lei escrita: **«NUNCA faz `fetch(url)` direto no processo web»**.
+
+Uma tool cujo endereço vem de uma **conversa** é exatamente o caso que essa lei existe pra cobrir.
+Então `abrir_url` vai pelo Leitor. De quebra, isso **responde o portão 2** que eu mesmo tinha
+levantado ("vale allowlist no começo?"): a allowlist já existe e é default-deny.
+
+**`abrir_url` é registrada condicionalmente** (`registrarAbrirUrl`, só com `LEITOR_PROXY_URL`), e
+isso é F0 em ação: o cardápio é derivado do registry, então uma tool registrada que devolvesse
+`leitor_offline` em toda chamada faria o prompt anunciar "a plataforma abre endereços da web" — a
+mentira da F0 de volta por outra porta. Sem Leitor, a classe segue no "NÃO executa".
+
+**O problema que decidiu o desenho:** `plan()` chama toda tool com `args: { query: objetivo }`. Uma
+tool de URL precisa da URL. Até a F2, quem extrai é o código (`lib/agent/urls.ts`), no padrão
+determinístico do `pedeLivro`/`pedeAula`. E faltava um degrau que não era óbvio: **`mode: "quick"`
+pula o `plan()` inteiro** — "resume isso: `<url>`" tem 3 palavras e cairia em `duvida_rapida`, então
+a página nunca seria lida. O adaptador sobe um degrau quando (e só quando) a tool existe e há
+endereço público. O roteador ficou intocado e puro.
+
+**`baixar_para_base` saiu da F1 por arquitetura.** O Leitor serve **texto** (`TIPOS_ACEITOS` não tem
+`application/pdf`) e tem teto de 1 MB — não serve bytes de PDF/CSV. As duas saídas honestas são:
+(a) estender o Leitor pra servir bytes sob a mesma allowlist, que é mexer num serviço de segurança e
+merece PR próprio; ou (b) buscar no processo web com `buscarSeguro`, que **viola a lei acima**. O
+proxy de PDF faz (b) hoje, mas lá o endereço vem de um clique do aluno logado, não de uma conversa.
+Escolher entre (a) e (b) é portão do dono — está no §7.
+
+**O `.txt` no chat era um filtro de uma linha.** `useAnexoChat.tsx` filtrava `ehPdf` e o arquivo era
+**descartado em silêncio** (não era PDF, não era imagem, a função voltava sem fazer nada). O servidor
+já aceitava desde a F0 do plano do documento — inclusive com o erro `nao_suportado` escrito em
+`lib/rag/minhaBase`. Texto vai **sempre** pela base, nunca pelo chip de leitura inteira, e isso é
+melhor de propósito: o `fileData` **desliga o harness** (§4.1). `.docx` continua de fora.
+
+**Plumbing: `LEITOR_*` tinha ZERO ocorrências no `deploy.yml`.** O compose esperava
+`${LEITOR_PROXY_URL:-}` no web e no worker e nada exportava a variável — mesma classe do `HF_TOKEN`
+que nunca esteve no pipeline. Sem isso a F1 subiria inerte e sem Variable pra ligar. Os três elos do
+`deploy.yml` foram fechados para `LEITOR_PROXY_URL` e `LEITOR_ALLOW`. **O serviço segue em
+`profiles: ["chores"]`**, então ligar exige também subir o container (uma linha, no §7).
+
+**Correção de uma afirmação minha na F0:** eu disse "tsc limpo" na F0. O `tsc` tinha rodado **antes**
+de eu acrescentar os testes da flag, e aqueles testes passavam `{}` para um parâmetro tipado
+`NodeJS.ProcessEnv` — 3 erros de tipo foram commitados. As duas assinaturas passaram a
+`Record<string, string | undefined>` (a convenção que `lib/search/web.ts` já usa) e agora está limpo
+de verdade.
+
+**Gates:** 701 testes em `lib/agent` + `lib/leitor` + `lib/rag` + `components/chat` (52 novos);
+`tsc --noEmit` limpo; `eslint` 0.
+
 ## 7. 🔒 Portões do dono
 
 Decisões que eu **não** tomo sozinho, porque mudam contrato de produto ou gastam dinheiro:
@@ -238,9 +291,15 @@ Decisões que eu **não** tomo sozinho, porque mudam contrato de produto ou gast
 1. **F2 (o modelo escolhendo tool) sobe o custo e a variância do turno.** Hoje o número de chamadas
    por turno é previsível (plano fixo). Com tool-call o modelo pode pedir 1 ou 6. Precisa de teto
    por turno — e o teto é decisão de orçamento, não minha.
-2. **`abrir_url`/`baixar_para_base` fazem o servidor buscar endereço escolhido por conversa.** O
-   `buscarSeguro` já bloqueia host interno e revalida IP por salto (é o que protege o proxy de PDF
-   hoje), mas a superfície cresce. Vale decidir se entra com allowlist de domínio no começo.
+2. ~~Allowlist de domínio no começo?~~ **Respondido pela auditoria da F1:** o Leitor já é
+   default-deny. Ligar a F1 em prod são **três** passos, e o terceiro é o que falta decidir:
+   Variable `LEITOR_PROXY_URL=http://leitor-proxy:8787`, Variable `LEITOR_ALLOW=<domínios>`, e subir
+   o container (`docker compose -f docker-compose.beta.yml --profile chores up -d leitor-proxy`) —
+   com a allowlist **vazia nenhum domínio sai**, então a lista inicial é decisão sua.
+2b. **F1b: como `baixar_para_base` busca os bytes.** (a) estender o Leitor pra servir bytes sob a
+   mesma allowlist (serviço de segurança, PR próprio), ou (b) buscar no processo web com
+   `buscarSeguro`, que viola a lei «nunca `fetch` direto no web» — o proxy de PDF faz (b), mas lá o
+   endereço vem de um clique do aluno, não de uma conversa. Eu recomendo (a).
 3. **Teto de arquivos por conversa.** O dono já fixou **10 por documento** no plano do documento;
    confirmar se vale o mesmo teto para o chat.
 4. **F5 exige instalar `@modelcontextprotocol/sdk`** e rodar servidores MCP por `npx`/`python` no

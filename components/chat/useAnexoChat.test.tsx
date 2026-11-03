@@ -1,55 +1,120 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, afterEach } from "vitest";
-import { renderHook, render, screen, fireEvent, act, cleanup } from "@testing-library/react";
+/**
+ * O que este arquivo trava: um .txt/.md anexado ao chat NÃO é mais descartado em silêncio (F1 de
+ * docs/PLANO_HARNESS_AGENTICO.md), e texto vai SEMPRE pela base — nunca pelo chip de leitura
+ * inteira, que é o caminho que desliga o harness.
+ */
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { act, renderHook } from "@testing-library/react";
 
-vi.mock("@/lib/useLibraryFiles", () => ({ useLibraryFiles: () => ({ saveFile: vi.fn(async () => undefined), files: [] }) }));
-vi.mock("@/lib/pdfStore", () => ({ blobParaDataUrl: vi.fn(async () => "data:application/pdf;base64,AA==") }));
-vi.mock("@/lib/chat/enviarBase", () => ({ enviarLote: vi.fn(async () => []) }));
+const saveFile = vi.fn();
+const enviarLote = vi.fn();
 
-import { ChipsLote, useAnexoChat } from "./useAnexoChat";
+vi.mock("@/lib/useLibraryFiles", () => ({ useLibraryFiles: () => ({ saveFile, files: [] }) }));
+vi.mock("@/lib/pdfStore", () => ({ blobParaDataUrl: vi.fn(async () => "data:application/pdf;base64,QUFB") }));
+vi.mock("@/lib/chat/enviarBase", () => ({ enviarLote: (...a: any[]) => enviarLote(...a) }));
 
-const pdf = (nome: string) => new File(["%PDF"], `${nome}.pdf`, { type: "application/pdf" });
-const abrir = () => renderHook(() => useAnexoChat("estudos", { focar: () => undefined, perguntar: () => undefined }));
+import { useAnexoChat } from "@/components/chat/useAnexoChat";
 
-afterEach(cleanup);
+const ok = (nomeArquivo: string) => ({ nomeArquivo, documentoId: "d", status: "novo" as const, trechos: 3, paginas: 1 });
+const arquivo = (nome: string, tipo: string) => new File([new Uint8Array([65, 66, 67])], nome, { type: tipo });
+const pdf = (n = "artigo.pdf") => arquivo(n, "application/pdf");
+const txt = (n = "notas.txt") => arquivo(n, "text/plain");
+const md = (n = "fichamento.md") => arquivo(n, "text/markdown");
 
-describe("vários anexos visíveis", () => {
-  it("1 PDF = chip de leitura inteira; nada no lote", async () => {
-    const { result } = abrir();
-    await act(async () => { await result.current.anexarArquivos([pdf("Apostila")]); });
-    expect(result.current.anexo?.nome).toBe("Apostila");
-    expect(result.current.lote).toEqual([]);
+const montar = (aoGuardar = vi.fn()) => {
+  const r = renderHook(() => useAnexoChat("estudos", { focar: vi.fn(), perguntar: vi.fn(), aoGuardar }));
+  return { ...r, aoGuardar };
+};
+const anexar = async (h: any, fs: File[]) => { await act(async () => { await h.result.current.anexarArquivos(fs); }); };
+const esperarMicrotarefas = () => act(async () => { await Promise.resolve(); await Promise.resolve(); });
+
+beforeEach(() => {
+  saveFile.mockReset();
+  enviarLote.mockReset().mockImplementation(async (fs: File[]) => fs.map((f) => ok(f.name)));
+});
+
+describe("arquivo de texto no chat", () => {
+  it("um .txt vai pra BASE (chip 📚), não pelo chip de leitura inteira", async () => {
+    const h = montar();
+    await anexar(h, [txt()]);
+    // antes desta fase: nada acontecia — nem chip, nem envio, nem aviso
+    expect(h.result.current.lote).toEqual([{ id: expect.stringMatching(/^txt-/), nome: "notas" }]);
+    expect(h.result.current.anexo).toBeNull();   // `fileData` DESLIGA o harness: texto nunca vai por ali
+    expect(enviarLote).toHaveBeenCalledTimes(1);
+    expect(enviarLote.mock.calls[0][0].map((f: File) => f.name)).toEqual(["notas.txt"]);
   });
-  it("2 PDFs = um chip por arquivo; o 3º entra no lote (e o chip único vira parte dele)", async () => {
-    const { result } = abrir();
-    await act(async () => { await result.current.anexarArquivos([pdf("A")]); });
-    await act(async () => { await result.current.anexarArquivos([pdf("B"), pdf("C")]); });
-    expect(result.current.anexo).toBeNull();
-    expect(result.current.lote.map((a) => a.nome)).toEqual(["A", "B", "C"]);
-    await act(async () => { await result.current.anexarArquivos([pdf("D")]); });
-    expect(result.current.lote.map((a) => a.nome)).toEqual(["A", "B", "C", "D"]);
-    act(() => result.current.tirarDoLote(result.current.lote[1].id));
-    expect(result.current.lote.map((a) => a.nome)).toEqual(["A", "C", "D"]);
-    act(() => result.current.tirarDoLote());
-    expect(result.current.lote).toEqual([]);
+
+  it(".md também, e o título perde a extensão", async () => {
+    const h = montar();
+    await anexar(h, [md()]);
+    expect(h.result.current.lote.map((a) => a.nome)).toEqual(["fichamento"]);
   });
-  it("ChipsLote mostra cada arquivo com o próprio ×", () => {
-    const tirar = vi.fn();
-    render(<ChipsLote lote={[{ id: "1", nome: "A" }, { id: "2", nome: "B" }]} onTirar={tirar} />);
-    expect(screen.getByText("A")).toBeTruthy();
-    fireEvent.click(screen.getByLabelText("Tirar B da conversa"));
-    expect(tirar).toHaveBeenCalledWith("2");
+
+  it("vários arquivos de texto de uma vez — o pedido original do dono", async () => {
+    const h = montar();
+    await anexar(h, [txt("aula1.txt"), md("aula2.md"), txt("aula3.txt")]);
+    expect(h.result.current.lote.map((a) => a.nome)).toEqual(["aula1", "aula2", "aula3"]);
+    expect(enviarLote.mock.calls[0][0]).toHaveLength(3);
+  });
+
+  it("PDF + texto misturados: todos pela base, nenhum chip de leitura inteira", async () => {
+    const h = montar();
+    await anexar(h, [pdf("artigo.pdf"), md("notas.md")]);
+    expect(h.result.current.lote.map((a) => a.nome)).toEqual(["artigo", "notas"]);
+    expect(h.result.current.anexo).toBeNull();
+  });
+
+  it("SÓ PDF vai pra biblioteca — um .txt lá viraria item que não abre no leitor", async () => {
+    const h = montar();
+    await anexar(h, [pdf("artigo.pdf"), md("notas.md")]);
+    expect(saveFile).toHaveBeenCalledTimes(1);
+    expect(saveFile.mock.calls[0][0]).toMatchObject({ title: "artigo" });
   });
 });
 
-describe("avisoPdfNaoAbriu (#414)", () => {
-  it("PDF da web que não abriu: diz o que houve e dá o link do site; upload local: pede pra soltar de novo", async () => {
-    const { avisoPdfNaoAbriu } = await import("./useAnexoChat");
-    const web = avisoPdfNaoAbriu("Artigo X.pdf", "https://revista.org/art/1");
-    expect(web).toContain("**Artigo X**");
-    expect(web).toContain("[site original](https://revista.org/art/1)");
-    const local = avisoPdfNaoAbriu("Meu PDF", "blob:abc");
-    expect(local).not.toContain("](");
-    expect(local).toContain("Solte o PDF de novo");
+describe("o que NÃO mudou", () => {
+  it("um PDF sozinho segue igual: chip de leitura inteira + base em silêncio", async () => {
+    const h = montar();
+    await anexar(h, [pdf()]);
+    expect(h.result.current.anexo).toMatchObject({ nome: "artigo" });
+    expect(h.result.current.lote).toEqual([]);
+    expect(enviarLote).toHaveBeenCalledTimes(1);
+  });
+
+  it("imagem continua só anexando (Gemini Vision)", async () => {
+    const h = montar();
+    await anexar(h, [arquivo("foto.png", "image/png")]);
+    expect(h.result.current.anexo?.id).toMatch(/^img-/);
+    expect(enviarLote).not.toHaveBeenCalled();
+  });
+
+  it("formato que não lemos continua ignorado — limite conhecido, .docx NÃO entrou nesta fase", async () => {
+    const h = montar();
+    await anexar(h, [arquivo("tese.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")]);
+    expect(h.result.current.anexo).toBeNull();
+    expect(h.result.current.lote).toEqual([]);
+    expect(enviarLote).not.toHaveBeenCalled();
+  });
+});
+
+describe("sem sessão", () => {
+  it("com PDF, cai no comportamento antigo (a IA lê o primeiro)", async () => {
+    enviarLote.mockResolvedValue("nao_logado");
+    const h = montar();
+    await anexar(h, [pdf("a.pdf"), pdf("b.pdf")]);
+    await esperarMicrotarefas();
+    expect(h.result.current.lote).toEqual([]);
+    expect(h.result.current.anexo).toMatchObject({ nome: "a" });
+  });
+
+  it("só com texto não há pra onde cair — então a Aura DIZ, em vez de engolir o arquivo", async () => {
+    enviarLote.mockResolvedValue("nao_logado");
+    const h = montar();
+    await anexar(h, [txt()]);
+    await esperarMicrotarefas();
+    expect(h.result.current.lote).toEqual([]);
+    expect(h.result.current.anexo).toBeNull();
+    expect(h.aoGuardar).toHaveBeenCalledWith(expect.stringContaining("entre na sua conta"));
   });
 });

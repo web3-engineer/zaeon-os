@@ -18,6 +18,8 @@ import {
   studioLabel,
   researchWorkType,
 } from "@/lib/agent/tools";
+// `toolsWeb` importa SÓ TIPOS daqui de volta (apagados na compilação), então não há ciclo.
+import { abrirUrlDef } from "@/lib/agent/toolsWeb";
 
 // ───────────────────────────── contratos do runtime (§11.2) ─────────────────────────────
 export type ToolRuntime = "ts" | "python" | "mcp";
@@ -380,3 +382,20 @@ export const bookSearchDef: ToolDef = {
 };
 
 [studioGenerateDef, researchGenerateDef, memorySearchDef, literatureSearchDef, webSearchDef, examinerDef, bookSearchDef].forEach(registerTool);
+
+/**
+ * `abrir_url` (F1) é CONDICIONAL: só entra no registry quando o Leitor está configurado
+ * (`LEITOR_PROXY_URL`). O motivo não é economia — é a F0.
+ *
+ * O cardápio de capacidades que vai no prompt é DERIVADO deste registry
+ * (lib/agent/capacidades). Uma tool registrada que devolvesse "leitor_offline" em toda chamada
+ * faria o cardápio anunciar "a plataforma abre endereços da web" — e a Aura voltaria a prometer
+ * uma ação que não acontece, que é exatamente o que a F0 consertou, só por outro caminho.
+ * Sem Leitor, a classe `abrir_pagina` continua no "NÃO executa" e a resposta oferece o caminho real.
+ */
+export function registrarAbrirUrl(env: Record<string, string | undefined> = process.env): boolean {
+  if (!env.LEITOR_PROXY_URL?.trim()) return false;
+  registerTool(abrirUrlDef);
+  return true;
+}
+registrarAbrirUrl();

@@ -18,8 +18,9 @@ import { classify } from "@/lib/agent/router";
 import { previaDoRascunho } from "@/lib/agent/previa";
 import { pensarDa, type NivelPensar } from "@/lib/llm/pensar";
 import { STUDIO_KINDS } from "@/lib/agent/tools";
-import { listTools, runToolByName, type ToolContext, type ApproveFn } from "@/lib/agent/runtime";
+import { getTool, listTools, runToolByName, type ToolContext, type ApproveFn } from "@/lib/agent/runtime";
 import { cardapioDeCapacidades, respostaHonesta } from "@/lib/agent/capacidades";
+import { temUrl, urlsDoTexto } from "@/lib/agent/urls";
 import { critiqueForState } from "@/lib/agent/examiner";
 import { nullMemory } from "@/lib/agent/memory";
 import { messageForError, classifyError } from "@/lib/agent/errors";
@@ -70,7 +71,7 @@ const DESLIGADO = /^(0|off|false|nao|não|no)$/i;
  *
  * O que ela conserta: «o modelo diz que vai baixar uma CSV e não baixa». Ver lib/agent/capacidades.ts.
  */
-export function capacidadeHonestaLigada(env = process.env): boolean {
+export function capacidadeHonestaLigada(env: Record<string, string | undefined> = process.env): boolean {
   const f = env.HARNESS_CAPACIDADE?.trim();
   return !!f && !DESLIGADO.test(f);
 }
@@ -126,6 +127,19 @@ export function pickStudioKind(objective: string): string {
 }
 
 const isGatherTool = (t: string) => t === "memory_search" || t === "literature_search" || t === "web_search" || t === "book_search";
+
+/**
+ * F1 · OS PASSOS DE LEITURA DE PÁGINA. Vêm das URLs que a pessoa COLOU, não da intenção: um link
+ * numa saudação é um link, e `pedeAula`/`pedeLivro` já estabeleceram o padrão de regra
+ * determinística mandando mais que a tabela do roteador.
+ *
+ * `[]` quando a tool não está no registry (sem Leitor configurado) — aí nada é planejado e o
+ * cardápio da F0 já diz à Aura que ela não abre endereços.
+ */
+export function passosDeUrl(objetivo: string): Step[] {
+  if (!getTool("abrir_url")) return [];
+  return urlsDoTexto(objetivo).map((url) => ({ tool: "abrir_url", args: { url } }));
+}
 
 function evidenceBlock(st: TrajectoryState): string {
   if (!st.evidence.length) return "(nenhuma evidência reunida)";
@@ -314,12 +328,21 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
   const citaBase = opts.baseConhecimento?.status === "ok";
 
   return {
-    classify: (objective, c) => classify(objective, c),
+    async classify(objective, c) {
+      const r = await classify(objective, c);
+      // `quick` PULA o plan() inteiro (trajectory.ts:244: draft direto). Com um link colado, o
+      // caminho rápido jamais leria a página — "resume isso: <url>" tem 3 palavras e cairia em
+      // `duvida_rapida`. Sobe um degrau SÓ quando a tool existe e há endereço público de verdade.
+      if (r.mode === "quick" && getTool("abrir_url") && temUrl(objective)) return { ...r, mode: "elaborated" };
+      return r;
+    },
 
     async plan(st) {
       const gather = st.spec.tools.filter(isGatherTool);
+      // a página vem ANTES de tudo: o resto do turno (raciocínio, rascunho) deve ver o que ela diz
+      const daWeb = passosDeUrl(st.objective);
       if (st.intent === "gerar_artefato") {
-        return [{ tool: "studio_generate", args: { kind: pickStudioKind(st.objective), topic: st.objective } }];
+        return [...daWeb, { tool: "studio_generate", args: { kind: pickStudioKind(st.objective), topic: st.objective } }];
       }
       if (st.intent === "criar_trabalho" && st.mode === "research") {
         // A6 · 2–3 perspectivas/sub-perguntas antes de fechar os steps.
@@ -332,11 +355,11 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
           );
           if (Array.isArray(r?.subquestions) && r.subquestions.length) subs = r.subquestions.slice(0, 3);
         } catch { /* fallback: só o objetivo */ }
-        const steps: Step[] = [];
+        const steps: Step[] = [...daWeb];
         for (const t of gather) for (const q of subs) steps.push({ tool: t, args: { query: q } });
         return steps.length ? steps : [{ tool: gather[0] ?? "memory_search", args: { query: st.objective } }];
       }
-      return gather.map((t) => ({ tool: t, args: { query: st.objective } }));
+      return [...daWeb, ...gather.map((t) => ({ tool: t, args: { query: st.objective } }))];
     },
 
     async runTool(name, args, c) {
