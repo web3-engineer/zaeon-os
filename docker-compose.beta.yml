@@ -92,6 +92,9 @@ services:
       REA_BLUEPRINT: ${REA_BLUEPRINT:-0}
       # vídeo do documento com a Zaeon holograma (lib/videodoc) — par do NEXT_PUBLIC_VIDEO_DOC
       VIDEO_DOC: ${VIDEO_DOC:-0}
+      # contrato de capacidade do harness (lib/agent/capacidades): cardápio no prompt do rascunho +
+      # rede contra "vou baixar a CSV" sem ninguém baixar nada. Rollback = Variable "0" + recriar o web.
+      HARNESS_CAPACIDADE: ${HARNESS_CAPACIDADE:-0}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       ESTUDO_GATEKEEPER: ${ESTUDO_GATEKEEPER:-0}
       AURA_ECONOMY: ${AURA_ECONOMY:-0}
@@ -162,6 +165,9 @@ services:
       SCHOLAR_WORKER: "1"
       SCHOLAR_WORKER_CONCURRENCY: "3"
       CHAT_WORKER_CONCURRENCY: "4"     # Fase 3: turnos do chat da Aura na fila "chat"
+      # o worker roda O MESMO harness (runChatTurn): sem esta linha a flag valeria só no web,
+      # e o turno que fosse pra fila responderia com o comportamento antigo.
+      HARNESS_CAPACIDADE: ${HARNESS_CAPACIDADE:-0}
       LEITOR_PROXY_URL: ${LEITOR_PROXY_URL:-}   # Fatia 7: chores leem a web SÓ por aqui
     depends_on:
       redis: { condition: service_started }

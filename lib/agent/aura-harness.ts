@@ -18,7 +18,8 @@ import { classify } from "@/lib/agent/router";
 import { previaDoRascunho } from "@/lib/agent/previa";
 import { pensarDa, type NivelPensar } from "@/lib/llm/pensar";
 import { STUDIO_KINDS } from "@/lib/agent/tools";
-import { runToolByName, type ToolContext, type ApproveFn } from "@/lib/agent/runtime";
+import { listTools, runToolByName, type ToolContext, type ApproveFn } from "@/lib/agent/runtime";
+import { cardapioDeCapacidades, respostaHonesta } from "@/lib/agent/capacidades";
 import { critiqueForState } from "@/lib/agent/examiner";
 import { nullMemory } from "@/lib/agent/memory";
 import { messageForError, classifyError } from "@/lib/agent/errors";
@@ -60,6 +61,19 @@ export type HarnessOpts = {
 };
 
 type Observation = { tool: string; code?: string; error?: string };
+
+// ─────────────────── CONTRATO DE CAPACIDADE (F0 de docs/PLANO_HARNESS_AGENTICO.md) ───────────────────
+const DESLIGADO = /^(0|off|false|nao|não|no)$/i;
+/**
+ * `HARNESS_CAPACIDADE=1`: o cardápio de capacidades entra no prompt do rascunho E a rede contra
+ * promessa sem lastro passa na resposta. OFF (padrão) = o caminho de hoje, byte a byte.
+ *
+ * O que ela conserta: «o modelo diz que vai baixar uma CSV e não baixa». Ver lib/agent/capacidades.ts.
+ */
+export function capacidadeHonestaLigada(env = process.env): boolean {
+  const f = env.HARNESS_CAPACIDADE?.trim();
+  return !!f && !DESLIGADO.test(f);
+}
 
 // ───────────────────────────── A2 · retry só nesta camada ─────────────────────────────
 const RETRYABLE = new Set(["tool_timeout", "network", "rate_limited"]);
@@ -290,6 +304,9 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
   const retryDelay = opts.retryDelayMs ?? 400;
   const modelFor = (heavy: boolean) => opts.modelo || (opts.deepThink && heavy ? GEMINI_MODEL_PRO : GEMINI_MODEL_FLASH);
   const observations: Observation[] = []; // A1 · buffer de erros-como-observação
+  /** O RECIBO: as tools que de fato rodaram e deram ok neste turno. É contra isto que a rede de
+   *  promessa mede — "vou baixar o PDF" é verdade se `baixar_para_base` rodou, e mentira se não. */
+  const executadas = new Set<string>();
   let livrosAchados: LivroAchado[] = [];  // book_search (buscar_livro): vai inteiro pro fim do nucleo
   const preamble = preambleBlock(opts); // systemContext + histórico (paridade com o legado)
   const bloco = blocoDaBase(opts.baseConhecimento);
@@ -330,6 +347,7 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         res = await runTool(name, args, c as ToolContext, { approve: opts.approve });
       }
       if (!res.ok) observations.push({ tool: name, code: res.code, error: res.error }); // A1
+      if (res.ok) executadas.add(name);                                                // o recibo da ação
       if (res.ok && res.livros?.length) livrosAchados = res.livros;                   // a lista é do código, não do modelo
       return res;
     },
@@ -370,6 +388,12 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         "recursos, botões ou o que você 'pode gerar'. Nada de cardápio de funcionalidades. " +
         "Nunca se declare incapaz de mostrar algo visual — apenas não comente o assunto: " +
         "responda o TEMA, que a parte visual é resolvida fora do texto.",
+        // O CARDÁPIO DE AÇÃO entra AQUI, logo depois da regra acima, porque as duas são sobre o
+        // mesmo assunto e tiram em direções opostas: aquela cala sobre FEATURES (pra resposta não
+        // virar cardápio do Studio), esta OBRIGA a honestidade sobre AÇÃO. Sem ela, o silêncio da
+        // regra de cima é o que produz "vou baixar a CSV" — o modelo não tem outro jeito de dizer
+        // que uma ação deveria acontecer. Derivado do registry, nunca escrito à mão.
+        ...(capacidadeHonestaLigada() ? [cardapioDeCapacidades(listTools().map((t) => t.name))] : []),
         DIRETRIZ_MATEMATICA,
         "proximos_passos, quando fizer sentido, são passos de ESTUDO (o que entender, ler, " +
         "praticar ou checar a seguir) — jamais ofertas de recurso da plataforma.",
@@ -399,8 +423,19 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         // a PRÉVIA: com quem a escute (o chat), o rascunho vai em stream e o texto do `nucleo` sai enquanto nasce
         const onTexto = opts.onPrevia ? (acc: string) => { const t = previaDoRascunho(acc); if (t) opts.onPrevia!(t); } : undefined;
         const out = await genJson<Partial<StructuredAnswer>>(sys, user, { temperature: 0.4, model: modelFor(true), timeoutMs: prazo, phase: "draft", onTexto, pensar: pensarDa(st.mode === "quick" ? "draft_rapido" : st.mode === "elaborated" ? "draft_elaborado" : "draft"), prazoPrimeiroMs: prazoPrimeiraPalavra(st) });
+        // A REDE antes dos blocos do CÓDIGO (fontes da base, lista de livros): ela julga o texto do
+        // MODELO. Depois seria pior — a lista de livros traz "baixar PDF" em cada linha, e ainda que
+        // hoje ela não dispare (falta o marcador de 1ª pessoa), julgar texto determinístico da casa
+        // é uma classe de falso positivo que não precisa existir.
+        let bruta = normalizeAnswer(out, st);
+        if (capacidadeHonestaLigada()) {
+          const h = respostaHonesta(bruta, executadas);
+          // medir em prod: quantas respostas prometiam, e de que classe (sem o texto da conversa)
+          if (h.removidas.length) console.warn(`[harness] promessa sem lastro: ${h.removidas.map((c) => c.id).join(", ")} (intent=${st.intent})`);
+          bruta = h.answer;
+        }
         // fontes da base: o rodapé sai do código, só com trechos que a busca devolveu (o modelo só aponta os números)
-        const comBase = anexarFontesBase(normalizeAnswer(out, st), opts.baseConhecimento, (out as any)?.citacoes_base);
+        const comBase = anexarFontesBase(bruta, opts.baseConhecimento, (out as any)?.citacoes_base);
         return anexarLivros(comBase, livrosAchados);
       } catch (e: any) {
         // degradado: núcleo honesto via messageForError (nunca string à mão), laço segue.

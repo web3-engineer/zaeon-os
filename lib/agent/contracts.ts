@@ -119,7 +119,12 @@ export const INTENTS: Record<IntentId, IntentSpec> = {
   duvida_rapida:     { id: "duvida_rapida",     mode: "quick",      tools: ["memory_search"],                                                             critic: "off",  required: ["nucleo"] },
   explicar_conceito: { id: "explicar_conceito", mode: "elaborated", tools: ["memory_search", "literature_search", "web_search"],                                        critic: "leve", required: ["nucleo", "desenvolvimento", "conceitos", "proximos_passos"], reviseThreshold: 7, maxRevisions: 1 },
   gerar_artefato:    { id: "gerar_artefato",    mode: "elaborated", tools: ["studio_generate"],                                                           critic: "leve", required: ["nucleo", "artifacts"], reviseThreshold: 7, maxRevisions: 1 },
-  criar_trabalho:    { id: "criar_trabalho",    mode: "research",   tools: ["literature_search", "web_search", "memory_search", "studio_generate", "notebook_read"],    critic: "full", required: ["nucleo", "work", "evidencia", "proximos_passos"], reviseThreshold: 7, maxRevisions: 2, reflections: 2, ensemble: 2 },
+  // `notebook_read` saiu daqui: NUNCA existiu no registry (lib/agent/runtime.ts não a registra).
+  // Não quebrava nada — `plan()` filtra por `isGatherTool`, que não a inclui, então ela jamais era
+  // chamada — mas era configuração que MENTE sobre a superfície do sistema para quem lê o código, e
+  // agora o cardápio de capacidades é derivado do registry, onde a verdade mora.
+  // (`studio_generate` nesta lista também nunca roda, pelo mesmo filtro; fica porque a tool existe.)
+  criar_trabalho:    { id: "criar_trabalho",    mode: "research",   tools: ["literature_search", "web_search", "memory_search", "studio_generate"],    critic: "full", required: ["nucleo", "work", "evidencia", "proximos_passos"], reviseThreshold: 7, maxRevisions: 2, reflections: 2, ensemble: 2 },
   pesquisar_fontes:  { id: "pesquisar_fontes",  mode: "elaborated", tools: ["literature_search", "web_search"],                                                         critic: "leve", required: ["nucleo", "sources"], reviseThreshold: 6, maxRevisions: 1 },
   // achar UM LIVRO e entregar o caminho legal até ele (lib/livros): 1 busca, sem crítico — a lista sai do código, não do modelo
   buscar_livro:      { id: "buscar_livro",      mode: "elaborated", tools: ["book_search"],                                                               critic: "off",  required: ["nucleo"] },
