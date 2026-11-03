@@ -8,6 +8,7 @@
  * `gateway`/`provedor` (PR-G1): off (sem GATEWAY_URL) · on · degraded (configurado e caído →
  * a camada autônoma responde pelo Vertex direto). Cache de 60s; nunca derruba o health.
  * `leitor` (Fatia 7, G6): off · on · degraded do container leitor-proxy. `pool`: alvos grátis com key.
+ * `mcp` (F5): off · sem_sdk · on (N tools) · degraded — é por aqui que o dono faz o smoke-test dos conectores.
  * `escritorio` (#645): "fila" (os turnos dos agentes rodam no worker — que o deploy também precisa atualizar) ou
  * "inline" (rodam aqui no web). Só o modo, nenhum segredo.
  */
@@ -15,6 +16,7 @@ import { NextResponse } from "next/server";
 import { estadoGateway, provedorAtual } from "@/lib/llm/saude";
 import { estadoLeitor } from "@/lib/leitor/saude";
 import { poolConfigurado } from "@/lib/llm/pool";
+import { resumoMcp } from "@/lib/agent/mcp-boot";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,6 +34,8 @@ export async function GET() {
     gateway,
     provedor: provedorAtual(gateway),
     leitor,
+    // F5: o estado dos conectores MCP (memoizado do boot; nunca conecta aqui)
+    mcp: resumoMcp(),
     pool: poolConfigurado(),
     // a mesma regra de lib/canal/queue `filaLigada` (sem importar a fila: o health fica leve)
     escritorio: process.env.CANAL_QUEUE === "1" && process.env.REDIS_URL ? "fila" : "inline",

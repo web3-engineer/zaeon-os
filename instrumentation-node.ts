@@ -25,6 +25,14 @@ export async function iniciarWorkerChoresOpcional() {
   } catch (e) { console.warn("[chores-worker] não iniciado:", (e as Error)?.message); }
 }
 
+/** Conectores MCP (F5): MCP_CONECTORES com nomes do MCP_CATALOG. Nunca lança. */
+export async function ligarMcpOpcional() {
+  try {
+    const { ligarMcp, resumoMcp } = await import("@/lib/agent/mcp-boot");
+    console.log("[mcp]", resumoMcp(await ligarMcp()));
+  } catch (e) { console.warn("[mcp] não ligado:", (e as Error)?.message); }
+}
+
 /** Worker da indexação RAG: RAG_WORKER=1 + RAG_QUEUE=1 + REDIS_URL. Nunca lança. */
 export async function iniciarWorkerRagOpcional() {
   try {

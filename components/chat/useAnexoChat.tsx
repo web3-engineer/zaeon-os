@@ -13,6 +13,14 @@
  * e a base guarda em silêncio. Vários: um chip 📚 POR ARQUIVO (`lote`, lib/chat/loteAnexos) que fica enquanto estiver
  * na conversa — as perguntas levam os nomes e o conteúdo vem da base; a Aura confirma o lote (`aoGuardar`).
  * Sem sessão (401): comportamento antigo (a IA lê o primeiro).
+ *
+ * ARQUIVO DE TEXTO (.txt/.md) — F1 de docs/PLANO_HARNESS_AGENTICO.md. Antes este hook filtrava
+ * `ehPdf` e um .txt solto na conversa era DESCARTADO EM SILÊNCIO: não era PDF, não era imagem, a
+ * função voltava sem fazer nada. O servidor já aceitava (`/api/rag/minha-base` + lib/rag/textoArquivo),
+ * então o pedido "receber múltiplos arquivos de texto" estava fechado só aqui, na porta do cliente.
+ * Texto vai SEMPRE pela base (chip 📚), nunca pelo chip de leitura inteira — e isso é melhor de
+ * propósito: o caminho do `fileData` DESLIGA o harness (app/api/ai/chat/route.ts gateia em
+ * `!fileData`), enquanto o caminho da base mantém o laço, o RAG e as tools de pé.
  */
 import { useCallback, useEffect, useRef, useState, type DragEvent } from "react";
 import { useLibraryFiles, type LibraryFile } from "@/lib/useLibraryFiles";
@@ -20,6 +28,7 @@ import { blobParaDataUrl } from "@/lib/pdfStore";
 import { arquivosDasEntradas, entradasDoDrop } from "@/lib/chat/arquivosSoltos";
 import { enviarLote, type EstadoEnvio } from "@/lib/chat/enviarBase";
 import { motivoDoErro, resumoDoEnvio, type ErroEnvio } from "@/lib/rag/minhaBase";
+import { ehArquivoTexto, semExtensao } from "@/lib/rag/textoArquivo";
 import type { ItemLote } from "@/lib/chat/loteAnexos";
 
 export type AnexoChat = { id: string; nome: string; dataUrl: string };
@@ -31,6 +40,11 @@ export type SalaChat = "pesquisa" | "estudos";
 export const EVT_ANEXAR = "zaeon:chat:anexar";
 
 const ehPdf = (f: File) => f.type === "application/pdf" || /\.pdf$/i.test(f.name);
+/** .txt/.md — o MESMO critério do servidor (lib/rag/textoArquivo), pra cliente e rota não divergirem. */
+const ehTexto = (f: File) => ehArquivoTexto({ name: f.name, type: f.type });
+const ehSuportado = (f: File) => ehPdf(f) || ehTexto(f);
+/** o nome sem a extensão, qualquer uma das que aceitamos */
+const nomeLimpo = (f: File) => (ehPdf(f) ? f.name.replace(/\.pdf$/i, "") : semExtensao(f.name));
 
 /** #414: o PDF arrastado da biblioteca não abriu (o site de origem recusou ou saiu do ar) — a mensagem da Aura, com o link
  *  pro site quando é um endereço da web (o upload local não tem pra onde mandar). */
@@ -84,11 +98,11 @@ export function useAnexoChat(
   const [versaoBase, setVersaoBase] = useState(0);
   const numLoteRef = useRef(0);
 
-  /** Sobe os PDFs pra base pessoal. `silencioso`: só a bandeja (a Aura só fala se falhar). "nao_logado" = sem sessão. */
+  /** Sobe os arquivos pra base pessoal. `silencioso`: só a bandeja (a Aura só fala se falhar). "nao_logado" = sem sessão. */
   const guardarNaBase = useCallback(async (pdfs: File[], silencioso: boolean): Promise<"ok" | "nao_logado"> => {
     const lote = ++numLoteRef.current;
     const chaves = pdfs.map((_, i) => `${lote}-${i}`);
-    setEnvios((v) => [...v, ...pdfs.map((f, i) => ({ chave: chaves[i], nome: f.name.replace(/\.pdf$/i, ""), estado: "na_fila" as const }))]);
+    setEnvios((v) => [...v, ...pdfs.map((f, i) => ({ chave: chaves[i], nome: nomeLimpo(f), estado: "na_fila" as const }))]);
     const rs = await enviarLote(pdfs, {
       aoMudar: (i, estado, r) => setEnvios((v) => v.map((e) => (e.chave === chaves[i] ? { ...e, estado, erro: r?.erro } : e))),
     });
@@ -103,30 +117,44 @@ export function useAnexoChat(
   }, []);
 
   const anexarArquivos = useCallback(async (files: File[]) => {
-    const pdfs = files.filter(ehPdf);
-    if (pdfs.length) {
-      const ids = pdfs.map((f, i) => {
+    const docs = files.filter(ehSuportado);
+    if (docs.length) {
+      const ids = docs.map((f, i) => {
         // sufixo aleatório: dois lotes no mesmo ms davam o mesmo id (tirar um chip tirava o outro; a biblioteca sobrescrevia)
-        const id = `pdf-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${i}`;
-        void saveFile({ id, title: f.name.replace(/\.pdf$/i, ""), source: "upload", savedAt: Date.now() }, f);   // também na biblioteca
+        const id = `${ehPdf(f) ? "pdf" : "txt"}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${i}`;
+        // SÓ PDF vai pra biblioteca: ela é um acervo de PDF (arrastar de lá abre o leitor), e um
+        // .txt ali viraria um item que não abre. O texto vive na base, que é onde ele é útil.
+        if (ehPdf(f)) void saveFile({ id, title: nomeLimpo(f), source: "upload", savedAt: Date.now() }, f);
         return id;
       });
       // o chip de hoje: a IA lê o PDF inteiro (1 PDF; ou o 1º, quando não dá pra guardar na base)
-      const lerPrimeiro = async () => {
-        const dataUrl = await blobParaDataUrl(pdfs[0]);
-        if (dataUrl) fixar({ id: ids[0], nome: pdfs[0].name.replace(/\.pdf$/i, ""), dataUrl });
+      const lerPrimeiroPdf = async () => {
+        const i = docs.findIndex(ehPdf);
+        if (i < 0) return false;   // lote só de texto: não existe caminho de leitura inteira
+        const dataUrl = await blobParaDataUrl(docs[i]);
+        if (!dataUrl) return false;
+        fixar({ id: ids[i], nome: nomeLimpo(docs[i]), dataUrl });
+        return true;
       };
-      if (pdfs.length === 1 && !loteRef.current.length) {
-        await lerPrimeiro();
-        void guardarNaBase(pdfs, true);
+      // Texto NUNCA pega o chip de leitura inteira: o `fileData` desliga o harness (ver o cabeçalho),
+      // e o Gemini leria um .md cru sem a estrutura que a ingestão preserva.
+      if (docs.length === 1 && ehPdf(docs[0]) && !loteRef.current.length) {
+        await lerPrimeiroPdf();
+        void guardarNaBase(docs, true);
       } else {
-        // vários (ou mais um sobre um lote): a conversa segue pela base, com um chip por arquivo. O chip de leitura
-        // inteira sai (faria o turno ler só ele) e entra no lote. Sem sessão, cai no comportamento antigo.
+        // vários (ou mais um sobre um lote, ou um arquivo de texto): a conversa segue pela base, com um chip por
+        // arquivo. O chip de leitura inteira sai (faria o turno ler só ele) e entra no lote.
         const antes = anexoRef.current && !anexoRef.current.id.startsWith("img-") ? [{ id: anexoRef.current.id, nome: anexoRef.current.nome }] : [];
-        const novos = pdfs.map((f, i) => ({ id: ids[i], nome: f.name.replace(/\.pdf$/i, "") }));
+        const novos = docs.map((f, i) => ({ id: ids[i], nome: nomeLimpo(f) }));
         fixar(null);
         fixarLote([...antes, ...loteRef.current, ...novos].filter((a, i, l) => l.findIndex((b) => b.nome === a.nome) === i));
-        void guardarNaBase(pdfs, false).then((r) => (r === "nao_logado" ? (fixarLote([]), lerPrimeiro()) : undefined));
+        void guardarNaBase(docs, false).then(async (r) => {
+          if (r !== "nao_logado") return;
+          // Sem sessão não há base. Com PDF, cai no comportamento antigo (a IA lê o primeiro);
+          // só com texto, não há para onde cair — então a Aura DIZ, em vez de engolir o arquivo.
+          fixarLote([]);
+          if (!(await lerPrimeiroPdf())) oRef.current.aoGuardar?.(`Não guardei seus arquivos: ${motivoDoErro("nao_logado")}.`);
+        });
       }
       oRef.current.focar();
       return;

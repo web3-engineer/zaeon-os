@@ -95,6 +95,20 @@ services:
       REA_BLUEPRINT: ${REA_BLUEPRINT:-0}
       # vídeo do documento com a Zaeon holograma (lib/videodoc) — par do NEXT_PUBLIC_VIDEO_DOC
       VIDEO_DOC: ${VIDEO_DOC:-0}
+      # contrato de capacidade do harness (lib/agent/capacidades): cardápio no prompt do rascunho +
+      # rede contra "vou baixar a CSV" sem ninguém baixar nada. Rollback = Variable "0" + recriar o web.
+      HARNESS_CAPACIDADE: ${HARNESS_CAPACIDADE:-0}
+      # F2 · o modelo escolhe a ferramenta. VOLTAS = teto de custo (vazio = padrão 2).
+      HARNESS_ACAO: ${HARNESS_ACAO:-0}
+      HARNESS_VOLTAS_ACAO: ${HARNESS_VOLTAS_ACAO:-}
+      # F3 · o anexo entra no harness (imagem/PDF escaneado seguem no legado).
+      HARNESS_ANEXO: ${HARNESS_ANEXO:-0}
+      # F4 · cobertura por documento + síntese cruzada (só com 2+ documentos em jogo).
+      HARNESS_SINTESE: ${HARNESS_SINTESE:-0}
+      # F5 · conectores MCP por nome do catálogo (lib/agent/mcp MCP_CATALOG). Vazio = nenhum.
+      # Os servidores stdio rodam como SUBPROCESSO deste container (npx), então o primeiro boot
+      # pode falhar o handshake enquanto o npx baixa o pacote.
+      MCP_CONECTORES: ${MCP_CONECTORES:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       ESTUDO_GATEKEEPER: ${ESTUDO_GATEKEEPER:-0}
       AURA_ECONOMY: ${AURA_ECONOMY:-0}
@@ -165,6 +179,23 @@ services:
       SCHOLAR_WORKER: "1"
       SCHOLAR_WORKER_CONCURRENCY: "3"
       CHAT_WORKER_CONCURRENCY: "4"     # Fase 3: turnos do chat da Aura na fila "chat"
+      # o worker roda O MESMO harness (runChatTurn): sem esta linha a flag valeria só no web,
+      # e o turno que fosse pra fila responderia com o comportamento antigo.
+      HARNESS_CAPACIDADE: ${HARNESS_CAPACIDADE:-0}
+      # F2 · o modelo escolhe a ferramenta. VOLTAS = teto de custo (vazio = padrão 2).
+      HARNESS_ACAO: ${HARNESS_ACAO:-0}
+      HARNESS_VOLTAS_ACAO: ${HARNESS_VOLTAS_ACAO:-}
+      # F3 · o anexo entra no harness (imagem/PDF escaneado seguem no legado).
+      HARNESS_ANEXO: ${HARNESS_ANEXO:-0}
+      # F4 · cobertura por documento + síntese cruzada (só com 2+ documentos em jogo).
+      HARNESS_SINTESE: ${HARNESS_SINTESE:-0}
+      # F5 · conectores MCP por nome do catálogo (lib/agent/mcp MCP_CATALOG). Vazio = nenhum.
+      # Os servidores stdio rodam como SUBPROCESSO deste container (npx), então o primeiro boot
+      # pode falhar o handshake enquanto o npx baixa o pacote.
+      MCP_CONECTORES: ${MCP_CONECTORES:-}
+      # geração do documento por SEÇÃO: o worker roda o mesmo runChatTurn → lib/tcc/turno →
+      # gerarTccEmBackground, então sem esta linha a Variable valeria só no web (par do #670).
+      DOC_POR_SECAO: ${DOC_POR_SECAO:-0}
       LEITOR_PROXY_URL: ${LEITOR_PROXY_URL:-}   # Fatia 7: chores leem a web SÓ por aqui
     depends_on:
       redis: { condition: service_started }
@@ -334,7 +365,10 @@ services:
     container_name: zaeon_leitor_proxy
     environment:
       LEITOR_ALLOW: ${LEITOR_ALLOW:-}
-      LEITOR_MAX_BYTES: ${LEITOR_MAX_BYTES:-1048576}
+      # TEXTO: 2 MiB (o `response cap` do web.fetch da Rovinos, issue #98 — ver server.mjs).
+      LEITOR_MAX_BYTES: ${LEITOR_MAX_BYTES:-2097152}
+      # BYTES (/bytes, F1b): 25 MB = lib/rag/ingerir.MAX_BYTES, o teto do único destino deles.
+      LEITOR_MAX_BYTES_BIN: ${LEITOR_MAX_BYTES_BIN:-26214400}
       LEITOR_MAX_INFLIGHT: ${LEITOR_MAX_INFLIGHT:-8}
     expose: ["8787"]
     read_only: true

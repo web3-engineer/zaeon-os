@@ -18,12 +18,22 @@ import { classify } from "@/lib/agent/router";
 import { previaDoRascunho } from "@/lib/agent/previa";
 import { pensarDa, type NivelPensar } from "@/lib/llm/pensar";
 import { STUDIO_KINDS } from "@/lib/agent/tools";
-import { runToolByName, type ToolContext, type ApproveFn } from "@/lib/agent/runtime";
+import { getTool, runToolByName, toolsDoTurno, type ToolContext, type ApproveFn } from "@/lib/agent/runtime";
+import { cardapioDeCapacidades, respostaHonesta } from "@/lib/agent/capacidades";
+import { temUrl, urlsDoTexto } from "@/lib/agent/urls";
+import { ehUrlDeArquivo } from "@/lib/agent/toolsWeb";
+import { MAX_ANEXOS_NO_PLANO } from "@/lib/agent/anexos";
+import { anexosDoCtx } from "@/lib/agent/toolsAnexo";
+import { anexosEmJogo, blocoDaSintese, docsDaBaseEmJogo, lerSintese, promptDaSintese, sinteseUtil, type DocEmJogo } from "@/lib/agent/sintese";
+import { sinteseLigada } from "@/lib/agent/sintese-flag";
+import { valeSintetizar } from "@/lib/rag/porDocumento";
 import { critiqueForState } from "@/lib/agent/examiner";
 import { nullMemory } from "@/lib/agent/memory";
 import { messageForError, classifyError } from "@/lib/agent/errors";
 import type { AgentStep } from "@/lib/agent/actions";
 import type { HarnessDeps, TrajectoryState, Step } from "@/lib/agent/trajectory";
+import { MAX_VOLTAS_GATHER } from "@/lib/agent/trajectory";
+import { lerAcao, promptDeAcao, resumoDaColeta, resumoDasFalhas, toolVisivel, toolsDoMenu } from "@/lib/agent/acao";
 import { normalizeStudioKind } from "@/lib/agent/tools";
 import type { StructuredAnswer, Source } from "@/lib/agent/contracts";
 import { artefatoDeAprender, pedeAula, pedeEngenhariaReversa, DIRETRIZ_ENGENHARIA_REVERSA } from "@/lib/agent/aprender";
@@ -60,6 +70,52 @@ export type HarnessOpts = {
 };
 
 type Observation = { tool: string; code?: string; error?: string };
+
+// ─────────────────── CONTRATO DE CAPACIDADE (F0 de docs/PLANO_HARNESS_AGENTICO.md) ───────────────────
+const DESLIGADO = /^(0|off|false|nao|não|no)$/i;
+/**
+ * `HARNESS_CAPACIDADE=1`: o cardápio de capacidades entra no prompt do rascunho E a rede contra
+ * promessa sem lastro passa na resposta. OFF (padrão) = o caminho de hoje, byte a byte.
+ *
+ * O que ela conserta: «o modelo diz que vai baixar uma CSV e não baixa». Ver lib/agent/capacidades.ts.
+ */
+export function capacidadeHonestaLigada(env: Record<string, string | undefined> = process.env): boolean {
+  const f = env.HARNESS_CAPACIDADE?.trim();
+  return !!f && !DESLIGADO.test(f);
+}
+
+// ─────────────────── F2 · O MODELO ESCOLHE A FERRAMENTA (docs/PLANO_HARNESS_AGENTICO.md) ───────────────────
+/**
+ * `HARNESS_ACAO=1`: depois da coleta determinística, o modelo pode pedir MAIS ferramentas — o laço
+ * vira reentrante (observar → agir → observar), que é o que o harness não tinha.
+ *
+ * OFF (padrão) = `proximosPassos` nem é oferecida ao motor, e o turno é byte a byte o de hoje.
+ */
+export function acaoDoModeloLigada(env: Record<string, string | undefined> = process.env): boolean {
+  const f = env.HARNESS_ACAO?.trim();
+  return !!f && !DESLIGADO.test(f);
+}
+
+/**
+ * Teto de POLÍTICA de voltas extras — o que responde o portão do dono sobre custo. Antes da F2 o
+ * número de chamadas por turno era previsível; com o modelo escolhendo, passa a variar. O teto
+ * limita a variação a **+2 chamadas de modelo no pior caso** (as tools em si não custam modelo).
+ *
+ * 2 é o número da casa pra "tentar de novo com limite": `maxRevisions`, `reflections`, `ensemble`
+ * (lib/agent/contracts) e `TENTATIVAS_POR_SECAO` (lib/documento/escritor) são todos 2. Ajustável por
+ * `HARNESS_VOLTAS_ACAO` sem deploy; 0 desliga as voltas mantendo o resto da F2.
+ */
+export const VOLTAS_ACAO_PADRAO = 2;
+export function voltasDeAcao(env: Record<string, string | undefined> = process.env): number {
+  const bruto = env.HARNESS_VOLTAS_ACAO?.trim();
+  // vazio é AUSENTE, não zero. `Number("")` é 0, e com isso uma Variable em branco — que é o que
+  // `${{ vars.X || '' }}` produz — desligaria as voltas em silêncio em vez de cair no padrão.
+  if (!bruto) return VOLTAS_ACAO_PADRAO;
+  const n = Number(bruto);
+  if (!Number.isFinite(n) || n < 0) return VOLTAS_ACAO_PADRAO;
+  // nunca acima do teto DURO do motor (que conta a volta inicial), por mais que o env peça
+  return Math.min(Math.floor(n), MAX_VOLTAS_GATHER - 1);
+}
 
 // ───────────────────────────── A2 · retry só nesta camada ─────────────────────────────
 const RETRYABLE = new Set(["tool_timeout", "network", "rate_limited"]);
@@ -112,6 +168,44 @@ export function pickStudioKind(objective: string): string {
 }
 
 const isGatherTool = (t: string) => t === "memory_search" || t === "literature_search" || t === "web_search" || t === "book_search";
+
+/**
+ * F1 · OS PASSOS DE URL. Vêm dos endereços que a pessoa COLOU, não da intenção: um link numa
+ * saudação é um link, e `pedeAula`/`pedeLivro` já estabeleceram o padrão de regra determinística
+ * mandando mais que a tabela do roteador.
+ *
+ * F1b · A ESCOLHA ENTRE LER E BAIXAR É PELA EXTENSÃO, não por adivinhar o pedido. Um `.pdf` não
+ * pode ser "lido" pelo caminho de texto do Leitor de jeito nenhum (volta 415), e um arquivo que a
+ * ingestão sabe ler é mais útil guardado — citável depois — que resumido uma vez e esquecido.
+ * Deixar a decisão para o modelo é a F2; aqui ela é determinística e testável.
+ *
+ * Tool ausente do registry = passo não planejado. Sem Leitor, nada; com Leitor mas sem base, um
+ * `.pdf` cai em `abrir_url` e falha com `tipo_nao_suportado` — que é uma observação honesta, e o
+ * cardápio da F0 já disse que a casa não baixa arquivo.
+ */
+/**
+ * F3 · OS PASSOS DE ANEXO. O arquivo da pessoa é lido no plano determinístico — assim a F3 funciona
+ * com a F2 DESLIGADA (sem ela ninguém mais pediria `ler_anexo`). Com a F2 ligada, o modelo pode
+ * pedir a continuação (`de`) ou um segundo arquivo.
+ */
+export function passosDeAnexo(ctx: unknown): Step[] {
+  return anexosDoCtx(ctx)
+    .slice(0, MAX_ANEXOS_NO_PLANO)
+    .map((a) => ({ tool: "ler_anexo", args: { anexo: a.id } }));
+}
+
+export function passosDeUrl(objetivo: string): Step[] {
+  const podeAbrir = !!getTool("abrir_url");
+  const podeBaixar = !!getTool("baixar_para_base");
+  if (!podeAbrir && !podeBaixar) return [];
+  const passos: Step[] = [];
+  for (const url of urlsDoTexto(objetivo)) {
+    const arquivo = ehUrlDeArquivo(url);
+    if (arquivo && podeBaixar) passos.push({ tool: "baixar_para_base", args: { url } });
+    else if (podeAbrir) passos.push({ tool: "abrir_url", args: { url } });
+  }
+  return passos;
+}
 
 function evidenceBlock(st: TrajectoryState): string {
   if (!st.evidence.length) return "(nenhuma evidência reunida)";
@@ -290,19 +384,47 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
   const retryDelay = opts.retryDelayMs ?? 400;
   const modelFor = (heavy: boolean) => opts.modelo || (opts.deepThink && heavy ? GEMINI_MODEL_PRO : GEMINI_MODEL_FLASH);
   const observations: Observation[] = []; // A1 · buffer de erros-como-observação
+  /** O RECIBO: as tools que de fato rodaram e deram ok neste turno. É contra isto que a rede de
+   *  promessa mede — "vou baixar o PDF" é verdade se `baixar_para_base` rodou, e mentira se não. */
+  const executadas = new Set<string>();
   let livrosAchados: LivroAchado[] = [];  // book_search (buscar_livro): vai inteiro pro fim do nucleo
   const preamble = preambleBlock(opts); // systemContext + histórico (paridade com o legado)
   const bloco = blocoDaBase(opts.baseConhecimento);
   const base = bloco ? `${bloco}\n\n` : ""; // depois do preâmbulo, antes do "Objetivo:" (reason e draft)
   const citaBase = opts.baseConhecimento?.status === "ok";
 
+  /**
+   * F4 · OS DOCUMENTOS EM JOGO NESTE TURNO: os anexos (que a pessoa acabou de dar — vêm primeiro) e
+   * os da base, agrupados por documento pelo turno (`ctx.docsDaBase`). É a lista que decide se a
+   * fase `reason` vira síntese cruzada.
+   */
+  const docsEmJogo = (): DocEmJogo[] => [
+    ...anexosEmJogo(anexosDoCtx(ctx)),
+    ...docsDaBaseEmJogo(((ctx as { docsDaBase?: { titulo: string; trechos: { texto: string }[] }[] }).docsDaBase) ?? []),
+  ];
+  /** Sintetizar só com a flag E com 2+ documentos: com um documento, a `reason` não ajudava (eval de out/2026). */
+  const vaiSintetizar = (): boolean => sinteseLigada() && valeSintetizar(docsEmJogo());
+
   return {
-    classify: (objective, c) => classify(objective, c),
+    async classify(objective, c) {
+      const r = await classify(objective, c);
+      // `quick` PULA o plan() inteiro (trajectory.ts:244: draft direto). Com um link colado, o
+      // caminho rápido jamais leria a página — "resume isso: <url>" tem 3 palavras e cairia em
+      // `duvida_rapida`. Sobe um degrau SÓ quando a tool existe e há endereço público de verdade.
+      if (r.mode === "quick" && (getTool("abrir_url") || getTool("baixar_para_base")) && temUrl(objective)) return { ...r, mode: "elaborated" };
+      return r;
+    },
 
     async plan(st) {
       const gather = st.spec.tools.filter(isGatherTool);
+      // a página vem ANTES de tudo: o resto do turno (raciocínio, rascunho) deve ver o que ela diz
+      const daWeb = passosDeUrl(st.objective);
+      // O ARQUIVO DA PESSOA VEM PRIMEIRO, antes de página e de busca: quando há anexo, o turno é
+      // quase sempre SOBRE ele. (A busca da intenção continua — "compara esse PDF com o estado da
+      // arte" precisa das duas coisas, e cortar a busca aqui seria um palpite de qualidade.)
+      const dosAnexos = passosDeAnexo(ctx);
       if (st.intent === "gerar_artefato") {
-        return [{ tool: "studio_generate", args: { kind: pickStudioKind(st.objective), topic: st.objective } }];
+        return [...dosAnexos, ...daWeb, { tool: "studio_generate", args: { kind: pickStudioKind(st.objective), topic: st.objective } }];
       }
       if (st.intent === "criar_trabalho" && st.mode === "research") {
         // A6 · 2–3 perspectivas/sub-perguntas antes de fechar os steps.
@@ -315,12 +437,42 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
           );
           if (Array.isArray(r?.subquestions) && r.subquestions.length) subs = r.subquestions.slice(0, 3);
         } catch { /* fallback: só o objetivo */ }
-        const steps: Step[] = [];
+        const steps: Step[] = [...dosAnexos, ...daWeb];
         for (const t of gather) for (const q of subs) steps.push({ tool: t, args: { query: q } });
         return steps.length ? steps : [{ tool: gather[0] ?? "memory_search", args: { query: st.objective } }];
       }
-      return gather.map((t) => ({ tool: t, args: { query: st.objective } }));
+      return [...dosAnexos, ...daWeb, ...gather.map((t) => ({ tool: t, args: { query: st.objective } }))];
     },
+
+    // F2 · a volta extra. Só existe com a flag: sem ela o motor não recebe a função e o `gather`
+    // roda uma vez, como antes.
+    ...(acaoDoModeloLigada()
+      ? {
+        async proximosPassos(st: TrajectoryState): Promise<Step[]> {
+          if (st.voltas >= voltasDeAcao()) return [];     // teto de POLÍTICA (o do motor é outro)
+          // F3: as tools DESTE turno, não as registradas — `ler_anexo` não existe sem anexo
+          const menu = toolsDoMenu(toolsDoTurno(ctx)).map(toolVisivel);
+          if (!menu.length) return [];
+          const { sys, user } = promptDeAcao({
+            objetivo: st.objective, modo: st.mode, academico: st.academicMode, menu,
+            coleta: resumoDaColeta(st.evidence), falhas: resumoDasFalhas(observations),
+            voltasRestantes: voltasDeAcao() - st.voltas,
+          });
+          try {
+            const bruto = await genJson<unknown>(sys, user, {
+              temperature: 0, model: modelFor(false), timeoutMs: 12_000, phase: "acao", pensar: pensarDa("acao"),
+            });
+            const r = lerAcao(bruto, { disponiveis: menu, jaFeitas: st.feitas });
+            // o que foi recusado vira LOG (nunca prompt): é como se mede modelo pedindo coisa que não existe
+            if (r.descartadas.length) console.info(`[harness] ação descartou: ${r.descartadas.slice(0, 3).join(" · ")}`);
+            if (r.chamadas.length) console.info(`[harness] ação volta ${st.voltas + 1}: ${r.chamadas.map((c) => c.tool).join(", ")}`);
+            return r.chamadas.map((c) => ({ tool: c.tool, args: c.args }));
+          } catch {
+            return [];   // decidir é AUXILIAR, igual ao `reason`: falhar não derruba o turno, só encerra a coleta
+          }
+        },
+      }
+      : {}),
 
     async runTool(name, args, c) {
       // A2 · 1 retry (backoff) SÓ para timeout/network/rate — nunca p/ deny/approval/validação.
@@ -330,11 +482,31 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         res = await runTool(name, args, c as ToolContext, { approve: opts.approve });
       }
       if (!res.ok) observations.push({ tool: name, code: res.code, error: res.error }); // A1
+      if (res.ok) executadas.add(name);                                                // o recibo da ação
       if (res.ok && res.livros?.length) livrosAchados = res.livros;                   // a lista é do código, não do modelo
       return res;
     },
 
     async reason(st) {
+      // F4 · SÍNTESE CRUZADA. Com 2+ documentos em jogo, esta fase deixa de ser "raciocínio genérico"
+      // e passa a comparar os documentos: o que convergem, onde divergem, o que NENHUM cobre. O
+      // achado da fase é que a `reason` não melhorava a resposta de UM documento (eval de out/2026,
+      // por isso ela está desligada abaixo) — com vários, é exatamente o que faltava.
+      if (vaiSintetizar()) {
+        const docs = docsEmJogo();
+        const { sys, user } = promptDaSintese({ objetivo: st.objective, docs });
+        try {
+          const bruto = await genJson<unknown>(sys, user, {
+            temperature: 0.2, model: modelFor(true), timeoutMs: 20_000, phase: "sintese", pensar: pensarDa("sintese"),
+          });
+          const s = lerSintese(bruto);
+          if (!sinteseUtil(s)) return "";
+          console.info(`[harness] síntese de ${docs.length} documentos (${s.comum.length} convergem, ${s.divergem.length} divergem, ${s.lacunas.length} lacunas)`);
+          return blocoDaSintese(s);
+        } catch {
+          return "";   // a síntese é auxiliar, como o resto desta fase: falhar não derruba o turno
+        }
+      }
       // caminho ELABORADO: sem raciocínio separado — o rascunho já recebe a evidência inteira; a chamada a mais custava
       // ~1,7 s antes da 1ª palavra e não melhorava a resposta (eval em prod, 24/out). Modo Pesquisa (trabalho, revisão)
       // mantém. Volta com RACIOCINIO_ELABORADO=1.
@@ -370,6 +542,19 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         "recursos, botões ou o que você 'pode gerar'. Nada de cardápio de funcionalidades. " +
         "Nunca se declare incapaz de mostrar algo visual — apenas não comente o assunto: " +
         "responda o TEMA, que a parte visual é resolvida fora do texto.",
+        // O CARDÁPIO DE AÇÃO entra AQUI, logo depois da regra acima, porque as duas são sobre o
+        // mesmo assunto e tiram em direções opostas: aquela cala sobre FEATURES (pra resposta não
+        // virar cardápio do Studio), esta OBRIGA a honestidade sobre AÇÃO. Sem ela, o silêncio da
+        // regra de cima é o que produz "vou baixar a CSV" — o modelo não tem outro jeito de dizer
+        // que uma ação deveria acontecer. Derivado do registry, nunca escrito à mão.
+        ...(capacidadeHonestaLigada()
+          ? [(() => {
+            const defs = toolsDoTurno(ctx);
+            // F5: a descrição vai junto, senão uma tool de conector MCP apareceria pro aluno como
+            // `mcp:git:git_log` — nome de função, não capacidade.
+            return cardapioDeCapacidades(defs.map((t) => t.name), new Map(defs.map((t) => [t.name, t.schema?.description])));
+          })()]
+          : []),
         DIRETRIZ_MATEMATICA,
         "proximos_passos, quando fizer sentido, são passos de ESTUDO (o que entender, ler, " +
         "praticar ou checar a seguir) — jamais ofertas de recurso da plataforma.",
@@ -399,8 +584,19 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         // a PRÉVIA: com quem a escute (o chat), o rascunho vai em stream e o texto do `nucleo` sai enquanto nasce
         const onTexto = opts.onPrevia ? (acc: string) => { const t = previaDoRascunho(acc); if (t) opts.onPrevia!(t); } : undefined;
         const out = await genJson<Partial<StructuredAnswer>>(sys, user, { temperature: 0.4, model: modelFor(true), timeoutMs: prazo, phase: "draft", onTexto, pensar: pensarDa(st.mode === "quick" ? "draft_rapido" : st.mode === "elaborated" ? "draft_elaborado" : "draft"), prazoPrimeiroMs: prazoPrimeiraPalavra(st) });
+        // A REDE antes dos blocos do CÓDIGO (fontes da base, lista de livros): ela julga o texto do
+        // MODELO. Depois seria pior — a lista de livros traz "baixar PDF" em cada linha, e ainda que
+        // hoje ela não dispare (falta o marcador de 1ª pessoa), julgar texto determinístico da casa
+        // é uma classe de falso positivo que não precisa existir.
+        let bruta = normalizeAnswer(out, st);
+        if (capacidadeHonestaLigada()) {
+          const h = respostaHonesta(bruta, executadas);
+          // medir em prod: quantas respostas prometiam, e de que classe (sem o texto da conversa)
+          if (h.removidas.length) console.warn(`[harness] promessa sem lastro: ${h.removidas.map((c) => c.id).join(", ")} (intent=${st.intent})`);
+          bruta = h.answer;
+        }
         // fontes da base: o rodapé sai do código, só com trechos que a busca devolveu (o modelo só aponta os números)
-        const comBase = anexarFontesBase(normalizeAnswer(out, st), opts.baseConhecimento, (out as any)?.citacoes_base);
+        const comBase = anexarFontesBase(bruta, opts.baseConhecimento, (out as any)?.citacoes_base);
         return anexarLivros(comBase, livrosAchados);
       } catch (e: any) {
         // degradado: núcleo honesto via messageForError (nunca string à mão), laço segue.
@@ -409,7 +605,8 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
       }
     },
 
-    pulaRaciocinio: (st) => st.mode === "elaborated" && process.env.RACIOCINIO_ELABORADO !== "1",
+    // a fase volta a existir quando há síntese a fazer (senão segue desligada no elaborado)
+    pulaRaciocinio: (st) => !vaiSintetizar() && st.mode === "elaborated" && process.env.RACIOCINIO_ELABORADO !== "1",
 
     critique: (st) => Promise.resolve(critiqueForState(st)),
 

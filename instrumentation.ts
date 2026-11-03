@@ -56,6 +56,13 @@ export async function register() {
       setTimeout(rodar, 10 * 60_000);
       setInterval(rodar, 6 * 60 * 60_000);
     }
+    // Conectores MCP (F5, lib/agent/mcp-boot): MCP_CONECTORES="fetch,git" escolhe entradas do
+    // MCP_CATALOG. Conecta UMA vez aqui (handshake de stdio custa segundos) e só registra tools de
+    // LEITURA. Sem a env, nada acontece; sem o SDK, loga e segue. Nunca derruba o boot.
+    if (process.env.MCP_CONECTORES) {
+      const { ligarMcpOpcional } = await import("./instrumentation-node");
+      await ligarMcpOpcional();
+    }
     if (process.env.SCHOLAR_WORKER === "1") {
       const { iniciarWorkers } = await import("./instrumentation-node");
       await iniciarWorkers();

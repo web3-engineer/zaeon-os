@@ -38,7 +38,55 @@ export type ConnectorConfig = {
 export type ConnectorStatus = "desconectado" | "verificando" | "conectado" | "precisa_autorizar" | "erro" | "degradado";
 
 export type McpToolInfo = { name: string; description?: string; inputSchema?: any; annotations?: any };
-export type ConnectorHealth = { status: ConnectorStatus; tools?: McpToolInfo[]; error?: string; checkedAt: string };
+export type ConnectorHealth = {
+  status: ConnectorStatus; tools?: McpToolInfo[]; error?: string; checkedAt: string;
+  /** F5: quantas tools entraram no registry e quais foram recusadas pela política de risco. */
+  admitidas?: number; recusadas?: string[];
+  /**
+   * F5 · o motivo CRU, pro log de ops e pro smoke-test. O `error` acima passa por `messageForError`
+   * e vira frase de aluno ("Tô sem conexão com o núcleo…") — ótimo numa tela, inútil num boot log,
+   * onde o dono precisa ler `ECONNREFUSED`. Os dois existem porque têm leitores diferentes.
+   */
+  motivo?: string;
+};
+
+/**
+ * ───────── F5 · A POLÍTICA DE RISCO DO MCP NO CHAT: SÓ LEITURA ─────────
+ *
+ * Por que isto é obrigatório, e não zelo: o `permit()` (lib/agent/runtime) só exige aprovação para
+ * `write` quando `execMode === "guiado"`, e o chat roda em `"auto"` (lib/agent/runChatTurn). Então
+ * uma tool MCP de escrita entraria no registry e RODARIA sem aprovação, escolhida pelo modelo a
+ * partir de uma CONVERSA — que é exatamente o caminho de injeção indireta descrito no advisory do
+ * DeepSeek Harness (discussions/3051, ver docs/PLANO_HARNESS_AGENTICO.md §5.1). Com `filesystem` ou
+ * `git` no catálogo, isso é escrita no container.
+ *
+ * LIMITE CONHECIDO, e conservador de propósito: `riskFromAnnotations` devolve `write` quando o
+ * servidor não manda hint, então um servidor SEM annotations não contribui tool nenhuma. É melhor
+ * que o contrário — e o boot loga o que foi recusado, pra o dono ver em vez de adivinhar.
+ *
+ * A confiança de verdade está no CATÁLOGO: quem escolhe o servidor é o dono, e um servidor stdio roda
+ * como subprocesso do container. Servidor malicioso é problema antes das annotations; a allowlist do
+ * catálogo é a fronteira, e esta política é a contenção do que o modelo pode pedir.
+ */
+export const RISCO_MAXIMO_CHAT: ToolRisk = "read";
+
+const ORDEM_RISCO: Record<ToolRisk, number> = { read: 0, write: 1, destructive: 2 };
+
+/** Separa as tools do servidor entre o que entra no registry e o que é recusado pela política. */
+export function toolsAdmitidas(
+  tools: readonly McpToolInfo[],
+  riscoMaximo: ToolRisk = RISCO_MAXIMO_CHAT,
+): { admitidas: McpToolInfo[]; recusadas: string[] } {
+  const teto = ORDEM_RISCO[riscoMaximo];
+  const admitidas: McpToolInfo[] = [];
+  const recusadas: string[] = [];
+  for (const t of tools) {
+    const risco = riskFromAnnotations(t.annotations);
+    if (ORDEM_RISCO[risco] <= teto) admitidas.push(t);
+    else recusadas.push(`${t.name} (${risco})`);
+  }
+  return { admitidas, recusadas };
+}
 
 export interface McpClient {
   listTools(): Promise<McpToolInfo[]>;
@@ -182,7 +230,7 @@ export async function testConnection(config: ConnectorConfig, opts?: { connect?:
   } catch (e: any) {
     const msg = String(e?.message ?? e);
     const status = classifyConnectorError(msg);
-    return { status, error: messageForError(status === "precisa_autorizar" ? "needs_approval" : msg), checkedAt };
+    return { status, error: messageForError(status === "precisa_autorizar" ? "needs_approval" : msg), motivo: msg.slice(0, 200), checkedAt };
   } finally {
     if (client) await client.close().catch(() => {});
   }
@@ -192,7 +240,10 @@ export async function testConnection(config: ConnectorConfig, opts?: { connect?:
  * Conecta e REGISTRA as tools do conector no runtime (cada uma passa pelo permit()). Cada
  * ToolDef abre o cliente por-chamada (stateless; degradação-safe). Devolve a saúde + tools.
  */
-export async function registerMcpConnector(config: ConnectorConfig, opts?: { connect?: ConnectFn }): Promise<ConnectorHealth> {
+export async function registerMcpConnector(
+  config: ConnectorConfig,
+  opts?: { connect?: ConnectFn; riscoMaximo?: ToolRisk },
+): Promise<ConnectorHealth> {
   const connect = opts?.connect ?? connectMcp;
   const health = await testConnection(config, { connect });
   if (health.status !== "conectado" || !health.tools) return health;
@@ -200,8 +251,11 @@ export async function registerMcpConnector(config: ConnectorConfig, opts?: { con
     const client = await connect(config);
     try { return await client.callTool(name, args); } finally { await client.close().catch(() => {}); }
   };
-  for (const tool of health.tools) registerTool(mcpToolToToolDef(tool, config, perCall));
-  return health;
+  // A POLÍTICA DE RISCO É APLICADA AQUI, no registro: tool recusada não existe pro permit, não
+  // existe pro cardápio da F0 e não existe pro menu da F2 — não é "negada depois", é ausente.
+  const { admitidas, recusadas } = toolsAdmitidas(health.tools, opts?.riscoMaximo);
+  for (const tool of admitidas) registerTool(mcpToolToToolDef(tool, config, perCall));
+  return { ...health, admitidas: admitidas.length, recusadas };
 }
 
 /** Compara as tools atuais com o cache → `degradado` se alguma sumiu. */

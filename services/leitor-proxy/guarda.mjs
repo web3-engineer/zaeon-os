@@ -104,9 +104,36 @@ function decodificar(s) {
     .replace(/&([a-z]+);/gi, (m, n) => ENTIDADES[n] ?? ENTIDADES[n.toLowerCase()] ?? m);
 }
 
+/**
+ * TEXTO OCULTO é vetor de injeção indireta: a página mostra uma coisa ao humano e entrega outra ao
+ * modelo. É o passo 1 do ataque descrito no advisory do DeepSeek Harness (discussions/3051), cuja
+ * mitigação 4 é exatamente "remover texto escondido, comentários e caracteres invisíveis"; o harness
+ * da Rovinos (issue #98) descarta e CONTA os ocultos pelo mesmo motivo.
+ *
+ * É MITIGAÇÃO, NÃO PARSER (mesma limitação da linha de script/style abaixo): casa a tag aberta com
+ * marca de oculto e apaga até o PRIMEIRO fecho da mesma tag, então aninhamento do mesmo elemento
+ * pode sobrar. Classe de CSS externo não dá pra resolver sem baixar o CSS, e não baixamos.
+ *
+ * A MARCA ESTÁ DENTRO DA REGEX de propósito: se ela fosse testada num callback, o motor teria de
+ * achar o fecho de TODA tag do documento pra depois descartar — O(n²) num HTML de 2 MiB, que é DoS
+ * barato. Assim, tag sem marca falha já nos atributos. O `{0,4000}` também é teto de backtracking.
+ */
+const OCULTO =
+  // `\shidden(?=[\s>])` com LOOKAHEAD, não `[\s>]`: consumindo o `>` a tag `<div hidden>` (sem mais
+  // atributo depois) não casava, porque o `[^>]*>` do fim procurava um segundo `>`. O teste pegou.
+  /<([a-z][\w-]*)\b[^>]*?(?:\shidden(?=[\s>])|aria-hidden\s*=\s*["']?true|style\s*=\s*["'][^"']*(?:display\s*:\s*none|visibility\s*:\s*hidden)[^"']*["'])[^>]*>[\s\S]{0,4000}?<\/\1\s*>/gi;
+
+/** → { html, removidos }. `removidos` é só contagem (nunca o conteúdo), pra telemetria. */
+export function semTextoOculto(html) {
+  let removidos = 0;
+  const limpo = String(html ?? "").replace(OCULTO, () => { removidos++; return " "; });
+  return { html: limpo, removidos };
+}
+
 /** HTML/XML → texto legível. Blocos viram quebra de linha; o resto, espaço. */
 export function extrairTexto(html) {
-  let t = String(html ?? "");
+  // oculto PRIMEIRO, e aqui dentro também (não só no servidor): qualquer caller fica protegido
+  let t = semTextoOculto(html).html;
   t = t.replace(/<!--[\s\S]*?-->/g, " ");
   t = t.replace(/<(script|style|noscript|template|svg|iframe|object)\b[\s\S]*?<\/\1\s*>/gi, " ");
   t = t.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1");
@@ -116,9 +143,23 @@ export function extrairTexto(html) {
   return t.split("\n").map((l) => l.replace(/[ \t\f\v\r]+/g, " ").trim()).filter(Boolean).join("\n");
 }
 
-/** Content-Types que o Leitor aceita. */
+/** Content-Types que o Leitor aceita em /fetch (texto). */
 export const TIPOS_ACEITOS = ["text/html", "text/plain", "application/json", "application/xml", "text/xml", "application/rss+xml", "application/atom+xml", "application/xhtml+xml"];
 export function tipoAceito(contentType) {
   const base = String(contentType ?? "").split(";")[0].trim().toLowerCase();
   return TIPOS_ACEITOS.includes(base) ? base : null;
+}
+
+/**
+ * Content-Types que /bytes entrega (F1b). Lista CURTA e por tipo, não por tamanho: é só o que a
+ * ingestão do RAG sabe ler (`lib/rag/ingerir` → PDF via pdf-loader, ou texto decodificado).
+ *
+ * `application/octet-stream` FICA DE FORA, mesmo sendo como muitos servidores rotulam PDF: é o
+ * rótulo "qualquer coisa", e é por ele que um binário arbitrário entraria. Servidor que rotula
+ * errado recebe `tipo_nao_baixavel`, que é um não claro — não um sim silencioso.
+ */
+export const TIPOS_BAIXAVEIS = ["application/pdf", "text/plain", "text/markdown", "text/csv", "text/x-markdown"];
+export function tipoBaixavel(contentType) {
+  const base = String(contentType ?? "").split(";")[0].trim().toLowerCase();
+  return TIPOS_BAIXAVEIS.includes(base) ? base : null;
 }

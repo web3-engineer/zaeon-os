@@ -9,6 +9,7 @@ import {
   isRetryableCode,
   ofertaDePlataforma,
   historicoNoOrcamento,
+  capacidadeHonestaLigada,
 } from "./aura-harness";
 import { INTENTS, type StructuredAnswer } from "./contracts";
 import type { ToolContext } from "./runtime";
@@ -567,5 +568,106 @@ describe("caminho elaborado: rascunho direto (eval em prod 24/out: 1ª palavra 2
     vi.stubEnv("RACIOCINIO_ELABORADO", "1");
     try { expect(buildHarnessDeps(ctx, { genJson: vi.fn() as any }).pulaRaciocinio?.(stFor())).toBe(false); }
     finally { vi.unstubAllEnvs(); }
+  });
+});
+
+// ───────────── F0 de docs/PLANO_HARNESS_AGENTICO.md · o contrato de capacidade ─────────────
+// O PLUMBING é o que eu já errei antes (achar feito o que não estava). Estes testes provam os
+// três elos: a flag lê o env, o cardápio chega ao prompt do rascunho, e a rede julga a resposta
+// contra as tools que REALMENTE rodaram — tudo pelo `buildHarnessDeps` de verdade, sem rede.
+describe("contrato de capacidade · a flag", () => {
+  const comFlag = async (valor: string | undefined, fn: () => Promise<void> | void) => {
+    const antes = process.env.HARNESS_CAPACIDADE;
+    // `Object.assign(env, {X: undefined})` grava a STRING "undefined" — por isso delete.
+    if (valor === undefined) delete process.env.HARNESS_CAPACIDADE;
+    else process.env.HARNESS_CAPACIDADE = valor;
+    try { await fn(); } finally {
+      if (antes === undefined) delete process.env.HARNESS_CAPACIDADE;
+      else process.env.HARNESS_CAPACIDADE = antes;
+    }
+  };
+
+  it("ausente = desligada; 0/off/false/não = desligada; qualquer outro valor = ligada", () => {
+    expect(capacidadeHonestaLigada({})).toBe(false);
+    for (const v of ["0", "off", "false", "nao", "não", "no", "", "   "]) {
+      expect(capacidadeHonestaLigada({ HARNESS_CAPACIDADE: v }), v).toBe(false);
+    }
+    for (const v of ["1", "true", "sim", "on"]) {
+      expect(capacidadeHonestaLigada({ HARNESS_CAPACIDADE: v }), v).toBe(true);
+    }
+  });
+
+  it("lê o process.env de verdade (o elo que o deploy depende)", async () => {
+    await comFlag(undefined, () => expect(capacidadeHonestaLigada()).toBe(false));
+    await comFlag("1", () => expect(capacidadeHonestaLigada()).toBe(true));
+  });
+
+  const PROMETE = "A série do IBGE cobre 2010 a 2024. Vou baixar a CSV pra você.";
+  const genPromessa = () => vi.fn(async (system: string): Promise<any> => {
+    if (/subquestions/i.test(system)) return { subquestions: ["q"] };
+    if (/reasoning/i.test(system)) return { reasoning: "R" };
+    return { nucleo: PROMETE };
+  });
+  const sysDoDraft = (gen: ReturnType<typeof genPromessa>) =>
+    String(gen.mock.calls.find((c) => /Campos obrigat/i.test(String(c[0])))?.[0] ?? "");
+
+  it("DESLIGADA: nada de cardápio no prompt e a promessa passa — o caminho de hoje, intacto", async () => {
+    await comFlag(undefined, async () => {
+      const genJson = genPromessa();
+      const deps = buildHarnessDeps(ctx, { genJson, retryDelayMs: 0 });
+      const a = await deps.draft(stFor());
+      expect(sysDoDraft(genJson)).not.toMatch(/NÃO executa/);
+      expect(a.nucleo).toBe(PROMETE);
+    });
+  });
+
+  it("LIGADA: o cardápio entra no prompt, DERIVADO do registry", async () => {
+    await comFlag("1", async () => {
+      const genJson = genPromessa();
+      const deps = buildHarnessDeps(ctx, { genJson, retryDelayMs: 0 });
+      await deps.draft(stFor());
+      const sys = sysDoDraft(genJson);
+      // o que a casa faz (tools registradas de verdade em lib/agent/runtime)
+      expect(sys).toContain("buscar literatura acadêmica real");
+      expect(sys).toContain("acervos abertos");
+      // e o que ela não faz (classes sem tool no registry)
+      expect(sys).toContain("NÃO executa");
+      expect(sys).toContain("baixar arquivo (CSV, planilha, PDF, livro) por conta própria");
+      expect(sys).toContain("clonar ou ler um repositório de código");
+      expect(sys).toMatch(/nunca diga que vai executar/i);
+    });
+  });
+
+  it("LIGADA: a promessa sai da resposta e o resto fica", async () => {
+    await comFlag("1", async () => {
+      const deps = buildHarnessDeps(ctx, { genJson: genPromessa(), retryDelayMs: 0 });
+      const a = await deps.draft(stFor());
+      expect(a.nucleo).toBe("A série do IBGE cobre 2010 a 2024.");
+    });
+  });
+
+  it("LIGADA + a tool ROUDOU: a mesma frase passa — é recibo, não promessa", async () => {
+    await comFlag("1", async () => {
+      const runToolImpl = vi.fn(async () => ({ ok: true, provenance: {} }) as any);
+      const deps = buildHarnessDeps(ctx, { genJson: genPromessa(), runToolImpl, retryDelayMs: 0 });
+      // o elo que fecha o laço: `executadas` só enche passando pelo runTool do adaptador
+      await deps.runTool("baixar_para_base", { url: "x" }, ctx as any);
+      const a = await deps.draft(stFor());
+      expect(a.nucleo).toBe(PROMETE);
+    });
+  });
+
+  it("LIGADA: resposta que INSTRUI a pessoa não é tocada (o falso positivo que importa)", async () => {
+    await comFlag("1", async () => {
+      const bom = "O IPCA é mensal. Você pode baixar a série no SIDRA e anexar o arquivo aqui.";
+      const genJson = vi.fn(async (system: string): Promise<any> => {
+        if (/reasoning/i.test(system)) return { reasoning: "R" };
+        return { nucleo: bom, proximos_passos: ["Comparar 2010 e 2024"] };
+      });
+      const deps = buildHarnessDeps(ctx, { genJson, retryDelayMs: 0 });
+      const a = await deps.draft(stFor());
+      expect(a.nucleo).toBe(bom);
+      expect(a.proximos_passos).toEqual(["Comparar 2010 e 2024"]);
+    });
   });
 });

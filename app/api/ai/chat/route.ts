@@ -298,7 +298,26 @@ export async function POST(req: Request) {
             }
         }
 
-        if (stream === true && agentKey === "aura" && process.env.AURA_HARNESS !== "0" && !fileData) {
+        // ── F3: O ANEXO ENTRA NO HARNESS (docs/PLANO_HARNESS_AGENTICO.md) ──────────────────────
+        // Até aqui, QUALQUER arquivo anexado derrubava o turno pro streaming legado (o `!fileData`
+        // do gate abaixo): sem laço, sem tools, sem base, sem memória, sem a rede da F0 — e documento
+        // anexado é o caso acadêmico por excelência. Com dois ou mais arquivos o harness já ficava
+        // ligado (o lote não manda `fileData`), ou seja: 1 arquivo = modo burro, 2 = modo esperto.
+        //
+        // NÃO BASTA APAGAR O `!fileData`: as chamadas do harness vão pelo envelope, que é TEXTO (é o
+        // que nos dá Vertex + pool + reserva HF). Sem extrair antes, o harness IGNORARIA o arquivo —
+        // pior que hoje. Então o texto sai aqui, e `[]` significa "o harness não deve pegar este
+        // turno": IMAGEM e PDF ESCANEADO seguem no legado, que é o único caminho que os lê.
+        let anexos: import("@/lib/agent/anexos").AnexoDoTurno[] = [];
+        if (stream === true && agentKey === "aura" && fileData && typeof fileData === "string") {
+            const { anexoNoHarnessLigado } = await import("@/lib/agent/anexos");
+            if (anexoNoHarnessLigado()) {
+                const { anexosDoFileData } = await import("@/lib/agent/anexos-server");
+                anexos = await anexosDoFileData(fileData).catch(() => []);
+            }
+        }
+
+        if (stream === true && agentKey === "aura" && process.env.AURA_HARNESS !== "0" && (!fileData || anexos.length > 0)) {
             const encoder = new TextEncoder();
             const turnParams = () => ({
                 prompt: String(prompt || ""),
@@ -308,6 +327,7 @@ export async function POST(req: Request) {
                 agentContext: (agentContext && typeof agentContext === "object") ? agentContext : null,
                 mentor: activeMentor ? { slug: activeMentor.slug, wing: activeMentor.wing } : null,
                 ...(modelo ? { modelo } : {}),
+                ...(anexos.length ? { anexos } : {}),
             });
 
             // ── FASE 3: MODO BACKGROUND (CHAT_BG=1) ─────────────────────────────────────

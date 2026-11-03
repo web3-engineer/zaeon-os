@@ -18,6 +18,9 @@ import {
   studioLabel,
   researchWorkType,
 } from "@/lib/agent/tools";
+// `toolsWeb` importa SÓ TIPOS daqui de volta (apagados na compilação), então não há ciclo.
+import { abrirUrlDef, baixarParaBaseDef } from "@/lib/agent/toolsWeb";
+import { lerAnexoDef, listarAnexosDef } from "@/lib/agent/toolsAnexo";
 
 // ───────────────────────────── contratos do runtime (§11.2) ─────────────────────────────
 export type ToolRuntime = "ts" | "python" | "mcp";
@@ -66,6 +69,13 @@ export interface ToolDef {
   schema: FunctionDeclaration; // o que o Gemini (function-calling) enxerga
   /** Teto próprio (ms); sem ele vale o default do runtime. Busca em 4–5 bases precisa de mais que 20s. */
   timeoutMs?: number;
+  /**
+   * F3 · A tool existe NESTE TURNO? Diferente de registro condicional, que é CONFIGURAÇÃO decidida
+   * no boot (`abrir_url` depende do Leitor): `ler_anexo` depende de haver anexo nesta conversa, o
+   * que muda a cada turno. Ausente = sempre disponível. O `permit()` consulta, e com isso o cardápio
+   * da F0 e o menu da F2 param de anunciar capacidade que este turno não tem.
+   */
+  disponivelNoTurno?(ctx: ToolContext): boolean;
   run(args: any, ctx: ToolContext): Promise<ToolResult>;
 }
 
@@ -102,6 +112,8 @@ async function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
  * em `guiado`, `write` sobe pra aprovação; leitura/geração em `auto` = ALLOW.
  */
 export function permit(def: ToolDef, ctx: ToolContext): Gate {
+  // F3: indisponível NESTE turno é DENY (a tool existe, mas não há o que ela leria)
+  if (def.disponivelNoTurno && !def.disponivelNoTurno(ctx)) return "DENY";
   if (!planAtLeast(ctx.plan, def.minPlan)) return "DENY";
   if (isReadOnlyMode(ctx.taskMode) && def.risk !== "read") return "DENY"; // modo leitura nunca escreve
   if (def.demandGpu && !ctx.gpuAvailable) return "REQUIRE_APPROVAL"; // T3 sob demanda
@@ -139,6 +151,15 @@ const REGISTRY = new Map<string, ToolDef>();
 export function registerTool(def: ToolDef): void { REGISTRY.set(def.name, def); }
 export function getTool(name: string): ToolDef | undefined { return REGISTRY.get(name); }
 export function listTools(): ToolDef[] { return [...REGISTRY.values()]; }
+
+/**
+ * As tools que valem PARA ESTE TURNO. É esta lista — não `listTools()` — que alimenta o cardápio da
+ * F0 e o menu da F2: anunciar `ler_anexo` num turno sem anexo seria prometer o que não dá pra fazer,
+ * que é exatamente o que a F0 existe pra impedir.
+ */
+export function toolsDoTurno(ctx: ToolContext): ToolDef[] {
+  return listTools().filter((d) => !d.disponivelNoTurno || d.disponivelNoTurno(ctx));
+}
 
 /** Executa por nome (o que o laço chama). Tool desconhecida = DENY silencioso (deny-by-default). */
 export async function runToolByName(
@@ -380,3 +401,37 @@ export const bookSearchDef: ToolDef = {
 };
 
 [studioGenerateDef, researchGenerateDef, memorySearchDef, literatureSearchDef, webSearchDef, examinerDef, bookSearchDef].forEach(registerTool);
+
+/**
+ * `abrir_url` (F1) é CONDICIONAL: só entra no registry quando o Leitor está configurado
+ * (`LEITOR_PROXY_URL`). O motivo não é economia — é a F0.
+ *
+ * O cardápio de capacidades que vai no prompt é DERIVADO deste registry
+ * (lib/agent/capacidades). Uma tool registrada que devolvesse "leitor_offline" em toda chamada
+ * faria o cardápio anunciar "a plataforma abre endereços da web" — e a Aura voltaria a prometer
+ * uma ação que não acontece, que é exatamente o que a F0 consertou, só por outro caminho.
+ * Sem Leitor, a classe `abrir_pagina` continua no "NÃO executa" e a resposta oferece o caminho real.
+ */
+export function registrarAbrirUrl(env: Record<string, string | undefined> = process.env): boolean {
+  if (!env.LEITOR_PROXY_URL?.trim()) return false;
+  registerTool(abrirUrlDef);
+  return true;
+}
+registrarAbrirUrl();
+
+/**
+ * `baixar_para_base` (F1b) precisa de DUAS coisas de pé, e por isso checa as duas: o Leitor (de onde
+ * vêm os bytes) e `RAG_PG_URL` (a base onde eles param — `ragPg()` LANÇA sem ela). Faltando
+ * qualquer uma, a tool não entra e o cardápio da F0 segue dizendo que a casa não baixa arquivo.
+ * Metade da infra de pé anunciaria uma capacidade que falha em toda chamada.
+ */
+export function registrarBaixarParaBase(env: Record<string, string | undefined> = process.env): boolean {
+  if (!env.LEITOR_PROXY_URL?.trim() || !env.RAG_PG_URL?.trim()) return false;
+  registerTool(baixarParaBaseDef);
+  return true;
+}
+registrarBaixarParaBase();
+
+// Anexo (F3): registradas SEMPRE — quem decide é `disponivelNoTurno`, não o boot. Não há
+// configuração pra depender: ou a conversa tem arquivo, ou não tem.
+[listarAnexosDef, lerAnexoDef].forEach(registerTool);
