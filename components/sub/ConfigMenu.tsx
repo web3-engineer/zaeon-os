@@ -11,6 +11,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import { limparCopiaDasConversas } from "@/lib/chat/conversasServidor";
 import { useTranslation } from "react-i18next";
 import { Cog6ToothIcon, ChevronDownIcon, ChevronRightIcon, ArrowRightStartOnRectangleIcon } from "@heroicons/react/24/outline";
 import { Activity, Gauge, Crown, Trash2, Loader2, Ticket, GraduationCap, Globe, Monitor, UserRound } from "lucide-react";
@@ -96,6 +97,7 @@ export default function ConfigMenu() {
     try {
       const r = await fetch("/api/account", { method: "DELETE" });
       if (!r.ok) { setApagando(false); window.alert("Não consegui apagar a conta agora. Tente de novo."); return; }
+      limparCopiaDasConversas(session?.user?.email, true);
       await signOut({ callbackUrl: "/" });
     } catch { setApagando(false); window.alert("Erro de conexão."); }
   };
@@ -242,7 +244,7 @@ export default function ConfigMenu() {
               </button>
             )}
 
-            <button type="button" onClick={() => void signOut()} className={`${item} hover:!bg-red-50 hover:!border-red-300 dark:hover:!bg-red-500/20 dark:hover:!border-red-500/40`}>
+            <button type="button" onClick={() => { limparCopiaDasConversas(session?.user?.email); void signOut(); }} className={`${item} hover:!bg-red-50 hover:!border-red-300 dark:hover:!bg-red-500/20 dark:hover:!border-red-500/40`}>
               <span className="flex flex-col flex-1">
                 <span className={rotulo}>Sessão</span>
                 <span>{t("menu.logout", "Sair")}</span>

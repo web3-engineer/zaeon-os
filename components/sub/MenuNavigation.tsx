@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { signIn, signOut, useSession } from "next-auth/react";
+import { limparCopiaDasConversas } from "@/lib/chat/conversasServidor";
 import Image from "next/image";
 import ZaeonLogo from "@/components/main/ZaeonLogo";
 import InviteButton from "@/components/sub/InviteButton";
@@ -644,7 +645,7 @@ export default function MenuNavigation({ destino = LAB_ROTA }: { destino?: strin
                 )}
 
                 {/* LOGOUT */}
-                <div className={`${cardBase} hover:bg-red-50 hover:border-red-300 dark:hover:bg-red-500/20 dark:hover:border-red-500/40`} onClick={() => signOut()}>
+                <div className={`${cardBase} hover:bg-red-50 hover:border-red-300 dark:hover:bg-red-500/20 dark:hover:border-red-500/40`} onClick={() => { limparCopiaDasConversas(session?.user?.email); void signOut(); }}>
                   <div className="flex flex-col flex-1 pl-2">
                     <span className="text-[9px] opacity-50 uppercase font-bold tracking-tighter text-slate-500 dark:text-white">Session</span>
                     <span className="text-sm text-slate-900 dark:text-white">{t("menu.logout", "Disconnect")}</span>
@@ -661,6 +662,7 @@ export default function MenuNavigation({ destino = LAB_ROTA }: { destino?: strin
                     try {
                       const r = await fetch("/api/account", { method: "DELETE" });
                       if (!r.ok) { setDeletingAcc(false); window.alert("Não consegui apagar a conta agora. Tente de novo."); return; }
+                      limparCopiaDasConversas(session?.user?.email, true);
                       await signOut({ callbackUrl: "/" });
                     } catch { setDeletingAcc(false); window.alert("Erro de conexão."); }
                   }}

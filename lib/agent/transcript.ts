@@ -133,5 +133,28 @@ export async function cortarMensagens(userId: string, surface: Surface, scopeId:
   if (conv) await prisma.chatMessage.deleteMany({ where: { conversationId: conv.id, at: { gte: new Date(desde) } } });
 }
 
+/**
+ * #663: sobe uma conversa antiga do navegador. Enviar de novo não repete: só entra o que é anterior à primeira mensagem
+ * do servidor (o resto já foi gravado turno a turno, ou cortado de propósito) e que ainda não esteja lá. O título do
+ * servidor vale, porque pode ter sido renomeada em outro aparelho.
+ */
+export async function importarConversa(userId: string, surface: Surface, scopeId: string, d: DadosConversa, msgs: TurnMsg[]): Promise<number> {
+  const id = await ensureConversation(userId, surface, scopeId);
+  const conv = await prisma.conversation.findFirst({ where: { id }, select: { title: true } });
+  await guardarConversa(userId, surface, scopeId, { ...d, titulo: conv?.title ? undefined : d.titulo });
+  const ja = await prisma.chatMessage.findMany({ where: { conversationId: id }, orderBy: { at: "asc" }, select: { role: true, text: true, at: true } });
+  const primeira = ja[0]?.at.getTime();
+  const conta = new Map<string, number>();
+  const chave = (m: { role: string; text: string }) => `${m.role}|${m.text}`;
+  for (const m of ja) conta.set(chave(m), (conta.get(chave(m)) ?? 0) + 1);
+  const novas = msgs.filter((m) => {
+    const n = conta.get(chave(m)) ?? 0;
+    if (n) { conta.set(chave(m), n - 1); return false; }
+    return !primeira || !!(m.at && m.at < primeira);
+  });
+  await appendMessages(id, novas);
+  return novas.length;
+}
+
 const SURFACES: Surface[] = ["estudos", "pesquisa", "aula", "projetos", "lounge", "whatsapp"];
 export const isSurface = (v: unknown): v is Surface => typeof v === "string" && SURFACES.includes(v as Surface);
