@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { useBlueprint, mudouBlueprint, type BlueprintCliente } from "./useBlueprint";
 
-const bp = (id: string, rev = 1): BlueprintCliente => ({ id, scopeId: null, rev, papel: "dono", updatedAt: `2026-10-27T00:00:0${rev}Z`, doc: { titulo: id } as any });
+const bp = (id: string, rev = 1): BlueprintCliente => ({ id, scopeId: null, rev, papel: "dono", updatedAt: `2026-10-27T00:00:0${rev}Z`, compartilhado: 0, doc: { titulo: id } as any });
 const resumo = (id: string) => ({ id, titulo: id, area: "ciencia", fase: 1, aguardandoMentor: false, criticosAbertos: 0, fasesAprovadas: 0, updatedAt: "x" });
 
 let pendentes: Record<string, (v: Response) => void> = {};
@@ -80,5 +80,38 @@ describe("#631 · useBlueprint", () => {
     expect(mudouBlueprint(bp("a"), bp("a"))).toBe(false);
     expect(mudouBlueprint(bp("a"), bp("a", 2))).toBe(true);
     expect(mudouBlueprint(bp("a"), bp("b"))).toBe(true);
+  });
+});
+
+describe("#681 · excluir e erro ao carregar", () => {
+  it("excluir o aberto: some da lista e abre o próximo", async () => {
+    const f = fetch as unknown as ReturnType<typeof vi.fn>;
+    const antes = f.getMockImplementation()!;
+    f.mockImplementation((url: string, o?: RequestInit) => (o?.method === "DELETE" ? Promise.resolve(new Response(JSON.stringify({ ok: true }))) : antes(url, o)));
+    const { result } = renderHook(() => useBlueprint());
+    await waitFor(() => expect(pendentes.a).toBeTruthy());
+    await soltar("a");
+    let ok = false;
+    await act(async () => { ok = await result.current.excluir("a"); });
+    expect(ok).toBe(true);
+    expect(result.current.lista!.map((b) => b.id)).toEqual(["b"]);
+    expect(result.current.selecionado).toBe("b");
+  });
+  it("excluir que falha não tira da lista", async () => {
+    const f = fetch as unknown as ReturnType<typeof vi.fn>;
+    const antes = f.getMockImplementation()!;
+    f.mockImplementation((url: string, o?: RequestInit) => (o?.method === "DELETE" ? Promise.resolve(new Response("{}", { status: 500 })) : antes(url, o)));
+    const { result } = renderHook(() => useBlueprint());
+    await waitFor(() => expect(result.current.lista).toHaveLength(2));
+    let ok = true;
+    await act(async () => { ok = await result.current.excluir("a"); });
+    expect(ok).toBe(false);
+    expect(result.current.lista).toHaveLength(2);
+  });
+  it("a lista que não carregou é erro, não lista vazia", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("offline"))));
+    const { result } = renderHook(() => useBlueprint());
+    await waitFor(() => expect(result.current.erro).toBe(true));
+    expect(result.current.lista).toBeNull();
   });
 });

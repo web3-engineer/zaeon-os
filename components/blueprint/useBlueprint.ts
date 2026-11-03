@@ -42,6 +42,8 @@ export function useBlueprint(inicialId?: string | null) {
     });
   }, []);
   const [recompondo, setRecompondo] = useState(false);
+  // #681: a lista não carregou (antes isso aparecia como "nenhum blueprint ainda")
+  const [erro, setErro] = useState(false);
   const idAtual = useRef<string | null>(inicialId ?? null);
   const ocupado = useRef<Record<string, number>>({});   // escritas em voo POR blueprint: não sobrescreve o otimista com uma leitura velha
   const emVoo = (id: string) => (ocupado.current[id] ?? 0) > 0;
@@ -61,7 +63,8 @@ export function useBlueprint(inicialId?: string | null) {
 
   const recarregar = useCallback(async () => {
     const r = await json<{ blueprints: ResumoBlueprint[] }>("/api/blueprint");
-    if (!r) { setLista((l) => l ?? []); return; }
+    if (!r) { setErro(true); return; }
+    setErro(false);
     setLista(r.blueprints);
     const alvo = idAtual.current && r.blueprints.some((b) => b.id === idAtual.current) ? idAtual.current : r.blueprints[0]?.id;
     if (alvo) await abrir(alvo); else setAtual(null);
@@ -113,7 +116,30 @@ export function useBlueprint(inicialId?: string | null) {
     return { ok: r.ok, motivo: r.motivo, avaliacao: r.avaliacao };
   }, [atual, recarregar]);
 
+  /** #681: só o dono. Some da lista e a Sala abre o próximo (ou fica vazia). Devolve se deu certo */
+  const excluir = useCallback(async (id: string): Promise<boolean> => {
+    const r = await json<{ ok: boolean }>(`/api/blueprint/${id}`, { method: "DELETE" });
+    if (!r?.ok) return false;
+    guardados.current.delete(id);
+    const resto = (lista ?? []).filter((b) => b.id !== id);
+    setLista(resto);
+    if (idAtual.current === id) {
+      const proximo = resto[0]?.id ?? null;
+      idAtual.current = proximo; setSelecionado(proximo);
+      if (proximo) void abrir(proximo); else setAtual(null);
+    }
+    return true;
+  }, [lista, abrir, setAtual]);
+
+  /** #681: o nome dado pela pessoa (a Zaeon não troca mais) */
+  const renomear = useCallback(async (titulo: string) => {
+    const limpo = titulo.trim().slice(0, 200), id = idNaTela.current;
+    if (!limpo || !id) return;
+    setLista((l) => l?.map((b) => (b.id === id ? { ...b, titulo: limpo } : b)) ?? l);
+    await patch({ titulo: limpo }, (d) => ({ ...d, titulo: limpo, tituloFixo: true }));
+  }, [patch]);
+
   // #631: clicou e a prancha ainda é a de antes (o servidor não respondeu)
   const carregando = !!selecionado && atual?.id !== selecionado;
-  return { lista, atual, selecionado, carregando, abrir, recarregar, fixar, reorganizar, recompor, recompondo, enviarProva, setAtual };
+  return { lista, atual, selecionado, carregando, erro, abrir, recarregar, fixar, reorganizar, recompor, recompondo, enviarProva, excluir, renomear, setAtual };
 }
