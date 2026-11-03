@@ -118,10 +118,17 @@ marcada. Branco silencioso é o pior dos três desfechos, porque o aluno descobr
 |---|---|---|---|
 | **F0** | Ingestão aceita `.txt`, `.md`, `.docx` além de PDF. Destrava "múltiplos arquivos de **texto**" — hoje recusado na porta. | zero | — |
 | **F1** | `lib/documento/plano.ts` **puro**: do esqueleto (incl. subseções) sai um slot obrigatório por tópico, com `nenhumVazio()` como invariante testada. O contrato passa a ser do tamanho do documento. | zero | — |
-| **F2** | Gerador **seção por seção** (etapa de escrita do STORM): uma chamada por slot, recebendo o outline + o rascunho-até-agora. Retry por seção. Nenhuma seção fica vazia em silêncio. **Primeira tarefa dela: reconciliar os dois esqueletos** — `divergencia()` mostra que nem o TCC bate (as subseções só existem em `WORK_SECTIONS`), então gerar por um plano e salvar no outro escreveria pra slots que o documento salvo não tem. | baixo | F1 |
+| **F2** ✅ | `lib/documento/escritor.ts`: uma chamada **por seção**, com o rascunho-até-agora no pedido e retry por seção. Nenhuma seção fica vazia em silêncio. Flag `DOC_POR_SECAO`, OFF. | baixo | F1 |
 | **F3** | RAG **na geração**: busca por seção em `lib/rag/busca`, citação ABNT reusando `chamadaAutorData`/`formatAbntReference` do `rigor.ts`. O "nível acadêmico" muda de caminho. | baixo | F0, F2 |
 | **F4** | RAPTOR-lite: resumo por documento + um nível global, para REFERENCIAL TEÓRICO e RESULTADOS falarem do **conjunto** dos arquivos, não de um trecho. | médio | F3 |
 | **F5** | Gate de completude no export: ABNT não sai com buraco; o que falta vai no relatório, não no PDF. | baixo | F1, F2 |
+
+**A reconciliação dos dois esqueletos (a incógnita da F2) resolveu-se lendo o código, não escolhendo
+um lado:** `secoesDeMarkdown` separa o documento só em `# ` (h1) e `lib/tcc/turno.ts` cria as linhas
+a partir de `esqueletoDe(tipo)`. Logo as duas fontes não brigam por conteúdo — estão em
+granularidades diferentes: `ESQUELETO_*` é a **linha gravada** (a unidade de escrita e a autoridade)
+e `WORK_SECTIONS[].subs` são **subtítulos `##` dentro** do corpo dela. `esqueletoEnriquecido()`
+junta as duas: ordem e conjunto vêm do documento salvo, os `##` vêm do template.
 
 **Rollback em qualquer fase:** flag por fase; sem ela, o caminho atual (`corposDoEsboco`) continua
 valendo byte a byte.

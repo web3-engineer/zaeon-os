@@ -86,6 +86,9 @@ services:
       MAP_HARNESS: ${MAP_HARNESS:-0}
       # chat único: motor dos trabalhos (vários por conversa) — par do NEXT_PUBLIC_CHAT_UNICO
       CHAT_UNICO: ${CHAT_UNICO:-0}
+      # F2 do documento (lib/documento/escritor): uma chamada por SEÇÃO em vez de um JSON de 8
+      # campos. Default 0 = o caminho antigo (corposDoEsboco) vale byte a byte.
+      DOC_POR_SECAO: ${DOC_POR_SECAO:-0}
       # blueprint prático da Sala de Estudos (lib/blueprint) — par do NEXT_PUBLIC_BLUEPRINT_PRATICO; GITHUB_TOKEN opcional
       BLUEPRINT_PRATICO: ${BLUEPRINT_PRATICO:-0}
       # Blueprint REA (lib/rea-blueprint) — par do NEXT_PUBLIC_REA_BLUEPRINT; gateia a composição + /api/rea
@@ -190,6 +193,9 @@ services:
       # Os servidores stdio rodam como SUBPROCESSO deste container (npx), então o primeiro boot
       # pode falhar o handshake enquanto o npx baixa o pacote.
       MCP_CONECTORES: ${MCP_CONECTORES:-}
+      # geração do documento por SEÇÃO: o worker roda o mesmo runChatTurn → lib/tcc/turno →
+      # gerarTccEmBackground, então sem esta linha a Variable valeria só no web (par do #670).
+      DOC_POR_SECAO: ${DOC_POR_SECAO:-0}
       LEITOR_PROXY_URL: ${LEITOR_PROXY_URL:-}   # Fatia 7: chores leem a web SÓ por aqui
     depends_on:
       redis: { condition: service_started }
