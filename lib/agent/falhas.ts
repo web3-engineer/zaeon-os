@@ -116,6 +116,23 @@ const RECEITA: Record<string, Receita> = {
     texto: "espere um instante e peça de novo",
     reenviar: true,
   },
+  leitor_ocupado: {
+    porque: "estou com muita leitura ao mesmo tempo agora",
+    tipo: "tentar_de_novo",
+    texto: "espere um instante e peça de novo",
+    reenviar: true,
+  },
+  loop_redirect: {
+    porque: "esse endereço fica redirecionando sem parar",
+    tipo: "outro_link",
+    texto: "me manda o endereço final da página, se você souber qual é",
+  },
+  endereco_interno: {
+    // não dizemos "IP privado": o aluno não tem o que fazer com isso, e o detalhe é de rede
+    porque: "esse endereço aponta pra dentro de uma rede, não pra web",
+    tipo: "outro_link",
+    texto: "confira o endereço — ele precisa ser uma página pública",
+  },
   limite_pessoal: {
     porque: "sua base pessoal está no limite de arquivos",
     tipo: "anexar",

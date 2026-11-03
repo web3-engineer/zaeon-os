@@ -49,6 +49,9 @@ const CODIGO: Record<ErroLeitor["code"], string> = {
   leitor_grande_demais: "arquivo_grande_demais",
   leitor_tipo_nao_baixavel: "tipo_nao_suportado",
   leitor_https_obrigatorio: "precisa_https",
+  leitor_ocupado: "leitor_ocupado",
+  leitor_loop_redirect: "loop_redirect",
+  leitor_endereco_interno: "endereco_interno",
 };
 
 const ehErro = (r: Leitura | ErroLeitor): r is ErroLeitor => "code" in r;

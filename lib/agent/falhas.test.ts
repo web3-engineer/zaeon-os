@@ -49,6 +49,26 @@ describe("falhasVisiveis · a falha vira objeto da resposta (G2)", () => {
     expect(new Set(fs.map((f) => `${f.tool}:${f.codigo}`)).size).toBe(MAX_FALHAS);
   });
 
+  it("os três que viravam 'o site recusou a leitura' agora dizem o que houve", () => {
+    // O DONO VIU exatamente a frase genérica num print e teve de perguntar se as flags estavam
+    // desligadas. Mensagem que não distingue causa nenhuma é quase tão ruim quanto não ter card.
+    const por = (codigo: string) => falhasVisiveis([{ tool: "abrir_url", code: codigo }])[0];
+    const casos = [
+      ["leitor_ocupado", /muita leitura/, "tentar_de_novo"],
+      ["loop_redirect", /redirecionando/, "outro_link"],
+      ["endereco_interno", /rede/, "outro_link"],
+    ] as const;
+    const frases = new Set<string>();
+    for (const [codigo, esperado, tipo] of casos) {
+      const f = por(codigo);
+      expect(f.porque, codigo).toMatch(esperado);
+      expect(f.corrigir.tipo, codigo).toBe(tipo);
+      expect(f.porque, codigo).not.toMatch(/recusou a leitura/);
+      frases.add(f.porque);
+    }
+    expect(frases.size, "cada causa precisa de frase PRÓPRIA").toBe(casos.length);
+  });
+
   it("código que eu não previ ainda assim vira card (nunca desaparece em silêncio)", () => {
     const [f] = falhasVisiveis([{ tool: "abrir_url", code: "codigo_do_futuro" }]);
     expect(f.codigo).toBe("codigo_do_futuro");

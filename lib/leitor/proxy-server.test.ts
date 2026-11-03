@@ -73,12 +73,15 @@ describe("leitor-proxy (servidor real)", () => {
     srv.close();
     expect(r.status).toBe(400); expect(r.j.erro).toBe("ip_literal");
   });
-  it("redirect para outro host → 400; mesmo host → segue", async () => {
+  it("redirect segue no mesmo host E pra outro host da allowlist (apex→www é o caso comum)", async () => {
     const { srv, post } = await proxy();
     const a = await post({ url: "http://a.gov.br/fora" });
     const b = await post({ url: "http://a.gov.br/salto" });
     srv.close();
-    expect(a).toEqual({ status: 400, j: { ok: false, erro: "redirect_cross_host" } });
+    // ANTES isto era 400 `redirect_cross_host`, e quebrava a leitura NORMAL: a comparação é de
+    // hostname exato, então `who.int` → `www.who.int` já caía, e `doi.org` — que só existe pra
+    // redirecionar — nunca funcionou. Chegava ao aluno como "o site recusou a leitura".
+    expect(a.j).toMatchObject({ ok: true, finalUrl: "http://outro.gov.br/x" });
     expect(b.j).toMatchObject({ ok: true, finalUrl: "http://a.gov.br/fim" });
   });
   it("corpo de 2 MB → truncado:true e bytes ≤ maxBytes", async () => {
@@ -175,14 +178,23 @@ describe("leitor-proxy · /bytes (F1b)", () => {
     expect(r).toEqual({ status: 400, j: { ok: false, erro: "https_obrigatorio" } });
   });
 
-  it("redirect pode TROCAR DE HOST se o novo estiver na allowlist (o /fetch não pode)", async () => {
+  it("redirect pode TROCAR DE HOST se o novo estiver na allowlist — bytes E texto", async () => {
     const { srv, post, postBytes } = await proxy();
     const bytes = await postBytes({ url: "http://a.gov.br/pra-outro" });
     const texto = await post({ url: "http://a.gov.br/fora" });
     srv.close();
     // sem isto, doi.org e repositório institucional (que redirecionam pra outro domínio) nunca funcionariam
     expect(bytes.j).toMatchObject({ ok: true, finalUrl: "http://outro.gov.br/doc.pdf", contentType: "application/pdf" });
-    expect(texto).toEqual({ status: 400, j: { ok: false, erro: "redirect_cross_host" } });
+    // o texto seguia a regra mais apertada, e era justamente o caminho que o aluno usa
+    expect(texto.j).toMatchObject({ ok: true, finalUrl: "http://outro.gov.br/x" });
+  });
+
+  it("…e trocar pra host FORA da allowlist continua 403 NO TEXTO também (o salto é re-checado)", async () => {
+    // é esta linha que garante que afrouxar o mesmo-host não afrouxou a allowlist
+    const { srv, post } = await proxy();
+    const r = await post({ url: "http://a.gov.br/pra-fora" });
+    srv.close();
+    expect(r).toEqual({ status: 403, j: { ok: false, erro: "dominio_fora_da_lista" } });
   });
 
   it("…mas trocar pra host FORA da allowlist continua 403 (o salto é re-checado)", async () => {
