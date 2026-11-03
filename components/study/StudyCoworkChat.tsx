@@ -678,7 +678,8 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     salvarThreads(armazem, lista);
     threadsRef.current = lista;
     setThreads(lista);
-    if (id === abaAtivaRef.current) {
+    // a aberta saiu junto, se era ela ou uma sub-conversa dela
+    if (!lista.some((t) => t.id === abaAtivaRef.current)) {
       abaAtivaRef.current = proxima;
       setAbaAtiva(proxima);
       marcarAtiva(armazem, proxima);

@@ -312,7 +312,8 @@ function ChatDaConta({
     const { threads: lista, proxima } = fecharThread(armazem, threadsRef.current, id, ESCOPO_PESQUISA);
     void apagarNoServidor("pesquisa", id, armazem, ESCOPO_PESQUISA);
     threadsRef.current = lista; salvarThreads(armazem, lista, ESCOPO_PESQUISA); setThreads(lista);
-    if (id === abaAtivaRef.current) {
+    // a aberta saiu junto, se era ela ou uma sub-conversa dela
+    if (!lista.some((t) => t.id === abaAtivaRef.current)) {
       abaAtivaRef.current = proxima; setAbaAtiva(proxima);
       marcarAtiva(armazem, proxima, ESCOPO_PESQUISA);
       setMessages(carregarMensagens<Msg>(armazem, proxima, ESCOPO_PESQUISA));

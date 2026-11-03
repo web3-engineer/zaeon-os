@@ -7,6 +7,7 @@
 - **Sem duplicar:** enviar de novo não repete mensagens.
 - **Ao sair da conta:** a cópia das conversas no navegador é apagada. Se as antigas ainda não subiram, a cópia fica.
 - **Apagar a conta:** a cópia sai sempre, para nada subir de novo.
+- **Apagar a conversa-mãe com a sub-conversa aberta:** a tela agora troca de conversa. Antes, a lista atualizava, mas a tela continuava mostrando a sub-conversa apagada.
 - **Apagada em outro aparelho:** a conversa também some deste navegador ao recarregar. Essa correção completa o item 10, que o PR 2 só cobria no navegador que apagou.
 
 Vale para a Sala de Estudos e o Modo pesquisa. **O chat do celular (`/m`) e o Octa não mudam.**
@@ -42,4 +43,5 @@ As mensagens antigas misturadas (item 16) continuam no banco, fora da lista. Fal
 5. Apague uma conversa em um navegador e recarregue o outro: ela some nos dois.
 6. Se a conversa aberta for a apagada, o outro navegador abre outra, sem erro.
 7. Com duas contas: uma não recebe as conversas da outra.
-8. Repita os passos 1, 3 e 5 no Modo pesquisa.
+8. Abra uma sub-conversa e apague a conversa-mãe: a tela troca para outra conversa.
+9. Repita os passos 1, 3, 5 e 8 no Modo pesquisa.
