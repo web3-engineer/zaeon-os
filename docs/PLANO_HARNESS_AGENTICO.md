@@ -140,6 +140,67 @@ Duas ideias conceituais sobrevivem, e as duas nós já temos de alguma forma: **
 > código) + uma fronteira de desenho do `deepseek-recipe` (render/parse de tool-call). O DeepInfer
 > fica fora, e é melhor dizer isso do que forçar uma adoção decorativa.
 
+### 5.1 Buscar coisa na internet: o que os harness de produção fazem (fundamento da F1/F1b)
+
+Pesquisado em 2026-11-03, porque os tetos e as políticas do Leitor precisavam de base, não de chute.
+**Não existe padrão fechado** — o que existe é convergência entre implementações e um advisory
+concreto. Vale ler o advisory primeiro: ele é contra o **próprio DeepSeek Harness**.
+
+**O furo, documentado:** a [discussão #3051 do `deepseek-harness`](https://github.com/deepseek-ai/deepseek-harness/discussions/3051)
+descreve `web_fetch` cujo `validateFetchUrl()` checa **só** esquema, credencial embutida e tamanho da
+string — sem bloquear privado/loopback/link-local nem `169.254.169.254`. O ataque é em 4 passos:
+página com instrução escondida → o aluno pede o resumo → a injeção faz o agente chamar `web_fetch`
+num endereço interno → a resposta (credencial de nuvem) volta pro contexto. O próprio código admite:
+o comentário em `policy.ts` diz que o bloqueio está *"deferred"*. As mitigações pedidas são
+**exatamente** o que o nosso Leitor faz: resolver o nome e bloquear faixas, **validar o IP na hora de
+conectar e re-checar a cada redirect**, egresso no proxy, e **remover texto escondido**.
+
+**O desenho mais próximo do nosso, em produção:**
+[`web.fetch` pelo proxy de egresso do harness da Rovinos](https://github.com/Rovinos-AI/rovinos-ai-harness/issues/98)
+(entregou em out/2026). Comparação honesta, item por item:
+
+| controle | Leitor (nós) | Rovinos `web.fetch` | o advisory pede |
+|---|---|---|---|
+| quem sai pra internet | container sem credencial | sandbox runner, pelo proxy | egresso fora do processo do agente |
+| allowlist vazia | **tool não é registrada** (F1) | **tool não é registrada** | — |
+| DNS + IP | resolve no proxy, **todos** os IPs checados, conecta **pelo IP** com SNI | privado/metadata bloqueado no proxy | ✅ e é o item 2 |
+| redirect | ≤3, re-resolve e re-checa a cada salto | ≤5, allowlist a cada salto | ✅ |
+| GET, sem cookie/auth, UA fixo | ✅ | ✅ | — |
+| teto de texto | **2 MiB** (era 1) | 2 MiB | — |
+| tipo não-texto | 415 no `/fetch`; **`/bytes` entrega** (F1b) | `{binary:true, contentType, bytes}` | — |
+| texto oculto | **removido e contado** (F1b) | descartado e contado | ✅ item 4 |
+| marca de não-confiável | `untrusted: true` (F1b) | `untrusted: true` | ✅ item 4 |
+| endereço no log | nunca | nunca (+ teste canário) | — |
+| HTTPS obrigatório | **só no `/bytes`** | sempre (exceto host de teste local) | — |
+
+Também pesaram, como padrão e como limite: a recomendação de que a allowlist seja
+**default-deny por fluxo** e imposta **na camada de rede**, não no código da aplicação
+([Praesidia](https://praesidia.ai/blog/ssrf-risks-agent-tool-calls),
+[Permit](https://docs.permit.io/permit-mcp-gateway/http-egress-proxy/security/)); e o achado do
+[audit da CrewAI](https://www.digitalapplied.com/blog/agent-tooling-ssrf-redirect-hop-validation)
+de que **com um proxy no caminho o peer do socket é o proxy**, então checagem de IP no cliente vê o
+endereço errado — razão pela qual quem confere IP aqui é o Leitor, não o processo web.
+
+**Limite nosso que essa pesquisa expõe, e que eu não vou esconder:** o Permit observa que um proxy
+não governa quem simplesmente *não usa* o proxy. O nosso Leitor é um container à parte, mas **nada
+em camada de rede impede o processo `web` de fazer `fetch` direto** — a garantia hoje é disciplina de
+código (a lei em `lib/leitor/cliente.ts`) e revisão, não firewall. Fechar isso é política de rede no
+VPS, fora do escopo de um PR de harness; fica registrado como dívida.
+
+**De onde vem cada teto** (o dono pediu pra fundamentar, não chutar):
+
+| teto | valor | por quê |
+|---|---|---|
+| texto (`/fetch`) | 1 MiB → **2 MiB** | é o `response cap` do `web.fetch` da Rovinos — a referência mais próxima do nosso desenho em produção |
+| bytes (`/bytes`) | **25 MB** | é **exatamente** `lib/rag/ingerir.MAX_BYTES`. É o teto do único destino possível dos bytes; baixar mais do que a ingestão aceita é gastar banda pra falhar depois |
+| página no prompt | 4.000 chars | o `claim` entra **inteiro** no rascunho e o pool grátis tem teto apertado (Groq em 8K TPM) |
+| URLs por turno | 3 | cada página lida entra na evidência; 3 links colados é o caso real |
+
+Sobre os limites dos provedores de modelo (Anthropic/Gemini/OpenAI para upload de documento): as
+fontes de terceiros **se contradizem** (30 MB vs 32 MB de requisição, 100 vs 600 páginas) e nenhuma
+era documentação oficial, então **não baseei nada neles** — e é melhor dizer isso do que citar um
+número bonito e errado. Os nossos tetos saíram de referência de harness e da nossa própria ingestão.
+
 ## 4. Vários documentos anexados: o que já funciona e o que não
 
 Aqui o diagnóstico é melhor do que o pedido supõe — parte já está feita, e bem feita.
@@ -186,7 +247,7 @@ Isso vira **invariante testada**, não meta: promessa sem lastro não passa no g
 |---|---|---|---|
 | **F0** ✅ | `lib/agent/capacidades.ts` **puro**: cardápio **gerado do registry** (o que a casa faz E o que não faz, por ausência) no prompt + `promessaSemLastro()` como rede determinística, no padrão do `ofertaDePlataforma`. Mata a mentira **sem capacidade nova**. Limpa a `notebook_read`. Flag `HARNESS_CAPACIDADE`, OFF. | zero | — |
 | **F1** ✅ | `abrir_url` **pelo Leitor** (`lib/leitor/cliente`), registrada só quando o Leitor existe; URL colada vira passo de plano e tira o turno do caminho rápido. E o chat passa a aceitar `.txt`/`.md` (`ehArquivoTexto`), que o servidor já aceitava. | baixo | F0 |
-| **F1b** | `baixar_para_base` (bytes → base da pessoa). **Separada da F1 por um motivo de arquitetura, não de esforço** — ver abaixo. | médio | F1 |
+| **F1b** ✅ | `baixar_para_base`: o Leitor passa a servir **bytes** (`POST /bytes`) pela mesma allowlist — a **opção (a)** do portão. Tetos expandidos e fundamentados (§5.1), texto oculto removido, `untrusted` marcado. | médio | F1 |
 | **F2** | **O modelo escolhe a tool.** Canal de tool-call no envelope (render ↔ parse, fronteira do `deepseek-recipe`) e `gather` reentrante no `trajectory` com teto de passos. É aqui que o laço fica agêntico de verdade. | **médio** | F0, F1 |
 | **F3** | Anexo entra no harness: `fileData` deixa de desligar o laço, `ChatTurnParams` ganha anexos, e nascem `listar_anexos`/`ler_anexo`. Resolve o §4.1 e §4.4. | médio | F2 |
 | **F4** | Pensamento por documento: um passe por documento + uma síntese cruzada antes do draft (RAPTOR-lite, compartilhado com a F4 do plano do documento). Resolve o §4.3. | médio | F3 |
@@ -284,6 +345,64 @@ de verdade.
 **Gates:** 701 testes em `lib/agent` + `lib/leitor` + `lib/rag` + `components/chat` (52 novos);
 `tsc --noEmit` limpo; `eslint` 0.
 
+### F1b entregue — opção (a), e o que mudou no serviço de segurança
+
+**O Leitor passou a servir bytes** (`POST /bytes`), pela mesma allowlist, mesmo DNS, mesmo
+`ipBloqueado`, mesma conexão-pelo-IP. A propriedade que importa continua: quem sai pra internet é o
+container **sem credencial**, e quem confere IP é ele — não o processo que tem contexto e chave, que
+é exatamente o padrão explorado no advisory do §5.1.
+
+**Três políticas do `/bytes` são MAIS DURAS que as do `/fetch`**, porque os bytes **ficam** na base da
+pessoa e são citados depois, enquanto uma página é lida uma vez:
+
+1. **HTTPS obrigatório.** Arquivo adulterado em trânsito fica guardado; página adulterada é um turno
+   ruim. (É a regra da Rovinos. A saída `httpNosBytes` existe só pra teste — o container nunca a
+   passa, e nem o pedido nem o env conseguem ligá-la; a Rovinos tem a mesma exceção de host local.)
+2. **Estourar o teto é ERRO (413), não truncagem.** Meio PDF não é um PDF menor, é um arquivo
+   corrompido — e ele iria pra base. Nega pelo `Content-Length` anunciado, antes de gastar banda, e
+   também no meio do stream quando não há `Content-Length`. O `/fetch` continua truncando: ler meia
+   página serve.
+3. **Lista curta de tipos**, e **`application/octet-stream` fica de fora** mesmo sendo como muitos
+   servidores rotulam PDF — é o rótulo "qualquer coisa", e é por ele que um binário arbitrário
+   entraria. Servidor que rotula errado recebe um não claro.
+
+**E uma é mais frouxa, de propósito:** redirect pode trocar de host se o host novo estiver **na
+allowlist** (o `/fetch` exige mesmo host). Sem isso quase nenhum link real de PDF funciona — `doi.org`
+e repositório institucional redirecionam pra outro domínio. É o modelo da Rovinos: cada salto
+re-checado na allowlist, com DNS e IP conferidos de novo. Tem teste dos dois lados (host na lista
+segue; host fora dá 403).
+
+**Texto oculto passou a ser removido e contado** (`semTextoOculto`): é o passo 1 do ataque do
+advisory, e até aqui o nosso `extrairTexto` só tirava `script`/`style`. Dois detalhes que custaram
+teste vermelho e valem registro: a marca de oculto está **dentro** da regex porque testá-la num
+callback obrigaria o motor a achar o fecho de **toda** tag do documento — O(n²) e DoS barato num HTML
+de 2 MiB (tem teste de tempo com 20 mil tags); e `\shidden(?=[\s>])` precisa de **lookahead**, porque
+consumindo o `>` a tag `<div hidden>` não casava.
+
+**A escolha entre ler e baixar é pela EXTENSÃO da URL**, não por adivinhar o pedido: um `.pdf` não
+pode ser lido pelo caminho de texto de jeito nenhum (volta 415), e um arquivo que a ingestão sabe ler
+é mais útil guardado — citável depois — que resumido uma vez e esquecido. Deixar isso para o modelo é
+a F2; aqui é determinístico e testável.
+
+**O RECIBO diz o que NÃO aconteceu também.** A ingestão guarda e extrai, mas os vetores vão pra fila:
+**neste turno o conteúdo ainda não é buscável**. O finding diz isso com todas as letras ("NÃO afirme o
+que ele diz"), senão a F0 seria burlada um passo adiante — a ação aconteceu de verdade, e o modelo
+passaria a afirmar o conteúdo que ainda não leu.
+
+**Registro condicional nas DUAS pontas:** `baixar_para_base` exige `LEITOR_PROXY_URL` **e**
+`RAG_PG_URL` (o `ragPg()` lança sem ela). Meia infra de pé anunciaria no cardápio uma capacidade que
+falha em toda chamada — a mentira da F0 por outra porta. E a tool checa `LIMITE_PESSOAL` por conta
+própria: ela passa por fora da rota, que é quem checava isso.
+
+**Gates:** 743 testes em `lib/agent` + `lib/leitor` + `lib/rag` + `components/chat` (+42 nesta fase:
+12 no `/bytes` do proxy real, 7 de texto oculto/tipos, 18 na tool, 5 na escolha ler-vs-baixar);
+`tsc --noEmit` limpo; `eslint` 0; os dois YAML validados.
+
+**Correção de duas asserções minhas:** os testes da F0/F1 partiam o cardápio em `"NÃO executa"` — que
+aparece **no cabeçalho** (`=== O QUE VOCÊ EXECUTA (e o que NÃO executa) ===`) antes da seção. O
+`split[1]` media a lista do *executa*, não a do *não executa*: as asserções passavam, mas não
+mediam o que o comentário dizia. Agora partem em `"A plataforma NÃO executa"`.
+
 ## 7. 🔒 Portões do dono
 
 Decisões que eu **não** tomo sozinho, porque mudam contrato de produto ou gastam dinheiro:
@@ -296,10 +415,10 @@ Decisões que eu **não** tomo sozinho, porque mudam contrato de produto ou gast
    Variable `LEITOR_PROXY_URL=http://leitor-proxy:8787`, Variable `LEITOR_ALLOW=<domínios>`, e subir
    o container (`docker compose -f docker-compose.beta.yml --profile chores up -d leitor-proxy`) —
    com a allowlist **vazia nenhum domínio sai**, então a lista inicial é decisão sua.
-2b. **F1b: como `baixar_para_base` busca os bytes.** (a) estender o Leitor pra servir bytes sob a
-   mesma allowlist (serviço de segurança, PR próprio), ou (b) buscar no processo web com
-   `buscarSeguro`, que viola a lei «nunca `fetch` direto no web» — o proxy de PDF faz (b), mas lá o
-   endereço vem de um clique do aluno, não de uma conversa. Eu recomendo (a).
+2b. ~~Como `baixar_para_base` busca os bytes?~~ **Decidido pelo dono: opção (a)** — o Leitor serve
+   bytes. Entregue na F1b. O que sobrou de dívida é de **rede**, não de código: nada em camada de
+   rede impede o processo `web` de fazer `fetch` direto (§5.1); hoje a garantia é a lei no código e a
+   revisão. Fechar isso é política de egresso no VPS.
 3. **Teto de arquivos por conversa.** O dono já fixou **10 por documento** no plano do documento;
    confirmar se vale o mesmo teto para o chat.
 4. **F5 exige instalar `@modelcontextprotocol/sdk`** e rodar servidores MCP por `npx`/`python` no

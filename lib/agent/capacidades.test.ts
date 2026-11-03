@@ -37,7 +37,7 @@ describe("cardápio de capacidades (derivado do registry)", () => {
     const pedido = classe("abrir_pagina").pedido;
 
     expect(antes).toContain(pedido);
-    expect(depois.split("NÃO executa")[1] ?? "").not.toContain(pedido);
+    expect(depois.split("A plataforma NÃO executa")[1] ?? "").not.toContain(pedido);
     expect(depois).toContain("abrir um endereço da web e ler o conteúdo da página");
     // as outras três continuam no "não executa"
     expect(depois).toContain(classe("baixar_arquivo").pedido);

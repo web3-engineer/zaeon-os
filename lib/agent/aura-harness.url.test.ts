@@ -7,7 +7,7 @@ const classifyMock = vi.fn(async () => ({ intent: "duvida_rapida", mode: "quick"
 vi.mock("@/lib/agent/router", () => ({ classify: (...a: any[]) => classifyMock(...(a as [])) }));
 
 import { buildHarnessDeps, passosDeUrl } from "@/lib/agent/aura-harness";
-import { registrarAbrirUrl } from "@/lib/agent/runtime";
+import { registrarAbrirUrl, registrarBaixarParaBase } from "@/lib/agent/runtime";
 import { INTENTS } from "@/lib/agent/contracts";
 import { runTrajectoryTraced, type TrajectoryState } from "@/lib/agent/trajectory";
 import type { ToolContext } from "@/lib/agent/runtime";
@@ -124,7 +124,52 @@ describe("com o Leitor configurado", () => {
       const sys = String(genJson.mock.calls.find((c) => /Campos obrigat/i.test(String(c[0])))?.[0] ?? "");
       expect(sys).toContain("abrir um endereço da web e ler o conteúdo da página");
       // e saiu do "NÃO executa", sem ninguém editar prompt
-      expect(sys.split("NÃO executa")[1] ?? "").not.toContain("abrir um endereço da web e ler o conteúdo de uma página");
+      expect(sys.split("A plataforma NÃO executa")[1] ?? "").not.toContain("abrir um endereço da web e ler o conteúdo de uma página");
+    } finally {
+      if (antes === undefined) delete process.env.HARNESS_CAPACIDADE;
+      else process.env.HARNESS_CAPACIDADE = antes;
+    }
+  });
+});
+
+// ───────── F1b · a escolha entre LER e BAIXAR, por extensão (⚠️ registra, então vem no fim) ─────────
+describe("F1b · .pdf vira download, página vira leitura", () => {
+  const PDF = "https://x.gov.br/boletim.pdf";
+
+  it("SÓ com abrir_url, um .pdf cai na leitura — e falha honesto (415), não em silêncio", () => {
+    expect(passosDeUrl(`resume ${PDF}`)).toEqual([{ tool: "abrir_url", args: { url: PDF } }]);
+  });
+
+  it("ligando baixar_para_base (precisa do Leitor E da base)", () => {
+    expect(registrarBaixarParaBase({ LEITOR_PROXY_URL: "http://leitor:8787", RAG_PG_URL: "postgres://x" })).toBe(true);
+  });
+
+  it("agora o .pdf vai pro download e a página continua na leitura", () => {
+    expect(passosDeUrl(`guarda ${PDF}`)).toEqual([{ tool: "baixar_para_base", args: { url: PDF } }]);
+    expect(passosDeUrl("resume https://x.gov.br/noticia")).toEqual([{ tool: "abrir_url", args: { url: "https://x.gov.br/noticia" } }]);
+  });
+
+  it("mensagem com os dois tipos planeja um de cada, na ordem em que apareceram", () => {
+    expect(passosDeUrl(`compara ${PDF} com https://x.gov.br/noticia`)).toEqual([
+      { tool: "baixar_para_base", args: { url: PDF } },
+      { tool: "abrir_url", args: { url: "https://x.gov.br/noticia" } },
+    ]);
+  });
+
+  it("e o cardápio da F0 anuncia AS DUAS capacidades, derivadas do registry", async () => {
+    const antes = process.env.HARNESS_CAPACIDADE;
+    process.env.HARNESS_CAPACIDADE = "1";
+    try {
+      const genJson = smartGen();
+      const deps = buildHarnessDeps(ctx, { genJson, retryDelayMs: 0 });
+      await deps.draft(stFor());
+      const sys = String(genJson.mock.calls.find((c) => /Campos obrigat/i.test(String(c[0])))?.[0] ?? "");
+      expect(sys).toContain("abrir um endereço da web e ler o conteúdo da página");
+      expect(sys).toContain("baixar um arquivo e guardar na base de conhecimento da pessoa");
+      // e as duas classes saíram do "NÃO executa", sem ninguém editar prompt
+      const naoExecuta = sys.split("A plataforma NÃO executa")[1] ?? "";
+      expect(naoExecuta).not.toContain("baixar arquivo (CSV, planilha, PDF, livro) por conta própria");
+      expect(naoExecuta).toContain("clonar ou ler um repositório de código");   // essa segue de fora
     } finally {
       if (antes === undefined) delete process.env.HARNESS_CAPACIDADE;
       else process.env.HARNESS_CAPACIDADE = antes;

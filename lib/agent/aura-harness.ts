@@ -21,6 +21,7 @@ import { STUDIO_KINDS } from "@/lib/agent/tools";
 import { getTool, listTools, runToolByName, type ToolContext, type ApproveFn } from "@/lib/agent/runtime";
 import { cardapioDeCapacidades, respostaHonesta } from "@/lib/agent/capacidades";
 import { temUrl, urlsDoTexto } from "@/lib/agent/urls";
+import { ehUrlDeArquivo } from "@/lib/agent/toolsWeb";
 import { critiqueForState } from "@/lib/agent/examiner";
 import { nullMemory } from "@/lib/agent/memory";
 import { messageForError, classifyError } from "@/lib/agent/errors";
@@ -129,16 +130,30 @@ export function pickStudioKind(objective: string): string {
 const isGatherTool = (t: string) => t === "memory_search" || t === "literature_search" || t === "web_search" || t === "book_search";
 
 /**
- * F1 · OS PASSOS DE LEITURA DE PÁGINA. Vêm das URLs que a pessoa COLOU, não da intenção: um link
- * numa saudação é um link, e `pedeAula`/`pedeLivro` já estabeleceram o padrão de regra
- * determinística mandando mais que a tabela do roteador.
+ * F1 · OS PASSOS DE URL. Vêm dos endereços que a pessoa COLOU, não da intenção: um link numa
+ * saudação é um link, e `pedeAula`/`pedeLivro` já estabeleceram o padrão de regra determinística
+ * mandando mais que a tabela do roteador.
  *
- * `[]` quando a tool não está no registry (sem Leitor configurado) — aí nada é planejado e o
- * cardápio da F0 já diz à Aura que ela não abre endereços.
+ * F1b · A ESCOLHA ENTRE LER E BAIXAR É PELA EXTENSÃO, não por adivinhar o pedido. Um `.pdf` não
+ * pode ser "lido" pelo caminho de texto do Leitor de jeito nenhum (volta 415), e um arquivo que a
+ * ingestão sabe ler é mais útil guardado — citável depois — que resumido uma vez e esquecido.
+ * Deixar a decisão para o modelo é a F2; aqui ela é determinística e testável.
+ *
+ * Tool ausente do registry = passo não planejado. Sem Leitor, nada; com Leitor mas sem base, um
+ * `.pdf` cai em `abrir_url` e falha com `tipo_nao_suportado` — que é uma observação honesta, e o
+ * cardápio da F0 já disse que a casa não baixa arquivo.
  */
 export function passosDeUrl(objetivo: string): Step[] {
-  if (!getTool("abrir_url")) return [];
-  return urlsDoTexto(objetivo).map((url) => ({ tool: "abrir_url", args: { url } }));
+  const podeAbrir = !!getTool("abrir_url");
+  const podeBaixar = !!getTool("baixar_para_base");
+  if (!podeAbrir && !podeBaixar) return [];
+  const passos: Step[] = [];
+  for (const url of urlsDoTexto(objetivo)) {
+    const arquivo = ehUrlDeArquivo(url);
+    if (arquivo && podeBaixar) passos.push({ tool: "baixar_para_base", args: { url } });
+    else if (podeAbrir) passos.push({ tool: "abrir_url", args: { url } });
+  }
+  return passos;
 }
 
 function evidenceBlock(st: TrajectoryState): string {
@@ -333,7 +348,7 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
       // `quick` PULA o plan() inteiro (trajectory.ts:244: draft direto). Com um link colado, o
       // caminho rápido jamais leria a página — "resume isso: <url>" tem 3 palavras e cairia em
       // `duvida_rapida`. Sobe um degrau SÓ quando a tool existe e há endereço público de verdade.
-      if (r.mode === "quick" && getTool("abrir_url") && temUrl(objective)) return { ...r, mode: "elaborated" };
+      if (r.mode === "quick" && (getTool("abrir_url") || getTool("baixar_para_base")) && temUrl(objective)) return { ...r, mode: "elaborated" };
       return r;
     },
 

@@ -19,7 +19,7 @@ import {
   researchWorkType,
 } from "@/lib/agent/tools";
 // `toolsWeb` importa SÓ TIPOS daqui de volta (apagados na compilação), então não há ciclo.
-import { abrirUrlDef } from "@/lib/agent/toolsWeb";
+import { abrirUrlDef, baixarParaBaseDef } from "@/lib/agent/toolsWeb";
 
 // ───────────────────────────── contratos do runtime (§11.2) ─────────────────────────────
 export type ToolRuntime = "ts" | "python" | "mcp";
@@ -399,3 +399,16 @@ export function registrarAbrirUrl(env: Record<string, string | undefined> = proc
   return true;
 }
 registrarAbrirUrl();
+
+/**
+ * `baixar_para_base` (F1b) precisa de DUAS coisas de pé, e por isso checa as duas: o Leitor (de onde
+ * vêm os bytes) e `RAG_PG_URL` (a base onde eles param — `ragPg()` LANÇA sem ela). Faltando
+ * qualquer uma, a tool não entra e o cardápio da F0 segue dizendo que a casa não baixa arquivo.
+ * Metade da infra de pé anunciaria uma capacidade que falha em toda chamada.
+ */
+export function registrarBaixarParaBase(env: Record<string, string | undefined> = process.env): boolean {
+  if (!env.LEITOR_PROXY_URL?.trim() || !env.RAG_PG_URL?.trim()) return false;
+  registerTool(baixarParaBaseDef);
+  return true;
+}
+registrarBaixarParaBase();

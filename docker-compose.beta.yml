@@ -337,7 +337,10 @@ services:
     container_name: zaeon_leitor_proxy
     environment:
       LEITOR_ALLOW: ${LEITOR_ALLOW:-}
-      LEITOR_MAX_BYTES: ${LEITOR_MAX_BYTES:-1048576}
+      # TEXTO: 2 MiB (o `response cap` do web.fetch da Rovinos, issue #98 — ver server.mjs).
+      LEITOR_MAX_BYTES: ${LEITOR_MAX_BYTES:-2097152}
+      # BYTES (/bytes, F1b): 25 MB = lib/rag/ingerir.MAX_BYTES, o teto do único destino deles.
+      LEITOR_MAX_BYTES_BIN: ${LEITOR_MAX_BYTES_BIN:-26214400}
       LEITOR_MAX_INFLIGHT: ${LEITOR_MAX_INFLIGHT:-8}
     expose: ["8787"]
     read_only: true

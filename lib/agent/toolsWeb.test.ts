@@ -1,11 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // o Leitor é mockado: esta suíte nunca sai pra rede (e não precisa do container)
-vi.mock("@/lib/leitor/cliente", () => ({ lerUrl: vi.fn() }));
+vi.mock("@/lib/leitor/cliente", () => ({ lerUrl: vi.fn(), baixarUrl: vi.fn() }));
 
-import { lerUrl } from "@/lib/leitor/cliente";
-import { MAX_TEXTO_PAGINA, abrirUrlDef, leituraParaResultado, tituloDaPagina } from "@/lib/agent/toolsWeb";
-import { getTool, registrarAbrirUrl } from "@/lib/agent/runtime";
+// a ingestão do RAG: esta suíte não toca Postgres nem pdf-loader
+const ingerirPdf = vi.fn();
+const ingerirTexto = vi.fn();
+const contarEnviadosPessoais = vi.fn(async () => 0);
+vi.mock("@/lib/rag/pg", () => ({ ragPg: () => ({ query: vi.fn() }), ehBancoIndisponivel: () => false }));
+vi.mock("@/lib/rag/store", () => ({ contarEnviadosPessoais: (...a: any[]) => contarEnviadosPessoais(...(a as [])) }));
+vi.mock("@/lib/rag/ingerir", () => ({ ingerirPdf: (...a: any[]) => ingerirPdf(...(a as [])), ingerirTexto: (...a: any[]) => ingerirTexto(...(a as [])) }));
+vi.mock("@/lib/queue/rag", () => ({ enfileirarIndexacao: vi.fn() }));
+vi.mock("@/lib/scholar/pdf", () => ({ extractPdfStructured: vi.fn() }));
+
+import { baixarUrl, lerUrl } from "@/lib/leitor/cliente";
+import { MAX_TEXTO_PAGINA, abrirUrlDef, baixarParaBaseDef, ehUrlDeArquivo, leituraParaResultado, nomeDoArquivo, tituloDaPagina } from "@/lib/agent/toolsWeb";
+import { getTool, registrarAbrirUrl, registrarBaixarParaBase } from "@/lib/agent/runtime";
+import { LIMITE_PESSOAL } from "@/lib/rag/minhaBase";
 import { rotuloDasFontes } from "@/lib/agent/trajectory";
 
 const leitura = (over: Record<string, unknown> = {}) => ({
@@ -144,5 +155,161 @@ describe("registro condicional · a tool só existe se o Leitor existe", () => {
   it("com LEITOR_PROXY_URL ela entra", () => {
     expect(registrarAbrirUrl({ LEITOR_PROXY_URL: "http://leitor:8787" })).toBe(true);
     expect(getTool("abrir_url")?.name).toBe("abrir_url");
+  });
+});
+
+// ───────────────────────── F1b · baixar_para_base ─────────────────────────
+describe("nomeDoArquivo", () => {
+  it("vem do caminho da URL", () => {
+    expect(nomeDoArquivo("https://x.gov.br/docs/boletim-2024.pdf", "application/pdf")).toBe("boletim-2024.pdf");
+  });
+  it("sem extensão no caminho, ganha a do tipo que voltou", () => {
+    expect(nomeDoArquivo("https://x.gov.br/download/1737", "application/pdf")).toBe("1737.pdf");
+    expect(nomeDoArquivo("https://x.gov.br/serie", "text/csv")).toBe("serie.csv");
+  });
+  it("caminho vazio não gera nome vazio", () => {
+    expect(nomeDoArquivo("https://x.gov.br/", "application/pdf")).toBe("arquivo.pdf");
+    expect(nomeDoArquivo("nao-e-url", "")).toBe("arquivo.txt");
+  });
+  it("nada de caminho nem controle vindo da URL (o nome vira chave no banco)", () => {
+    expect(nomeDoArquivo("https://x.gov.br/a/%2E%2E%2Fetc%2Fpasswd", "text/plain")).not.toMatch(/[/\\]/);
+    expect(nomeDoArquivo("https://x.gov.br/a/%00evil.pdf", "application/pdf")).not.toMatch(/\u0000/);
+  });
+});
+
+describe("ehUrlDeArquivo · é o que decide baixar em vez de abrir", () => {
+  it("extensão que a ingestão lê → arquivo", () => {
+    for (const u of ["https://x.gov.br/a.pdf", "https://x.gov.br/b.CSV", "https://x.gov.br/c.md", "https://x.gov.br/d.txt"]) {
+      expect(ehUrlDeArquivo(u), u).toBe(true);
+    }
+  });
+  it("página é página", () => {
+    for (const u of ["https://x.gov.br/noticia", "https://x.gov.br/a.html", "https://x.gov.br/", "https://x.gov.br/busca?f=a.pdf"]) {
+      expect(ehUrlDeArquivo(u), u).toBe(false);
+    }
+  });
+});
+
+describe("baixarParaBaseDef.run", () => {
+  const ctx = { userId: "u1" } as any;
+  const baixado = (over: Record<string, unknown> = {}) => ({
+    ok: true, status: 200, finalUrl: "https://x.gov.br/boletim.pdf", contentType: "application/pdf",
+    bytes: new Uint8Array([37, 80, 68, 70]), untrusted: true, lidoEm: "2026-11-03T00:00:00.000Z", ...over,
+  }) as any;
+
+  beforeEach(() => {
+    vi.mocked(baixarUrl).mockReset();
+    ingerirPdf.mockReset().mockResolvedValue({ documentoId: "d1", status: "novo", trechos: 12, paginas: 4 });
+    ingerirTexto.mockReset().mockResolvedValue({ documentoId: "d2", status: "novo", trechos: 3, paginas: 1 });
+    contarEnviadosPessoais.mockReset().mockResolvedValue(0);
+  });
+
+  it("é tool de ESCRITA: no modo guiado o permit manda pra aprovação", () => {
+    expect(baixarParaBaseDef.risk).toBe("write");
+  });
+
+  it("sem dono do turno não guarda — jamais na base de outra pessoa", async () => {
+    const r = await baixarParaBaseDef.run({ url: "https://x.gov.br/a.pdf" }, {} as any);
+    expect(r.code).toBe("nao_logado");
+    expect(baixarUrl).not.toHaveBeenCalled();
+  });
+
+  it("endereço vazio ou interno nem chega no Leitor", async () => {
+    expect((await baixarParaBaseDef.run({}, ctx)).code).toBe("bad_args");
+    expect((await baixarParaBaseDef.run({ url: "http://169.254.169.254/a.pdf" }, ctx)).code).toBe("bad_args");
+    expect(baixarUrl).not.toHaveBeenCalled();
+  });
+
+  it("PDF: guarda na base DA PESSOA (donoId), com os bytes que voltaram", async () => {
+    vi.mocked(baixarUrl).mockResolvedValue(baixado());
+    const r = await baixarParaBaseDef.run({ url: "https://x.gov.br/boletim.pdf" }, ctx);
+    expect(r.ok).toBe(true);
+    const entrada = ingerirPdf.mock.calls[0][1];
+    expect(entrada).toMatchObject({ nomeArquivo: "boletim.pdf", origem: "chat", criadoPor: "u1", permissao: { donoId: "u1" } });
+    expect(entrada.bytes).toEqual(new Uint8Array([37, 80, 68, 70]));
+    expect(ingerirTexto).not.toHaveBeenCalled();
+  });
+
+  it("O RECIBO diz o que aconteceu E o que NÃO aconteceu (o conteúdo não é buscável neste turno)", async () => {
+    vi.mocked(baixarUrl).mockResolvedValue(baixado());
+    const r = await baixarParaBaseDef.run({ url: "https://x.gov.br/boletim.pdf" }, ctx);
+    const claim = r.findings![0].claim;
+    expect(claim).toContain("Guardei");
+    expect(claim).toContain("boletim.pdf");
+    expect(claim).toContain("4 páginas");
+    // sem esta frase o modelo afirmaria o que o arquivo diz — a mentira da F0 um passo adiante
+    expect(claim).toMatch(/AINDA NÃO está indexado/);
+    expect(claim).toMatch(/NÃO afirme o que ele diz/);
+    expect(r.findings![0].source).toEqual({ title: "boletim.pdf", url: "https://x.gov.br/boletim.pdf" });
+  });
+
+  it("arquivo que já estava na base não vira 'guardei' (dedupe por hash da ingestão)", async () => {
+    vi.mocked(baixarUrl).mockResolvedValue(baixado());
+    ingerirPdf.mockResolvedValue({ documentoId: "d1", status: "reaproveitado", trechos: 12, paginas: 4 });
+    const r = await baixarParaBaseDef.run({ url: "https://x.gov.br/boletim.pdf" }, ctx);
+    expect(r.findings![0].claim).toContain("Já estava");
+  });
+
+  it("texto vai pelo ingerirTexto, COM os blocos (é o que faz a citação ser rastreável)", async () => {
+    vi.mocked(baixarUrl).mockResolvedValue(baixado({ contentType: "text/csv", finalUrl: "https://x.gov.br/serie.csv", bytes: new TextEncoder().encode("a,b\n1,2\n") }));
+    const r = await baixarParaBaseDef.run({ url: "https://x.gov.br/serie.csv" }, ctx);
+    expect(r.ok).toBe(true);
+    expect(ingerirPdf).not.toHaveBeenCalled();
+    const e = ingerirTexto.mock.calls[0][1];
+    expect(e).toMatchObject({ chave: "serie.csv", permissao: { donoId: "u1" } });
+    expect(Array.isArray(e.blocos)).toBe(true);
+  });
+
+  it("respeita o LIMITE_PESSOAL — uma tool por fora da rota não pode furar o teto da base", async () => {
+    vi.mocked(baixarUrl).mockResolvedValue(baixado());
+    contarEnviadosPessoais.mockResolvedValue(LIMITE_PESSOAL);
+    const r = await baixarParaBaseDef.run({ url: "https://x.gov.br/a.pdf" }, ctx);
+    expect(r.code).toBe("limite_base");
+    expect(ingerirPdf).not.toHaveBeenCalled();
+  });
+
+  it("cada recusa do Leitor tem código próprio — o aluno merece saber o motivo", async () => {
+    const casos: [string, string][] = [
+      ["leitor_grande_demais", "arquivo_grande_demais"],
+      ["leitor_tipo_nao_baixavel", "tipo_nao_suportado"],
+      ["leitor_https_obrigatorio", "precisa_https"],
+      ["leitor_dominio_fora_da_lista", "url_nao_permitida"],
+      ["leitor_offline", "web_unavailable"],
+    ];
+    for (const [code, esperado] of casos) {
+      vi.mocked(baixarUrl).mockResolvedValue({ ok: false, code, erro: "x" } as any);
+      const r = await baixarParaBaseDef.run({ url: "https://x.gov.br/a.pdf" }, ctx);
+      expect(r.code, code).toBe(esperado);
+      expect(ingerirPdf, code).not.toHaveBeenCalled();
+    }
+  });
+
+  it("arquivo vazio ou origem fora de 2xx não vira documento", async () => {
+    vi.mocked(baixarUrl).mockResolvedValue(baixado({ bytes: new Uint8Array() }));
+    expect((await baixarParaBaseDef.run({ url: "https://x.gov.br/a.pdf" }, ctx)).code).toBe("url_sem_conteudo");
+    vi.mocked(baixarUrl).mockResolvedValue(baixado({ ok: false, status: 404 }));
+    expect((await baixarParaBaseDef.run({ url: "https://x.gov.br/a.pdf" }, ctx)).code).toBe("url_sem_conteudo");
+    expect(ingerirPdf).not.toHaveBeenCalled();
+  });
+
+  it("falha da ingestão devolve o motivo dela, não um erro genérico", async () => {
+    vi.mocked(baixarUrl).mockResolvedValue(baixado());
+    ingerirPdf.mockResolvedValue({ documentoId: "", status: "erro", erro: "sem_texto", trechos: 0, paginas: 0 });
+    const r = await baixarParaBaseDef.run({ url: "https://x.gov.br/a.pdf" }, ctx);
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe("sem_texto");
+  });
+});
+
+describe("registro condicional de baixar_para_base · precisa das DUAS pontas", () => {
+  it("falta o Leitor OU falta a base ⇒ a tool não entra", () => {
+    expect(registrarBaixarParaBase({})).toBe(false);
+    expect(registrarBaixarParaBase({ LEITOR_PROXY_URL: "http://l:8787" })).toBe(false);   // sem base
+    expect(registrarBaixarParaBase({ RAG_PG_URL: "postgres://x" })).toBe(false);          // sem Leitor
+    expect(getTool("baixar_para_base")).toBeUndefined();
+  });
+  it("com as duas, entra", () => {
+    expect(registrarBaixarParaBase({ LEITOR_PROXY_URL: "http://l:8787", RAG_PG_URL: "postgres://x" })).toBe(true);
+    expect(getTool("baixar_para_base")?.name).toBe("baixar_para_base");
   });
 });
