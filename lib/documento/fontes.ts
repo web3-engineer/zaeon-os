@@ -131,6 +131,25 @@ export function juntarFontes(...listas: readonly (readonly (FonteDoc | null)[])[
 }
 
 /**
+ * D3 · AS FONTES DO TURNO DE CHAT, a partir do que o turno já apurou. É o elo "1:1": o chat escreve
+ * no documento (`work.sections`) com as MESMAS fontes que o gerador usaria, e com a citação pronta.
+ *
+ * Os dois lados chamam esta função — o harness antes de redigir, e `trabalhoDoTurno` depois, pra
+ * descobrir o que foi citado. Como ela é PURA e determinística, a mesma entrada dá a mesma string
+ * de citação nos dois momentos, e o casamento fecha. Se divergirem, nada entra em REFERÊNCIAS:
+ * falha pro lado de não inventar bibliografia, que é o lado certo.
+ */
+export function fontesDoTurno(
+  fontes: readonly { title?: string; authors?: string; year?: number; url?: string; doi?: string }[] = [],
+  docsDaBase: readonly { titulo?: string; paginas?: string }[] = [],
+): FonteDoc[] {
+  return juntarFontes(
+    docsDaBase.map((d) => fonteDeDocumento(d)),
+    fontes.map((f) => fonteDePaper(f)),
+  );
+}
+
+/**
  * O bloco que entra no prompt da seção. Diz o que cada fonte é, o que ela diz, e COMO citá-la —
  * literalmente, porque é essa string que `fontesCitadas` procura depois.
  */

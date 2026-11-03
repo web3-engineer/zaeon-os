@@ -13,7 +13,7 @@
  */
 import type { IntentId, StructuredAnswer, WorkKind } from "@/lib/agent/contracts";
 import { sanitizeScopeId } from "@/lib/cartolina/route-auth";
-import { aplicarNoTcc, criarTcc, findTccDoEscopo, listarTrabalhosDoEscopo, tccCrossOn, type TccView } from "@/lib/tcc/store";
+import { aplicarNoTcc, criarTcc, findTccDoEscopo, listarTrabalhosDoEscopo, tccCrossOn, referenciasNovas, type TccView } from "@/lib/tcc/store";
 import { ESQUELETO_TCC, chaveTitulo, esqueletoDe, opsDeWork, palavras } from "@/lib/tcc/secoes";
 import { researchWorkType } from "@/lib/agent/tools";
 import { cartolinaMemoriaOn, createBoard, findOwnBoard, patchBoard } from "@/lib/cartolina/store";
@@ -88,13 +88,40 @@ export function contextoDosTrabalhos(lista: TccView[], abertoId?: string | null)
   return bloco.length > MAX_CONTEXTO * 2 ? bloco.slice(0, MAX_CONTEXTO * 2 - 1) + "…" : bloco;
 }
 
-/** O bloco que a Aura lê quando a conversa já tem TCC ("" se desligado / sem TCC). */
+/**
+ * D3 · quanto de CADA seção o chat enxerga. 180 caracteres não é resumo: é o suficiente pro modelo
+ * saber do que a seção trata e não dizer o contrário dela. O teto total (`MAX_CONTEXTO`) continua
+ * valendo por cima, então documento grande não estoura o prompt.
+ */
+export const EXTRATO_SECAO = 180;
+
+const extrato = (corpo: string): string => {
+  const t = String(corpo ?? "").replace(/\s+/g, " ").trim();
+  if (!t) return "";
+  return t.length > EXTRATO_SECAO ? `${t.slice(0, EXTRATO_SECAO).trimEnd()}…` : t;
+};
+
+/**
+ * O bloco que a Aura lê quando a conversa já tem TCC ("" se desligado / sem TCC).
+ *
+ * D3 · ATÉ AQUI eram só título e contagem de palavras — ou seja, o chat sabia que a seção existia e
+ * não fazia ideia do que ela dizia. Resultado: podia afirmar na conversa o contrário do que está
+ * escrito na aba ao lado, sem nenhuma trava, e o aluno ficava com duas versões da mesma coisa.
+ * Agora vai um extrato de cada seção. Custa prompt em todo turno com documento aberto, e é o preço
+ * de o chat e o documento serem a mesma cabeça.
+ */
 export function contextoDoTcc(t: TccView): string {
-  const linhas = t.secoes.map((s) => `- ${s.titulo} (${palavras(s.corpo)} palavras)`);
+  const linhas = t.secoes.map((s) => {
+    const n = palavras(s.corpo);
+    const e = extrato(s.corpo);
+    return e ? `- ${s.titulo} (${n} palavras): "${e}"` : `- ${s.titulo}: (vazia)`;
+  });
   const bloco = [
     `TCC EM CONSTRUÇÃO NESTA CONVERSA: "${t.titulo}" (o aluno vê numa aba ao lado).`,
-    "Seções:",
+    "Seções, com o começo do que já está escrito em cada uma:",
     ...linhas,
+    "NÃO contradiga o que já está no documento. Se o que você vai dizer diverge do que está escrito,",
+    "diga que está CORRIGINDO e devolva a seção corrigida em `work` — não deixe as duas versões de pé.",
     "Se o aluno pedir para escrever, continuar ou mudar o TCC, devolva `work` com `sections` contendo",
     "SÓ as seções que mudam, cada uma com o MESMO título (substitui aquela seção) ou um título novo",
     "(vira seção nova). Corpo completo da seção, tom didático. Se a conversa não for sobre o TCC, não mande `work`.",
@@ -221,12 +248,45 @@ async function trabalhoDoTurno(input: Parameters<typeof tccDoTurno>[0]): Promise
     if (!aberto || !Array.isArray(sections) || !sections.length) return null;
     const r = await aplicarNoTcc(aberto.id, input.userId, (t) => opsDeWork(t.secoes, sections), "estudos");
     if (!r.ok || !r.efeitos.length) return null;
+    // D3 · o que o chat CITOU ao escrever no documento vira bibliografia, pelo mesmo caminho do
+    // gerador. A lista é remontada com a MESMA função pura que o harness usou pra pedir a citação,
+    // então as strings batem. Se não baterem, nada entra — falha pro lado de não inventar.
+    void referenciasDoChat(aberto.id, input.userId, input.answer, sections);
     const tipo = aberto.workType || "TCC";
     void fixarCardTcc(input.userId, scope, resumoDoCard(r.tcc), tipo);
     return { workId: aberto.id, titulo: r.tcc.titulo, criado: false, alteradas: r.efeitos.length, tipo };
   } catch (e: any) {
     console.warn("[tcc] trabalhoDoTurno falhou:", e?.message ?? e); // o trabalho é opcional; a resposta segue
     return null;
+  }
+}
+
+/**
+ * D3 · leva pra seção REFERÊNCIAS as fontes que o texto escrito pelo chat realmente citou.
+ * Nunca lança e nunca bloqueia a resposta: bibliografia é consequência, não requisito do turno.
+ */
+async function referenciasDoChat(
+  workId: string,
+  userId: string,
+  answer: Parameters<typeof tccDoTurno>[0]["answer"],
+  sections: readonly { title: string; body: string }[],
+): Promise<void> {
+  try {
+    const { fontesDoTurno, fontesCitadas } = await import("@/lib/documento/fontes");
+    const fontes = fontesDoTurno(
+      (answer.evidencia ?? []).map((e) => e.source).filter(Boolean) as { title?: string; year?: number }[],
+      (answer.fontesBase ?? []).map((f) => ({ titulo: f.titulo, paginas: f.paginas })),
+    );
+    if (!fontes.length) return;
+    const citadas = fontesCitadas(sections.map((s) => s.body).join("\n"), fontes);
+    if (!citadas.length) return;
+    await aplicarNoTcc(workId, userId, (t) => {
+      const { secao, novas } = referenciasNovas(t.secoes, citadas);
+      if (!secao || !novas.length) return [];
+      return [{ op: "substituir" as const, secaoId: secao.id, corpo: [secao.corpo.trim(), ...novas].filter(Boolean).join("\n") }];
+    }, "estudos");
+  } catch (e: any) {
+    console.warn("[tcc] referências do chat falharam:", e?.message ?? e);
   }
 }
 

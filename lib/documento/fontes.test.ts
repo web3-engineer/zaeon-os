@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   FALTA_COMPLETAR, MAX_FONTES,
-  blocoDeFontes, fonteDeDocumento, fonteDePagina, fonteDePaper, fontesCitadas, juntarFontes,
+  blocoDeFontes, fonteDeDocumento, fonteDePagina, fonteDePaper, fontesCitadas, fontesDoTurno, juntarFontes,
 } from "@/lib/documento/fontes";
 
 describe("fonteDePaper · a única origem com autor e ano", () => {
@@ -91,6 +91,36 @@ describe("blocoDeFontes · o que o modelo lê", () => {
 
   it("sem fonte, bloco vazio — e aí o ⟨sem fonte⟩ do escritor é a resposta certa", () => {
     expect(blocoDeFontes([])).toBe("");
+  });
+});
+
+describe("fontesDoTurno · o 1:1 entre o chat e o documento (D3)", () => {
+  // os DOIS lados chamam esta função — o harness antes de redigir, pra pedir a citação pronta, e
+  // `trabalhoDoTurno` depois, pra achar o que foi citado. Se as strings divergirem, a bibliografia
+  // não enche. Este teste é o contrato dessa ida e volta.
+  const papers = [{ title: "Membranas", authors: "Ana Lima", year: 2020 }];
+  const base = [{ titulo: "Apostila", paginas: "7" }];
+
+  it("a MESMA entrada dá a MESMA citação nos dois momentos", () => {
+    const antes = fontesDoTurno(papers, base);
+    const depois = fontesDoTurno(papers, base);
+    expect(antes.map((f) => f.citacao)).toEqual(depois.map((f) => f.citacao));
+    expect(antes.map((f) => f.citacao)).toEqual(["(Apostila, p. 7)", "(LIMA, 2020)"]);
+  });
+
+  it("ida e volta: o texto escrito com a citação pedida vira bibliografia", () => {
+    const fontes = fontesDoTurno(papers, base);
+    const escrito = `A bicamada é seletiva (LIMA, 2020), como mostra o material da disciplina (Apostila, p. 7).`;
+    expect(fontesCitadas(escrito, fontes).map((f) => f.titulo)).toEqual(["Apostila", "Membranas"]);
+  });
+
+  it("a base do ALUNO vem primeiro — é a bibliografia que ele escolheu", () => {
+    expect(fontesDoTurno(papers, base)[0]!.origem).toBe("base");
+  });
+
+  it("turno sem fonte nenhuma devolve lista vazia (e aí nada é citado nem referenciado)", () => {
+    expect(fontesDoTurno()).toEqual([]);
+    expect(fontesDoTurno([], [])).toEqual([]);
   });
 });
 
