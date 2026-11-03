@@ -24,6 +24,9 @@ import { temUrl, urlsDoTexto } from "@/lib/agent/urls";
 import { ehUrlDeArquivo } from "@/lib/agent/toolsWeb";
 import { MAX_ANEXOS_NO_PLANO } from "@/lib/agent/anexos";
 import { anexosDoCtx } from "@/lib/agent/toolsAnexo";
+import { anexosEmJogo, blocoDaSintese, docsDaBaseEmJogo, lerSintese, promptDaSintese, sinteseUtil, type DocEmJogo } from "@/lib/agent/sintese";
+import { sinteseLigada } from "@/lib/agent/sintese-flag";
+import { valeSintetizar } from "@/lib/rag/porDocumento";
 import { critiqueForState } from "@/lib/agent/examiner";
 import { nullMemory } from "@/lib/agent/memory";
 import { messageForError, classifyError } from "@/lib/agent/errors";
@@ -390,6 +393,18 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
   const base = bloco ? `${bloco}\n\n` : ""; // depois do preâmbulo, antes do "Objetivo:" (reason e draft)
   const citaBase = opts.baseConhecimento?.status === "ok";
 
+  /**
+   * F4 · OS DOCUMENTOS EM JOGO NESTE TURNO: os anexos (que a pessoa acabou de dar — vêm primeiro) e
+   * os da base, agrupados por documento pelo turno (`ctx.docsDaBase`). É a lista que decide se a
+   * fase `reason` vira síntese cruzada.
+   */
+  const docsEmJogo = (): DocEmJogo[] => [
+    ...anexosEmJogo(anexosDoCtx(ctx)),
+    ...docsDaBaseEmJogo(((ctx as { docsDaBase?: { titulo: string; trechos: { texto: string }[] }[] }).docsDaBase) ?? []),
+  ];
+  /** Sintetizar só com a flag E com 2+ documentos: com um documento, a `reason` não ajudava (eval de out/2026). */
+  const vaiSintetizar = (): boolean => sinteseLigada() && valeSintetizar(docsEmJogo());
+
   return {
     async classify(objective, c) {
       const r = await classify(objective, c);
@@ -473,6 +488,25 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
     },
 
     async reason(st) {
+      // F4 · SÍNTESE CRUZADA. Com 2+ documentos em jogo, esta fase deixa de ser "raciocínio genérico"
+      // e passa a comparar os documentos: o que convergem, onde divergem, o que NENHUM cobre. O
+      // achado da fase é que a `reason` não melhorava a resposta de UM documento (eval de out/2026,
+      // por isso ela está desligada abaixo) — com vários, é exatamente o que faltava.
+      if (vaiSintetizar()) {
+        const docs = docsEmJogo();
+        const { sys, user } = promptDaSintese({ objetivo: st.objective, docs });
+        try {
+          const bruto = await genJson<unknown>(sys, user, {
+            temperature: 0.2, model: modelFor(true), timeoutMs: 20_000, phase: "sintese", pensar: pensarDa("sintese"),
+          });
+          const s = lerSintese(bruto);
+          if (!sinteseUtil(s)) return "";
+          console.info(`[harness] síntese de ${docs.length} documentos (${s.comum.length} convergem, ${s.divergem.length} divergem, ${s.lacunas.length} lacunas)`);
+          return blocoDaSintese(s);
+        } catch {
+          return "";   // a síntese é auxiliar, como o resto desta fase: falhar não derruba o turno
+        }
+      }
       // caminho ELABORADO: sem raciocínio separado — o rascunho já recebe a evidência inteira; a chamada a mais custava
       // ~1,7 s antes da 1ª palavra e não melhorava a resposta (eval em prod, 24/out). Modo Pesquisa (trabalho, revisão)
       // mantém. Volta com RACIOCINIO_ELABORADO=1.
@@ -564,7 +598,8 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
       }
     },
 
-    pulaRaciocinio: (st) => st.mode === "elaborated" && process.env.RACIOCINIO_ELABORADO !== "1",
+    // a fase volta a existir quando há síntese a fazer (senão segue desligada no elaborado)
+    pulaRaciocinio: (st) => !vaiSintetizar() && st.mode === "elaborated" && process.env.RACIOCINIO_ELABORADO !== "1",
 
     critique: (st) => Promise.resolve(critiqueForState(st)),
 

@@ -7,7 +7,7 @@
  * PENSAR_DRAFT, PENSAR_DRAFT_RAPIDO, PENSAR_DRAFT_ELABORADO, PENSAR_PLAN = minimal | low | medium | high | padrao (padrao = não mandar nada).
  */
 export type NivelPensar = "minimal" | "low" | "medium" | "high";
-export type FasePensar = "route" | "reason" | "draft" | "draft_rapido" | "draft_elaborado" | "plan" | "acao";
+export type FasePensar = "route" | "reason" | "draft" | "draft_rapido" | "draft_elaborado" | "plan" | "acao" | "sintese";
 
 export const PENSAR_PADRAO: Record<FasePensar, NivelPensar | undefined> = {
   // draft_elaborado (explicar a fundo, fontes, artefato): minimal — eval em prod (24/out, 12 perguntas, juiz cego por
@@ -16,7 +16,9 @@ export const PENSAR_PADRAO: Record<FasePensar, NivelPensar | undefined> = {
   // acao (F2, "que ferramenta chamar agora?"): minimal. É uma escolha num menu curto, com prazo
   // de 12 s, e roda até 2x por turno — raciocínio longo aqui vira latência que o aluno sente
   // ANTES da primeira palavra, sem melhorar uma decisão que é quase sempre "já basta".
-  route: "minimal", reason: "minimal", draft_rapido: "minimal", draft_elaborado: "minimal", draft: "low", plan: undefined, acao: "minimal",
+  // sintese (F4, comparar 2+ documentos): "low". Diferente da `acao`, aqui raciocinar AJUDA — a
+  // tarefa é achar convergência, divergência e lacuna entre textos, não escolher num menu.
+  route: "minimal", reason: "minimal", draft_rapido: "minimal", draft_elaborado: "minimal", draft: "low", plan: undefined, acao: "minimal", sintese: "low",
 };
 const NIVEIS = new Set<NivelPensar>(["minimal", "low", "medium", "high"]);
 

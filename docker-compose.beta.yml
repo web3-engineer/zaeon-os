@@ -100,6 +100,8 @@ services:
       HARNESS_VOLTAS_ACAO: ${HARNESS_VOLTAS_ACAO:-}
       # F3 · o anexo entra no harness (imagem/PDF escaneado seguem no legado).
       HARNESS_ANEXO: ${HARNESS_ANEXO:-0}
+      # F4 · cobertura por documento + síntese cruzada (só com 2+ documentos em jogo).
+      HARNESS_SINTESE: ${HARNESS_SINTESE:-0}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       ESTUDO_GATEKEEPER: ${ESTUDO_GATEKEEPER:-0}
       AURA_ECONOMY: ${AURA_ECONOMY:-0}
@@ -178,6 +180,8 @@ services:
       HARNESS_VOLTAS_ACAO: ${HARNESS_VOLTAS_ACAO:-}
       # F3 · o anexo entra no harness (imagem/PDF escaneado seguem no legado).
       HARNESS_ANEXO: ${HARNESS_ANEXO:-0}
+      # F4 · cobertura por documento + síntese cruzada (só com 2+ documentos em jogo).
+      HARNESS_SINTESE: ${HARNESS_SINTESE:-0}
       LEITOR_PROXY_URL: ${LEITOR_PROXY_URL:-}   # Fatia 7: chores leem a web SÓ por aqui
     depends_on:
       redis: { condition: service_started }

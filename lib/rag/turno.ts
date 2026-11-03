@@ -100,7 +100,7 @@ const msgDe = (e: unknown) => (e as Error)?.message ?? String(e);
 const indisponivel = (): BaseDoTurno => ({ status: "indisponivel", trechos: [] });
 
 /** O trabalho do turno (pode lançar; quem chama embrulha). */
-async function consultar(userId: string, pergunta: string, deps: Partial<TurnoRagDeps>, areas: string[]): Promise<BaseDoTurno> {
+async function consultar(userId: string, pergunta: string, deps: Partial<TurnoRagDeps>, areas: string[], k?: number): Promise<BaseDoTurno> {
   let turmaIds: string[] = [];
   try {
     turmaIds = await turmasDaPessoa(deps.prisma ?? (await prismaReal()), userId);
@@ -121,7 +121,7 @@ async function consultar(userId: string, pergunta: string, deps: Partial<TurnoRa
   };
   // Bases por área (lib/rag/areas): públicas, entram como "turmas" — só ids `area:*`, nunca vindos do cliente.
   const escopo: EscopoRag = { userId, turmaIds: [...turmaIds, ...areas.filter((a) => a.startsWith(PREFIXO_AREA))] };
-  const achados = await buscar(busca, escopo, pergunta);
+  const achados = k === undefined ? await buscar(busca, escopo, pergunta) : await buscar(busca, escopo, pergunta, k);
 
   const c = contagem as { pessoais: number; deTurma: number } | null;
   if (c && c.pessoais === 0 && c.deTurma === 0) return { status: "sem_base", trechos: [] };
@@ -133,7 +133,15 @@ async function consultar(userId: string, pergunta: string, deps: Partial<TurnoRa
  * Base RAG do turno: trechos relevantes (já filtrados por permissão e corte) ou o motivo de não haver. NUNCA lança.
  */
 export async function baseParaTurno(
-  entrada: { userId: string | null; pergunta: string; areas?: string[] },
+  entrada: {
+    userId: string | null; pergunta: string; areas?: string[];
+    /**
+     * F4 · quantos trechos pedir. Ausente = `K_PADRAO` (o comportamento de sempre). A cobertura por
+     * documento (lib/rag/porDocumento) pede uma consulta LARGA pra todo documento aparecer; o bloco
+     * de citação do prompt continua recebendo só o top-k, porque `[B1]..[Bn]` é posicional.
+     */
+    k?: number;
+  },
   deps: Partial<TurnoRagDeps> = {},
 ): Promise<BaseDoTurno> {
   try {
@@ -148,7 +156,7 @@ export async function baseParaTurno(
 
     type Fim = { ok: BaseDoTurno } | { erro: unknown } | { estouro: true };
     // `.then(ok, erro)`: o trabalho NUNCA rejeita — rejeição tardia (depois do prazo) não vira unhandledRejection.
-    const trabalho: Promise<Fim> = consultar(userId, pergunta, deps, entrada.areas ?? []).then((ok) => ({ ok }), (erro) => ({ erro }));
+    const trabalho: Promise<Fim> = consultar(userId, pergunta, deps, entrada.areas ?? [], entrada.k).then((ok) => ({ ok }), (erro) => ({ erro }));
     let timer: ReturnType<typeof setTimeout> | undefined;
     const prazo = new Promise<Fim>((resolve) => {
       timer = setTimeout(() => resolve({ estouro: true }), prazoMs);

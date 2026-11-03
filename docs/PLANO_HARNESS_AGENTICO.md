@@ -250,7 +250,7 @@ Isso vira **invariante testada**, não meta: promessa sem lastro não passa no g
 | **F1b** ✅ | `baixar_para_base`: o Leitor passa a servir **bytes** (`POST /bytes`) pela mesma allowlist — a **opção (a)** do portão. Tetos expandidos e fundamentados (§5.1), texto oculto removido, `untrusted` marcado. | médio | F1 |
 | **F2** ✅ | **O modelo escolhe a tool.** `lib/agent/acao.ts` (render ↔ parse, fronteira do `deepseek-recipe`) + `gather` **reentrante** no `trajectory`, com teto de política e teto duro. Flag `HARNESS_ACAO`, OFF. | **médio** | F0, F1 |
 | **F3** ✅ | Anexo entra no harness: `fileData` deixa de desligar o laço, `ChatTurnParams` ganha anexos, nascem `listar_anexos`/`ler_anexo` e as tools passam a ter **disponibilidade por turno**. Resolve o §4.1 e o §4.4. Flag `HARNESS_ANEXO`, OFF. | médio | F2 |
-| **F4** | Pensamento por documento: um passe por documento + uma síntese cruzada antes do draft (RAPTOR-lite, compartilhado com a F4 do plano do documento). Resolve o §4.3. | médio | F3 |
+| **F4** ✅ | Pensamento por documento: consulta larga reagrupada **por documento** + **síntese cruzada** na fase `reason`. Resolve o §4.3. Flag `HARNESS_SINTESE`, OFF. | médio | F3 |
 | **F5** | Conectores MCP ligados (`lib/agent/mcp.ts` **já está escrito** e nunca é chamado): catálogo tem `fetch`, `filesystem`, `git` — é o caminho pra "clonar um repo" sem escrever tool nova. Exige `npm i @modelcontextprotocol/sdk` e smoke-test do dono. | médio | F2 |
 
 **Rollback em qualquer fase:** flag por fase; sem ela o caminho atual vale byte a byte.
@@ -518,6 +518,57 @@ documento errado é pior que dizer que não achou — e o modelo tem o inventár
 disponibilidade por turno, 9 na ligação do harness); `tsc --noEmit` limpo; `eslint` 0; os dois YAML
 validados. O ramo `TOO_BIG` do caminho legado ficou com o código dele de propósito: a promessa da
 flag é que, desligada, o caminho de hoje vale byte a byte.
+
+### F4 entregue — e o que isto NÃO é
+
+**O §4.3 em uma linha:** a busca do turno é um top-k=**8 plano** sobre todos os documentos
+misturados. Com 10 documentos na base, um só pode levar os 8 melhores trechos e os outros nove não
+aparecem no prompt. Isso responde "qual o método do texto 3?" e **não** responde "o que esses 10
+textos dizem em comum sobre X" — que é a pergunta acadêmica de verdade. Tem teste exatamente dessa
+assimetria: 8 trechos ótimos de um documento + 1 de cada um de outros três, e no top-8 plano os três
+desaparecem.
+
+**ISTO NÃO É RAPTOR, e é melhor dizer.** O RAPTOR (parthsarthi03/raptor, ICLR 2024) embute,
+**clusteriza e resume recursivamente** numa árvore **persistente**, e a busca puxa de vários níveis.
+Fazer isso aqui exigiria reindexar toda a base e manter a árvore viva — e o dono já decidiu, no plano
+do documento, que o RAPTOR fica **opcional**. O que entregamos é a mesma ideia de "vários níveis",
+montada **por pergunta** e jogada fora depois: uma consulta mais larga (`K_AMPLO = 40`), reagrupada
+por documento, e uma síntese cruzada em cima. Sem índice novo, sem reindexação — e o nível fino (os
+trechos crus) **continua no prompt**, então o rascunho passa a ver os dois níveis.
+
+**A SÍNTESE MORA NA FASE `reason`, e essa é a descoberta da fase.** Aquela fase existe desde o começo
+("conecte a evidência ao objetivo antes de redigir") e está **desligada** no caminho elaborado desde
+out/2026, porque a chamada extra custava ~1,7 s e **não melhorava a resposta** (eval em prod). O
+achado é que ela não melhorava a resposta de **um** documento — com vários, é exatamente o que
+faltava. Então em vez de uma fase nova no motor, a `reason` fica **especializada** quando (e só
+quando) há 2+ documentos. Zero caminho novo no motor, e o resultado entra no `Raciocínio:` que o
+rascunho já recebia.
+
+**O que a síntese devolve:** o que os documentos **convergem**, onde **divergem** (o item mais
+valioso — e o prompt proíbe inventar divergência: lista vazia se não houver), uma frase **por
+documento** sobre o objetivo, e as **lacunas**. A lacuna vem com instrução explícita de *não*
+preencher com conhecimento geral como se viesse dos documentos — é a disciplina da F0 aplicada a
+conteúdo, não a ação.
+
+**O anexo conta junto com a base.** Dois anexos sintetizam; um anexo + um documento da base também.
+E o anexo vem **primeiro** no prompt: é o documento que a pessoa acabou de dar. Dele entra só o
+começo do texto — o conteúdo inteiro já está na evidência via `ler_anexo`, e repetir pagaria duas
+vezes pelo mesmo texto.
+
+**A armadilha que quase quebrou as citações.** `blocoDaBase` numera os trechos `[B1]..[Bn]` **por
+posição** e o modelo devolve `citacoes_base: [n]`. Mandar a lista larga de 40 para o prompt
+**desalinharia toda citação do documento** — a resposta citaria "(Título, p. N)" do trecho errado. Por
+isso a consulta larga serve **só** à síntese, e o bloco de citação recebe `trechosParaCitar()`, que é
+o top-k de sempre. Tem teste de que essa lista é **idêntica** à que o caminho sem F4 usaria.
+
+**Custo:** +1 chamada de modelo, e **só** em turno com 2+ documentos em jogo. A consulta larga é
+SQL — sem modelo e sem embed novo, porque o vetor da pergunta é o compartilhado. A síntese roda com
+`pensar: "low"` (nova fase `sintese` em `lib/llm/pensar`): diferente da `acao`, aqui raciocinar
+**ajuda**, porque a tarefa é achar convergência e divergência entre textos, não escolher num menu.
+
+**Gates:** 1622 testes (+42 nesta fase: 11 no agrupamento, 19 na síntese pura, 12 na ligação);
+`tsc --noEmit` limpo; `eslint` 0; os dois YAML validados. Os testes de `lib/rag` passaram sem
+alteração — o `k` novo em `baseParaTurno` é opcional e, ausente, mantém `K_PADRAO`.
 
 ## 7. 🔒 Portões do dono
 

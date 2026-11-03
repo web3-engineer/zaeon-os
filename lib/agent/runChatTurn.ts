@@ -28,6 +28,7 @@ import { serializarProgresso, serializarModelo, serializarPrevia } from "@/lib/a
 import { criarEmissorPrevia } from "@/lib/agent/previa";
 import { blocoFonteColada, objetivoComFonte, pedidoParaTitulo, separarFonteColada } from "@/lib/agent/fonteColada";
 import { blocoDosAnexos } from "@/lib/agent/anexos";
+import { sinteseLigada } from "@/lib/agent/sintese-flag";
 import { MODELO_PADRAO, modeloDoId, nomeDoModeloServido } from "@/lib/chat/modelos";
 import { markRunning, saveDone, saveError } from "@/lib/agent/chat-turn-store";
 import type { Wing } from "@/lib/agent/memory";
@@ -80,7 +81,13 @@ export async function runChatTurn(
     // rejeita, mas se rejeitar (ou o import falhar) loga e vira null — a base nunca derruba o turno.
     const basePromise = import("@/lib/rag/turno")
       // + as bases por área (lib/rag/areas): a do mentor ativo e a geral (ENEM, conceitos)
-      .then(async (m) => m.baseParaTurno({ userId, pergunta: objetivo, areas: (await import("@/lib/rag/areas")).areasDoTurno(mentor?.slug) }))
+      // F4: com a flag, a consulta é LARGA (K_AMPLO) pra todo documento aparecer no agrupamento por
+      // documento. O bloco de citação do prompt continua recebendo só o top-k — ver `baseCurta`.
+      .then(async (m) => m.baseParaTurno({
+        userId, pergunta: objetivo,
+        areas: (await import("@/lib/rag/areas")).areasDoTurno(mentor?.slug),
+        ...(sinteseLigada() ? { k: (await import("@/lib/rag/porDocumento")).K_AMPLO } : {}),
+      }))
       .catch((e) => {
         console.error("[rag/chat] base do turno falhou:", (e as Error)?.message ?? String(e));
         return null;
@@ -169,6 +176,18 @@ export async function runChatTurn(
     const tccBlock = multi ? trabalhos!.bloco : tccBlocoUnico;
     // Quem serviu (o envelope pode cair na reserva): fica o da resposta (draft) se houver, senão o último.
     let servido: { modelo: string; alvo?: string; phase?: string } | null = null;
+    // F4 · COBERTURA POR DOCUMENTO. `baseCurta` é o que vai pro prompt e pras citações: `blocoDaBase`
+    // numera [B1]..[Bn] por POSIÇÃO e o modelo devolve `citacoes_base: [n]`, então mandar a lista
+    // larga desalinharia toda citação. O agrupamento viaja à parte, no ctx, pra síntese cruzada.
+    const baseDoTurno = await basePromise;
+    const baseCurta = baseDoTurno && sinteseLigada()
+      ? { ...baseDoTurno, trechos: (await import("@/lib/rag/porDocumento")).trechosParaCitar(baseDoTurno.trechos) }
+      : baseDoTurno;
+    if (baseDoTurno && sinteseLigada() && baseDoTurno.status === "ok") {
+      const { agruparPorDocumento } = await import("@/lib/rag/porDocumento");
+      const grupos = agruparPorDocumento(baseDoTurno.trechos);
+      if (grupos.length) hctx.docsDaBase = grupos;
+    }
     const deps = buildHarnessDeps(hctx, {
       modelo: escolhido?.provedor === "google" ? escolhido.vertex : undefined,
       onModelo(m) { if (!servido || servido.phase !== "draft" || m.phase === "draft") servido = m; },
@@ -176,7 +195,7 @@ export async function runChatTurn(
       onPrevia: criarEmissorPrevia((pedaco) => narrar(serializarPrevia(pedaco))),
       systemContext: [params.systemContext, memBlock, cartolinaBlock, tccBlock, skillBlock, blocoDosAnexos(params.anexos ?? []), colada.fonte ? blocoFonteColada(colada.fonte) : ""].filter(Boolean).join("\n\n") || undefined,
       history: params.history,
-      baseConhecimento: await basePromise,
+      baseConhecimento: baseCurta,
       // C5: cada chamada do turno grava no TokenLedger com quem/onde (mentor em agentKey E mentorSlug, como o registrarUso).
       ledger: ledgerTurno,
       // O CANAL DE PROGRESSO: cada fase do trajectory (plan → reason → draft…) vira um
