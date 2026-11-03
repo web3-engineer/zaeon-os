@@ -27,6 +27,8 @@ import { nullMemory } from "@/lib/agent/memory";
 import { messageForError, classifyError } from "@/lib/agent/errors";
 import type { AgentStep } from "@/lib/agent/actions";
 import type { HarnessDeps, TrajectoryState, Step } from "@/lib/agent/trajectory";
+import { MAX_VOLTAS_GATHER } from "@/lib/agent/trajectory";
+import { lerAcao, promptDeAcao, resumoDaColeta, resumoDasFalhas, toolVisivel, toolsDoMenu } from "@/lib/agent/acao";
 import { normalizeStudioKind } from "@/lib/agent/tools";
 import type { StructuredAnswer, Source } from "@/lib/agent/contracts";
 import { artefatoDeAprender, pedeAula, pedeEngenhariaReversa, DIRETRIZ_ENGENHARIA_REVERSA } from "@/lib/agent/aprender";
@@ -75,6 +77,39 @@ const DESLIGADO = /^(0|off|false|nao|não|no)$/i;
 export function capacidadeHonestaLigada(env: Record<string, string | undefined> = process.env): boolean {
   const f = env.HARNESS_CAPACIDADE?.trim();
   return !!f && !DESLIGADO.test(f);
+}
+
+// ─────────────────── F2 · O MODELO ESCOLHE A FERRAMENTA (docs/PLANO_HARNESS_AGENTICO.md) ───────────────────
+/**
+ * `HARNESS_ACAO=1`: depois da coleta determinística, o modelo pode pedir MAIS ferramentas — o laço
+ * vira reentrante (observar → agir → observar), que é o que o harness não tinha.
+ *
+ * OFF (padrão) = `proximosPassos` nem é oferecida ao motor, e o turno é byte a byte o de hoje.
+ */
+export function acaoDoModeloLigada(env: Record<string, string | undefined> = process.env): boolean {
+  const f = env.HARNESS_ACAO?.trim();
+  return !!f && !DESLIGADO.test(f);
+}
+
+/**
+ * Teto de POLÍTICA de voltas extras — o que responde o portão do dono sobre custo. Antes da F2 o
+ * número de chamadas por turno era previsível; com o modelo escolhendo, passa a variar. O teto
+ * limita a variação a **+2 chamadas de modelo no pior caso** (as tools em si não custam modelo).
+ *
+ * 2 é o número da casa pra "tentar de novo com limite": `maxRevisions`, `reflections`, `ensemble`
+ * (lib/agent/contracts) e `TENTATIVAS_POR_SECAO` (lib/documento/escritor) são todos 2. Ajustável por
+ * `HARNESS_VOLTAS_ACAO` sem deploy; 0 desliga as voltas mantendo o resto da F2.
+ */
+export const VOLTAS_ACAO_PADRAO = 2;
+export function voltasDeAcao(env: Record<string, string | undefined> = process.env): number {
+  const bruto = env.HARNESS_VOLTAS_ACAO?.trim();
+  // vazio é AUSENTE, não zero. `Number("")` é 0, e com isso uma Variable em branco — que é o que
+  // `${{ vars.X || '' }}` produz — desligaria as voltas em silêncio em vez de cair no padrão.
+  if (!bruto) return VOLTAS_ACAO_PADRAO;
+  const n = Number(bruto);
+  if (!Number.isFinite(n) || n < 0) return VOLTAS_ACAO_PADRAO;
+  // nunca acima do teto DURO do motor (que conta a volta inicial), por mais que o env peça
+  return Math.min(Math.floor(n), MAX_VOLTAS_GATHER - 1);
 }
 
 // ───────────────────────────── A2 · retry só nesta camada ─────────────────────────────
@@ -376,6 +411,35 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
       }
       return [...daWeb, ...gather.map((t) => ({ tool: t, args: { query: st.objective } }))];
     },
+
+    // F2 · a volta extra. Só existe com a flag: sem ela o motor não recebe a função e o `gather`
+    // roda uma vez, como antes.
+    ...(acaoDoModeloLigada()
+      ? {
+        async proximosPassos(st: TrajectoryState): Promise<Step[]> {
+          if (st.voltas >= voltasDeAcao()) return [];     // teto de POLÍTICA (o do motor é outro)
+          const menu = toolsDoMenu(listTools()).map(toolVisivel);
+          if (!menu.length) return [];
+          const { sys, user } = promptDeAcao({
+            objetivo: st.objective, modo: st.mode, academico: st.academicMode, menu,
+            coleta: resumoDaColeta(st.evidence), falhas: resumoDasFalhas(observations),
+            voltasRestantes: voltasDeAcao() - st.voltas,
+          });
+          try {
+            const bruto = await genJson<unknown>(sys, user, {
+              temperature: 0, model: modelFor(false), timeoutMs: 12_000, phase: "acao", pensar: pensarDa("acao"),
+            });
+            const r = lerAcao(bruto, { disponiveis: menu, jaFeitas: st.feitas });
+            // o que foi recusado vira LOG (nunca prompt): é como se mede modelo pedindo coisa que não existe
+            if (r.descartadas.length) console.info(`[harness] ação descartou: ${r.descartadas.slice(0, 3).join(" · ")}`);
+            if (r.chamadas.length) console.info(`[harness] ação volta ${st.voltas + 1}: ${r.chamadas.map((c) => c.tool).join(", ")}`);
+            return r.chamadas.map((c) => ({ tool: c.tool, args: c.args }));
+          } catch {
+            return [];   // decidir é AUXILIAR, igual ao `reason`: falhar não derruba o turno, só encerra a coleta
+          }
+        },
+      }
+      : {}),
 
     async runTool(name, args, c) {
       // A2 · 1 retry (backoff) SÓ para timeout/network/rate — nunca p/ deny/approval/validação.

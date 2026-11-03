@@ -7,13 +7,16 @@
  * PENSAR_DRAFT, PENSAR_DRAFT_RAPIDO, PENSAR_DRAFT_ELABORADO, PENSAR_PLAN = minimal | low | medium | high | padrao (padrao = não mandar nada).
  */
 export type NivelPensar = "minimal" | "low" | "medium" | "high";
-export type FasePensar = "route" | "reason" | "draft" | "draft_rapido" | "draft_elaborado" | "plan";
+export type FasePensar = "route" | "reason" | "draft" | "draft_rapido" | "draft_elaborado" | "plan" | "acao";
 
 export const PENSAR_PADRAO: Record<FasePensar, NivelPensar | undefined> = {
   // draft_elaborado (explicar a fundo, fontes, artefato): minimal — eval em prod (24/out, 12 perguntas, juiz cego por
   // pares): sem raciocínio separado + minimal = 1ª palavra 0,99 s (era 2,7 s) e venceu a atual em 9 de 12.
   // draft (Modo Pesquisa: trabalho completo, revisão) continua low.
-  route: "minimal", reason: "minimal", draft_rapido: "minimal", draft_elaborado: "minimal", draft: "low", plan: undefined,
+  // acao (F2, "que ferramenta chamar agora?"): minimal. É uma escolha num menu curto, com prazo
+  // de 12 s, e roda até 2x por turno — raciocínio longo aqui vira latência que o aluno sente
+  // ANTES da primeira palavra, sem melhorar uma decisão que é quase sempre "já basta".
+  route: "minimal", reason: "minimal", draft_rapido: "minimal", draft_elaborado: "minimal", draft: "low", plan: undefined, acao: "minimal",
 };
 const NIVEIS = new Set<NivelPensar>(["minimal", "low", "medium", "high"]);
 

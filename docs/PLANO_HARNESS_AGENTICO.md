@@ -248,7 +248,7 @@ Isso vira **invariante testada**, não meta: promessa sem lastro não passa no g
 | **F0** ✅ | `lib/agent/capacidades.ts` **puro**: cardápio **gerado do registry** (o que a casa faz E o que não faz, por ausência) no prompt + `promessaSemLastro()` como rede determinística, no padrão do `ofertaDePlataforma`. Mata a mentira **sem capacidade nova**. Limpa a `notebook_read`. Flag `HARNESS_CAPACIDADE`, OFF. | zero | — |
 | **F1** ✅ | `abrir_url` **pelo Leitor** (`lib/leitor/cliente`), registrada só quando o Leitor existe; URL colada vira passo de plano e tira o turno do caminho rápido. E o chat passa a aceitar `.txt`/`.md` (`ehArquivoTexto`), que o servidor já aceitava. | baixo | F0 |
 | **F1b** ✅ | `baixar_para_base`: o Leitor passa a servir **bytes** (`POST /bytes`) pela mesma allowlist — a **opção (a)** do portão. Tetos expandidos e fundamentados (§5.1), texto oculto removido, `untrusted` marcado. | médio | F1 |
-| **F2** | **O modelo escolhe a tool.** Canal de tool-call no envelope (render ↔ parse, fronteira do `deepseek-recipe`) e `gather` reentrante no `trajectory` com teto de passos. É aqui que o laço fica agêntico de verdade. | **médio** | F0, F1 |
+| **F2** ✅ | **O modelo escolhe a tool.** `lib/agent/acao.ts` (render ↔ parse, fronteira do `deepseek-recipe`) + `gather` **reentrante** no `trajectory`, com teto de política e teto duro. Flag `HARNESS_ACAO`, OFF. | **médio** | F0, F1 |
 | **F3** | Anexo entra no harness: `fileData` deixa de desligar o laço, `ChatTurnParams` ganha anexos, e nascem `listar_anexos`/`ler_anexo`. Resolve o §4.1 e §4.4. | médio | F2 |
 | **F4** | Pensamento por documento: um passe por documento + uma síntese cruzada antes do draft (RAPTOR-lite, compartilhado com a F4 do plano do documento). Resolve o §4.3. | médio | F3 |
 | **F5** | Conectores MCP ligados (`lib/agent/mcp.ts` **já está escrito** e nunca é chamado): catálogo tem `fetch`, `filesystem`, `git` — é o caminho pra "clonar um repo" sem escrever tool nova. Exige `npm i @modelcontextprotocol/sdk` e smoke-test do dono. | médio | F2 |
@@ -403,13 +403,74 @@ aparece **no cabeçalho** (`=== O QUE VOCÊ EXECUTA (e o que NÃO executa) ===`)
 `split[1]` media a lista do *executa*, não a do *não executa*: as asserções passavam, mas não
 mediam o que o comentário dizia. Agora partem em `"A plataforma NÃO executa"`.
 
+### F2 entregue — o laço virou reentrante, e o custo ficou com número
+
+**O defeito que esta fase conserta é o §1 inteiro.** Antes: `st.plan` montado uma vez, `nextTools`
+só devolvendo na 1ª iteração, tudo num `Promise.all`, e **nenhum caminho de volta ao `gather`**.
+Agora, depois de cada rodada de coleta, `proximosPassos` (nova dep **opcional** do motor) decide se
+há mais o que fazer — e o modelo é quem escolhe tool e argumentos.
+
+**JSON, não function-calling nativo, e o motivo não é preguiça.** O envelope (`lib/llm/envelope`) é
+o que nos dá portabilidade entre Vertex, pool do gateway e reserva do Hugging Face — e ele **não tem
+canal de tool-call**: tem `json:true` (que no gateway sai como `response_format: json_object`). Pedir
+`functionDeclarations` amarraria o laço agêntico ao Vertex e **derrubaria a reserva**, que é o que
+mantém o chat de pé quando o Google falha. Então a chamada viaja como JSON — que todo backend sabe
+produzir. É a fronteira render ↔ parse do `deepseek-recipe` implementada no transporte que já temos:
+`menuDeTools()` de um lado, `lerAcao()` do outro, e a segunda **nunca confia** na primeira.
+
+**O que `lerAcao` recusa** (tudo testado): tool inventada; argumento fora do schema (não repassamos
+chave desconhecida pra tool); obrigatório ausente (melhor não chamar que chamar com `undefined`);
+chamada **já feita neste turno** — é ela que impede o modelo teimoso de girar o laço; repetida na
+mesma volta; e acima do teto. Sem chamada válida, `pronto` sai `true` e o laço para.
+
+**O prompt é tendencioso A FAVOR DE PARAR**, de propósito: "na dúvida, `pronto`". Um prompt neutro
+aqui faria o modelo chamar ferramenta por educação, e cada volta custa uma chamada de modelo mais o
+tempo das tools — latência que o aluno sente **antes da primeira palavra**.
+
+**O portão de custo do dono, respondido com número.** Antes o nº de chamadas por turno era
+previsível; agora varia — mas de forma limitada: **+2 chamadas de modelo no pior caso** (as tools em
+si não custam modelo), e a decisão roda com `pensar: minimal` e prazo de 12 s. **2** é o número da
+casa pra "tentar de novo com limite" — `maxRevisions`, `reflections`, `ensemble` e
+`TENTATIVAS_POR_SECAO` são todos 2. Ajustável por `HARNESS_VOLTAS_ACAO` sem deploy, e **0 mantém a
+F2 ligada sem volta nenhuma**.
+
+**São DOIS tetos, de propósito.** O de **política** fica no adaptador (env, default 2). O **duro**
+fica no motor (`MAX_VOLTAS_GATHER = 4`, não ajustável): se um dia o adaptador tiver defeito, ou um
+modelo nunca disser "pronto", o turno ainda termina. Tem teste com um adaptador que pede mais **para
+sempre**, provando que o motor fecha sozinho — e outro provando que estourar o orçamento também
+encerra as voltas.
+
+**O ganho que vale medir em prod:** o `degraded` passou a ser avaliado **depois** de todas as voltas.
+Antes, coleta vazia na 1ª rodada marcava o turno como degradado e pronto; agora a 2ª tentativa é
+justamente quem salva a 1ª que falhou — e tem teste de que rodada 1 vazia + rodada 2 com achado
+**não** é turno degradado.
+
+**Interação com a F0, de graça:** o recibo (`executadas`) é alimentado pelo mesmo `runTool`, então
+toda tool que o modelo escolher já conta como lastro — "baixei o arquivo" passa a ser verdade quando
+ele de fato pediu e a tool rodou, sem nenhuma linha a mais.
+
+**Bug que o teste pegou:** `Number("")` é `0`. Uma Variable **em branco** — que é exatamente o que
+`${{ vars.X || '' }}` produz — desligaria as voltas em silêncio em vez de cair no padrão. Vazio agora
+é lido como *ausente*.
+
+**Gates:** 949 testes em `lib/agent` + `lib/leitor` + `lib/llm` + `lib/rag` + `components/chat`
+(+38 nesta fase: 22 na fronteira render/parse, 16 no laço); `tsc --noEmit` limpo; `eslint` 0; os
+dois YAML validados. Os 13 testes do motor passaram **sem alteração**, o que é o gate de que o
+`gather` reentrante é compatível com o comportamento anterior.
+
+**Deslize meu, de novo e registrado:** rodei o `tsc` antes de terminar os testes e ele achou 2 erros
+de tipo depois — mocks `vi.fn(async (system: string) => …)` sendo indexados em `calls[i][1]`. A ordem
+certa é escrever o teste, **depois** tipar. Corrigido antes do commit desta vez.
+
 ## 7. 🔒 Portões do dono
 
 Decisões que eu **não** tomo sozinho, porque mudam contrato de produto ou gastam dinheiro:
 
-1. **F2 (o modelo escolhendo tool) sobe o custo e a variância do turno.** Hoje o número de chamadas
-   por turno é previsível (plano fixo). Com tool-call o modelo pode pedir 1 ou 6. Precisa de teto
-   por turno — e o teto é decisão de orçamento, não minha.
+1. ~~F2 sobe o custo e a variância; precisa de teto.~~ **Entregue com teto e com número:** no pior
+   caso **+2 chamadas de modelo** por turno (`HARNESS_VOLTAS_ACAO`, default 2; `0` desliga as voltas
+   mantendo a F2). O que sobrou pra você é só decidir se 2 é o número certo depois de ver em prod —
+   é uma Variable, não um deploy. Vale medir o log `[harness] ação volta N: <tools>` e a taxa de
+   `ação descartou` (modelo pedindo coisa que não existe).
 2. ~~Allowlist de domínio no começo?~~ **Respondido pela auditoria da F1:** o Leitor já é
    default-deny. Ligar a F1 em prod são **três** passos, e o terceiro é o que falta decidir:
    Variable `LEITOR_PROXY_URL=http://leitor-proxy:8787`, Variable `LEITOR_ALLOW=<domínios>`, e subir

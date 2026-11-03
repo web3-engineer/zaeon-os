@@ -14,6 +14,7 @@ import type { AgentStep } from "@/lib/agent/actions";
 import type { Drawer } from "@/lib/agent/memory";
 import type { Finding, ToolResult } from "@/lib/agent/runtime";
 import type { RouterResult } from "@/lib/agent/router";
+import { chaveDaChamada } from "@/lib/agent/acao";
 import {
   INTENTS,
   type IntentId,
@@ -59,12 +60,22 @@ export type TrajectoryState = {
   stop?: StopReason;
   traceId: string;
   startedAt: number;
+  /** F2 · as chamadas já executadas neste turno (tool+args). É o que impede o laço de repetir. */
+  feitas: Set<string>;
+  /** F2 · quantas VOLTAS EXTRAS de ação o turno gastou (0 = só o plano determinístico). */
+  voltas: number;
 };
 
 /** As dependências do harness — injetadas pelo adaptador (aura-harness). Motor não sabe de Gemini. */
 export interface HarnessDeps {
   classify(objective: string, ctx: AgentContext): Promise<RouterResult>;
   plan(st: TrajectoryState): Promise<Step[]>;
+  /**
+   * F2 (opcional) · O MODELO ESCOLHE. Depois de uma rodada de coleta, devolve mais passos — ou `[]`
+   * pra dizer "já basta". É o que torna o laço reentrante: sem ela, o `gather` roda uma vez só e
+   * não existe observar → agir → observar. Ausente = comportamento de antes da F2, byte a byte.
+   */
+  proximosPassos?(st: TrajectoryState): Promise<Step[]>;
   runTool(name: string, args: any, ctx: AgentContext): Promise<ToolResult>;
   reason(st: TrajectoryState): Promise<string>;
   /** opcional: este estado dispensa o raciocínio separado (sem anunciar a fase nem cobrar o orçamento) */
@@ -146,6 +157,16 @@ function safeSteps(steps: unknown): Step[] {
     .filter((s): s is Step => !!s && typeof (s as any).tool === "string");
 }
 
+/**
+ * F2 · Teto DURO de voltas de coleta, do motor. O adaptador tem o seu próprio (ajustável por env);
+ * este não é ajustável e existe pra que um adaptador com defeito — ou um modelo que nunca diz
+ * "pronto" — não gire até o orçamento. Duas travas, propósitos diferentes.
+ */
+export const MAX_VOLTAS_GATHER = 4;
+
+/** A identidade de um passo (tool+args), pro adaptador não repetir trabalho já feito. */
+const chaveDoPasso = (s: Step): string => chaveDaChamada({ tool: s.tool, args: (s.args ?? {}) as Record<string, unknown> });
+
 /** Só reúne na 1ª iteração (as revisões reaproveitam a evidência + os issues como guia). */
 function nextTools(st: TrajectoryState): Step[] {
   return st.iter === 1 ? st.plan : [];
@@ -205,6 +226,8 @@ function seedState(objective: string, r: RouterResult, opts?: TrajectoryOpts): T
     memoryWrites: [],
     traceId: `t_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
     startedAt: Date.now(),
+    feitas: new Set<string>(),
+    voltas: 0,
   };
 }
 
@@ -256,22 +279,41 @@ export async function runTrajectoryTraced(
   for (;;) {
     st.iter++;
 
-    const steps = nextTools(st);
-    if (steps.length) {
+    // F2 · O GATHER É REENTRANTE. Antes rodava UMA vez (`nextTools` só devolve na 1ª iteração) e
+    // não havia caminho de volta: observar → agir → observar era impossível. Agora, depois de cada
+    // rodada, `proximosPassos` (se o adaptador a oferecer) decide se há mais o que fazer.
+    let steps = nextTools(st);
+    let anunciadas = 0;   // quantas fontes já foram anunciadas (não repete o mesmo rótulo)
+    for (let volta = 0; steps.length; volta++) {
       emit(d, st, "gather");
       const results = await Promise.all(steps.map((s) => d.runTool(s.tool, s.args ?? {}, ctx)));
       for (const res of results) {
         st.evidence.push(...toFindings(res));
         if (res.artifact) st.artifacts.push(res.artifact);
       }
+      for (const s of steps) st.feitas.add(chaveDoPasso(s));
       charge(st, "gather", steps.length, d);
       // AS FONTES ANTES DO TEXTO: o aluno vê o que foi achado (~2 s) enquanto a resposta é escrita
-      if (st.evidence.length) d.emit({ kind: "say", label: rotuloDasFontes(st.evidence), detail: "gather" });
-      // A3 · degradado ≠ sucesso silencioso: gather vazio quando se esperava evidência.
-      if (needsEvidence(st) && st.evidence.length === 0) {
-        st.degraded = true;
-        emit(d, st, "gather", "degradado: nenhuma evidência reunida");
+      if (st.evidence.length > anunciadas) {
+        anunciadas = st.evidence.length;
+        d.emit({ kind: "say", label: rotuloDasFontes(st.evidence), detail: "gather" });
       }
+      steps = [];
+      // TETO DURO DO MOTOR, além do teto de política do adaptador: se um dia o adaptador devolver
+      // passos pra sempre, o turno ainda termina. São duas travas de propósito — a de política é
+      // ajustável por env, esta não é.
+      if (d.proximosPassos && volta + 1 < MAX_VOLTAS_GATHER && !overBudget(st)) {
+        steps = safeSteps(await d.proximosPassos(st));
+        // a decisão é uma chamada de modelo: cobra como `plan` (é a mesma classe de custo)
+        charge(st, "plan", 1, d);
+        if (steps.length) st.voltas = volta + 1;
+      }
+    }
+    // A3 · degradado ≠ sucesso silencioso: gather vazio quando se esperava evidência. Avaliado
+    // DEPOIS de todas as voltas — na F2 a 2ª tentativa é justamente quem salva a 1ª que falhou.
+    if (st.iter === 1 && needsEvidence(st) && st.evidence.length === 0) {
+      st.degraded = true;
+      emit(d, st, "gather", "degradado: nenhuma evidência reunida");
     }
 
     // (o adaptador pode pular o raciocínio — caminho elaborado: devolve "" sem chamar modelo; aí nem anuncia a fase)
