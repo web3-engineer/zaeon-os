@@ -123,7 +123,7 @@ describe("ligarMcp · os caminhos de saída", () => {
   it("A POLÍTICA DE RISCO: tool de ESCRITA não entra no registry, e o dono VÊ quantas caíram", async () => {
     // o permit só exige aprovação pra `write` em `guiado`, e o chat roda `auto`: uma tool de escrita
     // rodaria sem aprovação, escolhida pelo modelo a partir de uma CONVERSA.
-    const e = await ligarMcp({ [ENV_CONECTORES]: "filesystem" }, {
+    const e = await ligarMcp({ [ENV_CONECTORES]: "biomcp" }, {
       connect: conectaCom([
         { name: "read_file", annotations: { readOnlyHint: true } },
         { name: "write_file", annotations: {} },                        // sem hint = write
@@ -131,9 +131,19 @@ describe("ligarMcp · os caminhos de saída", () => {
       ]),
     });
     expect(e.conectores[0]).toMatchObject({ status: "conectado", tools: 1, recusadas: 2 });
-    expect(getTool("mcp:filesystem:read_file")).toBeTruthy();
-    expect(getTool("mcp:filesystem:write_file")).toBeUndefined();
-    expect(getTool("mcp:filesystem:delete_file")).toBeUndefined();
+    expect(getTool("mcp:biomcp:read_file")).toBeTruthy();
+    expect(getTool("mcp:biomcp:write_file")).toBeUndefined();
+    expect(getTool("mcp:biomcp:delete_file")).toBeUndefined();
+  });
+
+  it("CONECTADO COM ZERO TOOL não é 'on' — o recibo não pode afirmar capacidade que não existe", async () => {
+    // acontece de verdade: servidor sem annotations cai todo em `write` e a política recusa tudo.
+    // O handshake deu certo, o chat ganhou nada — e o recibo do deploy tem de dizer isso.
+    const e = await ligarMcp({ [ENV_CONECTORES]: "biomcp" }, {
+      connect: conectaCom([{ name: "faz_algo", annotations: {} }]),
+    });
+    expect(e.conectores[0]).toMatchObject({ status: "conectado", tools: 0, recusadas: 1 });
+    expect(resumoMcp(e)).toBe("degraded (1/1, 0 tools)");
   });
 
   it("conector fora do ar não impede os outros, e o estado diz qual caiu", async () => {

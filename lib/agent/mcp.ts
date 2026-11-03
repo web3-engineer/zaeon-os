@@ -273,9 +273,10 @@ export type CatalogEntry = ConnectorConfig & {
 };
 
 /**
- * ⚠️ AUDITADO em 2026-11-03 (`npm view` em cada endpoint), porque ligar a F5 obrigou a conferir — e
- * QUATRO das sete entradas originais eram inusáveis. Ficaram aqui, marcadas com `indisponivel`, em
- * vez de serem apagadas: a razão de cada uma vale mais que a linha.
+ * ⚠️ AUDITADO DUAS VEZES, e a segunda corrigiu a primeira.
+ *
+ * **1ª passada (2026-11-03, `npm view`)** — quatro das sete entradas não existiam no npm. Ficaram
+ * aqui marcadas com `indisponivel`, em vez de apagadas: a razão de cada uma vale mais que a linha.
  *
  *   • `@oksure/openalex-research-mcp` → **E404** no npm (e era descrita como "1º smoke LOCAL").
  *   • `@modelcontextprotocol/server-fetch` → **não existe** nesse nome. O servidor oficial de fetch
@@ -285,13 +286,35 @@ export type CatalogEntry = ConnectorConfig & {
  *     resolveria "clonar um repo", então é a ausência que mais dói — ver a nota no plano.
  *   • `paper-search` → python, e a imagem do web é `node:20-bookworm-slim`, **sem python**.
  *
+ * **2ª passada (handshake REAL, SDK 1.32.2 numa sandbox)** — `npm view` prova que o pacote existe,
+ * não que o servidor sobe nem que a política de risco deixa alguma tool entrar. Rodando
+ * initialize + tools/list de verdade, o veredito da 1ª passada mudou em dois pontos:
+ *
+ *   • `filesystem` **não sobe como estava configurado aqui**: o endpoint não passava diretório, e o
+ *     servidor exige um por argumento ou pelo protocolo de roots (que o nosso `Client` não anuncia).
+ *     Ele morre no handshake — `MCP error -32000: Connection closed`. Só um handshake acharia isso,
+ *     e é defeito DESTA linha, não do servidor. Marcado `indisponivel` em vez de corrigido porque,
+ *     corrigido, ele leria o disco do CONTAINER — que não é a base do aluno e é superfície de risco
+ *     sem ganho. Apontar para um diretório útil é decisão de produto, não conserto de catálogo.
+ *   • `biomcp` e `scholar` **entregam muito mais do que eu disse**: 40 de 43 e 9 de 10 tools
+ *     ADMITIDAS pela política só-leitura. Eu havia escrito no plano que "não entregam capacidade
+ *     nenhuma" — estava errado, e o scholar cai exatamente no trilho de fontes/ABNT da série D.
+ *
+ * A política de risco foi conferida contra servidores reais e se comportou como desenhada: recusou
+ * `write_file`, `edit_file`, `move_file`, `create_directory`, `biomcp_configure`, `pdb`, `geo_get` e
+ * `ingest_paper_fulltext`, e admitiu só o que tinha `readOnlyHint`.
+ *
+ * NÃO VERIFICADO: se as chamadas devolvem DADO. Os dois servidores responderam `fetch failed` na
+ * sandbox porque o egresso dela recusa `scholar.google.com`, `clinicaltrials.gov` e
+ * `api.semanticscholar.org`. Handshake e listagem estão provados; a busca em si, não.
+ *
  * `indisponivel` não é cosmético: `conectoresPedidos` (lib/agent/mcp-boot) recusa essas entradas,
  * então pedir uma delas vira um aviso claro no boot em vez de 10 s de handshake condenado.
  */
 export const MCP_CATALOG: CatalogEntry[] = [
-  { name: "biomcp", label: "BioMCP (med/bio)", transport: "stdio", endpoint: "npx -y biomcp", note: "salas med/bio · npm 1.6.0 ✓" },
-  { name: "filesystem", label: "Filesystem (oficial)", transport: "stdio", endpoint: "npx -y @modelcontextprotocol/server-filesystem", note: "npm 2.1.0 ✓ — só as tools de LEITURA entram (RISCO_MAXIMO_CHAT)" },
-  { name: "scholar", label: "Scholar (experimental)", transport: "stdio", endpoint: "npx -y scholar-mcp", note: "npm 1.2.0 ✓", experimental: true },
+  { name: "biomcp", label: "BioMCP (med/bio)", transport: "stdio", endpoint: "npx -y biomcp", note: "salas med/bio · npm 1.6.0 ✓ · handshake OK, 40/43 tools admitidas (só-leitura)" },
+  { name: "filesystem", label: "Filesystem (oficial)", transport: "stdio", endpoint: "npx -y @modelcontextprotocol/server-filesystem", note: "sobe e morre sem diretório nos args; e leria o disco do container, não a base do aluno", indisponivel: true },
+  { name: "scholar", label: "Scholar (experimental)", transport: "stdio", endpoint: "npx -y scholar-mcp", note: "npm 1.2.0 ✓ · handshake OK, 9/10 tools admitidas — busca no Scholar, lista de referências e validação de citação", experimental: true },
   { name: "openalex-research", label: "OpenAlex Research", transport: "stdio", endpoint: "npx -y @oksure/openalex-research-mcp", note: "pacote E404 no npm (2026-11-03)", indisponivel: true },
   { name: "paper-search", label: "Paper Search", transport: "stdio", endpoint: "python -m paper_search_mcp.server", note: "python — a imagem do web não tem", indisponivel: true },
   { name: "fetch", label: "Fetch (oficial)", transport: "stdio", endpoint: "npx -y @modelcontextprotocol/server-fetch", note: "não existe nesse nome (o oficial é python); e o Leitor já faz isso com allowlist", indisponivel: true },

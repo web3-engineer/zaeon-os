@@ -683,11 +683,20 @@ Decisões que eu **não** tomo sozinho, porque mudam contrato de produto ou gast
    APAREÇA. Garantir de verdade é **k por documento** — uma window function por `documentoId` no
    SQL —, e a F4 foi desenhada como UMA consulta, sem índice novo e sem reindexação (§4.3). Pagar
    essa dívida é decisão sua: muda o formato da consulta, não uma flag.
-4. ~~F5 exige instalar o SDK.~~ **Medido e deixado pra você:** o SDK traz 17 dependências diretas,
-   incluindo `express` 5, `hono`, `cors` e `express-rate-limit` — a metade SERVIDOR, que não usamos.
-   Por isso **não está no `package.json`**: o código funciona sem ele e o `/api/health` diz
-   `sem_sdk`. Ligar é `npm i @modelcontextprotocol/sdk` + Variable `MCP_CONECTORES`. A pergunta que
-   sobra é sua: vale `express` sem uso na imagem para ter conectores MCP?
+4. ~~F5 exige instalar o SDK.~~ **Medido duas vezes, e a 2ª corrige a 1ª.** Eu havia escrito "17
+   dependências diretas"; instalando de verdade (`@modelcontextprotocol/sdk@1.32.2`), o que entra é
+   **91 pacotes / 29 MB**, com a metade SERVIDOR (`express` 5, `hono`, `cors`,
+   `express-rate-limit`) que não usamos. Por isso **não está no `package.json`**: o código funciona
+   sem ele e o `/api/health` diz `sem_sdk`.
+
+   **Mas a outra metade da conta mudou** (§8.3b): do outro lado estão **49 tools de leitura** que
+   sobem de verdade, e 9 delas são do trilho de fontes/ABNT da série D — incluindo
+   `validate_manuscript_citations`, que é literalmente o que o rigor do TCC faz à mão. Então a
+   pergunta não é mais "vale `express` sem uso para ter conectores que não entregam nada", e sim:
+   **vale 29 MB de imagem para o `scholar`?** Minha recomendação passou a ser **sim, só o
+   `scholar`** (`MCP_CONECTORES=scholar`), e nessa ordem: instalar o SDK, ligar um conector, ler o
+   campo `mcp` do `/api/health`, e só então pensar no `biomcp` (que é nicho med/bio de verdade).
+   Falta provar que as chamadas devolvem dado — o que exige a rede do VPS, não a minha sandbox.
 
 ## 8. "Queremos tudo ON" (2026-11-03) — o que ligou, e a armadilha que quase anulou tudo
 
@@ -777,6 +786,55 @@ Então as entradas furadas ganharam `indisponivel: "<motivo>"` e **são recusada
 (cada stdio morto custava até 10 s de boot). Pedir `MCP_CONECTORES=fetch` hoje responde, no log, por
 que não dá. Isso é o contrato da F0 aplicado ao próprio harness: **melhor um "não" com motivo do que
 um "sim" que não acontece.**
+
+### 8.3b A 2ª auditoria, por handshake real — e o parágrafo acima está ERRADO em dois pontos
+
+Pedido do dono: *"verifique pq nosso mcp nao estao rodando"*. A resposta curta é que **três paredes
+estão empilhadas**, e nenhuma delas é bug:
+
+| parede | estado medido | quem derruba |
+|---|---|---|
+| 1 · **ninguém pediu conector** | `MCP_CONECTORES` é `${{ vars.MCP_CONECTORES \|\| '' }}` e a Variable não existe → `mcpLigado()` falso → `resumoMcp()` = `off` | uma Variable no repo |
+| 2 · **o SDK não está na imagem** | `@modelcontextprotocol/sdk` não está no `package.json`, nem no lock, nem em `node_modules`. Com a parede 1 vencida, o recibo passaria a `sem_sdk` | `npm i` + decisão de peso |
+| 3 · **o catálogo** | ver abaixo | um PR |
+
+O encanamento está **completo** nos cinco elos (env do deploy → `envs:` → laço `for k in` → compose
+`web` → compose `worker`), conferido linha a linha. Não falta fio: falta decisão.
+
+**O que o handshake real mudou.** `npm view` prova que o pacote existe — não que o servidor sobe, nem
+que a política de risco deixa alguma tool entrar. Instalei o SDK 1.32.2 numa sandbox e rodei
+`initialize` + `tools/list` de verdade:
+
+| servidor | tools | admitidas pela política só-leitura |
+|---|---|---|
+| `biomcp` | 43 | **40** — ensaios clínicos, patentes, GenBank, Ensembl, GTEx, preprint, métricas de revista |
+| `scholar` | 10 | **9** — busca no Scholar, lista de referências, sugestão e **validação de citação** |
+| `filesystem` | — | **morre no handshake** (`MCP error -32000: Connection closed`) |
+
+Duas correções ao §8.3, e as duas são minhas:
+
+1. **`filesystem` nunca subiria**, e o defeito é da linha do catálogo, não do servidor: o endpoint
+   não passava diretório, e o servidor exige um por argumento ou pelo protocolo de *roots* — que o
+   nosso `Client` não anuncia. Nenhum `npm view` acharia isso. Marquei `indisponivel` em vez de
+   consertar: consertado, ele leria o disco do **container**, que não é a base do aluno. Apontá-lo
+   para um diretório útil é decisão de produto, não conserto de catálogo.
+2. **"não entregam capacidade nenhuma" era falso.** São 49 tools de leitura, e o `scholar` cai
+   exatamente no trilho que a série D acabou de construir: `build_reference_list`,
+   `suggest_contextual_citations`, `validate_manuscript_citations`, `get_author_info`. Isto muda a
+   recomendação da decisão nº 8 — ver §9.4.
+
+**A política de risco foi conferida contra servidor real e se comportou como desenhada:** recusou
+`write_file`, `edit_file`, `move_file`, `create_directory`, `biomcp_configure`, `pdb`, `geo_get` e
+`ingest_paper_fulltext`; admitiu só o que trazia `readOnlyHint`.
+
+**O que NÃO está verificado, e não vou dizer que está:** se as chamadas devolvem **dado**. Os dois
+servidores responderam `fetch failed` na sandbox porque o egresso dela recusa `scholar.google.com`,
+`clinicaltrials.gov` e `api.semanticscholar.org`. Handshake e listagem estão provados; a busca em si,
+não — e é o mesmo bloqueio de rede da decisão nº 1.
+
+**Um buraco de recibo, achado lendo:** `resumoMcp` devolvia `on (0 tools)` quando um conector sobe e
+a política recusa tudo. Imprimia o zero, então não mentia — mas "on" num recibo de deploy afirma
+capacidade. Agora é `degraded (1/1, 0 tools)`, com teste.
 
 ### 8.4 O que a F2 do documento mudou de verdade ao ligar
 

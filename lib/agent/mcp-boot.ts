@@ -174,5 +174,10 @@ export function resumoMcp(e: EstadoMcp | null = estado): string {
   const tools = e.conectores.reduce((n, c) => n + c.tools, 0);
   const conectados = e.conectores.filter((c) => c.status === "conectado").length;
   if (!conectados) return "degraded";
+  // CONECTADO COM ZERO TOOL NÃO É "on". O handshake deu certo e o chat ganhou nada — acontece
+  // quando a política de risco recusa tudo (`riskFromAnnotations` devolve `write` sem hint, então um
+  // servidor sem annotations contribui zero). Dizer "on" aqui faria o recibo do deploy afirmar uma
+  // capacidade que não existe, que é o defeito que esta série inteira persegue.
+  if (!tools) return `degraded (${conectados}/${e.conectores.length}, 0 tools)`;
   return conectados === e.conectores.length ? `on (${tools} tools)` : `degraded (${conectados}/${e.conectores.length}, ${tools} tools)`;
 }
