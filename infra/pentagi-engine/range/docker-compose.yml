@@ -1,0 +1,22 @@
+# Range descartável e deliberadamente vulnerável para o pentest (Fase 2).
+# OWASP Juice Shop — alvo de treino, tudo roda em container, nada em prod.
+# Publicado SÓ no loopback (127.0.0.1); não fica exposto fora da máquina.
+#
+#   cd infra/pentagi-engine/range && docker compose up -d
+#   # alvo = http://127.0.0.1:3000  (aponte o scope.json para 127.0.0.1:3000)
+#   docker compose down   # destrói o range
+#
+# Para o host de lab real, rode numa rede isolada sem rota pra internet aberta
+# nem pra prod Zaeon; este compose é o sandbox local da prova de Fase 2.
+services:
+  juice-shop:
+    image: bkimminich/juice-shop:v17.1.1
+    container_name: pentagi-range-juiceshop
+    ports:
+      - "127.0.0.1:3000:3000"
+    restart: "no"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
