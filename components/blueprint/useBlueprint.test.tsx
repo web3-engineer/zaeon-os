@@ -12,7 +12,7 @@ let rev: Record<string, number> = {};
 beforeEach(() => {
   pendentes = {}; rev = { a: 1, b: 1 };
   vi.stubGlobal("fetch", vi.fn((url: string) => {
-    if (url === "/api/blueprint") return Promise.resolve(new Response(JSON.stringify({ blueprints: [resumo("a"), resumo("b")] })));
+    if (url.startsWith("/api/blueprint?")) return Promise.resolve(new Response(JSON.stringify({ blueprints: [resumo("a"), resumo("b")], temMais: url.endsWith("=40") })));
     const id = url.split("/").pop()!;
     // a resposta de cada blueprint fica PENDENTE até o teste soltar (simula o servidor lento)
     return new Promise<Response>((res) => { pendentes[id] = res; });
@@ -128,5 +128,29 @@ describe("#681 · excluir e erro ao carregar", () => {
     const { result } = renderHook(() => useBlueprint());
     await waitFor(() => expect(result.current.erro).toBe(true));
     expect(result.current.lista).toBeNull();
+  });
+});
+
+describe("#683 · ver mais", () => {
+  it("'ver mais' que falha devolve false e não perde a lista", async () => {
+    const { result } = renderHook(() => useBlueprint());
+    await waitFor(() => expect(result.current.temMais).toBe(true));
+    const f = fetch as unknown as ReturnType<typeof vi.fn>;
+    const antes = f.getMockImplementation()!;
+    f.mockImplementation((url: string, o?: RequestInit) => (url.endsWith("=80") ? Promise.resolve(new Response("{}", { status: 500 })) : antes(url, o)));
+    let ok = true;
+    await act(async () => { ok = await result.current.verMais(); });
+    expect(ok).toBe(false);
+    expect(result.current.lista).toHaveLength(2);
+    expect(result.current.limite).toBe(40);
+  });
+  it("a lista pede 40; 'ver mais' pede os próximos 40 e o aviso some quando acabam", async () => {
+    const { result } = renderHook(() => useBlueprint());
+    await waitFor(() => expect(result.current.temMais).toBe(true));
+    await act(async () => { await result.current.verMais(); });
+    const f = fetch as unknown as ReturnType<typeof vi.fn>;
+    expect(f.mock.calls.map((c) => c[0]).filter((u: string) => u.startsWith("/api/blueprint?"))).toContain("/api/blueprint?limite=80");
+    expect(result.current.temMais).toBe(false);
+    expect(result.current.limite).toBe(80);
   });
 });
