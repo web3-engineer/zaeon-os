@@ -51,6 +51,9 @@ export const CAPACIDADES: readonly Capacidade[] = [
   { tool: "listar_anexos", faz: "ver quais arquivos a pessoa anexou a esta conversa" },
   { tool: "clonar_repo", faz: "ler os arquivos de um repositório de código" },
   { tool: "executar_codigo", faz: "rodar um script e devolver a saída" },
+  // não existe (e não está planejada): está aqui porque o portão de drift exige frase pronta pra
+  // TODA classe de ação — se um dia existir canal de saída, a frase do cardápio já está certa.
+  { tool: "enviar_mensagem", faz: "enviar e-mail ou mensagem para fora desta conversa" },
 ];
 
 // ───────────────────────────── o que a casa pode NÃO fazer ─────────────────────────────
@@ -80,6 +83,18 @@ export type ClasseDeAcao = {
   pres: string;
   /** o objeto que torna a frase uma afirmação de ação (sem acento) */
   objeto: string;
+  /**
+   * Objeto que só conta na PROMESSA (futuro ou "eu" + presente), nunca no pretérito. Existe por um
+   * caso concreto, achado testando o estado de produção: "Vou abrir a página da Wikipédia e te
+   * trazer o conteúdo" PASSAVA pela rede, porque `pagina` tinha sido tirada do objeto de
+   * `abrir_pagina` pra não acusar "Li a página 4 do documento que você anexou" — que é VERDADE no
+   * caminho dos vários anexos.
+   *
+   * Os dois casos se separam pelo TEMPO, não pela palavra: no pretérito, "página" costuma ser
+   * página de documento anexado (e a leitura aconteceu); no futuro, "vou abrir a página" é promessa
+   * de ação, e promessa sem recibo é o defeito que esta rede existe pra pegar.
+   */
+  objetoPromessa?: string;
   /** o caminho que EXISTE hoje, pra resposta não virar um "não" seco */
   alternativa: string;
   /**
@@ -103,6 +118,8 @@ export const CLASSES_DE_ACAO: readonly ClasseDeAcao[] = [
     pret: "abri|abrimos|acessei|acessamos|visitei|visitamos|naveguei|navegamos|entrei|entramos",
     pres: "abro|acesso|visito|navego|entro",
     objeto: "site|link|url|endereco|portal",
+    // só na promessa — ver `objetoPromessa` no tipo: no pretérito "página" é página de anexo
+    objetoPromessa: "pagina|paginas|web|internet",
     alternativa: "descrever o que procurar e pedir que a pessoa cole o trecho, ou buscar o assunto e citar as fontes que a busca devolver",
     tambemPor: /^mcp:fetch:/,
   },
@@ -129,6 +146,27 @@ export const CLASSES_DE_ACAO: readonly ClasseDeAcao[] = [
     objeto: "repo|repositorio|github|gitlab|git",
     alternativa: "pedir os arquivos que importam colados na conversa, ou explicar o que o código provavelmente faz deixando claro que não foi lido",
     tambemPor: /^mcp:(git|filesystem):/,
+  },
+  {
+    /**
+     * NÃO EXISTE tool pra isto, e é de propósito que a classe exista: o furo foi achado testando o
+     * estado de produção — "Vou te mandar um e-mail com o resumo" passava inteira pela rede, porque
+     * nenhuma classe cobria sair da conversa. É o mesmo defeito do "vou baixar a CSV", só com outro
+     * verbo, e é pedido comum ("me manda isso por e-mail", "manda no zap").
+     *
+     * O `tool` aqui é um nome que o registry nunca terá: assim a classe cai sozinha no lado
+     * "A plataforma NÃO executa" do cardápio, e passa a ensinar o modelo no prompt também.
+     */
+    id: "enviar_mensagem",
+    tool: "enviar_mensagem",
+    pedido: "enviar e-mail, mensagem ou arquivo para fora desta conversa",
+    inf: "mandar|mandando|enviar|enviando|encaminhar|encaminhando|disparar|disparando",
+    pret: "mandei|mandamos|enviei|enviamos|encaminhei|encaminhamos|disparei|disparamos",
+    pres: "mando|envio|encaminho|disparo",
+    // `resumo`/`texto`/`arquivo` FICAM FORA: "te mando o resumo aqui" é verdade — o texto sai nesta
+    // resposta. O que não existe é o CANAL. Por isso o objeto é o canal, nunca o conteúdo.
+    objeto: "email|e-mail|mensagem|whatsapp|zap|sms|telegram|dm|direct|caixa de entrada|inbox",
+    alternativa: "deixar o texto pronto aqui na conversa, formatado pra pessoa copiar e enviar",
   },
   {
     id: "rodar_codigo",
@@ -222,17 +260,23 @@ const MARCA_FUTURO = /\b(vou|irei|vamos|iremos|estou|estamos|deixa que eu|pode d
 /** janela entre verbo e objeto na mesma frase ("vou baixar agora pra você o arquivo"). */
 const JANELA = 40;
 
-const regexDe = (c: ClasseDeAcao, verbos: string) => new RegExp(`\\b(?:${verbos})\\b.{0,${JANELA}}?\\b(?:${c.objeto})\\b`);
+const regexDe = (c: ClasseDeAcao, verbos: string, comPromessa = false) => {
+  const obj = comPromessa && c.objetoPromessa ? `${c.objeto}|${c.objetoPromessa}` : c.objeto;
+  return new RegExp(`\\b(?:${verbos})\\b.{0,${JANELA}}?\\b(?:${obj})\\b`);
+};
 
 /**
  * A frase afirma uma ação desta classe? (a frase já vem normalizada)
  * Duas formas: futuro/em curso COM marcador de 1ª pessoa, ou pretérito de 1ª pessoa.
  */
 export function afirmaAcao(fraseNorm: string, c: ClasseDeAcao): boolean {
+  // PRETÉRITO: só o objeto estrito. O `objetoPromessa` fica fora daqui de propósito — é o que
+  // mantém "Li a página 4 do documento que você anexou" fora da rede (resposta verdadeira).
   if (regexDe(c, c.pret).test(fraseNorm)) return true;
+  const obj = c.objetoPromessa ? `${c.objeto}|${c.objetoPromessa}` : c.objeto;
   // "deixa que eu pego a planilha" — o pronome colado no verbo é o que desfaz "índice baixo"
-  if (new RegExp(`\\beu\\s+(?:${c.pres})\\b.{0,${JANELA}}?\\b(?:${c.objeto})\\b`).test(fraseNorm)) return true;
-  return MARCA_FUTURO.test(fraseNorm) && regexDe(c, c.inf).test(fraseNorm);
+  if (new RegExp(`\\beu\\s+(?:${c.pres})\\b.{0,${JANELA}}?\\b(?:${obj})\\b`).test(fraseNorm)) return true;
+  return MARCA_FUTURO.test(fraseNorm) && regexDe(c, c.inf, true).test(fraseNorm);
 }
 
 /**
