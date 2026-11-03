@@ -33,6 +33,28 @@ describe("mcpLigado · a flag é a própria lista", () => {
   it("com conector pedido, liga", () => {
     expect(mcpLigado({ [ENV_CONECTORES]: "biomcp" })).toBe(true);
   });
+
+  it("O KILL-SWITCH: agora que o padrão é LIGADO, vazio não é mais alcançável — precisa de um 'não'", () => {
+    // `${{ vars.MCP_CONECTORES || 'scholar' }}` cai no padrão exatamente quando a Variable está
+    // vazia; sem estes valores, ligar por padrão seria ligar sem rollback.
+    for (const off of ["0", "off", "OFF", "false", "nao", "não", "no", "nenhum", "none", " off "]) {
+      expect(mcpLigado({ [ENV_CONECTORES]: off }), off).toBe(false);
+    }
+  });
+
+  it("o kill-switch não é 'nome desconhecido' — não polui o log de boot com um falso erro de digitação", () => {
+    expect(conectoresPedidos({ [ENV_CONECTORES]: "0" })).toEqual({ escolhidos: [], desconhecidos: [] });
+    expect(conectoresPedidos({ [ENV_CONECTORES]: "nenhum" })).toEqual({ escolhidos: [], desconhecidos: [] });
+  });
+
+  it("'scholar' — o padrão de produção — resolve no catálogo e NÃO está indisponível", () => {
+    // se alguém marcar o scholar `indisponivel` sem mexer no deploy, o padrão viraria um aviso de
+    // boot e o MCP cairia calado. Este teste é o elo entre o catálogo e o default do deploy.yml.
+    const { escolhidos, desconhecidos } = conectoresPedidos({ [ENV_CONECTORES]: "scholar" });
+    expect(escolhidos.map((c) => c.name)).toEqual(["scholar"]);
+    expect(desconhecidos).toEqual([]);
+    expect(escolhidos[0].endpoint).not.toMatch(/npx/);   // dependência pinada, não download em boot
+  });
 });
 
 describe("conectoresPedidos · SÓ pelo catálogo", () => {
@@ -123,7 +145,7 @@ describe("ligarMcp · os caminhos de saída", () => {
   it("A POLÍTICA DE RISCO: tool de ESCRITA não entra no registry, e o dono VÊ quantas caíram", async () => {
     // o permit só exige aprovação pra `write` em `guiado`, e o chat roda `auto`: uma tool de escrita
     // rodaria sem aprovação, escolhida pelo modelo a partir de uma CONVERSA.
-    const e = await ligarMcp({ [ENV_CONECTORES]: "filesystem" }, {
+    const e = await ligarMcp({ [ENV_CONECTORES]: "biomcp" }, {
       connect: conectaCom([
         { name: "read_file", annotations: { readOnlyHint: true } },
         { name: "write_file", annotations: {} },                        // sem hint = write
@@ -131,9 +153,19 @@ describe("ligarMcp · os caminhos de saída", () => {
       ]),
     });
     expect(e.conectores[0]).toMatchObject({ status: "conectado", tools: 1, recusadas: 2 });
-    expect(getTool("mcp:filesystem:read_file")).toBeTruthy();
-    expect(getTool("mcp:filesystem:write_file")).toBeUndefined();
-    expect(getTool("mcp:filesystem:delete_file")).toBeUndefined();
+    expect(getTool("mcp:biomcp:read_file")).toBeTruthy();
+    expect(getTool("mcp:biomcp:write_file")).toBeUndefined();
+    expect(getTool("mcp:biomcp:delete_file")).toBeUndefined();
+  });
+
+  it("CONECTADO COM ZERO TOOL não é 'on' — o recibo não pode afirmar capacidade que não existe", async () => {
+    // acontece de verdade: servidor sem annotations cai todo em `write` e a política recusa tudo.
+    // O handshake deu certo, o chat ganhou nada — e o recibo do deploy tem de dizer isso.
+    const e = await ligarMcp({ [ENV_CONECTORES]: "biomcp" }, {
+      connect: conectaCom([{ name: "faz_algo", annotations: {} }]),
+    });
+    expect(e.conectores[0]).toMatchObject({ status: "conectado", tools: 0, recusadas: 1 });
+    expect(resumoMcp(e)).toBe("degraded (1/1, 0 tools)");
   });
 
   it("conector fora do ar não impede os outros, e o estado diz qual caiu", async () => {

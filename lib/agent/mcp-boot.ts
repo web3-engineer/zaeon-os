@@ -42,14 +42,31 @@ export type EstadoMcp = {
   conectores: EstadoConector[];
 };
 
-/** A flag é a própria lista: sem conector pedido, não há MCP. */
+/**
+ * O KILL-SWITCH. A flag é a própria lista, então "vazio" sempre foi o desligado natural — só que
+ * desde que o `scholar` passou a vir LIGADO POR PADRÃO (deploy.yml e compose), vazio deixou de ser
+ * alcançável: `${{ vars.MCP_CONECTORES || 'scholar' }}` cai no padrão justamente quando a Variable
+ * está vazia. Sem um valor que diga "nenhum", ligar por padrão seria ligar sem rollback — e flag sem
+ * rollback é o que esta série se recusou a fazer em toda fase.
+ *
+ * Mesmo vocabulário do `graficoLigado` (lib/agent/graficosDoTurno), pra não inventar um segundo
+ * dialeto de "off" no mesmo harness.
+ */
+const DESLIGADO = /^(0|off|false|nao|não|no|nenhum|none)$/i;
+
+/** A flag é a própria lista: sem conector pedido — ou com o kill-switch — não há MCP. */
 export function mcpLigado(env: Env = process.env): boolean {
-  return !!env[ENV_CONECTORES]?.trim();
+  const v = env[ENV_CONECTORES]?.trim();
+  return !!v && !DESLIGADO.test(v);
 }
 
 /** "fetch, git, inventado" → as entradas do catálogo + o que não existe nele (pra logar). */
 export function conectoresPedidos(env: Env = process.env): { escolhidos: CatalogEntry[]; desconhecidos: string[] } {
-  const nomes = String(env[ENV_CONECTORES] ?? "")
+  const bruto = String(env[ENV_CONECTORES] ?? "").trim();
+  // o kill-switch não é "nome desconhecido": sem isto, `MCP_CONECTORES=0` logaria «"0" não está em
+  // MCP_CATALOG» em todo boot — um aviso que parece erro de digitação e não é.
+  if (!bruto || DESLIGADO.test(bruto)) return { escolhidos: [], desconhecidos: [] };
+  const nomes = bruto
     .split(",")
     .map((x) => x.trim().toLowerCase())
     .filter(Boolean);
@@ -174,5 +191,10 @@ export function resumoMcp(e: EstadoMcp | null = estado): string {
   const tools = e.conectores.reduce((n, c) => n + c.tools, 0);
   const conectados = e.conectores.filter((c) => c.status === "conectado").length;
   if (!conectados) return "degraded";
+  // CONECTADO COM ZERO TOOL NÃO É "on". O handshake deu certo e o chat ganhou nada — acontece
+  // quando a política de risco recusa tudo (`riskFromAnnotations` devolve `write` sem hint, então um
+  // servidor sem annotations contribui zero). Dizer "on" aqui faria o recibo do deploy afirmar uma
+  // capacidade que não existe, que é o defeito que esta série inteira persegue.
+  if (!tools) return `degraded (${conectados}/${e.conectores.length}, 0 tools)`;
   return conectados === e.conectores.length ? `on (${tools} tools)` : `degraded (${conectados}/${e.conectores.length}, ${tools} tools)`;
 }

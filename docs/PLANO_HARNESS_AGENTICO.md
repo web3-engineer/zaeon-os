@@ -683,11 +683,24 @@ Decisões que eu **não** tomo sozinho, porque mudam contrato de produto ou gast
    APAREÇA. Garantir de verdade é **k por documento** — uma window function por `documentoId` no
    SQL —, e a F4 foi desenhada como UMA consulta, sem índice novo e sem reindexação (§4.3). Pagar
    essa dívida é decisão sua: muda o formato da consulta, não uma flag.
-4. ~~F5 exige instalar o SDK.~~ **Medido e deixado pra você:** o SDK traz 17 dependências diretas,
-   incluindo `express` 5, `hono`, `cors` e `express-rate-limit` — a metade SERVIDOR, que não usamos.
-   Por isso **não está no `package.json`**: o código funciona sem ele e o `/api/health` diz
-   `sem_sdk`. Ligar é `npm i @modelcontextprotocol/sdk` + Variable `MCP_CONECTORES`. A pergunta que
-   sobra é sua: vale `express` sem uso na imagem para ter conectores MCP?
+4. ~~F5 exige instalar o SDK.~~ **Medido duas vezes, e a 2ª corrige a 1ª.** Eu havia escrito "17
+   dependências diretas"; instalando de verdade (`@modelcontextprotocol/sdk@1.32.2`), o que entra é
+   **91 pacotes / 29 MB**, com a metade SERVIDOR (`express` 5, `hono`, `cors`,
+   `express-rate-limit`) que não usamos. Por isso **não está no `package.json`**: o código funciona
+   sem ele e o `/api/health` diz `sem_sdk`.
+
+   **Mas a outra metade da conta mudou** (§8.3b): do outro lado estão **49 tools de leitura** que
+   sobem de verdade, e 9 delas são do trilho de fontes/ABNT da série D — incluindo
+   `validate_manuscript_citations`, que é literalmente o que o rigor do TCC faz à mão. Então a
+   pergunta não é mais "vale `express` sem uso para ter conectores que não entregam nada", e sim:
+   **vale peso de imagem para o `scholar`?**
+
+   **✅ RESOLVIDO — o dono disse sim (§8.3c).** SDK e `scholar-mcp` pinados no `package.json`,
+   `MCP_CONECTORES=scholar` por padrão nos cinco elos, kill-switch `=0`, e o `connectMcp` com smoke
+   real no CI. Custo final medido: **+124 MB / 54 pacotes** (não os 29 MB do SDK sozinho). O
+   `biomcp` fica de fora por enquanto — é nicho med/bio de verdade. **O que sobra é provar que as
+   chamadas devolvem dado**, e isso exige a rede do VPS: ver o 🟡 no fim do §8.3c, incluindo o risco
+   concreto de o Google Scholar bloquear IP de datacenter.
 
 ## 8. "Queremos tudo ON" (2026-11-03) — o que ligou, e a armadilha que quase anulou tudo
 
@@ -707,7 +720,7 @@ passou a `!DESLIGADO.test(...)` — ausente ou `1` liga, `=0` desliga:
 | `DOC_POR_SECAO` | off | **on** | `=0` |
 | `LEITOR_PROXY_URL` | vazio | **`http://leitor-proxy:8787`** | vazio |
 | `LEITOR_ALLOW` | vazio (nega tudo) | **9 padrões acadêmicos** | vazio |
-| `MCP_CONECTORES` | vazio | **continua vazio** (§8.3) | — |
+| `MCP_CONECTORES` | vazio | **`scholar`** (§8.3c; era vazio até §8.3b) | `=0` |
 
 ### 8.1 A armadilha: o `docker-compose` anulava o código
 
@@ -777,6 +790,116 @@ Então as entradas furadas ganharam `indisponivel: "<motivo>"` e **são recusada
 (cada stdio morto custava até 10 s de boot). Pedir `MCP_CONECTORES=fetch` hoje responde, no log, por
 que não dá. Isso é o contrato da F0 aplicado ao próprio harness: **melhor um "não" com motivo do que
 um "sim" que não acontece.**
+
+### 8.3b A 2ª auditoria, por handshake real — e o parágrafo acima está ERRADO em dois pontos
+
+Pedido do dono: *"verifique pq nosso mcp nao estao rodando"*. A resposta curta é que **três paredes
+estão empilhadas**, e nenhuma delas é bug:
+
+| parede | estado medido | quem derruba |
+|---|---|---|
+| 1 · **ninguém pediu conector** | `MCP_CONECTORES` é `${{ vars.MCP_CONECTORES \|\| '' }}` e a Variable não existe → `mcpLigado()` falso → `resumoMcp()` = `off` | uma Variable no repo |
+| 2 · **o SDK não está na imagem** | `@modelcontextprotocol/sdk` não está no `package.json`, nem no lock, nem em `node_modules`. Com a parede 1 vencida, o recibo passaria a `sem_sdk` | `npm i` + decisão de peso |
+| 3 · **o catálogo** | ver abaixo | um PR |
+
+O encanamento está **completo** nos cinco elos (env do deploy → `envs:` → laço `for k in` → compose
+`web` → compose `worker`), conferido linha a linha. Não falta fio: falta decisão.
+
+**O que o handshake real mudou.** `npm view` prova que o pacote existe — não que o servidor sobe, nem
+que a política de risco deixa alguma tool entrar. Instalei o SDK 1.32.2 numa sandbox e rodei
+`initialize` + `tools/list` de verdade:
+
+| servidor | tools | admitidas pela política só-leitura |
+|---|---|---|
+| `biomcp` | 43 | **40** — ensaios clínicos, patentes, GenBank, Ensembl, GTEx, preprint, métricas de revista |
+| `scholar` | 10 | **9** — busca no Scholar, lista de referências, sugestão e **validação de citação** |
+| `filesystem` | — | **morre no handshake** (`MCP error -32000: Connection closed`) |
+
+Duas correções ao §8.3, e as duas são minhas:
+
+1. **`filesystem` nunca subiria**, e o defeito é da linha do catálogo, não do servidor: o endpoint
+   não passava diretório, e o servidor exige um por argumento ou pelo protocolo de *roots* — que o
+   nosso `Client` não anuncia. Nenhum `npm view` acharia isso. Marquei `indisponivel` em vez de
+   consertar: consertado, ele leria o disco do **container**, que não é a base do aluno. Apontá-lo
+   para um diretório útil é decisão de produto, não conserto de catálogo.
+2. **"não entregam capacidade nenhuma" era falso.** São 49 tools de leitura, e o `scholar` cai
+   exatamente no trilho que a série D acabou de construir: `build_reference_list`,
+   `suggest_contextual_citations`, `validate_manuscript_citations`, `get_author_info`. Isto muda a
+   recomendação da decisão nº 8 — ver §9.4.
+
+**A política de risco foi conferida contra servidor real e se comportou como desenhada:** recusou
+`write_file`, `edit_file`, `move_file`, `create_directory`, `biomcp_configure`, `pdb`, `geo_get` e
+`ingest_paper_fulltext`; admitiu só o que trazia `readOnlyHint`.
+
+**O que NÃO está verificado, e não vou dizer que está:** se as chamadas devolvem **dado**. Os dois
+servidores responderam `fetch failed` na sandbox porque o egresso dela recusa `scholar.google.com`,
+`clinicaltrials.gov` e `api.semanticscholar.org`. Handshake e listagem estão provados; a busca em si,
+não — e é o mesmo bloqueio de rede da decisão nº 1.
+
+**Um buraco de recibo, achado lendo:** `resumoMcp` devolvia `on (0 tools)` quando um conector sobe e
+a política recusa tudo. Imprimia o zero, então não mentia — mas "on" num recibo de deploy afirma
+capacidade. Agora é `degraded (1/1, 0 tools)`, com teste.
+
+### 8.3c Ligado: o SDK na imagem e o `scholar` ON (2026-11-03)
+
+Decisão do dono depois do §8.3b: *"instala o SDK e liga o scholar"*.
+
+**O que entrou, pinado exato:** `@modelcontextprotocol/sdk@1.32.2` e `scholar-mcp@1.2.0`.
+
+**Custo medido, não estimado:** `node_modules` foi de **1645 → 1769 MB (+124 MB)**, 54 pacotes
+novos. **88 MB disso são `pdfjs-dist` + `pdf-parse` + `@napi-rs`**, que servem só o
+`ingest_paper_fulltext` — justamente a ÚNICA tool que a nossa política recusa. Pagamos peso por uma
+tool que nunca vai rodar aqui. Único efeito colateral no lock: `dotenv` subiu 17.2.3 → 17.4.2
+(dentro do range) e saiu de `dev` para produção, porque o scholar depende dele. Nenhum downgrade.
+
+**🔴 Dependência pinada, NUNCA `npx -y` — e isto era um furo que o catálogo inteiro tinha.** Todas as
+entradas nasceram como `npx -y <pacote>`, que baixa a **última** versão em tempo de boot: um release
+comprometido passaria a rodar como subprocesso do container no próximo deploy, **sem PR, sem
+revisão, sem lock**. A doutrina do catálogo — "acrescentar um servidor é uma linha num PR que alguém
+lê" — só vale se a linha fixar O QUE roda. Agora o endpoint é
+`node node_modules/scholar-mcp/dist/index.js`: a árvore toda fica no `package-lock.json`, o
+`COPY --from=builder /app ./` do Dockerfile já leva o `node_modules`, e o processo (usuário `zaeon`,
+uid 10001) não precisa de cache de npm nem de egresso pro registry. De quebra, boot determinístico
+em vez de 124 MB de download disputando com o health-gate.
+
+**O smoke que o `mcp.ts` dizia ser impossível.** O cabeçalho do arquivo avisava, desde o PASSO 7, que
+"o SDK não está instalado neste ambiente e não há servidor MCP p/ smoke-test aqui" — e por isso
+`connectMcp` nunca havia rodado, em teste nenhum. Agora roda: `lib/agent/mcp-real.test.ts` chama
+`ligarMcp` **sem `connect` injetado**, contra o servidor do `node_modules`. Resultado real:
+
+```
+[mcp] scholar: 9 tool(s) de leitura registrada(s), 1 recusada(s) por risco: ingest_paper_fulltext (write)
+resumoMcp → "on (9 tools)"
+```
+
+Ele **roda no CI** de propósito: como a versão está pinada, as contas (9 de 10) são um guarda — um
+bump que mude as tools ou as annotations quebra o CI antes de chegar à produção.
+
+**ON por padrão, com rollback.** `deploy.yml` passou a `${{ vars.MCP_CONECTORES || 'scholar' }}` e os
+dois serviços do compose a `${MCP_CONECTORES:-scholar}` (web **e** worker — o worker roda o mesmo
+`runChatTurn`, igual ao par do #670). Isso criou um problema que a §8.1 já tinha ensinado: com padrão
+ligado, **"vazio" deixa de ser alcançável**, porque é exatamente o caso que cai no padrão. Ligar sem
+rollback não é opção, então `MCP_CONECTORES` ganhou kill-switch — `0`, `off`, `false`, `nao`, `no`,
+`nenhum` ou `none` —, no mesmo vocabulário do `graficoLigado`, e com o cuidado de o kill-switch não
+virar "nome fora do catálogo" no log de boot.
+
+**A rede de honestidade não mudou, e isso foi conferido.** Nenhuma das 5 classes de ação é "buscar
+literatura" — a plataforma já faz isso pelo `literature_search` —, e o `tambemPor` das classes aponta
+pra `mcp:fetch:` e `mcp:(git|filesystem):`, que não casam com `mcp:scholar:*`. Então o cardápio não
+passou a prometer nada novo. As descrições das 9 tools entram no system prompt pelo caminho já
+blindado (`descricaoSegura`, teto de 180 caracteres, uma linha) — servidor externo escrevendo no
+nosso prompt é vetor de injeção, e esse guarda existia desde a F5.
+
+**🟡 O QUE AINDA NÃO ESTÁ PROVADO, e é o risco real desta entrega:** que as chamadas devolvam
+**dado**. Handshake, listagem, política e registro estão provados; a busca, não — o egresso da minha
+sandbox recusa `scholar.google.com`, `clinicaltrials.gov` e `api.semanticscholar.org`. E há um motivo
+concreto para desconfiar: **o Google Scholar bloqueia IP de datacenter com agressividade**, então
+`search_google_scholar_key_words` e `search_google_scholar_advanced` podem voltar vazias ou com
+captcha a partir do VPS, enquanto as que falam com Semantic Scholar/Crossref
+(`search_literature_graph`, `build_reference_list`) tendem a passar. **O `/api/health` não detecta
+isso** — ele reporta `on (9 tools)` porque o handshake deu certo. A verificação é um turno de chat de
+verdade pedindo referências, e ela depende da decisão nº 1 (liberar `zaeon.com.br` pra mim) ou de
+você olhar.
 
 ### 8.4 O que a F2 do documento mudou de verdade ao ligar
 

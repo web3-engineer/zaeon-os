@@ -170,9 +170,11 @@ jobs:
           # síntese cruzada (+1 chamada de modelo, só nesses turnos).
           HARNESS_SINTESE: ${{ vars.HARNESS_SINTESE || '' }}
           HARNESS_GRAFICO: ${{ vars.HARNESS_GRAFICO || '' }}
-          # F5: conectores MCP, por NOME do MCP_CATALOG (ex.: "fetch,git"). Só tools de LEITURA
-          # entram no registry. Exige `npm i @modelcontextprotocol/sdk` na imagem.
-          MCP_CONECTORES: ${{ vars.MCP_CONECTORES || '' }}
+          # F5: conectores MCP, por NOME do MCP_CATALOG. Só tools de LEITURA entram no registry.
+          # `scholar` por padrão (2026-11-03): o SDK e o servidor agora estão PINADOS no
+          # package.json, então não há mais "exige npm i" nem download em boot.
+          # Para desligar: Variable MCP_CONECTORES=0 (ou off/nenhum) — vazio cai no padrão.
+          MCP_CONECTORES: ${{ vars.MCP_CONECTORES || 'scholar' }}
           # LEITOR (Fatia 7): o container que lê a web sem credencial. `abrir_url` do harness só é
           # REGISTRADA quando LEITOR_PROXY_URL existe — sem ela a Aura diz que não abre endereços.
           # LEITOR_ALLOW é a allowlist default-deny (vazia = nenhum domínio sai).
