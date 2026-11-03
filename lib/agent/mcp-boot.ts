@@ -42,14 +42,31 @@ export type EstadoMcp = {
   conectores: EstadoConector[];
 };
 
-/** A flag é a própria lista: sem conector pedido, não há MCP. */
+/**
+ * O KILL-SWITCH. A flag é a própria lista, então "vazio" sempre foi o desligado natural — só que
+ * desde que o `scholar` passou a vir LIGADO POR PADRÃO (deploy.yml e compose), vazio deixou de ser
+ * alcançável: `${{ vars.MCP_CONECTORES || 'scholar' }}` cai no padrão justamente quando a Variable
+ * está vazia. Sem um valor que diga "nenhum", ligar por padrão seria ligar sem rollback — e flag sem
+ * rollback é o que esta série se recusou a fazer em toda fase.
+ *
+ * Mesmo vocabulário do `graficoLigado` (lib/agent/graficosDoTurno), pra não inventar um segundo
+ * dialeto de "off" no mesmo harness.
+ */
+const DESLIGADO = /^(0|off|false|nao|não|no|nenhum|none)$/i;
+
+/** A flag é a própria lista: sem conector pedido — ou com o kill-switch — não há MCP. */
 export function mcpLigado(env: Env = process.env): boolean {
-  return !!env[ENV_CONECTORES]?.trim();
+  const v = env[ENV_CONECTORES]?.trim();
+  return !!v && !DESLIGADO.test(v);
 }
 
 /** "fetch, git, inventado" → as entradas do catálogo + o que não existe nele (pra logar). */
 export function conectoresPedidos(env: Env = process.env): { escolhidos: CatalogEntry[]; desconhecidos: string[] } {
-  const nomes = String(env[ENV_CONECTORES] ?? "")
+  const bruto = String(env[ENV_CONECTORES] ?? "").trim();
+  // o kill-switch não é "nome desconhecido": sem isto, `MCP_CONECTORES=0` logaria «"0" não está em
+  // MCP_CATALOG» em todo boot — um aviso que parece erro de digitação e não é.
+  if (!bruto || DESLIGADO.test(bruto)) return { escolhidos: [], desconhecidos: [] };
+  const nomes = bruto
     .split(",")
     .map((x) => x.trim().toLowerCase())
     .filter(Boolean);

@@ -109,10 +109,11 @@ services:
       # G3 · gráfico na resposta (lib/agent/grafico): SVG desenhado aqui, com número que o turno
       # apurou. Não custa chamada de modelo. `=0` é o kill-switch.
       HARNESS_GRAFICO: ${HARNESS_GRAFICO:-1}
-      # F5 · conectores MCP por nome do catálogo (lib/agent/mcp MCP_CATALOG). Vazio = nenhum.
-      # Os servidores stdio rodam como SUBPROCESSO deste container (npx), então o primeiro boot
-      # pode falhar o handshake enquanto o npx baixa o pacote.
-      MCP_CONECTORES: ${MCP_CONECTORES:-}
+      # F5 · conectores MCP por nome do catálogo (lib/agent/mcp MCP_CATALOG). `scholar` por padrão
+      # (decisão do dono, 2026-11-03): 9 tools de LEITURA no trilho de fontes/ABNT. O servidor roda
+      # como SUBPROCESSO deste container, pelo binário do `node_modules` — pinado em `scholar-mcp:
+      # "1.2.0"`, sem `npx` e sem download em boot. `=0` (ou off/nenhum) é o kill-switch.
+      MCP_CONECTORES: ${MCP_CONECTORES:-scholar}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       ESTUDO_GATEKEEPER: ${ESTUDO_GATEKEEPER:-0}
       AURA_ECONOMY: ${AURA_ECONOMY:-0}
@@ -197,10 +198,11 @@ services:
       # G3 · gráfico na resposta (lib/agent/grafico): SVG desenhado aqui, com número que o turno
       # apurou. Não custa chamada de modelo. `=0` é o kill-switch.
       HARNESS_GRAFICO: ${HARNESS_GRAFICO:-1}
-      # F5 · conectores MCP por nome do catálogo (lib/agent/mcp MCP_CATALOG). Vazio = nenhum.
-      # Os servidores stdio rodam como SUBPROCESSO deste container (npx), então o primeiro boot
-      # pode falhar o handshake enquanto o npx baixa o pacote.
-      MCP_CONECTORES: ${MCP_CONECTORES:-}
+      # F5 · conectores MCP por nome do catálogo (lib/agent/mcp MCP_CATALOG). `scholar` por padrão
+      # (decisão do dono, 2026-11-03): 9 tools de LEITURA no trilho de fontes/ABNT. O servidor roda
+      # como SUBPROCESSO deste container, pelo binário do `node_modules` — pinado em `scholar-mcp:
+      # "1.2.0"`, sem `npx` e sem download em boot. `=0` (ou off/nenhum) é o kill-switch.
+      MCP_CONECTORES: ${MCP_CONECTORES:-scholar}
       # geração do documento por SEÇÃO: o worker roda o mesmo runChatTurn → lib/tcc/turno →
       # gerarTccEmBackground, então sem esta linha a Variable valeria só no web (par do #670).
       DOC_POR_SECAO: ${DOC_POR_SECAO:-1}

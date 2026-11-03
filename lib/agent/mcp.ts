@@ -11,9 +11,11 @@
  *   (2) erro de transporte / JSON-RPC = SAÚDE do conector → `status` + `messageForError` (nunca vira
  *       observação do modelo).
  *
- * ⚠️ O SDK não está instalado neste ambiente e não há servidor MCP p/ smoke-test aqui. As partes
- * PURAS (risco, mapeamento de schema, canais de erro, catálogo, máquina de estados) são testadas;
- * `connectMcp` exige `npm i @modelcontextprotocol/sdk` + um servidor vivo (smoke-test do dono).
+ * ✅ ISTO MUDOU em 2026-11-03 (§8.3c do plano). O aviso que ficou aqui desde o PASSO 7 — "o SDK não
+ * está instalado neste ambiente e não há servidor MCP p/ smoke-test aqui" — deixou de valer: o SDK e
+ * o `scholar-mcp` estão PINADOS no `package.json`, e `lib/agent/mcp-real.test.ts` exercita o
+ * `connectMcp` de verdade, sem `connect` injetado, contra o servidor do `node_modules`. O que segue
+ * sem prova é só a CHAMADA que depende de rede externa.
  */
 import type { FunctionDeclaration } from "@google-cloud/vertexai";
 import type { Plan } from "@/lib/plans";
@@ -310,11 +312,35 @@ export type CatalogEntry = ConnectorConfig & {
  *
  * `indisponivel` não é cosmético: `conectoresPedidos` (lib/agent/mcp-boot) recusa essas entradas,
  * então pedir uma delas vira um aviso claro no boot em vez de 10 s de handshake condenado.
+ *
+ * ───────── A ENTREGA DO SERVIDOR: dependência pinada, NUNCA `npx -y` ─────────
+ *
+ * Todas as entradas nasceram como `npx -y <pacote>`, e isso é um furo de cadeia de suprimentos que
+ * contradiz a própria doutrina do catálogo. `npx -y scholar-mcp` baixa a **última** versão em tempo
+ * de boot: um release comprometido passa a rodar como subprocesso do container no próximo deploy,
+ * **sem PR, sem revisão, sem lock**. "Acrescentar um servidor é uma linha num PR que alguém lê" só
+ * vale se a linha fixar O QUE roda.
+ *
+ * Então o `scholar` entrou como dependência pinada exata (`scholar-mcp: "1.2.0"`), e o endpoint
+ * aponta pro binário local. Três ganhos, nessa ordem de importância:
+ *   1. a árvore inteira fica no `package-lock.json` — a revisão vê o que entra;
+ *   2. nada é baixado em boot: o `COPY --from=builder /app ./` do Dockerfile já leva o
+ *      `node_modules`, e o processo roda como `zaeon` (uid 10001), que não precisa de cache de npm
+ *      nem de egresso pro registry;
+ *   3. boot determinístico, em vez de 124 MB de download disputando com o health-gate.
+ *
+ * O preço, medido e não estimado: **+124 MB / 54 pacotes** na imagem. 88 MB disso são
+ * `pdfjs-dist` + `pdf-parse` + `@napi-rs`, que servem só o `ingest_paper_fulltext` — justamente a
+ * ÚNICA tool que a nossa política recusa. Pagamos peso por uma tool que nunca vai rodar aqui; o que
+ * compra as outras nove é o resto.
  */
 export const MCP_CATALOG: CatalogEntry[] = [
   { name: "biomcp", label: "BioMCP (med/bio)", transport: "stdio", endpoint: "npx -y biomcp", note: "salas med/bio · npm 1.6.0 ✓ · handshake OK, 40/43 tools admitidas (só-leitura)" },
   { name: "filesystem", label: "Filesystem (oficial)", transport: "stdio", endpoint: "npx -y @modelcontextprotocol/server-filesystem", note: "sobe e morre sem diretório nos args; e leria o disco do container, não a base do aluno", indisponivel: true },
-  { name: "scholar", label: "Scholar (experimental)", transport: "stdio", endpoint: "npx -y scholar-mcp", note: "npm 1.2.0 ✓ · handshake OK, 9/10 tools admitidas — busca no Scholar, lista de referências e validação de citação", experimental: true },
+  // LIGADO POR PADRÃO (2026-11-03, decisão do dono). Roda o binário do `node_modules`, NÃO `npx -y`:
+  // ver "A ENTREGA DO SERVIDOR" no bloco acima. Caminho relativo porque o processo sobe com cwd
+  // `/app` no container e na raiz do repo em dev — nos dois casos é daqui que `node_modules` pende.
+  { name: "scholar", label: "Scholar (acadêmico)", transport: "stdio", endpoint: "node node_modules/scholar-mcp/dist/index.js", note: "pinado 1.2.0 no package.json · handshake real OK, 9/10 tools admitidas — busca no Scholar, lista de referências e validação de citação", experimental: true },
   { name: "openalex-research", label: "OpenAlex Research", transport: "stdio", endpoint: "npx -y @oksure/openalex-research-mcp", note: "pacote E404 no npm (2026-11-03)", indisponivel: true },
   { name: "paper-search", label: "Paper Search", transport: "stdio", endpoint: "python -m paper_search_mcp.server", note: "python — a imagem do web não tem", indisponivel: true },
   { name: "fetch", label: "Fetch (oficial)", transport: "stdio", endpoint: "npx -y @modelcontextprotocol/server-fetch", note: "não existe nesse nome (o oficial é python); e o Leitor já faz isso com allowlist", indisponivel: true },

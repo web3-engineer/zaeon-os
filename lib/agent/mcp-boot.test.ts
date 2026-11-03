@@ -33,6 +33,28 @@ describe("mcpLigado · a flag é a própria lista", () => {
   it("com conector pedido, liga", () => {
     expect(mcpLigado({ [ENV_CONECTORES]: "biomcp" })).toBe(true);
   });
+
+  it("O KILL-SWITCH: agora que o padrão é LIGADO, vazio não é mais alcançável — precisa de um 'não'", () => {
+    // `${{ vars.MCP_CONECTORES || 'scholar' }}` cai no padrão exatamente quando a Variable está
+    // vazia; sem estes valores, ligar por padrão seria ligar sem rollback.
+    for (const off of ["0", "off", "OFF", "false", "nao", "não", "no", "nenhum", "none", " off "]) {
+      expect(mcpLigado({ [ENV_CONECTORES]: off }), off).toBe(false);
+    }
+  });
+
+  it("o kill-switch não é 'nome desconhecido' — não polui o log de boot com um falso erro de digitação", () => {
+    expect(conectoresPedidos({ [ENV_CONECTORES]: "0" })).toEqual({ escolhidos: [], desconhecidos: [] });
+    expect(conectoresPedidos({ [ENV_CONECTORES]: "nenhum" })).toEqual({ escolhidos: [], desconhecidos: [] });
+  });
+
+  it("'scholar' — o padrão de produção — resolve no catálogo e NÃO está indisponível", () => {
+    // se alguém marcar o scholar `indisponivel` sem mexer no deploy, o padrão viraria um aviso de
+    // boot e o MCP cairia calado. Este teste é o elo entre o catálogo e o default do deploy.yml.
+    const { escolhidos, desconhecidos } = conectoresPedidos({ [ENV_CONECTORES]: "scholar" });
+    expect(escolhidos.map((c) => c.name)).toEqual(["scholar"]);
+    expect(desconhecidos).toEqual([]);
+    expect(escolhidos[0].endpoint).not.toMatch(/npx/);   // dependência pinada, não download em boot
+  });
 });
 
 describe("conectoresPedidos · SÓ pelo catálogo", () => {
