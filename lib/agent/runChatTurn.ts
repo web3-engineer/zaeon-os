@@ -27,6 +27,7 @@ import * as mem from "@/lib/agent/memory-provider";
 import { serializarProgresso, serializarModelo, serializarPrevia } from "@/lib/agent/progresso";
 import { criarEmissorPrevia } from "@/lib/agent/previa";
 import { blocoFonteColada, objetivoComFonte, pedidoParaTitulo, separarFonteColada } from "@/lib/agent/fonteColada";
+import { blocoDosAnexos } from "@/lib/agent/anexos";
 import { MODELO_PADRAO, modeloDoId, nomeDoModeloServido } from "@/lib/chat/modelos";
 import { markRunning, saveDone, saveError } from "@/lib/agent/chat-turn-store";
 import type { Wing } from "@/lib/agent/memory";
@@ -45,6 +46,12 @@ export type ChatTurnParams = {
   mentor?: { slug: string; wing: Wing } | null;
   /** Modelo escolhido no composer (id de lib/chat/modelos; o route já validou). Ausente = padrão. */
   modelo?: string;
+  /**
+   * F3 · os ARQUIVOS anexados, com o TEXTO já extraído pela rota (lib/agent/anexos-server). Vêm
+   * prontos, e não como bytes, por dois motivos: as chamadas do harness vão pelo envelope, que é
+   * texto; e assim o turno atravessa a fila do CHAT_BG como JSON. Vazio/ausente = turno sem anexo.
+   */
+  anexos?: import("@/lib/agent/anexos").AnexoDoTurno[];
 };
 
 export async function runChatTurn(
@@ -89,6 +96,9 @@ export async function runChatTurn(
       // Mentor ativo: andar de memória "<slug>/<userId>" (isola por mentor E por usuário).
       mentor: mentor?.slug,
       wing: mentor?.wing.label,
+      // F3: os anexos viajam no ToolContext — é dele que `ler_anexo`/`listar_anexos` os tiram, e é
+      // ele que o `disponivelNoTurno` consulta pra decidir se as tools existem neste turno.
+      ...(params.anexos?.length ? { anexos: params.anexos } : {}),
     };
     const escolhido = modeloDoId(params.modelo);
     const ledgerTurno = { agentKey: mentor?.slug ?? "aura", mentorSlug: mentor?.slug ?? null, userId: userId ?? null, surface: surfaceLedger(surface ?? hctx.activeTab), scopeId: typeof ac.cartolinaScopeId === "string" ? ac.cartolinaScopeId : null };
@@ -164,7 +174,7 @@ export async function runChatTurn(
       onModelo(m) { if (!servido || servido.phase !== "draft" || m.phase === "draft") servido = m; },
       // a PRÉVIA da resposta: o texto do rascunho enquanto nasce, em PEDAÇOS (lib/agent/previa criarEmissorPrevia)
       onPrevia: criarEmissorPrevia((pedaco) => narrar(serializarPrevia(pedaco))),
-      systemContext: [params.systemContext, memBlock, cartolinaBlock, tccBlock, skillBlock, colada.fonte ? blocoFonteColada(colada.fonte) : ""].filter(Boolean).join("\n\n") || undefined,
+      systemContext: [params.systemContext, memBlock, cartolinaBlock, tccBlock, skillBlock, blocoDosAnexos(params.anexos ?? []), colada.fonte ? blocoFonteColada(colada.fonte) : ""].filter(Boolean).join("\n\n") || undefined,
       history: params.history,
       baseConhecimento: await basePromise,
       // C5: cada chamada do turno grava no TokenLedger com quem/onde (mentor em agentKey E mentorSlug, como o registrarUso).

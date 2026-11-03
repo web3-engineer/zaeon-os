@@ -20,6 +20,7 @@ import {
 } from "@/lib/agent/tools";
 // `toolsWeb` importa SÓ TIPOS daqui de volta (apagados na compilação), então não há ciclo.
 import { abrirUrlDef, baixarParaBaseDef } from "@/lib/agent/toolsWeb";
+import { lerAnexoDef, listarAnexosDef } from "@/lib/agent/toolsAnexo";
 
 // ───────────────────────────── contratos do runtime (§11.2) ─────────────────────────────
 export type ToolRuntime = "ts" | "python" | "mcp";
@@ -68,6 +69,13 @@ export interface ToolDef {
   schema: FunctionDeclaration; // o que o Gemini (function-calling) enxerga
   /** Teto próprio (ms); sem ele vale o default do runtime. Busca em 4–5 bases precisa de mais que 20s. */
   timeoutMs?: number;
+  /**
+   * F3 · A tool existe NESTE TURNO? Diferente de registro condicional, que é CONFIGURAÇÃO decidida
+   * no boot (`abrir_url` depende do Leitor): `ler_anexo` depende de haver anexo nesta conversa, o
+   * que muda a cada turno. Ausente = sempre disponível. O `permit()` consulta, e com isso o cardápio
+   * da F0 e o menu da F2 param de anunciar capacidade que este turno não tem.
+   */
+  disponivelNoTurno?(ctx: ToolContext): boolean;
   run(args: any, ctx: ToolContext): Promise<ToolResult>;
 }
 
@@ -104,6 +112,8 @@ async function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
  * em `guiado`, `write` sobe pra aprovação; leitura/geração em `auto` = ALLOW.
  */
 export function permit(def: ToolDef, ctx: ToolContext): Gate {
+  // F3: indisponível NESTE turno é DENY (a tool existe, mas não há o que ela leria)
+  if (def.disponivelNoTurno && !def.disponivelNoTurno(ctx)) return "DENY";
   if (!planAtLeast(ctx.plan, def.minPlan)) return "DENY";
   if (isReadOnlyMode(ctx.taskMode) && def.risk !== "read") return "DENY"; // modo leitura nunca escreve
   if (def.demandGpu && !ctx.gpuAvailable) return "REQUIRE_APPROVAL"; // T3 sob demanda
@@ -141,6 +151,15 @@ const REGISTRY = new Map<string, ToolDef>();
 export function registerTool(def: ToolDef): void { REGISTRY.set(def.name, def); }
 export function getTool(name: string): ToolDef | undefined { return REGISTRY.get(name); }
 export function listTools(): ToolDef[] { return [...REGISTRY.values()]; }
+
+/**
+ * As tools que valem PARA ESTE TURNO. É esta lista — não `listTools()` — que alimenta o cardápio da
+ * F0 e o menu da F2: anunciar `ler_anexo` num turno sem anexo seria prometer o que não dá pra fazer,
+ * que é exatamente o que a F0 existe pra impedir.
+ */
+export function toolsDoTurno(ctx: ToolContext): ToolDef[] {
+  return listTools().filter((d) => !d.disponivelNoTurno || d.disponivelNoTurno(ctx));
+}
 
 /** Executa por nome (o que o laço chama). Tool desconhecida = DENY silencioso (deny-by-default). */
 export async function runToolByName(
@@ -412,3 +431,7 @@ export function registrarBaixarParaBase(env: Record<string, string | undefined> 
   return true;
 }
 registrarBaixarParaBase();
+
+// Anexo (F3): registradas SEMPRE — quem decide é `disponivelNoTurno`, não o boot. Não há
+// configuração pra depender: ou a conversa tem arquivo, ou não tem.
+[listarAnexosDef, lerAnexoDef].forEach(registerTool);

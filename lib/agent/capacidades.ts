@@ -48,6 +48,7 @@ export const CAPACIDADES: readonly Capacidade[] = [
   { tool: "abrir_url", faz: "abrir um endereço da web e ler o conteúdo da página" },
   { tool: "baixar_para_base", faz: "baixar um arquivo e guardar na base de conhecimento da pessoa" },
   { tool: "ler_anexo", faz: "ler um arquivo que a pessoa anexou à conversa" },
+  { tool: "listar_anexos", faz: "ver quais arquivos a pessoa anexou a esta conversa" },
   { tool: "clonar_repo", faz: "ler os arquivos de um repositório de código" },
   { tool: "executar_codigo", faz: "rodar um script e devolver a saída" },
 ];

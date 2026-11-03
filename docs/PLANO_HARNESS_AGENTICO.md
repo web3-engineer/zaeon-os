@@ -249,7 +249,7 @@ Isso vira **invariante testada**, não meta: promessa sem lastro não passa no g
 | **F1** ✅ | `abrir_url` **pelo Leitor** (`lib/leitor/cliente`), registrada só quando o Leitor existe; URL colada vira passo de plano e tira o turno do caminho rápido. E o chat passa a aceitar `.txt`/`.md` (`ehArquivoTexto`), que o servidor já aceitava. | baixo | F0 |
 | **F1b** ✅ | `baixar_para_base`: o Leitor passa a servir **bytes** (`POST /bytes`) pela mesma allowlist — a **opção (a)** do portão. Tetos expandidos e fundamentados (§5.1), texto oculto removido, `untrusted` marcado. | médio | F1 |
 | **F2** ✅ | **O modelo escolhe a tool.** `lib/agent/acao.ts` (render ↔ parse, fronteira do `deepseek-recipe`) + `gather` **reentrante** no `trajectory`, com teto de política e teto duro. Flag `HARNESS_ACAO`, OFF. | **médio** | F0, F1 |
-| **F3** | Anexo entra no harness: `fileData` deixa de desligar o laço, `ChatTurnParams` ganha anexos, e nascem `listar_anexos`/`ler_anexo`. Resolve o §4.1 e §4.4. | médio | F2 |
+| **F3** ✅ | Anexo entra no harness: `fileData` deixa de desligar o laço, `ChatTurnParams` ganha anexos, nascem `listar_anexos`/`ler_anexo` e as tools passam a ter **disponibilidade por turno**. Resolve o §4.1 e o §4.4. Flag `HARNESS_ANEXO`, OFF. | médio | F2 |
 | **F4** | Pensamento por documento: um passe por documento + uma síntese cruzada antes do draft (RAPTOR-lite, compartilhado com a F4 do plano do documento). Resolve o §4.3. | médio | F3 |
 | **F5** | Conectores MCP ligados (`lib/agent/mcp.ts` **já está escrito** e nunca é chamado): catálogo tem `fetch`, `filesystem`, `git` — é o caminho pra "clonar um repo" sem escrever tool nova. Exige `npm i @modelcontextprotocol/sdk` e smoke-test do dono. | médio | F2 |
 
@@ -461,6 +461,63 @@ dois YAML validados. Os 13 testes do motor passaram **sem alteração**, o que �
 **Deslize meu, de novo e registrado:** rodei o `tsc` antes de terminar os testes e ele achou 2 erros
 de tipo depois — mocks `vi.fn(async (system: string) => …)` sendo indexados em `calls[i][1]`. A ordem
 certa é escrever o teste, **depois** tipar. Corrigido antes do commit desta vez.
+
+### F3 entregue — e a armadilha que mudou o desenho
+
+**O §4.1 em uma linha:** `route.ts` gateava o harness em `!fileData`, então **um** arquivo anexado
+derrubava o turno pro streaming legado — sem laço, sem tools, sem RAG, sem memória, sem a rede da F0.
+E com **dois** o harness já ficava ligado, porque o lote não manda `fileData`. Um arquivo = modo
+burro, dois = modo esperto. Invertido.
+
+**A armadilha: apagar o `!fileData` teria piorado o produto.** As chamadas do harness vão pelo
+envelope, que é **texto** — é o que nos dá Vertex + pool + reserva HF (o mesmo motivo que fez a F2
+usar JSON em vez de function-calling). Sem extrair nada antes, o harness receberia o turno e
+**ignoraria o arquivo**. Então o texto sai na rota, pelo mesmo `pdf-loader` que ela já usa pro PDF
+grande, e entra como evidência — por uma tool, não colado no prompt.
+
+**O limite que define o desenho, e que não é simetria:** imagem e **PDF escaneado** não têm texto
+pra extrair, e só o caminho multimodal os lê. Esses seguem no legado **mesmo com a flag ligada**. A
+regra é "o harness pega o turno quando é melhor", não "quando dá". `anexosDoFileData` devolvendo `[]`
+é exatamente esse "não pegue este turno" — e `MIN_CHARS_UTIL` (400 chars, menos de meia página) é o
+piso de "veio algo".
+
+**DISPONIBILIDADE POR TURNO — conceito novo que esta fase precisou.** Até aqui toda tool era
+registrada ou ausente, decidido por **configuração** no boot (`abrir_url` depende do Leitor,
+`baixar_para_base` do Leitor + base). Um anexo não é configuração: existe neste turno e não no
+próximo. Daí `ToolDef.disponivelNoTurno(ctx)`, que o **`permit()` consulta** (indisponível = DENY, e
+tem teste de que `runToolByName` nega por esse caminho, não pela boa vontade de quem chama), e
+`toolsDoTurno(ctx)` — que passou a alimentar o cardápio da F0 e o menu da F2 no lugar de
+`listTools()`. Sem isso, um turno sem anexo anunciaria "leio seu anexo": a mentira da F0 de novo.
+
+**Funciona com a F2 desligada.** O plano determinístico lê os anexos (um `ler_anexo` por arquivo, até
+3 — mesmo teto do `MAX_URLS`), e o **arquivo da pessoa vem primeiro**, antes de página colada e das
+buscas da intenção: quando há anexo, o turno é quase sempre sobre ele. Com a F2 ligada, o modelo pode
+pedir a continuação (`de`) ou um segundo arquivo. As buscas da intenção **continuam** — "compara esse
+PDF com o estado da arte" precisa das duas coisas, e cortá-las aqui seria palpite de qualidade meu.
+
+**O aviso que impede a conclusão errada:** `ler_anexo` devolve até 24 mil caracteres por chamada (a
+mesma ordem do `ORCAMENTO_HISTORICO`, o teto que esta casa já aceita pra "muito texto no prompt"), e
+quando sobra documento o `claim` diz **"HÁ MAIS DEPOIS DISTO"** em maiúsculas. Sem isso o modelo
+trata um terço do artigo como o artigo e afirma que "o texto não menciona X". **Limite honesto:** com
+a F2 desligada e um documento acima de 24 mil caracteres, lê-se só o começo — o caminho de hoje lê o
+PDF inteiro, inline. É a troca da fase: laço, tools, RAG, memória e honestidade em troca da cauda de
+documentos muito longos. Com a F2 ligada, o modelo pede o resto.
+
+**Id inventado não cai no primeiro arquivo em silêncio** (`anexo_desconhecido`): responder sobre o
+documento errado é pior que dizer que não achou — e o modelo tem o inventário pra se corrigir.
+
+**Dois bugs que os testes pegaram:**
+- `Math.max(0, NaN)` é `NaN`. Um `de` inválido atravessava e o `slice` devolvia string vazia — que o
+  modelo leria como "o documento acabou". Número inválido agora vira o padrão **antes** da conta.
+- Meus próprios testes ponta-a-ponta levavam **4,4 s cada** porque, sem `runToolImpl`, o
+  `literature_search` do plano saía **pra internet de verdade** (OpenAlex/arXiv). Agora só as tools de
+  anexo rodam de verdade e as de busca são dublê: 8,8 s → 30 ms, e sem depender de API externa no CI.
+
+**Gates:** 1580 testes em `lib/agent` + `lib/leitor` + `lib/llm` + `lib/rag` + `lib/documento` +
+`lib/tcc` + `components/chat` + `app/api` (+45 nesta fase: 22 no modelo do anexo, 14 nas tools e na
+disponibilidade por turno, 9 na ligação do harness); `tsc --noEmit` limpo; `eslint` 0; os dois YAML
+validados. O ramo `TOO_BIG` do caminho legado ficou com o código dele de propósito: a promessa da
+flag é que, desligada, o caminho de hoje vale byte a byte.
 
 ## 7. 🔒 Portões do dono
 

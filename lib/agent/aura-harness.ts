@@ -18,10 +18,12 @@ import { classify } from "@/lib/agent/router";
 import { previaDoRascunho } from "@/lib/agent/previa";
 import { pensarDa, type NivelPensar } from "@/lib/llm/pensar";
 import { STUDIO_KINDS } from "@/lib/agent/tools";
-import { getTool, listTools, runToolByName, type ToolContext, type ApproveFn } from "@/lib/agent/runtime";
+import { getTool, runToolByName, toolsDoTurno, type ToolContext, type ApproveFn } from "@/lib/agent/runtime";
 import { cardapioDeCapacidades, respostaHonesta } from "@/lib/agent/capacidades";
 import { temUrl, urlsDoTexto } from "@/lib/agent/urls";
 import { ehUrlDeArquivo } from "@/lib/agent/toolsWeb";
+import { MAX_ANEXOS_NO_PLANO } from "@/lib/agent/anexos";
+import { anexosDoCtx } from "@/lib/agent/toolsAnexo";
 import { critiqueForState } from "@/lib/agent/examiner";
 import { nullMemory } from "@/lib/agent/memory";
 import { messageForError, classifyError } from "@/lib/agent/errors";
@@ -178,6 +180,17 @@ const isGatherTool = (t: string) => t === "memory_search" || t === "literature_s
  * `.pdf` cai em `abrir_url` e falha com `tipo_nao_suportado` — que é uma observação honesta, e o
  * cardápio da F0 já disse que a casa não baixa arquivo.
  */
+/**
+ * F3 · OS PASSOS DE ANEXO. O arquivo da pessoa é lido no plano determinístico — assim a F3 funciona
+ * com a F2 DESLIGADA (sem ela ninguém mais pediria `ler_anexo`). Com a F2 ligada, o modelo pode
+ * pedir a continuação (`de`) ou um segundo arquivo.
+ */
+export function passosDeAnexo(ctx: unknown): Step[] {
+  return anexosDoCtx(ctx)
+    .slice(0, MAX_ANEXOS_NO_PLANO)
+    .map((a) => ({ tool: "ler_anexo", args: { anexo: a.id } }));
+}
+
 export function passosDeUrl(objetivo: string): Step[] {
   const podeAbrir = !!getTool("abrir_url");
   const podeBaixar = !!getTool("baixar_para_base");
@@ -391,8 +404,12 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
       const gather = st.spec.tools.filter(isGatherTool);
       // a página vem ANTES de tudo: o resto do turno (raciocínio, rascunho) deve ver o que ela diz
       const daWeb = passosDeUrl(st.objective);
+      // O ARQUIVO DA PESSOA VEM PRIMEIRO, antes de página e de busca: quando há anexo, o turno é
+      // quase sempre SOBRE ele. (A busca da intenção continua — "compara esse PDF com o estado da
+      // arte" precisa das duas coisas, e cortar a busca aqui seria um palpite de qualidade.)
+      const dosAnexos = passosDeAnexo(ctx);
       if (st.intent === "gerar_artefato") {
-        return [...daWeb, { tool: "studio_generate", args: { kind: pickStudioKind(st.objective), topic: st.objective } }];
+        return [...dosAnexos, ...daWeb, { tool: "studio_generate", args: { kind: pickStudioKind(st.objective), topic: st.objective } }];
       }
       if (st.intent === "criar_trabalho" && st.mode === "research") {
         // A6 · 2–3 perspectivas/sub-perguntas antes de fechar os steps.
@@ -405,11 +422,11 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
           );
           if (Array.isArray(r?.subquestions) && r.subquestions.length) subs = r.subquestions.slice(0, 3);
         } catch { /* fallback: só o objetivo */ }
-        const steps: Step[] = [...daWeb];
+        const steps: Step[] = [...dosAnexos, ...daWeb];
         for (const t of gather) for (const q of subs) steps.push({ tool: t, args: { query: q } });
         return steps.length ? steps : [{ tool: gather[0] ?? "memory_search", args: { query: st.objective } }];
       }
-      return [...daWeb, ...gather.map((t) => ({ tool: t, args: { query: st.objective } }))];
+      return [...dosAnexos, ...daWeb, ...gather.map((t) => ({ tool: t, args: { query: st.objective } }))];
     },
 
     // F2 · a volta extra. Só existe com a flag: sem ela o motor não recebe a função e o `gather`
@@ -418,7 +435,8 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
       ? {
         async proximosPassos(st: TrajectoryState): Promise<Step[]> {
           if (st.voltas >= voltasDeAcao()) return [];     // teto de POLÍTICA (o do motor é outro)
-          const menu = toolsDoMenu(listTools()).map(toolVisivel);
+          // F3: as tools DESTE turno, não as registradas — `ler_anexo` não existe sem anexo
+          const menu = toolsDoMenu(toolsDoTurno(ctx)).map(toolVisivel);
           if (!menu.length) return [];
           const { sys, user } = promptDeAcao({
             objetivo: st.objective, modo: st.mode, academico: st.academicMode, menu,
@@ -495,7 +513,7 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         // virar cardápio do Studio), esta OBRIGA a honestidade sobre AÇÃO. Sem ela, o silêncio da
         // regra de cima é o que produz "vou baixar a CSV" — o modelo não tem outro jeito de dizer
         // que uma ação deveria acontecer. Derivado do registry, nunca escrito à mão.
-        ...(capacidadeHonestaLigada() ? [cardapioDeCapacidades(listTools().map((t) => t.name))] : []),
+        ...(capacidadeHonestaLigada() ? [cardapioDeCapacidades(toolsDoTurno(ctx).map((t) => t.name))] : []),
         DIRETRIZ_MATEMATICA,
         "proximos_passos, quando fizer sentido, são passos de ESTUDO (o que entender, ler, " +
         "praticar ou checar a seguir) — jamais ofertas de recurso da plataforma.",
