@@ -129,7 +129,7 @@ export function mesclarComposicao(doc: DocBlueprint, plano: PlanoComposto, agora
     });
   const proximo: DocBlueprint = {
     ...doc,
-    titulo: plano.titulo, resumo: plano.resumo, area: plano.area, produto: plano.produto, demo: plano.demo,
+    titulo: doc.tituloFixo ? doc.titulo : plano.titulo, resumo: plano.resumo, area: plano.area, produto: plano.produto, demo: plano.demo,
     passos: plano.passos, proximos: plano.proximos,
     // a FIGURA não some: plano sem peças (o modelo esqueceu) mantém a máquina que já existia
     ...(manterPecas ? { pecas: doc.pecas, ligacoes: doc.ligacoes, objeto: doc.objeto, arranjo: doc.arranjo } : { pecas: plano.pecas, ligacoes: plano.ligacoes, objeto: plano.objeto ?? doc.objeto, arranjo: plano.arranjo ?? doc.arranjo }),

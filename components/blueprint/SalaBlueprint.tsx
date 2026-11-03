@@ -76,6 +76,26 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
   const idDesenhado = atual?.id;
   useEffect(() => { if (!idDesenhado) return; const q = requestAnimationFrame(() => { telaDesenhou(idDesenhado); }); return () => cancelAnimationFrame(q); }, [idDesenhado]);
   const [aviso, setAviso] = useState<string | null>(null), [avaliando, setAvaliando] = useState(false), [videoAberto, setVideoAberto] = useState<string | null>(null);
+  // #681: excluir e renomear o blueprint aberto (só o dono)
+  const [acao, setAcao] = useState<null | "excluir" | "renomear">(null), [nome, setNome] = useState(""), [falhaAcao, setFalhaAcao] = useState<string | null>(null), [excluindo, setExcluindo] = useState(false);
+  const doDono = !!atual && atual.papel === "dono" && atual.id === marcado && !B.carregando;
+  useEffect(() => { setAcao(null); setFalhaAcao(null); }, [marcado]);
+  const confirmarExclusao = async () => {
+    if (!atual || excluindo) return;
+    setExcluindo(true); setFalhaAcao(null);
+    const ok = await B.excluir(atual.id);
+    setExcluindo(false);
+    if (ok) setAcao(null); else setFalhaAcao("Não deu para excluir agora. Tente de novo.");
+  };
+  // um renomear por vez: a faixa fica aberta até gravar, e volta o nome de antes se falhar
+  const [salvando, setSalvando] = useState(false);
+  const salvarNome = async () => {
+    if (!nome.trim() || salvando) return;
+    setSalvando(true); setFalhaAcao(null);
+    const ok = await B.renomear(nome);
+    setSalvando(false);
+    if (ok) setAcao(null); else setFalhaAcao("Não deu para renomear agora. Tente de novo.");
+  };
   const enviar = async (criticoId: string | null, url: string) => {
     const r = await B.enviarProva(criticoId, url);
     if (r.avaliacao) {
@@ -101,7 +121,7 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
           <button type="button" onClick={() => setLetra(LETRAS[Math.min(LETRAS.length - 1, iLetra + 1)]!)} disabled={iLetra >= LETRAS.length - 1} aria-label="Aumentar a letra" className="px-2.5 py-1 text-[13px] font-bold disabled:opacity-35" style={desligado}>A+</button>
         </div>
         <span className="self-center whitespace-nowrap pr-1 font-mono text-[11px] tracking-[0.2em] text-sky-300">BLUEPRINTS</span>
-        {lista === null && <span className="self-center font-mono text-[11px] text-sky-200/50">carregando…</span>}
+        {lista === null && !B.erro && <span className="self-center font-mono text-[11px] text-sky-200/50">carregando…</span>}
         {lista?.map((b, k) => (
           <button key={b.id} type="button" data-tour={k === 0 ? "blueprint-lista" : undefined} onClick={() => void B.abrir(b.id)} className="min-w-[190px] flex-none rounded-[3px] border px-2.5 py-1.5 text-left font-mono transition hover:bg-white/5"
             aria-pressed={marcado === b.id}
@@ -113,7 +133,34 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
             <BarrinhaFases b={b} skin={skin} tour={k === 0 ? "blueprint-fases" : undefined} />
           </button>
         ))}
+        {/* #681: renomear e excluir o blueprint aberto (só o dono) */}
+        {doDono && (
+          <div className="flex flex-none flex-col justify-center gap-1 font-mono text-[10.5px]" role="group" aria-label="Ações do blueprint">
+            <button type="button" onClick={() => { setNome(atual!.doc.titulo); setAcao("renomear"); }} aria-pressed={acao === "renomear"} className="rounded-sm border px-2 py-0.5 transition hover:bg-white/10" style={{ borderColor: contorno, ...desligado }}>renomear</button>
+            <button type="button" onClick={() => setAcao("excluir")} aria-pressed={acao === "excluir"} className="rounded-sm border px-2 py-0.5 transition hover:bg-white/10" style={{ borderColor: "rgba(255,77,94,.5)", color: corNaSkin(skin, COR.critico) }}>excluir</button>
+          </div>
+        )}
       </div>
+      {doDono && acao && (
+        <div className="relative z-[96] flex flex-none flex-wrap items-center gap-2 border-b px-3 py-2 font-mono text-[11.5px]" style={barra} role={acao === "excluir" ? "alertdialog" : "group"} aria-label={acao === "excluir" ? "Confirmar exclusão" : "Renomear blueprint"}>
+          {acao === "excluir" ? (<>
+            <span className="min-w-0 flex-1">
+              Excluir <b>“{atual!.doc.titulo}”</b>? O blueprint some de vez. A conversa de onde ele nasceu continua, e não cria outro.
+              {atual!.compartilhado > 0 && <> {atual!.compartilhado === 1 ? "1 pessoa com acesso também deixa de ver." : `${atual!.compartilhado} pessoas com acesso também deixam de ver.`}</>}
+            </span>
+            <button type="button" onClick={() => void confirmarExclusao()} disabled={excluindo} className="rounded-sm border px-2.5 py-1 text-white disabled:opacity-50" style={{ borderColor: COR.critico, background: "rgba(255,77,94,.35)" }}>{excluindo ? "excluindo…" : "excluir"}</button>
+            <button type="button" onClick={() => setAcao(null)} disabled={excluindo} className="rounded-sm border px-2.5 py-1" style={{ borderColor: contorno, ...desligado }}>cancelar</button>
+          </>) : (<>
+            <label className="sr-only" htmlFor="bp-nome">Novo nome do blueprint</label>
+            <input id="bp-nome" autoFocus value={nome} maxLength={200} onChange={(e) => setNome(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") void salvarNome(); if (e.key === "Escape" && !salvando) setAcao(null); }}
+              className="min-w-0 flex-1 rounded-sm border bg-black/20 px-2 py-1 outline-none" style={{ borderColor: contorno }} />
+            <button type="button" onClick={() => void salvarNome()} disabled={!nome.trim() || salvando} className="rounded-sm border px-2.5 py-1 disabled:opacity-40" style={{ borderColor: contorno, ...ligado }}>{salvando ? "salvando…" : "salvar"}</button>
+            <button type="button" onClick={() => setAcao(null)} disabled={salvando} className="rounded-sm border px-2.5 py-1" style={{ borderColor: contorno, ...desligado }}>cancelar</button>
+          </>)}
+          {falhaAcao && <span role="alert" className="w-full text-rose-300">{falhaAcao}</span>}
+        </div>
+      )}
       <div className="relative min-h-0 flex-1" data-tour="blueprint-prancha" aria-busy={B.carregando}>
         {/* #631: clicou noutro blueprint e ele ainda não chegou: avisa (a prancha de antes fica até a nova chegar) */}
         {B.carregando && (
@@ -135,6 +182,14 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
               {aviso && <div className="absolute left-1/2 top-3 z-[95] -translate-x-1/2 rounded border px-3 py-1.5 font-mono text-[11.5px] text-sky-50" style={{ background: "rgba(5,22,42,.92)", borderColor: COR.avaliacao }}>{aviso}</div>}
               {videoAberto && <PlayerVideoDoc videoId={videoAberto} onFechar={() => setVideoAberto(null)} />}
             </>} />
+        ) : B.erro && lista === null ? (
+          <div className="flex h-full items-center justify-center p-8" role="alert">
+            <div className="max-w-md text-center font-mono text-[12.5px] leading-relaxed text-sky-100/75">
+              <div className="mb-2 text-[11px] tracking-[0.2em] text-rose-300">NÃO DEU PARA CARREGAR OS BLUEPRINTS</div>
+              Pode ser a conexão ou o servidor. Seus blueprints continuam guardados.
+              <div className="mt-3"><button type="button" onClick={() => void B.recarregar()} className="rounded-sm border px-3 py-1 text-sky-50 transition hover:bg-white/10" style={{ borderColor: "rgba(127,224,255,.45)" }}>tentar de novo</button></div>
+            </div>
+          </div>
         ) : lista && !lista.length ? (
           <div className="flex h-full items-center justify-center p-8">
             <div className="max-w-md text-center font-mono text-[12.5px] leading-relaxed text-sky-100/75">

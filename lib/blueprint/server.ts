@@ -29,15 +29,27 @@ export type BlueprintDb = {
     findUnique(a: { where: { id: string } }): Promise<Linha | null>;
     findMany(a: { where: Onde; orderBy?: Ordem | Ordem[]; take?: number }): Promise<Linha[]>;
     create(a: { data: { ownerId: string; surface: string; scopeId: string; titulo: string; cards: never } }): Promise<Linha>;
-    updateMany(a: { where: { id: string; rev: number }; data: { cards: never; titulo: string; rev: number } }): Promise<{ count: number }>;
+    updateMany(a: { where: { id: string; rev: number }; data: { cards: never; titulo: string; rev: number; surface?: string; conviteSalt?: null } }): Promise<{ count: number }>;
     deleteMany(a: { where: { id: string } }): Promise<{ count: number }>;
   };
-  cartolinaMembro: { findUnique(a: { where: { cartolinaId_userId: { cartolinaId: string; userId: string } }; select: { papel: true } }): Promise<{ papel: string } | null> };
+  cartolinaMembro: {
+    findUnique(a: { where: { cartolinaId_userId: { cartolinaId: string; userId: string } }; select: { papel: true } }): Promise<{ papel: string } | null>;
+    count(a: { where: { cartolinaId: string } }): Promise<number>;
+    deleteMany(a: { where: { cartolinaId: string } }): Promise<{ count: number }>;
+  };
+  cartolinaComentario: { deleteMany(a: { where: { cartolinaId: string } }): Promise<{ count: number }> };
   conversation: { findFirst(a: { where: { userId: string; surface: string; scopeId: string }; select: { estudavel: true } }): Promise<{ estudavel: boolean } | null> };
 };
 const prismaDb = async (): Promise<BlueprintDb> => (await import("@/src/lib/prisma")).prisma as unknown as BlueprintDb;
 
-export type BlueprintView = { id: string; scopeId: string | null; doc: DocBlueprint; rev: number; papel: Papel; updatedAt: Date };
+/** `compartilhado`: quantas pessoas além do dono têm acesso (só o dono recebe; os outros veem 0) */
+export type BlueprintView = { id: string; scopeId: string | null; doc: DocBlueprint; rev: number; papel: Papel; updatedAt: Date; compartilhado: number };
+
+/**
+ * #681: o blueprint excluído vira só uma marca: sem conteúdo, fora da lista e sem ninguém com acesso. Ela existe para a
+ * conversa de onde ele nasceu não criar outro no turno seguinte (a conversa continua).
+ */
+export const SURFACE_EXCLUIDO = "blueprint-excluido";
 export type ResumoBlueprint = { id: string; titulo: string; area: Area; fase: Fase; aguardandoMentor: boolean; criticosAbertos: number; fasesAprovadas: number; updatedAt: string };
 
 /** o documento de uma linha (o corrompido volta como um blueprint vazio com o título da linha — nunca lança) */
@@ -62,7 +74,34 @@ export async function blueprintDoUsuario(id: string, userId: string, db?: Bluepr
   if (!row || row.surface !== SURFACE_BLUEPRINT) return null;
   const membro = row.ownerId === userId ? null : await d.cartolinaMembro.findUnique({ where: { cartolinaId_userId: { cartolinaId: id, userId } }, select: { papel: true } });
   const papel = papelDe(row.ownerId, userId, membro?.papel ?? null);
-  return papel ? { id: row.id, scopeId: row.scopeId, doc: docDaLinha(row), rev: row.rev, papel, updatedAt: row.updatedAt } : null;
+  if (!papel) return null;
+  const compartilhado = papel === "dono" ? await d.cartolinaMembro.count({ where: { cartolinaId: id } }) : 0;
+  return { id: row.id, scopeId: row.scopeId, doc: docDaLinha(row), rev: row.rev, papel, updatedAt: row.updatedAt, compartilhado };
+}
+
+/**
+ * #681: exclui o blueprint, só o dono. O conteúdo, os comentários e o acesso de quem foi convidado saem; fica a marca
+ * (sem conteúdo) que impede a conversa de recriá-lo. Escrita com o `rev`, como as outras: se alguém gravou no meio, tenta de novo.
+ */
+export async function excluirBlueprint(id: string, userId: string, db?: BlueprintDb): Promise<{ ok: true } | { ok: false; motivo: "not_found" | "forbidden" | "conflict" }> {
+  const d = db ?? (await prismaDb());
+  const limpar = async () => {
+    await d.cartolinaMembro.deleteMany({ where: { cartolinaId: id } });
+    await d.cartolinaComentario.deleteMany({ where: { cartolinaId: id } });
+    return { ok: true } as const;
+  };
+  for (let i = 0; i < 5; i++) {
+    const atual = await blueprintDoUsuario(id, userId, d);
+    if (!atual) {
+      // já excluído pelo dono (a resposta se perdeu, ou a limpeza falhou no meio): termina a limpeza e vale como feito
+      const marca = OID.test(id) ? await d.cartolina.findUnique({ where: { id } }) : null;
+      return marca?.surface === SURFACE_EXCLUIDO && marca.ownerId === userId ? limpar() : { ok: false, motivo: "not_found" };
+    }
+    if (atual.papel !== "dono") return { ok: false, motivo: "forbidden" };
+    const r = await d.cartolina.updateMany({ where: { id, rev: atual.rev }, data: { surface: SURFACE_EXCLUIDO, cards: {} as never, titulo: "", conviteSalt: null, rev: atual.rev + 1 } });
+    if (r.count === 1) return limpar();
+  }
+  return { ok: false, motivo: "conflict" };
 }
 
 export type ResultadoGravar = { ok: true; view: BlueprintView } | { ok: false; motivo: "not_found" | "forbidden" | "conflict" };
@@ -159,9 +198,14 @@ export async function blueprintDoTurno(i: EntradaTurno): Promise<"off" | "nao-es
     const db = i.db ?? (await prismaDb());
     let linha = await limparDuplicatas(userId, scopeId, db);
     if (!linha) {
+      // #681: a pessoa excluiu o blueprint desta conversa: não nasce outro
+      const excluido = () => db.cartolina.findFirst({ where: { ownerId: userId, surface: SURFACE_EXCLUIDO, scopeId } });
+      if (await excluido()) return "nao-estudo";
       const conv = i.sinal?.estudavel ? null : await db.conversation.findFirst({ where: { userId, surface: SURFACE_CONVERSA, scopeId }, select: { estudavel: true } });
       if (!i.sinal?.estudavel && !conv?.estudavel) return "nao-estudo";
       const id = await garantirBlueprint(userId, scopeId, i.sinal?.tituloSugerido || "Estudo", db);
+      // excluído enquanto este turno criava: o recém-criado sai
+      if (await excluido()) { await db.cartolina.deleteMany({ where: { id } }); return "nao-estudo"; }
       linha = await db.cartolina.findUnique({ where: { id } });
       if (!linha) return "falhou";
     }

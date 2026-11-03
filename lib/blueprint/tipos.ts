@@ -65,6 +65,8 @@ export type DocBlueprint = {
   /** os módulos que a pessoa ARRASTOU (ficam onde foram soltos até "reorganizar") */
   fixos: Record<string, { x: number; y: number }>;
   compostoEm: number; turnos: number;
+  /** #681: a pessoa deu o nome: a Zaeon não troca mais quando refaz o blueprint */
+  tituloFixo?: boolean;
 };
 
 /** MAX_CRITICOS = os ABERTOS (até 3 por fase); os PROVADOS nunca são cortados por eles (entrega real não some) */
@@ -200,5 +202,6 @@ export function sanitizarDoc(raw: unknown): DocBlueprint | null {
   const pt = str(produto?.titulo, MAX_TITULO); if (pt) d.produto = { titulo: pt, ...(str(produto?.corpo, MAX_CORPO) ? { corpo: str(produto?.corpo, MAX_CORPO) } : {}) };
   const dt = str(demo?.titulo, MAX_TITULO);
   if (dt) { d.demo = { titulo: dt }; const c = str(demo?.corpo, MAX_CORPO), u = urlSegura(demo?.url); if (c) d.demo.corpo = c; if (u) d.demo.url = u; }
+  if (o.tituloFixo === true) d.tituloFixo = true;
   return d;
 }

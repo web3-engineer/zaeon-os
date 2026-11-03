@@ -27,7 +27,8 @@ export function aplicarPatchCliente(doc: DocBlueprint, body: unknown, autor: str
     const i = out.notas.findIndex((x) => x.id === n.id);
     if (i >= 0) out.notas[i] = n; else if (out.notas.length < MAX_NOTAS) out.notas.push(n);
   }
-  if (typeof b.titulo === "string" && b.titulo.trim()) out.titulo = b.titulo.trim().slice(0, 200);
+  // #681: o nome dado pela pessoa fica: a Zaeon não troca quando refaz o blueprint
+  if (typeof b.titulo === "string" && b.titulo.trim()) { out.titulo = b.titulo.trim().slice(0, 200); out.tituloFixo = true; }
   return out;
 }
 
