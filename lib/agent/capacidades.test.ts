@@ -93,6 +93,37 @@ describe("promessa sem lastro — o que DEVE cair", () => {
   });
 });
 
+describe("os dois furos achados testando o estado de PRODUÇÃO (2026-11-03)", () => {
+  // Achados rodando a rede com o ambiente igual ao do VPS, depois do deploy do "tudo ON". As duas
+  // frases passavam inteiras — e são exatamente a queixa do dono: "diz que vai fazer e não faz".
+  it("FURO 1 · promessa de abrir PÁGINA (não só 'site') agora cai", () => {
+    const c = promessaSemLastro("Vou abrir a página da Wikipédia e te trazer o conteúdo.");
+    expect(c?.id).toBe("abrir_pagina");
+    // e o inverso continua valendo: no pretérito, "página" é página de anexo e a frase é verdade
+    expect(promessaSemLastro("Abri a página 4 do documento que você anexou.")).toBeNull();
+  });
+
+  it("FURO 1b · a promessa com recibo de abrir_url passa (o critério é o recibo, não a palavra)", () => {
+    expect(promessaSemLastro("Vou abrir a página da Wikipédia.", ["abrir_url"])).toBeNull();
+  });
+
+  it("FURO 2 · sair da conversa (e-mail, zap) não era classe nenhuma — agora é", () => {
+    for (const f of [
+      "Vou te mandar um e-mail com o resumo.",
+      "Já enviei a mensagem pra você.",
+      "Deixa que eu mando no whatsapp.",
+      "Vou disparar um e-mail com os anexos.",
+    ]) expect(promessaSemLastro(f)?.id, f).toBe("enviar_mensagem");
+  });
+
+  it("FURO 2b · a classe nunca tem lastro: o canal não existe, então nem recibo salva", () => {
+    // `enviar_mensagem` não é tool de verdade; passar o nome é só pra provar que a porta não abre
+    // por acidente de nome — se um dia existir canal, aí sim a frase passa a ser verdade.
+    const semTool = promessaSemLastro("Vou te mandar um e-mail.", ["abrir_url", "baixar_para_base"]);
+    expect(semTool?.id).toBe("enviar_mensagem");
+  });
+});
+
 describe("promessa sem lastro — o que NÃO pode cair", () => {
   const limpos = [
     // instruir a PESSOA é bom conteúdo: o sujeito é ela, não a plataforma
@@ -103,6 +134,13 @@ describe("promessa sem lastro — o que NÃO pode cair", () => {
     // REGRESSÃO que eu abri e fechei: no caminho dos vários anexos estas duas são VERDADE
     "Li a página 4 do documento que você anexou.",
     "Consultei a página 12 do segundo PDF.",
+    // o `objetoPromessa` de `abrir_pagina` ("pagina") NÃO vale no pretérito — é o que mantém estas
+    // duas e as de cima fora da rede depois do furo fechado
+    "Abri a página 7 do arquivo que você mandou e o gráfico está lá.",
+    "Essa página do seu PDF fala de outra coisa.",
+    // o canal é o objeto da classe nova, nunca o conteúdo: o texto SAI nesta resposta
+    "Te mando o resumo aqui mesmo, em três parágrafos.",
+    "Vou mandar o texto pronto pra você copiar.",
     "Guardei o documento na sua base.",
     "Salvei o arquivo na base pessoal.",
     // ações que a casa FAZ de verdade (as tools rodam)

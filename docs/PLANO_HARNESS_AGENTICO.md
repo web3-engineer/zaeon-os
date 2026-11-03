@@ -819,3 +819,53 @@ Nenhum segredo, nenhuma URL e nenhum domínio entram nesse bloco; só booleanos 
 da allowlist no compose),
 `tsc --noEmit` limpo fora do `server/colyseus`
 pré-existente (falta `@colyseus/core`, que o CI instala), `eslint` 0, os dois YAML validados.
+
+## 9. Testando o estado de produção: dois furos na rede (2026-11-03)
+
+Pedido do dono depois do deploy: *"agora testa no chat real pra ver se para de prometer"*.
+
+**O chat real não dá pra exercitar daqui**, e é honesto dizer por quê: a política de rede do
+ambiente nega `zaeon.com.br:443` (403 no CONNECT), e este container não tem credencial do Vertex,
+do gateway nem do banco — ou seja, não existe chamada ao modelo de verdade a partir daqui. O que
+dá pra testar é a METADE DETERMINÍSTICA, que é justamente quem decide se a promessa passa: o
+cardápio que entra no prompt e a rede que reprova a frase. Rodei com o ambiente idêntico ao do VPS
+(flags ausentes = ON, `LEITOR_PROXY_URL` e a allowlist dos nove domínios), e **duas das seis frases
+de teste passaram inteiras**.
+
+### Furo 1 · "Vou abrir a **página** da Wikipédia e te trazer o conteúdo"
+
+Passava. O motivo estava num comentário meu da F0: tirei `pagina` do objeto de `abrir_pagina` para
+não acusar *"Li a página 4 do documento que você anexou"* — que é **verdade** no caminho dos vários
+anexos. Só que com isso a promessa que diz "página" em vez de "site" saía livre.
+
+Os dois casos se separam pelo **tempo**, não pela palavra: no pretérito, "página" costuma ser página
+de anexo e a leitura aconteceu; no futuro, é promessa. Daí `objetoPromessa`, um objeto que vale no
+futuro e no `eu`+presente e **nunca** no pretérito. Os dois testes andam juntos: a promessa cai, e
+`"Abri a página 4 do documento que você anexou"` continua passando.
+
+### Furo 2 · "Vou te mandar um e-mail com o resumo"
+
+Passava inteira, porque **nenhuma classe cobria sair da conversa**. É o mesmo defeito do "vou baixar
+a CSV" com outro verbo, e é pedido comum ("me manda por e-mail", "manda no zap"). Entrou a classe
+`enviar_mensagem`, cujo `tool` é um nome que o registry nunca vai ter — então ela cai sozinha no
+lado "A plataforma NÃO executa" do cardápio e passa a ensinar o modelo no prompt também.
+
+O objeto da classe é o **canal** (`email`, `whatsapp`, `sms`, `inbox`…), nunca o conteúdo: *"te mando
+o resumo aqui mesmo"* é verdade — o texto sai nesta resposta. O que não existe é o canal.
+
+### O que o portão de drift pegou de mim
+
+Ao acrescentar a classe, o teste da F0 *"toda classe de ação tem frase pronta no cardápio"* falhou
+na hora: eu havia esquecido a entrada em `CAPACIDADES`. Foi a rede que eu mesmo escrevi pegando a
+minha omissão — vale registrar, porque é o segundo portão desta série que pega um deslize meu antes
+do commit.
+
+### O que este teste NÃO prova
+
+Que o modelo parou de prometer. Ele prova que **o cardápio chega no prompt** e que **a frase não
+passa** — a camada determinística. Se o modelo vai preferir a frase honesta por conta própria, só o
+uso real diz, e o número a olhar é o log `[harness] ação volta N: <tools>` e a taxa de
+`ação descartou`. Com a rede do ambiente liberada para o domínio, o teste ponta a ponta sai daqui.
+
+**Gates:** 5612 testes (+8: 4 nos furos, 4 nas frases verdadeiras que não podem cair),
+`tsc --noEmit` limpo fora do `server/colyseus`, `eslint` 0.
