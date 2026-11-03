@@ -95,9 +95,13 @@ jobs:
       - name: Install deps (realtime Colyseus)
         run: npm ci --prefix server/colyseus
 
-      - name: Lint (não-bloqueante)
+      # BLOQUEANTE desde 2026-11-03. Era `continue-on-error: true`, e o preço apareceu: o job do #674
+      # mostrava 7 erros de `react/no-unescaped-entities` e `react-hooks/rules-of-hooks` que ninguém
+      # via, porque nada ficava vermelho por causa deles. Eu mesmo os li como "a falha do CI" antes
+      # de medir e descobrir que o que derrubava era outra coisa. Lint que não barra vira log.
+      # Está limpo agora (zero erros); manter assim é o único jeito de continuar limpo.
+      - name: Lint (bloqueante)
         run: npm run lint
-        continue-on-error: true
 
       # BLOQUEANTE, e de proposito. next.config.mjs tem ignoreBuildErrors: true, entao o
       # `next build` passa por cima de QUALQUER erro de tipo — foi assim que um

@@ -43,7 +43,6 @@ npm test --prefix server/colyseus
 ```
 
 Na primeira vez: `npm ci --ignore-scripts` e depois `npx prisma generate`.
-`npm ci` pode reescrever o `yarn.lock` no Windows; **não commitar** esse arquivo (`git checkout -- yarn.lock`).
 
 ---
 

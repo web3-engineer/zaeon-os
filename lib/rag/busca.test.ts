@@ -46,6 +46,39 @@ async function semear(
   return { doc: d, ids: r.rows.map((x) => x.id) };
 }
 
+describe("montarSql · teto POR DOCUMENTO (dívida do portão 3b, Sourcery #672)", () => {
+  const escopo = { userId: "u1", turmaIds: ["t1"] };
+
+  it("SEM porDoc o SQL é o de sempre — é ele que numera [B1]..[Bn] nas citações", () => {
+    const { sql } = montarSql(escopo, "fotossíntese", null, 8);
+    expect(sql).not.toContain("row_number() OVER (PARTITION BY");
+    expect(sql).not.toContain("rn_doc");
+  });
+
+  it("COM porDoc, o corte é por documento e acontece ANTES do limite global", () => {
+    const { sql, params } = montarSql(escopo, "fotossíntese", null, 40, 3);
+    expect(sql).toContain("row_number() OVER (PARTITION BY t.documento_id ORDER BY f.score DESC, t.id)");
+    expect(sql).toMatch(/WHERE z\.rn_doc <= \$\d+::int[\s\S]*LIMIT \$\d+::int/);
+    expect(params).toContain(3);
+  });
+
+  it("a ordem final não muda (score desc, id) — o topo da lista é o mesmo", () => {
+    expect(montarSql(escopo, "x", null, 40, 3).sql).toContain("ORDER BY z.score DESC, z.id");
+  });
+
+  it("porDoc inválido é ignorado em vez de virar SQL quebrado", () => {
+    for (const v of [0, -1, NaN, Infinity]) {
+      expect(montarSql(escopo, "x", null, 8, v).sql, String(v)).not.toContain("rn_doc");
+    }
+  });
+
+  it("o teto é PARÂMETRO, não interpolação (nada do caller entra como texto no SQL)", () => {
+    const { sql, params } = montarSql(escopo, "x", null, 40, 3);
+    expect(sql).not.toContain("<= 3");
+    expect(params).toContain(3);
+  });
+});
+
 describe("montarSql (puro)", () => {
   it("com vetor: dois ramos, permissão nos dois, RRF, vetor e consulta como parâmetros", () => {
     const { sql, params } = montarSql(e, "limite de função", onehot(0), 8);
@@ -142,6 +175,41 @@ describe("buscar — sem banco (curto-circuitos)", () => {
     expect(await buscar(d, e, "limite")).toEqual([]);
     expect(d.embedMock).not.toHaveBeenCalled();
     expect(dbNunca.query).not.toHaveBeenCalled();
+  });
+});
+
+describe.skipIf(!banco)("teto por documento — contra o Postgres de verdade (a garantia do portão 3b)", () => {
+  // O teste de string acima prova que o SQL SAI certo. Este prova que ele FAZ o que promete —
+  // e é o único que responde à dívida: `K_AMPLO` era teto de resultado, não garantia de cobertura.
+  it("um documento dominante deixa de empurrar os outros pra fora", async () => {
+    const db = banco!.db;
+    // o dominante casa por vetor E por texto em 5 trechos; o outro, em 1 só
+    const dom = await semear(db, permTurma("tA", "dom"), Array.from({ length: 5 }, () => ({ texto: "mitocôndria energia celular", vetor: onehot(0) })));
+    const outro = await semear(db, permTurma("tA", "outro"), [{ texto: "mitocôndria na célula vegetal", vetor: onehot(0) }]);
+    const d = depsDb(db);
+
+    // SEM teto e com k=3, o dominante pode levar as três vagas
+    const sem = await buscar(d, e, "mitocôndria energia", 3);
+    expect(sem.every((x) => x.documentoId === dom.doc.id)).toBe(true);
+
+    // COM teto de 2 por documento, o outro documento APARECE — é a garantia, não a sorte
+    const com = await buscar(d, e, "mitocôndria energia", 3, 2);
+    expect(new Set(com.map((x) => x.documentoId)).size).toBe(2);
+    expect(com.filter((x) => x.documentoId === dom.doc.id)).toHaveLength(2);
+    expect(com.some((x) => x.documentoId === outro.doc.id)).toBe(true);
+  });
+
+  it("o teto não inventa linha: documento único devolve o que existe, sem erro", async () => {
+    const db = banco!.db;
+    await semear(db, permTurma("tA", "so"), [{ texto: "mitocôndria energia", vetor: onehot(0) }]);
+    const r = await buscar(depsDb(db), e, "mitocôndria energia", 8, 3);
+    expect(r).toHaveLength(1);
+  });
+
+  it("a permissão continua valendo COM o teto (o corte é depois do WHERE, não no lugar dele)", async () => {
+    const db = banco!.db;
+    await semear(db, permDono("outro-dono", "alheio"), [{ texto: "mitocôndria energia", vetor: onehot(0) }]);
+    expect(await buscar(depsDb(db), e, "mitocôndria energia", 8, 3)).toEqual([]);
   });
 });
 
