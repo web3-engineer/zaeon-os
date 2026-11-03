@@ -68,6 +68,9 @@ export type Destaque = {
   rotulo?: string;          // legenda curta ("cafeína", "energia de repouso")
 };
 
+import type { FalhaVisivel } from "@/lib/agent/falhas";
+import type { GraficoNaResposta } from "@/lib/agent/graficosDoTurno";
+
 export type StructuredAnswer = {
   nucleo: string;                                   // resposta direta (sempre)
   desenvolvimento?: string;                         // derivação / passo a passo
@@ -81,6 +84,19 @@ export type StructuredAnswer = {
   /** buscar_livro: os livros achados e o caminho LEGAL (PDF livre, online, empréstimo, prévia). */
   livros?: { titulo: string; autores: string[]; ano: number | null; acesso: string; pdfUrl: string | null; lerUrl: string | null; paginaUrl: string; fonte: string; licenca: string | null }[];
   provenance?: ProvenanceRecord;                    // origem rastreável (open-science)
+  /**
+   * G2 · as AÇÕES QUE FALHARAM e o que o aluno pode fazer (lib/agent/falhas). Vem do CÓDIGO, nunca
+   * do modelo — mesmo princípio de `fontesBase`. Existe porque a falha de tool só chegava ao modelo
+   * (`resumoDasFalhas`, no prompt da ação) e nunca ao aluno: na conversa dos benchmarks o download
+   * era impossível (domínio fora da allowlist) e o que ele viu foi um plano de cinco passos.
+   */
+  falhas?: FalhaVisivel[];
+  /**
+   * G3 · GRÁFICOS da resposta (lib/agent/graficosDoTurno). SVG já desenhado pelo servidor, e o
+   * número SEMPRE apurado por código — nunca digitado pelo modelo. Ver a lei no cabeçalho de
+   * lib/agent/grafico.ts.
+   */
+  graficos?: GraficoNaResposta[];
   /** RAG: documentos da base (turma/pessoal) que a resposta citou — só trechos que a busca devolveu. `paginas` = "4" ou "4–5". */
   fontesBase?: { documentoId: string; titulo: string; paginas: string; publico?: boolean }[];
   /** TCC cross-sala (TCC_CROSS): o turno criou/editou o TCC desta conversa → o cliente abre a aba. */

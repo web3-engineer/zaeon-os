@@ -7,6 +7,7 @@ import {
   cardapioDeCapacidades,
   frasesDe,
   promessaSemLastro,
+  promessaNoPlano,
   respostaHonesta,
   classeCoberta,
   descricaoSegura,
@@ -90,6 +91,58 @@ describe("promessa sem lastro — o que DEVE cair", () => {
 
   it("aceita palavra no meio, dentro da frase", () => {
     expect(promessaSemLastro("Vou baixar agora, pra você, o arquivo do IBGE.")?.id).toBe("baixar_arquivo");
+  });
+});
+
+describe("FURO 3 · a promessa no PLANO vem no INFINITIVO (a conversa dos benchmarks)", () => {
+  // As oito frases abaixo são VERBATIM da conversa que o dono mandou (TruthfulQA/MMLU/Natural
+  // Questions). Todas passavam pela rede: nenhuma tem sujeito em 1ª pessoa.
+  const TODAS = new Set(["literature_search", "web_search", "abrir_url", "baixar_para_base", "memory_search"]);
+
+  it("passo que a casa NÃO faz (clonar repo) cai no plano", () => {
+    for (const f of [
+      "Clonar o repositório MMLU (GitHub) e baixar o diretório 'data' com os arquivos de teste.",
+      "Clonar os repositórios usando git ou baixar os arquivos CSV/JSON diretamente.",
+      "Clonar o repositório: `git clone https://github.com/sylinrl/TruthfulQA.git`.",
+    ]) {
+      expect(promessaSemLastro(f), `a rede normal NÃO vê isto: ${f}`).toBeNull();
+      expect(promessaNoPlano(f, TODAS)?.id, f).toBe("clonar_repo");
+    }
+  });
+
+  it("passo que a casa FAZ não cai — é instrução ao aluno, ou trabalho do laço de ação", () => {
+    // `baixar_para_base` registrada: apagar este passo seria pior que mantê-lo (o laço é que
+    // deveria ter executado, e com o GitHub na allowlist agora ele consegue)
+    const f = "Acessar o repositório do TruthfulQA e baixar o arquivo CSV contendo as 817 perguntas.";
+    expect(promessaNoPlano(f, TODAS)).toBeNull();
+    // e sem a tool registrada, o mesmo passo cai
+    expect(promessaNoPlano(f, new Set(["web_search"]))?.id).toBe("baixar_arquivo");
+  });
+
+  it("o recibo também vale no plano: o que ACONTECEU pode ser dito", () => {
+    const f = "Clonar o repositório e ler os arquivos.";
+    expect(promessaNoPlano(f, new Set(), ["clonar_repo"])).toBeNull();
+  });
+
+  it("passo de ESTUDO (o que `proximos_passos` serve) nunca cai", () => {
+    for (const f of [
+      "Estudar os três benchmarks e comparar as métricas.",
+      "Ler o artigo do TruthfulQA e anotar a metodologia.",
+      "Instalar Git caso ainda não esteja disponível.",
+      "Comparar acurácia, precisão e recall entre os modelos.",
+      "Documentar o procedimento em um README para replicabilidade.",
+    ]) expect(promessaNoPlano(f, new Set()), f).toBeNull();
+  });
+
+  it("respostaHonesta só liga o modo plano quando sabe o que a casa faz", () => {
+    const a = { nucleo: "ok", proximos_passos: ["Clonar o repositório MMLU e baixar o diretório data."] };
+    // sem `registradas`: o modo plano não roda (comportamento de antes, byte a byte)
+    expect(respostaHonesta(a).answer.proximos_passos).toEqual(a.proximos_passos);
+    // com: o passo impossível sai, e o núcleo não é tocado
+    const h = respostaHonesta(a, [], TODAS);
+    expect(h.answer.proximos_passos).toBeUndefined();
+    expect(h.answer.nucleo).toBe("ok");
+    expect(h.removidas.map((c) => c.id)).toEqual(["clonar_repo"]);
   });
 });
 

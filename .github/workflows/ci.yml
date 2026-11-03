@@ -106,6 +106,14 @@ jobs:
       # de pagina. Enquanto o ignoreBuildErrors existir, ESTE passo e a unica rede.
       - name: Typecheck (tsc --noEmit)
         run: npm run typecheck
+        env:
+          # O tsc a frio precisa de ~2,3 GB neste projeto (medido com `--extendedDiagnostics`:
+          # 5509 arquivos, 775 mil tipos, 2316 MB na main e 2343 MB com os arquivos desta PR —
+          # 1,2% a mais). O heap padrão do Node no runner é ~2 GB, então o passo morria com
+          # "Ineffective mark-compacts near heap limit" (exit 134) ANTES de achar erro de tipo
+          # nenhum — e o portão que existe pra compensar o `ignoreBuildErrors` parava de valer.
+          # 4 GB dá folga pro projeto crescer sem transformar isto em manutenção recorrente.
+          NODE_OPTIONS: --max-old-space-size=4096
 
       # A captura do Octa (lib/octa/captura.test.ts) usa o Google Chrome que já vem no runner ubuntu-latest:
       # sem isto os testes de segurança dela (JS off, allowlist, sem navegação) seriam pulados. --no-sandbox

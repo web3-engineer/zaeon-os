@@ -36,7 +36,7 @@ export default function SalaRea() {
       {lista === null ? <div className="flex items-center gap-2 text-slate-400"><Loader2 className="animate-spin" size={16} /> carregando…</div>
         : lista.length === 0 ? (
           <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 text-[13px] text-slate-400">
-            Nenhum blueprint ainda. No chat, peça pra entender algo <span className="text-emerald-300">por dentro</span> — "faz a engenharia reversa de como o X funciona" — e a Zaeon monta aqui um blueprint: o mecanismo, os achados (observação · derivação · inferência · desconhecido) e os passos pra reconstruir.
+            Nenhum blueprint ainda. No chat, peça pra entender algo <span className="text-emerald-300">por dentro</span> — &ldquo;faz a engenharia reversa de como o X funciona&rdquo; — e a Zaeon monta aqui um blueprint: o mecanismo, os achados (observação · derivação · inferência · desconhecido) e os passos pra reconstruir.
           </div>
         ) : (
           <ul className="flex flex-col gap-2.5">
