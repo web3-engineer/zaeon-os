@@ -669,7 +669,14 @@ Decisões que eu **não** tomo sozinho, porque mudam contrato de produto ou gast
    revisão. Fechar isso é política de egresso no VPS.
 3. **Teto de arquivos por conversa.** O dono já fixou **10 por documento** no plano do documento;
    confirmar se vale o mesmo teto para o chat.
-3b. **Cobertura garantida por documento na busca da base** (levantado pelo Sourcery na #672).
+3b. ~~**Cobertura garantida por documento na busca da base**~~ **PAGA (2026-11-03, a pedido do
+   dono).** `montarSql` ganhou um teto OPCIONAL por documento: `row_number() OVER (PARTITION BY
+   documento_id …)` cortando ANTES do `LIMIT` global. Só a consulta LARGA o usa — sem o parâmetro o
+   SQL é byte a byte o de antes, porque é o top-k plano que numera `[B1]..[Bn]` nas citações e não
+   pode mudar de forma. O teto entra como PARÂMETRO, não interpolado. Três testes contra o Postgres
+   de verdade provam a garantia (documento dominante deixa de empurrar os outros; documento único
+   não ganha linha inventada; a permissão continua valendo) — e eles rodam no CI, porque este
+   container não tem pgvector. O texto original da dívida, pra quem for ler o histórico:
    `K_AMPLO = 40` é teto de RESULTADO, não garantia: em teoria um documento longo pode ocupar os 40
    e empurrar outro para fora do agrupamento. O que ele não consegue é dominar o prompt
    (`TRECHOS_POR_DOC = 3` corta por documento), então o ganho da F4 vale pra todo documento que

@@ -64,7 +64,22 @@ export function normalizarK(k: number): number {
 }
 
 /** SQL da busca (PURO). Com `vetor`: vetor + texto fundidos por RRF; sem: só o ramo texto. */
-export function montarSql(e: EscopoRag, pergunta: string, vetor: number[] | null, kBruto: number): { sql: string; params: unknown[] } {
+/**
+ * Teto de trechos POR DOCUMENTO na consulta. Opcional de propósito: sem ele o SQL é byte a byte o
+ * de antes, porque o top-k plano é quem numera `[B1]..[Bn]` nas citações e não pode mudar de forma.
+ *
+ * Com ele, a cobertura deixa de ser sorte. `K_AMPLO = 40` sempre foi teto de RESULTADO, não
+ * garantia: um documento longo e bem casado podia ocupar os 40 e empurrar os outros pra fora do
+ * agrupamento (achado do Sourcery na #672). O `row_number()` particionado resolve no lugar certo —
+ * o banco —, em vez de pedir mais linhas e torcer.
+ */
+export function montarSql(
+  e: EscopoRag,
+  pergunta: string,
+  vetor: number[] | null,
+  kBruto: number,
+  porDoc?: number,
+): { sql: string; params: unknown[] } {
   const k = normalizarK(kBruto);
   const params: unknown[] = [];
   const p = (v: unknown) => { params.push(v); return `$${params.length}`; };
@@ -125,16 +140,34 @@ export function montarSql(e: EscopoRag, pergunta: string, vetor: number[] | null
     )`);
   uniao.push("SELECT id, rk, NULL::float8 AS sim, true AS txt FROM txt");
 
+  const colunas = "t.id, t.documento_id, d.titulo, t.texto, t.pagina_ini, t.pagina_fim, t.turma_ids, t.dono_ids, f.score::float8 AS score, f.sim::float8 AS similaridade, f.por_texto";
+  const juncao = `FROM fus f
+      JOIN rag_trechos t ON t.id = f.id
+      JOIN rag_documentos d ON d.id = t.documento_id`;
+
+  // COM teto por documento: numera dentro de cada `documento_id` e corta antes do LIMIT global.
+  // A ordem final segue a mesma (score desc, id), então o topo da lista não muda — o que muda é
+  // quem sobrevive mais abaixo: entra o melhor trecho de outro documento no lugar do 4º do mesmo.
+  const porDocN = Number.isFinite(porDoc) && (porDoc as number) > 0 ? Math.floor(porDoc as number) : null;
+  const corpo = porDocN === null
+    ? `SELECT ${colunas}
+      ${juncao}
+     ORDER BY f.score DESC, t.id
+     LIMIT ${lim}::int`
+    : `SELECT * FROM (
+       SELECT ${colunas},
+              row_number() OVER (PARTITION BY t.documento_id ORDER BY f.score DESC, t.id) AS rn_doc
+         ${juncao}
+     ) z
+     WHERE z.rn_doc <= ${p(porDocN)}::int
+     ORDER BY z.score DESC, z.id
+     LIMIT ${lim}::int`;
+
   const sql = `WITH ${ctes.join(",\n    ")},
     fus AS (
       SELECT id, sum(1.0 / (${RRF_K} + rk)) AS score, max(sim) AS sim, bool_or(txt) AS por_texto FROM (${uniao.join(" UNION ALL ")}) r GROUP BY id
     )
-    SELECT t.id, t.documento_id, d.titulo, t.texto, t.pagina_ini, t.pagina_fim, t.turma_ids, t.dono_ids, f.score::float8 AS score, f.sim::float8 AS similaridade, f.por_texto
-      FROM fus f
-      JOIN rag_trechos t ON t.id = f.id
-      JOIN rag_documentos d ON d.id = t.documento_id
-     ORDER BY f.score DESC, t.id
-     LIMIT ${lim}::int`;
+    ${corpo}`;
   return { sql, params };
 }
 
@@ -167,8 +200,8 @@ async function vetorDaPergunta(embed: EmbedRag, pergunta: string, prazoMs: numbe
 }
 
 /** Roda a query da busca (linhas cruas, SEM `podeVer`) na transação com o `SET LOCAL` do HNSW. */
-export async function executarSql(db: RagDb, e: EscopoRag, pergunta: string, vetor: number[] | null, k: number): Promise<any[]> {
-  const { sql, params } = montarSql(e, pergunta, vetor, k);
+export async function executarSql(db: RagDb, e: EscopoRag, pergunta: string, vetor: number[] | null, k: number, porDoc?: number): Promise<any[]> {
+  const { sql, params } = montarSql(e, pergunta, vetor, k, porDoc);
   return transacao(db, async (tx) => {
     // Busca vetorial filtrada: sem isso o HNSW pode devolver menos de `k` linhas quando o filtro é seletivo.
     if (vetor) await tx.query("SET LOCAL hnsw.iterative_scan = relaxed_order");
@@ -176,7 +209,7 @@ export async function executarSql(db: RagDb, e: EscopoRag, pergunta: string, vet
   });
 }
 
-export async function buscar(deps: BuscaDeps, e: EscopoRag, pergunta: string, k: number = K_PADRAO): Promise<TrechoAchado[]> {
+export async function buscar(deps: BuscaDeps, e: EscopoRag, pergunta: string, k: number = K_PADRAO, porDoc?: number): Promise<TrechoAchado[]> {
   // userId vazio casaria com entradas "" em dono_ids: sem identidade não há escopo.
   if (!e.userId || e.userId.trim() === "") return [];
   const consulta = pergunta.trim();
@@ -184,7 +217,7 @@ export async function buscar(deps: BuscaDeps, e: EscopoRag, pergunta: string, k:
   if (!temBase(e, await deps.contar(e))) return [];
 
   const vetor = await vetorDaPergunta(deps.embed, consulta, deps.prazoEmbedMs ?? PRAZO_EMBED_PADRAO_MS);
-  const linhas = await executarSql(deps.db, e, consulta, vetor, k);
+  const linhas = await executarSql(deps.db, e, consulta, vetor, k, porDoc);
 
   return linhas
     .filter((t) => podeVer({ turmaIds: t.turma_ids ?? [], donoIds: t.dono_ids ?? [] }, e))

@@ -45,7 +45,7 @@ The add options are modular and can be tied to an admin account.
 ## 🚀 Developer Setup
 
 ### Prerequisites
-- Node.js 20+, npm/yarn
+- Node.js 20+, npm (o projeto usa `package-lock.json`; não há yarn.lock)
 - MongoDB Atlas connection string
 - Google Cloud project with Vertex AI enabled
 - Google OAuth credentials (for NextAuth)

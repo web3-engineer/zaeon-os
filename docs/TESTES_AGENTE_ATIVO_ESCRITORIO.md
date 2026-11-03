@@ -41,8 +41,6 @@ npm ci --ignore-scripts
 npx prisma generate
 ```
 
-> Atenção: `npm ci` pode reescrever `yarn.lock` no Windows (troca entradas `@esbuild/*`).
-> **Não commitar** esse arquivo — `git checkout -- yarn.lock` desfaz.
 
 Typecheck:
 

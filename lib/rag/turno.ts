@@ -121,7 +121,12 @@ async function consultar(userId: string, pergunta: string, deps: Partial<TurnoRa
   };
   // Bases por área (lib/rag/areas): públicas, entram como "turmas" — só ids `area:*`, nunca vindos do cliente.
   const escopo: EscopoRag = { userId, turmaIds: [...turmaIds, ...areas.filter((a) => a.startsWith(PREFIXO_AREA))] };
-  const achados = k === undefined ? await buscar(busca, escopo, pergunta) : await buscar(busca, escopo, pergunta, k);
+  // `k` presente = consulta LARGA (F4/G3: cobertura por documento). Só ELA leva o teto por
+  // documento: a consulta normal continua idêntica, porque é o top-k plano que numera `[B1]..[Bn]`
+  // nas citações. Com o teto, a cobertura deixa de depender de um documento não ocupar tudo.
+  const achados = k === undefined
+    ? await buscar(busca, escopo, pergunta)
+    : await buscar(busca, escopo, pergunta, k, (await import("@/lib/rag/porDocumento")).TRECHOS_POR_DOC);
 
   const c = contagem as { pessoais: number; deTurma: number } | null;
   if (c && c.pessoais === 0 && c.deTurma === 0) return { status: "sem_base", trechos: [] };
