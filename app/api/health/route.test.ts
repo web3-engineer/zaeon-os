@@ -10,9 +10,9 @@ afterEach(() => vi.unstubAllEnvs());
 
 describe("health · capacidades (o RECIBO de 'tudo ON' — §8 do PLANO_HARNESS_AGENTICO)", () => {
   it("sem Variable nenhuma, TODAS as flags do harness saem ligadas", async () => {
-    for (const k of ["HARNESS_CAPACIDADE", "HARNESS_ACAO", "HARNESS_ANEXO", "HARNESS_SINTESE", "DOC_POR_SECAO"]) vi.stubEnv(k, "");
+    for (const k of ["HARNESS_CAPACIDADE", "HARNESS_ACAO", "HARNESS_ANEXO", "HARNESS_SINTESE", "DOC_POR_SECAO", "HARNESS_GRAFICO"]) vi.stubEnv(k, "");
     const c = (await (await GET()).json()).capacidades;
-    expect(c).toMatchObject({ cardapio: true, acao: true, anexo: true, sintese: true, docPorSecao: true, voltas: 2 });
+    expect(c).toMatchObject({ cardapio: true, acao: true, anexo: true, sintese: true, docPorSecao: true, grafico: true, voltas: 2 });
   });
 
   it("o kill-switch aparece aqui — é por este endpoint que se confere o rollback", async () => {

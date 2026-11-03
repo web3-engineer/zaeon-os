@@ -106,6 +106,9 @@ services:
       HARNESS_ANEXO: ${HARNESS_ANEXO:-1}
       # F4 · cobertura por documento + síntese cruzada (só com 2+ documentos em jogo).
       HARNESS_SINTESE: ${HARNESS_SINTESE:-1}
+      # G3 · gráfico na resposta (lib/agent/grafico): SVG desenhado aqui, com número que o turno
+      # apurou. Não custa chamada de modelo. `=0` é o kill-switch.
+      HARNESS_GRAFICO: ${HARNESS_GRAFICO:-1}
       # F5 · conectores MCP por nome do catálogo (lib/agent/mcp MCP_CATALOG). Vazio = nenhum.
       # Os servidores stdio rodam como SUBPROCESSO deste container (npx), então o primeiro boot
       # pode falhar o handshake enquanto o npx baixa o pacote.
@@ -119,7 +122,7 @@ services:
       GATEWAY_URL: ${GATEWAY_URL:-}
       # Leitor (Fatia 7, G6): vazio = Leitor fora do ar (lei 5). "http://leitor-proxy:8787" só com o perfil chores de pé.
       LEITOR_PROXY_URL: ${LEITOR_PROXY_URL:-http://leitor-proxy:8787}
-      LEITOR_ALLOW: "${LEITOR_ALLOW:-*.gov.br, *.edu.br, *.scielo.br, *.scielo.org, *.wikipedia.org, arxiv.org, doi.org, *.nih.gov, *.who.int}"
+      LEITOR_ALLOW: "${LEITOR_ALLOW:-*.gov.br, *.edu.br, *.scielo.br, *.scielo.org, *.wikipedia.org, arxiv.org, doi.org, *.nih.gov, *.who.int, raw.githubusercontent.com, github.com}"
     depends_on:
       redis: { condition: service_started }
       voice-engine: { condition: service_started }
@@ -191,6 +194,9 @@ services:
       HARNESS_ANEXO: ${HARNESS_ANEXO:-1}
       # F4 · cobertura por documento + síntese cruzada (só com 2+ documentos em jogo).
       HARNESS_SINTESE: ${HARNESS_SINTESE:-1}
+      # G3 · gráfico na resposta (lib/agent/grafico): SVG desenhado aqui, com número que o turno
+      # apurou. Não custa chamada de modelo. `=0` é o kill-switch.
+      HARNESS_GRAFICO: ${HARNESS_GRAFICO:-1}
       # F5 · conectores MCP por nome do catálogo (lib/agent/mcp MCP_CATALOG). Vazio = nenhum.
       # Os servidores stdio rodam como SUBPROCESSO deste container (npx), então o primeiro boot
       # pode falhar o handshake enquanto o npx baixa o pacote.
@@ -199,7 +205,7 @@ services:
       # gerarTccEmBackground, então sem esta linha a Variable valeria só no web (par do #670).
       DOC_POR_SECAO: ${DOC_POR_SECAO:-1}
       LEITOR_PROXY_URL: ${LEITOR_PROXY_URL:-http://leitor-proxy:8787}   # Fatia 7: chores leem a web SÓ por aqui
-      LEITOR_ALLOW: "${LEITOR_ALLOW:-*.gov.br, *.edu.br, *.scielo.br, *.scielo.org, *.wikipedia.org, arxiv.org, doi.org, *.nih.gov, *.who.int}"
+      LEITOR_ALLOW: "${LEITOR_ALLOW:-*.gov.br, *.edu.br, *.scielo.br, *.scielo.org, *.wikipedia.org, arxiv.org, doi.org, *.nih.gov, *.who.int, raw.githubusercontent.com, github.com}"
     depends_on:
       redis: { condition: service_started }
     # mesma imagem do web: turno do Octa na fila também pode capturar (Chromium) → init colhe órfãos
@@ -371,7 +377,7 @@ services:
       # propósito — fonte acadêmica, governo e referência. Allowlist é decisão de segurança:
       # estender é pôr a Variable LEITOR_ALLOW. A MESMA string vale no web e no worker (eles
       # usam a presença dela pra decidir se registram abrir_url) — lib/leitor/compose.test.ts pina.
-      LEITOR_ALLOW: "${LEITOR_ALLOW:-*.gov.br, *.edu.br, *.scielo.br, *.scielo.org, *.wikipedia.org, arxiv.org, doi.org, *.nih.gov, *.who.int}"
+      LEITOR_ALLOW: "${LEITOR_ALLOW:-*.gov.br, *.edu.br, *.scielo.br, *.scielo.org, *.wikipedia.org, arxiv.org, doi.org, *.nih.gov, *.who.int, raw.githubusercontent.com, github.com}"
       # TEXTO: 2 MiB (o `response cap` do web.fetch da Rovinos, issue #98 — ver server.mjs).
       LEITOR_MAX_BYTES: ${LEITOR_MAX_BYTES:-2097152}
       # BYTES (/bytes, F1b): 25 MB = lib/rag/ingerir.MAX_BYTES, o teto do único destino deles.

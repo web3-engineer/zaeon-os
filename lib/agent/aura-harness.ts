@@ -34,6 +34,8 @@ import type { AgentStep } from "@/lib/agent/actions";
 import type { HarnessDeps, TrajectoryState, Step } from "@/lib/agent/trajectory";
 import { MAX_VOLTAS_GATHER } from "@/lib/agent/trajectory";
 import { lerAcao, promptDeAcao, resumoDaColeta, resumoDasFalhas, toolVisivel, toolsDoMenu } from "@/lib/agent/acao";
+import { falhasVisiveis } from "@/lib/agent/falhas";
+import { graficosDoTurno } from "@/lib/agent/graficosDoTurno";
 import { normalizeStudioKind } from "@/lib/agent/tools";
 import type { StructuredAnswer, Source } from "@/lib/agent/contracts";
 import { artefatoDeAprender, pedeAula, pedeEngenhariaReversa, DIRETRIZ_ENGENHARIA_REVERSA } from "@/lib/agent/aprender";
@@ -591,13 +593,26 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         // é uma classe de falso positivo que não precisa existir.
         let bruta = normalizeAnswer(out, st);
         if (capacidadeHonestaLigada()) {
-          const h = respostaHonesta(bruta, executadas);
+          // as tools do turno entram pro MODO PLANO (FURO 3): sem elas a rede não sabe o que a casa
+          // faz, e um passo no infinitivo de uma classe COBERTA não deve cair.
+          const h = respostaHonesta(bruta, executadas, toolsDoTurno(ctx).map((t) => t.name));
           // medir em prod: quantas respostas prometiam, e de que classe (sem o texto da conversa)
           if (h.removidas.length) console.warn(`[harness] promessa sem lastro: ${h.removidas.map((c) => c.id).join(", ")} (intent=${st.intent})`);
           bruta = h.answer;
         }
         // fontes da base: o rodapé sai do código, só com trechos que a busca devolveu (o modelo só aponta os números)
         const comBase = anexarFontesBase(bruta, opts.baseConhecimento, (out as any)?.citacoes_base);
+        // G2 · a falha de tool vira objeto da resposta, com o caminho que existe. Do CÓDIGO: as
+        // observações são fato do turno, e `executadas` tira do caminho a tool que deu certo depois.
+        const fv = falhasVisiveis(observations, executadas);
+        if (fv.length) comBase.falhas = fv;
+        // G3 · gráfico COM RECIBO: a contagem sai do que o turno apurou (papers da busca, trechos
+        // por documento da F4). Nenhuma chamada de modelo, e o modelo não digita valor nenhum.
+        const gs = graficosDoTurno({
+          fontes: st.evidence.map((f) => f.source).filter(Boolean) as { year?: number }[],
+          docsDaBase: (ctx as { docsDaBase?: { titulo: string; trechos: unknown[] }[] }).docsDaBase,
+        });
+        if (gs.length) comBase.graficos = gs;
         return anexarLivros(comBase, livrosAchados);
       } catch (e: any) {
         // degradado: núcleo honesto via messageForError (nunca string à mão), laço segue.

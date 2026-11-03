@@ -25,6 +25,7 @@ import { acaoDoModeloLigada, capacidadeHonestaLigada, voltasDeAcao } from "@/lib
 import { anexoNoHarnessLigado } from "@/lib/agent/anexos";
 import { sinteseLigada } from "@/lib/agent/sintese-flag";
 import { escritaPorSecaoLigada } from "@/lib/documento/escritor";
+import { graficoLigado } from "@/lib/agent/graficosDoTurno";
 import { getTool } from "@/lib/agent/runtime";
 
 export const runtime = "nodejs";
@@ -52,6 +53,7 @@ export async function GET() {
       anexo: anexoNoHarnessLigado(),
       sintese: sinteseLigada(),
       docPorSecao: escritaPorSecaoLigada(),
+      grafico: graficoLigado(),
       // as duas tools do Leitor: registradas = o cardápio PODE prometer "abro páginas"/"baixo
       // arquivo". É aqui que se vê a diferença entre a flag ligada e a capacidade existindo.
       abrirUrl: !!getTool("abrir_url"),

@@ -18,7 +18,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useTypewriter } from "@/lib/ui/useTypewriter";
 import { fonteChat } from "@/lib/ui/chatFontScale";
-import { ArrowUpRight, Quote } from "lucide-react";
+import { ArrowUpRight, Quote, AlertTriangle, Paperclip, RotateCcw, Link2, ClipboardPaste } from "lucide-react";
 import type { StructuredAnswer, Source } from "@/lib/agent/contracts";
 import ChatMarkdown from "@/components/study/ChatMarkdown";
 import CardVideoChat from "@/components/videodoc/CardVideoChat";
@@ -41,6 +41,14 @@ function Prose({ text, lead }: { text: string; lead?: boolean }) {
 function sourceLabel(s: Source): string {
   return [s.title, s.authors, s.year].filter(Boolean).join(" · ") || s.url || "fonte";
 }
+
+/** G2 · o ícone do caminho que existe (o tipo vem de lib/agent/falhas). */
+const ICONE_CORRECAO = {
+  anexar: Paperclip,
+  tentar_de_novo: RotateCcw,
+  outro_link: Link2,
+  colar_trecho: ClipboardPaste,
+} as const;
 
 export default function StructuredAnswerView({
   answer,
@@ -73,9 +81,11 @@ export default function StructuredAnswerView({
     if (conceitos?.length) arr.push("conceitos");
     if (children) arr.push("art");
     if (evidencia?.length) arr.push("evid");
+    if (answer.graficos?.length) arr.push("graficos");
+    if (answer.falhas?.length) arr.push("falhas");
     if (proximos_passos?.length) arr.push("next");
     return arr;
-  }, [desenvolvimento, conceitos, evidencia, proximos_passos, children]);
+  }, [desenvolvimento, conceitos, evidencia, proximos_passos, children, answer.falhas, answer.graficos]);
   const delay = (name: string) => `${secs.indexOf(name) * 70}ms`;
   const tw = useTypewriter(nucleo || "", typing);
   const rest = tw.done; // o resto entra (com o fade-up escalonado) quando o núcleo termina
@@ -171,6 +181,65 @@ export default function StructuredAnswerView({
 
           {/* mini-ações da mensagem (ordem: conteúdo → ações → botões do harness → Fontes) */}
           {rest && acoes}
+
+          {/* G3 · GRÁFICO da resposta. O SVG vem PRONTO do servidor (lib/agent/grafico) e o número
+              foi apurado por código — o modelo não digita valor. `dangerouslySetInnerHTML` é seguro
+              aqui porque o SVG é gerado por nós e todo rótulo passa por `escaparSvg`; nada do
+              modelo nem do documento entra como marcação. */}
+          {rest && answer.graficos?.length ? (
+            <div className="z-up mt-4 flex flex-col gap-4" style={{ animationDelay: delay("graficos") }}>
+              {answer.graficos.map((g, i) => (
+                <figure key={i} className="m-0 px-3.5 py-3 rounded-2xl bg-white/45 dark:bg-white/[0.045] border border-white/55 dark:border-white/10 backdrop-blur-md">
+                  <figcaption className="text-[12.5px] font-semibold text-slate-900 dark:text-white mb-2">{g.titulo}</figcaption>
+                  <div
+                    className="text-slate-900 dark:text-white"
+                    role="group"
+                    aria-label={g.alt}
+                    dangerouslySetInnerHTML={{ __html: g.svg }}
+                  />
+                  <figcaption className="mt-1.5 text-[11px] text-slate-600 dark:text-white/60">Fonte: {g.fonte}</figcaption>
+                </figure>
+              ))}
+            </div>
+          ) : null}
+
+          {/* G2 · A AÇÃO QUE FALHOU, com o caminho que existe. Vem do código (answer.falhas), não do
+              modelo. Entra ANTES dos próximos passos de propósito: saber que o arquivo não chegou é
+              mais urgente que a sugestão de estudo — foi o que faltou na conversa dos benchmarks. */}
+          {rest && answer.falhas?.length ? (
+            <div className="z-up mt-4 flex flex-col gap-1.5" style={{ animationDelay: delay("falhas") }}>
+              {answer.falhas.map((f, i) => {
+                const Icone = ICONE_CORRECAO[f.corrigir.tipo] ?? Paperclip;
+                const reenviar = f.corrigir.prompt;
+                return (
+                  <div
+                    key={`${f.tool}:${f.codigo}:${i}`}
+                    className="flex items-start gap-2.5 px-3.5 py-2.5 rounded-2xl bg-amber-500/[0.07] border border-amber-500/25 backdrop-blur-md"
+                  >
+                    <span className="mt-0.5 w-6 h-6 shrink-0 rounded-full flex items-center justify-center bg-amber-500/15 text-amber-600 dark:text-amber-300">
+                      <AlertTriangle size={14} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13.5px] text-slate-900 dark:text-white">{f.porque}.</p>
+                      {reenviar ? (
+                        <button
+                          type="button"
+                          onClick={() => onNext?.(reenviar)}
+                          className="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12.5px] bg-white/55 dark:bg-white/[0.07] border border-white/60 dark:border-white/10 text-slate-800 dark:text-white/85 hover:border-amber-400/50 transition-colors"
+                        >
+                          <Icone size={12} /> {f.corrigir.texto}
+                        </button>
+                      ) : (
+                        <p className="mt-1 flex items-start gap-1.5 text-[12.5px] text-slate-700 dark:text-white/70">
+                          <Icone size={12} className="mt-[3px] shrink-0" /> <span>{f.corrigir.texto}</span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
 
           {/* próximos passos — sugestões clicáveis (viram novo prompt) */}
           {rest && proximos_passos?.length ? (

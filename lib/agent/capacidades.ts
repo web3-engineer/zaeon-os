@@ -295,6 +295,40 @@ export function promessaSemLastro(frase: string, executadas: Iterable<string> = 
 }
 
 /**
+ * FURO 3 (docs/PLANO_RESPOSTA_GRAFICA.md §A1): a promessa no PLANO, que vem no INFINITIVO.
+ *
+ * `afirmaAcao` exige sujeito em 1ª pessoa — `vou baixar`, `baixei`, `eu baixo` — e isso é de
+ * propósito: "baixe o arquivo em X e anexe aqui" é conteúdo bom e não pode cair. Só que o
+ * INFINITIVO NÃO TEM SUJEITO, e é justamente a forma que o modelo usa num plano. A conversa dos
+ * benchmarks (TruthfulQA/MMLU) passou inteira pela rede com oito frases assim: "Acessar o
+ * repositório…", "Clonar os repositórios…", "Baixar o diretório 'data'…".
+ *
+ * O defeito não está na frase, está em ONDE ela aparece: num campo de plano (`proximos_passos`), um
+ * infinitivo é lido como O PLANO DA PLATAFORMA. No corpo da resposta, depois de "você pode", a
+ * mesma frase é instrução legítima ao aluno. Por isso esta função é SÓ para campos de plano.
+ *
+ * E só acusa classe que a plataforma NÃO TEM (`registradas` não cobre): se a casa faz a ação, um
+ * passo no infinitivo é ou instrução ao aluno, ou trabalho do laço de ação (que deveria ter
+ * executado) — nos dois casos, apagar o passo seria pior. Se a casa NÃO faz, o passo é impossível
+ * de qualquer ângulo: ninguém na conversa clona um repositório.
+ */
+export function promessaNoPlano(
+  frase: string,
+  registradas: ReadonlySet<string>,
+  executadas: Iterable<string> = [],
+): ClasseDeAcao | null {
+  const t = norm(frase);
+  if (!t.trim()) return null;
+  const feitas = new Set(executadas);
+  for (const c of CLASSES_DE_ACAO) {
+    if (feitas.has(c.tool) || classeCoberta(c, registradas)) continue;
+    // infinitivo/gerúndio + objeto, sem exigir marcador de pessoa — é o que o plano usa
+    if (regexDe(c, c.inf, true).test(t)) return c;
+  }
+  return null;
+}
+
+/**
  * Parte o texto em FRASES, preservando o que separou (pontuação e quebra de linha), pra remontar sem
  * estragar lista com marcador nem parágrafo.
  */
@@ -353,6 +387,8 @@ type RespostaComTexto = { nucleo: string; desenvolvimento?: string; proximos_pas
 export function respostaHonesta<T extends RespostaComTexto>(
   a: T,
   executadas: Iterable<string> = [],
+  /** as tools do turno — sem elas o modo PLANO não roda (não há como saber o que a casa faz). */
+  registradas?: Iterable<string>,
 ): { answer: T; removidas: ClasseDeAcao[] } {
   const feitas = [...executadas];
   const removidas: ClasseDeAcao[] = [];
@@ -361,8 +397,11 @@ export function respostaHonesta<T extends RespostaComTexto>(
   removidas.push(...nuc.removidas);
   const dev = a.desenvolvimento ? semPromessa(a.desenvolvimento, feitas) : null;
   if (dev) removidas.push(...dev.removidas);
+  // o PLANO é julgado duas vezes: pela rede normal (1ª pessoa) e, se soubermos o que a casa faz,
+  // pelo modo infinitivo — que é o que a conversa dos benchmarks exigiu (FURO 3).
+  const tem = registradas ? new Set(registradas) : null;
   const passos = a.proximos_passos?.filter((p) => {
-    const c = promessaSemLastro(p, feitas);
+    const c = promessaSemLastro(p, feitas) ?? (tem ? promessaNoPlano(p, tem, feitas) : null);
     if (c) removidas.push(c);
     return !c;
   });
