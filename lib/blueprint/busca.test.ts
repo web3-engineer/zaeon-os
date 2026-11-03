@@ -11,10 +11,10 @@ describe("filtrarBlueprints", () => {
   const lista = [b("Fundamentos de Python para Data Science"), b("Fotossíntese"), b("Privacidade na Solana")];
   it("acha por parte do nome, sem acento nem maiúscula", () => {
     expect(filtrarBlueprints(lista, "python").map((x) => x.titulo)).toEqual(["Fundamentos de Python para Data Science"]);
-    expect(filtrarBlueprints(lista, "FOTOSSINTESE")).toHaveLength(1);
+    expect(filtrarBlueprints(lista, "FOTOSSINTESE").map((x) => x.titulo)).toEqual(["Fotossíntese"]);
   });
   it("várias palavras, em qualquer ordem", () => {
-    expect(filtrarBlueprints(lista, "data python")).toHaveLength(1);
+    expect(filtrarBlueprints(lista, "data python").map((x) => x.titulo)).toEqual(["Fundamentos de Python para Data Science"]);
     expect(filtrarBlueprints(lista, "data solana")).toHaveLength(0);
   });
   it("busca vazia mostra todos; sem resultado, nenhum", () => {
@@ -42,6 +42,11 @@ describe("listarPagina", () => {
     expect(await listarPagina(U, 40, db)).toMatchObject({ temMais: true });
     const r = await listarPagina(U, 80, db);
     expect(r.blueprints).toHaveLength(41);
+    expect(r.temMais).toBe(false);
+  });
+  it("no teto de 400 não oferece 'ver mais', porque pedir de novo traria os mesmos", async () => {
+    const r = await listarPagina(U, 400, await encher(401));
+    expect(r.blueprints).toHaveLength(400);
     expect(r.temMais).toBe(false);
   });
   it("limite inválido vira o padrão; nunca passa do teto", async () => {

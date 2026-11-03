@@ -132,6 +132,18 @@ describe("#681 · excluir e erro ao carregar", () => {
 });
 
 describe("#683 · ver mais", () => {
+  it("'ver mais' que falha devolve false e não perde a lista", async () => {
+    const { result } = renderHook(() => useBlueprint());
+    await waitFor(() => expect(result.current.temMais).toBe(true));
+    const f = fetch as unknown as ReturnType<typeof vi.fn>;
+    const antes = f.getMockImplementation()!;
+    f.mockImplementation((url: string, o?: RequestInit) => (url.endsWith("=80") ? Promise.resolve(new Response("{}", { status: 500 })) : antes(url, o)));
+    let ok = true;
+    await act(async () => { ok = await result.current.verMais(); });
+    expect(ok).toBe(false);
+    expect(result.current.lista).toHaveLength(2);
+    expect(result.current.limite).toBe(40);
+  });
   it("a lista pede 40; 'ver mais' pede os próximos 40 e o aviso some quando acabam", async () => {
     const { result } = renderHook(() => useBlueprint());
     await waitFor(() => expect(result.current.temMais).toBe(true));

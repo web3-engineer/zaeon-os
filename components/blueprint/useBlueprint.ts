@@ -66,9 +66,13 @@ export function useBlueprint(inicialId?: string | null) {
     if (r?.blueprint && idAtual.current === id && !emVoo(id)) setAtual(r.blueprint);
   }, [setAtual]);
 
-  const recarregar = useCallback(async () => {
+  // #683: só a leitura mais recente vale — uma recarga velha (com menos itens) que chega depois não encolhe a lista
+  const leitura = useRef(0);
+  const recarregar = useCallback(async (): Promise<boolean> => {
+    const minha = ++leitura.current;
     const r = await json<{ blueprints: ResumoBlueprint[]; temMais?: boolean }>(`/api/blueprint?limite=${limiteRef.current}`);
-    if (!r) { setErro(true); return; }
+    if (minha !== leitura.current) return !!r;
+    if (!r) { setErro(true); return false; }
     setErro(false);
     setTemMais(!!r.temMais);
     const vivos = r.blueprints.filter((b) => !excluidos.current.has(b.id));
@@ -76,6 +80,7 @@ export function useBlueprint(inicialId?: string | null) {
     const alvo = idAtual.current && vivos.some((b) => b.id === idAtual.current) ? idAtual.current : vivos[0]?.id;
     // a lista já chegou: quem espera a recarga ("ver mais") não espera também a prancha
     if (alvo) void abrir(alvo); else setAtual(null);
+    return true;
   }, [abrir]);
 
   useEffect(() => {
@@ -156,9 +161,12 @@ export function useBlueprint(inicialId?: string | null) {
   }, [patch, atual, setAtual]);
 
   /** #683: "ver mais" — os próximos 40, mais antigos */
-  const verMais = useCallback(async () => {
+  const verMais = useCallback(async (): Promise<boolean> => {
     limiteRef.current += 40; setLimite(limiteRef.current);
-    await recarregar();
+    const ok = await recarregar();
+    // não carregou: volta o tamanho de antes, e o próximo clique tenta os mesmos 40
+    if (!ok) { limiteRef.current -= 40; setLimite(limiteRef.current); }
+    return ok;
   }, [recarregar]);
 
   // #631: clicou e a prancha ainda é a de antes (o servidor não respondeu)

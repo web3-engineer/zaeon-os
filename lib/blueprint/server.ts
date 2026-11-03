@@ -70,8 +70,10 @@ export const POR_PAGINA = 40, MAX_LISTA = 400;
 export async function listarPagina(userId: string, limite: number, db?: BlueprintDb): Promise<{ blueprints: ResumoBlueprint[]; temMais: boolean }> {
   const d = db ?? (await prismaDb());
   const n = Math.min(MAX_LISTA, Math.max(1, Math.floor(limite) || POR_PAGINA));
-  const rows = await d.cartolina.findMany({ where: { ownerId: userId, surface: SURFACE_BLUEPRINT }, orderBy: { updatedAt: "desc" }, take: n + 1 });
-  return { blueprints: rows.slice(0, n).map(resumoDe), temMais: rows.length > n };
+  // o id desempata o mesmo instante: a ordem é a mesma em qualquer tamanho de página (nada some ao pedir mais)
+  const rows = await d.cartolina.findMany({ where: { ownerId: userId, surface: SURFACE_BLUEPRINT }, orderBy: [{ updatedAt: "desc" }, { id: "desc" }], take: n + 1 });
+  // no teto, não há "ver mais": pedir de novo traria os mesmos
+  return { blueprints: rows.slice(0, n).map(resumoDe), temMais: rows.length > n && n < MAX_LISTA };
 }
 
 /** o blueprint SÓ se o usuário tem papel nele */

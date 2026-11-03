@@ -75,7 +75,8 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
   // #683: a busca pelo nome (nos que a lista já trouxe; "ver mais" traz os antigos)
   const [busca, setBusca] = useState(""), [vendoMais, setVendoMais] = useState(false);
   const visiveis = useMemo(() => (lista ? filtrarBlueprints(lista, busca) : null), [lista, busca]);
-  const verMais = async () => { setVendoMais(true); await B.verMais(); setVendoMais(false); };
+  const [falhaMais, setFalhaMais] = useState(false);
+  const verMais = async () => { setVendoMais(true); setFalhaMais(false); const ok = await B.verMais(); setVendoMais(false); setFalhaMais(!ok); };
   // #631: a marcação segue o CLIQUE (não espera o servidor) — antes parecia que o clique não tinha pegado
   const marcado = B.selecionado ?? atual?.id;
   // #631: o cronômetro fecha no quadro seguinte ao desenho da prancha nova
@@ -173,7 +174,7 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
         {/* #683: os mais antigos que os 40 primeiros */}
         {B.temMais && (
           <button type="button" onClick={() => void verMais()} disabled={vendoMais} className="flex-none self-center whitespace-nowrap rounded-sm border px-2.5 py-1 font-mono text-[11px] transition hover:bg-white/10 disabled:opacity-50" style={{ borderColor: contorno, ...desligado }}>
-            {vendoMais ? "carregando…" : "ver mais →"}
+            {vendoMais ? "carregando…" : falhaMais ? "não carregou — tentar de novo" : "ver mais →"}
           </button>
         )}
       </div>
