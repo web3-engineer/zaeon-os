@@ -102,6 +102,10 @@ services:
       HARNESS_ANEXO: ${HARNESS_ANEXO:-0}
       # F4 · cobertura por documento + síntese cruzada (só com 2+ documentos em jogo).
       HARNESS_SINTESE: ${HARNESS_SINTESE:-0}
+      # F5 · conectores MCP por nome do catálogo (lib/agent/mcp MCP_CATALOG). Vazio = nenhum.
+      # Os servidores stdio rodam como SUBPROCESSO deste container (npx), então o primeiro boot
+      # pode falhar o handshake enquanto o npx baixa o pacote.
+      MCP_CONECTORES: ${MCP_CONECTORES:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       ESTUDO_GATEKEEPER: ${ESTUDO_GATEKEEPER:-0}
       AURA_ECONOMY: ${AURA_ECONOMY:-0}
@@ -182,6 +186,10 @@ services:
       HARNESS_ANEXO: ${HARNESS_ANEXO:-0}
       # F4 · cobertura por documento + síntese cruzada (só com 2+ documentos em jogo).
       HARNESS_SINTESE: ${HARNESS_SINTESE:-0}
+      # F5 · conectores MCP por nome do catálogo (lib/agent/mcp MCP_CATALOG). Vazio = nenhum.
+      # Os servidores stdio rodam como SUBPROCESSO deste container (npx), então o primeiro boot
+      # pode falhar o handshake enquanto o npx baixa o pacote.
+      MCP_CONECTORES: ${MCP_CONECTORES:-}
       LEITOR_PROXY_URL: ${LEITOR_PROXY_URL:-}   # Fatia 7: chores leem a web SÓ por aqui
     depends_on:
       redis: { condition: service_started }

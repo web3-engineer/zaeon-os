@@ -251,7 +251,7 @@ Isso vira **invariante testada**, não meta: promessa sem lastro não passa no g
 | **F2** ✅ | **O modelo escolhe a tool.** `lib/agent/acao.ts` (render ↔ parse, fronteira do `deepseek-recipe`) + `gather` **reentrante** no `trajectory`, com teto de política e teto duro. Flag `HARNESS_ACAO`, OFF. | **médio** | F0, F1 |
 | **F3** ✅ | Anexo entra no harness: `fileData` deixa de desligar o laço, `ChatTurnParams` ganha anexos, nascem `listar_anexos`/`ler_anexo` e as tools passam a ter **disponibilidade por turno**. Resolve o §4.1 e o §4.4. Flag `HARNESS_ANEXO`, OFF. | médio | F2 |
 | **F4** ✅ | Pensamento por documento: consulta larga reagrupada **por documento** + **síntese cruzada** na fase `reason`. Resolve o §4.3. Flag `HARNESS_SINTESE`, OFF. | médio | F3 |
-| **F5** | Conectores MCP ligados (`lib/agent/mcp.ts` **já está escrito** e nunca é chamado): catálogo tem `fetch`, `filesystem`, `git` — é o caminho pra "clonar um repo" sem escrever tool nova. Exige `npm i @modelcontextprotocol/sdk` e smoke-test do dono. | médio | F2 |
+| **F5** ✅ | Conectores MCP ligados (`lib/agent/mcp.ts` já estava escrito e **nunca era chamado**): `lib/agent/mcp-boot` + `instrumentation` + `/api/health`, com política **só-leitura**. Env `MCP_CONECTORES`. O SDK segue **opcional** — ver abaixo. | médio | F2 |
 
 **Rollback em qualquer fase:** flag por fase; sem ela o caminho atual vale byte a byte.
 
@@ -570,6 +570,85 @@ SQL — sem modelo e sem embed novo, porque o vetor da pergunta é o compartilha
 `tsc --noEmit` limpo; `eslint` 0; os dois YAML validados. Os testes de `lib/rag` passaram sem
 alteração — o `k` novo em `baseParaTurno` é opcional e, ausente, mantém `K_PADRAO`.
 
+### F5 entregue — e a dependência que eu NÃO commitei
+
+**O que faltava não era o cliente.** `lib/agent/mcp.ts` está escrito desde o PASSO 7 — cliente,
+handshake, mapeamento pra `ToolDef`, dois canais de erro, catálogo — e **nunca era chamado por
+ninguém**. O modelo `Connector` existe no Prisma e também nunca era lido. Esta fase é a **ligação**:
+`lib/agent/mcp-boot.ts` (no padrão de `memory-boot.ts`), chamado pelo `instrumentation.ts`, com o
+estado no `/api/health` — que é por onde o smoke-test do dono acontece.
+
+**🔴 A POLÍTICA QUE A FASE OBRIGOU: no chat, só entra tool de LEITURA.** Não é zelo, é um buraco
+real que a ligação ingênua abriria. O `permit()` só exige aprovação para `write` quando
+`execMode === "guiado"`, e o chat roda em **`"auto"`**. Então uma tool MCP de escrita entraria no
+registry e **rodaria sem aprovação, escolhida pelo modelo a partir de uma conversa** — que é
+exatamente o caminho de injeção indireta do advisory do §5.1. Com `filesystem` ou `git` no catálogo,
+isso é escrita no container. `toolsAdmitidas()` filtra **no registro**: tool recusada não existe pro
+`permit`, nem pro cardápio da F0, nem pro menu da F2 — é ausente, não "negada depois".
+
+**Escolha só pelo CATÁLOGO, nunca endpoint solto no env.** `MCP_CONECTORES="fetch,git"` resolve
+nomes de `MCP_CATALOG`; qualquer outra coisa (inclusive uma URL) é ignorada e logada. Endpoint
+arbitrário vindo de env daria ao modelo uma superfície que ninguém revisou — acrescentar um servidor
+é uma linha no catálogo, num PR que alguém lê.
+
+**Conecta UMA vez, no boot.** O handshake de um servidor stdio custa segundos (o `npx` pode até
+baixar o pacote na primeira vez); pagar isso por turno seria inaceitável. A execução já abre o
+cliente por-chamada.
+
+**A F0 continua coerente com o MCP, e isso exigiu duas coisas:**
+- `ClasseDeAcao.tambemPor`: um conector entrega a capacidade com **outro nome**
+  (`mcp:git:git_log`, não `clonar_repo`). Sem isso o cardápio diria "não leio repositório" com um
+  servidor de git no ar — a F0 mentindo pelo avesso.
+- `descricaoSegura()`: a descrição da tool é escrita **pelo servidor** e ia entrar no **nosso system
+  prompt**. É vetor de injeção, então vira uma linha só, com teto — a mesma disciplina do texto
+  oculto no Leitor.
+
+**Defeito que o próprio log revelou:** o boot mostrava a mensagem *amigável do aluno* ("Tô sem
+conexão com o núcleo…") no lugar do motivo. Inútil num smoke-test, onde o dono precisa ler
+`ECONNREFUSED`. Agora `ConnectorHealth` carrega os dois: `error` (tela) e `motivo` (ops).
+
+**🔒 A DEPENDÊNCIA: medida, e deixada para você.** O gate 4 do §7 dizia "exige
+`npm i @modelcontextprotocol/sdk`". Medi antes de commitar:
+
+- O dry-run inicial dizia "172 pacotes", mas **não era o SDK**: `sharp` já é dependência nossa
+  (`^0.35.5`, 171 entradas `@img/sharp-*` no lockfile) e o dry-run estava reconciliando a árvore.
+- O SDK de verdade traz **17 dependências diretas**, e entre elas **`express` 5, `hono`, `cors`,
+  `express-rate-limit`, `jose`** — a metade **servidor** do SDK, que nós **não usamos**: só
+  precisamos do cliente (`client/index.js`, `client/stdio.js`, `client/streamableHttp.js`).
+
+Então **não acrescentei ao `package.json`**. O módulo já funciona sem ele: `connectMcp` importa por
+specifier em variável (o tsc não resolve, o bundler não empacota), `sdkPresente()` detecta a
+ausência, e o boot diz o comando que falta em vez de encher o log de falhas de handshake. O
+`/api/health` reporta `mcp: "sem_sdk"`.
+
+Reimplementar o handshake à mão foi considerado e **descartado**: o cabeçalho de `mcp.ts` diz, desde
+o PASSO 7, que o handshake mora só em `connectMcp` justamente pra que uma mudança da spec seja uma
+função — e a spec do MCP se move. Melhor pagar `express` sem usar que manter um cliente de protocolo
+próprio.
+
+**Para ligar** (um comando e uma Variable): `npm i @modelcontextprotocol/sdk` → Variable
+`MCP_CONECTORES=fetch` (comece por um) → `curl .../api/health` e leia o campo `mcp`. O boot loga
+quantas tools entraram e **quais foram recusadas por risco**.
+
+**Limites honestos, registrados:**
+- **Servidor sem `annotations` não contribui tool nenhuma.** `riskFromAnnotations` devolve `write`
+  sem hint, e a política só aceita `read`. É conservador de propósito, e o boot loga o que caiu pra
+  você ver em vez de adivinhar.
+- **Annotations são hints do servidor** — confiar nelas é confiar em quem você escolheu no catálogo.
+  A fronteira de confiança real é essa escolha: um servidor stdio roda como **subprocesso do
+  container**, então servidor malicioso é problema antes das annotations. A política é a contenção do
+  que o **modelo** pode pedir, não defesa contra o servidor.
+- **Primeiro boot pode falhar o handshake** enquanto o `npx` baixa o pacote do servidor.
+- O modelo `Connector` do Prisma continua **sem leitor**: ligar o catálogo a uma UI de admin é outra
+  fase, e por isso a escolha hoje é por env.
+
+**Gates:** 1650 testes (+39 nesta fase: 17 no boot, 4 na política de risco, 6 no cardápio com MCP);
+`tsc --noEmit` limpo; `eslint` 0; os dois YAML validados.
+
+**Deslize recorrente, agora pego na hora:** o `vitest` passou com 1650 testes enquanto o `tsc`
+acusava um `import` duplicado — o esbuild apaga tipos e não liga. É a terceira vez nesta série que a
+ordem importa: **teste primeiro, `tsc` depois**, sempre antes do commit.
+
 ## 7. 🔒 Portões do dono
 
 Decisões que eu **não** tomo sozinho, porque mudam contrato de produto ou gastam dinheiro:
@@ -590,5 +669,8 @@ Decisões que eu **não** tomo sozinho, porque mudam contrato de produto ou gast
    revisão. Fechar isso é política de egresso no VPS.
 3. **Teto de arquivos por conversa.** O dono já fixou **10 por documento** no plano do documento;
    confirmar se vale o mesmo teto para o chat.
-4. **F5 exige instalar `@modelcontextprotocol/sdk`** e rodar servidores MCP por `npx`/`python` no
-   VPS. É dependência nova e processo novo — decisão de infra.
+4. ~~F5 exige instalar o SDK.~~ **Medido e deixado pra você:** o SDK traz 17 dependências diretas,
+   incluindo `express` 5, `hono`, `cors` e `express-rate-limit` — a metade SERVIDOR, que não usamos.
+   Por isso **não está no `package.json`**: o código funciona sem ele e o `/api/health` diz
+   `sem_sdk`. Ligar é `npm i @modelcontextprotocol/sdk` + Variable `MCP_CONECTORES`. A pergunta que
+   sobra é sua: vale `express` sem uso na imagem para ter conectores MCP?

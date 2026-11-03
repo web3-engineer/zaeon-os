@@ -82,6 +82,13 @@ export type ClasseDeAcao = {
   objeto: string;
   /** o caminho que EXISTE hoje, pra resposta não virar um "não" seco */
   alternativa: string;
+  /**
+   * F5 · a classe também é satisfeita por qualquer tool REGISTRADA cujo nome case com isto. Existe
+   * porque um conector MCP entrega a capacidade com OUTRO nome (`mcp:git:git_log`, não `clonar_repo`):
+   * sem isso o cardápio diria "não leio repositório" com um servidor de git ligado — a F0 mentindo
+   * pelo avesso.
+   */
+  tambemPor?: RegExp;
 };
 
 export const CLASSES_DE_ACAO: readonly ClasseDeAcao[] = [
@@ -97,6 +104,7 @@ export const CLASSES_DE_ACAO: readonly ClasseDeAcao[] = [
     pres: "abro|acesso|visito|navego|entro",
     objeto: "site|link|url|endereco|portal",
     alternativa: "descrever o que procurar e pedir que a pessoa cole o trecho, ou buscar o assunto e citar as fontes que a busca devolver",
+    tambemPor: /^mcp:fetch:/,
   },
   {
     id: "baixar_arquivo",
@@ -120,6 +128,7 @@ export const CLASSES_DE_ACAO: readonly ClasseDeAcao[] = [
     pres: "clono|puxo|baixo",
     objeto: "repo|repositorio|github|gitlab|git",
     alternativa: "pedir os arquivos que importam colados na conversa, ou explicar o que o código provavelmente faz deixando claro que não foi lido",
+    tambemPor: /^mcp:(git|filesystem):/,
   },
   {
     id: "rodar_codigo",
@@ -143,14 +152,38 @@ export const CLASSES_DE_ACAO: readonly ClasseDeAcao[] = [
  * virar cardápio de features, e continua valendo pro Studio. A capacidade de AÇÃO é outra coisa —
  * calar sobre ela é o que produz a promessa.
  */
-export function cardapioDeCapacidades(registradas: Iterable<string>): string {
+/**
+ * Descrição que vem de FORA (um servidor MCP escreve a sua) entrando no NOSSO system prompt é vetor
+ * de injeção: uma linha só, sem quebra e com teto. Mesma disciplina do texto oculto no Leitor.
+ */
+export const MAX_DESCRICAO_EXTERNA = 180;
+export function descricaoSegura(d: unknown): string {
+  return String(d ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_DESCRICAO_EXTERNA);
+}
+
+/** A classe está coberta? Pela tool dela, ou por uma tool de conector que faz o mesmo (F5). */
+export function classeCoberta(c: ClasseDeAcao, registradas: ReadonlySet<string>): boolean {
+  if (registradas.has(c.tool)) return true;
+  return !!c.tambemPor && [...registradas].some((n) => c.tambemPor!.test(n));
+}
+
+export function cardapioDeCapacidades(
+  registradas: Iterable<string>,
+  /** F5 · descrição por tool, pra uma tool de conector não aparecer como nome de função. */
+  descricoes?: ReadonlyMap<string, string | undefined>,
+): string {
   const tem = new Set(registradas);
   const faz: string[] = [];
   for (const c of CAPACIDADES) if (tem.has(c.tool)) faz.push(c.faz);
-  // tool registrada que a tabela não descreve: entra pelo nome, pra nunca ficar invisível
+  // tool registrada que a tabela não descreve (todo conector MCP): entra com a descrição do servidor
+  // — saneada — e, sem descrição, pelo nome. Nunca fica invisível.
   const descritas = new Set(CAPACIDADES.map((c) => c.tool));
-  for (const n of tem) if (!descritas.has(n)) faz.push(n);
-  const naoFaz = CLASSES_DE_ACAO.filter((c) => !tem.has(c.tool));
+  for (const n of tem) {
+    if (descritas.has(n)) continue;
+    const d = descricaoSegura(descricoes?.get(n));
+    faz.push(d ? `${d} (${n})` : n);
+  }
+  const naoFaz = CLASSES_DE_ACAO.filter((c) => !classeCoberta(c, tem));
 
   const linhas = [
     "=== O QUE VOCÊ EXECUTA (e o que NÃO executa) ===",

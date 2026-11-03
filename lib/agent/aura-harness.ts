@@ -547,7 +547,14 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         // virar cardápio do Studio), esta OBRIGA a honestidade sobre AÇÃO. Sem ela, o silêncio da
         // regra de cima é o que produz "vou baixar a CSV" — o modelo não tem outro jeito de dizer
         // que uma ação deveria acontecer. Derivado do registry, nunca escrito à mão.
-        ...(capacidadeHonestaLigada() ? [cardapioDeCapacidades(toolsDoTurno(ctx).map((t) => t.name))] : []),
+        ...(capacidadeHonestaLigada()
+          ? [(() => {
+            const defs = toolsDoTurno(ctx);
+            // F5: a descrição vai junto, senão uma tool de conector MCP apareceria pro aluno como
+            // `mcp:git:git_log` — nome de função, não capacidade.
+            return cardapioDeCapacidades(defs.map((t) => t.name), new Map(defs.map((t) => [t.name, t.schema?.description])));
+          })()]
+          : []),
         DIRETRIZ_MATEMATICA,
         "proximos_passos, quando fizer sentido, são passos de ESTUDO (o que entender, ler, " +
         "praticar ou checar a seguir) — jamais ofertas de recurso da plataforma.",

@@ -12,6 +12,8 @@ import {
   type ConnectorConfig,
   type McpClient,
   type ConnectFn,
+  toolsAdmitidas,
+  RISCO_MAXIMO_CHAT,
 } from "./mcp";
 import { getTool, runTool, permit, type ToolContext } from "./runtime";
 
@@ -125,5 +127,41 @@ describe("mcp · catálogo (corrigido §10.5)", () => {
     expect(MCP_CATALOG.find((c) => c.name === "openalex-research")?.endpoint).toMatch(/npx/);
     expect(names.some((n) => /openscience/i.test(n))).toBe(false);
     expect(MCP_CATALOG.find((c) => c.name === "scholar")?.experimental).toBe(true);
+  });
+});
+
+describe("mcp · F5 · a política de risco (toolsAdmitidas)", () => {
+  it("só LEITURA entra; sem hint (= write) e destrutivo ficam de fora, com o motivo", () => {
+    const { admitidas, recusadas } = toolsAdmitidas([
+      { name: "ler", annotations: { readOnlyHint: true } },
+      { name: "escrever", annotations: {} },
+      { name: "apagar", annotations: { destructiveHint: true } },
+    ]);
+    expect(admitidas.map((t) => t.name)).toEqual(["ler"]);
+    expect(recusadas).toEqual(["escrever (write)", "apagar (destructive)"]);
+  });
+
+  it("servidor SEM annotations não contribui tool nenhuma — conservador de propósito", () => {
+    const r = toolsAdmitidas([{ name: "a" }, { name: "b" }]);
+    expect(r.admitidas).toEqual([]);
+    expect(r.recusadas).toHaveLength(2);
+  });
+
+  it("o teto é parametrizável (mas o do chat é `read`)", () => {
+    expect(RISCO_MAXIMO_CHAT).toBe("read");
+    expect(toolsAdmitidas([{ name: "escrever", annotations: {} }], "write").admitidas).toHaveLength(1);
+    expect(toolsAdmitidas([{ name: "apagar", annotations: { destructiveHint: true } }], "write").admitidas).toHaveLength(0);
+  });
+
+  it("registerMcpConnector NÃO registra o que a política recusa (ausente, não 'negado depois')", async () => {
+    const cliente: McpClient = {
+      listTools: async () => [{ name: "ok", annotations: { readOnlyHint: true } }, { name: "ruim", annotations: {} }],
+      callTool: async () => ({ content: [] }), ping: async () => {}, close: async () => {},
+    };
+    const h = await registerMcpConnector({ name: "politica", transport: "http", endpoint: "https://x/mcp" }, { connect: async () => cliente });
+    expect(h.admitidas).toBe(1);
+    expect(h.recusadas).toEqual(["ruim (write)"]);
+    expect(getTool("mcp:politica:ok")).toBeTruthy();
+    expect(getTool("mcp:politica:ruim")).toBeUndefined();
   });
 });
