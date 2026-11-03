@@ -60,8 +60,10 @@ export async function register() {
     // MCP_CATALOG. Conecta UMA vez aqui (handshake de stdio custa segundos) e só registra tools de
     // LEITURA. Sem a env, nada acontece; sem o SDK, loga e segue. Nunca derruba o boot.
     if (process.env.MCP_CONECTORES) {
+      // SEM `await`: um servidor stdio fora do ar custa até 10 s de handshake POR CONECTOR, e isso
+      // atrasaria o readiness do container. As tools registram alguns segundos depois do boot.
       const { ligarMcpOpcional } = await import("./instrumentation-node");
-      await ligarMcpOpcional();
+      void ligarMcpOpcional();
     }
     if (process.env.SCHOLAR_WORKER === "1") {
       const { iniciarWorkers } = await import("./instrumentation-node");

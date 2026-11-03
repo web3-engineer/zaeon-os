@@ -31,31 +31,63 @@ describe("mcpLigado · a flag é a própria lista", () => {
     expect(mcpLigado({ [ENV_CONECTORES]: "   " })).toBe(false);
   });
   it("com conector pedido, liga", () => {
-    expect(mcpLigado({ [ENV_CONECTORES]: "fetch" })).toBe(true);
+    expect(mcpLigado({ [ENV_CONECTORES]: "biomcp" })).toBe(true);
   });
 });
 
 describe("conectoresPedidos · SÓ pelo catálogo", () => {
   it("resolve os nomes do catálogo, sem ligar a maiúscula", () => {
-    const { escolhidos, desconhecidos } = conectoresPedidos({ [ENV_CONECTORES]: " FETCH , git " });
-    expect(escolhidos.map((c) => c.name)).toEqual(["fetch", "git"]);
+    const { escolhidos, desconhecidos } = conectoresPedidos({ [ENV_CONECTORES]: " BIOMCP , scholar " });
+    expect(escolhidos.map((c) => c.name)).toEqual(["biomcp", "scholar"]);
     expect(desconhecidos).toEqual([]);
   });
 
   it("endpoint arbitrário NÃO entra — nome fora do catálogo é recusado e reportado", () => {
     // dar ao modelo uma superfície que ninguém revisou é o que isto impede
-    const { escolhidos, desconhecidos } = conectoresPedidos({ [ENV_CONECTORES]: "fetch,https://evil.com/mcp,inventado" });
-    expect(escolhidos.map((c) => c.name)).toEqual(["fetch"]);
+    const { escolhidos, desconhecidos } = conectoresPedidos({ [ENV_CONECTORES]: "biomcp,https://evil.com/mcp,inventado" });
+    expect(escolhidos.map((c) => c.name)).toEqual(["biomcp"]);
     expect(desconhecidos).toEqual(["https://evil.com/mcp", "inventado"]);
   });
 
   it("nome repetido vale uma vez", () => {
-    expect(conectoresPedidos({ [ENV_CONECTORES]: "git,git,GIT" }).escolhidos).toHaveLength(1);
+    expect(conectoresPedidos({ [ENV_CONECTORES]: "scholar,scholar,SCHOLAR" }).escolhidos).toHaveLength(1);
   });
 
-  it("todo nome do catálogo é resolvível (a lista e o catálogo não podem divergir)", () => {
+  it("todo nome DISPONÍVEL do catálogo é resolvível; os indisponíveis são recusados COM motivo", () => {
     const todos = MCP_CATALOG.map((c) => c.name).join(",");
-    expect(conectoresPedidos({ [ENV_CONECTORES]: todos }).desconhecidos).toEqual([]);
+    const { escolhidos, desconhecidos } = conectoresPedidos({ [ENV_CONECTORES]: todos });
+    const disponiveis = MCP_CATALOG.filter((c) => !c.indisponivel).map((c) => c.name);
+    expect(escolhidos.map((c) => c.name).sort()).toEqual([...disponiveis].sort());
+    // auditado em 2026-11-03: 4 endpoints não existem no npm ou precisam de python (ver o catálogo)
+    expect(desconhecidos).toHaveLength(MCP_CATALOG.length - disponiveis.length);
+    for (const d of desconhecidos) expect(d, d).toMatch(/\(.+\)/);   // o motivo vai junto
+  });
+
+  it("DURANTE o boot o resumo é 'ligando', não 'off' (o recibo do deploy não pode mentir)", async () => {
+    // o instrumentation chama sem `await`; nesta janela `estado` é nulo e um "off" seria falso
+    let solta: (() => void) | undefined;
+    const presa = new Promise<void>((r) => { solta = r; });
+    const p = ligarMcp({ [ENV_CONECTORES]: "biomcp" }, {
+      connect: async (...a: Parameters<ConnectFn>) => { await presa; return conectaCom(soLeitura)(...a); },
+    });
+    await Promise.resolve();
+    expect(resumoMcp()).toBe("ligando");
+    solta!();
+    await p;
+    expect(resumoMcp()).toBe("on (1 tools)");
+  });
+
+  it("boot que estoura ainda assim sai de 'ligando' (senão o health travava na janela)", async () => {
+    await ligarMcp({ [ENV_CONECTORES]: "biomcp" }, { connect: async () => { throw new Error("fora"); } });
+    expect(resumoMcp()).toBe("degraded");
+  });
+
+  it("pedir um endpoint INDISPONÍVEL não gasta handshake — ele nem entra na lista", async () => {
+    // sem isto, `fetch`/`git` (pacotes que não existem no npm) custariam 10 s de boot cada
+    const connect = vi.fn(conectaCom(soLeitura));
+    const e = await ligarMcp({ [ENV_CONECTORES]: "fetch,git,openalex-research" }, { connect });
+    expect(connect).not.toHaveBeenCalled();
+    expect(e.conectores).toEqual([]);
   });
 });
 
@@ -76,15 +108,15 @@ describe("ligarMcp · os caminhos de saída", () => {
   });
 
   it("SEM O SDK nem tenta conectar — e diz o comando que falta", async () => {
-    const e = await ligarMcp({ [ENV_CONECTORES]: "fetch,git" }, { importar: async () => { throw new Error("no module"); } });
+    const e = await ligarMcp({ [ENV_CONECTORES]: "biomcp,scholar" }, { importar: async () => { throw new Error("no module"); } });
     expect(e).toEqual({ ligado: true, sdk: false, conectores: [] });
     expect(resumoMcp(e)).toBe("sem_sdk");
   });
 
   it("conector no ar: as tools de leitura entram no registry", async () => {
-    const e = await ligarMcp({ [ENV_CONECTORES]: "openalex-research" }, { connect: conectaCom([{ name: "buscar", annotations: { readOnlyHint: true } }]) });
-    expect(e.conectores).toEqual([{ name: "openalex-research", status: "conectado", tools: 1, recusadas: 0 }]);
-    expect(getTool("mcp:openalex-research:buscar")?.runtime).toBe("mcp");
+    const e = await ligarMcp({ [ENV_CONECTORES]: "scholar" }, { connect: conectaCom([{ name: "buscar", annotations: { readOnlyHint: true } }]) });
+    expect(e.conectores).toEqual([{ name: "scholar", status: "conectado", tools: 1, recusadas: 0 }]);
+    expect(getTool("mcp:scholar:buscar")?.runtime).toBe("mcp");
     expect(resumoMcp(e)).toBe("on (1 tools)");
   });
 
@@ -106,33 +138,33 @@ describe("ligarMcp · os caminhos de saída", () => {
 
   it("conector fora do ar não impede os outros, e o estado diz qual caiu", async () => {
     const connect: ConnectFn = async (cfg) => {
-      if (cfg.name === "git") throw new Error("ECONNREFUSED");
+      if (cfg.name === "scholar") throw new Error("ECONNREFUSED");
       return clienteCom(soLeitura);
     };
-    const e = await ligarMcp({ [ENV_CONECTORES]: "git,fetch" }, { connect });
-    expect(e.conectores.map((c) => [c.name, c.status])).toEqual([["git", "erro"], ["fetch", "conectado"]]);
+    const e = await ligarMcp({ [ENV_CONECTORES]: "scholar,biomcp" }, { connect });
+    expect(e.conectores.map((c) => [c.name, c.status])).toEqual([["scholar", "erro"], ["biomcp", "conectado"]]);
     expect(resumoMcp(e)).toMatch(/^degraded \(1\/2/);
   });
 
   it("todos fora do ar = degraded (não 'on')", async () => {
-    const e = await ligarMcp({ [ENV_CONECTORES]: "git" }, { connect: async () => { throw new Error("fora"); } });
+    const e = await ligarMcp({ [ENV_CONECTORES]: "biomcp" }, { connect: async () => { throw new Error("fora"); } });
     expect(resumoMcp(e)).toBe("degraded");
   });
 
   it("nome fora do catálogo é ignorado sem derrubar o resto", async () => {
-    const e = await ligarMcp({ [ENV_CONECTORES]: "inventado,fetch" }, { connect: conectaCom(soLeitura) });
-    expect(e.conectores.map((c) => c.name)).toEqual(["fetch"]);
+    const e = await ligarMcp({ [ENV_CONECTORES]: "inventado,biomcp" }, { connect: conectaCom(soLeitura) });
+    expect(e.conectores.map((c) => c.name)).toEqual(["biomcp"]);
   });
 
   it("o estado fica memoizado pro /api/health", async () => {
     expect(estadoMcp()).toBeNull();
-    await ligarMcp({ [ENV_CONECTORES]: "fetch" }, { connect: conectaCom(soLeitura) });
+    await ligarMcp({ [ENV_CONECTORES]: "biomcp" }, { connect: conectaCom(soLeitura) });
     expect(estadoMcp()?.conectores).toHaveLength(1);
     expect(resumoMcp()).toBe("on (1 tools)");
   });
 
   it("NUNCA lança, nem com conector que explode de forma estranha", async () => {
-    const e = await ligarMcp({ [ENV_CONECTORES]: "fetch" }, { connect: (() => { throw "string crua"; }) as unknown as ConnectFn });
+    const e = await ligarMcp({ [ENV_CONECTORES]: "biomcp" }, { connect: (() => { throw "string crua"; }) as unknown as ConnectFn });
     expect(e.ligado).toBe(true);
     expect(e.conectores[0].status).toBe("erro");
   });
@@ -147,7 +179,7 @@ describe("resumoMcp", () => {
 describe("o log de ops leva o motivo CRU, não a frase do aluno", () => {
   it("ECONNREFUSED aparece no estado (o `error` amigável serve a uma tela, não a um boot log)", async () => {
     _zerarEstadoMcp();
-    const e = await ligarMcp({ [ENV_CONECTORES]: "git" }, { connect: async () => { throw new Error("connect ECONNREFUSED 127.0.0.1:8787"); } });
+    const e = await ligarMcp({ [ENV_CONECTORES]: "biomcp" }, { connect: async () => { throw new Error("connect ECONNREFUSED 127.0.0.1:8787"); } });
     expect(e.conectores[0].erro).toContain("ECONNREFUSED");
     expect(e.conectores[0].erro).not.toMatch(/núcleo|instantes/);
   });

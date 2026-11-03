@@ -266,15 +266,35 @@ export function reconcileStatus(current: McpToolInfo[], cached: string[]): Conne
 }
 
 // ───────────────────────────── catálogo (corrigido pela pesquisa §10.5) ─────────────────────────────
-export type CatalogEntry = ConnectorConfig & { label: string; note?: string; experimental?: boolean };
+export type CatalogEntry = ConnectorConfig & {
+  label: string; note?: string; experimental?: boolean;
+  /** o endpoint não existe / não roda nesta imagem — `conectoresPedidos` recusa (ver o catálogo). */
+  indisponivel?: boolean;
+};
 
+/**
+ * ⚠️ AUDITADO em 2026-11-03 (`npm view` em cada endpoint), porque ligar a F5 obrigou a conferir — e
+ * QUATRO das sete entradas originais eram inusáveis. Ficaram aqui, marcadas com `indisponivel`, em
+ * vez de serem apagadas: a razão de cada uma vale mais que a linha.
+ *
+ *   • `@oksure/openalex-research-mcp` → **E404** no npm (e era descrita como "1º smoke LOCAL").
+ *   • `@modelcontextprotocol/server-fetch` → **não existe** nesse nome. O servidor oficial de fetch
+ *     é PYTHON (`mcp-server-fetch`). E, pra nós, é redundante: a F1 já abre página pelo Leitor, que
+ *     tem allowlist e confere IP — melhor que um fetch sem política.
+ *   • `@modelcontextprotocol/server-git` → **não existe** nesse nome (o oficial é python). É a que
+ *     resolveria "clonar um repo", então é a ausência que mais dói — ver a nota no plano.
+ *   • `paper-search` → python, e a imagem do web é `node:20-bookworm-slim`, **sem python**.
+ *
+ * `indisponivel` não é cosmético: `conectoresPedidos` (lib/agent/mcp-boot) recusa essas entradas,
+ * então pedir uma delas vira um aviso claro no boot em vez de 10 s de handshake condenado.
+ */
 export const MCP_CATALOG: CatalogEntry[] = [
-  { name: "openalex-research", label: "OpenAlex Research", transport: "stdio", endpoint: "npx -y @oksure/openalex-research-mcp", note: "1º smoke LOCAL (TS/npm, roda via npx)" },
-  { name: "paper-search", label: "Paper Search", transport: "stdio", endpoint: "python -m paper_search_mcp.server", note: "flagship E2E (python/stdio — VPS/CI)" },
-  { name: "biomcp", label: "BioMCP (med/bio)", transport: "stdio", endpoint: "npx -y biomcp", note: "salas med/bio" },
-  { name: "fetch", label: "Fetch (oficial)", transport: "stdio", endpoint: "npx -y @modelcontextprotocol/server-fetch" },
-  { name: "filesystem", label: "Filesystem (oficial)", transport: "stdio", endpoint: "npx -y @modelcontextprotocol/server-filesystem", note: "risco write — cai em aprovação" },
-  { name: "git", label: "Git (oficial)", transport: "stdio", endpoint: "npx -y @modelcontextprotocol/server-git" },
-  { name: "scholar", label: "Scholar (experimental)", transport: "stdio", endpoint: "npx -y scholar-mcp", experimental: true },
+  { name: "biomcp", label: "BioMCP (med/bio)", transport: "stdio", endpoint: "npx -y biomcp", note: "salas med/bio · npm 1.6.0 ✓" },
+  { name: "filesystem", label: "Filesystem (oficial)", transport: "stdio", endpoint: "npx -y @modelcontextprotocol/server-filesystem", note: "npm 2.1.0 ✓ — só as tools de LEITURA entram (RISCO_MAXIMO_CHAT)" },
+  { name: "scholar", label: "Scholar (experimental)", transport: "stdio", endpoint: "npx -y scholar-mcp", note: "npm 1.2.0 ✓", experimental: true },
+  { name: "openalex-research", label: "OpenAlex Research", transport: "stdio", endpoint: "npx -y @oksure/openalex-research-mcp", note: "pacote E404 no npm (2026-11-03)", indisponivel: true },
+  { name: "paper-search", label: "Paper Search", transport: "stdio", endpoint: "python -m paper_search_mcp.server", note: "python — a imagem do web não tem", indisponivel: true },
+  { name: "fetch", label: "Fetch (oficial)", transport: "stdio", endpoint: "npx -y @modelcontextprotocol/server-fetch", note: "não existe nesse nome (o oficial é python); e o Leitor já faz isso com allowlist", indisponivel: true },
+  { name: "git", label: "Git (oficial)", transport: "stdio", endpoint: "npx -y @modelcontextprotocol/server-git", note: "não existe nesse nome (o oficial é python)", indisponivel: true },
   // NÃO incluir synthetic-sciences/openscience — não é servidor MCP (pesquisa §10.5).
 ];

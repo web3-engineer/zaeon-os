@@ -82,13 +82,14 @@ services:
       CHAT_BG: ${CHAT_BG:-0}
       SCHOLAR_WORKER: ${SCHOLAR_WORKER:-0}
       # Flags de SERVIDOR (runtime) do cérebro/AURA: vêm das Variables do repo (deploy.yml exporta) ou do
-      # .env do VPS; default 0. Rollback = Variable "0" + redeploy (não precisa rebuild).
+      # .env do VPS. As do HARNESS/DOC nascem em 1 (dono, 2026-11-03: "queremos tudo ON"); as outras em 0.
+      # Rollback de qualquer uma = Variable "0" + recriar o web (runtime, não precisa rebuild).
       MAP_HARNESS: ${MAP_HARNESS:-0}
       # chat único: motor dos trabalhos (vários por conversa) — par do NEXT_PUBLIC_CHAT_UNICO
       CHAT_UNICO: ${CHAT_UNICO:-0}
       # F2 do documento (lib/documento/escritor): uma chamada por SEÇÃO em vez de um JSON de 8
-      # campos. Default 0 = o caminho antigo (corposDoEsboco) vale byte a byte.
-      DOC_POR_SECAO: ${DOC_POR_SECAO:-0}
+      # campos. LIGADA; `DOC_POR_SECAO=0` devolve o caminho antigo (corposDoEsboco) byte a byte.
+      DOC_POR_SECAO: ${DOC_POR_SECAO:-1}
       # blueprint prático da Sala de Estudos (lib/blueprint) — par do NEXT_PUBLIC_BLUEPRINT_PRATICO; GITHUB_TOKEN opcional
       BLUEPRINT_PRATICO: ${BLUEPRINT_PRATICO:-0}
       # Blueprint REA (lib/rea-blueprint) — par do NEXT_PUBLIC_REA_BLUEPRINT; gateia a composição + /api/rea
@@ -97,14 +98,14 @@ services:
       VIDEO_DOC: ${VIDEO_DOC:-0}
       # contrato de capacidade do harness (lib/agent/capacidades): cardápio no prompt do rascunho +
       # rede contra "vou baixar a CSV" sem ninguém baixar nada. Rollback = Variable "0" + recriar o web.
-      HARNESS_CAPACIDADE: ${HARNESS_CAPACIDADE:-0}
+      HARNESS_CAPACIDADE: ${HARNESS_CAPACIDADE:-1}
       # F2 · o modelo escolhe a ferramenta. VOLTAS = teto de custo (vazio = padrão 2).
-      HARNESS_ACAO: ${HARNESS_ACAO:-0}
+      HARNESS_ACAO: ${HARNESS_ACAO:-1}
       HARNESS_VOLTAS_ACAO: ${HARNESS_VOLTAS_ACAO:-}
       # F3 · o anexo entra no harness (imagem/PDF escaneado seguem no legado).
-      HARNESS_ANEXO: ${HARNESS_ANEXO:-0}
+      HARNESS_ANEXO: ${HARNESS_ANEXO:-1}
       # F4 · cobertura por documento + síntese cruzada (só com 2+ documentos em jogo).
-      HARNESS_SINTESE: ${HARNESS_SINTESE:-0}
+      HARNESS_SINTESE: ${HARNESS_SINTESE:-1}
       # F5 · conectores MCP por nome do catálogo (lib/agent/mcp MCP_CATALOG). Vazio = nenhum.
       # Os servidores stdio rodam como SUBPROCESSO deste container (npx), então o primeiro boot
       # pode falhar o handshake enquanto o npx baixa o pacote.
@@ -117,7 +118,8 @@ services:
       # `--profile gateway` de pé. Só o turno do canal opta; pesquisa/estudos/mentores seguem no Vertex.
       GATEWAY_URL: ${GATEWAY_URL:-}
       # Leitor (Fatia 7, G6): vazio = Leitor fora do ar (lei 5). "http://leitor-proxy:8787" só com o perfil chores de pé.
-      LEITOR_PROXY_URL: ${LEITOR_PROXY_URL:-}
+      LEITOR_PROXY_URL: ${LEITOR_PROXY_URL:-http://leitor-proxy:8787}
+      LEITOR_ALLOW: "${LEITOR_ALLOW:-*.gov.br, *.edu.br, *.scielo.br, *.scielo.org, *.wikipedia.org, arxiv.org, doi.org, *.nih.gov, *.who.int}"
     depends_on:
       redis: { condition: service_started }
       voice-engine: { condition: service_started }
@@ -181,22 +183,23 @@ services:
       CHAT_WORKER_CONCURRENCY: "4"     # Fase 3: turnos do chat da Aura na fila "chat"
       # o worker roda O MESMO harness (runChatTurn): sem esta linha a flag valeria só no web,
       # e o turno que fosse pra fila responderia com o comportamento antigo.
-      HARNESS_CAPACIDADE: ${HARNESS_CAPACIDADE:-0}
+      HARNESS_CAPACIDADE: ${HARNESS_CAPACIDADE:-1}
       # F2 · o modelo escolhe a ferramenta. VOLTAS = teto de custo (vazio = padrão 2).
-      HARNESS_ACAO: ${HARNESS_ACAO:-0}
+      HARNESS_ACAO: ${HARNESS_ACAO:-1}
       HARNESS_VOLTAS_ACAO: ${HARNESS_VOLTAS_ACAO:-}
       # F3 · o anexo entra no harness (imagem/PDF escaneado seguem no legado).
-      HARNESS_ANEXO: ${HARNESS_ANEXO:-0}
+      HARNESS_ANEXO: ${HARNESS_ANEXO:-1}
       # F4 · cobertura por documento + síntese cruzada (só com 2+ documentos em jogo).
-      HARNESS_SINTESE: ${HARNESS_SINTESE:-0}
+      HARNESS_SINTESE: ${HARNESS_SINTESE:-1}
       # F5 · conectores MCP por nome do catálogo (lib/agent/mcp MCP_CATALOG). Vazio = nenhum.
       # Os servidores stdio rodam como SUBPROCESSO deste container (npx), então o primeiro boot
       # pode falhar o handshake enquanto o npx baixa o pacote.
       MCP_CONECTORES: ${MCP_CONECTORES:-}
       # geração do documento por SEÇÃO: o worker roda o mesmo runChatTurn → lib/tcc/turno →
       # gerarTccEmBackground, então sem esta linha a Variable valeria só no web (par do #670).
-      DOC_POR_SECAO: ${DOC_POR_SECAO:-0}
-      LEITOR_PROXY_URL: ${LEITOR_PROXY_URL:-}   # Fatia 7: chores leem a web SÓ por aqui
+      DOC_POR_SECAO: ${DOC_POR_SECAO:-1}
+      LEITOR_PROXY_URL: ${LEITOR_PROXY_URL:-http://leitor-proxy:8787}   # Fatia 7: chores leem a web SÓ por aqui
+      LEITOR_ALLOW: "${LEITOR_ALLOW:-*.gov.br, *.edu.br, *.scielo.br, *.scielo.org, *.wikipedia.org, arxiv.org, doi.org, *.nih.gov, *.who.int}"
     depends_on:
       redis: { condition: service_started }
     # mesma imagem do web: turno do Octa na fila também pode capturar (Chromium) → init colhe órfãos
@@ -364,7 +367,11 @@ services:
     build: { context: ./services/leitor-proxy, dockerfile: Dockerfile }
     container_name: zaeon_leitor_proxy
     environment:
-      LEITOR_ALLOW: ${LEITOR_ALLOW:-}
+      # LIGADO POR PADRÃO (dono, 2026-11-03: "queremos tudo ON"). Esta lista é CONSERVADORA de
+      # propósito — fonte acadêmica, governo e referência. Allowlist é decisão de segurança:
+      # estender é pôr a Variable LEITOR_ALLOW. A MESMA string vale no web e no worker (eles
+      # usam a presença dela pra decidir se registram abrir_url) — lib/leitor/compose.test.ts pina.
+      LEITOR_ALLOW: "${LEITOR_ALLOW:-*.gov.br, *.edu.br, *.scielo.br, *.scielo.org, *.wikipedia.org, arxiv.org, doi.org, *.nih.gov, *.who.int}"
       # TEXTO: 2 MiB (o `response cap` do web.fetch da Rovinos, issue #98 — ver server.mjs).
       LEITOR_MAX_BYTES: ${LEITOR_MAX_BYTES:-2097152}
       # BYTES (/bytes, F1b): 25 MB = lib/rag/ingerir.MAX_BYTES, o teto do único destino deles.

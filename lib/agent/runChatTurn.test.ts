@@ -16,6 +16,8 @@ vi.mock("@/lib/agent/chat-turn-store", () => ({ markRunning: h.markRunning, save
 vi.mock("@/lib/map/memoria-turno", () => ({ bussolaParaTurno: h.bussola, fixarTurno: h.fixar }));
 vi.mock("@/lib/tcc/turno", () => ({ tccContextoParaTurno: h.tccCtx, tccDoTurno: h.tccTurno, trabalhosParaTurno: h.trabalhos }));
 vi.mock("@/lib/rag/turno", () => ({ baseParaTurno: h.base }));
+import { K_AMPLO } from "@/lib/rag/porDocumento";
+import { K_PADRAO } from "@/lib/rag/busca";
 vi.mock("@/lib/canal/usage", () => ({ registrarUso: h.uso }));
 vi.mock("@/src/lib/prisma", () => ({ prisma: {} }));
 
@@ -79,9 +81,23 @@ describe("runChatTurn", () => {
     const base = { status: "ok", trechos: [{ texto: "luz é onda" }] };
     h.base.mockResolvedValue(base);
     await runChatTurn(null, params(), () => {});
-    expect(h.base).toHaveBeenCalledWith({ userId: "u1", pergunta: "o que é luz?", areas: ["area:geral"] });
-    expect(h.onStepOpts.baseConhecimento).toBe(base);
+    // `k` entra porque a F4 (cobertura por documento) nasce LIGADA: a consulta é larga e o bloco de
+    // citação recebe o top-k de sempre (lib/rag/porDocumento trechosParaCitar).
+    expect(h.base).toHaveBeenCalledWith({ userId: "u1", pergunta: "o que é luz?", areas: ["area:geral"], k: K_AMPLO });
+    // NÃO é mais o mesmo objeto: o adaptador recebe a base APARADA no top-k, porque `blocoDaBase`
+    // numera [B1]..[Bn] por POSIÇÃO e `citacoes_base` indexa nela — mandar a lista larga
+    // desalinharia toda citação. Conteúdo igual aqui (1 trecho cabe no top-k).
+    expect(h.onStepOpts.baseConhecimento).toEqual(base);
+    expect(h.onStepOpts.baseConhecimento).not.toBe(base);
     expect(h.onStepOpts.systemContext).toBe("SYS\n\nMEM\n\nBUSSOLA"); // a base não entra no systemContext
+  });
+
+  it("RAG F4: a base que vai pro prompt é APARADA no top-k, mesmo com a consulta larga", async () => {
+    const muitos = Array.from({ length: K_AMPLO }, (_, i) => ({ texto: `t${i}`, documentoId: `d${i % 4}`, titulo: `Doc ${i % 4}`, score: 1 - i / 100 }));
+    h.base.mockResolvedValue({ status: "ok", trechos: muitos });
+    await runChatTurn(null, params(), () => {});
+    expect(h.onStepOpts.baseConhecimento.trechos).toHaveLength(K_PADRAO);
+    expect(h.onStepOpts.baseConhecimento.trechos[0]).toBe(muitos[0]);   // o melhor segue sendo [B1]
   });
   it("RAG F2: a busca dispara ANTES de a memória L3 resolver (em paralelo, sem somar latência)", async () => {
     let soltar!: (v: string) => void;
@@ -108,7 +124,7 @@ describe("runChatTurn", () => {
   it("RAG F2: anônimo chama a base com userId null (o módulo responde sem_usuario)", async () => {
     h.base.mockResolvedValue({ status: "sem_usuario", trechos: [] });
     await runChatTurn(null, params({ userId: null }), () => {});
-    expect(h.base).toHaveBeenCalledWith({ userId: null, pergunta: "o que é luz?", areas: ["area:geral"] });
+    expect(h.base).toHaveBeenCalledWith({ userId: null, pergunta: "o que é luz?", areas: ["area:geral"], k: K_AMPLO });
     expect(h.onStepOpts.baseConhecimento).toEqual({ status: "sem_usuario", trechos: [] });
   });
   it("o dono do turno vem do PARÂMETRO (o worker não tem sessão) e chega no ctx do harness", async () => {

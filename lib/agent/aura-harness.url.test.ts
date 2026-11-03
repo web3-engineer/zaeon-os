@@ -43,7 +43,7 @@ describe("sem o Leitor configurado, nada de leitura de página", () => {
 });
 
 describe("com o Leitor configurado", () => {
-  it("ligando a tool", () => expect(registrarAbrirUrl({ LEITOR_PROXY_URL: "http://leitor:8787" })).toBe(true));
+  it("ligando a tool", () => expect(registrarAbrirUrl({ LEITOR_PROXY_URL: "http://leitor:8787", LEITOR_ALLOW: "*.gov.br" })).toBe(true));
 
   it("cada URL da mensagem vira um passo com a URL no args (não `query`)", () => {
     const passos = passosDeUrl(`compara ${URL_A} com https://exemplo.com/b`);
@@ -141,7 +141,7 @@ describe("F1b · .pdf vira download, página vira leitura", () => {
   });
 
   it("ligando baixar_para_base (precisa do Leitor E da base)", () => {
-    expect(registrarBaixarParaBase({ LEITOR_PROXY_URL: "http://leitor:8787", RAG_PG_URL: "postgres://x" })).toBe(true);
+    expect(registrarBaixarParaBase({ LEITOR_PROXY_URL: "http://leitor:8787", LEITOR_ALLOW: "*.gov.br", RAG_PG_URL: "postgres://x" })).toBe(true);
   });
 
   it("agora o .pdf vai pro download e a página continua na leitura", () => {

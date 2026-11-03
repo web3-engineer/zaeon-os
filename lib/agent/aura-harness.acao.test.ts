@@ -53,9 +53,9 @@ const chamadasDaAcao = (gen: ReturnType<typeof genPara>) =>
   gen.mock.calls.filter((c) => /Você decide se FALTA/.test(String(c[0])));
 
 describe("F2 · as flags e os dois tetos", () => {
-  it("HARNESS_ACAO: ausente/0/off = desligada", () => {
-    expect(acaoDoModeloLigada({})).toBe(false);
-    for (const v of ["0", "off", "false", "nao", ""]) expect(acaoDoModeloLigada({ HARNESS_ACAO: v }), v).toBe(false);
+  it("HARNESS_ACAO: AUSENTE = LIGADA (dono: tudo ON); só 0/off/false/não desligam", () => {
+    expect(acaoDoModeloLigada({})).toBe(true);
+    for (const v of ["0", "off", "false", "nao"]) expect(acaoDoModeloLigada({ HARNESS_ACAO: v }), v).toBe(false);
     expect(acaoDoModeloLigada({ HARNESS_ACAO: "1" })).toBe(true);
   });
 
@@ -72,16 +72,16 @@ describe("F2 · as flags e os dois tetos", () => {
   });
 });
 
-describe("F2 · desligada, o turno é o de hoje", () => {
+describe("F2 · desligada (=0), o turno é o antigo", () => {
   it("o motor nem recebe `proximosPassos`", async () => {
-    await comFlags({ HARNESS_ACAO: undefined }, () => {
+    await comFlags({ HARNESS_ACAO: "0" }, () => {
       const deps = buildHarnessDeps(ctx, { genJson: genPara([]) });
       expect(deps.proximosPassos).toBeUndefined();
     });
   });
 
   it("o gather roda UMA vez e nenhuma chamada de ação é feita", async () => {
-    await comFlags({ HARNESS_ACAO: undefined }, async () => {
+    await comFlags({ HARNESS_ACAO: "0" }, async () => {
       const genJson = genPara([{ chamadas: [{ tool: "web_search", args: { query: "x" } }] }]);
       const runToolImpl = vi.fn(async () => achado("Paper"));
       const { state } = await runTrajectoryTraced("explique entropia", ctx, buildHarnessDeps(ctx, { genJson, runToolImpl, retryDelayMs: 0 }));

@@ -145,9 +145,9 @@ describe("acharAnexo", () => {
 });
 
 describe("a flag", () => {
-  it("ausente/0/off = desligada", () => {
-    expect(anexoNoHarnessLigado({})).toBe(false);
-    for (const v of ["0", "off", "false", "nao", ""]) expect(anexoNoHarnessLigado({ HARNESS_ANEXO: v }), v).toBe(false);
+  it("AUSENTE = LIGADA (dono: tudo ON); só 0/off/false/não desligam", () => {
+    expect(anexoNoHarnessLigado({})).toBe(true);
+    for (const v of ["0", "off", "false", "nao"]) expect(anexoNoHarnessLigado({ HARNESS_ANEXO: v }), v).toBe(false);
   });
   it("qualquer outro valor liga", () => {
     expect(anexoNoHarnessLigado({ HARNESS_ANEXO: "1" })).toBe(true);

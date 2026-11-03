@@ -6,13 +6,13 @@
 const DESLIGADO = /^(0|off|false|nao|não|no)$/i;
 
 /**
- * `HARNESS_SINTESE=1`: com 2+ documentos em jogo, a busca da base passa a cobrir TODO documento e a
- * fase `reason` vira uma síntese cruzada (o que convergem, onde divergem, o que ninguém cobre).
+ * Com 2+ documentos em jogo, a busca da base passa a cobrir TODO documento e a fase `reason` vira
+ * uma síntese cruzada (o que convergem, onde divergem, o que ninguém cobre). Custo: +1 chamada de
+ * modelo, e SÓ em turno com 2+ documentos.
  *
- * OFF (padrão) = consulta top-k=8 plana e `reason` desligada no caminho elaborado, byte a byte como
- * hoje. Custo quando ligada: +1 chamada de modelo, e SÓ em turno com 2+ documentos.
+ * LIGADO POR PADRÃO (decisão do dono, 2026-11-03: "queremos tudo ON"); `HARNESS_SINTESE=0` é o
+ * kill-switch e devolve a consulta top-k=8 plana com `reason` desligada no caminho elaborado.
  */
 export function sinteseLigada(env: Record<string, string | undefined> = process.env): boolean {
-  const f = env.HARNESS_SINTESE?.trim();
-  return !!f && !DESLIGADO.test(f);
+  return !DESLIGADO.test(env.HARNESS_SINTESE?.trim() ?? "");
 }

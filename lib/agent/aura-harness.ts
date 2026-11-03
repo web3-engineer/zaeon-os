@@ -74,26 +74,27 @@ type Observation = { tool: string; code?: string; error?: string };
 // ─────────────────── CONTRATO DE CAPACIDADE (F0 de docs/PLANO_HARNESS_AGENTICO.md) ───────────────────
 const DESLIGADO = /^(0|off|false|nao|não|no)$/i;
 /**
- * `HARNESS_CAPACIDADE=1`: o cardápio de capacidades entra no prompt do rascunho E a rede contra
- * promessa sem lastro passa na resposta. OFF (padrão) = o caminho de hoje, byte a byte.
+ * O cardápio de capacidades entra no prompt do rascunho E a rede contra promessa sem lastro passa
+ * na resposta. O que isso conserta: «o modelo diz que vai baixar uma CSV e não baixa».
+ * Ver lib/agent/capacidades.ts.
  *
- * O que ela conserta: «o modelo diz que vai baixar uma CSV e não baixa». Ver lib/agent/capacidades.ts.
+ * LIGADO POR PADRÃO (decisão do dono, 2026-11-03: "queremos tudo ON"); `HARNESS_CAPACIDADE=0` é o
+ * kill-switch e devolve o caminho antigo byte a byte. É runtime: basta recriar o web, sem rebuild.
  */
 export function capacidadeHonestaLigada(env: Record<string, string | undefined> = process.env): boolean {
-  const f = env.HARNESS_CAPACIDADE?.trim();
-  return !!f && !DESLIGADO.test(f);
+  return !DESLIGADO.test(env.HARNESS_CAPACIDADE?.trim() ?? "");
 }
 
 // ─────────────────── F2 · O MODELO ESCOLHE A FERRAMENTA (docs/PLANO_HARNESS_AGENTICO.md) ───────────────────
 /**
- * `HARNESS_ACAO=1`: depois da coleta determinística, o modelo pode pedir MAIS ferramentas — o laço
- * vira reentrante (observar → agir → observar), que é o que o harness não tinha.
+ * Depois da coleta determinística, o modelo pode pedir MAIS ferramentas — o laço vira reentrante
+ * (observar → agir → observar), que é o que o harness não tinha.
  *
- * OFF (padrão) = `proximosPassos` nem é oferecida ao motor, e o turno é byte a byte o de hoje.
+ * LIGADO POR PADRÃO (decisão do dono, 2026-11-03: "queremos tudo ON"); `HARNESS_ACAO=0` é o
+ * kill-switch: `proximosPassos` nem é oferecida ao motor e o turno volta a ser o de antes.
  */
 export function acaoDoModeloLigada(env: Record<string, string | undefined> = process.env): boolean {
-  const f = env.HARNESS_ACAO?.trim();
-  return !!f && !DESLIGADO.test(f);
+  return !DESLIGADO.test(env.HARNESS_ACAO?.trim() ?? "");
 }
 
 /**

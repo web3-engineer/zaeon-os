@@ -147,13 +147,17 @@ describe("registro condicional · a tool só existe se o Leitor existe", () => {
     expect(process.env.LEITOR_PROXY_URL ?? "", "esta suíte pressupõe o Leitor desligado no ambiente de teste").toBe("");
     expect(registrarAbrirUrl({})).toBe(false);
     expect(registrarAbrirUrl({ LEITOR_PROXY_URL: "   " })).toBe(false);
+    // URL SEM allowlist também não registra: o Leitor negaria todo domínio e a tool falharia em
+    // 100% das chamadas — com o cardápio da F0 anunciando "abro endereços". É a mentira por outra porta.
+    expect(registrarAbrirUrl({ LEITOR_PROXY_URL: "http://leitor:8787" })).toBe(false);
+    expect(registrarAbrirUrl({ LEITOR_PROXY_URL: "http://leitor:8787", LEITOR_ALLOW: "  " })).toBe(false);
     // é o que impede a mentira da F0 em nova forma: cardápio derivado do registry não pode
     // anunciar "abro endereços da web" quando toda chamada devolveria "offline".
     expect(getTool("abrir_url")).toBeUndefined();
   });
 
   it("com LEITOR_PROXY_URL ela entra", () => {
-    expect(registrarAbrirUrl({ LEITOR_PROXY_URL: "http://leitor:8787" })).toBe(true);
+    expect(registrarAbrirUrl({ LEITOR_PROXY_URL: "http://leitor:8787", LEITOR_ALLOW: "*.gov.br" })).toBe(true);
     expect(getTool("abrir_url")?.name).toBe("abrir_url");
   });
 });
@@ -306,10 +310,11 @@ describe("registro condicional de baixar_para_base · precisa das DUAS pontas", 
     expect(registrarBaixarParaBase({})).toBe(false);
     expect(registrarBaixarParaBase({ LEITOR_PROXY_URL: "http://l:8787" })).toBe(false);   // sem base
     expect(registrarBaixarParaBase({ RAG_PG_URL: "postgres://x" })).toBe(false);          // sem Leitor
+    expect(registrarBaixarParaBase({ LEITOR_PROXY_URL: "http://l:8787", RAG_PG_URL: "postgres://x" })).toBe(false); // sem allowlist
     expect(getTool("baixar_para_base")).toBeUndefined();
   });
   it("com as duas, entra", () => {
-    expect(registrarBaixarParaBase({ LEITOR_PROXY_URL: "http://l:8787", RAG_PG_URL: "postgres://x" })).toBe(true);
+    expect(registrarBaixarParaBase({ LEITOR_PROXY_URL: "http://l:8787", LEITOR_ALLOW: "*.gov.br", RAG_PG_URL: "postgres://x" })).toBe(true);
     expect(getTool("baixar_para_base")?.name).toBe("baixar_para_base");
   });
 });

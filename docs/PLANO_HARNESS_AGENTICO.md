@@ -669,8 +669,153 @@ Decisões que eu **não** tomo sozinho, porque mudam contrato de produto ou gast
    revisão. Fechar isso é política de egresso no VPS.
 3. **Teto de arquivos por conversa.** O dono já fixou **10 por documento** no plano do documento;
    confirmar se vale o mesmo teto para o chat.
+3b. **Cobertura garantida por documento na busca da base** (levantado pelo Sourcery na #672).
+   `K_AMPLO = 40` é teto de RESULTADO, não garantia: em teoria um documento longo pode ocupar os 40
+   e empurrar outro para fora do agrupamento. O que ele não consegue é dominar o prompt
+   (`TRECHOS_POR_DOC = 3` corta por documento), então o ganho da F4 vale pra todo documento que
+   APAREÇA. Garantir de verdade é **k por documento** — uma window function por `documentoId` no
+   SQL —, e a F4 foi desenhada como UMA consulta, sem índice novo e sem reindexação (§4.3). Pagar
+   essa dívida é decisão sua: muda o formato da consulta, não uma flag.
 4. ~~F5 exige instalar o SDK.~~ **Medido e deixado pra você:** o SDK traz 17 dependências diretas,
    incluindo `express` 5, `hono`, `cors` e `express-rate-limit` — a metade SERVIDOR, que não usamos.
    Por isso **não está no `package.json`**: o código funciona sem ele e o `/api/health` diz
    `sem_sdk`. Ligar é `npm i @modelcontextprotocol/sdk` + Variable `MCP_CONECTORES`. A pergunta que
    sobra é sua: vale `express` sem uso na imagem para ter conectores MCP?
+
+## 8. "Queremos tudo ON" (2026-11-03) — o que ligou, e a armadilha que quase anulou tudo
+
+Pedido do dono, literal: *"ativa o HARNESS_CAPACIDADE e confirma no log do deploy, alem de todos os
+outros updates. queremos tudo ON"*.
+
+**Não existe tool de GitHub que escreva Actions Variables, e eu não tenho SSH no VPS.** Então
+"ativar" não podia ser um clique meu: virou **padrão no código** com kill-switch. Toda flag das F0–F4
+passou a `!DESLIGADO.test(...)` — ausente ou `1` liga, `=0` desliga:
+
+| Variable | antes | agora | kill-switch |
+|---|---|---|---|
+| `HARNESS_CAPACIDADE` | off | **on** | `=0` |
+| `HARNESS_ACAO` | off | **on** (2 voltas) | `=0` |
+| `HARNESS_ANEXO` | off | **on** | `=0` |
+| `HARNESS_SINTESE` | off | **on** | `=0` |
+| `DOC_POR_SECAO` | off | **on** | `=0` |
+| `LEITOR_PROXY_URL` | vazio | **`http://leitor-proxy:8787`** | vazio |
+| `LEITOR_ALLOW` | vazio (nega tudo) | **9 padrões acadêmicos** | vazio |
+| `MCP_CONECTORES` | vazio | **continua vazio** (§8.3) | — |
+
+### 8.1 A armadilha: o `docker-compose` anulava o código
+
+Ligar no código **não bastava**. O compose passava `HARNESS_CAPACIDADE: ${HARNESS_CAPACIDADE:-0}` —
+quer dizer: sem a Variable no repo, o container recebia a string **`"0"`** explícita, e o `=0` que eu
+mesmo tinha acabado de definir como kill-switch desligava tudo. O default do código **nunca** seria
+lido em produção. Os cinco `:-0` viraram `:-1`, **nos dois serviços** (`web` e `worker`) — e é por
+isso que a mudança de uma linha em TypeScript custou dez linhas de YAML.
+
+A lição é geral e vale pra qualquer flag deste repo: **um default no código só vale se o compose não
+passar a variável.** Passar `:-0` é configuração, não ausência.
+
+### 8.2 O Leitor ligado é uma decisão de segurança, e ela é sua
+
+`LEITOR_PROXY_URL` sozinha não liga nada útil: com `LEITOR_ALLOW` vazia o Leitor é default-deny e
+**nega todo domínio**. Então "tudo ON" exigiu escolher uma lista inicial, e eu escolhi a mais
+conservadora que ainda serve a quem usa a plataforma pra estudar:
+
+```
+*.gov.br, *.edu.br, *.scielo.br, *.scielo.org, *.wikipedia.org, arxiv.org, doi.org, *.nih.gov, *.who.int
+```
+
+Nenhum domínio comercial, nenhum encurtador, nenhum host de upload. **Isto é um portão seu**: a
+lista define a superfície de SSRF do produto, e cada `*.` novo é um pedaço de internet que o modelo
+passa a poder ler.
+
+**Trocar a lista é Variable `LEITOR_ALLOW` + recriar o `leitor-proxy`** — e o `proxy` é o que
+importa, porque **a allowlist só é aplicada lá**. Recriar só o `web` NÃO tira acesso nenhum: o
+`web` usa a sua cópia apenas pra decidir se registra as tools, enquanto o container antigo do
+proxy segue de pé com a lista velha e continua liberando o domínio que você acabou de remover.
+Achado do Sourcery na #672, e era um erro meu de instrução — justamente no passo de **retirar**
+acesso, que é onde errar custa. Na dúvida, recrie os três (`web`, `worker`, `leitor-proxy`); nenhum
+deles precisa rebuild.
+
+Duas travas novas foram junto, pra que o *ON* não recriasse a mentira da F0:
+
+- `registrarAbrirUrl`/`registrarBaixarParaBase` agora exigem **URL *e* allowlist**. Antes, só a URL
+  bastava pra registrar a tool — e com a lista vazia o cardápio prometia "abro páginas" enquanto o
+  Leitor negava tudo. Era exatamente o defeito D2, de volta pela porta da configuração.
+- O `leitor-proxy` passou a subir **sem condicional** no caminho enxuto do deploy. Antes era
+  opcional; com a tool ligada, container fora do ar = promessa sem lastro.
+- Teste de drift no compose: a allowlist tem de ser **a mesma nos três serviços** (`web`, `worker`,
+  `leitor-proxy`). Divergir é o `web` oferecer um domínio que o proxy nega.
+
+### 8.3 O que eu NÃO liguei, e por quê: `MCP_CONECTORES`
+
+Auditei o catálogo inteiro (`npm view` em cada endpoint, 2026-11-03) antes de ligar. **4 dos 7 não
+sobem:**
+
+| catálogo | veredito |
+|---|---|
+| `@oksure/openalex-research-mcp` | **E404** — não existe no npm |
+| `@modelcontextprotocol/server-fetch` | **não existe** com esse nome (o oficial é Python) |
+| `@modelcontextprotocol/server-git` | **não existe** com esse nome (o oficial é Python) |
+| `paper-search-mcp` | precisa de **python**, que a imagem `node:20-bookworm-slim` não tem |
+| `biomcp@1.6.0` | existe |
+| `@modelcontextprotocol/server-filesystem@2.1.0` | existe |
+| `scholar-mcp@1.2.0` | existe |
+
+Os três que existem são **nicho** (biomédico, acadêmico) ou **inútil aqui** (`filesystem` = o disco
+do container, que não é a base do aluno). E os dois que importariam de verdade — `fetch` e `git`, que
+atenderiam "baixa isso" e "clona o repo" — **são os que não existem**. Somado ao SDK que o `/api/health`
+reporta como `sem_sdk` e que traz 17 dependências (metade servidor: `express`, `hono`, `cors`), ligar
+o MCP agora seria escrever "on" num campo que não entrega capacidade nenhuma.
+
+Então as entradas furadas ganharam `indisponivel: "<motivo>"` e **são recusadas antes do handshake**
+(cada stdio morto custava até 10 s de boot). Pedir `MCP_CONECTORES=fetch` hoje responde, no log, por
+que não dá. Isso é o contrato da F0 aplicado ao próprio harness: **melhor um "não" com motivo do que
+um "sim" que não acontece.**
+
+### 8.4 O que a F2 do documento mudou de verdade ao ligar
+
+`DOC_POR_SECAO=1` desviou `gerarTccEmBackground` pro caminho por seção — e **dois testes do caminho
+antigo quebraram sem que uma linha de `lib/tcc` mudasse**. Era o sinal certo: o padrão de produção
+tinha mudado. Os testes do caminho antigo passaram a pedir `DOC_POR_SECAO="0"` (é o que o
+kill-switch devolve, então continua coberto) e entrou um teste novo que fixa o **desvio**: sem a
+variável, só a F2 relê o documento, e nenhuma op do esboço antigo é gravada.
+
+### 8.4b O recibo não pode mentir na janela de boot
+
+Terceiro achado do Sourcery, e o cinto vale: o `instrumentation` chama `ligarMcp()` **sem `await`**
+de propósito (um stdio fora do ar custa até 10 s de handshake por conector, e isso atrasaria o
+readiness do container). Nessa janela de alguns segundos `estado` ainda é nulo — e o `/api/health`
+respondia **`off`**, que é indistinguível de "ninguém pediu conector". O recibo do deploy é lido
+exatamente aí, logo ele podia imprimir um `mcp=off` **falso**.
+
+Agora existe o estado `ligando`, e `off` voltou a significar só uma coisa. Hoje, com
+`MCP_CONECTORES` vazia, isso não muda nada em produção — mas um recibo que mente é pior que recibo
+nenhum, e o recibo é a razão desta fase existir.
+
+### 8.5 "Confirma no log do deploy" — por que precisou de código novo
+
+O deploy já imprimia `→ flag de build X=…`, **mas só para flag que tem Variable**. Como as F0–F4
+ligam pelo *padrão do código*, elas não apareceriam em lugar nenhum: o log ficaria calado
+justamente sobre o que acabou de mudar. Confirmar olhando o YAML seria eu conferindo a minha própria
+intenção, não o estado do processo.
+
+Então o `/api/health` ganhou um bloco `capacidades` lido **das próprias funções que o turno
+consulta** (não do env cru), e o deploy imprime isso **de dentro do container**, depois do
+health-gate:
+
+```
+→ Harness (estado efetivo no container):
+   cardapio=ON  acao=ON(2 voltas)  anexo=ON  sintese=ON  doc_por_secao=ON
+   abrir_url=ON  baixar_para_base=ON  leitor=on  mcp=off  commit=<sha>
+```
+
+As duas últimas linhas separam **flag ligada** de **capacidade existindo**: `abrir_url` só sai `ON`
+se a tool estiver *registrada*, o que exige `LEITOR_PROXY_URL` **e** `LEITOR_ALLOW`, e `leitor=on`
+só se o container responder. Flag em `ON` com `abrir_url=off` é exatamente a promessa sem lastro que
+a F0 existe pra matar — e agora ela fica visível no log, não no comportamento do modelo.
+Nenhum segredo, nenhuma URL e nenhum domínio entram nesse bloco; só booleanos e nomes de tool.
+
+**Gates:** 5604 testes passando (+8 nesta fase: 1 no desvio da F2 do documento, 3 no recibo do
+`/api/health`, 1 na recusa de endpoint MCP indisponível, 2 na janela `ligando` do boot, 1 no drift
+da allowlist no compose),
+`tsc --noEmit` limpo fora do `server/colyseus`
+pré-existente (falta `@colyseus/core`, que o CI instala), `eslint` 0, os dois YAML validados.

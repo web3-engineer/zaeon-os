@@ -3,11 +3,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const m = vi.hoisted(() => ({
   findTcc: vi.fn(), listar: vi.fn(), criar: vi.fn(), aplicar: vi.fn(), marcar: vi.fn(),
   findBoard: vi.fn(), createBoard: vi.fn(), patchBoard: vi.fn(),
-  gen: vi.fn(),
+  gen: vi.fn(), getTcc: vi.fn(),
 }));
 vi.mock("@/lib/tcc/store", async (orig) => ({
   ...(await orig<any>()),
   findTccDoEscopo: m.findTcc, listarTrabalhosDoEscopo: m.listar, criarTcc: m.criar, aplicarNoTcc: m.aplicar, marcarStatus: m.marcar,
+  getTccForUser: m.getTcc,
 }));
 vi.mock("@/lib/cartolina/store", async (orig) => ({
   ...(await orig<any>()),
@@ -166,6 +167,11 @@ describe("card do TCC na cartolina", () => {
 });
 
 describe("geração em background (POST /api/tcc e 'crie um TCC' sem texto)", () => {
+  // O CAMINHO ANTIGO (um esboço só, sem chamada por seção) agora é o excepcional: desde 2026-11-03
+  // `DOC_POR_SECAO` vem LIGADA por padrão, e `=0` é o kill-switch. Os testes abaixo continuam
+  // cobrindo o caminho antigo porque é ele que o kill-switch devolve — mas precisam pedir por ele.
+  beforeEach(() => { process.env.DOC_POR_SECAO = "0"; });
+
   const d = { titulo: "Título gerado", introducao: "intro", objetivos: "obj", justificativa: "lacuna", palavrasChave: "a; b", metodologia: "met", referencias: "" };
   it("corposDoEsboco junta intro/objetivos/justificativa/palavras-chave na INTRODUÇÃO", () => {
     const c = corposDoEsboco(d);
@@ -198,6 +204,17 @@ describe("geração em background (POST /api/tcc e 'crie um TCC' sem texto)", ()
     await gerarTccEmBackground("w1", "u1", "foto", async () => { throw new Error("vertex 404"); });
     expect(m.marcar).toHaveBeenCalledWith("w1", "u1", "erro");
   });
+  it("PADRÃO (sem a variável) vai pela escrita POR SEÇÃO, não pelo esboço único", async () => {
+    delete process.env.DOC_POR_SECAO;
+    m.getTcc.mockResolvedValue(null);          // sem documento → a F2 aborta, e é só o DESVIO que importa aqui
+    m.aplicar.mockResolvedValue({ ok: true, tcc: {}, efeitos: [] });
+    await gerarTccEmBackground("w1", "u1", "foto", async () => d);
+    expect(m.getTcc).toHaveBeenCalledWith("w1", "u1");   // só a F2 relê o documento
+    // a ÚNICA gravação até aqui é o título (ops vazias) — nenhum corpo do esboço antigo entrou
+    expect(m.aplicar.mock.calls.map((c: any[]) => c[2])).toEqual([[]]);
+    expect(m.marcar).toHaveBeenCalledWith("w1", "u1", "erro");
+  });
+
   it("sem gen injetado usa o geminiJson (mockado aqui)", async () => {
     m.gen.mockResolvedValue({});
     m.aplicar.mockResolvedValue({ ok: true, tcc: {}, efeitos: [] });
