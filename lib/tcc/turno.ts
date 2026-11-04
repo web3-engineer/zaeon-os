@@ -13,6 +13,7 @@
  */
 import type { IntentId, StructuredAnswer, WorkKind } from "@/lib/agent/contracts";
 import { sanitizeScopeId } from "@/lib/cartolina/route-auth";
+import { lerBriefing, type Briefing } from "@/lib/tcc/briefing";
 import { aplicarNoTcc, criarTcc, findTccDoEscopo, listarTrabalhosDoEscopo, tccCrossOn, referenciasNovas, type FonteVerificada, type TccView } from "@/lib/tcc/store";
 import { ESQUELETO_TCC, chaveTitulo, esqueletoDe, opsDeWork, palavras } from "@/lib/tcc/secoes";
 import { researchWorkType } from "@/lib/agent/tools";
@@ -34,6 +35,50 @@ export function temaDoPedido(prompt: string): string {
   const tema = (m ? m[1] : t).replace(/[.!?]+$/, "").trim();
   return tema.slice(0, 160) || "TCC";
 }
+
+/**
+ * Título e seções de PARTIDA, a partir do pedido.
+ *
+ * O defeito que isto conserta: o título vinha de `temaDoPedido`, que num pedido longo devolve
+ * `prompt.slice(0,160)` — o preâmbulo da instrução cortado no meio da palavra. Ver o cabeçalho de
+ * lib/tcc/briefing.ts; foi medido com o pedido real que quebrou.
+ *
+ * Num briefing o título nasce PROVISÓRIO e quem o nomeia é o esboço (chamada que já acontece, e
+ * que agora recebe o pedido inteiro). E as seções do pedido vencem o template (decisão do dono):
+ * sem plano no pedido, o esqueleto de sempre.
+ */
+export function partidaDoPedido(prompt: string, esqueleto: string[]): {
+  brief: Briefing; titulo: string; secoes: { titulo: string }[];
+} {
+  const brief = lerBriefing(prompt);
+  const titulo = brief.ehBriefing ? TITULO_PROVISORIO : temaDoPedido(prompt);
+  const secoes = brief.secoes.length
+    ? comReferencias(brief.secoes.map((s) => ({ titulo: s.titulo.toUpperCase().slice(0, 120) })))
+    : esqueleto.map((titulo) => ({ titulo }));
+  return { brief, titulo, secoes };
+}
+
+/**
+ * O plano do pedido quase nunca lista REFERÊNCIAS — quem escreve "Seção 1: Introdução… Seção 6:
+ * Limitações" está enumerando o que quer REDIGIDO, não a bibliografia. Só que o trilho D2
+ * (`referenciasNovas`) procura exatamente uma seção com esse nome pra depositar o que foi citado;
+ * sem ela, a bibliografia some em silêncio e o documento fica com citações no corpo e nenhuma
+ * lista no fim.
+ *
+ * Então ela é ACRESCENTADA no fim quando o pedido não a trouxe. É o único acréscimo que fazemos
+ * ao plano de alguém, e tem motivo mecânico, não de gosto: sem ela uma peça do motor deixa de
+ * funcionar. Se o pedido já tiver a sua (com qualquer grafia que o `referenciasNovas` reconheça),
+ * nada é acrescentado.
+ */
+function comReferencias(secoes: { titulo: string }[]): { titulo: string }[] {
+  const temRefs = secoes.some((s) =>
+    /^referencias?$|^referencias bibliograficas$/.test(chaveTitulo(s.titulo).replace(/-/g, " ").trim()),
+  );
+  return temRefs ? secoes : [...secoes, { titulo: "REFERÊNCIAS" }];
+}
+
+/** Enquanto o esboço não nomeia. Nunca aparece pronto: a 1ª coisa que a geração faz é renomear. */
+export const TITULO_PROVISORIO = "Documento em preparação";
 
 /** Pedido de TCC (não de qualquer trabalho): o roteador diz `tcc`, ou o texto diz. */
 export function ehPedidoDeTcc(intent: IntentId | undefined, kind: WorkKind | undefined, prompt: string): boolean {
@@ -159,7 +204,7 @@ export async function tccDoTurno(input: {
   userId: string | null; scopeId: unknown; surface?: string | null; intent?: IntentId; kind?: WorkKind;
   prompt: string; answer: StructuredAnswer;
   /** dispara a geração do esqueleto (injetável pra teste; padrão = lib/tcc/gerar em background) */
-  gerar?: (workId: string, userId: string, topic: string) => void;
+  gerar?: (workId: string, userId: string, topic: string, brief?: Briefing) => void;
   /** CHAT ÚNICO: vários trabalhos por conversa (de qualquer tipo), inclusive no modo pesquisa */
   multi?: boolean;
   /** o trabalho aberto no editor (é nele que "continue a metodologia" mexe); ausente = o mais recente */
@@ -182,7 +227,7 @@ export async function tccDoTurno(input: {
     }
 
     if (!ehPedidoDeTcc(input.intent, input.kind, input.prompt)) return null;
-    const titulo = temaDoPedido(input.prompt);
+    const { brief, titulo, secoes: deAbertura } = partidaDoPedido(input.prompt, ESQUELETO_TCC);
     const doModelo = (Array.isArray(sections) ? sections : [])
       .map((s: any) => ({ titulo: String(s?.title ?? s?.titulo ?? ""), corpo: String(s?.body ?? s?.corpo ?? "") }))
       .filter((s) => s.titulo.trim() && s.corpo.trim());
@@ -191,15 +236,15 @@ export async function tccDoTurno(input: {
     const gerando = doModelo.length === 0;
     const t = await criarTcc({
       userId: input.userId, scopeId: scope, titulo, origem: "estudos",
-      secoes: gerando ? ESQUELETO_TCC.map((titulo) => ({ titulo })) : doModelo,
+      secoes: gerando ? deAbertura : doModelo,
       status: gerando ? "gerando" : "pronto",
     });
     void fixarCardTcc(input.userId, scope, resumoDoCard(t));
     if (gerando) {
-      const disparar = input.gerar ?? ((id, uid, topic) => {
-        void import("@/lib/tcc/gerar").then((m) => m.gerarTccEmBackground(id, uid, topic)).catch(() => {});
+      const disparar = input.gerar ?? ((id, uid, topic, b) => {
+        void import("@/lib/tcc/gerar").then((m) => m.gerarTccEmBackground(id, uid, topic, undefined, b)).catch(() => {});
       });
-      disparar(t.id, input.userId, titulo);
+      disparar(t.id, input.userId, titulo, brief);
     }
     return { workId: t.id, titulo: t.titulo, criado: true, alteradas: t.secoes.filter((s) => s.corpo.trim()).length, gerando };
   } catch (e: any) {
@@ -208,8 +253,8 @@ export async function tccDoTurno(input: {
   }
 }
 
-const disparoPadrao = (id: string, uid: string, topic: string) => {
-  void import("@/lib/tcc/gerar").then((m) => m.gerarTccEmBackground(id, uid, topic)).catch(() => {});
+const disparoPadrao = (id: string, uid: string, topic: string, brief?: Briefing) => {
+  void import("@/lib/tcc/gerar").then((m) => m.gerarTccEmBackground(id, uid, topic, undefined, brief)).catch(() => {});
 };
 
 /** As seções que o modelo escreveu (title/body), sem as vazias. */
@@ -232,16 +277,16 @@ async function trabalhoDoTurno(input: Parameters<typeof tccDoTurno>[0]): Promise
 
     if (ehPedidoDeTrabalho(input.intent, input.kind) && pedeNovoTrabalho(input.prompt, aberto)) {
       const tipo = researchWorkType(input.kind ?? input.answer.work?.kind ?? "artigo");
-      const titulo = temaDoPedido(input.prompt);
+      const { brief, titulo, secoes: deAbertura } = partidaDoPedido(input.prompt, esqueletoDe(tipo));
       const doModelo = secoesDoModelo(sections);
       const gerando = doModelo.length === 0;
       const t = await criarTcc({
         userId: input.userId, scopeId: scope, titulo, origem: "estudos", workType: tipo,
-        secoes: gerando ? esqueletoDe(tipo).map((titulo) => ({ titulo })) : doModelo,
+        secoes: gerando ? deAbertura : doModelo,
         status: gerando ? "gerando" : "pronto",
       });
       void fixarCardTcc(input.userId, scope, resumoDoCard(t), tipo);
-      if (gerando) (input.gerar ?? disparoPadrao)(t.id, input.userId, titulo);
+      if (gerando) (input.gerar ?? disparoPadrao)(t.id, input.userId, titulo, brief);
       return { workId: t.id, titulo: t.titulo, criado: true, alteradas: t.secoes.filter((s) => s.corpo.trim()).length, gerando, tipo };
     }
 

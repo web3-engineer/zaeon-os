@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   FALTA_COMPLETAR, MAX_FONTES,
-  blocoDeFontes, fonteDeDocumento, fonteDePagina, fonteDePaper, fontesCitadas, fontesDoTurno, juntarFontes,
+  blocoDeFontes, fonteDeDocumento, fonteDoPedido, fonteDePagina, fonteDePaper, fontesCitadas, fontesDoTurno, juntarFontes,
 } from "@/lib/documento/fontes";
 
 describe("fonteDePaper · a única origem com autor e ano", () => {
@@ -165,5 +165,46 @@ describe("fontesCitadas · o elo entre escrever (D1) e referenciar (D2)", () => 
     // é isto que evita bibliografia inflada por "(Lima 2020)" escrito à mão pelo modelo
     expect(fontesCitadas("algo (Lima, 2020) aqui", fontes)).toEqual([]);
     expect(fontesCitadas("algo (LIMA, 2021) aqui", fontes)).toEqual([]);
+  });
+});
+
+describe("fonteDoPedido · as referências que o PEDIDO impôs", () => {
+  const CINCO = [
+    'Wang et al. (EMNLP 2024), "Factuality of Large Language Models: A Survey"',
+    'Huang et al. (2023), "A Survey on Hallucination in Large Language Models" (arXiv:2311.05232)',
+    'Liang et al. (2022), "Holistic Evaluation of Language Models (HELM)" (arXiv:2211.09110)',
+    'Sun et al. (ICML 2024), "TrustLLM: Trustworthiness in Large Language Models"',
+    'Zheng et al. (NeurIPS 2023), "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena"',
+  ];
+
+  it("a citação autor-data é derivada do texto, e 'et al.' não vira sobrenome", () => {
+    // o defeito: a última palavra de "Wang et al." é "al.", então saía (AL., 2024)
+    expect(fonteDoPedido(CINCO[0])!.citacao).toBe("(WANG, 2024)");
+    expect(fonteDoPedido(CINCO[3])!.citacao).toBe("(SUN, 2024)");   // "(ICML 2024)" → 2024
+  });
+
+  it("AS CINCO SOBREVIVEM — o dedupe é por citação, e (AL., 2024) colapsava duas delas", () => {
+    // num pedido que diz "limite-se estritamente a estas", perder duas é o oposto do pedido
+    const fontes = juntarFontes(CINCO.map((r) => fonteDoPedido(r)));
+    expect(fontes).toHaveLength(5);
+    expect(fontes.map((f) => f.citacao)).toEqual([
+      "(WANG, 2024)", "(HUANG, 2023)", "(LIANG, 2022)", "(SUN, 2024)", "(ZHENG, 2023)",
+    ]);
+  });
+
+  it("o ABNT sai VERBATIM — reformatar a referência de alguém é o jeito fácil de corrompê-la", () => {
+    const f = fonteDoPedido(CINCO[1])!;
+    expect(f.abnt).toBe(CINCO[1]);
+    expect(f.abnt).not.toContain(FALTA_COMPLETAR);   // não está incompleta: é a que foi exigida
+    expect(f.origem).toBe("pedido");
+  });
+
+  it("texto curto demais não vira fonte", () => {
+    expect(fonteDoPedido("ibid.")).toBeNull();
+    expect(fonteDoPedido("   ")).toBeNull();
+  });
+
+  it("sem autor reconhecível, cita pelo texto curto em vez de inventar autoria", () => {
+    expect(fonteDoPedido("Relatório técnico interno de 2021 sobre o sistema")!.citacao).toMatch(/^\(/);
   });
 });

@@ -138,6 +138,18 @@ export type PedidoSecao = {
    */
   fontes?: readonly FonteDoc[];
   /**
+   * D7 · O PEDIDO DA PESSOA, inteiro. Antes o escritor via um "tema" de 160 caracteres e mais nada
+   * — num pedido elaborado, esses 160 caracteres eram o PREÂMBULO da instrução, truncado no meio
+   * da palavra (ver lib/tcc/briefing.ts). Tom, estrutura, entregáveis e vocabulário de marcadores
+   * estavam nos 91% descartados, e o documento saía sem nada disso.
+   */
+  briefing?: {
+    instrucoes: string;
+    /** os marcadores de lacuna que o PEDIDO usa: o escritor fala a língua dele, não a nossa */
+    marcadores: readonly string[];
+    secoes: readonly { numero: number; titulo: string; soMarcadores?: boolean }[];
+  } | null;
+  /**
    * D5 · um QUADRO pronto (números reais + linha de fonte) oferecido a ESTA seção. O escritor
    * decide se cabe — é o "apenas onde couber" do dono. Some das seções seguintes assim que entra
    * numa, porque cada chamada é independente e não saberia que a outra já o usou.
@@ -178,6 +190,13 @@ export function instrucaoDoPapel(papel: Slot["papel"]): string {
 export function promptDaSecao(p: PedidoSecao): { sys: string; user: string } {
   const { unidade: u } = p;
   const subs = u.subtitulos.map((s) => s.titulo);
+  // o 1º marcador do pedido, em forma de exemplo: "[COMPLETAR: descrição do que falta]"
+  const marcadorDoPedido = p.briefing?.marcadores?.length
+    ? `[${p.briefing.marcadores[0]}: descrição do que falta]`
+    : "";
+  const soMarcadores = p.briefing?.secoes?.some(
+    (x) => x.soMarcadores && normalizar(x.titulo) === normalizar(u.slot.titulo),
+  );
   const sys = [
     "Você é um orientador acadêmico escrevendo UMA seção de um trabalho em PT-BR.",
     "Escreva em registro acadêmico, impessoal, em parágrafos corridos — sem bullets, sem listas numeradas.",
@@ -186,15 +205,23 @@ export function promptDaSecao(p: PedidoSecao): { sys: string; user: string } {
       ? `Escreva estes subtítulos EXATAMENTE assim, cada um em sua própria linha, com texto embaixo de cada um:\n${subs.map((s) => `## ${s}`).join("\n")}`
       : "Esta seção não tem subtítulos.",
     `Extensão mínima: ${u.pisoTotal} palavras no total desta seção.`,
-    "NÃO invente dado, número, autor nem referência. Se faltar fundamentação para uma afirmação,",
-    `escreva a afirmação e marque com ${MARCA_SEM_FONTE} no fim da frase — nunca invente a fonte.`,
+    "NÃO invente dado, número, autor nem referência.",
+    // O MARCADOR DO PEDIDO VENCE O NOSSO. Quem escreve "use [COMPLETAR: descrição]" está pedindo
+    // um documento que ele mesmo vai preencher; devolver ⟨sem fonte⟩ é responder noutra língua e
+    // obriga a pessoa a reescrever o documento inteiro. A REGRA não muda — não inventar —, muda a
+    // palavra com que a lacuna é marcada.
+    marcadorDoPedido
+      ? `Se faltar dado ou fundamentação, NÃO invente: deixe a lacuna marcada com ${marcadorDoPedido}, exatamente no formato que o PEDIDO usa.`
+      : `Se faltar fundamentação para uma afirmação, escreva a afirmação e marque com ${MARCA_SEM_FONTE} no fim da frase — nunca invente a fonte.`,
     // a instrução só aparece quando HÁ fonte: prometer citação sem ter o que citar é o mesmo
     // defeito que a rede de honestidade persegue no chat, do lado do documento
     ...(p.fontes?.length
       ? [
           "Você RECEBEU fontes (lista abaixo). Para toda afirmação que uma delas sustente, cite-a",
           "copiando EXATAMENTE a string indicada em \"CITE ASSIM\" — sem reescrever, sem abreviar.",
-          `${MARCA_SEM_FONTE} fica reservado ao que NENHUMA das fontes sustenta: é o que mostra ao aluno o que ainda falta.`,
+          // o marcador aqui tem de ser o MESMO da linha acima; misturar vocabulário no mesmo
+          // prompt é pedir um documento em duas línguas
+          `${marcadorDoPedido || MARCA_SEM_FONTE} fica reservado ao que NENHUMA das fontes sustenta: é o que mostra o que ainda falta.`,
         ]
       : []),
     "Responda APENAS o texto da seção, sem comentar o que você fez.",
@@ -210,6 +237,13 @@ export function promptDaSecao(p: PedidoSecao): { sys: string; user: string } {
   const user = [
     `TEMA: ${p.tema}`,
     `TIPO DE TRABALHO: ${p.tipo}`,
+    // o pedido vem PRIMEIRO e por inteiro: é o que a pessoa escreveu, e o resto do prompt é nosso
+    p.briefing?.instrucoes
+      ? `\nO PEDIDO DA PESSOA (siga-o: tom, estrutura, marcadores e limites são dele):\n${p.briefing.instrucoes}`
+      : "",
+    soMarcadores
+      ? "\nATENÇÃO: o pedido diz para NÃO redigir esta seção — escreva APENAS os marcadores que ele indica para ela, nada mais."
+      : "",
     norte ? `\nNORTE DO TRABALHO:\n${norte}` : "",
     `\nSEÇÃO A ESCREVER: ${u.slot.titulo}`,
     instrucaoDoPapel(u.slot.papel),
