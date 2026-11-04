@@ -190,14 +190,30 @@ export function promptDeAcao(p: {
   coleta: string;
   falhas: string;
   voltasRestantes: number;
+  /**
+   * F6 · As lacunas que a CRÍTICA apontou (`sem_fonte`). Presentes, invertem a regra principal: a
+   * volta normal existe pra ser dispensada ("na dúvida, pronto"), esta existe porque o veredito já
+   * disse que falta lastro — responder `pronto` aqui é devolver o mesmo texto sem fonte.
+   */
+  lacunas?: readonly string[];
 }): { sys: string; user: string } {
+  const dirigida = !!p.lacunas?.length;
   const sys = [
     "Você decide se FALTA alguma ferramenta a ser chamada antes de responder. Não escreve a resposta.",
     "Responda SOMENTE JSON: {\"pronto\": true} OU {\"chamadas\":[{\"tool\":\"<nome>\",\"args\":{...}}]}.",
     "",
-    "REGRA PRINCIPAL: na dúvida, `pronto: true`. O que já foi reunido quase sempre basta — pedir",
-    "ferramenta à toa custa tempo de quem está esperando a resposta. Só peça quando faltar algo",
-    "CONCRETO e NOMEÁVEL (um dado, uma fonte, o conteúdo de um endereço que a pessoa mandou).",
+    ...(dirigida
+      ? [
+        "REGRA PRINCIPAL: a revisão JÁ APONTOU que a resposta não tem lastro em fonte. Então o",
+        "padrão aqui é BUSCAR, não dispensar: só responda `pronto` se nenhuma ferramenta da lista",
+        "puder cobrir a lacuna. Mire nela — mude os termos da busca, não repita a consulta que já",
+        "falhou.",
+      ]
+      : [
+        "REGRA PRINCIPAL: na dúvida, `pronto: true`. O que já foi reunido quase sempre basta — pedir",
+        "ferramenta à toa custa tempo de quem está esperando a resposta. Só peça quando faltar algo",
+        "CONCRETO e NOMEÁVEL (um dado, uma fonte, o conteúdo de um endereço que a pessoa mandou).",
+      ]),
     "",
     "- Use SÓ os nomes da lista abaixo, com os argumentos exatos dela. Nome inventado é descartado.",
     "- NUNCA repita uma chamada que já foi feita (a lista está no pedido).",
@@ -216,10 +232,13 @@ export function promptDeAcao(p: {
     "JÁ REUNIDO:",
     p.coleta,
     ...(p.falhas ? ["", "JÁ FALHARAM (não insista):", p.falhas] : []),
+    ...(dirigida ? ["", "O QUE A REVISÃO APONTOU:", ...p.lacunas!.map((l) => `- ${l}`)] : []),
     "",
-    p.voltasRestantes <= 1
-      ? "Esta é a ÚLTIMA volta possível: se não for essencial, responda pronto."
-      : `Ainda cabem ${p.voltasRestantes} voltas, mas usar todas não é meta.`,
+    dirigida
+      ? "Esta é a ÚNICA volta pra cobrir essa lacuna: se houver ferramenta que a cubra, chame agora."
+      : p.voltasRestantes <= 1
+        ? "Esta é a ÚLTIMA volta possível: se não for essencial, responda pronto."
+        : `Ainda cabem ${p.voltasRestantes} voltas, mas usar todas não é meta.`,
   ].join("\n");
 
   return { sys, user };

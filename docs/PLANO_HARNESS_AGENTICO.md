@@ -253,6 +253,8 @@ Isso vira **invariante testada**, não meta: promessa sem lastro não passa no g
 | **F4** ✅ | Pensamento por documento: consulta larga reagrupada **por documento** + **síntese cruzada** na fase `reason`. Resolve o §4.3. Flag `HARNESS_SINTESE`, OFF. | médio | F3 |
 | **F5** ✅ | Conectores MCP ligados (`lib/agent/mcp.ts` já estava escrito e **nunca era chamado**): `lib/agent/mcp-boot` + `instrumentation` + `/api/health`, com política **só-leitura**. Env `MCP_CONECTORES`. O SDK segue **opcional** — ver abaixo. | médio | F2 |
 
+| **F6** ✅ | **Profundidade por tarefa.** O teto de voltas deixa de ser um número só (`VOLTAS_POR_INTENT`: 0 pra conversa, 1 pro livro, 5 pro trabalho) e a **crítica passa a poder pedir evidência** — uma volta de `gather` dirigida quando o veredito traz `sem_fonte`. Mesma flag `HARNESS_ACAO`. | médio | F2 |
+
 **Rollback em qualquer fase:** flag por fase; sem ela o caminho atual vale byte a byte.
 
 ### Por que a F0 vem sozinha e primeiro
@@ -648,6 +650,82 @@ quantas tools entraram e **quais foram recusadas por risco**.
 **Deslize recorrente, agora pego na hora:** o `vitest` passou com 1650 testes enquanto o `tsc`
 acusava um `import` duplicado — o esbuild apaga tipos e não liga. É a terceira vez nesta série que a
 ordem importa: **teste primeiro, `tsc` depois**, sempre antes do commit.
+
+### F6 entregue — o teto por tarefa, e o caminho de volta que o laço não tinha
+
+Esta fase nasceu de uma pergunta do dono: *"nossos agentes estão em níveis baixos de harness na
+prática"*. A auditoria mostrou que o problema **não era largura** — 12 tools próprias + 9 do scholar
+MCP é cardápio suficiente — e sim **profundidade**: duas coisas no laço, as duas mensuráveis.
+
+**1 · O teto era um número só pra tarefas que não se parecem.** `VOLTAS_ACAO_PADRAO = 2` pagava a
+mesma conta pra "quem escreveu tal livro?" e pra um TCC com referências obrigatórias. Agora o teto é
+`VOLTAS_POR_INTENT` (lib/agent/aura-harness), e o que autoriza cada número é o **orçamento do modo**
+(`BUDGET` em lib/agent/trajectory), não gosto. Medido com o adaptador real, modelo pedindo mais a
+cada volta:
+
+| intenção | modo | teto | voltas gastas | tokens / orçamento |
+|---|---|---|---|---|
+| `criar_trabalho` | research | **5** | 5 | 19.000 / 40.000 |
+| `revisar` | research | **3** | 3 | 12.900 / 40.000 |
+| `pesquisar_fontes` | elaborated | **2** | 2 | 10.200 / 12.000 |
+| `explicar_conceito` | elaborated | 2 | 2 | 10.600 / 12.000 |
+| `buscar_livro` | elaborated | **1** | 1 | 6.700 / 12.000 |
+| `conversa` · `duvida_rapida` | quick | **0** | — | o laço nem chega no `gather` |
+
+A linha que ensina é a do `pesquisar_fontes`: **não subiu**. Uma 3ª volta custaria ~1,6k sobre os
+10,2k medidos, estouraria os 12k do `elaborated` e trocaria a revisão por coleta no escuro. Subir o
+teto sem subir o orçamento seria escrever um número que o ledger desfaz — a mesma mentira do
+`${FLAG:-0}` no compose (§8.1), só com outra roupa. O teste `pesquisar_fontes fica em 2` existe pra
+que isso continue sendo verdade medida, e não comentário.
+
+O teto DURO do motor subiu de 4 pra 6 (`MAX_VOLTAS_GATHER`), senão seria ELE o limite de verdade e
+as 5 voltas do trabalho seriam truncadas em silêncio. `HARNESS_VOLTAS_ACAO` continua valendo pra
+**todas** as tarefas quando setada: é a alavanca cega do dono, e quem a usa está dizendo "não me
+interessa a tarefa". Em prod ela chega vazia (`${HARNESS_VOLTAS_ACAO:-}`), que o código trata como
+AUSENTE — a correção de vazio-não-é-zero que já estava lá é o que faz a tabela valer.
+
+**2 · O `critique` não tinha caminho de volta pro `gather`.** O laço era
+`gather → reason → draft → critique → (revisa? volta pro reason)`. Então um veredito **"afirmação sem
+fonte"** era respondido reescrevendo o mesmo texto **sem nenhuma fonte nova**: a revisão não tinha
+como ir buscar. `nextTools` só devolve passos na 1ª iteração, e era literalmente isso.
+
+Agora a crítica pede, e o pedido é contido por desenho:
+
+- só `tipo: "sem_fonte"` conta (`lacunasDeEvidencia`) — `confuso`/`raso` se resolvem reescrevendo, e
+  pedir ferramenta pra eles seria gastar volta sem mudar nada;
+- **uma vez por turno** (`MAX_VOLTAS_EVIDENCIA = 1`), e o pedido é **consumido** no topo do laço, pra
+  não virar estado grudento;
+- o pedido passa **na frente do `maxIter`** — tem que passar: com `maxRevisions: 1`, que é a maioria
+  das intenções, o laço pararia ali e o pedido nunca chegaria a existir;
+- `overBudget` vem antes: sem orçamento não se concede nada;
+- sem a dep `passosDeEvidencia` (adaptador sem a flag `HARNESS_ACAO`), o motor não concede e o laço é
+  o de antes, byte a byte.
+
+Duas decisões que valem registro. A primeira: a volta dirigida **não** respeita o teto por tarefa, de
+propósito — um turno que gastou todas as voltas e ainda assim escreveu sem lastro é exatamente o que
+precisa da última tentativa, e negá-la pelo mesmo contador que já falhou seria garantir o defeito. A
+segunda: o prompt da volta dirigida **inverte o viés**. A volta normal existe pra ser dispensada ("na
+dúvida, `pronto: true`", lib/agent/acao); nesta o veredito já disse que falta fonte, então o padrão é
+BUSCAR, e as lacunas vão no prompt sob `O QUE A REVISÃO APONTOU:`.
+
+E `degraded` deixa de valer quando a volta dirigida acha fonte. Não é rótulo: `degraded` é o que
+impede a resposta de ir pro cache (lib/agent/runChatTurn), e uma resposta que **agora** tem fonte é
+guardável. Se a volta dirigida também vier vazia, continua degradada — nada de sucesso silencioso
+(A3).
+
+**Gates:** `tsc --noEmit` limpo, `eslint --quiet` 0, suíte cheia verde, +20 testes novos
+(`lib/agent/harness-evidencia.test.ts`). Os de borda usam deps cruas; o de ponta a ponta usa o
+**adaptador e o examiner REAIS** — só `genJson` e `runTool` são falsos — porque é assim que defeito de
+fiação aparece. Foi um teste com `critique` injetado que escondeu o defeito do bundler no MCP (§8.3d),
+e a primeira versão deste teste falhou por culpa do **meu falso**, não do código: o plano do
+`criar_trabalho` dispara vários passos, então a evidência chegava já na 1ª rodada e não havia
+`sem_fonte` nenhum pra crítica apontar.
+
+**O que esta fase NÃO faz.** Não mexe no orçamento de nenhum modo, não mexe nos prazos do `draft`
+(30 s / 90 s), e não toca no trilho do documento (`lib/tcc/gerar` + `lib/documento/escritor`), que tem
+o laço próprio dele (`TENTATIVAS_POR_SECAO`). O conector MCP **por usuário** — que destravaria o
+`zotero-mcp` — segue de fora: hoje `process.env[config.authRef]` é uma credencial global por conector,
+e isso é mudança de arquitetura, não de teto.
 
 ## 7. 🔒 Portões do dono
 

@@ -3,7 +3,9 @@
  *
  * O laço: route → (quick? draft→finalize) → plan → loop{ gather(Promise.all) → reason → draft →
  * critique → shouldRevise? } → finalize. STOP-conditions determinísticas (aprovado/maxIter/
- * orcamento/loop). `HarnessDeps` é INJETADO (classify/plan/runTool/reason/draft/critique/emit/
+ * orcamento/loop). F6: o `critique` TEM caminho de volta pro `gather` — quando o veredito traz
+ * `sem_fonte`, uma volta dirigida (`passosDeEvidencia`), uma vez por turno; antes disso a revisão
+ * só podia reescrever o mesmo texto sem fonte. `HarnessDeps` é INJETADO (classify/plan/runTool/reason/draft/critique/emit/
  * persistMemory) — mantém o motor puro e testável. Reasoning-sandwich: as fases pesadas são só
  * `plan` e `critique` (o adaptador escolhe Pro; o resto é Flash). NÃO chama rede aqui.
  *
@@ -64,6 +66,13 @@ export type TrajectoryState = {
   feitas: Set<string>;
   /** F2 · quantas VOLTAS EXTRAS de ação o turno gastou (0 = só o plano determinístico). */
   voltas: number;
+  /**
+   * F6 · O pedido de evidência da crítica, à espera da próxima iteração. É CONSUMIDO no topo do
+   * laço (volta a `undefined`): o pedido vale uma volta, não é um estado grudento.
+   */
+  pedidoDeEvidencia?: Issue[];
+  /** F6 · quantas voltas dirigidas pela crítica o turno gastou (teto `MAX_VOLTAS_EVIDENCIA`). */
+  voltasEvidencia: number;
 };
 
 /** As dependências do harness — injetadas pelo adaptador (aura-harness). Motor não sabe de Gemini. */
@@ -76,6 +85,12 @@ export interface HarnessDeps {
    * não existe observar → agir → observar. Ausente = comportamento de antes da F2, byte a byte.
    */
   proximosPassos?(st: TrajectoryState): Promise<Step[]>;
+  /**
+   * F6 (opcional) · A CRÍTICA PEDIU EVIDÊNCIA. Recebe as lacunas `sem_fonte` do veredito e devolve
+   * passos DIRIGIDOS a elas — ou `[]` se não houver o que buscar. Ausente = o motor não concede o
+   * pedido e o laço se comporta como antes da F6, byte a byte (mesmo contrato do `proximosPassos`).
+   */
+  passosDeEvidencia?(st: TrajectoryState, lacunas: readonly Issue[]): Promise<Step[]>;
   runTool(name: string, args: any, ctx: AgentContext): Promise<ToolResult>;
   reason(st: TrajectoryState): Promise<string>;
   /** opcional: este estado dispensa o raciocínio separado (sem anunciar a fase nem cobrar o orçamento) */
@@ -161,8 +176,31 @@ function safeSteps(steps: unknown): Step[] {
  * F2 · Teto DURO de voltas de coleta, do motor. O adaptador tem o seu próprio (ajustável por env);
  * este não é ajustável e existe pra que um adaptador com defeito — ou um modelo que nunca diz
  * "pronto" — não gire até o orçamento. Duas travas, propósitos diferentes.
+ *
+ * F6 · Era 4 (teto de política fixo em 2, com folga de uma volta). Agora o teto de política VARIA
+ * por tarefa — `criar_trabalho` pede 5 (ver `VOLTAS_POR_INTENT` em lib/agent/aura-harness) — e este
+ * precisou subir pra 6 pra não ser ele o limite de verdade. Quem segura o custo no caminho normal
+ * continua sendo o teto de política + `overBudget`; este só existe pro caso patológico.
  */
-export const MAX_VOLTAS_GATHER = 4;
+export const MAX_VOLTAS_GATHER = 6;
+
+/**
+ * F6 · Quantas voltas de coleta DIRIGIDAS PELA CRÍTICA um turno pode gastar. Uma. É o caminho que
+ * faltava: até aqui o `critique` só voltava pra `reason`/`draft`, então um veredito "afirmação sem
+ * fonte" era respondido reescrevendo o mesmo texto SEM nenhuma fonte nova — o laço não tinha volta
+ * pro `gather`. Agora tem, e é contida: um pedido por turno, só quando a crítica aponta falta de
+ * lastro (`tipo: "sem_fonte"`), e só se o adaptador souber coletar (`passosDeEvidencia`).
+ */
+export const MAX_VOLTAS_EVIDENCIA = 1;
+
+/**
+ * F6 · As lacunas da crítica que SÃO pedido de evidência. `sem_fonte` é a única que coleta resolve:
+ * `confuso`/`raso` se resolvem reescrevendo, `lacuna` é campo vazio do schema, `impreciso` é juízo.
+ * Pedir ferramenta pra essas seria gastar volta sem mudar nada. Pura, por isso testável sem LLM.
+ */
+export function lacunasDeEvidencia(issues?: readonly Issue[]): Issue[] {
+  return (issues ?? []).filter((i) => i?.tipo === "sem_fonte");
+}
 
 /** A identidade de um passo (tool+args), pro adaptador não repetir trabalho já feito. */
 const chaveDoPasso = (s: Step): string => chaveDaChamada({ tool: s.tool, args: (s.args ?? {}) as Record<string, unknown> });
@@ -228,6 +266,7 @@ function seedState(objective: string, r: RouterResult, opts?: TrajectoryOpts): T
     startedAt: Date.now(),
     feitas: new Set<string>(),
     voltas: 0,
+    voltasEvidencia: 0,
   };
 }
 
@@ -282,7 +321,20 @@ export async function runTrajectoryTraced(
     // F2 · O GATHER É REENTRANTE. Antes rodava UMA vez (`nextTools` só devolve na 1ª iteração) e
     // não havia caminho de volta: observar → agir → observar era impossível. Agora, depois de cada
     // rodada, `proximosPassos` (se o adaptador a oferecer) decide se há mais o que fazer.
+    // F6 · O PEDIDO DA CRÍTICA ABRE O GATHER DE NOVO. `nextTools` só devolve passos na 1ª iteração
+    // — era por isso que uma revisão nunca coletava nada. Com um pedido na mão, a iteração começa
+    // por uma volta DIRIGIDA às lacunas. O pedido é consumido aqui: vale uma volta, e o contador
+    // (`voltasEvidencia`) é quem impede um segundo.
+    const pedido = st.pedidoDeEvidencia;
+    st.pedidoDeEvidencia = undefined;
     let steps = nextTools(st);
+    if (pedido?.length && d.passosDeEvidencia) {
+      st.voltasEvidencia++;
+      steps = safeSteps(await d.passosDeEvidencia(st, pedido));
+      charge(st, "plan", 1, d);   // decidir é uma chamada de modelo: cobra como `plan`
+      // o laço já anuncia a fase `gather` logo abaixo: aqui o registro é pra quem lê o log de prod
+      if (steps.length) console.info(`[harness] crítica pediu evidência → ${steps.map((x) => x.tool).join(", ")}`);
+    }
     let anunciadas = 0;   // quantas fontes já foram anunciadas (não repete o mesmo rótulo)
     for (let volta = 0; steps.length; volta++) {
       emit(d, st, "gather");
@@ -315,6 +367,10 @@ export async function runTrajectoryTraced(
       st.degraded = true;
       emit(d, st, "gather", "degradado: nenhuma evidência reunida");
     }
+    // F6 · a coleta dirigida salvou o turno: `degradado` era verdade na 1ª iteração e deixou de
+    // ser. Não é só rótulo — `degraded` é o que impede a resposta de ir pro cache
+    // (lib/agent/runChatTurn), e uma resposta que AGORA tem fonte é guardável.
+    if (st.degraded && st.evidence.length) st.degraded = false;
 
     // (o adaptador pode pular o raciocínio — caminho elaborado: devolve "" sem chamar modelo; aí nem anuncia a fase)
     if (d.pulaRaciocinio?.(st)) st.reasoning = "";
@@ -342,6 +398,17 @@ export async function runTrajectoryTraced(
 
     // STOP-conditions determinísticas (ordem do §11.1): aprovado → maxIter → orcamento.
     if (v.decision === "aprovado" || (st.score ?? 0) >= (st.spec.reviseThreshold ?? 7)) { st.stop = "aprovado"; break; }
+    // F6 · A CRÍTICA PEDE EVIDÊNCIA — e isso passa NA FRENTE do `maxIter`. Tem que passar: com
+    // `maxRevisions: 1` (a maioria das intenções) o laço pararia aqui mesmo, e o pedido nunca
+    // chegaria a existir. O custo do que ele libera é limitado e sabido: uma volta de coleta + o
+    // reason/draft/critique da iteração que a usa, uma vez por turno. As outras STOP-conditions
+    // continuam intactas — `aprovado` já saiu acima, e sem orçamento não se concede nada.
+    const lacunas = lacunasDeEvidencia(v.issues);
+    if (d.passosDeEvidencia && lacunas.length && st.voltasEvidencia < MAX_VOLTAS_EVIDENCIA && !overBudget(st)) {
+      st.pedidoDeEvidencia = lacunas;
+      emit(d, st, "critique", `crítica pediu evidência: ${lacunas.length} ${lacunas.length === 1 ? "lacuna" : "lacunas"}`);
+      continue;
+    }
     if (st.iter >= (st.spec.maxRevisions ?? 1)) { st.stop = "maxIter"; break; }
     if (overBudget(st)) { st.stop = "orcamento"; break; }
     // senão: revisa — os issues guiam o próximo reason/draft.
