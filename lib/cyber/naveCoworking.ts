@@ -25,7 +25,7 @@ export const NAVE_COWORK = {
   /** a altura das divisórias internas (as salas de vidro) */
   pe: 3.2,
   /** onde se nasce (o anel do átrio) e pra onde se olha */
-  chegada: { x: 0, z: 14, rumo: Math.PI },
+  chegada: { x: 0, z: 14, rumo: 0 },   // (de frente pro mirante: a primeira vista é o espaço)
   /** o buraco negro da popa (sai pra Cidade Zaeon) */
   portal: { x: 0, z: -31, r: 2.6 },
 } as const;
@@ -110,7 +110,7 @@ export function moveisDaNave(): MovelCW[] {
     } }
   // MIRANTE: puffs grandes de frente pra janela, o totem de boas-vindas no átrio
   for (const x of [-9.6, -6.4, -3.2, 3.2, 6.4, 9.6]) m.push(ret("puff", "mirante", x, 28.5 - Math.abs(x) * 0.12, 1.4, 1.4, 0.5));
-  m.push(ret("totem", "avenida", 0, 19.5, 1.2, 0.5, 2.4, Math.PI));
+  m.push(ret("totem", "avenida", -2.3, 18.5, 0.5, 1.2, 2.4, Math.PI / 2));   // (de lado, virado pro meio da avenida: não tampa a vista do mirante)
   // a AVENIDA: floreiras baixas dividindo dos lados (sem fechar)
   for (const z of [-19, -5, 8]) for (const sx of [-1, 1]) m.push(ret("floreira", "avenida", sx * 2.75, z, 0.5, 3, 0.7));
   moveisCache = m;

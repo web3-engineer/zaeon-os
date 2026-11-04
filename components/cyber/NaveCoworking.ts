@@ -263,7 +263,7 @@ export function criarNaveCoworking(o: { low: boolean; teto?: boolean }): NaveCow
     const tx = textura(512, 1024, (c, w, h) => { const gr = c.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, "#1a0b36"); gr.addColorStop(1, "#08041a"); c.fillStyle = gr; c.fillRect(0, 0, w, h); c.textAlign = "center"; c.fillStyle = hex(COR.lavanda); c.font = "800 64px system-ui,sans-serif"; c.fillText("NAVE", w / 2, 150); c.fillText("ZAEON", w / 2, 225); c.fillStyle = "#e2d0ff"; c.font = "500 34px system-ui,sans-serif"; ["coworking cósmico", "", "◀ coworking · órion · foco", "chill-out · lyra · café ▶", "", "▲ mirante", "▼ portal da cidade"].forEach((s, i) => c.fillText(s, w / 2, 340 + i * 60)); c.strokeStyle = hex(COR.magenta); c.lineWidth = 6; c.strokeRect(20, 20, w - 40, h - 40); });
     const mt = new THREE.MeshBasicMaterial({ map: tx, side: THREE.DoubleSide }); descartar.push(mt);
     const t = add(new THREE.Mesh(new THREE.PlaneGeometry(1.2, 2.4), mt)); t.position.set(cx, 1.3, cz); t.rotation.y = tm.rumo ?? 0;
-    const base = add(new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.1, 0.4), aditivo(COR.lavanda, 0.7))); base.position.set(cx, 0.05, cz); }
+    const base = add(new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.1, 0.4), aditivo(COR.lavanda, 0.7))); base.position.set(cx, 0.05, cz); base.rotation.y = tm.rumo ?? 0; }
 
   // ── o MIRANTE: o OLHO HOLOGRÁFICO do lounge flutuando na frente da janela ──
   const olho = criarOlho({ low: o.low, tam: 3.6 }); olho.group.position.set(0, 3.9, 32); olho.group.rotation.y = Math.PI; add(olho.group); descartar.push(olho);

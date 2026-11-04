@@ -43,6 +43,7 @@ import TocaDiscos, { type ApiMusica } from "./TocaDiscos";
 import RitualPainel from "./RitualPainel";
 import type { Ritual } from "@/lib/cyber/ritual";
 import type { SomLounge } from "@/lib/lounge3d/musica";
+import { REGIAO_PADRAO, regiaoDoFuso, type Regiao } from "@/lib/cyber/regiaoUsuario";
 
 export type CenaCyberProps = {
   /** "janela": prévia na landing (começa no menu, sem rede). "tela": cyberespaço inteiro (já em play, com a sala). */
@@ -62,6 +63,9 @@ export type CenaCyberProps = {
   /** NUNCA entrou no cyberespaço (vem do SERVIDOR: User.cyberNasceuEm) → nasce num tubo de ensaio; sem isto (prévia,
    *  modo solo) vale o localStorage. `marcarNascimento` avisa o servidor que nasceu. */
   novoNoCyber?: boolean;
+  /** a REGIÃO real pelo perfil (servidor — lib/cyber/regiaoUsuario): a NAVE COWORKING em que se começa; sem isto, o
+   *  fuso do navegador decide (e, sem ele, a região padrão) */
+  regiao?: Regiao | null;
   /** as MOTOS liberadas (o servidor diz — a entrega ao Droid aceita + o tutorial delas; o dono sempre) */
   motosLiberadas?: boolean;
   /** já venceu o DUELO de linguagem da Examiner (a cúpula do Templo Cósmico abre) e a API do duelo (sem ela, não há quiz) */
@@ -299,6 +303,7 @@ export default function CenaCyber(p: CenaCyberProps) {
       onTunelDireto: (d) => { engine.current?.soltarMouse(); setTunel({ tipo: "direto", para: d.para, nome: d.nome }); },   // (os níveis: o fio cósmico / o buraco negro da sala — sem menu)
       onAviso: avisar,
       nascer, nascerNa, retomar, motosLiberadas: !!p.motosLiberadas, examinerLiberado: !!p.examinerLiberado,
+      regiao: p.regiao ?? (() => { try { const f = regiaoDoFuso(Intl.DateTimeFormat().resolvedOptions().timeZone); return f && f !== "exterior" ? f : null; } catch { return null; } })() ?? REGIAO_PADRAO,
       onDuelo: p.dueloIngles ? (abrir) => { if (abrir && document.pointerLockElement) document.exitPointerLock(); setDuelo(abrir); } : undefined,
       onNasceu: () => { cb.current.marcarNascimento?.(); try { localStorage.setItem(CHAVE_ONBOARDING, "1"); } catch { /* storage bloqueado */ } },   // o novato chegou na Zaeon pelo portal
       onGuia: (g) => { setGuia(g); if (!g) { cb.current.marcarNascimento?.(); try { localStorage.setItem(CHAVE_ONBOARDING, "1"); } catch { /* storage bloqueado */ } } },   // o tutorial acabou (ou foi pulado): da próxima vez nasce na base

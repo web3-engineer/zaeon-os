@@ -12,6 +12,7 @@ import { PRACA } from "./praca";
 import { PLATAFORMAS } from "./plataformas";
 import { TEMPLO } from "./templo";
 import type { IdNivel } from "./nivelAtivo";
+import { naveDoPonto, nivelDaNave } from "./navesRegiao";
 
 export type { IdNivel } from "./nivelAtivo";
 const SALAS = Object.keys(CIDADE.salas) as NomeSala[];
@@ -39,7 +40,7 @@ export function nivelAberto(p: { x: number; z: number }, y: number): "zaeon" | "
 }
 
 /** o nível de um ponto (quem está ali — outra pessoa, um bot, um objeto) */
-export const nivelDoPonto = (p: { x: number; z: number }, y: number): IdNivel => salaDoPonto(p, y) ?? nivelAberto(p, y);
+export const nivelDoPonto = (p: { x: number; z: number }, y: number): IdNivel => { const nv = naveDoPonto(p, y); return nv ? nivelDaNave(nv) : salaDoPonto(p, y) ?? nivelAberto(p, y); };   // (uma NAVE COWORKING é um nível fechado, como uma sala: só se sai pelo portal)
 
 /** o MEU nível no próximo quadro: numa sala, só se sai por teleporte (`saltou`); nos abertos, troca voando, mas só
  *  depois de `firme` s no novo (sem piscar na divisa) */

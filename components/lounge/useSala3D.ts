@@ -1,4 +1,5 @@
 "use client";
+import { REGIOES, type Regiao } from "@/lib/cyber/regiaoUsuario";
 import type { Personagem } from "@/lib/cyber/personagem";
 /**
  * useSala3D — dados + tempo real da sala 3D (docs/HANDOFF_LOUNGE_COWORK_3D.md):
@@ -21,7 +22,7 @@ import { EV_RITUAL, EV_RELICARIO, CAMPO_DO_CANAL, canalDe, EV_MUSICA, EV_CHAT, E
 import { ritualDesligado, sanitizarRitual } from "@/lib/cyber/ritual";
 import { sanitizarEventoRelicario, type EventoRelicario } from "@/lib/cyber/relicario";
 
-export type Membro = { id: string; name: string; image: string | null; color: string; fundador?: boolean; /** o corpo próprio (servidor) */ corpo?: string; /** pilota a nave-QG (servidor) */ nave?: boolean; /** (só `eu`) nunca entrou no cyberespaço: nasce num tubo de ensaio */ novo?: boolean; /** (só `eu`) as MOTOS liberadas (entrega ao Droid + tutorial delas; o dono sempre) */ motos?: boolean; /** (só `eu`) venceu o duelo de linguagem da Examiner (a cúpula do Templo Cósmico abre) */ examiner?: boolean; /** (Colyseus) já mandou a 1ª pose — o novato no tutorial não: nem aparece nem entra na voz */ pronto?: boolean; /** o personagem escolhido (gênero + cor — servidor) */ personagem?: Personagem | null };
+export type Membro = { id: string; name: string; image: string | null; color: string; fundador?: boolean; /** o corpo próprio (servidor) */ corpo?: string; /** pilota a nave-QG (servidor) */ nave?: boolean; /** (só `eu`) nunca entrou no cyberespaço: nasce num tubo de ensaio */ novo?: boolean; /** (só `eu`) as MOTOS liberadas (entrega ao Droid + tutorial delas; o dono sempre) */ motos?: boolean; /** (só `eu`) venceu o duelo de linguagem da Examiner (a cúpula do Templo Cósmico abre) */ examiner?: boolean; /** (Colyseus) já mandou a 1ª pose — o novato no tutorial não: nem aparece nem entra na voz */ pronto?: boolean; /** o personagem escolhido (gênero + cor — servidor) */ personagem?: Personagem | null; /** (só `eu`) a região real pelo perfil (servidor; null = o perfil não diz) */ regiao?: Regiao | null };
 export type Sala = { id: string; title: string; ownerId: string; isOwner: boolean; members: string[]; token: string | null; conteudo: ConteudoSala };
 export type EstadoSala = "carregando" | "ok" | "cheia" | "erro" | "off";
 
@@ -68,7 +69,7 @@ export function useSala3D(salaId: string | null, opts: OpcoesSala3D = {}) {
       if (r.status === 404) { setEstado("off"); return; }
       if (!r.ok) throw new Error(String(r.status));
       const d = await r.json();
-      setSala(d.sala); setMembros(d.membros ?? []); setEu({ id: d.eu.id, name: d.eu.name, image: d.eu.image ?? null, color: d.eu.color, fundador: d.eu.fundador === true, novo: d.eu.novo === true, corpo: typeof d.eu.corpo === "string" ? d.eu.corpo : undefined, nave: d.eu.nave === true, personagem: d.eu.personagem ?? null });
+      setSala(d.sala); setMembros(d.membros ?? []); setEu({ id: d.eu.id, name: d.eu.name, image: d.eu.image ?? null, color: d.eu.color, fundador: d.eu.fundador === true, novo: d.eu.novo === true, corpo: typeof d.eu.corpo === "string" ? d.eu.corpo : undefined, nave: d.eu.nave === true, personagem: d.eu.personagem ?? null, regiao: (REGIOES as readonly string[]).includes(d.eu.regiao) ? d.eu.regiao : null });
       setEstado((e) => (e === "cheia" ? e : "ok"));
     } catch { setEstado("erro"); }
   }, [salaId]);

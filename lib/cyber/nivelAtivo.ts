@@ -8,11 +8,12 @@
  * mapa inteiro). O ENGINE define o nível da pessoa a cada quadro.
  */
 import type { NomeSala } from "./ceu";
+import type { Regiao } from "./regiaoUsuario";
 
 /** a separação em níveis (desligar = volta o mapa inteiro, com as escadas) */
 export const NIVEIS_SEPARADOS = true as boolean;
 
-export type IdNivel = "zaeon" | NomeSala | "praca" | "solana";
+export type IdNivel = "zaeon" | NomeSala | "praca" | "solana" | `nave-${Regiao}`;   // (as NAVES COWORKING de cada região — lib/cyber/navesRegiao)
 export const IDS_NIVEIS: readonly IdNivel[] = ["zaeon", "lounge", "garagem", "biblioteca", "jardim", "praca", "solana"];
 
 let ativo: IdNivel | null = null;
