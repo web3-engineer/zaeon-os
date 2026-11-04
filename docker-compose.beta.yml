@@ -112,10 +112,11 @@ services:
       NEXT_PUBLIC_PUSHER_CLUSTER: ${NEXT_PUBLIC_PUSHER_CLUSTER:-}
       # a fase `reason` no `elaborated` (o código a pula por padrão; "1" liga)
       RACIOCINIO_ELABORADO: ${RACIOCINIO_ELABORADO:-}
-      # workers de fundo: vazio = o trabalho roda inline no web, que é o padrão de hoje
-      SCHOLAR_WORKER: ${SCHOLAR_WORKER:-}
-      CANAL_WORKER: ${CANAL_WORKER:-}
-      CHORES_WORKER: ${CHORES_WORKER:-}
+      # CANAL_QUEUE é o interruptor de ENFILEIRAR (lib/canal/queue `filaLigada`), e por isso mora no
+      # WEB: é ele que decide mandar o turno pra fila em vez de rodar inline. Os de CONSUMIR
+      # (CANAL_WORKER/CHORES_WORKER) ficam só no serviço `worker` — aqui eles fariam o mesmo
+      # container enfileirar E consumir, que é o que a topologia evita. `SCHOLAR_WORKER` já está
+      # definido acima com default 0; repeti-lo aqui quebra o compose (chave duplicada).
       CANAL_QUEUE: ${CANAL_QUEUE:-}
       # F3 · o anexo entra no harness (imagem/PDF escaneado seguem no legado).
       HARNESS_ANEXO: ${HARNESS_ANEXO:-1}
@@ -216,8 +217,10 @@ services:
       NEXT_PUBLIC_PUSHER_CLUSTER: ${NEXT_PUBLIC_PUSHER_CLUSTER:-}
       # a fase `reason` no `elaborated` (o código a pula por padrão; "1" liga)
       RACIOCINIO_ELABORADO: ${RACIOCINIO_ELABORADO:-}
-      # workers de fundo: vazio = o trabalho roda inline no web, que é o padrão de hoje
-      SCHOLAR_WORKER: ${SCHOLAR_WORKER:-}
+      # Os de CONSUMIR vivem AQUI, onde consumir é o trabalho do container. `SCHOLAR_WORKER` não
+      # aparece de propósito: já é "1" fixo acima, e um `${SCHOLAR_WORKER:-}` o sobrescreveria com
+      # VAZIO — o worker dedicado pararia de consumir a fila do scholar. Foi o erro que o parser do
+      # Compose pegou (chave duplicada) antes de ir pro ar.
       CANAL_WORKER: ${CANAL_WORKER:-}
       CHORES_WORKER: ${CHORES_WORKER:-}
       CANAL_QUEUE: ${CANAL_QUEUE:-}

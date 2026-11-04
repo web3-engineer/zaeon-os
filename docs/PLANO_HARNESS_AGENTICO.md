@@ -926,6 +926,38 @@ nunca os valores, e o `/api/health` publica `tempoReal: "on" | { faltando: [...]
 eu não tinha como confirmar a segunda pro dono, só supor. Nome de env não é segredo; valor é, e um
 teste afirma exatamente isso.
 
+**O deploy desta fiação FALHOU na primeira tentativa, e o erro era pior que o sintoma** (run 557,
+22:44). Eu acrescentei `SCHOLAR_WORKER` ao `environment:` de dois serviços que **já a tinham**:
+
+```
+failed to parse docker-compose.beta.yml: yaml: construct errors:
+mapping key "SCHOLAR_WORKER" already defined at line 83
+```
+
+Duas lições, e a segunda é a que machuca:
+
+1. **Eu validei o YAML antes de empurrar — e a validação passou.** `yaml.safe_load` aceita chave
+   duplicada e deixa a última vencer; o parser **Go** do Compose a trata como erro. Validação mais
+   fraca que o consumidor real é validação que mente, e é a terceira vez nesta série que o problema
+   tem essa forma (o `env:` do CI que eu não reproduzia, a Variable que o compose anulava, agora o
+   parser). Virou gate: `scripts/compose-check.mjs`, rodando no CI antes do `npm ci` — e **provado
+   contra o defeito real**, não só contra o arquivo bom (um gate que sempre passa é pior que nenhum).
+
+   **E o gate quebrou no CI na primeira tentativa, pelo MESMO vício.** Escrevi-o com `fs.globSync`,
+   que existe no Node 22 (o meu) e não no Node 20 (`node-version: "20"` no ci.yml): o passo morreu
+   instantaneamente, no próprio CI que ele deveria proteger. Dois erros seguidos com a mesma forma —
+   "verifiquei no meu ambiente" — num conserto cujo assunto ERA esse vício. O gate agora usa só
+   `readFileSync`/`readdirSync`, e desta vez eu **rodei sob o Node 20** (`npx node@20`) em vez de
+   argumentar por idade de API: passa no arquivo bom e sai com código 1 no defeito.
+2. **No serviço `worker`, `SCHOLAR_WORKER` é `"1"` FIXO** porque consumir a fila é o trabalho dele.
+   Minha chave duplicada com `${SCHOLAR_WORKER:-}` o teria sobrescrito com **vazio**, desligando o
+   worker dedicado em silêncio. O parser me salvou de enviar isso.
+
+O conserto não foi só apagar a duplicata: foi **pôr cada flag no lado certo da topologia**.
+`CANAL_QUEUE` é o interruptor de ENFILEIRAR (`filaLigada`, lib/canal/queue) e fica no **web**;
+`CANAL_WORKER`/`CHORES_WORKER` são de CONSUMIR e ficam só no **worker**, porque no web eles fariam o
+mesmo container enfileirar e consumir — exatamente o que a topologia evita.
+
 **O que ainda depende do dono:** os valores. Eu plumbei a cadeia inteira, mas `PUSHER_APP_ID` e
 `PUSHER_SECRET` são Secrets e `NEXT_PUBLIC_PUSHER_KEY`/`_CLUSTER` são Variables que só ele cria. Até
 lá o recibo dirá `tempo_real(pusher): off — faltam …`, que é a verdade, e a colaboração segue no poll.

@@ -514,3 +514,45 @@ armadilha da surface (`"estudos"`, não `"meus-estudos"`).
 
 **🟡 Não verificado:** a tela. Sem banco e sem sessão aqui, provei a lógica e a autorização, não o
 desenho do botão na barra.
+
+### D9 · O convite virou mensagem colável, e o botão ficou só ícone
+
+Pedido do dono: *"a opção para ser apenas o ícone, e com link (vem estudar comigo sobre ___ aqui na
+Zaeon!) algo do tipo. como um link entrável em vez de por email."*
+
+**Duas das três coisas já existiam, e isso mudou o trabalho.** Não havia e-mail em lugar nenhum
+deste caminho, e o link já era **entrável**: `/estudo/<boardId>?convite=<token>` → `entrarPorConvite`
+(conferido nos dois sentidos — a porta da conversa monta a MESMA forma de URL que a tela de entrada
+consome, e se montasse outra o link seria um endereço bonito que não deixa ninguém entrar). O que
+faltava era o **texto em volta do link**: o painel copiava o endereço cru.
+
+**A mensagem é pura e testada** (`lib/chat/conviteTexto`), porque decide três coisas que erram caro:
+
+- **O tema.** A conversa não tem título próprio — as abas são "Conversa" + os documentos —, então ele
+  vem do trabalho/documento ABERTO, e só depois do primeiro da conversa. E título genérico ou
+  provisório é **recusado**: um convite dizendo "vem estudar comigo sobre *Documento em preparação*"
+  (o `TITULO_PROVISORIO` que o próprio gerador põe, desta mesma série) é pior que um sem tema nenhum.
+- **O papel.** `leitor` recebe "vem acompanhar meus estudos", não "vem estudar comigo": o link dele
+  não deixa escrever, e convite que promete mais do que o link dá é a mesma falta de lastro que a
+  rede de honestidade persegue no chat.
+- **O tamanho e as quebras.** A frase é colada no WhatsApp: título de 300 caracteres ou com `\n` no
+  meio quebra a frase e engole o link. Teto de 70 com reticência, uma linha só.
+
+**O que NÃO mudou, de propósito:** a frase do escopo. Ela avisa que o papel vale para a CONVERSA
+inteira, inclusive os trabalhos futuros, e tem teste próprio desde a D8. A mensagem amigável é para
+quem RECEBE; o aviso de escopo é para quem COMPARTILHA — trocar um pelo outro faria o botão conceder
+mais do que diz. Ficam os dois, e um teste novo afirma que o aviso continua na tela.
+
+Sobrou um "copiar só o link" discreto: quem vai colar num lugar que já tem texto não precisa apagar a
+frase à mão.
+
+**O botão ficou só ícone**, com `title` e `aria-label` mantidos — sem eles, um botão sem rótulo é
+mudo para leitor de tela.
+
+**Um deslize meu, pego por conferência e não por teste:** a variável que eu criei para o tema saiu
+com um `е` **cirílico** no nome (homóglifo). O `tsc` passava — é um identificador válido e distinto
+do `temaDoConvite` importado —, e o resultado seria uma variável que ninguém consegue grepar. Virou
+`temaDaConversa`, em ASCII. Nenhum teste pegaria isso; só olhar os bytes pega.
+
+**Gates:** `tsc` limpo, `eslint` 0, suíte cheia 5964 verdes (com o `env:` do CI reproduzido), +16
+testes novos. **Não vi a tela rodando** — provei a mensagem, o papel, o tema e o formato do link.

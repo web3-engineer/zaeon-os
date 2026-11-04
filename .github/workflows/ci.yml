@@ -70,6 +70,12 @@ jobs:
       - name: Paridade dos locales (i18n)
         run: node scripts/i18n-check.mjs
 
+      # Chave duplicada no compose: o Compose RECUSA o arquivo e o deploy morre no `up` (run 557,
+      # 04/nov/2026). Não dá pra confiar num `yaml.safe_load` pra isso — a maioria dos parsers aceita
+      # duplicada e deixa a última vencer, então a validação passava e o deploy caía. Sem deps, ~50 ms.
+      - name: Compose sem chave duplicada
+        run: node scripts/compose-check.mjs
+
       # Supply-chain (Pack Octa §1). ANTES do npm ci: pacote novo com install script (ou versão nova) só
       # entra depois de revisado em config/vetting/install-scripts.json; repo REJEITADO não entra nunca.
       - name: Vetting de dependências (lockfile + install scripts + repos rejeitados)
