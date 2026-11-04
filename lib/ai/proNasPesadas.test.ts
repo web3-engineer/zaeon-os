@@ -8,7 +8,7 @@
  * lib/agent/aura-harness.pro.test.ts, que é onde o `modelFor` mora.
  */
 import { describe, it, expect } from "vitest";
-import { proNasPesadasLigado, planoDaDireitoAoPro, contaDaDireitoAoPro } from "@/lib/ai/proNasPesadas";
+import { proNasPesadasLigado, planoDaDireitoAoPro, contaDaDireitoAoPro, podeProNasPesadas, limparMemoPro } from "@/lib/ai/proNasPesadas";
 import { planCapabilities, type Plan } from "@/lib/plans";
 
 const conta = (plan: string, extra: Record<string, unknown> = {}) => ({ plan, plusUntil: null, trialGranted: false, ...extra });
@@ -60,5 +60,27 @@ describe("F7 · quem tem direito: só plus e pro", () => {
     expect(contaDaDireitoAoPro(conta("lixo"))).toBe(false);
     expect(contaDaDireitoAoPro(conta("PLUS"))).toBe(false);   // normalizePlan é sensível a caixa
     expect(contaDaDireitoAoPro(conta("pulse"))).toBe(true);   // nome antigo do plus
+  });
+});
+
+describe("F7 · a consulta NUNCA segura o turno (o defeito que o CI pegou)", () => {
+  // Eu pus uma leitura de banco bloqueante no caminho do turno. Com o Mongo inalcançável — que é o
+  // caso do CI (`MONGODB_URI` placeholder) — cada turno parava 5 s no DNS antes de falhar fechado:
+  // 12 testes de `runChatTurn` vermelhos, e em produção seria atraso antes da 1ª palavra. Escolher
+  // modelo é decisão ACESSÓRIA, então o prazo é curto e a resposta de quem não respondeu é "Flash".
+  it("sem userId ou com a flag desligada: `false` na hora, sem tocar o banco", async () => {
+    limparMemoPro();
+    expect(await podeProNasPesadas(null)).toBe(false);
+    expect(await podeProNasPesadas("")).toBe(false);
+    expect(await podeProNasPesadas("algum-id", { PRO_PESADAS: "0" })).toBe(false);
+  });
+
+  it("banco indisponível ou lento: resolve FALSE e em muito menos que o timeout do driver", async () => {
+    limparMemoPro();
+    const t0 = Date.now();
+    const vale = await podeProNasPesadas("000000000000000000000000");
+    const gasto = Date.now() - t0;
+    expect(vale).toBe(false);               // falha FECHADO: o caro nunca é o padrão de um acidente
+    expect(gasto).toBeLessThan(2_000);      // o DNS do driver leva ~5 s; o prazo é 250 ms
   });
 });

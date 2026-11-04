@@ -851,7 +851,28 @@ Fiz assim porque uma cota diária não divide por seção — um documento tem ~
 configuração que mente da `notebook_read`, e deixá-lo de enfeite ao lado do campo que funciona seria
 plantar a próxima confusão.
 
-**Gates:** `tsc` limpo, `eslint --quiet` 0, dois YAML validados, suíte cheia verde, +17 testes novos.
+**O defeito que eu introduzi, e que só o CI pegou.** A elegibilidade é leitura de banco, e eu a pus
+**bloqueante no caminho do turno**. Com o Mongo inalcançável — que é o caso do CI, onde
+`MONGODB_URI` é `mongodb://placeholder:27017/build` — cada turno parava **5 s** no DNS antes de falhar
+fechado: 12 testes de `runChatTurn` vermelhos e `getaddrinfo ENOTFOUND placeholder` no log, com
+`unhandledRejection` sobrando. Em produção seria pior que teste vermelho: Mongo lento atrasaria
+**toda** resposta antes da 1ª palavra, e o recurso que deveria melhorar a qualidade pioraria a
+latência de todo mundo, inclusive de quem não tem direito a ele.
+
+O conserto não foi mexer no teste. Escolher modelo é decisão **acessória**: quem não responde em
+250 ms recebe "Flash" e o turno segue (`PRAZO_MS`). Três detalhes que a correção exigiu:
+
+- a promessa perdedora da corrida leva `.catch` obrigatório, senão a rejeição dela vira
+  `unhandledRejection` — era o que aparecia no log do CI junto das falhas;
+- o resultado do **timeout não entra no memo**: um soluço de 250 ms não deve colar Flash por 60 s;
+- a resposta **atrasada** entra no memo quando chega, então o próximo turno já a encontra pronta.
+
+E a lição de processo: **minha suíte local não reproduzia o CI.** Passei 5942 testes aqui e o CI caiu
+em 12, porque o CI exporta `MONGODB_URI` de placeholder e eu não. A suíte agora foi rodada com o
+mesmo bloco `env:` do `ci.yml`, e é assim que ela deve ser rodada quando a mudança toca banco.
+
+**Gates:** `tsc` limpo, `eslint --quiet` 0, dois YAML validados, suíte cheia verde **com o `env:` do
+CI reproduzido** (5944 testes), +19 testes novos.
 O de modelo-por-fase (`aura-harness.pro.test.ts`) é o que faltava desde sempre: **nenhum teste
 olhava qual modelo cada fase pedia**, e é só por isso que um sanduíche inexistente passou meses
 documentado como existente. A guarda contra passe no vácuo desse arquivo corrigiu o próprio

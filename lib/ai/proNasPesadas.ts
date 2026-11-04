@@ -55,6 +55,14 @@ export function contaDaDireitoAoPro(u: ContaParaPro | null | undefined): boolean
 
 // ───────── memo curto: a pergunta é por TURNO, e o plano não muda de minuto em minuto ─────────
 const TTL_MS = 60_000;
+/**
+ * PRAZO DA CONSULTA. Escolher modelo é decisão ACESSÓRIA: se o banco não responde rápido, a resposta
+ * certa é "Flash" e seguir, não esperar. Sem este prazo o turno TRAVAVA — medido: com o Mongo
+ * inalcançável, cada turno de chat parava 5 s no DNS antes de falhar fechado, e foi assim que o CI
+ * pegou o defeito (12 testes de `runChatTurn`, `getaddrinfo ENOTFOUND placeholder`). Em produção
+ * seria pior que teste vermelho: Mongo lento atrasaria TODA resposta antes da 1ª palavra.
+ */
+const PRAZO_MS = 250;
 const TETO_MEMO = 500;                      // mapa sem teto é vazamento; 500 contas ativas por processo basta
 const memo = new Map<string, { vale: boolean; em: number }>();
 
@@ -75,19 +83,37 @@ export async function podeProNasPesadas(
   const agora = Date.now();
   const guardado = memo.get(userId);
   if (guardado && agora - guardado.em < TTL_MS) return guardado.vale;
-  let vale = false;
-  try {
-    const [{ default: connectToDatabase }, { default: User }] = await Promise.all([
-      import("@/src/lib/db"),
-      import("@/src/models/User"),
-    ]);
-    await connectToDatabase();
-    const u = await User.findById(userId).select("plan plusUntil trialGranted deepThinkEnabled").lean();
-    vale = contaDaDireitoAoPro(u as ContaParaPro | null);
-  } catch {
-    vale = false;   // falha FECHADO: sem resposta do banco, o caminho é o barato
-  }
-  if (memo.size >= TETO_MEMO) memo.clear();
-  memo.set(userId, { vale, em: agora });
-  return vale;
+
+  // O `.catch` aqui é OBRIGATÓRIO e não é zelo: a promessa perdedora da corrida continua viva, e sem
+  // tratamento a rejeição dela vira unhandledRejection — foi o que apareceu no CI junto das falhas
+  // ("11 unhandledRejection listeners added to [process]").
+  const consulta = lerConta(userId)
+    .then((u) => contaDaDireitoAoPro(u))
+    .catch(() => false)
+    // GUARDA A RESPOSTA ATRASADA: se a consulta perdeu a corrida mas respondeu depois, o próximo
+    // turno já encontra o memo pronto, em vez de pagar o prazo outra vez.
+    .then((v) => { guardar(userId, v); return v; });
+
+  // o resultado do TIMEOUT não vai pro memo: um soluço de 250 ms não deve colar Flash por 60 s
+  return Promise.race([consulta, atraso(PRAZO_MS).then(() => false)]);
+}
+
+/** a leitura em si, isolada pra a corrida acima ficar legível */
+async function lerConta(userId: string): Promise<ContaParaPro | null> {
+  const [{ default: connectToDatabase }, { default: User }] = await Promise.all([
+    import("@/src/lib/db"),
+    import("@/src/models/User"),
+  ]);
+  await connectToDatabase();
+  return (await User.findById(userId).select("plan plusUntil trialGranted deepThinkEnabled").lean()) as ContaParaPro | null;
+}
+
+function guardar(userId: string, vale: boolean): void {
+  if (memo.size >= TETO_MEMO) memo.clear();   // mapa sem teto é vazamento
+  memo.set(userId, { vale, em: Date.now() });
+}
+
+/** espera que NÃO segura o processo: sem o `unref`, o timer atrasaria a saída do vitest e do worker */
+function atraso(ms: number): Promise<void> {
+  return new Promise((r) => { const t = setTimeout(r, ms); (t as unknown as { unref?: () => void }).unref?.(); });
 }
