@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { criarNaveCoworking } from "@/components/cyber/NaveCoworking";
-import { criarCascoCyberpunk } from "@/components/cyber/CascoCyberpunk";
+import { criarCascoNave } from "@/components/cyber/CascoNave";
 import { carregarModeloAvatar, criarAvatarLuz, type AvatarLuzHandle } from "@/components/cyber/AvatarLuz";
 import { glowTex } from "@/components/cyber/CenaCosmica";
 import { AREAS, CHILL, NAVE_COWORK, moveisDaNave, type IdArea } from "@/lib/cyber/naveCoworking";
@@ -42,7 +42,7 @@ export default function Coworking() {
     const ir = (v: keyof typeof VISTAS) => { const [p, a] = VISTAS[v]; cam.position.set(...p); oc.target.set(...a); oc.update(); };
     ir("geral");
     const nave = criarNaveCoworking({ low: false, teto: false }); cena.add(nave.group);
-    const casco = criarCascoCyberpunk({ low: false }); cena.add(casco.group); casco.group.visible = false;
+    const casco = criarCascoNave({ low: false }); cena.add(casco.group); casco.group.visible = false;
     api.current = { ir, teto: (v) => nave.mostrarTeto(v), casco: (v) => { casco.group.visible = v; nave.mostrarTeto(v); } };
     // gente: sentada nas mesas do coworking e na Lyra, no chill-out, no café e uma de pé no átrio
     const starTex = glowTex("rgba(255,255,255,1)", "rgba(190,215,255,0.5)"), avs: { av: AvatarLuzHandle; x: number; z: number; rumo: number; senta: boolean }[] = [];
