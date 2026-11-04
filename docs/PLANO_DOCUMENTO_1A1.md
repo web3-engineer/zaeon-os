@@ -413,3 +413,24 @@ texto novo no prompt. Com teste.
 
 **🟡 Não verificado:** que o modelo de fato produza a lista ao receber o bloco. O bloco está no
 system e o `nucleo` chega à bolha — as duas pontas estão provadas; o meio depende de um turno real.
+
+### D7d · A rota que ficou de fora da D7
+
+Um relato de usuária (04/11, depois do deploy da D7) disse que o erro continuava. Procurando por
+onde, apareceu uma **terceira porta de criação de documento que a D7 não cobriu**:
+`POST /api/tcc { topic }`.
+
+Ela repetia o defeito inteiro, só com outro número: cortava o pedido em **300** caracteres, usava
+isso como **título**, montava sempre o `ESQUELETO_TCC` e chamava `gerarTccEmBackground` **sem
+briefing**. A D7 consertou as duas portas do CHAT (`tccDoTurno` e `trabalhoDoTurno`); esta é a porta
+da API, e eu não a procurei.
+
+Agora ela usa o mesmo `partidaDoPedido` do chat, e o teto passou a ser o do briefing.
+
+**Honestidade sobre o diagnóstico:** `tccApi.criar` não é chamado por nenhuma tela que eu tenha
+encontrado, então **provavelmente não é a porta que a usuária usou**. Consertei porque é defeito
+real e meu, não porque esteja provado que era a causa dela. O que explica o relato com mais força é
+o relógio: o deploy da D7 (#552) terminou **15:44**, e um pedido feito antes disso pegou o código
+antigo.
+
+**Gates:** 5890 testes (629 arquivos, 0 falhas), `tsc` limpo, `eslint` 0.

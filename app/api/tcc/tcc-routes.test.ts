@@ -15,7 +15,9 @@ vi.mock("@/lib/tcc/store", async (orig) => ({
   desfazerRevisao: m.desfazer,
 }));
 vi.mock("@/lib/tcc/gerar", () => ({ gerarTccEmBackground: m.gerar }));
-vi.mock("@/lib/tcc/turno", () => ({ fixarCardTcc: m.card }));
+// `partidaDoPedido` é a lógica REAL (pura): mocká-la esconderia justamente o que a rota passou a
+// fazer — título provisório e seções do pedido num briefing. Só o `fixarCardTcc` (banco) é dublê.
+vi.mock("@/lib/tcc/turno", async (orig) => ({ ...(await orig<any>()), fixarCardTcc: m.card }));
 vi.mock("@/lib/tcc/rigor", async (orig) => ({ ...(await orig<any>()), lapidarComRigor: m.lapidar }));
 
 import { GET, POST } from "@/app/api/tcc/route";
@@ -86,7 +88,9 @@ describe("GET/POST /api/tcc", () => {
     expect(r.status).toBe(202);
     expect(await r.json()).toEqual({ workId: "novo", status: "gerando" });
     expect(m.criar.mock.calls[0][0]).toMatchObject({ scopeId: "aba1", titulo: "energia solar", status: "gerando", origem: "estudos" });
-    expect(m.gerar).toHaveBeenCalledWith("novo", "u1", "energia solar");
+    // tema simples: briefing INERTE (4º arg é o `gen`, 5º o briefing) — a rota segue como antes
+    expect(m.gerar).toHaveBeenCalledWith("novo", "u1", "energia solar", undefined,
+      expect.objectContaining({ ehBriefing: false, secoes: [], referencias: [] }));
     expect(m.card).toHaveBeenCalled();
   });
   it("POST com TCC já na conversa devolve o existente (sem duplicar nem gastar modelo)", async () => {
@@ -97,6 +101,33 @@ describe("GET/POST /api/tcc", () => {
     expect(m.criar).not.toHaveBeenCalled();
     expect(m.gerar).not.toHaveBeenCalled();
   });
+  it("D7 · BRIEFING pela rota: título provisório, seções do pedido e nada de corte em 300", async () => {
+    // esta rota ficou de fora da D7 e repetia o defeito: cortava em 300, usava isso como TÍTULO
+    // e gerava com o esqueleto ABNT, ignorando o plano e as referências do pedido.
+    m.criar.mockResolvedValueOnce({ id: "w9", titulo: "Documento em preparação", secoes: [] });
+    const pedido = [
+      "Você é um redator acadêmico sênior. Redija a primeira versão de um artigo científico",
+      "seguindo as diretrizes metodológicas de avaliação de modelos de linguagem.".padEnd(320, " "),
+      "",
+      "REFERÊNCIAS OBRIGATÓRIAS (limite-se estritamente a estas):",
+      "- Wang et al. (EMNLP 2024), Factuality of Large Language Models",
+      "",
+      "- Seção 1: Introdução e Justificativa",
+      "- Seção 2: Definições Operacionais",
+    ].join("\n");
+    await POST(req("/api/tcc", { topic: pedido, scopeId: "aba1" }, "POST"));
+    const criado = m.criar.mock.calls.at(-1)![0];
+    expect(criado.titulo).toBe("Documento em preparação");          // não o preâmbulo cortado
+    expect(criado.titulo.length).toBeLessThan(60);
+    expect(criado.secoes.map((x: any) => x.titulo)).toEqual([
+      "INTRODUÇÃO E JUSTIFICATIVA", "DEFINIÇÕES OPERACIONAIS", "REFERÊNCIAS",
+    ]);
+    const brief = m.gerar.mock.calls.at(-1)![4];
+    expect(brief.ehBriefing).toBe(true);
+    expect(brief.referencias).toHaveLength(1);
+    expect(brief.instrucoes.length).toBeGreaterThan(300);            // o teto de 300 caiu
+  });
+
   it("POST sem tema = 400; sem scope cria solto (sem card)", async () => {
     expect((await POST(req("/api/tcc", { topic: " " }, "POST"))).status).toBe(400);
     await POST(req("/api/tcc", { topic: "x", scopeId: "a b<" }, "POST"));
