@@ -158,6 +158,29 @@ const MAX_TENTATIVAS = 5;
  * operações são por seção, então duas salas em seções diferentes nunca se apagam; na MESMA
  * seção vale a última (e a anterior fica no histórico).
  */
+/**
+ * AVISO de mudança para quem está com o documento aberto — a colaboração em tempo real.
+ *
+ * É um EMPURRÃO, não um payload: vai só `{ workId, rev }`, e quem recebe RELÊ pela rota
+ * autenticada. Mandar o texto no evento seria mais rápido e estaria errado por dois motivos. O
+ * canal do Pusher NÃO passa por `papelNoWork`, então o conteúdo do trabalho vazaria para quem
+ * assinasse `tcc-<id>` — e com isto o canal não entrega nada a quem não poderia ler de qualquer
+ * forma. E payload empurrado pode divergir do documento real, que é a mesma razão pela qual o
+ * modelo nunca digita o número do gráfico: o desenho vem de quem tem o dado.
+ *
+ * Best-effort de ponta a ponta: sem env de Pusher nada acontece, e o poll do painel (6 s) continua
+ * como rede. Falha aqui nunca derruba a escrita — o documento JÁ está salvo quando isto roda.
+ *
+ * Import tardio de propósito: `lib/collab/realtime` carrega o pacote `pusher` (Node) no topo, e
+ * este módulo é importado por testes puros que não têm o que fazer com ele.
+ */
+async function avisarMudanca(workId: string, rev: number): Promise<void> {
+  try {
+    const { triggerSafe } = await import("@/lib/collab/realtime");
+    await triggerSafe(`tcc-${workId}`, "doc-update", { workId, rev, ts: Date.now() });
+  } catch { /* o aviso é opcional; a escrita já aconteceu */ }
+}
+
 export async function aplicarNoTcc(
   id: string, userId: string, ops: OpSecao[] | ((t: TccView) => OpSecao[]), origem: Origem,
   extra?: { op?: string; nota?: string; status?: TccStatus; titulo?: string; semHistorico?: (e: Efeito, i: number) => boolean },
@@ -179,6 +202,7 @@ export async function aplicarNoTcc(
     if (w.count === 1) {
       const registrar = extra?.semHistorico ? r.efeitos.filter((e, i) => !extra.semHistorico!(e, i)) : r.efeitos;
       await gravarRevisoes(id, userId, origem, registrar, extra).catch((e) => console.warn("[tcc] histórico falhou:", e?.message ?? e));
+      await avisarMudanca(id, atual.rev + 1);
       return {
         ok: true,
         tcc: { ...atual, secoes: r.secoes, content, titulo, rev: atual.rev + 1, status: extra?.status ?? atual.status },
@@ -216,6 +240,9 @@ export async function sugerirNoTcc(id: string, userId: string, sugestoes: (OpSec
     });
     revisoes.push(revisaoView(row));
   }
+  // sugestão não muda o documento, mas MUDA o painel (a aba "Sugestões"): quem está com o trabalho
+  // aberto precisa ver a sugestão chegar sem esperar o poll.
+  if (revisoes.length) await avisarMudanca(id, atual.rev);
   return { ok: true, revisoes };
 }
 

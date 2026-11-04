@@ -14,6 +14,10 @@ export const TCC_CROSS_ON = process.env.NEXT_PUBLIC_TCC_CROSS === "1" || process
 
 export type TrabalhoResumo = { id: string; titulo: string; status: string; tipo: string };
 
+export type PapelConvite = "editor" | "leitor";
+/** `escopo: "conversa"` é o aviso do servidor de que o papel vale para TODOS os trabalhos da conversa. */
+export type Convite = { url: string; token: string; papel: PapelConvite; escopo: "conversa" };
+
 /** Evento que avisa as telas abertas que o TCC mudou (aceite, sugestão nova, edição). */
 export const EVT_TCC_MUDOU = "zaeon:tcc:mudou";
 export const avisarTccMudou = (workId: string) => {
@@ -46,6 +50,16 @@ export const tccApi = {
   desfazer: (id: string, revId: string) => post(`/api/tcc/${id}/history`, { revId }).then((r) => json<{ tcc: TccDoc }>(r)),
   revisar: (id: string, pedido: string, secaoId?: string) =>
     post(`/api/tcc/${id}/revisar`, { pedido, secaoId }).then((r) => json<{ texto: string; sugestoes: Revisao[]; descartadas: number }>(r)),
+  /**
+   * Link de convite da CONVERSA a que este trabalho pertence (só o dono). O `escopo` volta do
+   * servidor de propósito: a UI mostra o que o link concede em vez de supor — ver o cabeçalho de
+   * lib/tcc/compartilhar.ts.
+   */
+  compartilhar: (id: string, papel: PapelConvite = "editor") =>
+    post(`/api/tcc/${id}/share`, { papel }).then((r) => json<Convite>(r)),
+  /** Revoga TODOS os links já enviados. Quem já entrou continua membro (tirar é outra ação). */
+  revogarConvites: (id: string) =>
+    fetch(`/api/tcc/${id}/share`, { method: "DELETE" }).then((r) => json<{ ok: true }>(r)),
 };
 
 export const ROTULO_ORIGEM: Record<string, string> = { estudos: "Sala de Estudos", pesquisa: "Sala de Pesquisa", aluno: "Você" };
