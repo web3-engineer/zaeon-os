@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
-import { ConvitePainel } from "./TccPanel";
+import ConvitePainel from "./ConvitePainel";
 import type { Convite } from "@/lib/tcc/client";
 
 const base: Convite = { url: "/estudo/abc?convite=tok", token: "tok", papel: "editor", escopo: "conversa" };

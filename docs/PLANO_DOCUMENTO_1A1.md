@@ -473,3 +473,44 @@ sistema. Três portas de criação (`tccDoTurno`, `trabalhoDoTurno`, `POST /api/
 decidindo antes delas; eu tinha mapeado as portas e não o roteador.
 
 **Gates:** 5895 testes (629 arquivos, 0 falhas), `tsc` limpo, `eslint` 0.
+
+### D8 · A porta que faltava: compartilhar pela CONVERSA
+
+Pergunta do dono, depois de a D6 estar no ar: *"a feature de compartilhar as conversas não subiu?"*
+
+**Tinha subido** (deploy #551, 15:04) — mas a pergunta expôs uma incoerência de desenho que é minha:
+o convite da D6 **concede papel na conversa inteira** e a **única porta para ele estava dentro do
+painel do documento**. Na prática:
+
+| situação | tinha como convidar? |
+|---|---|
+| conversa com documento aberto, sendo dono | ✅ botão no painel |
+| conversa **sem** documento | ❌ **nenhuma porta** |
+| quem procura "compartilhar" na conversa | ❌ não encontra |
+
+Eu entreguei o que foi pedido na hora (*"em cada conversa do chat que tenha um documento…"*), e o
+resultado ficou torto: a concessão é da conversa, a porta era do documento.
+
+**O que entrou:** `POST`/`DELETE /api/conversa/share` e um botão **Compartilhar** no slot de ações
+da barra de abas — o mesmo lugar do zoom e do mapa, visível com ou sem documento.
+
+**O trilho é o mesmo**, e isso importa: um convite feito pela conversa e um feito pelo documento
+são a MESMA coisa (`gerarLink` + `CartolinaMembro` + `papelDe`). Não existem dois sistemas de
+permissão, e o diálogo de convite virou arquivo próprio (`components/tcc/ConvitePainel.tsx`) em vez
+de ser copiado — duas cópias da frase que explica o escopo seria uma delas envelhecendo calada.
+
+**🔴 O cuidado que esta porta precisou e a do documento não:** lá a autorização vinha do próprio
+trabalho. Aqui só existe o `scopeId`, e procurar o board por `{ ownerId: eu, scopeId }` seria um
+buraco — quem é MEMBRO da conversa de outra pessoa não acharia o board dela e **criaria um segundo
+board do mesmo escopo sob o próprio id**, virando "dono" de uma conversa alheia. Por isso a busca é
+por `scopeId` primeiro, e board de outro dono é **recusa, não criação**. Tem teste, e é o teste que
+eu olharia primeiro numa revisão.
+
+O resolvedor do board foi extraído para `lib/cartolina/conversa-share.ts` e as duas portas o
+importam: duplicá-lo arriscaria consertar um e esquecer o outro — e é exatamente nele que mora a
+armadilha da surface (`"estudos"`, não `"meus-estudos"`).
+
+**Gates:** 5904 testes (630 arquivos, 0 falhas), `tsc` limpo, `eslint` 0.
+
+**🟡 Não verificado:** a tela. Sem banco e sem sessão aqui, provei a lógica e a autorização, não o
+desenho do botão na barra.
