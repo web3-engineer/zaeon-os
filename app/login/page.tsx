@@ -8,15 +8,15 @@
  * "Criar conta" não sente que trocou de produto.
  *
  * Dois caminhos:
- *   1) E-MAIL, sem senha. Não depende de OAuth, de DNS nem de servidor de e-mail — é o
- *      caminho que funciona sempre. Conta nova nasce no mesmo envio.
- *   2) GOOGLE, pra quem prefere. Obrigatório para contas de fundador/admin: entrada por
- *      e-mail é sem senha, e admin por ali seria porta destrancada.
+ *   1) E-MAIL, sem senha: a pessoa recebe um código de 6 números e entra com ele (#686). Antes
+ *      bastava o e-mail, e quem sabia o e-mail de alguém entrava na conta dela.
+ *   2) GOOGLE, pra quem prefere. Obrigatório para contas de fundador/admin.
  *
  * Nos dois, a carteira custodial nasce junto (src/lib/auth.ts → provisionarWallet).
  */
 
 import { Suspense, useEffect, useState, type FormEvent } from "react";
+import { useEntrarComCodigo } from "@/lib/auth/useEntrarComCodigo";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
@@ -36,16 +36,20 @@ const ERROS: Record<string, string> = {
   default: "Deu ruim no login. Tenta de novo.",
 };
 
+const CAMPO = `w-full px-5 py-3.5 rounded-full text-[13px] font-medium outline-none transition-colors
+  text-slate-900 dark:text-white bg-white/60 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10
+  placeholder:text-slate-400 dark:placeholder:text-white/35 focus:border-cyan-400/60 dark:focus:border-cyan-400/40`;
+
 function LoginInner() {
   const router = useRouter();
   const params = useSearchParams();
   const { status } = useSession();
 
-  const [email, setEmail] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [indo, setIndo] = useState<"email" | "google" | null>(null);
 
   const destino = params.get("callbackUrl") || "/workstation";
+  const E = useEntrarComCodigo(() => router.replace(destino), params.get("email") ?? "");
 
   useEffect(() => {
     const e = params.get("error");
@@ -56,23 +60,10 @@ function LoginInner() {
     if (status === "authenticated") router.replace(destino);
   }, [status, destino, router]);
 
-  const entrarPorEmail = async (ev: FormEvent) => {
+  const entrarPorEmail = (ev: FormEvent) => {
     ev.preventDefault();
-    const alvo = email.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(alvo)) {
-      setErro("Esse e-mail não parece completo. Exemplo: nome@dominio.com");
-      return;
-    }
     setErro(null);
-    setIndo("email");
-    // redirect:false pra mostrar o erro aqui mesmo, sem jogar a pessoa fora da página.
-    const r = await signIn("credentials", { email: alvo, redirect: false });
-    if (r?.error) {
-      setErro(ERROS.CredentialsSignin);
-      setIndo(null);
-      return;
-    }
-    router.replace(destino);
+    void (E.etapa === "email" ? E.mandar() : E.entrar());
   };
 
   const entrarPorGoogle = async () => {
@@ -80,7 +71,8 @@ function LoginInner() {
     await signIn("google", { callbackUrl: destino });
   };
 
-  const ocupado = indo !== null || status === "loading";
+  const ocupado = indo !== null || E.ocupado || status === "loading";
+  const aviso = E.erro ?? erro;
 
   return (
     <div className="relative min-h-screen flex items-center justify-center p-4 overflow-hidden bg-white dark:bg-[#030014]">
@@ -102,41 +94,63 @@ function LoginInner() {
             <div>
               <h1 className="text-xl font-black text-slate-900 dark:text-white">Criar conta na Zaeon</h1>
               <p className="text-[13px] text-slate-700 dark:text-white/80 mt-1 leading-relaxed">
-                Seu e-mail e pronto. Sem senha, sem formulário, sem espera.
+                Seu e-mail e um código que chega nele. Sem senha, sem formulário.
               </p>
             </div>
           </div>
 
-          {erro && (
-            <p className="text-[12px] font-bold text-red-600 dark:text-red-300 bg-red-500/10 border border-red-500/25 rounded-2xl px-4 py-3 leading-relaxed">
-              {erro}
+          {aviso && (
+            <p role="alert" className="text-[12px] font-bold text-red-600 dark:text-red-300 bg-red-500/10 border border-red-500/25 rounded-2xl px-4 py-3 leading-relaxed">
+              {aviso}
             </p>
           )}
 
           <form onSubmit={entrarPorEmail} className="flex flex-col gap-3">
-            <input
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              autoFocus
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="voce@universidade.edu.br"
-              aria-label="Seu e-mail"
-              className="w-full px-5 py-3.5 rounded-full text-[13px] font-medium outline-none transition-colors
-                         text-slate-900 dark:text-white
-                         bg-white/60 dark:bg-white/[0.04]
-                         border border-slate-200 dark:border-white/10
-                         placeholder:text-slate-400 dark:placeholder:text-white/35
-                         focus:border-cyan-400/60 dark:focus:border-cyan-400/40"
-            />
+            {E.etapa === "email" ? (
+              <input
+                id="login-email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                autoFocus
+                value={E.email}
+                onChange={(e) => E.setEmail(e.target.value)}
+                placeholder="voce@universidade.edu.br"
+                aria-label="Seu e-mail"
+                className={CAMPO}
+              />
+            ) : (<>
+              <p className="text-[12.5px] text-slate-700 dark:text-white/80 leading-relaxed text-center">
+                Mandamos um código de 6 números para <b>{E.email}</b>. Ele vale por 10 minutos.
+              </p>
+              <input
+                id="login-codigo"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                autoFocus
+                value={E.codigo}
+                onChange={(e) => E.setCodigo(e.target.value)}
+                placeholder="000000"
+                aria-label="Código do e-mail"
+                className={`${CAMPO} text-center tracking-[0.5em] text-[18px] font-bold`}
+              />
+            </>)}
             <button
               type="submit"
-              disabled={ocupado}
+              disabled={ocupado || (E.etapa === "codigo" && E.codigo.length !== 6)}
               className="w-full bg-black dark:bg-white text-white dark:text-black text-[13px] font-bold py-3.5 rounded-full hover:scale-[1.02] transition-transform shadow-md disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
             >
-              {indo === "email" ? "Entrando…" : "Continuar com e-mail"}
+              {E.etapa === "email" ? (E.ocupado ? "Mandando o código…" : "Receber código no e-mail") : (E.ocupado ? "Entrando…" : "Entrar")}
             </button>
+            {E.etapa === "codigo" && (
+              <div className="flex items-center justify-between text-[12px] text-slate-600 dark:text-white/60">
+                <button type="button" onClick={E.trocarEmail} className="underline underline-offset-2 hover:text-slate-900 dark:hover:text-white">Trocar e-mail</button>
+                <button type="button" onClick={() => void E.mandar()} disabled={E.espera > 0 || E.ocupado} className="underline underline-offset-2 hover:text-slate-900 dark:hover:text-white disabled:no-underline disabled:opacity-60">
+                  {E.espera > 0 ? `Reenviar em ${E.espera} s` : "Reenviar código"}
+                </button>
+              </div>
+            )}
           </form>
 
           <div className="flex items-center gap-3">
@@ -159,7 +173,7 @@ function LoginInner() {
           </button>
 
           <p className="text-[11px] text-slate-500 dark:text-white/45 leading-relaxed text-center">
-            Ao entrar, sua carteira digital nasce junto — sem senha, sem extensão, sem taxa.
+            Ao entrar, sua carteira digital nasce junto, sem senha, sem extensão e sem taxa.
             É nela que ficam as conquistas que você emitir na Zaeon.
           </p>
         </div>
