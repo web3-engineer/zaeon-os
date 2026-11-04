@@ -434,3 +434,42 @@ o relógio: o deploy da D7 (#552) terminou **15:44**, e um pedido feito antes di
 antigo.
 
 **Gates:** 5890 testes (629 arquivos, 0 falhas), `tsc` limpo, `eslint` 0.
+
+### D7e · A causa real do relato: briefing com documento já aberto virava EDIÇÃO
+
+A D7 estava no ar (deploy #552, 15:44) e o relato da usuária é de DEPOIS disso. Então a correção
+não cobria o caso dela, e o diagnóstico anterior (relógio) estava errado.
+
+**A causa, medida:**
+
+```
+>>> SEM documento aberto  → novo? true     ← o caminho que a D7 consertou
+>>> COM documento aberto  → novo? false    ← o caminho dela
+```
+
+`pedeNovoTrabalho` decide entre criar um trabalho e editar o que está aberto. O heurístico
+`PARTE_RE` procura "introducao", "metodologia", "referencia", "secao", "resultado", "justificativa"
+— porque foi escrito para *"melhore a introdução"*, onde o substantivo É o alvo da edição. **Num
+briefing essas mesmas palavras são os NOMES DAS SEÇÕES PEDIDAS.** Resultado: todo pedido elaborado
+casava com `PARTE_RE` e era roteado como edição.
+
+E o caminho de edição não passa pelo gerador: aplica `answer.work.sections` sobre o documento
+existente. O briefing nunca chega — nem as seções do pedido, nem as referências obrigatórias, nem
+os marcadores. **A D7 consertou a criação, e quem já tinha um documento na conversa nunca passava
+por ela.** Como a usuária tinha tentado antes, a tentativa anterior deixou um documento aberto — e
+foi ele que fez a segunda tentativa cair no caminho errado.
+
+**O conserto:** quem traz plano de seções (≥2) está pedindo um DOCUMENTO, não um ajuste — a não ser
+que diga com todas as letras que é pra mexer no que já existe (`EDICAO_EXPLICITA`, verbo de edição
+nos primeiros 80 caracteres, apontando para trabalho/documento/artigo/seção).
+
+Controles com teste, nos dois sentidos: "melhore a introdução", "reescreva a seção 2" e "continue o
+trabalho" seguem edição; "Atualize o artigo com esta estrutura: Seção 1…" segue edição; e um pedido
+longo SEM plano de seções não vira trabalho novo só por ser longo.
+
+**A lição desta série, outra vez:** a D7 foi verificada no caminho que eu escolhi olhar. O caminho
+que a usuária usou — conversa que já tinha documento — só apareceu porque alguém de fora usou o
+sistema. Três portas de criação (`tccDoTurno`, `trabalhoDoTurno`, `POST /api/tcc`) e um roteador
+decidindo antes delas; eu tinha mapeado as portas e não o roteador.
+
+**Gates:** 5895 testes (629 arquivos, 0 falhas), `tsc` limpo, `eslint` 0.

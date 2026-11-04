@@ -404,3 +404,42 @@ describe("D7 · partidaDoPedido — o pedido que quebrou em produção", () => {
     expect(brief.ehBriefing).toBe(false);
   });
 });
+
+describe("D7e · briefing com plano próprio, COM documento já aberto na conversa", () => {
+  // Relato de usuária depois da D7 já no ar: o erro continuava. Causa: ela já tinha um documento
+  // na conversa (da tentativa anterior), e `PARTE_RE` casa com "introducao/metodologia/referencia/
+  // secao" — que no briefing são NOMES DAS SEÇÕES, não alvo de edição. Tudo virava edição, e o
+  // caminho de edição não passa pelo gerador: sem briefing, sem referências, sem marcadores.
+  const ABERTO = { titulo: "Trabalho anterior" };
+  const BRIEFING = [
+    "Você é um redator acadêmico sênior. Redija a primeira versão de um artigo científico",
+    "em conformidade com as diretrizes metodológicas de avaliação de modelos de linguagem.",
+    "- Seção 1: Introdução e Justificativa",
+    "- Seção 2: Definições Operacionais",
+    "- Seção 3: Metodologia de Avaliação",
+  ].join("\n");
+
+  it("com documento aberto, o briefing pede um trabalho NOVO (antes: virava edição)", () => {
+    expect(pedeNovoTrabalho(BRIEFING, ABERTO)).toBe(true);
+  });
+
+  it("e sem documento aberto segue igual", () => {
+    expect(pedeNovoTrabalho(BRIEFING, null)).toBe(true);
+  });
+
+  it("CONTROLE: pedido curto de edição continua edição", () => {
+    expect(pedeNovoTrabalho("melhore a introdução", ABERTO)).toBe(false);
+    expect(pedeNovoTrabalho("reescreva a seção 2", ABERTO)).toBe(false);
+    expect(pedeNovoTrabalho("continue o trabalho", ABERTO)).toBe(false);
+  });
+
+  it("CONTROLE: briefing que DIZ que é pra mexer no aberto continua edição", () => {
+    const edicao = `Atualize o artigo com esta estrutura, por favor:\n${BRIEFING}`;
+    expect(pedeNovoTrabalho(edicao, ABERTO)).toBe(false);
+  });
+
+  it("CONTROLE: pedido longo SEM plano de seções não vira trabalho novo por tamanho", () => {
+    const longo = `Revise o documento inteiro. ${"detalhe importante. ".repeat(30)}`;
+    expect(pedeNovoTrabalho(longo, ABERTO)).toBe(false);
+  });
+});
