@@ -6,6 +6,8 @@
  * A coleção (`login_codes`) é do Mongo direto, como os `users` do login — não precisa de `prisma db push`.
  */
 import { createHash, randomInt } from "crypto";
+import { emailValido } from "./emailLogin";
+export { emailValido, limparEmail } from "./emailLogin";
 
 export const VALIDADE_MS = 10 * 60_000;
 export const ESPERA_REENVIO_MS = 60_000;
@@ -20,8 +22,6 @@ export type ColecaoCodigos = {
   updateOne(f: Record<string, unknown>, u: Record<string, unknown>, o?: { upsert?: boolean }): Promise<{ modifiedCount: number }>;
 };
 
-export const emailValido = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
-export const limparEmail = (e: unknown) => (typeof e === "string" ? e.trim().toLowerCase() : "");
 
 export const resumoDoCodigo = (email: string, codigo: string) =>
   createHash("sha256").update(`${process.env.NEXTAUTH_SECRET ?? ""}:login:${email}:${codigo}`).digest("hex");

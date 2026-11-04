@@ -5,7 +5,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
-import { emailValido, limparEmail } from "./codigoLogin";
+import { emailValido, limparEmail } from "./emailLogin";
 
 export type Etapa = "email" | "codigo";
 
