@@ -148,3 +148,94 @@ editor renderizando, e o `abnt-service` aceitando imagem. É projeto próprio, n
 3. **Autoria acadêmica.** Quanto mais o documento se escreve sozinho com fonte, mais ele parece
    pronto. O ⟨sem fonte⟩ existe para o aluno ver o que falta; não quero que ele desapareça cedo
    demais e produza uma falsa sensação de trabalho concluído.
+
+---
+
+## D6 · Convidar colaborador no documento (2026-11-04)
+
+Pedido do dono: *"adicione, em cada conversa do chat que tenha um documento, a opção de convidar
+colaborador (para cada documento)… o colaborador pode interagir e alterar o documento em tempo
+real. Acho que essa função existia antes mas foi tirada."*
+
+**A memória dele estava certa, e por pouco: a função existe quase inteira — o que não existia era a
+porta.** Quarta vez nesta série que auditar antes de construir muda o trabalho (depois do Leitor, do
+módulo MCP e do trilho de citação).
+
+| peça | onde já estava |
+|---|---|
+| papéis `dono/editor/leitor` e `podeEscrever` | `lib/cartolina/access.ts` — puro, "testado exaustivamente" |
+| papel do convidado **no documento** | `papelNoWork` (lib/tcc/store) — lê o `CartolinaMembro` da conversa |
+| autorização nos **três** caminhos de escrita do documento | `lib/tcc/store.ts` (todas as escritas afunilam em `aplicarNoTcc`) |
+| gerar link assinado e **revogar todos** (troca de sal, sem tabela de tokens) | `POST`/`DELETE /api/cartolina/:id/share` |
+| tela que recebe o convite, entra e limpa o token da URL | `app/estudo/[id]/page.tsx` |
+| painel do documento respeitando papel | `TccPanel` — leitor lê "sem edição"; poll de 6 s realçando o que mudou; `rev` impede que duas edições se apaguem |
+
+**Nenhuma UI chamava o `share`.** O link só saía por `curl`. Isto foi a entrega: o botão, a ponte
+que ele precisa, e o tempo real.
+
+### A armadilha que eu quase caí: existe um SEGUNDO sistema de colaboração
+
+`CollabDoc` + `components/lounge/CollabModule.tsx` são um editor colaborativo completo, com Pusher,
+presença e convite — e o caminho óbvio seria ligar o documento do chat nele. **Seria errado**, e o
+próprio schema diz por quê: *"Cópia editável compartilhada: o original fica intacto. Edição em grupo
+acontece só no Lounge."* O colaborador editaria uma CÓPIA, e nada voltaria para o documento — ou
+seja, quebraria em silêncio o 1:1 que a série D inteira construiu. O trilho certo era o da
+cartolina, que escreve no documento de verdade.
+
+**Segunda armadilha, pega a tempo:** `SURFACE_ESTUDOS` vale `"meus-estudos"`, mas a surface da
+cartolina é `"estudos"` (`CARTOLINA_SURFACES`) — e é essa que o `papelNoWork` procura. Ligar a
+constante errada geraria um convite que nunca concede nada: link válido, pessoa entrando, e
+"sem acesso" na cara dela.
+
+### As duas decisões do dono
+
+1. **Escopo: por conversa, botão em cada documento.** O trilho concede papel pela cartolina, e uma
+   conversa tem vários trabalhos — então o convidado edita todos, inclusive os futuros. Alternativa
+   (membro por `ResearchWork`) foi recusada, e o cabeçalho do `store.ts` já defendia isso: *"um
+   modelo de membros só pro TCC divergiria do da cartolina"*. O `access.ts` avisa que existe UM
+   ponto que decide acesso; duplicá-lo por documento criaria o segundo.
+   **Consequência obrigatória:** o botão fica DENTRO de um documento, então "convidar para este
+   documento" é a leitura natural — e é falsa. Por isso o `escopo: "conversa"` vem do SERVIDOR e a
+   frase é montada a partir dele, com teste próprio (`ConvitePainel.test.tsx`). Botão que concede
+   mais do que diz é a mentira da F0 por outra porta.
+2. **Tempo real: Pusher, com o poll como rede.** O servidor empurra `doc-update` em `tcc-<workId>`
+   a cada escrita; o cliente só RELÊ. O poll de 6 s continua: sem env de Pusher, ou se o socket
+   cair, a tela atualiza devagar em vez de congelar.
+
+**O evento é um EMPURRÃO, não um payload** — e isso é segurança, não estilo. O canal do Pusher não
+passa por `papelNoWork`: mandar o texto do trabalho no evento o entregaria a quem assinasse
+`tcc-<id>`. Indo só `{ workId, rev }`, assinar o canal não rende nada a quem não poderia ler pela
+rota autenticada. É a mesma doutrina do gráfico — quem tem o dado é quem entrega o dado.
+
+Como todas as escritas afunilam em `aplicarNoTcc`, **um** ponto de aviso cobre tudo: a IA escrevendo
+seção por seção, a edição do aluno, sugestão aceita, desfazer e conteúdo manual. Quem está com o
+documento aberto vê o trabalho crescer ao vivo, não só a edição do colega.
+
+### O que entrou
+
+- `lib/tcc/compartilhar.ts` — a ponte: autoriza pelo documento (`podeAdministrar`), resolve a
+  cartolina da conversa e delega ao trilho existente. **Cria a cartolina se faltar**, e isso é
+  obrigatório: o papel do convidado se resolve ATRAVÉS do board, então sem board o convite nasceria
+  morto. Conversa sem cartolina é o caso comum — o board só nasce em `memoria-turno.ts`, com
+  `CARTOLINA_MEMORIA=1`.
+- `POST`/`DELETE /api/tcc/:id/share` — convidar e revogar a partir do documento. `sem_conversa`
+  responde 400 com motivo, não 404: o trabalho existe e é seu, só não dá pra compartilhar assim.
+- `TccPanel` — botão "Convidar" (só para o dono), painel com link inteiro, copiar, alternar
+  editor/leitor e revogar; e a assinatura do Pusher.
+
+**Gates:** 5849 testes (628 arquivos, 0 falhas), `tsc` limpo, `eslint` 0. 15 testes novos: 11 na
+ponte (inclusive "editor convidado NÃO convida" e "o convite não pode nascer morto") e 4 na frase do
+escopo.
+
+### 🟡 O que NÃO está verificado
+
+1. **Não vi a tela rodando.** Sem banco, sessão e rede neste ambiente, o que eu provei é a lógica e
+   o texto do diálogo — não o desenho na tela. Vale um olhar seu no botão e no painel.
+2. **O tempo real depende de env que eu não vejo.** `NEXT_PUBLIC_PUSHER_KEY`/`CLUSTER` entram como
+   build-arg do `.env` do VPS e `PUSHER_APP_ID`/`PUSHER_SECRET` só no env_file de runtime — nada
+   disso passa pelo workflow, então não consigo conferir daqui. Teste barato: se "co-criar" do
+   Lounge funciona hoje, isto funciona. Sem Pusher, o recurso **não quebra** — cai no poll de 6 s.
+3. **Edição simultânea na MESMA seção** continua resolvida por `rev` (última vence, anterior vai pro
+   histórico), não por fusão de texto. Duas pessoas na mesma seção ao mesmo tempo ainda vão se
+   atropelar — com desfazer disponível. Presença por seção (a rota `/api/collab/[id]/ping` já
+   existe) é o próximo passo natural, e ficou de fora de propósito.
