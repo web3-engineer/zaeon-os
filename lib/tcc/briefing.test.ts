@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { lerBriefing, referenciasDoPedido, secoesDoPedido, marcadoresDoPedido, ehBriefing, MAX_INSTRUCOES } from "@/lib/tcc/briefing";
+import { lerBriefing, referenciasDoPedido, secoesDoPedido, marcadoresDoPedido, ehBriefing, entregaveisDoTurno, blocoDeEntregaveis, MAX_INSTRUCOES } from "@/lib/tcc/briefing";
 
 /** O pedido REAL que quebrou em produção (2026-11-04), encurtado só no que não muda a análise. */
 const PEDIDO = `Você é um redator acadêmico e cientista da computação sênior. Sua tarefa é redigir a primeira versão de um artigo científico em conformidade com as diretrizes metodológicas de avaliação de modelos de linguagem (LLMs).
@@ -142,5 +142,46 @@ describe("limites", () => {
 
   it("ehBriefing pega estrutura mesmo em texto curto", () => {
     expect(ehBriefing("Seção 1: A\nSeção 2: B")).toBe(true);
+  });
+});
+
+describe("o buraco de ROTEAMENTO · o que é da RESPOSTA, não do documento", () => {
+  const FRASE = "Ao final, forneça uma lista em tópicos com todos os dados empíricos exatos que eu preciso fornecer para completar as lacunas do artigo.";
+
+  it("pega o entregável do pedido real — a lista que sumia", () => {
+    const e = entregaveisDoTurno(`Redija as seções 1 e 2 do artigo sobre avaliação de LLMs. ${FRASE}`);
+    expect(e).toHaveLength(1);
+    expect(e[0]).toContain("dados empíricos exatos");
+  });
+
+  it("aceita outros fechos e verbos de entrega", () => {
+    expect(entregaveisDoTurno("Escreva o artigo completo. Por fim, liste as decisões que ficaram em aberto para mim.")).toHaveLength(1);
+    expect(entregaveisDoTurno("Monte o relatório inteiro. Ao término, apresente um resumo das limitações encontradas.")).toHaveLength(1);
+  });
+
+  it("CONSERVADOR: imperativo sem marcador de fecho NÃO é entregável do turno", () => {
+    // "liste as referências" dentro do corpo do pedido é instrução do DOCUMENTO
+    expect(entregaveisDoTurno("Escreva a seção de método e liste as referências usadas nela.")).toEqual([]);
+  });
+
+  it("linha de seção nunca vira entregável, mesmo com verbo de entrega", () => {
+    expect(entregaveisDoTurno("Seção 5: Resultados — ao final, apresente os números obtidos no estudo.")).toEqual([]);
+  });
+
+  it("o bloco do system diz que é NESTA mensagem, e manda não prometer", () => {
+    const b = blocoDeEntregaveis([FRASE]);
+    expect(b).toContain("NÃO é seção do documento");
+    expect(b).toContain("no corpo desta mensagem");
+    expect(b).toContain("não diga que vai fornecer depois — forneça agora");
+  });
+
+  it("sem entregável, bloco vazio — pedido simples não ganha texto novo no prompt", () => {
+    expect(blocoDeEntregaveis([])).toBe("");
+    expect(lerBriefing("crie um TCC sobre a fotossíntese").entregaveis).toEqual([]);
+  });
+
+  it("o entregável viaja no briefing do pedido real", () => {
+    const b = lerBriefing(`${"x".repeat(400)}\n\n${FRASE}`);
+    expect(b.entregaveis).toHaveLength(1);
   });
 });

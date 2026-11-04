@@ -33,6 +33,7 @@ import { graficoLigado } from "@/lib/agent/graficosDoTurno";
 import { MODELO_PADRAO, modeloDoId, nomeDoModeloServido } from "@/lib/chat/modelos";
 import { markRunning, saveDone, saveError } from "@/lib/agent/chat-turn-store";
 import type { Wing } from "@/lib/agent/memory";
+import { blocoDeEntregaveis, lerBriefing } from "@/lib/tcc/briefing";
 
 export type ChatTurnParams = {
   prompt: string;
@@ -178,6 +179,14 @@ export async function runChatTurn(
     ]);
     if (trabalhos?.total) hctx.trabalhos = { total: trabalhos.total, kind: trabalhos.kind };
     const tccBlock = multi ? trabalhos!.bloco : tccBlocoUnico;
+    /**
+     * O BURACO DE ROTEAMENTO (ver lib/tcc/briefing.ts): um pedido pode trazer duas entregas — o
+     * documento E algo que é da resposta ("ao final, forneça uma lista dos dados que eu preciso
+     * fornecer"). O turno é binário: tudo virava documento, e a segunda entrega sumia sem aviso.
+     * Este bloco diz ao modelo, no system, o que tem de sair NESTA mensagem. Puro e barato: sai
+     * vazio em pedido simples, então nenhum turno de hoje ganha texto novo no prompt.
+     */
+    const entregaveisBlock = blocoDeEntregaveis(lerBriefing(prompt).entregaveis);
     // Quem serviu (o envelope pode cair na reserva): fica o da resposta (draft) se houver, senão o último.
     let servido: { modelo: string; alvo?: string; phase?: string } | null = null;
     // F4 · COBERTURA POR DOCUMENTO. `baseCurta` é o que vai pro prompt e pras citações: `blocoDaBase`
@@ -199,7 +208,7 @@ export async function runChatTurn(
       onModelo(m) { if (!servido || servido.phase !== "draft" || m.phase === "draft") servido = m; },
       // a PRÉVIA da resposta: o texto do rascunho enquanto nasce, em PEDAÇOS (lib/agent/previa criarEmissorPrevia)
       onPrevia: criarEmissorPrevia((pedaco) => narrar(serializarPrevia(pedaco))),
-      systemContext: [params.systemContext, memBlock, cartolinaBlock, tccBlock, skillBlock, blocoDosAnexos(params.anexos ?? []), colada.fonte ? blocoFonteColada(colada.fonte) : ""].filter(Boolean).join("\n\n") || undefined,
+      systemContext: [params.systemContext, memBlock, cartolinaBlock, tccBlock, entregaveisBlock, skillBlock, blocoDosAnexos(params.anexos ?? []), colada.fonte ? blocoFonteColada(colada.fonte) : ""].filter(Boolean).join("\n\n") || undefined,
       history: params.history,
       baseConhecimento: baseCurta,
       // C5: cada chamada do turno grava no TokenLedger com quem/onde (mentor em agentKey E mentorSlug, como o registrarUso).

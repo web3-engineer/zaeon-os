@@ -373,3 +373,43 @@ Os dois ❌ são decisões, não bugs:
   turno no chat. Como o pedido inteiro foi roteado para a geração de documento, ela se perdeu. Esse
   é um buraco de ROTEAMENTO, não do escritor: hoje um pedido ou vira documento ou vira resposta,
   nunca os dois. Vale uma fase própria.
+
+### D7c · O buraco de roteamento: a entrega que é da RESPOSTA, não do documento
+
+Pedido do dono: *"resolve a lista de pendências no fim, é buraco de roteamento"*.
+
+**O diagnóstico estava certo, e o mecanismo é este:** um pedido pode trazer DUAS entregas — o
+documento ("redija as seções 1, 2, 3 e 6") e algo que é da conversa ("ao final, forneça uma lista
+em tópicos com todos os dados empíricos que eu preciso fornecer"). O turno é binário: `intent ===
+"criar_trabalho"` roteava o pedido inteiro para a geração do documento, e a lista — que não é seção
+de trabalho nenhum — não tinha onde cair.
+
+**Onde NÃO estava o defeito, e isso importou para o conserto:** o transporte. A bolha do chat
+**já** preserva o `nucleo` do modelo (`resolveHarnessOutput` só descarta `work`, e o comentário "O
+ARTEFATO NÃO É MAIS A RESPOSTA" registra que essa lição já tinha sido aprendida uma vez). Então não
+havia o que consertar no caminho de saída: faltava **alguém dizer ao modelo** que parte daquele
+pedido tinha de sair na mensagem.
+
+**O conserto:** `entregaveisDoTurno()` (puro) reconhece essas frases e `blocoDeEntregaveis()` as põe
+no `systemContext` do turno, dizendo o que é: *"isto NÃO é seção do documento; escreva no corpo
+desta mensagem… e não diga que vai fornecer depois — forneça agora"*. A última linha não é enfeite:
+sem ela, o caminho natural do modelo é prometer, e a rede de honestidade reprovaria a promessa
+deixando a resposta pior do que antes.
+
+**A detecção é conservadora de propósito:** exige um marcador de fecho ("ao final", "por fim", "ao
+término"…) **junto** de um verbo de entrega. "Liste as referências" no meio do pedido continua
+sendo instrução do documento. Errar para o lado de não detectar devolve o comportamento de hoje;
+errar para o outro jogaria instrução do documento dentro da resposta — pior, e mais difícil de
+perceber.
+
+Um detalhe que o teste pegou: o filtro inicial descartava a frase por comprimento, e o entregável
+costuma vir no fim de um parágrafo longo — justamente o caso que importa. Agora o recorte começa no
+marcador de fecho em vez de medir a frase inteira.
+
+**Custo zero no caminho simples:** sem entregável, o bloco sai vazio e nenhum turno de hoje ganha
+texto novo no prompt. Com teste.
+
+**Gates:** 5889 testes (629 arquivos, 0 falhas), `tsc` limpo, `eslint` 0.
+
+**🟡 Não verificado:** que o modelo de fato produza a lista ao receber o bloco. O bloco está no
+system e o `nucleo` chega à bolha — as duas pontas estão provadas; o meio depende de um turno real.
