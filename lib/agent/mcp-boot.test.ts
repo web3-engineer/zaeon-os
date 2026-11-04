@@ -208,6 +208,40 @@ describe("resumoMcp", () => {
   });
 });
 
+/**
+ * O BUG DO DEPLOY #546, reproduzido. Com `MCP_CONECTORES=scholar` em produção, o `/api/health`
+ * respondia `mcp=off` — e não era a env nem o conector: o `instrumentation` e as rotas do Next
+ * carregam CÓPIAS diferentes deste módulo no mesmo processo, então o `estado` gravado no boot não
+ * existia na cópia que a rota lia. O `lib/agent/memory-provider.ts` já documentava essa armadilha
+ * desde o L3; o `mcp-boot` não a seguiu.
+ *
+ * `vi.resetModules()` + `import()` dá exatamente uma segunda cópia do módulo, com o mesmo
+ * `globalThis` — que é a situação do processo em produção.
+ */
+describe("o estado do boot atravessa DUAS cópias do módulo", () => {
+  it("o que o boot grava, a rota lê (antes: 'off' pra sempre)", async () => {
+    const boot = await import("@/lib/agent/mcp-boot");
+    await boot.ligarMcp({ [ENV_CONECTORES]: "scholar" }, { connect: conectaCom(soLeitura) });
+    expect(boot.resumoMcp()).toBe("on (1 tools)");
+
+    vi.resetModules();
+    const rota = await import("@/lib/agent/mcp-boot");   // a cópia da rota do Next
+    expect(rota.resumoMcp()).toBe("on (1 tools)");
+    expect(rota.estadoMcp()?.conectores[0]?.name).toBe("scholar");
+  });
+
+  it("e a TOOL registrada no boot existe pro chat — é isto que fazia o MCP não entregar nada", async () => {
+    const boot = await import("@/lib/agent/mcp-boot");
+    await boot.ligarMcp({ [ENV_CONECTORES]: "scholar" }, { connect: conectaCom(soLeitura) });
+
+    vi.resetModules();
+    const runtimeDaRota = await import("@/lib/agent/runtime");
+    // o registry também era variável de módulo: a tool do boot não chegava na cópia do chat
+    expect(runtimeDaRota.getTool("mcp:scholar:ler")?.runtime).toBe("mcp");
+    expect(runtimeDaRota.listTools().some((t) => t.name === "mcp:scholar:ler")).toBe(true);
+  });
+});
+
 describe("o log de ops leva o motivo CRU, não a frase do aluno", () => {
   it("ECONNREFUSED aparece no estado (o `error` amigável serve a uma tela, não a um boot log)", async () => {
     _zerarEstadoMcp();

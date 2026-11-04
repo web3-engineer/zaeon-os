@@ -147,7 +147,20 @@ export async function runTool(
 }
 
 // ───────────────────────────── registry ─────────────────────────────
-const REGISTRY = new Map<string, ToolDef>();
+/**
+ * NO globalThis, não numa variável do módulo — e isto é correção de um defeito real, não estilo.
+ *
+ * O registry é estado DO PROCESSO. Com `const REGISTRY = new Map()`, ele é estado do MÓDULO, e o
+ * webpack do Next dá ao `instrumentation` o seu próprio exemplar deste arquivo (é o mesmo motivo que
+ * `lib/agent/memory-provider.ts` já documenta desde o L3). Consequência: **uma tool registrada no
+ * boot ficava invisível para a rota do chat.**
+ *
+ * As tools do Leitor nunca sofreram disso, e foi por acidente: `registrarAbrirUrl()` roda no
+ * CARREGAMENTO do módulo, então cada cópia registra a sua e todas parecem certas. A única tool que
+ * entra pelo boot é a do MCP (`registerMcpConnector`) — e era justamente a que não chegava.
+ */
+const g = globalThis as unknown as { __zaeonToolRegistry?: Map<string, ToolDef> };
+const REGISTRY: Map<string, ToolDef> = (g.__zaeonToolRegistry ??= new Map<string, ToolDef>());
 export function registerTool(def: ToolDef): void { REGISTRY.set(def.name, def); }
 export function getTool(name: string): ToolDef | undefined { return REGISTRY.get(name); }
 export function listTools(): ToolDef[] { return [...REGISTRY.values()]; }
