@@ -6,6 +6,12 @@
  * `scholar-mcp` instalado no `node_modules`. Prova o handshake, o `tools/list`, a política de risco e
  * o registro no runtime — ou seja, tudo menos a chamada que depende de rede externa.
  *
+ * ⚠️ O LIMITE DESTE TESTE, aprendido do jeito caro (§8.3d do plano): ele roda sob o **vitest**, onde
+ * `import(variavel)` funciona porque não há webpack. O MCP em produção estava quebrado exatamente
+ * por um `import(variavel)` que o webpack não resolve — e este teste passava verde o tempo todo.
+ * Ele prova o caminho real do NODE, não o do ARTEFATO BUILDADO. O que cobre aquele é o recibo do
+ * deploy, que agora imprime as linhas `[mcp]` do boot.
+ *
  * RODA NO CI de propósito, e por dois motivos. É o único teste que exercita o `connectMcp` (todos os
  * outros injetam `connect`), então é ele que avisa se o SDK sair da imagem. E, como a versão do
  * `scholar-mcp` está pinada exata no `package.json`, as contas abaixo são um GUARDA: se um bump

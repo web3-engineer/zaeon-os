@@ -189,18 +189,18 @@ function authHeaders(config: ConnectorConfig): Record<string, string> {
 
 /** Abre o cliente MCP (import TARDIO do SDK). Faz initialize + notifications/initialized. */
 export async function connectMcp(config: ConnectorConfig, timeoutMs = 10_000): Promise<McpClient> {
-  // specifiers tipados como `string` (não-literal) → tsc não tenta resolver o SDK ausente
-  // (o dono instala `@modelcontextprotocol/sdk`); os testes injetam `connect`, nunca chegam aqui.
-  const clientMod: string = "@modelcontextprotocol/sdk/client/index.js";
-  const { Client } = await import(clientMod);
+  // 🔴 ESPECIFICADORES LITERAIS. Eram tipados como `string` (não-literais) pra o `tsc` não tentar
+  // resolver um SDK ausente — e esse truque, com o SDK presente, é o que fazia o MCP nunca subir: o
+  // webpack não analisa `import(variavel)` e resolve contra o próprio mapa, onde o SDK não está. Os
+  // testes injetam `connect` e nunca chegam aqui, então o defeito só aparecia no artefato buildado.
+  // Ver `sdkPresente` em lib/agent/mcp-boot.ts e `serverComponentsExternalPackages` no next.config.
+  const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
   let transport: any;
   if (config.transport === "http") {
-    const httpMod: string = "@modelcontextprotocol/sdk/client/streamableHttp.js";
-    const { StreamableHTTPClientTransport } = await import(httpMod);
+    const { StreamableHTTPClientTransport } = await import("@modelcontextprotocol/sdk/client/streamableHttp.js");
     transport = new StreamableHTTPClientTransport(new URL(config.endpoint), { requestInit: { headers: authHeaders(config) } });
   } else {
-    const stdioMod: string = "@modelcontextprotocol/sdk/client/stdio.js";
-    const { StdioClientTransport } = await import(stdioMod);
+    const { StdioClientTransport } = await import("@modelcontextprotocol/sdk/client/stdio.js");
     const [command, ...args] = config.endpoint.split(/\s+/).filter(Boolean);
     transport = new StdioClientTransport({ command, args });
   }

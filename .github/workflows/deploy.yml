@@ -396,6 +396,17 @@ jobs:
               }).catch(e=>{ console.log('   (não deu pra ler: ' + e.message + ')'); });
             " || echo "::warning::não deu pra imprimir o estado do harness"
 
+            # A ENTRADA, não só o veredito. O recibo acima diz o que o MCP VIROU; sem o valor que o
+            # container recebeu, `mcp=off` não distingue "ninguém pediu conector" de "pediram e não
+            # funcionou" — e eu perdi um deploy inteiro por causa dessa ambiguidade. Duas linhas que
+            # teriam respondido na hora: a env como o processo a vê, e o que o boot logou.
+            echo "   MCP_CONECTORES(no container)='$($DC exec -T web printenv MCP_CONECTORES 2>/dev/null | tr -d '\r' || true)'"
+            if $DC logs --tail=400 web 2>/dev/null | grep -q '\[mcp\]'; then
+              $DC logs --tail=400 web 2>/dev/null | grep '\[mcp\]' | tail -5 | sed 's/^/   /'
+            else
+              echo "   (boot não logou [mcp] — ligarMcp não foi chamado neste processo)"
+            fi
+
             # O Caddyfile entra MONTADO como ARQUIVO (./Caddyfile:/etc/caddy/Caddyfile:ro). Duas armadilhas:
             #  1) `up -d` não recria o caddy quando só o conteúdo muda, e o Caddy só lê a config na partida;
             #  2) o `git reset --hard` acima troca o arquivo por um NOVO (outro inode) — e o bind mount de

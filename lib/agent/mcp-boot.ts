@@ -86,21 +86,47 @@ export function conectoresPedidos(env: Env = process.env): { escolhidos: Catalog
 }
 
 /**
- * O SDK está instalado? Specifier em variável (não-literal) de propósito: sem isso o tsc tentaria
- * resolver um pacote que pode não existir, e o bundler tentaria empacotá-lo.
+ * O SDK está instalado?
+ *
+ * 🔴 ESPECIFICADOR LITERAL, e a versão anterior disto era o defeito que derrubou o deploy #546.
+ * O código dizia: "specifier em variável (não-literal) de propósito: sem isso o tsc tentaria
+ * resolver um pacote que pode não existir, e o bundler tentaria empacotá-lo". A intenção estava
+ * certa **enquanto o SDK estava ausente**. Com ele presente, o truque virou o bug: o webpack não
+ * consegue analisar `import(variavel)`, então resolve contra o próprio mapa de módulos — onde o SDK
+ * nunca entrou, justamente porque a variável o escondeu do bundler. Resultado medido rodando o
+ * build de verdade: `sdkPresente()` devolvendo FALSE com o pacote instalado, e o boot logando
+ * "o SDK não está instalado — rode `npm i`" tendo-o em `node_modules`.
+ *
+ * Agora o especificador é literal (o `tsc` resolve: o pacote é dependência pinada) e o pacote está
+ * em `serverComponentsExternalPackages` (next.config.mjs), que é o mesmo tratamento do Prisma: o
+ * Next não empacota e usa o require de runtime.
+ *
+ * `importar` continua injetável porque os testes precisam simular a AUSÊNCIA do SDK — que é um
+ * estado real (quem rodar sem `npm i` cai nele).
  */
 export async function sdkPresente(importar?: (m: string) => Promise<unknown>): Promise<boolean> {
-  const mod: string = "@modelcontextprotocol/sdk/client/index.js";
+  const mod = "@modelcontextprotocol/sdk/client/index.js";
   try {
-    await (importar ?? ((m: string) => import(m)))(mod);
+    await (importar ? importar(mod) : import("@modelcontextprotocol/sdk/client/index.js"));
     return true;
   } catch {
     return false;
   }
 }
 
-/** O último estado conhecido — é o que o `/api/health` mostra pro smoke-test do dono. */
-let estado: EstadoMcp | null = null;
+/**
+ * O último estado conhecido — é o que o `/api/health` mostra pro smoke-test do dono.
+ *
+ * NO globalThis, não em variável do módulo, pelo mesmo motivo que `lib/agent/memory-provider.ts` já
+ * documenta: o boot (`instrumentation.ts`) e as rotas do Next podem carregar **cópias diferentes
+ * deste módulo no mesmo processo**, e aí o que o boot grava não vale na rota.
+ *
+ * Isto não é precaução: foi o que aconteceu no deploy #546. `MCP_CONECTORES=scholar` ligado e o
+ * `/api/health` respondendo `mcp=off` — não porque o conector caiu, mas porque a rota lia uma cópia
+ * onde `estado` nunca deixava de ser nulo. Recibo mentindo por bundling, que é pior que recibo
+ * nenhum: ele me fez procurar o defeito na env plumbing por um deploy inteiro.
+ */
+const g = globalThis as unknown as { __zaeonMcpEstado?: EstadoMcp | null; __zaeonMcpLigando?: boolean };
 
 /**
  * Boot EM CURSO. O `instrumentation` chama `ligarMcp()` sem `await` de propósito (um stdio fora do
@@ -111,17 +137,19 @@ let estado: EstadoMcp | null = null;
  * pediu conector" — e o recibo do deploy (§8.5) imprimiria um `mcp=off` FALSO justamente no momento
  * em que ele é lido. Achado do Sourcery na #672, e vale o cinto: um recibo que mente é pior que
  * nenhum recibo.
+ *
+ * Também no globalThis, e pela mesma razão do `estado`: a marca só serve se a rota que responde o
+ * health for a mesma que a vê.
  */
-let ligando = false;
 
 /** SÓ PARA TESTES. */
 export function _zerarEstadoMcp(): void {
-  estado = null;
-  ligando = false;
+  g.__zaeonMcpEstado = null;
+  g.__zaeonMcpLigando = false;
 }
 
 export function estadoMcp(): EstadoMcp | null {
-  return estado;
+  return g.__zaeonMcpEstado ?? null;
 }
 
 /**
@@ -133,16 +161,16 @@ export async function ligarMcp(
   opts: { connect?: ConnectFn; importar?: (m: string) => Promise<unknown> } = {},
 ): Promise<EstadoMcp> {
   if (!mcpLigado(env)) {
-    estado = { ligado: false, sdk: false, conectores: [] };
-    return estado;
+    g.__zaeonMcpEstado = { ligado: false, sdk: false, conectores: [] };
+    return g.__zaeonMcpEstado;
   }
-  ligando = true;
+  g.__zaeonMcpLigando = true;
   try {
-    estado = await conectarTodos(env, opts);
+    g.__zaeonMcpEstado = await conectarTodos(env, opts);
   } finally {
-    ligando = false;
+    g.__zaeonMcpLigando = false;
   }
-  return estado;
+  return g.__zaeonMcpEstado;
 }
 
 /** O corpo do boot. Separado só pra que o `finally` do `ligando` envolva TUDO (inclusive o SDK). */
@@ -182,10 +210,10 @@ async function conectarTodos(env: Env, opts: { connect?: ConnectFn; importar?: (
 }
 
 /** O resumo pro `/api/health`: "off" · "ligando" · "sem_sdk" · "on (N tools)" · "degraded". */
-export function resumoMcp(e: EstadoMcp | null = estado): string {
+export function resumoMcp(e: EstadoMcp | null = g.__zaeonMcpEstado ?? null): string {
   // "ligando" ≠ "off": sem estado ainda E com boot em curso, dizer "off" seria mentir (ver a marca
   // `ligando`). `ligado: false` é outra coisa — é ninguém ter pedido conector, e esse "off" é fiel.
-  if (!e) return ligando ? "ligando" : "off";
+  if (!e) return g.__zaeonMcpLigando ? "ligando" : "off";
   if (!e.ligado) return "off";
   if (!e.sdk) return "sem_sdk";
   const tools = e.conectores.reduce((n, c) => n + c.tools, 0);

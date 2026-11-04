@@ -890,6 +890,71 @@ passou a prometer nada novo. As descrições das 9 tools entram no system prompt
 blindado (`descricaoSegura`, teto de 180 caracteres, uma linha) — servidor externo escrevendo no
 nosso prompt é vetor de injeção, e esse guarda existia desde a F5.
 
+### 8.3d O deploy #546 ligou o scholar e o recibo disse `mcp=off` — dois defeitos, nenhum onde eu procurei
+
+Mergeado o #685, o deploy #546 passou e o recibo trouxe `mcp=off` **no meu próprio commit**. A
+suspeita óbvia — a env não chegou ao container — estava errada. Rodando o **artefato buildado** aqui
+(`next build` + `node server.js` com `MCP_CONECTORES=scholar`), o sintoma se reproduziu na primeira
+tentativa, e o log do boot entregou o defeito:
+
+```
+[mcp] 1 conector(es) pedido(s), mas o SDK não está instalado — rode `npm i @modelcontextprotocol/sdk`.
+[mcp] sem_sdk
+```
+
+O SDK estava em `node_modules`. E repare no segundo sinal, que vale tanto quanto o primeiro: o boot
+dizia `sem_sdk` enquanto o `/api/health` do MESMO processo dizia `off`. Dois estados diferentes para
+a mesma coisa. São **dois defeitos empilhados**:
+
+**🔴 Defeito A, o que impedia o MCP de subir: o especificador em variável.** `lib/agent/mcp.ts`
+importava o SDK assim, e com um comentário que explicava a intenção:
+
+```ts
+const clientMod: string = "@modelcontextprotocol/sdk/client/index.js";  // não-literal de propósito
+const { Client } = await import(clientMod);
+```
+
+A intenção estava certa **enquanto o SDK estava ausente**: variável impede o `tsc` de tentar resolver
+um pacote que não existe. Com o pacote presente, o truque virou o bug — **o webpack não consegue
+analisar `import(variavel)`**, então resolve contra o próprio mapa de módulos, onde o SDK nunca
+entrou justamente porque a variável o escondeu do bundler. `sdkPresente()` devolvia `false` com o
+pacote instalado. O mesmo valia para `connectMcp`, que é onde o handshake mora.
+
+Correção: especificadores **literais** + `@modelcontextprotocol/sdk` em
+`serverComponentsExternalPackages` — exatamente o tratamento que o `next.config.mjs` já dava ao
+Prisma, com a mesma justificativa escrita lá ("externo = Next não empacota, usa o require de
+runtime"). Conferido antes de aplicar: o SDK é **dual CJS/ESM** e o `require` resolve, então vale no
+Node 20 da imagem (o meu Node local é 22 e isso não bastaria como prova).
+
+**🔴 Defeito B, o que fazia o recibo mentir: estado de boot em variável de módulo.** `estado` e
+`ligando` do `mcp-boot`, e o `REGISTRY` do `runtime`, eram variáveis de módulo. O
+`lib/agent/memory-provider.ts` **já documentava essa armadilha desde o L3**: "o boot
+(instrumentation.ts) e as rotas do Next podem carregar CÓPIAS diferentes deste módulo no mesmo
+processo". O `mcp-boot` não seguiu, e a consequência era dupla: o `/api/health` lia uma cópia onde
+`estado` nunca deixava de ser nulo (daí `off` em vez de `sem_sdk`), e — mais grave — **uma tool
+registrada no boot ficava invisível para a rota do chat**.
+
+As tools do Leitor nunca sofreram disso, e foi por acidente: `registrarAbrirUrl()` roda no
+CARREGAMENTO do módulo, então cada cópia registra a sua e todas parecem certas. A única tool que
+entra pelo boot é a do MCP — e era justamente a que não chegava. Por isso `abrir_url=ON` era honesto
+e `mcp=off` não.
+
+Correção: os dois no `globalThis`, como o `memory-provider`. E **dois testes de regressão que falham
+sem a correção** (`vi.resetModules()` + `import()` dá uma segunda cópia do módulo com o mesmo
+`globalThis`, que é a situação do processo em produção): um prova que o que o boot grava a rota lê,
+outro que a tool registrada no boot existe pro chat.
+
+**Por que a suíte não pegou nada disso, e é a lição que fica.** Todos os testes de MCP injetam
+`connect` ou `importar` — as costuras que tornam o código testável são **exatamente** as que
+esconderam o defeito. Até o `mcp-real.test.ts`, que eu escrevi como "o smoke do caminho real", passa:
+ele roda sob o vitest, onde `import(variavel)` funciona, porque não há webpack. **Só o artefato
+buildado mostrava.** Nenhum teste unitário substitui rodar o que vai pra produção.
+
+**O recibo ganhou o que faltava.** `mcp=off` não distinguia "ninguém pediu conector" de "pediram e
+não funcionou" — e essa ambiguidade me custou um deploy inteiro de investigação. Agora o recibo
+imprime também **a entrada** (`MCP_CONECTORES` como o processo a vê) e **as linhas `[mcp]` do boot**.
+Qualquer das duas teria respondido na hora.
+
 **🟡 O QUE AINDA NÃO ESTÁ PROVADO, e é o risco real desta entrega:** que as chamadas devolvam
 **dado**. Handshake, listagem, política e registro estão provados; a busca, não — o egresso da minha
 sandbox recusa `scholar.google.com`, `clinicaltrials.gov` e `api.semanticscholar.org`. E há um motivo

@@ -104,7 +104,15 @@ const nextConfig = {
         // Client e puxava a variante wasm (erro "Can't resolve ./query_engine_bg.js"),
         // que estourou quando o instrumentation.ts passou a importar o Prisma no boot.
         // Marcá-los como externos = Next não empacota, usa o require de runtime (o correto).
-        serverComponentsExternalPackages: ["canvas", "sharp", "bullmq", "ioredis", "@prisma/client", ".prisma/client", "prisma"],
+        // `@modelcontextprotocol/sdk` pelo MESMO motivo do Prisma, e descoberto do mesmo jeito: rodando
+        // o build. O `lib/agent/mcp.ts` importava o SDK por ESPECIFICADOR EM VARIÁVEL, truque que
+        // existia pra o `tsc` não tentar resolver um pacote AUSENTE. Com o pacote presente, o truque
+        // virou o defeito: o webpack não consegue analisar `import(variavel)`, resolve contra o próprio
+        // mapa de módulos — que não tem o SDK — e `sdkPresente()` devolvia FALSE com o SDK instalado.
+        // O boot logava "o SDK não está instalado, rode npm i" tendo ele ali. Externo + especificador
+        // LITERAL = o Next não empacota e usa o require de runtime (o pacote é dual CJS/ESM, então
+        // vale no Node 20 da imagem).
+        serverComponentsExternalPackages: ["canvas", "sharp", "bullmq", "ioredis", "@prisma/client", ".prisma/client", "prisma", "@modelcontextprotocol/sdk"],
         // Tree-shaking dos barrels pesados (framer-motion/recharts são usados em todo
         // lugar) → bundle inicial menor, telas abrindo mais rápido. lucide/heroicons já
         // têm o modularizeImports acima; incluí-los aqui também é seguro.
