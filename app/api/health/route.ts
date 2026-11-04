@@ -30,6 +30,7 @@ import { graficoLigado } from "@/lib/agent/graficosDoTurno";
 import { getTool } from "@/lib/agent/runtime";
 import { GEMINI_MODEL_FLASH, GEMINI_MODEL_PRO } from "@/lib/ai/model";
 import { proNasPesadasLigado } from "@/lib/ai/proNasPesadas";
+import { pusherFaltando } from "@/lib/collab/realtime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -54,6 +55,10 @@ export async function GET() {
     // conta plus/pro (lib/ai/proNasPesadas), e isso depende de usuário — o health não tem usuário.
     // Dizer só "ON" aqui seria recibo exagerado; o nome do campo e esta nota é que o mantêm honesto.
     modelo: { flash: GEMINI_MODEL_FLASH, pro: GEMINI_MODEL_PRO, proPesadas: proNasPesadasLigado(), proSoPlusEPro: true },
+    // O TEMPO REAL do documento colaborativo. "on" = as quatro envs do Pusher chegaram; senão, os
+    // NOMES que faltam (nunca os valores). Sem elas a colaboração funciona no poll de 6 s — a
+    // diferença é invisível de fora, e era por isso que eu não conseguia confirmá-la pro dono.
+    tempoReal: pusherFaltando().length === 0 ? "on" : { faltando: pusherFaltando() },
     leitor,
     // F5: o estado dos conectores MCP (memoizado do boot; nunca conecta aqui)
     mcp: resumoMcp(),

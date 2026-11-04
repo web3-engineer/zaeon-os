@@ -887,6 +887,49 @@ modo `research`).
 `for k in` que escreve o `.env` do VPS → compose `web` → compose `worker`). Sem os cinco, o
 kill-switch não existiria em produção — é a lição do §8.1, aplicada antes de doer.
 
+### F7b · "libera o pusher no deploy" — e as três naturezas que pareciam a mesma
+
+Pedido do dono depois da auditoria de flags: *"eu preciso dessas flags on. e libera o pusher no
+deploy"*. As coisas que eu havia listado como "off" não eram o mesmo tipo de coisa, e tratá-las
+igual teria dado errado de três maneiras diferentes.
+
+**1 · Pusher — era isto que estava de verdade desligado.** O tempo real da colaboração (D6/D8)
+exige quatro envs, e `getPusher()` devolve `null` sem qualquer uma delas; nenhuma passava pelo
+workflow. Mas elas têm DUAS naturezas, e a cadeia é diferente para cada:
+
+- `PUSHER_APP_ID` e `PUSHER_SECRET` são **server-only** → Secrets do GitHub → gravadas no
+  `.env.secrets` do VPS (que vence o `.env`), no molde do Resend: **só com valor**, porque linha
+  vazia apagaria a que já estava lá e derrubaria o tempo real em vez de subi-lo;
+- `NEXT_PUBLIC_PUSHER_KEY` e `NEXT_PUBLIC_PUSHER_CLUSTER` são **embutidas no bundle no BUILD** →
+  Variables → exportadas no laço `for k in` (que alimenta os `args:` do compose) **e** no
+  `environment:` dos serviços, porque o servidor também as lê em runtime.
+
+Pôr as quatro no mesmo caminho teria falhado silenciosamente: as públicas sem o build-arg não
+chegariam ao navegador, e as secretas como Variable ficariam no log.
+
+**2 · `RACIOCINIO_ELABORADO` — ligada, com a ressalva registrada.** O código pula a fase `reason` no
+modo `elaborated` por eval de out/2026 (com um documento ela não melhorava a resposta e custava
+latência). Ligada por decisão do dono: `${{ vars.RACIOCINIO_ELABORADO || '1' }}`. Custo: +1 chamada
+Flash antes do rascunho em todo turno elaborado. Reverter é a Variable em `0`, sem deploy de código.
+
+**3 · Os workers NÃO eram features desligadas, e por isso não foram ligados.** `SCHOLAR_WORKER`,
+`CANAL_WORKER`, `CHORES_WORKER` e `CANAL_QUEUE` escolhem TOPOLOGIA, não comportamento: sem eles o
+trabalho roda **inline no web**, que é o que acontece hoje e funciona. Ligá-los no `web` faria o
+mesmo container enfileirar E consumir — o desenho quer o serviço `worker` dedicado (`profiles:
+["worker"]`), e o próprio deploy trata "o worker está de pé?" como estado que o dono escolhe
+(`docker ps | grep zaeon_worker`). Ficaram **alcançáveis** (Variable preenchida chega no container) e
+não ligadas. Ligar um worker é subir o serviço, não virar flag — e isso é operação, não código.
+
+**O recibo ganhou a linha que faltava.** `pusherFaltando()` devolve os **nomes** das envs ausentes,
+nunca os valores, e o `/api/health` publica `tempoReal: "on" | { faltando: [...] }`. Sem isso,
+"a colaboração está no ar" e "a colaboração é instantânea" continuariam indistinguíveis de fora — e
+eu não tinha como confirmar a segunda pro dono, só supor. Nome de env não é segredo; valor é, e um
+teste afirma exatamente isso.
+
+**O que ainda depende do dono:** os valores. Eu plumbei a cadeia inteira, mas `PUSHER_APP_ID` e
+`PUSHER_SECRET` são Secrets e `NEXT_PUBLIC_PUSHER_KEY`/`_CLUSTER` são Variables que só ele cria. Até
+lá o recibo dirá `tempo_real(pusher): off — faltam …`, que é a verdade, e a colaboração segue no poll.
+
 ## 7. 🔒 Portões do dono
 
 Decisões que eu **não** tomo sozinho, porque mudam contrato de produto ou gastam dinheiro:

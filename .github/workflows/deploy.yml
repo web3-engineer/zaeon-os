@@ -99,6 +99,29 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           # #686: a chave do Resend (o código de entrar por e-mail). Preenchida, vai pro .env.secrets; vazia, o .env decide.
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          # PUSHER (tempo real do documento colaborativo — lib/collab/realtime). Quatro variáveis, e
+          # duas NATUREZAS: o APP_ID e o SECRET são server-only e vão pro .env.secrets; a KEY e o
+          # CLUSTER são NEXT_PUBLIC — embutidos no bundle do navegador no BUILD, então precisam estar
+          # exportados na hora do `docker compose build` (laço `for k in` abaixo) além do runtime.
+          # Sem as quatro, `getPusher()` devolve null e a colaboração cai no poll de 6 s: funciona,
+          # mas não é instantânea. Secrets: Settings → Secrets and variables → Actions.
+          PUSHER_APP_ID: ${{ secrets.PUSHER_APP_ID }}
+          PUSHER_SECRET: ${{ secrets.PUSHER_SECRET }}
+          NEXT_PUBLIC_PUSHER_KEY: ${{ vars.NEXT_PUBLIC_PUSHER_KEY || '' }}
+          NEXT_PUBLIC_PUSHER_CLUSTER: ${{ vars.NEXT_PUBLIC_PUSHER_CLUSTER || '' }}
+          # A fase `reason` no modo `elaborated`. O código a PULA por padrão (eval de out/2026: com um
+          # documento ela não melhorava a resposta e custava latência). Ligada aqui por decisão do
+          # dono; `vars.RACIOCINIO_ELABORADO=0` desliga sem deploy de código.
+          RACIOCINIO_ELABORADO: ${{ vars.RACIOCINIO_ELABORADO || '1' }}
+          # Workers de fundo (BullMQ). NÃO são features desligadas: sem eles o trabalho roda INLINE no
+          # web, que é o que acontece hoje e funciona. Ligá-los no `web` faria o mesmo container
+          # enfileirar E consumir — o desenho quer o serviço `worker` dedicado (perfil "worker" do
+          # compose), que é decisão operacional de quem sobe a stack, não flag. Ficam ALCANÇÁVEIS:
+          # preenchida a Variable, chegam no container; vazias, nada muda.
+          SCHOLAR_WORKER: ${{ vars.SCHOLAR_WORKER || '' }}
+          CANAL_WORKER: ${{ vars.CANAL_WORKER || '' }}
+          CHORES_WORKER: ${{ vars.CHORES_WORKER || '' }}
+          CANAL_QUEUE: ${{ vars.CANAL_QUEUE || '' }}
           EMAIL_FROM: ${{ vars.EMAIL_FROM || '' }}
           # Runtime (não entram no bundle): valem sem rebuild, só recriando o web.
           HF_RESERVA: ${{ vars.HF_RESERVA || '' }}
@@ -196,7 +219,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           command_timeout: 25m
-          envs: GOOGLE_CREDENTIALS_B64,GOOGLE_PROJECT_ID_VALUE,OCTA_CRON_SECRET,UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,HF_TOKEN,RESEND_API_KEY,EMAIL_FROM,HF_RESERVA,DISPAROS_HF,DISPAROS_HF_SEM_HISTORICO,WITH_VOICE,DB_PUSH,DEPLOY_BRANCH,APP_URL,BETA_DOMAIN,ACME_EMAIL,NEXT_PUBLIC_ESCRITORIO_COWORK,NEXT_PUBLIC_AGENTS_ADMIN,NEXT_PUBLIC_AGENT_AVATARS,NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM,NEXT_PUBLIC_MAP_HARNESS,NEXT_PUBLIC_LOUNGE_3D,NEXT_PUBLIC_CYBER_AVATAR_GLB,NEXT_PUBLIC_CYBER_LANDMARKS,NEXT_PUBLIC_AURA_ECONOMY,NEXT_PUBLIC_REALTIME,NEXT_PUBLIC_VOZ,NEXT_PUBLIC_MOBILE_UI,NEXT_PUBLIC_PROJETOS,NEXT_PUBLIC_MENTORES_TAB,NEXT_PUBLIC_OCTA_CODE,NEXT_PUBLIC_OCTA_REA,MAP_HARNESS,ESTUDO_GATEKEEPER,AURA_ECONOMY,NEXT_PUBLIC_CHAT_UNICO,DOC_POR_SECAO,CHAT_UNICO,NEXT_PUBLIC_BLUEPRINT_PRATICO,BLUEPRINT_PRATICO,GITHUB_TOKEN_BLUEPRINT,NEXT_PUBLIC_VIDEO_DOC,VIDEO_DOC,NEXT_PUBLIC_REA_BLUEPRINT,REA_BLUEPRINT,HARNESS_CAPACIDADE,HARNESS_ACAO,HARNESS_VOLTAS_ACAO,PRO_PESADAS,HARNESS_ANEXO,HARNESS_SINTESE,HARNESS_GRAFICO,MCP_CONECTORES,LEITOR_PROXY_URL,LEITOR_ALLOW,LEITOR_MAX_BYTES,LEITOR_MAX_BYTES_BIN
+          envs: GOOGLE_CREDENTIALS_B64,GOOGLE_PROJECT_ID_VALUE,OCTA_CRON_SECRET,UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,HF_TOKEN,RESEND_API_KEY,EMAIL_FROM,HF_RESERVA,DISPAROS_HF,DISPAROS_HF_SEM_HISTORICO,WITH_VOICE,DB_PUSH,DEPLOY_BRANCH,APP_URL,BETA_DOMAIN,ACME_EMAIL,NEXT_PUBLIC_ESCRITORIO_COWORK,NEXT_PUBLIC_AGENTS_ADMIN,NEXT_PUBLIC_AGENT_AVATARS,NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM,NEXT_PUBLIC_MAP_HARNESS,NEXT_PUBLIC_LOUNGE_3D,NEXT_PUBLIC_CYBER_AVATAR_GLB,NEXT_PUBLIC_CYBER_LANDMARKS,NEXT_PUBLIC_AURA_ECONOMY,NEXT_PUBLIC_REALTIME,NEXT_PUBLIC_VOZ,NEXT_PUBLIC_MOBILE_UI,NEXT_PUBLIC_PROJETOS,NEXT_PUBLIC_MENTORES_TAB,NEXT_PUBLIC_OCTA_CODE,NEXT_PUBLIC_OCTA_REA,MAP_HARNESS,ESTUDO_GATEKEEPER,AURA_ECONOMY,NEXT_PUBLIC_CHAT_UNICO,DOC_POR_SECAO,CHAT_UNICO,NEXT_PUBLIC_BLUEPRINT_PRATICO,BLUEPRINT_PRATICO,GITHUB_TOKEN_BLUEPRINT,NEXT_PUBLIC_VIDEO_DOC,VIDEO_DOC,NEXT_PUBLIC_REA_BLUEPRINT,REA_BLUEPRINT,HARNESS_CAPACIDADE,HARNESS_ACAO,HARNESS_VOLTAS_ACAO,PRO_PESADAS,HARNESS_ANEXO,HARNESS_SINTESE,HARNESS_GRAFICO,MCP_CONECTORES,PUSHER_APP_ID,PUSHER_SECRET,NEXT_PUBLIC_PUSHER_KEY,NEXT_PUBLIC_PUSHER_CLUSTER,RACIOCINIO_ELABORADO,SCHOLAR_WORKER,CANAL_WORKER,CHORES_WORKER,CANAL_QUEUE,LEITOR_PROXY_URL,LEITOR_ALLOW,LEITOR_MAX_BYTES,LEITOR_MAX_BYTES_BIN
           script: |
             set -euo pipefail
             cd "${{ secrets.DEPLOY_PATH }}"
@@ -280,6 +303,22 @@ jobs:
               echo "→ Resend: Secret vazio — vale o .env do VPS"
             fi
 
+            # PUSHER server-only (APP_ID + SECRET). Mesmo molde do Resend: só grava com valor, porque
+            # linha vazia APAGARIA a que já está no .env do VPS — e aí o tempo real cairia em vez de
+            # subir. O par público (KEY/CLUSTER) não entra aqui: é build-arg, vai pelo laço de flags.
+            if [ -n "${PUSHER_APP_ID:-}" ] && [ -n "${PUSHER_SECRET:-}" ]; then
+              grep -vE '^(PUSHER_APP_ID|PUSHER_SECRET)=' .env.secrets > .env.secrets.tmp || true
+              {
+                cat .env.secrets.tmp
+                echo "PUSHER_APP_ID=${PUSHER_APP_ID}"
+                echo "PUSHER_SECRET=${PUSHER_SECRET}"
+              } > .env.secrets
+              rm -f .env.secrets.tmp
+              echo "→ Pusher: APP_ID + SECRET dos Secrets gravados no .env.secrets"
+            else
+              echo "→ Pusher: Secrets vazios — vale o .env do VPS (sem eles, colaboração no poll de 6 s)"
+            fi
+
             # Serviços do deploy: enxuto por padrão; completo se WITH_VOICE=true.
             if [ "$WITH_VOICE" = "true" ]; then
               SERVICES=""            # vazio = todos do compose
@@ -315,7 +354,7 @@ jobs:
 
             # Flags do escritório: só exporta o que veio preenchido (string vazia no shell
             # SOBRESCREVERIA o .env do compose e viraria o default 0).
-            for k in NEXT_PUBLIC_ESCRITORIO_COWORK NEXT_PUBLIC_AGENTS_ADMIN NEXT_PUBLIC_AGENT_AVATARS NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM NEXT_PUBLIC_MAP_HARNESS NEXT_PUBLIC_CHAT_UNICO NEXT_PUBLIC_LOUNGE_3D NEXT_PUBLIC_CYBER_AVATAR_GLB NEXT_PUBLIC_CYBER_LANDMARKS NEXT_PUBLIC_AURA_ECONOMY NEXT_PUBLIC_REALTIME NEXT_PUBLIC_VOZ NEXT_PUBLIC_MOBILE_UI NEXT_PUBLIC_PROJETOS NEXT_PUBLIC_MENTORES_TAB NEXT_PUBLIC_OCTA_CODE NEXT_PUBLIC_OCTA_REA MAP_HARNESS CHAT_UNICO DOC_POR_SECAO ESTUDO_GATEKEEPER AURA_ECONOMY NEXT_PUBLIC_BLUEPRINT_PRATICO BLUEPRINT_PRATICO NEXT_PUBLIC_VIDEO_DOC VIDEO_DOC NEXT_PUBLIC_REA_BLUEPRINT REA_BLUEPRINT HARNESS_CAPACIDADE HARNESS_ACAO HARNESS_VOLTAS_ACAO PRO_PESADAS HARNESS_ANEXO HARNESS_SINTESE HARNESS_GRAFICO MCP_CONECTORES LEITOR_PROXY_URL LEITOR_ALLOW LEITOR_MAX_BYTES LEITOR_MAX_BYTES_BIN; do
+            for k in NEXT_PUBLIC_ESCRITORIO_COWORK NEXT_PUBLIC_AGENTS_ADMIN NEXT_PUBLIC_AGENT_AVATARS NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM NEXT_PUBLIC_MAP_HARNESS NEXT_PUBLIC_CHAT_UNICO NEXT_PUBLIC_LOUNGE_3D NEXT_PUBLIC_CYBER_AVATAR_GLB NEXT_PUBLIC_CYBER_LANDMARKS NEXT_PUBLIC_AURA_ECONOMY NEXT_PUBLIC_REALTIME NEXT_PUBLIC_VOZ NEXT_PUBLIC_MOBILE_UI NEXT_PUBLIC_PROJETOS NEXT_PUBLIC_MENTORES_TAB NEXT_PUBLIC_OCTA_CODE NEXT_PUBLIC_OCTA_REA MAP_HARNESS CHAT_UNICO DOC_POR_SECAO ESTUDO_GATEKEEPER AURA_ECONOMY NEXT_PUBLIC_BLUEPRINT_PRATICO BLUEPRINT_PRATICO NEXT_PUBLIC_VIDEO_DOC VIDEO_DOC NEXT_PUBLIC_REA_BLUEPRINT REA_BLUEPRINT HARNESS_CAPACIDADE HARNESS_ACAO HARNESS_VOLTAS_ACAO PRO_PESADAS HARNESS_ANEXO HARNESS_SINTESE HARNESS_GRAFICO MCP_CONECTORES NEXT_PUBLIC_PUSHER_KEY NEXT_PUBLIC_PUSHER_CLUSTER RACIOCINIO_ELABORADO SCHOLAR_WORKER CANAL_WORKER CHORES_WORKER CANAL_QUEUE LEITOR_PROXY_URL LEITOR_ALLOW LEITOR_MAX_BYTES LEITOR_MAX_BYTES_BIN; do
               if [ -n "${!k:-}" ]; then export "$k"; echo "→ flag de build $k=${!k}"; else unset "$k"; fi
             done
             # token do GitHub do blueprint (Secret GITHUB_TOKEN_BLUEPRINT — o prefixo GITHUB_ é reservado nos Secrets): opcional
@@ -402,6 +441,9 @@ jobs:
                 const m = h.modelo || {};
                 if (m.flash) console.log('   modelo: flash=' + m.flash + '  pro=' + m.pro +
                             '  pro_nas_pesadas=' + sn(m.proPesadas) + (m.proSoPlusEPro ? ' (só plus/pro)' : ''));
+                // o tempo real do documento: 'on', ou os NOMES das envs que faltam (nunca os valores)
+                const tr = h.tempoReal;
+                if (tr) console.log('   tempo_real(pusher): ' + (tr === 'on' ? 'on' : 'off — faltam ' + (tr.faltando || []).join(', ')));
               }).catch(e=>{ console.log('   (não deu pra ler: ' + e.message + ')'); });
             " || echo "::warning::não deu pra imprimir o estado do harness"
 

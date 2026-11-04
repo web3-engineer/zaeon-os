@@ -9,6 +9,23 @@ import Pusher from "pusher";
 
 let _pusher: Pusher | null = null;
 
+/** As quatro envs que o Pusher exige. Uma lista só, pra `getPusher` e o recibo não divergirem. */
+const ENVS_PUSHER = ["PUSHER_APP_ID", "NEXT_PUBLIC_PUSHER_KEY", "PUSHER_SECRET", "NEXT_PUBLIC_PUSHER_CLUSTER"] as const;
+
+/**
+ * O RECIBO do tempo real: quais das quatro envs FALTAM — nunca o valor de nenhuma.
+ *
+ * Existe porque "a colaboração está no ar" e "a colaboração é instantânea" são afirmações
+ * diferentes: sem as quatro, `getPusher()` devolve null, a feature funciona e cai no poll de 6 s, e
+ * isso é invisível de fora. O `/api/health` publica isto e o recibo do deploy imprime — assim quem
+ * liga as envs vê que chegaram, em vez de precisar confiar em quem as ligou.
+ *
+ * Devolve só os NOMES que faltam: nome de env não é segredo, valor é.
+ */
+export function pusherFaltando(env: Record<string, string | undefined> = process.env): string[] {
+  return ENVS_PUSHER.filter((k) => !env[k]?.trim());
+}
+
 export function getPusher(): Pusher | null {
   if (_pusher) return _pusher;
   const { PUSHER_APP_ID, NEXT_PUBLIC_PUSHER_KEY, PUSHER_SECRET, NEXT_PUBLIC_PUSHER_CLUSTER } = process.env;
