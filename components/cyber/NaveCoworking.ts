@@ -7,11 +7,11 @@
  */
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { AREAS, CABINES, CHILL, LADO_CABINE, NAVE_COWORK, area, contornoDoCasco, moveisDaNave, paredesDaNave, type MovelCW, type TipoMovel } from "@/lib/cyber/naveCoworking";
+import { ANDAR2, AREAS, CABINES, CHILL, ESCADA_CW, LADO_CABINE, NAVE_COWORK, area, contornoDoCasco, contornoDoLounge, moveisDaNave, moveisDoAndar2, paredesDaNave, pontoDaEscada, type MovelCW, type TipoMovel } from "@/lib/cyber/naveCoworking";
 import { criarBuracoPortal } from "./BuracoPortal";
 import { criarOlho } from "./OlhoHolografico";
 
-export type NaveCoworkingHandle = { group: THREE.Group; atualizar(dt: number, t: number): void; mostrarTeto(v: boolean): void; dispose(): void };
+export type NaveCoworkingHandle = { group: THREE.Group; atualizar(dt: number, t: number): void; mostrarTeto(v: boolean): void; /** o 2º andar (o lounge e o terraço) — a prévia de cima do 1º esconde */ mostrarAndar2(v: boolean): void; dispose(): void };
 
 const N = NAVE_COWORK;
 /** a paleta do Lounge Cósmico */
@@ -143,25 +143,32 @@ export function criarNaveCoworking(o: { low: boolean; teto?: boolean }): NaveCow
     mesinha: { ref: [1, 1], pecas: [ peca(tampo, C(0.5, 0.05, 0, 1.05, 0, 24)), peca(metal, C(0.04, 1.0, 0, 0.5, 0, 8), C(0.3, 0.03, 0, 0.015, 0, 14)), peca(aditivo(COR.ouro, 0.6), new THREE.TorusGeometry(0.5, 0.015, 4, 32).rotateX(Math.PI / 2).translate(0, 1.03, 0)) ] },
     maquinaCafe: { ref: [1.2, 0.7], pecas: [ peca(metal, B(1.2, 0.6, 0.6, 0, 1.4, 0)), peca(aditivo(COR.ouro, 0.85), B(0.8, 0.12, 0.02, 0, 1.55, 0.31), C(0.06, 0.08, -0.3, 1.18, 0.15, 8), C(0.06, 0.08, 0.3, 1.18, 0.15, 8)) ] },
     poltrona: { ref: [1.1, 1.1], pecas: [ peca(veludo, B(1.0, 0.45, 0.9, 0, 0.22, 0.05), B(1.0, 0.7, 0.2, 0, 0.7, -0.42), B(0.16, 0.25, 0.9, -0.48, 0.55, 0.05), B(0.16, 0.25, 0.9, 0.48, 0.55, 0.05)) ] },
+    espreguicadeira: { ref: [0.9, 2.0], pecas: [ peca(veludo, B(0.8, 0.22, 1.3, 0, 0.32, 0.25), B(0.8, 0.16, 0.8, 0, 0.55, -0.62).rotateX(0.5)), peca(metal, B(0.06, 0.25, 1.8, -0.38, 0.12, 0), B(0.06, 0.25, 1.8, 0.38, 0.12, 0)), peca(aditivo(COR.ciano, 0.5), B(0.84, 0.02, 1.84, 0, 0.02, 0)) ] },
+    mesaBaixa: { ref: [1.4, 1.4], pecas: [ peca(tampo, C(0.7, 0.05, 0, 0.4, 0, 32)), peca(metal, C(0.3, 0.38, 0, 0.19, 0, 16, 0.5)), peca(aditivo(COR.magenta, 0.7), new THREE.TorusGeometry(0.7, 0.015, 4, 40).rotateX(Math.PI / 2).translate(0, 0.38, 0)) ] },
+    telescopio: { ref: [0.9, 0.9], pecas: [ peca(metal, C(0.03, 1.2, 0.25, 0.6, 0, 6), C(0.03, 1.2, -0.25, 0.6, 0, 6), C(0.03, 1.2, 0, 0.6, -0.28, 6)), peca(tampo, C(0.12, 1.3, 0, 0, 0, 16, 0.09).rotateX(-1.0).translate(0, 1.45, 0.25)), peca(aditivo(COR.ciano, 0.8), new THREE.CircleGeometry(0.12, 16).rotateX(-1.0 - Math.PI / 2).translate(0, 1.73, 0.68)) ] },
+    fogueira: { ref: [2.2, 2.2], pecas: [ peca(escuro, C(1.1, 0.35, 0, 0.17, 0, 32, 1.2)), peca(aditivo(COR.magenta, 0.85), new THREE.TorusGeometry(1.0, 0.04, 4, 48).rotateX(Math.PI / 2).translate(0, 0.36, 0)) ] },
     floreira: { ref: [0.5, 3], pecas: [ peca(escuro, B(0.5, 0.6, 3, 0, 0.3, 0)), peca(aditivo(0x5fffd0, 0.5), ...[-1.1, -0.4, 0.3, 1.0].map((z) => new THREE.ConeGeometry(0.12, 0.6, 5).translate(0, 0.9, z))) ] },
   };
   const moveis = moveisDaNave();
-  const porTipo = new Map<TipoMovel, MovelCW[]>(); for (const m of moveis) porTipo.set(m.tipo, [...(porTipo.get(m.tipo) ?? []), m]);
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), eixoY = new THREE.Vector3(0, 1, 0);
+  const instanciar = (todos: MovelCW[], pai: THREE.Object3D) => {
+  const porTipo = new Map<TipoMovel, MovelCW[]>(); for (const m of todos) porTipo.set(m.tipo, [...(porTipo.get(m.tipo) ?? []), m]);
   for (const [tipo, lista] of porTipo) {
     const md = MODELOS[tipo]; if (!md) continue;
     for (const pc of md.pecas) {
       const im = new THREE.InstancedMesh(pc.geo, pc.mat, lista.length); descartar.push(pc.geo);
       lista.forEach((m, i) => {
         const rumo = m.rumo ?? 0, deLado = Math.abs(Math.sin(rumo)) > 0.7, lx = m.x1 - m.x0, lz = m.z1 - m.z0;
-        const larg = deLado ? lz : lx, fundo = deLado ? lx : lz, redondo = tipo === "cadeira" || tipo === "puff" || tipo === "banqueta" || tipo === "mesinha" || tipo === "mesaRedonda" || tipo === "planta" || tipo === "sofaArco" || tipo === "poltrona";
+        const larg = deLado ? lz : lx, fundo = deLado ? lx : lz, redondo = tipo === "cadeira" || tipo === "puff" || tipo === "banqueta" || tipo === "mesinha" || tipo === "mesaRedonda" || tipo === "planta" || tipo === "sofaArco" || tipo === "poltrona" || tipo === "mesaBaixa" || tipo === "fogueira" || tipo === "telescopio";
         q.setFromAxisAngle(eixoY, rumo);
         m4.compose(new THREE.Vector3((m.x0 + m.x1) / 2, 0, (m.z0 + m.z1) / 2), q, redondo ? new THREE.Vector3(1, 1, 1) : new THREE.Vector3(larg / md.ref[0], 1, fundo / md.ref[1]));
         im.setMatrixAt(i, m4);
       });
-      im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); add(im);
+      im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); add(im, pai);
     }
   }
+  };
+  instanciar(moveis, g);
 
   // ── os TELÕES das salas de reuniões (a pauta, o gráfico) ──
   const telaoTex = (nome: string, cor: number) => textura(1024, 576, (x, w, h) => {
@@ -205,12 +212,16 @@ export function criarNaveCoworking(o: { low: boolean; teto?: boolean }): NaveCow
   const colunaChegada = add(new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 4, 32, 1, true).translate(0, 2, 0), aditivo(COR.lavanda, 0.08))); colunaChegada.position.set(N.chegada.x, 0, N.chegada.z);
   anim.push((dt, t) => { tapete.rotation.z += dt * 0.05; chegada.rotation.z -= dt * 0.12; chegadaMat.opacity = 0.7 + 0.2 * Math.sin(t * 1.6); (colunaChegada.material as THREE.MeshBasicMaterial).opacity = 0.05 + 0.04 * Math.sin(t * 1.6); });
   // o SOFÁ EM ARCO do chill-out, inteiro (a colisão são os módulos `sofaArco` da planta): assento, encosto e o friso
-  { const R = 4.6, a0 = -Math.PI * 0.8 - 0.32, a1 = Math.PI * 0.8 + 0.32, setor = (r0: number, r1: number, h: number) => {
+  /** um sofá em arco inteiro, de `a0` a `a1` (o ponto do ângulo a = (cos a, sin a) × r, em volta de cx, cz) */
+  const sofaEmArco = (cx: number, cz: number, R: number, a0: number, a1: number, pai: THREE.Object3D, mat: THREE.Material = veludo) => {
+    const setor = (r0: number, r1: number, h: number) => {
       const sh = new THREE.Shape(), n = 40; for (let k = 0; k <= n; k++) { const a = a0 + ((a1 - a0) * k) / n; const px = Math.cos(a) * r1, pz = Math.sin(a) * r1; k ? sh.lineTo(px, -pz) : sh.moveTo(px, -pz); }
       for (let k = n; k >= 0; k--) { const a = a0 + ((a1 - a0) * k) / n; sh.lineTo(Math.cos(a) * r0, -Math.sin(a) * r0); }
-      const geo = new THREE.ExtrudeGeometry(sh, { depth: h, bevelEnabled: true, bevelSize: 0.06, bevelThickness: 0.06, bevelSegments: 2, curveSegments: 8 }); geo.rotateX(-Math.PI / 2); geo.translate(CHILL.x, 0, CHILL.z); descartar.push(geo); return geo; };
-    add(new THREE.Mesh(setor(R - 0.55, R + 0.4, 0.42), veludo)); add(new THREE.Mesh(setor(R + 0.4, R + 0.7, 1.0), veludo));
-    const fr = add(new THREE.Mesh(setor(R - 0.57, R - 0.52, 0.04), aditivo(COR.magenta, 0.7))); fr.position.y = 0.02; }
+      const geo = new THREE.ExtrudeGeometry(sh, { depth: h, bevelEnabled: true, bevelSize: 0.06, bevelThickness: 0.06, bevelSegments: 2, curveSegments: 8 }); geo.rotateX(-Math.PI / 2); geo.translate(cx, 0, cz); descartar.push(geo); return geo; };
+    add(new THREE.Mesh(setor(R - 0.55, R + 0.4, 0.42), mat), pai); add(new THREE.Mesh(setor(R + 0.4, R + 0.7, 1.0), mat), pai);
+    const fr = add(new THREE.Mesh(setor(R - 0.57, R - 0.52, 0.04), aditivo(COR.magenta, 0.7)), pai); fr.position.y = 0.02;
+  };
+  sofaEmArco(CHILL.x, CHILL.z, 4.6, -Math.PI * 0.8 - 0.32, Math.PI * 0.8 + 0.32, g);
   // as LANTERNAS penduradas no chill-out (bolhas de luz balançando devagar)
   { const lan: THREE.Mesh[] = [], cores = [COR.magenta, COR.lavanda, COR.ciano];
     for (let k = 0; k < (o.low ? 6 : 11); k++) { const a = k * 2.39, r = 1 + (k % 4) * 1.1, l = add(new THREE.Mesh(new THREE.SphereGeometry(0.09 + (k % 3) * 0.03, 10, 8), aditivo(cores[k % 3]!, 0.45))); l.position.set(CHILL.x + Math.cos(a) * r, 3.2 + (k % 3) * 0.6, CHILL.z + Math.sin(a) * r); lan.push(l);
@@ -258,6 +269,64 @@ export function criarNaveCoworking(o: { low: boolean; teto?: boolean }): NaveCow
   const olho = criarOlho({ low: o.low, tam: 3.6 }); olho.group.position.set(0, 3.9, 32); olho.group.rotation.y = Math.PI; add(olho.group); descartar.push(olho);
   anim.push((_, t) => olho.atualizar(t, 0.25 + 0.25 * Math.sin(t * 2.2), 0.6));
 
+  // ── o 2º ANDAR: o LOUNGE (vista 360°) e o TERRAÇO em volta, com a ESCADA EM CARACOL saindo da avenida ──
+  const andar2 = new THREE.Group(); andar2.position.y = ANDAR2.y; add(andar2);
+  { const E = ESCADA_CW, furo = () => { const f = new THREE.Path(); f.absarc(E.cx, -E.cz, E.rOut + 0.15, 0, Math.PI * 2, true); return f; };
+    // o PISO do terraço (claro, com a grade fina) e o do lounge (violeta, com o mesmo veio do 1º andar) — o furo da escada
+    const pisoTerraco = textura(512, 512, (x, w) => { x.fillStyle = "#2a2148"; x.fillRect(0, 0, w, w); x.strokeStyle = "rgba(226,208,255,.22)"; x.lineWidth = 2; for (let k = 0; k <= w; k += 64) { x.beginPath(); x.moveTo(k, 0); x.lineTo(k, w); x.stroke(); } x.strokeStyle = "rgba(226,208,255,.08)"; for (let k = 0; k <= w; k += 16) { x.beginPath(); x.moveTo(0, k); x.lineTo(w, k); x.stroke(); } });
+    pisoTerraco.wrapS = pisoTerraco.wrapT = THREE.RepeatWrapping;
+    const placa = (contorno: { x: number; z: number }[], buracos: THREE.Path[], mat: THREE.Material, y: number, rep: number) => {
+      const sh = new THREE.Shape(contorno.map((p) => new THREE.Vector2(p.x, -p.z))); sh.holes.push(...buracos);
+      const geo = new THREE.ShapeGeometry(sh, 32), uv = geo.attributes.uv as THREE.BufferAttribute, pos = geo.attributes.position as THREE.BufferAttribute;
+      for (let i = 0; i < pos.count; i++) uv.setXY(i, pos.getX(i) / rep, pos.getY(i) / rep);
+      const m = add(new THREE.Mesh(geo, mat), andar2); m.rotation.x = -Math.PI / 2; m.position.y = y; descartar.push(geo); return m; };
+    const lounge = contornoDoLounge(o.low ? 64 : 128);
+    placa(contornoDoCasco(o.low ? 64 : 128).map((p) => ({ x: p.x * 0.995, z: p.z * 0.995 })), [new THREE.Path(lounge.slice().reverse().map((p) => new THREE.Vector2(p.x, -p.z)))], lambert({ map: pisoTerraco, emissive: 0xffffff, emissiveMap: pisoTerraco, emissiveIntensity: 0.35 }), 0.02, 8);
+    placa(lounge, [furo()], lambert({ map: pisoTex, emissive: 0xffffff, emissiveMap: pisoTex, emissiveIntensity: 0.5 }), 0.02, 40);
+    // o GUARDA-CORPO de vidro na borda do terraço, com o corrimão aceso
+    { const pts = contornoDoCasco(o.low ? 96 : 160).map((p) => ({ x: p.x * 0.99, z: p.z * 0.99 })), v: number[] = [], idx: number[] = [];
+      for (let i = 0; i < pts.length; i++) { const a = pts[i]!, b = pts[(i + 1) % pts.length]!, k = v.length / 3; v.push(a.x, 0, a.z, b.x, 0, b.z, b.x, 1.1, b.z, a.x, 1.1, a.z); idx.push(k, k + 1, k + 2, k, k + 2, k + 3); }
+      const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(v, 3)); geo.setIndex(idx); geo.computeVertexNormals(); descartar.push(geo); add(new THREE.Mesh(geo, vidro), andar2);
+      add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(p.x, 1.1, p.z)), true), 240, 0.04, 5, true), aditivo(COR.lavanda, 0.9)), andar2); }
+    // a ESCADA: coluna, degraus girando, o corrimão de luz em espiral (do piso do 1º andar até o lounge)
+    const nDeg = 46, larg = E.rOut - E.rIn;
+    const coluna = add(new THREE.Mesh(new THREE.CylinderGeometry(E.rIn, E.rIn, ANDAR2.y + 1.2, 16), metal)); coluna.position.set(E.cx, (ANDAR2.y + 1.2) / 2, E.cz);
+    const degraus = new THREE.InstancedMesh(new THREE.BoxGeometry(larg, 0.1, 0.55), tampo, nDeg), luzDeg = new THREE.InstancedMesh(new THREE.BoxGeometry(larg, 0.02, 0.03), aditivo(COR.lavanda, 0.8), nDeg), mq = new THREE.Matrix4();
+    for (let k = 0; k < nDeg; k++) { const esc = (E.giro * (k + 0.5)) / nDeg, p2 = pontoDaEscada(esc), a = E.a0 + esc, qq = new THREE.Quaternion().setFromAxisAngle(eixoY, a + Math.PI / 2), y = (ANDAR2.y * (k + 1)) / nDeg;
+      mq.compose(new THREE.Vector3(p2.x, y - 0.05, p2.z), qq, new THREE.Vector3(1, 1, 1)); degraus.setMatrixAt(k, mq);
+      const fr = new THREE.Vector3(0, 0, 0.27).applyQuaternion(qq); mq.compose(new THREE.Vector3(p2.x + fr.x, y - 0.03, p2.z + fr.z), qq, new THREE.Vector3(1, 1, 1)); luzDeg.setMatrixAt(k, mq); }
+    for (const im of [degraus, luzDeg]) { im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); add(im); descartar.push(im.geometry); }
+    const espiral = new THREE.CatmullRomCurve3(Array.from({ length: 80 }, (_, k) => { const esc = (E.giro * k) / 79, p2 = pontoDaEscada(esc, E.rOut - 0.06); return new THREE.Vector3(p2.x, p2.y + 0.95, p2.z); }));
+    add(new THREE.Mesh(new THREE.TubeGeometry(espiral, 200, 0.035, 5, false), aditivo(COR.magenta, 0.85)));
+    // o vão da escada lá em cima: o anel de vidro em volta (aberto pra frente, onde ela chega) e a MANDALA no piso
+    const gap = 1.1, anel = add(new THREE.Mesh(new THREE.CylinderGeometry(E.rOut + 0.15, E.rOut + 0.15, 1.0, 40, 1, true, gap / 2, Math.PI * 2 - gap), vidro), andar2); anel.position.set(E.cx, 0.5, E.cz);
+    const tapete2 = add(new THREE.Mesh(new THREE.RingGeometry(E.rOut + 0.3, E.rOut + 2.2, 64), new THREE.MeshBasicMaterial({ map: tapeteMat.map, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false })), andar2); tapete2.rotation.x = -Math.PI / 2; tapete2.position.set(E.cx, 0.03, E.cz); descartar.push(tapete2.material as THREE.Material);
+    anim.push((dt) => { tapete2.rotation.z += dt * 0.06; });
+    // os MÓVEIS do lounge e do terraço, as duas ilhas de sofá em arco (de frente pra proa) e o veludo mais claro de cima
+    instanciar(moveisDoAndar2(), andar2);
+    const veludo2 = lambert({ color: 0x8a5aa8, emissive: 0x2a1240, emissiveIntensity: 0.5 });
+    for (const cx of [-6.2, 6.2]) sofaEmArco(cx, 3.4, 2.5, -Math.PI * 1.25 - 0.3, Math.PI * 0.25 + 0.3, andar2, veludo2);   // (aberto pra proa: a vista)
+    // o BAR de cima: a prateleira de luz atrás e o letreiro de neon só de forma (sem texto)
+    { const prat = add(new THREE.Mesh(new THREE.BoxGeometry(9, 2.0, 0.35), escuro), andar2); prat.position.set(0, 1.0, -25.6);
+      for (const y of [1.0, 1.6]) { const tb = add(new THREE.Mesh(new THREE.BoxGeometry(9, 0.03, 0.4), aditivo(COR.magenta, 0.6)), andar2); tb.position.set(0, y, -25.4); }
+      const lua = add(new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.05, 6, 48, Math.PI * 1.4), aditivo(COR.lavanda, 0.95)), andar2); lua.position.set(0, 3.0, -25.5); lua.rotation.z = 0.9; }
+    // a FOGUEIRA holográfica do terraço (chamas de luz que sobem e trocam de cor)
+    { const chamas: THREE.Mesh[] = [];
+      for (let k = 0; k < 7; k++) { const c = add(new THREE.Mesh(new THREE.ConeGeometry(0.28 + (k % 3) * 0.08, 1.4 + (k % 2) * 0.6, 6, 1, true).translate(0, 0.7, 0), aditivo(k % 2 ? COR.magenta : COR.ciano, 0.45)), andar2); const a = (k / 7) * Math.PI * 2; c.position.set(Math.cos(a) * 0.4, 0.36, 24 + Math.sin(a) * 0.4); chamas.push(c); }
+      anim.push((_, t) => chamas.forEach((c, k) => { c.scale.y = 0.7 + 0.35 * Math.sin(t * 3.1 + k * 1.7) ** 2; c.rotation.y = t * 0.6 + k; })); }
+    // o VARAL DE LUZES do terraço (da proa do lounge até o guarda-corpo, em curvas)
+    { const lamp = new THREE.SphereGeometry(0.07, 6, 4), pontos: THREE.Vector3[] = [], cor: THREE.Color[] = [], paleta = [COR.magenta, COR.lavanda, COR.ciano, 0xffe6b0];
+      const topo = ANDAR2.teto - 0.4, frenteLounge = ANDAR2.z + ANDAR2.b;
+      for (const x of [-9, 0, 9]) { const a = new THREE.Vector3(x * 0.5, topo, frenteLounge + 0.4), b = new THREE.Vector3(x * 1.1, 1.15, 36.5 - Math.abs(x) * 0.3);
+        for (let k = 1; k < 18; k++) { const u = k / 18, p = a.clone().lerp(b, u); p.y -= Math.sin(u * Math.PI) * 1.2; pontos.push(p); cor.push(new THREE.Color(paleta[(k + x) % 4 < 0 ? 0 : (k + x + 20) % 4]!)); } }
+      const im = new THREE.InstancedMesh(lamp, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }), pontos.length); descartar.push(lamp, im.material as THREE.Material);
+      pontos.forEach((p, i) => { mq.makeTranslation(p.x, p.y, p.z); im.setMatrixAt(i, mq); im.setColorAt(i, cor[i]!); }); add(im, andar2);
+      const fios: number[] = []; for (let i = 0; i < pontos.length - 1; i++) if ((i + 1) % 17 !== 0) fios.push(pontos[i]!.x, pontos[i]!.y, pontos[i]!.z, pontos[i + 1]!.x, pontos[i + 1]!.y, pontos[i + 1]!.z);
+      const fg = new THREE.BufferGeometry(); fg.setAttribute("position", new THREE.Float32BufferAttribute(fios, 3)); const fm = new THREE.LineBasicMaterial({ color: 0xb98cff, transparent: true, opacity: 0.35 }); descartar.push(fg, fm); add(new THREE.LineSegments(fg, fm), andar2); }
+    // as LANTERNAS do lounge (bolhas de luz no alto, pela sala toda)
+    for (let k = 0; k < (o.low ? 6 : 12); k++) { const a = k * 2.39, r = 3 + (k % 4) * 2, l = add(new THREE.Mesh(new THREE.SphereGeometry(0.1 + (k % 3) * 0.03, 10, 8), aditivo([COR.magenta, COR.lavanda, COR.ciano][k % 3]!, 0.45)), andar2); l.position.set(Math.cos(a) * r * 0.8, ANDAR2.teto - 0.8 - (k % 3) * 0.35, ANDAR2.z + Math.sin(a) * r * 1.4); }
+  }
+
   // ── o PORTAL da popa: o buraco negro que leva pra Cidade Zaeon ──
   const bn = criarBuracoPortal(g, { x: N.portal.x, y: 0.02, z: N.portal.z, anelR: N.portal.r, h: 3.2, r: 1.1, low: o.low, cor: COR.lavanda });
   anim.push((dt, t) => bn.atualizar(dt, t)); descartar.push(bn);
@@ -266,6 +335,7 @@ export function criarNaveCoworking(o: { low: boolean; teto?: boolean }): NaveCow
     group: g,
     atualizar(dt, t) { for (const f of anim) f(dt, t); },
     mostrarTeto(v) { teto.visible = v; },
+    mostrarAndar2(v) { andar2.visible = v; },
     dispose() { g.traverse((x) => { if ((x as THREE.Mesh).isMesh) (x as THREE.Mesh).geometry?.dispose(); }); for (const d of descartar) d.dispose(); g.removeFromParent(); },
   };
 }

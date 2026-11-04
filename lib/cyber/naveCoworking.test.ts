@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AREAS, CABINES, LADO_CABINE, NAVE_COWORK, areaDoPonto, contornoDoCasco, moveisDaNave, noCasco, paredesDaNave } from "./naveCoworking";
+import { ANDAR2, AREAS, CABINES, ESCADA_CW, LADO_CABINE, NAVE_COWORK, areaDoPonto, contornoDoCasco, moveisDaNave, moveisDoAndar2, noCasco, noLounge2, noTerraco, paredesDaNave, pontoDaEscada } from "./naveCoworking";
 import { empurrarDasParedes, empurrarDosRetangulos } from "./universidade";
 
 describe("nave coworking — a planta", () => {
@@ -39,5 +39,19 @@ describe("nave coworking — a planta", () => {
       const a = outras[i]!, b = outras[j]!; const cruza = a.x0 < b.x1 && b.x0 < a.x1 && a.z0 < b.z1 && b.z0 < a.z1;
       expect(cruza, `${a.id} × ${b.id}`).toBe(false);
     }
+  });
+});
+
+describe("nave coworking — o 2º andar", () => {
+  it("os móveis do lounge ficam no lounge e os do terraço no terraço", () => {
+    for (const m of moveisDoAndar2()) for (const [x, z] of [[m.x0, m.z0], [m.x1, m.z0], [m.x0, m.z1], [m.x1, m.z1]] as const) {
+      if (m.area === "lounge2") expect(noLounge2(x, z, 0.3), `${m.tipo} (${x}, ${z})`).toBe(true);
+      else expect(noTerraco(x, z, 0.3), `${m.tipo} (${x}, ${z})`).toBe(true);
+    }
+  });
+  it("a escada sai da avenida e chega no lounge, livre dos móveis dos dois andares", () => {
+    expect(pontoDaEscada(0).y).toBe(0); expect(pontoDaEscada(ESCADA_CW.giro).y).toBeCloseTo(ANDAR2.y);
+    for (let k = 0; k <= 30; k++) { const p = pontoDaEscada((ESCADA_CW.giro * k) / 30, ESCADA_CW.rOut); expect(Math.abs(p.x)).toBeLessThan(3); expect(noLounge2(p.x, p.z, 1)).toBe(true);
+      expect(empurrarDosRetangulos({ x: p.x, z: p.z }, [...moveisDaNave(), ...moveisDoAndar2()], 0.1)).toEqual({ x: p.x, z: p.z }); }
   });
 });

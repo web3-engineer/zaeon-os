@@ -42,7 +42,7 @@ export function contornoDoCasco(k = 96, margem = 0): { x: number; z: number }[] 
   return Array.from({ length: k }, (_, i) => { const t = (i / k) * Math.PI * 2; return { x: a * sg(Math.cos(t)), z: b * sg(Math.sin(t)) }; });
 }
 
-export type IdArea = "mirante" | "avenida" | "cowork" | "orion" | "foco" | "chill" | "lyra" | "cafe" | "portal";
+export type IdArea = "mirante" | "avenida" | "cowork" | "orion" | "foco" | "chill" | "lyra" | "cafe" | "portal" | "lounge2" | "terraco";
 export type Area = { id: IdArea; nome: string; /** o neon da área (piso, frisos, placa) */ cor: number; x0: number; x1: number; z0: number; z1: number };
 /** as áreas (retângulos; as da proa e da popa são cortadas pelo casco no desenho) */
 export const AREAS: Area[] = [
@@ -60,7 +60,8 @@ export const area = (id: IdArea) => AREAS.find((x) => x.id === id)!;
 
 export type TipoMovel =
   | "mesa" | "cadeira" | "mesaReuniao" | "mesaRedonda" | "telao" | "cabine" | "sofaArco" | "puff" | "planta"
-  | "balcao" | "banqueta" | "mesinha" | "maquinaCafe" | "poltrona" | "totem" | "floreira";
+  | "balcao" | "banqueta" | "mesinha" | "maquinaCafe" | "poltrona" | "totem" | "floreira"
+  | "espreguicadeira" | "mesaBaixa" | "fogueira" | "telescopio";
 export type MovelCW = { tipo: TipoMovel; area: IdArea; x0: number; x1: number; z0: number; z1: number; alt: number; /** pra onde a frente aponta (rad, 0 = +z) */ rumo?: number; /** atravessável (tapete, a cadeira afastada) */ solido?: boolean };
 
 const ret = (tipo: TipoMovel, ar: IdArea, cx: number, cz: number, lx: number, lz: number, alt: number, rumo = 0, solido = true): MovelCW =>
@@ -140,4 +141,55 @@ export function areaDoPonto(x: number, z: number): IdArea | null {
   if (!noCasco(x, z)) return null;
   for (const ar of AREAS) if (ar.id !== "avenida" && x >= ar.x0 && x <= ar.x1 && z >= ar.z0 && z <= ar.z1) return ar.id;
   return "avenida";
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+// o 2º ANDAR (nov/2026, o dono: "lounge e terraço"): em cima do convés, o casco de cima (uma superelipse menor, recuada
+// pra popa) é o LOUNGE com vista 360° (a fita de vidro dá a volta inteira) e, em volta dele, o TERRAÇO aberto no teto
+// do 1º andar (o guarda-corpo de vidro na borda). Sobe-se pela ESCADA EM CARACOL que sai da avenida, no meio da nave,
+// e chega no meio do lounge, de frente pra PORTA do terraço (na proa do casco de cima).
+
+/** o piso do 2º andar (o teto do 1º, por fora), o casco de cima (semi-eixos + o centro recuado) e a altura do teto */
+export const ANDAR2 = { y: 7.7, a: 12.5, b: 22, z: -9, teto: 4.5, /** a porta do lounge pro terraço (na proa do casco de cima) */ porta: { meia: 2.2 } } as const;
+/** a escada em caracol: o centro (na avenida), os raios e o giro total (entra pela popa, sai virada pra proa) */
+export const ESCADA_CW = { cx: 0, cz: -10, rIn: 0.32, rOut: 2.3, giro: Math.PI * 3, a0: Math.PI } as const;
+/** o ponto da escada no ângulo `esc` (0 = o pé, `giro` = o topo) e a altura dele (0 → ANDAR2.y) */
+export function pontoDaEscada(esc: number, r = (ESCADA_CW.rIn + ESCADA_CW.rOut) / 2): { x: number; z: number; y: number } {
+  const E = ESCADA_CW, a = E.a0 + esc;
+  return { x: E.cx + Math.sin(a) * r, z: E.cz + Math.cos(a) * r, y: (esc / E.giro) * ANDAR2.y };
+}
+/** o ponto está dentro do LOUNGE (o casco de cima, com folga `margem`)? */
+export function noLounge2(x: number, z: number, margem = 0): boolean {
+  const a = ANDAR2.a - margem, b = ANDAR2.b - margem;
+  return Math.abs(x / a) ** N.n + Math.abs((z - ANDAR2.z) / b) ** N.n <= 1;
+}
+/** o ponto está no TERRAÇO (no teto do 1º andar, fora do lounge, com folga `margem` da borda)? */
+export const noTerraco = (x: number, z: number, margem = 0.6) => noCasco(x, z, margem) && !noLounge2(x, z, -0.3);
+/** o contorno do lounge (o casco de cima) */
+export const contornoDoLounge = (k = 96, s = 1) => contornoDoCasco(k).map((p) => ({ x: (p.x / N.a) * ANDAR2.a * s, z: (p.z / N.b) * ANDAR2.b * s + ANDAR2.z }));
+
+let moveis2Cache: MovelCW[] | null = null;
+/** os móveis do 2º andar (o lounge e o terraço), no piso dele (y = ANDAR2.y) */
+export function moveisDoAndar2(): MovelCW[] {
+  if (moveis2Cache) return moveis2Cache;
+  const m: MovelCW[] = [];
+  // LOUNGE: duas ilhas de sofá em arco de frente pra proa (a vista), com a mesa baixa no meio
+  for (const cx of [-6.2, 6.2]) { const cz = 3.4, R = 2.5, n = 6;
+    for (let k = 0; k < n; k++) { const a = Math.PI * 0.25 + (k / (n - 1)) * Math.PI * 1.5; m.push(ret("sofaArco", "lounge2", cx + Math.sin(a) * R, cz + Math.cos(a) * R, 1.1, 1.1, 0.8, a + Math.PI)); }
+    m.push(ret("mesaBaixa", "lounge2", cx, cz, 1.4, 1.4, 0.42)); }
+  // as espreguiçadeiras viradas pra fita de vidro dos lados
+  for (const sx of [-1, 1]) for (const z of [-4.5, -12.5]) m.push(ret("espreguicadeira", "lounge2", sx * 10.3, z, 2.0, 0.9, 0.5, sx * Math.PI / 2));
+  // o BAR no fundo (balcão de frente pra proa) com as banquetas
+  m.push(ret("balcao", "lounge2", 0, -24, 9, 1.0, 1.1, 0));
+  for (const x of [-3.6, -1.8, 0, 1.8, 3.6]) m.push(ret("banqueta", "lounge2", x, -22.8, 0.5, 0.5, 0.75, Math.PI, false));
+  for (const [x, z] of [[-9.6, 6.5], [9.6, 6.5], [-8.6, -20], [8.6, -20]] as const) m.push(ret("planta", "lounge2", x, z, 1.2, 1.2, 2.4));
+  m.push(ret("telescopio", "lounge2", -4.4, 10.2, 0.9, 0.9, 1.6, 0));
+  // TERRAÇO: a fogueira holográfica com os puffs em roda, espreguiçadeiras de frente pra proa e nos flancos
+  m.push(ret("fogueira", "terraco", 0, 24, 2.2, 2.2, 0.5));
+  for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2 + Math.PI / 6; m.push(ret("puff", "terraco", Math.sin(a) * 3.4, 24 + Math.cos(a) * 3.4, 0.9, 0.9, 0.45)); }
+  for (const x of [-9, -6, 6, 9]) m.push(ret("espreguicadeira", "terraco", x, 31, 0.9, 2.0, 0.5, 0));
+  for (const sx of [-1, 1]) for (const z of [-14, -4, 6]) m.push(ret("espreguicadeira", "terraco", sx * 15.6, z, 2.0, 0.9, 0.5, sx * Math.PI / 2));
+  for (const [x, z] of [[-12.5, 17], [12.5, 17], [-7.5, 35.5], [7.5, 35.5]] as const) m.push(ret("planta", "terraco", x, z, 1.2, 1.2, 2.0));
+  moveis2Cache = m;
+  return m;
 }

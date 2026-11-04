@@ -11,10 +11,12 @@ import { glowTex } from "@/components/cyber/CenaCosmica";
 import { AREAS, CHILL, NAVE_COWORK, moveisDaNave, type IdArea } from "@/lib/cyber/naveCoworking";
 
 /** os enquadramentos: [posição da câmera, alvo] */
-const VISTAS: Record<"geral" | "exterior" | "popa" | IdArea, [[number, number, number], [number, number, number]]> = {
+const VISTAS: Record<"geral" | "exterior" | "popa" | "lounge2" | "terraco" | IdArea, [[number, number, number], [number, number, number]]> = {
   geral: [[46, 58, -52], [0, 0, 0]],
   exterior: [[70, 26, 62], [0, 2, 4]],
   popa: [[-48, 18, -86], [0, 3, -30]],
+  lounge2: [[0, 10.2, 11], [0, 8.6, -12]],
+  terraco: [[9, 12.5, 39], [0, 8.2, 18]],
   mirante: [[0, 3.2, 17], [0, 2.6, 30]],
   avenida: [[0, 2.4, 6], [0, 1.6, 20]],
   cowork: [[-3.5, 4.2, 22], [-11, 0.8, 10]],
@@ -41,9 +43,9 @@ export default function Coworking() {
     const oc = new OrbitControls(cam, R.domElement); oc.enableDamping = true;
     const ir = (v: keyof typeof VISTAS) => { const [p, a] = VISTAS[v]; cam.position.set(...p); oc.target.set(...a); oc.update(); };
     ir("geral");
-    const nave = criarNaveCoworking({ low: false, teto: false }); cena.add(nave.group);
+    const nave = criarNaveCoworking({ low: false, teto: false }); cena.add(nave.group); nave.mostrarAndar2(false);
     const casco = criarCascoNave({ low: false }); cena.add(casco.group); casco.group.visible = false;
-    api.current = { ir, teto: (v) => nave.mostrarTeto(v), casco: (v) => { casco.group.visible = v; nave.mostrarTeto(v); } };
+    api.current = { ir, teto: (v) => nave.mostrarTeto(v), casco: (v) => { casco.group.visible = v; nave.mostrarTeto(v); nave.mostrarAndar2(v); } };
     // gente: sentada nas mesas do coworking e na Lyra, no chill-out, no café e uma de pé no átrio
     const starTex = glowTex("rgba(255,255,255,1)", "rgba(190,215,255,0.5)"), avs: { av: AvatarLuzHandle; x: number; z: number; rumo: number; senta: boolean }[] = [];
     const cores = ["#c69bff", "#ffd36b", "#7fe0ff", "#ff7ad9", "#9affd0", "#2f7bff"];
@@ -68,6 +70,8 @@ export default function Coworking() {
     <div style={{ position: "absolute", top: 16, left: 16, right: 16, display: "flex", flexWrap: "wrap", gap: 8 }}>
       <button style={{ ...b, background: "#ff2fb4", color: "#fff" }} onClick={() => { api.current?.casco(true); api.current?.ir("exterior"); }}>Exterior</button>
       <button style={{ ...b, background: "#45f0ff" }} onClick={() => { api.current?.casco(true); api.current?.ir("popa"); }}>Popa</button>
+      <button style={{ ...b, background: "#c69bff" }} onClick={() => { api.current?.casco(true); api.current?.ir("lounge2"); }}>Lounge (2º andar)</button>
+      <button style={{ ...b, background: "#ffb8f0" }} onClick={() => { api.current?.casco(true); api.current?.ir("terraco"); }}>Terraço</button>
       <button style={{ ...b, background: "#e2d0ff" }} onClick={() => { api.current?.casco(false); api.current?.teto(teto); api.current?.ir("geral"); }}>Visão geral</button>
       {AREAS.map((a) => <button key={a.id} style={{ ...b, background: `#${a.cor.toString(16).padStart(6, "0")}` }} onClick={() => { api.current?.casco(false); api.current?.teto(teto); api.current?.ir(a.id); }}>{a.nome}</button>)}
       <button style={{ ...b, background: "#ffffff" }} onClick={() => { setTeto((x) => { api.current?.teto(!x); return !x; }); }}>{teto ? "Tirar teto" : "Pôr teto"}</button>
