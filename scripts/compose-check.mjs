@@ -19,11 +19,19 @@
  * pegar antes do parser.
  *
  * Sem dependência: roda no CI em ~50 ms, antes de qualquer `npm ci`.
+ *
+ * SÓ APIs ANTIGAS AQUI, e isto não é estilo: a primeira versão usava `fs.globSync`, que existe no
+ * Node 22 (o meu) e NÃO no Node 20 (o do CI, `node-version: "20"` em ci.yml). O gate morreu no
+ * próprio CI que ele devia proteger — segundo erro seguido com a mesma forma: meu ambiente não é o
+ * ambiente real. `readdirSync` + filtro funciona em qualquer versão desde sempre.
  */
-import { readFileSync } from "node:fs";
-import { globSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 
-const arquivos = globSync("docker-compose*.yml");
+const arquivos = readdirSync(".").filter((f) => /^docker-compose.*\.ya?ml$/.test(f)).sort();
+if (!arquivos.length) {
+  console.error("✗ nenhum docker-compose*.yml na raiz — rode da raiz do repositório");
+  process.exit(1);
+}
 let problemas = 0;
 
 for (const arq of arquivos) {

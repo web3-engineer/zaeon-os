@@ -942,6 +942,13 @@ Duas lições, e a segunda é a que machuca:
    tem essa forma (o `env:` do CI que eu não reproduzia, a Variable que o compose anulava, agora o
    parser). Virou gate: `scripts/compose-check.mjs`, rodando no CI antes do `npm ci` — e **provado
    contra o defeito real**, não só contra o arquivo bom (um gate que sempre passa é pior que nenhum).
+
+   **E o gate quebrou no CI na primeira tentativa, pelo MESMO vício.** Escrevi-o com `fs.globSync`,
+   que existe no Node 22 (o meu) e não no Node 20 (`node-version: "20"` no ci.yml): o passo morreu
+   instantaneamente, no próprio CI que ele deveria proteger. Dois erros seguidos com a mesma forma —
+   "verifiquei no meu ambiente" — num conserto cujo assunto ERA esse vício. O gate agora usa só
+   `readFileSync`/`readdirSync`, e desta vez eu **rodei sob o Node 20** (`npx node@20`) em vez de
+   argumentar por idade de API: passa no arquivo bom e sai com código 1 no defeito.
 2. **No serviço `worker`, `SCHOLAR_WORKER` é `"1"` FIXO** porque consumir a fila é o trabalho dele.
    Minha chave duplicada com `${SCHOLAR_WORKER:-}` o teria sobrescrito com **vazio**, desligando o
    worker dedicado em silêncio. O parser me salvou de enviar isso.
