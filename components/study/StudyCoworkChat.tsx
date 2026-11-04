@@ -43,6 +43,7 @@ import StructuredAnswerView from "@/components/study/StructuredAnswerView";
 import ConversasSidebar from "@/components/chat/ConversasSidebar";
 import PastasEmpilhadas, { CORPO_DA_PASTA, type Pasta } from "@/components/chat/PastasEmpilhadas";
 import ConvitePainel from "@/components/tcc/ConvitePainel";
+import { temaDoConvite } from "@/lib/chat/conviteTexto";
 import { conversaApi, type Convite, type PapelConvite } from "@/lib/chat/conversaShare";
 import SugestoesConversa from "@/components/chat/SugestoesConversa";
 import { EVT_TEMA, temaDoTexto, temaNoTutorial } from "@/lib/onboarding/tutorialLab";
@@ -343,6 +344,18 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   const [docsPorAba, setDocsPorAba] = useState<Record<string, DocArtefato[]>>({});
   const [docAtivoPorAba, setDocAtivoPorAba] = useState<Record<string, string | null>>({});
   const docs = abaAtiva ? docsPorAba[abaAtiva] ?? [] : [];
+  /**
+   * O ASSUNTO pra frase do convite ("vem estudar comigo sobre ___"). A conversa não tem título
+   * próprio, então vem do que está em jogo: o trabalho/documento ABERTO primeiro, depois o primeiro
+   * da conversa. `temaDoConvite` descarta rótulo genérico e o título provisório do gerador — sem
+   * isso o convite sairia "vem estudar comigo sobre Documento em preparação".
+   */
+  const temaDaConversa = temaDoConvite([
+    trabalhosDaAba.find((w) => w.id === trabalhoAberto)?.titulo,
+    docs.find((d) => d.artifactId === docAtivo)?.titulo,
+    trabalhosDaAba[0]?.titulo,
+    docs[0]?.titulo,
+  ]);
   const docAtivo = abaAtiva ? docAtivoPorAba[abaAtiva] ?? null : null;
   const setDocAtivo = useCallback((id: string | null) => {
     const aba = abaAtivaRef.current;
@@ -1382,7 +1395,10 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
               <button type="button" onClick={() => (convite ? setConvite(null) : void compartilhar())} disabled={convidando}
                 title="Convidar alguém para esta conversa" aria-label="Compartilhar conversa"
                 className="shrink-0 h-7 px-2 rounded-md inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600 dark:text-white/70 hover:bg-slate-200/70 dark:hover:bg-white/10 disabled:opacity-40">
-                <UserPlus size={13} aria-hidden /><span className="hidden sm:inline">Compartilhar</span>
+                {/* SÓ O ÍCONE (pedido do dono): a barra divide espaço com A−/A+ e o mapa, e a palavra
+                    só caberia no desktop. O `title` e o `aria-label` acima seguram o significado —
+                    sem eles isto seria um botão muda pra quem usa leitor de tela. */}
+                <UserPlus size={14} aria-hidden />
               </button>
             )}
             <ChatZoom escala={zoom.escala} menor={zoom.menor} maior={zoom.maior} />
@@ -1392,6 +1408,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
 
         {convite && (
           <ConvitePainel
+            tema={temaDaConversa}
             convite={convite} ocupado={convidando} onPapel={(pp) => void compartilhar(pp)}
             onRevogar={() => { if (abaAtiva) void conversaApi.revogar(abaAtiva).catch(() => {}); setConvite(null); }}
             onFechar={() => setConvite(null)}
