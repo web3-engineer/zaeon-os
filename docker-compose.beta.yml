@@ -102,6 +102,9 @@ services:
       # F2 · o modelo escolhe a ferramenta. VOLTAS = teto de custo (vazio = padrão 2).
       HARNESS_ACAO: ${HARNESS_ACAO:-1}
       HARNESS_VOLTAS_ACAO: ${HARNESS_VOLTAS_ACAO:-}
+      # F7 · o Pro nas fases pesadas (plus/pro). Vazio = LIGADO (o código trata vazio como ausente);
+      # `PRO_PESADAS=0` é o rollback, e precisa chegar nos DOIS serviços pra valer de verdade.
+      PRO_PESADAS: ${PRO_PESADAS:-}
       # F3 · o anexo entra no harness (imagem/PDF escaneado seguem no legado).
       HARNESS_ANEXO: ${HARNESS_ANEXO:-1}
       # F4 · cobertura por documento + síntese cruzada (só com 2+ documentos em jogo).
@@ -191,6 +194,9 @@ services:
       # F2 · o modelo escolhe a ferramenta. VOLTAS = teto de custo (vazio = padrão 2).
       HARNESS_ACAO: ${HARNESS_ACAO:-1}
       HARNESS_VOLTAS_ACAO: ${HARNESS_VOLTAS_ACAO:-}
+      # F7 · o Pro nas fases pesadas (plus/pro). Vazio = LIGADO (o código trata vazio como ausente);
+      # `PRO_PESADAS=0` é o rollback, e precisa chegar nos DOIS serviços pra valer de verdade.
+      PRO_PESADAS: ${PRO_PESADAS:-}
       # F3 · o anexo entra no harness (imagem/PDF escaneado seguem no legado).
       HARNESS_ANEXO: ${HARNESS_ANEXO:-1}
       # F4 · cobertura por documento + síntese cruzada (só com 2+ documentos em jogo).

@@ -255,6 +255,8 @@ Isso vira **invariante testada**, não meta: promessa sem lastro não passa no g
 
 | **F6** ✅ | **Profundidade por tarefa.** O teto de voltas deixa de ser um número só (`VOLTAS_POR_INTENT`: 0 pra conversa, 1 pro livro, 5 pro trabalho) e a **crítica passa a poder pedir evidência** — uma volta de `gather` dirigida quando o veredito traz `sem_fonte`. Mesma flag `HARNESS_ACAO`. | médio | F2 |
 
+| **F7** ✅ | **O Pro nas fases pesadas**, só plus/pro. Duas trilhas, porque o defeito era duplo: `plan`/`sintese` no harness (`FASES_COM_PRO`) e as **seções do documento** (`lib/tcc/gerar`), que nenhuma flag do harness alcançava. Flag `PRO_PESADAS`, ON. | **médio** (custo) | F6 |
+
 **Rollback em qualquer fase:** flag por fase; sem ela o caminho atual vale byte a byte.
 
 ### Por que a F0 vem sozinha e primeiro
@@ -781,6 +783,84 @@ custo por turno e envolve decidir quem paga por isso — `lib/plans` dá `deep: 
 voltas" pra tudo depois da F6 — e recibo que mente é pior que recibo que falta (§8.4b). Sem a segunda,
 "qual modelo está no ar?" não tinha resposta sem SSH, porque `GEMINI_MODEL` vive no `.env` do VPS e
 não no repositório.
+
+### F7 entregue — o Pro ligado, e os dois no-ops que estavam no caminho
+
+Decisão do dono depois da auditoria F6b: *"liga o pro nas fases pesadas"*, e, perguntado onde e pra
+quem, escolheu **`plan` + síntese do harness** e **as seções do TCC**, para **plus e pro**. O `draft`
+do chat e um crítico LLM ficaram de fora.
+
+**Ligar não era mexer numa flag — era consertar dois no-ops.** O primeiro já estava descrito na F6b:
+`opts.deepThink` nunca era setado. O segundo só apareceu ao medir antes de escrever, e é o que
+tornaria a correção inútil: **`opts.modelo` vem SEMPRE preenchido.** O composer manda o id da pílula
+e o padrão dela (`MODELO_PADRAO = MODELOS_CHAT[0].id`) é um id concreto, não ausência — então o
+`opts.modelo ||` curto-circuitava a expressão inteira, e passar `deepThink` não mudaria nada. Essa
+medição, feita antes de uma linha de código, é a diferença entre consertar e achar que consertou.
+
+A precedência nova, em três degraus:
+
+1. **Escolha explícita no composer** (qualquer uma que não seja a pílula padrão) manda em TODAS as
+   fases. Quem escolheu Flash-Lite por velocidade não recebe Pro por trás; quem escolheu Pro recebe
+   Pro em tudo, rascunho incluído. Pedido do aluno vence política da casa.
+2. **Na pílula padrão** — que não expressa preferência nenhuma — as fases de `FASES_COM_PRO` de quem
+   tem direito vão pro Pro.
+3. O resto é Flash.
+
+Para isso existir foi preciso um campo novo, `modeloEhPadrao`: o cliente manda um id concreto nos
+dois casos, então "não escolhi nada" e "escolhi justamente este" chegavam **idênticos** ao servidor.
+
+**O booleano `heavy` virou fase nomeada, e isso foi conserto, não estilo.** `modelFor(true)` agrupava
+`plan`, `sintese` e `draft` — três fases com custos e consequências diferentes. Eu cheguei a
+implementar a decisão com o booleano e **estava dando Pro ao `draft`, que o dono não pediu**; só
+nomear a fase (`FASES_COM_PRO = {plan, sintese}`) tornou a política escrevível e o erro visível. O
+`draft` fica fora porque a latência da 1ª palavra foi afinada com eval em out/2026 ("as respostas
+estão lentas", 0,99 s medido), e o Pro desfaria isso justamente na fase que o aluno espera olhando a
+tela.
+
+**A segunda trilha é onde a qualidade do documento mora — e ela não é o harness.** `lib/tcc/gerar.ts`
+escreve cada seção fora do `modelFor`, e o que estava lá não era o Flash: com o gateway de pé, era
+`MODELO_POOL` = `zaeon-pool-lite`, o grupo de **provedores grátis de terceiros**. O
+`GEMINI_MODEL_FLASH` do código só valia com o gateway fora. Então "as seções do TCC estão no Flash"
+era falso, e ninguém ligando flag no harness jamais mudaria aquele ponto.
+
+Duas coisas que esse trilho exigiu, e uma delas pioraria o produto se esquecida:
+
+- **O Pro exige `rota: "vertex"`**: `zaeon-pool-lite` é um grupo do LiteLLM com outros modelos
+  dentro, não um caminho pro Pro. Quem tem direito troca pool grátis por Vertex **pago** — é o custo
+  aprovado, e ele desaparece com `PRO_PESADAS=0`.
+- **O prazo tinha de dobrar.** 60 s por seção foi medido pro Flash; o Pro pensa mais antes de
+  escrever. Mantido em 60 s, a seção estouraria e cairia na **marca de falha** do escritor — ou seja,
+  ligar o Pro trocaria texto por buraco, e as duas tentativas por seção não salvariam (a segunda
+  estoura igual). Vai pra 120 s com Pro. A decisão (rota + modelo + prazo) saiu de dentro do gerador
+  para a função pura `planoDaSecao`, porque `gerarPorSecao` não é testável — oito imports dinâmicos,
+  Prisma, envelope — e função pura é a parte que dá pra provar.
+
+**Elegibilidade (`lib/ai/proNasPesadas`)**: deriva de `planCapabilities().deep !== "none"` em vez de
+listar planos à mão, para não existirem duas definições de "quem paga pelo caminho profundo"
+envelhecendo em separado. Plano pago **expirado** cai pra free (`effectivePlan`), e `deepThinkEnabled`
+segue como override manual. **Falha FECHADO**: banco fora, id inválido, qualquer erro → Flash. O
+caminho caro nunca é o padrão de um acidente. Memo de 60 s para não consultar o banco a cada turno.
+
+**O que foi decisão minha e vale conferência do dono:** a cota do Plus é `deep: "daily"` (1×/dia, do
+botão Pensamento Profundo), e aqui o Plus recebe o Pro **continuamente**, sem consumir essa cota.
+Fiz assim porque uma cota diária não divide por seção — um documento tem ~8 — e porque o dono disse
+"plus e pro". Se a intenção era preservar a distinção entre os tiers, o ajuste é trocar
+`deep !== "none"` por `deep === "unlimited"` num lugar só, e aí o Plus volta ao pool.
+
+`deepThink` saiu do `HarnessOpts`. Era declarado, lido num único lugar e nunca setado — a mesma
+configuração que mente da `notebook_read`, e deixá-lo de enfeite ao lado do campo que funciona seria
+plantar a próxima confusão.
+
+**Gates:** `tsc` limpo, `eslint --quiet` 0, dois YAML validados, suíte cheia verde, +17 testes novos.
+O de modelo-por-fase (`aura-harness.pro.test.ts`) é o que faltava desde sempre: **nenhum teste
+olhava qual modelo cada fase pedia**, e é só por isso que um sanduíche inexistente passou meses
+documentado como existente. A guarda contra passe no vácuo desse arquivo corrigiu o próprio
+comentário que eu havia escrito: o turno dispara QUATRO fases, não duas (`reason` não é pulada no
+modo `research`).
+
+**Fiação da flag:** `PRO_PESADAS` percorre os cinco elos (env do job → `envs:` do ssh-action → o
+`for k in` que escreve o `.env` do VPS → compose `web` → compose `worker`). Sem os cinco, o
+kill-switch não existiria em produção — é a lição do §8.1, aplicada antes de doer.
 
 ## 7. 🔒 Portões do dono
 
