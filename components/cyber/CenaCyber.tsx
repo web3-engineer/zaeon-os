@@ -11,6 +11,7 @@ import CofrePainel from "./CofrePainel";
 import type { Carregando } from "@/lib/cyber/carregamento";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { SKIN_MINI_PADRAO, ehSkinMini } from "@/lib/cyber/naveMini";
 import { LAB_ENTRADA, MSG_ENTRAR_ESTUDO, ehMsgEntrarEstudo } from "@/lib/ui/loungeHub";
 import { EVENTO_GRAFICOS, PREF_GRAFICOS, PREF_MOSTRAR_FPS, PREF_NITIDEZ, PREF_SUAVIZAR, comPreferencia, detectarPerfil, lerGpu, lerNitidez, lerPreferencia, lerSuavizar, precisaGirar, qualidadeDe } from "@/lib/cyber/dispositivo";
 import ContadorFps from "./ContadorFps";
@@ -303,6 +304,7 @@ export default function CenaCyber(p: CenaCyberProps) {
       onTunelDireto: (d) => { engine.current?.soltarMouse(); setTunel({ tipo: "direto", para: d.para, nome: d.nome }); },   // (os níveis: o fio cósmico / o buraco negro da sala — sem menu)
       onAviso: avisar,
       nascer, nascerNa, retomar, motosLiberadas: !!p.motosLiberadas, examinerLiberado: !!p.examinerLiberado,
+      skinNave: (() => { try { const q = new URLSearchParams(location.search).get("skin") ?? localStorage.getItem("zaeon.skinNave"); return ehSkinMini(q) ? q : SKIN_MINI_PADRAO; } catch { return SKIN_MINI_PADRAO; } })(),   // (a skin da SUA nave: ?skin=agradavel pra testar; a escolha do usuário fica no aparelho)
       regiao: p.regiao ?? (() => { try { const f = regiaoDoFuso(Intl.DateTimeFormat().resolvedOptions().timeZone); return f && f !== "exterior" ? f : null; } catch { return null; } })() ?? REGIAO_PADRAO,
       onDuelo: p.dueloIngles ? (abrir) => { if (abrir && document.pointerLockElement) document.exitPointerLock(); setDuelo(abrir); } : undefined,
       onNasceu: () => { cb.current.marcarNascimento?.(); try { localStorage.setItem(CHAVE_ONBOARDING, "1"); } catch { /* storage bloqueado */ } },   // o novato chegou na Zaeon pelo portal

@@ -137,6 +137,23 @@ function montarSaidaDoSalao(): FioCosmico {
   const bn = ilha(bnL);
   return { sala: "lounge", saida: true, eixo, acum, comprimento: acum[acum.length - 1]!, boca: { ...eixo[0]!, r: FIO.bocaR }, bn: { ...bn, r: FIO.bnSaidaR } };
 }
+/** uma pista LIVRE (nov/2026 — o espaço aberto da SUA nave, lib/cyber/minhaNave): de `ini` pra fora, serpenteando e
+ *  subindo, até o buraco negro `bn` (raio `bnR`), com a mesma espiral no fim. `saida` = leva pro hub (a Cidade dos
+ *  Anjos); senão, pra `sala`. Tudo no referencial LOCAL da ilha, como as outras */
+export function montarPistaLivre(chave: string, ini: V3, bn: V3, bnR: number, sala: NomeSala, saida: boolean): FioCosmico {
+  const r = rng(semente(chave)), fase = r() * Math.PI * 2, dx = bn.x - ini.x, dz = bn.z - ini.z, L = Math.hypot(dx, dz) || 1, dir = { x: dx / L, z: dz / L }, perp = { x: -dir.z, z: dir.x };
+  const ctrl: V3[] = [{ ...ini }, { x: ini.x + dir.x * 26, y: ini.y + 2, z: ini.z + dir.z * 26 }, { x: ini.x + dir.x * 70, y: ini.y + 10, z: ini.z + dir.z * 70 }];
+  const de = ctrl[ctrl.length - 1]!, R0 = bnR * 1.8, alvo = { x: bn.x - dir.x * R0, y: bn.y, z: bn.z - dir.z * R0 }, N = 48;
+  for (let k = 1; k <= N; k++) {
+    const t = k / N, curva = Math.sin(t * Math.PI * FIO.curvas * 2 + fase) * FIO.largura * Math.sin(t * Math.PI) * Math.min(1, t * 4);
+    ctrl.push({ x: de.x + (alvo.x - de.x) * t + perp.x * curva, y: de.y + (alvo.y - de.y) * t + Math.sin(t * Math.PI) * (FIO.teto - FIO.bnY), z: de.z + (alvo.z - de.z) * t + perp.z * curva });
+  }
+  const ult = ctrl[ctrl.length - 1]!, angEntra = Math.atan2(ult.z - bn.z, ult.x - bn.x), sentido = r() < 0.5 ? 1 : -1, M = 40;
+  for (let k = 1; k <= M; k++) { const t = k / M, ang = angEntra + sentido * t * FIO.voltas * Math.PI * 2, rr = R0 + (bnR * 1.05 - R0) * Math.pow(t, 1.4); ctrl.push({ x: bn.x + Math.cos(ang) * rr, y: ult.y + (bn.y - ult.y) * t, z: bn.z + Math.sin(ang) * rr }); }
+  const eixo = amostrarCurva(ctrl, 3200), acum = [0];
+  for (let i = 1; i < eixo.length; i++) acum.push(acum[i - 1]! + Math.hypot(eixo[i]!.x - eixo[i - 1]!.x, eixo[i]!.y - eixo[i - 1]!.y, eixo[i]!.z - eixo[i - 1]!.z));
+  return { sala, ...(saida ? { saida: true } : {}), eixo, acum, comprimento: acum[acum.length - 1]!, boca: { ...eixo[0]!, r: FIO.bocaR }, bn: { ...bn, r: bnR } };
+}
 let cacheSaida: FioCosmico[] | null = null;
 /** as pistas de SAÍDA (uma por sala) */
 export const pistasDeSaida = (): FioCosmico[] => (cacheSaida ??= SALAS_FIO.map(montarSaida));

@@ -13,7 +13,7 @@ import type { Regiao } from "./regiaoUsuario";
 /** a separação em níveis (desligar = volta o mapa inteiro, com as escadas) */
 export const NIVEIS_SEPARADOS = true as boolean;
 
-export type IdNivel = "zaeon" | NomeSala | "praca" | "solana" | `nave-${Regiao}`;   // (as NAVES COWORKING de cada região — lib/cyber/navesRegiao)
+export type IdNivel = "zaeon" | NomeSala | "praca" | "solana" | `nave-${Regiao}` | "minha-nave" | "espaco";   // (as NAVES COWORKING de cada região — lib/cyber/navesRegiao; a SUA nave e o espaço aberto em volta dela — lib/cyber/minhaNave)
 export const IDS_NIVEIS: readonly IdNivel[] = ["zaeon", "lounge", "garagem", "biblioteca", "jardim", "praca", "solana"];
 
 let ativo: IdNivel | null = null;
