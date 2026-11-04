@@ -21,7 +21,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import {
-  PanelRightClose, PanelRightOpen, FileText, X, ChevronDown, GitBranch, GraduationCap, FlaskConical,
+  PanelRightClose, PanelRightOpen, FileText, X, ChevronDown, GitBranch, GraduationCap, FlaskConical, UserPlus,
 } from "lucide-react";
 import { DIRETRIZ_ESTUDOS, DIRETRIZ_PESQUISA } from "@/lib/ai/salaPersona";
 import { useIsMobile } from "@/lib/ui/useIsMobile";
@@ -42,6 +42,8 @@ import StudioBlock, { type StudioBlockData } from "@/components/studio/StudioBlo
 import StructuredAnswerView from "@/components/study/StructuredAnswerView";
 import ConversasSidebar from "@/components/chat/ConversasSidebar";
 import PastasEmpilhadas, { CORPO_DA_PASTA, type Pasta } from "@/components/chat/PastasEmpilhadas";
+import ConvitePainel from "@/components/tcc/ConvitePainel";
+import { conversaApi, type Convite, type PapelConvite } from "@/lib/chat/conversaShare";
 import SugestoesConversa from "@/components/chat/SugestoesConversa";
 import { EVT_TEMA, temaDoTexto, temaNoTutorial } from "@/lib/onboarding/tutorialLab";
 import { EVT_PERGUNTA_CHAT, EVT_PREENCHER_CHAT, avisarDesenho, avisarEstadoPercurso, avisarTurnoFim } from "@/lib/onboarding/tourSala";
@@ -255,6 +257,20 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   const [cerebroAberto, setCerebroAberto] = useState(false);
   // #640: a altura medida da barra das abas (as telas por cima começam nela)
   const [topoPastas, setTopoPastas] = useState(46);
+  /**
+   * COMPARTILHAR A CONVERSA. A porta que faltava: o convite da D6 concede papel na conversa
+   * inteira, mas só existia DENTRO do painel do documento — conversa sem documento aberto não
+   * tinha como convidar ninguém, e quem procurava "compartilhar" na conversa não achava.
+   */
+  const [convite, setConvite] = useState<Convite | null>(null);
+  const [convidando, setConvidando] = useState(false);
+  const compartilhar = async (papel: PapelConvite = "editor") => {
+    if (!abaAtiva) return;
+    setConvidando(true);
+    try { setConvite(await conversaApi.compartilhar(abaAtiva, papel)); }
+    catch { setConvite(null); }
+    finally { setConvidando(false); }
+  };
   const cerebro = useCerebro(abaAtiva, { aberto: cerebroAberto });
   // #613: o tour do laboratório acompanha o botão do percurso (gerando → pronto)
   useEffect(() => { avisarEstadoPercurso(cerebro.estado); }, [cerebro.estado]);
@@ -1362,10 +1378,25 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
           // #633: o botão do MAPA (o cérebro) mora à DIREITA, do lado do A−/A+ — os controles da conversa juntos;
           // e vem DEPOIS das letras: A− A+ [Ver mapa]
           depois={<>
+            {abaAtiva && (
+              <button type="button" onClick={() => (convite ? setConvite(null) : void compartilhar())} disabled={convidando}
+                title="Convidar alguém para esta conversa" aria-label="Compartilhar conversa"
+                className="shrink-0 h-7 px-2 rounded-md inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600 dark:text-white/70 hover:bg-slate-200/70 dark:hover:bg-white/10 disabled:opacity-40">
+                <UserPlus size={13} aria-hidden /><span className="hidden sm:inline">Compartilhar</span>
+              </button>
+            )}
             <ChatZoom escala={zoom.escala} menor={zoom.menor} maior={zoom.maior} />
             {bolinhaMapa}
           </>}
         />
+
+        {convite && (
+          <ConvitePainel
+            convite={convite} ocupado={convidando} onPapel={(pp) => void compartilhar(pp)}
+            onRevogar={() => { if (abaAtiva) void conversaApi.revogar(abaAtiva).catch(() => {}); setConvite(null); }}
+            onFechar={() => setConvite(null)}
+          />
+        )}
 
         {/* o painel do MAPA: por cima da conversa (abaixo da linha de cima, que segue mostrando a bolinha) */}
         <AnimatePresence>

@@ -23,13 +23,13 @@
  * procura. Não confundir com `SURFACE_ESTUDOS` de `lib/estudos/board`, que vale "meus-estudos" e é
  * outro recurso — ligar a constante errada aqui geraria convite que nunca concede nada.
  */
-import { prisma } from "@/src/lib/prisma";
 import { podeAdministrar, type PapelConvidavel } from "@/lib/cartolina/access";
 import { gerarLink, revogarLinks } from "@/lib/cartolina/cowork-store";
+import { acharBoardDaConversa, boardDaConversa, SURFACE_CONVERSA } from "@/lib/cartolina/conversa-share";
 import { getTccForUser } from "@/lib/tcc/store";
 
-/** A surface do board da conversa — a MESMA que `papelNoWork` consulta. */
-export const SURFACE_CONVERSA = "estudos" as const;
+/** Reexportado: a surface é definida uma vez só, em lib/cartolina/conversa-share. */
+export { SURFACE_CONVERSA };
 
 export type MotivoConvite = "not_found" | "forbidden" | "sem_conversa";
 export type Falha = { ok: false; reason: MotivoConvite };
@@ -44,22 +44,9 @@ export type Convite = {
   escopo: "conversa";
 };
 
-/**
- * O board da conversa do trabalho, criando se faltar. Só quem já passou por `podeAdministrar`
- * chega aqui, então criar é seguro: é o dono abrindo a porta da própria conversa.
- */
-async function boardDaConversa(ownerId: string, scopeId: string): Promise<string> {
-  const achado = await prisma.cartolina.findFirst({
-    where: { ownerId, surface: SURFACE_CONVERSA, scopeId },
-    orderBy: { updatedAt: "desc" },
-    select: { id: true },
-  });
-  if (achado) return achado.id;
-  const novo = await prisma.cartolina.create({
-    data: { ownerId, surface: SURFACE_CONVERSA, scopeId, titulo: "Estudo", cards: [] as never },
-  });
-  return novo.id;
-}
+// O resolvedor do board mora em lib/cartolina/conversa-share: as DUAS portas (documento e
+// conversa) usam a mesma função, pra ninguém consertar uma e esquecer a outra — e porque é lá que
+// mora a armadilha da surface ("estudos", não "meus-estudos").
 
 /**
  * Gera o link de convite da conversa a que este trabalho pertence. SÓ O DONO (`podeAdministrar`),
@@ -93,10 +80,7 @@ export async function revogarDoTrabalho(workId: string, userId: string): Promise
   if (!t) return { ok: false, reason: "not_found" };
   if (!podeAdministrar(t.papel)) return { ok: false, reason: "forbidden" };
   if (!t.scopeId) return { ok: false, reason: "sem_conversa" };
-  const board = await prisma.cartolina.findFirst({
-    where: { ownerId: userId, surface: SURFACE_CONVERSA, scopeId: t.scopeId },
-    select: { id: true },
-  });
+  const board = await acharBoardDaConversa(t.scopeId);
   // sem board não há link emitido: revogar é no-op honesto, não erro
   if (!board) return { ok: true };
   const r = await revogarLinks(board.id, userId);
