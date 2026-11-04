@@ -100,6 +100,12 @@ const OUTRO_RE = /(^|\s)(outr[oa]|mais uma?|uma? nov[oa]|segund[oa]|another|new)
 /** fala de uma parte do trabalho aberto (ou de mexer nele) — é edição, não trabalho novo. */
 const PARTE_RE = /(introducao|metodologia|conclus|consideracoes finais|resumo|abstract|referencia|referencial|resultado|discussao|justificativa|objetivo|secao|capitulo|paragrafo|continu|termin|complet|revis|reescrev|melhor|ajust|expand|aument|encurt|corrij)/;
 const TEMA_RE = /\b(sobre|acerca de|a respeito de|com o tema|tema:?|about|on)\s+\S/;
+/**
+ * "mexa no que já existe", dito com todas as letras e logo no começo do pedido. Só isto faz um
+ * briefing com plano de seções virar edição — o resto do texto não conta, porque num briefing as
+ * palavras de seção aparecem como TÍTULOS, não como alvo.
+ */
+const EDICAO_EXPLICITA = /^.{0,80}?\b(atualiz|edit|reescrev|revis|corrij|ajust|melhor|complet|continu|expand|encurt|refa[çc]|troqu|substitu)\w*\b.{0,40}?\b(trabalho|documento|artigo|tcc|texto|relatorio|monografia|secao|capitulo)\b/s;
 
 /**
  * Num pedido de trabalho com um trabalho já aberto na conversa: é um trabalho NOVO ou é pra mexer no
@@ -110,6 +116,22 @@ export function pedeNovoTrabalho(prompt: string, aberto: Pick<TccView, "titulo">
   if (!aberto) return true;
   const t = semAcento(prompt);
   if (OUTRO_RE.test(t) && (TEMA_RE.test(t) || /(artigo|paper|tcc|relatorio|trabalho|pesquisa|monografia|ensaio)/.test(t))) return true;
+  /**
+   * 🔴 BRIEFING COM PLANO PRÓPRIO É TRABALHO NOVO — e isto é o conserto de um defeito que chegou
+   * por relato de usuária, DEPOIS de a D7 já estar no ar.
+   *
+   * O `PARTE_RE` abaixo procura "introducao", "metodologia", "referencia", "secao"… porque foi
+   * escrito para "melhore a introdução", onde o substantivo É o alvo da edição. Num briefing essas
+   * mesmas palavras são os NOMES DAS SEÇÕES PEDIDAS — então todo pedido elaborado casava com
+   * `PARTE_RE` e era roteado como edição do documento aberto. E no caminho de edição o briefing
+   * nunca chega ao gerador: nem as seções do pedido, nem as referências obrigatórias, nem os
+   * marcadores. A D7 consertou a criação, e a pessoa que já tinha um documento na conversa nunca
+   * passava por ela.
+   *
+   * Quem traz plano de seções está pedindo um DOCUMENTO, não um ajuste — a não ser que diga, com
+   * todas as letras, que é pra mexer no que já existe (`EDICAO_EXPLICITA`).
+   */
+  if (!EDICAO_EXPLICITA.test(t) && lerBriefing(prompt).secoes.length >= 2) return true;
   if (PARTE_RE.test(t)) return false;
   if (!TEMA_RE.test(t)) return false;
   return chaveTitulo(temaDoPedido(prompt)) !== chaveTitulo(aberto.titulo);

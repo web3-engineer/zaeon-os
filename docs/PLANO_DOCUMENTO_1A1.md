@@ -373,3 +373,103 @@ Os dois ❌ são decisões, não bugs:
   turno no chat. Como o pedido inteiro foi roteado para a geração de documento, ela se perdeu. Esse
   é um buraco de ROTEAMENTO, não do escritor: hoje um pedido ou vira documento ou vira resposta,
   nunca os dois. Vale uma fase própria.
+
+### D7c · O buraco de roteamento: a entrega que é da RESPOSTA, não do documento
+
+Pedido do dono: *"resolve a lista de pendências no fim, é buraco de roteamento"*.
+
+**O diagnóstico estava certo, e o mecanismo é este:** um pedido pode trazer DUAS entregas — o
+documento ("redija as seções 1, 2, 3 e 6") e algo que é da conversa ("ao final, forneça uma lista
+em tópicos com todos os dados empíricos que eu preciso fornecer"). O turno é binário: `intent ===
+"criar_trabalho"` roteava o pedido inteiro para a geração do documento, e a lista — que não é seção
+de trabalho nenhum — não tinha onde cair.
+
+**Onde NÃO estava o defeito, e isso importou para o conserto:** o transporte. A bolha do chat
+**já** preserva o `nucleo` do modelo (`resolveHarnessOutput` só descarta `work`, e o comentário "O
+ARTEFATO NÃO É MAIS A RESPOSTA" registra que essa lição já tinha sido aprendida uma vez). Então não
+havia o que consertar no caminho de saída: faltava **alguém dizer ao modelo** que parte daquele
+pedido tinha de sair na mensagem.
+
+**O conserto:** `entregaveisDoTurno()` (puro) reconhece essas frases e `blocoDeEntregaveis()` as põe
+no `systemContext` do turno, dizendo o que é: *"isto NÃO é seção do documento; escreva no corpo
+desta mensagem… e não diga que vai fornecer depois — forneça agora"*. A última linha não é enfeite:
+sem ela, o caminho natural do modelo é prometer, e a rede de honestidade reprovaria a promessa
+deixando a resposta pior do que antes.
+
+**A detecção é conservadora de propósito:** exige um marcador de fecho ("ao final", "por fim", "ao
+término"…) **junto** de um verbo de entrega. "Liste as referências" no meio do pedido continua
+sendo instrução do documento. Errar para o lado de não detectar devolve o comportamento de hoje;
+errar para o outro jogaria instrução do documento dentro da resposta — pior, e mais difícil de
+perceber.
+
+Um detalhe que o teste pegou: o filtro inicial descartava a frase por comprimento, e o entregável
+costuma vir no fim de um parágrafo longo — justamente o caso que importa. Agora o recorte começa no
+marcador de fecho em vez de medir a frase inteira.
+
+**Custo zero no caminho simples:** sem entregável, o bloco sai vazio e nenhum turno de hoje ganha
+texto novo no prompt. Com teste.
+
+**Gates:** 5889 testes (629 arquivos, 0 falhas), `tsc` limpo, `eslint` 0.
+
+**🟡 Não verificado:** que o modelo de fato produza a lista ao receber o bloco. O bloco está no
+system e o `nucleo` chega à bolha — as duas pontas estão provadas; o meio depende de um turno real.
+
+### D7d · A rota que ficou de fora da D7
+
+Um relato de usuária (04/11, depois do deploy da D7) disse que o erro continuava. Procurando por
+onde, apareceu uma **terceira porta de criação de documento que a D7 não cobriu**:
+`POST /api/tcc { topic }`.
+
+Ela repetia o defeito inteiro, só com outro número: cortava o pedido em **300** caracteres, usava
+isso como **título**, montava sempre o `ESQUELETO_TCC` e chamava `gerarTccEmBackground` **sem
+briefing**. A D7 consertou as duas portas do CHAT (`tccDoTurno` e `trabalhoDoTurno`); esta é a porta
+da API, e eu não a procurei.
+
+Agora ela usa o mesmo `partidaDoPedido` do chat, e o teto passou a ser o do briefing.
+
+**Honestidade sobre o diagnóstico:** `tccApi.criar` não é chamado por nenhuma tela que eu tenha
+encontrado, então **provavelmente não é a porta que a usuária usou**. Consertei porque é defeito
+real e meu, não porque esteja provado que era a causa dela. O que explica o relato com mais força é
+o relógio: o deploy da D7 (#552) terminou **15:44**, e um pedido feito antes disso pegou o código
+antigo.
+
+**Gates:** 5890 testes (629 arquivos, 0 falhas), `tsc` limpo, `eslint` 0.
+
+### D7e · A causa real do relato: briefing com documento já aberto virava EDIÇÃO
+
+A D7 estava no ar (deploy #552, 15:44) e o relato da usuária é de DEPOIS disso. Então a correção
+não cobria o caso dela, e o diagnóstico anterior (relógio) estava errado.
+
+**A causa, medida:**
+
+```
+>>> SEM documento aberto  → novo? true     ← o caminho que a D7 consertou
+>>> COM documento aberto  → novo? false    ← o caminho dela
+```
+
+`pedeNovoTrabalho` decide entre criar um trabalho e editar o que está aberto. O heurístico
+`PARTE_RE` procura "introducao", "metodologia", "referencia", "secao", "resultado", "justificativa"
+— porque foi escrito para *"melhore a introdução"*, onde o substantivo É o alvo da edição. **Num
+briefing essas mesmas palavras são os NOMES DAS SEÇÕES PEDIDAS.** Resultado: todo pedido elaborado
+casava com `PARTE_RE` e era roteado como edição.
+
+E o caminho de edição não passa pelo gerador: aplica `answer.work.sections` sobre o documento
+existente. O briefing nunca chega — nem as seções do pedido, nem as referências obrigatórias, nem
+os marcadores. **A D7 consertou a criação, e quem já tinha um documento na conversa nunca passava
+por ela.** Como a usuária tinha tentado antes, a tentativa anterior deixou um documento aberto — e
+foi ele que fez a segunda tentativa cair no caminho errado.
+
+**O conserto:** quem traz plano de seções (≥2) está pedindo um DOCUMENTO, não um ajuste — a não ser
+que diga com todas as letras que é pra mexer no que já existe (`EDICAO_EXPLICITA`, verbo de edição
+nos primeiros 80 caracteres, apontando para trabalho/documento/artigo/seção).
+
+Controles com teste, nos dois sentidos: "melhore a introdução", "reescreva a seção 2" e "continue o
+trabalho" seguem edição; "Atualize o artigo com esta estrutura: Seção 1…" segue edição; e um pedido
+longo SEM plano de seções não vira trabalho novo só por ser longo.
+
+**A lição desta série, outra vez:** a D7 foi verificada no caminho que eu escolhi olhar. O caminho
+que a usuária usou — conversa que já tinha documento — só apareceu porque alguém de fora usou o
+sistema. Três portas de criação (`tccDoTurno`, `trabalhoDoTurno`, `POST /api/tcc`) e um roteador
+decidindo antes delas; eu tinha mapeado as portas e não o roteador.
+
+**Gates:** 5895 testes (629 arquivos, 0 falhas), `tsc` limpo, `eslint` 0.

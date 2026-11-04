@@ -54,6 +54,11 @@ export type Briefing = {
   secoes: SecaoPedida[];
   /** os marcadores de lacuna que o PEDIDO usa (ex.: "COMPLETAR", "VERIFICAR CITAÇÃO"). */
   marcadores: string[];
+  /**
+   * O que o pedido manda entregar NA RESPOSTA, e não no documento ("ao final, forneça uma lista
+   * em tópicos com os dados que eu preciso fornecer"). Ver `entregaveisDoTurno`.
+   */
+  entregaveis: string[];
   /** o pedido inteiro, limitado — é isto que o escritor passa a ver em vez de 160 caracteres. */
   instrucoes: string;
   /** false = pedido simples; o motor segue exatamente como antes. */
@@ -152,6 +157,63 @@ export function ehBriefing(prompt: string): boolean {
   return false;
 }
 
+/**
+ * ───────── O BURACO DE ROTEAMENTO, e o que este pedaço resolve ─────────
+ *
+ * Um pedido pode conter DUAS entregas: o documento ("redija as seções 1, 2, 3 e 6") e algo que é
+ * da RESPOSTA ("ao final, forneça uma lista em tópicos com todos os dados empíricos que eu preciso
+ * fornecer"). Hoje o turno é binário — ou vira documento, ou vira resposta —, então a segunda
+ * entrega simplesmente não acontecia: o pedido inteiro era roteado para a geração do documento, e
+ * a lista, que não é seção de trabalho nenhum, sumia sem aviso.
+ *
+ * Não é defeito do escritor, e por isso NÃO se conserta lá: uma lista de "o que você precisa me
+ * mandar" não pertence ao artigo — ela seria removida antes da entrega, como o próprio modelo SOTA
+ * escreveu ao intitulá-la "remover antes da submissão". O lugar dela é a bolha do chat.
+ *
+ * A DETECÇÃO É CONSERVADORA DE PROPÓSITO: exige um marcador de fecho ("ao final", "por fim", "ao
+ * término"…) JUNTO de um verbo de entrega. Frase solta no imperativo não entra. Errar para o lado
+ * de não detectar devolve o comportamento de hoje; errar para o outro lado jogaria instrução do
+ * documento dentro da resposta, que é pior e mais difícil de perceber.
+ */
+const FECHO = /\b(ao final|ao fim|no final|por fim|ao t[ée]rmino|por [úu]ltimo|ao concluir|depois disso|em seguida)\b/i;
+const VERBO_ENTREGA = /\b(forne[çc]a|apresente|liste|entregue|inclua|devolva|acrescente|gere|monte|elabore|me d[êe]|responda com)\b/i;
+
+/** As entregas que são da RESPOSTA, não do documento. Uma por frase, limitadas. */
+export function entregaveisDoTurno(prompt: string): string[] {
+  const texto = String(prompt || "").replace(/\s+/g, " ").trim();
+  if (!texto) return [];
+  const out: string[] = [];
+  for (const frase of texto.split(/(?<=[.!?])\s+/)) {
+    const bruta = frase.trim();
+    if (bruta.length < 15) continue;
+    if (LINHA_SECAO.test(bruta)) continue;          // "Seção 4: …" é documento, não resposta
+    const m = bruta.match(FECHO);
+    if (!m || typeof m.index !== "number") continue;
+    // RECORTA A PARTIR DO FECHO em vez de descartar a frase por tamanho: o entregável costuma vir
+    // no fim de um parágrafo longo ("…[INSERIR GRÁFICO 2]. Ao final, forneça uma lista…"), e um
+    // filtro de comprimento sobre a frase inteira o perderia justamente no caso que importa.
+    const f = bruta.slice(m.index).trim();
+    if (f.length < 15 || !VERBO_ENTREGA.test(f)) continue;
+    out.push(f.slice(0, 400));
+    if (out.length >= 3) break;
+  }
+  return out;
+}
+
+/**
+ * O bloco que vai pro `systemContext` do turno. Vazio quando não há entregável — nenhum pedido
+ * simples ganha texto novo no prompt por causa disto.
+ */
+export function blocoDeEntregaveis(entregaveis: readonly string[]): string {
+  if (!entregaveis.length) return "";
+  return [
+    "O PEDIDO TAMBÉM PEDE ALGO NA SUA RESPOSTA — isto NÃO é seção do documento:",
+    ...entregaveis.map((e) => `- ${e}`),
+    "Escreva isso no corpo desta mensagem, por extenso. O documento segue sendo escrito à parte;",
+    "não o repita aqui, e não diga que vai fornecer depois — forneça agora.",
+  ].join("\n");
+}
+
 export function lerBriefing(prompt: string): Briefing {
   const texto = String(prompt || "");
   const briefing = ehBriefing(texto);
@@ -160,6 +222,7 @@ export function lerBriefing(prompt: string): Briefing {
     referencias: briefing ? referenciasDoPedido(texto) : [],
     secoes: briefing ? secoesDoPedido(texto) : [],
     marcadores: briefing ? marcadoresDoPedido(texto) : [],
+    entregaveis: briefing ? entregaveisDoTurno(texto) : [],
     instrucoes: briefing ? texto.trim().slice(0, MAX_INSTRUCOES) : "",
     ehBriefing: briefing,
   };

@@ -10,7 +10,8 @@ import { entrarTcc } from "@/lib/tcc/route-auth";
 import { criarTcc, findTccDoEscopo, listarTrabalhosDoEscopo } from "@/lib/tcc/store";
 import { ESQUELETO_TCC } from "@/lib/tcc/secoes";
 import { gerarTccEmBackground } from "@/lib/tcc/gerar";
-import { fixarCardTcc } from "@/lib/tcc/turno";
+import { fixarCardTcc, partidaDoPedido } from "@/lib/tcc/turno";
+import { MAX_INSTRUCOES } from "@/lib/tcc/briefing";
 
 export const runtime = "nodejs";
 
@@ -34,7 +35,14 @@ export async function POST(req: Request) {
   const a = await entrarTcc(req, "tcc-post", "ai-heavy"); // dispara geração com LLM → balde pesado
   if ("response" in a) return a.response;
   const body = await req.json().catch(() => ({}));
-  const topic = typeof body?.topic === "string" ? body.topic.replace(/\s+/g, " ").trim().slice(0, 300) : "";
+  /**
+   * O TETO ERA 300 CARACTERES, e isso repetia aqui o defeito que a D7 consertou no chat: um pedido
+   * elaborado chegava cortado, virava o TÍTULO do documento e a consulta da busca de literatura.
+   * Esta rota ficou de fora da D7 — o chat passa por `tccDoTurno`, não por aqui — e o buraco só
+   * apareceu ao procurar por que um pedido real ainda falhava. Agora o teto é o do briefing, e o
+   * que decide título/seções é o mesmo `partidaDoPedido` do chat.
+   */
+  const topic = typeof body?.topic === "string" ? body.topic.replace(/[ \t]+/g, " ").trim().slice(0, MAX_INSTRUCOES) : "";
   if (!topic) return NextResponse.json({ error: "Informe o tema do TCC." }, { status: 400 });
   const scopeId = sanitizeScopeId(body?.scopeId);
 
@@ -43,12 +51,14 @@ export async function POST(req: Request) {
     const existente = await findTccDoEscopo(a.userId, scopeId);
     if (existente) return NextResponse.json({ workId: existente.id, status: existente.status });
   }
+  // o MESMO caminho do chat: num briefing, título provisório (quem nomeia é o esboço) e as seções
+  // do pedido vencendo o esqueleto; num tema simples, tudo igual a antes.
+  const { brief, titulo, secoes } = partidaDoPedido(topic, ESQUELETO_TCC);
   const t = await criarTcc({
-    userId: a.userId, scopeId, titulo: topic, origem: "estudos", status: "gerando",
-    secoes: ESQUELETO_TCC.map((titulo) => ({ titulo })),
+    userId: a.userId, scopeId, titulo, origem: "estudos", status: "gerando", secoes,
   });
   // Solto (padrão do Studio): responde já; o documento cresce e o cliente vê pelo poll.
-  void gerarTccEmBackground(t.id, a.userId, topic);
+  void gerarTccEmBackground(t.id, a.userId, titulo, undefined, brief);
   if (scopeId) void fixarCardTcc(a.userId, scopeId, { workId: t.id, titulo: t.titulo, secoes: t.secoes.length });
   return NextResponse.json({ workId: t.id, status: "gerando" }, { status: 202 });
 }
