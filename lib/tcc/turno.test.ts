@@ -20,7 +20,7 @@ vi.mock("@/src/lib/ratelimit", () => ({ guard: async () => ({ ok: true }) }));
 
 import { contextoDosTrabalhos, pedeNovoTrabalho, trabalhosParaTurno } from "@/lib/tcc/turno";
 import { EXTRATO_SECAO } from "@/lib/tcc/turno";
-import { cardIdDoTcc, contextoDoTcc, ehPedidoDeTcc, fixarCardTcc, tccContextoParaTurno, tccDoTurno, temaDoPedido } from "@/lib/tcc/turno";
+import { cardIdDoTcc, contextoDoTcc, ehPedidoDeTcc, fixarCardTcc, partidaDoPedido, tccContextoParaTurno, tccDoTurno, temaDoPedido, TITULO_PROVISORIO } from "@/lib/tcc/turno";
 import { corposDoEsboco, gerarTccEmBackground, opsDoEsboco } from "@/lib/tcc/gerar";
 import { aplicarOps } from "@/lib/tcc/secoes";
 
@@ -100,7 +100,11 @@ describe("tccDoTurno — entrelace Estudos → TCC", () => {
     const r = await tccDoTurno({ ...base, gerar, answer: ans() as any });
     expect(m.criar.mock.calls[0][0]).toMatchObject({ status: "gerando" });
     expect(m.criar.mock.calls[0][0].secoes.map((s: any) => s.titulo)).toEqual(["INTRODUÇÃO", "REFERENCIAL TEÓRICO", "METODOLOGIA", "RESULTADOS E DISCUSSÃO", "CONCLUSÃO", "REFERÊNCIAS"]);
-    expect(gerar).toHaveBeenCalledWith("novo", "u1", "fotossíntese");
+    // D7: a geração recebe um 4º argumento, o briefing. Num pedido de UMA LINHA ele vem INERTE — é
+    // o que garante que o caminho simples não mudou: sem instruções, sem seções próprias e sem
+    // referências impostas, o motor segue lendo só o tema.
+    expect(gerar).toHaveBeenCalledWith("novo", "u1", "fotossíntese",
+      expect.objectContaining({ ehBriefing: false, instrucoes: "", secoes: [], referencias: [] }));
     expect(r).toMatchObject({ criado: true, gerando: true, alteradas: 0 });
   });
   it("TCC já existe: work.sections vira operação por seção (origem estudos)", async () => {
@@ -291,7 +295,11 @@ describe("chat único — VÁRIOS trabalhos na mesma conversa", () => {
     const gerar = vi.fn();
     const r = await tccDoTurno({ ...base, gerar, prompt: "escreva um artigo sobre fotossíntese", answer: ans() as any });
     expect(m.criar.mock.calls[0][0].secoes[0].titulo).toBe("RESUMO");
-    expect(gerar).toHaveBeenCalledWith("novo", "u1", "fotossíntese");
+    // D7: a geração recebe um 4º argumento, o briefing. Num pedido de UMA LINHA ele vem INERTE — é
+    // o que garante que o caminho simples não mudou: sem instruções, sem seções próprias e sem
+    // referências impostas, o motor segue lendo só o tema.
+    expect(gerar).toHaveBeenCalledWith("novo", "u1", "fotossíntese",
+      expect.objectContaining({ ehBriefing: false, instrucoes: "", secoes: [], referencias: [] }));
     expect(r).toMatchObject({ gerando: true, tipo: "Artigo" });
   });
 
@@ -329,5 +337,57 @@ describe("chat único — VÁRIOS trabalhos na mesma conversa", () => {
     m.listar.mockResolvedValue(lista);
     expect(await trabalhosParaTurno("u1", "aba1", "zzz")).toMatchObject({ total: 2, kind: "tcc" }); // aberto desconhecido = o mais recente
     expect(await trabalhosParaTurno(null, "aba1")).toEqual({ bloco: "", total: 0 });
+  });
+});
+
+describe("D7 · partidaDoPedido — o pedido que quebrou em produção", () => {
+  const ESQUELETO = ["INTRODUÇÃO", "REFERENCIAL TEÓRICO", "METODOLOGIA", "CONCLUSÃO", "REFERÊNCIAS"];
+  const PEDIDO = [
+    "Você é um redator acadêmico e cientista da computação sênior. Sua tarefa é redigir a primeira",
+    "versão de um artigo científico em conformidade com as diretrizes metodológicas de avaliação de",
+    "modelos de linguagem (LLMs).",
+    "",
+    "REFERÊNCIAS OBRIGATÓRIAS (limite-se estritamente a estas):",
+    '- Wang et al. (EMNLP 2024), "Factuality of Large Language Models: A Survey"',
+    '- Zheng et al. (NeurIPS 2023), "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena"',
+    "",
+    "ENTREGA NESTE TURNO:",
+    "- Seção 1: Introdução e Justificativa (problematizando alucinação)",
+    "- Seção 2: Definições Operacionais (factualidade versus fidelidade)",
+    "- Seção 6: Limitações e Trabalhos Futuros",
+    "(Para as Seções 4 e 5, insira apenas os marcadores: [INSERIR TABELA 1: Desempenho geral]).",
+    "Use [COMPLETAR: descrição] onde faltar dado.",
+  ].join("\n");
+
+  it("o TÍTULO deixa de ser o preâmbulo da instrução truncado", () => {
+    // ANTES: titulo = temaDoPedido(prompt) = os 160 primeiros caracteres, cortados no meio da
+    // palavra — "…em conformidade com as diretrizes m". Era isso que o aluno via como nome do
+    // trabalho, e era isso que virava a consulta do retrievePapers.
+    expect(temaDoPedido(PEDIDO)).toMatch(/^Você é um redator acadêmico/);   // o defeito, preservado aqui como prova
+    const { titulo } = partidaDoPedido(PEDIDO, ESQUELETO);
+    expect(titulo).toBe(TITULO_PROVISORIO);
+    expect(titulo).not.toMatch(/redator acadêmico/);
+  });
+
+  it("as SEÇÕES do pedido vencem o template ABNT", () => {
+    const { secoes } = partidaDoPedido(PEDIDO, ESQUELETO);
+    expect(secoes.map((x) => x.titulo)).toEqual([
+      "INTRODUÇÃO E JUSTIFICATIVA", "DEFINIÇÕES OPERACIONAIS", "SEÇÃO 4", "SEÇÃO 5", "LIMITAÇÕES E TRABALHOS FUTUROS",
+    ]);
+    expect(secoes.map((x) => x.titulo)).not.toContain("REFERENCIAL TEÓRICO");   // o template saiu de cena
+  });
+
+  it("as referências exigidas e os marcadores viajam no briefing", () => {
+    const { brief } = partidaDoPedido(PEDIDO, ESQUELETO);
+    expect(brief.referencias).toHaveLength(2);
+    expect(brief.marcadores).toContain("COMPLETAR");
+    expect(brief.instrucoes).toContain("limite-se estritamente");
+  });
+
+  it("pedido de UMA LINHA não muda nada: título é o tema e o esqueleto é o de sempre", () => {
+    const { brief, titulo, secoes } = partidaDoPedido("crie um TCC sobre a fotossíntese", ESQUELETO);
+    expect(titulo).toBe("a fotossíntese");
+    expect(secoes.map((x) => x.titulo)).toEqual(ESQUELETO);
+    expect(brief.ehBriefing).toBe(false);
   });
 });

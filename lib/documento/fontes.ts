@@ -31,7 +31,7 @@ export const MAX_FONTES = 12;
 /** Quanto de cada fonte entra como extrato (o que ela DIZ, pro modelo ter em que se apoiar). */
 export const MAX_EXTRATO = 320;
 
-export type OrigemFonte = "literatura" | "base" | "anexo" | "web";
+export type OrigemFonte = "literatura" | "base" | "anexo" | "web" | "pedido";
 
 export type FonteDoc = FonteVerificada & {
   /** como citar no corpo, EXATAMENTE — é por esta string que a citação é rastreada */
@@ -89,6 +89,27 @@ export function fonteDePaper(p: { title?: string; authors?: string; year?: numbe
  * DOCUMENTO DA BASE (a bibliografia que o próprio aluno subiu) → fonte citável, marcada como
  * incompleta. É a fonte mais confiável que existe pro trabalho dele, e era a que mais se perdia.
  */
+/**
+ * Uma referência que o PRÓPRIO PEDIDO impôs ("REFERÊNCIAS OBRIGATÓRIAS: limite-se estritamente a
+ * estas"). Chega como texto livre, do jeito que a pessoa escreveu.
+ *
+ * O `abnt` sai VERBATIM, e isso é escolha: reformatar a referência de alguém é a maneira mais fácil
+ * de corrompê-la (trocar o ano, perder o veículo, inverter autoria). Quem pediu já sabe o que
+ * escreveu. O que o código faz é só DERIVAR a citação autor-data, e derivando do próprio texto —
+ * sobrenome antes do primeiro parêntese, ano do primeiro número de quatro dígitos. Nada é
+ * inventado: se não der pra extrair, a citação é o texto curto, e o escritor cita assim.
+ *
+ * Não leva `FALTA_COMPLETAR`: a referência não está incompleta, ela é a que foi exigida.
+ */
+export function fonteDoPedido(texto: string): FonteDoc | null {
+  const bruto = limpo(texto, 400);
+  if (bruto.length < 8) return null;
+  const sob = sobrenome(bruto.split("(")[0] ?? "");
+  const ano = bruto.match(/\b(1[5-9]\d{2}|20\d{2})\b/)?.[1] ?? "";
+  const citacao = sob && ano ? `(${sob}, ${ano})` : sob ? `(${sob}, [s.d.])` : `(${curto(bruto)})`;
+  return { abnt: bruto, titulo: bruto.slice(0, 240), citacao, origem: "pedido" };
+}
+
 export function fonteDeDocumento(d: { titulo?: string; paginas?: string; extrato?: string }, origem: OrigemFonte = "base"): FonteDoc | null {
   const titulo = limpo(d?.titulo, 240);
   if (!titulo) return null;
@@ -165,6 +186,7 @@ export function blocoDeFontes(fontes: readonly FonteDoc[]): string {
   if (!fontes.length) return "";
   const ROTULO: Record<OrigemFonte, string> = {
     literatura: "artigo",
+    pedido: "referência que VOCÊ exigiu no pedido",
     base: "documento da base do aluno",
     anexo: "arquivo anexado pelo aluno",
     web: "página da web",

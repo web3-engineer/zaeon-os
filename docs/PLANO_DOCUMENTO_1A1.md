@@ -239,3 +239,84 @@ escopo.
    histórico), não por fusão de texto. Duas pessoas na mesma seção ao mesmo tempo ainda vão se
    atropelar — com desfazer disponível. Presença por seção (a rota `/api/collab/[id]/ping` já
    existe) é o próximo passo natural, e ficou de fora de propósito.
+
+---
+
+## D7 · O pedido deixa de ser fatiado em 160 caracteres (2026-11-04)
+
+Relato do dono: *"o prompt foi computado de maneira literal, o output foi obliterado e saiu
+errado"*, com o resultado de um modelo SOTA em anexo como alvo.
+
+**Não foi o modelo que errou — o harness jogava 91% do pedido fora antes de o modelo ver.**
+
+### A medição
+
+Rodei a função real com o pedido real (1754 caracteres):
+
+```
+>>> TEMA/TÍTULO EXTRAÍDO ( 160 chars ):
+"Você é um redator acadêmico e cientista da computação sênior. Sua tarefa é redigir a primeira
+ versão de um artigo científico em conformidade com as diretrizes m"
+```
+
+`temaDoPedido()` foi escrita para um caso só — *"crie um TCC **sobre** a fotossíntese"* → *"a
+fotossíntese"*. Sem "sobre"/"tema:", ela faz `prompt.slice(0, 160)`. Num briefing, o resultado é o
+**preâmbulo da instrução cortado no meio da palavra**. E esse string não era só o título:
+
+| onde entrava | o que causava |
+|---|---|
+| `esbocoUser(topic)` | o esboço era feito sobre "Você é um redator acadêmico…" |
+| `retrievePapers(topic)` | **busca de literatura com esse texto** → fontes sem relação com o tema |
+| `baseParaTurno({ pergunta: topic })` | busca na base do aluno idem |
+| `{ tema: topic }` no escritor | cada seção escrita sobre a instrução, não sobre o assunto |
+
+As 5 referências obrigatórias, o plano de seções, o vocabulário de marcadores
+(`[COMPLETAR:]`, `[VERIFICAR CITAÇÃO]`, `[INSERIR TABELA 1:]`), o tom e os entregáveis estavam
+todos nos 1594 caracteres descartados. Pior: sem as fontes do pedido, o escritor recebia as que a
+busca achou para uma consulta sem sentido — e o `sys` dele manda citar o que tem na mão.
+
+### As decisões do dono
+
+1. **O briefing manda; o template é o padrão.** Com plano de seções no pedido, ele vence o
+   esqueleto ABNT. Sem plano, nada muda.
+2. **As referências do pedido substituem a busca.** "Limite-se estritamente a estas" passa a ser
+   obedecido: a busca de literatura **não roda**.
+
+### O que entrou
+
+- **`lib/tcc/briefing.ts`** (novo, PURO): lê o pedido e separa o que já está escrito nele — plano
+  de seções (inclusive as que o pedido manda **não** redigir, só marcar), referências obrigatórias,
+  vocabulário de marcadores e as instruções inteiras (teto de 6000 caracteres). É extração, não
+  interpretação: **nada chama modelo e nada é inventado**. Referência só é lida sob um cabeçalho
+  explícito ("REFERÊNCIAS OBRIGATÓRIAS/FORNECIDAS/PERMITIDAS") — sem ele não há como distinguir
+  bibliografia de qualquer outra lista, e adivinhar seria inventar a bibliografia.
+- **`fonteDoPedido()`**: a referência que a pessoa escreveu vira fonte citável. O ABNT sai
+  **verbatim** — reformatar a referência de alguém é a maneira mais fácil de corrompê-la. O código
+  só DERIVA a citação autor-data, e derivando do próprio texto.
+- **`partidaDoPedido()`**: título e seções de partida. Num briefing o título nasce provisório e
+  quem nomeia é o esboço — que agora recebe o pedido inteiro e as referências exigidas (o
+  `esbocoUser(topic, refs)` sempre teve o parâmetro `refs`; nunca recebia nada).
+- **`PedidoSecao.briefing`**: o escritor passa a ver o pedido. E **o marcador do pedido vence o
+  nosso**: quem escreve "use `[COMPLETAR: descrição]`" não recebe mais ⟨sem fonte⟩. A regra não
+  mudou — não inventar —, mudou a palavra com que a lacuna é marcada; responder noutra língua
+  obrigava a pessoa a reescrever o documento inteiro.
+
+**O caminho simples não mudou, e isso tem teste:** `"crie um TCC sobre a fotossíntese"` segue com
+`ehBriefing: false`, título "a fotossíntese", esqueleto ABNT e briefing inerte. Os dois testes
+legados que quebraram foram atualizados para afirmar exatamente isso — o 4º argumento chega vazio.
+
+**Gates:** 5875 testes (629 arquivos, 0 falhas), `tsc` limpo, `eslint` 0. 26 testes novos, entre
+eles o pedido real de produção, verificado item a item contra o PDF do SOTA.
+
+### 🟡 O que NÃO está resolvido
+
+1. **Não rodei contra o modelo.** Provei que o pedido chega inteiro ao prompt, que as seções e as
+   referências são as da pessoa e que o marcador é o dela. **Se a redação resultante alcança o PDF
+   do SOTA, só um turno real diz** — e isso depende da rede liberada ou do seu teste.
+2. **A extração é determinística, e portanto literal.** Ela reconhece "Seção N: título",
+   cabeçalhos de referência e marcadores em colchetes. Um pedido que descreva a estrutura em prosa
+   corrida ("quero introdução, método e conclusão") **não** é reconhecido e cai no template — de
+   propósito: errar a estrutura por adivinhação é pior que usar o padrão.
+3. **Sem quadro quando as referências vêm do pedido.** O quadro é "papers por ano" contado da
+   busca; sem busca não há contagem, e fabricá-la a partir de 5 referências seria número sem
+   lastro.

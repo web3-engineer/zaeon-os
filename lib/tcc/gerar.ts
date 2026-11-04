@@ -9,6 +9,7 @@
  */
 import { geminiJson } from "@/lib/scholar/gemini";
 import { ESBOCO_SYS, esbocoUser, type DraftJson } from "@/lib/research/esboco";
+import type { Briefing } from "@/lib/tcc/briefing";
 import { aplicarNoTcc, marcarStatus, referenciasNovas, type FonteVerificada } from "@/lib/tcc/store";
 import { fontesCitadas, type FonteDoc } from "@/lib/documento/fontes";
 import { chaveTitulo, type OpSecao, type Secao } from "@/lib/tcc/secoes";
@@ -63,7 +64,23 @@ export function opsDoEsboco(secoes: Secao[], d: DraftJson): OpSecao[] {
  *
  * Nunca lança: documento sem fonte continua sendo gerado (marcado), que é melhor que não gerar.
  */
-async function fontesDoTrabalho(userId: string, topic: string): Promise<{ fontes: FonteDoc[]; quadro?: string }> {
+async function fontesDoTrabalho(userId: string, topic: string, brief?: Briefing): Promise<{ fontes: FonteDoc[]; quadro?: string }> {
+  /**
+   * REFERÊNCIAS DO PEDIDO SUBSTITUEM A BUSCA (decisão do dono, 2026-11-04). Quando o pedido diz
+   * "limite-se estritamente a estas", buscar mais literatura não é zelo — é desobedecer, e foi uma
+   * das causas do documento que saiu errado em produção: o `retrievePapers` recebia a instrução
+   * truncada como consulta e devolvia fontes sem relação, que o `sys` do escritor então mandava
+   * citar. Aqui não há chamada de rede nenhuma: as fontes são o que a pessoa escreveu.
+   *
+   * Sem quadro, e de propósito: o quadro é "papers por ano" contado da BUSCA. Sem busca não há
+   * contagem, e inventar uma a partir dos anos de 5 referências seria número sem lastro.
+   */
+  if (brief?.referencias.length) {
+    const { fonteDoPedido, juntarFontes } = await import("@/lib/documento/fontes");
+    const fontes = juntarFontes(brief.referencias.map((r) => fonteDoPedido(r)));
+    console.info(`[tcc] fontes do PEDIDO: ${fontes.length} (busca de literatura NÃO rodou — o pedido limitou)`);
+    return { fontes };
+  }
   const [papers, base] = await Promise.all([
     import("@/lib/scholar/retrieve")
       .then((m) => m.retrievePapers(topic, { minResults: 6 }))
@@ -102,7 +119,7 @@ async function fontesDoTrabalho(userId: string, topic: string): Promise<{ fontes
   return { fontes, ...(quadro ? { quadro } : {}) };
 }
 
-async function gerarPorSecao(workId: string, userId: string, topic: string, gen: Gen): Promise<void> {
+async function gerarPorSecao(workId: string, userId: string, topic: string, gen: Gen, brief?: Briefing): Promise<void> {
   const { getTccForUser } = await import("@/lib/tcc/store");
   const { planoDoDocumento } = await import("@/lib/documento/plano");
   const { ehCorpoAFazer, escreverDocumento, esqueletoEnriquecido, promptDaSecao } =
@@ -113,14 +130,16 @@ async function gerarPorSecao(workId: string, userId: string, topic: string, gen:
   const { GEMINI_MODEL_FLASH } = await import("@/lib/ai/model");
 
   // O norte: uma chamada, e se ela falhar a escrita segue sem ela (o tema já basta pra começar).
-  const d = await gen(ESBOCO_SYS, esbocoUser(topic)).catch(() => null);
+  // O esboço deixa de receber 160 caracteres truncados: num briefing ele vê o PEDIDO INTEIRO e as
+  // referências exigidas (o `esbocoUser` sempre teve o parâmetro `refs` — nunca recebia nada).
+  const d = await gen(ESBOCO_SYS, esbocoUser(brief?.instrucoes || topic, brief?.referencias ?? [])).catch(() => null);
   const titulo = d?.titulo?.trim() ? d.titulo.trim().slice(0, 200) : undefined;
   if (titulo) await aplicarNoTcc(workId, userId, [], "estudos", { titulo }).catch(() => undefined);
 
   const atual = await getTccForUser(workId, userId);
   if (!atual) throw new Error("documento não encontrado");
 
-  const { fontes, quadro } = await fontesDoTrabalho(userId, topic);
+  const { fontes, quadro } = await fontesDoTrabalho(userId, topic, brief);
   // o que cada seção CITOU de verdade — vira a seção REFERÊNCIAS no fim (D2)
   const citadas: FonteVerificada[] = [];
 
@@ -169,7 +188,13 @@ async function gerarPorSecao(workId: string, userId: string, topic: string, gen:
       },
       jaEscrita: (u) => jaCheias.has(u.slot.titulo),
     },
-    { tema: topic, tipo: String(atual.workType ?? "TCC"), plano, norte: d as Record<string, string | undefined> | null, fontes, ...(quadro ? { quadro } : {}) },
+    {
+      tema: brief?.ehBriefing ? (d?.titulo?.trim() || topic) : topic,
+      tipo: String(atual.workType ?? "TCC"), plano,
+      norte: d as Record<string, string | undefined> | null, fontes,
+      ...(quadro ? { quadro } : {}),
+      ...(brief?.ehBriefing ? { briefing: brief } : {}),
+    },
   );
 
   // D2 · REFERÊNCIAS: o trilho já existia (`referenciasNovas` + a seção ABNT do template) e só não
@@ -187,10 +212,10 @@ async function gerarPorSecao(workId: string, userId: string, topic: string, gen:
   await marcarStatus(workId, userId, "pronto");
 }
 
-export async function gerarTccEmBackground(workId: string, userId: string, topic: string, gen: Gen = genPadrao): Promise<void> {
+export async function gerarTccEmBackground(workId: string, userId: string, topic: string, gen: Gen = genPadrao, brief?: Briefing): Promise<void> {
   try {
-    if (escritaPorSecaoLigada()) return await gerarPorSecao(workId, userId, topic, gen);
-    const d = await gen(ESBOCO_SYS, esbocoUser(topic));
+    if (escritaPorSecaoLigada()) return await gerarPorSecao(workId, userId, topic, gen, brief);
+    const d = await gen(ESBOCO_SYS, esbocoUser(brief?.instrucoes || topic, brief?.referencias ?? []));
     const titulo = d?.titulo?.trim() ? d.titulo.trim().slice(0, 200) : undefined;
     // Uma seção por vez: o poll do cliente vê o documento crescendo.
     let primeira = true;

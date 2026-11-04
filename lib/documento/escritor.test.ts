@@ -416,3 +416,53 @@ describe("escritor · subtítulos por TIPO de trabalho (achado 🟡)", () => {
     expect(e.map((x) => x.title)).toEqual(["CONCLUSÃO", "INTRODUÇÃO"]);
   });
 });
+
+describe("D7 · o PEDIDO da pessoa chega ao escritor", () => {
+  const pedido = (over: Partial<PedidoSecao> = {}): PedidoSecao => ({
+    tema: "Membranas celulares",
+    tipo: "TCC",
+    unidade: unidadesDeEscrita(planoTcc()).find((x) => x.slot.id === "referencial-teorico")!,
+    rascunho: [],
+    ...over,
+  });
+  const comBriefing = (over: Partial<PedidoSecao["briefing"]> = {}) =>
+    pedido({
+      briefing: {
+        instrucoes: "Tom: português formal e impessoal. Não invente números; use [COMPLETAR: descrição].",
+        marcadores: ["COMPLETAR", "VERIFICAR CITAÇÃO"],
+        secoes: [{ numero: 1, titulo: "Introdução" }, { numero: 5, titulo: "Resultados", soMarcadores: true }],
+        ...(over as object),
+      } as PedidoSecao["briefing"],
+    });
+
+  it("as instruções entram no prompt — era isto que se perdia (160 caracteres truncados)", () => {
+    const { user } = promptDaSecao(comBriefing());
+    expect(user).toContain("O PEDIDO DA PESSOA");
+    expect(user).toContain("português formal e impessoal");
+  });
+
+  it("o MARCADOR do pedido vence o nosso: quem pede [COMPLETAR] não recebe ⟨sem fonte⟩", () => {
+    const { sys } = promptDaSecao(comBriefing());
+    expect(sys).toContain("[COMPLETAR: descrição do que falta]");
+    expect(sys).not.toContain(MARCA_SEM_FONTE);
+    // a REGRA não mudou — só a palavra com que a lacuna é marcada
+    expect(sys).toContain("NÃO invente dado, número, autor nem referência.");
+    expect(sys).toContain("NÃO invente");
+  });
+
+  it("sem briefing, nada muda: ⟨sem fonte⟩ segue sendo a marca", () => {
+    const { sys, user } = promptDaSecao(pedido());
+    expect(sys).toContain(MARCA_SEM_FONTE);
+    expect(user).not.toContain("O PEDIDO DA PESSOA");
+  });
+
+  it("seção que o pedido mandou NÃO redigir recebe a ordem de só deixar marcadores", () => {
+    const u = unidadesDeEscrita(planoTcc()).find((x) => x.slot.id === "referencial-teorico")!;
+    const b = comBriefing({ secoes: [{ numero: 2, titulo: u.slot.titulo, soMarcadores: true }] });
+    expect(promptDaSecao(b).user).toContain("NÃO redigir esta seção");
+  });
+
+  it("seção que o pedido MANDOU escrever não recebe essa ordem", () => {
+    expect(promptDaSecao(comBriefing()).user).not.toContain("NÃO redigir esta seção");
+  });
+});
