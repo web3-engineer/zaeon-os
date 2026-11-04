@@ -38,7 +38,7 @@ import { falhasVisiveis } from "@/lib/agent/falhas";
 import { graficosDoTurno } from "@/lib/agent/graficosDoTurno";
 import { blocoDeFontes, fontesCitadas, fontesDoTurno } from "@/lib/documento/fontes";
 import { normalizeStudioKind } from "@/lib/agent/tools";
-import type { StructuredAnswer, Source } from "@/lib/agent/contracts";
+import type { StructuredAnswer, Source, IntentId, Issue } from "@/lib/agent/contracts";
 import { artefatoDeAprender, pedeAula, pedeEngenhariaReversa, DIRETRIZ_ENGENHARIA_REVERSA } from "@/lib/agent/aprender";
 import { DIRETRIZ_MATEMATICA } from "@/lib/agent/matematica";
 import { diretrizLivros, markdownDosLivros, type LivroAchado } from "@/lib/livros/busca";
@@ -103,23 +103,65 @@ export function acaoDoModeloLigada(env: Record<string, string | undefined> = pro
 /**
  * Teto de POLÍTICA de voltas extras — o que responde o portão do dono sobre custo. Antes da F2 o
  * número de chamadas por turno era previsível; com o modelo escolhendo, passa a variar. O teto
- * limita a variação a **+2 chamadas de modelo no pior caso** (as tools em si não custam modelo).
+ * limita a variação, e o do motor (`MAX_VOLTAS_GATHER`) existe pro caso de este falhar.
  *
  * 2 é o número da casa pra "tentar de novo com limite": `maxRevisions`, `reflections`, `ensemble`
  * (lib/agent/contracts) e `TENTATIVAS_POR_SECAO` (lib/documento/escritor) são todos 2. Ajustável por
  * `HARNESS_VOLTAS_ACAO` sem deploy; 0 desliga as voltas mantendo o resto da F2.
  */
 export const VOLTAS_ACAO_PADRAO = 2;
-export function voltasDeAcao(env: Record<string, string | undefined> = process.env): number {
+
+/**
+ * F6 · O TETO É POR TAREFA, não um número só. Um 2 fixo era generoso pra "quem escreveu tal livro?"
+ * e pobre pra um TCC com referências obrigatórias — a mesma conta pra duas tarefas que não se
+ * parecem. Aqui cada intenção paga o que a entrega dela custa, e o que autoriza a diferença é o
+ * ORÇAMENTO DO MODO (lib/agent/trajectory · BUDGET), não gosto:
+ *
+ * - `conversa`/`duvida_rapida` são modo `quick`: o laço nem chega no `gather` (1 tiro e `finalize`).
+ *   O 0 aqui é descritivo, e vira trava de verdade se um dia o `quick` ganhar coleta.
+ * - `buscar_livro` entrega UM caminho legal até um livro, e a lista sai do código, não do modelo:
+ *   uma volta de reserva basta pra quando a 1ª busca vem vazia. Era 2; sobrava.
+ * - `explicar_conceito`/`gerar_artefato`/`pesquisar_fontes` ficam em 2 — e no caso do
+ *   `pesquisar_fontes` isso NÃO é timidez: o modo `elaborated` tem 12k de orçamento, a base do turno
+ *   come ~6,5k e cada volta ~2,4k. Uma 3ª volta seria concedida e logo em seguida estouraria o
+ *   orçamento, trocando revisão por coleta no escuro. Subir o teto sem subir o orçamento seria
+ *   escrever um número que o ledger desfaz — o mesmo tipo de mentira do `${FLAG:-0}` no compose.
+ * - `revisar` (modo `research`, 40k) vai a 3: reler um documento rende consulta nova à memória.
+ * - `criar_trabalho` (modo `research`, 40k) vai a 5. É a tarefa com entrega verificável — ABNT,
+ *   referências que precisam EXISTIR — e a que mais sofria com o teto curto: a conta estimada do
+ *   turno com 5 voltas dá ~29k dos 40k, e o freio real continua sendo o `overBudget` reconciliado
+ *   com o uso medido (C5), que corta antes se o turno sair mais caro do que a estimativa.
+ *
+ * `HARNESS_VOLTAS_ACAO` continua valendo pra TODAS as tarefas quando setado: é a alavanca cega do
+ * dono, e quem a usa está dizendo "não me interessa a tarefa, use este número".
+ */
+export const VOLTAS_POR_INTENT: Readonly<Partial<Record<IntentId, number>>> = {
+  conversa: 0,
+  duvida_rapida: 0,
+  buscar_livro: 1,
+  explicar_conceito: 2,
+  gerar_artefato: 2,
+  pesquisar_fontes: 2,
+  revisar: 3,
+  criar_trabalho: 5,
+};
+
+export function voltasDeAcao(
+  env: Record<string, string | undefined> = process.env,
+  tarefa?: { intent?: IntentId | null },
+): number {
+  const padrao = (tarefa?.intent && VOLTAS_POR_INTENT[tarefa.intent]) ?? VOLTAS_ACAO_PADRAO;
   const bruto = env.HARNESS_VOLTAS_ACAO?.trim();
   // vazio é AUSENTE, não zero. `Number("")` é 0, e com isso uma Variable em branco — que é o que
   // `${{ vars.X || '' }}` produz — desligaria as voltas em silêncio em vez de cair no padrão.
-  if (!bruto) return VOLTAS_ACAO_PADRAO;
+  if (!bruto) return teto(padrao);
   const n = Number(bruto);
-  if (!Number.isFinite(n) || n < 0) return VOLTAS_ACAO_PADRAO;
-  // nunca acima do teto DURO do motor (que conta a volta inicial), por mais que o env peça
-  return Math.min(Math.floor(n), MAX_VOLTAS_GATHER - 1);
+  if (!Number.isFinite(n) || n < 0) return teto(padrao);
+  return teto(Math.floor(n));
 }
+
+/** nunca acima do teto DURO do motor (que conta a volta inicial), por mais que o env ou a tabela peçam */
+const teto = (n: number) => Math.min(n, MAX_VOLTAS_GATHER - 1);
 
 // ───────────────────────────── A2 · retry só nesta camada ─────────────────────────────
 const RETRYABLE = new Set(["tool_timeout", "network", "rate_limited"]);
@@ -409,6 +451,38 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
   /** Sintetizar só com a flag E com 2+ documentos: com um documento, a `reason` não ajudava (eval de out/2026). */
   const vaiSintetizar = (): boolean => sinteseLigada() && valeSintetizar(docsEmJogo());
 
+  /**
+   * F2/F6 · PEDIR AO MODELO OS PRÓXIMOS PASSOS. Um corpo só pros dois caminhos: a volta normal
+   * (`proximosPassos`) e a volta dirigida pela crítica (`passosDeEvidencia`). O que muda entre eles
+   * é a POLÍTICA — quem pode pedir, quantas vezes — e o VIÉS do prompt; a mecânica é a mesma, e
+   * duplicá-la seria deixar duas cópias pra divergir.
+   */
+  const decidirPassos = async (
+    st: TrajectoryState,
+    p: { voltasRestantes: number; rotulo: string; lacunas?: readonly string[] },
+  ): Promise<Step[]> => {
+    // F3: as tools DESTE turno, não as registradas — `ler_anexo` não existe sem anexo
+    const menu = toolsDoMenu(toolsDoTurno(ctx)).map(toolVisivel);
+    if (!menu.length) return [];
+    const { sys, user } = promptDeAcao({
+      objetivo: st.objective, modo: st.mode, academico: st.academicMode, menu,
+      coleta: resumoDaColeta(st.evidence), falhas: resumoDasFalhas(observations),
+      voltasRestantes: p.voltasRestantes, lacunas: p.lacunas,
+    });
+    try {
+      const bruto = await genJson<unknown>(sys, user, {
+        temperature: 0, model: modelFor(false), timeoutMs: 12_000, phase: "acao", pensar: pensarDa("acao"),
+      });
+      const r = lerAcao(bruto, { disponiveis: menu, jaFeitas: st.feitas });
+      // o que foi recusado vira LOG (nunca prompt): é como se mede modelo pedindo coisa que não existe
+      if (r.descartadas.length) console.info(`[harness] ação descartou: ${r.descartadas.slice(0, 3).join(" · ")}`);
+      if (r.chamadas.length) console.info(`[harness] ${p.rotulo}: ${r.chamadas.map((c) => c.tool).join(", ")}`);
+      return r.chamadas.map((c) => ({ tool: c.tool, args: c.args }));
+    } catch {
+      return [];   // decidir é AUXILIAR, igual ao `reason`: falhar não derruba o turno, só encerra a coleta
+    }
+  };
+
   return {
     async classify(objective, c) {
       const r = await classify(objective, c);
@@ -453,27 +527,29 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
     ...(acaoDoModeloLigada()
       ? {
         async proximosPassos(st: TrajectoryState): Promise<Step[]> {
-          if (st.voltas >= voltasDeAcao()) return [];     // teto de POLÍTICA (o do motor é outro)
-          // F3: as tools DESTE turno, não as registradas — `ler_anexo` não existe sem anexo
-          const menu = toolsDoMenu(toolsDoTurno(ctx)).map(toolVisivel);
-          if (!menu.length) return [];
-          const { sys, user } = promptDeAcao({
-            objetivo: st.objective, modo: st.mode, academico: st.academicMode, menu,
-            coleta: resumoDaColeta(st.evidence), falhas: resumoDasFalhas(observations),
-            voltasRestantes: voltasDeAcao() - st.voltas,
+          // teto de POLÍTICA, agora POR TAREFA (o do motor é outro) — ver VOLTAS_POR_INTENT
+          const tetoDoTurno = voltasDeAcao(process.env, st);
+          if (st.voltas >= tetoDoTurno) return [];
+          return decidirPassos(st, {
+            voltasRestantes: tetoDoTurno - st.voltas,
+            rotulo: `ação volta ${st.voltas + 1}`,
           });
-          try {
-            const bruto = await genJson<unknown>(sys, user, {
-              temperature: 0, model: modelFor(false), timeoutMs: 12_000, phase: "acao", pensar: pensarDa("acao"),
-            });
-            const r = lerAcao(bruto, { disponiveis: menu, jaFeitas: st.feitas });
-            // o que foi recusado vira LOG (nunca prompt): é como se mede modelo pedindo coisa que não existe
-            if (r.descartadas.length) console.info(`[harness] ação descartou: ${r.descartadas.slice(0, 3).join(" · ")}`);
-            if (r.chamadas.length) console.info(`[harness] ação volta ${st.voltas + 1}: ${r.chamadas.map((c) => c.tool).join(", ")}`);
-            return r.chamadas.map((c) => ({ tool: c.tool, args: c.args }));
-          } catch {
-            return [];   // decidir é AUXILIAR, igual ao `reason`: falhar não derruba o turno, só encerra a coleta
-          }
+        },
+
+        /**
+         * F6 · A VOLTA DIRIGIDA PELA CRÍTICA. O motor só chama isto quando o veredito traz
+         * `sem_fonte`, e no máximo uma vez por turno (`MAX_VOLTAS_EVIDENCIA`) — o teto por tarefa
+         * NÃO entra aqui de propósito: um turno que gastou todas as voltas e ainda assim escreveu
+         * sem lastro é exatamente o que precisa da última tentativa, e negá-la por causa do mesmo
+         * contador que já falhou seria garantir o defeito. O limite dela é o próprio pedido.
+         */
+        async passosDeEvidencia(st: TrajectoryState, lacunas: readonly Issue[]): Promise<Step[]> {
+          return decidirPassos(st, {
+            voltasRestantes: 1,
+            rotulo: "evidência pedida pela crítica",
+            // `onde: porque` — o texto do veredito, que é o que diz ao modelo ONDE falta lastro
+            lacunas: lacunas.slice(0, 3).map((l) => `${l.onde}: ${l.porque}`),
+          });
         },
       }
       : {}),

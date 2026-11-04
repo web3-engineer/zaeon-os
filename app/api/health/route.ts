@@ -22,11 +22,13 @@ import { estadoLeitor } from "@/lib/leitor/saude";
 import { poolConfigurado } from "@/lib/llm/pool";
 import { resumoMcp } from "@/lib/agent/mcp-boot";
 import { acaoDoModeloLigada, capacidadeHonestaLigada, voltasDeAcao } from "@/lib/agent/aura-harness";
+import { INTENT_IDS } from "@/lib/agent/contracts";
 import { anexoNoHarnessLigado } from "@/lib/agent/anexos";
 import { sinteseLigada } from "@/lib/agent/sintese-flag";
 import { escritaPorSecaoLigada } from "@/lib/documento/escritor";
 import { graficoLigado } from "@/lib/agent/graficosDoTurno";
 import { getTool } from "@/lib/agent/runtime";
+import { GEMINI_MODEL_FLASH, GEMINI_MODEL_PRO } from "@/lib/ai/model";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,13 +45,24 @@ export async function GET() {
     harness: process.env.AURA_HARNESS === "0" ? "off" : "on",
     gateway,
     provedor: provedorAtual(gateway),
+    // QUAL MODELO está no ar. Vinha de fora do repositório (`.env` do VPS), então "que modelo a
+    // Aura usa em prod?" não tinha resposta sem SSH — e `pro` só entra em turno de quem tem
+    // Pensamento Profundo (lib/plans: free `none`, plus 1×/dia, pro ilimitado). Sem essa ressalva o
+    // número engana: pra maioria dos turnos TODAS as fases são o `flash`.
+    modelo: { flash: GEMINI_MODEL_FLASH, pro: GEMINI_MODEL_PRO, proSoComDeepThink: true },
     leitor,
     // F5: o estado dos conectores MCP (memoizado do boot; nunca conecta aqui)
     mcp: resumoMcp(),
     capacidades: {
       cardapio: capacidadeHonestaLigada(),
       acao: acaoDoModeloLigada(),
+      // o padrão de quem NÃO passa tarefa (era o único número aqui, e por isso o recibo do deploy
+      // dizia "2 voltas" pra tudo)
       voltas: voltasDeAcao(),
+      // F6 · o teto é POR TAREFA: sem esta linha o recibo mentiria — diria 2 enquanto um pedido de
+      // trabalho roda 5. Vale também pra mostrar o efeito de `HARNESS_VOLTAS_ACAO`, que achata
+      // todas as tarefas no mesmo número quando setada.
+      voltasPorTarefa: Object.fromEntries(INTENT_IDS.map((i) => [i, voltasDeAcao(process.env, { intent: i })])),
       anexo: anexoNoHarnessLigado(),
       sintese: sinteseLigada(),
       docPorSecao: escritaPorSecaoLigada(),

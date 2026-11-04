@@ -13,6 +13,9 @@ describe("health · capacidades (o RECIBO de 'tudo ON' — §8 do PLANO_HARNESS_
     for (const k of ["HARNESS_CAPACIDADE", "HARNESS_ACAO", "HARNESS_ANEXO", "HARNESS_SINTESE", "DOC_POR_SECAO", "HARNESS_GRAFICO"]) vi.stubEnv(k, "");
     const c = (await (await GET()).json()).capacidades;
     expect(c).toMatchObject({ cardapio: true, acao: true, anexo: true, sintese: true, docPorSecao: true, grafico: true, voltas: 2 });
+    // F6 · o recibo do deploy lê DAQUI. Se só `voltas` existisse, ele diria "2 voltas" pra tudo
+    // enquanto um pedido de trabalho roda 5 — e recibo que mente é pior que recibo que falta.
+    expect(c.voltasPorTarefa).toMatchObject({ criar_trabalho: 5, revisar: 3, buscar_livro: 1, duvida_rapida: 0 });
   });
 
   it("o kill-switch aparece aqui — é por este endpoint que se confere o rollback", async () => {
@@ -22,6 +25,8 @@ describe("health · capacidades (o RECIBO de 'tudo ON' — §8 do PLANO_HARNESS_
     expect(c.cardapio).toBe(false);
     expect(c.acao).toBe(true);     // cada flag é independente: desligar uma não derruba a outra
     expect(c.voltas).toBe(0);
+    // a alavanca é CEGA: setada, achata a tabela por tarefa toda no mesmo número
+    expect(Object.values(c.voltasPorTarefa)).toEqual(Object.values(c.voltasPorTarefa).map(() => 0));
   });
 
   it("as tools do Leitor refletem o REGISTRO, não a flag (promessa precisa de lastro)", async () => {
