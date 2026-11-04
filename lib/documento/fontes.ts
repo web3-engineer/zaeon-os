@@ -44,9 +44,19 @@ export type FonteDoc = FonteVerificada & {
 const limpo = (s: unknown, max = 300): string =>
   String(s ?? "").replace(/\s+/g, " ").trim().slice(0, max);
 
-/** SOBRENOME do primeiro autor, em caixa alta — a forma da citação autor-data. */
+/**
+ * SOBRENOME do primeiro autor, em caixa alta — a forma da citação autor-data.
+ *
+ * O "et al." sai ANTES de pegar a última palavra, e isto é conserto de um defeito real: com
+ * "Wang et al." a última palavra é "al.", então a citação saía `(AL., 2024)`. Pior que feio —
+ * `juntarFontes` deduplica por CITAÇÃO, então "Wang et al. (2024)" e "Sun et al. (2024)" viravam
+ * a mesma `(AL., 2024)` e a segunda referência era DESCARTADA em silêncio. Num pedido com
+ * "limite-se estritamente a estas", perder duas das cinco é exatamente o contrário do pedido.
+ */
 function sobrenome(autores?: string): string {
-  const primeiro = limpo(autores, 120).split(/[;,]/)[0]?.trim() ?? "";
+  const primeiro = limpo(autores, 120)
+    .replace(/\s*\bet\s+al\.?/gi, "")   // "Wang et al." → "Wang"
+    .split(/[;,]/)[0]?.trim() ?? "";
   if (!primeiro) return "";
   const partes = primeiro.split(/\s+/).filter(Boolean);
   return (partes.length > 1 ? partes[partes.length - 1]! : partes[0]!).toUpperCase();

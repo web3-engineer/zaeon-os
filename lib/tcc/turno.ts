@@ -53,9 +53,28 @@ export function partidaDoPedido(prompt: string, esqueleto: string[]): {
   const brief = lerBriefing(prompt);
   const titulo = brief.ehBriefing ? TITULO_PROVISORIO : temaDoPedido(prompt);
   const secoes = brief.secoes.length
-    ? brief.secoes.map((s) => ({ titulo: s.titulo.toUpperCase().slice(0, 120) }))
+    ? comReferencias(brief.secoes.map((s) => ({ titulo: s.titulo.toUpperCase().slice(0, 120) })))
     : esqueleto.map((titulo) => ({ titulo }));
   return { brief, titulo, secoes };
+}
+
+/**
+ * O plano do pedido quase nunca lista REFERÊNCIAS — quem escreve "Seção 1: Introdução… Seção 6:
+ * Limitações" está enumerando o que quer REDIGIDO, não a bibliografia. Só que o trilho D2
+ * (`referenciasNovas`) procura exatamente uma seção com esse nome pra depositar o que foi citado;
+ * sem ela, a bibliografia some em silêncio e o documento fica com citações no corpo e nenhuma
+ * lista no fim.
+ *
+ * Então ela é ACRESCENTADA no fim quando o pedido não a trouxe. É o único acréscimo que fazemos
+ * ao plano de alguém, e tem motivo mecânico, não de gosto: sem ela uma peça do motor deixa de
+ * funcionar. Se o pedido já tiver a sua (com qualquer grafia que o `referenciasNovas` reconheça),
+ * nada é acrescentado.
+ */
+function comReferencias(secoes: { titulo: string }[]): { titulo: string }[] {
+  const temRefs = secoes.some((s) =>
+    /^referencias?$|^referencias bibliograficas$/.test(chaveTitulo(s.titulo).replace(/-/g, " ").trim()),
+  );
+  return temRefs ? secoes : [...secoes, { titulo: "REFERÊNCIAS" }];
 }
 
 /** Enquanto o esboço não nomeia. Nunca aparece pronto: a 1ª coisa que a geração faz é renomear. */

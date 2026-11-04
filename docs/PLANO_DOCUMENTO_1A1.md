@@ -320,3 +320,56 @@ eles o pedido real de produção, verificado item a item contra o PDF do SOTA.
 3. **Sem quadro quando as referências vêm do pedido.** O quadro é "papers por ano" contado da
    busca; sem busca não há contagem, e fabricá-la a partir de 5 referências seria número sem
    lastro.
+
+### D7b · A comparação com o PDF, e os três defeitos que ela achou
+
+Pedido do dono: *"verifica se o resultado ficou igual ao PDF"*. **Não dá para afirmar que ficou —
+eu nunca rodei o modelo.** O que dá, e foi feito, é imprimir o PROMPT REAL que o escritor emite
+para esse briefing e comparar estrutura contra estrutura. Isso achou três defeitos que nenhum teste
+tinha pegado — dois deles introduzidos por mim na própria D7.
+
+**1. `(AL., 2024)` — a citação autor-data quebrada.** `sobrenome()` pega a última palavra do
+primeiro autor; em "Wang et al." a última palavra é "al.". O documento sairia mandando citar
+`(AL., 2024)` no corpo.
+
+**2. E o pior: duas das cinco referências sumiam em silêncio.** `juntarFontes` deduplica por
+CITAÇÃO. Com todas virando `(AL., ano)`, "Wang et al. (2024)" e "Sun et al. (2024)" colapsavam numa
+só — e o mesmo com Huang/Zheng em 2023. Num pedido que diz "limite-se estritamente a estas", chegar
+com três de cinco é o oposto do pedido. O dump mostrou `(AL., 2024) (AL., 2023) (AL., 2022)`; hoje
+mostra `(WANG, 2024) (HUANG, 2023) (LIANG, 2022) (SUN, 2024) (ZHENG, 2023)`, que é exatamente a
+forma do PDF.
+
+**3. Vocabulário misturado.** O marcador do pedido substituía o nosso na primeira linha do `sys`,
+mas o bloco de fontes seguia dizendo ⟨precisa de fonte⟩ — o mesmo prompt pedindo documento em duas
+línguas.
+
+**4. Regressão da própria D7: a bibliografia sem destino.** `referenciasNovas` (D2) procura uma
+seção chamada REFERÊNCIAS pra depositar o que foi citado. Quando as seções do pedido passaram a
+vencer o template, essa seção deixou de existir — e o documento ficaria com citações no corpo e
+nenhuma lista no fim, sem nenhum erro aparecendo. Agora ela é acrescentada quando o pedido não a
+traz; é o único acréscimo que fazemos ao plano de alguém, e tem motivo mecânico.
+
+### O que AINDA separa a nossa saída do PDF
+
+Comparando o PDF inteiro (8 páginas) com o que o motor monta:
+
+| no PDF | no nosso motor |
+|---|---|
+| seções do pedido, renumeradas | ✅ seções do pedido (sem renumerar) |
+| só as 5 referências, citadas autor-data | ✅ as 5, com a mesma forma de citação |
+| `[COMPLETAR:]` e `[VERIFICAR CITAÇÃO]` | ✅ o marcador do pedido vence o nosso |
+| `[INSERIR TABELA 1: …]` nas seções 5 e 6 | ✅ seção "só marcadores" é instruída a não redigir |
+| seção **Referências** com as 5 em ABNT | ✅ (depois do item 4 acima) |
+| **capa**: título, `[COMPLETAR: autores]`, resumo, palavras-chave | ❌ não produzimos |
+| **"Pendências: dados que devem ser fornecidos"** ao fim | ❌ não produzimos |
+
+Os dois ❌ são decisões, não bugs:
+
+- **A capa** o SOTA inferiu (o pedido não a listou). Acrescentar seção que ninguém pediu é
+  justamente o tipo de adivinhação que produziu o defeito original — então ficou de fora, e fica
+  registrado como escolha.
+- **A lista de pendências** o pedido pediu explicitamente ("ao final, forneça uma lista em tópicos
+  com todos os dados empíricos exatos"), mas ela **não é uma seção do documento** — é a resposta do
+  turno no chat. Como o pedido inteiro foi roteado para a geração de documento, ela se perdeu. Esse
+  é um buraco de ROTEAMENTO, não do escritor: hoje um pedido ou vira documento ou vira resposta,
+  nunca os dois. Vale uma fase própria.

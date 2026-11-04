@@ -219,7 +219,9 @@ export function promptDaSecao(p: PedidoSecao): { sys: string; user: string } {
       ? [
           "Você RECEBEU fontes (lista abaixo). Para toda afirmação que uma delas sustente, cite-a",
           "copiando EXATAMENTE a string indicada em \"CITE ASSIM\" — sem reescrever, sem abreviar.",
-          `${MARCA_SEM_FONTE} fica reservado ao que NENHUMA das fontes sustenta: é o que mostra ao aluno o que ainda falta.`,
+          // o marcador aqui tem de ser o MESMO da linha acima; misturar vocabulário no mesmo
+          // prompt é pedir um documento em duas línguas
+          `${marcadorDoPedido || MARCA_SEM_FONTE} fica reservado ao que NENHUMA das fontes sustenta: é o que mostra o que ainda falta.`,
         ]
       : []),
     "Responda APENAS o texto da seção, sem comentar o que você fez.",

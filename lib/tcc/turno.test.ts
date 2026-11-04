@@ -372,7 +372,8 @@ describe("D7 · partidaDoPedido — o pedido que quebrou em produção", () => {
   it("as SEÇÕES do pedido vencem o template ABNT", () => {
     const { secoes } = partidaDoPedido(PEDIDO, ESQUELETO);
     expect(secoes.map((x) => x.titulo)).toEqual([
-      "INTRODUÇÃO E JUSTIFICATIVA", "DEFINIÇÕES OPERACIONAIS", "SEÇÃO 4", "SEÇÃO 5", "LIMITAÇÕES E TRABALHOS FUTUROS",
+      "INTRODUÇÃO E JUSTIFICATIVA", "DEFINIÇÕES OPERACIONAIS", "SEÇÃO 4", "SEÇÃO 5",
+      "LIMITAÇÕES E TRABALHOS FUTUROS", "REFERÊNCIAS",
     ]);
     expect(secoes.map((x) => x.titulo)).not.toContain("REFERENCIAL TEÓRICO");   // o template saiu de cena
   });
@@ -382,6 +383,18 @@ describe("D7 · partidaDoPedido — o pedido que quebrou em produção", () => {
     expect(brief.referencias).toHaveLength(2);
     expect(brief.marcadores).toContain("COMPLETAR");
     expect(brief.instrucoes).toContain("limite-se estritamente");
+  });
+
+  it("REFERÊNCIAS é acrescentada quando o pedido não a traz — senão a bibliografia some", () => {
+    // `referenciasNovas` (D2) procura uma seção com esse nome pra depositar o que foi citado.
+    // Sem ela o documento fica com citações no corpo e nenhuma lista no fim, em silêncio.
+    const { secoes } = partidaDoPedido("Seção 1: Introdução\nSeção 2: Método", ESQUELETO);
+    expect(secoes.map((x) => x.titulo)).toEqual(["INTRODUÇÃO", "MÉTODO", "REFERÊNCIAS"]);
+  });
+
+  it("…e NÃO é duplicada quando o pedido já a pediu", () => {
+    const { secoes } = partidaDoPedido("Seção 1: Introdução\nSeção 2: Referências", ESQUELETO);
+    expect(secoes.map((x) => x.titulo)).toEqual(["INTRODUÇÃO", "REFERÊNCIAS"]);
   });
 
   it("pedido de UMA LINHA não muda nada: título é o tema e o esqueleto é o de sempre", () => {
