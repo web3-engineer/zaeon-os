@@ -727,6 +727,61 @@ o laço próprio dele (`TENTATIVAS_POR_SECAO`). O conector MCP **por usuário** 
 `zotero-mcp` — segue de fora: hoje `process.env[config.authRef]` é uma credencial global por conector,
 e isso é mudança de arquitetura, não de teto.
 
+### F6b · a auditoria de profundidade (2026-11-04): onde o harness é raso DE VERDADE
+
+Pedido do dono: *"verifique nossa prod e as capacidades agênticas dos nossos modelos"*. O estado de
+prod saiu do recibo do deploy #554 (`82a8c25a`, 18:40:59 UTC), lido de dentro do container — tudo ON,
+`mcp=on (9 tools)`, `leitor=on`. O resto desta seção é o que a leitura do código mostrou, e **nada
+disso é sobre tool nem sobre teto de volta**:
+
+**1 · O "reasoning sandwich" NÃO EXISTE em produção.** O desenho (§11.1, e o cabeçalho do
+`trajectory.ts`) diz que as fases pesadas — `plan` e `critique` — rodam no Pro e o resto no Flash. O
+código que escolhe é um só:
+
+```ts
+const modelFor = (heavy) => opts.modelo || (opts.deepThink && heavy ? GEMINI_MODEL_PRO : GEMINI_MODEL_FLASH);
+```
+
+`opts.deepThink` é **declarado, lido aqui, e nunca setado por ninguém** — nenhum caller do
+`buildHarnessDeps` passa esse campo. E `opts.modelo` chega preenchido sempre que o aluno está num
+modelo Google do composer (o padrão é `gemini-3.5-flash`), e **curto-circuita a expressão inteira**.
+Resultado medido: ou todas as fases rodam no Flash, ou — se o aluno escolhe "Gemini 2.5 Pro" na
+pílula — **todas** rodam no Pro. A granularidade por fase, que é a ideia do sandwich, não acontece em
+nenhum dos dois casos. É configuração morta, da mesma família do `notebook_read` que já foi limpo do
+`INTENTS`.
+
+**2 · O crítico não é um modelo.** `critique: (st) => Promise.resolve(critiqueForState(st))` — o
+examiner é 100% determinístico e puro (e o próprio arquivo diz que um scorer LLM "pode ser INJETADO
+depois"). A fase que o desenho chama de *reasoning-heavy* é uma rubrica de checagens baratas. Isso
+explica por que o sinal que a F6 usa é tão grosso: `checkSemFonte` só dispara quando
+`sourceCount === 0` — "nada está ancorado", não "esta afirmação está sem fonte".
+
+**3 · `reflections: 2` e `ensemble: 2` são decoração.** Estão no `INTENTS` do `criar_trabalho` e do
+`revisar`, o examiner os copia pro veredito (`reflections: spec.reflections`) e **ninguém os lê**.
+Nenhuma auto-reflexão roda, nenhum review é agregado. `integrity: []` tem o mesmo status, com um
+comentário de "fase posterior" que não chegou.
+
+**4 · A `reason` é pulada no caminho comum.**
+`pulaRaciocinio: (st) => !vaiSintetizar() && st.mode === "elaborated" && env.RACIOCINIO_ELABORADO !== "1"`
+— e isso é CORRETO, foi eval de out/2026: com um documento a `reason` não melhorava a resposta. Mas
+significa que, num turno `elaborated` típico, a sequência é `route → plan → gather* → draft →
+critique(heurística)`. **Uma** chamada de modelo é o rascunho.
+
+Somando: das 7 fases, no turno comum, quatro chamam modelo (`route`, `plan`, `acao` por volta,
+`draft`), todas no mesmo Flash, com `pensar` em `minimal` em três delas (lib/llm/pensar). A
+profundidade do harness hoje está na LARGURA da coleta — que a F6 aumentou de 2 pra 5 voltas onde
+importa — e não no julgamento, que não tem modelo nenhum.
+
+**Portão do dono, não meu:** ligar o Pro nas fases pesadas (ou um scorer LLM no examiner) muda o
+custo por turno e envolve decidir quem paga por isso — `lib/plans` dá `deep: "none"` pro free,
+`"daily"` pro plus e `"unlimited"` pro pro. Fica registrado, não feito.
+
+**O que mudou junto com esta auditoria:** o `/api/health` passou a publicar `voltasPorTarefa` e
+`modelo: { flash, pro }`, e o recibo do deploy imprime os dois. Sem a primeira, o recibo diria "2
+voltas" pra tudo depois da F6 — e recibo que mente é pior que recibo que falta (§8.4b). Sem a segunda,
+"qual modelo está no ar?" não tinha resposta sem SSH, porque `GEMINI_MODEL` vive no `.env` do VPS e
+não no repositório.
+
 ## 7. 🔒 Portões do dono
 
 Decisões que eu **não** tomo sozinho, porque mudam contrato de produto ou gastam dinheiro:

@@ -393,6 +393,13 @@ jobs:
                             '  anexo=' + sn(c.anexo) + '  sintese=' + sn(c.sintese) + '  doc_por_secao=' + sn(c.docPorSecao) + '  grafico=' + sn(c.grafico));
                 console.log('   abrir_url=' + sn(c.abrirUrl) + '  baixar_para_base=' + sn(c.baixarParaBase) +
                             '  leitor=' + h.leitor + '  mcp=' + h.mcp + '  commit=' + String(h.commit).slice(0,12));
+                // F6 · o teto de voltas é POR TAREFA. A linha de cima mostra o padrão de quem não
+                // passa tarefa (2); sem esta, o recibo diria '2 voltas' enquanto um pedido de
+                // trabalho roda 5 — recibo que mente (§8.4b).
+                const vt = c.voltasPorTarefa || {};
+                if (Object.keys(vt).length) console.log('   voltas por tarefa: ' + Object.keys(vt).map(k => k + '=' + vt[k]).join('  '));
+                const m = h.modelo || {};
+                if (m.flash) console.log('   modelo: flash=' + m.flash + '  pro=' + m.pro + ' (pro SÓ em turno com Pensamento Profundo)');
               }).catch(e=>{ console.log('   (não deu pra ler: ' + e.message + ')'); });
             " || echo "::warning::não deu pra imprimir o estado do harness"
 
