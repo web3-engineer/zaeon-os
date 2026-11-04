@@ -29,6 +29,7 @@ import { escritaPorSecaoLigada } from "@/lib/documento/escritor";
 import { graficoLigado } from "@/lib/agent/graficosDoTurno";
 import { getTool } from "@/lib/agent/runtime";
 import { GEMINI_MODEL_FLASH, GEMINI_MODEL_PRO } from "@/lib/ai/model";
+import { proNasPesadasLigado } from "@/lib/ai/proNasPesadas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,7 +50,10 @@ export async function GET() {
     // Aura usa em prod?" não tinha resposta sem SSH — e `pro` só entra em turno de quem tem
     // Pensamento Profundo (lib/plans: free `none`, plus 1×/dia, pro ilimitado). Sem essa ressalva o
     // número engana: pra maioria dos turnos TODAS as fases são o `flash`.
-    modelo: { flash: GEMINI_MODEL_FLASH, pro: GEMINI_MODEL_PRO, proSoComDeepThink: true },
+    // F7 · `proPesadas` é a FLAG, não "todo turno usa Pro": quem leva o Pro nas fases pesadas é
+    // conta plus/pro (lib/ai/proNasPesadas), e isso depende de usuário — o health não tem usuário.
+    // Dizer só "ON" aqui seria recibo exagerado; o nome do campo e esta nota é que o mantêm honesto.
+    modelo: { flash: GEMINI_MODEL_FLASH, pro: GEMINI_MODEL_PRO, proPesadas: proNasPesadasLigado(), proSoPlusEPro: true },
     leitor,
     // F5: o estado dos conectores MCP (memoizado do boot; nunca conecta aqui)
     mcp: resumoMcp(),

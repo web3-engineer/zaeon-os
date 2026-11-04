@@ -31,6 +31,7 @@ import { blocoDosAnexos } from "@/lib/agent/anexos";
 import { sinteseLigada } from "@/lib/agent/sintese-flag";
 import { graficoLigado } from "@/lib/agent/graficosDoTurno";
 import { MODELO_PADRAO, modeloDoId, nomeDoModeloServido } from "@/lib/chat/modelos";
+import { podeProNasPesadas } from "@/lib/ai/proNasPesadas";
 import { markRunning, saveDone, saveError } from "@/lib/agent/chat-turn-store";
 import type { Wing } from "@/lib/agent/memory";
 import { blocoDeEntregaveis, lerBriefing } from "@/lib/tcc/briefing";
@@ -203,8 +204,14 @@ export async function runChatTurn(
       const grupos = agruparPorDocumento(baseDoTurno.trechos);
       if (grupos.length) hctx.docsDaBase = grupos;
     }
+    // F7 · O PRO NAS FASES PESADAS (plan/síntese/draft), só pra quem paga. Resolvido AQUI e não no
+    // adaptador: é uma leitura de banco, e o adaptador é a camada que não sabe de plano nem de
+    // conta. Falha fechado (erro = Flash) e tem memo de 60 s, pra não consultar a cada turno.
+    const proPesadas = await podeProNasPesadas(userId);
     const deps = buildHarnessDeps(hctx, {
       modelo: escolhido?.provedor === "google" ? escolhido.vertex : undefined,
+      modeloEhPadrao: escolhido?.id === MODELO_PADRAO,
+      proNasPesadas: proPesadas,
       onModelo(m) { if (!servido || servido.phase !== "draft" || m.phase === "draft") servido = m; },
       // a PRÉVIA da resposta: o texto do rascunho enquanto nasce, em PEDAÇOS (lib/agent/previa criarEmissorPrevia)
       onPrevia: criarEmissorPrevia((pedaco) => narrar(serializarPrevia(pedaco))),

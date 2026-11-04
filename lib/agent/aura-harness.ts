@@ -47,7 +47,16 @@ import { anexarFontesBase, blocoDaBase } from "@/lib/rag/citar";
 type GenJson = <T>(system: string, user: string, opts?: { temperature?: number; model?: string; timeoutMs?: number; phase?: string; /** em stream: o JSON acumulado a cada pedaço */ onTexto?: (acumulado: string) => void; /** o pensar desta fase (lib/llm/pensar) */ pensar?: NivelPensar; /** stream: sem o 1º pedaço nesse prazo → reserva */ prazoPrimeiroMs?: number }) => Promise<T>;
 
 export type HarnessOpts = {
-  deepThink?: boolean;
+  /**
+   * F7 · Esta conta leva o Pro nas fases pesadas? Já vem DECIDIDO (flag + plano resolvidos pelo
+   * chamador, em lib/ai/proNasPesadas) — o adaptador não consulta banco nem plano.
+   *
+   * Substituiu `deepThink?: boolean`, que era declarado aqui, lido num único lugar e **nunca setado
+   * por chamador nenhum**: configuração que mentia sobre o sistema, da mesma família do
+   * `notebook_read` que já saiu do `INTENTS`. Se o campo volta a não ter quem o passe, o lugar certo
+   * é apagá-lo, não deixá-lo de enfeite.
+   */
+  proNasPesadas?: boolean;
   approve?: ApproveFn;
   onStep?: (step: AgentStep) => void;
   retryDelayMs?: number;
@@ -65,6 +74,12 @@ export type HarnessOpts = {
   baseConhecimento?: import("@/lib/rag/turno").BaseDoTurno | null;
   /** Modelo Google escolhido pelo aluno (id do Vertex, já validado em lib/chat/modelos): vale pra TODAS as fases. */
   modelo?: string;
+  /**
+   * F7 · `modelo` é a pílula PADRÃO (ou seja: o aluno não escolheu nada)? Sem esta distinção não há
+   * como respeitar uma escolha de verdade sem anular a política — o cliente manda um id concreto nos
+   * dois casos, então "ausência de preferência" e "escolheu justamente este" chegam idênticos aqui.
+   */
+  modeloEhPadrao?: boolean;
   /** Quem serviu cada chamada (o envelope pode cair na reserva): o turno mostra o da resposta no selo. */
   onModelo?: (m: { modelo: string; alvo?: string; phase?: string }) => void;
   /** a PRÉVIA da resposta (out/2026): o texto do rascunho JÁ escrito, enquanto o modelo ainda gera (lib/agent/previa)
@@ -422,13 +437,60 @@ export function prazoPrimeiraPalavra(st: { mode: string; intent: string }, env: 
   return n(env.PRAZO_1A_PALAVRA_MS, 12_000);
 }
 
+/** As fases do harness que pedem modelo. `critique` não está aqui porque não chama modelo. */
+export type FaseDeModelo = "acao" | "plan" | "sintese" | "reason" | "draft";
+
+/**
+ * F7 · AS FASES QUE GANHAM O PRO (decisão do dono, 04/nov/2026), e por que só estas duas:
+ *
+ * - `plan` decide O QUE buscar — as subperguntas e as tools. É a fase em que raciocinar melhor muda
+ *   a trajetória inteira do turno, e custa 1 chamada.
+ * - `sintese` compara 2+ documentos (convergência, divergência, lacuna). Já roda com `pensar: "low"`
+ *   justamente porque aqui raciocinar ajuda, ao contrário da `acao`.
+ *
+ * Fora, de propósito: `draft` (a latência da 1ª palavra foi afinada com eval; ver `modelFor`),
+ * `reason` (2–4 frases) e `acao` (escolher num menu curto, com prazo de 12 s). Quem quiser o Pro no
+ * rascunho escolhe o Pro na pílula do composer — e aí ele vale em todas as fases.
+ */
+const FASES_COM_PRO = new Set<FaseDeModelo>(["plan", "sintese"]);
+
 // ───────────────────────────── o adaptador ─────────────────────────────
 export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): HarnessDeps {
   const medido = { total: 0 }; // C5: tokens REAIS somados neste turno (HarnessDeps.usoMedido)
   const genJson = opts.genJson ?? envelopeGenJson(opts, medido);
   const runTool = opts.runToolImpl ?? runToolByName;
   const retryDelay = opts.retryDelayMs ?? 400;
-  const modelFor = (heavy: boolean) => opts.modelo || (opts.deepThink && heavy ? GEMINI_MODEL_PRO : GEMINI_MODEL_FLASH);
+  /**
+   * F7 · QUAL MODELO EM QUAL FASE. Era `opts.modelo || (opts.deepThink && heavy ? PRO : FLASH)`, e
+   * isso NUNCA escolhia o Pro, por dois motivos somados: `deepThink` não era passado por ninguém, e
+   * `opts.modelo` vem SEMPRE preenchido — o composer manda o id da pílula e o padrão dela
+   * (`MODELO_PADRAO`) é um id concreto, não ausência. O `||` curto-circuitava a expressão inteira.
+   *
+   * A ordem agora, e o porquê de cada degrau:
+   *
+   * 1. Escolha EXPLÍCITA no composer (qualquer uma que não seja a pílula padrão) manda em TODAS as
+   *    fases. Quem escolheu Flash-Lite por velocidade não deve receber Pro por trás; quem escolheu
+   *    Pro recebe Pro em tudo, inclusive no rascunho. Pedido do aluno vence política da casa.
+   * 2. Na pílula PADRÃO — que é o caso de quase todo mundo e não expressa preferência nenhuma — a
+   *    fase pesada de quem tem direito vai pro Pro.
+   * 3. O resto é Flash.
+   *
+   * A FASE É NOMEADA, e isso é parte do conserto. Antes o parâmetro era um booleano `heavy`, e ele
+   * agrupava `plan`, `sintese` e `draft` — três fases com custos e consequências diferentes. Decisão
+   * do dono (04/nov/2026): Pro no `plan` e na `sintese`; o `draft` **não**, porque a latência da 1ª
+   * palavra foi afinada com eval em out/2026 ("as respostas estão lentas", 0,99 s medido) e o Pro
+   * desfaria isso em cima da fase que o aluno espera olhando a tela. Com booleano não havia como
+   * dizer isso — o nome da fase é o que torna a política escrevível.
+   *
+   * O `critique` não está na lista porque NÃO CHAMA MODELO: é heurística determinística
+   * (lib/agent/examiner). É por isso que o "sanduíche" do desenho não tem onde colocar Pro ali sem
+   * construir um scorer novo — fase própria, não ligada aqui.
+   */
+  const modelFor = (fase: FaseDeModelo) => {
+    if (opts.modelo && !opts.modeloEhPadrao) return opts.modelo;
+    if (FASES_COM_PRO.has(fase) && opts.proNasPesadas) return GEMINI_MODEL_PRO;
+    return opts.modelo || GEMINI_MODEL_FLASH;
+  };
   const observations: Observation[] = []; // A1 · buffer de erros-como-observação
   /** O RECIBO: as tools que de fato rodaram e deram ok neste turno. É contra isto que a rede de
    *  promessa mede — "vou baixar o PDF" é verdade se `baixar_para_base` rodou, e mentira se não. */
@@ -471,7 +533,7 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
     });
     try {
       const bruto = await genJson<unknown>(sys, user, {
-        temperature: 0, model: modelFor(false), timeoutMs: 12_000, phase: "acao", pensar: pensarDa("acao"),
+        temperature: 0, model: modelFor("acao"), timeoutMs: 12_000, phase: "acao", pensar: pensarDa("acao"),
       });
       const r = lerAcao(bruto, { disponiveis: menu, jaFeitas: st.feitas });
       // o que foi recusado vira LOG (nunca prompt): é como se mede modelo pedindo coisa que não existe
@@ -511,7 +573,7 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
           const r = await genJson<{ subquestions?: string[] }>(
             "Você planeja a pesquisa. Gere 2 a 3 SUB-PERGUNTAS/perspectivas distintas que cubram o tema com abrangência. Responda JSON {\"subquestions\":[\"...\"]}.",
             `Tema: ${st.objective}`,
-            { temperature: 0.3, model: modelFor(true), timeoutMs: 15_000, phase: "plan", pensar: pensarDa("plan") },
+            { temperature: 0.3, model: modelFor("plan"), timeoutMs: 15_000, phase: "plan", pensar: pensarDa("plan") },
           );
           if (Array.isArray(r?.subquestions) && r.subquestions.length) subs = r.subquestions.slice(0, 3);
         } catch { /* fallback: só o objetivo */ }
@@ -577,7 +639,7 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         const { sys, user } = promptDaSintese({ objetivo: st.objective, docs });
         try {
           const bruto = await genJson<unknown>(sys, user, {
-            temperature: 0.2, model: modelFor(true), timeoutMs: 20_000, phase: "sintese", pensar: pensarDa("sintese"),
+            temperature: 0.2, model: modelFor("sintese"), timeoutMs: 20_000, phase: "sintese", pensar: pensarDa("sintese"),
           });
           const s = lerSintese(bruto);
           if (!sinteseUtil(s)) return "";
@@ -594,7 +656,7 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
       const sys = "Você é a Aura raciocinando ANTES de redigir. Conecte a evidência ao objetivo em 2–4 frases. Se faltou evidência, seja honesto — NUNCA invente fontes. Responda JSON {\"reasoning\":\"...\"}.";
       const user = `${preamble}${base}Objetivo: ${st.objective}\nModo: ${st.mode} · Acadêmico: ${st.academicMode}\nEvidência:\n${evidenceBlock(st)}${obsBlock(observations)}`;
       try {
-        const r = await genJson<{ reasoning?: string }>(sys, user, { temperature: 0.3, model: modelFor(false), timeoutMs: 15_000, phase: "reason", pensar: pensarDa("reason") });
+        const r = await genJson<{ reasoning?: string }>(sys, user, { temperature: 0.3, model: modelFor("reason"), timeoutMs: 15_000, phase: "reason", pensar: pensarDa("reason") });
         return String(r?.reasoning ?? "").trim();
       } catch {
         return ""; // reasoning é auxiliar — nunca derruba o laço
@@ -678,7 +740,7 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         const prazo = st.intent === "criar_trabalho" ? 90_000 : 30_000;
         // a PRÉVIA: com quem a escute (o chat), o rascunho vai em stream e o texto do `nucleo` sai enquanto nasce
         const onTexto = opts.onPrevia ? (acc: string) => { const t = previaDoRascunho(acc); if (t) opts.onPrevia!(t); } : undefined;
-        const out = await genJson<Partial<StructuredAnswer>>(sys, user, { temperature: 0.4, model: modelFor(true), timeoutMs: prazo, phase: "draft", onTexto, pensar: pensarDa(st.mode === "quick" ? "draft_rapido" : st.mode === "elaborated" ? "draft_elaborado" : "draft"), prazoPrimeiroMs: prazoPrimeiraPalavra(st) });
+        const out = await genJson<Partial<StructuredAnswer>>(sys, user, { temperature: 0.4, model: modelFor("draft"), timeoutMs: prazo, phase: "draft", onTexto, pensar: pensarDa(st.mode === "quick" ? "draft_rapido" : st.mode === "elaborated" ? "draft_elaborado" : "draft"), prazoPrimeiroMs: prazoPrimeiraPalavra(st) });
         // A REDE antes dos blocos do CÓDIGO (fontes da base, lista de livros): ela julga o texto do
         // MODELO. Depois seria pior — a lista de livros traz "baixar PDF" em cada linha, e ainda que
         // hoje ela não dispare (falta o marcador de 1ª pessoa), julgar texto determinístico da casa

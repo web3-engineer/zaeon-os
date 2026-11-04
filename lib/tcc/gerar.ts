@@ -119,6 +119,27 @@ async function fontesDoTrabalho(userId: string, topic: string, brief?: Briefing)
   return { fontes, ...(quadro ? { quadro } : {}) };
 }
 
+/**
+ * F7 · PURA: rota, modelo e prazo de cada seção. Extraída de dentro do gerador porque a decisão tem
+ * três entradas e um efeito que, errado, PIORA o documento em silêncio — e `gerarPorSecao` não é
+ * testável (oito imports dinâmicos, Prisma, envelope). Função pura é a parte que dá pra provar.
+ *
+ * O prazo é o ponto não óbvio: 60 s foi medido pro Flash. Deixar o Pro com 60 s faria a seção
+ * ESTOURAR e cair na marca de falha do escritor — ou seja, ligar o Pro trocaria texto por buraco. As
+ * duas tentativas por seção não salvam: a segunda estoura igual. Por isso o Pro leva 120 s.
+ *
+ * E o Pro EXIGE `vertex`: `zaeon-pool-lite` é um grupo do LiteLLM com outros modelos dentro, não um
+ * caminho pro Pro. Quem tem direito troca pool grátis por Vertex pago — o custo que o dono aprovou.
+ */
+export function planoDaSecao(p: {
+  comPro: boolean; gateway: boolean; pro: string; flash: string; pool: string;
+}): { rota: "vertex" | "gateway"; model: string; timeoutMs: number } {
+  if (p.comPro) return { rota: "vertex", model: p.pro, timeoutMs: 120_000 };
+  return p.gateway
+    ? { rota: "gateway", model: p.pool, timeoutMs: 60_000 }
+    : { rota: "vertex", model: p.flash, timeoutMs: 60_000 };
+}
+
 async function gerarPorSecao(workId: string, userId: string, topic: string, gen: Gen, brief?: Briefing): Promise<void> {
   const { getTccForUser } = await import("@/lib/tcc/store");
   const { planoDoDocumento } = await import("@/lib/documento/plano");
@@ -127,7 +148,8 @@ async function gerarPorSecao(workId: string, userId: string, topic: string, gen:
   const { gerar } = await import("@/lib/llm/envelope");
   const { gatewayLigado } = await import("@/lib/llm/usage");
   const { MODELO_POOL } = await import("@/lib/llm/pool");
-  const { GEMINI_MODEL_FLASH } = await import("@/lib/ai/model");
+  const { GEMINI_MODEL_FLASH, GEMINI_MODEL_PRO } = await import("@/lib/ai/model");
+  const { podeProNasPesadas } = await import("@/lib/ai/proNasPesadas");
 
   // O norte: uma chamada, e se ela falhar a escrita segue sem ela (o tema já basta pra começar).
   // O esboço deixa de receber 160 caracteres truncados: num briefing ele vê o PEDIDO INTEIRO e as
@@ -150,15 +172,30 @@ async function gerarPorSecao(workId: string, userId: string, topic: string, gen:
 
   // Pool grátis quando o gateway está de pé (padrão de lib/chore/tools.ts): são ~5 chamadas por
   // documento, e sem `rota` o envelope vai pro Vertex PAGO por default.
-  const rota = gatewayLigado() ? ("gateway" as const) : ("vertex" as const);
+  //
+  // F7 · E É AQUI QUE A QUALIDADE DO DOCUMENTO MORA. Decisão do dono (04/nov/2026): o Pro escreve as
+  // seções de quem paga. Antes disto, TODA seção de TODO documento saía do `zaeon-pool-lite` — o
+  // grupo de provedores GRÁTIS de terceiros — e o `GEMINI_MODEL_FLASH` abaixo só valia quando o
+  // gateway estava fora. Nenhuma flag do harness alcançava este ponto: é trilha própria, fora do
+  // `modelFor` do adaptador, e foi por isso que "ligar o Pro nas fases pesadas" precisou de duas
+  // mudanças e não de uma.
+  //
+  // O Pro EXIGE a rota `vertex`: o `zaeon-pool-lite` é um grupo do LiteLLM com outros modelos
+  // dentro, pedir Pro por ele não é possível. Então quem tem direito troca pool grátis por Vertex
+  // pago — é exatamente o custo que o dono aprovou, e some se `PRO_PESADAS=0`.
+  const comPro = await podeProNasPesadas(userId);
+  const { rota, model: modeloDaSecao, timeoutMs: prazoDaSecao } = planoDaSecao({
+    comPro, gateway: gatewayLigado(), pro: GEMINI_MODEL_PRO, flash: GEMINI_MODEL_FLASH, pool: MODELO_POOL,
+  });
+  if (comPro) console.info(`[tcc] seções no Pro (${modeloDaSecao}, prazo ${prazoDaSecao / 1000}s) — conta com direito`);
 
   const r = await escreverDocumento(
     {
       escrever: async (p) => {
         const { sys, user } = promptDaSecao(p);
         const res = await gerar({
-          system: sys, user, rota, model: rota === "gateway" ? MODELO_POOL : GEMINI_MODEL_FLASH,
-          temperature: 0.5, pensar: "low", timeoutMs: 60_000,
+          system: sys, user, rota, model: modeloDaSecao,
+          temperature: 0.5, pensar: "low", timeoutMs: prazoDaSecao,
           ctx: { agentKey: "zaeon", surface: "estudos" as const, phase: "tcc-secao" },
         });
         return res.texto;
