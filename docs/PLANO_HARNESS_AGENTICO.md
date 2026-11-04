@@ -841,11 +841,15 @@ envelhecendo em separado. Plano pago **expirado** cai pra free (`effectivePlan`)
 segue como override manual. **Falha FECHADO**: banco fora, id inválido, qualquer erro → Flash. O
 caminho caro nunca é o padrão de um acidente. Memo de 60 s para não consultar o banco a cada turno.
 
-**O que foi decisão minha e vale conferência do dono:** a cota do Plus é `deep: "daily"` (1×/dia, do
-botão Pensamento Profundo), e aqui o Plus recebe o Pro **continuamente**, sem consumir essa cota.
-Fiz assim porque uma cota diária não divide por seção — um documento tem ~8 — e porque o dono disse
-"plus e pro". Se a intenção era preservar a distinção entre os tiers, o ajuste é trocar
-`deep !== "none"` por `deep === "unlimited"` num lugar só, e aí o Plus volta ao pool.
+**O Plus é contínuo, e isso é decisão do dono — CONFIRMADA, não suposição minha.** A cota
+`deep: "daily"` (1×/dia) continua valendo só para o botão Pensamento Profundo; neste caminho o Plus
+recebe o Pro continuamente e **não consome** essa cota. Eu implementei assim porque uma cota diária
+não divide por seção (um documento tem ~8) e levantei a dúvida; perguntado em 04/nov/2026, o dono
+respondeu *"deixa o plus contínuo, não mexe"*.
+
+Então `deep !== "none"` em `planoDaDireitoAoPro` **é intencional**: quem, lendo isto depois, pensar em
+"apertar" para `deep === "unlimited"` estaria desfazendo uma escolha de produto, não corrigindo um
+descuido. A distinção entre Plus e Pro neste ponto é deliberadamente nenhuma.
 
 `deepThink` saiu do `HarnessOpts`. Era declarado, lido num único lugar e nunca setado — a mesma
 configuração que mente da `notebook_read`, e deixá-lo de enfeite ao lado do campo que funciona seria
