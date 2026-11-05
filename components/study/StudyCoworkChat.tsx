@@ -377,6 +377,9 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   const [docsPorAba, setDocsPorAba] = useState<Record<string, DocArtefato[]>>({});
   const [docAtivoPorAba, setDocAtivoPorAba] = useState<Record<string, string | null>>({});
   const docs = abaAtiva ? docsPorAba[abaAtiva] ?? [] : [];
+  // #711: antes do temaDaConversa, que o usa — definido depois, o chat quebrava ("Cannot access before initialization")
+  // assim que a conversa tinha um documento ou diagrama
+  const docAtivo = abaAtiva ? docAtivoPorAba[abaAtiva] ?? null : null;
   /**
    * O ASSUNTO pra frase do convite ("vem estudar comigo sobre ___"). A conversa não tem título
    * próprio, então vem do que está em jogo: o trabalho/documento ABERTO primeiro, depois o primeiro
@@ -389,7 +392,6 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     trabalhosDaAba[0]?.titulo,
     docs[0]?.titulo,
   ]);
-  const docAtivo = abaAtiva ? docAtivoPorAba[abaAtiva] ?? null : null;
   const setDocAtivo = useCallback((id: string | null) => {
     const aba = abaAtivaRef.current;
     if (aba) setDocAtivoPorAba((p) => ({ ...p, [aba]: id }));
