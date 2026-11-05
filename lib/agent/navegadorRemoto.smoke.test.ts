@@ -177,3 +177,101 @@ describe.skipIf(LIGADO)("SMOKE do container desligado", () => {
     expect(existsSync(path.join(raiz, "services/agente-navegador/server.mjs"))).toBe(true);
   });
 });
+
+/**
+ * SMOKE do MODO ABERTO e do TOKEN, com o servidor REAL (F10). Mesma porta `AGENTE_SMOKE=1`.
+ *
+ * A prova do modo aberto aqui é o CÓDIGO DE ERRO, e ela é melhor do que parece: um domínio que não
+ * existe passa pela política (porque tudo passa) e morre no DNS → `dns_falhou`. Em modo fechado o
+ * MESMO pedido morreria antes, em `dominio_fora_da_lista`. Os dois códigos distinguem "domínio
+ * recusado" de "domínio aceito, rede falhou" — então dá pra afirmar que o predicado cedeu sem
+ * precisar de um site de verdade no ar.
+ */
+describe.skipIf(!LIGADO)("SMOKE — modo aberto + token (servidor real)", () => {
+  const PORTA2 = 8798;
+  const BASE2 = `http://127.0.0.1:${PORTA2}`;
+  const TOKEN = "t0k3n-de-smoke";
+  let proc2: ChildProcess;
+
+  const pedir2 = async (caminho: string, metodo = "POST", corpo?: unknown, token?: string) => {
+    const r = await fetch(`${BASE2}${caminho}`, {
+      method: metodo,
+      headers: {
+        ...(corpo === undefined ? {} : { "content-type": "application/json" }),
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
+      body: corpo === undefined ? undefined : JSON.stringify(corpo),
+    });
+    let j: Record<string, unknown> = {};
+    try { j = (await r.json()) as Record<string, unknown>; } catch { /* vazio */ }
+    return { status: r.status, json: j };
+  };
+
+  beforeAll(async () => {
+    proc2 = spawn(process.execPath, [path.join(raiz, "services/agente-navegador/server.mjs")], {
+      env: {
+        ...process.env,
+        PORT: String(PORTA2),
+        AGENTE_ALLOW: "*",
+        AGENTE_TOKEN: TOKEN,
+        AGENTE_CHROMIUM_PATH: caminhoDoChromium() ?? "/usr/bin/chromium",
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    const limite = Date.now() + 20_000;
+    for (;;) {
+      if (await agenteVivo({ AGENTE_URL: BASE2 }, fetch, 400)) break;
+      if (Date.now() > limite) throw new Error("servidor (aberto) não subiu em 20 s");
+      await new Promise((r) => setTimeout(r, 200));
+    }
+  }, 60_000);
+
+  afterAll(() => { proc2?.kill("SIGKILL"); });
+
+  it("o /health declara o modo e que está autenticado — e NÃO exige token", async () => {
+    // /health fora do portão de propósito: é ele que a sonda do recibo chama, e um health com
+    // segredo transformaria "token errado" em "serviço morto" no recibo.
+    const { status, json } = await pedir2("/health", "GET");
+    expect(status).toBe(200);
+    expect(json).toMatchObject({ ok: true, aberto: true, autenticado: true });
+  });
+
+  it("TOKEN: sem ele é 401; com ele abre sessão; com o errado é 401", async () => {
+    expect((await pedir2("/sessao")).status).toBe(401);
+    expect((await pedir2("/sessao", "POST", undefined, "errado")).status).toBe(401);
+    const ok = await pedir2("/sessao", "POST", undefined, TOKEN);
+    expect(ok.status).toBe(201);
+    await pedir2(`/sessao/${ok.json.id}`, "DELETE", undefined, TOKEN);
+  }, 60_000);
+
+  it("MODO ABERTO: domínio arbitrário passa a política e morre no DNS, não na allowlist", async () => {
+    const s = await pedir2("/sessao", "POST", undefined, TOKEN);
+    try {
+      const r = await pedir2(
+        `/sessao/${s.json.id}/ir`, "POST",
+        { url: "https://dominio-que-nao-existe-zaeon-smoke.example/" }, TOKEN,
+      );
+      expect(r.json.erro).toBe("dns_falhou");          // a política CEDEU
+      expect(r.json.erro).not.toBe("dominio_fora_da_lista");
+    } finally {
+      await pedir2(`/sessao/${s.json.id}`, "DELETE", undefined, TOKEN);
+    }
+  }, 60_000);
+
+  it("ABERTO NÃO abre a rede: IP literal, metadados e host interno seguem recusados", async () => {
+    const s = await pedir2("/sessao", "POST", undefined, TOKEN);
+    try {
+      expect((await pedir2(`/sessao/${s.json.id}/ir`, "POST", { url: "http://169.254.169.254/latest/meta-data/" }, TOKEN)).json.erro)
+        .toBe("ip_literal");
+      expect((await pedir2(`/sessao/${s.json.id}/ir`, "POST", { url: "http://10.0.0.5/" }, TOKEN)).json.erro)
+        .toBe("ip_literal");
+      expect((await pedir2(`/sessao/${s.json.id}/ir`, "POST", { url: "file:///etc/passwd" }, TOKEN)).json.erro)
+        .toBe("esquema_proibido");
+      // host NA allowlist (tudo está) cujo DNS aponta pra loopback → barrado pelo IP, não pelo nome
+      expect((await pedir2(`/sessao/${s.json.id}/ir`, "POST", { url: `http://${HOST_INTERNO}/` }, TOKEN)).json.erro)
+        .toBe("ip_bloqueado");
+    } finally {
+      await pedir2(`/sessao/${s.json.id}`, "DELETE", undefined, TOKEN);
+    }
+  }, 60_000);
+});

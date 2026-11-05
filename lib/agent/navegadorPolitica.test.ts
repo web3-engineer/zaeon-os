@@ -2,11 +2,16 @@ import { describe, it, expect } from "vitest";
 import {
   AGENTE_MAX_MS,
   AGENTE_MAX_PASSOS,
+  agenteEhExterno,
   agenteFaltando,
   allowDoAgente,
+  allowEhAberta,
   decidirPedidoDoAgente,
   ipsAceitos,
+  parseAllow,
   regrasDeResolucao,
+  tokenDoAgente,
+  urlDoAgente,
 } from "@/lib/agent/navegadorPolitica";
 
 const allow = ["*.gov.br", "*.edu.br", "arxiv.org"];
@@ -139,5 +144,133 @@ describe("orçamento do run", () => {
   it("é MENOR que o default do agentic.ts (25 passos / 30 min): não há humano acompanhando", () => {
     expect(AGENTE_MAX_PASSOS).toBeLessThan(25);
     expect(AGENTE_MAX_MS).toBeLessThan(30 * 60_000);
+  });
+});
+
+// ───────────────────────────── F10: modo aberto, token, precedência ─────────────────────────────
+
+describe("allowDoAgente — precedência AGENTE_ALLOW → LEITOR_ALLOW", () => {
+  it("AGENTE_ALLOW manda quando preenchida", () => {
+    expect(allowDoAgente({ AGENTE_ALLOW: "*", LEITOR_ALLOW: "*.edu.br" })).toEqual(["*"]);
+  });
+  it("vazia/ausente cai na do Leitor — senão as duas pontas discordariam em silêncio", () => {
+    expect(allowDoAgente({ AGENTE_ALLOW: "  ", LEITOR_ALLOW: "arxiv.org" })).toEqual(["arxiv.org"]);
+    expect(allowDoAgente({ LEITOR_ALLOW: "arxiv.org" })).toEqual(["arxiv.org"]);
+  });
+});
+
+describe("allowEhAberta — `*` é ENTRADA, não substring", () => {
+  it("só o item exato `*` abre", () => {
+    expect(allowEhAberta(["*"])).toBe(true);
+    expect(allowEhAberta(["*.edu.br", "*"])).toBe(true);
+    // `*.edu.br` CONTÉM asterisco e é lista RESTRITA. Confundir os dois foi um defeito real deste
+    // trabalho, no bloco de shell do deploy: o recibo dizia "INTERNET ABERTA" pra lista acadêmica.
+    expect(allowEhAberta(["*.edu.br"])).toBe(false);
+    expect(allowEhAberta(["**"])).toBe(false);
+    expect(allowEhAberta([])).toBe(false);
+  });
+  it("o parser corta espaço antes, então ` * ` abre", () => {
+    expect(allowEhAberta(parseAllow(" * "))).toBe(true);
+  });
+});
+
+describe("urlDoAgente — em modo ABERTO só o predicado de DOMÍNIO cede", () => {
+  const aberta = ["*"];
+
+  it("qualquer domínio passa", () => {
+    for (const u of ["https://exemplo.com/x", "https://noticia.qualquer.io/a?b=1", "http://blog.pessoal.net/"]) {
+      expect(urlDoAgente(u, aberta).ok, u).toBe(true);
+    }
+  });
+
+  it("IP literal e endpoint de metadados da nuvem CONTINUAM barrados", () => {
+    // Abrir domínio não é abrir rede. Esta é a linha que separa "pesquisa na internet" de
+    // "leitor da rede interna", e ela não se move com o modo.
+    expect(urlDoAgente("http://169.254.169.254/latest/meta-data/", aberta))
+      .toMatchObject({ ok: false, erro: "ip_literal" });
+    expect(urlDoAgente("http://[::1]/", aberta)).toMatchObject({ ok: false, erro: "ip_literal" });
+    expect(urlDoAgente("http://10.0.0.5/", aberta)).toMatchObject({ ok: false, erro: "ip_literal" });
+  });
+
+  it("esquema, porta e credencial na URL CONTINUAM barrados", () => {
+    expect(urlDoAgente("file:///etc/passwd", aberta)).toMatchObject({ erro: "esquema_proibido" });
+    expect(urlDoAgente("javascript:alert(1)", aberta)).toMatchObject({ erro: "esquema_proibido" });
+    expect(urlDoAgente("https://exemplo.com:8080/", aberta)).toMatchObject({ erro: "porta_proibida" });
+    expect(urlDoAgente("https://u:p@exemplo.com/", aberta)).toMatchObject({ erro: "credencial_na_url" });
+  });
+
+  it("URL que não parseia é recusada com o MESMO código de sempre", () => {
+    expect(urlDoAgente("não é url", aberta)).toMatchObject({ ok: false, erro: "url_invalida" });
+  });
+
+  it("modo FECHADO segue exatamente como antes", () => {
+    expect(urlDoAgente("https://arxiv.org/a", ["arxiv.org"]).ok).toBe(true);
+    expect(urlDoAgente("https://exemplo.com/a", ["arxiv.org"])).toMatchObject({ erro: "dominio_fora_da_lista" });
+  });
+
+  it("o IP resolvido é conferido do mesmo jeito nos dois modos", () => {
+    // `urlDoAgente` cuida da URL; `ipsAceitos` cuida do IP — e ele não sabe nem se importa com modo.
+    expect(ipsAceitos(["127.0.0.1"])).toMatchObject({ ok: false, erro: "ip_bloqueado" });
+    expect(ipsAceitos(["169.254.169.254"])).toMatchObject({ ok: false, erro: "ip_bloqueado" });
+  });
+});
+
+describe("regrasDeResolucao em modo aberto", () => {
+  it("devolve VAZIO — a camada de DNS sai, e dizer isso importa", () => {
+    // No modo fechado é `MAP * ~NOTFOUND` que mata o subrecurso antes do socket. Em modo aberto não
+    // existe EXCLUDE que signifique "tudo", então essa camada some e quem segura é a interceptação.
+    expect(regrasDeResolucao(["*"])).toBe("");
+    expect(regrasDeResolucao(["arxiv.org"])).toContain("MAP * ~NOTFOUND");
+  });
+});
+
+describe("agenteEhExterno — a justificativa 'é rede interna' tem validade", () => {
+  it("nome de serviço do compose é INTERNO", () => {
+    expect(agenteEhExterno({ AGENTE_URL: "http://agente-navegador:8788" })).toBe(false);
+  });
+  it("loopback é INTERNO apesar dos pontos (é o smoke-test, não travessia de internet)", () => {
+    expect(agenteEhExterno({ AGENTE_URL: "http://127.0.0.1:8799" })).toBe(false);
+    expect(agenteEhExterno({ AGENTE_URL: "http://localhost:8799" })).toBe(false);
+  });
+  it("FQDN ou https é EXTERNO", () => {
+    expect(agenteEhExterno({ AGENTE_URL: "https://agente.zaeon.space" })).toBe(true);
+    expect(agenteEhExterno({ AGENTE_URL: "http://203.0.113.7:8788" })).toBe(true);
+  });
+  it("sem AGENTE_URL não há rede atravessada", () => {
+    expect(agenteEhExterno({})).toBe(false);
+  });
+  it("URL que não parseia é EXTERNO — falha fechado (exige token)", () => {
+    expect(agenteEhExterno({ AGENTE_URL: "http://[inválido" })).toBe(true);
+  });
+});
+
+describe("agenteFaltando — token é FALTA quando o serviço é externo", () => {
+  const base = { AGENTIC_MODE: "1", AGENTE_ALLOW: "*" };
+  it("externo sem token: falta pelo nome", () => {
+    expect(agenteFaltando({ ...base, AGENTE_URL: "https://agente.exemplo.com" }))
+      .toEqual(["AGENTE_TOKEN"]);
+  });
+  it("externo com token: nada falta", () => {
+    expect(agenteFaltando({ ...base, AGENTE_URL: "https://agente.exemplo.com", AGENTE_TOKEN: "s3gr3d0" }))
+      .toEqual([]);
+  });
+  it("interno sem token: correto, não falta", () => {
+    expect(agenteFaltando({ ...base, AGENTE_URL: "http://agente-navegador:8788" })).toEqual([]);
+  });
+  it("token EM BRANCO conta como ausente, e nenhum valor sai no relatório", () => {
+    // Em branco é ausente: `AGENTE_TOKEN="   "` num serviço externo é porta aberta, não configurada.
+    const emBranco = agenteFaltando({ AGENTE_URL: "https://x.exemplo.com", AGENTE_TOKEN: "   " });
+    expect(emBranco).toContain("AGENTE_TOKEN");
+    // E o relatório leva NOMES, nunca valores — o recibo do deploy é público no log.
+    const SEGREDO = "tok3n-nao-pode-vazar";
+    const comSegredo = agenteFaltando({ AGENTE_URL: "https://x.exemplo.com", AGENTE_ALLOW: "" , AGENTE_TOKEN: SEGREDO });
+    expect(comSegredo.join(" ")).not.toContain(SEGREDO);
+  });
+});
+
+describe("ondeOAgenteRoda / tokenDoAgente", () => {
+  it("token em branco é AUSENTE, não string vazia", () => {
+    expect(tokenDoAgente({ AGENTE_TOKEN: "  " })).toBe(null);
+    expect(tokenDoAgente({ AGENTE_TOKEN: " s3g " })).toBe("s3g");
   });
 });

@@ -37,7 +37,18 @@ describe("docker-compose — agente-navegador", () => {
 
   it("ZERO CREDENCIAL: sem env_file e sem env com cara de segredo", () => {
     expect(ativo).not.toMatch(/env_file/);
-    expect(ativo).not.toMatch(/KEY|SECRET|TOKEN|CREDENTIALS|MONGODB|DATABASE|REDIS|PUSHER|GOOGLE|NEXTAUTH/i);
+    // F10 · `AGENTE_TOKEN` é EXCEÇÃO NOMEADA, não afrouxamento. A regra que esta asserção protege é
+    // "nada aqui dá acesso a OUTRA coisa": o token dá acesso AO PRÓPRIO NAVEGADOR, então quem já
+    // comprometeu este container não ganha nada novo com ele. Vertex, Mongo, Pusher, NextAuth e
+    // companhia seguem proibidos — e é por isso que a exceção é por NOME e não por relaxar a regex.
+    const semExcecao = ativo.replace(/^\s*AGENTE_TOKEN:.*$/gm, "");
+    expect(semExcecao).not.toMatch(/KEY|SECRET|TOKEN|CREDENTIALS|MONGODB|DATABASE|REDIS|PUSHER|GOOGLE|NEXTAUTH/i);
+  });
+
+  it("o token, quando existe, vem de interpolação — nunca literal no arquivo", () => {
+    // Segredo escrito no compose iria pro git. Só a referência pode aparecer.
+    const linha = /^\s*AGENTE_TOKEN:\s*(.+)$/m.exec(ativo)?.[1] ?? "";
+    expect(linha.trim()).toBe("${AGENTE_TOKEN:-}");
   });
 
   it("sem volume do app; read_only, cap_drop ALL, no-new-privileges", () => {
@@ -70,8 +81,17 @@ describe("docker-compose — agente-navegador", () => {
     expect(dockerfile).toMatch(/^USER node$/m);
   });
 
-  it("a allowlist é a MESMA env do Leitor (cai em LEITOR_ALLOW)", () => {
-    expect(ativo).toMatch(/AGENTE_ALLOW:\s*"\$\{LEITOR_ALLOW:-[^"]*edu\.br/);
+  it("a allowlist lê AGENTE_ALLOW — a MESMA env que o web lê", () => {
+    // Esta linha dizia `AGENTE_ALLOW:` e LIA `${LEITOR_ALLOW}` (defeito meu na F9): o workflow
+    // mandando `*` nunca chegaria no container, e as duas pontas discordariam em silêncio.
+    expect(ativo).toMatch(/AGENTE_ALLOW:\s*"\$\{AGENTE_ALLOW:-/);
+  });
+
+  it("o DEFAULT embutido é acadêmico — fail-closed: cadeia quebrada ESTREITA, não abre", () => {
+    const m = /AGENTE_ALLOW:\s*"\$\{AGENTE_ALLOW:-([^"]*)\}"/.exec(ativo);
+    expect(m, "default do AGENTE_ALLOW ausente").toBeTruthy();
+    expect(m![1]).toContain("edu.br");
+    expect(m![1].split(",").map((x) => x.trim())).not.toContain("*");
   });
 });
 
@@ -84,6 +104,49 @@ describe("web ↔ container", () => {
 
   it("o `worker` NÃO leva AGENTE_URL nem o perfil: ele não serve rota nenhuma", () => {
     expect(semComentario(servico("worker"))).not.toMatch(/AGENTE_URL/);
+  });
+
+  it("as DUAS pontas leem a MESMA allowlist (AGENTE_ALLOW), senão discordam em silêncio", () => {
+    const web = semComentario(servico("web"));
+    expect(web).toMatch(/AGENTE_ALLOW:\s*"\$\{AGENTE_ALLOW:-/);
+    const doWeb = /AGENTE_ALLOW:\s*"\$\{AGENTE_ALLOW:-([^"]*)\}"/.exec(web)?.[1];
+    const doContainer = /AGENTE_ALLOW:\s*"\$\{AGENTE_ALLOW:-([^"]*)\}"/.exec(ativo)?.[1];
+    expect(doWeb).toBe(doContainer);
+  });
+
+  it("o web também recebe o token (ele é o cliente que precisa mandá-lo)", () => {
+    expect(semComentario(servico("web"))).toMatch(/AGENTE_TOKEN:\s*\$\{AGENTE_TOKEN:-\}/);
+  });
+});
+
+describe("AGENTE_ALLOW e AGENTE_TOKEN — os elos (F10)", () => {
+  it("AGENTE_ALLOW: env do step com default `*` (internet aberta, pedido do dono), envs: e laço", () => {
+    expect(wf).toMatch(/AGENTE_ALLOW:\s*\$\{\{\s*vars\.AGENTE_ALLOW\s*\|\|\s*'\*'\s*\}\}/);
+    const lista = /envs:\s*([^\n]+)/.exec(wf)?.[1] ?? "";
+    expect(lista.split(",").map((x) => x.trim())).toContain("AGENTE_ALLOW");
+    const laco = /for k in ([^;]+); do/.exec(wf)?.[1] ?? "";
+    expect(laco.split(/\s+/)).toContain("AGENTE_ALLOW");
+  });
+
+  it("AGENTE_TOKEN vem de SECRETS e NÃO entra no laço `for k in`", () => {
+    // O laço imprime `→ flag de build $k=<valor>` de cada nome que recebe. Segredo não se ecoa.
+    expect(wf).toMatch(/AGENTE_TOKEN:\s*\$\{\{\s*secrets\.AGENTE_TOKEN\s*\}\}/);
+    const laco = /for k in ([^;]+); do/.exec(wf)?.[1] ?? "";
+    expect(laco.split(/\s+/)).not.toContain("AGENTE_TOKEN");
+    const lista = /envs:\s*([^\n]+)/.exec(wf)?.[1] ?? "";
+    expect(lista.split(",").map((x) => x.trim())).toContain("AGENTE_TOKEN");
+  });
+
+  it("o recibo diz o MODO (aberta/restrita) e, se externo, se há token", () => {
+    expect(wf).toMatch(/INTERNET ABERTA/);
+    expect(wf).toMatch(/dominios=/);
+    expect(wf).toMatch(/token=/);
+  });
+
+  it("o bloco de shell usa `set -f`: sem noglob, um `*` sozinho vira lista de arquivos", () => {
+    // Defeito real deste trabalho, pego executando o bloco: `AGENTE_ALLOW='*'` era lido como
+    // RESTRITO porque o glob comia o asterisco. O `*.edu.br` passava por acidente.
+    expect(wf).toMatch(/set -f/);
   });
 });
 

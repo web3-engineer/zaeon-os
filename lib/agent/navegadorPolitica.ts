@@ -72,9 +72,20 @@ export function agenteUrl(env: Record<string, string | undefined> = process.env)
 /** Teto do texto que uma leitura devolve (o cockpit mostra, o plano não precisa de mais). */
 export const AGENTE_MAX_TEXTO = 20_000;
 
-/** A allowlist do agente É a do Leitor. Vazia = nega tudo (mesma regra do `urlPermitida`). */
+/**
+ * A allowlist do agente: `AGENTE_ALLOW` manda, e sem ela vale a do Leitor (`LEITOR_ALLOW`).
+ *
+ * F10 · a PRECEDÊNCIA tem de ser a MESMA das duas pontas. O servidor do container já lia
+ * `AGENTE_ALLOW ?? LEITOR_ALLOW`; se aqui ficasse só `LEITOR_ALLOW`, o container ficaria ABERTO e o
+ * web recusaria na conferência local — e o sintoma seria "fora da lista" em domínio que o container
+ * aceitaria, ou seja, duas políticas discordando em silêncio. É exatamente o que o comentário do
+ * `navegadorRemoto` chama de defeito, então não pode nascer aqui.
+ *
+ * Vazia = nega tudo (regra do `urlPermitida`). `*` = qualquer domínio (ver `urlDoAgente`).
+ */
 export function allowDoAgente(env: Record<string, string | undefined> = process.env): string[] {
-  return parseAllow(env.LEITOR_ALLOW);
+  const propria = parseAllow(env.AGENTE_ALLOW);
+  return propria.length ? propria : parseAllow(env.LEITOR_ALLOW);
 }
 
 /**
@@ -88,6 +99,11 @@ export function allowDoAgente(env: Record<string, string | undefined> = process.
  * de uma lista que o diz liberado — exatamente o tipo de divergência silenciosa que o teste fixa.
  */
 export function regrasDeResolucao(allow: readonly string[]): string {
+  // MODO ABERTO: não há como listar "tudo" num EXCLUDE, então esta camada SAI — e dizer isso em voz
+  // alta importa, porque é a camada que, no modo fechado, mata o `<img src=169.254.169.254>` antes
+  // de qualquer socket. Em modo aberto quem segura isso é a interceptação (todo pedido passa por
+  // `decidirPedidoDoAgente`) e o `ipsAceitos` do `ir`. Uma camada menos, as outras intactas.
+  if (allowEhAberta(allow)) return "";
   const excl: string[] = [];
   for (const p of allow) {
     if (p.startsWith("*.")) {
@@ -105,6 +121,42 @@ export type PedidoDoAgente = { url: string; metodo: string; tipo: string };
 export type VereditoPedido = { ok: true } | { ok: false; erro: string };
 
 /**
+ * F10 · MODO ABERTO — `AGENTE_ALLOW=*`: qualquer DOMÍNIO, pedido do dono ("navegue na internet e
+ * faça pesquisas"). O que NÃO abre, e nunca vai abrir por esta porta:
+ *
+ *   - IP privado / loopback / link-local (169.254 = METADADOS da nuvem), CGNAT, ULA — `ipsAceitos`
+ *     continua valendo IGUAL, em modo aberto ou fechado. É a única camada que impede o agente de
+ *     virar um leitor da rede interna, e abrir domínio não é motivo pra abrir rede;
+ *   - esquema fora de http/https, porta fora de 80/443, credencial embutida na URL, host que é IP
+ *     literal — todas continuam, porque continuam vindo de `urlPermitida`;
+ *   - escrever: `click`/`type` não existem no servidor. Internet aberta não é permissão pra agir.
+ *
+ * O TRUQUE DE IMPLEMENTAÇÃO, e ele é de propósito: em modo aberto NÃO reescrevo as regras — chamo
+ * `urlPermitida` com a allowlist `[host da própria URL]`. Assim TODAS as checagens do leitor-proxy
+ * continuam rodando, byte a byte, e a única coisa que o modo aberto muda é o predicado de domínio.
+ * Reimplementar `urlPermitida` "sem a parte do host" criaria a quarta versão da política, e a que
+ * ficasse velha seria a que concede — o erro que a F8 e a F9 passaram inteiras evitando.
+ */
+export const ABERTO = "*";
+
+export function allowEhAberta(allow: readonly string[]): boolean {
+  return allow.includes(ABERTO);
+}
+
+/** → { ok, url } | { ok: false, erro, status }. Em modo aberto, só o predicado de domínio cede. */
+export function urlDoAgente(
+  entrada: string,
+  allow: readonly string[],
+): { ok: true; url: URL } | { ok: false; erro: string; status: number } {
+  if (!allowEhAberta(allow)) return urlPermitida(entrada, allow as string[]);
+  // Precisa do host pra montar a lista de um item — e um endereço que nem parseia é recusado pelo
+  // próprio `urlPermitida` abaixo, com o mesmo código de erro de sempre.
+  let host = "";
+  try { host = new URL(String(entrada ?? "").trim()).hostname.replace(/^\[|\]$/g, ""); } catch { host = ""; }
+  return urlPermitida(entrada, host ? [host.toLowerCase()] : []);
+}
+
+/**
  * Cada pedido que o Chromium faz — navegação, redirect, subrecurso — passa por aqui. A navegação
  * inicial não é privilegiada: um redirect pra fora da lista é tão barrado quanto um `<script src>`.
  *
@@ -113,7 +165,7 @@ export type VereditoPedido = { ok: true } | { ok: false; erro: string };
  */
 export function decidirPedidoDoAgente(p: PedidoDoAgente, allow: readonly string[]): VereditoPedido {
   if (String(p.metodo ?? "").toUpperCase() !== "GET") return { ok: false, erro: "metodo_proibido" };
-  const v = urlPermitida(p.url, allow as string[]);
+  const v = urlDoAgente(p.url, allow);
   return v.ok ? { ok: true } : { ok: false, erro: v.erro };
 }
 
@@ -143,10 +195,44 @@ export function agenteFaltando(
   // outro container. Exigi-lo aqui faria o recibo dizer "falta chromium" num ar perfeitamente
   // funcional — recibo que mente na direção pessimista ainda é recibo que mente.
   if (!agenteUrl(env) && !temChromium) falta.push("chromium");
+  // F10 · serviço em OUTRO servidor sem token é falta, não detalhe: sem ele qualquer um que alcance
+  // a porta dirige o navegador. Na rede interna do compose o token é opcional (a fronteira do
+  // compose é o controle); atravessando internet, é requisito.
+  if (agenteEhExterno(env) && !tokenDoAgente(env)) falta.push("AGENTE_TOKEN");
   return falta;
 }
 
 /** Onde o navegador roda, pro recibo: o container dedicado (F9) ou dentro do web (F8). */
 export function ondeOAgenteRoda(env: Record<string, string | undefined> = process.env): "container" | "web" {
   return agenteUrl(env) ? "container" : "web";
+}
+
+/**
+ * F10 · O serviço do agente está FORA da rede interna do compose?
+ *
+ * Isto existe porque a F9 decidiu NÃO ter autenticação, e a justificativa escrita era "é `expose`,
+ * rede interna do compose, não guarda credencial". A primeira metade dessa frase deixa de ser
+ * verdade no instante em que o container vai pra outro servidor — que é justamente o que o dono
+ * autorizou ("pode ficar em outro servidor que não seja da contabo"). Então a pergunta "é externo?"
+ * passa a ter consequência: externo SEM token é recusado, não aceito com aviso.
+ *
+ * Loopback é INTERNO apesar de ter pontos: `http://127.0.0.1:8799` é o smoke-test, não travessia de
+ * internet. Errar isso exigiria token no teste e ensinaria a desligar a trava pra testar.
+ * Em dúvida (URL que não parseia), EXTERNO — falha fechado.
+ */
+export function agenteEhExterno(env: Record<string, string | undefined> = process.env): boolean {
+  const u = agenteUrl(env);
+  if (!u) return false; // Chromium no próprio processo: não há rede entre o web e o navegador
+  let h: URL;
+  try { h = new URL(u); } catch { return true; }
+  const host = h.hostname.replace(/^\[|\]$/g, "").toLowerCase();
+  if (host === "localhost" || host === "::1" || /^127\./.test(host)) return false;
+  if (h.protocol === "https:") return true;
+  // nome de serviço do compose ("agente-navegador") não tem ponto; qualquer FQDN ou IP público tem
+  return host.includes(".") || host.includes(":");
+}
+
+export function tokenDoAgente(env: Record<string, string | undefined> = process.env): string | null {
+  const t = env.AGENTE_TOKEN?.trim();
+  return t ? t : null;
 }

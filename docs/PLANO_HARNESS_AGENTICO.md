@@ -261,6 +261,8 @@ Isso vira **invariante testada**, não meta: promessa sem lastro não passa no g
 
 | **F9** ✅ | **O agente ganha container próprio.** O Chromium sai de dentro do `zaeon_web` pra `services/agente-navegador` — memória própria (1,5 GB) e **ZERO credencial**, irmão do `leitor-proxy` e pela mesma razão; a diferença é que este EXECUTA JavaScript. Com isso os tetos sobem de 12 passos/3 min para 25/10 min. `AGENTE_URL`. | médio | F8 |
 
+| **F10** ✅ | **Pesquisa na internet aberta.** O agente passa a BUSCAR (reusa `webSearch`/SearXNG, que já existia e ele não usava), abrir `AGENTE_ALLOW=*` (qualquer domínio; IP privado/loopback/metadados seguem barrados) e **sintetizar com fontes podadas** contra o que foi lido. `AGENTE_TOKEN` passa a ser OBRIGATÓRIO quando o serviço sai da rede do compose. | **médio** (segurança) | F9 |
+
 **Rollback em qualquer fase:** flag por fase; sem ela o caminho atual vale byte a byte.
 
 ### Por que a F0 vem sozinha e primeiro
@@ -1201,6 +1203,127 @@ Nada quebrou, e é justamente isso que torna a lição útil: a regra não é "r
 os gates na árvore que vai ser empurrada**. Rebase depois do gate invalida o gate, mesmo quando o
 diff de terceiro não toca o seu. É a mesma família do `env:` do CI que eu não reproduzia, do
 `yaml.safe_load` mais fraco que o parser do Compose e do Node 22 contra o Node 20.
+
+### F10 entregue — pesquisa na internet aberta, e o preço dito antes
+
+Pedido do dono: *"adicione uma página pro agente navegador, pra que ele navegue na internet e faça
+pesquisas. esse mecanismo pode ficar em outro servidor que nao seja da contabo."*
+
+**MEDI ANTES, E DUAS DAS TRÊS COISAS JÁ EXISTIAM** — o que mudou o trabalho:
+
+- a PÁGINA já estava no ar desde a F8 (`/agente`, só de fundador);
+- a BUSCA já existia e o agente não a usava: `lib/search/web.ts` + o container `searxng` (512 MB) já
+  rodavam, e a Aura já tinha a tool `web_search`. O agente, não — ele só abria endereço que alguém
+  digitou, e quem precisa saber o endereço de antemão não está pesquisando;
+- o que faltava de verdade era **ABRIR o que a busca acha**. A allowlist era acadêmica, então a Aura
+  encontrava o link e não entrava nele.
+
+Então o turno virou: **instrução → busca (se não houver endereço) → plano escolhe entre resultados
+REAIS → abre e lê → síntese com fontes**. O plano receber a lista de resultados fecha o modo clássico
+de falha deste caminho: `navigate` para um endereço plausível e inexistente, que gasta passo e devolve
+página de erro como se fosse conteúdo.
+
+**O MODO ABERTO, E O QUE ELE *NÃO* ABRE.** `AGENTE_ALLOW=*` libera qualquer DOMÍNIO. Seguem barrados,
+sem exceção e sem depender do modo: IP privado/loopback/link-local (169.254 = **metadados da nuvem**),
+CGNAT, ULA; esquema fora de http/https; porta fora de 80/443; credencial embutida na URL; host que é
+IP literal; e **escrever** (`click`/`type` não existem no servidor). Abrir domínio não é abrir rede, e
+é essa linha que separa "pesquisa na internet" de "leitor da rede interna".
+
+O truque de implementação é o que me salvou de uma quarta cópia da política: em modo aberto eu **não
+reescrevo as regras** — chamo `urlPermitida` com a allowlist `[host da própria URL]`. Todas as
+checagens do `leitor-proxy` continuam rodando byte a byte, e o único predicado que cede é o do
+domínio. Reimplementar "urlPermitida sem a parte do host" criaria a versão que envelhece e concede.
+
+**UMA CAMADA SAI, E ISSO TEM DE SER DITO:** no modo fechado, `--host-resolver-rules=MAP * ~NOTFOUND`
+mata um `<img src=169.254.169.254>` no resolvedor, antes de qualquer socket. Em modo aberto não existe
+EXCLUDE que signifique "tudo", então essa camada desaparece e quem segura passa a ser a interceptação
+de cada pedido + o `ipsAceitos` do `ir`. Uma camada menos; as outras intactas.
+
+**O RISCO NOVO É DE OUTRA FAMÍLIA: INJEÇÃO INDIRETA.** Não é SSRF — é a página CONTER texto escrito
+pra virar ordem ("ignore as instruções anteriores e…"). Três mitigações, e nenhuma é perfeita:
+(1) o prompt da síntese declara o conteúdo como DADO, entre marcas, e proíbe obedecer ordens de lá;
+(2) a leitura vem do `innerText` do DOM **renderizado**, então `display:none`/`visibility:hidden` — o
+vetor clássico — não entra; (3) o agente é SOMENTE LEITURA, então mesmo obedecendo não há verbo para
+agir. É a terceira que limita o estrago a "a síntese mente" em vez de "o agente fez algo".
+`aria-hidden` ainda entra no `innerText`: limitação registrada, não escondida.
+
+E a síntese **poda fonte inventada** contra o que foi realmente lido: endereço que o modelo cita e que
+não está na lista de páginas abertas é descartado, e sem nenhuma fonte válida a resposta sai marcada
+INCERTA. Aparência de lastro sem lastro é o defeito caro deste caminho, e aqui dá pra conferir contra
+fato — então confere-se.
+
+**O TOKEN: A JUSTIFICATIVA DA F9 TINHA PRAZO DE VALIDADE.** A F9 escreveu, com todas as letras, que o
+serviço não tem autenticação porque "é `expose`, rede interna do compose, não guarda credencial". A
+primeira metade dessa frase **deixa de ser verdade no instante em que o container vai pra outro
+servidor** — que é justamente o que o dono autorizou. Então `AGENTE_TOKEN` entrou, e como TRAVA e não
+aviso: o cliente **recusa conectar** quando a URL não é do compose e falta token
+(`token_obrigatorio_fora_do_compose`). Aceitar "sem token porque ainda não configuraram" seria deixar
+a porta de um navegador aberta na internet e chamar isso de pendência.
+
+Detalhes que isso exigiu: comparação em **tempo constante** (`timingSafeEqual`) — `a === b` em string
+é o jeito clássico de um token ser adivinhado byte a byte; o `/health` fica **fora** do portão, porque
+é ele que a sonda do recibo chama e um health com segredo transformaria "token errado" em "serviço
+morto"; e `127.0.0.1`/`localhost` contam como **internos** apesar dos pontos, senão o smoke exigiria
+token e a lição seria "desligue a trava pra testar".
+
+**O token é EXCEÇÃO NOMEADA à regra "zero credencial", não afrouxamento dela.** O teste do compose
+continua recusando `KEY|SECRET|CREDENTIALS|MONGODB|DATABASE|REDIS|PUSHER|GOOGLE|NEXTAUTH`; só
+`AGENTE_TOKEN` é removido antes da checagem, e a razão está escrita ali: ele dá acesso **ao próprio
+navegador**, então quem já comprometeu o container não ganha nada novo. Um segundo teste afirma que a
+linha é interpolação (`${AGENTE_TOKEN:-}`) e nunca valor literal — segredo escrito no compose iria
+pro git.
+
+**TRÊS DEFEITOS, E OS TRÊS FORAM PEGOS EXECUTANDO, NÃO LENDO**
+
+1. *O recibo chamava lista acadêmica de internet aberta.* Meu critério era `case ... in *"*"*)`, que
+   casa qualquer string **contendo** asterisco — e `*.edu.br` contém. O recibo diria "INTERNET
+   ABERTA" para a lista mais restrita que existe aqui: mentira na pior direção. O critério certo é
+   "existe uma ENTRADA que é exatamente `*`", igual ao `allowEhAberta` do TS.
+2. *E o conserto do item 1 estava errado também.* `AGENTE_ALLOW='*'` **sozinho** era lido como
+   RESTRITO, porque `$AGENTE_ALLOW` sem quotes sofre **expansão de caminho**: o `*` virava a lista de
+   arquivos do diretório e nunca sobrava um `*` pra comparar. `set -f` (noglob) resolve. O detalhe que
+   ensina: `*.edu.br` passava por acidente (não casa arquivo), então o caso fácil passava e o caso que
+   importa falhava — e só executar com valores reais mostra isso.
+3. *A linha do compose dizia `AGENTE_ALLOW:` e LIA `${LEITOR_ALLOW}`* (defeito meu na F9). O workflow
+   mandando `*` nunca chegaria no container: as duas pontas discordariam em silêncio, com o web
+   aceitando e o container recusando — ou o contrário. Agora as duas leem `AGENTE_ALLOW`, com a ponte
+   `AGENTE_ALLOW ← LEITOR_ALLOW` feita no SHELL do deploy, **num nível só**, porque interpolação
+   aninhada do Compose (`${A:-${B:-c}}`) eu não consigo testar neste ambiente e um nível eu consigo.
+
+**E UM QUARTO, da F9, achado ao ler a rota:** ela ainda barrava em `!temChromium` **mesmo usando o
+container**, onde o Chromium local é irrelevante. Eu havia corrigido isso no `agenteFaltando` e
+esquecido no portão — duas definições, e a que ficou velha era a que NEGAVA. Agora o portão usa
+`agenteFaltando`, uma definição só.
+
+### Como mover o mecanismo para FORA da Contabo
+
+A arquitetura da F9 já permitia; a F10 fechou o que faltava. Em quatro passos:
+
+1. **No outro servidor**, suba só este serviço:
+   `docker compose -f docker-compose.beta.yml --profile agente up -d --build agente-navegador`
+   (o `build.context` é `./services`, então o repositório precisa estar lá — ou publique a imagem.)
+2. **Exponha com TLS**, não a porta crua: um proxy (Caddy/nginx) em `https://agente.seu-dominio/`.
+   A porta 8788 em HTTP aberta na internet seria um navegador dirigível por qualquer um.
+3. **Crie o Secret `AGENTE_TOKEN`** no GitHub (uma string longa e aleatória). Sem ele o cliente
+   **recusa** conectar a uma URL de fora do compose — de propósito.
+4. **Aponte a Variable `AGENTE_URL`** para `https://agente.seu-dominio`. O recibo do próximo deploy
+   dirá `onde=container  externo=sim token=ON`, e `⚠ CONTAINER INALCANÇÁVEL` se o endereço não
+   responder.
+
+O que isso compra: o navegador que abre a internet aberta deixa de compartilhar host com o `zaeon_web`
+(Vertex, Mongo, Pusher) e com o resto da stack. A dívida de **DNS-rebinding** da F8/F9 continua, mas o
+estrago dela encolhe muito — rebinding para a rede interna da Contabo deixa de alcançar a rede onde o
+banco e as chaves vivem.
+
+**Gates:** `tsc` limpo, `eslint` 0 (zero avisos nos arquivos novos), `compose-check` ✓, os dois YAML
+validados com loader estrito a chave duplicada, o bloco de shell do deploy **executado** com oito
+formas de allowlist e quatro combinações de token (e provado que o token não aparece no log), suíte
+cheia **6210 testes verdes** com o `env:` do CI reproduzido, `next build` ✓, e os dois smokes com
+Chromium real — incluindo token (401 sem, 201 com, 401 errado) e a prova do modo aberto pelo CÓDIGO DE
+ERRO: domínio inexistente morre em `dns_falhou`, não em `dominio_fora_da_lista`.
+
+**NÃO provado, e eu não finjo:** a tela `/agente` rodando num navegador, e uma pesquisa de ponta a
+ponta com internet de verdade — este ambiente não tem DNS direto, só proxy HTTPS.
 
 ## 7. 🔒 Portões do dono
 

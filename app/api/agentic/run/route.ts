@@ -28,7 +28,19 @@ import {
   allowDoAgente,
   orcamentoDoAgente,
 } from "@/lib/agent/navegadorPolitica";
-import { lerPlanoDoAgente, promptDoPlano, sistemaDoPlano } from "@/lib/agent/navegadorPlano";
+import { lerPlanoDoAgente, sistemaDoPlano } from "@/lib/agent/navegadorPlano";
+import {
+  MAX_RESULTADOS,
+  SISTEMA_DA_SINTESE,
+  type Leitura as LeituraDaSintese,
+  type Sintese,
+  lerSintese,
+  promptDaSintese,
+  promptDoPlanoComBusca,
+  termoDeBusca,
+  urlNaInstrucao,
+} from "@/lib/agent/navegadorPesquisa";
+import { type WebResult, webSearch } from "@/lib/search/web";
 import { caminhoDoChromium } from "@/lib/agent/navegadorServidor";
 import { abrirDriverDoAgente } from "@/lib/agent/navegadorRemoto";
 
@@ -52,19 +64,17 @@ export async function POST(req: Request) {
   const adm = await assertAdmin();
   if (!adm.ok) return NextResponse.json({ erro: "nao_autorizado" }, { status: adm.status });
 
-  const temChromium = !!caminhoDoChromium();
-  if (!agenticEnabled() || !temChromium) {
+  // F10 · UMA só definição de "o que falta": `agenteFaltando` já sabe que, com o container, o
+  // Chromium do web é irrelevante, e que serviço externo sem token é falta. A versão anterior
+  // barrava em `!temChromium` mesmo usando o container — defeito meu da F9, que eu havia corrigido
+  // no `agenteFaltando` e esquecido AQUI. Duas definições, e a que ficou velha era a que negava.
+  const faltando = agenteFaltando(process.env, !!caminhoDoChromium());
+  if (!agenticEnabled() || faltando.length) {
     // Diz o que falta pelo NOME (nunca o valor) — mesma regra do recibo do deploy.
-    return NextResponse.json(
-      { erro: "agente_indisponivel", faltando: agenteFaltando(process.env, temChromium) },
-      { status: 503 },
-    );
+    return NextResponse.json({ erro: "agente_indisponivel", faltando }, { status: 503 });
   }
 
   const allow = allowDoAgente();
-  if (!allow.length) {
-    return NextResponse.json({ erro: "agente_indisponivel", faltando: ["LEITOR_ALLOW"] }, { status: 503 });
-  }
 
   let corpo: { instrucao?: unknown };
   try { corpo = (await req.json()) as { instrucao?: unknown }; } catch { corpo = {}; }
@@ -82,11 +92,24 @@ export async function POST(req: Request) {
   let driver: Awaited<ReturnType<typeof abrirDriverDoAgente>>["driver"] | null = null;
 
   try {
+    // ── BUSCAR (F10) ───────────────────────────────────────────────────────────────
+    // Só busca quando a instrução NÃO traz endereço: "abra tal página" é pedido de abrir, e gastar
+    // uma busca ali seria latência sem ganho. Busca que falha NÃO derruba o turno — o plano segue
+    // sem resultados e o prompt diz que não houve, em vez de o modelo inventar endereço.
+    const alvoDireto = urlNaInstrucao(instrucao);
+    let resultados: WebResult[] = [];
+    if (!alvoDireto) {
+      const b = await webSearch(termoDeBusca(instrucao), { max: MAX_RESULTADOS }).catch(
+        () => ({ ok: false }) as const,
+      );
+      if (b.ok) resultados = b.results;
+    }
+
     // ── planejar (modelo) ──────────────────────────────────────────────────────────
     const { geminiJson } = await import("@/lib/scholar/gemini");
     let bruto: unknown;
     try {
-      bruto = await geminiJson<unknown>(sistemaDoPlano(maxPassos), promptDoPlano(instrucao), {
+      bruto = await geminiJson<unknown>(sistemaDoPlano(maxPassos), promptDoPlanoComBusca(instrucao, resultados), {
         temperature: 0,
         timeoutMs: 30_000,
         ctx: { agentKey: "aura", surface: "admin" },
@@ -104,7 +127,7 @@ export async function POST(req: Request) {
       // que abrir um navegador pra nada e devolver "pronto".
       return NextResponse.json({
         ok: false, stop: "blocked", passos: [], leituras: [],
-        recusadas: plano.recusadas, allow, onde: remoto ? "container" : "web",
+        recusadas: plano.recusadas, allow, onde: remoto ? "container" : "web", resultados,
         motivo: "o plano não tinha nenhum passo de leitura executável nesta porta",
       });
     }
@@ -123,9 +146,34 @@ export async function POST(req: Request) {
       { execMode: "guiado", maxSteps: maxPassos, maxDurationMs: maxMs },
     );
 
+    // ── SINTETIZAR (F10) ───────────────────────────────────────────────────────────
+    // Sem isto a página devolve texto cru de páginas e chama isso de pesquisa. A síntese é o que
+    // transforma leitura em resposta — e `lerSintese` PODA fontes inventadas contra o que foi
+    // realmente lido, porque aparência de lastro sem lastro é o defeito caro deste caminho.
+    const urlsLidas = eventos
+      .filter((e) => e.action?.kind === "navigate" && e.action.url)
+      .map((e) => String(e.action!.url));
+    let sintese: Sintese | null = null;
+    if (r.readings.length) {
+      const leituras: LeituraDaSintese[] = r.readings.map((texto, i) => ({
+        url: urlsLidas[i] ?? urlsLidas[urlsLidas.length - 1] ?? "",
+        texto,
+      }));
+      try {
+        const cru = await geminiJson<unknown>(SISTEMA_DA_SINTESE, promptDaSintese(instrucao, leituras), {
+          temperature: 0.2, timeoutMs: 45_000, ctx: { agentKey: "aura", surface: "admin" },
+        });
+        sintese = lerSintese(cru, urlsLidas);
+      } catch {
+        // Síntese é ACESSÓRIA: sem ela o dono ainda recebe os passos e as leituras. Derrubar o
+        // turno porque o resumo falhou seria jogar fora o trabalho que já deu certo.
+        sintese = null;
+      }
+    }
+
     return NextResponse.json({
       ok: r.ok, stop: r.stop, error: r.error,
-      passos: eventos, leituras: r.readings,
+      passos: eventos, leituras: r.readings, sintese, resultados,
       recusadas: plano.recusadas, allow,
       onde: remoto ? "container" : "web", orcamento: { maxPassos, maxMs },
     });

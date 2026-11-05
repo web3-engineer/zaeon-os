@@ -24,6 +24,7 @@
  */
 import http from "node:http";
 import dns from "node:dns";
+import { timingSafeEqual } from "node:crypto";
 import { urlPermitida, ipBloqueado, parseAllow, extrairTexto } from "../leitor-proxy/guarda.mjs";
 import { criarRegistro, MAX_SESSOES, TTL_MS, VIDA_MAX_MS } from "./sessoes.mjs";
 
@@ -33,9 +34,48 @@ const MAX_TEXTO = Number(process.env.AGENTE_MAX_TEXTO || 20_000);
 const TIMEOUT_MS = Number(process.env.AGENTE_TIMEOUT_MS || 20_000);
 const CAMINHO = process.env.AGENTE_CHROMIUM_PATH || "/usr/bin/chromium";
 const CORPO_MAX = 16 * 1024;
+/**
+ * F10 · TOKEN. Vazio = sem autenticação, que é o modo da rede interna do compose (a fronteira do
+ * compose é o controle, como no leitor-proxy). Preenchido = `Authorization: Bearer <token>`
+ * OBRIGATÓRIO em toda rota menos o /health — é o modo de quem roda isto em OUTRO servidor, onde a
+ * porta atravessa internet e "é interno" deixa de ser verdade.
+ *
+ * Comparação em TEMPO CONSTANTE: `a === b` em string vazamento de tempo é o jeito clássico de um
+ * token ser adivinhado byte a byte. Custa uma linha.
+ */
+const TOKEN = (process.env.AGENTE_TOKEN ?? "").trim();
+/** `*` na allowlist = QUALQUER DOMÍNIO (pedido do dono). IP privado/loopback segue barrado. */
+const ABERTO = ALLOW.includes("*");
 
 /** `extrairTexto` já tira script/style e TEXTO OCULTO (vetor de injeção indireta) — ver guarda.mjs. */
 const limitar = (s) => String(s ?? "").slice(0, MAX_TEXTO);
+
+/**
+ * Em modo ABERTO não reescrevo as regras: chamo `urlPermitida` com a allowlist `[host da própria
+ * URL]`. Assim esquema, porta, credencial-na-URL e IP-literal continuam sendo checados pelas MESMAS
+ * funções que o leitor-proxy roda em produção, e o único predicado que cede é o do domínio.
+ */
+function urlDoAgente(entrada) {
+  if (!ABERTO) return urlPermitida(entrada, ALLOW);
+  let host = "";
+  try { host = new URL(String(entrada ?? "").trim()).hostname.replace(/^\[|\]$/g, "").toLowerCase(); } catch { host = ""; }
+  return urlPermitida(entrada, host ? [host] : []);
+}
+
+/** Igualdade em tempo constante (tokens de tamanhos diferentes também não vazam por tempo). */
+function mesmoSegredo(a, b) {
+  const A = Buffer.from(String(a ?? ""), "utf8");
+  const B = Buffer.from(String(b ?? ""), "utf8");
+  if (A.length !== B.length) { timingSafeEqual(A, A); return false; }
+  return timingSafeEqual(A, B);
+}
+
+function autorizado(req) {
+  if (!TOKEN) return true; // rede interna do compose: a fronteira é o controle
+  const h = String(req.headers["authorization"] ?? "");
+  const m = /^Bearer\s+(.+)$/i.exec(h.trim());
+  return !!m && mesmoSegredo(m[1].trim(), TOKEN);
+}
 
 class Recusa extends Error {
   constructor(status, erro) { super(erro); this.status = status; this.erro = erro; }
@@ -49,6 +89,9 @@ class Recusa extends Error {
  * Chromium `*.x` não casa `x` — então vira DOIS EXCLUDE. Lista vazia = só o MAP: falha FECHADO.
  */
 export function regrasDeResolucao(allow) {
+  // Em modo aberto esta camada SAI (não há EXCLUDE que signifique "tudo"). Quem segura passa a ser
+  // a interceptação de cada pedido + o `ipsAceitos` do `ir`. Uma camada menos, as outras intactas.
+  if (allow.includes("*")) return "";
   const excl = [];
   for (const p of allow) {
     if (p.startsWith("*.")) { const base = p.slice(2); if (base) excl.push(`EXCLUDE ${base}`, `EXCLUDE ${p}`); }
@@ -60,7 +103,7 @@ export function regrasDeResolucao(allow) {
 /** Só GET. Um agente somente-leitura não emite POST, e um formulário auto-disparado seria escrita. */
 export function decidirPedido(p, allow) {
   if (String(p.metodo ?? "").toUpperCase() !== "GET") return { ok: false, erro: "metodo_proibido" };
-  const v = urlPermitida(p.url, allow);
+  const v = urlDoAgente(p.url);
   return v.ok ? { ok: true } : { ok: false, erro: v.erro };
 }
 
@@ -88,7 +131,8 @@ export function argsChromium(allow, extras = []) {
     "--disable-client-side-phishing-detection", "--metrics-recording-only",
     "--disable-features=Translate,MediaRouter,OptimizationHints,AutofillServerCommunication,InterestFeedContentSuggestions",
     "--mute-audio", "--hide-scrollbars", "--font-render-hinting=none",
-    `--host-resolver-rules=${regrasDeResolucao(allow)}`,
+    // string vazia = modo aberto; passar `--host-resolver-rules=` vazio confundiria o Chromium
+    ...(regrasDeResolucao(allow) ? [`--host-resolver-rules=${regrasDeResolucao(allow)}`] : []),
     // NENHUM plugin stealth, NENHUM spoof de fingerprint, NENHUM solver de CAPTCHA — de propósito.
     ...extras,
   ];
@@ -188,9 +232,14 @@ async function rotear(req, res) {
   const url = new URL(req.url ?? "/", "http://interno");
   const p = url.pathname;
 
+  // O /health fica FORA do portão de propósito: é ele que a sonda do recibo chama, e um health que
+  // exige segredo transformaria "token errado" em "serviço morto" no recibo — dois defeitos
+  // diferentes com a mesma cara. Ele não revela nada além de contadores e do MODO.
+  if (p !== "/health" && !autorizado(req)) throw new Recusa(401, "nao_autorizado");
+
   if (p === "/health") {
     return responder(res, 200, {
-      ok: true, allow: ALLOW.length, sessoes: registro.tamanho,
+      ok: true, allow: ALLOW.length, aberto: ABERTO, autenticado: !!TOKEN, sessoes: registro.tamanho,
       max: MAX_SESSOES, ttlMs: TTL_MS, vidaMaxMs: VIDA_MAX_MS,
       navegador: !!navegador?.connected,
     });
@@ -218,7 +267,7 @@ async function rotear(req, res) {
   if (verbo === "ir" && req.method === "POST") {
     const { url: alvo } = await corpo(req);
     // 1ª camada: a URL pedida. Mesma função que o Leitor roda em produção.
-    const v = urlPermitida(alvo, ALLOW);
+    const v = urlDoAgente(alvo);
     if (!v.ok) throw new Recusa(v.status, v.erro);
     // 2ª: o IP, ANTES de o Chromium abrir. Não fecha DNS-rebinding (ele resolve de novo), mas pega
     // o caso comum — nome liberado que aponta pra dentro. Ver a nota no doc (F9).

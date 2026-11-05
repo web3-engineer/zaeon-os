@@ -31,7 +31,14 @@ import { getTool } from "@/lib/agent/runtime";
 import { GEMINI_MODEL_FLASH, GEMINI_MODEL_PRO } from "@/lib/ai/model";
 import { proNasPesadasLigado } from "@/lib/ai/proNasPesadas";
 import { pusherFaltando } from "@/lib/collab/realtime";
-import { agenteFaltando, ondeOAgenteRoda } from "@/lib/agent/navegadorPolitica";
+import {
+  agenteEhExterno,
+  agenteFaltando,
+  allowDoAgente,
+  allowEhAberta,
+  ondeOAgenteRoda,
+  tokenDoAgente,
+} from "@/lib/agent/navegadorPolitica";
 import { caminhoDoChromium } from "@/lib/agent/navegadorServidor";
 import { agenteVivo } from "@/lib/agent/navegadorRemoto";
 import { tccCrossOn } from "@/lib/tcc/store";
@@ -97,7 +104,22 @@ export async function GET() {
      * Sem esta linha, "o agente está no ar?" não teria resposta sem SSH — exatamente o ponto cego
      * que o trilho do documento tinha até a #702.
      */
-    agente: faltaAgente.length ? { faltando: faltaAgente } : { onde: ondeOAgenteRoda(), alcancavel: agenteOk },
+    /**
+     * F10 · o agente agora tem MODO, e o recibo diz qual. `aberto` é a diferença entre "ele lê
+     * fontes acadêmicas" e "ele lê a internet" — dois produtos diferentes com a mesma linha de log
+     * se ninguém publicar o modo. `externo`/`autenticado` existem juntos de propósito: externo SEM
+     * token é o estado que não pode passar em silêncio, e o recibo é onde isso aparece.
+     * Nenhum VALOR de segredo sai aqui — só se existe.
+     */
+    agente: faltaAgente.length
+      ? { faltando: faltaAgente }
+      : {
+          onde: ondeOAgenteRoda(),
+          alcancavel: agenteOk,
+          aberto: allowEhAberta(allowDoAgente()),
+          externo: agenteEhExterno(),
+          autenticado: !!tokenDoAgente(),
+        },
     leitor,
     // F5: o estado dos conectores MCP (memoizado do boot; nunca conecta aqui)
     mcp: resumoMcp(),
