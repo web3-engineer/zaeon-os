@@ -118,8 +118,8 @@ function gravarIds(a: Armazem, k: string, ids: Iterable<string>): void {
   try { a.setItem(k, JSON.stringify([...new Set(ids)])); } catch { /* ignore */ }
 }
 
-export type MsgGuardada = { role?: string; text?: string; at?: number; studioBlock?: Bloco; blocosExtra?: Bloco[]; blocos?: Bloco[] };
-type Bloco = { studioKind?: string; artifactId?: string; title?: string };
+export type MsgGuardada = { role?: string; text?: string; at?: number; studioBlock?: BlocoGuardado; blocosExtra?: BlocoGuardado[]; blocos?: BlocoGuardado[] };
+type BlocoGuardado = { studioKind?: string; artifactId?: string; title?: string };
 
 /** As mensagens guardadas no navegador, na forma do servidor. As sem horário ficam em ordem, a partir da criação da conversa. */
 export function mensagensParaEnviar(guardadas: readonly MsgGuardada[], criadaEm: number, textoDe: (m: MsgGuardada) => string) {
@@ -128,7 +128,7 @@ export function mensagensParaEnviar(guardadas: readonly MsgGuardada[], criadaEm:
   const proximo = (at?: number) => { ultimo = at && at > ultimo ? at : ultimo + 1; return ultimo; };
   for (const m of guardadas) {
     if (m.role !== "user" && m.role !== "assistant") continue;
-    const blocos = [m.studioBlock, ...(m.blocos ?? []), ...(m.blocosExtra ?? [])].filter((b): b is Bloco => !!b?.artifactId && !!b.studioKind);
+    const blocos = [m.studioBlock, ...(m.blocos ?? []), ...(m.blocosExtra ?? [])].filter((b): b is BlocoGuardado => !!b?.artifactId && !!b.studioKind);
     const texto = (textoDe(m) || "").trim();
     if (texto) saida.push({ role: m.role, text: texto, at: proximo(m.at), ...(blocos[0] ? { meta: { bloco: { studioKind: blocos[0].studioKind, artifactId: blocos[0].artifactId, title: blocos[0].title } } } : {}) });
     for (const b of texto ? blocos.slice(1) : blocos) saida.push({ role: m.role, text: b.title || b.studioKind!, at: proximo(m.at), meta: { bloco: { studioKind: b.studioKind, artifactId: b.artifactId, title: b.title } } });
