@@ -118,6 +118,11 @@ services:
       NEXT_PUBLIC_PUSHER_CLUSTER: ${NEXT_PUBLIC_PUSHER_CLUSTER:-}
       # a fase `reason` no `elaborated` (o código a pula por padrão; "1" liga)
       RACIOCINIO_ELABORADO: ${RACIOCINIO_ELABORADO:-}
+      # F8 · agente de navegador (rota /api/agentic/run + tela /agente, ambas só de fundador).
+      # SÓ NO WEB, de propósito: o agente roda onde a ROTA existe, e o `worker` não serve rota
+      # nenhuma. Pôr aqui é topologia, não descuido — a mesma razão do CANAL_QUEUE acima. Default
+      # 0 pra falhar FECHADO se a cadeia do workflow quebrar; o workflow manda "1".
+      AGENTIC_MODE: ${AGENTIC_MODE:-0}
       # CANAL_QUEUE é o interruptor de ENFILEIRAR (lib/canal/queue `filaLigada`), e por isso mora no
       # WEB: é ele que decide mandar o turno pra fila em vez de rodar inline. Os de CONSUMIR
       # (CANAL_WORKER/CHORES_WORKER) ficam só no serviço `worker` — aqui eles fariam o mesmo

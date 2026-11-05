@@ -31,6 +31,8 @@ import { getTool } from "@/lib/agent/runtime";
 import { GEMINI_MODEL_FLASH, GEMINI_MODEL_PRO } from "@/lib/ai/model";
 import { proNasPesadasLigado } from "@/lib/ai/proNasPesadas";
 import { pusherFaltando } from "@/lib/collab/realtime";
+import { agenteFaltando } from "@/lib/agent/navegadorPolitica";
+import { caminhoDoChromium } from "@/lib/agent/navegadorServidor";
 import { tccCrossOn } from "@/lib/tcc/store";
 import { TCC_CROSS_ON } from "@/lib/tcc/client";
 import { chatUnicoOn } from "@/lib/chat/chatUnico";
@@ -74,6 +76,21 @@ export async function GET() {
      * aparecia em lugar nenhum — vivia só no `.env` do VPS. Fechar isso foi ordem do dono.
      */
     documento: { servidor: tccCrossOn(), cliente: TCC_CROSS_ON, chatUnico: chatUnicoOn() },
+    /**
+     * F8 · O AGENTE DE NAVEGADOR. "on" só quando as TRÊS condições estão de pé; senão, os NOMES do
+     * que falta (nunca valores). As três são de naturezas diferentes e por isso erram diferente:
+     *
+     *   AGENTIC_MODE  — a flag (Variable; default 0: esta é a única que NÃO liguei por padrão);
+     *   LEITOR_ALLOW  — a allowlist; vazia, `urlPermitida` nega TODO domínio e o agente não vai a
+     *                   lugar nenhum. Flag ON com lista vazia é um agente que só sabe recusar;
+     *   chromium      — o binário na imagem. Sem ele a rota devolve 503 em vez de estourar.
+     *
+     * Sem esta linha, "o agente está no ar?" não teria resposta sem SSH — exatamente o ponto cego
+     * que o trilho do documento tinha até a #702.
+     */
+    agente: agenteFaltando(process.env, !!caminhoDoChromium()).length === 0
+      ? "on"
+      : { faltando: agenteFaltando(process.env, !!caminhoDoChromium()) },
     leitor,
     // F5: o estado dos conectores MCP (memoizado do boot; nunca conecta aqui)
     mcp: resumoMcp(),

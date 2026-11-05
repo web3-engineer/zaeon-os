@@ -257,6 +257,8 @@ Isso vira **invariante testada**, não meta: promessa sem lastro não passa no g
 
 | **F7** ✅ | **O Pro nas fases pesadas**, só plus/pro. Duas trilhas, porque o defeito era duplo: `plan`/`sintese` no harness (`FASES_COM_PRO`) e as **seções do documento** (`lib/tcc/gerar`), que nenhuma flag do harness alcançava. Flag `PRO_PESADAS`, ON. | **médio** (custo) | F6 |
 
+| **F8** ✅ | **A porta do agente de navegador.** O módulo `agentic.ts` (#698) existia sem caller: ligar a flag não fazia nada. Agora há rota (`/api/agentic/run`) e cockpit (`/agente`), **só de fundador**, com Chromium **headless** no servidor e **somente leitura** — duas travas de código, não promessa. Allowlist = a do Leitor. Flag `AGENTIC_MODE`, ON. | médio | — |
+
 **Rollback em qualquer fase:** flag por fase; sem ela o caminho atual vale byte a byte.
 
 ### Por que a F0 vem sozinha e primeiro
@@ -1016,6 +1018,84 @@ de momento entre as duas é justamente o que as faz divergir em produção.
   é operação de quem opera a máquina.
 - **`reflections` / `ensemble` / `integrity`** — não são flags: configuração que o examiner copia pro
   veredito e ninguém lê. Limpar ou implementar é decisão à parte.
+
+### F8 entregue — a porta do agente de navegador, e os três bloqueios que a mudaram
+
+Pedido do dono: *"faça o que for necessário pra deixar tudo no ar, todos com flag on"*. Levantando o
+que sobrava, o agente de navegador do #698 era o único item que **não era uma flag**: `AGENTIC_MODE=1`
+não faria nada, porque **ninguém chamava `runAgentic`**. Perguntado, o dono mandou escrever a porta, e
+escolheu **headless no servidor, sem co-browsing**.
+
+**Medi antes de escrever, e três bloqueios mudaram o desenho — dois deles para melhor:**
+
+1. **`playwright` não está no `package.json`.** O `connectBrowser` faz
+   `const mod: string = "playwright"; await import(mod)` — specifier não-literal, então o `tsc` passa
+   e o runtime estoura "Cannot find module". Mas `puppeteer-core` JÁ é dependência e a imagem JÁ
+   instala Chromium (`OCTA_CHROMIUM_PATH=/usr/bin/chromium`), porque o Octa usa os dois. O driver novo
+   vai por esse caminho: **zero dependência nova**.
+2. **Não há display no container**, e o `connectBrowser` abre HEADED por default. Headless resolve —
+   e com isso o co-browsing deixa de existir, que é a escolha que o dono fez de olhos abertos.
+3. **A doutrina da casa é "só o `leitor-proxy` sai pra internet"** — um container sem credencial que
+   confere IP e allowlist. Eu levantei isso como objeção a pôr navegador no `zaeon_web`, e **estava
+   incompleto**: o precedente da casa já é esse. O `lib/octa/captura.ts` lança Chromium headless no
+   MESMO container, intercepta cada pedido contra allowlist (`decidirPedido`) e — o ponto que resolve
+   de verdade — entrega ao processo do navegador um ambiente MÍNIMO (`envChromium`: PATH/HOME/LANG/TZ).
+   `DATABASE_URL`, `NEXTAUTH_SECRET`, Vertex, Mongo e Pusher **não entram** no processo que fala com a
+   internet. O que a doutrina protege segue protegido pelo ambiente mínimo, não pela fronteira do
+   container. Há teste afirmando exatamente isso.
+
+**As duas travas são código, e são duas de propósito.** `click`/`type` são recusados pelo DRIVER, e a
+rota **não passa `approve`** (então o laço mata escrita em `stop: "denied"`). Protegem coisas
+diferentes: a segunda, um plano que pede escrita; a primeira, um futuro caller que resolva passar um
+`approve` permissivo. Um teste roda `runAgentic` com `approve: async () => true` — aprovando TUDO — e
+afirma que o driver recusa de todo modo.
+
+**O `waitForHuman` LANÇA, e isso é conserto de um no-op que mente.** No `connectBrowser`, sem
+`onHandoff`, ele "retoma na hora": o agente seguiria como se o humano tivesse feito o login, e o passo
+seguinte rodaria DESAUTENTICADO. Aqui não há humano na página, então o plano falha alto. É a mesma
+objeção que derrubou o `opts.deepThink` na F7 — efeito declarado que nunca acontece é pior que ausente.
+
+**O planejador recusa com NOME, em vez de deixar o laço dizer "denied".** `lerPlanoDoAgente` tira as
+ações de escrita/handoff do plano e as devolve em `recusadas`; o cockpit mostra. Sem isso o dono leria
+"não aprovado pelo admin" quando a verdade é "esta porta é somente leitura, por desenho".
+
+**O QUE ESTA PORTA NÃO FECHA, e o proxy fecha: DNS-rebinding.** O `leitor-proxy` resolve, confere o IP
+e **conecta pelo IP** com SNI/Host do nome — não há segunda resolução pra trocar a resposta. O Chromium
+resolve por conta dele, então entre a nossa checagem e a conexão existe uma janela. O que a estreita:
+`MAP * ~NOTFOUND` faz todo host fora da allowlist **não resolver** (o atacante precisaria controlar o
+DNS de um domínio JÁ liberado — hoje, acadêmicos curados), e **todos** os IPs resolvidos são conferidos
+(basta um interno pra recusar — mais estrito que o proxy, que escolhe o IP e por isso pode aceitar
+"um bom"). **Fica como dívida registrada**, com o caminho de quitação: servir o HTML pelo proxy e usar
+o Chromium só pra renderizar JS.
+
+**Ligada com flag ON, e o que torna isso defensável é o alcance:** rota e tela são de
+fundador/super_admin (`assertAdmin`), e a tela devolve **404** pra quem não é — não 403, que
+confirmaria a existência. Ligar não expõe nada a aluno nenhum; faz a página existir pro dono, que é o
+único jeito de ele experimentar. Teto de 12 passos / 3 min e **um run por processo** (menor que os
+25/30 min do `agentic.ts`, que foram pensados pro driver headed com humano esperando no handoff).
+
+**O smoke-test tem Chromium REAL, e achou um defeito que nenhum teste puro acharia.** A 1ª versão
+servia HTTP e morreu em `ERR_BLOCKED_BY_CLIENT`: o Chromium **promove http→https** (HTTPS-First) e o
+servidor de teste não falava TLS. Desligar a promoção nos args de produção seria piorar a segurança
+pra facilitar um teste — então ela ficou, o servidor passou a falar TLS, e
+`--ignore-certificate-errors` entra por uma costura `extrasDeTeste` que **nenhuma env liga** (há teste
+afirmando que o caminho de produção não a recebe). Com isso, provado com navegador de verdade:
+subrecurso liberado carrega, subrecurso fora da lista **não**, e o endpoint de metadados da nuvem
+(`169.254.169.254`) **não**.
+
+**Os cinco elos têm teste de arquivo**, e ele foi provado contra o defeito real (removi o elo do
+`envs:` e o default fail-closed do compose, um por vez, e o teste caiu nos dois). `AGENTIC_MODE` vai
+**só no `web`**: o agente roda onde a ROTA existe, e o `worker` não serve rota — topologia, pela mesma
+razão do `CANAL_QUEUE`. O recibo do deploy passou a imprimir `agente_navegador:`.
+
+**O que NÃO mudou:** `lib/agent/agentic.ts` não foi tocado — nem o `guardAction` (anti-furtividade),
+nem o `normalizeAction` (credencial → handoff), nem o `connectBrowser` (o caminho headed do dono,
+para quando ele quiser co-browsing na máquina dele).
+
+**Gates:** `tsc` limpo, `eslint` 0 (zero avisos nos arquivos novos), `compose-check` ✓, suíte cheia
+**6101 testes verdes** com o bloco `env:` do CI reproduzido (+69 novos), `next build` ✓ — e este
+último era o gate que importava, porque a política importa `services/leitor-proxy/guarda.mjs` de
+dentro do bundle do Next: uma definição de política, não duas envelhecendo em paralelo.
 
 ## 7. 🔒 Portões do dono
 
