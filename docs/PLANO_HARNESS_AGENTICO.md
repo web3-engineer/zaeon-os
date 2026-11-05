@@ -1188,8 +1188,19 @@ pro proxy e deixar o Chromium só renderizando JS segue sendo o caminho de quita
 
 **Gates:** `tsc` limpo, `eslint` 0 (zero avisos nos arquivos novos), `compose-check` ✓, os dois YAML
 validados com loader estrito a chave duplicada, o bloco de shell do deploy provado com nove valores
-de flag, suíte cheia **6149 testes verdes** com o `env:` do CI reproduzido (+48 novos), `next build`
-✓, e os DOIS smokes (F8 local e F9 container) verdes com Chromium real.
+de flag, suíte cheia **6154 testes verdes** com o `env:` do CI reproduzido, `next build` ✓, e os DOIS
+smokes (F8 local e F9 container) verdes com Chromium real.
+
+**LIÇÃO DE PROCESSO — a quarta vez com a mesma forma, e desta vez eu me peguei antes do CI.** O
+commit da F9 foi escrito dizendo *6149 testes*. Era verdade na árvore em que eu rodei a suíte, e
+FALSO na árvore que eu comitei: entre uma coisa e outra a `giu8550` mesclou as #704 e #706 na main,
+eu rebasei a branch pra cima delas (certo) e NÃO rodei os gates de novo (errado). Rodados na árvore
+real: 6154 verdes, `tsc` limpo, `eslint` 0, `next build` ✓ — os +5 são das PRs dela.
+
+Nada quebrou, e é justamente isso que torna a lição útil: a regra não é "rodar os gates", é **rodar
+os gates na árvore que vai ser empurrada**. Rebase depois do gate invalida o gate, mesmo quando o
+diff de terceiro não toca o seu. É a mesma família do `env:` do CI que eu não reproduzia, do
+`yaml.safe_load` mais fraco que o parser do Compose e do Node 22 contra o Node 20.
 
 ## 7. 🔒 Portões do dono
 
