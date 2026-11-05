@@ -31,8 +31,9 @@ import { getTool } from "@/lib/agent/runtime";
 import { GEMINI_MODEL_FLASH, GEMINI_MODEL_PRO } from "@/lib/ai/model";
 import { proNasPesadasLigado } from "@/lib/ai/proNasPesadas";
 import { pusherFaltando } from "@/lib/collab/realtime";
-import { agenteFaltando } from "@/lib/agent/navegadorPolitica";
+import { agenteFaltando, ondeOAgenteRoda } from "@/lib/agent/navegadorPolitica";
 import { caminhoDoChromium } from "@/lib/agent/navegadorServidor";
+import { agenteVivo } from "@/lib/agent/navegadorRemoto";
 import { tccCrossOn } from "@/lib/tcc/store";
 import { TCC_CROSS_ON } from "@/lib/tcc/client";
 import { chatUnicoOn } from "@/lib/chat/chatUnico";
@@ -41,9 +42,17 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const [gateway, leitor] = await Promise.all([
+  // F8/F9 · o que falta pro agente (nomes, nunca valores). Calculado ANTES da sonda porque com
+  // `AGENTIC_MODE` off não há por que bater num container — e o health também é o health-gate do
+  // deploy, que não pode pagar ida e volta por um recurso desligado.
+  const faltaAgente = agenteFaltando(process.env, !!caminhoDoChromium());
+  const [gateway, leitor, agenteOk] = await Promise.all([
     estadoGateway().catch(() => "degraded" as const),
     estadoLeitor().catch(() => "degraded" as const),
+    // No caminho LOCAL (sem AGENTE_URL) não há o que sondar: o navegador sobe no próprio processo,
+    // e "tem chromium" já foi respondido por `faltaAgente`. Sondar ali daria `alcancavel: false`
+    // num ar funcionando — recibo que mente na direção pessimista ainda mente.
+    faltaAgente.length || ondeOAgenteRoda() === "web" ? Promise.resolve(true) : agenteVivo(),
   ]);
   return NextResponse.json({
     status: "ok",
@@ -88,9 +97,7 @@ export async function GET() {
      * Sem esta linha, "o agente está no ar?" não teria resposta sem SSH — exatamente o ponto cego
      * que o trilho do documento tinha até a #702.
      */
-    agente: agenteFaltando(process.env, !!caminhoDoChromium()).length === 0
-      ? "on"
-      : { faltando: agenteFaltando(process.env, !!caminhoDoChromium()) },
+    agente: faltaAgente.length ? { faltando: faltaAgente } : { onde: ondeOAgenteRoda(), alcancavel: agenteOk },
     leitor,
     // F5: o estado dos conectores MCP (memoizado do boot; nunca conecta aqui)
     mcp: resumoMcp(),

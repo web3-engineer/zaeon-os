@@ -259,6 +259,8 @@ Isso vira **invariante testada**, não meta: promessa sem lastro não passa no g
 
 | **F8** ✅ | **A porta do agente de navegador.** O módulo `agentic.ts` (#698) existia sem caller: ligar a flag não fazia nada. Agora há rota (`/api/agentic/run`) e cockpit (`/agente`), **só de fundador**, com Chromium **headless** no servidor e **somente leitura** — duas travas de código, não promessa. Allowlist = a do Leitor. Flag `AGENTIC_MODE`, ON. | médio | — |
 
+| **F9** ✅ | **O agente ganha container próprio.** O Chromium sai de dentro do `zaeon_web` pra `services/agente-navegador` — memória própria (1,5 GB) e **ZERO credencial**, irmão do `leitor-proxy` e pela mesma razão; a diferença é que este EXECUTA JavaScript. Com isso os tetos sobem de 12 passos/3 min para 25/10 min. `AGENTE_URL`. | médio | F8 |
+
 **Rollback em qualquer fase:** flag por fase; sem ela o caminho atual vale byte a byte.
 
 ### Por que a F0 vem sozinha e primeiro
@@ -1096,6 +1098,98 @@ para quando ele quiser co-browsing na máquina dele).
 **6101 testes verdes** com o bloco `env:` do CI reproduzido (+69 novos), `next build` ✓ — e este
 último era o gate que importava, porque a política importa `services/leitor-proxy/guarda.mjs` de
 dentro do bundle do Next: uma definição de política, não duas envelhecendo em paralelo.
+
+### F9 entregue — o agente sai do `web` e ganha container próprio
+
+Pedido do dono, citando o parágrafo de limites da F8: *"quero que você me ajude a estruturar um
+novo container pra essa função assim não teremos limites apertados."* E ele resolve DUAS coisas de
+uma vez, não uma: o limite apertado **e** a objeção de doutrina que eu mesmo havia levantado na F8
+(navegador de páginas de terceiro dentro do container que tem Vertex, Mongo e Pusher).
+
+**MEDI ANTES DE DESENHAR, e os números autorizam o pedido:** a VPS tem 23 GB e o compose declarava
+13,8 GB — ~9,2 GB livres. O container novo leva `mem_limit: 1536m`. Não é o uso esperado (Chromium
+headless com um renderer fica bem abaixo); é o teto pra uma página patológica não comer o host.
+
+**O MOLDE É O `leitor-proxy`, LINHA POR LINHA:** `read_only: true`, `cap_drop: [ALL]`,
+`no-new-privileges`, `expose` sem `ports`, `tmpfs` em /tmp, `USER node`, e — o que sustenta o
+argumento inteiro — **sem `env_file` e sem nenhuma env com cara de segredo**. `agenteCompose.test.ts`
+pina isso, como o do Leitor: se alguém acrescentar um `env_file` ali um dia "pra facilitar", o
+desenho cai, e cairia EM SILÊNCIO, porque nada no comportamento muda até o dia em que vazar.
+
+**UMA DEFINIÇÃO DE POLÍTICA, AGORA COM TRÊS CONSUMIDORES.** O container importa
+`../leitor-proxy/guarda.mjs` — a MESMA `urlPermitida`/`ipBloqueado` que o Leitor roda em produção e
+que o web usa desde a F8. É por isso que o `build.context` é `./services` e não
+`./services/agente-navegador`: copiar a guarda criaria a terceira versão de "que domínio pode", e a
+que ficasse velha seria a que concede.
+
+**AS TRAVAS FICARAM MAIS FORTES, não iguais.** Na F8 `click`/`type`/`waitForHuman` eram *recusados*
+pelo driver. Agora eles **não existem no servidor**: não há rota de clicar. O método do driver
+remoto lança igual ao local — pra que a falha seja a mesma dos dois lados e o teste do laço continue
+valendo — mas do outro lado do socket o verbo simplesmente não está implementado.
+
+**DEBIAN E NÃO ALPINE, e a razão é honesta:** não há daemon do Docker neste ambiente, então eu **não
+consigo construir a imagem**. Escolhi a receita de Chromium que a imagem principal deste repositório
+JÁ roda em produção (mesmos nomes de pacote, mesmas fontes). A imagem fica maior; em troca, o
+primeiro deploy não é também o primeiro teste de uma combinação nova de libc + Chromium + puppeteer.
+Pelo mesmo motivo o `puppeteer-core` está PINADO na versão da raiz (24.43.1): duas versões de driver
+falando com o mesmo Chromium é defeito que só aparece em produção.
+
+**O RECIBO PERGUNTA EM VEZ DE SUPOR, e isso foi exigência do próprio desenho.** `AGENTE_URL` tem
+default no compose (molde do `LEITOR_PROXY_URL`), então a env estar preenchida prova que o ENDEREÇO
+foi configurado — **não** que o serviço subiu, porque o perfil `agente` só sobe quando o deploy o
+nomeia. Sem sonda, o recibo diria `on (container)` com o container parado: a forma exata de recibo
+que mente contra a qual esta série toda briga. Então o `/api/health` bate no `/health` dele com
+prazo de 600 ms e falha fechado, e o recibo imprime
+`agente_navegador: on … onde=container` ou `⚠ CONTAINER INALCANÇÁVEL (sobe o serviço)`.
+
+**E O SERVIÇO É LIGADO, não só declarado.** Era a armadilha do *"worker não está rodando"* — e aqui
+seria PIOR, porque o web aponta pro container por default: declarado e parado viraria 503 em vez de
+capacidade. O deploy nomeia o serviço quando `AGENTIC_MODE` está on, nas DUAS ramificações (lista
+nomeada → acrescenta o serviço; lista VAZIA de `WITH_VOICE=true` → liga o perfil por
+`COMPOSE_PROFILES`, como o bloco dos chips já fazia). Provei o bloco rodando o shell com nove
+valores de flag, incluindo lixo (que falha fechado). **Nota de passagem:** o bloco do `leitor-proxy`
+cobre só a ramificação nomeada — com `WITH_VOICE=true` o Leitor não sobe. Pré-existente, não mexido
+aqui, registrado pra não se perder.
+
+**OS TETOS SUBIRAM, e o que os autoriza é a mudança física,** não otimismo: 12 passos / 3 min viraram
+25 / 10 min, porque o Chromium deixou de disputar memória com quem serve o site. Seguem abaixo dos
+25 / 30 min do `agentic.ts`, que foram pensados pro driver HEADED, onde o handoff de login come
+minutos com um humano esperando — aqui não há humano, e 30 min de navegação sem ninguém olhando é
+consumo, não paciência. A trava de "um run por processo" do web também caiu no caminho remoto: lá o
+teto é do próprio serviço (`MAX_SESSOES = 2`), que é quem conhece a memória dele; manter a do web
+seria o web limitando um recurso que não é dele.
+
+**DOIS DESLIZES MEUS, pegos por conferência e não por teste:** eu escrevi `COPY` com `..` no DESTINO
+(não é válido) e deixei o container rodando como **root**, achando que o Chromium precisaria disso
+pra escrever o perfil — o próprio `leitor-proxy` desmente, porque roda `USER node` com `tmpfs`, que
+o compose monta 1777. Os dois corrigidos.
+
+**O QUE O SMOKE PROVA, E O QUE NÃO PROVA.** Com `AGENTE_SMOKE=1` ele sobe o servidor REAL e o
+Chromium REAL e prova: /health, criação de sessão (Chromium de verdade sobe), o teto de 2 com `429
+lotado` e `DELETE` liberando vaga, a política aplicada PELO SERVIDOR (domínio fora da lista, IP
+literal, esquema, credencial na URL, porta) e — a melhor delas — a **camada de IP de verdade**: um
+host NA allowlist cujo DNS aponta pra 127.0.0.1 é recusado com `ip_bloqueado`. E prova o
+**CONTRATO**: o driver do web dirigindo o servidor real de ponta a ponta, que é o defeito mais
+provável deste desenho e que nenhum `fetch` falso pega, porque o falso concorda comigo por
+construção.
+
+Não prova duas coisas, e eu não vou fingir que prova: **(1) a IMAGEM** — sem daemon do Docker aqui,
+o `Dockerfile` só será exercido pelo primeiro deploy; **(2) uma NAVEGAÇÃO BEM-SUCEDIDA pelo
+container** — pra isso o host de teste precisaria resolver num IP público, e `ipsAceitos` barra
+loopback, corretamente. Tentei dar ao `lo` um endereço de aparência pública; não há `ip`/`ifconfig`
+neste ambiente e o bind falha. O que fica provado em volta: a URL é aceita/recusada pela política
+certa, o IP é conferido de verdade, e `goto` com JS + interceptação já está provado com Chromium
+real no smoke da F8, com os MESMOS args e a MESMA guarda.
+
+**A dívida da F8 CONTINUA:** DNS-rebinding. O Leitor conecta PELO IP conferido; o Chromium resolve
+por conta dele, aqui também. O que estreita a janela é o mesmo: `MAP * ~NOTFOUND` obriga o atacante
+a controlar o DNS de um domínio já liberado, e todos os IPs resolvidos são conferidos. Mover o HTML
+pro proxy e deixar o Chromium só renderizando JS segue sendo o caminho de quitação.
+
+**Gates:** `tsc` limpo, `eslint` 0 (zero avisos nos arquivos novos), `compose-check` ✓, os dois YAML
+validados com loader estrito a chave duplicada, o bloco de shell do deploy provado com nove valores
+de flag, suíte cheia **6149 testes verdes** com o `env:` do CI reproduzido (+48 novos), `next build`
+✓, e os DOIS smokes (F8 local e F9 container) verdes com Chromium real.
 
 ## 7. 🔒 Portões do dono
 
