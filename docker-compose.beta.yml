@@ -128,6 +128,12 @@ services:
       # pra dev). Apontar pra um container que não subiu NÃO é mentira silenciosa: o /api/health
       # SONDA o /health dele e o recibo diz "INALCANÇÁVEL" — supor estaria errado.
       AGENTE_URL: ${AGENTE_URL:-http://agente-navegador:8788}
+      # F10 · A MESMA allowlist que o container usa. Sem esta linha o web leria só LEITOR_ALLOW e
+      # recusaria, na conferência local, domínio que o container aceitaria — duas políticas
+      # discordando em silêncio. Default ACADÊMICO de propósito: se a cadeia do workflow quebrar, o
+      # agente ESTREITA em vez de abrir (fail-closed numa allowlist é a direção conservadora).
+      AGENTE_ALLOW: "${AGENTE_ALLOW:-*.gov.br, *.edu.br, *.scielo.br, *.scielo.org, *.wikipedia.org, arxiv.org, doi.org, *.nih.gov, *.who.int, raw.githubusercontent.com, github.com}"
+      AGENTE_TOKEN: ${AGENTE_TOKEN:-}
       # CANAL_QUEUE é o interruptor de ENFILEIRAR (lib/canal/queue `filaLigada`), e por isso mora no
       # WEB: é ele que decide mandar o turno pra fila em vez de rodar inline. Os de CONSUMIR
       # (CANAL_WORKER/CHORES_WORKER) ficam só no serviço `worker` — aqui eles fariam o mesmo
@@ -462,9 +468,20 @@ services:
     environment:
       # A MESMA allowlist do Leitor, lida da MESMA Variable: `AGENTE_ALLOW` só existe pra permitir
       # divergir de propósito um dia; vazia ou ausente, o server cai em LEITOR_ALLOW.
-      AGENTE_ALLOW: "${LEITOR_ALLOW:-*.gov.br, *.edu.br, *.scielo.br, *.scielo.org, *.wikipedia.org, arxiv.org, doi.org, *.nih.gov, *.who.int, raw.githubusercontent.com, github.com}"
+      # NOME e VALOR agora batem: esta linha dizia `AGENTE_ALLOW` e lia `${LEITOR_ALLOW}`
+      # (defeito meu na F9), então o workflow mandando `*` nunca chegava aqui e as duas pontas
+      # discordariam em silêncio. A ponte AGENTE_ALLOW←LEITOR_ALLOW é feita no SHELL do deploy,
+      # num nível só — interpolação aninhada do Compose eu não consigo testar neste ambiente.
+      AGENTE_ALLOW: "${AGENTE_ALLOW:-*.gov.br, *.edu.br, *.scielo.br, *.scielo.org, *.wikipedia.org, arxiv.org, doi.org, *.nih.gov, *.who.int, raw.githubusercontent.com, github.com}"
       AGENTE_MAX_TEXTO: ${AGENTE_MAX_TEXTO:-20000}
       AGENTE_TIMEOUT_MS: ${AGENTE_TIMEOUT_MS:-20000}
+      # F10 · A ÚNICA credencial deste container, e ela é exceção NOMEADA à regra "zero credencial",
+      # não um afrouxamento dela: o token dá acesso AO PRÓPRIO NAVEGADOR, não a Vertex/Mongo/Pusher.
+      # Quem já comprometeu este container não ganha nada novo com ele. Vazio = sem autenticação, que
+      # é o modo correto na rede interna do compose (a fronteira do compose é o controle, como no
+      # leitor-proxy). OBRIGATÓRIO quando o serviço roda em OUTRO SERVIDOR — aí a porta atravessa
+      # internet e o cliente RECUSA conectar sem token (lib/agent/navegadorRemoto).
+      AGENTE_TOKEN: ${AGENTE_TOKEN:-}
     expose: ["8788"]
     read_only: true
     cap_drop: [ALL]

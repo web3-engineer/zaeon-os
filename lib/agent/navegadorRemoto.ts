@@ -19,9 +19,11 @@
 import type { BrowserDriver } from "@/lib/agent/agentic";
 import {
   AGENTE_MAX_TEXTO,
+  agenteEhExterno,
   agenteUrl,
   allowDoAgente,
-  urlPermitida,
+  tokenDoAgente,
+  urlDoAgente,
 } from "@/lib/agent/navegadorPolitica";
 
 export { agenteUrl };
@@ -62,6 +64,7 @@ export type OpcoesNavegadorRemoto = {
   allow?: readonly string[];
   timeoutMs?: number;
   env?: Record<string, string | undefined>;
+  token?: string | null;
   /** injetável só pra teste. */
   buscar?: typeof fetch;
 };
@@ -74,13 +77,21 @@ export async function abrirNavegadorRemoto(opts: OpcoesNavegadorRemoto = {}): Pr
   if (!allow.length) throw new RecusaDeRede("allowlist_vazia");
   const timeoutMs = opts.timeoutMs ?? TIMEOUT_PADRAO_MS;
   const buscar = opts.buscar ?? fetch;
+  const token = opts.token !== undefined ? opts.token : tokenDoAgente(env);
+  // F10 · TRAVA, não aviso: serviço em outro servidor SEM token é recusado aqui, antes de qualquer
+  // pedido. Aceitar "sem token porque não configuraram" seria deixar a porta de um navegador aberta
+  // na internet e chamar isso de configuração pendente.
+  if (agenteEhExterno(env) && !token) throw new RecusaDeRede("token_obrigatorio_fora_do_compose");
 
   async function chamar(caminho: string, metodo: "POST" | "DELETE", corpo?: unknown): Promise<Resposta> {
     let r: Response;
     try {
       r = await buscar(`${base}${caminho}`, {
         method: metodo,
-        headers: corpo === undefined ? undefined : { "content-type": "application/json" },
+        headers: {
+          ...(corpo === undefined ? {} : { "content-type": "application/json" }),
+          ...(token ? { authorization: `Bearer ${token}` } : {}),
+        },
         body: corpo === undefined ? undefined : JSON.stringify(corpo),
         signal: AbortSignal.timeout(timeoutMs),
       });
@@ -104,7 +115,7 @@ export async function abrirNavegadorRemoto(opts: OpcoesNavegadorRemoto = {}): Pr
   return {
     goto: async (url: string) => {
       // conferência local: erra rápido e com o motivo exato (o container confere de novo)
-      const v = urlPermitida(url, allow as string[]);
+      const v = urlDoAgente(url, allow);
       if (!v.ok) throw new RecusaDeRede(v.erro, url);
       await chamar(`/sessao/${id}/ir`, "POST", { url: v.url.toString() });
     },

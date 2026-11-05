@@ -204,3 +204,64 @@ describe("escolha do driver e orçamento", () => {
     await expect(abrirDriverDoAgente({ env: {} })).rejects.toThrow(/allowlist_vazia|chromium_ausente/);
   });
 });
+
+// ───────────────────────────── F10: token quando o serviço é externo ─────────────────────────────
+
+describe("token — trava, não aviso", () => {
+  const externo = { AGENTE_URL: "https://agente.exemplo.com", LEITOR_ALLOW: "*" } as Record<string, string | undefined>;
+
+  it("serviço EXTERNO sem token é RECUSADO antes de qualquer pedido", async () => {
+    // Aceitar "sem token porque não configuraram" seria deixar a porta de um navegador aberta na
+    // internet e chamar isso de configuração pendente.
+    const { buscar, vistas } = comSessao();
+    await expect(abrirNavegadorRemoto({ env: externo, buscar }))
+      .rejects.toThrow(/token_obrigatorio_fora_do_compose/);
+    expect(vistas).toEqual([]);
+  });
+
+  it("com token, manda `Authorization: Bearer` em TODA chamada", async () => {
+    const cabecalhos: unknown[] = [];
+    const buscar = (async (u: string | URL | Request, init?: RequestInit) => {
+      cabecalhos.push(init?.headers);
+      const url = String(u);
+      return {
+        ok: true, status: url.endsWith("/sessao") ? 201 : 200,
+        json: async () => (url.endsWith("/sessao") ? { id: "b".repeat(32) } : { texto: "x" }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+
+    const d = await abrirNavegadorRemoto({ env: { ...externo, AGENTE_TOKEN: "s3gr3d0" }, buscar });
+    await d.readText();
+    await d.close();
+    expect(cabecalhos.length).toBeGreaterThanOrEqual(3);
+    for (const h of cabecalhos) {
+      expect((h as Record<string, string>).authorization).toBe("Bearer s3gr3d0");
+    }
+  });
+
+  it("na rede INTERNA do compose o token é opcional (a fronteira é o controle)", async () => {
+    const { buscar, vistas } = comSessao();
+    const d = await abrirNavegadorRemoto({ env: env(), buscar });
+    await d.close();
+    expect(vistas.length).toBeGreaterThan(0);
+    // e sem token nenhum cabeçalho de autorização é inventado
+    expect(JSON.stringify(vistas)).not.toContain("authorization");
+  });
+
+  it("401 do servidor chega legível ao web (token errado ≠ serviço morto)", async () => {
+    const { buscar } = falso({ "/sessao": { status: 401, json: { erro: "nao_autorizado" } } });
+    await expect(abrirNavegadorRemoto({ env: { ...externo, AGENTE_TOKEN: "errado" }, buscar }))
+      .rejects.toThrow(/nao_autorizado/);
+  });
+});
+
+describe("modo aberto no cliente", () => {
+  it("com `*`, o goto deixa passar qualquer domínio — mas não IP literal", async () => {
+    const abertaEnv = { AGENTE_URL: "http://agente-navegador:8788", AGENTE_ALLOW: "*" } as Record<string, string | undefined>;
+    const { buscar, vistas } = comSessao();
+    const d = await abrirNavegadorRemoto({ env: abertaEnv, buscar });
+    await d.goto("https://qualquer-site.com/noticia");
+    expect(vistas.at(-1)?.corpo).toEqual({ url: "https://qualquer-site.com/noticia" });
+    await expect(d.goto("http://169.254.169.254/latest/meta-data/")).rejects.toThrow(/ip_literal/);
+  });
+});
