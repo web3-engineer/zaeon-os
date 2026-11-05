@@ -154,10 +154,16 @@ describe("AGENTE_ALLOW e AGENTE_TOKEN — plumagem do workflow REVERTIDA (F10b)"
     expect(m![1]).toContain("edu.br");
   });
 
-  it("o CÓDIGO de modo aberto continua inteiro e testado — só a env do workflow saiu", () => {
-    // A reversão foi do workflow, não da capacidade: `allowEhAberta`/`urlDoAgente`/token seguem
-    // valendo e com teste. Ligar é preencher a Variable `AGENTE_ALLOW` com `*`, sem deploy de código.
-    expect(wf).toMatch(/AGENTE_URL/); // a plumagem da F9 continua lá
+  it("o CÓDIGO de modo aberto continua inteiro — a reversão foi do workflow, não da capacidade", async () => {
+    // A 1ª versão deste teste afirmava `wf` conter `AGENTE_URL` — que não checa NADA do que o nome
+    // promete: a política poderia ter sido apagada e ele passaria. Passe no vácuo, e meu, neste
+    // mesmo commit. Agora ele exercita a capacidade de verdade.
+    const { allowEhAberta, urlDoAgente } = await import("@/lib/agent/navegadorPolitica");
+    expect(allowEhAberta(["*"])).toBe(true);
+    expect(allowEhAberta(["*.edu.br"])).toBe(false);
+    expect(urlDoAgente("https://qualquer-site-do-mundo.com/x", ["*"]).ok).toBe(true);
+    // e abrir domínio continua NÃO sendo abrir rede, no modo aberto também
+    expect(urlDoAgente("http://169.254.169.254/latest/meta-data/", ["*"]).ok).toBe(false);
   });
 });
 
