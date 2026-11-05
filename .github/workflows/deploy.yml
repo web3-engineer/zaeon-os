@@ -129,16 +129,6 @@ jobs:
           # irmão `agente-navegador`). Preencher com string vazia NÃO é "desligar o container": é
           # mandar o Chromium subir dentro do `web` outra vez, que é o que a F9 veio desfazer.
           AGENTE_URL: ${{ vars.AGENTE_URL || '' }}
-          # F10 · A ALLOWLIST DO AGENTE, separada da do Leitor de propósito. `*` = INTERNET ABERTA,
-          # pedido do dono ("navegue na internet e faça pesquisas"). O que NÃO abre junto, nunca:
-          # IP privado/loopback/link-local (metadados da nuvem), esquema fora de http/https, porta
-          # fora de 80/443, credencial na URL, e ESCREVER (click/type não existem no servidor).
-          # `vars.AGENTE_ALLOW` com uma lista estreita volta ao modo fechado sem deploy de código.
-          AGENTE_ALLOW: ${{ vars.AGENTE_ALLOW || '*' }}
-          # Token do serviço do agente. VAZIO é correto enquanto ele roda na rede interna do compose.
-          # Virou OBRIGATÓRIO no dia em que o serviço for pra outro servidor: o cliente RECUSA
-          # conectar sem token quando a URL não é do compose (lib/agent/navegadorRemoto).
-          AGENTE_TOKEN: ${{ secrets.AGENTE_TOKEN }}
           # Workers de fundo (BullMQ). NÃO são features desligadas: sem eles o trabalho roda INLINE no
           # web, que é o que acontece hoje e funciona. Ligá-los no `web` faria o mesmo container
           # enfileirar E consumir — o desenho quer o serviço `worker` dedicado (perfil "worker" do
@@ -262,7 +252,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           command_timeout: 25m
-          envs: GOOGLE_CREDENTIALS_B64,GOOGLE_PROJECT_ID_VALUE,OCTA_CRON_SECRET,UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,HF_TOKEN,RESEND_API_KEY,EMAIL_FROM,HF_RESERVA,DISPAROS_HF,DISPAROS_HF_SEM_HISTORICO,WITH_VOICE,DB_PUSH,DEPLOY_BRANCH,APP_URL,BETA_DOMAIN,ACME_EMAIL,NEXT_PUBLIC_ESCRITORIO_COWORK,NEXT_PUBLIC_AGENTS_ADMIN,NEXT_PUBLIC_AGENT_AVATARS,NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM,NEXT_PUBLIC_MAP_HARNESS,NEXT_PUBLIC_LOUNGE_3D,NEXT_PUBLIC_CYBER_AVATAR_GLB,NEXT_PUBLIC_CYBER_LANDMARKS,NEXT_PUBLIC_AURA_ECONOMY,NEXT_PUBLIC_REALTIME,NEXT_PUBLIC_VOZ,NEXT_PUBLIC_MOBILE_UI,NEXT_PUBLIC_PROJETOS,NEXT_PUBLIC_MENTORES_TAB,NEXT_PUBLIC_OCTA_CODE,NEXT_PUBLIC_OCTA_REA,MAP_HARNESS,ESTUDO_GATEKEEPER,AURA_ECONOMY,NEXT_PUBLIC_CHAT_UNICO,DOC_POR_SECAO,CHAT_UNICO,TCC_CROSS,NEXT_PUBLIC_TCC_CROSS,CHAT_BG,NEXT_PUBLIC_BLUEPRINT_PRATICO,BLUEPRINT_PRATICO,GITHUB_TOKEN_BLUEPRINT,NEXT_PUBLIC_VIDEO_DOC,VIDEO_DOC,NEXT_PUBLIC_REA_BLUEPRINT,REA_BLUEPRINT,HARNESS_CAPACIDADE,HARNESS_ACAO,HARNESS_VOLTAS_ACAO,PRO_PESADAS,HARNESS_ANEXO,HARNESS_SINTESE,HARNESS_GRAFICO,MCP_CONECTORES,PUSHER_APP_ID,PUSHER_SECRET,NEXT_PUBLIC_PUSHER_KEY,NEXT_PUBLIC_PUSHER_CLUSTER,RACIOCINIO_ELABORADO,AGENTIC_MODE,AGENTE_URL,AGENTE_ALLOW,AGENTE_TOKEN,SCHOLAR_WORKER,CANAL_WORKER,CHORES_WORKER,CANAL_QUEUE,LEITOR_PROXY_URL,LEITOR_ALLOW,LEITOR_MAX_BYTES,LEITOR_MAX_BYTES_BIN
+          envs: GOOGLE_CREDENTIALS_B64,GOOGLE_PROJECT_ID_VALUE,OCTA_CRON_SECRET,UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,HF_TOKEN,RESEND_API_KEY,EMAIL_FROM,HF_RESERVA,DISPAROS_HF,DISPAROS_HF_SEM_HISTORICO,WITH_VOICE,DB_PUSH,DEPLOY_BRANCH,APP_URL,BETA_DOMAIN,ACME_EMAIL,NEXT_PUBLIC_ESCRITORIO_COWORK,NEXT_PUBLIC_AGENTS_ADMIN,NEXT_PUBLIC_AGENT_AVATARS,NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM,NEXT_PUBLIC_MAP_HARNESS,NEXT_PUBLIC_LOUNGE_3D,NEXT_PUBLIC_CYBER_AVATAR_GLB,NEXT_PUBLIC_CYBER_LANDMARKS,NEXT_PUBLIC_AURA_ECONOMY,NEXT_PUBLIC_REALTIME,NEXT_PUBLIC_VOZ,NEXT_PUBLIC_MOBILE_UI,NEXT_PUBLIC_PROJETOS,NEXT_PUBLIC_MENTORES_TAB,NEXT_PUBLIC_OCTA_CODE,NEXT_PUBLIC_OCTA_REA,MAP_HARNESS,ESTUDO_GATEKEEPER,AURA_ECONOMY,NEXT_PUBLIC_CHAT_UNICO,DOC_POR_SECAO,CHAT_UNICO,TCC_CROSS,NEXT_PUBLIC_TCC_CROSS,CHAT_BG,NEXT_PUBLIC_BLUEPRINT_PRATICO,BLUEPRINT_PRATICO,GITHUB_TOKEN_BLUEPRINT,NEXT_PUBLIC_VIDEO_DOC,VIDEO_DOC,NEXT_PUBLIC_REA_BLUEPRINT,REA_BLUEPRINT,HARNESS_CAPACIDADE,HARNESS_ACAO,HARNESS_VOLTAS_ACAO,PRO_PESADAS,HARNESS_ANEXO,HARNESS_SINTESE,HARNESS_GRAFICO,MCP_CONECTORES,PUSHER_APP_ID,PUSHER_SECRET,NEXT_PUBLIC_PUSHER_KEY,NEXT_PUBLIC_PUSHER_CLUSTER,RACIOCINIO_ELABORADO,AGENTIC_MODE,AGENTE_URL,SCHOLAR_WORKER,CANAL_WORKER,CHORES_WORKER,CANAL_QUEUE,LEITOR_PROXY_URL,LEITOR_ALLOW,LEITOR_MAX_BYTES,LEITOR_MAX_BYTES_BIN
           script: |
             set -euo pipefail
             cd "${{ secrets.DEPLOY_PATH }}"
@@ -418,51 +408,11 @@ jobs:
 
             # Flags do escritório: só exporta o que veio preenchido (string vazia no shell
             # SOBRESCREVERIA o .env do compose e viraria o default 0).
-            for k in NEXT_PUBLIC_ESCRITORIO_COWORK NEXT_PUBLIC_AGENTS_ADMIN NEXT_PUBLIC_AGENT_AVATARS NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM NEXT_PUBLIC_MAP_HARNESS NEXT_PUBLIC_CHAT_UNICO TCC_CROSS NEXT_PUBLIC_TCC_CROSS CHAT_BG NEXT_PUBLIC_LOUNGE_3D NEXT_PUBLIC_CYBER_AVATAR_GLB NEXT_PUBLIC_CYBER_LANDMARKS NEXT_PUBLIC_AURA_ECONOMY NEXT_PUBLIC_REALTIME NEXT_PUBLIC_VOZ NEXT_PUBLIC_MOBILE_UI NEXT_PUBLIC_PROJETOS NEXT_PUBLIC_MENTORES_TAB NEXT_PUBLIC_OCTA_CODE NEXT_PUBLIC_OCTA_REA MAP_HARNESS CHAT_UNICO DOC_POR_SECAO ESTUDO_GATEKEEPER AURA_ECONOMY NEXT_PUBLIC_BLUEPRINT_PRATICO BLUEPRINT_PRATICO NEXT_PUBLIC_VIDEO_DOC VIDEO_DOC NEXT_PUBLIC_REA_BLUEPRINT REA_BLUEPRINT HARNESS_CAPACIDADE HARNESS_ACAO HARNESS_VOLTAS_ACAO PRO_PESADAS HARNESS_ANEXO HARNESS_SINTESE HARNESS_GRAFICO MCP_CONECTORES AGENTIC_MODE AGENTE_URL AGENTE_ALLOW NEXT_PUBLIC_PUSHER_KEY NEXT_PUBLIC_PUSHER_CLUSTER RACIOCINIO_ELABORADO SCHOLAR_WORKER CANAL_WORKER CHORES_WORKER CANAL_QUEUE LEITOR_PROXY_URL LEITOR_ALLOW LEITOR_MAX_BYTES LEITOR_MAX_BYTES_BIN; do
+            for k in NEXT_PUBLIC_ESCRITORIO_COWORK NEXT_PUBLIC_AGENTS_ADMIN NEXT_PUBLIC_AGENT_AVATARS NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM NEXT_PUBLIC_MAP_HARNESS NEXT_PUBLIC_CHAT_UNICO TCC_CROSS NEXT_PUBLIC_TCC_CROSS CHAT_BG NEXT_PUBLIC_LOUNGE_3D NEXT_PUBLIC_CYBER_AVATAR_GLB NEXT_PUBLIC_CYBER_LANDMARKS NEXT_PUBLIC_AURA_ECONOMY NEXT_PUBLIC_REALTIME NEXT_PUBLIC_VOZ NEXT_PUBLIC_MOBILE_UI NEXT_PUBLIC_PROJETOS NEXT_PUBLIC_MENTORES_TAB NEXT_PUBLIC_OCTA_CODE NEXT_PUBLIC_OCTA_REA MAP_HARNESS CHAT_UNICO DOC_POR_SECAO ESTUDO_GATEKEEPER AURA_ECONOMY NEXT_PUBLIC_BLUEPRINT_PRATICO BLUEPRINT_PRATICO NEXT_PUBLIC_VIDEO_DOC VIDEO_DOC NEXT_PUBLIC_REA_BLUEPRINT REA_BLUEPRINT HARNESS_CAPACIDADE HARNESS_ACAO HARNESS_VOLTAS_ACAO PRO_PESADAS HARNESS_ANEXO HARNESS_SINTESE HARNESS_GRAFICO MCP_CONECTORES AGENTIC_MODE AGENTE_URL NEXT_PUBLIC_PUSHER_KEY NEXT_PUBLIC_PUSHER_CLUSTER RACIOCINIO_ELABORADO SCHOLAR_WORKER CANAL_WORKER CHORES_WORKER CANAL_QUEUE LEITOR_PROXY_URL LEITOR_ALLOW LEITOR_MAX_BYTES LEITOR_MAX_BYTES_BIN; do
               if [ -n "${!k:-}" ]; then export "$k"; echo "→ flag de build $k=${!k}"; else unset "$k"; fi
             done
             # token do GitHub do blueprint (Secret GITHUB_TOKEN_BLUEPRINT — o prefixo GITHUB_ é reservado nos Secrets): opcional
             if [ -n "${GITHUB_TOKEN_BLUEPRINT:-}" ]; then export GITHUB_TOKEN="$GITHUB_TOKEN_BLUEPRINT"; fi
-
-            # F10 · A PONTE AGENTE_ALLOW ← LEITOR_ALLOW, feita AQUI e não no compose: interpolação
-            # aninhada (`${A:-${B:-c}}`) eu não consigo testar neste ambiente, e um nível só eu
-            # consigo. Se a Variable vier vazia, o agente herda a lista do Leitor em vez de cair no
-            # default embutido — que é o comportamento que o comentário do compose promete.
-            if [ -z "${AGENTE_ALLOW:-}" ] && [ -n "${LEITOR_ALLOW:-}" ]; then
-              AGENTE_ALLOW="$LEITOR_ALLOW"; export AGENTE_ALLOW
-              echo "→ AGENTE_ALLOW vazia: herdou a allowlist do Leitor"
-            fi
-            # ABERTA = existe uma ENTRADA que é exatamente `*`, e não "a string contém asterisco".
-            # A 1ª versão usava `case ... in *"*"*)` e dizia "INTERNET ABERTA" pra `*.edu.br`, que é
-            # uma lista RESTRITA e contém asterisco. Recibo mentindo na pior direção — e pego só
-            # porque este bloco foi executado com valores reais, não lido. Mesma semântica do
-            # `allowEhAberta` do TS (`parseAllow` corta espaços, depois procura o item "*").
-            # `set -f` (noglob) é OBRIGATÓRIO aqui, e descobri isso testando: sem ele o `$AGENTE_ALLOW`
-            # sem quotes sofre EXPANSÃO DE CAMINHO, e um `*` sozinho vira a lista de arquivos do
-            # diretório — então o `*` nunca sobrava pra comparar e o modo aberto era lido como
-            # restrito. O caso `*.edu.br` passava por acidente (não casa arquivo), que é o pior tipo
-            # de bug: o teste fácil passa e o caso que importa falha.
-            AGENTE_ABERTA=0
-            _ifs="$IFS"; IFS=','; set -f
-            for _d in ${AGENTE_ALLOW:-}; do
-              case "$(printf '%s' "$_d" | tr -d '[:space:]')" in "*") AGENTE_ABERTA=1 ;; esac
-            done
-            set +f; IFS="$_ifs"; unset _ifs _d
-            if [ "$AGENTE_ABERTA" = "1" ]; then
-              echo "→ agente: INTERNET ABERTA (IP privado/loopback/metadados seguem bloqueados)"
-            elif [ -z "${AGENTE_ALLOW:-}" ]; then
-              echo "→ agente: allowlist VAZIA — ele não abrirá domínio nenhum"
-            else
-              echo "→ agente: allowlist restrita (lista nomeada)"
-            fi
-            # O TOKEN é segredo: exportado pro compose interpolar, NUNCA ecoado. O laço `for k in`
-            # acima imprime o valor de cada flag, e é exatamente por isso que ele não passa por lá.
-            if [ -n "${AGENTE_TOKEN:-}" ]; then
-              export AGENTE_TOKEN
-              echo "→ agente: token configurado (valor não exibido)"
-            else
-              echo "→ agente: sem token — correto na rede interna do compose; obrigatório se mudar de servidor"
-            fi
 
             echo "→ Subindo containers (coexist: não toca outras stacks)…"
             $DC up -d --build $NODEPS $SERVICES
@@ -559,8 +509,6 @@ jobs:
                 if (ag) {
                   if (ag.faltando) console.log('   agente_navegador: off — faltam ' + ag.faltando.join(', '));
                   else console.log('   agente_navegador: on (admin, somente leitura) · onde=' + ag.onde +
-                              '  dominios=' + (ag.aberto ? 'INTERNET ABERTA' : 'lista restrita') +
-                              (ag.externo ? '  externo=sim token=' + sn(ag.autenticado) : '') +
                               (ag.onde === 'container' && !ag.alcancavel ? '   ⚠ CONTAINER INALCANÇÁVEL (sobe o serviço)' : ''));
                 }
               }).catch(e=>{ console.log('   (não deu pra ler: ' + e.message + ')'); });

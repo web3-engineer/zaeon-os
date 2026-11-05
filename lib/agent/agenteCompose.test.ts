@@ -119,34 +119,45 @@ describe("web ↔ container", () => {
   });
 });
 
-describe("AGENTE_ALLOW e AGENTE_TOKEN — os elos (F10)", () => {
-  it("AGENTE_ALLOW: env do step com default `*` (internet aberta, pedido do dono), envs: e laço", () => {
-    expect(wf).toMatch(/AGENTE_ALLOW:\s*\$\{\{\s*vars\.AGENTE_ALLOW\s*\|\|\s*'\*'\s*\}\}/);
-    const lista = /envs:\s*([^\n]+)/.exec(wf)?.[1] ?? "";
-    expect(lista.split(",").map((x) => x.trim())).toContain("AGENTE_ALLOW");
-    const laco = /for k in ([^;]+); do/.exec(wf)?.[1] ?? "";
-    expect(laco.split(/\s+/)).toContain("AGENTE_ALLOW");
+describe("AGENTE_ALLOW e AGENTE_TOKEN — plumagem do workflow REVERTIDA (F10b)", () => {
+  /**
+   * ESTADO ATUAL, afirmado em vez de desejado.
+   *
+   * A F10 acrescentou ao deploy.yml o `AGENTE_ALLOW` (default `*`), o `AGENTE_TOKEN` (Secret), a
+   * ponte no shell e a linha de modo no recibo. O GitHub RECUSOU o arquivo: o deploy 567 falhou em
+   * segundos com ZERO jobs (startup failure) e o registro do workflow passou a mostrar o CAMINHO no
+   * lugar do `name`, enquanto o ci.yml segue mostrando "CI". Main ficou SEM IMPLANTAR.
+   *
+   * O workflow foi revertido byte a byte para a versão que o GitHub aceita (4f18a001) pra devolver
+   * a implantação. Eu NÃO reproduzi o parser deles aqui: PyYAML (inclusive com loader estrito a
+   * chave duplicada), varredura de caractere invisível/homóglifo, conferência de indentação do
+   * bloco literal e balanceamento de `${{ }}` todos passam. Então a causa segue HIPÓTESE, não
+   * diagnóstico — e a hipótese principal é o literal `'*'` dentro da expressão
+   * `${{ vars.AGENTE_ALLOW || '*' }}`, porque `*` é token de WILDCARD nas expressões do Actions.
+   *
+   * CONSEQUÊNCIA REAL, e é por isso que este teste existe: sem a env no workflow, o compose cai no
+   * default EMBUTIDO, que é a lista ACADÊMICA. O agente está em modo RESTRITO, não aberto. Dizer
+   * "internet aberta está no ar" seria mentira.
+   *
+   * Quando a plumagem voltar, ESTE teste falha — de propósito. Quem a reintroduzir tem de trocar
+   * estas asserções pelas de presença e atualizar o registro na F10b.
+   */
+  it("o workflow NÃO tem AGENTE_ALLOW nem AGENTE_TOKEN (revertido para restaurar o deploy)", () => {
+    expect(wf).not.toMatch(/AGENTE_ALLOW/);
+    expect(wf).not.toMatch(/AGENTE_TOKEN/);
   });
 
-  it("AGENTE_TOKEN vem de SECRETS e NÃO entra no laço `for k in`", () => {
-    // O laço imprime `→ flag de build $k=<valor>` de cada nome que recebe. Segredo não se ecoa.
-    expect(wf).toMatch(/AGENTE_TOKEN:\s*\$\{\{\s*secrets\.AGENTE_TOKEN\s*\}\}/);
-    const laco = /for k in ([^;]+); do/.exec(wf)?.[1] ?? "";
-    expect(laco.split(/\s+/)).not.toContain("AGENTE_TOKEN");
-    const lista = /envs:\s*([^\n]+)/.exec(wf)?.[1] ?? "";
-    expect(lista.split(",").map((x) => x.trim())).toContain("AGENTE_TOKEN");
+  it("e por isso o modo efetivo é RESTRITO: vale o default acadêmico do compose", () => {
+    const m = /AGENTE_ALLOW:\s*"\$\{AGENTE_ALLOW:-([^"]*)\}"/.exec(ativo);
+    expect(m, "default do AGENTE_ALLOW ausente no compose").toBeTruthy();
+    expect(m![1].split(",").map((x) => x.trim())).not.toContain("*");
+    expect(m![1]).toContain("edu.br");
   });
 
-  it("o recibo diz o MODO (aberta/restrita) e, se externo, se há token", () => {
-    expect(wf).toMatch(/INTERNET ABERTA/);
-    expect(wf).toMatch(/dominios=/);
-    expect(wf).toMatch(/token=/);
-  });
-
-  it("o bloco de shell usa `set -f`: sem noglob, um `*` sozinho vira lista de arquivos", () => {
-    // Defeito real deste trabalho, pego executando o bloco: `AGENTE_ALLOW='*'` era lido como
-    // RESTRITO porque o glob comia o asterisco. O `*.edu.br` passava por acidente.
-    expect(wf).toMatch(/set -f/);
+  it("o CÓDIGO de modo aberto continua inteiro e testado — só a env do workflow saiu", () => {
+    // A reversão foi do workflow, não da capacidade: `allowEhAberta`/`urlDoAgente`/token seguem
+    // valendo e com teste. Ligar é preencher a Variable `AGENTE_ALLOW` com `*`, sem deploy de código.
+    expect(wf).toMatch(/AGENTE_URL/); // a plumagem da F9 continua lá
   });
 });
 

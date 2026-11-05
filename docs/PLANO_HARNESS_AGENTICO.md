@@ -1325,6 +1325,63 @@ ERRO: domínio inexistente morre em `dns_falhou`, não em `dominio_fora_da_lista
 **NÃO provado, e eu não finjo:** a tela `/agente` rodando num navegador, e uma pesquisa de ponta a
 ponta com internet de verdade — este ambiente não tem DNS direto, só proxy HTTPS.
 
+### F10b · o workflow da F10 NÃO passou no parser do GitHub — main ficou sem implantar
+
+**O que aconteceu.** O deploy 567 (`b1257f8c`, o squash da F10) falhou em SEGUNDOS, com **zero
+jobs** — startup failure, não falha de job. Dois sinais confirmam que o GitHub recusou o ARQUIVO:
+`list_workflow_jobs` devolve `total_count: 0` (nenhum job criado) e o registro do workflow passou a
+mostrar `name: ".github/workflows/deploy.yml"` — o CAMINHO no lugar do nome — com `updated_at`
+exatamente no minuto do merge, enquanto o `ci.yml` segue mostrando `name: "CI"`.
+
+**Consequência.** Main ficou NÃO-IMPLANTÁVEL: todo deploy seguinte morreria igual. Produção não
+quebrou (o run nem chegou a tocar container; prod seguiu no `4f18a001`, a F9), mas nada novo subia —
+o mesmo formato do deploy 557.
+
+**O que eu NÃO consegui fazer, e é o ponto honesto desta nota: reproduzir o parser deles.** Tudo o
+que eu tinha passou:
+
+- PyYAML com loader **estrito a chave duplicada** (a validação que o 557 me ensinou) — válido;
+- estrutura parseada: `name` presente, `jobs` = guard/deploy, todas as envs do step são STRING;
+- varredura de BOM, byte de controle, espaço tipográfico, zero-width e homóglifo cirílico/grego —
+  nada, nas duas versões;
+- indentação do bloco literal `script: |` conferida byte a byte (`cat -A`): minha inserção está a 12
+  espaços, dentro do bloco, e o bloco vai até o fim do arquivo;
+- `${{ }}` balanceados, sem expressão suspeita;
+- `actionlint`/`action-validator` — **negado neste ambiente** (buscar código externo), e é
+  exatamente a ferramenta que teria respondido.
+
+**Então a causa é HIPÓTESE, não diagnóstico, e eu registro como hipótese:** o literal `'*'` dentro de
+`${{ vars.AGENTE_ALLOW || '*' }}`. Nas expressões do Actions, `*` é token de **wildcard** (usado em
+filtros tipo `vars.*`); um lexer que trate o wildcard antes das aspas recusaria a expressão. Era o
+único caractere textualmente incomum que a F10 introduziu em posição que o GitHub parseia — o resto
+do diff (ponte no shell, linha do recibo) vive dentro do `script: |`, que para o YAML é texto.
+
+**O que eu fiz: estancar o sangramento antes de investigar mais.** O `deploy.yml` foi revertido BYTE
+A BYTE para o `4f18a001` (provado com `git diff --quiet`). Main volta a implantar; a F10 de código
+continua inteira.
+
+**E o estado passou a ser dito, não presumido.** Sem a env no workflow, o compose cai no default
+EMBUTIDO, que é a lista ACADÊMICA: **o agente está em modo RESTRITO, não aberto.** Afirmar "internet
+aberta está no ar" seria mentira — a capacidade está no código, testada, e desligada na configuração.
+Ligar, sem deploy de código: preencher a Variable `AGENTE_ALLOW` com `*`.
+
+Os quatro testes da F10 que afirmavam a plumagem foram **trocados por asserções do estado atual**
+(`agenteCompose.test.ts`), com a razão escrita ali. Eles afirmam AUSÊNCIA de propósito: quando a
+plumagem voltar, eles falham e forçam quem a reintroduzir a atualizar este registro. Apagá-los
+deixaria o buraco sem tripwire.
+
+**A lição, e ela é nova nesta série.** As anteriores foram todas "minha validação era mais fraca que
+o consumidor real" — e o conserto era adotar uma validação mais forte. Esta é diferente: **o
+consumidor real não tem substituto local que eu possa rodar.** Para o Compose eu tinha o
+`compose-check`; para o Actions eu não tenho nada, e o primeiro teste do arquivo é o push na main.
+O que resta é mudar o CUSTO do erro, não a chance dele: mexer no `deploy.yml` em commit SEPARADO e
+pequeno, para que a reversão seja um `git checkout <sha> -- .github/workflows/deploy.yml` e não um
+desembaraço. Foi o que salvou o tempo aqui, por acidente — e deixa de ser acidente a partir de agora.
+
+**Fica pendente:** reintroduzir a plumagem sem o literal `'*'` na expressão — `AGENTE_ALLOW:
+${{ vars.AGENTE_ALLOW }}` e o default `*` decidido no SHELL, que já tem a ponte. Em commit próprio,
+só do workflow, para que a hipótese seja testada isoladamente pelo único juiz que existe: o push.
+
 ## 7. 🔒 Portões do dono
 
 Decisões que eu **não** tomo sozinho, porque mudam contrato de produto ou gastam dinheiro:
