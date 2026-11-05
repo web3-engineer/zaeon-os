@@ -445,6 +445,7 @@ export default function MenuNavigation({ destino = LAB_ROTA }: { destino?: strin
               />
             ) : (<>
               <p className="text-center text-[12px] leading-relaxed text-white/80">Mandamos um código de 6 números para <b>{loginEmail.email}</b>.</p>
+              <p className="text-center text-[11.5px] leading-relaxed text-white/60">Não chegou? Veja no spam ou no lixo eletrônico.</p>
               <input
                 id="menu-login-codigo"
                 type="text"

@@ -123,6 +123,8 @@ function LoginInner() {
               <p className="text-[12.5px] text-slate-700 dark:text-white/80 leading-relaxed text-center">
                 Mandamos um código de 6 números para <b>{E.email}</b>. Ele vale por 10 minutos.
               </p>
+              {/* o e-mail do código costuma cair no spam (no Outlook, no Lixo Eletrônico) */}
+              <p className="text-[12px] text-slate-600 dark:text-white/60 leading-relaxed text-center">Não chegou? Veja no spam ou no lixo eletrônico.</p>
               <input
                 id="login-codigo"
                 type="text"
