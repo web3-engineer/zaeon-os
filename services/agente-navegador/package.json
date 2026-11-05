@@ -1,0 +1,9 @@
+{
+  "name": "zaeon-agente-navegador",
+  "private": true,
+  "type": "module",
+  "description": "Container do agente de navegador: Chromium headless, somente leitura, SEM credencial.",
+  "dependencies": {
+    "puppeteer-core": "24.43.1"
+  }
+}

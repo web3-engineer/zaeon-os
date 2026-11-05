@@ -17,7 +17,12 @@ import { AGENTE_MAX_PASSOS } from "@/lib/agent/navegadorPolitica";
 /** Os tipos que ESTA porta executa. Escrita e handoff ficam de fora por desenho, não por omissão. */
 export const TIPOS_DE_LEITURA: readonly AgenticActionKind[] = ["navigate", "read", "find", "screenshot", "done"];
 
-export const SISTEMA_DO_PLANO = `Você planeja a navegação de um agente SOMENTE LEITURA, num navegador headless no servidor.
+/**
+ * O teto entra no prompt como PARÂMETRO (F9): com o container dedicado ele é 25, dentro do web é
+ * 12. Deixá-lo congelado numa constante faria o prompt prometer um orçamento diferente do que o
+ * laço concede — o modelo planejaria 25 passos e o laço cortaria em 12, sem ninguém dizer por quê.
+ */
+export const sistemaDoPlano = (maxPassos: number = AGENTE_MAX_PASSOS) => `Você planeja a navegação de um agente SOMENTE LEITURA, num navegador headless no servidor.
 
 Devolva JSON: { "acoes": [ { "kind": ..., "url": ..., "selector": ..., "label": ... } ] }
 
@@ -33,7 +38,7 @@ REGRAS DURAS:
   humano na página e o driver recusa escrita. Se a tarefa exigir isso, devolva uma única ação
   "done" com "label" dizendo o que seria necessário e não é possível.
 - Só domínios da allowlist do Leitor serão abertos; qualquer outro é barrado pela rede.
-- No máximo ${AGENTE_MAX_PASSOS} ações. Prefira poucas: navegar e ler costuma bastar.
+- No máximo ${maxPassos} ações. Prefira poucas: navegar e ler costuma bastar.
 - "label" é uma frase curta em português dizendo o passo (aparece pro dono no cockpit).`;
 
 export function promptDoPlano(instrucao: string): string {
@@ -56,7 +61,7 @@ const texto = (v: unknown): string | undefined => {
  * o modelo erra o invólucro com frequência e derrubar o run por isso seria desperdício; ESTRITA no
  * conteúdo, porque é aqui que entra o que vai rodar.
  */
-export function lerPlanoDoAgente(bruto: unknown): PlanoDoAgente {
+export function lerPlanoDoAgente(bruto: unknown, maxPassos: number = AGENTE_MAX_PASSOS): PlanoDoAgente {
   const lista: unknown[] = Array.isArray(bruto)
     ? bruto
     : Array.isArray((bruto as { acoes?: unknown })?.acoes)
@@ -74,7 +79,7 @@ export function lerPlanoDoAgente(bruto: unknown): PlanoDoAgente {
     const kind = String(o.kind ?? o.tipo ?? "").trim().toLowerCase();
     if (!kind) continue;
     if (!(TIPOS_DE_LEITURA as readonly string[]).includes(kind)) { recusadas.push(kind); continue; }
-    if (acoes.length >= AGENTE_MAX_PASSOS) break;
+    if (acoes.length >= maxPassos) break;
 
     const a: AgenticAction = { kind: kind as AgenticActionKind };
     const url = texto(o.url);

@@ -43,6 +43,32 @@ export { parseAllow, urlPermitida, ipBloqueado };
 export const AGENTE_MAX_PASSOS = 12;
 export const AGENTE_MAX_MS = 3 * 60_000;
 
+/**
+ * F9 · COM O CONTAINER DEDICADO os tetos sobem, e o que os autoriza é a mudança física: o Chromium
+ * deixou de disputar memória com o processo que serve o site (`services/agente-navegador`, limite
+ * próprio no compose). Seguem MENORES que os 25 passos / 30 min do `agentic.ts`, porque aqueles
+ * foram pensados pro driver HEADED, onde o handoff de login come minutos com um humano esperando —
+ * aqui não há humano, e 30 min de navegação sem ninguém olhando é consumo, não paciência.
+ */
+export const AGENTE_MAX_PASSOS_REMOTO = 25;
+export const AGENTE_MAX_MS_REMOTO = 10 * 60_000;
+
+export function orcamentoDoAgente(remoto: boolean): { maxPassos: number; maxMs: number } {
+  return remoto
+    ? { maxPassos: AGENTE_MAX_PASSOS_REMOTO, maxMs: AGENTE_MAX_MS_REMOTO }
+    : { maxPassos: AGENTE_MAX_PASSOS, maxMs: AGENTE_MAX_MS };
+}
+
+/**
+ * O endereço do container do agente. Vazio = AUSENTE → o Chromium local (F8) assume. Vive aqui, e
+ * não no cliente remoto, pra `agenteFaltando` poder consultá-lo sem import circular — uma segunda
+ * leitura de `AGENTE_URL` em outro arquivo seria duas definições de "onde está o navegador".
+ */
+export function agenteUrl(env: Record<string, string | undefined> = process.env): string | null {
+  const u = env.AGENTE_URL?.trim();
+  return u ? u.replace(/\/+$/, "") : null;
+}
+
 /** Teto do texto que uma leitura devolve (o cockpit mostra, o plano não precisa de mais). */
 export const AGENTE_MAX_TEXTO = 20_000;
 
@@ -113,6 +139,14 @@ export function agenteFaltando(
   const falta: string[] = [];
   if (!["1", "true", "on"].includes(String(env.AGENTIC_MODE ?? "").toLowerCase())) falta.push("AGENTIC_MODE");
   if (!allowDoAgente(env).length) falta.push("LEITOR_ALLOW");
-  if (!temChromium) falta.push("chromium");
+  // F9 · com o container dedicado, o Chromium do `web` deixa de ser requisito: quem navega é o
+  // outro container. Exigi-lo aqui faria o recibo dizer "falta chromium" num ar perfeitamente
+  // funcional — recibo que mente na direção pessimista ainda é recibo que mente.
+  if (!agenteUrl(env) && !temChromium) falta.push("chromium");
   return falta;
+}
+
+/** Onde o navegador roda, pro recibo: o container dedicado (F9) ou dentro do web (F8). */
+export function ondeOAgenteRoda(env: Record<string, string | undefined> = process.env): "container" | "web" {
+  return agenteUrl(env) ? "container" : "web";
 }

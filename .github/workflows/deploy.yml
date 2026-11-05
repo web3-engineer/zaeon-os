@@ -125,6 +125,10 @@ jobs:
           # código (o driver recusa escrita, a rota não passa `approve`) e só alcança os domínios de
           # LEITOR_ALLOW. `vars.AGENTIC_MODE=0` desliga sem deploy de código.
           AGENTIC_MODE: ${{ vars.AGENTIC_MODE || '1' }}
+          # F9 · ONDE o navegador do agente roda. Vazia = o compose decide (default: o container
+          # irmão `agente-navegador`). Preencher com string vazia NÃO é "desligar o container": é
+          # mandar o Chromium subir dentro do `web` outra vez, que é o que a F9 veio desfazer.
+          AGENTE_URL: ${{ vars.AGENTE_URL || '' }}
           # Workers de fundo (BullMQ). NÃO são features desligadas: sem eles o trabalho roda INLINE no
           # web, que é o que acontece hoje e funciona. Ligá-los no `web` faria o mesmo container
           # enfileirar E consumir — o desenho quer o serviço `worker` dedicado (perfil "worker" do
@@ -248,7 +252,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           command_timeout: 25m
-          envs: GOOGLE_CREDENTIALS_B64,GOOGLE_PROJECT_ID_VALUE,OCTA_CRON_SECRET,UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,HF_TOKEN,RESEND_API_KEY,EMAIL_FROM,HF_RESERVA,DISPAROS_HF,DISPAROS_HF_SEM_HISTORICO,WITH_VOICE,DB_PUSH,DEPLOY_BRANCH,APP_URL,BETA_DOMAIN,ACME_EMAIL,NEXT_PUBLIC_ESCRITORIO_COWORK,NEXT_PUBLIC_AGENTS_ADMIN,NEXT_PUBLIC_AGENT_AVATARS,NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM,NEXT_PUBLIC_MAP_HARNESS,NEXT_PUBLIC_LOUNGE_3D,NEXT_PUBLIC_CYBER_AVATAR_GLB,NEXT_PUBLIC_CYBER_LANDMARKS,NEXT_PUBLIC_AURA_ECONOMY,NEXT_PUBLIC_REALTIME,NEXT_PUBLIC_VOZ,NEXT_PUBLIC_MOBILE_UI,NEXT_PUBLIC_PROJETOS,NEXT_PUBLIC_MENTORES_TAB,NEXT_PUBLIC_OCTA_CODE,NEXT_PUBLIC_OCTA_REA,MAP_HARNESS,ESTUDO_GATEKEEPER,AURA_ECONOMY,NEXT_PUBLIC_CHAT_UNICO,DOC_POR_SECAO,CHAT_UNICO,TCC_CROSS,NEXT_PUBLIC_TCC_CROSS,CHAT_BG,NEXT_PUBLIC_BLUEPRINT_PRATICO,BLUEPRINT_PRATICO,GITHUB_TOKEN_BLUEPRINT,NEXT_PUBLIC_VIDEO_DOC,VIDEO_DOC,NEXT_PUBLIC_REA_BLUEPRINT,REA_BLUEPRINT,HARNESS_CAPACIDADE,HARNESS_ACAO,HARNESS_VOLTAS_ACAO,PRO_PESADAS,HARNESS_ANEXO,HARNESS_SINTESE,HARNESS_GRAFICO,MCP_CONECTORES,PUSHER_APP_ID,PUSHER_SECRET,NEXT_PUBLIC_PUSHER_KEY,NEXT_PUBLIC_PUSHER_CLUSTER,RACIOCINIO_ELABORADO,AGENTIC_MODE,SCHOLAR_WORKER,CANAL_WORKER,CHORES_WORKER,CANAL_QUEUE,LEITOR_PROXY_URL,LEITOR_ALLOW,LEITOR_MAX_BYTES,LEITOR_MAX_BYTES_BIN
+          envs: GOOGLE_CREDENTIALS_B64,GOOGLE_PROJECT_ID_VALUE,OCTA_CRON_SECRET,UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,HF_TOKEN,RESEND_API_KEY,EMAIL_FROM,HF_RESERVA,DISPAROS_HF,DISPAROS_HF_SEM_HISTORICO,WITH_VOICE,DB_PUSH,DEPLOY_BRANCH,APP_URL,BETA_DOMAIN,ACME_EMAIL,NEXT_PUBLIC_ESCRITORIO_COWORK,NEXT_PUBLIC_AGENTS_ADMIN,NEXT_PUBLIC_AGENT_AVATARS,NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM,NEXT_PUBLIC_MAP_HARNESS,NEXT_PUBLIC_LOUNGE_3D,NEXT_PUBLIC_CYBER_AVATAR_GLB,NEXT_PUBLIC_CYBER_LANDMARKS,NEXT_PUBLIC_AURA_ECONOMY,NEXT_PUBLIC_REALTIME,NEXT_PUBLIC_VOZ,NEXT_PUBLIC_MOBILE_UI,NEXT_PUBLIC_PROJETOS,NEXT_PUBLIC_MENTORES_TAB,NEXT_PUBLIC_OCTA_CODE,NEXT_PUBLIC_OCTA_REA,MAP_HARNESS,ESTUDO_GATEKEEPER,AURA_ECONOMY,NEXT_PUBLIC_CHAT_UNICO,DOC_POR_SECAO,CHAT_UNICO,TCC_CROSS,NEXT_PUBLIC_TCC_CROSS,CHAT_BG,NEXT_PUBLIC_BLUEPRINT_PRATICO,BLUEPRINT_PRATICO,GITHUB_TOKEN_BLUEPRINT,NEXT_PUBLIC_VIDEO_DOC,VIDEO_DOC,NEXT_PUBLIC_REA_BLUEPRINT,REA_BLUEPRINT,HARNESS_CAPACIDADE,HARNESS_ACAO,HARNESS_VOLTAS_ACAO,PRO_PESADAS,HARNESS_ANEXO,HARNESS_SINTESE,HARNESS_GRAFICO,MCP_CONECTORES,PUSHER_APP_ID,PUSHER_SECRET,NEXT_PUBLIC_PUSHER_KEY,NEXT_PUBLIC_PUSHER_CLUSTER,RACIOCINIO_ELABORADO,AGENTIC_MODE,AGENTE_URL,SCHOLAR_WORKER,CANAL_WORKER,CHORES_WORKER,CANAL_QUEUE,LEITOR_PROXY_URL,LEITOR_ALLOW,LEITOR_MAX_BYTES,LEITOR_MAX_BYTES_BIN
           script: |
             set -euo pipefail
             cd "${{ secrets.DEPLOY_PATH }}"
@@ -365,6 +369,27 @@ jobs:
               echo "→ leitor-proxy entra no deploy (abrir_url/baixar_para_base dependem dele)"
             fi
 
+            # F9: o AGENTE DE NAVEGADOR (perfil "agente") — só quando AGENTIC_MODE está ligada.
+            # Diferente do Leitor, que sobe sempre: com a flag off a tela /agente nem existe, então
+            # o container seria 1,5 GB de limite reservado pra nada. Com a flag ON ele TEM de subir,
+            # porque o web aponta pra ele por default — e anunciar a capacidade com o serviço parado
+            # é a mentira que a F0 existe pra impedir (o recibo sonda e diria INALCANÇÁVEL).
+            #
+            # As DUAS ramificações, porque elas se comportam ao contrário: na lista NOMEADA basta
+            # acrescentar o serviço (o compose habilita o perfil dele); na lista VAZIA
+            # (WITH_VOICE=true = "todos os sem-perfil") um serviço COM perfil não entra, e é preciso
+            # ligar o perfil por COMPOSE_PROFILES. Foi assim que o bloco dos chips resolveu o mesmo
+            # problema. (Nota: o bloco do leitor-proxy acima só cobre a ramificação nomeada — com
+            # WITH_VOICE=true o Leitor não sobe. Pré-existente, não mexido aqui.)
+            case "$(printf '%s' "${AGENTIC_MODE:-}" | tr 'A-Z' 'a-z')" in
+              1|true|on)
+                if [ -n "$SERVICES" ]; then SERVICES="$SERVICES agente-navegador"
+                else export COMPOSE_PROFILES="${COMPOSE_PROFILES:+$COMPOSE_PROFILES,}agente"; fi
+                echo "→ agente-navegador entra no deploy (AGENTIC_MODE on; Chromium FORA do web)"
+                ;;
+              *) echo "→ agente-navegador NÃO sobe (AGENTIC_MODE off)" ;;
+            esac
+
             # Chips de WhatsApp (docs/WHATSAPP_CHIPS.md): WHATSAPP_CHIPS=1 no .env do VPS sobe o adapter + o banco dele
             # (nomeados, o compose habilita o perfil "whatsapp"). A imagem do adapter é construída na VPS (runbook).
             # Dois modos: lista nomeada (enxuto) → acrescenta os serviços; lista VAZIA (WITH_VOICE=true = "todos sem
@@ -383,7 +408,7 @@ jobs:
 
             # Flags do escritório: só exporta o que veio preenchido (string vazia no shell
             # SOBRESCREVERIA o .env do compose e viraria o default 0).
-            for k in NEXT_PUBLIC_ESCRITORIO_COWORK NEXT_PUBLIC_AGENTS_ADMIN NEXT_PUBLIC_AGENT_AVATARS NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM NEXT_PUBLIC_MAP_HARNESS NEXT_PUBLIC_CHAT_UNICO TCC_CROSS NEXT_PUBLIC_TCC_CROSS CHAT_BG NEXT_PUBLIC_LOUNGE_3D NEXT_PUBLIC_CYBER_AVATAR_GLB NEXT_PUBLIC_CYBER_LANDMARKS NEXT_PUBLIC_AURA_ECONOMY NEXT_PUBLIC_REALTIME NEXT_PUBLIC_VOZ NEXT_PUBLIC_MOBILE_UI NEXT_PUBLIC_PROJETOS NEXT_PUBLIC_MENTORES_TAB NEXT_PUBLIC_OCTA_CODE NEXT_PUBLIC_OCTA_REA MAP_HARNESS CHAT_UNICO DOC_POR_SECAO ESTUDO_GATEKEEPER AURA_ECONOMY NEXT_PUBLIC_BLUEPRINT_PRATICO BLUEPRINT_PRATICO NEXT_PUBLIC_VIDEO_DOC VIDEO_DOC NEXT_PUBLIC_REA_BLUEPRINT REA_BLUEPRINT HARNESS_CAPACIDADE HARNESS_ACAO HARNESS_VOLTAS_ACAO PRO_PESADAS HARNESS_ANEXO HARNESS_SINTESE HARNESS_GRAFICO MCP_CONECTORES AGENTIC_MODE NEXT_PUBLIC_PUSHER_KEY NEXT_PUBLIC_PUSHER_CLUSTER RACIOCINIO_ELABORADO SCHOLAR_WORKER CANAL_WORKER CHORES_WORKER CANAL_QUEUE LEITOR_PROXY_URL LEITOR_ALLOW LEITOR_MAX_BYTES LEITOR_MAX_BYTES_BIN; do
+            for k in NEXT_PUBLIC_ESCRITORIO_COWORK NEXT_PUBLIC_AGENTS_ADMIN NEXT_PUBLIC_AGENT_AVATARS NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM NEXT_PUBLIC_MAP_HARNESS NEXT_PUBLIC_CHAT_UNICO TCC_CROSS NEXT_PUBLIC_TCC_CROSS CHAT_BG NEXT_PUBLIC_LOUNGE_3D NEXT_PUBLIC_CYBER_AVATAR_GLB NEXT_PUBLIC_CYBER_LANDMARKS NEXT_PUBLIC_AURA_ECONOMY NEXT_PUBLIC_REALTIME NEXT_PUBLIC_VOZ NEXT_PUBLIC_MOBILE_UI NEXT_PUBLIC_PROJETOS NEXT_PUBLIC_MENTORES_TAB NEXT_PUBLIC_OCTA_CODE NEXT_PUBLIC_OCTA_REA MAP_HARNESS CHAT_UNICO DOC_POR_SECAO ESTUDO_GATEKEEPER AURA_ECONOMY NEXT_PUBLIC_BLUEPRINT_PRATICO BLUEPRINT_PRATICO NEXT_PUBLIC_VIDEO_DOC VIDEO_DOC NEXT_PUBLIC_REA_BLUEPRINT REA_BLUEPRINT HARNESS_CAPACIDADE HARNESS_ACAO HARNESS_VOLTAS_ACAO PRO_PESADAS HARNESS_ANEXO HARNESS_SINTESE HARNESS_GRAFICO MCP_CONECTORES AGENTIC_MODE AGENTE_URL NEXT_PUBLIC_PUSHER_KEY NEXT_PUBLIC_PUSHER_CLUSTER RACIOCINIO_ELABORADO SCHOLAR_WORKER CANAL_WORKER CHORES_WORKER CANAL_QUEUE LEITOR_PROXY_URL LEITOR_ALLOW LEITOR_MAX_BYTES LEITOR_MAX_BYTES_BIN; do
               if [ -n "${!k:-}" ]; then export "$k"; echo "→ flag de build $k=${!k}"; else unset "$k"; fi
             done
             # token do GitHub do blueprint (Secret GITHUB_TOKEN_BLUEPRINT — o prefixo GITHUB_ é reservado nos Secrets): opcional
@@ -481,7 +506,11 @@ jobs:
                 // F8 · o agente de navegador: 'on' ou os NOMES do que falta. Três condições de
                 // naturezas diferentes (flag, allowlist, binário) — ver a nota no /api/health.
                 const ag = h.agente;
-                if (ag) console.log('   agente_navegador: ' + (ag === 'on' ? 'on (admin, somente leitura)' : 'off — faltam ' + (ag.faltando || []).join(', ')));
+                if (ag) {
+                  if (ag.faltando) console.log('   agente_navegador: off — faltam ' + ag.faltando.join(', '));
+                  else console.log('   agente_navegador: on (admin, somente leitura) · onde=' + ag.onde +
+                              (ag.onde === 'container' && !ag.alcancavel ? '   ⚠ CONTAINER INALCANÇÁVEL (sobe o serviço)' : ''));
+                }
               }).catch(e=>{ console.log('   (não deu pra ler: ' + e.message + ')'); });
             " || echo "::warning::não deu pra imprimir o estado do harness"
 

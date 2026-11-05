@@ -23,23 +23,28 @@ import { NextResponse } from "next/server";
 import { assertAdmin } from "@/lib/admin/assertAdmin";
 import { agenticEnabled, runAgentic, type AgenticEvent } from "@/lib/agent/agentic";
 import {
-  AGENTE_MAX_MS,
-  AGENTE_MAX_PASSOS,
   agenteFaltando,
+  agenteUrl,
   allowDoAgente,
+  orcamentoDoAgente,
 } from "@/lib/agent/navegadorPolitica";
-import { SISTEMA_DO_PLANO, lerPlanoDoAgente, promptDoPlano } from "@/lib/agent/navegadorPlano";
-import { abrirNavegadorDoAgente, caminhoDoChromium } from "@/lib/agent/navegadorServidor";
+import { lerPlanoDoAgente, promptDoPlano, sistemaDoPlano } from "@/lib/agent/navegadorPlano";
+import { caminhoDoChromium } from "@/lib/agent/navegadorServidor";
+import { abrirDriverDoAgente } from "@/lib/agent/navegadorRemoto";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * UM run por processo. Lançar Chromium custa memória e o limite do `web` é apertado (é por isso que
- * o Octa usa `--renderer-process-limit=1`); dois duplo-cliques do dono abririam dois navegadores.
- * Trava de processo, não de usuário — é o recurso do container que está sendo protegido.
+ * UM run por processo QUANDO O CHROMIUM É LOCAL (F8): lançar navegador dentro do `web` custa a
+ * memória de quem serve o site, e dois duplo-cliques abririam dois.
+ *
+ * F9 · com o container dedicado (`AGENTE_URL`) a trava NÃO se aplica: lá o teto é do próprio
+ * serviço (`MAX_SESSOES = 2` em services/agente-navegador/sessoes.mjs), que é quem conhece a
+ * memória dele. Manter a trava do web aqui seria o web limitando um recurso que não é dele — e o
+ * dono ficaria com "ocupado" em um container com sessão livre.
  */
-let rodando = false;
+let rodandoLocal = false;
 
 const MAX_INSTRUCAO = 2_000;
 
@@ -66,18 +71,22 @@ export async function POST(req: Request) {
   const instrucao = String(corpo.instrucao ?? "").trim().slice(0, MAX_INSTRUCAO);
   if (!instrucao) return NextResponse.json({ erro: "instrucao_vazia" }, { status: 400 });
 
-  if (rodando) return NextResponse.json({ erro: "ocupado" }, { status: 429 });
-  rodando = true;
+  const remoto = !!agenteUrl();
+  if (!remoto) {
+    if (rodandoLocal) return NextResponse.json({ erro: "ocupado" }, { status: 429 });
+    rodandoLocal = true;
+  }
+  const { maxPassos, maxMs } = orcamentoDoAgente(remoto);
 
   const eventos: AgenticEvent[] = [];
-  let driver: Awaited<ReturnType<typeof abrirNavegadorDoAgente>> | null = null;
+  let driver: Awaited<ReturnType<typeof abrirDriverDoAgente>>["driver"] | null = null;
 
   try {
     // ── planejar (modelo) ──────────────────────────────────────────────────────────
     const { geminiJson } = await import("@/lib/scholar/gemini");
     let bruto: unknown;
     try {
-      bruto = await geminiJson<unknown>(SISTEMA_DO_PLANO, promptDoPlano(instrucao), {
+      bruto = await geminiJson<unknown>(sistemaDoPlano(maxPassos), promptDoPlano(instrucao), {
         temperature: 0,
         timeoutMs: 30_000,
         ctx: { agentKey: "aura", surface: "admin" },
@@ -89,19 +98,19 @@ export async function POST(req: Request) {
       );
     }
 
-    const plano = lerPlanoDoAgente(bruto);
+    const plano = lerPlanoDoAgente(bruto, maxPassos);
     if (!plano.acoes.length) {
       // Não é erro: é o caso em que a tarefa exige o que esta porta não faz. Dizer isso é melhor
       // que abrir um navegador pra nada e devolver "pronto".
       return NextResponse.json({
         ok: false, stop: "blocked", passos: [], leituras: [],
-        recusadas: plano.recusadas, allow,
+        recusadas: plano.recusadas, allow, onde: remoto ? "container" : "web",
         motivo: "o plano não tinha nenhum passo de leitura executável nesta porta",
       });
     }
 
     // ── navegar (somente leitura) ──────────────────────────────────────────────────
-    driver = await abrirNavegadorDoAgente({ allow });
+    driver = (await abrirDriverDoAgente({ allow })).driver;
 
     const r = await runAgentic(
       instrucao,
@@ -111,13 +120,14 @@ export async function POST(req: Request) {
         // approve AUSENTE de propósito: ver o cabeçalho. Escrita morre em "denied".
         emit: (ev) => { if (eventos.length < 200) eventos.push(ev); },
       },
-      { execMode: "guiado", maxSteps: AGENTE_MAX_PASSOS, maxDurationMs: AGENTE_MAX_MS },
+      { execMode: "guiado", maxSteps: maxPassos, maxDurationMs: maxMs },
     );
 
     return NextResponse.json({
       ok: r.ok, stop: r.stop, error: r.error,
       passos: eventos, leituras: r.readings,
       recusadas: plano.recusadas, allow,
+      onde: remoto ? "container" : "web", orcamento: { maxPassos, maxMs },
     });
   } catch (e) {
     return NextResponse.json(
@@ -126,6 +136,6 @@ export async function POST(req: Request) {
     );
   } finally {
     await driver?.close().catch(() => {});
-    rodando = false;
+    if (!remoto) rodandoLocal = false;
   }
 }

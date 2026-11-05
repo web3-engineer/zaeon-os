@@ -123,6 +123,11 @@ services:
       # nenhuma. Pôr aqui é topologia, não descuido — a mesma razão do CANAL_QUEUE acima. Default
       # 0 pra falhar FECHADO se a cadeia do workflow quebrar; o workflow manda "1".
       AGENTIC_MODE: ${AGENTIC_MODE:-0}
+      # F9 · ONDE o navegador do agente roda. Aponta pro container irmão por padrão, igual ao
+      # LEITOR_PROXY_URL. Vazia = o Chromium sobe DENTRO do web (caminho da F8, que segue valendo
+      # pra dev). Apontar pra um container que não subiu NÃO é mentira silenciosa: o /api/health
+      # SONDA o /health dele e o recibo diz "INALCANÇÁVEL" — supor estaria errado.
+      AGENTE_URL: ${AGENTE_URL:-http://agente-navegador:8788}
       # CANAL_QUEUE é o interruptor de ENFILEIRAR (lib/canal/queue `filaLigada`), e por isso mora no
       # WEB: é ele que decide mandar o turno pra fila em vez de rodar inline. Os de CONSUMIR
       # (CANAL_WORKER/CHORES_WORKER) ficam só no serviço `worker` — aqui eles fariam o mesmo
@@ -442,6 +447,35 @@ services:
     security_opt: ["no-new-privileges:true"]
     tmpfs: [/tmp]
     mem_limit: 128m
+    restart: unless-stopped
+
+  # ── AGENTE DE NAVEGADOR (F9) — perfil "agente": Chromium headless, SOMENTE LEITURA, SEM CREDENCIAL ──
+  #    Irmão do leitor-proxy, pela MESMA razão e com as mesmas camadas; a diferença é que este
+  #    EXECUTA JAVASCRIPT (o Leitor, de propósito, não), que é o único motivo de ele existir.
+  #    Na F8 este Chromium subia dentro do `web`: disputava memória com quem serve o site (daí os
+  #    tetos de 12 passos / 3 min) e ficava no container que tem as credenciais. Aqui, nenhum dos dois.
+  #    SEM env_file e SEM segredo — lib/agent/agenteCompose.test.ts pina isso, como o do Leitor.
+  agente-navegador:
+    profiles: ["agente"]
+    build: { context: ./services, dockerfile: agente-navegador/Dockerfile }
+    container_name: zaeon_agente_navegador
+    environment:
+      # A MESMA allowlist do Leitor, lida da MESMA Variable: `AGENTE_ALLOW` só existe pra permitir
+      # divergir de propósito um dia; vazia ou ausente, o server cai em LEITOR_ALLOW.
+      AGENTE_ALLOW: "${LEITOR_ALLOW:-*.gov.br, *.edu.br, *.scielo.br, *.scielo.org, *.wikipedia.org, arxiv.org, doi.org, *.nih.gov, *.who.int, raw.githubusercontent.com, github.com}"
+      AGENTE_MAX_TEXTO: ${AGENTE_MAX_TEXTO:-20000}
+      AGENTE_TIMEOUT_MS: ${AGENTE_TIMEOUT_MS:-20000}
+    expose: ["8788"]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    # /tmp é onde o perfil do Chromium e o shm de fallback vivem (o container é read_only).
+    tmpfs: ["/tmp:size=512m,mode=1777"]
+    shm_size: 256m
+    # 1,5 GB PRÓPRIOS: era isto o pedido do dono. A VPS tem 23 GB e o compose declarava 13,8 GB,
+    # então sobra. Chromium headless com um renderer fica bem abaixo disso; o teto existe pra uma
+    # página patológica não comer o host, não porque 1,5 GB seja o uso esperado.
+    mem_limit: 1536m
     restart: unless-stopped
 
   # ── GATEWAY de LLM (LiteLLM, PR-G1) — perfil "gateway": NÃO sobe no deploy enxuto por acidente ──
