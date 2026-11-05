@@ -1382,6 +1382,60 @@ desembaraço. Foi o que salvou o tempo aqui, por acidente — e deixa de ser aci
 ${{ vars.AGENTE_ALLOW }}` e o default `*` decidido no SHELL, que já tem a ponte. Em commit próprio,
 só do workflow, para que a hipótese seja testada isoladamente pelo único juiz que existe: o push.
 
+### F10c · a plumagem volta, com o default fora da expressão
+
+Decisão do dono depois da F10b: *"vai no A, uma linha só"* — reintroduzir a plumagem no workflow com
+o mínimo possível, pra testar a hipótese pelo único juiz que existe (o push) com o menor estrago se
+ela estiver errada.
+
+**O que mudou de verdade, e é uma linha:**
+
+```yaml
+AGENTE_ALLOW: ${{ vars.AGENTE_ALLOW || '' }}
+```
+
+A forma é a **mesma do `AGENTE_URL`**, que já implantou nos deploys 561, 562, 565 e 568. O default
+`*` saiu da EXPRESSÃO e foi pro **shell**, onde é texto e não token:
+
+```sh
+if [ -z "${AGENTE_ALLOW:-}" ]; then AGENTE_ALLOW='*'; fi
+export AGENTE_ALLOW
+```
+
+**A HIPÓTESE FICOU MAIS NÍTIDA, e por um caminho barato.** Antes de escrever, procurei asteriscos no
+arquivo que IMPLANTA — e ele tem três tipos: em comentário (`NEXT_PUBLIC_*`, linha 167), em valor
+YAML entre aspas (`"**.md"`, `"docs/**"`) e dentro do `script: |`. Ou seja: **`*` no arquivo não é o
+problema.** O que a F10 fez de novo foi pôr `*` DENTRO de uma `${{ }}`, e é só isso que distingue as
+duas versões em posição parseada. Continua sendo hipótese — não há substituto local do parser deles —
+mas agora é uma hipótese estreita, com evidência pelos dois lados.
+
+**A PROPRIEDADE QUE TORNA ISTO SEGURO não é cuidado, é não inventar forma.** Um gate novo compara as
+FORMAS de expressão deste arquivo com as do arquivo que implanta, normalizando identificadores:
+`formas(novo) − formas(bom)` tem de ser **vazio**. Não é "eu conferi"; é uma asserção que falha se
+alguém introduzir uma forma inédita — exatamente o erro que custou o deploy 567. Outro teste afirma
+que **nenhuma expressão** contém `*` (comentário pode; o arquivo bom já tem).
+
+**O TRIPWIRE DA F10b FUNCIONOU.** Ele afirmava a AUSÊNCIA desta plumagem e falhou quando ela voltou,
+obrigando a atualizar o registro em vez de deixar o buraco sem dono. Era pra isso que ele existia.
+
+**`AGENTE_TOKEN` e as linhas `dominios=` do recibo FICARAM FORA**, de propósito: esta PR existe pra
+dar um veredito a UMA hipótese, e juntar duas mudanças no mesmo push torna o resultado ilegível. Vão
+na seguinte, se esta parsear.
+
+**O bloco de shell foi EXECUTADO com oito formas de allowlist** — vazia, `*`, `*.edu.br`,
+`*.edu.br, *`, `arxiv.org`, ` * `, `**`, `*,arxiv.org` — e o veredito de cada uma bate com o
+`allowEhAberta` do TS. O `set -f` segue obrigatório (sem noglob, `*` sozinho vira a lista de arquivos
+do diretório), e o caso da Variable vazia foi conferido FORA de pipe, porque `source` dentro de pipe
+roda em subshell e o export não propaga — artefato que já me enganou duas vezes nesta série.
+
+**Gates:** loader estrito a chave duplicada ✓ (`name` = "Deploy (VPS)"), formas de expressão sem
+nenhuma nova ✓, nenhuma expressão com `*` ✓, bloco de shell executado nas oito formas ✓, `tsc`
+limpo, `eslint` 0, `compose-check` ✓, suíte cheia com o `env:` do CI reproduzido.
+
+**O veredito de verdade vem do push.** Se o deploy criar jobs, a hipótese estava certa e a internet
+aberta entra no ar; se falhar outra vez com zero jobs, a causa é outra e o arquivo volta ao
+`674af2f6` por um `git checkout` — que é o custo que a F10b deixou barato de propósito.
+
 ## 7. 🔒 Portões do dono
 
 Decisões que eu **não** tomo sozinho, porque mudam contrato de produto ou gastam dinheiro:

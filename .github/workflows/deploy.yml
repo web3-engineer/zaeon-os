@@ -129,6 +129,11 @@ jobs:
           # irmão `agente-navegador`). Preencher com string vazia NÃO é "desligar o container": é
           # mandar o Chromium subir dentro do `web` outra vez, que é o que a F9 veio desfazer.
           AGENTE_URL: ${{ vars.AGENTE_URL || '' }}
+          # F10c · a allowlist do agente. Vazia = o SHELL põe `*` (internet aberta, pedido do dono).
+          # A forma é a MESMA do AGENTE_URL de propósito: a F10 usou `|| '*'` e o GitHub recusou o
+          # arquivo inteiro (startup failure, zero jobs, deploy 567). Como `*` é token de wildcard
+          # nas expressões do Actions, o default saiu da EXPRESSÃO e foi pro shell, onde é só texto.
+          AGENTE_ALLOW: ${{ vars.AGENTE_ALLOW || '' }}
           # Workers de fundo (BullMQ). NÃO são features desligadas: sem eles o trabalho roda INLINE no
           # web, que é o que acontece hoje e funciona. Ligá-los no `web` faria o mesmo container
           # enfileirar E consumir — o desenho quer o serviço `worker` dedicado (perfil "worker" do
@@ -252,7 +257,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           command_timeout: 25m
-          envs: GOOGLE_CREDENTIALS_B64,GOOGLE_PROJECT_ID_VALUE,OCTA_CRON_SECRET,UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,HF_TOKEN,RESEND_API_KEY,EMAIL_FROM,HF_RESERVA,DISPAROS_HF,DISPAROS_HF_SEM_HISTORICO,WITH_VOICE,DB_PUSH,DEPLOY_BRANCH,APP_URL,BETA_DOMAIN,ACME_EMAIL,NEXT_PUBLIC_ESCRITORIO_COWORK,NEXT_PUBLIC_AGENTS_ADMIN,NEXT_PUBLIC_AGENT_AVATARS,NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM,NEXT_PUBLIC_MAP_HARNESS,NEXT_PUBLIC_LOUNGE_3D,NEXT_PUBLIC_CYBER_AVATAR_GLB,NEXT_PUBLIC_CYBER_LANDMARKS,NEXT_PUBLIC_AURA_ECONOMY,NEXT_PUBLIC_REALTIME,NEXT_PUBLIC_VOZ,NEXT_PUBLIC_MOBILE_UI,NEXT_PUBLIC_PROJETOS,NEXT_PUBLIC_MENTORES_TAB,NEXT_PUBLIC_OCTA_CODE,NEXT_PUBLIC_OCTA_REA,MAP_HARNESS,ESTUDO_GATEKEEPER,AURA_ECONOMY,NEXT_PUBLIC_CHAT_UNICO,DOC_POR_SECAO,CHAT_UNICO,TCC_CROSS,NEXT_PUBLIC_TCC_CROSS,CHAT_BG,NEXT_PUBLIC_BLUEPRINT_PRATICO,BLUEPRINT_PRATICO,GITHUB_TOKEN_BLUEPRINT,NEXT_PUBLIC_VIDEO_DOC,VIDEO_DOC,NEXT_PUBLIC_REA_BLUEPRINT,REA_BLUEPRINT,HARNESS_CAPACIDADE,HARNESS_ACAO,HARNESS_VOLTAS_ACAO,PRO_PESADAS,HARNESS_ANEXO,HARNESS_SINTESE,HARNESS_GRAFICO,MCP_CONECTORES,PUSHER_APP_ID,PUSHER_SECRET,NEXT_PUBLIC_PUSHER_KEY,NEXT_PUBLIC_PUSHER_CLUSTER,RACIOCINIO_ELABORADO,AGENTIC_MODE,AGENTE_URL,SCHOLAR_WORKER,CANAL_WORKER,CHORES_WORKER,CANAL_QUEUE,LEITOR_PROXY_URL,LEITOR_ALLOW,LEITOR_MAX_BYTES,LEITOR_MAX_BYTES_BIN
+          envs: GOOGLE_CREDENTIALS_B64,GOOGLE_PROJECT_ID_VALUE,OCTA_CRON_SECRET,UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,HF_TOKEN,RESEND_API_KEY,EMAIL_FROM,HF_RESERVA,DISPAROS_HF,DISPAROS_HF_SEM_HISTORICO,WITH_VOICE,DB_PUSH,DEPLOY_BRANCH,APP_URL,BETA_DOMAIN,ACME_EMAIL,NEXT_PUBLIC_ESCRITORIO_COWORK,NEXT_PUBLIC_AGENTS_ADMIN,NEXT_PUBLIC_AGENT_AVATARS,NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM,NEXT_PUBLIC_MAP_HARNESS,NEXT_PUBLIC_LOUNGE_3D,NEXT_PUBLIC_CYBER_AVATAR_GLB,NEXT_PUBLIC_CYBER_LANDMARKS,NEXT_PUBLIC_AURA_ECONOMY,NEXT_PUBLIC_REALTIME,NEXT_PUBLIC_VOZ,NEXT_PUBLIC_MOBILE_UI,NEXT_PUBLIC_PROJETOS,NEXT_PUBLIC_MENTORES_TAB,NEXT_PUBLIC_OCTA_CODE,NEXT_PUBLIC_OCTA_REA,MAP_HARNESS,ESTUDO_GATEKEEPER,AURA_ECONOMY,NEXT_PUBLIC_CHAT_UNICO,DOC_POR_SECAO,CHAT_UNICO,TCC_CROSS,NEXT_PUBLIC_TCC_CROSS,CHAT_BG,NEXT_PUBLIC_BLUEPRINT_PRATICO,BLUEPRINT_PRATICO,GITHUB_TOKEN_BLUEPRINT,NEXT_PUBLIC_VIDEO_DOC,VIDEO_DOC,NEXT_PUBLIC_REA_BLUEPRINT,REA_BLUEPRINT,HARNESS_CAPACIDADE,HARNESS_ACAO,HARNESS_VOLTAS_ACAO,PRO_PESADAS,HARNESS_ANEXO,HARNESS_SINTESE,HARNESS_GRAFICO,MCP_CONECTORES,PUSHER_APP_ID,PUSHER_SECRET,NEXT_PUBLIC_PUSHER_KEY,NEXT_PUBLIC_PUSHER_CLUSTER,RACIOCINIO_ELABORADO,AGENTIC_MODE,AGENTE_URL,AGENTE_ALLOW,SCHOLAR_WORKER,CANAL_WORKER,CHORES_WORKER,CANAL_QUEUE,LEITOR_PROXY_URL,LEITOR_ALLOW,LEITOR_MAX_BYTES,LEITOR_MAX_BYTES_BIN
           script: |
             set -euo pipefail
             cd "${{ secrets.DEPLOY_PATH }}"
@@ -413,6 +418,26 @@ jobs:
             done
             # token do GitHub do blueprint (Secret GITHUB_TOKEN_BLUEPRINT — o prefixo GITHUB_ é reservado nos Secrets): opcional
             if [ -n "${GITHUB_TOKEN_BLUEPRINT:-}" ]; then export GITHUB_TOKEN="$GITHUB_TOKEN_BLUEPRINT"; fi
+
+            # F10c · O DEFAULT MORA AQUI, não na expressão do Actions (ver a nota na env acima).
+            if [ -z "${AGENTE_ALLOW:-}" ]; then AGENTE_ALLOW='*'; fi
+            export AGENTE_ALLOW
+            # ABERTA = existe uma ENTRADA que é exatamente `*` — não "a string contém asterisco",
+            # que diria "INTERNET ABERTA" pra `*.edu.br`, uma lista RESTRITA. E `set -f` (noglob) é
+            # OBRIGATÓRIO: sem ele o `$AGENTE_ALLOW` sem quotes sofre expansão de caminho e um `*`
+            # sozinho vira a lista de arquivos do diretório. Os dois defeitos foram meus na F10 e os
+            # dois só apareceram EXECUTANDO o bloco com valores reais.
+            AGENTE_ABERTA=0
+            _ifs="$IFS"; IFS=','; set -f
+            for _d in ${AGENTE_ALLOW}; do
+              case "$(printf '%s' "$_d" | tr -d '[:space:]')" in "*") AGENTE_ABERTA=1 ;; esac
+            done
+            set +f; IFS="$_ifs"; unset _ifs _d
+            if [ "$AGENTE_ABERTA" = "1" ]; then
+              echo "→ agente: INTERNET ABERTA (IP privado/loopback/metadados seguem bloqueados)"
+            else
+              echo "→ agente: allowlist restrita (lista nomeada)"
+            fi
 
             echo "→ Subindo containers (coexist: não toca outras stacks)…"
             $DC up -d --build $NODEPS $SERVICES

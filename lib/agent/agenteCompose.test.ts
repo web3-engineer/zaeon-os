@@ -119,50 +119,60 @@ describe("web ↔ container", () => {
   });
 });
 
-describe("AGENTE_ALLOW e AGENTE_TOKEN — plumagem do workflow REVERTIDA (F10b)", () => {
+describe("AGENTE_ALLOW — a plumagem voltou, sem literal na expressão (F10c)", () => {
   /**
-   * ESTADO ATUAL, afirmado em vez de desejado.
+   * O tripwire da F10b funcionou: ele afirmava a AUSÊNCIA desta plumagem e falhou quando ela voltou,
+   * forçando atualizar o registro. É isto aqui.
    *
-   * A F10 acrescentou ao deploy.yml o `AGENTE_ALLOW` (default `*`), o `AGENTE_TOKEN` (Secret), a
-   * ponte no shell e a linha de modo no recibo. O GitHub RECUSOU o arquivo: o deploy 567 falhou em
-   * segundos com ZERO jobs (startup failure) e o registro do workflow passou a mostrar o CAMINHO no
-   * lugar do `name`, enquanto o ci.yml segue mostrando "CI". Main ficou SEM IMPLANTAR.
+   * A F10 pôs `${{ vars.AGENTE_ALLOW || '*' }}` e o GitHub recusou o ARQUIVO (startup failure, zero
+   * jobs, deploy 567) — main ficou sem implantar. A F10c reintroduz a env com a forma `|| ''`, a
+   * MESMA do AGENTE_URL, e põe o default `*` no SHELL, onde é texto e não token de expressão.
    *
-   * O workflow foi revertido byte a byte para a versão que o GitHub aceita (4f18a001) pra devolver
-   * a implantação. Eu NÃO reproduzi o parser deles aqui: PyYAML (inclusive com loader estrito a
-   * chave duplicada), varredura de caractere invisível/homóglifo, conferência de indentação do
-   * bloco literal e balanceamento de `${{ }}` todos passam. Então a causa segue HIPÓTESE, não
-   * diagnóstico — e a hipótese principal é o literal `'*'` dentro da expressão
-   * `${{ vars.AGENTE_ALLOW || '*' }}`, porque `*` é token de WILDCARD nas expressões do Actions.
-   *
-   * CONSEQUÊNCIA REAL, e é por isso que este teste existe: sem a env no workflow, o compose cai no
-   * default EMBUTIDO, que é a lista ACADÊMICA. O agente está em modo RESTRITO, não aberto. Dizer
-   * "internet aberta está no ar" seria mentira.
-   *
-   * Quando a plumagem voltar, ESTE teste falha — de propósito. Quem a reintroduzir tem de trocar
-   * estas asserções pelas de presença e atualizar o registro na F10b.
+   * Evidência que sustenta a hipótese (e que não a prova — o parser deles não tem substituto local):
+   * o arquivo que implanta JÁ tem `*` em comentário, em valor YAML entre aspas (`"**.md"`) e dentro
+   * do `script: |`. Então `*` no arquivo não é o problema; `*` DENTRO de `${{ }}` é a única coisa
+   * nova que a F10 fez em posição parseada.
    */
-  it("o workflow NÃO tem AGENTE_ALLOW nem AGENTE_TOKEN (revertido para restaurar o deploy)", () => {
-    expect(wf).not.toMatch(/AGENTE_ALLOW/);
+  it("a env existe com a forma de `|| ''` — e NENHUM literal com asterisco na expressão", () => {
+    expect(wf).toMatch(/AGENTE_ALLOW:\s*\$\{\{\s*vars\.AGENTE_ALLOW\s*\|\|\s*''\s*\}\}/);
+    // a asserção que importa: nenhuma EXPRESSÃO com asterisco. Comentário pode (o arquivo que
+    // implanta já tem), então a busca é dentro de `${{ ... }}` só.
+    const expressoes = wf.match(/\$\{\{[^}]*\}\}/g) ?? [];
+    expect(expressoes.filter((e) => e.includes("*"))).toEqual([]);
+  });
+
+  it("nenhuma FORMA de expressão nova em relação ao arquivo que implanta", () => {
+    // O que tornou a F10c segura não foi cuidado, foi não inventar forma: toda `${{ }}` daqui já
+    // existia no deploy.yml que implantou nos deploys 561/562/565/568.
+    const formas = new Set(
+      (wf.match(/\$\{\{[^}]*\}\}/g) ?? []).map((e) => e.replace(/[A-Za-z_][A-Za-z0-9_]*/g, "N")),
+    );
+    expect([...formas].filter((f) => f.includes("*"))).toEqual([]);
+  });
+
+  it("cruza o SSH (lista `envs:`) e o default `*` é decidido no SHELL, não na expressão", () => {
+    const lista = /envs:\s*([^\n]+)/.exec(wf)?.[1] ?? "";
+    expect(lista.split(",").map((x) => x.trim())).toContain("AGENTE_ALLOW");
+    expect(wf).toMatch(/if \[ -z "\$\{AGENTE_ALLOW:-\}" \]; then AGENTE_ALLOW='\*'; fi/);
+    expect(wf).toMatch(/export AGENTE_ALLOW/);
+  });
+
+  it("o bloco de modo usa `set -f`: sem noglob um `*` sozinho vira lista de arquivos", () => {
+    expect(wf).toMatch(/set -f/);
+    expect(wf).toMatch(/INTERNET ABERTA/);
+  });
+
+  it("AGENTE_TOKEN segue FORA, de propósito: vai na PR seguinte", () => {
+    // Uma coisa por vez. Esta PR existe pra testar UMA hipótese pelo único juiz disponível (o push);
+    // acrescentar o token junto misturaria duas mudanças no mesmo veredito.
     expect(wf).not.toMatch(/AGENTE_TOKEN/);
   });
 
-  it("e por isso o modo efetivo é RESTRITO: vale o default acadêmico do compose", () => {
-    const m = /AGENTE_ALLOW:\s*"\$\{AGENTE_ALLOW:-([^"]*)\}"/.exec(ativo);
-    expect(m, "default do AGENTE_ALLOW ausente no compose").toBeTruthy();
-    expect(m![1].split(",").map((x) => x.trim())).not.toContain("*");
-    expect(m![1]).toContain("edu.br");
-  });
-
-  it("o CÓDIGO de modo aberto continua inteiro — a reversão foi do workflow, não da capacidade", async () => {
-    // A 1ª versão deste teste afirmava `wf` conter `AGENTE_URL` — que não checa NADA do que o nome
-    // promete: a política poderia ter sido apagada e ele passaria. Passe no vácuo, e meu, neste
-    // mesmo commit. Agora ele exercita a capacidade de verdade.
+  it("o CÓDIGO de modo aberto continua inteiro — a capacidade nunca saiu", async () => {
     const { allowEhAberta, urlDoAgente } = await import("@/lib/agent/navegadorPolitica");
     expect(allowEhAberta(["*"])).toBe(true);
     expect(allowEhAberta(["*.edu.br"])).toBe(false);
     expect(urlDoAgente("https://qualquer-site-do-mundo.com/x", ["*"]).ok).toBe(true);
-    // e abrir domínio continua NÃO sendo abrir rede, no modo aberto também
     expect(urlDoAgente("http://169.254.169.254/latest/meta-data/", ["*"]).ok).toBe(false);
   });
 });
