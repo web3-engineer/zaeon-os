@@ -962,6 +962,61 @@ mesmo container enfileirar e consumir — exatamente o que a topologia evita.
 `PUSHER_SECRET` são Secrets e `NEXT_PUBLIC_PUSHER_KEY`/`_CLUSTER` são Variables que só ele cria. Até
 lá o recibo dirá `tempo_real(pusher): off — faltam …`, que é a verdade, e a colaboração segue no poll.
 
+### F7c · O ponto cego: o interruptor do DOCUMENTO não aparecia em lugar nenhum
+
+Perguntado se faltava algo off, auditei de novo e achei o que importava — não uma feature esquecida,
+mas o fato de que **eu não conseguia ver o interruptor do trilho em que passei o dia trabalhando**.
+
+`tccCrossOn()` (lib/tcc/store) é `TCC_CROSS === "1" || CHAT_UNICO === "1"`: é ele que decide se um
+documento **pode nascer**. Medido: **nenhuma das duas passava pelo workflow ou pelo compose**, e o
+recibo não imprimia nenhuma. Elas viviam só no `.env` do VPS. A F6, a F7 e a D9 foram construídas
+sobre esse trilho, e a única prova de que ele estava ligado era **comportamental** — a Andressa gerou
+documento ontem, logo o trilho estava on. Inferência, não recibo; e eu já havia errado duas vezes na
+mesma madrugada afirmando sobre o que não media (o Pusher, o parser do Compose).
+
+**O trilho tem DUAS METADES, e é isso que o recibo passou a dizer:**
+
+| metade | o que decide | quando é fixada |
+|---|---|---|
+| `servidor` (`tccCrossOn`) | o documento **pode nascer** | runtime, responde a env |
+| `cliente` (`NEXT_PUBLIC_TCC_CROSS`/`NEXT_PUBLIC_CHAT_UNICO`) | as abas dos trabalhos **aparecem** | embutida no BUILD |
+
+Servidor ON com cliente OFF é o caso cruel: **o documento nasce e ninguém o vê**, e nada no log
+acusa. Por isso o recibo imprime as duas e marca `⚠ METADES DIVERGENTES` quando não batem, em vez de
+um "on" que esconderia a metade errada.
+
+**Ligado por decisão do dono (05/nov/2026), com os preços ditos antes:**
+
+- `TCC_CROSS=1` e `NEXT_PUBLIC_TCC_CROSS=1` — explícitos, nos cinco elos. Não muda nada pro usuário
+  (já estava on de fato); acaba com o ponto cego.
+- `CHAT_UNICO=1` — e esta **muda a navegação**: a "Sala de Pesquisa" sai da sidebar, os links antigos
+  (`?tab=pesquisa`, `?work=`) caem no chat da Aura, a conversa ganha o interruptor "Modo pesquisa" e
+  pode ter vários trabalhos. Efeito visível pra quem já usa; `vars.NEXT_PUBLIC_CHAT_UNICO=0` volta.
+- `CHAT_BG=1` — turno do chat na fila dentro do web. O preço está no próprio compose: **um deploy que
+  recria o web mata o turno em curso** (o reaper marca erro no boot). Inline sobrevivia ao deploy;
+  `vars.CHAT_BG=0` volta.
+
+**Uma divergência PRÉ-EXISTENTE achada ao fechar isto:** o serviço `worker` tinha `DOC_POR_SECAO`
+(escrever as seções) mas **não** `TCC_CROSS`/`CHAT_UNICO` (deixar o trabalho existir). Com o worker de
+pé, ele escreveria seções de um documento que não pode nascer. Espelhado agora, pela mesma razão que
+o comentário do `DOC_POR_SECAO` no worker já dava: "o worker roda o mesmo `runChatTurn`".
+
+**O teste deste recibo precisou ser honesto sobre o que NÃO dá para testar.** A metade de cliente é
+`const` de módulo, congelada quando o módulo carrega — `vi.stubEnv` não a muda. Em vez de escrever
+uma asserção que "passa" mexendo no que não muda, o teste afirma o que é verdade (a metade de servidor
+responde ao env; a de cliente está presente e é booleana) e **explica no comentário** que a diferença
+de momento entre as duas é justamente o que as faz divergir em produção.
+
+### O que segue off, e por quê
+
+- **`lib/agent/agentic.ts` (#698)** — o agente de navegador. Off **duas vezes**: `AGENTIC_MODE` nasce
+  desligada e **ninguém importa o módulo**. São a lib e 20 testes, sem rota e sem UI: ligar a flag não
+  faria nada. Dono mandou escrever a porta — fase própria, PR própria.
+- **O worker dedicado** — `docker compose --profile worker up -d` no VPS. Não é flag e não tenho SSH:
+  é operação de quem opera a máquina.
+- **`reflections` / `ensemble` / `integrity`** — não são flags: configuração que o examiner copia pro
+  veredito e ninguém lê. Limpar ou implementar é decisão à parte.
+
 ## 7. 🔒 Portões do dono
 
 Decisões que eu **não** tomo sozinho, porque mudam contrato de produto ou gastam dinheiro:

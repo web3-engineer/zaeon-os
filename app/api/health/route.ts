@@ -31,6 +31,9 @@ import { getTool } from "@/lib/agent/runtime";
 import { GEMINI_MODEL_FLASH, GEMINI_MODEL_PRO } from "@/lib/ai/model";
 import { proNasPesadasLigado } from "@/lib/ai/proNasPesadas";
 import { pusherFaltando } from "@/lib/collab/realtime";
+import { tccCrossOn } from "@/lib/tcc/store";
+import { TCC_CROSS_ON } from "@/lib/tcc/client";
+import { chatUnicoOn } from "@/lib/chat/chatUnico";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -59,6 +62,18 @@ export async function GET() {
     // NOMES que faltam (nunca os valores). Sem elas a colaboração funciona no poll de 6 s — a
     // diferença é invisível de fora, e era por isso que eu não conseguia confirmá-la pro dono.
     tempoReal: pusherFaltando().length === 0 ? "on" : { faltando: pusherFaltando() },
+    /**
+     * O TRILHO DO DOCUMENTO, em DUAS METADES que podem divergir — e é por isso que o recibo diz as
+     * duas em vez de um "on".
+     *
+     *   `servidor` = `tccCrossOn()` (runtime): um documento PODE nascer.
+     *   `cliente`  = `NEXT_PUBLIC_*` (embutido no BUILD): as abas dos trabalhos APARECEM.
+     *
+     * Servidor ON com cliente OFF é o caso cruel: o documento nasce e ninguém o vê, e nada no log
+     * acusa. A F6, a F7 e a D9 foram construídas sobre este trilho enquanto o interruptor dele não
+     * aparecia em lugar nenhum — vivia só no `.env` do VPS. Fechar isso foi ordem do dono.
+     */
+    documento: { servidor: tccCrossOn(), cliente: TCC_CROSS_ON, chatUnico: chatUnicoOn() },
     leitor,
     // F5: o estado dos conectores MCP (memoizado do boot; nunca conecta aqui)
     mcp: resumoMcp(),

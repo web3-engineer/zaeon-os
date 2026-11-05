@@ -33,6 +33,7 @@ services:
         NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM: ${NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM:-0}
         NEXT_PUBLIC_MAP_HARNESS: ${NEXT_PUBLIC_MAP_HARNESS:-0}
         NEXT_PUBLIC_CHAT_UNICO: ${NEXT_PUBLIC_CHAT_UNICO:-0}
+        NEXT_PUBLIC_TCC_CROSS: ${NEXT_PUBLIC_TCC_CROSS:-0}
         NEXT_PUBLIC_BLUEPRINT_PRATICO: ${NEXT_PUBLIC_BLUEPRINT_PRATICO:-0}
         NEXT_PUBLIC_VIDEO_DOC: ${NEXT_PUBLIC_VIDEO_DOC:-0}
         NEXT_PUBLIC_LOUNGE_3D: ${NEXT_PUBLIC_LOUNGE_3D:-0}
@@ -87,6 +88,11 @@ services:
       MAP_HARNESS: ${MAP_HARNESS:-0}
       # chat único: motor dos trabalhos (vários por conversa) — par do NEXT_PUBLIC_CHAT_UNICO
       CHAT_UNICO: ${CHAT_UNICO:-0}
+      # o trilho do documento: `tccCrossOn` é TCC_CROSS=1 || CHAT_UNICO=1 (lib/tcc/store)
+      TCC_CROSS: ${TCC_CROSS:-0}
+      # o par de CLIENTE também em runtime: embutido no bundle pelo build-arg lá em cima, mas o
+      # SERVIDOR precisa dele em `process.env` pra publicar no recibo o que o cliente recebeu
+      NEXT_PUBLIC_TCC_CROSS: ${NEXT_PUBLIC_TCC_CROSS:-0}
       # F2 do documento (lib/documento/escritor): uma chamada por SEÇÃO em vez de um JSON de 8
       # campos. LIGADA; `DOC_POR_SECAO=0` devolve o caminho antigo (corposDoEsboco) byte a byte.
       DOC_POR_SECAO: ${DOC_POR_SECAO:-1}
@@ -239,6 +245,13 @@ services:
       # geração do documento por SEÇÃO: o worker roda o mesmo runChatTurn → lib/tcc/turno →
       # gerarTccEmBackground, então sem esta linha a Variable valeria só no web (par do #670).
       DOC_POR_SECAO: ${DOC_POR_SECAO:-1}
+      # ESPELHO DO TRILHO, pela mesma razão da linha acima — e esta FALTAVA: o worker tinha o
+      # DOC_POR_SECAO (escrever as seções) sem o `tccCrossOn` (deixar o trabalho EXISTIR). Com o
+      # worker de pé, ele escreveria seções de um documento que não pode nascer. Divergência
+      # pré-existente, achada ao fechar o ponto cego do trilho (05/nov/2026).
+      CHAT_UNICO: ${CHAT_UNICO:-0}
+      TCC_CROSS: ${TCC_CROSS:-0}
+      NEXT_PUBLIC_TCC_CROSS: ${NEXT_PUBLIC_TCC_CROSS:-0}
       LEITOR_PROXY_URL: ${LEITOR_PROXY_URL:-http://leitor-proxy:8787}   # Fatia 7: chores leem a web SÓ por aqui
       LEITOR_ALLOW: "${LEITOR_ALLOW:-*.gov.br, *.edu.br, *.scielo.br, *.scielo.org, *.wikipedia.org, arxiv.org, doi.org, *.nih.gov, *.who.int, raw.githubusercontent.com, github.com}"
     depends_on:
