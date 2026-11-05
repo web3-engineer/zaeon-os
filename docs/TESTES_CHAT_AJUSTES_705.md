@@ -19,7 +19,9 @@
 
 - O Modo pesquisa só chega ao outro navegador depois de uma pergunta feita com ele ligado. Ligar e não perguntar não é guardado no servidor.
 - Uma conversa sem nenhuma mensagem no servidor (antiga, de antes do #663) não tem como ser aberta: aparece o aviso.
-- A busca de uma conversa de fora mostra só a primeira página da lista do servidor (até 200 conversas).
+- A busca de uma conversa de fora mostra só a primeira página da lista do servidor (até 200 conversas). Sem resposta em 15 s, aparece "Não consegui abrir a conversa agora".
+- O aviso de internet vale para o chat de estudos (o do chat único, com o Modo pesquisa). O chat antigo da Sala de Pesquisa (`ResearchChat`), fora do chat único, não mudou.
+- Editar ou regenerar sem internet: a pergunta fica na conversa, com o aviso na resposta, e o rascunho da caixa não é trocado.
 
 ## Testes automáticos
 

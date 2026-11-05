@@ -54,7 +54,8 @@ export default function CerebroPanel({ st, onFechar, onGerar, onAbrirMensagem }:
       if (!r.ok) throw new Error(d?.error || `HTTP ${r.status}`);
       setAviso(d.validacao ? "Enviado pra validação do seu professor." : "Aplicado! O percurso avançou.");
       setCaixa(null); setEvidencia("");
-      await st.refetch([no.id]);
+      // #705: o envio deu certo; se só a atualização do mapa falhar, o aviso diz isso (e não que a aplicação falhou)
+      try { await st.refetch([no.id]); } catch { setAviso((a) => `${a ?? "Aplicado!"} O mapa não atualizou: feche e abra de novo para ver.`); }
     } catch (e: any) { setErroCaixa(mensagemDeErro(e, "sua aplicação não foi enviada")); } finally { setAplicando(null); }
   };
   const proximo = useMemo(() => (mapa ? proximoDoBackbone({ nos: mapa.nos, backbone: mapa.backbone, modoValidacao: mapa.modoValidacao }) : null), [mapa]);

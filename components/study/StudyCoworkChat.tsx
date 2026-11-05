@@ -752,6 +752,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   // Pedido da SIDEBAR principal (conversa/"Nova conversa" clicada estando noutra sala ou sub-aba):
   // atende o bilhete ao montar (com as conversas carregadas) e os eventos dali pra frente.
   const trocarRef = useRef(trocarAba); trocarRef.current = trocarAba;
+  const pedidoDeFora = useRef(0);
   const novaRef = useRef(novaAba); novaRef.current = novaAba;
   useEffect(() => {
     if (!threads.length) return;
@@ -766,10 +767,18 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
      * Antes o pedido era ignorado, e o chat ficava na conversa que já estava aberta.
      */
     const abrirDeFora = async (id: string) => {
-      const juntas = await sincronizarConversas("estudos", armazem, ESCOPO_COWORK, () => threadsRef.current, textoParaHistorico as (m: MsgGuardada) => string);
-      if (juntas?.some((t) => t.id === id)) { threadsRef.current = juntas; setThreads(juntas); trocarRef.current(id); return; }
-      const wire = await mensagensDoServidor("estudos", id);
-      if (wire.length) {
+      // só o pedido MAIS RECENTE vale (dois cliques seguidos: o lento não volta para a conversa errada)
+      const meu = ++pedidoDeFora.current;
+      const valeAinda = () => pedidoDeFora.current === meu;
+      // sem resposta em 15 s, avisa em vez de ficar parado
+      const comPrazo = <T,>(p: Promise<T>) => Promise.race([p, new Promise<never>((_, nao) => setTimeout(() => nao(new Error("prazo")), 15_000))]);
+      try {
+        const juntas = await comPrazo(sincronizarConversas("estudos", armazem, ESCOPO_COWORK, () => threadsRef.current, textoParaHistorico as (m: MsgGuardada) => string));
+        if (!valeAinda()) return;
+        if (juntas?.some((t) => t.id === id)) { threadsRef.current = juntas; setThreads(juntas); trocarRef.current(id); return; }
+        const wire = await comPrazo(mensagensDoServidor("estudos", id));
+        if (!valeAinda()) return;
+        if (wire.length) {
         const agora = Date.now();
         const primeira = wire.find((w) => w.role === "user")?.text ?? "";
         const t: Thread = { id, titulo: tituloAPartirDe(primeira) || TITULO_PADRAO, criadaEm: Date.parse(wire[0]!.at) || agora, tocadaEm: agora };
@@ -777,8 +786,11 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
         threadsRef.current = lista; salvarThreads(armazem, lista); setThreads(lista);
         trocarRef.current(id);
         return;
+        }
+        setAvisoConversa("A conversa deste blueprint não está mais disponível.");
+      } catch {
+        if (valeAinda()) setAvisoConversa("Não consegui abrir a conversa agora. Tente de novo.");
       }
-      setAvisoConversa("A conversa deste blueprint não está mais disponível.");
     };
     atender(consumirPedido("estudos"));
     const on = (e: Event) => { atender((e as CustomEvent<PedidoConversa>).detail); consumirPedido("estudos"); };
@@ -1025,7 +1037,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     const prompt = (typeof override === "string" ? override : input).trim();
     if (!prompt || sending) return;
     // #705: sem internet a mensagem não sai — fica na caixa de texto até a conexão voltar
-    if (typeof navigator !== "undefined" && navigator.onLine === false) { setSemRede(true); if (typeof override === "string") setInput(prompt); return; }
+    if (typeof navigator !== "undefined" && navigator.onLine === false) { setSemRede(true); if (typeof override === "string") setInput((v) => (v.trim() ? v : prompt)); return; }
     // o TUTORIAL do tablet (lib/onboarding/tutorialLab): o tema escolhido não vai pro chat — vira a pesquisa na tela roxa
     if (temaNoTutorial()) { const tema = temaDoTexto(prompt); if (!tema) return; setInput(""); window.dispatchEvent(new CustomEvent(EVT_TEMA, { detail: { tema } })); return; }
     // o tour do laboratório (lib/onboarding/tourSala) anda quando a pessoa pede o 1º estudo
@@ -1056,10 +1068,13 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     const patchAsst = (text: string) =>
       setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, text } : m)));
     // #705: a rede caiu no meio — a pergunta e a resposta vazia saem da conversa e a pergunta volta para a caixa
+    // Envio direto (editar/regenerar) e conversa trocada no meio: a pergunta fica na conversa dela, com o aviso na resposta
+    // (devolver o texto aqui apagaria um rascunho, ou poria a pergunta no chat de outra conversa).
     const devolverPergunta = () => {
+      setFalhouRede(true);
+      if (typeof override === "string" || abaAtivaRef.current !== abaDoTurno) { patchAsst("A internet caiu e a resposta não veio. Tente de novo quando a conexão voltar."); return; }
       setMessages((prev) => prev.filter((m) => m.id !== asstId && m.id !== perguntaId));
       setInput((v) => (v.trim() ? v : prompt));
-      setFalhouRede(true);
     };
     // a MEDIÇÃO desta resposta (lib/chat/temposResposta): servidor × tela
     const crono = cronometrarResposta();

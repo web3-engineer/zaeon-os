@@ -227,11 +227,13 @@ describe("#705 · rotulosDasThreads", () => {
     expect(r.get("c")).toBe("java");
     expect(r.get("a")).not.toBe(r.get("b"));
     expect(r.get("a")).toMatch(/^quero estudar… · \d\d\/\d\d$/);
+    expect(r.get("b")).toMatch(/^Quero estudar… · \d\d\/\d\d$/);
   });
   it("repetidos do mesmo dia ganham também a hora", async () => {
     const { rotulosDasThreads } = await import("./threads");
     const r = rotulosDasThreads([t("a", "teste", Date.UTC(2026, 10, 1, 12, 0)), t("b", "teste", Date.UTC(2026, 10, 1, 13, 30))]);
-    expect(r.get("a")).toMatch(/· \d\d\/\d\d \d\d:\d\d$/);
+    expect(r.get("a")).toMatch(/^teste · \d\d\/\d\d \d\d:\d\d$/);
+    expect(r.get("b")).toMatch(/^teste · \d\d\/\d\d \d\d:\d\d$/);
     expect(r.get("a")).not.toBe(r.get("b"));
   });
 });
