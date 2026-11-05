@@ -13,11 +13,37 @@ export type ConversaServidor = { id: string; titulo: string; parentId?: string; 
 /** O que a conversa guarda além das mensagens: vai junto na gravação, porque é ela que cria a conversa no servidor. */
 const dadosDa = (t?: Thread) => (t ? { titulo: t.titulo, parentId: t.parentId, contexto: t.contexto } : undefined);
 
-/** Grava um turno na conversa dele. A resposta fica 1 ms depois da pergunta para as duas não trocarem de ordem. */
-export function gravarTurno(sala: SalaConversa, thread: Thread | undefined, pergunta: string, resposta: string): void {
+/**
+ * Grava um turno na conversa dele. A resposta fica 1 ms depois da pergunta para as duas não trocarem de ordem.
+ * #705: a pergunta leva se o Modo pesquisa estava ligado — a conversa abre com ele ligado em outro navegador.
+ */
+export function gravarTurno(sala: SalaConversa, thread: Thread | undefined, pergunta: string, resposta: string, extra?: { modoPesquisa?: boolean }): void {
   if (!thread) return;
   const at = Date.now();
-  appendTranscript(sala, thread.id, [{ role: "user", text: pergunta, at }, { role: "assistant", text: resposta, at: at + 1 }], { conversa: dadosDa(thread) });
+  const meta = extra?.modoPesquisa ? { meta: { modoPesquisa: true } } : {};
+  appendTranscript(sala, thread.id, [{ role: "user", text: pergunta, at, ...meta }, { role: "assistant", text: resposta, at: at + 1 }], { conversa: dadosDa(thread) });
+}
+
+/** #705: o Modo pesquisa da conversa que veio do servidor — o da última pergunta */
+export function modoPesquisaDoServidor(ws: readonly TranscriptWire[]): boolean {
+  const ultima = [...ws].reverse().find((w) => w.role === "user");
+  return (ultima?.meta as { modoPesquisa?: unknown } | undefined)?.modoPesquisa === true;
+}
+
+export type Bloco = { studioKind: string; artifactId: string; title?: string };
+/**
+ * #705: o diagrama/aula é gravado como uma mensagem própria logo depois da resposta. Vindo do servidor, ele volta para
+ * DENTRO da resposta de antes (antes aparecia um balão só com o nome). Mensagem com bloco sem resposta antes fica sozinha.
+ */
+export function juntarBlocos(ws: readonly TranscriptWire[]): { w: TranscriptWire; blocos: Bloco[] }[] {
+  const out: { w: TranscriptWire; blocos: Bloco[] }[] = [];
+  for (const w of ws) {
+    const b = blocoDaMensagem(w), ant = out[out.length - 1];
+    const soOBloco = !!b && w.text.trim() === (b.title || b.studioKind);
+    if (b && soOBloco && w.role === "assistant" && ant?.w.role === "assistant") { ant.blocos.push(b); continue; }
+    out.push({ w, blocos: b ? [b] : [] });
+  }
+  return out;
 }
 
 /** Diagrama e aula moram no servidor: a mensagem guarda só o número deles, para continuarem abrindo. */

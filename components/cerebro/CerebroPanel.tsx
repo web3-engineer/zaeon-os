@@ -41,11 +41,13 @@ export default function CerebroPanel({ st, onFechar, onGerar, onAbrirMensagem }:
   // #661: a evidência é obrigatória e é escrita numa caixinha do mapa (antes: a janelinha cinza do navegador, que
   // aceitava OK com ela vazia)
   const [caixa, setCaixa] = useState<MapaNo | null>(null);
+  // #705: o erro do envio fica DENTRO da caixinha, perto do Enviar (antes saía solto por cima do mapa)
+  const [erroCaixa, setErroCaixa] = useState<string | null>(null);
   const [evidencia, setEvidencia] = useState("");
   const [confirmarRefazer, setConfirmarRefazer] = useState(false);
   const aplicar = async (no: MapaNo) => {
     if (!mapa || !evidencia.trim()) return;
-    setAplicando(no.id); setAviso(null);
+    setAplicando(no.id); setAviso(null); setErroCaixa(null);
     try {
       const r = await fetch(`/api/map/${mapa.id}/node/${encodeURIComponent(no.id)}/apply`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ evidencia: evidencia.trim() }) });
       const d = await r.json().catch(() => ({}));
@@ -53,7 +55,7 @@ export default function CerebroPanel({ st, onFechar, onGerar, onAbrirMensagem }:
       setAviso(d.validacao ? "Enviado pra validação do seu professor." : "Aplicado! O percurso avançou.");
       setCaixa(null); setEvidencia("");
       await st.refetch([no.id]);
-    } catch (e: any) { setAviso(mensagemDeErro(e, "sua aplicação não foi enviada")); } finally { setAplicando(null); }
+    } catch (e: any) { setErroCaixa(mensagemDeErro(e, "sua aplicação não foi enviada")); } finally { setAplicando(null); }
   };
   const proximo = useMemo(() => (mapa ? proximoDoBackbone({ nos: mapa.nos, backbone: mapa.backbone, modoValidacao: mapa.modoValidacao }) : null), [mapa]);
   const { regioes, sinapses } = useMemo(() => (mapa ? regioesDoMapa(mapa.nos, mapa.backbone, proximo?.id ?? null, ARQUETIPOS[mapa.tipoTopico].gateHumano, st.recentes, mapa.arestas) : { regioes: [], sinapses: [] }), [mapa, proximo, st.recentes]);
@@ -186,7 +188,7 @@ export default function CerebroPanel({ st, onFechar, onGerar, onAbrirMensagem }:
         {mapa && st.estado === "ativa" && proximo && (
           <div data-cerebro-acao className="absolute right-3 top-3 flex flex-col items-end gap-1">
             <button
-              onClick={() => { setAviso(null); setCaixa(proximo); }}
+              onClick={() => { setAviso(null); setErroCaixa(null); setCaixa(proximo); }}
               disabled={aplicando === proximo.id || proximo.estado === "aplicado"}
               className="rounded-xl border border-amber-300/50 bg-amber-500/15 px-3 py-1.5 text-[12px] font-bold text-amber-100 hover:bg-amber-500/25 disabled:opacity-50"
               title={proximo.estado === "aplicado" ? "Aguardando validação" : `Marcar "${proximo.label}" como aplicado`}
@@ -211,6 +213,7 @@ export default function CerebroPanel({ st, onFechar, onGerar, onAbrirMensagem }:
                   placeholder="Conte o que você fez: um resultado, um link, um trecho de código…"
                   className="w-full resize-y rounded-xl border border-[rgba(120,170,255,.35)] bg-white/[0.04] px-2.5 py-2 text-[12.5px] text-[#dbe8ff] outline-none placeholder:text-[#7f93b8] focus:border-amber-300/60"
                 />
+                {erroCaixa && <p role="alert" className="mt-2 rounded-lg bg-rose-500/15 px-2.5 py-1.5 text-[12px] text-rose-100">{erroCaixa}</p>}
                 <div className="mt-2 flex justify-end gap-2">
                   <button type="button" onClick={() => setCaixa(null)} className="rounded-xl border border-white/20 px-3 py-1.5 text-[12px] font-bold text-[#dbe8ff] hover:bg-white/10">Cancelar</button>
                   <button type="submit" disabled={!evidencia.trim() || aplicando === caixa.id} className="rounded-xl border border-amber-300/50 bg-amber-500/20 px-3 py-1.5 text-[12px] font-bold text-amber-100 hover:bg-amber-500/30 disabled:opacity-40">✓ Enviar</button>

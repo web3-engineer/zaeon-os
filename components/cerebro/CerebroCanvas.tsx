@@ -28,6 +28,9 @@ export function dicaDaEtiqueta(n: Pick<RegiaoVisual, "gavetas" | "gate">): strin
 }
 
 /** #661: a legenda das cores das etapas (a mesma ordem do andamento). */
+/** #705: as etiquetas não entram nas faixas do alto (botões e aviso) nem de baixo (legenda) */
+const TOPO_LIVRE = 74, BASE_LIVRE = 40;
+
 export const LEGENDA: { rotulo: string; cor: string }[] = [
   { rotulo: "A conquistar", cor: "#e88a2e" },
   { rotulo: "Etapa atual", cor: "#ffbe54" },
@@ -235,13 +238,14 @@ export default function CerebroCanvas({ regioes, sinapses = [], onRegiao, destaq
         const puls = cores[i] === "progresso" || cores[i] === "validado" || i === goal ? 1 + 0.28 * Math.sin(t + i) : 1;
         const sz = 16 + 8 * puls; ctx.globalAlpha = 0.98; ctx.drawImage(glowCache(col), q.sx - sz / 2, q.sy - sz / 2, sz, sz);
         const vis = q.z > -0.95, c = chips[i]; if (!c) return;
-        const hw = bw[i]! / 2, x = Math.min(W - hw - 8, Math.max(hw + 8, bx[i]!)), y = Math.min(H - 18, Math.max(18, by[i]!));
+        // #705: fora da faixa dos botões do alto (e do aviso "Aplicado!") e da legenda embaixo
+        const hw = bw[i]! / 2, x = Math.min(W - hw - 8, Math.max(hw + 8, bx[i]!)), y = Math.min(Math.max(TOPO_LIVRE, H - BASE_LIVRE), Math.max(TOPO_LIVRE, by[i]!));
         // linha conectora: do nó até a borda do board mais próxima
         const ax = q.sx < x ? x - hw : x + hw;
         ctx.globalAlpha = vis ? 0.55 : 0.18; ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(q.sx, q.sy); ctx.lineTo(ax, y); ctx.stroke();
         const dica = dicaDaEtiqueta(n); if (c.el.title !== dica) c.el.title = dica;
         c.el.style.opacity = vis ? "1" : "0.35"; c.el.style.color = col; c.el.style.left = x + "px"; c.el.style.top = y + "px";
-        c.el.innerHTML = `<span class="dot"></span>${escapeHtml(n.label)}${n.gavetas ? ` <small style="color:${AZUL}">${n.gavetas} gaveta${n.gavetas > 1 ? "s" : ""}</small>` : ""}${n.gate ? ' <small>chancela</small>' : ""}${i === goal ? ' <span class="goal">◀ próximo</span>' : ""}`;
+        c.el.innerHTML = `<span class="dot"></span>${escapeHtml(n.label)}${n.gavetas ? ` <small style="color:${AZUL}">${n.gavetas} gaveta${n.gavetas > 1 ? "s" : ""}</small>` : ""}${n.gate ? ' <small>chancela</small>' : ""}${i === goal ? ' <span class="goal" title="Próxima etapa" aria-label="próxima etapa">◀</span>' : ""}`;
         c.here.style.left = q.sx + "px"; c.here.style.top = q.sy + "px"; c.here.style.opacity = n.aqui && vis ? "1" : "0";
       });
       ctx.globalAlpha = 1;
@@ -280,8 +284,11 @@ export default function CerebroCanvas({ regioes, sinapses = [], onRegiao, destaq
         {LEGENDA.map((l) => (
           <span key={l.rotulo} className="inline-flex items-center gap-1"><span aria-hidden className="h-2 w-2 rounded-full" style={{ background: l.cor }} />{l.rotulo}</span>
         ))}
+        {/* #705: o ◀ ao lado da etapa seguinte (antes "◀ próximo", que cobria os outros nomes) */}
+        <span className="inline-flex items-center gap-1"><span aria-hidden className="text-[#bfe6ff]">◀</span>Próxima etapa</span>
       </div>
-      {!girou && <div data-dica-girar className="pointer-events-none absolute bottom-2 right-3 rounded-full bg-white/[0.07] px-2.5 py-1 text-[10.5px] font-semibold text-[#9fe0ff]">Arraste para girar</div>}
+      {/* #705: a dica no centro, maior (antes ficava miúda no canto de baixo) */}
+      {!girou && <div data-dica-girar className="pointer-events-none absolute bottom-12 left-1/2 -translate-x-1/2 rounded-full border border-cyan-300/40 bg-[rgba(10,21,38,.85)] px-4 py-2 text-[13px] font-semibold text-[#bfe6ff] shadow-lg">↻ Arraste para girar o mapa</div>}
     </div>
   );
 }

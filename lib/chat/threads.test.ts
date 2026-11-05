@@ -218,3 +218,20 @@ describe("sub-conversas (sub-temas do mesmo nicho)", () => {
     expect(fecharThread(a, t2, filha.id).threads.map((t) => t.id)).toEqual([mae.id]);
   });
 });
+
+describe("#705 · rotulosDasThreads", () => {
+  const t = (id: string, titulo: string, criadaEm: number) => ({ id, titulo, criadaEm, tocadaEm: criadaEm });
+  it("nome único fica igual; repetido ganha a data", async () => {
+    const { rotulosDasThreads } = await import("./threads");
+    const r = rotulosDasThreads([t("a", "quero estudar…", Date.UTC(2026, 10, 1, 15)), t("b", "Quero estudar…", Date.UTC(2026, 10, 3, 15)), t("c", "java", 1)]);
+    expect(r.get("c")).toBe("java");
+    expect(r.get("a")).not.toBe(r.get("b"));
+    expect(r.get("a")).toMatch(/^quero estudar… · \d\d\/\d\d$/);
+  });
+  it("repetidos do mesmo dia ganham também a hora", async () => {
+    const { rotulosDasThreads } = await import("./threads");
+    const r = rotulosDasThreads([t("a", "teste", Date.UTC(2026, 10, 1, 12, 0)), t("b", "teste", Date.UTC(2026, 10, 1, 13, 30))]);
+    expect(r.get("a")).toMatch(/· \d\d\/\d\d \d\d:\d\d$/);
+    expect(r.get("a")).not.toBe(r.get("b"));
+  });
+});

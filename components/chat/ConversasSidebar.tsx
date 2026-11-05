@@ -16,7 +16,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronRight, CornerDownRight, GitBranchPlus, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Search, SquarePen, Trash2,
 } from "lucide-react";
-import { arvoreDeThreads, type Thread } from "@/lib/chat/threads";
+import { arvoreDeThreads, rotulosDasThreads, type Thread } from "@/lib/chat/threads";
 
 const chaveRecolhida = (sala: string) => `zaeon.chat.sidebar.${sala}.recolhida`;
 
@@ -66,6 +66,8 @@ export default function ConversasSidebar({
   // Mães abertas no acordeão. A mãe da conversa ativa abre sozinha (senão a ativa some).
   const [abertas, setAbertas] = useState<Record<string, boolean>>({});
   const arvore = useMemo(() => arvoreDeThreads(threads), [threads]);
+  // #705: títulos repetidos ganham a data na lista
+  const rotulos = useMemo(() => rotulosDasThreads(threads), [threads]);
   useEffect(() => {
     const mae = threads.find((t) => t.id === ativa)?.parentId;
     if (mae) setAbertas((a) => (a[mae] ? a : { ...a, [mae]: true }));
@@ -149,11 +151,11 @@ export default function ConversasSidebar({
           onClick={() => aoTrocar(t.id)}
           onKeyDown={(e) => { if (e.key === "F2") { e.preventDefault(); setEditando(t.id); } }}
           aria-current={atual ? "true" : undefined}
-          title={t.titulo}
+          title={rotulos.get(t.id) ?? t.titulo}
           className="flex-1 min-w-0 flex items-center gap-1.5 py-1.5 text-left rounded-md outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
         >
           {ocupada === t.id && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shrink-0" aria-label="respondendo" />}
-          <span className={`flex-1 min-w-0 truncate text-[13px] ${atual ? "font-semibold" : "font-medium"}`}>{t.titulo}</span>
+          <span className={`flex-1 min-w-0 truncate text-[13px] ${atual ? "font-semibold" : "font-medium"}`}>{rotulos.get(t.id) ?? t.titulo}</span>
         </button>
         {/* Ações no hover (e com foco de teclado); na ativa ficam sempre à mão. */}
         <span className={`shrink-0 flex items-center transition-opacity ${atual ? "opacity-100" : "opacity-0 group-hover/conv:opacity-100 group-focus-within/conv:opacity-100"} [@media(hover:none)]:opacity-100`}>
