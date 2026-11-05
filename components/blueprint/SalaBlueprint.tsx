@@ -68,6 +68,8 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
   const barra = papel ? { background: "#e6dcc2", borderColor: "rgba(107,90,62,.35)", color: PAPEL.tinta, fontFamily: MAO }
     : rosa ? { background: ROSA.barra, borderColor: ROSA.borda, color: ROSA.tinta, fontFamily: REDONDA, backdropFilter: "blur(16px) saturate(150%)", WebkitBackdropFilter: "blur(16px) saturate(150%)" }
     : { background: "rgba(5,22,42,.9)", borderColor: "rgba(127,224,255,.3)" };
+  // #683: o grupo preso à esquerda precisa de fundo OPACO — a cor da barra é meio transparente, e os blueprints apareciam por trás
+  const fundoFixo = papel ? "#e6dcc2" : rosa ? `linear-gradient(${ROSA.barra}, ${ROSA.barra}), ${ROSA.fundo}` : "#05162a";
   const contorno = papel ? "rgba(107,90,62,.45)" : rosa ? "rgba(219,39,119,.4)" : "rgba(127,224,255,.35)";
   const ligado = papel ? { background: PAPEL.tinta, color: "#efe7d3" } : rosa ? { background: "linear-gradient(135deg,#ff4fa3,#e6007e)", color: "#fff" } : { background: "rgba(127,224,255,.2)", color: "#fff" };
   const desligado = { color: papel ? PAPEL.tintaSuave : rosa ? ROSA.tintaSuave : "rgba(186,230,253,.75)" };
@@ -130,7 +132,7 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
         <span className="self-center whitespace-nowrap pr-1 font-mono text-[11px] tracking-[0.2em] text-sky-300">BLUEPRINTS</span>
         {lista === null && !B.erro && <span className="self-center font-mono text-[11px] text-sky-200/50">carregando…</span>}
         {/* #683: a busca e as ações do aberto ficam presas à esquerda: rolar a barra não as esconde */}
-        <div className="sticky left-0 z-[1] -ml-3 flex flex-none items-stretch gap-2 pl-3 pr-2" style={{ background: barra.background }}>
+        <div className="sticky left-0 z-[1] -ml-3 flex flex-none items-stretch gap-2 pl-3 pr-2" style={{ background: fundoFixo }}>
           {/* #683: buscar pelo nome */}
           {lista && (lista.length > 1 || busca) && (
             <div className="flex flex-none items-center self-center">
