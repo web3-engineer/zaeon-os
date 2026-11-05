@@ -116,7 +116,8 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
   return (
     <div className={`flex h-full w-full flex-col ${papel ? "skin-cartolina" : rosa ? "skin-barbie" : ""}`} style={{ background: papel ? PAPEL.fundo : rosa ? ROSA.fundo : AZUL }}>
       {rosa && <style>{CSS_BARBIE}</style>}
-      <div className="relative z-[96] flex flex-none items-stretch gap-2 overflow-x-auto border-b px-3 py-2" style={barra}>
+      {/* #713: no celular a barra quebra em linhas — skin e letra em cima, a busca e as ações, e a lista rolando para o lado */}
+      <div className="relative z-[96] flex flex-none items-stretch gap-2 max-sm:flex-wrap overflow-x-auto max-sm:overflow-x-visible border-b px-3 py-2" style={barra}>
         {/* a SKIN da sala: o papel azul técnico, a cartolina rabiscada ou a barbie de vidro (fica lembrada neste navegador) */}
         <div className="flex flex-none self-center overflow-hidden rounded-full border font-mono text-[11px]" style={{ borderColor: contorno }} role="group" aria-label="Skin da sala">
           {SKINS.map((k) => (
@@ -129,10 +130,10 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
           <span className="px-1 tabular-nums" style={desligado}>{Math.round(letra * 100)}%</span>
           <button type="button" onClick={() => setLetra(LETRAS[Math.min(LETRAS.length - 1, iLetra + 1)]!)} disabled={iLetra >= LETRAS.length - 1} aria-label="Aumentar a letra" className="px-2.5 py-1 text-[13px] font-bold disabled:opacity-35" style={desligado}>A+</button>
         </div>
-        <span className="self-center whitespace-nowrap pr-1 font-mono text-[11px] tracking-[0.2em] text-sky-300">BLUEPRINTS</span>
+        <span className="max-sm:hidden self-center whitespace-nowrap pr-1 font-mono text-[11px] tracking-[0.2em] text-sky-300">BLUEPRINTS</span>
         {lista === null && !B.erro && <span className="self-center font-mono text-[11px] text-sky-200/50">carregando…</span>}
         {/* #683: a busca e as ações do aberto ficam presas à esquerda: rolar a barra não as esconde */}
-        <div className="sticky left-0 z-[1] -ml-3 flex flex-none items-stretch gap-2 pl-3 pr-2" style={{ background: fundoFixo }}>
+        <div className="sticky left-0 z-[1] -ml-3 flex flex-none items-stretch gap-2 pl-3 pr-2 max-sm:static max-sm:ml-0 max-sm:basis-full max-sm:flex-wrap max-sm:pl-0 max-sm:pr-0" style={{ background: fundoFixo }}>
           {/* #683: buscar pelo nome */}
           {lista && (lista.length > 1 || busca) && (
             <div className="flex flex-none items-center self-center">
@@ -157,6 +158,7 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
             </div>
           )}
         </div>
+        <div className="contents max-sm:flex max-sm:basis-full max-sm:items-stretch max-sm:gap-2 max-sm:overflow-x-auto">
         {visiveis && busca.trim() && !visiveis.length && (
           <span role="status" className="self-center whitespace-nowrap font-mono text-[11px]" style={desligado}>
             nenhum blueprint com “{busca.trim()}”{B.temMais ? " nos que já carregaram" : ""}
@@ -179,6 +181,7 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
             {vendoMais ? "carregando…" : falhaMais ? "não carregou — tentar de novo" : "ver mais →"}
           </button>
         )}
+        </div>
       </div>
       {doDono && acao && (
         <div className="relative z-[96] flex flex-none flex-wrap items-center gap-2 border-b px-3 py-2 font-mono text-[11.5px]" style={barra} role={acao === "excluir" ? "alertdialog" : "group"} aria-label={acao === "excluir" ? "Confirmar exclusão" : "Renomear blueprint"}>

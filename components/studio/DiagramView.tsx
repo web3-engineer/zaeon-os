@@ -13,6 +13,19 @@
 import { useEffect, useState } from "react";
 import { Maximize2, Minimize2, ExternalLink, RotateCw } from "lucide-react";
 
+/**
+ * #713: no celular, o archify deixa o diagrama largo com no mínimo 720 px e rolagem para o lado (ficava cortado), e a
+ * barra de baixo (caminho, lente, busca, zoom) rolava escondida. Aqui ele cabe na largura e a barra vai para baixo dele,
+ * inteira (testado no diagrama real em 375 px: o zoom continua funcionando).
+ */
+export const CSS_CELULAR = `<style data-zaeon-celular>@media (max-width:720px){
+.diagram-container[data-wide-diagram="true"]{overflow-x:hidden!important;padding-bottom:.75rem!important}
+.diagram-container[data-wide-diagram="true"]>svg{min-width:0!important;width:100%!important;height:auto!important}
+.diagram-container[data-wide-diagram="true"] .overview-map,.diagram-container[data-wide-diagram="true"] .focus-chip,.diagram-container[data-wide-diagram="true"] .route-probe,.diagram-container[data-wide-diagram="true"] .semantic-lens,.diagram-container[data-wide-diagram="true"] .diagram-guide,.diagram-container[data-wide-diagram="true"] .node-finder{transform:none!important}
+.diagram-container .diagram-nav{position:static!important;transform:none!important;translate:none!important;display:flex!important;flex-wrap:wrap;justify-content:center;width:max-content;max-width:100%!important;margin:.75rem auto 0;overflow:visible!important}
+}</style>`;
+export const comCssCelular = (html: string) => (/<\/head>/i.test(html) ? html.replace(/<\/head>/i, `${CSS_CELULAR}</head>`) : CSS_CELULAR + html);
+
 export default function DiagramView({ artifactId, titulo, cheio = false }: { artifactId: string; titulo?: string; /** ocupa a aba inteira (documento) */ cheio?: boolean }) {
   const [alto, setAlto] = useState(false);
   const [html, setHtml] = useState<string | null>(null);
@@ -53,7 +66,7 @@ export default function DiagramView({ artifactId, titulo, cheio = false }: { art
   return (
     <div className={`relative ${cheio ? "h-full" : ""}`}>
       <iframe
-        srcDoc={html}
+        srcDoc={comCssCelular(html)}
         title={titulo ? `Diagrama: ${titulo}` : "Diagrama interativo"}
         sandbox="allow-scripts allow-downloads allow-popups"
         referrerPolicy="no-referrer"

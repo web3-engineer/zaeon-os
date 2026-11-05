@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, cleanup, fireEvent, waitFor } from "@testing-library/react";
-import DiagramView from "./DiagramView";
+import DiagramView, { CSS_CELULAR, comCssCelular } from "./DiagramView";
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
@@ -25,5 +25,24 @@ describe("DiagramView (#640)", () => {
     const bolha = render(<DiagramView artifactId="a1" />);
     await waitFor(() => expect(bolha.container.querySelector("iframe")).not.toBeNull());
     expect(bolha.getByLabelText("Abrir o diagrama numa aba").parentElement!.className).toContain("top-2");
+  });
+});
+
+describe("DiagramView no celular (#713)", () => {
+  it("o estilo do celular entra no <head> do diagrama, só abaixo de 720 px", () => {
+    const html = comCssCelular("<html><head><title>x</title></head><body></body></html>");
+    expect(html).toContain(`${CSS_CELULAR}</head>`);
+    expect(CSS_CELULAR).toMatch(/@media \(max-width:720px\)/);
+    expect(CSS_CELULAR).toContain("min-width:0");
+    expect(CSS_CELULAR).toContain("position:static");
+  });
+  it("diagrama sem <head>: o estilo vai na frente", () => {
+    expect(comCssCelular("<svg></svg>").startsWith(CSS_CELULAR)).toBe(true);
+  });
+  it("o iframe recebe o diagrama com o estilo do celular", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 200, text: async () => "<html><head></head><body>d</body></html>" }));
+    const r = render(<DiagramView artifactId="a1" />);
+    await waitFor(() => expect(r.container.querySelector("iframe")).not.toBeNull());
+    expect(r.container.querySelector("iframe")!.getAttribute("srcdoc")).toContain("data-zaeon-celular");
   });
 });

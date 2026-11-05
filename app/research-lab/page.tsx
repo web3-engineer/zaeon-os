@@ -822,6 +822,19 @@ export default function HomeworkPage({
   // vira GAVETA (☰ na barra de baixo, fecha ao escolher) e a barra de baixo leva às salas; o conteúdo usa a largura toda.
   const celular = useIsMobile();
   const [gaveta, setGaveta] = useState(false);
+  // #713: celular — escolher um destino na gaveta fecha a gaveta (menus/campos dentro dela, não). Ouvinte do DOM porque a
+  // lista de conversas é um portal: o clique de dentro dele não chegava a um onClickCapture do React.
+  useEffect(() => {
+    const el = navRef.current; if (!el) return;
+    const fechar = (e: MouseEvent) => {
+      if (!window.matchMedia("(max-width: 1023px)").matches) return;
+      const tocado = e.target as HTMLElement;
+      // (renomear/excluir/abrir sub-temas de conversa marcam `data-gaveta-fica`: mexem na lista, não saem dela)
+      if (tocado.closest("button, a") && !tocado.closest("[aria-haspopup], [role=menu], [data-gaveta-fica]")) setTimeout(() => setGaveta(false), 0);
+    };
+    el.addEventListener("click", fechar, true);
+    return () => el.removeEventListener("click", fechar, true);
+  });
   // a aba em que a Sala de Estudos está (a conversa, Meus Estudos ou Estudos) — os subitens dela moram na sidebar
   const [abaEstudos, setAbaEstudos] = useState<AbaEstudos>("meus-estudos");
   useEffect(() => {
@@ -2704,12 +2717,8 @@ export default function HomeworkPage({
           ref={navRef}
           {...(celular ? {} : hoverSidebar)}
           // celular: escolher um destino na gaveta fecha a gaveta (menus/campos dentro dela, não)
-          onClickCapture={celular ? (e) => {
-            const tocado = e.target as HTMLElement;
-            const alvo = tocado.closest("button, a");
-            // (renomear/excluir/abrir sub-temas de conversa marcam `data-gaveta-fica`: mexem na lista, não saem dela)
-            if (alvo && !tocado.closest("[aria-haspopup], [role=menu], [data-gaveta-fica]")) setTimeout(() => setGaveta(false), 0);
-          } : undefined}
+          // (#713: o fechar-ao-escolher mora num ouvinte do DOM — a lista de conversas entra aqui por PORTAL, e o
+          //  clique de dentro de um portal não passava por um onClickCapture do React deste elemento)
           aria-hidden={celular && !gaveta ? true : undefined}
           initial={false}
           animate={{ width: sidebarAberta ? SIDEBAR_ABERTA : SIDEBAR_FECHADA, x: celular && !gaveta ? -(SIDEBAR_ABERTA + 24) : 0 }}

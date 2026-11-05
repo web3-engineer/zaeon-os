@@ -208,7 +208,8 @@ export default function PranchaBlueprint({ id, doc, acoes, onFixar, sobre, skin 
         <button type="button" className="ml-1 rounded-sm border border-sky-300/40 px-2 py-1 hover:bg-white/10" title="Voltar pro foco (a figura e o estudo)" onClick={() => { mexeu.current = true; encaixar(false); }}>◎</button>
         <button type="button" className="rounded-sm border border-sky-300/40 px-2 py-1 hover:bg-white/10" title="Ver a prancha inteira" onClick={() => { mexeu.current = true; encaixar(true); }}>⤢</button>
       </div>
-      <div data-tour="blueprint-legenda" className="pointer-events-none absolute bottom-3 left-3 z-[90] font-mono text-[10.5px] tracking-[0.16em] text-sky-200/55">
+      {/* #713: no celular a legenda sobe, acima dos botões de zoom (antes ficava por cima deles) */}
+      <div data-tour="blueprint-legenda" className="pointer-events-none absolute bottom-3 left-3 max-sm:bottom-14 max-sm:right-3 z-[90] font-mono text-[10.5px] tracking-[0.16em] text-sky-200/55">
         <span style={{ color: corNaSkin(skin, COR.passo) }}>━ PERCURSO</span> &nbsp; <span>━ PRÁTICA</span> &nbsp; <span style={{ color: corNaSkin(skin, COR.critico) }}>━ CRÍTICO (TRAVA A FASE)</span> &nbsp; ⟶ DA ESQUERDA PRA DIREITA
       </div>
     </div>

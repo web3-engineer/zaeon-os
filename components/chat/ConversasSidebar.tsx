@@ -230,8 +230,9 @@ export default function ConversasSidebar({
 
 const BTN_ICONE =
   "w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 dark:text-white/55 hover:text-slate-900 dark:hover:text-white hover:bg-slate-900/5 dark:hover:bg-white/10 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500";
+// #713: em tela de toque, 44 px (o tamanho do dedo); com mouse, como antes
 const BTN_MINI =
-  "w-6 h-6 rounded-md flex items-center justify-center text-slate-500 dark:text-white/55 hover:text-slate-900 dark:hover:text-white hover:bg-slate-900/[0.06] dark:hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500";
+  "w-6 h-6 [@media(hover:none)]:w-11 [@media(hover:none)]:h-11 rounded-md flex items-center justify-center text-slate-500 dark:text-white/55 hover:text-slate-900 dark:hover:text-white hover:bg-slate-900/[0.06] dark:hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500";
 
 function EditorTitulo({ inicial, recuo, onSalvar, onCancelar }: {
   inicial: string;

@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Loader2, Mic, Paperclip, Zap, Compass, Square } from "lucide-react";
+import { ArrowUp, Loader2, Mic, Paperclip, Zap, Compass, Square, SlidersHorizontal } from "lucide-react";
 import useSTT from "@/lib/voice/useSTT";
 import { useAutoFoco } from "@/lib/ui/autofoco";
 
@@ -38,6 +38,13 @@ export type CoworkComposerProps = {
   onExecMode?: (mode: ExecMode) => void;
   /** Slot opcional acima do texto (ex.: chips de estudos em foco). */
   children?: React.ReactNode;
+  /**
+   * #713: as opções da conversa (base, agente, modelo, modo pesquisa, árvore). No celular ficam recolhidas num botão —
+   * abertas, a caixa ocupava um quarto da tela; no computador aparecem sempre, como antes.
+   */
+  opcoes?: React.ReactNode;
+  /** alguma opção fora do normal está ligada (ex.: modo pesquisa): o botão das opções ganha um ponto */
+  opcoesAtivas?: boolean;
 };
 
 export default function CoworkComposer({
@@ -54,7 +61,10 @@ export default function CoworkComposer({
   onFiles,
   onExecMode,
   children,
+  opcoes,
+  opcoesAtivas = false,
 }: CoworkComposerProps) {
+  const [verOpcoes, setVerOpcoes] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -128,6 +138,7 @@ export default function CoworkComposer({
         @keyframes auraBreathe { 0%,100% { opacity:.55; transform: translateY(0) scale(1); } 50% { opacity:1; transform: translateY(-1px) scale(1.06); } }
       `}</style>
       <div className="rounded-[25px] bg-white/85 dark:bg-white/[0.06] backdrop-blur-2xl border border-white/70 dark:border-white/10 px-2.5 py-2">
+        {opcoes && <div id="opcoes-da-conversa" className={verOpcoes ? "" : "hidden sm:block"}>{opcoes}</div>}
         {children}
         {/* flex-wrap + min-w no texto: numa coluna estreita os botões descem pra baixo — a caixa de texto NUNCA
             some (com largura 0 ela nem recebe o foco, e o cursor não pisca) */}
@@ -151,7 +162,7 @@ export default function CoworkComposer({
               tabIndex={busy ? -1 : 0}
               aria-pressed={studioOpen}
               title={studioOpen ? "Fechar o Studio" : idle ? "Sem conversa ativa — abra o Studio ou fale com a Aura" : "Abrir o Studio (gerar artefatos)"}
-              className={`w-10 h-10 rounded-full flex items-center justify-center text-lg leading-none transition-colors
+              className={`w-11 h-11 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-lg leading-none transition-colors
                 ${studioOpen ? "text-white shadow-md" : "text-cyan-600 dark:text-cyan-300 hover:bg-cyan-500/10"}`}
               style={studioOpen ? { background: "linear-gradient(135deg,#2563eb,#06b6d4)" } : undefined}
             >
@@ -186,11 +197,28 @@ export default function CoworkComposer({
 
           {/* Anexar arquivo(s) */}
           <input ref={fileRef} type="file" multiple className="hidden" onChange={onPickFiles} />
+          {/* #713: no celular, as opções da conversa abrem por aqui */}
+          {opcoes && (
+            <button
+              type="button"
+              onClick={() => setVerOpcoes((v) => !v)}
+              aria-expanded={verOpcoes}
+              aria-controls="opcoes-da-conversa"
+              aria-label={verOpcoes ? "Esconder as opções da conversa" : "Mostrar as opções da conversa"}
+              title="Opções da conversa"
+              className={`sm:hidden relative shrink-0 self-end mb-0.5 w-11 h-11 rounded-full flex items-center justify-center transition-colors
+                ${verOpcoes ? "text-cyan-600 dark:text-cyan-300 bg-cyan-500/10" : "text-slate-500 dark:text-white/60 hover:bg-slate-500/10"}`}
+            >
+              <SlidersHorizontal size={17} />
+              {opcoesAtivas && !verOpcoes && <span aria-hidden className="absolute right-2 top-2 h-2 w-2 rounded-full bg-violet-500" />}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
             title="Anexar arquivo"
-            className="ml-auto shrink-0 self-end mb-0.5 w-10 h-10 rounded-full flex items-center justify-center text-slate-400 dark:text-white/50 hover:bg-slate-500/10 hover:text-slate-600 dark:hover:text-white/80 transition-colors"
+            aria-label="Anexar arquivo"
+            className="ml-auto shrink-0 self-end mb-0.5 w-11 h-11 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-slate-400 dark:text-white/50 hover:bg-slate-500/10 hover:text-slate-600 dark:hover:text-white/80 transition-colors"
           >
             <Paperclip size={17} />
           </button>
@@ -203,7 +231,7 @@ export default function CoworkComposer({
             title={execMode === "auto"
               ? "Modo automático — a Aura vai ponta-a-ponta. Clique p/ modo guiado."
               : "Modo guiado — a Aura pausa p/ sua aprovação. Clique p/ modo automático."}
-            className={`shrink-0 self-end mb-0.5 h-10 pl-2.5 pr-3 rounded-full flex items-center gap-1.5 text-[12px] font-tech font-medium transition-colors
+            className={`shrink-0 self-end mb-0.5 h-11 sm:h-10 pl-2.5 pr-3 rounded-full flex items-center gap-1.5 text-[12px] font-tech font-medium transition-colors
               ${execMode === "guiado"
                 ? "text-violet-600 dark:text-violet-300 bg-violet-500/12 hover:bg-violet-500/20"
                 : "text-cyan-600 dark:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20"}`}
@@ -219,7 +247,8 @@ export default function CoworkComposer({
               onClick={onMic}
               title={listening ? "Parar gravação" : "Falar (áudio → texto)"}
               aria-pressed={listening}
-              className={`shrink-0 self-end mb-0.5 w-10 h-10 rounded-full flex items-center justify-center transition-colors
+              aria-label={listening ? "Parar gravação" : "Falar"}
+              className={`shrink-0 self-end mb-0.5 w-11 h-11 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-colors
                 ${listening
                   ? "text-white bg-rose-500 animate-pulse shadow-[0_0_16px_rgba(244,63,94,0.5)]"
                   : "text-slate-400 dark:text-white/50 hover:bg-slate-500/10 hover:text-slate-600 dark:hover:text-white/80"}`}
@@ -234,7 +263,7 @@ export default function CoworkComposer({
               type="button"
               onClick={onStop}
               title="Parar"
-              className="shrink-0 self-end mb-0.5 w-10 h-10 rounded-full flex items-center justify-center text-white transition-transform hover:scale-105 active:scale-95"
+              className="shrink-0 self-end mb-0.5 w-11 h-11 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white transition-transform hover:scale-105 active:scale-95"
               style={{ background: "linear-gradient(135deg,#e11d48,#f43f5e)" }}
             >
               <Square size={14} className="fill-current" />
@@ -246,7 +275,7 @@ export default function CoworkComposer({
               disabled={!value.trim() || busy}
               title="Enviar"
               data-tour="enviar"
-              className="shrink-0 self-end mb-0.5 w-10 h-10 rounded-full flex items-center justify-center text-white transition-transform hover:scale-105 active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
+              className="shrink-0 self-end mb-0.5 w-11 h-11 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white transition-transform hover:scale-105 active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
               style={{ background: "linear-gradient(135deg,#2563eb,#06b6d4)" }}
             >
               {busy ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={17} />}
