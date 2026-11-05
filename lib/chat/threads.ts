@@ -222,3 +222,21 @@ export function carregarMensagens<T = any>(a: Armazem, id: string, e: Escopo = E
 export function salvarMensagens(a: Armazem, id: string, mensagens: readonly unknown[], e: Escopo = ESCOPO_COWORK): void {
   gravar(a, chaveDaThread(id, e), mensagens.slice(-60));
 }
+
+/**
+ * #705: o nome que a lista mostra. Duas conversas com o mesmo título ganham a data (e a hora, se forem do mesmo dia),
+ * para dar para saber qual é qual. O título guardado não muda.
+ */
+export function rotulosDasThreads(threads: readonly Thread[]): Map<string, string> {
+  const chave = (t: Thread) => t.titulo.trim().toLowerCase();
+  const grupos = new Map<string, Thread[]>();
+  for (const t of threads) grupos.set(chave(t), [...(grupos.get(chave(t)) ?? []), t]);
+  const out = new Map<string, string>();
+  const dia = (n: number) => new Date(n).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  const hora = (n: number) => new Date(n).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  for (const g of grupos.values()) {
+    const mesmoDia = new Set(g.map((t) => dia(t.criadaEm))).size < g.length;
+    for (const t of g) out.set(t.id, g.length < 2 ? t.titulo : `${t.titulo} · ${dia(t.criadaEm)}${mesmoDia ? ` ${hora(t.criadaEm)}` : ""}`);
+  }
+  return out;
+}

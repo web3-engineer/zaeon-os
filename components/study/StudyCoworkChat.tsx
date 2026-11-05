@@ -86,7 +86,7 @@ import { revelarPorTempo, safeCut } from "@/lib/ui/typewriter";
 import { cronometrarResposta, EVT_TEMPOS, fmtTempos, verTempos, type TemposResposta } from "@/lib/chat/temposResposta";
 import { hydrateTranscript } from "@/lib/agent/transcriptClient";
 import { useArmazemDaConta } from "@/lib/chat/contaNoNavegador";
-import { apagarNoServidor, blocoDaMensagem, cortarNoServidor, gravarArtefato, gravarTurno, mensagensDoServidor, renomearNoServidor, sincronizarConversas, type MsgGuardada } from "@/lib/chat/conversasServidor";
+import { apagarNoServidor, cortarNoServidor, gravarArtefato, gravarTurno, juntarBlocos, mensagensDoServidor, modoPesquisaDoServidor, renomearNoServidor, sincronizarConversas, type Bloco, type MsgGuardada } from "@/lib/chat/conversasServidor";
 import type { TranscriptWire } from "@/lib/agent/transcriptClient";
 import { ESCOPO_COWORK, type Armazem } from "@/lib/chat/threads";
 import { esperarTurno } from "@/lib/chat/turnoRetomavel";
@@ -166,10 +166,16 @@ function enxugarArtefatos(m: Msg): Msg {
 const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
 
 /** #663: a mensagem que veio do servidor, na forma da tela. Diagrama e aula voltam só com o número e abrem por ele. */
-function msgDoServidor(w: TranscriptWire): Msg {
-  const bloco = blocoDaMensagem(w);
-  return { id: w.id, role: w.role, kind: "text", text: w.text, at: Date.parse(w.at) || Date.now(), ...(bloco ? { studioBlock: { ...bloco, data: null } as unknown as StudioBlockData } : {}) };
+function msgDoServidor({ w, blocos }: { w: TranscriptWire; blocos: Bloco[] }): Msg {
+  const leve = (b: Bloco) => ({ ...b, data: null }) as unknown as StudioBlockData;
+  return {
+    id: w.id, role: w.role, kind: "text", text: w.text, at: Date.parse(w.at) || Date.now(),
+    ...(blocos[0] ? { studioBlock: leve(blocos[0]) } : {}),
+    ...(blocos.length > 1 ? { blocosExtra: blocos.slice(1).map(leve) } : {}),
+  };
 }
+/** #705: as mensagens do servidor na forma da tela, com o diagrama dentro da resposta */
+const mensagensDaTela = (wire: TranscriptWire[]): Msg[] => juntarBlocos(wire).map(msgDoServidor);
 
 /**
  * O que desta mensagem a Aura precisa reler no próximo turno.
@@ -248,6 +254,12 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     if (!CHAT_UNICO) return;
     try { setModoPesquisa(modoPesquisaDa(armazem, abaAtiva)); } catch { setModoPesquisa(false); }
   }, [abaAtiva]);
+  /** #705: a conversa que veio do servidor abre com o Modo pesquisa da última pergunta (guardado também aqui) */
+  const modoDoServidor = (id: string, wire: TranscriptWire[]) => {
+    if (!CHAT_UNICO || !modoPesquisaDoServidor(wire)) return;
+    try { gravarModoPesquisa(armazem, id, true); } catch { /* ignore */ }
+    if (abaAtivaRef.current === id) setModoPesquisa(true);
+  };
   const ligarModoPesquisa = useCallback((v: boolean) => {
     setModoPesquisa(v);
     const aba = abaAtivaRef.current;
@@ -328,6 +340,27 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   // #618: o tour do laboratório leva o contorno pro ➤ quando o campo tem texto
   useAvisoTextoDoChat(input);
   const [sending, setSending] = useState(false);
+  // #705: aviso curto no chat (a conversa pedida não existe mais)
+  const [avisoConversa, setAvisoConversa] = useState<string | null>(null);
+  useEffect(() => { if (!avisoConversa) return; const t = setTimeout(() => setAvisoConversa(null), 7000); return () => clearTimeout(t); }, [avisoConversa]);
+  // #705: sem internet — avisa e não deixa a mensagem se perder
+  const [semRede, setSemRede] = useState(() => typeof navigator !== "undefined" && navigator.onLine === false);
+  const [falhouRede, setFalhouRede] = useState(false);
+  useEffect(() => {
+    const on = () => { setSemRede(false); setFalhouRede(false); };
+    const off = () => setSemRede(true);
+    window.addEventListener("online", on); window.addEventListener("offline", off);
+    return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
+  }, []);
+  // #705: a altura do composer — o ⌄ e o cronômetro ficam acima dele (antes, fixos a 96 px, cobriam a barra de baixo)
+  const composerRef = useRef<HTMLDivElement | null>(null);
+  const [alturaComposer, setAlturaComposer] = useState(96);
+  useEffect(() => {
+    const el = composerRef.current; if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setAlturaComposer(el.offsetHeight));
+    ro.observe(el); setAlturaComposer(el.offsetHeight);
+    return () => ro.disconnect();
+  }, []);
   // a avatar do painel dos documentos escreve no tablet enquanto a resposta sai (components/research/ZaeonDocumentos)
   useEffect(() => { avisarEscrevendo(sending); }, [sending]);
   const [libOpen, setLibOpen] = useState(true);
@@ -524,7 +557,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
       const daConversa = ativa ? await mensagensDoServidor("estudos", ativa) : [];
       // aparelho novo sem nenhuma conversa separada ainda: mostra o histórico antigo, como antes
       const wire = daConversa.length || !deviceNovo || juntas?.length !== 1 ? daConversa : await hydrateTranscript("estudos", null);
-      if (wire.length && abaAtivaRef.current === ativa && !msgsRef.current.length) setMessages(wire.map(msgDoServidor));
+      if (wire.length && abaAtivaRef.current === ativa && !msgsRef.current.length) { setMessages(mensagensDaTela(wire)); if (ativa) modoDoServidor(ativa, wire); }
     })();
   }, []);
 
@@ -680,7 +713,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     const guardadas = carregarMensagens<Msg>(armazem, id);
     setMessages(guardadas);
     // #663: conversa criada em outro aparelho: as mensagens vêm do servidor
-    if (!guardadas.length) void mensagensDoServidor("estudos", id).then((wire) => { if (wire.length && abaAtivaRef.current === id && !msgsRef.current.length) setMessages(wire.map(msgDoServidor)); });
+    if (!guardadas.length) void mensagensDoServidor("estudos", id).then((wire) => { if (wire.length && abaAtivaRef.current === id && !msgsRef.current.length) { setMessages(mensagensDaTela(wire)); modoDoServidor(id, wire); } });
     const t = tocarThread(threadsRef.current, id);
     threadsRef.current = t;
     salvarThreads(armazem, t);
@@ -719,6 +752,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   // Pedido da SIDEBAR principal (conversa/"Nova conversa" clicada estando noutra sala ou sub-aba):
   // atende o bilhete ao montar (com as conversas carregadas) e os eventos dali pra frente.
   const trocarRef = useRef(trocarAba); trocarRef.current = trocarAba;
+  const pedidoDeFora = useRef(0);
   const novaRef = useRef(novaAba); novaRef.current = novaAba;
   useEffect(() => {
     if (!threads.length) return;
@@ -726,6 +760,37 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
       if (!p || p.sala !== "estudos") return;
       if (p.nova) novaRef.current();
       else if (p.id && threadsRef.current.some((t) => t.id === p.id)) trocarRef.current(p.id);
+      else if (p.id) void abrirDeFora(p.id);
+    };
+    /**
+     * #705: a conversa pedida (o "abrir a conversa" do blueprint) não está na lista deste navegador: busca no servidor.
+     * Antes o pedido era ignorado, e o chat ficava na conversa que já estava aberta.
+     */
+    const abrirDeFora = async (id: string) => {
+      // só o pedido MAIS RECENTE vale (dois cliques seguidos: o lento não volta para a conversa errada)
+      const meu = ++pedidoDeFora.current;
+      const valeAinda = () => pedidoDeFora.current === meu;
+      // sem resposta em 15 s, avisa em vez de ficar parado
+      const comPrazo = <T,>(p: Promise<T>) => Promise.race([p, new Promise<never>((_, nao) => setTimeout(() => nao(new Error("prazo")), 15_000))]);
+      try {
+        const juntas = await comPrazo(sincronizarConversas("estudos", armazem, ESCOPO_COWORK, () => threadsRef.current, textoParaHistorico as (m: MsgGuardada) => string));
+        if (!valeAinda()) return;
+        if (juntas?.some((t) => t.id === id)) { threadsRef.current = juntas; setThreads(juntas); trocarRef.current(id); return; }
+        const wire = await comPrazo(mensagensDoServidor("estudos", id));
+        if (!valeAinda()) return;
+        if (wire.length) {
+        const agora = Date.now();
+        const primeira = wire.find((w) => w.role === "user")?.text ?? "";
+        const t: Thread = { id, titulo: tituloAPartirDe(primeira) || TITULO_PADRAO, criadaEm: Date.parse(wire[0]!.at) || agora, tocadaEm: agora };
+        const lista = [t, ...threadsRef.current.filter((x) => x.id !== id)];
+        threadsRef.current = lista; salvarThreads(armazem, lista); setThreads(lista);
+        trocarRef.current(id);
+        return;
+        }
+        setAvisoConversa("A conversa deste blueprint não está mais disponível.");
+      } catch {
+        if (valeAinda()) setAvisoConversa("Não consegui abrir a conversa agora. Tente de novo.");
+      }
     };
     atender(consumirPedido("estudos"));
     const on = (e: Event) => { atender((e as CustomEvent<PedidoConversa>).detail); consumirPedido("estudos"); };
@@ -873,6 +938,8 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     const patchAsst = (text: string) =>
       setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, text } : m)));
     const threadDoTurno = () => threadsRef.current.find((t) => t.id === abaDoTurno);
+    // #705: o Modo pesquisa da conversa do turno vai junto na gravação
+    const modoDoTurno = () => { const id = abaDoTurno ?? abaAtivaRef.current; try { return !!id && modoPesquisaDa(armazem, id); } catch { return false; } };
     const structured = parseStructuredStream(limpo);
     const si = limpo.indexOf(STUDIO_SENTINEL);
     if (structured) {
@@ -903,10 +970,10 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
         }
         // L1 grava o corpo, não a manchete: é esta transcrição que vira memória
         // durável, e memória de manchete não serve pra nada depois.
-        gravarTurno("estudos", threadDoTurno(), prompt, textoParaHistorico({ kind: "structured", answer: a }) || a.nucleo);
+        gravarTurno("estudos", threadDoTurno(), prompt, textoParaHistorico({ kind: "structured", answer: a }) || a.nucleo, { modoPesquisa: modoDoTurno() });
       } else {
         patchAsst(structured.text);
-        gravarTurno("estudos", threadDoTurno(), prompt, structured.text);
+        gravarTurno("estudos", threadDoTurno(), prompt, structured.text, { modoPesquisa: modoDoTurno() });
       }
     } else if (si >= 0) {
       // TOOL-LOOP (Fase 0): ação — não datilografa; encerra e trata.
@@ -923,7 +990,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     } else {
       patchAsst(limpo);
       // L1: grava o turno durável (fire-and-forget), na conversa que pediu.
-      gravarTurno("estudos", threadDoTurno(), prompt, limpo);
+      gravarTurno("estudos", threadDoTurno(), prompt, limpo, { modoPesquisa: modoDoTurno() });
     }
     setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, pendente: false } : m)));
   }, [runStudioAction, focusIds]);
@@ -969,6 +1036,8 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   const send = useCallback(async (override?: string) => {
     const prompt = (typeof override === "string" ? override : input).trim();
     if (!prompt || sending) return;
+    // #705: sem internet a mensagem não sai — fica na caixa de texto até a conexão voltar
+    if (typeof navigator !== "undefined" && navigator.onLine === false) { setSemRede(true); if (typeof override === "string") setInput((v) => (v.trim() ? v : prompt)); return; }
     // o TUTORIAL do tablet (lib/onboarding/tutorialLab): o tema escolhido não vai pro chat — vira a pesquisa na tela roxa
     if (temaNoTutorial()) { const tema = temaDoTexto(prompt); if (!tema) return; setInput(""); window.dispatchEvent(new CustomEvent(EVT_TEMA, { detail: { tema } })); return; }
     // o tour do laboratório (lib/onboarding/tourSala) anda quando a pessoa pede o 1º estudo
@@ -984,11 +1053,11 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
       .map((h) => ({ role: h.role, parts: [{ text: h.texto }] }));
 
     // mensagem da assistente entra vazia e vai sendo preenchida aos poucos (streaming)
-    const asstId = uid();
+    const asstId = uid(), perguntaId = uid();
     const abaDoTurno = abaAtivaRef.current; // o TCC criado neste turno é DESTA conversa, mesmo se o aluno trocar de aba no meio
     setMessages((prev) => [
       ...prev,
-      { id: uid(), role: "user", kind: "text", text: prompt, at: Date.now() },
+      { id: perguntaId, role: "user", kind: "text", text: prompt, at: Date.now() },
       { id: asstId, role: "assistant", kind: "text", text: "", streaming: true, at: Date.now() },
     ]);
     if (typeof override !== "string") setInput("");   // envio direto (sugestão/editar/regenerar) preserva o rascunho
@@ -998,6 +1067,15 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
 
     const patchAsst = (text: string) =>
       setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, text } : m)));
+    // #705: a rede caiu no meio — a pergunta e a resposta vazia saem da conversa e a pergunta volta para a caixa
+    // Envio direto (editar/regenerar) e conversa trocada no meio: a pergunta fica na conversa dela, com o aviso na resposta
+    // (devolver o texto aqui apagaria um rascunho, ou poria a pergunta no chat de outra conversa).
+    const devolverPergunta = () => {
+      setFalhouRede(true);
+      if (typeof override === "string" || abaAtivaRef.current !== abaDoTurno) { patchAsst("A internet caiu e a resposta não veio. Tente de novo quando a conexão voltar."); return; }
+      setMessages((prev) => prev.filter((m) => m.id !== asstId && m.id !== perguntaId));
+      setInput((v) => (v.trim() ? v : prompt));
+    };
     // a MEDIÇÃO desta resposta (lib/chat/temposResposta): servidor × tela
     const crono = cronometrarResposta();
     let turnoVivo: string | null = null;
@@ -1102,7 +1180,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
       crono.recebido(res.ok ? res.limpo.length : 0);
       if (!res.ok) {
         target = ""; ended = true;
-        patchAsst(res.motivo === "rede" ? "Falha de rede ao falar com a Aura." : "Não consegui responder agora. Tente de novo.");
+        if (res.motivo === "rede") devolverPergunta(); else patchAsst("Não consegui responder agora. Tente de novo.");
       } else {
         const limpo = res.limpo;
         // Ação/estrutura não datilografa; texto simples deixa a digitação alcançar o fim.
@@ -1112,7 +1190,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
         aplicarFinal(asstId, limpo, prompt, abaDoTurno);
       }
     } catch {
-      patchAsst("Falha de rede ao falar com a Aura.");
+      devolverPergunta();
     } finally {
       pararDatilografia();
       crono.fechar();
@@ -1336,7 +1414,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
         )}
 
         {tempoUlt && (
-          <div className="pointer-events-none absolute left-3 bottom-24 z-20 rounded-lg bg-black/70 px-2 py-1 font-mono text-[10px] text-cyan-200">⏱ {fmtTempos(tempoUlt)}</div>
+          <div style={{ bottom: alturaComposer + 12 }} className="pointer-events-none absolute left-3 z-20 rounded-lg bg-black/70 px-2 py-1 font-mono text-[10px] text-cyan-200">⏱ {fmtTempos(tempoUlt)}</div>
         )}
 
         {/* Seta "ir para o final" — só aparece quando há conversa e não está no fim */}
@@ -1346,7 +1424,8 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
             onClick={scrollToEnd}
             title="Ir para o final da conversa"
             aria-label="Ir para o final da conversa"
-            className="absolute z-20 left-1/2 -translate-x-1/2 bottom-24 w-9 h-9 rounded-full flex items-center justify-center
+            style={{ bottom: alturaComposer + 12 }}
+            className="absolute z-20 left-1/2 -translate-x-1/2 w-9 h-9 rounded-full flex items-center justify-center
               bg-white/90 dark:bg-white/10 border border-slate-200 dark:border-white/15 shadow-lg backdrop-blur-xl
               text-slate-600 dark:text-white/80 hover:text-cyan-600 dark:hover:text-cyan-300 hover:border-cyan-400/50
               transition-colors"
@@ -1576,7 +1655,12 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
 
         {/* composer estilo Claude — mais largo, esticando até perto da biblioteca
             (mantém o recuo à esquerda; sem teto de largura à direita). */}
-        <div className="px-4 sm:px-6 pb-4 pt-2">
+        <div ref={composerRef} className="px-4 sm:px-6 pb-4 pt-2">
+          {(semRede || falhouRede || avisoConversa) && (
+            <p role={avisoConversa ? "status" : "alert"} className="ml-4 sm:ml-8 lg:ml-14 mb-2 rounded-xl border border-amber-400/40 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-[12.5px] text-amber-800 dark:text-amber-100">
+              {avisoConversa ?? (semRede ? "Sem conexão. Sua mensagem fica na caixa de texto até a internet voltar." : "A internet caiu e a mensagem não foi enviada. Ela voltou para a caixa de texto: envie de novo.")}
+            </p>
+          )}
           <div data-tour="composer-estudos" className="ml-4 sm:ml-8 lg:ml-14 mr-0 sm:mr-2">
             <CoworkComposer
               value={input}

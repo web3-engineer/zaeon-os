@@ -22,7 +22,7 @@ import LivrosCartao from "@/components/chat/LivrosCartao";
 import { researchWorkType } from "@/lib/agent/tools";
 import { hydrateTranscript, type TranscriptWire } from "@/lib/agent/transcriptClient";
 import { useArmazemDaConta } from "@/lib/chat/contaNoNavegador";
-import { apagarNoServidor, blocoDaMensagem, cortarNoServidor, gravarArtefato, gravarTurno, mensagensDoServidor, renomearNoServidor, sincronizarConversas } from "@/lib/chat/conversasServidor";
+import { apagarNoServidor, cortarNoServidor, gravarArtefato, gravarTurno, juntarBlocos, mensagensDoServidor, renomearNoServidor, sincronizarConversas, type Bloco } from "@/lib/chat/conversasServidor";
 import type { Armazem } from "@/lib/chat/threads";
 import StructuredAnswerView from "@/components/study/StructuredAnswerView";
 import type { StructuredAnswer } from "@/lib/agent/contracts";
@@ -73,10 +73,11 @@ const AVISO: Record<string, string> = {
 };
 
 /** #663: a mensagem que veio do servidor, na forma da tela. Diagrama e aula voltam só com o número e abrem por ele. */
-function msgDoServidor(w: TranscriptWire): Msg {
-  const bloco = blocoDaMensagem(w);
-  return { id: w.id, role: w.role, text: w.text, at: Date.parse(w.at) || undefined, ...(bloco ? { blocos: [{ ...bloco, data: null } as unknown as StudioBlockData] } : {}) };
+function msgDoServidor({ w, blocos }: { w: TranscriptWire; blocos: Bloco[] }): Msg {
+  return { id: w.id, role: w.role, text: w.text, at: Date.parse(w.at) || undefined, ...(blocos.length ? { blocos: blocos.map((b) => ({ ...b, data: null }) as unknown as StudioBlockData) } : {}) };
 }
+/** #705: as mensagens do servidor na forma da tela, com o diagrama dentro da resposta */
+const mensagensDaTela = (wire: TranscriptWire[]): Msg[] => juntarBlocos(wire).map(msgDoServidor);
 
 /** O que vai pro localStorage: diagrama/aula são só um id; o resto fica na sessão. */
 const enxugar = (m: Msg): Msg => {
@@ -236,7 +237,7 @@ function ChatDaConta({
       const ativa = abaAtivaRef.current;
       const daConversa = ativa ? await mensagensDoServidor("pesquisa", ativa) : [];
       const wire = daConversa.length ? daConversa : await hydrateTranscript("pesquisa", null);
-      if (wire.length && abaAtivaRef.current === ativa && !msgsRef.current.length) setMessages(wire.map(msgDoServidor));
+      if (wire.length && abaAtivaRef.current === ativa && !msgsRef.current.length) setMessages(mensagensDaTela(wire));
     })();
   }, []);
 
@@ -269,7 +270,7 @@ function ChatDaConta({
     const guardadas = carregarMensagens<Msg>(armazem, id, ESCOPO_PESQUISA);
     setMessages(guardadas);
     // #663: conversa criada em outro aparelho: as mensagens vêm do servidor
-    if (!guardadas.length) void mensagensDoServidor("pesquisa", id).then((wire) => { if (wire.length && abaAtivaRef.current === id && !msgsRef.current.length) setMessages(wire.map(msgDoServidor)); });
+    if (!guardadas.length) void mensagensDoServidor("pesquisa", id).then((wire) => { if (wire.length && abaAtivaRef.current === id && !msgsRef.current.length) setMessages(mensagensDaTela(wire)); });
     focarComposer();
     const t = tocarThread(threadsRef.current, id);
     threadsRef.current = t; salvarThreads(armazem, t, ESCOPO_PESQUISA); setThreads(t);

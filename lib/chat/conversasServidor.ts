@@ -13,11 +13,37 @@ export type ConversaServidor = { id: string; titulo: string; parentId?: string; 
 /** O que a conversa guarda além das mensagens: vai junto na gravação, porque é ela que cria a conversa no servidor. */
 const dadosDa = (t?: Thread) => (t ? { titulo: t.titulo, parentId: t.parentId, contexto: t.contexto } : undefined);
 
-/** Grava um turno na conversa dele. A resposta fica 1 ms depois da pergunta para as duas não trocarem de ordem. */
-export function gravarTurno(sala: SalaConversa, thread: Thread | undefined, pergunta: string, resposta: string): void {
+/**
+ * Grava um turno na conversa dele. A resposta fica 1 ms depois da pergunta para as duas não trocarem de ordem.
+ * #705: a pergunta leva se o Modo pesquisa estava ligado — a conversa abre com ele ligado em outro navegador.
+ */
+export function gravarTurno(sala: SalaConversa, thread: Thread | undefined, pergunta: string, resposta: string, extra?: { modoPesquisa?: boolean }): void {
   if (!thread) return;
   const at = Date.now();
-  appendTranscript(sala, thread.id, [{ role: "user", text: pergunta, at }, { role: "assistant", text: resposta, at: at + 1 }], { conversa: dadosDa(thread) });
+  const meta = extra?.modoPesquisa ? { meta: { modoPesquisa: true } } : {};
+  appendTranscript(sala, thread.id, [{ role: "user", text: pergunta, at, ...meta }, { role: "assistant", text: resposta, at: at + 1 }], { conversa: dadosDa(thread) });
+}
+
+/** #705: o Modo pesquisa da conversa que veio do servidor — o da última pergunta */
+export function modoPesquisaDoServidor(ws: readonly TranscriptWire[]): boolean {
+  const ultima = [...ws].reverse().find((w) => w.role === "user");
+  return (ultima?.meta as { modoPesquisa?: unknown } | undefined)?.modoPesquisa === true;
+}
+
+export type Bloco = { studioKind: string; artifactId: string; title?: string };
+/**
+ * #705: o diagrama/aula é gravado como uma mensagem própria logo depois da resposta. Vindo do servidor, ele volta para
+ * DENTRO da resposta de antes (antes aparecia um balão só com o nome). Mensagem com bloco sem resposta antes fica sozinha.
+ */
+export function juntarBlocos(ws: readonly TranscriptWire[]): { w: TranscriptWire; blocos: Bloco[] }[] {
+  const out: { w: TranscriptWire; blocos: Bloco[] }[] = [];
+  for (const w of ws) {
+    const b = blocoDaMensagem(w), ant = out[out.length - 1];
+    const soOBloco = !!b && w.text.trim() === (b.title || b.studioKind);
+    if (b && soOBloco && w.role === "assistant" && ant?.w.role === "assistant") { ant.blocos.push(b); continue; }
+    out.push({ w, blocos: b ? [b] : [] });
+  }
+  return out;
 }
 
 /** Diagrama e aula moram no servidor: a mensagem guarda só o número deles, para continuarem abrindo. */
@@ -92,8 +118,8 @@ function gravarIds(a: Armazem, k: string, ids: Iterable<string>): void {
   try { a.setItem(k, JSON.stringify([...new Set(ids)])); } catch { /* ignore */ }
 }
 
-export type MsgGuardada = { role?: string; text?: string; at?: number; studioBlock?: Bloco; blocosExtra?: Bloco[]; blocos?: Bloco[] };
-type Bloco = { studioKind?: string; artifactId?: string; title?: string };
+export type MsgGuardada = { role?: string; text?: string; at?: number; studioBlock?: BlocoGuardado; blocosExtra?: BlocoGuardado[]; blocos?: BlocoGuardado[] };
+type BlocoGuardado = { studioKind?: string; artifactId?: string; title?: string };
 
 /** As mensagens guardadas no navegador, na forma do servidor. As sem horário ficam em ordem, a partir da criação da conversa. */
 export function mensagensParaEnviar(guardadas: readonly MsgGuardada[], criadaEm: number, textoDe: (m: MsgGuardada) => string) {
@@ -102,7 +128,7 @@ export function mensagensParaEnviar(guardadas: readonly MsgGuardada[], criadaEm:
   const proximo = (at?: number) => { ultimo = at && at > ultimo ? at : ultimo + 1; return ultimo; };
   for (const m of guardadas) {
     if (m.role !== "user" && m.role !== "assistant") continue;
-    const blocos = [m.studioBlock, ...(m.blocos ?? []), ...(m.blocosExtra ?? [])].filter((b): b is Bloco => !!b?.artifactId && !!b.studioKind);
+    const blocos = [m.studioBlock, ...(m.blocos ?? []), ...(m.blocosExtra ?? [])].filter((b): b is BlocoGuardado => !!b?.artifactId && !!b.studioKind);
     const texto = (textoDe(m) || "").trim();
     if (texto) saida.push({ role: m.role, text: texto, at: proximo(m.at), ...(blocos[0] ? { meta: { bloco: { studioKind: blocos[0].studioKind, artifactId: blocos[0].artifactId, title: blocos[0].title } } } : {}) });
     for (const b of texto ? blocos.slice(1) : blocos) saida.push({ role: m.role, text: b.title || b.studioKind!, at: proximo(m.at), meta: { bloco: { studioKind: b.studioKind, artifactId: b.artifactId, title: b.title } } });

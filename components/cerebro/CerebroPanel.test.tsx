@@ -64,8 +64,10 @@ describe("CerebroPanel (#661)", () => {
     abrirCaixa();
     fireEvent.change(campo(), { target: { value: "fiz" } });
     fireEvent.click(screen.getByRole("button", { name: /Enviar/ }));
-    expect(await screen.findByText(/Sem conexão — sua aplicação não foi enviada/)).toBeTruthy();
+    const erro = await screen.findByText(/Sem conexão — sua aplicação não foi enviada/);
     expect(campo().value).toBe("fiz");
+    // #705: o aviso fica dentro da caixinha, perto do Enviar
+    expect(erro.closest("[data-caixa-apliquei]")).toBeTruthy();
   });
   it("Voltar à conversa fecha o mapa; o andamento mostra a etapa atual", () => {
     const onFechar = vi.fn();

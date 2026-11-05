@@ -89,3 +89,31 @@ describe("apagar e sincronizar", () => {
     expect(j!.map((t) => t.id)).toEqual(["a", "nova", "b"]);
   });
 });
+
+describe("#705 · Modo pesquisa e diagrama vindos do servidor", () => {
+  const w = (role: "user" | "assistant", text: string, meta?: unknown) => ({ id: text, role, text, at: "2026-11-05T00:00:00Z", ...(meta ? { meta } : {}) });
+  it("a pergunta leva o Modo pesquisa; desligado, não leva nada", async () => {
+    const { gravarTurno } = await import("./conversasServidor");
+    gravarTurno("estudos", local("t1", "x"), "oi", "olá", { modoPesquisa: true });
+    expect(corpo().messages[0].meta).toEqual({ modoPesquisa: true });
+    expect(corpo().messages[1].meta).toBeUndefined();
+    gravarTurno("estudos", local("t1", "x"), "oi", "olá");
+    expect(corpo(1).messages[0].meta).toBeUndefined();
+  });
+  it("a conversa abre com o modo da última pergunta", async () => {
+    const { modoPesquisaDoServidor } = await import("./conversasServidor");
+    expect(modoPesquisaDoServidor([w("user", "a", { modoPesquisa: true }), w("assistant", "b")] as any)).toBe(true);
+    expect(modoPesquisaDoServidor([w("user", "a", { modoPesquisa: true }), w("assistant", "b"), w("user", "c")] as any)).toBe(false);
+    expect(modoPesquisaDoServidor([])).toBe(false);
+  });
+  it("o diagrama entra na resposta de antes; sem resposta antes, fica sozinho", async () => {
+    const { juntarBlocos } = await import("./conversasServidor");
+    const bloco = { bloco: { studioKind: "diagram", artifactId: "d1", title: "Fotossíntese" } };
+    const j = juntarBlocos([w("user", "p"), w("assistant", "r"), w("assistant", "Fotossíntese", bloco)] as any);
+    expect(j.map((x) => x.w.text)).toEqual(["p", "r"]);
+    expect(j[1]!.blocos).toEqual([{ studioKind: "diagram", artifactId: "d1", title: "Fotossíntese" }]);
+    const so = juntarBlocos([w("user", "p"), w("assistant", "Fotossíntese", bloco)] as any);
+    expect(so).toHaveLength(2);
+    expect(so[1]!.blocos).toHaveLength(1);
+  });
+});

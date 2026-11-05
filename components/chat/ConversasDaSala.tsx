@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
-import { arvoreDeThreads, listarThreads, ESCOPO_COWORK, ESCOPO_PESQUISA, type Thread } from "@/lib/chat/threads";
+import { arvoreDeThreads, listarThreads, rotulosDasThreads, ESCOPO_COWORK, ESCOPO_PESQUISA, type Thread } from "@/lib/chat/threads";
 import { useArmazemDaConta } from "@/lib/chat/contaNoNavegador";
 import { pedirConversa, type SalaChat } from "@/lib/chat/conversasNav";
 
@@ -27,6 +27,8 @@ export default function ConversasDaSala({ sala, onEntrar, max = 5 }: {
     } catch { /* aba anônima: só o "+ Nova" */ }
   }, [sala, max, area]);
 
+  // #705: títulos repetidos ganham a data
+  const rotulos = rotulosDasThreads(recentes);
   const ir = (p: { id?: string; nova?: boolean }) => { pedirConversa({ sala, ...p }); onEntrar(); };
   return (
     <div className="flex flex-col gap-0.5">
@@ -35,9 +37,9 @@ export default function ConversasDaSala({ sala, onEntrar, max = 5 }: {
         <Plus size={14} /> Nova
       </button>
       {recentes.map((t) => (
-        <button key={t.id} type="button" onClick={() => ir({ id: t.id })} title={t.titulo}
+        <button key={t.id} type="button" onClick={() => ir({ id: t.id })} title={rotulos.get(t.id) ?? t.titulo}
           className="text-left truncate px-2 py-1.5 rounded-lg text-[12.5px] text-slate-600 dark:text-white/60 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-white">
-          {t.titulo}
+          {rotulos.get(t.id) ?? t.titulo}
         </button>
       ))}
     </div>
