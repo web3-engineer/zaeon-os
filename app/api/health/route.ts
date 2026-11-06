@@ -19,6 +19,7 @@
 import { NextResponse } from "next/server";
 import { estadoGateway, provedorAtual } from "@/lib/llm/saude";
 import { estadoLeitor } from "@/lib/leitor/saude";
+import { estadoContabo } from "@/lib/rag/saude";
 import { poolConfigurado } from "@/lib/llm/pool";
 import { resumoMcp } from "@/lib/agent/mcp-boot";
 import { acaoDoModeloLigada, capacidadeHonestaLigada, voltasDeAcao } from "@/lib/agent/aura-harness";
@@ -37,6 +38,7 @@ import {
   allowDoAgente,
   allowEhAberta,
   ondeOAgenteRoda,
+  parseAllow,
   tokenDoAgente,
 } from "@/lib/agent/navegadorPolitica";
 import { caminhoDoChromium } from "@/lib/agent/navegadorServidor";
@@ -53,9 +55,11 @@ export async function GET() {
   // `AGENTIC_MODE` off não há por que bater num container — e o health também é o health-gate do
   // deploy, que não pode pagar ida e volta por um recurso desligado.
   const faltaAgente = agenteFaltando(process.env, !!caminhoDoChromium());
-  const [gateway, leitor, agenteOk] = await Promise.all([
+  const [gateway, leitor, contabo, agenteOk] = await Promise.all([
     estadoGateway().catch(() => "degraded" as const),
     estadoLeitor().catch(() => "degraded" as const),
+    // O SEGUNDO SERVIDOR (lib/rag/saude): as duas pontas dele em paralelo, com prazo de 2 s cada.
+    estadoContabo().catch(() => ({ rag: "degraded" as const, modelos: "degraded" as const })),
     // No caminho LOCAL (sem AGENTE_URL) não há o que sondar: o navegador sobe no próprio processo,
     // e "tem chromium" já foi respondido por `faltaAgente`. Sondar ali daria `alcancavel: false`
     // num ar funcionando — recibo que mente na direção pessimista ainda mente.
@@ -121,6 +125,31 @@ export async function GET() {
           autenticado: !!tokenDoAgente(),
         },
     leitor,
+    /**
+     * O SEGUNDO SERVIDOR. A Zaeon roda em DUAS máquinas e até agora o recibo só falava de uma: tudo
+     * acima (web, gateway, Leitor, agente, MCP) vive na VPS da aplicação. A Contabo hospeda o
+     * pgvector do RAG, o Ollama e os TEI, alcançáveis só pela tailnet — e sem esta linha "a Contabo
+     * caiu" se descobria pelo RAG parando de achar coisa, não por recibo (palavras do dono).
+     * Só as três palavras off/on/degraded: nenhuma URL, nenhum host da tailnet, nenhuma senha.
+     */
+    contabo,
+    /**
+     * OS DOMÍNIOS QUE A AURA PODE LER. Era o ponto cego que levou a pergunta "por que esse endereço
+     * está fora da lista?" a não ter resposta sem ler o código: o recibo dizia `leitor: "on"` e
+     * `agente.aberto`, mas nunca QUAIS domínios — e o default vive no compose, não no workflow, de
+     * modo que nem o log do deploy respondia.
+     *
+     * Domínio público numa allowlist NÃO é segredo (é o oposto: é o que a casa declara que lê), e
+     * por isso esta linha pode existir onde `capacidades` promete "nenhum domínio". A regra que
+     * continua valendo é a de VALORES de credencial, e nenhum sai aqui.
+     *
+     * `agente` vira a palavra "aberto" em vez da lista quando a allowlist é `*`: imprimir `["*"]`
+     * convidaria a ler como "um domínio chamado asterisco".
+     */
+    dominios: {
+      leitor: parseAllow(process.env.LEITOR_ALLOW),
+      agente: allowEhAberta(allowDoAgente()) ? "aberto" : allowDoAgente(),
+    },
     // F5: o estado dos conectores MCP (memoizado do boot; nunca conecta aqui)
     mcp: resumoMcp(),
     capacidades: {

@@ -134,6 +134,14 @@ jobs:
           # arquivo inteiro (startup failure, zero jobs, deploy 567). Como `*` é token de wildcard
           # nas expressões do Actions, o default saiu da EXPRESSÃO e foi pro shell, onde é só texto.
           AGENTE_ALLOW: ${{ vars.AGENTE_ALLOW || '' }}
+          # F10 · O TOKEN do agente navegador. Prometido ao Sourcery na #709 e só agora plumbado.
+          # É SECRET, não Variable, e por isso NÃO entra no laço `for k in` abaixo (aquele laço
+          # IMPRIME o que exporta). Vazio = sem autenticação, que é o modo correto na rede interna
+          # do compose; OBRIGATÓRIO quando AGENTE_URL aponta pra fora, e aí o cliente RECUSA
+          # conectar sem ele (lib/agent/navegadorRemoto). Hoje o agente é container irmão na mesma
+          # VPS (`externo: false`), então o token ainda não é exigido — a cadeia existe pra quando
+          # o serviço sair daqui, que era o pedido original do dono.
+          AGENTE_TOKEN: ${{ secrets.AGENTE_TOKEN }}
           # Workers de fundo (BullMQ). NÃO são features desligadas: sem eles o trabalho roda INLINE no
           # web, que é o que acontece hoje e funciona. Ligá-los no `web` faria o mesmo container
           # enfileirar E consumir — o desenho quer o serviço `worker` dedicado (perfil "worker" do
@@ -257,7 +265,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           command_timeout: 25m
-          envs: GOOGLE_CREDENTIALS_B64,GOOGLE_PROJECT_ID_VALUE,OCTA_CRON_SECRET,UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,HF_TOKEN,RESEND_API_KEY,EMAIL_FROM,HF_RESERVA,DISPAROS_HF,DISPAROS_HF_SEM_HISTORICO,WITH_VOICE,DB_PUSH,DEPLOY_BRANCH,APP_URL,BETA_DOMAIN,ACME_EMAIL,NEXT_PUBLIC_ESCRITORIO_COWORK,NEXT_PUBLIC_AGENTS_ADMIN,NEXT_PUBLIC_AGENT_AVATARS,NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM,NEXT_PUBLIC_MAP_HARNESS,NEXT_PUBLIC_LOUNGE_3D,NEXT_PUBLIC_CYBER_AVATAR_GLB,NEXT_PUBLIC_CYBER_LANDMARKS,NEXT_PUBLIC_AURA_ECONOMY,NEXT_PUBLIC_REALTIME,NEXT_PUBLIC_VOZ,NEXT_PUBLIC_MOBILE_UI,NEXT_PUBLIC_PROJETOS,NEXT_PUBLIC_MENTORES_TAB,NEXT_PUBLIC_OCTA_CODE,NEXT_PUBLIC_OCTA_REA,MAP_HARNESS,ESTUDO_GATEKEEPER,AURA_ECONOMY,NEXT_PUBLIC_CHAT_UNICO,DOC_POR_SECAO,CHAT_UNICO,TCC_CROSS,NEXT_PUBLIC_TCC_CROSS,CHAT_BG,NEXT_PUBLIC_BLUEPRINT_PRATICO,BLUEPRINT_PRATICO,GITHUB_TOKEN_BLUEPRINT,NEXT_PUBLIC_VIDEO_DOC,VIDEO_DOC,NEXT_PUBLIC_REA_BLUEPRINT,REA_BLUEPRINT,HARNESS_CAPACIDADE,HARNESS_ACAO,HARNESS_VOLTAS_ACAO,PRO_PESADAS,HARNESS_ANEXO,HARNESS_SINTESE,HARNESS_GRAFICO,MCP_CONECTORES,PUSHER_APP_ID,PUSHER_SECRET,NEXT_PUBLIC_PUSHER_KEY,NEXT_PUBLIC_PUSHER_CLUSTER,RACIOCINIO_ELABORADO,AGENTIC_MODE,AGENTE_URL,AGENTE_ALLOW,SCHOLAR_WORKER,CANAL_WORKER,CHORES_WORKER,CANAL_QUEUE,LEITOR_PROXY_URL,LEITOR_ALLOW,LEITOR_MAX_BYTES,LEITOR_MAX_BYTES_BIN
+          envs: GOOGLE_CREDENTIALS_B64,GOOGLE_PROJECT_ID_VALUE,OCTA_CRON_SECRET,UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,HF_TOKEN,RESEND_API_KEY,EMAIL_FROM,HF_RESERVA,DISPAROS_HF,DISPAROS_HF_SEM_HISTORICO,WITH_VOICE,DB_PUSH,DEPLOY_BRANCH,APP_URL,BETA_DOMAIN,ACME_EMAIL,NEXT_PUBLIC_ESCRITORIO_COWORK,NEXT_PUBLIC_AGENTS_ADMIN,NEXT_PUBLIC_AGENT_AVATARS,NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM,NEXT_PUBLIC_MAP_HARNESS,NEXT_PUBLIC_LOUNGE_3D,NEXT_PUBLIC_CYBER_AVATAR_GLB,NEXT_PUBLIC_CYBER_LANDMARKS,NEXT_PUBLIC_AURA_ECONOMY,NEXT_PUBLIC_REALTIME,NEXT_PUBLIC_VOZ,NEXT_PUBLIC_MOBILE_UI,NEXT_PUBLIC_PROJETOS,NEXT_PUBLIC_MENTORES_TAB,NEXT_PUBLIC_OCTA_CODE,NEXT_PUBLIC_OCTA_REA,MAP_HARNESS,ESTUDO_GATEKEEPER,AURA_ECONOMY,NEXT_PUBLIC_CHAT_UNICO,DOC_POR_SECAO,CHAT_UNICO,TCC_CROSS,NEXT_PUBLIC_TCC_CROSS,CHAT_BG,NEXT_PUBLIC_BLUEPRINT_PRATICO,BLUEPRINT_PRATICO,GITHUB_TOKEN_BLUEPRINT,NEXT_PUBLIC_VIDEO_DOC,VIDEO_DOC,NEXT_PUBLIC_REA_BLUEPRINT,REA_BLUEPRINT,HARNESS_CAPACIDADE,HARNESS_ACAO,HARNESS_VOLTAS_ACAO,PRO_PESADAS,HARNESS_ANEXO,HARNESS_SINTESE,HARNESS_GRAFICO,MCP_CONECTORES,PUSHER_APP_ID,PUSHER_SECRET,NEXT_PUBLIC_PUSHER_KEY,NEXT_PUBLIC_PUSHER_CLUSTER,RACIOCINIO_ELABORADO,AGENTIC_MODE,AGENTE_URL,AGENTE_ALLOW,SCHOLAR_WORKER,CANAL_WORKER,CHORES_WORKER,CANAL_QUEUE,LEITOR_PROXY_URL,LEITOR_ALLOW,LEITOR_MAX_BYTES,LEITOR_MAX_BYTES_BIN,AGENTE_TOKEN
           script: |
             set -euo pipefail
             cd "${{ secrets.DEPLOY_PATH }}"
@@ -339,6 +347,19 @@ jobs:
               echo "→ Resend: chave dos Secrets gravada no .env.secrets"
             else
               echo "→ Resend: Secret vazio — vale o .env do VPS"
+            fi
+
+            # F10 · o token do agente. MESMO molde do Resend, e pelo mesmo motivo: linha vazia
+            # APAGARIA o que já está no .env e tiraria a autenticação em vez de pô-la. Vai pro
+            # .env.secrets (e não só pra sessão SSH) porque senão um `docker compose up` feito à
+            # mão pelo dono recriaria o container SEM token, em silêncio.
+            if [ -n "${AGENTE_TOKEN:-}" ]; then
+              grep -vE '^AGENTE_TOKEN=' .env.secrets > .env.secrets.tmp || true
+              { cat .env.secrets.tmp; echo "AGENTE_TOKEN=${AGENTE_TOKEN}"; } > .env.secrets
+              rm -f .env.secrets.tmp
+              echo "→ Agente: token dos Secrets gravado no .env.secrets"
+            else
+              echo "→ Agente: sem token (ok enquanto o navegador é container irmão nesta VPS)"
             fi
 
             # PUSHER server-only (APP_ID + SECRET). Mesmo molde do Resend: só grava com valor, porque
@@ -536,6 +557,19 @@ jobs:
                   else console.log('   agente_navegador: on (admin, somente leitura) · onde=' + ag.onde +
                               (ag.onde === 'container' && !ag.alcancavel ? '   ⚠ CONTAINER INALCANÇÁVEL (sobe o serviço)' : ''));
                 }
+                // OS DOMÍNIOS QUE A AURA PODE LER. Sem esta linha, 'por que esse endereço está fora
+                // da lista?' não tinha resposta sem ler o código: o default do Leitor vive no
+                // COMPOSE, não no workflow, então nem o log do deploy respondia. Domínio público
+                // numa allowlist não é segredo — é o oposto, é o que a casa declara que lê.
+                const dm = h.dominios || {};
+                if (dm.leitor) console.log('   dominios(leitor, ' + dm.leitor.length + '): ' + dm.leitor.join(', '));
+                if (dm.agente) console.log('   dominios(agente): ' + (dm.agente === 'aberto' ? 'INTERNET ABERTA' : dm.agente.join(', ')));
+                // O SEGUNDO SERVIDOR (a Contabo, só na tailnet): o pgvector do RAG e o LiteLLM que
+                // serve Ollama/TEI. A Zaeon roda em DUAS máquinas e o recibo só falava de uma — se a
+                // Contabo caísse, isso aparecia como 'o RAG parou de achar coisa', nunca como recibo.
+                const cb = h.contabo;
+                if (cb) console.log('   contabo(2o servidor): rag=' + cb.rag + '  modelos=' + cb.modelos +
+                            (cb.rag === 'degraded' || cb.modelos === 'degraded' ? '   ⚠ tailnet ou serviço fora' : ''));
               }).catch(e=>{ console.log('   (não deu pra ler: ' + e.message + ')'); });
             " || echo "::warning::não deu pra imprimir o estado do harness"
 
@@ -585,4 +619,19 @@ jobs:
 
             echo "→ Limpando imagens órfãs…"
             docker image prune -f
+            # TETO DO CACHE DE BUILD — a linha que faltava, e o apagão de 05/nov/2026 é a prova:
+            # 324 entradas, 205,9 GB de cache do buildx (o disco em 78%, 66 GB livres). O
+            # `image prune -f` acima remove só DANGLING, nunca o cache de build e nunca as tags
+            # antigas, e não havia nenhuma guarda de disco neste workflow — nem um `df`.
+            #
+            # `until=168h` (uma semana) em vez de `-af` sem filtro: o cache recente é o que torna o
+            # PRÓXIMO deploy rápido, e zerar tudo a cada deploy trocaria disco por minutos de build.
+            # `|| true` é obrigatório: o script roda com `set -e` e um buildx sem este filtro
+            # derrubaria o deploy por causa da limpeza, que é o acessório matando o principal.
+            echo "→ Teto do cache de build (>7 dias)…"
+            docker builder prune -af --filter 'until=168h' 2>&1 | tail -2 || true
+            # A GUARDA DE DISCO: um número no log a cada deploy. Não decide nada — só torna
+            # impossível a situação de 05/nov, em que ninguém sabia que havia 205 GB de cache.
+            echo "→ Disco: $(df -h / | awk 'NR==2{print $4" livres de "$2" ("$5" usado)"}')"
+            docker system df 2>/dev/null | awk 'NR==1 || /Build Cache|Images/' || true
             echo "✓ Deploy concluído — Zaeon no ar."

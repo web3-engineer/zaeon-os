@@ -162,10 +162,32 @@ describe("AGENTE_ALLOW — a plumagem voltou, sem literal na expressão (F10c)",
     expect(wf).toMatch(/INTERNET ABERTA/);
   });
 
-  it("AGENTE_TOKEN segue FORA, de propósito: vai na PR seguinte", () => {
-    // Uma coisa por vez. Esta PR existe pra testar UMA hipótese pelo único juiz disponível (o push);
-    // acrescentar o token junto misturaria duas mudanças no mesmo veredito.
-    expect(wf).not.toMatch(/AGENTE_TOKEN/);
+  it("AGENTE_TOKEN vem de SECRET, não de Variable — é credencial, não configuração", () => {
+    // Variable aparece no log do Actions; Secret é mascarado. Trocar um pelo outro aqui seria
+    // publicar o token do navegador em todo deploy.
+    expect(wf).toMatch(/AGENTE_TOKEN:\s*\$\{\{\s*secrets\.AGENTE_TOKEN\s*\}\}/);
+    expect(wf).not.toMatch(/AGENTE_TOKEN:\s*\$\{\{\s*vars\./);
+  });
+
+  it("AGENTE_TOKEN cruza o SSH (lista `envs:`)", () => {
+    const lista = /envs:\s*([^\n]+)/.exec(wf)?.[1] ?? "";
+    expect(lista.split(",").map((x) => x.trim())).toContain("AGENTE_TOKEN");
+  });
+
+  it("A TRAVA: AGENTE_TOKEN NUNCA entra no laço `for k in` — aquele laço IMPRIME o que exporta", () => {
+    // Esta é a asserção de segurança da plumbagem. O laço `for k in … printenv` ecoa VALOR no log
+    // do deploy (é o recibo das flags públicas), então um segredo ali vira segredo publicado. A
+    // regra da casa é "nome de env pode sair, valor não", e é aqui que ela deixa de ser intenção.
+    const laco = /for k in ([^;]+);/.exec(wf)?.[1] ?? "";
+    expect(laco, "o laço `for k in` não foi encontrado — a asserção seria vazia").not.toBe("");
+    expect(laco.split(/\s+/)).not.toContain("AGENTE_TOKEN");
+  });
+
+  it("o token só é GRAVADO com valor: linha vazia apagaria a autenticação em vez de pô-la", () => {
+    // Mesmo defeito que o molde do Resend evita: `echo AGENTE_TOKEN=` num .env.secrets existente
+    // apagaria o token que já estava lá — e o container subiria sem autenticação, em silêncio.
+    expect(wf).toMatch(/if \[ -n "\$\{AGENTE_TOKEN:-\}" \]; then/);
+    expect(wf).toMatch(/grep -vE '\^AGENTE_TOKEN=' \.env\.secrets/);
   });
 
   it("o CÓDIGO de modo aberto continua inteiro — a capacidade nunca saiu", async () => {
