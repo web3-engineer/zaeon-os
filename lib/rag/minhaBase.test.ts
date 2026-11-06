@@ -19,7 +19,7 @@ describe("resumoDoEnvio", () => {
       "- **B** — 5 páginas",
       "",
       "Um arquivo ficou de fora:",
-      "- **C**: não tem texto que dê pra ler (PDF escaneado?)",
+      "- **C**: não tem texto que dê pra ler (PDF escaneado, ou um .docx só de imagem?)",
     ].join("\n"));
   });
   it("só falhas; vazio ⇒ ''", () => {

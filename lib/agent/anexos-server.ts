@@ -7,6 +7,7 @@
  * código dele de propósito: a promessa da flag é que, desligada, o caminho de hoje vale byte a byte.
  */
 import { anexoDe, anexoUtil, type AnexoDoTurno } from "@/lib/agent/anexos";
+import { docxParaMarkdown, ehArquivoDocx } from "@/lib/rag/docx";
 
 type Peça = { mime: string; bytes: Uint8Array };
 
@@ -52,7 +53,23 @@ const paginasDe = (ps?: readonly { page?: number }[]): number =>
  */
 export async function anexosDoFileData(fileData: string, nome = "documento"): Promise<AnexoDoTurno[]> {
   const peca = pecaDoFileData(fileData);
-  if (!peca || !ehPdf(peca.mime)) return [];   // imagem e companhia: caminho legado
+  if (!peca) return [];
+
+  // O WORD VEM ANTES DO PDF, e a ordem não é estilo — é correção. `pecaDoFileData` assume
+  // `application/pdf` quando o cliente manda base64 CRU (sem o prefixo `data:`), que é o que o
+  // fluxo legado faz. Com o PDF testado primeiro, um .docx sem prefixo cairia no ramo errado e
+  // sairia como "PDF ilegível" em vez de ser lido. `ehArquivoDocx` olha MIME **e** extensão, então
+  // o nome do arquivo salva o caso do MIME assumido.
+  if (ehArquivoDocx({ name: nome, type: peca.mime })) {
+    // 0 páginas de propósito: um .docx não tem paginação até ser renderizado, e inventar um número
+    // aqui faria a citação prometer uma página que ninguém pode conferir.
+    const { markdown, avisos } = await docxParaMarkdown(peca.bytes).catch(() => ({ markdown: "", avisos: [] as string[] }));
+    if (avisos.length) console.info(`[anexos] .docx com ${avisos.length} aviso(s) do conversor`);
+    const d = anexoDe({ id: "a1", nome, tipo: peca.mime, texto: markdown, paginas: 0 });
+    return anexoUtil(d) ? [d] : [];
+  }
+
+  if (!ehPdf(peca.mime)) return [];   // imagem e companhia: caminho legado
   const { texto, paginas } = await textoDoPdf(peca.bytes).catch(() => ({ texto: "", paginas: 0 }));
   const a = anexoDe({ id: "a1", nome, tipo: peca.mime, texto, paginas });
   return anexoUtil(a) ? [a] : [];

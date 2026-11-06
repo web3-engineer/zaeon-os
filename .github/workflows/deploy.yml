@@ -134,6 +134,14 @@ jobs:
           # arquivo inteiro (startup failure, zero jobs, deploy 567). Como `*` é token de wildcard
           # nas expressões do Actions, o default saiu da EXPRESSÃO e foi pro shell, onde é só texto.
           AGENTE_ALLOW: ${{ vars.AGENTE_ALLOW || '' }}
+          # F10 · O TOKEN do agente navegador. Prometido ao Sourcery na #709 e só agora plumbado.
+          # É SECRET, não Variable, e por isso NÃO entra no laço `for k in` abaixo (aquele laço
+          # IMPRIME o que exporta). Vazio = sem autenticação, que é o modo correto na rede interna
+          # do compose; OBRIGATÓRIO quando AGENTE_URL aponta pra fora, e aí o cliente RECUSA
+          # conectar sem ele (lib/agent/navegadorRemoto). Hoje o agente é container irmão na mesma
+          # VPS (`externo: false`), então o token ainda não é exigido — a cadeia existe pra quando
+          # o serviço sair daqui, que era o pedido original do dono.
+          AGENTE_TOKEN: ${{ secrets.AGENTE_TOKEN }}
           # Workers de fundo (BullMQ). NÃO são features desligadas: sem eles o trabalho roda INLINE no
           # web, que é o que acontece hoje e funciona. Ligá-los no `web` faria o mesmo container
           # enfileirar E consumir — o desenho quer o serviço `worker` dedicado (perfil "worker" do
@@ -257,7 +265,41 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           command_timeout: 25m
-          envs: GOOGLE_CREDENTIALS_B64,GOOGLE_PROJECT_ID_VALUE,OCTA_CRON_SECRET,UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,HF_TOKEN,RESEND_API_KEY,EMAIL_FROM,HF_RESERVA,DISPAROS_HF,DISPAROS_HF_SEM_HISTORICO,WITH_VOICE,DB_PUSH,DEPLOY_BRANCH,APP_URL,BETA_DOMAIN,ACME_EMAIL,NEXT_PUBLIC_ESCRITORIO_COWORK,NEXT_PUBLIC_AGENTS_ADMIN,NEXT_PUBLIC_AGENT_AVATARS,NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM,NEXT_PUBLIC_MAP_HARNESS,NEXT_PUBLIC_LOUNGE_3D,NEXT_PUBLIC_CYBER_AVATAR_GLB,NEXT_PUBLIC_CYBER_LANDMARKS,NEXT_PUBLIC_AURA_ECONOMY,NEXT_PUBLIC_REALTIME,NEXT_PUBLIC_VOZ,NEXT_PUBLIC_MOBILE_UI,NEXT_PUBLIC_PROJETOS,NEXT_PUBLIC_MENTORES_TAB,NEXT_PUBLIC_OCTA_CODE,NEXT_PUBLIC_OCTA_REA,MAP_HARNESS,ESTUDO_GATEKEEPER,AURA_ECONOMY,NEXT_PUBLIC_CHAT_UNICO,DOC_POR_SECAO,CHAT_UNICO,TCC_CROSS,NEXT_PUBLIC_TCC_CROSS,CHAT_BG,NEXT_PUBLIC_BLUEPRINT_PRATICO,BLUEPRINT_PRATICO,GITHUB_TOKEN_BLUEPRINT,NEXT_PUBLIC_VIDEO_DOC,VIDEO_DOC,NEXT_PUBLIC_REA_BLUEPRINT,REA_BLUEPRINT,HARNESS_CAPACIDADE,HARNESS_ACAO,HARNESS_VOLTAS_ACAO,PRO_PESADAS,HARNESS_ANEXO,HARNESS_SINTESE,HARNESS_GRAFICO,MCP_CONECTORES,PUSHER_APP_ID,PUSHER_SECRET,NEXT_PUBLIC_PUSHER_KEY,NEXT_PUBLIC_PUSHER_CLUSTER,RACIOCINIO_ELABORADO,AGENTIC_MODE,AGENTE_URL,AGENTE_ALLOW,SCHOLAR_WORKER,CANAL_WORKER,CHORES_WORKER,CANAL_QUEUE,LEITOR_PROXY_URL,LEITOR_ALLOW,LEITOR_MAX_BYTES,LEITOR_MAX_BYTES_BIN
+          envs: GOOGLE_CREDENTIALS_B64,GOOGLE_PROJECT_ID_VALUE,OCTA_CRON_SECRET,UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,HF_TOKEN,RESEND_API_KEY,EMAIL_FROM,HF_RESERVA,DISPAROS_HF,DISPAROS_HF_SEM_HISTORICO,WITH_VOICE,DB_PUSH,DEPLOY_BRANCH,APP_URL,BETA_DOMAIN,ACME_EMAIL,NEXT_PUBLIC_ESCRITORIO_COWORK,NEXT_PUBLIC_AGENTS_ADMIN,NEXT_PUBLIC_AGENT_AVATARS,NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM,NEXT_PUBLIC_MAP_HARNESS,NEXT_PUBLIC_LOUNGE_3D,NEXT_PUBLIC_CYBER_AVATAR_GLB,NEXT_PUBLIC_CYBER_LANDMARKS,NEXT_PUBLIC_AURA_ECONOMY,NEXT_PUBLIC_REALTIME,NEXT_PUBLIC_VOZ,NEXT_PUBLIC_MOBILE_UI,NEXT_PUBLIC_PROJETOS,NEXT_PUBLIC_MENTORES_TAB,NEXT_PUBLIC_OCTA_CODE,NEXT_PUBLIC_OCTA_REA,MAP_HARNESS,ESTUDO_GATEKEEPER,AURA_ECONOMY,NEXT_PUBLIC_CHAT_UNICO,DOC_POR_SECAO,CHAT_UNICO,TCC_CROSS,NEXT_PUBLIC_TCC_CROSS,CHAT_BG,NEXT_PUBLIC_BLUEPRINT_PRATICO,BLUEPRINT_PRATICO,GITHUB_TOKEN_BLUEPRINT,NEXT_PUBLIC_VIDEO_DOC,VIDEO_DOC,NEXT_PUBLIC_REA_BLUEPRINT,REA_BLUEPRINT,HARNESS_CAPACIDADE,HARNESS_ACAO,HARNESS_VOLTAS_ACAO,PRO_PESADAS,HARNESS_ANEXO,HARNESS_SINTESE,HARNESS_GRAFICO,MCP_CONECTORES,PUSHER_APP_ID,PUSHER_SECRET,NEXT_PUBLIC_PUSHER_KEY,NEXT_PUBLIC_PUSHER_CLUSTER,RACIOCINIO_ELABORADO,AGENTIC_MODE,AGENTE_URL,AGENTE_ALLOW,SCHOLAR_WORKER,CANAL_WORKER,CHORES_WORKER,CANAL_QUEUE,LEITOR_PROXY_URL,LEITOR_ALLOW,LEITOR_MAX_BYTES,LEITOR_MAX_BYTES_BIN,AGENTE_TOKEN
+          # ─────────────────────────────────────────────────────────────────────────────────────
+          # O TETO DE 21.000 BYTES DO `script:`. Medido com o único juiz que existe (o push), porque
+          # o parser do GitHub não tem substituto local: 20.581 bytes PASSA, 21.010 FALHA — e falhar
+          # aqui não é erro de passo, é o arquivo inteiro recusado (startup failure, zero jobs, o
+          # `name` degradando pro caminho do arquivo). Aconteceu nos deploys 572–578.
+          # Conta BYTES, não caracteres: acento e travessão custam 2, e foi por isso que um
+          # enchimento ASCII de 20.217 caracteres passou enquanto 20.621 com acento falhou.
+          # `lib/agent/agenteCompose.test.ts` afirma o teto; o recibo mora em
+          # infra/recibo-deploy.mjs justamente pra devolver 3.573 bytes a este orçamento.
+          #
+          # AS NOTAS QUE O SCRIPT REFERENCIA (aqui são de graça; lá dentro custam):
+          #
+          # 1 · AGENTE_TOKEN no .env.secrets — molde do Resend: grava SÓ COM VALOR, porque linha
+          #     vazia apagaria o token que já está lá e o container subiria sem autenticação, em
+          #     silêncio. E escreve em `.novo` + `mv` (atômico) em vez de `> .env.secrets`, que
+          #     trunca ao ABRIR: deploy interrompido ali deixaria o arquivo vazio (Sourcery, #716).
+          #     Vai pro .env.secrets e não só pra sessão SSH porque senão um `docker compose up`
+          #     feito à mão recriaria o container SEM token.
+          #
+          # 2 · `dominios` e `contabo` no recibo — "por que esse endereço está fora da lista?" não
+          #     tinha resposta sem ler código: o default do Leitor vive no COMPOSE, não aqui, então
+          #     nem o log respondia. E a Zaeon roda em DUAS máquinas: sem a linha do 2º servidor,
+          #     "a Contabo caiu" aparecia como "o RAG parou de achar coisa", nunca como recibo.
+          #     Domínio de allowlist não é segredo — é o oposto, é o que a casa declara que lê.
+          #
+          # 3 · Teto do cache de build + guarda de disco — o apagão de 05/nov é a prova: 324
+          #     entradas, 205,9 GB de cache do buildx. O `image prune -f` remove só DANGLING, nunca
+          #     o cache nem as tags antigas, e não havia NENHUM `df` neste workflow. `until=168h`
+          #     em vez de `-af` seco porque o cache recente é o que torna o PRÓXIMO deploy rápido;
+          #     `|| true` porque o script roda com `set -e` e a limpeza não pode matar o principal.
+          #
+          # 4 · O recibo saiu pra infra/recibo-deploy.mjs e é invocado por STDIN (`node < arquivo`),
+          #     não por `-e "$(cat …)"`: por stdin não existe questão de aspas nem de expansão.
+          # ─────────────────────────────────────────────────────────────────────────────────────
           script: |
             set -euo pipefail
             cd "${{ secrets.DEPLOY_PATH }}"
@@ -339,6 +381,17 @@ jobs:
               echo "→ Resend: chave dos Secrets gravada no .env.secrets"
             else
               echo "→ Resend: Secret vazio — vale o .env do VPS"
+            fi
+
+            # F10 · token do agente (nota 1 acima do `script:`): molde do Resend, escrita atomica.
+            if [ -n "${AGENTE_TOKEN:-}" ]; then
+              grep -vE '^AGENTE_TOKEN=' .env.secrets > .env.secrets.tmp || true
+              { cat .env.secrets.tmp; echo "AGENTE_TOKEN=${AGENTE_TOKEN}"; } > .env.secrets.novo
+              mv -f .env.secrets.novo .env.secrets
+              rm -f .env.secrets.tmp
+              echo "→ Agente: token dos Secrets gravado no .env.secrets"
+            else
+              echo "→ Agente: sem token (ok enquanto o navegador é container irmão nesta VPS)"
             fi
 
             # PUSHER server-only (APP_ID + SECRET). Mesmo molde do Resend: só grava com valor, porque
@@ -504,40 +557,9 @@ jobs:
             # loop anterior ("→ flag de build X=…") só imprime flag que TEM Variable, então o padrão
             # do código (que é como as F0–F4 ligam) não apareceria em lugar nenhum.
             echo "→ Harness (estado efetivo no container):"
-            $DC exec -T web node -e "
-              fetch('http://localhost:3000/api/health').then(r=>r.json()).then(h=>{
-                const c = h.capacidades || {};
-                const sn = (v) => (v === true ? 'ON' : v === false ? 'off' : String(v));
-                console.log('   cardapio=' + sn(c.cardapio) + '  acao=' + sn(c.acao) + '(' + sn(c.voltas) + ' voltas)' +
-                            '  anexo=' + sn(c.anexo) + '  sintese=' + sn(c.sintese) + '  doc_por_secao=' + sn(c.docPorSecao) + '  grafico=' + sn(c.grafico));
-                console.log('   abrir_url=' + sn(c.abrirUrl) + '  baixar_para_base=' + sn(c.baixarParaBase) +
-                            '  leitor=' + h.leitor + '  mcp=' + h.mcp + '  commit=' + String(h.commit).slice(0,12));
-                // F6 · o teto de voltas é POR TAREFA. A linha de cima mostra o padrão de quem não
-                // passa tarefa (2); sem esta, o recibo diria '2 voltas' enquanto um pedido de
-                // trabalho roda 5 — recibo que mente (§8.4b).
-                const vt = c.voltasPorTarefa || {};
-                if (Object.keys(vt).length) console.log('   voltas por tarefa: ' + Object.keys(vt).map(k => k + '=' + vt[k]).join('  '));
-                const m = h.modelo || {};
-                if (m.flash) console.log('   modelo: flash=' + m.flash + '  pro=' + m.pro +
-                            '  pro_nas_pesadas=' + sn(m.proPesadas) + (m.proSoPlusEPro ? ' (só plus/pro)' : ''));
-                // o tempo real do documento: 'on', ou os NOMES das envs que faltam (nunca os valores)
-                const tr = h.tempoReal;
-                if (tr) console.log('   tempo_real(pusher): ' + (tr === 'on' ? 'on' : 'off — faltam ' + (tr.faltando || []).join(', ')));
-                // O TRILHO DO DOCUMENTO, nas duas metades: servidor (pode nascer) e cliente (aparece).
-                // Divergência aqui é a falha invisível — documento que nasce e ninguém vê.
-                const d = h.documento;
-                if (d) console.log('   documento: servidor=' + sn(d.servidor) + '  cliente=' + sn(d.cliente) +
-                            '  chat_unico=' + sn(d.chatUnico) + (d.servidor !== d.cliente ? '   ⚠ METADES DIVERGENTES' : ''));
-                // F8 · o agente de navegador: 'on' ou os NOMES do que falta. Três condições de
-                // naturezas diferentes (flag, allowlist, binário) — ver a nota no /api/health.
-                const ag = h.agente;
-                if (ag) {
-                  if (ag.faltando) console.log('   agente_navegador: off — faltam ' + ag.faltando.join(', '));
-                  else console.log('   agente_navegador: on (admin, somente leitura) · onde=' + ag.onde +
-                              (ag.onde === 'container' && !ag.alcancavel ? '   ⚠ CONTAINER INALCANÇÁVEL (sobe o serviço)' : ''));
-                }
-              }).catch(e=>{ console.log('   (não deu pra ler: ' + e.message + ')'); });
-            " || echo "::warning::não deu pra imprimir o estado do harness"
+            # o recibo vive em infra/recibo-deploy.mjs (o escalar `script:` tem teto de 21.000
+            # bytes — ver a nota 4 acima). Por STDIN: sem aspas, sem expansão do shell.
+            $DC exec -T web node < infra/recibo-deploy.mjs || echo "::warning::não deu pra imprimir o estado do harness"
 
             # A ENTRADA, não só o veredito. O recibo acima diz o que o MCP VIROU; sem o valor que o
             # container recebeu, `mcp=off` não distingue "ninguém pediu conector" de "pediram e não
@@ -585,4 +607,9 @@ jobs:
 
             echo "→ Limpando imagens órfãs…"
             docker image prune -f
+            # teto do cache + guarda de disco: ver a nota 3 acima do `script:`
+            echo "→ Teto do cache de build (>7 dias)…"
+            docker builder prune -af --filter 'until=168h' 2>&1 | tail -2 || true
+            echo "→ Disco: $(df -h / | awk 'NR==2{print $4" livres de "$2" ("$5" usado)"}')"
+            docker system df 2>/dev/null | awk 'NR==1 || /Build Cache|Images/' || true
             echo "✓ Deploy concluído — Zaeon no ar."

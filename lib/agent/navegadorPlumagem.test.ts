@@ -59,7 +59,10 @@ describe("AGENTIC_MODE — os cinco elos", () => {
   });
 
   it("o recibo do deploy imprime a linha (senão 'está no ar?' não tem resposta sem SSH)", () => {
-    expect(wf).toMatch(/agente_navegador/);
+    // o recibo saiu do `script:` pro arquivo quando o escalar bateu no teto de 21.000 bytes do
+    // GitHub; a asserção seguiu o conteúdo, senão passaria a medir a ausência dele
+    const recibo = readFileSync(path.join(raiz, "infra/recibo-deploy.mjs"), "utf8");
+    expect(recibo).toMatch(/agente_navegador/);
   });
 });
 
@@ -74,5 +77,52 @@ describe("a allowlist do agente já chega no container", () => {
 
   it("o compose traz default acadêmico (o agente não nasce sem lista)", () => {
     expect(semComentario(servico("web"))).toMatch(/LEITOR_ALLOW:\s*"\$\{LEITOR_ALLOW:-[^"]*edu\.br/);
+  });
+});
+
+/**
+ * O SERVIDOR DO NAVEGADOR FALHA FECHADO (achado 🟠 do Sourcery na #716, e correto).
+ *
+ * `autorizado()` devolvia `true` quando não havia token, com o argumento de que a fronteira do
+ * compose era o controle. O argumento vale pra rede interna; o furo é que NADA verificava que
+ * estávamos nela — publicada a porta, ou movido o serviço pra outro servidor sem token, o servidor
+ * aceitava QUALQUER chamador: criar sessão, navegar, ler página. A única defesa era no CLIENTE
+ * (`navegadorRemoto` recusa externo sem token), e o cliente não é quem está exposto.
+ */
+describe("o modo sem token é OPT-IN, não default", () => {
+  const servidor = readFileSync(path.join(raiz, "services/agente-navegador/server.mjs"), "utf8");
+
+  it("sem token, `autorizado` devolve o OPT-IN — nunca `true` direto", () => {
+    // a lápide do furo: a linha antiga era `if (!TOKEN) return true;`
+    expect(servidor).toMatch(/if \(!TOKEN\) return SEM_TOKEN_OK;/);
+    expect(servidor).not.toMatch(/if \(!TOKEN\) return true;/);
+  });
+
+  it("o opt-in vem de uma env PRÓPRIA, e só ela o liga", () => {
+    expect(servidor).toMatch(/const SEM_TOKEN_OK = [^\n]*AGENTE_SEM_TOKEN/);
+  });
+
+  it("quem DECLARA o opt-in é o compose, onde 'estou na rede interna' é verdade por construção", () => {
+    const ag = semComentario(servico("agente-navegador"));
+    expect(ag).toMatch(/AGENTE_SEM_TOKEN:\s*"1"/);
+    // e o serviço só EXPÕE a porta na rede do compose; um `ports:` aqui invalidaria a premissa
+    expect(ag).toMatch(/expose:/);
+    expect(ag).not.toMatch(/^\s*ports:/m);
+  });
+
+  it("o `web` NÃO declara o opt-in — ele é cliente, não o serviço exposto", () => {
+    expect(semComentario(servico("web"))).not.toMatch(/AGENTE_SEM_TOKEN/);
+  });
+
+  it("a queda pro LEITOR_ALLOW é pela LISTA VAZIA, não pela env ausente", () => {
+    // Com `??`, um AGENTE_ALLOW só de espaços (que o compose não substitui, porque `:-` só troca
+    // vazio/ausente) deixava o container negando tudo enquanto o recibo do web listava os domínios
+    // do Leitor. Recibo e realidade discordando em silêncio.
+    expect(servidor).toMatch(/ALLOW_PROPRIA\.length \? ALLOW_PROPRIA : parseAllow\(process\.env\.LEITOR_ALLOW\)/);
+    expect(servidor).not.toMatch(/parseAllow\(process\.env\.AGENTE_ALLOW \?\? process\.env\.LEITOR_ALLOW\)/);
+  });
+
+  it("o /health publica o modo, pra 'sem autenticação' não ser invisível de fora", () => {
+    expect(servidor).toMatch(/semTokenPermitido: SEM_TOKEN_OK/);
   });
 });

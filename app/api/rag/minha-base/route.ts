@@ -14,6 +14,7 @@ import { NextResponse } from "next/server";
 import { resolveUserId } from "@/lib/agent/transcript";
 import { MAX_BYTES, ingerirPdf, ingerirTexto } from "@/lib/rag/ingerir";
 import { blocosDeTexto, ehArquivoTexto, textoDeBytes, tituloDeTexto } from "@/lib/rag/textoArquivo";
+import { docxParaMarkdown, ehArquivoDocx, ehDocAntigo } from "@/lib/rag/docx";
 import { ehBancoIndisponivel, ragPg } from "@/lib/rag/pg";
 import { buscarPorId, contarEnviadosPessoais, listarDocumentos, removerPermissao } from "@/lib/rag/store";
 import { extractPdfStructured } from "@/lib/scholar/pdf";
@@ -62,7 +63,11 @@ function ingerirArquivoDeTexto(db: ReturnType<typeof ragPg>, bytes: Uint8Array, 
   if (bytes.byteLength > MAX_BYTES) {
     return Promise.resolve({ documentoId: "", status: "erro" as const, erro: "grande_demais" as const, trechos: 0, paginas: 0 });
   }
-  const conteudo = textoDeBytes(bytes);
+  return ingerirConteudo(db, textoDeBytes(bytes), nomeArquivo, userId);
+}
+
+/** O trecho comum: texto já extraído → título, blocos e a mesma ingestão do PDF. */
+function ingerirConteudo(db: ReturnType<typeof ragPg>, conteudo: string, nomeArquivo: string, userId: string) {
   const titulo = tituloDeTexto(nomeArquivo, conteudo);
   return ingerirTexto(
     { db, enfileirar: enfileirarIndexacao },
@@ -71,6 +76,29 @@ function ingerirArquivoDeTexto(db: ReturnType<typeof ragPg>, bytes: Uint8Array, 
       origem: "chat", criadoPor: userId, permissao: { donoId: userId },
     },
   );
+}
+
+/**
+ * Word (.docx) pelo MESMO caminho — e o que faz isso valer a pena é a ESTRUTURA: o mammoth devolve
+ * `<h1>/<h2>`, nosso conversor os transforma em `#`/`##`, e `blocosDeTexto` os lê como heading com
+ * nível. Sem isso, "## Estado da Arte" viraria corpo de texto e o caminho do trecho ("título ›
+ * capítulo › seção") — que é o que faz a citação ser rastreável — se perderia.
+ *
+ * O TETO VEM ANTES DE CONVERTER, pelo mesmo motivo do caminho de texto: um .docx é um ZIP, e
+ * descompactar antes de checar o tamanho é alocar o que a gente ia recusar.
+ */
+async function ingerirArquivoDocx(db: ReturnType<typeof ragPg>, bytes: Uint8Array, nomeArquivo: string, userId: string) {
+  if (bytes.byteLength > MAX_BYTES) {
+    return { documentoId: "", status: "erro" as const, erro: "grande_demais" as const, trechos: 0, paginas: 0 };
+  }
+  const { markdown, avisos } = await docxParaMarkdown(bytes);
+  // avisos do mammoth (estilo não reconhecido etc.) são LOG, nunca prompt: o aluno não precisa deles
+  if (avisos.length) console.info(`[rag/minha-base] .docx com ${avisos.length} aviso(s) do conversor`);
+  if (!markdown) {
+    // ZIP válido e sem texto aproveitável: um .docx que é só imagem. Dizer isso é melhor que "leitura falhou".
+    return { documentoId: "", status: "erro" as const, erro: "sem_texto" as const, trechos: 0, paginas: 0 };
+  }
+  return ingerirConteudo(db, markdown, nomeArquivo, userId);
 }
 
 export async function POST(req: Request) {
@@ -85,7 +113,14 @@ export async function POST(req: Request) {
   const out: Array<Record<string, unknown>> = [];
   for (const f of arquivos) {
     const texto = ehArquivoTexto(f);
-    if (!ehPdf(f) && !texto) { out.push({ nomeArquivo: f.name, documentoId: "", status: "erro", erro: "nao_suportado", trechos: 0, paginas: 0 }); continue; }
+    const docx = ehArquivoDocx(f);
+    if (!ehPdf(f) && !texto && !docx) {
+      // O `.doc` BINÁRIO antigo (pré-2007) ganha código próprio: o mammoth não o abre, mas a recusa
+      // TEM conserto ("salve como .docx"), e um `nao_suportado` genérico esconderia isso da pessoa.
+      const erro = ehDocAntigo(f) ? "doc_antigo" : "nao_suportado";
+      out.push({ nomeArquivo: f.name, documentoId: "", status: "erro", erro, trechos: 0, paginas: 0 });
+      continue;
+    }
     try {
       const db = ragPg();
       // Conta a cada arquivo: o lote (ou outra aba) pode ter enchido a base no meio do caminho.
@@ -96,6 +131,8 @@ export async function POST(req: Request) {
       const bytes = new Uint8Array(await f.arrayBuffer());
       const r = texto
         ? await ingerirArquivoDeTexto(db, bytes, f.name, userId)
+        : docx
+        ? await ingerirArquivoDocx(db, bytes, f.name, userId)
         : await ingerirPdf(
             { db, extrair: extractPdfStructured, enfileirar: enfileirarIndexacao },
             { bytes, nomeArquivo: f.name, origem: "chat", criadoPor: userId, permissao: { donoId: userId } },

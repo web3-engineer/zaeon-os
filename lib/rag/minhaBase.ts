@@ -13,8 +13,10 @@ export const ENVIOS_EM_PARALELO = 2;
 export type ErroEnvio =
   | "grande_demais" | "sem_texto" | "leitura_falhou" | "indexacao_falhou" | "banco_indisponivel"
   // `nao_pdf`: a base da TURMA (admin) ainda aceita só PDF. `nao_suportado`: a base PESSOAL aceita
-  // PDF e texto (.txt/.md), então "não é PDF" deixou de ser o motivo certo lá.
-  | "nao_pdf" | "nao_suportado" | "limite_base" | "nao_logado" | "rede";
+  // PDF, texto (.txt/.md) e Word (.docx), então "não é PDF" deixou de ser o motivo certo lá.
+  // `doc_antigo`: código PRÓPRIO pro .doc binário (pré-2007), e não é zelo — é a diferença entre
+  // uma recusa COM conserto ("salve como .docx") e um "formato que eu não leio" que não ajuda.
+  | "nao_pdf" | "nao_suportado" | "doc_antigo" | "limite_base" | "nao_logado" | "rede";
 
 /** Resultado por arquivo que a rota devolve (o de `ingerirPdf` + o nome). */
 export type ResultadoEnvio = {
@@ -30,9 +32,10 @@ export type ResultadoEnvio = {
 export function motivoDoErro(erro: ErroEnvio | undefined): string {
   switch (erro) {
     case "grande_demais": return "passa de 25 MB";
-    case "sem_texto": return "não tem texto que dê pra ler (PDF escaneado?)";
+    case "sem_texto": return "não tem texto que dê pra ler (PDF escaneado, ou um .docx só de imagem?)";
     case "nao_pdf": return "não é PDF";
-    case "nao_suportado": return "formato que eu não leio — manda PDF, .txt ou .md";
+    case "nao_suportado": return "formato que eu não leio — manda PDF, Word (.docx), .txt ou .md";
+    case "doc_antigo": return "é .doc, o Word antigo, que eu não abro — no Word use Arquivo › Salvar como › .docx e manda de novo";
     case "limite_base": return `sua base chegou a ${LIMITE_PESSOAL} documentos — remova algum em Minha base`;
     case "banco_indisponivel": return "a base está fora do ar agora — tente de novo em instantes";
     case "nao_logado": return "entre na sua conta pra guardar na base";

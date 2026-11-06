@@ -13,6 +13,13 @@ const raiz = path.resolve(__dirname, "../..");
 const compose = readFileSync(path.join(raiz, "docker-compose.beta.yml"), "utf8");
 const wf = readFileSync(path.join(raiz, ".github/workflows/deploy.yml"), "utf8");
 const dockerfile = readFileSync(path.join(raiz, "services/agente-navegador/Dockerfile"), "utf8");
+/**
+ * O RECIBO mora num arquivo desde que o escalar `script:` bateu no teto de 21.000 bytes do GitHub
+ * (ver o teste do teto, abaixo): o blob de JS custava 3.573 bytes de um orçamento que já estava em
+ * 19.881. As asserções sobre o que o recibo IMPRIME seguiram o conteúdo pra cá — afirmar contra o
+ * `deploy.yml` passaria a medir a ausência.
+ */
+const recibo = readFileSync(path.join(raiz, "infra/recibo-deploy.mjs"), "utf8");
 
 function servico(nome: string): string {
   const linhas = compose.split("\n");
@@ -41,8 +48,16 @@ describe("docker-compose — agente-navegador", () => {
     // "nada aqui dá acesso a OUTRA coisa": o token dá acesso AO PRÓPRIO NAVEGADOR, então quem já
     // comprometeu este container não ganha nada novo com ele. Vertex, Mongo, Pusher, NextAuth e
     // companhia seguem proibidos — e é por isso que a exceção é por NOME e não por relaxar a regex.
-    const semExcecao = ativo.replace(/^\s*AGENTE_TOKEN:.*$/gm, "");
+    // `AGENTE_SEM_TOKEN` é a SEGUNDA exceção nomeada (#716): não é credencial, é um MODO — o
+    // opt-in explícito ao "sem autenticação" que fez o servidor passar a falhar FECHADO. Entra
+    // nesta lista pelo NOME, como o token, e a asserção abaixo prova que o valor dela é literal.
+    const semExcecao = ativo.replace(/^\s*AGENTE_(SEM_)?TOKEN:.*$/gm, "");
     expect(semExcecao).not.toMatch(/KEY|SECRET|TOKEN|CREDENTIALS|MONGODB|DATABASE|REDIS|PUSHER|GOOGLE|NEXTAUTH/i);
+  });
+
+  it("`AGENTE_SEM_TOKEN` é literal \"1\" — um modo, nunca uma interpolação que traga outra coisa", () => {
+    const linha = /^\s*AGENTE_SEM_TOKEN:\s*(.+)$/m.exec(ativo)?.[1] ?? "";
+    expect(linha.trim()).toBe('"1"');
   });
 
   it("o token, quando existe, vem de interpolação — nunca literal no arquivo", () => {
@@ -141,6 +156,50 @@ describe("AGENTE_ALLOW — a plumagem voltou, sem literal na expressão (F10c)",
     expect(expressoes.filter((e) => e.includes("*"))).toEqual([]);
   });
 
+  /**
+   * O TETO DE 21.000 BYTES DO ESCALAR `script:` — o portão que faltava, e que teria pegado os
+   * startup failures 572–578 antes do push.
+   *
+   * MEDIDO, não suposto, com o único juiz que existe (o push: o parser do GitHub não tem
+   * substituto local). Variantes de tamanho crescente foram empurradas em branches próprias e o
+   * veredito lido pela existência, ou não, de um run que falha na partida:
+   *
+   *     19.881 bytes → válido      (o main que implanta)
+   *     20.181 → válido · 20.331 → válido · 20.581 → VÁLIDO
+   *     21.010 → FALHA · 21.011 → FALHA · 21.035 → FALHA · 23.294 → FALHA
+   *
+   * Ultrapassar não é erro de passo: é o ARQUIVO INTEIRO recusado — zero jobs, e o `name` do run
+   * degradando pro caminho do arquivo, que é a assinatura pela qual se reconhece isso de fora.
+   *
+   * CONTA BYTES, NÃO CARACTERES, e esta distinção é a razão de eu ter demorado a achar: um
+   * enchimento ASCII de 20.217 CARACTERES passou, enquanto 20.621 caracteres COM ACENTO falharam.
+   * Em UTF-8 cada acento e cada travessão do português custam 2 bytes — e o estilo da casa, de
+   * comentar densamente o porquê, é justamente o que consome este orçamento quando mora DENTRO do
+   * script. Comentário no nível do YAML (fora do bloco) é de graça: é pra lá que a explicação vai.
+   */
+  it("o escalar `script:` cabe no teto de 21.000 bytes do GitHub, com margem", () => {
+    const linhas = wf.split("\n");
+    const i = linhas.findIndex((l) => /^\s*script: \|\s*$/.test(l));
+    expect(i, "não achei o `script: |` — a asserção seria vazia").toBeGreaterThan(-1);
+    const corpo: string[] = [];
+    for (const l of linhas.slice(i + 1)) {
+      if (l.trim() === "") { corpo.push(""); continue; }
+      if (!l.startsWith("            ")) break;        // 12 espaços = o recuo do bloco
+      corpo.push(l.slice(12));
+    }
+    // GUARDA CONTRA EXTRAÇÃO VAZIA OU TRUNCADA: sem isto, um bug no laço acima faria o teste passar
+    // medindo quase nada — portão verde e deploy quebrado, o pior resultado possível.
+    const texto = corpo.join("\n");
+    expect(texto, "extração falhou no começo do script").toContain("set -euo pipefail");
+    expect(texto, "extração truncou antes do fim do script").toContain("Deploy concluído");
+    expect(corpo.length, "o script tem centenas de linhas; isto pegou poucas").toBeGreaterThan(200);
+
+    const bytes = Buffer.byteLength(texto, "utf8");
+    const TETO = 21_000;      // 20.581 passa, 21.010 falha — medido por push
+    const MARGEM = 1_500;     // pra uma linha nova não descobrir o teto em produção
+    expect(bytes, `script com ${bytes} bytes; teto ${TETO}`).toBeLessThan(TETO - MARGEM);
+  });
+
   it("nenhuma FORMA de expressão nova em relação ao arquivo que implanta", () => {
     // O que tornou a F10c segura não foi cuidado, foi não inventar forma: toda `${{ }}` daqui já
     // existia no deploy.yml que implantou nos deploys 561/562/565/568.
@@ -162,10 +221,32 @@ describe("AGENTE_ALLOW — a plumagem voltou, sem literal na expressão (F10c)",
     expect(wf).toMatch(/INTERNET ABERTA/);
   });
 
-  it("AGENTE_TOKEN segue FORA, de propósito: vai na PR seguinte", () => {
-    // Uma coisa por vez. Esta PR existe pra testar UMA hipótese pelo único juiz disponível (o push);
-    // acrescentar o token junto misturaria duas mudanças no mesmo veredito.
-    expect(wf).not.toMatch(/AGENTE_TOKEN/);
+  it("AGENTE_TOKEN vem de SECRET, não de Variable — é credencial, não configuração", () => {
+    // Variable aparece no log do Actions; Secret é mascarado. Trocar um pelo outro aqui seria
+    // publicar o token do navegador em todo deploy.
+    expect(wf).toMatch(/AGENTE_TOKEN:\s*\$\{\{\s*secrets\.AGENTE_TOKEN\s*\}\}/);
+    expect(wf).not.toMatch(/AGENTE_TOKEN:\s*\$\{\{\s*vars\./);
+  });
+
+  it("AGENTE_TOKEN cruza o SSH (lista `envs:`)", () => {
+    const lista = /envs:\s*([^\n]+)/.exec(wf)?.[1] ?? "";
+    expect(lista.split(",").map((x) => x.trim())).toContain("AGENTE_TOKEN");
+  });
+
+  it("A TRAVA: AGENTE_TOKEN NUNCA entra no laço `for k in` — aquele laço IMPRIME o que exporta", () => {
+    // Esta é a asserção de segurança da plumbagem. O laço `for k in … printenv` ecoa VALOR no log
+    // do deploy (é o recibo das flags públicas), então um segredo ali vira segredo publicado. A
+    // regra da casa é "nome de env pode sair, valor não", e é aqui que ela deixa de ser intenção.
+    const laco = /for k in ([^;]+);/.exec(wf)?.[1] ?? "";
+    expect(laco, "o laço `for k in` não foi encontrado — a asserção seria vazia").not.toBe("");
+    expect(laco.split(/\s+/)).not.toContain("AGENTE_TOKEN");
+  });
+
+  it("o token só é GRAVADO com valor: linha vazia apagaria a autenticação em vez de pô-la", () => {
+    // Mesmo defeito que o molde do Resend evita: `echo AGENTE_TOKEN=` num .env.secrets existente
+    // apagaria o token que já estava lá — e o container subiria sem autenticação, em silêncio.
+    expect(wf).toMatch(/if \[ -n "\$\{AGENTE_TOKEN:-\}" \]; then/);
+    expect(wf).toMatch(/grep -vE '\^AGENTE_TOKEN=' \.env\.secrets/);
   });
 
   it("o CÓDIGO de modo aberto continua inteiro — a capacidade nunca saiu", async () => {
@@ -200,7 +281,20 @@ describe("o serviço é LIGADO pelo deploy — não só declarado", () => {
   });
 
   it("o recibo diz ONDE o navegador roda e acusa container inalcançável", () => {
-    expect(wf).toMatch(/onde=/);
-    expect(wf).toMatch(/CONTAINER INALCANÇÁVEL/);
+    expect(recibo).toMatch(/onde=/);
+    expect(recibo).toMatch(/CONTAINER INALCANÇÁVEL/);
+  });
+
+  it("o deploy INVOCA o recibo — mover o arquivo não pode órfã-lo em silêncio", () => {
+    // Sem esta asserção, apagar a linha de invocação faria o recibo parar de sair e NENHUM teste
+    // notaria: o arquivo continuaria existindo, bonito e nunca executado. Por STDIN de propósito
+    // (`node < arquivo`): não existe questão de aspas nem de expansão do shell.
+    expect(wf).toMatch(/exec -T web node < infra\/recibo-deploy\.mjs/);
+  });
+
+  it("o recibo não imprime VALOR de segredo — só nomes, booleanos e domínios", () => {
+    // domínio de allowlist é público por definição (é o que a casa declara que lê); credencial não.
+    expect(recibo).not.toMatch(/process\.env/);
+    expect(recibo).not.toMatch(/SECRET|_KEY|TOKEN|CREDENTIALS/i);
   });
 });

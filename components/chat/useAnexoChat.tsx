@@ -29,6 +29,7 @@ import { arquivosDasEntradas, entradasDoDrop } from "@/lib/chat/arquivosSoltos";
 import { enviarLote, type EstadoEnvio } from "@/lib/chat/enviarBase";
 import { motivoDoErro, resumoDoEnvio, type ErroEnvio } from "@/lib/rag/minhaBase";
 import { ehArquivoTexto, semExtensao } from "@/lib/rag/textoArquivo";
+import { ehArquivoDocx, ehDocAntigo, EXTENSOES_DOCX } from "@/lib/rag/docx";
 import type { ItemLote } from "@/lib/chat/loteAnexos";
 
 export type AnexoChat = { id: string; nome: string; dataUrl: string };
@@ -42,9 +43,22 @@ export const EVT_ANEXAR = "zaeon:chat:anexar";
 const ehPdf = (f: File) => f.type === "application/pdf" || /\.pdf$/i.test(f.name);
 /** .txt/.md — o MESMO critério do servidor (lib/rag/textoArquivo), pra cliente e rota não divergirem. */
 const ehTexto = (f: File) => ehArquivoTexto({ name: f.name, type: f.type });
-const ehSuportado = (f: File) => ehPdf(f) || ehTexto(f);
+/** Word (.docx/.docm) — o MESMO critério do servidor (lib/rag/docx), pelo mesmo motivo do texto. */
+const ehDocx = (f: File) => ehArquivoDocx({ name: f.name, type: f.type });
+const ehSuportado = (f: File) => ehPdf(f) || ehTexto(f) || ehDocx(f);
+/**
+ * O `.doc` BINÁRIO antigo (pré-2007). NÃO é suportado — o conversor não o abre — mas é reconhecido
+ * de propósito: antes do .docx entrar, QUALQUER Word era descartado em silêncio aqui (o mesmo
+ * defeito que o .txt tinha e que o cabeçalho deste arquivo documenta). Reconhecer permite DIZER
+ * "salve como .docx" em vez de o arquivo desaparecer sem explicação.
+ */
+const ehWordAntigo = (f: File) => ehDocAntigo({ name: f.name, type: f.type });
 /** o nome sem a extensão, qualquer uma das que aceitamos */
-const nomeLimpo = (f: File) => (ehPdf(f) ? f.name.replace(/\.pdf$/i, "") : semExtensao(f.name));
+const nomeLimpo = (f: File) => {
+  if (ehPdf(f)) return f.name.replace(/\.pdf$/i, "");
+  for (const e of EXTENSOES_DOCX) if (f.name.toLowerCase().endsWith(e)) return f.name.slice(0, -e.length);
+  return semExtensao(f.name);
+};
 
 /** #414: o PDF arrastado da biblioteca não abriu (o site de origem recusou ou saiu do ar) — a mensagem da Aura, com o link
  *  pro site quando é um endereço da web (o upload local não tem pra onde mandar). */
@@ -118,10 +132,19 @@ export function useAnexoChat(
 
   const anexarArquivos = useCallback(async (files: File[]) => {
     const docs = files.filter(ehSuportado);
+    // O .doc ANTIGO: diz, em vez de sumir. Era o que acontecia com TODO Word antes desta mudança, e
+    // é o mesmo defeito que o .txt tinha (ver o cabeçalho deste arquivo) — o arquivo não era PDF,
+    // não era imagem, e a função voltava sem fazer nada nem avisar.
+    const antigos = files.filter((f) => !ehSuportado(f) && ehWordAntigo(f));
+    if (antigos.length) {
+      oRef.current.aoGuardar?.(
+        `Não consigo abrir **${antigos[0].name}**: ${motivoDoErro("doc_antigo")}.`,
+      );
+    }
     if (docs.length) {
       const ids = docs.map((f, i) => {
         // sufixo aleatório: dois lotes no mesmo ms davam o mesmo id (tirar um chip tirava o outro; a biblioteca sobrescrevia)
-        const id = `${ehPdf(f) ? "pdf" : "txt"}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${i}`;
+        const id = `${ehPdf(f) ? "pdf" : ehDocx(f) ? "docx" : "txt"}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${i}`;
         // SÓ PDF vai pra biblioteca: ela é um acervo de PDF (arrastar de lá abre o leitor), e um
         // .txt ali viraria um item que não abre. O texto vive na base, que é onde ele é útil.
         if (ehPdf(f)) void saveFile({ id, title: nomeLimpo(f), source: "upload", savedAt: Date.now() }, f);
