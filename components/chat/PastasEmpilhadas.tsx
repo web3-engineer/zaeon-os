@@ -99,7 +99,7 @@ export default function PastasEmpilhadas({ pastas, ativa, gerando = null, onAbri
               )}
               <span className={`relative flex items-center gap-1.5 whitespace-nowrap px-4 ${frente ? "h-[36px] text-slate-900 dark:text-white" : "h-[31px] text-slate-600 dark:text-white/55 group-hover:text-slate-800 dark:group-hover:text-white/85"}`}>
                 {p.icone && <span className="shrink-0 leading-none text-[12px]">{p.icone}</span>}
-                <span className="max-w-[170px] truncate text-[11px] font-black tracking-wide">{p.rotulo}</span>
+                <span className="max-w-[96px] sm:max-w-[170px] truncate text-[11px] font-black tracking-wide">{p.rotulo}</span>
                 {p.onFechar && (
                   <button
                     type="button"
@@ -114,7 +114,7 @@ export default function PastasEmpilhadas({ pastas, ativa, gerando = null, onAbri
         })}
         {n > 1 && <span className="sr-only">{n - 1} documento(s) atrás da conversa</span>}
       </div>
-      {depois && <div className="flex shrink-0 items-center gap-1.5 pb-1.5">{depois}</div>}
+      {depois && <div className="flex shrink-0 items-center gap-1 sm:gap-1.5 pb-1.5">{depois}</div>}
       {/* a borda do módulo: a pasta da frente passa por cima dela */}
       <span aria-hidden className="pointer-events-none absolute bottom-0 left-0 right-0 h-px bg-slate-300 dark:bg-white/[0.09]" style={{ zIndex: 35 }} />
     </div>

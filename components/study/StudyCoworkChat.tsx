@@ -1675,10 +1675,10 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
               active={active && !openStudyId}
               onFiles={(f) => void anexarArquivos(f)}
               placeholder={anexo ? `Pergunte sobre ${anexo.nome}…` : lote.length ? `Pergunte sobre os ${lote.length} arquivos…` : ""}
-            >
+              opcoesAtivas={modoPesquisa || treeOpen}
+              // #713: base, agente, modelo, modo pesquisa e árvore — no celular, recolhidos num botão da caixa
+              opcoes={<>
               <BarraBase envios={envios} versao={versaoBase} />
-              {anexo && <ChipAnexo anexo={anexo} onTirar={tirarAnexo} />}
-              <ChipsLote lote={lote} onTirar={tirarDoLote} />
               {/* ⟁ Aura ▾ — seletor: Aura base ou um mentor plugado (quebra linha no celular em vez de vazar pra fora) */}
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
                 <MentorPill value={activeMentor} onChange={(slug) => setActiveMentor(slug)} />
@@ -1692,7 +1692,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
                     aria-checked={modoPesquisa}
                     onClick={() => ligarModoPesquisa(!modoPesquisa)}
                     title={modoPesquisa ? "Modo pesquisa ligado: fontes acadêmicas, citações e rigor científico. Clique para desligar." : "Ligar o modo pesquisa: fontes acadêmicas, citações, artigos/TCC no editor"}
-                    className={`inline-flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-full text-[11.5px] font-bold font-tech border transition-colors
+                    className={`inline-flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 max-sm:min-h-[40px] rounded-full text-[11.5px] font-bold font-tech border transition-colors
                       ${modoPesquisa
                         ? "bg-gradient-to-r from-violet-600/20 to-fuchsia-500/15 text-violet-800 dark:text-violet-200 border-violet-500/50"
                         : "text-slate-500 dark:text-white/50 border-slate-200 dark:border-white/10 hover:text-violet-600 hover:border-violet-300"}`}
@@ -1708,7 +1708,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
                   onClick={() => setTreeOpen((v) => !v)}
                   title="Árvore de habilidades do tópico"
                   aria-pressed={treeOpen}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11.5px] font-bold font-tech border transition-colors
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 max-sm:min-h-[40px] rounded-full text-[11.5px] font-bold font-tech border transition-colors
                     ${treeOpen
                       ? "bg-gradient-to-r from-violet-500/15 to-cyan-400/15 text-violet-700 dark:text-cyan-200 border-violet-400/40"
                       : "text-slate-500 dark:text-white/50 border-slate-200 dark:border-white/10 hover:text-violet-600 hover:border-violet-300"}`}
@@ -1716,6 +1716,10 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
                   <GitBranch size={12} /> Árvore{tree ? ` ${tree.nodes.filter((n) => n.status === "mastered").length}/${tree.nodes.length}` : ""}
                 </button>
               </div>
+              </>}
+            >
+              {anexo && <ChipAnexo anexo={anexo} onTirar={tirarAnexo} />}
+              <ChipsLote lote={lote} onTirar={tirarDoLote} />
               {focusChips}
             </CoworkComposer>
           </div>

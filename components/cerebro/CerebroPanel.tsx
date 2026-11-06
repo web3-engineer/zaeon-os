@@ -74,6 +74,45 @@ export default function CerebroPanel({ st, onFechar, onGerar, onAbrirMensagem }:
   const [anteriores, setAnteriores] = useState(false);
   const andamento = mapa && st.estado === "ativa" ? andamentoDoPercurso(mapa.backbone, proximo?.id) : null;
 
+  // #713: a ação do aluno (aplicar o próximo nó). No computador flutua no canto; no celular entra em cima das etapas
+  const acao = mapa && st.estado === "ativa" && proximo ? (
+          <div data-cerebro-acao className={mobile ? "relative z-20 flex flex-col items-stretch gap-1 px-3 pt-2" : "absolute right-3 top-3 flex flex-col items-end gap-1"}>
+            <button
+              onClick={() => { setAviso(null); setErroCaixa(null); setCaixa(proximo); }}
+              disabled={aplicando === proximo.id || proximo.estado === "aplicado"}
+              className="rounded-xl border border-amber-300/50 bg-amber-500/15 px-3 py-1.5 text-left text-[12px] font-bold text-amber-100 hover:bg-amber-500/25 disabled:opacity-50"
+              title={proximo.estado === "aplicado" ? "Aguardando validação" : `Marcar "${proximo.label}" como aplicado`}
+            >
+              {proximo.estado === "aplicado" ? "⏳ aguardando validação" : `✓ Apliquei: ${proximo.label}`}
+            </button>
+            {caixa && (
+              <form
+                data-caixa-apliquei
+                onSubmit={(e) => { e.preventDefault(); void aplicar(caixa); }}
+                className="w-[min(400px,86vw)] rounded-2xl border border-amber-300/40 bg-[rgba(10,21,38,.97)] p-3 shadow-2xl"
+              >
+                <label htmlFor="evidencia-apliquei" className="block text-[13px] font-bold text-amber-100">Como você aplicou esta etapa?</label>
+                <p className="mt-0.5 mb-2 truncate text-[11.5px] text-[#9fb6e0]" title={caixa.label}>{caixa.label}</p>
+                <textarea
+                  id="evidencia-apliquei"
+                  autoFocus
+                  rows={3}
+                  maxLength={4000}
+                  value={evidencia}
+                  onChange={(e) => setEvidencia(e.target.value)}
+                  placeholder="Conte o que você fez: um resultado, um link, um trecho de código…"
+                  className="w-full resize-y rounded-xl border border-[rgba(120,170,255,.35)] bg-white/[0.04] px-2.5 py-2 text-[12.5px] text-[#dbe8ff] outline-none placeholder:text-[#7f93b8] focus:border-amber-300/60"
+                />
+                {erroCaixa && <p role="alert" className="mt-2 rounded-lg bg-rose-500/15 px-2.5 py-1.5 text-[12px] text-rose-100">{erroCaixa}</p>}
+                <div className="mt-2 flex justify-end gap-2">
+                  <button type="button" onClick={() => setCaixa(null)} className="rounded-xl border border-white/20 px-3 py-1.5 text-[12px] font-bold text-[#dbe8ff] hover:bg-white/10">Cancelar</button>
+                  <button type="submit" disabled={!evidencia.trim() || aplicando === caixa.id} className="rounded-xl border border-amber-300/50 bg-amber-500/20 px-3 py-1.5 text-[12px] font-bold text-amber-100 hover:bg-amber-500/30 disabled:opacity-40">✓ Enviar</button>
+                </div>
+              </form>
+            )}
+            {aviso && <span className="rounded-lg bg-black/50 px-2 py-1 text-[11px] text-[#cfe0ff]">{aviso}</span>}
+          </div>
+  ) : null;
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }}
@@ -82,7 +121,7 @@ export default function CerebroPanel({ st, onFechar, onGerar, onAbrirMensagem }:
     >
       {/* SEM barra, título nem "x" no topo: o botão CIRCULAR que gera/retraça e "mapas anteriores" flutuam por cima
           do cérebro; sair = clicar fora (quem monta o painel) ou Esc */}
-      <div className="absolute left-3 top-3 z-20 flex flex-wrap items-center gap-2">
+      <div className={mobile ? "relative z-20 flex flex-wrap items-center gap-2 px-3 pt-3" : "absolute left-3 top-3 z-20 flex flex-wrap items-center gap-2"}>
         {/* #661: sair do mapa à vista (clicar fora e Esc continuam valendo, mas ninguém descobria) */}
         <button
           type="button"
@@ -111,6 +150,7 @@ export default function CerebroPanel({ st, onFechar, onGerar, onAbrirMensagem }:
         {/* #661: em que etapa a pessoa está */}
         {andamento && <span data-andamento className="rounded-full bg-white/[0.06] px-2.5 py-1 text-[11px] font-bold text-[#9fe0ff]">{andamento}</span>}
       </div>
+      {mobile && acao}
       {/* #661: refazer pede confirmação, porque as etapas podem mudar */}
       {confirmarRefazer && st.estado === "ativa" && (
         <div data-confirma-refazer className="absolute left-3 top-14 z-30 w-[min(360px,88vw)] rounded-2xl border border-cyan-300/40 bg-[rgba(10,21,38,.97)] p-3 shadow-2xl">
@@ -185,45 +225,8 @@ export default function CerebroPanel({ st, onFechar, onGerar, onAbrirMensagem }:
             {st.estado !== "oculta" && <button onClick={gerar} className="mt-2 rounded-xl border border-cyan-300/40 bg-cyan-500/15 px-4 py-2 text-[13px] font-bold text-cyan-100 hover:bg-cyan-500/25">{st.erro ? "Tentar de novo" : ROTULO[st.estado]}</button>}
           </Centro>
         )}
-        {/* ação do aluno: aplicar o próximo nó do percurso */}
-        {mapa && st.estado === "ativa" && proximo && (
-          <div data-cerebro-acao className="absolute right-3 top-3 flex flex-col items-end gap-1">
-            <button
-              onClick={() => { setAviso(null); setErroCaixa(null); setCaixa(proximo); }}
-              disabled={aplicando === proximo.id || proximo.estado === "aplicado"}
-              className="rounded-xl border border-amber-300/50 bg-amber-500/15 px-3 py-1.5 text-[12px] font-bold text-amber-100 hover:bg-amber-500/25 disabled:opacity-50"
-              title={proximo.estado === "aplicado" ? "Aguardando validação" : `Marcar "${proximo.label}" como aplicado`}
-            >
-              {proximo.estado === "aplicado" ? "⏳ aguardando validação" : `✓ Apliquei: ${proximo.label}`}
-            </button>
-            {caixa && (
-              <form
-                data-caixa-apliquei
-                onSubmit={(e) => { e.preventDefault(); void aplicar(caixa); }}
-                className="w-[min(400px,86vw)] rounded-2xl border border-amber-300/40 bg-[rgba(10,21,38,.97)] p-3 shadow-2xl"
-              >
-                <label htmlFor="evidencia-apliquei" className="block text-[13px] font-bold text-amber-100">Como você aplicou esta etapa?</label>
-                <p className="mt-0.5 mb-2 truncate text-[11.5px] text-[#9fb6e0]" title={caixa.label}>{caixa.label}</p>
-                <textarea
-                  id="evidencia-apliquei"
-                  autoFocus
-                  rows={3}
-                  maxLength={4000}
-                  value={evidencia}
-                  onChange={(e) => setEvidencia(e.target.value)}
-                  placeholder="Conte o que você fez: um resultado, um link, um trecho de código…"
-                  className="w-full resize-y rounded-xl border border-[rgba(120,170,255,.35)] bg-white/[0.04] px-2.5 py-2 text-[12.5px] text-[#dbe8ff] outline-none placeholder:text-[#7f93b8] focus:border-amber-300/60"
-                />
-                {erroCaixa && <p role="alert" className="mt-2 rounded-lg bg-rose-500/15 px-2.5 py-1.5 text-[12px] text-rose-100">{erroCaixa}</p>}
-                <div className="mt-2 flex justify-end gap-2">
-                  <button type="button" onClick={() => setCaixa(null)} className="rounded-xl border border-white/20 px-3 py-1.5 text-[12px] font-bold text-[#dbe8ff] hover:bg-white/10">Cancelar</button>
-                  <button type="submit" disabled={!evidencia.trim() || aplicando === caixa.id} className="rounded-xl border border-amber-300/50 bg-amber-500/20 px-3 py-1.5 text-[12px] font-bold text-amber-100 hover:bg-amber-500/30 disabled:opacity-40">✓ Enviar</button>
-                </div>
-              </form>
-            )}
-            {aviso && <span className="rounded-lg bg-black/50 px-2 py-1 text-[11px] text-[#cfe0ff]">{aviso}</span>}
-          </div>
-        )}
+        {/* ação do aluno: aplicar o próximo nó do percurso (no celular, em cima das etapas) */}
+        {!mobile && acao}
       </div>
     </motion.div>
   );

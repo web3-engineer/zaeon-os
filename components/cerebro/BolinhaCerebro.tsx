@@ -23,7 +23,7 @@ export default function BolinhaCerebro({ estado, completude = 0, onClick, aberto
       aria-pressed={!!aberto}
       title={rotulo}
       aria-label={rotulo}
-      className={`group inline-flex shrink-0 items-center gap-2.5 rounded-full border ${soSinal ? "p-1" : "pl-1.5 pr-3.5 py-1.5"} text-[12px] font-bold transition-colors ${aberto ? "border-cyan-400/60 bg-cyan-500/15 text-cyan-100" : "border-slate-200 text-slate-700 hover:border-cyan-400/50 dark:border-white/10 dark:text-white/70"}`}
+      className={`group inline-flex shrink-0 items-center gap-2.5 rounded-full border ${soSinal ? "p-1" : "pl-1.5 pr-3.5 py-1.5"} text-[12px] font-bold transition-colors ${aberto ? "border-cyan-400/60 bg-cyan-500/15 text-cyan-800 dark:text-cyan-100" : "border-slate-200 text-slate-700 hover:border-cyan-400/50 dark:border-white/10 dark:text-white/70"}`}
     >
       {/* a bolinha azul — grande o bastante pra ler o anel de completude */}
       <span className="relative inline-block h-7 w-7 shrink-0 rounded-full" style={{ background: anel, boxShadow: "0 0 14px rgba(73,182,255,.55)" }} aria-hidden>
@@ -32,7 +32,8 @@ export default function BolinhaCerebro({ estado, completude = 0, onClick, aberto
         {estado === "gerando" && <span className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-cyan-300" />}
       </span>
       {!soSinal && (
-        <span className="flex flex-col items-start gap-1">
+        // #713: no celular só a bolinha (o nome tirava o espaço das abas); o `aria-label` segura o significado
+        <span className="hidden sm:flex flex-col items-start gap-1">
           <span className="whitespace-nowrap">{ROTULO[estado]}</span>
           {/* gerando: a barra de carregamento corre no próprio botão — o mapa abre quando a pessoa clicar nele pronto */}
           {estado === "gerando" && (

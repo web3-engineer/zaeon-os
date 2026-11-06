@@ -178,6 +178,14 @@ export const Navbar = () => {
           </nav>
 
           <div className="flex items-center gap-1.5">
+            {/* #713: no celular os links do topo somem; ficam neste menu */}
+            <MenuLinks itens={[
+              { href: "/docs", rotulo: "Documentação" },
+              { href: "/about", rotulo: "Sobre nós" },
+              { href: "/research-lab", rotulo: "Laboratório" },
+              { href: mentoresTab() ? "/mentores" : "/assistentes", rotulo: lojaLabel() },
+              { href: "/news", rotulo: "Notícias" },
+            ]} />
             <ThemeToggle />
             {/* engrenagem: voz, idioma, convite, Modo CEO (founder), sair — as opções do menu principal */}
             <ConfigMenu />
@@ -187,3 +195,36 @@ export const Navbar = () => {
     </div>
   );
 };
+/** #713: os links do topo no celular (abaixo de lg a barra não tem espaço pra eles) */
+function MenuLinks({ itens }: { itens: { href: string; rotulo: string }[] }) {
+  const [aberto, setAberto] = useState(false);
+  const raiz = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+  useEffect(() => { setAberto(false); }, [pathname]);
+  useEffect(() => {
+    if (!aberto) return;
+    const fora = (e: PointerEvent) => { if (!raiz.current?.contains(e.target as Node)) setAberto(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setAberto(false); };
+    document.addEventListener("pointerdown", fora); document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("pointerdown", fora); document.removeEventListener("keydown", esc); };
+  }, [aberto]);
+  return (
+    <div ref={raiz} className="relative lg:hidden">
+      <button type="button" onClick={() => setAberto((v) => !v)} aria-expanded={aberto} aria-controls="menu-links-site" aria-label={aberto ? "Fechar o menu" : "Abrir o menu"}
+        className="w-11 h-11 rounded-full flex items-center justify-center text-[20px] leading-none text-slate-700 dark:text-white/85 hover:bg-slate-900/5 dark:hover:bg-white/10">
+        ☰
+      </button>
+      {aberto && (
+        <nav id="menu-links-site" aria-label="Páginas do site"
+          className="absolute right-0 top-12 w-56 overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-[#0b1020]/95 backdrop-blur-xl shadow-2xl py-1">
+          {itens.map((i) => (
+            <Link key={i.href} href={i.href} onClick={() => setAberto(false)} aria-current={pathname === i.href ? "page" : undefined}
+              className="flex min-h-[44px] items-center px-4 text-[14px] font-semibold text-slate-700 dark:text-white/85 hover:bg-slate-900/5 dark:hover:bg-white/10 aria-[current=page]:text-cyan-600 dark:aria-[current=page]:text-cyan-300">
+              {i.rotulo}
+            </Link>
+          ))}
+        </nav>
+      )}
+    </div>
+  );
+}

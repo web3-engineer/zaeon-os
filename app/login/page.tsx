@@ -36,7 +36,8 @@ const ERROS: Record<string, string> = {
   default: "Deu ruim no login. Tenta de novo.",
 };
 
-const CAMPO = `w-full px-5 py-3.5 rounded-full text-[13px] font-medium outline-none transition-colors
+// #713: 16 px no celular — abaixo disso o iPhone dá zoom ao tocar no campo
+const CAMPO = `w-full px-5 py-3.5 rounded-full text-[16px] sm:text-[13px] font-medium outline-none transition-colors
   text-slate-900 dark:text-white bg-white/60 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10
   placeholder:text-slate-400 dark:placeholder:text-white/35 focus:border-cyan-400/60 dark:focus:border-cyan-400/40`;
 

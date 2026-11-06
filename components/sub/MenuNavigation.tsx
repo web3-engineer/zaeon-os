@@ -441,7 +441,7 @@ export default function MenuNavigation({ destino = LAB_ROTA }: { destino?: strin
                 value={loginEmail.email}
                 onChange={(e) => loginEmail.setEmail(e.target.value)}
                 aria-label="E-mail"
-                className="w-full rounded-full px-5 py-3 text-[13px] text-slate-900 dark:text-white bg-white/60 dark:bg-white/[0.06] border border-slate-200 dark:border-white/[0.14] outline-none focus:border-cyan-400/70 placeholder:text-slate-500 dark:placeholder:text-white/40"
+                className="w-full rounded-full px-5 py-3 text-[16px] sm:text-[13px] text-slate-900 dark:text-white bg-white/60 dark:bg-white/[0.06] border border-slate-200 dark:border-white/[0.14] outline-none focus:border-cyan-400/70 placeholder:text-slate-500 dark:placeholder:text-white/40"
               />
             ) : (<>
               <p className="text-center text-[12px] leading-relaxed text-white/80">Mandamos um código de 6 números para <b>{loginEmail.email}</b>.</p>
