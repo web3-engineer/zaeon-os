@@ -585,4 +585,13 @@ jobs:
 
             echo "→ Limpando imagens órfãs…"
             docker image prune -f
+            # enchimento de teste do limite do escalar script
+            # enchimento de teste do limite do escalar script
+            # enchimento de teste do limite do escalar script
+            # enchimento de teste do limite do escalar script
+            # enchimento de teste do limite do escalar script
+            # enchimento de teste do limite do escalar script
+            # enchimento de teste do limite do escalar script
+            # enchimento de teste do limite do escalar script
+            # enchimento de teste do limite do escalar script
             echo "✓ Deploy concluído — Zaeon no ar."
