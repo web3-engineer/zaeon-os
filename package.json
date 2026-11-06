@@ -93,6 +93,7 @@
     "katex": "^0.16.47",
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.552.0",
+    "mammoth": "^1.13.0",
     "mongodb": "^6.21.0",
     "mongoose": "^8.8.3",
     "next": "14.2.15",
