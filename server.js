@@ -11,6 +11,25 @@ const port = process.env.PORT || 3000;
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
+// ── QUEM AGENDA: só o WEB ─────────────────────────────────────────────────────────────────────
+// O `worker` dedicado roda a MESMA imagem, o MESMO server.js e o MESMO env_file do web
+// (docker-compose.beta.yml: env_file: ['.env', '.env.secrets'] nos dois). Então, sem esta trava, ao
+// subir o worker passam a existir DOIS agendadores de WhatsApp e DOIS ouvintes de chip — e o log do
+// deploy de 06/nov/2026 mostrou exatamente isso.
+//
+// Por que isso importa: o dedupe do disparo é LER-DEPOIS-ESCREVER sem atomicidade
+// (lib/whatsapp/service.ts: `findFirst` pelo dedupeKey, depois envia, e só então grava o log) e o
+// schema tem `@@index([userId, dedupeKey])` — ÍNDICE, não restrição única. Dois processos passam os
+// dois pela checagem antes de qualquer um gravar, e a janela é a duração inteira do POST ao
+// provedor. A única defesa restante é o `idempotencyKey` que vai no envelope da ponte, e quem o
+// IMPÕE é o ChipFlow — outro sistema, que este repositório não pode verificar.
+//
+// A trava é por PAPEL e não por `SCHOLAR_WORKER`, de propósito: a topologia pretendida tem o web
+// com SCHOLAR_WORKER=0, mas HOJE o web está com 1 — usar essa flag desligaria o agendador no web,
+// que é justamente quem deve agendar. Ausente = web, então deploy existente não muda nada.
+const PAPEL = (process.env.ZAEON_ROLE || "web").trim().toLowerCase();
+const EH_WORKER_DEDICADO = PAPEL === "worker";
+
 // ── Mentor no WhatsApp: tick do scheduler de disparos (docs/WHATSAPP_MENTOR.md) ──
 // Chama POST /api/whatsapp/dispatch a cada N min (idempotente por dedupeKey). Só liga se
 // houver token interno + um provider de envio configurado. WHATSAPP_DISPATCH=0 desliga.
@@ -18,6 +37,7 @@ function startWhatsAppScheduler(port) {
     const token = process.env.WHATSAPP_INTERNAL_TOKEN;
     const hasProvider = !!(process.env.WHATSAPP_PROVIDER || process.env.EVOLUTION_URL || process.env.DISPAROS_URL || process.env.WA_OPERATOR_URL);
     if (!token || !hasProvider || process.env.WHATSAPP_DISPATCH === "0") return;
+    if (EH_WORKER_DEDICADO) { console.log("> WhatsApp scheduler NÃO ligado (papel=worker; quem agenda é o web)"); return; }
     const everyMin = Math.max(1, Number(process.env.WHATSAPP_DISPATCH_EVERY_MIN) || 15);
     const tick = async () => {
         try {
@@ -37,6 +57,7 @@ function startWhatsAppScheduler(port) {
 function startChipsListener(port) {
     const token = process.env.WHATSAPP_INTERNAL_TOKEN;
     if (!token || !process.env.WA_OPERATOR_URL || process.env.WA_EVENTOS === "0") return;
+    if (EH_WORKER_DEDICADO) { console.log("> Chips de WhatsApp NÃO ouvindo (papel=worker; quem ouve é o web)"); return; }
     const everyS = Math.max(1, Number(process.env.WA_EVENTOS_A_CADA_S) || 3);
     let rodando = false;   // um tick por vez (responder pode levar alguns segundos)
     const tick = async () => {
