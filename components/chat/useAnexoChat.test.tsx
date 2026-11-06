@@ -89,9 +89,42 @@ describe("o que NÃO mudou", () => {
     expect(enviarLote).not.toHaveBeenCalled();
   });
 
-  it("formato que não lemos continua ignorado — limite conhecido, .docx NÃO entrou nesta fase", async () => {
+  it("o .docx ENTROU: vai pra base como o .txt, e o título perde a extensão", async () => {
+    // Este teste trocou de lado de propósito. Ele dizia ".docx NÃO entrou nesta fase" — e era
+    // verdade: o Word era descartado em silêncio aqui, o MESMO defeito que o .txt tinha e que o
+    // cabeçalho deste arquivo documenta. O dono pediu ("chat nao ta lendo documentos .word"), o
+    // conversor entrou (lib/rag/docx), e agora o Word segue o caminho do texto: pela BASE, nunca
+    // pelo chip de leitura inteira, que é o que desligaria o harness.
     const h = montar();
     await anexar(h, [arquivo("tese.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")]);
+    expect(h.result.current.lote).toEqual([{ id: expect.stringMatching(/^docx-/), nome: "tese" }]);
+    expect(h.result.current.anexo).toBeNull();
+    expect(enviarLote).toHaveBeenCalledTimes(1);
+    expect(enviarLote.mock.calls[0][0].map((f: File) => f.name)).toEqual(["tese.docx"]);
+  });
+
+  it("o .docx NÃO vai pra biblioteca — ela é acervo de PDF (arrastar de lá abre o leitor)", async () => {
+    const h = montar();
+    await anexar(h, [arquivo("tese.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")]);
+    expect(saveFile).not.toHaveBeenCalled();
+  });
+
+  it("o .doc ANTIGO é recusado — mas com AVISO, não em silêncio", async () => {
+    // A diferença que importa: o binário pré-2007 o conversor não abre, e essa recusa TEM conserto
+    // ("salve como .docx"). Sumir com o arquivo esconderia o conserto da pessoa.
+    const h = montar();
+    await anexar(h, [arquivo("velho.doc", "application/msword")]);
+    expect(h.result.current.lote).toEqual([]);
+    expect(h.result.current.anexo).toBeNull();
+    expect(enviarLote).not.toHaveBeenCalled();
+    expect(h.aoGuardar).toHaveBeenCalledTimes(1);
+    expect(String(h.aoGuardar.mock.calls[0][0])).toMatch(/velho\.doc/);
+    expect(String(h.aoGuardar.mock.calls[0][0])).toMatch(/\.docx/);   // diz o conserto
+  });
+
+  it("formato que de fato não lemos continua ignorado (um .zip, por exemplo)", async () => {
+    const h = montar();
+    await anexar(h, [arquivo("coisas.zip", "application/zip")]);
     expect(h.result.current.anexo).toBeNull();
     expect(h.result.current.lote).toEqual([]);
     expect(enviarLote).not.toHaveBeenCalled();

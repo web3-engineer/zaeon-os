@@ -482,6 +482,12 @@ services:
       # leitor-proxy). OBRIGATÓRIO quando o serviço roda em OUTRO SERVIDOR — aí a porta atravessa
       # internet e o cliente RECUSA conectar sem token (lib/agent/navegadorRemoto).
       AGENTE_TOKEN: ${AGENTE_TOKEN:-}
+      # O OPT-IN ao modo sem autenticação. AQUI a afirmação "estou na rede interna" é verdadeira por
+      # construção: este serviço só faz `expose`, nunca `ports`, então a fronteira do compose é real.
+      # O servidor falha FECHADO sem esta env (#716, achado do Sourcery): antes, token vazio
+      # autorizava QUALQUER chamador, e a única defesa era no cliente — que não é quem está exposto.
+      # Assim o MESMO código em outro servidor EXIGE AGENTE_TOKEN. Com token, o token manda.
+      AGENTE_SEM_TOKEN: "1"
     expose: ["8788"]
     read_only: true
     cap_drop: [ALL]

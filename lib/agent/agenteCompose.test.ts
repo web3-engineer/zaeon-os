@@ -41,8 +41,16 @@ describe("docker-compose — agente-navegador", () => {
     // "nada aqui dá acesso a OUTRA coisa": o token dá acesso AO PRÓPRIO NAVEGADOR, então quem já
     // comprometeu este container não ganha nada novo com ele. Vertex, Mongo, Pusher, NextAuth e
     // companhia seguem proibidos — e é por isso que a exceção é por NOME e não por relaxar a regex.
-    const semExcecao = ativo.replace(/^\s*AGENTE_TOKEN:.*$/gm, "");
+    // `AGENTE_SEM_TOKEN` é a SEGUNDA exceção nomeada (#716): não é credencial, é um MODO — o
+    // opt-in explícito ao "sem autenticação" que fez o servidor passar a falhar FECHADO. Entra
+    // nesta lista pelo NOME, como o token, e a asserção abaixo prova que o valor dela é literal.
+    const semExcecao = ativo.replace(/^\s*AGENTE_(SEM_)?TOKEN:.*$/gm, "");
     expect(semExcecao).not.toMatch(/KEY|SECRET|TOKEN|CREDENTIALS|MONGODB|DATABASE|REDIS|PUSHER|GOOGLE|NEXTAUTH/i);
+  });
+
+  it("`AGENTE_SEM_TOKEN` é literal \"1\" — um modo, nunca uma interpolação que traga outra coisa", () => {
+    const linha = /^\s*AGENTE_SEM_TOKEN:\s*(.+)$/m.exec(ativo)?.[1] ?? "";
+    expect(linha.trim()).toBe('"1"');
   });
 
   it("o token, quando existe, vem de interpolação — nunca literal no arquivo", () => {

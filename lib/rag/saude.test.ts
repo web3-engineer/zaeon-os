@@ -66,6 +66,33 @@ describe("estadoRag (o pgvector da Contabo)", () => {
     expect(query).toHaveBeenCalledTimes(1);
   });
 
+  it("SONDA EM VOO COMPARTILHADA: N requisições concorrentes abrem UMA query, não N", async () => {
+    // Os dois achados 🟡 do Sourcery na #716 tinham esta raiz: o cache só é escrito DEPOIS da sonda,
+    // então tudo que chegasse durante uma sonda lenta abria o próprio `SELECT 1` no pool
+    // compartilhado do RAG — e duas sondas sobrepostas gravavam em ordem de TÉRMINO, deixando a
+    // mais velha enterrar um `on` recém-descoberto.
+    let chamadas = 0;
+    const lento = db(() => { chamadas++; return new Promise((r) => setTimeout(() => r({ rows: [], rowCount: 0 }), 30)); });
+    const env = { RAG_PG_URL: URL_PG };
+    const [a, b, c] = await Promise.all([
+      estadoRag({ env, db: lento }),
+      estadoRag({ env, db: lento }),
+      estadoRag({ env, db: lento }),
+    ]);
+    expect(chamadas, "três requisições concorrentes abriram mais de uma query no pool").toBe(1);
+    expect([a, b, c]).toEqual(["on", "on", "on"]);
+  });
+
+  it("depois que a sonda termina, a próxima pode sondar de novo (o voo não gruda)", async () => {
+    let chamadas = 0;
+    const d = db(async () => { chamadas++; return { rows: [], rowCount: 0 }; });
+    const env = { RAG_PG_URL: URL_PG };
+    await estadoRag({ env, db: d });
+    __resetContaboParaTeste();                 // expira o cache, como o tempo faria
+    await estadoRag({ env, db: d });
+    expect(chamadas).toBe(2);
+  });
+
   it("URL diferente invalida o cache (trocar de banco não pode herdar o veredito do antigo)", async () => {
     const query = vi.fn(async () => ({ rows: [], rowCount: 0 })) as unknown as RagDb["query"];
     await estadoRag({ env: { RAG_PG_URL: URL_PG }, db: { query } });

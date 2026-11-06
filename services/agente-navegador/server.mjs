@@ -29,7 +29,13 @@ import { urlPermitida, ipBloqueado, parseAllow, extrairTexto } from "../leitor-p
 import { criarRegistro, MAX_SESSOES, TTL_MS, VIDA_MAX_MS } from "./sessoes.mjs";
 
 const PORT = Number(process.env.PORT || 8788);
-const ALLOW = parseAllow(process.env.AGENTE_ALLOW ?? process.env.LEITOR_ALLOW);
+// A QUEDA PRO LEITOR É PELA LISTA VAZIA, não pela env ausente (achado do Sourcery na #716).
+// Com `??` só `null`/`undefined` caíam pro LEITOR_ALLOW — então um `AGENTE_ALLOW` com só espaços
+// (que o compose NÃO substitui, porque `:-` só troca vazio/ausente) deixava este servidor com lista
+// VAZIA negando tudo, enquanto o recibo do web, que usa `allowDoAgente`, listava os domínios do
+// Leitor. Recibo e realidade discordando em silêncio. Agora os dois lados caem pelo mesmo critério.
+const ALLOW_PROPRIA = parseAllow(process.env.AGENTE_ALLOW);
+const ALLOW = ALLOW_PROPRIA.length ? ALLOW_PROPRIA : parseAllow(process.env.LEITOR_ALLOW);
 const MAX_TEXTO = Number(process.env.AGENTE_MAX_TEXTO || 20_000);
 const TIMEOUT_MS = Number(process.env.AGENTE_TIMEOUT_MS || 20_000);
 const CAMINHO = process.env.AGENTE_CHROMIUM_PATH || "/usr/bin/chromium";
@@ -44,6 +50,20 @@ const CORPO_MAX = 16 * 1024;
  * token ser adivinhado byte a byte. Custa uma linha.
  */
 const TOKEN = (process.env.AGENTE_TOKEN ?? "").trim();
+/**
+ * O OPT-IN EXPLÍCITO ao modo sem autenticação (achado do Sourcery na #716, 🟠 alto — e correto).
+ *
+ * `autorizado()` devolvia `true` quando não havia token, com o argumento de que "a fronteira do
+ * compose é o controle". O argumento vale pra rede interna; o problema é que NADA verificava que
+ * estávamos nela. Publicada a porta, ou movido o serviço pra outro servidor sem token, o servidor
+ * aceitava QUALQUER chamador — criar sessão, navegar, ler página. A defesa existia só no CLIENTE
+ * (lib/agent/navegadorRemoto recusa externo sem token), e o cliente não é quem está exposto.
+ *
+ * Agora falha FECHADO: sem token, só passa quem DECLAROU o modo. Quem declara é o compose, no
+ * serviço `agente-navegador`, onde a afirmação "estou na rede interna" é verdadeira por construção.
+ * Um deploy em outro servidor não tem esta env e portanto EXIGE token, que é o que a F10 queria.
+ */
+const SEM_TOKEN_OK = /^(1|true|on|sim)$/i.test((process.env.AGENTE_SEM_TOKEN ?? "").trim());
 /** `*` na allowlist = QUALQUER DOMÍNIO (pedido do dono). IP privado/loopback segue barrado. */
 const ABERTO = ALLOW.includes("*");
 
@@ -71,7 +91,7 @@ function mesmoSegredo(a, b) {
 }
 
 function autorizado(req) {
-  if (!TOKEN) return true; // rede interna do compose: a fronteira é o controle
+  if (!TOKEN) return SEM_TOKEN_OK; // sem token: só com o opt-in explícito (ver SEM_TOKEN_OK)
   const h = String(req.headers["authorization"] ?? "");
   const m = /^Bearer\s+(.+)$/i.exec(h.trim());
   return !!m && mesmoSegredo(m[1].trim(), TOKEN);
@@ -239,7 +259,7 @@ async function rotear(req, res) {
 
   if (p === "/health") {
     return responder(res, 200, {
-      ok: true, allow: ALLOW.length, aberto: ABERTO, autenticado: !!TOKEN, sessoes: registro.tamanho,
+      ok: true, allow: ALLOW.length, aberto: ABERTO, autenticado: !!TOKEN, semTokenPermitido: SEM_TOKEN_OK, sessoes: registro.tamanho,
       max: MAX_SESSOES, ttlMs: TTL_MS, vidaMaxMs: VIDA_MAX_MS,
       navegador: !!navegador?.connected,
     });

@@ -43,8 +43,29 @@ const PRAZO_MS = 2000;
 let cacheRag: { estado: EstadoContabo; chave: string; at: number } | null = null;
 let cacheModelos: { estado: EstadoContabo; chave: string; at: number } | null = null;
 
-/** só para teste: esvazia os dois caches (sem isto um teste contamina o outro) */
-export function __resetContaboParaTeste(): void { cacheRag = null; cacheModelos = null; }
+/**
+ * A SONDA EM VOO, compartilhada. Dois achados do Sourcery na #716 (🟡) tinham a MESMA raiz, e os
+ * dois eram reais:
+ *
+ *   · "Health checks exhaust the database pool" — o cache só é escrito DEPOIS de a sonda terminar,
+ *     então N requisições que chegassem durante uma sonda lenta abriam N `SELECT 1` no pool
+ *     compartilhado do RAG. E o `Promise.race` estourando o prazo NÃO cancela a query: ela segue
+ *     ocupando (ou enfileirando por) um client do pool.
+ *   · "Older probe overwrites newer health state" — duas sondas sobrepostas gravando no cache em
+ *     ordem de término, não de início: a mais velha podia enterrar um `on` recém-descoberto com um
+ *     `degraded` vencido, e o recibo mentia até o cache expirar.
+ *
+ * Uma correção mata os dois: enquanto há sonda em voo pra mesma chave, todo mundo espera A MESMA
+ * promessa. Nunca existem duas sondas sobrepostas, então não há o que sobrescrever e não há N
+ * queries. Não "cancela" a query em voo — isso o `pg` não oferece —, mas garante que exista UMA.
+ */
+let vooRag: { chave: string; p: Promise<EstadoContabo> } | null = null;
+let vooModelos: { chave: string; p: Promise<EstadoContabo> } | null = null;
+
+/** só para teste: esvazia caches e sondas em voo (sem isto um teste contamina o outro) */
+export function __resetContaboParaTeste(): void {
+  cacheRag = null; cacheModelos = null; vooRag = null; vooModelos = null;
+}
 
 /** espera que NÃO segura o processo: sem o `unref` o timer atrasaria a saída do vitest e do worker */
 function atraso(ms: number): Promise<"prazo"> {
@@ -58,7 +79,14 @@ export async function estadoRag(d: Deps = {}): Promise<EstadoContabo> {
   if (!url) return "off";
   const agora = d.agora ?? Date.now;
   if (cacheRag && cacheRag.chave === url && agora() - cacheRag.at < CACHE_MS) return cacheRag.estado;
+  if (vooRag && vooRag.chave === url) return vooRag.p;   // já tem sonda em voo: espera a MESMA
 
+  const p = sondarRag(url, d, agora).finally(() => { if (vooRag?.chave === url) vooRag = null; });
+  vooRag = { chave: url, p };
+  return p;
+}
+
+async function sondarRag(url: string, d: Deps, agora: () => number): Promise<EstadoContabo> {
   let estado: EstadoContabo = "degraded";
   try {
     // o import é TARDIO de propósito: sem ele, importar este módulo abriria o caminho do `pg` no
@@ -85,7 +113,14 @@ export async function estadoModelosLocais(d: Deps = {}): Promise<EstadoContabo> 
   if (!url) return "off";
   const agora = d.agora ?? Date.now;
   if (cacheModelos && cacheModelos.chave === url && agora() - cacheModelos.at < CACHE_MS) return cacheModelos.estado;
+  if (vooModelos && vooModelos.chave === url) return vooModelos.p;   // mesma sonda, como no RAG
 
+  const p = sondarModelos(url, d, agora).finally(() => { if (vooModelos?.chave === url) vooModelos = null; });
+  vooModelos = { chave: url, p };
+  return p;
+}
+
+async function sondarModelos(url: string, d: Deps, agora: () => number): Promise<EstadoContabo> {
   // o LOCAL_LLM_URL aponta pro endpoint de chat (`/v1/chat/completions`); a sonda é na RAIZ do
   // LiteLLM, então o caminho é aparado até a base — senão a sonda bateria em 404 e diria
   // "degraded" num gateway de pé, que é recibo mentindo na direção pessimista.
