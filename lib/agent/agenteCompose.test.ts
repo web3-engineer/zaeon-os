@@ -13,6 +13,13 @@ const raiz = path.resolve(__dirname, "../..");
 const compose = readFileSync(path.join(raiz, "docker-compose.beta.yml"), "utf8");
 const wf = readFileSync(path.join(raiz, ".github/workflows/deploy.yml"), "utf8");
 const dockerfile = readFileSync(path.join(raiz, "services/agente-navegador/Dockerfile"), "utf8");
+/**
+ * O RECIBO mora num arquivo desde que o escalar `script:` bateu no teto de 21.000 bytes do GitHub
+ * (ver o teste do teto, abaixo): o blob de JS custava 3.573 bytes de um orçamento que já estava em
+ * 19.881. As asserções sobre o que o recibo IMPRIME seguiram o conteúdo pra cá — afirmar contra o
+ * `deploy.yml` passaria a medir a ausência.
+ */
+const recibo = readFileSync(path.join(raiz, "infra/recibo-deploy.mjs"), "utf8");
 
 function servico(nome: string): string {
   const linhas = compose.split("\n");
@@ -149,6 +156,50 @@ describe("AGENTE_ALLOW — a plumagem voltou, sem literal na expressão (F10c)",
     expect(expressoes.filter((e) => e.includes("*"))).toEqual([]);
   });
 
+  /**
+   * O TETO DE 21.000 BYTES DO ESCALAR `script:` — o portão que faltava, e que teria pegado os
+   * startup failures 572–578 antes do push.
+   *
+   * MEDIDO, não suposto, com o único juiz que existe (o push: o parser do GitHub não tem
+   * substituto local). Variantes de tamanho crescente foram empurradas em branches próprias e o
+   * veredito lido pela existência, ou não, de um run que falha na partida:
+   *
+   *     19.881 bytes → válido      (o main que implanta)
+   *     20.181 → válido · 20.331 → válido · 20.581 → VÁLIDO
+   *     21.010 → FALHA · 21.011 → FALHA · 21.035 → FALHA · 23.294 → FALHA
+   *
+   * Ultrapassar não é erro de passo: é o ARQUIVO INTEIRO recusado — zero jobs, e o `name` do run
+   * degradando pro caminho do arquivo, que é a assinatura pela qual se reconhece isso de fora.
+   *
+   * CONTA BYTES, NÃO CARACTERES, e esta distinção é a razão de eu ter demorado a achar: um
+   * enchimento ASCII de 20.217 CARACTERES passou, enquanto 20.621 caracteres COM ACENTO falharam.
+   * Em UTF-8 cada acento e cada travessão do português custam 2 bytes — e o estilo da casa, de
+   * comentar densamente o porquê, é justamente o que consome este orçamento quando mora DENTRO do
+   * script. Comentário no nível do YAML (fora do bloco) é de graça: é pra lá que a explicação vai.
+   */
+  it("o escalar `script:` cabe no teto de 21.000 bytes do GitHub, com margem", () => {
+    const linhas = wf.split("\n");
+    const i = linhas.findIndex((l) => /^\s*script: \|\s*$/.test(l));
+    expect(i, "não achei o `script: |` — a asserção seria vazia").toBeGreaterThan(-1);
+    const corpo: string[] = [];
+    for (const l of linhas.slice(i + 1)) {
+      if (l.trim() === "") { corpo.push(""); continue; }
+      if (!l.startsWith("            ")) break;        // 12 espaços = o recuo do bloco
+      corpo.push(l.slice(12));
+    }
+    // GUARDA CONTRA EXTRAÇÃO VAZIA OU TRUNCADA: sem isto, um bug no laço acima faria o teste passar
+    // medindo quase nada — portão verde e deploy quebrado, o pior resultado possível.
+    const texto = corpo.join("\n");
+    expect(texto, "extração falhou no começo do script").toContain("set -euo pipefail");
+    expect(texto, "extração truncou antes do fim do script").toContain("Deploy concluído");
+    expect(corpo.length, "o script tem centenas de linhas; isto pegou poucas").toBeGreaterThan(200);
+
+    const bytes = Buffer.byteLength(texto, "utf8");
+    const TETO = 21_000;      // 20.581 passa, 21.010 falha — medido por push
+    const MARGEM = 1_500;     // pra uma linha nova não descobrir o teto em produção
+    expect(bytes, `script com ${bytes} bytes; teto ${TETO}`).toBeLessThan(TETO - MARGEM);
+  });
+
   it("nenhuma FORMA de expressão nova em relação ao arquivo que implanta", () => {
     // O que tornou a F10c segura não foi cuidado, foi não inventar forma: toda `${{ }}` daqui já
     // existia no deploy.yml que implantou nos deploys 561/562/565/568.
@@ -230,7 +281,20 @@ describe("o serviço é LIGADO pelo deploy — não só declarado", () => {
   });
 
   it("o recibo diz ONDE o navegador roda e acusa container inalcançável", () => {
-    expect(wf).toMatch(/onde=/);
-    expect(wf).toMatch(/CONTAINER INALCANÇÁVEL/);
+    expect(recibo).toMatch(/onde=/);
+    expect(recibo).toMatch(/CONTAINER INALCANÇÁVEL/);
+  });
+
+  it("o deploy INVOCA o recibo — mover o arquivo não pode órfã-lo em silêncio", () => {
+    // Sem esta asserção, apagar a linha de invocação faria o recibo parar de sair e NENHUM teste
+    // notaria: o arquivo continuaria existindo, bonito e nunca executado. Por STDIN de propósito
+    // (`node < arquivo`): não existe questão de aspas nem de expansão do shell.
+    expect(wf).toMatch(/exec -T web node < infra\/recibo-deploy\.mjs/);
+  });
+
+  it("o recibo não imprime VALOR de segredo — só nomes, booleanos e domínios", () => {
+    // domínio de allowlist é público por definição (é o que a casa declara que lê); credencial não.
+    expect(recibo).not.toMatch(/process\.env/);
+    expect(recibo).not.toMatch(/SECRET|_KEY|TOKEN|CREDENTIALS/i);
   });
 });

@@ -59,7 +59,10 @@ describe("AGENTIC_MODE — os cinco elos", () => {
   });
 
   it("o recibo do deploy imprime a linha (senão 'está no ar?' não tem resposta sem SSH)", () => {
-    expect(wf).toMatch(/agente_navegador/);
+    // o recibo saiu do `script:` pro arquivo quando o escalar bateu no teto de 21.000 bytes do
+    // GitHub; a asserção seguiu o conteúdo, senão passaria a medir a ausência dele
+    const recibo = readFileSync(path.join(raiz, "infra/recibo-deploy.mjs"), "utf8");
+    expect(recibo).toMatch(/agente_navegador/);
   });
 });
 
