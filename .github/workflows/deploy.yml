@@ -341,6 +341,25 @@ jobs:
               echo "→ Resend: Secret vazio — vale o .env do VPS"
             fi
 
+            # F10 · o token do agente. MESMO molde do Resend, e pelo mesmo motivo: linha vazia
+            # APAGARIA o que já está no .env e tiraria a autenticação em vez de pô-la. Vai pro
+            # .env.secrets (e não só pra sessão SSH) porque senão um `docker compose up` feito à
+            # mão pelo dono recriaria o container SEM token, em silêncio.
+            if [ -n "${AGENTE_TOKEN:-}" ]; then
+              # ESCREVE E DEPOIS RENOMEIA (achado do Sourcery na #716). O `> .env.secrets` trunca o
+              # arquivo no momento em que ABRE, antes de o conteúdo novo entrar: um deploy
+              # interrompido ou um disco cheio ali deixaria o .env.secrets vazio ou partido, e a
+              # próxima recriação do container subiria SEM credencial nenhuma. O `mv` no mesmo
+              # sistema de arquivos é atômico: ou o arquivo antigo, ou o novo inteiro.
+              grep -vE '^AGENTE_TOKEN=' .env.secrets > .env.secrets.tmp || true
+              { cat .env.secrets.tmp; echo "AGENTE_TOKEN=${AGENTE_TOKEN}"; } > .env.secrets.novo
+              mv -f .env.secrets.novo .env.secrets
+              rm -f .env.secrets.tmp
+              echo "→ Agente: token dos Secrets gravado no .env.secrets"
+            else
+              echo "→ Agente: sem token (ok enquanto o navegador é container irmão nesta VPS)"
+            fi
+
             # PUSHER server-only (APP_ID + SECRET). Mesmo molde do Resend: só grava com valor, porque
             # linha vazia APAGARIA a que já está no .env do VPS — e aí o tempo real cairia em vez de
             # subir. O par público (KEY/CLUSTER) não entra aqui: é build-arg, vai pelo laço de flags.
