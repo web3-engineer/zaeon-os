@@ -31,6 +31,10 @@ on:
         description: "Linhas de log do web a mostrar"
         type: string
         default: "80"
+      subir_worker:
+        description: "Subir o container worker dedicado (turnos saem de dentro do web)"
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-vps          # mesma group do deploy.yml → nunca roda junto com um deploy
@@ -62,13 +66,14 @@ jobs:
         env:
           LIMPAR: ${{ inputs.limpar }}
           LINHAS: ${{ inputs.linhas_log }}
+          SUBIR_WORKER: ${{ inputs.subir_worker }}
         with:
           host: ${{ secrets.VPS_HOST }}
           port: ${{ secrets.VPS_PORT }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           command_timeout: 12m
-          envs: LIMPAR,LINHAS
+          envs: LIMPAR,LINHAS,SUBIR_WORKER
           script: |
             set -uo pipefail
             cd "${{ secrets.DEPLOY_PATH }}"
@@ -97,6 +102,36 @@ jobs:
             echo
             echo "══════════ 6. /api/health (de dentro do web) ══════════"
             docker compose exec -T web node -e "fetch('http://localhost:3000/api/health').then(r=>r.text()).then(t=>{console.log(t.slice(0,1500));process.exit(0)}).catch(e=>{console.error('FALHOU: '+e.message);process.exit(0)})" 2>&1 | tail -20
+
+            # ───────── O WORKER DEDICADO (opt-in) ─────────
+            # Por que isto é OPERAÇÃO e não flag: o `worker` usa a MESMA imagem do web, e o deploy
+            # só o ATUALIZA se ele já estiver de pé (`if docker ps | grep -qx zaeon_worker`) —
+            # decisão da #645, pra um worker esquecido não ficar rodando código antigo. Subir a
+            # primeira vez é manual por desenho, e é isto.
+            #
+            # ESTE PASSO NÃO TIRA os turnos do web. O `instrumentation.ts` declara a topologia:
+            # web com SCHOLAR_WORKER=0 enfileira, worker com 1 consome. Hoje o web está com 1, e
+            # por isso ele consome — subir o worker dá DOIS consumidores, o que já faz metade dos
+            # turnos sobreviver a um deploy, e é reversível. Pôr o web em 0 é um SEGUNDO passo, com
+            # risco próprio (worker fora = todo turno pendura), e não se faz no mesmo movimento.
+            if [ "${SUBIR_WORKER}" = "true" ]; then
+              echo
+              echo "══════════ WORKER DEDICADO ══════════"
+              if docker ps --format '{{.Names}}' | grep -qx zaeon_worker; then
+                echo "→ já está de pé; nada a fazer (o deploy o atualiza junto do web)"
+              else
+                echo "→ subindo (constrói a imagem se preciso; pode levar alguns minutos)…"
+                docker compose --profile worker up -d --build worker 2>&1 | tail -15
+                sleep 5
+                echo "— estado:"
+                docker ps --filter name=zaeon_worker --format '{{.Names}} {{.Status}}' || true
+                echo "— as filas que ele diz consumir (log do boot):"
+                docker logs --tail=40 zaeon_worker 2>&1 | grep -iE "worker|ouvindo|ATIVO|erro|error" | tail -12 || true
+                echo
+                echo "→ o web SEGUE consumindo também (SCHOLAR_WORKER=1 no .env dele). Isto é"
+                echo "  deliberado: dois consumidores agora, e tirar o web da fila é o passo 2."
+              fi
+            fi
 
             if [ "${LIMPAR}" = "nada" ]; then
               echo
