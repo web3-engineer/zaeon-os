@@ -585,4 +585,19 @@ jobs:
 
             echo "→ Limpando imagens órfãs…"
             docker image prune -f
+            # TETO DO CACHE DE BUILD — a linha que faltava, e o apagão de 05/nov/2026 é a prova:
+            # 324 entradas, 205,9 GB de cache do buildx (o disco em 78%, 66 GB livres). O
+            # `image prune -f` acima remove só DANGLING, nunca o cache de build e nunca as tags
+            # antigas, e não havia nenhuma guarda de disco neste workflow — nem um `df`.
+            #
+            # `until=168h` (uma semana) em vez de `-af` sem filtro: o cache recente é o que torna o
+            # PRÓXIMO deploy rápido, e zerar tudo a cada deploy trocaria disco por minutos de build.
+            # `|| true` é obrigatório: o script roda com `set -e` e um buildx sem este filtro
+            # derrubaria o deploy por causa da limpeza, que é o acessório matando o principal.
+            echo "→ Teto do cache de build (>7 dias)…"
+            docker builder prune -af --filter 'until=168h' 2>&1 | tail -2 || true
+            # A GUARDA DE DISCO: um número no log a cada deploy. Não decide nada — só torna
+            # impossível a situação de 05/nov, em que ninguém sabia que havia 205 GB de cache.
+            echo "→ Disco: $(df -h / | awk 'NR==2{print $4" livres de "$2" ("$5" usado)"}')"
+            docker system df 2>/dev/null | awk 'NR==1 || /Build Cache|Images/' || true
             echo "✓ Deploy concluído — Zaeon no ar."
