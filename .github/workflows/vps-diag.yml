@@ -118,19 +118,25 @@ jobs:
               echo
               echo "══════════ WORKER DEDICADO ══════════"
               if docker ps --format '{{.Names}}' | grep -qx zaeon_worker; then
-                echo "→ já está de pé; nada a fazer (o deploy o atualiza junto do web)"
+                echo "→ já está de pé (o deploy o atualiza junto do web)"
               else
                 echo "→ subindo (constrói a imagem se preciso; pode levar alguns minutos)…"
                 docker compose --profile worker up -d --build worker 2>&1 | tail -15
                 sleep 5
-                echo "— estado:"
-                docker ps --filter name=zaeon_worker --format '{{.Names}} {{.Status}}' || true
-                echo "— as filas que ele diz consumir (log do boot):"
-                docker logs --tail=40 zaeon_worker 2>&1 | grep -iE "worker|ouvindo|ATIVO|erro|error" | tail -12 || true
-                echo
-                echo "→ o web SEGUE consumindo também (SCHOLAR_WORKER=1 no .env dele). Isto é"
-                echo "  deliberado: dois consumidores agora, e tirar o web da fila é o passo 2."
               fi
+              # O ESTADO E AS FILAS SAEM NOS DOIS CASOS. Na primeira versão isto vivia só no ramo
+              # "subindo agora", e com o worker já de pé o diagnóstico respondia "já está de pé" e
+              # mais nada — inútil justamente quando a pergunta é "ele está CONSUMINDO?". Container
+              # de pé e container consumindo são afirmações diferentes, e é a segunda que importa.
+              echo "— estado:"
+              docker ps --filter name=zaeon_worker --format '{{.Names}} {{.Status}}' || true
+              echo "— as filas que ele diz consumir (log do boot):"
+              docker logs --tail=60 zaeon_worker 2>&1 | grep -iE "ouvindo|ATIVO|worker|erro|error" | tail -14 || true
+              echo "— e o que ele JÁ processou (sinal de consumo de verdade, não só de boot):"
+              docker logs --tail=200 zaeon_worker 2>&1 | grep -iE "job|turno|processad|concluí|chat-turn" | tail -8 || echo "  (nada ainda — fila vazia ou o web pegou os jobs antes)"
+              echo
+              echo "→ o web SEGUE consumindo também (SCHOLAR_WORKER=1 no .env dele). Isto é"
+              echo "  deliberado: dois consumidores agora, e tirar o web da fila é o passo 2."
             fi
 
             if [ "${LIMPAR}" = "nada" ]; then
