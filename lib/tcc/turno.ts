@@ -143,16 +143,28 @@ export function contextoDosTrabalhos(lista: TccView[], abertoId?: string | null)
   const aberto = lista.find((w) => w.id === abertoId) ?? lista[0];
   const linhas = lista.map((w, i) =>
     `${i + 1}) "${w.titulo}" (${w.workType || "Trabalho"}, ${w.secoes.length} seções, ${w.secoes.reduce((n, s) => n + palavras(s.corpo), 0)} palavras)${w.id === aberto.id ? " ← ABERTO NO EDITOR" : ""}`);
-  const bloco = [
-    `TRABALHOS ESCRITOS NESTA CONVERSA (o aluno os vê no editor, cada um numa pasta no topo do chat):`,
-    ...linhas,
-    `Seções do aberto ("${aberto.titulo}"): ${aberto.secoes.map((s) => s.titulo).join(" · ") || "(nenhuma)"}.`,
-    "Pedido para escrever/continuar/mudar o trabalho ABERTO: devolva `work.sections` só com as seções que mudam",
-    "(MESMO título substitui a seção; título novo vira seção nova), corpo completo, rigor acadêmico.",
-    "Pedido de um trabalho NOVO ('agora outro sobre Y', 'um artigo sobre Z'): escreva-o INTEIRO em `work.sections`",
-    "— ele vira um documento NOVO (os anteriores ficam como estão). Conversa que não é sobre trabalho: sem `work`.",
-  ].join("\n");
-  return bloco.length > MAX_CONTEXTO * 2 ? bloco.slice(0, MAX_CONTEXTO * 2 - 1) + "…" : bloco;
+  return montarBloco({
+    cabecalho: [`TRABALHOS ESCRITOS NESTA CONVERSA (o aluno os vê no editor, cada um numa pasta no topo do chat):`],
+    dados: linhas,
+    // O ABERTO é o que vai ser ESCRITO, então vai com o começo do corpo de cada seção e não só com
+    // o título. Até aqui ia só o título: a D3 já tinha achado e consertado exatamente isto no
+    // `contextoDoTcc` ("o chat sabia que a seção existia e não fazia ideia do que ela dizia"), e o
+    // chat único, que nasceu depois, voltou ao estado anterior à D3. Com `opsDeWork` trocando o
+    // corpo inteiro no título igual, escrever às cegas não dessincroniza: APAGA.
+    cabecalhoSecoes: `Seções do aberto ("${aberto.titulo}"), com o começo do que já está escrito em cada uma:`,
+    secoes: aberto.secoes.length ? aberto.secoes : [{ titulo: "(nenhuma seção ainda)", corpo: "" }],
+    regras: [
+      "NÃO contradiga o que já está escrito acima. Se o que você vai dizer diverge, diga que está CORRIGINDO",
+      "e devolva a seção corrigida — não deixe as duas versões de pé.",
+      "Pedido para escrever/continuar/mudar o trabalho ABERTO: devolva `work.sections` só com as seções que mudam",
+      "(MESMO título SUBSTITUI a seção inteira; título novo vira seção nova), corpo completo, rigor acadêmico.",
+      "Como substituir apaga o que estava lá, só mande uma seção que você acabou de ver acima — e mande-a INTEIRA,",
+      "preservando o que já valia. Para só acrescentar, use um título novo.",
+      "Pedido de um trabalho NOVO ('agora outro sobre Y', 'um artigo sobre Z'): escreva-o INTEIRO em `work.sections`",
+      "— ele vira um documento NOVO (os anteriores ficam como estão). Conversa que não é sobre trabalho: sem `work`.",
+    ],
+    teto: MAX_CONTEXTO * 2,
+  });
 }
 
 /**
@@ -162,11 +174,124 @@ export function contextoDosTrabalhos(lista: TccView[], abertoId?: string | null)
  */
 export const EXTRATO_SECAO = 180;
 
-const extrato = (corpo: string): string => {
+/**
+ * Abaixo disto o extrato não informa nada — 20 caracteres de uma seção não dizem do que ela trata,
+ * só ocupam prompt. Então ele sai de cena e sobra o título com a contagem, que ao menos diz que a
+ * seção EXISTE e tem texto dentro.
+ */
+export const MIN_EXTRATO = 40;
+
+const extrato = (corpo: string, limite: number = EXTRATO_SECAO): string => {
   const t = String(corpo ?? "").replace(/\s+/g, " ").trim();
   if (!t) return "";
-  return t.length > EXTRATO_SECAO ? `${t.slice(0, EXTRATO_SECAO).trimEnd()}…` : t;
+  return t.length > limite ? `${t.slice(0, limite).trimEnd()}…` : t;
 };
+
+type SecaoVista = { titulo: string; corpo: string };
+const vazia = (s: SecaoVista) => !String(s.corpo ?? "").trim();
+const custo = (ls: readonly string[]) => ls.reduce((n, l) => n + l.length + 1, 0);
+const marcaCorte = (n: number) => `(… +${n} trabalho${n > 1 ? "s" : ""} não listado${n > 1 ? "s" : ""} por tamanho)`;
+const marcaSecoes = (n: number) => `(… +${n} seç${n > 1 ? "ões" : "ão"} não listada${n > 1 ? "s" : ""} por tamanho — NÃO substitua seção que não está nesta lista)`;
+/**
+ * Documento com seções demais para caber o texto de cada uma. O modelo tem de saber que existe
+ * texto invisível ANTES de mandar uma substituição, porque substituir apaga justamente o que ele
+ * não viu. Começa com "…" de propósito: é o sinal de corte do bloco.
+ */
+const MARCA_SEM_EXTRATO = "(… seções demais para mostrar o texto de cada uma: peça o trecho antes de SUBSTITUIR qualquer seção)";
+
+/**
+ * O TETO do bloco, com duas leis — e as duas nasceram de defeito MEDIDO, não de preferência.
+ *
+ * 1 · REGRA NUNCA É CORTADA. Antes o corte era `bloco.slice(0, teto)` sobre o bloco já montado, e
+ *     as regras moram no FIM: documento grande levava embora justamente a instrução de como
+ *     escrever nele. Medido com as 6 seções do esqueleto ABNT preenchidas — o `contextoDoTcc`
+ *     perdia o "NÃO contradiga", que é a trava contra o chat afirmar o oposto do documento. O
+ *     conserto da D3 (dar visão ao modelo) estava comendo a própria regra da D3.
+ *
+ * 2 · NENHUMA SEÇÃO DESAPARECE. Seção invisível é seção que o modelo sobrescreve às cegas, porque
+ *     `opsDeWork` transforma título igual em `substituir` com o corpo INTEIRO. Então o que encurta
+ *     é o EXTRATO de cada seção, reparando o orçamento entre elas — nunca a lista. É a diferença
+ *     entre o modelo ver pouco de tudo e não ver nada de metade.
+ *
+ * Só os OUTROS trabalhos (não o aberto) podem sair por tamanho, e quando saem isso é DITO, não
+ * escondido: o modelo precisa saber que a lista está incompleta antes de dizer "você não tem".
+ */
+function montarBloco(o: {
+  cabecalho: readonly string[];
+  /** linhas cortáveis por inteiro (os trabalhos da conversa) */
+  dados?: readonly string[];
+  cabecalhoSecoes?: string;
+  secoes?: readonly SecaoVista[];
+  regras: readonly string[];
+  teto: number;
+}): string {
+  const dados = o.dados ?? [], secoes = o.secoes ?? [];
+  const fixo = custo(o.cabecalho) + custo(o.regras) + (o.cabecalhoSecoes ? o.cabecalhoSecoes.length + 1 : 0);
+  const curtas = secoes.map((s) => (vazia(s) ? `- ${s.titulo}: (vazia)` : `- ${s.titulo} (${palavras(s.corpo)} palavras)`));
+  const reservaSec = secoes.length ? marcaSecoes(secoes.length).length + 1 : 0;
+
+  /**
+   * A LISTA das seções com um espaço EXTRA reservado. Roda duas vezes: a primeira sem reserva (o
+   * caso comum, em que o extrato cabe e nenhum aviso é preciso) e, se o extrato não couber, a
+   * segunda reservando o aviso — porque um aviso acrescentado fora do orçamento é exatamente o
+   * defeito que este módulo existe pra consertar, e eu o cometi na primeira versão deste código.
+   */
+  const ajustar = (extra: number) => {
+    const mantidas: string[] = [];
+    let uso = 0;
+    for (const l of curtas) {
+      const reserva = curtas.length - mantidas.length - 1 > 0 ? reservaSec : 0;
+      if (fixo + extra + uso + l.length + 1 + reserva > o.teto) break;
+      mantidas.push(l);
+      uso += l.length + 1;
+    }
+    const cortadas = curtas.length - mantidas.length;
+    const pos = cortadas ? [marcaSecoes(cortadas)] : [];
+    const livre = Math.max(0, o.teto - fixo - extra - uso - custo(pos));
+    // o extrato fica com o que sobra depois de a lista dos trabalhos levar no máximo METADE: a
+    // lista é inventário e o extrato é a defesa contra sobrescrever às cegas — inventário não
+    // ganha da defesa. (−5 por seção: os `: ""` e o `…` do corte.)
+    const comCorpo = secoes.slice(0, mantidas.length).filter((s) => !vazia(s)).length;
+    const paraExtrato = livre - Math.min(custo(dados), Math.floor(livre / 2));
+    const limite = comCorpo ? Math.max(0, Math.min(EXTRATO_SECAO, Math.floor(paraExtrato / comCorpo) - 5)) : 0;
+    return { mantidas, pos, comCorpo, limite, mostra: limite >= MIN_EXTRATO };
+  };
+
+  let a = ajustar(0);
+  const avisa = !a.mostra && a.comCorpo > 0;
+  if (avisa) a = ajustar(MARCA_SEM_EXTRATO.length + 1);
+
+  const linhasSecoes = a.mantidas.map((curta, i) => {
+    const s = secoes[i];
+    if (vazia(s) || !a.mostra) return curta;
+    return `- ${s.titulo} (${palavras(s.corpo)} palavras): "${extrato(s.corpo, a.limite)}"`;
+  });
+  // Nenhum extrato caber é informação, não detalhe: o modelo precisa saber que existe texto que ele
+  // NÃO está vendo antes de mandar uma substituição que apaga justamente esse texto.
+  if (avisa && !a.mostra) linhasSecoes.push(MARCA_SEM_EXTRATO);
+
+  // Os trabalhos: cabem os que couberem. O que não couber é DITO — o modelo não pode concluir "você
+  // não tem outro documento" de uma lista cortada. E o aviso também passa pelo orçamento.
+  const espaco = o.teto - fixo - custo(linhasSecoes) - custo(a.pos);
+  const reservaMarca = dados.length ? marcaCorte(dados.length).length + 1 : 0;
+  const dentro: string[] = [];
+  let usado = 0;
+  for (const l of dados) {
+    const reserva = dados.length - dentro.length - 1 > 0 ? reservaMarca : 0;
+    if (usado + l.length + 1 + reserva > espaco) break;
+    dentro.push(l);
+    usado += l.length + 1;
+  }
+  const faltam = dados.length - dentro.length;
+  const marca = faltam ? marcaCorte(faltam) : "";
+  const linhasDados = marca && usado + marca.length + 1 <= espaco ? [...dentro, marca] : dentro;
+
+  return [
+    ...o.cabecalho, ...linhasDados,
+    ...(o.cabecalhoSecoes ? [o.cabecalhoSecoes] : []), ...linhasSecoes, ...a.pos,
+    ...o.regras,
+  ].join("\n");
+}
 
 /**
  * O bloco que a Aura lê quando a conversa já tem TCC ("" se desligado / sem TCC).
@@ -178,22 +303,20 @@ const extrato = (corpo: string): string => {
  * de o chat e o documento serem a mesma cabeça.
  */
 export function contextoDoTcc(t: TccView): string {
-  const linhas = t.secoes.map((s) => {
-    const n = palavras(s.corpo);
-    const e = extrato(s.corpo);
-    return e ? `- ${s.titulo} (${n} palavras): "${e}"` : `- ${s.titulo}: (vazia)`;
+  return montarBloco({
+    cabecalho: [`TCC EM CONSTRUÇÃO NESTA CONVERSA: "${t.titulo}" (o aluno vê numa aba ao lado).`],
+    cabecalhoSecoes: "Seções, com o começo do que já está escrito em cada uma:",
+    secoes: t.secoes,
+    regras: [
+      "NÃO contradiga o que já está no documento. Se o que você vai dizer diverge do que está escrito,",
+      "diga que está CORRIGINDO e devolva a seção corrigida em `work` — não deixe as duas versões de pé.",
+      "Se o aluno pedir para escrever, continuar ou mudar o TCC, devolva `work` com `sections` contendo",
+      "SÓ as seções que mudam, cada uma com o MESMO título (SUBSTITUI aquela seção inteira) ou um título novo",
+      "(vira seção nova). Como substituir apaga o que estava lá, mande a seção INTEIRA, preservando o que já",
+      "valia. Corpo completo da seção, tom didático. Se a conversa não for sobre o TCC, não mande `work`.",
+    ],
+    teto: MAX_CONTEXTO,
   });
-  const bloco = [
-    `TCC EM CONSTRUÇÃO NESTA CONVERSA: "${t.titulo}" (o aluno vê numa aba ao lado).`,
-    "Seções, com o começo do que já está escrito em cada uma:",
-    ...linhas,
-    "NÃO contradiga o que já está no documento. Se o que você vai dizer diverge do que está escrito,",
-    "diga que está CORRIGINDO e devolva a seção corrigida em `work` — não deixe as duas versões de pé.",
-    "Se o aluno pedir para escrever, continuar ou mudar o TCC, devolva `work` com `sections` contendo",
-    "SÓ as seções que mudam, cada uma com o MESMO título (substitui aquela seção) ou um título novo",
-    "(vira seção nova). Corpo completo da seção, tom didático. Se a conversa não for sobre o TCC, não mande `work`.",
-  ].join("\n");
-  return bloco.length > MAX_CONTEXTO ? bloco.slice(0, MAX_CONTEXTO - 1) + "…" : bloco;
 }
 
 export async function tccContextoParaTurno(userId: string | null, scopeId: unknown): Promise<string> {
