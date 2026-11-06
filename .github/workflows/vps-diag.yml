@@ -1,0 +1,134 @@
+name: VPS (diagnóstico e disco)
+
+# Diagnóstico MANUAL do VPS — o que o deploy.yml não faz: olhar o host em vez de publicar nele.
+#
+# Nasceu de um apagão (05/nov/2026): 502 + timeout + "a IA não consegue acessar um link", os três
+# juntos, pouco depois de um deploy que construiu SEIS imagens (uma nova, com Chromium). O deploy
+# limpa só `docker image prune -f` (dangling), nunca as versões antigas com tag, e NÃO tem nenhuma
+# guarda de disco. Disco cheio explica os três sintomas de uma vez: o Next não grava `.next/cache`
+# (502/timeout) e o Chromium/Leitor não gravam em /tmp (link não abre).
+#
+# LÊ POR PADRÃO, SÓ LIMPA SE PEDIREM. `limpar=nada` é o default de propósito: durante um apagão a
+# primeira coisa é VER, não mexer.
+#
+# POR QUE NÃO EXISTE AQUI UM `docker image prune -af`: esta box é "coexist" — outras stacks
+# (ChipFlow/disparos) moram nela, e o `-a` apaga toda imagem sem container RODANDO, inclusive as
+# dos vizinhos. Seria o oposto do princípio do deploy ("não toca outras stacks"). Então:
+#   cache      → `docker builder prune` (cache de build; nada em uso, e é o glutão mais comum)
+#   zaeon      → cache + imagens `zaeon-beta-*` antigas, por NOME, nunca um prune cego
+#
+# Só por acionamento manual. Mesmos secrets do deploy.yml (nenhuma credencial nova).
+
+on:
+  workflow_dispatch:
+    inputs:
+      limpar:
+        description: "O que liberar (nada = só diagnóstico)"
+        type: choice
+        options: ["nada", "cache", "zaeon"]
+        default: "nada"
+      linhas_log:
+        description: "Linhas de log do web a mostrar"
+        type: string
+        default: "80"
+
+concurrency:
+  group: deploy-vps          # mesma group do deploy.yml → nunca roda junto com um deploy
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - id: check
+        run: |
+          if [ -n "${{ secrets.VPS_HOST }}" ] && [ -n "${{ secrets.VPS_SSH_KEY }}" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Secrets do VPS ausentes — diagnóstico pulado."
+          fi
+
+  diag:
+    needs: guard
+    if: needs.guard.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Diagnóstico via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          LIMPAR: ${{ inputs.limpar }}
+          LINHAS: ${{ inputs.linhas_log }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          port: ${{ secrets.VPS_PORT }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          command_timeout: 12m
+          envs: LIMPAR,LINHAS
+          script: |
+            set -uo pipefail
+            cd "${{ secrets.DEPLOY_PATH }}"
+            export COMPOSE_FILE="${{ vars.DEPLOY_COMPOSE || 'docker-compose.beta.yml' }}"
+            case "${LINHAS-}" in (*[!0-9]*|"") LINHAS=80 ;; esac   # testa o valor CRU: com :-80 o padrao "" nunca casa e vazio passava
+
+            echo "══════════ 1. DISCO (a hipótese nº 1) ══════════"
+            df -h / /var/lib/docker 2>/dev/null | sort -u
+            echo "— inodes (disco 'cheio' com espaço livre = inode esgotado):"
+            df -i / | tail -2
+            echo
+            echo "══════════ 2. DOCKER: onde o espaço está ══════════"
+            docker system df
+            echo
+            echo "══════════ 3. CONTAINERS: quem está de pé ══════════"
+            docker compose ps
+            echo "— reinícios (coluna alta = laço de crash):"
+            docker inspect --format '{{.Name}} restarts={{.RestartCount}} status={{.State.Status}} oom={{.State.OOMKilled}}' $(docker compose ps -q) 2>/dev/null
+            echo
+            echo "══════════ 4. MEMÓRIA ══════════"
+            free -g
+            docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.CPUPerc}}' 2>/dev/null | head -25
+            echo
+            echo "══════════ 5. O ERRO REAL (log do web) ══════════"
+            docker compose logs --tail="${LINHAS}" --no-color web 2>&1 | tail -n "${LINHAS}"
+            echo
+            echo "══════════ 6. /api/health (de dentro do web) ══════════"
+            docker compose exec -T web node -e "fetch('http://localhost:3000/api/health').then(r=>r.text()).then(t=>{console.log(t.slice(0,1500));process.exit(0)}).catch(e=>{console.error('FALHOU: '+e.message);process.exit(0)})" 2>&1 | tail -20
+
+            if [ "${LIMPAR}" = "nada" ]; then
+              echo
+              echo "→ limpar=nada: NADA foi apagado. Releia o bloco 1 e 2 e rode de novo com limpar=cache."
+              exit 0
+            fi
+
+            echo
+            echo "══════════ 7. LIBERANDO (limpar=${LIMPAR}) ══════════"
+            antes=$(df -h / | awk 'NR==2{print $4}')
+            echo "— livre ANTES: ${antes}"
+
+            echo "— cache de build (buildx): nada em uso, seguro"
+            docker builder prune -af 2>&1 | tail -5
+
+            echo "— imagens dangling (sem tag)"
+            docker image prune -f 2>&1 | tail -3
+
+            if [ "${LIMPAR}" = "zaeon" ]; then
+              echo "— imagens zaeon-beta-* ANTIGAS, por nome (as em uso o Docker recusa, e isso é a trava):"
+              docker images --filter "reference=zaeon-beta-*" --format '{{.Repository}}:{{.Tag}} {{.ID}} {{.CreatedSince}}' | grep -v ':latest ' || echo "  (nenhuma antiga com tag)"
+              for id in $(docker images --filter "reference=zaeon-beta-*" --format '{{.Tag}} {{.ID}}' | grep -v '^latest ' | awk '{print $2}'); do
+                docker rmi "$id" 2>&1 | tail -1
+              done
+            fi
+
+            depois=$(df -h / | awk 'NR==2{print $4}')
+            echo
+            echo "— livre DEPOIS: ${depois}  (antes: ${antes})"
+            df -h /
+            docker system df
+            echo
+            echo "— containers ainda de pé depois da limpeza (nada deve ter caído):"
+            docker compose ps
+            echo "✓ Diagnóstico concluído."
