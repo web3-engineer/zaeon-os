@@ -536,6 +536,19 @@ jobs:
                   else console.log('   agente_navegador: on (admin, somente leitura) · onde=' + ag.onde +
                               (ag.onde === 'container' && !ag.alcancavel ? '   ⚠ CONTAINER INALCANÇÁVEL (sobe o serviço)' : ''));
                 }
+                // OS DOMÍNIOS QUE A AURA PODE LER. Sem esta linha, 'por que esse endereço está fora
+                // da lista?' não tinha resposta sem ler o código: o default do Leitor vive no
+                // COMPOSE, não no workflow, então nem o log do deploy respondia. Domínio público
+                // numa allowlist não é segredo — é o oposto, é o que a casa declara que lê.
+                const dm = h.dominios || {};
+                if (dm.leitor) console.log('   dominios(leitor, ' + dm.leitor.length + '): ' + dm.leitor.join(', '));
+                if (dm.agente) console.log('   dominios(agente): ' + (dm.agente === 'aberto' ? 'INTERNET ABERTA' : dm.agente.join(', ')));
+                // O SEGUNDO SERVIDOR (a Contabo, só na tailnet): o pgvector do RAG e o LiteLLM que
+                // serve Ollama/TEI. A Zaeon roda em DUAS máquinas e o recibo só falava de uma — se a
+                // Contabo caísse, isso aparecia como 'o RAG parou de achar coisa', nunca como recibo.
+                const cb = h.contabo;
+                if (cb) console.log('   contabo(2o servidor): rag=' + cb.rag + '  modelos=' + cb.modelos +
+                            (cb.rag === 'degraded' || cb.modelos === 'degraded' ? '   ⚠ tailnet ou serviço fora' : ''));
               }).catch(e=>{ console.log('   (não deu pra ler: ' + e.message + ')'); });
             " || echo "::warning::não deu pra imprimir o estado do harness"
 
