@@ -1,0 +1,69 @@
+{
+  "_leia_me": "Integridade da geometria do Atlas do Corpo. Gerado de lib/anatomia + os arquivos reais; conferido contra gzipBytes do atlas.json. Ver infra/anatomia-geometria.mjs.",
+  "origem": "https://raw.githubusercontent.com/ashemag/human-atlas/1c38bf35c254a891200d3cedecfd57abebe83d8d/public/models/",
+  "commit": "1c38bf35c254a891200d3cedecfd57abebe83d8d",
+  "licenca": "BodyParts3D 4.0 © The Database Center for Life Science — CC BY 4.0. Ver public/models/ATTRIBUTION.md.",
+  "totalBytes": 32956129,
+  "arquivos": {
+    "body-0.bin.gz": {
+      "bytes": 2257262,
+      "sha256": "9dcd239ed44bf5b28cad64d2dc5c02a475570ee5706051f383c7c68d6fbc8b1c"
+    },
+    "body-1.bin.gz": {
+      "bytes": 2299850,
+      "sha256": "0382260e39b6b294f52a77f1d28b5d2493b93bfd665f6d1fd01926ef27473a40"
+    },
+    "body-2.bin.gz": {
+      "bytes": 2312911,
+      "sha256": "603773ea025f556e520ac79cd84f07bede9035d786e196a0e6ed2ca73bb15301"
+    },
+    "body-3.bin.gz": {
+      "bytes": 2079806,
+      "sha256": "3d7bccd225de90ba4aef4e33f08b6430dc58c929f8dc250217f6fbe2f11e7d53"
+    },
+    "body-4.bin.gz": {
+      "bytes": 2075177,
+      "sha256": "01be154bea1460e7b6c02729640e40824aa926e4ec5cd76cca2a922694fa9a30"
+    },
+    "body-5.bin.gz": {
+      "bytes": 2176648,
+      "sha256": "a1810356e610ad38170c440e5c4fd4e99434152ab76c743616098e1f4ac71624"
+    },
+    "body-6.bin.gz": {
+      "bytes": 2378951,
+      "sha256": "d4ef94ced66b8b61cf640b5b3c206b63bf7cd6c8af9823f8674117d025d0f1bf"
+    },
+    "body-7.bin.gz": {
+      "bytes": 2385857,
+      "sha256": "5efdc3ed4d57335f2631a8563ca810d94e9aa70a9081ca55ce41c912be97c3d4"
+    },
+    "body-8.bin.gz": {
+      "bytes": 2382534,
+      "sha256": "4a8c163c3d4029125c551d9299d96aec511c8269ed33c3109f4461ae658c0622"
+    },
+    "body-9.bin.gz": {
+      "bytes": 2259266,
+      "sha256": "1babeeb1464594a4e6d4689d2d73338d3e3b38fecb8a2f406820308950935e37"
+    },
+    "body-10.bin.gz": {
+      "bytes": 2249282,
+      "sha256": "24d533fa1da7b52583fd6912722b47130ebff1f505449dee276df0b7107aa5aa"
+    },
+    "body-11.bin.gz": {
+      "bytes": 2319620,
+      "sha256": "be228aec4eaae7f9ad1b8eb461ed06d6c8e813e9fe64ff894ba48409f25ff878"
+    },
+    "body-12.bin.gz": {
+      "bytes": 2268977,
+      "sha256": "80eefe006f2372bc79d8ca2388b4f2785a14bff2621d99f4a7b422d63f9eb556"
+    },
+    "body-13.bin.gz": {
+      "bytes": 2165080,
+      "sha256": "37fd7a4cd62fb6031eb300a4b947c80c7b00d2751d78ff464147fb444e1a0307"
+    },
+    "body-14.bin.gz": {
+      "bytes": 1344908,
+      "sha256": "3968d6e0a1d14f8c39e5ffb1f618c72023f429c41592f6793f0030e60ab3d8b6"
+    }
+  }
+}

@@ -168,7 +168,13 @@ services:
       abnt-service: { condition: service_started }
       pdf-loader: { condition: service_started }
     expose: ["3000"]            # público é só o Caddy
-    volumes: ["studio_data:/app/.studio"]   # artefatos do Studio (podcast/imagem) — persistem entre deploys
+    volumes:
+      - "studio_data:/app/.studio"                        # artefatos do Studio (podcast/imagem) — persistem entre deploys
+      # Geometria do Atlas do Corpo. O `public/` É servido do disco em tempo de pedido (não usamos
+      # `output: standalone` — ver a nota no topo do Dockerfile), então o que estiver neste volume
+      # é entregue em /models/body/*. Montar SÓ a subpasta: o atlas.json do nível de cima vem da
+      # imagem e não pode ser sombreado.
+      - "anatomia_geometria:/app/public/models/body"
     # init (tini) como PID 1: recolhe processos órfãos — a captura do Octa (lib/octa/captura.ts) roda Chromium
     # aqui, e o `node server.js` como PID 1 nunca colhe filhos que sobram quando o navegador é morto.
     init: true
@@ -624,4 +630,5 @@ volumes:
   caddy_config:
   hf_cache:        # pesos do Kokoro (HuggingFace) — evita re-download a cada restart
   studio_data:     # artefatos do Studio (podcast/imagem) gerados em /app/.studio
+  anatomia_geometria:  # 31,4 MB da geometria do Atlas do Corpo — baixada uma vez, sobrevive a deploy
   litellm_pg:      # Postgres do gateway LiteLLM (virtual keys, budgets) — perfil gateway

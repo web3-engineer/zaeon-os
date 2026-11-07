@@ -105,6 +105,18 @@ export default function EscritorioRoom({ aoAbrirChat }: { aoAbrirChat?: (slug: s
             >
               Falar com {podSelecionado.nome}
             </button>
+
+            {/* Departamento com tela própria (hoje só a Anatomia) ganha a porta. Sai do DADO
+                (Departamento.rota) e não de um `if` por slug: no dia do segundo, ele aparece
+                sozinho. Sem rota, nenhum botão — não se oferece porta que não existe. */}
+            {podSelecionado.departamento.rota && (
+              <a
+                href={podSelecionado.departamento.rota}
+                className="block w-full py-2.5 rounded-full text-center text-[12px] font-bold border border-slate-200 dark:border-white/15 text-slate-700 dark:text-white/80 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+              >
+                Abrir {podSelecionado.departamento.nome}
+              </a>
+            )}
           </div>
         ) : (
           <div className="rounded-2xl p-4 border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/[0.03]">

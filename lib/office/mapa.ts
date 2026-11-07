@@ -18,6 +18,13 @@ export type Departamento = {
   /** Cor do pod, em hex. Combina com o ciano da marca sem virar arco-íris. */
   cor: string;
   descricao: string;
+  /**
+   * A TELA do departamento, quando ele tem uma. Opcional porque a maioria não tem: Biblioteca e
+   * Arquivo são o que o agente faz DENTRO do chat, não um lugar onde se entra. Só preenche isto
+   * um departamento com página própria — e `lib/office/mapa.test.ts` confere que o arquivo da
+   * rota existe de verdade, para o escritório nunca oferecer uma porta que dá no 404.
+   */
+  rota?: string;
 };
 
 export const DEPARTAMENTOS: Record<MentorSkill, Departamento> = {
@@ -28,7 +35,7 @@ export const DEPARTAMENTOS: Record<MentorSkill, Departamento> = {
   molecule:   { id: "molecule",   nome: "Laboratório", cor: "#E5484D", descricao: "Estrutura molecular 3D vinda do PubChem." },
   // A cor não é gosto: #B8916B é a MESMA do sistema digestório no atlas (lib/anatomia/atlas
   // SISTEMAS), então o pod fica preso à paleta do dado em vez de entrar na roleta de cores.
-  anatomia:   { id: "anatomia",   nome: "Anatomia",    cor: "#B8916B", descricao: "Atlas 3D do corpo — 2.234 malhas e 3.432 conceitos do BodyParts3D." },
+  anatomia:   { id: "anatomia",   nome: "Anatomia",    cor: "#B8916B", descricao: "Atlas 3D do corpo — 2.234 malhas e 3.432 conceitos do BodyParts3D.", rota: "/anatomia" },
 };
 
 /** Em que estado um pod está. Só isto — o resto é animação. */
@@ -49,12 +56,41 @@ export type Pod = {
 };
 
 /**
- * O departamento que define o pod visualmente. `memory` e `studio` todo mentor tem —
- * colorir por elas deixaria o escritório inteiro da mesma cor e não diria nada.
+ * Quantos mentores exercem cada skill. Contado do próprio MENTOR_SEED, nunca escrito à mão: uma
+ * lista fixa envelheceria calada no dia em que um mentor ganhasse ou perdesse uma habilidade.
+ */
+export const MENTORES_POR_SKILL: ReadonlyMap<MentorSkill, number> = (() => {
+  const m = new Map<MentorSkill, number>();
+  for (const mentor of MENTOR_SEED) for (const s of mentor.enabledSkills) m.set(s, (m.get(s) ?? 0) + 1);
+  return m;
+})();
+
+/**
+ * O departamento que define o pod visualmente: o skill MAIS RARO entre os que o mentor exerce.
+ *
+ * Era "o primeiro que não for `memory` nem `studio`", com a justificativa certa — colorir por algo
+ * que todos têm não diz nada — mas com uma lista fixa de exceções que envelheceu: hoje `literature`
+ * está em 12 dos 13 mentores, tão pouco distintiva quanto as duas que estavam na lista. O efeito
+ * era que o pod do Osler dizia "Biblioteca" (12 em 13) em vez de "Anatomia" (1 em 13), e o da
+ * bióloga dizia "Biblioteca" em vez de "Laboratório". Contar em vez de listar resolve os dois e
+ * continua valendo para o próximo skill raro que aparecer, sem ninguém se lembrar de atualizar nada.
+ *
+ * Empate de raridade: vence a ordem em que o mentor declara — determinístico, e é a opinião dele.
+ *
+ * `memory` fica FORA da disputa, e isso não é o mesmo que ser comum: é encanamento que todo agente
+ * tem por construção, e um pod rotulado "Arquivo" não diria nada sobre quem trabalha nele. Quem só
+ * tem as universais cai no Estúdio — o que ele ENTREGA. Essa escolha é anterior a mim e o teste
+ * dela continua valendo palavra por palavra.
  */
 export function departamentoDe(m: Pick<MentorSeed, "enabledSkills">): Departamento {
-  const distintivo = m.enabledSkills.find((s) => s !== "memory" && s !== "studio");
-  return DEPARTAMENTOS[distintivo ?? "studio"];
+  let escolhido: MentorSkill | undefined;
+  let menor = Infinity;
+  for (const s of m.enabledSkills) {
+    if (s === "memory") continue;
+    const n = MENTORES_POR_SKILL.get(s) ?? 0;
+    if (n < menor) { menor = n; escolhido = s; }
+  }
+  return DEPARTAMENTOS[escolhido ?? "studio"];
 }
 
 /**
