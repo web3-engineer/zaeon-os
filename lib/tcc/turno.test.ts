@@ -443,3 +443,87 @@ describe("D7e · briefing com plano próprio, COM documento já aberto na conver
     expect(pedeNovoTrabalho(longo, ABERTO)).toBe(false);
   });
 });
+
+/**
+ * A VISÃO DO DOCUMENTO NO CHAT ÚNICO — o conserto da D3 que nunca viajou, e o teto que comia a regra.
+ *
+ * A D3 já tinha ACHADO E CONSERTADO este defeito no `contextoDoTcc`; o cabeçalho dela diz: "até aqui
+ * eram só título e contagem de palavras — o chat sabia que a seção existia e não fazia ideia do que
+ * ela dizia". O chat único nasceu depois, com `contextoDosTrabalhos`, e voltou ao estado ANTERIOR à
+ * D3. Não é só dessincronia: é PERDA DE TEXTO, porque `opsDeWork` transforma seção de mesmo título
+ * em `substituir` com o corpo inteiro — o modelo troca por completo um texto que nunca leu.
+ *
+ * E a REGRA tem de sobreviver ao teto. Nas duas funções o corte era `bloco.slice(0, teto)` sobre o
+ * bloco já montado, e as regras moram no FIM: documento grande cortava justamente a instrução de
+ * como escrever nele. Dado se corta; regra, não.
+ */
+describe("bússola do documento · o chat vê o corpo, e a regra sobrevive ao teto", () => {
+  const CORPO = "A fotossíntese converte luz em energia química nos cloroplastos das plantas C4, com a Rubisco atuando no ciclo de Calvin e o PEP-carboxilase concentrando CO2.";
+  const ABNT = ["INTRODUÇÃO", "REFERENCIAL TEÓRICO", "METODOLOGIA", "RESULTADOS E DISCUSSÃO", "CONCLUSÃO", "REFERÊNCIAS"];
+  const w = (x: any = {}) => tcc({ id: "a1", titulo: "fotossíntese", workType: "Artigo", ...x });
+
+  it("chat único: o extrato do CORPO das seções do aberto entra no bloco", () => {
+    const secoes = [{ id: "i", titulo: "INTRODUÇÃO", corpo: CORPO }, { id: "m", titulo: "METODOLOGIA", corpo: "" }];
+    const c = contextoDosTrabalhos([w({ secoes })] as any, "a1");
+    expect(c).toContain("A fotossíntese converte luz em energia química"); // o corpo, não só o título
+    expect(c).toContain("(vazia)");                                        // seção vazia é dita, não escondida
+  });
+
+  it("documento ABNT cheio: as regras continuam no bloco (dado é cortado, regra não)", () => {
+    const secoes = ABNT.map((titulo, i) => ({ id: `s${i}`, titulo, corpo: CORPO.repeat(4) }));
+    const c = contextoDosTrabalhos([w({ secoes })] as any, "a1");
+    expect(c, "chat único perdeu a regra de como escrever").toContain("MESMO título");
+    expect(c, "chat único perdeu a regra do documento novo").toContain("documento NOVO");
+    const t = contextoDoTcc(tcc({ secoes }) as any);
+    expect(t, "bússola do TCC perdeu a trava de contradição").toContain("NÃO contradiga");
+    expect(t, "bússola do TCC perdeu a regra de correção").toContain("está CORRIGINDO");
+  });
+
+  /**
+   * VARREDURA, e não um exemplo. A primeira versão do meu orçamento passava num formato e estourava
+   * em outro (2542 num teto de 2400) porque os dois MARCADORES de corte eram acrescentados fora da
+   * conta — o mesmo pecado que este código existe pra consertar. Um teto afirmado num único formato
+   * de entrada não é um teto afirmado.
+   */
+  it("teto respeitado em TODA combinação de nº de seções × nº de trabalhos", () => {
+    for (const nSec of [0, 1, 2, 6, 7, 13, 14, 28, 29, 30, 40]) {
+      const secoes = Array.from({ length: nSec }, (_, i) => ({ id: `s${i}`, titulo: `SEÇÃO DE TÍTULO LONGO NÚMERO ${i}`, corpo: i % 3 === 0 ? "" : CORPO.repeat(3) }));
+      const t = contextoDoTcc(tcc({ secoes }) as any);
+      expect(t.length, `contextoDoTcc estourou com ${nSec} seções`).toBeLessThanOrEqual(1200);
+      for (const nW of [1, 2, 5, 12]) {
+        const lista = Array.from({ length: nW }, (_, i) => w({ id: `a${i}`, titulo: `trabalho número ${i} com um título bastante comprido`, secoes }));
+        const c = contextoDosTrabalhos(lista as any, "a0");
+        expect(c.length, `contextoDosTrabalhos estourou com ${nSec} seções × ${nW} trabalhos`).toBeLessThanOrEqual(2400);
+        // e a regra sobrevive em TODO formato — é a lei 1 do montarBloco
+        expect(c, `regra perdida com ${nSec}×${nW}`).toContain("MESMO título");
+      }
+    }
+  });
+
+  it("o teto continua valendo nos dois, com documento e lista grandes", () => {
+    const secoes = Array.from({ length: 30 }, (_, i) => ({ id: `s${i}`, titulo: `SEÇÃO DE TÍTULO LONGO NÚMERO ${i}`, corpo: CORPO.repeat(3) }));
+    const lista = Array.from({ length: 12 }, (_, i) => w({ id: `a${i}`, titulo: `trabalho número ${i} com título comprido`, secoes }));
+    expect(contextoDosTrabalhos(lista as any, "a0").length).toBeLessThanOrEqual(2400);
+    expect(contextoDoTcc(tcc({ secoes }) as any).length).toBeLessThanOrEqual(1200);
+  });
+
+  it("corte é DITO, nunca silencioso: seção fora da lista, extrato que não cabe, trabalho omitido", () => {
+    // 30 seções não cabem em 1200 nem como títulos: o que sai tem de ser anunciado, porque o modelo
+    // não pode substituir uma seção que ele não viu.
+    const muitas = Array.from({ length: 30 }, (_, i) => ({ id: `s${i}`, titulo: `SEÇÃO DE TÍTULO BEM LONGO NÚMERO ${i}`, corpo: CORPO }));
+    const t = contextoDoTcc(tcc({ secoes: muitas }) as any);
+    expect(t).toContain("não listada");
+    expect(t).toContain("NÃO substitua seção que não está nesta lista");
+
+    // Seções suficientes pra caber a lista e não o texto de cada uma → o aviso de texto invisível.
+    const medias = Array.from({ length: 14 }, (_, i) => ({ id: `s${i}`, titulo: `SEÇÃO ${i}`, corpo: CORPO }));
+    const m = contextoDoTcc(tcc({ secoes: medias }) as any);
+    expect(m).toContain("peça o trecho antes de SUBSTITUIR");
+    expect(m).toContain("…");
+
+    // 12 trabalhos + documento cheio → a lista é cortada, e dizer isso evita o modelo concluir
+    // "você não tem outro documento" a partir de uma lista incompleta.
+    const lista = Array.from({ length: 12 }, (_, i) => w({ id: `a${i}`, titulo: `trabalho número ${i} com um título bastante comprido`, secoes: medias }));
+    expect(contextoDosTrabalhos(lista as any, "a0")).toContain("não listado");
+  });
+});
