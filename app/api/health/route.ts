@@ -46,6 +46,19 @@ import { agenteVivo } from "@/lib/agent/navegadorRemoto";
 import { tccCrossOn } from "@/lib/tcc/store";
 import { TCC_CROSS_ON } from "@/lib/tcc/client";
 import { chatUnicoOn } from "@/lib/chat/chatUnico";
+import { resumoDoAtlas } from "@/lib/anatomia/carregar";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+
+/** Manifesto e geometria do atlas de anatomia — contagens, nunca o dado. */
+function atlasDeAnatomia() {
+  const r = resumoDoAtlas();
+  if (!r) return { manifesto: "off" as const };
+  // a geometria é servida como estático: basta o primeiro pedaço existir pra ela estar no lugar
+  const base = join(process.cwd(), "public/models/body");
+  const geometria = existsSync(join(base, "body-0.bin.gz")) || existsSync(join(base, "body-0.bin"));
+  return { manifesto: "on" as const, geometria: geometria ? ("on" as const) : ("off" as const), pecas: r.pecas, conceitos: r.conceitos };
+}
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -105,6 +118,15 @@ export async function GET() {
      * 403. Zero = ninguém além do dono do mapa pilota, que é o default do código.
      */
     nave: { tripulacao: (process.env.NAVE_TRIPULACAO || "").split(",").filter((e) => e.trim()).length },
+    /**
+     * O ATLAS DE ANATOMIA, em DUAS metades que falham separado — e por isso saem separadas:
+     *   `manifesto` = o atlas.json (1,3 MB) está na imagem → BUSCA e INSPEÇÃO funcionam;
+     *   `geometria` = os ~90 MB de malha estão no volume → o VISUALIZADOR 3D desenha.
+     * Manifesto ON com geometria OFF é um estado REAL e útil (o mentor responde sobre anatomia, mas
+     * não há corpo pra girar), e sem esta linha a única forma de descobrir seria abrir a tela e ver
+     * nada carregar. É o mesmo trilho de duas metades que o `documento` já usa.
+     */
+    atlas: atlasDeAnatomia(),
     /**
      * F8 · O AGENTE DE NAVEGADOR. "on" só quando as TRÊS condições estão de pé; senão, os NOMES do
      * que falta (nunca valores). As três são de naturezas diferentes e por isso erram diferente:

@@ -26,6 +26,9 @@ export const DEPARTAMENTOS: Record<MentorSkill, Departamento> = {
   studio:     { id: "studio",     nome: "Estúdio",    cor: "#F2D23C", descricao: "Transforma estudo em guia, mapa, podcast, imagem." },
   code:       { id: "code",       nome: "Oficina",    cor: "#8FA1AD", descricao: "Código e execução — a sala Projetos." },
   molecule:   { id: "molecule",   nome: "Laboratório", cor: "#E5484D", descricao: "Estrutura molecular 3D vinda do PubChem." },
+  // A cor não é gosto: #B8916B é a MESMA do sistema digestório no atlas (lib/anatomia/atlas
+  // SISTEMAS), então o pod fica preso à paleta do dado em vez de entrar na roleta de cores.
+  anatomia:   { id: "anatomia",   nome: "Anatomia",    cor: "#B8916B", descricao: "Atlas 3D do corpo — 2.234 malhas e 3.432 conceitos do BodyParts3D." },
 };
 
 /** Em que estado um pod está. Só isto — o resto é animação. */

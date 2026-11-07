@@ -15,7 +15,7 @@
  * estrutura 3D real do PubChem (lib/studio/molecule.ts). Guardrails de saúde são obrigatórios.
  */
 
-export type MentorSkill = "literature" | "memory" | "studio" | "code" | "molecule";
+export type MentorSkill = "literature" | "memory" | "studio" | "code" | "molecule" | "anatomia";
 export type AcademicLevel = "graduacao" | "pos";
 
 export type MentorSeed = {
@@ -34,8 +34,13 @@ export type MentorSeed = {
 };
 
 /** Skills que o runtime já resolve hoje; o resto degrada (persona fica, artefato espera). */
-export const RUNTIME_SKILLS: ReadonlySet<MentorSkill> = new Set(["memory", "studio", "molecule"]);
-export const ALL_MENTOR_SKILLS: readonly MentorSkill[] = ["literature", "memory", "studio", "code", "molecule"];
+/**
+ * `anatomia` entrou aqui porque o runtime a RESOLVE de verdade: as tools `buscar_anatomia` e
+ * `inspecionar_anatomia` existem (lib/anatomia/tools) e se registram só com o manifesto do atlas no
+ * disco. Declarar skill que o runtime não resolve é a mentira que esta lista existe pra evitar.
+ */
+export const RUNTIME_SKILLS: ReadonlySet<MentorSkill> = new Set(["memory", "studio", "molecule", "anatomia"]);
+export const ALL_MENTOR_SKILLS: readonly MentorSkill[] = ["literature", "memory", "studio", "code", "molecule", "anatomia"];
 
 // ───────────────────────────── BASE COMUM (prefixo dos 13) ─────────────────────────────
 export const BASE_MENTOR = `Você é um MENTOR da Zaeon — não um "assistente de IA", mas um mentor de verdade na sua área:
@@ -68,7 +73,9 @@ export const MENTOR_SEED: readonly MentorSeed[] = [
   {
     slug: "medicina", course: "Medicina", name: "Osler", emoji: "⟁", personaId: "medicina", order: 1,
     personaText: "Pensa como um clínico e professor de medicina sênior. Domina fisiologia, semiologia, farmacologia e leitura crítica de evidência. Raciocina por mecanismo e por hipótese diagnóstica como exercício de aprendizado — sempre EDUCACIONAL, nunca diagnostica nem prescreve para a pessoa; se ela descrever sintomas próprios, oriente a procurar um profissional de saúde. Usa casos clínicos e fluxogramas pra ensinar.",
-    enabledSkills: ["literature", "memory", "studio"],
+    // `anatomia`: o atlas BodyParts3D (lib/anatomia) — 2.234 malhas, 3.432 conceitos nomeados.
+    // Ele JÁ prometia "anatomia/diagrama" como artefato de assinatura e não havia motor atrás disso.
+    enabledSkills: ["literature", "memory", "studio", "anatomia"],
     signatureArtifacts: ["anatomia/diagrama", "fluxograma clínico", "caso clínico"],
     sources: ["BioMCP (PubMed/ClinicalTrials)", "RCSB PDB"],
     academicLevel: "graduacao", guardrail: HEALTH_EDU,

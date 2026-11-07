@@ -38,6 +38,12 @@ fetch('http://localhost:3000/api/health').then(r=>r.json()).then(h=>{
   const d = h.documento;
   if (d) console.log('   documento: servidor=' + sn(d.servidor) + '  cliente=' + sn(d.cliente) +
               '  chat_unico=' + sn(d.chatUnico) + (d.servidor !== d.cliente ? '   ⚠ METADES DIVERGENTES' : ''));
+  // O atlas de anatomia em DUAS metades: manifesto (busca/inspeção) e geometria (visualizador 3D).
+  // Elas falham separado, então saem separadas — manifesto=on com geometria=off é estado real.
+  const at = h.atlas;
+  if (at) console.log('   atlas(anatomia): manifesto=' + sn(at.manifesto) + '  geometria=' + sn(at.geometria ?? 'off') +
+              (at.pecas ? '  pecas=' + at.pecas + '  conceitos=' + at.conceitos : '') +
+              (at.manifesto === 'on' && at.geometria !== 'on' ? '   (busca ok, SEM corpo 3D)' : ''));
   // A nave: quantas contas na tripulação (o /api/health manda o NÚMERO, nunca o endereço).
   // 0 = só o dono do mapa pilota. É assim que se sabe se a Variable NAVE_TRIPULACAO chegou.
   if (h.nave) console.log('   nave: tripulacao=' + h.nave.tripulacao + (h.nave.tripulacao ? '' : ' (so o dono pilota)'));
