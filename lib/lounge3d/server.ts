@@ -4,6 +4,7 @@
  */
 import { regiaoDoUsuario, type Regiao } from "@/lib/cyber/regiaoUsuario";
 import { corpoDoUsuario, pilotaANave } from "./corposDeUsuario";
+import { ehAdminDoMapa } from "@/lib/cyber/adminMapa";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
@@ -28,14 +29,14 @@ export function exigirFlag(): NextResponse | null {
  * `fundador` = dono da Zaeon (isSuperAdmin: allowlist + User.role); `novo` = NUNCA entrou no cyberespaço
  * (User.cyberNasceuEm vazio → nasce num tubo de ensaio) — decididos AQUI, no servidor; o cliente só pinta.
  */
-export type Eu = { id: string; name: string; image: string | null; color: string; fundador: boolean; novo: boolean; /** as MOTOS liberadas (a entrega ao Droid aceita + o tutorial delas — User.cyberPerfil.motosLiberadasEm; o dono sempre) */ motos?: boolean; /** o corpo próprio (lib/lounge3d/corposDeUsuario) */ corpo?: string; /** pilota a nave-QG (o dono ou a tripulação) */ nave?: boolean; /** o PERSONAGEM escolhido (gênero + cor — lib/cyber/personagem); null = ainda não escolheu */ personagem?: Personagem | null; /** venceu o DUELO de linguagem da Examiner (a cúpula do Templo Cósmico abre — User.cyberPerfil.examinerInglesEm) */ examiner?: boolean; /** a REGIÃO real pelo perfil (país → instituição → cidade — lib/cyber/regiaoUsuario): a nave coworking em que se começa; null = o perfil não diz (o cliente tenta o fuso) */ regiao?: Regiao | null };
+export type Eu = { id: string; name: string; image: string | null; color: string; fundador: boolean; novo: boolean; /** as MOTOS liberadas (a entrega ao Droid aceita + o tutorial delas — User.cyberPerfil.motosLiberadasEm; o dono do mapa sempre). NÃO vem com a tripulação: quem embarca na nave ainda GANHA as motos como qualquer aluno, senão a conta de teste deixaria de poder avaliar esse trecho da experiência. */ motos?: boolean; /** o corpo próprio (lib/lounge3d/corposDeUsuario) */ corpo?: string; /** pilota a nave-QG (o dono ou a tripulação) */ nave?: boolean; /** o PERSONAGEM escolhido (gênero + cor — lib/cyber/personagem); null = ainda não escolheu */ personagem?: Personagem | null; /** venceu o DUELO de linguagem da Examiner (a cúpula do Templo Cósmico abre — User.cyberPerfil.examinerInglesEm) */ examiner?: boolean; /** a REGIÃO real pelo perfil (país → instituição → cidade — lib/cyber/regiaoUsuario): a nave coworking em que se começa; null = o perfil não diz (o cliente tenta o fuso) */ regiao?: Regiao | null };
 export async function eu(): Promise<Eu | null> {
   const s = await getServerSession(authOptions).catch(() => null);
   const email = s?.user?.email;
   if (!email) return null;
   const u = await prisma.user.findUnique({ where: { email }, select: { id: true, name: true, image: true, role: true, cyberNasceuEm: true, cyberPerfil: true, countryCode: true, city: true, institution: true } });
   const rg = u ? regiaoDoUsuario({ countryCode: u.countryCode, institution: u.institution, city: u.city }) : null;
-  return u ? { id: u.id, name: (u.name || email.split("@")[0] || "Alguém").slice(0, 40), image: u.image ?? null, color: lerPersonagem(u.cyberPerfil)?.cor ?? corDoUsuario(u.id), fundador: isSuperAdmin({ email, role: u.role }), novo: !u.cyberNasceuEm, motos: pilotaANave(email) || !!(u.cyberPerfil as { motosLiberadasEm?: unknown } | null)?.motosLiberadasEm, corpo: corpoDoUsuario(u.id), nave: pilotaANave(email), personagem: lerPersonagem(u.cyberPerfil), examiner: !!(u.cyberPerfil as { examinerInglesEm?: unknown } | null)?.examinerInglesEm, regiao: rg && rg.fonte !== "padrao" ? rg.regiao : null } : null;
+  return u ? { id: u.id, name: (u.name || email.split("@")[0] || "Alguém").slice(0, 40), image: u.image ?? null, color: lerPersonagem(u.cyberPerfil)?.cor ?? corDoUsuario(u.id), fundador: isSuperAdmin({ email, role: u.role }), novo: !u.cyberNasceuEm, motos: ehAdminDoMapa(email) || !!(u.cyberPerfil as { motosLiberadasEm?: unknown } | null)?.motosLiberadasEm, corpo: corpoDoUsuario(u.id), nave: pilotaANave(email), personagem: lerPersonagem(u.cyberPerfil), examiner: !!(u.cyberPerfil as { examinerInglesEm?: unknown } | null)?.examinerInglesEm, regiao: rg && rg.fonte !== "padrao" ? rg.regiao : null } : null;
 }
 
 export type SalaRow = { id: string; ownerId: string; title: string; kind: string; content: string; members: string[]; token: string; updatedAt: Date };

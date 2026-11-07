@@ -20,11 +20,18 @@ const ENV_SUPERS: string[] = (
   .map((s) => s.trim().toLowerCase())
   .filter(Boolean);
 
-/** Fundadores — sempre super admin (case-insensitive). Allowlist do código + ENV. */
+/**
+ * Fundadores — sempre super admin (case-insensitive). Allowlist do código + ENV.
+ *
+ * `zaeondao@gmail.com` SAIU daqui a pedido do dono (nov/2026): ela é a conta com que ele percorre o
+ * produto como ALUNO, e enquanto estivesse nesta lista ele não conseguia ver o que um usuário comum
+ * vê — a Cidade Zaeon abre pro fundador e está fechada pros outros, e o login por código de e-mail
+ * é recusado pra conta de admin (`entraSoPeloGoogle`). Conta de teste dentro da allowlist não testa
+ * nada. Pra devolver o privilégio a ela, basta a ENV abaixo — sem deploy.
+ */
 export const SUPER_ADMINS: string[] = [
   "donmartinezcaiudoceu@gmail.com",   // fundador (Gmail) — acesso a Tutoriais + modo CEO
   "donmartinez@aluno.unilab.edu.br",  // fundador (institucional)
-  "zaeondao@gmail.com",
   "martinez@zaeon.space",
   ...ENV_SUPERS,
 ];

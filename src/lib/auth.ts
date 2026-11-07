@@ -4,16 +4,20 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { MongoDBAdapter } from "@auth/mongodb-adapter";
 import { clientPromise } from "@/src/lib/db";
 import { MongoClient, ObjectId } from "mongodb";
-import { isSuperAdminEmail } from "@/lib/auth/roles";
+import { isSuperAdmin, isSuperAdminEmail } from "@/lib/auth/roles";
 import { atualizarFotoDoGoogle, fotoDoPerfil } from "@/lib/user/fotoNoLogin";
 import { loginAssurance } from "@/lib/octa/android/access";
 import { colecaoCodigos, conferirCodigo } from "@/lib/auth/codigoLogin";
 
-// A LISTA VIP
-const ADMIN_EMAILS = [
-    "zaeondao@gmail.com",
-    "martinez@zaeon.space"
-];
+/**
+ * A LISTA VIP MORREU AQUI: ela era uma TERCEIRA cópia da allowlist de admin (as outras em
+ * lib/auth/roles.ts e app/api/admin/convites), e as três discordavam. Consequência medida:
+ * `session.user.isAdmin` saía desta lista de 2 e-mails, então a conta FUNDADORA do dono era super
+ * admin por roles.ts e NÃO era `isAdmin` — não via a UI de admin que uma conta secundária via. (O
+ * endereço não vem escrito aqui de propósito: ele mora só em lib/auth/roles.ts, e lib/auth/roles.test.ts
+ * afirma que nenhum outro arquivo o repete.) Agora existe uma fonte só: lib/auth/roles.ts, que já lê de
+ * ENV (SUPER_ADMIN_EMAILS) e também aceita User.role, então mudar a lista não exige deploy.
+ */
 
 /** Skills iniciais do RPG acadêmico — mesmo shape do /api/auth/guest-register. */
 const SKILLS_INICIAIS = {
@@ -30,7 +34,7 @@ const SKILLS_INICIAIS = {
  */
 /** #686: conta de fundador/admin só entra pelo Google — nem recebe código por e-mail */
 export async function entraSoPeloGoogle(email: string): Promise<boolean> {
-    if (ADMIN_EMAILS.includes(email) || isSuperAdminEmail(email)) return true;
+    if (isSuperAdminEmail(email)) return true;
     const client = (await clientPromise) as MongoClient;
     const u = await client.db().collection("users").findOne({ email }, { projection: { role: 1 } });
     const papel = String(u?.role || "").toLowerCase();
@@ -84,7 +88,7 @@ export const authOptions: NextAuthOptions = {
             async authorize(credentials) {
                 const email = (credentials?.email || "").trim().toLowerCase();
                 if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
-                if (ADMIN_EMAILS.includes(email) || isSuperAdminEmail(email)) return null;
+                if (isSuperAdminEmail(email)) return null;
                 // #686: sem o código certo, não entra nem cria conta
                 if (!(await conferirCodigo(await colecaoCodigos(), email, String(credentials?.codigo ?? "").trim()))) return null;
 
@@ -189,7 +193,7 @@ export const authOptions: NextAuthOptions = {
                     
                     const userEmail = token.email.toLowerCase();
                     // @ts-ignore
-                    session.user.isAdmin = ADMIN_EMAILS.includes(userEmail);
+                    session.user.isAdmin = isSuperAdmin({ email: userEmail, role: dbUser.role });
                 }
             }
             return session;

@@ -4073,7 +4073,7 @@ export class CyberEngine {
   /** ADMIN (o servidor marcou fundador — isSuperAdmin): a Cidade Zaeon está aberta (nov/2026: fechada pros outros) */
   private ehAdmin() { return !!this.o.eu.fundador || this.ehFundador(this.o.eu.id); }
   /** pilota a nave-QG: o dono ou a TRIPULAÇÃO (o servidor marcou `nave`) */
-  /** quem pilota a nave-QG: SÓ o dono (o servidor manda `nave` — lib/lounge3d/corposDeUsuario `pilotaANave`; a tripulação acabou) */
+  /** quem pilota a nave-QG: o dono do mapa OU a tripulação (o servidor manda `nave` — lib/lounge3d/corposDeUsuario `pilotaANave`; a tripulação VOLTOU em nov/2026, por ENV `NAVE_TRIPULACAO`) */
   private podeNave(id: string) { const p = this.pessoas.get(id); return !!p?.nave && !!this.zaeon(); }
   /** EU estou no comando da nave: o dono sempre; a tripulação quando nenhum outro piloto está online com ela (só existe
    *  uma nave — com o dono online, a tripulação embarca na dele) */
