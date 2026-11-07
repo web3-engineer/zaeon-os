@@ -428,7 +428,7 @@ export class CyberEngine {
    *  o ELEVADOR da cúpula em curso e os gatilhos armados (o elevador, a descida, o portal da popa, os buracos negros) */
   private minha: { g: THREE.Group; nave: NaveMiniHandle; espaco: EspacoHandle; skin: SkinMini; fios: FiosCosmicosHandle; fg: THREE.Group } | null = null; private avisoAnjos = -1e9;
   /** a moto da DOCA (a vaga) com que se saiu, e a CUTSCENE do login (o personagem olhando o buraco negro pela janela) */
-  private motoDaDoca = -1; private cenaLogin: { t: number; barras: HTMLDivElement[] } | null = null;
+  private motoDaDoca = -1; private cenaLogin: { t: number; t0: number; barras: HTMLDivElement[] } | null = null;
   /** sentado numa CADEIRA DE SOL do teto (relaxado, olhando o buraco negro): a cadeira, a fase e há quanto tempo */
   private naCadeira: { i: number; fase: "sentado" | "levantando"; t: number } | null = null; private naMinha: "dentro" | "fora" | null = null;
   private elevMini: { sentido: "sobe" | "desce"; t: number } | null = null; private gatMini = { elevador: true, descida: true, portal: true, buraco: true };
@@ -2227,7 +2227,10 @@ export class CyberEngine {
     const w = paraMundoMini(assentoDaCadeira(CADEIRA_LOGIN));
     this.camAz = Math.PI; this.camT.set(w.x, MINHA_NAVE.y + TETO_MINI.y + 1.2, w.z);
     const barras = typeof document === "undefined" ? [] : [0, 1].map((k) => { const b = document.createElement("div"); b.style.cssText = `position:absolute;left:0;right:0;${k ? "bottom" : "top"}:0;height:0;background:#000;transition:height 1.2s ease;z-index:5;pointer-events:none`; this.o.overlay.appendChild(b); requestAnimationFrame(() => { b.style.height = "11vh"; }); return b; });
-    this.cenaLogin = { t: 0, barras };
+    // `t0` = 0 aqui de propósito: ele é marcado no PRIMEIRO QUADRO em que a cena desenha (cameraDaCenaLogin), e não
+    // agora. Esta função roda ANTES do laço começar, quando `this.agora` ainda é 0 — marcar o início aqui faria a
+    // cena nascer com a idade da página inteira e terminar antes de aparecer. (Foi o que aconteceu: medido.)
+    this.cenaLogin = { t: 0, t0: 0, barras };
   }
   private fimDaCenaLogin() {
     const c = this.cenaLogin; if (!c) return; this.cenaLogin = null;
@@ -2235,9 +2238,18 @@ export class CyberEngine {
     this.camAz = assentoDaCadeira(CADEIRA_LOGIN).rumo + Math.PI; this.keys = {};
   }
   /** a câmera da cutscene: 3 poses (o rosto → o lado → por cima do ombro), devagar, o olhar indo do rosto pro horizonte */
-  private cameraDaCenaLogin<C extends { pos: { x: number; y: number; z: number }; olhar: { x: number; y: number; z: number } }>(c: C, dt: number): C {
+  private cameraDaCenaLogin<C extends { pos: { x: number; y: number; z: number }; olhar: { x: number; y: number; z: number } }>(c: C): C {
     const cl = this.cenaLogin; if (!cl) return c;
-    cl.t += dt; const DUR = 12, u = Math.min(1, cl.t / DUR), e = (v: number) => v * v * (3 - 2 * v);
+    // O RELÓGIO DESTA CENA É O DE PAREDE, e não o `dt` do laço (nov/2026, medido no navegador).
+    //
+    // O `dt` é travado em 0,05 s lá no loop, e com razão: é o que impede a física de atravessar parede num quadro
+    // lento. Mas cinemática não é física — ela tem uma duração em SEGUNDOS DE RELÓGIO. Contando pelo `dt` travado,
+    // num computador que desenha a ~2,5 quadros por segundo a abertura de 12 s virava ~100 s: medi 30 s de relógio
+    // produzindo 3,6 s de cena. E são exatamente esses computadores que o próprio app já avisa serem lentos ("a
+    // aceleração de hardware está desligada"). O usuário novo ficava um minuto e meio com a câmera colada no rosto.
+    if (!cl.t0) cl.t0 = this.agora;                 // o relógio começa no 1º quadro desenhado, não na montagem
+    cl.t = Math.max(0, this.agora - cl.t0);
+    const DUR = 12, u = Math.min(1, cl.t / DUR), e = (v: number) => v * v * (3 - 2 * v);
     if (cl.t > 1.2 && (Object.values(this.keys).some(Boolean) || this.joy.on)) { this.fimDaCenaLogin(); return c; }
     if (u >= 1) { this.fimDaCenaLogin(); return c; }
     const P = assentoDaCadeira(CADEIRA_LOGIN), Y = TETO_MINI.y, poses = [{ x: P.x + 0.85, y: Y + 0.95, z: P.z + 1.45 }, { x: P.x + 1.25, y: Y + 1.3, z: P.z - 0.4 }, { x: P.x - 0.45, y: Y + 1.75, z: P.z - 1.9 }];   // (o rosto → o lado → por cima da cadeira: o personagem nunca sai do quadro)
@@ -4174,7 +4186,9 @@ export class CyberEngine {
       // ESTUDANDO no tablet: o jogo não ouve o teclado (o foco pode estar na moldura, não no iframe) — só o T, que guarda
       if (this.labAberto && k !== "t") return;
       if (k === "shift") { this.keys.shift = true; return; }
-      if (k === " " || k === "spacebar") { if (this.pilotando || this.noVeiculo()) { this.voY.subir = true; e.preventDefault(); return; } if (!this.menu) { this.comandoJet(true); e.preventDefault(); } return; }
+      // O ESPAÇO PULA A ABERTURA. Ele NÃO entra em `this.keys` (este ramo volta antes), e a cutscene só olhava
+      // `this.keys` — então a tecla mais natural de "quero me mexer" era a única que não pulava a cena.
+      if (k === " " || k === "spacebar") { if (this.cenaLogin && this.cenaLogin.t > 1.2) { this.fimDaCenaLogin(); e.preventDefault(); return; } if (this.pilotando || this.noVeiculo()) { this.voY.subir = true; e.preventDefault(); return; } if (!this.menu) { this.comandoJet(true); e.preventDefault(); } return; }
       if (k === "f" && !this.menu) { if (!e.repeat) this.executarAcao(); e.preventDefault(); return; }
       if (k === "j" && !this.menu) { if (!e.repeat) this.alternarDescanso(); e.preventDefault(); return; }
       if (k === "c" && !this.menu) { if (!e.repeat) this.darDash(); e.preventDefault(); return; }   // C = DASH (o arranque — desvio)
@@ -4691,7 +4705,7 @@ export class CyberEngine {
     let c = poseDaCamera({ olho: olhoCam, az: this.camAz, pitch: this.camPitch, dist, chaoY: this.eu.alt });
     c = this.cameraNaNaveCw(c);   // dentro da NAVE COWORKING: abaixo do teto e dentro do casco
     c = this.cameraNaMinha(c);   // dentro da SUA NAVE: abaixo do teto (ou da cúpula) e dentro do casco
-    c = this.cameraDaCenaLogin(c, dt);   // a CUTSCENE do login: o rosto → por cima do ombro, o buraco negro no horizonte
+    c = this.cameraDaCenaLogin(c);   // a CUTSCENE do login: o rosto → por cima do ombro, o buraco negro no horizonte
     c = this.cameraDaCapsula(c, dt);   // numa CÁPSULA da torre: a vista de dentro, parada em relação a ela
     c = this.cameraDaAproximacao(c, dt);   // chegando num buraco negro: a câmera alta, de trás, pra ver os detritos vindo
     c = this.cameraDaTravessia(c, dt);   // sendo tragado: o plano de cinema com o buraco negro
