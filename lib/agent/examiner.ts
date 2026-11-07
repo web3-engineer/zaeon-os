@@ -178,8 +178,6 @@ export function critique(input: ExaminerInput): ExaminerVerdict {
     evidenceLevel: evidenceLevelOf(n),
     integrity: [], // achados de imagem/número/lógica/citação: aprofundado numa fase posterior
     issues,
-    reflections: spec.reflections,
-    ensemble: spec.ensemble,
   };
 }
 

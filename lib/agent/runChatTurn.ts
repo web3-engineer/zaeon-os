@@ -39,6 +39,7 @@ import { blocoDeEntregaveis, lerBriefing } from "@/lib/tcc/briefing";
 import { capacidadeDe, habilidadesDoTurno, toolsPermitidas } from "@/lib/agents/capacidades";
 import { agenteChat, type AgenteChatId } from "@/lib/agents/chatAgentes";
 import { vozDoTurno } from "@/lib/agents/voz";
+import { escopoDoTurno } from "@/lib/agents/escopo";
 
 export type ChatTurnParams = {
   prompt: string;
@@ -85,6 +86,40 @@ export async function runChatTurn(
   const habilidades = habilidadesDoTurno({
     agente,
     habilidadesDoMentor: mentor?.slug ? mentorBySlug(mentor.slug)?.enabledSkills ?? null : null,
+  });
+
+  /**
+   * `specific_knowledge` — O DADO DELA RESPONDENDO POR SI.
+   *
+   * Pra quem tem a habilidade `anatomia`, a pergunta é testada contra os 3.432 conceitos do atlas,
+   * palavra por palavra. É o único sinal que `termosProprios` não dá: o aluno que digita o nome em
+   * latim ou inglês ("hippocampus", "femur"). O alcance é esse e só esse — `termoDeBusca` não
+   * tokeniza (ele procura a string INTEIRA no mapa PT→EN), e por isso a pergunta vem fatiada aqui
+   * em vez de inteira; jogar a frase toda devolveria `false` sempre.
+   *
+   * Palavras de 4+ letras, no máximo 12: um teto, porque isto roda em todo turno dela.
+   */
+  const reconheceDoProprio = habilidades.includes("anatomia")
+    ? await (async () => {
+        const [{ carregarAtlas }, { buscarConceitos }] = await Promise.all([
+          import("@/lib/anatomia/carregar"),
+          import("@/lib/anatomia/busca"),
+        ]).catch(() => [null, null] as any);
+        if (!carregarAtlas || !buscarConceitos) return undefined;
+        return (pergunta: string): boolean => {
+          const atlas = carregarAtlas();
+          if (!atlas) return false;                    // sem manifesto em disco: o sinal não existe
+          const palavras = String(pergunta).toLowerCase().match(/[\p{L}]{4,}/gu)?.slice(0, 12) ?? [];
+          return palavras.some((w) => buscarConceitos(atlas, w, 1).total > 0);
+        };
+      })()
+    : undefined;
+
+  const veredictoDeEscopo = escopoDoTurno({
+    pergunta: prompt,
+    areaDaAgente: cap.area,
+    termosProprios: cap.termosProprios,
+    reconheceDoProprio,
   });
   // "escreva um artigo com base neste: <artigo colado>": o PEDIDO (curto) é o objetivo do turno — roteador, buscas,
   // título; o texto colado vira bloco de contexto (lib/agent/fonteColada). Sem texto colado, tudo igual a antes.
@@ -244,6 +279,11 @@ export async function runChatTurn(
       // A VOZ: troca "Você é a Aura" pelo nome da agente nos prompts do harness (lib/agents/voz).
       // undefined pra Aura — o caminho dela fica idêntico ao de antes.
       transformarSystem: vozDoTurno(nomeDaAgente),
+      // `specific_knowledge`: decidido aqui (o dado da agente é server-side), obedecido no harness
+      escopo: veredictoDeEscopo,
+      // o PROTOCOLO do cargo: `ensemble` é lido no rascunho; `reflexoes` vai por TrajectoryOpts
+      // (quem conhece `maxRevisions` é o motor), logo abaixo.
+      protocolo: cap.protocolo,
       systemContext: [params.systemContext, memBlock, cartolinaBlock, tccBlock, entregaveisBlock, skillBlock, blocoDosAnexos(params.anexos ?? []), colada.fonte ? blocoFonteColada(colada.fonte) : ""].filter(Boolean).join("\n\n") || undefined,
       history: params.history,
       baseConhecimento: baseCurta,
@@ -264,7 +304,7 @@ export async function runChatTurn(
     if (doCache) narrar(serializarProgresso({ fase: "finalize", rotulo: "Já respondi isso antes" }));
     const { answer, state } = doCache
       ? { answer: doCache.answer as any, state: { intent: doCache.intent, kind: doCache.kind, artifacts: [], degraded: false } as any }
-      : await runTrajectoryTraced(objetivo, hctx, deps);
+      : await runTrajectoryTraced(objetivo, hctx, deps, { reflexoes: cap.protocolo.reflexoes });
     if (!doCache && usaCache && cache.respostaGuardavel(answer as any, state.intent, !!state.degraded)) {
       void Promise.all([import("@/lib/rag/pg"), import("@/lib/rag/embed")])
         .then(async ([{ ragPg }, { embedPerguntaCompartilhado }]) => cache.guardarNoCache(ragPg(), {

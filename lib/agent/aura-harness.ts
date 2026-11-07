@@ -32,7 +32,7 @@ import { nullMemory } from "@/lib/agent/memory";
 import { messageForError, classifyError } from "@/lib/agent/errors";
 import type { AgentStep } from "@/lib/agent/actions";
 import type { HarnessDeps, TrajectoryState, Step } from "@/lib/agent/trajectory";
-import { MAX_VOLTAS_GATHER } from "@/lib/agent/trajectory";
+import { MAX_VOLTAS_GATHER, ensembleDoTurno } from "@/lib/agent/trajectory";
 import { lerAcao, promptDeAcao, resumoDaColeta, resumoDasFalhas, toolVisivel, toolsDoMenu } from "@/lib/agent/acao";
 import { falhasVisiveis } from "@/lib/agent/falhas";
 import { graficosDoTurno } from "@/lib/agent/graficosDoTurno";
@@ -42,6 +42,7 @@ import type { StructuredAnswer, Source, IntentId, Issue } from "@/lib/agent/cont
 import { artefatoDeAprender, pedeAula, pedeEngenhariaReversa, DIRETRIZ_ENGENHARIA_REVERSA } from "@/lib/agent/aprender";
 import { DIRETRIZ_MATEMATICA } from "@/lib/agent/matematica";
 import { diretrizDeTabela, semTabelaNaoPedida } from "@/lib/agent/tabela";
+import { diretrizDeEscopo } from "@/lib/agents/escopo";
 import { diretrizLivros, markdownDosLivros, type LivroAchado } from "@/lib/livros/busca";
 import { anexarFontesBase, blocoDaBase } from "@/lib/rag/citar";
 import { registrarAnatomia } from "@/lib/anatomia/tools";
@@ -95,6 +96,21 @@ export type HarnessOpts = {
   /** a PRÉVIA da resposta (out/2026): o texto do rascunho JÁ escrito, enquanto o modelo ainda gera (lib/agent/previa)
    *  — com ele, o rascunho vai em stream. Acumulado, não pedaço. */
   onPrevia?: (texto: string) => void;
+  /**
+   * `specific_knowledge` — a pergunta é do assunto DESTA agente? (lib/agents/escopo)
+   *
+   * Chega DECIDIDO, como o `proNasPesadas`: quem sabe quem é a agente é o chamador, e o veredito
+   * depende do dado dela (pra Zenita, o atlas), que é server-side. O harness só obedece.
+   * Ausente, ou `passa`, = nada muda: o caminho de quem está no seu campo fica byte a byte o de
+   * antes. É só fora do campo que ele age.
+   */
+  escopo?: import("@/lib/agents/escopo").VeredictoDeEscopo;
+  /**
+   * O PROTOCOLO DE RACIOCÍNIO DO CARGO (lib/agents/capacidades Protocolo). Só `ensemble` é lido
+   * aqui; `reflexoes` vai por `TrajectoryOpts`, porque quem conhece `maxRevisions` é o motor.
+   * Ausente = `ensemble: 1`, o caminho de sempre.
+   */
+  protocolo?: { ensemble?: number; reflexoes?: number };
 };
 
 type Observation = { tool: string; code?: string; error?: string };
@@ -573,6 +589,12 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
     },
 
     async plan(st) {
+      // FORA DO ESCOPO NÃO SE COLETA. Buscar na web sobre GTA VI pra depois dizer "isso não é meu
+      // assunto" gasta volta, orçamento e tempo — e é pior que isso: a evidência colhida fica no
+      // contexto do rascunho, e um modelo com evidência na mão na frente responde a pergunta que a
+      // diretiva mandou não responder. O `neutro` também não coleta: o fio dele sai do campo DELA,
+      // não de busca sobre o tema alheio.
+      if (opts.escopo && opts.escopo.escopo !== "passa") return [];
       const gather = st.spec.tools.filter(isGatherTool);
       // a página vem ANTES de tudo: o resto do turno (raciocínio, rascunho) deve ver o que ela diz
       const daWeb = passosDeUrl(st.objective);
@@ -721,6 +743,13 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         // "não force estrutura" da DIRETRIZ_ESTUDOS — abafada por 1.167 caracteres de diretriz
         // incondicional logo acima. Mesmo molde do `pedeEngenhariaReversa` algumas linhas atrás.
         diretrizDeTabela(st.objective),
+        // `specific_knowledge` (lib/agents/escopo). Vem DEPOIS da regra de tabela e ANTES das regras
+        // de campo obrigatório de propósito: é a mais forte do turno quando dispara — ela decide se
+        // a agente responde ou não — e as duas diretivas dela desligam `desenvolvimento`,
+        // `conceitos` e `proximos_passos`, que as linhas seguintes pedem. Ordem invertida faria o
+        // modelo receber "preencha TODOS" depois de "não preencha", e o último a falar ganha.
+        // `passa` devolve "" e o `.filter(Boolean)` abaixo a tira do prompt: nada muda.
+        diretrizDeEscopo(opts.escopo ?? { escopo: "passa", area: null, responsavel: null }),
         "proximos_passos, quando fizer sentido, são passos de ESTUDO (o que entender, ler, " +
         "praticar ou checar a seguir) — jamais ofertas de recurso da plataforma.",
         "Responda SOMENTE JSON válido.",
@@ -740,7 +769,7 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         'Não liste se a resposta não falar de nenhuma, e nunca invente uma que você não tenha certeza que existe.',
         academic + a5,
         ...(st.intent === "buscar_livro" ? [diretrizLivros(livrosAchados)] : []),
-      ].join("\n");
+      ].filter(Boolean).join("\n");
       // D3 · 1:1 com o documento. Quando o turno VAI ESCREVER no trabalho (`criar_trabalho` é a
       // intenção cujo contrato exige `work`), as fontes do turno entram com a citação PRONTA — as
       // mesmas que o gerador por seção usaria. Sem isso o chat escrevia no documento sem citar
@@ -770,7 +799,48 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         const onTexto = opts.onPrevia
           ? (acc: string) => { const t = semTabelaNaoPedida(previaDoRascunho(acc), st.objective ?? ""); if (t) opts.onPrevia!(t); }
           : undefined;
-        const out = await genJson<Partial<StructuredAnswer>>(sys, user, { temperature: 0.4, model: modelFor("draft"), timeoutMs: prazo, phase: "draft", onTexto, pensar: pensarDa(st.mode === "quick" ? "draft_rapido" : st.mode === "elaborated" ? "draft_elaborado" : "draft"), prazoPrimeiroMs: prazoPrimeiraPalavra(st) });
+        const pensarDoDraft = pensarDa(st.mode === "quick" ? "draft_rapido" : st.mode === "elaborated" ? "draft_elaborado" : "draft");
+        const umRascunho = (comPrevia: boolean, temperatura: number) =>
+          genJson<Partial<StructuredAnswer>>(sys, user, {
+            temperature: temperatura, model: modelFor("draft"), timeoutMs: prazo, phase: "draft",
+            onTexto: comPrevia ? onTexto : undefined, pensar: pensarDoDraft,
+            prazoPrimeiroMs: prazoPrimeiraPalavra(st),
+          });
+
+        /**
+         * ENSEMBLE DO CARGO (lib/agents/capacidades Protocolo.ensemble): N rascunhos e o CRÍTICO
+         * escolhe. O nosso crítico ser CÓDIGO — e não modelo, como o do AI-Scientist — deixa de ser
+         * limitação e passa a ser a peça que faz isto funcionar: ele é um juiz grátis, consistente, e
+         * sem variância própria pra confundir com a variância das amostras.
+         *
+         * TEMPERATURA IGUAL PRA TODOS, e acima da de um rascunho só (0.4 → 0.6, como o 0.75 do
+         * AI-Scientist): amostras à mesma temperatura são i.i.d. e comparáveis. Variar a temperatura
+         * por membro daria um LEQUE (o 1º tímido, o último solto), que não é ensemble, é uma escada —
+         * e o `embaralhamento de alternativas` do Medprompt não tem como se aplicar a prosa aberta,
+         * então a diversidade aqui só pode vir da amostragem.
+         *
+         * SEM PRÉVIA QUANDO N > 1, e isto é decisão, não esquecimento: não se transmite ao vivo um
+         * rascunho que pode ser DESCARTADO. O aluno leria um texto médico e veria outro no lugar —
+         * pior que esperar. Com N = 1 a prévia é a de sempre, byte a byte.
+         */
+        const n = ensembleDoTurno(opts.protocolo?.ensemble, st.mode);
+        let out: Partial<StructuredAnswer>;
+        if (n > 1) {
+          const amostras = (await Promise.all(
+            Array.from({ length: n }, () => umRascunho(false, 0.6).catch(() => null)),
+          )).filter(Boolean) as Partial<StructuredAnswer>[];
+          if (!amostras.length) throw new Error("nenhum rascunho do ensemble respondeu");
+          // pontua cada amostra com o MESMO crítico que julgaria a resposta final
+          const pontuadas = amostras.map((a) => ({
+            a,
+            score: critiqueForState({ ...st, draft: normalizeAnswer(a, st) } as any).score,
+          }));
+          pontuadas.sort((x, y) => y.score - x.score);
+          if (pontuadas.length > 1) console.info(`[harness] ensemble n=${n} scores=${pontuadas.map((p) => p.score).join(",")} (intent=${st.intent})`);
+          out = pontuadas[0].a;
+        } else {
+          out = await umRascunho(true, 0.4);
+        }
         // A REDE antes dos blocos do CÓDIGO (fontes da base, lista de livros): ela julga o texto do
         // MODELO. Depois seria pior — a lista de livros traz "baixar PDF" em cada linha, e ainda que
         // hoje ela não dispare (falta o marcador de 1ª pessoa), julgar texto determinístico da casa
