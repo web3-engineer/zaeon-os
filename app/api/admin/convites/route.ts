@@ -3,12 +3,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { generateCode } from "@/lib/invite-codes";
+import { isSuperAdminEmail } from "@/lib/auth/roles";
 
-const ADMIN_EMAILS = ["zaeondao@gmail.com", "martinez@zaeon.space"];
-
-function isAdmin(email: string | null | undefined) {
-  return email ? ADMIN_EMAILS.includes(email.toLowerCase()) : false;
-}
+// A cópia local da allowlist saiu: era a terceira, e discordava das outras duas. Fonte única em
+// lib/auth/roles.ts (allowlist + SUPER_ADMIN_EMAILS por ENV + User.role). Isto ALARGA esta rota dos
+// 2 e-mails de antes para os fundadores de roles.ts — é o efeito pretendido da unificação, não um
+// descuido: convite de admin é coisa de fundador, e antes o próprio dono não passava por aqui.
+const isAdmin = (email: string | null | undefined) => isSuperAdminEmail(email);
 
 // GET /api/admin/convites — list all codes with owner name
 export async function GET() {

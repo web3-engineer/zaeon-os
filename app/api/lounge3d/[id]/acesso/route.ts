@@ -2,7 +2,12 @@
  * POST /api/lounge3d/[id]/acesso { alvo: "topo" | "ceu" | "nave" | "dj" | "ritual" } — AÇÕES PRIVILEGIADAS do dono no cyberespaço:
  * subir ao topo da Recepção, pilotar a nave e atravessar o PAR de buracos negros nave ↔ cabine do DJ (a única entrada
  * da cabine). Só o fundador (isSuperAdmin pela SESSÃO, nunca por flag do cliente) recebe
- * 200; o resto 403 — exceto a NAVE, que a tripulação (lib/lounge3d/corposDeUsuario TRIPULACAO_DA_NAVE) também pilota. O cliente só age depois do OK. A ZAEON (portal do buraco negro → "ceu") é ABERTA a qualquer membro.
+ * 200; o resto 403 — exceto a NAVE, que a TRIPULAÇÃO também pilota (lib/lounge3d/corposDeUsuario
+ * `ehTripulacaoDaNave`, por ENV `NAVE_TRIPULACAO`). O cliente só age depois do OK. A ZAEON (portal
+ * do buraco negro → "ceu") é ABERTA a qualquer membro.
+ *
+ * Este cabeçalho citava uma `TRIPULACAO_DA_NAVE` que NÃO EXISTIA no código: a tripulação havia sido
+ * abolida em out/2026 e o comentário ficou. Agora ela existe de novo, e o nome aqui é o nome real.
  */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
