@@ -80,6 +80,43 @@ export const TOOLS_POR_HABILIDADE: Readonly<Record<MentorSkill, readonly string[
 /** As quatro que DISTINGUEM uma agente da outra (o resto é base). */
 export const HABILIDADES_DISTINTIVAS: readonly MentorSkill[] = ["literature", "code", "molecule", "anatomia"];
 
+/**
+ * O PROTOCOLO DE RACIOCÍNIO DO CARGO — o que `reflections`/`ensemble` deveriam ter sido.
+ *
+ * Eles nasceram em `INTENTS` (lib/agent/contracts), copiados do AI-Scientist, e nunca foram lidos
+ * por ninguém. MEDI o motivo, e ele é estrutural, não esquecimento: no AI-Scientist o revisor é um
+ * MODELO, então faz sentido amostrá-lo N vezes e agregar. O NOSSO crítico é CÓDIGO
+ * (`lib/agent/examiner.ts` não tem uma chamada de modelo; o cabeçalho do harness diz que
+ * "plan/reason/draft são as ÚNICAS chamadas de geração"). Um ensemble de função pura devolve N
+ * vereditos idênticos. Eles estavam no lugar onde não podiam funcionar.
+ *
+ * Então eles mudam de lugar E de dono: saem da TAREFA e vêm pro CARGO, onde o dono quer a diferença.
+ *
+ *   `ensemble`  → N rascunhos independentes, e quem escolhe é o nosso crítico determinístico.
+ *                 Aqui o crítico ser código deixa de ser limitação e passa a ser vantagem: é um
+ *                 juiz grátis, consistente e sem variância própria. Ideia do Medprompt
+ *                 (microsoft/promptbase, MIT): em medicina, uma amostra só é arriscada.
+ *   `reflexoes` → quantas vezes este cargo REVISA contra a própria crítica. Não é laço novo: é o
+ *                 `maxRevisions` do laço que já existe e em que já confiamos (trajectory.ts). Criar
+ *                 um laço interno de autocrítica ao lado dele seria duplicar reflexão — o defeito de
+ *                 importar um desenho sem olhar o que a casa já tem.
+ *
+ * CONTAGEM EXPLÍCITA, ao contrário do AI-Scientist: lá `num_reflections=1` significa NENHUMA
+ * (`for j in range(num_reflections - 1)`), o que é uma armadilha. Aqui 0 é zero.
+ *
+ * O TETO É DO MODO, não do cargo — e mora em `lib/agent/trajectory.ts`, ao lado do `BUDGET` e do
+ * `COST` de onde ele foi derivado. Teto longe do orçamento que o justifica vira número que o ledger
+ * desfaz, que é a mentira que o comentário da F6 recusou escrever. Aqui fica só o PEDIDO do cargo.
+ */
+export type Protocolo = {
+  /** rascunhos independentes; 1 = o de sempre. O modo corta pra cima (ENSEMBLE_MAX_POR_MODO). */
+  ensemble: number;
+  /** voltas de revisão contra a própria crítica; 0 = aceita o 1º rascunho aprovado */
+  reflexoes: number;
+  /** uma linha: por que ESTE protocolo pra ESTE cargo (fica no código, não num doc que ninguém abre) */
+  porque: string;
+};
+
 export type CapacidadeDoAgente = {
   /** a persona em lib/ai/personas.ts (a voz) */
   persona: string;
@@ -89,6 +126,22 @@ export type CapacidadeDoAgente = {
   area: string | null;
   /** uma linha sobre o que a distingue — é o que o seletor mostra */
   distincao: string;
+  /**
+   * O VOCABULÁRIO DO CAMPO DELA, em forma de pergunta — usado pelo portão de conhecimento
+   * específico (lib/agents/escopo).
+   *
+   * Por que não bastam os termos de `lib/rag/areas`: aquelas listas foram escritas pra classificar
+   * TÍTULO + RESUMO de artigo da SciELO ("paciente", "mortalidade", "neoplasia"). Numa pergunta de
+   * aluno elas quase nunca batem — "me explica o ciclo de Krebs" não casa com nenhum termo de
+   * medicina. Sem esta lista, a Zenita RECUSARIA o próprio campo, que é a falha mais grave que o
+   * portão pode ter. A lista de área continua valendo pra identificar a área ALHEIA; esta identifica
+   * a própria.
+   *
+   * Vazia na generalista: quem não tem área não é gateada.
+   */
+  termosProprios: readonly string[];
+  /** como ESTE cargo raciocina (ver Protocolo acima) */
+  protocolo: Protocolo;
 };
 
 /**
@@ -111,24 +164,72 @@ export const CAPACIDADES: Readonly<Record<AgenteChatId, CapacidadeDoAgente>> = {
     habilidades: ["literature"],
     area: null,
     distincao: "Pesquisa acadêmica: busca em bases e livros, e redige o trabalho.",
+    termosProprios: [],
+    protocolo: {
+      ensemble: 1,
+      reflexoes: 2,
+      porque: "Pesquisa se corrige relendo, não reamostrando: o risco dela é afirmação sem lastro, "
+        + "e isso a crítica pega e manda revisar. Reamostrar o mesmo prompt não acha fonte que falta.",
+    },
   },
   zenita: {
     persona: "zenita",
     habilidades: ["anatomia", "literature"],
     area: "medicina",
     distincao: "Medicina: o atlas de anatomia 3D e a base de saúde (a agenda é do Davi).",
+    protocolo: {
+      ensemble: 3,
+      reflexoes: 0,
+      porque: "Medprompt: em fato clínico, uma amostra só é arriscada — três rascunhos e o crítico "
+        + "escolhe. Zero revisão é de propósito, não economia: ela gasta em LARGURA, a Aura em "
+        + "PROFUNDIDADE. O erro dela não é falta de fonte, é a variância de uma afirmação sobre o "
+        + "corpo de alguém, e reler o mesmo rascunho não reduz variância.",
+    },
+    // anatomia, fisiologia, semiologia, farmacologia — o que um aluno de saúde PERGUNTA.
+    // Radicais, não palavras inteiras: "fisiolog" cobre fisiologia/fisiológico/fisiopatologia.
+    termosProprios: [
+      "anatomi", "fisiolog", "fisiopatolog", "histolog", "embriolog", "patolog", "semiolog",
+      "farmacolog", "farmacocinet", "farmacodinam", "posolog", "medicament", "remedi", "dose",
+      "metabol", "ciclo de krebs", "glicolis", "homeostas", "hormon", "endocrin", "enzima",
+      "neuro", "nervo", "cerebr", "medula", "sinapse", "neurotransmiss",
+      "muscul", "osso", "ossea", "esquelet", "articula", "tendao", "ligament", "cartilag",
+      "sangue", "sanguine", "hemat", "plaqueta", "hemoglobin", "coagula", "anemi",
+      "coracao", "cardiac", "arteri", "veia", "venos", "pressao arterial", "circulat",
+      "pulmao", "pulmonar", "respirat", "alveol", "brônqui", "bronqui",
+      "estomago", "intestin", "figado", "hepat", "rim", "renal", "bexiga", "digest",
+      "imun", "anticorp", "antigen", "linfocit", "inflamac", "infecc", "virus", "viral",
+      "bacteri", "fung", "parasit", "antibiotic", "vacina",
+      "celula", "tecido", "orgao", "sistema nervoso", "sistema digestivo", "sistema imune",
+      "sintoma", "sinal clinic", "exame fisic", "anamnese", "prognostic", "etiolog",
+      "gestac", "gravidez", "parto", "fetal", "neonat",
+      "oncolog", "tumor", "metastas", "quimioterap", "radioterap",
+    ],
   },
   nina: {
     persona: "nina",
     habilidades: [],
     area: null,
     distincao: "Caderno: resumo, plano de estudo e revisão — sem busca externa.",
+    termosProprios: [],
+    protocolo: {
+      ensemble: 1,
+      reflexoes: 0,
+      porque: "O valor dela é clareza didática, não variância nem fonte. Um rascunho e o que a "
+        + "intenção já pedir: gastar três amostras pra resumir um caderno é custo que o aluno não vê.",
+    },
   },
   octa: {
     persona: "aura", // o Octa abre a IDE, não o chat (chatAgentes: tela "ide"); a voz do chat não é dele
     habilidades: ["code"],
     area: null,
     distincao: "Código, na IDE dele — não no chat.",
+    termosProprios: [],
+    protocolo: {
+      ensemble: 1,
+      reflexoes: 0,
+      porque: "Não passa pelo turno do chat (tela de IDE); fica no mínimo pra não declarar "
+        + "protocolo que nada executa.",
+    },
   },
 };
 
