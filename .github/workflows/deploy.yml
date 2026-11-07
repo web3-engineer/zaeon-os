@@ -142,6 +142,9 @@ jobs:
           # VPS (`externo: false`), então o token ainda não é exigido — a cadeia existe pra quando
           # o serviço sair daqui, que era o pedido original do dono.
           AGENTE_TOKEN: ${{ secrets.AGENTE_TOKEN }}
+          # A TRIPULAÇÃO DA NAVE (nota 5 acima do `script:`): e-mails separados por vírgula.
+          # Variable e não Secret — não é credencial. Vazia = só o dono pilota, o default do código.
+          NAVE_TRIPULACAO: ${{ vars.NAVE_TRIPULACAO || '' }}
           # Workers de fundo (BullMQ). NÃO são features desligadas: sem eles o trabalho roda INLINE no
           # web, que é o que acontece hoje e funciona. Ligá-los no `web` faria o mesmo container
           # enfileirar E consumir — o desenho quer o serviço `worker` dedicado (perfil "worker" do
@@ -265,7 +268,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           command_timeout: 25m
-          envs: GOOGLE_CREDENTIALS_B64,GOOGLE_PROJECT_ID_VALUE,OCTA_CRON_SECRET,UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,HF_TOKEN,RESEND_API_KEY,EMAIL_FROM,HF_RESERVA,DISPAROS_HF,DISPAROS_HF_SEM_HISTORICO,WITH_VOICE,DB_PUSH,DEPLOY_BRANCH,APP_URL,BETA_DOMAIN,ACME_EMAIL,NEXT_PUBLIC_ESCRITORIO_COWORK,NEXT_PUBLIC_AGENTS_ADMIN,NEXT_PUBLIC_AGENT_AVATARS,NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM,NEXT_PUBLIC_MAP_HARNESS,NEXT_PUBLIC_LOUNGE_3D,NEXT_PUBLIC_CYBER_AVATAR_GLB,NEXT_PUBLIC_CYBER_LANDMARKS,NEXT_PUBLIC_AURA_ECONOMY,NEXT_PUBLIC_REALTIME,NEXT_PUBLIC_VOZ,NEXT_PUBLIC_MOBILE_UI,NEXT_PUBLIC_PROJETOS,NEXT_PUBLIC_MENTORES_TAB,NEXT_PUBLIC_OCTA_CODE,NEXT_PUBLIC_OCTA_REA,MAP_HARNESS,ESTUDO_GATEKEEPER,AURA_ECONOMY,NEXT_PUBLIC_CHAT_UNICO,DOC_POR_SECAO,CHAT_UNICO,TCC_CROSS,NEXT_PUBLIC_TCC_CROSS,CHAT_BG,NEXT_PUBLIC_BLUEPRINT_PRATICO,BLUEPRINT_PRATICO,GITHUB_TOKEN_BLUEPRINT,NEXT_PUBLIC_VIDEO_DOC,VIDEO_DOC,NEXT_PUBLIC_REA_BLUEPRINT,REA_BLUEPRINT,HARNESS_CAPACIDADE,HARNESS_ACAO,HARNESS_VOLTAS_ACAO,PRO_PESADAS,HARNESS_ANEXO,HARNESS_SINTESE,HARNESS_GRAFICO,MCP_CONECTORES,PUSHER_APP_ID,PUSHER_SECRET,NEXT_PUBLIC_PUSHER_KEY,NEXT_PUBLIC_PUSHER_CLUSTER,RACIOCINIO_ELABORADO,AGENTIC_MODE,AGENTE_URL,AGENTE_ALLOW,SCHOLAR_WORKER,CANAL_WORKER,CHORES_WORKER,CANAL_QUEUE,LEITOR_PROXY_URL,LEITOR_ALLOW,LEITOR_MAX_BYTES,LEITOR_MAX_BYTES_BIN,AGENTE_TOKEN
+          envs: GOOGLE_CREDENTIALS_B64,GOOGLE_PROJECT_ID_VALUE,OCTA_CRON_SECRET,UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,HF_TOKEN,RESEND_API_KEY,EMAIL_FROM,HF_RESERVA,DISPAROS_HF,DISPAROS_HF_SEM_HISTORICO,WITH_VOICE,DB_PUSH,DEPLOY_BRANCH,APP_URL,BETA_DOMAIN,ACME_EMAIL,NEXT_PUBLIC_ESCRITORIO_COWORK,NEXT_PUBLIC_AGENTS_ADMIN,NEXT_PUBLIC_AGENT_AVATARS,NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM,NEXT_PUBLIC_MAP_HARNESS,NEXT_PUBLIC_LOUNGE_3D,NEXT_PUBLIC_CYBER_AVATAR_GLB,NEXT_PUBLIC_CYBER_LANDMARKS,NEXT_PUBLIC_AURA_ECONOMY,NEXT_PUBLIC_REALTIME,NEXT_PUBLIC_VOZ,NEXT_PUBLIC_MOBILE_UI,NEXT_PUBLIC_PROJETOS,NEXT_PUBLIC_MENTORES_TAB,NEXT_PUBLIC_OCTA_CODE,NEXT_PUBLIC_OCTA_REA,MAP_HARNESS,ESTUDO_GATEKEEPER,AURA_ECONOMY,NEXT_PUBLIC_CHAT_UNICO,DOC_POR_SECAO,CHAT_UNICO,TCC_CROSS,NEXT_PUBLIC_TCC_CROSS,CHAT_BG,NEXT_PUBLIC_BLUEPRINT_PRATICO,BLUEPRINT_PRATICO,GITHUB_TOKEN_BLUEPRINT,NEXT_PUBLIC_VIDEO_DOC,VIDEO_DOC,NEXT_PUBLIC_REA_BLUEPRINT,REA_BLUEPRINT,HARNESS_CAPACIDADE,HARNESS_ACAO,HARNESS_VOLTAS_ACAO,PRO_PESADAS,HARNESS_ANEXO,HARNESS_SINTESE,HARNESS_GRAFICO,MCP_CONECTORES,PUSHER_APP_ID,PUSHER_SECRET,NEXT_PUBLIC_PUSHER_KEY,NEXT_PUBLIC_PUSHER_CLUSTER,RACIOCINIO_ELABORADO,AGENTIC_MODE,AGENTE_URL,AGENTE_ALLOW,SCHOLAR_WORKER,CANAL_WORKER,CHORES_WORKER,CANAL_QUEUE,LEITOR_PROXY_URL,LEITOR_ALLOW,LEITOR_MAX_BYTES,LEITOR_MAX_BYTES_BIN,AGENTE_TOKEN,NAVE_TRIPULACAO
           # ─────────────────────────────────────────────────────────────────────────────────────
           # O TETO DE 21.000 BYTES DO `script:`. Medido com o único juiz que existe (o push), porque
           # o parser do GitHub não tem substituto local: 20.581 bytes PASSA, 21.010 FALHA — e falhar
@@ -297,6 +300,14 @@ jobs:
           #     em vez de `-af` seco porque o cache recente é o que torna o PRÓXIMO deploy rápido;
           #     `|| true` porque o script roda com `set -e` e a limpeza não pode matar o principal.
           #
+          # 5 · NAVE_TRIPULACAO no .env.secrets — quem pilota a nave-QG sem ser o dono do mapa
+          #     (lib/lounge3d/corposDeUsuario). Vai no .env.secrets e não no .env porque o
+          #     `.env.secrets` é o arquivo que ESTE pipeline possui e reescreve atomicamente,
+          #     enquanto o `.env` é mantido à mão no VPS — e o `web` carrega os dois
+          #     (`env_file: [.env, .env.secrets]`). NÃO é credencial, é configuração; está aqui pelo
+          #     dono do arquivo, não pelo sigilo. E NÃO entra no laço `for k in`: o valor é E-MAIL e
+          #     aquele laço IMPRIME o que exporta — mesma razão do AGENTE_TOKEN. O recibo conta
+          #     quantas contas, nunca quais.
           # 4 · O recibo saiu pra infra/recibo-deploy.mjs e é invocado por STDIN (`node < arquivo`),
           #     não por `-e "$(cat …)"`: por stdin não existe questão de aspas nem de expansão.
           # ─────────────────────────────────────────────────────────────────────────────────────
@@ -392,6 +403,17 @@ jobs:
               echo "→ Agente: token dos Secrets gravado no .env.secrets"
             else
               echo "→ Agente: sem token (ok enquanto o navegador é container irmão nesta VPS)"
+            fi
+
+            # Tripulação da nave (nota 5): molde do token do agente; o recibo CONTA, não nomeia.
+            if [ -n "${NAVE_TRIPULACAO:-}" ]; then
+              grep -vE '^NAVE_TRIPULACAO=' .env.secrets > .env.secrets.tmp || true
+              { cat .env.secrets.tmp; echo "NAVE_TRIPULACAO=${NAVE_TRIPULACAO}"; } > .env.secrets.novo
+              mv -f .env.secrets.novo .env.secrets
+              rm -f .env.secrets.tmp
+              echo "→ Nave: tripulação gravada ($(printf '%s' "$NAVE_TRIPULACAO" | tr ',' '\n' | grep -c .) conta(s))"
+            else
+              echo "→ Nave: Variable vazia — vale o .env do VPS (sem ela, só o dono pilota)"
             fi
 
             # PUSHER server-only (APP_ID + SECRET). Mesmo molde do Resend: só grava com valor, porque

@@ -76,3 +76,26 @@ describe("health · escritorio", () => {
     expect((await (await GET()).json()).escritorio).toBe("inline");
   });
 });
+
+/**
+ * A TRIPULAÇÃO DA NAVE no recibo — e a propriedade que importa aqui é de PRIVACIDADE, não de
+ * contagem: este endpoint é lido pelo recibo do deploy, que vai pro log do Actions. Endereço de
+ * e-mail não pode sair daqui. A asserção negativa é o ponto do teste; o número é só o meio.
+ */
+describe("health · tripulação da nave (NÚMERO, nunca endereço)", () => {
+  it("conta as contas e NÃO deixa o e-mail vazar no corpo", async () => {
+    vi.stubEnv("NAVE_TRIPULACAO", "alguem@exemplo.com, outro@exemplo.com");
+    const r = await (await GET()).json();
+    expect(r.nave).toEqual({ tripulacao: 2 });
+    // o corpo INTEIRO, não só o campo: um endereço que escape por outro caminho também reprova
+    expect(JSON.stringify(r)).not.toContain("alguem@exemplo.com");
+    expect(JSON.stringify(r)).not.toContain("@exemplo.com");
+  });
+
+  it("vazia, só espaço ou só vírgulas = zero (ninguém além do dono do mapa pilota)", async () => {
+    for (const v of ["", "   ", " , , "]) {
+      vi.stubEnv("NAVE_TRIPULACAO", v);
+      expect((await (await GET()).json()).nave, `valor ${JSON.stringify(v)}`).toEqual({ tripulacao: 0 });
+    }
+  });
+});
