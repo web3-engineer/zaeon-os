@@ -38,6 +38,9 @@ fetch('http://localhost:3000/api/health').then(r=>r.json()).then(h=>{
   const d = h.documento;
   if (d) console.log('   documento: servidor=' + sn(d.servidor) + '  cliente=' + sn(d.cliente) +
               '  chat_unico=' + sn(d.chatUnico) + (d.servidor !== d.cliente ? '   ⚠ METADES DIVERGENTES' : ''));
+  // A nave: quantas contas na tripulação (o /api/health manda o NÚMERO, nunca o endereço).
+  // 0 = só o dono do mapa pilota. É assim que se sabe se a Variable NAVE_TRIPULACAO chegou.
+  if (h.nave) console.log('   nave: tripulacao=' + h.nave.tripulacao + (h.nave.tripulacao ? '' : ' (so o dono pilota)'));
   // F8 · o agente de navegador: 'on' ou os NOMES do que falta. Três condições de
   // naturezas diferentes (flag, allowlist, binário) — ver a nota no /api/health.
   const ag = h.agente;

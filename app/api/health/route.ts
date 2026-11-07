@@ -97,6 +97,15 @@ export async function GET() {
      */
     documento: { servidor: tccCrossOn(), cliente: TCC_CROSS_ON, chatUnico: chatUnicoOn() },
     /**
+     * A TRIPULAÇÃO DA NAVE: quantas contas, NUNCA quais. O endereço é dado pessoal e este endpoint
+     * é lido pelo recibo do deploy, que vai pro log do Actions — por isso só o número sai daqui.
+     *
+     * Existe por um motivo prático: `NAVE_TRIPULACAO` chega ao container pelo `env_file`, e sem
+     * esta linha a pergunta "a Variable chegou?" só teria resposta entrando na nave e vendo se dá
+     * 403. Zero = ninguém além do dono do mapa pilota, que é o default do código.
+     */
+    nave: { tripulacao: (process.env.NAVE_TRIPULACAO || "").split(",").filter((e) => e.trim()).length },
+    /**
      * F8 · O AGENTE DE NAVEGADOR. "on" só quando as TRÊS condições estão de pé; senão, os NOMES do
      * que falta (nunca valores). As três são de naturezas diferentes e por isso erram diferente:
      *
