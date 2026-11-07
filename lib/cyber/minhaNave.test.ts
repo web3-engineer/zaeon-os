@@ -1,6 +1,8 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { ELEVADOR_MINI, NAVE_MINI, SKINS_MINI, moveisDaMini, noCascoMini } from "./naveMini";
-import { ESCADA_ROLANTE, ESCOTILHA, passoDaRolante, BURACOS_ESPACO, SOFA_TETO, assentoDaCadeira, levantaDaCadeira, cadeiraPerto, DOCA_MOTOS, POSE_CUTSCENE, VAGAS_DOCA, vagaDaDocaPerto, CHEGADA_TETO, DESCIDA_TETO, MINHA_NAVE, NAVE_NA_ILHA, buracoAberto, caminhoDoElevador, chaoNoEspaco, naCupula, naDescida, nivelDaMinhaNave, paraMundoMini, pistasDoEspaco, resolverNaMini, resolverNoTeto, TETO_MINI } from "./minhaNave";
+import { ESCADA_ROLANTE, ESCOTILHA, passoDaRolante, BURACOS_ESPACO, SOFA_TETO, assentoDaCadeira, levantaDaCadeira, cadeiraPerto, DOCA_MOTOS, POSE_CUTSCENE, VAGAS_DOCA, vagaDaDocaPerto, CHEGADA_TETO, DESCIDA_TETO, MINHA_NAVE, NAVE_NA_ILHA, buracoAberto, caminhoDoElevador, chaoNoEspaco, pousaNoConves, naCupula, naDescida, nivelDaMinhaNave, paraMundoMini, pistasDoEspaco, resolverNaMini, resolverNoTeto, TETO_MINI } from "./minhaNave";
 import { FIO, fiosCosmicos } from "./fiosCosmicos";
 import { empurrarDosRetangulos } from "./universidade";
 
@@ -75,5 +77,62 @@ describe("a sua nave e o espaço aberto", () => {
   it("a Cidade dos Anjos só abre pra admin; o lounge pra todo mundo", () => {
     const z = BURACOS_ESPACO.find((b) => b.id === "anjos")!, p = BURACOS_ESPACO.find((b) => b.id === "lounge")!;
     expect(buracoAberto(z, false)).toBe(false); expect(buracoAberto(z, true)).toBe(true); expect(buracoAberto(p, false)).toBe(true);
+  });
+});
+
+/**
+ * O POUSO NO CONVÉS — a regressão do "pulou e nunca mais pousou".
+ *
+ * Reproduzido no navegador antes de existir este arquivo: quem nasce na própria nave e aperta espaço descia, o
+ * empurrão que torna o casco sólido por fora o jogava 9 m para fora do convés, e a pergunta "tem piso aqui?", feita
+ * DEPOIS do empurrão, respondia não. Resultado: `noAr` verdadeiro para sempre, caindo a 17 m/s, câmera dentro do
+ * casco. O caso 5 é o que importa — um quadro lento passa do convés inteiro de uma vez, e isso TEM de ser pouso.
+ */
+describe("pousaNoConves · o pulo em cima da própria nave", () => {
+  const Y = MINHA_NAVE.y, TOPO = Y + TETO_MINI.y;
+  const noConves = { x: CHEGADA_TETO.x, z: CHEGADA_TETO.z };
+  const foraDoConves = { x: 15, z: 25 };
+
+  it("1 · descendo sobre o convés, vindo de cima = POUSO", () => {
+    expect(pousaNoConves({ yAnt: TOPO + 1.2, y: TOPO - 0.05, vy: -4, l: noConves, naveY: Y })).toBe(true);
+  });
+
+  it("2 · SUBINDO pelo convés não é pouso (senão o pulo nem começa)", () => {
+    expect(pousaNoConves({ yAnt: TOPO - 0.1, y: TOPO - 0.05, vy: +6, l: noConves, naveY: Y })).toBe(false);
+  });
+
+  it("3 · vindo DE BAIXO não é pouso — o convés é piso, não teto", () => {
+    expect(pousaNoConves({ yAnt: TOPO - 3, y: TOPO - 2.9, vy: -1, l: noConves, naveY: Y })).toBe(false);
+  });
+
+  it("4 · fora do convés não há piso nenhum (é espaço aberto, e cair ali é o certo)", () => {
+    expect(pousaNoConves({ yAnt: TOPO + 1.2, y: TOPO - 0.05, vy: -4, l: foraDoConves, naveY: Y })).toBe(false);
+  });
+
+  it("5 · QUADRO LENTO: passou do convés inteiro de uma vez e AINDA é pouso", () => {
+    // 50 ms a −17 m/s = 0,85 m num quadro só: era exatamente aqui que ele atravessava
+    expect(pousaNoConves({ yAnt: TOPO + 0.2, y: TOPO - 0.85, vy: -17, l: noConves, naveY: Y })).toBe(true);
+    // e mesmo um quadro catastrófico (meio segundo parado) não pode virar queda eterna
+    expect(pousaNoConves({ yAnt: TOPO + 0.1, y: TOPO - 8, vy: -22, l: noConves, naveY: Y })).toBe(true);
+  });
+
+  it("6 · parado em cima do convés (vy 0) continua sendo pouso", () => {
+    expect(pousaNoConves({ yAnt: TOPO, y: TOPO, vy: 0, l: noConves, naveY: Y })).toBe(true);
+  });
+});
+
+/**
+ * O PORTÃO DA ORDEM: a pergunta tem de ser feita ANTES do empurrão do casco. Isto afirma sobre o TEXTO do engine
+ * porque é a ORDEM das linhas que estava errada, e ordem não aparece em teste de comportamento de função pura.
+ */
+describe("a ordem no engine (o que o defeito realmente era)", () => {
+  it("o empurrão do casco não roda quando o quadro é um pouso", () => {
+    const eng = readFileSync(join(process.cwd(), "components/cyber/engine.ts"), "utf8");
+    expect(eng, "o engine não usa a regra pura — ela viraria código morto").toContain("pousaNoConves({");
+    const iPouso = eng.indexOf("pousandoNoConves = pousaNoConves({");
+    const iEmpurrao = eng.indexOf("!pousandoNoConves && v.y < n.y + TETO_MINI.y - 0.2");
+    expect(iPouso, "o pouso não é calculado").toBeGreaterThan(0);
+    expect(iEmpurrao, "o empurrão do casco não está travado pelo pouso").toBeGreaterThan(0);
+    expect(iPouso, "calcular o pouso DEPOIS do empurrão é o bug original").toBeLessThan(iEmpurrao);
   });
 });

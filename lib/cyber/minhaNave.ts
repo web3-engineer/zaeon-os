@@ -110,6 +110,21 @@ const noTeto = (l: P2, folga = 0.3) => Math.abs(l.x / (N.a * TETO_MINI.s - folga
 /** tem chão aqui fora? (só o teto da nave — o resto é o vazio: voa-se) */
 export const chaoNoEspaco = (l: P2) => noTeto(l);
 export const naDescida = (l: P2) => Math.hypot(l.x - DESCIDA_TETO.x, l.z - DESCIDA_TETO.z) < DESCIDA_TETO.r;
+
+/**
+ * Este quadro é um POUSO no convés da nave (vindo de cima, descendo)?
+ *
+ * Está aqui, e não dentro do engine, porque a RESPOSTA precisa ser dada ANTES do empurrão que torna o casco sólido
+ * por fora — e foi exatamente a ordem errada que quebrava o pulo de quem nasce na própria nave: o empurrão movia a
+ * posição para fora do convés, e a pergunta "tem piso aqui?", feita depois, respondia não. A pessoa ficava em queda
+ * eterna (medido: `noAr` ainda verdadeiro 9 s depois, a −17 m/s, com a câmera dentro do casco).
+ *
+ * `yAnt` é a altura do quadro ANTERIOR: é ela que distingue quem desce no convés de quem sobe por baixo dele.
+ * A folga de 0,3 m existe porque um quadro lento pode passar do convés inteiro de uma vez.
+ */
+export function pousaNoConves(o: { yAnt: number; y: number; vy: number; l: P2; naveY: number }): boolean {
+  return chaoNoEspaco(o.l) && o.yAnt >= o.naveY + TETO_MINI.y - 0.3 && o.y <= o.naveY + TETO_MINI.y && o.vy <= 0;
+}
 /** empurra pra fora do que é sólido no teto: a cúpula, o sofá redondo e as motos acopladas */
 export function resolverNoTeto(l: P2, raio = 0.4): P2 {
   let p = l;

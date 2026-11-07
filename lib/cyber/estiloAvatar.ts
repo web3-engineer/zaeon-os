@@ -89,6 +89,33 @@ export const CORPOS_DE_JOGADOR: Readonly<Record<string, CorpoVrm>> = {
 };
 /** o corpo próprio de quem está no cyberespaço: o do FOUNDER (com as asas) ou o de jogador que o servidor mandou (com
  *  asas se o corpo tiver `asas`) */
+/** Que traje a pessoa veste. Três casos, e nenhum deles é "nada". */
+export type DecisaoDeTraje =
+  /** a armadura PRETA — só o fundador (pedido do dono, out/2026) */
+  | "preta"
+  /** traje nenhum: ela tem corpo próprio (VRM), e a skin manda (pedido do dono, nov/2026) */
+  | "nenhum"
+  /** o traje de astronauta na cor dela — o PERSONAGEM STOCK de quem não tem corpo próprio */
+  | "padrao";
+
+/**
+ * A regra do traje, em um lugar só.
+ *
+ * O terceiro caso é uma correção de nov/2026, achada medindo no navegador: o pedido "tirar o traje, fica só a skin"
+ * supunha que toda pessoa TEM uma skin. Quem nunca escolheu corpo próprio não tem nenhuma — e sem traje ficava à
+ * mostra o GLB de REFERÊNCIA do AvatarLuz, que é o `Soldier.glb` de EXEMPLO do three.js, baixado ao vivo do site
+ * deles. Era a primeira coisa que um usuário novo via de si mesmo, enquanto a tela de escolher personagem
+ * (components/lounge/PreviaPersonagem) já o mostrava DE TRAJE: a prévia prometia uma coisa e o mundo entregava outra.
+ *
+ * O pedido continua valendo ao pé da letra, porque "nenhum" é exatamente quem TEM corpo: o traje nunca vai por cima
+ * do corpo de ninguém.
+ */
+export function decidirTraje(o: { fundador: boolean; temCorpoProprio: boolean }): DecisaoDeTraje {
+  if (o.fundador) return "preta";
+  if (o.temCorpoProprio) return "nenhum";
+  return "padrao";
+}
+
 export function corpoProprio(p: { fundador?: boolean; corpo?: string } | undefined, busca: string): { corpo: CorpoVrm; asas: boolean } | null {
   if (!p) return null;
   if (usaCorpoDoFundador(p.fundador, busca)) return { corpo: CORPO_DO_FUNDADOR, asas: false };   // (out/2026, o dono: as asas saíram — bugadas; ele voa de MOCHILA como todo mundo)
