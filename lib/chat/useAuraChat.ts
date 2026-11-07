@@ -6,6 +6,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { StructuredAnswer } from "@/lib/agent/contracts";
+import { agenteDoChatSalvo } from "@/lib/agents/agenteEscolhido";
 import { pedirAura, interpretarFinal, visivel } from "@/lib/chat/auraClient";
 import { esperarTurno } from "@/lib/chat/turnoRetomavel";
 import { separarProgresso } from "@/lib/agent/progresso";
@@ -117,6 +118,10 @@ export function useAuraChat(o: {
     try {
       const res = await pedirAura({
         prompt, history,
+        // PARIDADE COM O DESKTOP: o mobile usa o mesmo núcleo de rede, então sem esta linha o
+        // seletor funcionaria no desktop e não no celular — e ninguém descobriria por teste, porque
+        // os dois chamam a mesma função. Mesma chave, mesma leitura no envio.
+        agente: agenteDoChatSalvo(),
         surface: surface === "pesquisa" ? "pesquisa" : undefined,
         agentContext: { activeTab: surface === "pesquisa" ? "pesquisa" : "sala-de-estudos", cartolinaScopeId: o.scopeId, cartolinaMsgId: asstId },
       }, {
