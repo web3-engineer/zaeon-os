@@ -228,6 +228,15 @@ export function salvarMensagens(a: Armazem, id: string, mensagens: readonly unkn
  * para dar para saber qual é qual. O título guardado não muda.
  */
 export function rotulosDasThreads(threads: readonly Thread[]): Map<string, string> {
+  const marcas = marcasDasThreads(threads);
+  return new Map(threads.map((t) => [t.id, marcas.has(t.id) ? `${t.titulo} · ${marcas.get(t.id)}` : t.titulo]));
+}
+
+/**
+ * #728: só a data (e a hora) que separa conversas de mesmo título. A lista mostra essa marca FORA do corte do nome —
+ * com o nome longo, o "…" comia a data e as duas pareciam iguais.
+ */
+export function marcasDasThreads(threads: readonly Thread[]): Map<string, string> {
   const chave = (t: Thread) => t.titulo.trim().toLowerCase();
   const grupos = new Map<string, Thread[]>();
   for (const t of threads) grupos.set(chave(t), [...(grupos.get(chave(t)) ?? []), t]);
@@ -236,7 +245,8 @@ export function rotulosDasThreads(threads: readonly Thread[]): Map<string, strin
   const hora = (n: number) => new Date(n).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
   for (const g of grupos.values()) {
     const mesmoDia = new Set(g.map((t) => dia(t.criadaEm))).size < g.length;
-    for (const t of g) out.set(t.id, g.length < 2 ? t.titulo : `${t.titulo} · ${dia(t.criadaEm)}${mesmoDia ? ` ${hora(t.criadaEm)}` : ""}`);
+    if (g.length < 2) continue;
+    for (const t of g) out.set(t.id, `${dia(t.criadaEm)}${mesmoDia ? ` ${hora(t.criadaEm)}` : ""}`);
   }
   return out;
 }

@@ -42,6 +42,7 @@ import type { StructuredAnswer, Source, IntentId, Issue } from "@/lib/agent/cont
 import { artefatoDeAprender, pedeAula, pedeEngenhariaReversa, DIRETRIZ_ENGENHARIA_REVERSA } from "@/lib/agent/aprender";
 import { DIRETRIZ_MATEMATICA } from "@/lib/agent/matematica";
 import { diretrizDeTabela, semTabelaNaoPedida } from "@/lib/agent/tabela";
+import { diretrizDeTamanho, pedeRespostaCurta, semDesenvolvimentoNaoPedido } from "@/lib/agent/tamanho";
 import { diretrizLivros, markdownDosLivros, type LivroAchado } from "@/lib/livros/busca";
 import { anexarFontesBase, blocoDaBase } from "@/lib/rag/citar";
 import { registrarAnatomia } from "@/lib/anatomia/tools";
@@ -439,7 +440,8 @@ export function normalizeAnswer(out: Partial<StructuredAnswer> | null | undefine
     if (refs.length) answer.artifacts = refs as StructuredAnswer["artifacts"];
   }
   if (!answer.nucleo) answer.nucleo = "Não consegui elaborar uma resposta completa agora.";
-  return answer;
+  // #728: "em 2 frases" — o parágrafo a mais que o modelo acrescenta sai aqui (lib/agent/tamanho)
+  return semDesenvolvimentoNaoPedido(answer, st.objective ?? "");
 }
 
 /**
@@ -721,6 +723,8 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         // "não force estrutura" da DIRETRIZ_ESTUDOS — abafada por 1.167 caracteres de diretriz
         // incondicional logo acima. Mesmo molde do `pedeEngenhariaReversa` algumas linhas atrás.
         diretrizDeTabela(st.objective),
+        // #728: "em 2 frases" é a resposta inteira (lib/agent/tamanho) — e o desenvolvimento não reconta o núcleo
+        diretrizDeTamanho(st.objective),
         "proximos_passos, quando fizer sentido, são passos de ESTUDO (o que entender, ler, " +
         "praticar ou checar a seguir) — jamais ofertas de recurso da plataforma.",
         "Responda SOMENTE JSON válido.",
@@ -903,7 +907,8 @@ export function resolveHarnessOutput(
     : arts;
   // APRENDER INTERATIVO (lib/agent/aprender): pergunta de quem quer aprender/entender → um diagrama
   // interativo do assunto viaja junto (archify). Não é pedido explícito: se falhar, falha calado.
-  const doAprender = artefatoDeAprender(state.intent, objective, { artifacts: comExplicito });
+  // #728: com resposta curta pedida ("em 2 frases"), o diagrama automático não vem — o pedido explícito continua
+  const doAprender = pedeRespostaCurta(objective) ? null : artefatoDeAprender(state.intent, objective, { artifacts: comExplicito });
   const todos = doAprender ? [...comExplicito, doAprender] : comExplicito;
   return {
     mode: "structured",

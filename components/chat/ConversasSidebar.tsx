@@ -16,7 +16,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronRight, CornerDownRight, GitBranchPlus, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Search, SquarePen, Trash2,
 } from "lucide-react";
-import { arvoreDeThreads, rotulosDasThreads, type Thread } from "@/lib/chat/threads";
+import { arvoreDeThreads, marcasDasThreads, rotulosDasThreads, type Thread } from "@/lib/chat/threads";
 
 const chaveRecolhida = (sala: string) => `zaeon.chat.sidebar.${sala}.recolhida`;
 
@@ -68,6 +68,8 @@ export default function ConversasSidebar({
   const arvore = useMemo(() => arvoreDeThreads(threads), [threads]);
   // #705: títulos repetidos ganham a data na lista
   const rotulos = useMemo(() => rotulosDasThreads(threads), [threads]);
+  // #728: a data das repetidas fica fora do corte do nome
+  const marcas = useMemo(() => marcasDasThreads(threads), [threads]);
   useEffect(() => {
     const mae = threads.find((t) => t.id === ativa)?.parentId;
     if (mae) setAbertas((a) => (a[mae] ? a : { ...a, [mae]: true }));
@@ -155,7 +157,8 @@ export default function ConversasSidebar({
           className="flex-1 min-w-0 flex items-center gap-1.5 py-1.5 text-left rounded-md outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
         >
           {ocupada === t.id && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shrink-0" aria-label="respondendo" />}
-          <span className={`flex-1 min-w-0 truncate text-[13px] ${atual ? "font-semibold" : "font-medium"}`}>{rotulos.get(t.id) ?? t.titulo}</span>
+          <span className={`flex-1 min-w-0 truncate text-[13px] ${atual ? "font-semibold" : "font-medium"}`}>{t.titulo}</span>
+          {marcas.has(t.id) && <span className="shrink-0 text-[10.5px] tabular-nums text-slate-500 dark:text-white/50">{marcas.get(t.id)}</span>}
         </button>
         {/* Ações no hover (e com foco de teclado); na ativa ficam sempre à mão. */}
         <span className={`shrink-0 flex items-center transition-opacity ${atual ? "opacity-100" : "opacity-0 group-hover/conv:opacity-100 group-focus-within/conv:opacity-100"} [@media(hover:none)]:opacity-100`}>

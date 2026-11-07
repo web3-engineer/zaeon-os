@@ -117,3 +117,15 @@ describe("#705 · Modo pesquisa e diagrama vindos do servidor", () => {
     expect(so[1]!.blocos).toHaveLength(1);
   });
 });
+
+describe("#728 · a ordem da lista depois de juntar", () => {
+  it("a conversa criada em outro aparelho entra pela data, não no fim", () => {
+    const daqui = [{ ...local("velha", "teste"), criadaEm: 100 }, { ...local("java", "Sobre: java"), criadaEm: 300 }];
+    const nova = srv("mito", "o que é mitocôndria", 900, { criadaEm: 900 });
+    const meio = srv("python", "Python", 200, { criadaEm: 200 });
+    expect(juntarConversas(daqui, [nova, meio], []).map((t) => t.id)).toEqual(["mito", "java", "python", "velha"]);
+  });
+  it("mesma data: fica na ordem que estava", () => {
+    expect(juntarConversas([local("a", "A"), local("b", "B")], [srv("c", "C")], []).map((t) => t.id)).toEqual(["a", "b", "c"]);
+  });
+});

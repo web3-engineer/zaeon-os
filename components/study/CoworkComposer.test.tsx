@@ -14,7 +14,7 @@ describe("CoworkComposer · opções da conversa (#713)", () => {
   it("as opções começam escondidas só no celular, e o botão abre e fecha", () => {
     const r = render(<CoworkComposer {...base} opcoes={<span>Modo pesquisa</span>} />);
     const caixa = r.container.querySelector("#opcoes-da-conversa")!;
-    expect(caixa.className).toBe("hidden sm:block");
+    expect(caixa.className).toBe("hidden sm:block [@media(max-height:640px)]:!hidden");
     const botao = r.getByRole("button", { name: "Mostrar as opções da conversa" });
     expect(botao.className).toContain("sm:hidden");
     fireEvent.click(botao);
