@@ -41,6 +41,7 @@ import { normalizeStudioKind } from "@/lib/agent/tools";
 import type { StructuredAnswer, Source, IntentId, Issue } from "@/lib/agent/contracts";
 import { artefatoDeAprender, pedeAula, pedeEngenhariaReversa, DIRETRIZ_ENGENHARIA_REVERSA } from "@/lib/agent/aprender";
 import { DIRETRIZ_MATEMATICA } from "@/lib/agent/matematica";
+import { diretrizDeTabela, semTabelaNaoPedida } from "@/lib/agent/tabela";
 import { diretrizLivros, markdownDosLivros, type LivroAchado } from "@/lib/livros/busca";
 import { anexarFontesBase, blocoDaBase } from "@/lib/rag/citar";
 import { registrarAnatomia } from "@/lib/anatomia/tools";
@@ -388,9 +389,16 @@ export function ofertaDePlataforma(passo: string): boolean {
 export function normalizeAnswer(out: Partial<StructuredAnswer> | null | undefined, st: TrajectoryState): StructuredAnswer {
   const o = out ?? {};
   const answer: StructuredAnswer = {
-    nucleo: typeof o.nucleo === "string" && o.nucleo.trim() ? o.nucleo.trim() : (st.objective ? "" : ""),
+    // A tabela NÃO PEDIDA vira lista aqui, e não no prompt: instrução de formato segura o começo
+    // da resposta e escorrega depois de alguns parágrafos. Mesmo princípio do `ofertaDePlataforma`
+    // logo acima — o CÓDIGO tira o que o modelo não devia ter produzido. A conversão é SEM PERDA
+    // (lib/agent/tabela.desmontarTabela): nenhum valor some, só a grade.
+    nucleo: semTabelaNaoPedida(
+      typeof o.nucleo === "string" && o.nucleo.trim() ? o.nucleo.trim() : (st.objective ? "" : ""),
+      st.objective ?? "",
+    ) as string,
   };
-  if (typeof o.desenvolvimento === "string") answer.desenvolvimento = o.desenvolvimento;
+  if (typeof o.desenvolvimento === "string") answer.desenvolvimento = semTabelaNaoPedida(o.desenvolvimento, st.objective ?? "");
   if (o.conceitos) answer.conceitos = asArray(o.conceitos).map(String).filter(Boolean);
   if (o.proximos_passos) {
     const passos = asArray(o.proximos_passos).map(String).filter(Boolean).filter((p) => !ofertaDePlataforma(p));
@@ -707,6 +715,12 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
           })()]
           : []),
         DIRETRIZ_MATEMATICA,
+        // A TABELA é decidida pelo PEDIDO, nunca pela vontade do modelo (lib/agent/tabela).
+        // Calar sobre o assunto era o que produzia "tabela do nada": sem esta linha o modelo não
+        // tinha como saber que a grade não era bem-vinda, e a única contenção era a oração vaga
+        // "não force estrutura" da DIRETRIZ_ESTUDOS — abafada por 1.167 caracteres de diretriz
+        // incondicional logo acima. Mesmo molde do `pedeEngenhariaReversa` algumas linhas atrás.
+        diretrizDeTabela(st.objective),
         "proximos_passos, quando fizer sentido, são passos de ESTUDO (o que entender, ler, " +
         "praticar ou checar a seguir) — jamais ofertas de recurso da plataforma.",
         "Responda SOMENTE JSON válido.",
@@ -748,7 +762,14 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         // o rascunho estourava o prazo e a Aura respondia "não consegui" — 90 s só pra criar_trabalho
         const prazo = st.intent === "criar_trabalho" ? 90_000 : 30_000;
         // a PRÉVIA: com quem a escute (o chat), o rascunho vai em stream e o texto do `nucleo` sai enquanto nasce
-        const onTexto = opts.onPrevia ? (acc: string) => { const t = previaDoRascunho(acc); if (t) opts.onPrevia!(t); } : undefined;
+        // A PRÉVIA passa pelo MESMO filtro de tabela. Sem isto o conserto chegaria tarde demais para
+        // quem está olhando: a prévia mostra o `nucleo` NASCENDO, então a grade apareceria viva na
+        // tela e só viraria lista quando o turno fechasse — o aluno veria exatamente aquilo de que
+        // o dono reclamou, e ainda piscando. O texto é PARCIAL, então uma tabela cujo cabeçalho
+        // chegou e cujas linhas não, ainda não é detectável: some no pedaço seguinte.
+        const onTexto = opts.onPrevia
+          ? (acc: string) => { const t = semTabelaNaoPedida(previaDoRascunho(acc), st.objective ?? ""); if (t) opts.onPrevia!(t); }
+          : undefined;
         const out = await genJson<Partial<StructuredAnswer>>(sys, user, { temperature: 0.4, model: modelFor("draft"), timeoutMs: prazo, phase: "draft", onTexto, pensar: pensarDa(st.mode === "quick" ? "draft_rapido" : st.mode === "elaborated" ? "draft_elaborado" : "draft"), prazoPrimeiroMs: prazoPrimeiraPalavra(st) });
         // A REDE antes dos blocos do CÓDIGO (fontes da base, lista de livros): ela julga o texto do
         // MODELO. Depois seria pior — a lista de livros traz "baixar PDF" em cada linha, e ainda que
