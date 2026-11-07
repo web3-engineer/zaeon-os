@@ -99,3 +99,25 @@ describe("health · tripulação da nave (NÚMERO, nunca endereço)", () => {
     }
   });
 });
+
+/**
+ * O ATLAS no recibo, em duas metades. O estado que importa hoje é justamente o MISTO: o manifesto
+ * está na imagem (busca e inspeção funcionam) e a geometria ainda não está no volume (não há corpo
+ * 3D). Sem esta linha, descobrir isso exigiria abrir a tela e ver nada carregar.
+ */
+describe("health · atlas de anatomia (manifesto e geometria falham separado)", () => {
+  it("manifesto ON com as contagens reais; geometria OFF enquanto os 90 MB não estão no volume", async () => {
+    const a = (await (await GET()).json()).atlas;
+    expect(a.manifesto).toBe("on");
+    expect(a.pecas).toBe(2234);
+    expect(a.conceitos).toBe(3432);
+    // o repositório NÃO carrega a geometria de propósito (ela vive num volume no host)
+    expect(a.geometria, "geometria no git seria 90 MB em todo clone").toBe("off");
+  });
+
+  it("o corpo do /health não leva dado de anatomia, só contagem", async () => {
+    const r = JSON.stringify(await (await GET()).json());
+    expect(r).not.toContain("FMA3710");
+    expect(r).not.toContain("vascular tree");
+  });
+});

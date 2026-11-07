@@ -43,6 +43,15 @@ import { artefatoDeAprender, pedeAula, pedeEngenhariaReversa, DIRETRIZ_ENGENHARI
 import { DIRETRIZ_MATEMATICA } from "@/lib/agent/matematica";
 import { diretrizLivros, markdownDosLivros, type LivroAchado } from "@/lib/livros/busca";
 import { anexarFontesBase, blocoDaBase } from "@/lib/rag/citar";
+import { registrarAnatomia } from "@/lib/anatomia/tools";
+
+/**
+ * As tools de ANATOMIA entram aqui, no carregamento deste módulo, e não no boot: o registry é
+ * estado do processo e uma tool registrada só no boot fica invisível pra rota do chat (ver o
+ * comentário do registry em lib/agent/runtime.ts). `registrarAnatomia` RECUSA sem o manifesto do
+ * atlas, então sem o dado elas nem aparecem no cardápio — em vez de aparecerem e falharem.
+ */
+registrarAnatomia();
 
 type GenJson = <T>(system: string, user: string, opts?: { temperature?: number; model?: string; timeoutMs?: number; phase?: string; /** em stream: o JSON acumulado a cada pedaço */ onTexto?: (acumulado: string) => void; /** o pensar desta fase (lib/llm/pensar) */ pensar?: NivelPensar; /** stream: sem o 1º pedaço nesse prazo → reserva */ prazoPrimeiroMs?: number }) => Promise<T>;
 
