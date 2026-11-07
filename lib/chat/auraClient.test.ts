@@ -26,6 +26,28 @@ describe("pedirAura", () => {
     expect(r).toEqual({ ok: true, limpo: S, turnId: null, modelo: null });
     expect(JSON.parse(f.mock.calls[0][1].body)).toMatchObject({ agent: "aura", stream: true, prompt: "luz?" });
   });
+  // O DEFEITO QUE ISTO FECHA: o corpo trazia `agent: "aura"` LITERAL, então a escolha do seletor
+  // nunca chegava ao servidor e todo turno era a Aura — o seletor trocava o rosto, não a conversa.
+  it("`agente` do seletor vai pro fio como `agent` (e não vaza o campo em português)", async () => {
+    const f = fetchCom(respostaStream([S]));
+    await pedirAura({ prompt: "o fígado", agente: "zenita", history: [] }, { fetch: f });
+    const corpo = JSON.parse(f.mock.calls[0][1].body);
+    expect(corpo.agent).toBe("zenita");
+    expect("agente" in corpo).toBe(false);
+  });
+
+  it("chamador antigo com `agent` cru continua valendo (não troco o agente de quem já pedia outro)", async () => {
+    const f = fetchCom(respostaStream([S]));
+    await pedirAura({ prompt: "x", agent: "nina" } as any, { fetch: f });
+    expect(JSON.parse(f.mock.calls[0][1].body).agent).toBe("nina");
+  });
+
+  it("`agente` vence `agent` cru: a escolha do aluno é a mais nova", async () => {
+    const f = fetchCom(respostaStream([S]));
+    await pedirAura({ prompt: "x", agent: "nina", agente: "zenita" } as any, { fetch: f });
+    expect(JSON.parse(f.mock.calls[0][1].body).agent).toBe("zenita");
+  });
+
   it("http != 2xx e rede caída viram resultado, nunca exceção", async () => {
     expect(await pedirAura({ prompt: "x" }, { fetch: fetchCom(new Response("no", { status: 500 })) })).toEqual({ ok: false, motivo: "http", status: 500 });
     expect(await pedirAura({ prompt: "x" }, { fetch: fetchCom(new Error("offline")) })).toEqual({ ok: false, motivo: "rede" });

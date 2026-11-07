@@ -11,7 +11,13 @@ import { parseStructuredStream } from "@/lib/agent/structured-client";
 import { STUDIO_SENTINEL } from "@/lib/agent/chat-turn-wire";
 import { esperarTurno, TURNO_HEADER } from "@/lib/chat/turnoRetomavel";
 
-export type AuraPedido = Record<string, unknown> & { prompt: string };
+/**
+ * `agente`: QUEM responde (lib/agents/chatAgentes). Ausente = "aura", que era o único valor possível
+ * antes — o corpo trazia `agent: "aura"` LITERAL, e por isso a escolha do seletor nunca chegava ao
+ * servidor: ele caía em DEFAULT_AGENT_ID e todo turno era a Aura. O nome do campo no fio continua
+ * `agent` (é o que a rota lê desde sempre); aqui ele tem nome em português como o resto do módulo.
+ */
+export type AuraPedido = Record<string, unknown> & { prompt: string; agente?: string };
 
 export type AuraCallbacks = {
   /** O turno foi pro worker (CHAT_BG): guarde o id pra reengatar se a pessoa sair. */
@@ -73,7 +79,10 @@ export async function pedirAura(pedido: AuraPedido, cb: AuraCallbacks = {}): Pro
     r = await f("/api/ai/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ agent: "aura", stream: true, ...pedido }),
+      // `agente` (o seletor) tem precedência; `agent` cru de chamador antigo continua valendo; e só
+      // na falta das duas é a Aura. Sobrescrever um `agent` explícito seria trocar o agente de quem
+      // já pedia outro, em silêncio. `agente: undefined` não vai no fio: JSON.stringify o descarta.
+      body: JSON.stringify({ ...pedido, agent: pedido.agente ?? pedido.agent ?? "aura", agente: undefined, stream: true }),
       signal: cb.signal,
     });
   } catch {

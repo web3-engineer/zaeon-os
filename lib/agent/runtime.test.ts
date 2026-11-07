@@ -178,3 +178,40 @@ describe("runtime · #562 memory_search lê só a memória do turno", () => {
     expect(escopos).toEqual([{ userId: "d".repeat(24) }, { userId: "a".repeat(24) }]);
   });
 });
+
+// ─────────── PORTÃO DE HABILIDADE (ctx.toolsDoAgente) ───────────
+// O que isto conserta: `enabledSkills` era um RÓTULO. `toolsDoTurno` nunca o leu — filtrava só por
+// `disponivelNoTurno` —, então declarar `anatomia` num mentor e não declarar no outro mudava a
+// vitrine do Escritório e NADA no turno. Com o conjunto no contexto, a diferença entre agentes passa
+// a existir onde importa: na tool que o modelo recebe.
+describe("portão de habilidade", () => {
+  const anat = def({ name: "buscar_anatomia" });
+
+  it("conjunto AUSENTE = sem portão (é o comportamento de antes; o Octa/canal/MCP dependem disso)", () => {
+    expect(permit(anat, ctx())).toBe("ALLOW");
+  });
+
+  it("tool fora do conjunto = DENY", () => {
+    expect(permit(anat, ctx({ toolsDoAgente: new Set(["memory_search"]) }))).toBe("DENY");
+  });
+
+  it("tool dentro do conjunto = ALLOW", () => {
+    expect(permit(anat, ctx({ toolsDoAgente: new Set(["buscar_anatomia", "memory_search"]) }))).toBe("ALLOW");
+  });
+
+  it("o portão vem ANTES do plano: habilidade que a agente não tem não é upgrade de plano", () => {
+    const pago = def({ name: "buscar_anatomia", minPlan: "pro" });
+    // sem o portão, um `free` aqui também daria DENY — mas pelo motivo errado. Com plano de sobra,
+    // o único motivo possível é a habilidade:
+    expect(permit(pago, ctx({ plan: "pro", toolsDoAgente: new Set(["memory_search"]) }))).toBe("DENY");
+  });
+
+  it("o cardápio BATE com o portão: toolsDoTurno não anuncia o que o permit vai negar", async () => {
+    const { toolsDoTurno, listTools } = await import("./runtime");
+    const conjunto = new Set(["memory_search"]);
+    const anunciadas = toolsDoTurno(ctx({ toolsDoAgente: conjunto })).map((t) => t.name);
+    expect(anunciadas).toEqual(["memory_search"]);
+    // e sem o conjunto o cardápio continua o de sempre (nada encolheu por acidente)
+    expect(toolsDoTurno(ctx()).length).toBe(listTools().filter((d) => !d.disponivelNoTurno).length);
+  });
+});

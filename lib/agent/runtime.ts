@@ -52,6 +52,20 @@ export type ToolContext = AgentContext & {
   gpuAvailable?: boolean;
   /** Modo da tarefa (Octa Code, §2 do pack). `review`/`answer` = só leitura; ausente = comportamento antigo. */
   taskMode?: TaskMode;
+  /**
+   * AS TOOLS QUE A AGENTE DESTE TURNO PODE USAR (lib/agents/capacidades: base + habilidades).
+   *
+   * Por que um CONJUNTO DE NOMES e não a lista de habilidades: o runtime não precisa conhecer o
+   * vocabulário de agentes pra negar uma tool, e não conhecê-lo é o que o mantém testável sem
+   * importar meio app. Quem traduz habilidade → nomes é `toolsPermitidas`, do lado de lá.
+   *
+   * AUSENTE = SEM PORTÃO (o comportamento de antes, byte a byte). Isto é deliberado: `ToolContext` é
+   * o mesmo do Octa, do canal, do MCP e do rea-eval, e um portão que negasse por omissão derrubaria
+   * todos eles. O turno do chat SEMPRE manda o conjunto — então pro chat é portão de verdade, e foi
+   * pra isso que ele nasceu: `enabledSkills` era um RÓTULO, lido só por lib/office/mapa.ts e pelas
+   * rotas de mentores, sem efeito nenhum sobre que tool o modelo recebia.
+   */
+  toolsDoAgente?: ReadonlySet<string>;
 };
 
 /** `review`/`answer` não podem mutar nada; `change` pode (sujeito ao resto do permit e ao file-lock do Octa). */
@@ -114,6 +128,9 @@ async function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 export function permit(def: ToolDef, ctx: ToolContext): Gate {
   // F3: indisponível NESTE turno é DENY (a tool existe, mas não há o que ela leria)
   if (def.disponivelNoTurno && !def.disponivelNoTurno(ctx)) return "DENY";
+  // A agente deste turno tem esta habilidade? Antes do plano: habilidade que ela não tem não é
+  // "upgrade", é outra agente. Conjunto ausente = sem portão (ver ToolContext.toolsDoAgente).
+  if (ctx.toolsDoAgente && !ctx.toolsDoAgente.has(def.name)) return "DENY";
   if (!planAtLeast(ctx.plan, def.minPlan)) return "DENY";
   if (isReadOnlyMode(ctx.taskMode) && def.risk !== "read") return "DENY"; // modo leitura nunca escreve
   if (def.demandGpu && !ctx.gpuAvailable) return "REQUIRE_APPROVAL"; // T3 sob demanda
@@ -171,7 +188,13 @@ export function listTools(): ToolDef[] { return [...REGISTRY.values()]; }
  * que é exatamente o que a F0 existe pra impedir.
  */
 export function toolsDoTurno(ctx: ToolContext): ToolDef[] {
-  return listTools().filter((d) => !d.disponivelNoTurno || d.disponivelNoTurno(ctx));
+  return listTools().filter((d) => {
+    if (d.disponivelNoTurno && !d.disponivelNoTurno(ctx)) return false;
+    // o cardápio tem que bater com o portão: anunciar tool que o `permit` vai negar por habilidade
+    // é a mesma mentira da F0 por outra porta (prometer o que este turno não faz).
+    if (ctx.toolsDoAgente && !ctx.toolsDoAgente.has(d.name)) return false;
+    return true;
+  });
 }
 
 /** Executa por nome (o que o laço chama). Tool desconhecida = DENY silencioso (deny-by-default). */

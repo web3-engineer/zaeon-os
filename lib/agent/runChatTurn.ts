@@ -34,7 +34,11 @@ import { MODELO_PADRAO, modeloDoId, nomeDoModeloServido } from "@/lib/chat/model
 import { podeProNasPesadas } from "@/lib/ai/proNasPesadas";
 import { markRunning, saveDone, saveError } from "@/lib/agent/chat-turn-store";
 import type { Wing } from "@/lib/agent/memory";
+import { mentorBySlug } from "@/lib/agent/mentors";
 import { blocoDeEntregaveis, lerBriefing } from "@/lib/tcc/briefing";
+import { capacidadeDe, habilidadesDoTurno, toolsPermitidas } from "@/lib/agents/capacidades";
+import { agenteChat, type AgenteChatId } from "@/lib/agents/chatAgentes";
+import { vozDoTurno } from "@/lib/agents/voz";
 
 export type ChatTurnParams = {
   prompt: string;
@@ -51,6 +55,14 @@ export type ChatTurnParams = {
   /** Modelo escolhido no composer (id de lib/chat/modelos; o route já validou). Ausente = padrão. */
   modelo?: string;
   /**
+   * QUEM o aluno escolheu no seletor (lib/agents/chatAgentes). Atravessa a fila como string.
+   *
+   * Antes deste campo o turno era SEMPRE a Aura — a escolha morria no localStorage do lab. É daqui
+   * que saem três coisas: a voz (`transformarSystem`), as habilidades (o portão de tools) e a base
+   * por área do RAG. Ausente = "aura", que é o comportamento de antes, byte a byte.
+   */
+  agente?: AgenteChatId;
+  /**
    * F3 · os ARQUIVOS anexados, com o TEXTO já extraído pela rota (lib/agent/anexos-server). Vêm
    * prontos, e não como bytes, por dois motivos: as chamadas do harness vão pelo envelope, que é
    * texto; e assim o turno atravessa a fila do CHAT_BG como JSON. Vazio/ausente = turno sem anexo.
@@ -65,6 +77,15 @@ export async function runChatTurn(
 ): Promise<HarnessOutput> {
   const { userId, surface, mentor } = params;
   const prompt = String(params.prompt || "");
+  // A AGENTE DESTE TURNO. O mentor ativo ACRESCENTA habilidade (ele é a Aura parametrizada), nunca
+  // tira — ver habilidadesDoTurno.
+  const agente: AgenteChatId = params.agente ?? "aura";
+  const cap = capacidadeDe(agente);
+  const nomeDaAgente = agenteChat(agente).nome;
+  const habilidades = habilidadesDoTurno({
+    agente,
+    habilidadesDoMentor: mentor?.slug ? mentorBySlug(mentor.slug)?.enabledSkills ?? null : null,
+  });
   // "escreva um artigo com base neste: <artigo colado>": o PEDIDO (curto) é o objetivo do turno — roteador, buscas,
   // título; o texto colado vira bloco de contexto (lib/agent/fonteColada). Sem texto colado, tudo igual a antes.
   const colada = separarFonteColada(prompt);
@@ -88,7 +109,9 @@ export async function runChatTurn(
       // documento. O bloco de citação do prompt continua recebendo só o top-k — ver `baseCurta`.
       .then(async (m) => m.baseParaTurno({
         userId, pergunta: objetivo,
-        areas: (await import("@/lib/rag/areas")).areasDoTurno(mentor?.slug),
+        // A ÁREA DA AGENTE vem antes da do mentor: a Zenita é a da medicina por ser quem é, não por
+        // haver um mentor de medicina ativo (é lá que moram os datasets de saúde do HF).
+        areas: (await import("@/lib/rag/areas")).areasDoTurno(cap.area ?? mentor?.slug),
         // o gráfico de cobertura por documento (G3) precisa do MESMO agrupamento, então ele também
         // pede a consulta larga — senão `HARNESS_GRAFICO=1` com `HARNESS_SINTESE=0` produziria um
         // gráfico silenciosamente ausente, que é a dependência não declarada de sempre.
@@ -112,9 +135,12 @@ export async function runChatTurn(
       // F3: os anexos viajam no ToolContext — é dele que `ler_anexo`/`listar_anexos` os tiram, e é
       // ele que o `disponivelNoTurno` consulta pra decidir se as tools existem neste turno.
       ...(params.anexos?.length ? { anexos: params.anexos } : {}),
+      // O PORTÃO DE HABILIDADE (lib/agent/runtime ToolContext.toolsDoAgente): a base inteira pra
+      // todas + as tools das habilidades desta. É o que faz `enabledSkills` deixar de ser rótulo.
+      toolsDoAgente: toolsPermitidas(habilidades),
     };
     const escolhido = modeloDoId(params.modelo);
-    const ledgerTurno = { agentKey: mentor?.slug ?? "aura", mentorSlug: mentor?.slug ?? null, userId: userId ?? null, surface: surfaceLedger(surface ?? hctx.activeTab), scopeId: typeof ac.cartolinaScopeId === "string" ? ac.cartolinaScopeId : null };
+    const ledgerTurno = { agentKey: mentor?.slug ?? agente, mentorSlug: mentor?.slug ?? null, userId: userId ?? null, surface: surfaceLedger(surface ?? hctx.activeTab), scopeId: typeof ac.cartolinaScopeId === "string" ? ac.cartolinaScopeId : null };
     // MODELO LOCAL (Zaeon/Contabo): caminho enxuto em streaming. Não começou → segue pelo Google, abaixo.
     if (escolhido?.provedor === "zaeon" && escolhido.grupo) {
       narrar(serializarProgresso({ fase: "draft", rotulo: `${escolhido.nome} pensando no servidor Zaeon` }));
@@ -215,6 +241,9 @@ export async function runChatTurn(
       onModelo(m) { if (!servido || servido.phase !== "draft" || m.phase === "draft") servido = m; },
       // a PRÉVIA da resposta: o texto do rascunho enquanto nasce, em PEDAÇOS (lib/agent/previa criarEmissorPrevia)
       onPrevia: criarEmissorPrevia((pedaco) => narrar(serializarPrevia(pedaco))),
+      // A VOZ: troca "Você é a Aura" pelo nome da agente nos prompts do harness (lib/agents/voz).
+      // undefined pra Aura — o caminho dela fica idêntico ao de antes.
+      transformarSystem: vozDoTurno(nomeDaAgente),
       systemContext: [params.systemContext, memBlock, cartolinaBlock, tccBlock, entregaveisBlock, skillBlock, blocoDosAnexos(params.anexos ?? []), colada.fonte ? blocoFonteColada(colada.fonte) : ""].filter(Boolean).join("\n\n") || undefined,
       history: params.history,
       baseConhecimento: baseCurta,

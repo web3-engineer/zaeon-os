@@ -73,3 +73,53 @@ describe("POST /api/ai/chat — Fase 3", () => {
     expect(txt.length).toBeGreaterThan(0);
   });
 });
+
+/**
+ * O SELETOR DE AGENTES — o defeito que o dono relatou ("não está realmente mudando de agentes").
+ *
+ * Eram dois problemas em série, e consertar só o primeiro teria piorado as coisas:
+ *   (a) o cliente mandava `agent: "aura"` LITERAL, então a escolha nunca chegava aqui;
+ *   (b) o harness estava gateado em `agentKey === "aura"` em TRÊS pontos — mandar `agent:"zenita"`
+ *       e mais nada DESLIGARIA o harness (sem laço, tools, base RAG, memória, anexo, rede da F0,
+ *       regra de tabela) e cairia no motor legado. Agente mudo viraria agente burro.
+ */
+describe("POST /api/ai/chat — o seletor de agentes", () => {
+  it("agent=zenita entra pelo HARNESS (não cai no legado) e o turno sabe quem ela é", async () => {
+    await (await post(corpo({ agent: "zenita" }))).text();
+    const job = m.enqueue.mock.calls[0][0];
+    expect(job.agente).toBe("zenita");
+  });
+
+  it("a IDENTIDADE dela vai no CONTEXTO DO SISTEMA, não numa frase solta no fim do prompt", async () => {
+    await (await post(corpo({ agent: "zenita" }))).text();
+    const ctx = String(m.enqueue.mock.calls[0][0].systemContext ?? "");
+    expect(ctx).toContain("Você é a Zenita");
+    expect(ctx).toContain("MEDICINA");
+    // e a regra que não se negocia viaja com ela
+    expect(ctx).toMatch(/nunca diagnostica|NUNCA CLÍNICO|não diagnostica/i);
+  });
+
+  it("a Aura segue IDÊNTICA: nenhuma persona é prefixada no contexto dela", async () => {
+    await (await post(corpo({ agent: "aura", systemContext: "CTX CRU" }))).text();
+    expect(m.enqueue.mock.calls[0][0].systemContext).toBe("CTX CRU");
+  });
+
+  it("sem `agent` no corpo = Aura (o comportamento de antes, pra chamador antigo)", async () => {
+    const b = corpo(); delete (b as any).agent;
+    await (await post(b)).text();
+    expect(m.enqueue.mock.calls[0][0].agente).toBe("aura");
+  });
+
+  it("a Nina também é agente de conversa — tem o harness inteiro, só habilidades diferentes", async () => {
+    await (await post(corpo({ agent: "nina" }))).text();
+    expect(m.enqueue.mock.calls[0][0].agente).toBe("nina");
+  });
+
+  it("quem NÃO é agente de conversa não entra pelo harness (anfitriã, Davi, personas de serviço)", async () => {
+    for (const quem of ["zaeon", "core_active", "examiner"]) {
+      m.enqueue.mockClear();
+      await post(corpo({ agent: quem })).then((r) => r.text()).catch(() => null); // o legado chama o Vertex mockado
+      expect(m.enqueue, quem).not.toHaveBeenCalled();
+    }
+  });
+});
