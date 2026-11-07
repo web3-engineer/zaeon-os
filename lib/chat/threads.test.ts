@@ -248,3 +248,13 @@ describe("#728 · marcasDasThreads (a data fica fora do corte do nome)", () => {
     expect(m.get("a")).not.toBe(m.get("b"));
   });
 });
+
+describe("#728 · mesmo minuto ganha os segundos", () => {
+  it("duas no mesmo minuto ficam diferentes", async () => {
+    const { marcasDasThreads } = await import("./threads");
+    const t = (id: string, criadaEm: number) => ({ id, titulo: "teste", criadaEm, tocadaEm: criadaEm });
+    const m = marcasDasThreads([t("a", Date.UTC(2026, 10, 1, 12, 0, 5)), t("b", Date.UTC(2026, 10, 1, 12, 0, 40))]);
+    expect(m.get("a")).toMatch(/^\d\d\/\d\d \d\d:\d\d:05$/);
+    expect(m.get("a")).not.toBe(m.get("b"));
+  });
+});

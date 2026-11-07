@@ -400,6 +400,9 @@ export function normalizeAnswer(out: Partial<StructuredAnswer> | null | undefine
     ) as string,
   };
   if (typeof o.desenvolvimento === "string") answer.desenvolvimento = semTabelaNaoPedida(o.desenvolvimento, st.objective ?? "");
+  // #728: "em 2 frases" — o parágrafo a mais sai AQUI, antes de tudo que lê o corpo (a molécula derivada do texto não
+  // pode vir de um trecho que saiu) e antes do texto de falha (com núcleo vazio, o desenvolvimento É a resposta e fica)
+  if (answer.desenvolvimento && !semDesenvolvimentoNaoPedido(answer, st.objective ?? "").desenvolvimento) delete answer.desenvolvimento;
   if (o.conceitos) answer.conceitos = asArray(o.conceitos).map(String).filter(Boolean);
   if (o.proximos_passos) {
     const passos = asArray(o.proximos_passos).map(String).filter(Boolean).filter((p) => !ofertaDePlataforma(p));
@@ -440,8 +443,7 @@ export function normalizeAnswer(out: Partial<StructuredAnswer> | null | undefine
     if (refs.length) answer.artifacts = refs as StructuredAnswer["artifacts"];
   }
   if (!answer.nucleo) answer.nucleo = "Não consegui elaborar uma resposta completa agora.";
-  // #728: "em 2 frases" — o parágrafo a mais que o modelo acrescenta sai aqui (lib/agent/tamanho)
-  return semDesenvolvimentoNaoPedido(answer, st.objective ?? "");
+  return answer;
 }
 
 /**

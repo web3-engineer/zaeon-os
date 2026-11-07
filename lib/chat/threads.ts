@@ -246,7 +246,10 @@ export function marcasDasThreads(threads: readonly Thread[]): Map<string, string
   for (const g of grupos.values()) {
     const mesmoDia = new Set(g.map((t) => dia(t.criadaEm))).size < g.length;
     if (g.length < 2) continue;
-    for (const t of g) out.set(t.id, `${dia(t.criadaEm)}${mesmoDia ? ` ${hora(t.criadaEm)}` : ""}`);
+    // (no mesmo minuto, os segundos — senão as duas ficavam com a mesma marca)
+    const mesmoMinuto = mesmoDia && new Set(g.map((t) => `${dia(t.criadaEm)} ${hora(t.criadaEm)}`)).size < g.length;
+    const seg = (n: number) => `:${String(new Date(n).getSeconds()).padStart(2, "0")}`;
+    for (const t of g) out.set(t.id, `${dia(t.criadaEm)}${mesmoDia ? ` ${hora(t.criadaEm)}${mesmoMinuto ? seg(t.criadaEm) : ""}` : ""}`);
   }
   return out;
 }

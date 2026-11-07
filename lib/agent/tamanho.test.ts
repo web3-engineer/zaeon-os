@@ -23,7 +23,10 @@ describe("#728 · tamanho pedido pelo aluno", () => {
   });
 
   it("a diretriz põe o limite; sem pedido, só cobra não repetir", () => {
-    expect(diretrizDeTamanho("responda em 2 frases")).toMatch(/TAMANHO: .*2 frases/);
+    const d = diretrizDeTamanho("responda em 2 frases");
+    expect(d).toMatch(/TAMANHO: .*2 frases/);
+    expect(d).toMatch(/resposta INTEIRA/);
+    expect(d).toMatch(/deixe `desenvolvimento` vazio/);
     expect(diretrizDeTamanho("numa frase")).toMatch(/1 frase\b/);
     expect(diretrizDeTamanho("o que é DNA?")).toMatch(/^REPETIÇÃO/);
   });
@@ -34,5 +37,26 @@ describe("#728 · tamanho pedido pelo aluno", () => {
     expect(semDesenvolvimentoNaoPedido(a, "o que é DNA?")).toBe(a);
     const vazio = { nucleo: " ", desenvolvimento: "a resposta" };
     expect(semDesenvolvimentoNaoPedido(vazio, "em 3 frases")).toBe(vazio);
+  });
+});
+
+import { normalizeAnswer } from "@/lib/agent/aura-harness";
+
+describe("#728 · ligado no normalizeAnswer", () => {
+  const stDe = (objetivo: string) => ({ intent: "duvida_rapida", objective: objetivo } as never);
+
+  it("pedido curto: o parágrafo a mais sai", () => {
+    const a = normalizeAnswer({ nucleo: "A mitocôndria produz ATP. É a usina da célula.", desenvolvimento: "Além disso…" }, stDe("o que é mitocôndria? em 2 frases"));
+    expect(a.desenvolvimento).toBeUndefined();
+  });
+
+  it("núcleo vazio: o desenvolvimento É a resposta e fica (não vira o texto de falha sozinho)", () => {
+    const a = normalizeAnswer({ nucleo: "", desenvolvimento: "A mitocôndria produz ATP." }, stDe("em 2 frases"));
+    expect(a.desenvolvimento).toBe("A mitocôndria produz ATP.");
+  });
+
+  it("a molécula não nasce de um trecho que saiu", () => {
+    const a = normalizeAnswer({ nucleo: "A célula respira.", desenvolvimento: "A glicose é quebrada.", substancias: ["glicose"] } as never, stDe("em 1 frase"));
+    expect(a.artifacts ?? []).toEqual([]);
   });
 });
