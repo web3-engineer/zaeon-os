@@ -1,4 +1,6 @@
 /** #645: o /api/health diz se os turnos do Escritório rodam na fila (worker) ou no próprio web. */
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, it, expect, vi, afterEach } from "vitest";
 
 vi.mock("@/lib/llm/saude", () => ({ estadoGateway: async () => "on", provedorAtual: () => "litellm" }));
@@ -101,18 +103,31 @@ describe("health · tripulação da nave (NÚMERO, nunca endereço)", () => {
 });
 
 /**
- * O ATLAS no recibo, em duas metades. O estado que importa hoje é justamente o MISTO: o manifesto
- * está na imagem (busca e inspeção funcionam) e a geometria ainda não está no volume (não há corpo
- * 3D). Sem esta linha, descobrir isso exigiria abrir a tela e ver nada carregar.
+ * O ATLAS no recibo, em duas metades que falham separado: o manifesto está na imagem (busca e
+ * inspeção funcionam) e a geometria vem de um volume (o corpo 3D desenha). Sem estas linhas,
+ * descobrir qual metade faltou exigiria abrir a tela e ver nada carregar.
+ *
+ * CORREÇÃO DE UM TESTE MEU: este caso afirmava `geometria === "off"` em cima de "o repositório não
+ * carrega a geometria". Isso é um fato do AMBIENTE, não um invariante — ele passava no CI e
+ * reprovava na máquina de quem baixasse a geometria para ver a tela (foi o que aconteceu comigo),
+ * e reprovaria em produção, onde o volume está cheio e `on` é o certo. O invariante de verdade é
+ * que a metade RELATADA bate com a realidade do disco, e esse vale nos três lugares.
  */
 describe("health · atlas de anatomia (manifesto e geometria falham separado)", () => {
-  it("manifesto ON com as contagens reais; geometria OFF enquanto os 90 MB não estão no volume", async () => {
+  it("manifesto ON com as contagens reais, e a geometria relatada é a do DISCO — não um palpite", async () => {
     const a = (await (await GET()).json()).atlas;
     expect(a.manifesto).toBe("on");
     expect(a.pecas).toBe(2234);
     expect(a.conceitos).toBe(3432);
-    // o repositório NÃO carrega a geometria de propósito (ela vive num volume no host)
-    expect(a.geometria, "geometria no git seria 90 MB em todo clone").toBe("off");
+    const noDisco = existsSync(join(process.cwd(), "public/models/body/body-0.bin.gz"));
+    expect(a.geometria, `disco diz ${noDisco}, recibo diz ${a.geometria}`).toBe(noDisco ? "on" : "off");
+  });
+
+  it("a geometria NUNCA é versionada — é isso que o `off` do CI significa, e o .gitignore garante", () => {
+    // a afirmação que o caso acima fazia por acidente, feita agora de propósito e no lugar certo:
+    // 31,4 MB em todo clone, todo build e todo checkout do CI, por um dado que nunca muda.
+    expect(readFileSync(join(process.cwd(), ".gitignore"), "utf8")).toMatch(/^public\/models\/body\/$/m);
+    expect(existsSync(join(process.cwd(), "public/models/atlas.json")), "o manifesto, esse, é versionado").toBe(true);
   });
 
   it("o corpo do /health não leva dado de anatomia, só contagem", async () => {

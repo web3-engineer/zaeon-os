@@ -1,5 +1,7 @@
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, it, expect } from "vitest";
-import { montarEscritorio, departamentoDe, porDepartamento, DEPARTAMENTOS } from "./mapa";
+import { MENTORES_POR_SKILL, montarEscritorio, departamentoDe, porDepartamento, DEPARTAMENTOS } from "./mapa";
 import { MENTOR_SEED } from "@/lib/agent/mentors";
 
 describe("escritório como dado", () => {
@@ -25,6 +27,52 @@ describe("escritório como dado", () => {
     expect(departamentoDe({ enabledSkills: ["memory", "studio", "molecule"] })).toBe(DEPARTAMENTOS.molecule);
     // só as comuns → cai no Estúdio em vez de quebrar
     expect(departamentoDe({ enabledSkills: ["memory", "studio"] })).toBe(DEPARTAMENTOS.studio);
+  });
+
+  it("DISTINTIVO é o mais RARO, não o primeiro declarado — e a contagem sai do seed", () => {
+    // `literature` está em 12 dos 13 mentores: é tão pouco distintiva quanto memory e studio, e
+    // antes vencia só por vir primeiro na lista. Agora perde para qualquer skill mais rara.
+    expect(MENTORES_POR_SKILL.get("literature")).toBe(12);
+    expect(MENTORES_POR_SKILL.get("anatomia"), "anatomia é de um mentor só").toBe(1);
+    expect(departamentoDe({ enabledSkills: ["literature", "memory", "studio", "anatomia"] })).toBe(DEPARTAMENTOS.anatomia);
+    expect(departamentoDe({ enabledSkills: ["literature", "memory", "studio", "molecule"] })).toBe(DEPARTAMENTOS.molecule);
+    // empate de raridade: vence quem o mentor declarou primeiro
+    expect(departamentoDe({ enabledSkills: ["studio", "code"] })).toBe(DEPARTAMENTOS.code);
+  });
+
+  it("os DOIS pods que a regra nova muda, nomeados — nenhum outro se mexe", () => {
+    const pods = montarEscritorio();
+    const dep = (slug: string) => pods.find((p) => p.slug === slug)!.departamento.id;
+    expect(dep("medicina"), "era Biblioteca; o Osler é o único com anatomia").toBe("anatomia");
+    expect(dep("biologia"), "era Biblioteca; molecule está em 3 de 13").toBe("molecule");
+    // os outros onze continuam onde estavam
+    for (const [slug, esperado] of [
+      ["enfermagem", "literature"], ["eng-computacao", "code"], ["eng-energias", "literature"],
+      ["matematica", "studio"], ["fisica", "literature"], ["agronomia", "literature"],
+      ["quimica", "molecule"], ["eng-civil", "literature"], ["veterinaria", "literature"],
+      ["psicologia", "literature"], ["farmacia", "molecule"],
+    ] as const) {
+      expect(dep(slug), `${slug} mudou de departamento sem ninguém pedir`).toBe(esperado);
+    }
+  });
+
+  it("nenhum departamento fica ÓRFÃO de propósito — e os que ficam, ficam declarados", () => {
+    const usados = new Set(montarEscritorio().map((p) => p.departamento.id));
+    const orfaos = Object.keys(DEPARTAMENTOS).filter((d) => !usados.has(d as never)).sort();
+    // `memory` nunca rotula pod (é encanamento) e `studio` só rotula quem não tem nada mais raro.
+    expect(orfaos, "departamento sem nenhum pod é cor que ninguém vê").toEqual(["memory"]);
+  });
+
+  it("toda `rota` de departamento aponta para uma página que EXISTE — nada de porta no 404", () => {
+    const comRota = Object.values(DEPARTAMENTOS).filter((d) => d.rota);
+    expect(comRota.map((d) => d.id), "hoje só a Anatomia tem tela própria").toEqual(["anatomia"]);
+    for (const d of comRota) {
+      expect(d.rota!, `${d.id}`).toMatch(/^\/[a-z0-9-]+$/);
+      expect(existsSync(join(process.cwd(), "app", d.rota!.slice(1), "page.tsx")), `app${d.rota}/page.tsx não existe`).toBe(true);
+    }
+    // e o painel do escritório tem de LER esse campo, senão a porta é dado morto
+    const painel = readFileSync(join(process.cwd(), "components/office/EscritorioRoom.tsx"), "utf8");
+    expect(painel, "o botão não lê departamento.rota").toContain("departamento.rota");
   });
 
   it("agrupa por departamento e põe o maior primeiro", () => {

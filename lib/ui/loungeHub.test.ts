@@ -6,6 +6,11 @@ describe("loungeHub", () => {
     expect(ehRotaImersiva("/lounge-cosmico")).toBe(true);
     expect(ehRotaImersiva("/lounge-cosmico/x")).toBe(true);
     expect(ehRotaImersiva("/lounge-cosmicos")).toBe(false);
+    // o Atlas do Corpo também é imersivo — e "/anatomias" NÃO é ele
+    expect(ehRotaImersiva("/anatomia")).toBe(true);
+    expect(ehRotaImersiva("/anatomia/osso")).toBe(true);
+    expect(ehRotaImersiva("/anatomias")).toBe(false);
+    expect(ehRotaImersiva("/anatomia-3d")).toBe(false);
     expect(ehRotaImersiva("/")).toBe(false);
     expect(ehRotaImersiva(null)).toBe(false);
   });

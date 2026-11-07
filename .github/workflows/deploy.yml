@@ -310,6 +310,17 @@ jobs:
           #     quantas contas, nunca quais.
           # 4 · O recibo saiu pra infra/recibo-deploy.mjs e é invocado por STDIN (`node < arquivo`),
           #     não por `-e "$(cat …)"`: por stdin não existe questão de aspas nem de expansão.
+          # 5 · GEOMETRIA DO ATLAS (infra/anatomia-geometria.mjs, mesmo transporte por STDIN):
+          #     31,4 MB em 15 pedaços, no volume `anatomia_geometria` montado em
+          #     /app/public/models/body. É IDEMPOTENTE — confere o sha256 de cada pedaço contra
+          #     public/models/geometria.sha256.json e só baixa o que faltar ou estiver corrompido,
+          #     então o custo do 2º deploy em diante é ~0,1 s. A origem é o commit PRESO do
+          #     ashemag/human-atlas (nunca `main`), e hash errado = arquivo descartado.
+          #     Roda ANTES do recibo porque é o recibo que diz `atlas: geometria=on/off`.
+          #     NÃO derruba o deploy: sem geometria a tela /anatomia fica vazia e a busca
+          #     anatômica do mentor continua inteira — duas metades que falham separado.
+          #     Esta nota mora AQUI e não dentro do `script:` porque comentário em nível de YAML
+          #     não conta para o teto de 21.000 bytes do escalar (ver nota 2).
           # ─────────────────────────────────────────────────────────────────────────────────────
           script: |
             set -euo pipefail
@@ -572,6 +583,9 @@ jobs:
               $DC logs --tail=60 web
               exit 1
             fi
+
+            # Geometria do Atlas (nota 5 acima): idempotente, não derruba o deploy.
+            $DC exec -T web node < infra/anatomia-geometria.mjs || echo "::warning::geometria do atlas incompleta"
 
             # RECIBO DO HARNESS no log do deploy (pedido do dono: "confirma no log do deploy").
             # Lê do /api/health DENTRO do container, ou seja: o estado EFETIVO que o turno vai usar,

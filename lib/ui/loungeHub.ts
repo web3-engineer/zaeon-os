@@ -42,9 +42,20 @@ export const MSG_ENTRAR_ESTUDO = "zaeon:enter-study";
 export const ehMsgEntrarEstudo = (data: unknown, origin: string, esperada: string): boolean =>
   origin === esperada && !!data && typeof data === "object" && (data as { type?: unknown }).type === MSG_ENTRAR_ESTUDO;
 
-/** Rota imersiva: sem navbar/rodapé globais (a cena ocupa a tela toda). */
+/** A rota do Atlas do Corpo (anatomia 3D) — também imersiva: a cena ocupa a tela inteira. */
+export const ATLAS_ROTA = "/anatomia";
+
+/**
+ * Rotas imersivas: sem navbar/rodapé globais (a cena ocupa a tela toda).
+ *
+ * Era uma comparação com UMA rota; virou lista quando o Atlas do Corpo chegou. O casamento é por
+ * rota EXATA ou por prefixo seguido de "/" — nunca por `startsWith` solto, senão "/anatomias" e
+ * "/lounge-cosmicos" entrariam na lista sem ser. O teste guarda exatamente esse caso.
+ */
+export const ROTAS_IMERSIVAS: readonly string[] = [LOUNGE_ROTA, ATLAS_ROTA];
+
 export const ehRotaImersiva = (path: string | null | undefined) =>
-  !!path && (path === LOUNGE_ROTA || path.startsWith(LOUNGE_ROTA + "/"));
+  !!path && ROTAS_IMERSIVAS.some((r) => path === r || path.startsWith(r + "/"));
 
 export type CopyEntrada = { cta: string; badges: string[] };
 /** Copy do CTA primário e dos badges, por estado de login. */

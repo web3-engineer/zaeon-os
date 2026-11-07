@@ -118,6 +118,12 @@ RUN mkdir -p /app/.studio && chown -R zaeon:zaeon /app/.studio
 # Cache do otimizador de imagem do Next (/app/.next/cache/images): sem dono `zaeon`, cada <Image> dava
 # "Failed to write image to cache … EACCES" e era REotimizada a cada pedido (CPU à toa, imagem lenta).
 RUN mkdir -p /app/.next/cache/images && chown -R zaeon:zaeon /app/.next/cache
+# /app/public/models/body é o volume da GEOMETRIA do Atlas do Corpo (31,4 MB, 15 pedaços .bin.gz).
+# Vazio na imagem de propósito: quem o enche é infra/anatomia-geometria.mjs, uma vez, no deploy.
+# Mesma regra do .studio acima — o volume novo herda ESTE dono, e sem ele a gravação daria EACCES.
+# O manifesto (public/models/atlas.json) NÃO está aqui: ele é versionado e vem na imagem, e é por
+# isso que a busca anatômica do mentor funciona mesmo com este volume vazio.
+RUN mkdir -p /app/public/models/body && chown -R zaeon:zaeon /app/public/models
 USER zaeon
 
 EXPOSE 3000

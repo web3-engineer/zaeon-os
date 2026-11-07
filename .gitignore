@@ -84,3 +84,10 @@ _PROD_B64_DELETE_AFTER.txt
 # worktrees de agentes (lixo de GBs quando órfãos)
 .claude/worktrees/
 .worktrees/
+
+# Geometria do atlas de anatomia (~33 MB em 15 pedaços .bin.gz).
+# NÃO entra no repo de propósito: em produção ela é montada como VOLUME em
+# /app/public/models/body (ver docker-compose + a busca idempotente no deploy), e o manifesto
+# public/models/atlas.json — que SIM é versionado — aponta para /models/body/*.
+# Sem ela, /api/health responde atlas.geometria=off e a busca/inspeção do mentor continua inteira.
+public/models/body/
