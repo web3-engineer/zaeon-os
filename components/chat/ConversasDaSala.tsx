@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
-import { arvoreDeThreads, listarThreads, rotulosDasThreads, ESCOPO_COWORK, ESCOPO_PESQUISA, type Thread } from "@/lib/chat/threads";
+import { arvoreDeThreads, listarThreads, marcasDasThreads, rotulosDasThreads, ESCOPO_COWORK, ESCOPO_PESQUISA, type Thread } from "@/lib/chat/threads";
 import { useArmazemDaConta } from "@/lib/chat/contaNoNavegador";
 import { pedirConversa, type SalaChat } from "@/lib/chat/conversasNav";
 
@@ -29,6 +29,8 @@ export default function ConversasDaSala({ sala, onEntrar, max = 5 }: {
 
   // #705: títulos repetidos ganham a data
   const rotulos = rotulosDasThreads(recentes);
+  // #728: a data fica fora do corte do nome
+  const marcas = marcasDasThreads(recentes);
   const ir = (p: { id?: string; nova?: boolean }) => { pedirConversa({ sala, ...p }); onEntrar(); };
   return (
     <div className="flex flex-col gap-0.5">
@@ -38,8 +40,9 @@ export default function ConversasDaSala({ sala, onEntrar, max = 5 }: {
       </button>
       {recentes.map((t) => (
         <button key={t.id} type="button" onClick={() => ir({ id: t.id })} title={rotulos.get(t.id) ?? t.titulo}
-          className="text-left truncate px-2 py-1.5 rounded-lg text-[12.5px] text-slate-600 dark:text-white/60 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-white">
-          {rotulos.get(t.id) ?? t.titulo}
+          className="flex items-center gap-1.5 text-left px-2 py-1.5 rounded-lg text-[12.5px] text-slate-600 dark:text-white/60 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-white">
+          <span className="flex-1 min-w-0 truncate">{t.titulo}</span>
+          {marcas.has(t.id) && <span className="shrink-0 text-[10.5px] tabular-nums opacity-70">{marcas.get(t.id)}</span>}
         </button>
       ))}
     </div>

@@ -138,7 +138,8 @@ export default function CoworkComposer({
         @keyframes auraBreathe { 0%,100% { opacity:.55; transform: translateY(0) scale(1); } 50% { opacity:1; transform: translateY(-1px) scale(1.06); } }
       `}</style>
       <div className="rounded-[25px] bg-white/85 dark:bg-white/[0.06] backdrop-blur-2xl border border-white/70 dark:border-white/10 px-2.5 py-2">
-        {opcoes && <div id="opcoes-da-conversa" className={verOpcoes ? "" : "hidden sm:block"}>{opcoes}</div>}
+        {/* #728: em tela BAIXA (janela pequena, notebook com zoom) também recolhem — a caixa ocupava quase metade da altura */}
+        {opcoes && <div id="opcoes-da-conversa" className={verOpcoes ? "" : `hidden sm:block [@media(max-height:640px)]:!hidden`}>{opcoes}</div>}
         {children}
         {/* flex-wrap + min-w no texto: numa coluna estreita os botões descem pra baixo — a caixa de texto NUNCA
             some (com largura 0 ela nem recebe o foco, e o cursor não pisca) */}
@@ -206,7 +207,7 @@ export default function CoworkComposer({
               aria-controls="opcoes-da-conversa"
               aria-label={verOpcoes ? "Esconder as opções da conversa" : "Mostrar as opções da conversa"}
               title="Opções da conversa"
-              className={`sm:hidden relative shrink-0 self-end mb-0.5 w-11 h-11 rounded-full flex items-center justify-center transition-colors
+              className={`sm:hidden [@media(max-height:640px)]:!flex relative shrink-0 self-end mb-0.5 w-11 h-11 rounded-full flex items-center justify-center transition-colors
                 ${verOpcoes ? "text-cyan-600 dark:text-cyan-300 bg-cyan-500/10" : "text-slate-500 dark:text-white/60 hover:bg-slate-500/10"}`}
             >
               <SlidersHorizontal size={17} />

@@ -237,3 +237,24 @@ describe("#705 · rotulosDasThreads", () => {
     expect(r.get("a")).not.toBe(r.get("b"));
   });
 });
+
+describe("#728 · marcasDasThreads (a data fica fora do corte do nome)", () => {
+  const t = (id: string, titulo: string, criadaEm: number) => ({ id, titulo, criadaEm, tocadaEm: criadaEm });
+  it("só as repetidas ganham marca, e a marca é só a data", async () => {
+    const { marcasDasThreads } = await import("./threads");
+    const m = marcasDasThreads([t("a", "o que é fotossíntese", Date.UTC(2026, 10, 3, 15)), t("b", "O que é fotossíntese", Date.UTC(2026, 10, 5, 15)), t("c", "java", 1)]);
+    expect(m.has("c")).toBe(false);
+    expect(m.get("a")).toMatch(/^\d\d\/\d\d$/);
+    expect(m.get("a")).not.toBe(m.get("b"));
+  });
+});
+
+describe("#728 · mesmo minuto ganha os segundos", () => {
+  it("duas no mesmo minuto ficam diferentes", async () => {
+    const { marcasDasThreads } = await import("./threads");
+    const t = (id: string, criadaEm: number) => ({ id, titulo: "teste", criadaEm, tocadaEm: criadaEm });
+    const m = marcasDasThreads([t("a", Date.UTC(2026, 10, 1, 12, 0, 5)), t("b", Date.UTC(2026, 10, 1, 12, 0, 40))]);
+    expect(m.get("a")).toMatch(/^\d\d\/\d\d \d\d:\d\d:05$/);
+    expect(m.get("a")).not.toBe(m.get("b"));
+  });
+});

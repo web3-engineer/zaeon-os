@@ -1432,7 +1432,8 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
             title="Ir para o final da conversa"
             aria-label="Ir para o final da conversa"
             style={{ bottom: alturaComposer + 12 }}
-            className="absolute z-20 left-1/2 -translate-x-1/2 w-9 h-9 rounded-full flex items-center justify-center
+            // #728: no canto direito — no meio ele cobria o texto da resposta (ex.: o título do diagrama)
+            className="absolute z-20 right-4 w-9 h-9 rounded-full flex items-center justify-center
               bg-white/90 dark:bg-white/10 border border-slate-200 dark:border-white/15 shadow-lg backdrop-blur-xl
               text-slate-600 dark:text-white/80 hover:text-cyan-600 dark:hover:text-cyan-300 hover:border-cyan-400/50
               transition-colors"

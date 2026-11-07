@@ -105,7 +105,9 @@ export function juntarConversas(locais: readonly Thread[], servidor: readonly Co
     if (jaTem.has(c.id) || fora.has(c.id)) continue;
     juntas.push({ id: c.id, titulo: c.titulo, criadaEm: c.criadaEm, tocadaEm: c.tocadaEm, ...(c.parentId ? { parentId: c.parentId } : {}), ...(c.contexto ? { contexto: c.contexto } : {}) });
   }
-  return juntas;
+  // #728: a conversa vinda de outro aparelho ia para o FIM da lista. A lista segue a regra de quem cria aqui: a mais nova
+  // em cima (as sub-conversas continuam sob a mãe — a árvore da barra lateral as junta, na mesma ordem)
+  return juntas.map((t, i) => ({ t, i })).sort((a, b) => (b.t.criadaEm || 0) - (a.t.criadaEm || 0) || a.i - b.i).map((x) => x.t);
 }
 
 const chaveAntigas = (e: Escopo) => `${e.prefixo}antigas.v1`;
