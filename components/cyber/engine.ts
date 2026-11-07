@@ -66,7 +66,7 @@ import { NAVES, chegadaDaNave, nivelDaNave, noPortalDaNave, pisoNaNave, regiaoDo
 import { ANDAR2, NAVE_COWORK, noCasco } from "@/lib/cyber/naveCoworking";
 import { criarNaveMini, type NaveMiniHandle } from "./NaveMini";
 import { criarEspacoAberto, type EspacoHandle } from "./EspacoAberto";
-import { CADEIRA_LOGIN, assentoDaCadeira, cadeiraPerto, levantaDaCadeira, CHEGADA_TETO, DURACAO_ELEVADOR, ESCADA_ROLANTE, ESPACO, passoDaRolante, MINHA_NAVE, NAVE_NA_ILHA, TETO_MINI, VAGAS_DOCA, ZONA_DEPOIS_DA_NAVE, vagaDaDocaPerto, buracoAberto, caminhoDoElevador, chaoNoEspaco, paraLocalMini, paraMundoMini, pistasDoEspaco, resolverNaMini, resolverNoTeto, tetoNaMini } from "@/lib/cyber/minhaNave";
+import { CADEIRA_LOGIN, assentoDaCadeira, cadeiraPerto, levantaDaCadeira, CHEGADA_TETO, DURACAO_ELEVADOR, ESCADA_ROLANTE, ESPACO, passoDaRolante, MINHA_NAVE, NAVE_NA_ILHA, TETO_MINI, VAGAS_DOCA, ZONA_DEPOIS_DA_NAVE, vagaDaDocaPerto, buracoAberto, caminhoDoElevador, chaoNoEspaco, paraLocalMini, paraMundoMini, pistasDoEspaco, resolverNaMini, resolverNoTeto, tetoNaMini, pousaNoConves } from "@/lib/cyber/minhaNave";
 import { criarFiosCosmicos, type FiosCosmicosHandle } from "./FiosCosmicos";
 import { NAVE_MINI, SKIN_MINI_PADRAO, noCascoMini, type SkinMini } from "@/lib/cyber/naveMini";
 import { REGIAO_PADRAO, type Regiao as RegiaoReal } from "@/lib/cyber/regiaoUsuario";
@@ -137,7 +137,7 @@ import type { Regiao } from "@/lib/cyber/regioes";
 import { TELA_BASE, criarBase, type BaseEstudoHandle } from "./BaseEstudo";
 import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { carregarModeloAvatar, criarAvatarLuz, type AvatarLuzHandle, type Montado } from "./AvatarLuz";
-import { CORPO_DO_FUNDADOR, corpoProprio, usaCorpoDoFundador } from "@/lib/cyber/estiloAvatar";
+import { CORPO_DO_FUNDADOR, corpoProprio, usaCorpoDoFundador, decidirTraje } from "@/lib/cyber/estiloAvatar";
 import { carregando, type Carregando, type IdEtapa } from "@/lib/cyber/carregamento";
 import { gerarVeias, ouveOCoracao } from "@/lib/cyber/coracao";
 import { criarFrotaIA, type FrotaHandle } from "./FrotaIA";
@@ -428,7 +428,7 @@ export class CyberEngine {
    *  o ELEVADOR da cúpula em curso e os gatilhos armados (o elevador, a descida, o portal da popa, os buracos negros) */
   private minha: { g: THREE.Group; nave: NaveMiniHandle; espaco: EspacoHandle; skin: SkinMini; fios: FiosCosmicosHandle; fg: THREE.Group } | null = null; private avisoAnjos = -1e9;
   /** a moto da DOCA (a vaga) com que se saiu, e a CUTSCENE do login (o personagem olhando o buraco negro pela janela) */
-  private motoDaDoca = -1; private cenaLogin: { t: number; barras: HTMLDivElement[] } | null = null;
+  private motoDaDoca = -1; private cenaLogin: { t: number; t0: number; barras: HTMLDivElement[] } | null = null;
   /** sentado numa CADEIRA DE SOL do teto (relaxado, olhando o buraco negro): a cadeira, a fase e há quanto tempo */
   private naCadeira: { i: number; fase: "sentado" | "levantando"; t: number } | null = null; private naMinha: "dentro" | "fora" | null = null;
   private elevMini: { sentido: "sobe" | "desce"; t: number } | null = null; private gatMini = { elevador: true, descida: true, portal: true, buraco: true };
@@ -1520,15 +1520,29 @@ export class CyberEngine {
     // quem tem CORPO PRÓPRIO de jogador feito no VRoid (estilo anime — a Giulia) fica com a SKIN: a armadura cobria ela.
     // O FUNDADOR veste a armadura PRETA por cima do corpo dele (out/2026, o dono: "volta a armadura preta só pra mim")
     const proprio = corpoProprio(this.pessoaDe(a.id), location.search);
-    if (proprio && proprio.corpo !== CORPO_DO_FUNDADOR) { a.av.traje(false); return; }
+    /** tem corpo PRÓPRIO de jogador (VRM do VRoid)? o do fundador não conta — a armadura dele vai por cima */
+    const temCorpoProprio = !!proprio && proprio.corpo !== CORPO_DO_FUNDADOR;
     const ps = this.personagemDe(a.id);
     // (o FUNDADOR: pelo corpo dele ou pelo `eu` que o servidor mandou — a lista de pessoas da sala às vezes ainda não
     //  tem a gente, e o traje pintava na cor de jogador: o amarelo)
-    const fund = !!proprio || (a === this.eu ? !!this.o.eu.fundador || this.ehFundador(a.id) : this.ehFundador(a.id));
+    const fund = !temCorpoProprio && (!!proprio || (a === this.eu ? !!this.o.eu.fundador || this.ehFundador(a.id) : this.ehFundador(a.id)));
     // (nov/2026, o dono: "tirar o traje" — o de ASTRONAUTA não vai mais por cima do corpo de ninguém; fica só a skin. A
     //  armadura PRETA do fundador continua: foi pedido dele, out/2026)
-    if (!fund) { a.av.traje(false); return; }
-    a.av.traje(true, { paleta: "preta", modelo: ps?.genero, leve: a !== this.eu });
+    //
+    // E QUEM NÃO TEM CORPO NENHUM? (nov/2026, medido no navegador) Aquele pedido supunha que todos têm skin. Quem
+    // nunca escolheu um corpo próprio não tem — e "só a skin" deixava à mostra o GLB de REFERÊNCIA, que é o
+    // `Soldier.glb` de EXEMPLO do three.js, baixado ao vivo do site deles. Era a primeira coisa que um usuário novo
+    // via de si mesmo, e a tela de escolher personagem já o mostrava DE TRAJE (components/lounge/PreviaPersonagem):
+    // a prévia prometia uma coisa e o mundo entregava outra.
+    //
+    // O traje volta SÓ nesse caso, e por isso o pedido continua valendo ao pé da letra: aqui não existe corpo por
+    // baixo, então ele não vai "por cima do corpo" de ninguém. Quem tem VRM próprio segue sem traje (o `return` de
+    // `proprio` lá em cima), e o fundador segue com a armadura preta.
+    switch (decidirTraje({ fundador: fund, temCorpoProprio })) {
+      case "nenhum": a.av.traje(false); return;                                     // a skin dela manda
+      case "preta":  a.av.traje(true, { paleta: "preta", modelo: ps?.genero, leve: a !== this.eu }); return;
+      case "padrao": a.av.traje(true, { paleta: this.paletaDe(a), modelo: ps?.genero ?? (a.feminina ? "f" : "m"), leve: a !== this.eu }); return;
+    }
   }
   /** a cor da armadura de astronauta de alguém: a cor do jogador (a do fundador é a preta) */
   private paletaDe(a: Ator): Paleta {
@@ -2213,7 +2227,10 @@ export class CyberEngine {
     const w = paraMundoMini(assentoDaCadeira(CADEIRA_LOGIN));
     this.camAz = Math.PI; this.camT.set(w.x, MINHA_NAVE.y + TETO_MINI.y + 1.2, w.z);
     const barras = typeof document === "undefined" ? [] : [0, 1].map((k) => { const b = document.createElement("div"); b.style.cssText = `position:absolute;left:0;right:0;${k ? "bottom" : "top"}:0;height:0;background:#000;transition:height 1.2s ease;z-index:5;pointer-events:none`; this.o.overlay.appendChild(b); requestAnimationFrame(() => { b.style.height = "11vh"; }); return b; });
-    this.cenaLogin = { t: 0, barras };
+    // `t0` = 0 aqui de propósito: ele é marcado no PRIMEIRO QUADRO em que a cena desenha (cameraDaCenaLogin), e não
+    // agora. Esta função roda ANTES do laço começar, quando `this.agora` ainda é 0 — marcar o início aqui faria a
+    // cena nascer com a idade da página inteira e terminar antes de aparecer. (Foi o que aconteceu: medido.)
+    this.cenaLogin = { t: 0, t0: 0, barras };
   }
   private fimDaCenaLogin() {
     const c = this.cenaLogin; if (!c) return; this.cenaLogin = null;
@@ -2221,9 +2238,18 @@ export class CyberEngine {
     this.camAz = assentoDaCadeira(CADEIRA_LOGIN).rumo + Math.PI; this.keys = {};
   }
   /** a câmera da cutscene: 3 poses (o rosto → o lado → por cima do ombro), devagar, o olhar indo do rosto pro horizonte */
-  private cameraDaCenaLogin<C extends { pos: { x: number; y: number; z: number }; olhar: { x: number; y: number; z: number } }>(c: C, dt: number): C {
+  private cameraDaCenaLogin<C extends { pos: { x: number; y: number; z: number }; olhar: { x: number; y: number; z: number } }>(c: C): C {
     const cl = this.cenaLogin; if (!cl) return c;
-    cl.t += dt; const DUR = 12, u = Math.min(1, cl.t / DUR), e = (v: number) => v * v * (3 - 2 * v);
+    // O RELÓGIO DESTA CENA É O DE PAREDE, e não o `dt` do laço (nov/2026, medido no navegador).
+    //
+    // O `dt` é travado em 0,05 s lá no loop, e com razão: é o que impede a física de atravessar parede num quadro
+    // lento. Mas cinemática não é física — ela tem uma duração em SEGUNDOS DE RELÓGIO. Contando pelo `dt` travado,
+    // num computador que desenha a ~2,5 quadros por segundo a abertura de 12 s virava ~100 s: medi 30 s de relógio
+    // produzindo 3,6 s de cena. E são exatamente esses computadores que o próprio app já avisa serem lentos ("a
+    // aceleração de hardware está desligada"). O usuário novo ficava um minuto e meio com a câmera colada no rosto.
+    if (!cl.t0) cl.t0 = this.agora;                 // o relógio começa no 1º quadro desenhado, não na montagem
+    cl.t = Math.max(0, this.agora - cl.t0);
+    const DUR = 12, u = Math.min(1, cl.t / DUR), e = (v: number) => v * v * (3 - 2 * v);
     if (cl.t > 1.2 && (Object.values(this.keys).some(Boolean) || this.joy.on)) { this.fimDaCenaLogin(); return c; }
     if (u >= 1) { this.fimDaCenaLogin(); return c; }
     const P = assentoDaCadeira(CADEIRA_LOGIN), Y = TETO_MINI.y, poses = [{ x: P.x + 0.85, y: Y + 0.95, z: P.z + 1.45 }, { x: P.x + 1.25, y: Y + 1.3, z: P.z - 0.4 }, { x: P.x - 0.45, y: Y + 1.75, z: P.z - 1.9 }];   // (o rosto → o lado → por cima da cadeira: o personagem nunca sai do quadro)
@@ -2315,6 +2341,8 @@ export class CyberEngine {
   private passoNoArNaMinha(eu: Ator, dt: number) {
     const n = MINHA_NAVE, dentro = this.naMinha === "dentro", yAnt = this.jet.y;
     let l = paraLocalMini(eu.pos);
+    /** este quadro é um pouso no convés? (decidido ANTES do empurrão do casco — ver a nota abaixo) */
+    let pousandoNoConves = false;
     const longe = Math.hypot(l.x, l.z) > 300, teto = dentro ? n.y + tetoNaMini(l) - 1.9 : n.y + (longe ? ESPACO.sobeLonge : ESPACO.sobe);
     const v = passoVertical(this.jet.y, this.jet.vy, this.jet.tecla, dt, Math.max(teto, Math.min(yAnt, teto + 1)), this.impulsoFrente, this.gravidadeAgora());
     if (v.y > teto) { v.y = teto; v.vy = Math.min(0, v.vy); }
@@ -2326,10 +2354,22 @@ export class CyberEngine {
         const bx = f.bn.x - NAVE_NA_ILHA.x, bz = f.bn.z - NAVE_NA_ILHA.z, dx = l.x - bx, dz = l.z - bz, db = Math.hypot(dx, dz) || 1, lim = f.bn.r * 2.2;
         if (db < lim) { l = { x: bx + (dx / db) * lim, z: bz + (dz / db) * lim }; this.jetV = { x: (dx / db) * 20, z: (dz / db) * 20 }; if (this.agora - this.avisoAnjos > 6) { this.avisoAnjos = this.agora; this.o.onAviso?.("A Cidade dos Anjos está fechada por enquanto — só admins entram."); } }
       }
-      if (v.y < n.y + TETO_MINI.y - 0.2 && v.y > n.y - 3.5 && noCascoMini(l.x, l.z, -0.9)) { let lo = 1, hi = 3; for (let k = 0; k < 14; k++) { const s = (lo + hi) / 2; if (noCascoMini(l.x * s, l.z * s, -0.9)) lo = s; else hi = s; } l = { x: l.x * hi, z: l.z * hi }; }   // (o casco por fora é sólido)
+      // ESTE QUADRO É UM POUSO NO CONVÉS? Decidido AQUI, com a posição de ANTES do empurrão do casco — e é por
+      // isso que a pergunta mudou de lugar (nov/2026, reproduzido no navegador com `window.__cyber.debug`).
+      //
+      // O que acontecia: quem pulava em cima da própria nave descia, num quadro lento passava dos 0,2 m de folga
+      // do convés, e o empurrão abaixo — que existe para o casco ser sólido POR FORA — o expandia radialmente
+      // (`l.x * hi`, com hi até 3: medi 9 m de deslocamento). Aí `chaoNoEspaco` da posição JÁ EMPURRADA dava
+      // falso, o piso virava `null`, e a pessoa ficava em queda que nunca pousa — `noAr` eterno, caindo a 17 m/s,
+      // com a câmera dentro do casco. Era a primeira coisa que um usuário novo fazia, porque é onde ele nasce.
+      //
+      // A regra do casco continua inteira para quem NÃO está pousando: ela existe para quem voa contra a nave
+      // por fora, não para quem desce no convés dela.
+      pousandoNoConves = pousaNoConves({ yAnt, y: v.y, vy: v.vy, l, naveY: n.y });
+      if (!pousandoNoConves && v.y < n.y + TETO_MINI.y - 0.2 && v.y > n.y - 3.5 && noCascoMini(l.x, l.z, -0.9)) { let lo = 1, hi = 3; for (let k = 0; k < 14; k++) { const s = (lo + hi) / 2; if (noCascoMini(l.x * s, l.z * s, -0.9)) lo = s; else hi = s; } l = { x: l.x * hi, z: l.z * hi }; }   // (o casco por fora é sólido)
     }
     const w = paraMundoMini(l); eu.pos.x = w.x; eu.pos.z = w.z; this.jet.y = v.y; this.jet.vy = v.vy;
-    const piso = dentro ? 0 : chaoNoEspaco(l) && yAnt >= n.y + TETO_MINI.y - 0.3 ? TETO_MINI.y : null;
+    const piso = dentro ? 0 : pousandoNoConves || (chaoNoEspaco(l) && yAnt >= n.y + TETO_MINI.y - 0.3) ? TETO_MINI.y : null;   // (a 2ª metade cobre quem desce devagar e ainda está sobre o convés)
     if (piso !== null && v.y <= n.y + piso && v.vy <= 0) { this.jet.y = n.y + piso; this.jet.noAr = false; this.pisoMini = piso; this.naRolante = false; this.somPouso(v.vy); }
     else if (v.y < n.y - (longe ? ESPACO.caiLonge : ESPACO.cai)) { this.irParaMinhaNave(); this.o.onAviso?.("Você se perdeu no espaço — de volta pra dentro da sua nave."); }
   }
@@ -4146,7 +4186,9 @@ export class CyberEngine {
       // ESTUDANDO no tablet: o jogo não ouve o teclado (o foco pode estar na moldura, não no iframe) — só o T, que guarda
       if (this.labAberto && k !== "t") return;
       if (k === "shift") { this.keys.shift = true; return; }
-      if (k === " " || k === "spacebar") { if (this.pilotando || this.noVeiculo()) { this.voY.subir = true; e.preventDefault(); return; } if (!this.menu) { this.comandoJet(true); e.preventDefault(); } return; }
+      // O ESPAÇO PULA A ABERTURA. Ele NÃO entra em `this.keys` (este ramo volta antes), e a cutscene só olhava
+      // `this.keys` — então a tecla mais natural de "quero me mexer" era a única que não pulava a cena.
+      if (k === " " || k === "spacebar") { if (this.cenaLogin && this.cenaLogin.t > 1.2) { this.fimDaCenaLogin(); e.preventDefault(); return; } if (this.pilotando || this.noVeiculo()) { this.voY.subir = true; e.preventDefault(); return; } if (!this.menu) { this.comandoJet(true); e.preventDefault(); } return; }
       if (k === "f" && !this.menu) { if (!e.repeat) this.executarAcao(); e.preventDefault(); return; }
       if (k === "j" && !this.menu) { if (!e.repeat) this.alternarDescanso(); e.preventDefault(); return; }
       if (k === "c" && !this.menu) { if (!e.repeat) this.darDash(); e.preventDefault(); return; }   // C = DASH (o arranque — desvio)
@@ -4663,7 +4705,7 @@ export class CyberEngine {
     let c = poseDaCamera({ olho: olhoCam, az: this.camAz, pitch: this.camPitch, dist, chaoY: this.eu.alt });
     c = this.cameraNaNaveCw(c);   // dentro da NAVE COWORKING: abaixo do teto e dentro do casco
     c = this.cameraNaMinha(c);   // dentro da SUA NAVE: abaixo do teto (ou da cúpula) e dentro do casco
-    c = this.cameraDaCenaLogin(c, dt);   // a CUTSCENE do login: o rosto → por cima do ombro, o buraco negro no horizonte
+    c = this.cameraDaCenaLogin(c);   // a CUTSCENE do login: o rosto → por cima do ombro, o buraco negro no horizonte
     c = this.cameraDaCapsula(c, dt);   // numa CÁPSULA da torre: a vista de dentro, parada em relação a ela
     c = this.cameraDaAproximacao(c, dt);   // chegando num buraco negro: a câmera alta, de trás, pra ver os detritos vindo
     c = this.cameraDaTravessia(c, dt);   // sendo tragado: o plano de cinema com o buraco negro
