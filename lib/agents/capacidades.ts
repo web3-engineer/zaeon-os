@@ -96,8 +96,14 @@ export type CapacidadeDoAgente = {
  *
  * A Zenita assumiu MEDICINA (decisão do dono, 2026-11-07: "Zenita assume, Osler sai"): é ela que usa
  * o atlas (`anatomia`) e a base de área `medicina` — onde entram os datasets de saúde do Hugging Face
- * (scripts/ingerir-bases-area.ts, fonte `medicina`). Ela continua cuidando da agenda: agenda e
- * medicina não disputam nada — uma é tool de escrita, a outra é habilidade de busca.
+ * (scripts/ingerir-bases-area.ts, fonte `medicina`).
+ *
+ * A AGENDA SAIU DELA, e isso eu medi em vez de supor: nenhum chamador do app manda
+ * `agent: "zenita"` — quem cuida de agenda é o Davi (`core_active`), pela tela de Aulas
+ * (components/sub/ClassesView.tsx). A frase "USE A FERRAMENTA 'update_schedule'" na persona dela
+ * prometia, desde sempre, uma ação que não acontecia: `update_schedule` não está no registro de
+ * tools do harness, e o ramo em streaming do caminho legado só tratava `studio_generate` e
+ * `research_generate` — um `update_schedule` ali era descartado em silêncio.
  */
 export const CAPACIDADES: Readonly<Record<AgenteChatId, CapacidadeDoAgente>> = {
   aura: {
@@ -110,7 +116,7 @@ export const CAPACIDADES: Readonly<Record<AgenteChatId, CapacidadeDoAgente>> = {
     persona: "zenita",
     habilidades: ["anatomia", "literature"],
     area: "medicina",
-    distincao: "Medicina: o atlas de anatomia 3D, a base de saúde e a agenda das aulas.",
+    distincao: "Medicina: o atlas de anatomia 3D e a base de saúde (a agenda é do Davi).",
   },
   nina: {
     persona: "nina",

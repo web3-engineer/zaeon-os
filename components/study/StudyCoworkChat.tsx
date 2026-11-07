@@ -91,6 +91,7 @@ import type { TranscriptWire } from "@/lib/agent/transcriptClient";
 import { ESCOPO_COWORK, type Armazem } from "@/lib/chat/threads";
 import { esperarTurno } from "@/lib/chat/turnoRetomavel";
 import { pedirAura } from "@/lib/chat/auraClient";
+import { agenteDoChatSalvo } from "@/lib/agents/agenteEscolhido";
 import { EVT_FEEDBACK } from "@/lib/chat/feedback";
 import { SeletorModelo, SeloModelo, useModeloEscolhido } from "@/components/chat/SeletorModelo";
 import { criarEstudo, gerarArtefato } from "@/lib/studio/studioClient";
@@ -1139,6 +1140,10 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
         prompt,
         history,
         systemContext,
+        // QUEM o aluno escolheu no seletor da sidebar. Até aqui o chat lia essa escolha só pro
+        // ROSTO (lib/research/zaeonEventos) e nunca pra conversa — era isso que fazia o seletor
+        // "não trocar de agente". O Octa cai na Aura: a tela dele é a IDE.
+        agente: agenteDoChatSalvo(),
         // modo pesquisa = a superfície da antiga Sala de Pesquisa (academicMode enforced no harness)
         ...(pesquisa ? { surface: "pesquisa" } : {}),
         agentContext: {

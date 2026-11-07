@@ -134,6 +134,23 @@ export async function POST(req: Request) {
         const { modeloDoId } = await import("@/lib/chat/modelos");
         const modelo = modeloDoId(modeloPedido)?.id;
         const agentKey = agent?.toLowerCase() || DEFAULT_AGENT_ID;
+        /**
+         * AS AGENTES DE CONVERSA — as que passam pelo HARNESS. Até aqui o gate era
+         * `agentKey === "aura"` em três pontos (anexo, anexo-no-harness, turno), e isso é o que
+         * fazia o seletor ser enfeite: mandar `agent:"zenita"` não trocava de agente, DESLIGAVA o
+         * harness e devolvia um turno sem laço, sem tools, sem base RAG, sem memória, sem anexo,
+         * sem a rede da F0 e sem a regra de tabela.
+         *
+         * O pedido do dono é o contrário disso: "todas as capacidades de harness em um mesmo nível
+         * — mas com habilidades diferentes". Então todas as agentes de conversa entram pelo mesmo
+         * caminho, e a diferença entre elas é o portão de habilidade (lib/agents/capacidades), não
+         * um desvio pro motor velho. Quem NÃO entra: a anfitriã (`zaeon`/`bento`, que convoca),
+         * `core_active` (agenda), o Octa (tela de IDE) e as personas de serviço (scholar,
+         * examiner, abnt_structurer) — essas têm caminho próprio e tools próprias.
+         */
+        const { AGENTES_CHAT } = await import("@/lib/agents/chatAgentes");
+        const agentesDeConversa = AGENTES_CHAT.filter((a) => a.tela === "chat").map((a) => a.id as string);
+        const ehAgenteDeConversa = agentesDeConversa.includes(agentKey);
 
         // MENTOR ativo — `mentor:"farmacia"` (slug = a chave; `mentorId` ObjectId só como fallback).
         // Um mentor NÃO é motor novo: é a Aura parametrizada — o personaText entra NA FRENTE do
@@ -141,7 +158,7 @@ export async function POST(req: Request) {
         // wing = slug/userId. Só p/ agent="aura". Slug desconhecido = Aura base (nunca derruba o turno).
         let systemContext: string | undefined = rawSystemContext;
         let activeMentor: import("@/lib/agent/mentors-server").ResolvedMentor | null = null;
-        if ((mentor || mentorId) && agentKey === "aura") {
+        if ((mentor || mentorId) && ehAgenteDeConversa) {
             const [{ resolveMentor }, { resolveUserId: rid }] = await Promise.all([
                 import("@/lib/agent/mentors-server"),
                 import("@/lib/agent/transcript"),
@@ -170,7 +187,14 @@ export async function POST(req: Request) {
             googleAuthOptions: { credentials: { client_email, private_key } }
         });
 
-        const scheduleAgents = ["zenita", "core_active"];
+        /**
+         * A ZENITA SAIU DAQUI. Ela era listada pra receber `update_schedule`/`lessons` no caminho
+         * LEGADO, e isso nunca aconteceu uma vez: nenhum chamador do app manda `agent: "zenita"`
+         * (a agenda é do Davi, por `core_active`, em components/sub/ClassesView.tsx), e agora ela
+         * entra pelo harness. Era configuração que mentia sobre o sistema — e o lugar certo dessas
+         * é fora, não de enfeite (a mesma regra que tirou o `deepThink` do HarnessOpts).
+         */
+        const scheduleAgents = ["core_active"];
         // "bento" virou "zaeon" (a anfitriã); aceitamos os dois como alias (compat).
         const isHost = agentKey === "zaeon" || agentKey === "bento";
         const tools = scheduleAgents.includes(agentKey)
@@ -286,7 +310,7 @@ export async function POST(req: Request) {
         // =================================================================
         // VÍDEO DE UM PDF ANEXADO ("faz um vídeo desse PDF" — lib/videodoc): o PDF entra na Minha base da pessoa e a
         // Zaeon prepara o vídeo; a resposta vai no protocolo @@STRUCTURED@@ com o card ▶ (flag VIDEO_DOC).
-        if (stream === true && agentKey === "aura" && fileData && typeof fileData === "string" && ledgerUserId) {
+        if (stream === true && ehAgenteDeConversa && fileData && typeof fileData === "string" && ledgerUserId) {
             const vd = await import("@/lib/videodoc/server");
             const anexo = await import("@/lib/videodoc/anexo-server");
             // só PDF de verdade (imagem anexada segue o caminho normal) e só pedido explícito de vídeo
@@ -309,7 +333,7 @@ export async function POST(req: Request) {
         // pior que hoje. Então o texto sai aqui, e `[]` significa "o harness não deve pegar este
         // turno": IMAGEM e PDF ESCANEADO seguem no legado, que é o único caminho que os lê.
         let anexos: import("@/lib/agent/anexos").AnexoDoTurno[] = [];
-        if (stream === true && agentKey === "aura" && fileData && typeof fileData === "string") {
+        if (stream === true && ehAgenteDeConversa && fileData && typeof fileData === "string") {
             const { anexoNoHarnessLigado } = await import("@/lib/agent/anexos");
             if (anexoNoHarnessLigado()) {
                 const { anexosDoFileData } = await import("@/lib/agent/anexos-server");
@@ -317,12 +341,19 @@ export async function POST(req: Request) {
             }
         }
 
-        if (stream === true && agentKey === "aura" && process.env.AURA_HARNESS !== "0" && (!fileData || anexos.length > 0)) {
+        if (stream === true && ehAgenteDeConversa && process.env.AURA_HARNESS !== "0" && (!fileData || anexos.length > 0)) {
             const encoder = new TextEncoder();
             const turnParams = () => ({
                 prompt: String(prompt || ""),
                 surface: surface ?? null,
-                systemContext,
+                /**
+                 * A IDENTIDADE da agente entra no CONTEXTO DO SISTEMA, na frente de tudo — não numa
+                 * frase solta no fim do prompt do usuário. Pra Aura fica `undefined` e o
+                 * systemContext segue byte a byte o de antes: a voz dela já está escrita nos
+                 * prompts do harness ("Você é a Aura, parceira de estudo/pesquisa").
+                 */
+                systemContext: agentKey === DEFAULT_AGENT_ID ? systemContext : [persona, systemContext].filter(Boolean).join("\n\n"),
+                agente: agentKey as import("@/lib/agents/chatAgentes").AgenteChatId,
                 history: (chatHistory as any[]).map((h) => ({ role: h.role, text: h?.parts?.[0]?.text ?? "" })),
                 agentContext: (agentContext && typeof agentContext === "object") ? agentContext : null,
                 mentor: activeMentor ? { slug: activeMentor.slug, wing: activeMentor.wing } : null,
