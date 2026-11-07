@@ -103,41 +103,63 @@ jobs:
             echo "══════════ 6. /api/health (de dentro do web) ══════════"
             docker compose exec -T web node -e "fetch('http://localhost:3000/api/health').then(r=>r.text()).then(t=>{console.log(t.slice(0,1500));process.exit(0)}).catch(e=>{console.error('FALHOU: '+e.message);process.exit(0)})" 2>&1 | tail -20
 
-            # ───────── O WORKER DEDICADO (opt-in) ─────────
-            # Por que isto é OPERAÇÃO e não flag: o `worker` usa a MESMA imagem do web, e o deploy
-            # só o ATUALIZA se ele já estiver de pé (`if docker ps | grep -qx zaeon_worker`) —
-            # decisão da #645, pra um worker esquecido não ficar rodando código antigo. Subir a
-            # primeira vez é manual por desenho, e é isto.
+            # ───────── O WORKER DEDICADO ─────────
+            # Por que SUBIR é operação e não flag: o `worker` usa a MESMA imagem do web, e o deploy
+            # só o ATUALIZA se ele já estiver de pé (decisão da #645, pra um worker esquecido não
+            # rodar código antigo). A primeira subida é manual por desenho, e é o `subir_worker`.
             #
-            # ESTE PASSO NÃO TIRA os turnos do web. O `instrumentation.ts` declara a topologia:
-            # web com SCHOLAR_WORKER=0 enfileira, worker com 1 consome. Hoje o web está com 1, e
-            # por isso ele consome — subir o worker dá DOIS consumidores, o que já faz metade dos
-            # turnos sobreviver a um deploy, e é reversível. Pôr o web em 0 é um SEGUNDO passo, com
-            # risco próprio (worker fora = todo turno pendura), e não se faz no mesmo movimento.
-            if [ "${SUBIR_WORKER}" = "true" ]; then
-              echo
-              echo "══════════ WORKER DEDICADO ══════════"
-              if docker ps --format '{{.Names}}' | grep -qx zaeon_worker; then
-                echo "→ já está de pé (o deploy o atualiza junto do web)"
-              else
-                echo "→ subindo (constrói a imagem se preciso; pode levar alguns minutos)…"
-                docker compose --profile worker up -d --build worker 2>&1 | tail -15
-                sleep 5
-              fi
-              # O ESTADO E AS FILAS SAEM NOS DOIS CASOS. Na primeira versão isto vivia só no ramo
-              # "subindo agora", e com o worker já de pé o diagnóstico respondia "já está de pé" e
-              # mais nada — inútil justamente quando a pergunta é "ele está CONSUMINDO?". Container
-              # de pé e container consumindo são afirmações diferentes, e é a segunda que importa.
-              echo "— estado:"
-              docker ps --filter name=zaeon_worker --format '{{.Names}} {{.Status}}' || true
-              echo "— as filas que ele diz consumir (log do boot):"
-              docker logs --tail=60 zaeon_worker 2>&1 | grep -iE "ouvindo|ATIVO|worker|erro|error" | tail -14 || true
-              echo "— e o que ele JÁ processou (sinal de consumo de verdade, não só de boot):"
-              docker logs --tail=200 zaeon_worker 2>&1 | grep -iE "job|turno|processad|concluí|chat-turn" | tail -8 || echo "  (nada ainda — fila vazia ou o web pegou os jobs antes)"
-              echo
-              echo "→ o web SEGUE consumindo também (SCHOLAR_WORKER=1 no .env dele). Isto é"
-              echo "  deliberado: dois consumidores agora, e tirar o web da fila é o passo 2."
+            # MAS O DIAGNÓSTICO SAI SEMPRE. Defeito meu, achado pelo dono: na #718 eu tirei a
+            # exibição do ramo "subindo agora" e a pus nos DOIS ramos — e os dois seguiam DENTRO da
+            # guarda `subir_worker=true`. Resultado: com o worker de pé, perguntar "ele está
+            # consumindo?" exigia pedir pra SUBI-LO. Diagnóstico não se condiciona à ação que ele
+            # diagnostica. Agora só a SUBIDA depende da opção.
+            #
+            # Subir não tira os turnos do web: o `instrumentation.ts` declara web com
+            # SCHOLAR_WORKER=0 enfileirando e worker com 1 consumindo, mas hoje o web está com 1 —
+            # são DOIS consumidores, e pôr o web em 0 é um segundo passo, com risco próprio.
+            echo
+            echo "══════════ WORKER DEDICADO ══════════"
+            if docker ps --format '{{.Names}}' | grep -qx zaeon_worker; then
+              echo "→ de pé (o deploy o atualiza junto do web)"
+            elif [ "${SUBIR_WORKER}" = "true" ]; then
+              echo "→ subindo (constrói a imagem se preciso; pode levar alguns minutos)…"
+              docker compose --profile worker up -d --build worker 2>&1 | tail -15
+              sleep 5
+            else
+              echo "→ NÃO está de pé. Pra subir: rode de novo com subir_worker=true."
             fi
+            # CABEÇALHO SEM NADA EMBAIXO É RESPOSTA FALSA — a mesma doença do bloco que saiu daqui.
+            # Com o container ausente, `docker logs` erra pra stderr, o grep engole e o `|| true`
+            # cala: o diagnóstico imprimia "papel e filas:" e silêncio. Então cada seção guarda o
+            # resultado numa variável e DIZ quando está vazia. (E nada de `… | tail | || echo`: num
+            # pipe o código de saída é do `tail`, então o `||` nunca dispara — é código morto.)
+            echo "— estado:"
+            EST=$(docker ps --filter name=zaeon_worker --format '{{.Names}} {{.Status}}' 2>/dev/null || true)
+            if [ -z "$EST" ]; then
+              echo "  (container AUSENTE — não há log pra ler nem fila pra atribuir a ele)"
+            else
+              echo "$EST"
+              echo "— papel e filas que ele DECLARA (log do boot):"
+              P=$(docker logs --tail=80 zaeon_worker 2>&1 | grep -iE "papel=|ouvindo|ATIVO" | tail -12 || true)
+              echo "${P:-  (nenhuma linha de boot no alcance do log — pode ter rolado pra fora)}"
+              echo "— falhas (o único RESULTADO de job que o código loga):"
+              F=$(docker logs --tail=400 zaeon_worker 2>&1 | grep -iE "job falhou|turno falhou|\[reaper\]" | tail -8 || true)
+              echo "${F:-  (nenhuma falha registrada no alcance do log)}"
+            fi
+            # SAIU o bloco "o que ele JÁ processou" lido do log, porque a informação NÃO ESTÁ LÁ:
+            # nenhum worker loga SUCESSO. Os de lib/queue/*.ts logam boot (`ouvindo`), falha
+            # (`job falhou`) e a contagem do reaper, e nada mais. O bloco antigo grepava
+            # `job|turno|processad|concluí` e casava com a linha de BOOT `[octa-worker] ouvindo
+            # "octa-turno"` — devolvia resposta FALSA com cara de resposta, pior que vazio.
+            # O número existe no REDIS: o BullMQ RETÉM os últimos concluídos (removeOnComplete
+            # 50–200 em lib/queue/*.ts), então o retido é PISO e nunca total. Redis aqui é interno
+            # e sem senha (o compose não passa --requirepass): não há credencial a vazar.
+            echo "— filas no Redis (concluidos_retidos é PISO: o BullMQ guarda só os últimos 50–200):"
+            R=$(docker compose exec -T redis sh -c 'for q in chat scholar agent-chores rag-index octa-turno; do t=$(redis-cli GET bull:$q:id); c=$(redis-cli ZCARD bull:$q:completed); f=$(redis-cli ZCARD bull:$q:failed); w=$(redis-cli LLEN bull:$q:wait); printf "  %-14s enfileirados=%s  concluidos_retidos=%s  falhos=%s  esperando=%s\n" "$q" "${t:-0}" "${c:-0}" "${f:-0}" "${w:-0}"; done' 2>&1 | tail -8 || true)
+            echo "${R:-  (redis inalcançável — sem resposta nenhuma)}"
+            echo "  ATENÇÃO: este número é da FILA, não do PROCESSO. Web e worker consomem as MESMAS"
+            echo "  filas, então ele prova que houve consumo e NUNCA quem consumiu. Atribuir exige o"
+            echo "  código logar o papel ao concluir o job — mudança de código, não de diagnóstico."
 
             if [ "${LIMPAR}" = "nada" ]; then
               echo
