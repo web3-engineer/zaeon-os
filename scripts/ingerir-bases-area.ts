@@ -10,6 +10,15 @@
  * contrato {chave, titulo, texto, area} com a licença no rodapé do texto, e cada `<area>/*.pdf` entra por
  * `ingerirPdf`, que preserva o número de página — é ele que faz a citação ao aluno apontar pra folha certa.
  *
+ *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes wikipt --wiki-shards 6
+ *
+ * A fonte `wikipt` lê o dataset `wikimedia/wikipedia` (config 20231101.pt) DIRETO DOS PARQUETS, por
+ * requisição de faixa (HTTP range) — o `hyparquet` baixa só os pedaços de que precisa, então não há
+ * download de 2,4 GB nem arquivo temporário. Medido em 2026-11-08: shard de 406 MB, 185.375 linhas,
+ * 3 linhas lidas em 1,9 s. A API de linhas (/rows) NÃO serve pra isso: é 100 linhas por chamada e o
+ * nginx do HF devolve 502 depois de ~23 chamadas anônimas (medido: 20/20 falhas em sequência).
+ * A decisão de cada verbete é pura e mora em lib/rag/wikipedia (com testes); aqui fica só o I/O.
+ *
  * A API de linhas do HF (datasets-server) não serve a SciELO (parquet de 2,8 GB) e devolve 429 rápido nas outras, então
  * os parquets viram JSONL antes (scielo.jsonl, medical_meadow_wikidoc_pt.jsonl, information-pt.jsonl com --cru) e o
  * ENEM vem direto dos .jsonl do repositório.
@@ -28,6 +37,8 @@ const FONTES = opt("--fontes", "scielo,wiki,medicina,enem").split(",");
 const POR_AREA = Number(opt("--por-area", "1500"));
 const LINHAS = Number(opt("--linhas", "1000000"));
 const DIR = opt("--dir", "/tmp/bases");
+const WIKI_SHARDS_USAR = Number(opt("--wiki-shards", "6"));
+const WIKI_LINHAS = Number(opt("--wiki-linhas", String(Number.MAX_SAFE_INTEGER)));
 const UA = { "User-Agent": "ZaeonBot/1.0 (https://zaeon.com.br; bases de estudo)" };
 
 const espera = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -138,6 +149,48 @@ async function main() {
         await gravar(AREA_GERAL, "enem", { chave: `enem-${ano}-${q.id}`, titulo: `ENEM ${ano} — ${q.id}`, texto: `${q.question}\n\n${alts}\n\nGabarito: ${q.label}\n\nFonte: maritaca-ai/enem (Hugging Face) — licença Apache-2.0.` });
       }
     }
+  }
+
+  if (FONTES.includes("wikipt")) {
+    const { asyncBufferFromUrl, parquetMetadataAsync, parquetReadObjects } = await import("hyparquet");
+    const { WIKI_CONFIG, WIKI_DATASET, WIKI_SHARDS, documentoDaWikipedia, ehDescarte, urlDoShard } =
+      await import("../lib/rag/wikipedia");
+
+    // TETO POR ÁREA, em ordem do dataset — e esta é a escolha que importa aqui.
+    // Guardar o melhor por pontos exigiria segurar POR_AREA × 17 áreas × 20 KB de texto na memória
+    // (meio giga), então a carga é POR FLUXO: cada verbete é ingerido na hora e a área para quando
+    // enche. O efeito medido: área abundante (biologia 162/3.000, química 82/3.000) enche no
+    // primeiro shard; área escassa (eng-civil 2/3.000) recolhe o corpus inteiro. A qualidade vem do
+    // limiar do classificador (5 pontos) e do mínimo de 1.200 chars, não de ranquear.
+    const porArea: Record<string, number> = {};
+    const descartes: Record<string, number> = {};
+    const BLOCO = 2000;
+
+    for (let shard = 0; shard < Math.min(WIKI_SHARDS_USAR, WIKI_SHARDS); shard++) {
+      const url = urlDoShard(shard);
+      const file = await asyncBufferFromUrl({ url });
+      const metadata = await parquetMetadataAsync(file);
+      const total = Math.min(Number(metadata.num_rows), WIKI_LINHAS);
+      console.log(`[wikipt] shard ${shard}: ${(file.byteLength / 1048576).toFixed(0)} MB, ${total.toLocaleString("pt-BR")} verbetes`);
+
+      for (let ini = 0; ini < total; ini += BLOCO) {
+        const fim = Math.min(ini + BLOCO, total);
+        // só as colunas necessárias: o `id` não entra, e cada coluna a menos é faixa a menos na rede
+        const linhas = await parquetReadObjects({ file, metadata, rowStart: ini, rowEnd: fim, columns: ["title", "text", "url"] });
+        for (const linha of linhas) {
+          const d = documentoDaWikipedia(linha as Record<string, unknown>);
+          if (ehDescarte(d)) { descartes[d.descarte] = (descartes[d.descarte] ?? 0) + 1; continue; }
+          if ((porArea[d.area] ?? 0) >= POR_AREA) { descartes.area_cheia = (descartes.area_cheia ?? 0) + 1; continue; }
+          porArea[d.area] = (porArea[d.area] ?? 0) + 1;
+          await gravar(d.area, "wikipedia-pt", { chave: d.chave, titulo: d.titulo, texto: d.texto });
+        }
+        if (fim % 20000 === 0 || fim === total) {
+          const cheias = Object.keys(porArea).filter((a) => (porArea[a] ?? 0) >= POR_AREA).length;
+          console.log(`[wikipt] shard ${shard} ${fim.toLocaleString("pt-BR")}/${total.toLocaleString("pt-BR")} — aceitos ${Object.values(porArea).reduce((x, y) => x + y, 0)} · ${cheias} área(s) cheia(s)`);
+        }
+      }
+    }
+    console.log(`[wikipt] fonte: ${WIKI_DATASET} (${WIKI_CONFIG}) · descartes: ${Object.entries(descartes).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}=${v}`).join(" ") || "nenhum"}`);
   }
 
   if (FONTES.includes("dataset")) {

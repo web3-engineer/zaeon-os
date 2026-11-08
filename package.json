@@ -85,6 +85,7 @@
     "framer-motion": "^10.18.0",
     "got": "^14.6.6",
     "groq-sdk": "^0.37.0",
+    "hyparquet": "^1.33.0",
     "i18next": "^25.7.3",
     "i18next-browser-languagedetector": "^8.2.0",
     "i18next-http-backend": "^3.0.2",
