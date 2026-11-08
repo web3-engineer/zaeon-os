@@ -3,7 +3,12 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, cleanup, fireEvent } from "@testing-library/react";
 
-vi.mock("@/lib/voice/useSTT", () => ({ default: () => ({ toggle: () => {}, listening: false, supported: false }) }));
+// #733: o microfone do teste é controlável (ouvindo, já ouviu, aviso)
+const mic = vi.hoisted(() => ({ estado: { listening: false, supported: false, ouviu: false, aviso: null as string | null } }));
+vi.mock("@/lib/voice/useSTT", () => ({
+  default: () => ({ toggle: () => {}, limparAviso: () => {}, ...mic.estado }),
+  TEXTO_AVISO_STT: { desligou: "O microfone desligou depois da pausa. Toque nele para falar de novo.", negado: "bloqueado", "sem-som": "Não ouvi nada.", "sem-rede": "sem internet", falhou: "falhou" },
+}));
 vi.mock("@/lib/ui/autofoco", () => ({ useAutoFoco: () => {} }));
 import CoworkComposer from "./CoworkComposer";
 
@@ -35,5 +40,27 @@ describe("CoworkComposer · opções da conversa (#713)", () => {
   it("os botões da caixa têm 44 px no celular", () => {
     const r = render(<CoworkComposer {...base} />);
     expect(r.getByRole("button", { name: "Anexar arquivo" }).className).toContain("w-11 h-11 sm:w-10 sm:h-10");
+  });
+});
+
+describe("CoworkComposer · microfone (#733)", () => {
+  afterEach(() => { mic.estado = { listening: false, supported: false, ouviu: false, aviso: null }; });
+  it("gravando: diz que está ouvindo; depois de ouvir, que desliga sozinho", () => {
+    mic.estado = { listening: true, supported: true, ouviu: false, aviso: null };
+    const r = render(<CoworkComposer {...base} />);
+    expect(r.getByRole("status").textContent).toMatch(/Ouvindo… pode falar/);
+    cleanup();
+    mic.estado = { listening: true, supported: true, ouviu: true, aviso: null };
+    const r2 = render(<CoworkComposer {...base} />);
+    expect(r2.getByRole("status").textContent).toMatch(/desliga sozinho/);
+  });
+  it("desligou sem a pessoa pedir: mostra o motivo", () => {
+    mic.estado = { listening: false, supported: true, ouviu: true, aviso: "desligou" };
+    const r = render(<CoworkComposer {...base} />);
+    expect(r.getByRole("status").textContent).toMatch(/desligou depois da pausa/);
+  });
+  it("sem microfone no navegador (Firefox): nada aparece", () => {
+    const r = render(<CoworkComposer {...base} />);
+    expect(r.queryByRole("status")).toBeNull();
   });
 });

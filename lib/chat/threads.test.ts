@@ -258,3 +258,49 @@ describe("#728 · mesmo minuto ganha os segundos", () => {
     expect(m.get("a")).not.toBe(m.get("b"));
   });
 });
+
+describe("#733 · lista por dia e conversa repetida", () => {
+  const agora = new Date(2026, 10, 7, 22, 0).getTime();
+  const dia = (d: number, h = 10) => new Date(2026, 10, d, h, 0).getTime();
+  it("grupoDoDia", async () => {
+    const { grupoDoDia } = await import("./threads");
+    expect(grupoDoDia(dia(7, 1), agora)).toBe("Hoje");
+    expect(grupoDoDia(dia(6, 23), agora)).toBe("Ontem");
+    expect(grupoDoDia(dia(2), agora)).toBe("Últimos 7 dias");
+    expect(grupoDoDia(dia(1, 10) - 10 * 86_400_000, agora)).toBe("Últimos 30 dias");
+    expect(grupoDoDia(new Date(2026, 6, 1).getTime(), agora)).toBe("Mais antigas");
+  });
+  it("quandoCriada diz o dia e a hora", async () => {
+    const { quandoCriada } = await import("./threads");
+    expect(quandoCriada(dia(7, 21), agora)).toMatch(/^criada hoje às 21:00$/);
+    expect(quandoCriada(dia(6, 9), agora)).toMatch(/^criada ontem às 09:00$/);
+    expect(quandoCriada(dia(1, 14), agora)).toMatch(/^criada em 01\/11 às 14:00$/);
+  });
+  it("gruposDoDia: a mais nova primeiro, só os grupos que têm conversa", async () => {
+    const { gruposDoDia } = await import("./threads");
+    const t = (id: string, criadaEm: number) => ({ thread: { id, titulo: id, criadaEm, tocadaEm: criadaEm } });
+    const g = gruposDoDia([t("velha", dia(1)), t("hoje1", dia(7, 9)), t("ontem", dia(6)), t("hoje2", dia(7, 21))], agora);
+    expect(g.map((x) => x.grupo)).toEqual(["Hoje", "Ontem", "Últimos 7 dias"]);
+    expect(g[0]!.nos.map((n) => n.thread.id)).toEqual(["hoje2", "hoje1"]);
+  });
+  it("conversaRepetida: mesma pergunta acha a conversa; outra pergunta, a própria conversa e 'Nova conversa' não", async () => {
+    const { conversaRepetida, TITULO_PADRAO } = await import("./threads");
+    const ts = [
+      { id: "a", titulo: "o que é fotossíntese", criadaEm: 1, tocadaEm: 1 },
+      { id: "b", titulo: TITULO_PADRAO, criadaEm: 2, tocadaEm: 2 },
+    ];
+    expect(conversaRepetida(ts, "b", "O que é Fotossintese?")?.id).toBe("a");
+    expect(conversaRepetida(ts, "b", "o que é mitocôndria?")).toBeNull();
+    expect(conversaRepetida(ts, "a", "o que é fotossíntese?")).toBeNull();
+    expect(conversaRepetida(ts, "x", "Nova conversa")).toBeNull();
+  });
+});
+
+describe("#733 · revisão: conversa repetida", () => {
+  it("toda pontuação e o 'Aprofunde:' do sub-tema não escondem a repetida", async () => {
+    const { conversaRepetida } = await import("./threads");
+    const ts = [{ id: "a", titulo: "o que é DNA (ácido)", criadaEm: 1, tocadaEm: 1 }];
+    expect(conversaRepetida(ts, null, "o que é DNA — ácido?")?.id).toBe("a");
+    expect(conversaRepetida(ts, null, "Aprofunde: o que é DNA (ácido)")?.id).toBe("a");
+  });
+});

@@ -9,7 +9,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp, Loader2, Mic, Paperclip, Zap, Compass, Square, SlidersHorizontal } from "lucide-react";
-import useSTT from "@/lib/voice/useSTT";
+import useSTT, { TEXTO_AVISO_STT } from "@/lib/voice/useSTT";
 import { useAutoFoco } from "@/lib/ui/autofoco";
 
 // execMode = automático (Aura vai ponta-a-ponta) × guiado (pausa nos gates HITL,
@@ -106,9 +106,11 @@ export default function CoworkComposer({
   // Ditado por voz (áudio → texto). Guarda o texto que já existia ao começar a gravar
   // e vai concatenando a transcrição em cima dele.
   const baseRef = useRef("");
-  const { toggle: toggleMic, listening, supported: sttSupported } = useSTT({
+  const { toggle: toggleMic, listening, supported: sttSupported, ouviu, aviso: avisoMic, limparAviso: limparAvisoMic } = useSTT({
     onResult: (t) => onChange((baseRef.current ? baseRef.current + " " : "") + t),
   });
+  // #733: o aviso de por que o microfone desligou some sozinho depois de uns segundos
+  useEffect(() => { if (!avisoMic) return; const t = setTimeout(limparAvisoMic, 6000); return () => clearTimeout(t); }, [avisoMic, limparAvisoMic]);
   const onMic = () => {
     if (!listening) baseRef.current = value.trim();
     toggleMic();
@@ -141,6 +143,16 @@ export default function CoworkComposer({
         {/* #728: em tela BAIXA (janela pequena, notebook com zoom) também recolhem — a caixa ocupava quase metade da altura */}
         {opcoes && <div id="opcoes-da-conversa" className={verOpcoes ? "" : `hidden sm:block [@media(max-height:640px)]:!hidden`}>{opcoes}</div>}
         {children}
+        {/* #733: o microfone diz o que está fazendo — antes só o botão piscava, e a pessoa falava sem saber se ele ouvia */}
+        {sttSupported && (listening || avisoMic) && (
+          <div role="status" data-microfone className={`mx-1 mb-1 flex items-center gap-2 rounded-xl px-3 py-1.5 text-[12.5px] font-medium
+            ${listening ? "bg-rose-500/10 text-rose-700 dark:text-rose-200" : "bg-amber-500/10 text-amber-800 dark:text-amber-100"}`}>
+            {listening ? (<>
+              <span aria-hidden className="h-2 w-2 shrink-0 rounded-full bg-rose-500 animate-pulse" />
+              <span>{ouviu ? "Ouvindo… quando parar de falar, ele desliga sozinho." : "Ouvindo… pode falar. O texto aparece aqui embaixo."}</span>
+            </>) : avisoMic ? <span>{TEXTO_AVISO_STT[avisoMic]}</span> : null}
+          </div>
+        )}
         {/* flex-wrap + min-w no texto: numa coluna estreita os botões descem pra baixo — a caixa de texto NUNCA
             some (com largura 0 ela nem recebe o foco, e o cursor não pisca) */}
         <div className="flex flex-wrap items-end gap-2">

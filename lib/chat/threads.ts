@@ -253,3 +253,50 @@ export function marcasDasThreads(threads: readonly Thread[]): Map<string, string
   }
   return out;
 }
+
+/**
+ * #733: a lista de conversas separada por DIA — "Hoje", "Ontem", "Últimos 7 dias", "Últimos 30 dias", "Mais antigas".
+ * A data sai do lado do nome (ela roubava o espaço e o nome virava "o que é fotossí…"); o dia vira o título do grupo.
+ */
+export type GrupoDoDia = "Hoje" | "Ontem" | "Últimos 7 dias" | "Últimos 30 dias" | "Mais antigas";
+const inicioDoDia = (n: number) => { const d = new Date(n); d.setHours(0, 0, 0, 0); return d.getTime(); };
+export function grupoDoDia(criadaEm: number, agora: number = Date.now()): GrupoDoDia {
+  const dias = Math.round((inicioDoDia(agora) - inicioDoDia(criadaEm)) / 86_400_000);
+  if (dias <= 0) return "Hoje";
+  if (dias === 1) return "Ontem";
+  if (dias < 7) return "Últimos 7 dias";
+  if (dias < 30) return "Últimos 30 dias";
+  return "Mais antigas";
+}
+
+/** "criada hoje às 21:28", "criada ontem às 09:05", "criada em 05/11 às 14:00" — o que aparece ao passar o mouse */
+export function quandoCriada(criadaEm: number, agora: number = Date.now()): string {
+  const hora = new Date(criadaEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const g = grupoDoDia(criadaEm, agora);
+  if (g === "Hoje") return `criada hoje às ${hora}`;
+  if (g === "Ontem") return `criada ontem às ${hora}`;
+  return `criada em ${new Date(criadaEm).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} às ${hora}`;
+}
+
+/** os nós da lista em grupos de dia, a mais nova primeiro (a ordem de dentro de cada dia não muda) */
+export function gruposDoDia<N extends { thread: Thread }>(nos: readonly N[], agora: number = Date.now()): { grupo: GrupoDoDia; nos: N[] }[] {
+  const ordem: GrupoDoDia[] = ["Hoje", "Ontem", "Últimos 7 dias", "Últimos 30 dias", "Mais antigas"];
+  const ordenados = nos.map((n, i) => ({ n, i })).sort((a, b) => (b.n.thread.criadaEm || 0) - (a.n.thread.criadaEm || 0) || a.i - b.i).map((x) => x.n);
+  const porGrupo = new Map<GrupoDoDia, N[]>();
+  for (const n of ordenados) { const g = grupoDoDia(n.thread.criadaEm || 0, agora); porGrupo.set(g, [...(porGrupo.get(g) ?? []), n]); }
+  return ordem.filter((g) => porGrupo.has(g)).map((g) => ({ grupo: g, nos: porGrupo.get(g)! }));
+}
+
+/**
+ * #733: a 1ª pergunta de uma conversa nova daria o MESMO nome de uma conversa que já existe? Devolve essa conversa
+ * (a mais nova, se houver mais de uma), para o chat perguntar "quer continuar nela?" antes de criar a repetida.
+ * Compara sem acento, sem caixa e sem pontuação. Conversa sem nome ("Nova conversa") não conta.
+ */
+export function conversaRepetida(threads: readonly Thread[], ativa: string | null, primeiraPergunta: string): Thread | null {
+  const limpar = (s: string) => (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^\p{L}\p{N}\s]+/gu, " ").replace(/\s+/g, " ").trim();
+  // (o sub-tema começa com "Aprofunde:", que o batizar tira — aqui também)
+  const alvo = limpar(tituloAPartirDe((primeiraPergunta || "").replace(/^aprofunde:\s*/i, "")));
+  if (!alvo || alvo === limpar(TITULO_PADRAO)) return null;
+  const iguais = threads.filter((t) => t.id !== ativa && t.titulo !== TITULO_PADRAO && limpar(t.titulo) === alvo);
+  return iguais.sort((a, b) => (b.tocadaEm || 0) - (a.tocadaEm || 0))[0] ?? null;
+}
