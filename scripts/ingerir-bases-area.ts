@@ -3,7 +3,12 @@
  *
  *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --seco              # só conta (nada grava)
  *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes scielo,wiki,medicina,enem
+ *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes dataset --dir /opt/zaeon/dataset
  *   opções: --por-area 1500  --dir /tmp/bases (JSONL gerados por scripts/scielo-para-jsonl.py)  --linhas N (teto lido da SciELO)
+ *
+ * A fonte `dataset` lê o DATASET montado por scripts/dataset-montar.mjs: cada `<area>/<nome>.jsonl` já vem no
+ * contrato {chave, titulo, texto, area} com a licença no rodapé do texto, e cada `<area>/*.pdf` entra por
+ * `ingerirPdf`, que preserva o número de página — é ele que faz a citação ao aluno apontar pra folha certa.
  *
  * A API de linhas do HF (datasets-server) não serve a SciELO (parquet de 2,8 GB) e devolve 429 rápido nas outras, então
  * os parquets viram JSONL antes (scielo.jsonl, medical_meadow_wikidoc_pt.jsonl, information-pt.jsonl com --cru) e o
@@ -14,7 +19,7 @@
  * Licenças (comercial ok): SciELO pt CC-BY-4.0, Wikipédia CC-BY-SA, rhaymison/medicine-* Apache-2.0, maritaca-ai/enem Apache-2.0.
  * A fonte e a licença vão no fim de cada documento — a citação do chat mostra o título, e o crédito fica no texto.
  */
-import { AREAS, AREA_GERAL, classificarArea, idArea, tituloEResumo } from "../lib/rag/areas";
+import { AREAS, AREA_GERAL, SLUGS_AREA, classificarArea, idArea, tituloEResumo } from "../lib/rag/areas";
 
 const args = process.argv.slice(2);
 const opt = (k: string, d: string) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
@@ -46,7 +51,7 @@ async function main() {
     const [{ ragPg }, { enfileirarIndexacao }] = await Promise.all([import("../lib/rag/pg"), import("../lib/queue/rag")]);
     return { db: ragPg(), enfileirar: enfileirarIndexacao };
   })();
-  const { ingerirTexto } = await import("../lib/rag/ingerir");
+  const { ingerirTexto, ingerirPdf } = await import("../lib/rag/ingerir");
   const placar: Record<string, { novo: number; reaproveitado: number; erro: number }> = {};
   const gravar = async (area: string, fonte: string, d: { chave: string; titulo: string; texto: string }) => {
     const k = `${area} · ${fonte}`;
@@ -130,6 +135,59 @@ async function main() {
         const alts = Array.isArray(q.alternatives) ? q.alternatives.map((a: string, i: number) => `${"ABCDE"[i]}) ${a}`).join("\n") : "";
         await gravar(AREA_GERAL, "enem", { chave: `enem-${ano}-${q.id}`, titulo: `ENEM ${ano} — ${q.id}`, texto: `${q.question}\n\n${alts}\n\nGabarito: ${q.label}\n\nFonte: maritaca-ai/enem (Hugging Face) — licença Apache-2.0.` });
       }
+    }
+  }
+
+  if (FONTES.includes("dataset")) {
+    const { readdirSync, readFileSync, statSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    // A ÁREA É O ENDEREÇO. `idArea("seguranca")` devolve um turmaId que `areasDoTurno` só pede se o
+    // slug estiver em SLUGS_AREA — fora dele o documento entra no banco e NENHUM agente o alcança.
+    // Já perdi uma carga assim: ingerida, contabilizada, invisível. Então a área desconhecida PARA aqui.
+    const desconhecidas = new Set<string>();
+    const areaValida = (a: string) => {
+      if (a === AREA_GERAL || SLUGS_AREA.includes(a)) return true;
+      desconhecidas.add(a);
+      return false;
+    };
+    const pastas = readdirSync(DIR).filter((n) => !n.startsWith(".") && statSync(join(DIR, n)).isDirectory());
+    if (!pastas.length) throw new Error(`--dir ${DIR} não tem pasta de área nenhuma (rodou scripts/dataset-montar.mjs?)`);
+
+    for (const pasta of pastas.sort()) {
+      const dir = join(DIR, pasta);
+      for (const nome of readdirSync(dir).sort()) {
+        if (nome.endsWith(".jsonl")) {
+          let n = 0;
+          for await (const row of jsonl(join(dir, nome))) {
+            const area = String(row.area ?? pasta);
+            if (!areaValida(area)) continue;
+            if (!row.chave || !row.titulo || !String(row.texto ?? "").trim()) continue;
+            await gravar(area, nome.replace(/\.jsonl$/, ""), { chave: String(row.chave), titulo: String(row.titulo), texto: String(row.texto) });
+            if (++n % 500 === 0) console.log(`[dataset] ${pasta}/${nome}: ${n}`);
+          }
+          console.log(`[dataset] ${pasta}/${nome}: ${n} linhas`);
+        } else if (nome.toLowerCase().endsWith(".pdf")) {
+          if (!areaValida(pasta)) continue;
+          const k = `${pasta} · pdf`;
+          placar[k] ??= { novo: 0, reaproveitado: 0, erro: 0 };
+          if (SECO) { placar[k].novo++; continue; }
+          // `extrair` só é importado aqui: --seco roda de qualquer máquina, sem o parser de PDF.
+          // E PDF_LOADER_URL ausente faz `extractPdfStructured` devolver null em silêncio — os 14 PDFs
+          // entrariam todos como erro "leitura_falhou". Melhor parar antes, dizendo o que falta.
+          if (!process.env.PDF_LOADER_URL) throw new Error("PDF_LOADER_URL não está no ambiente — sem ela o parser devolve null e todo PDF falha; rode com --fontes dataset depois de configurá-la, ou mova os PDFs de fora do --dir");
+          const { extractPdfStructured } = await import("../lib/scholar/pdf");
+          const r = await ingerirPdf(
+            { ...deps!, extrair: extractPdfStructured },
+            { bytes: readFileSync(join(dir, nome)), nomeArquivo: nome, origem: "dataset", criadoPor: "dataset:pdf", permissao: { turmaId: idArea(pasta) } },
+          );
+          placar[k][r.status]++;
+          if (r.status === "erro") console.warn(`[erro] ${k} ${nome}: ${r.erro}`);
+        }
+      }
+    }
+    if (desconhecidas.size) {
+      // Não é aviso: é falha. Com a área ausente de lib/rag/areas o aluno nunca veria esse documento.
+      throw new Error(`áreas que não existem em lib/rag/areas: ${[...desconhecidas].sort().join(", ")} — crie-as em AREAS antes de ingerir`);
     }
   }
 
