@@ -11,6 +11,7 @@
  * `ingerirPdf`, que preserva o número de página — é ele que faz a citação ao aluno apontar pra folha certa.
  *
  *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes wikipt --wiki-shards 6
+ *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes mmlu
  *
  * A fonte `wikipt` lê o dataset `wikimedia/wikipedia` (config 20231101.pt) DIRETO DOS PARQUETS, por
  * requisição de faixa (HTTP range) — o `hyparquet` baixa só os pedaços de que precisa, então não há
@@ -149,6 +150,35 @@ async function main() {
         await gravar(AREA_GERAL, "enem", { chave: `enem-${ano}-${q.id}`, titulo: `ENEM ${ano} — ${q.id}`, texto: `${q.question}\n\n${alts}\n\nGabarito: ${q.label}\n\nFonte: maritaca-ai/enem (Hugging Face) — licença Apache-2.0.` });
       }
     }
+  }
+
+  if (FONTES.includes("mmlu")) {
+    // `FreedomIntelligence/MMLU_Portuguese`, licença MIT (lida do cardData da API). 57 matérias x 2
+    // splits = 114 CSVs pequenos baixados por `resolve` — nada de parquet e nada da API de linhas,
+    // que limita. O mapa matéria→área e o agrupamento em lotes de 20 são puros e ficam em
+    // lib/rag/mmlu, com 11 testes; aqui fica só o download.
+    const { MATERIAS, MMLU_SPLITS, documentosDaMateria, linhasDoCsv, questaoMmlu, urlDoCsv } =
+      await import("../lib/rag/mmlu");
+    const materias = Object.keys(MATERIAS).sort();
+    let tortas = 0;
+    for (const materia of materias) {
+      // os dois splits entram no MESMO balaio da matéria: `dev` tem 5 questões e sozinho daria um
+      // documento de 5, que é curto demais pra valer um documento.
+      const questoes: string[] = [];
+      for (const split of MMLU_SPLITS) {
+        const r = await fetch(urlDoCsv(split, materia), { headers: UA }).catch(() => null);
+        if (!r?.ok) { console.warn(`[mmlu] ${materia}/${split}: HTTP ${r?.status ?? "falhou"}`); continue; }
+        for (const linha of linhasDoCsv(await r.text())) {
+          const q = questaoMmlu(linha);
+          if (q) questoes.push(q); else tortas++;
+        }
+        await espera(250);
+      }
+      const docs = documentosDaMateria(materia, questoes);
+      for (const d of docs) await gravar(d.area, "mmlu-pt", { chave: d.chave, titulo: d.titulo, texto: d.texto });
+      console.log(`[mmlu] ${materia.padEnd(36)} ${String(questoes.length).padStart(5)} questões → ${docs.length} doc(s) em ${docs[0]?.area ?? "-"}`);
+    }
+    if (tortas) console.log(`[mmlu] ${tortas} linha(s) descartada(s) por formato`);
   }
 
   if (FONTES.includes("wikipt")) {
