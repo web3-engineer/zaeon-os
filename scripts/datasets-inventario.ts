@@ -20,8 +20,8 @@ import { AREAS, AREA_GERAL, SLUGS_AREA, areasDoTurno } from "../lib/rag/areas";
 import { COBERTURA, FONTES_DE_BASE, FONTES_RECUSADAS, areasDaFonte, fontesDaArea, recusasPorMotivo, totalMedido } from "../lib/rag/fontes";
 import { MENTOR_SEED } from "../lib/agent/mentors";
 import { MATERIAS } from "../lib/rag/mmlu";
-import { CAPACIDADES } from "../lib/agents/capacidades";
-import { AGENTES_CHAT } from "../lib/agents/chatAgentes";
+import { CAPACIDADES, type CapacidadeDoAgente } from "../lib/agents/capacidades";
+import { AGENTES_CHAT, type AgenteChatId } from "../lib/agents/chatAgentes";
 
 const args = process.argv.slice(2);
 const so = (k: string) => args.includes(k);
@@ -76,11 +76,16 @@ function porAgente() {
 
   console.log("\n═══ QUEM FALA NO CHAT, E O QUE LÊ ═══\n");
   for (const a of AGENTES_CHAT) {
-    const cap = CAPACIDADES[a.id];
+    // `AgenteChatId` passou a incluir os agentes da ORQUESTRA (lib/orquestra/catalogo), que não têm
+    // entrada em CAPACIDADES — por isso o mapa é Partial nas chaves `orq-*` e indexá-lo direto é
+    // erro de tipo. Aqui a ausência não é detalhe: agente de orquestra cai na Aura e lê só a base
+    // geral, e dizer isso é mais útil que mostrar a área da Aura como se fosse dele.
+    const cap = (CAPACIDADES as Partial<Record<AgenteChatId, CapacidadeDoAgente>>)[a.id];
     const bases = areasDoTurno(cap?.area ?? null);
     const dono = cap?.area ? MENTOR_SEED.find((m) => m.slug === cap.area)?.name : null;
+    // nome de agente da orquestra é longo ("Tongyi DeepResearch"): corta pra coluna não quebrar
     console.log(
-      `  ${a.nome.padEnd(11)} tela:${a.tela.padEnd(5)} área: ${String(cap?.area ?? "—").padEnd(12)} `
+      `  ${a.nome.slice(0, 19).padEnd(20)} tela:${a.tela.padEnd(5)} área: ${String(cap?.area ?? "—").padEnd(12)} `
       + `lê: ${bases.join(", ").padEnd(30)}${dono && dono !== a.nome ? `(mesma área do mentor ${dono})` : ""}`,
     );
   }
