@@ -22,7 +22,7 @@
  */
 import { buildHarnessDeps, resolveHarnessOutput, type HarnessOutput } from "@/lib/agent/aura-harness";
 import { surfaceLedger } from "@/lib/llm/ledger";
-import { runTrajectoryTraced } from "@/lib/agent/trajectory";
+import { orquestrarTurno } from "@/lib/orquestra/orquestrador";
 import * as mem from "@/lib/agent/memory-provider";
 import { serializarProgresso, serializarModelo, serializarPrevia } from "@/lib/agent/progresso";
 import { criarEmissorPrevia } from "@/lib/agent/previa";
@@ -234,6 +234,8 @@ export async function runChatTurn(
     // adaptador: é uma leitura de banco, e o adaptador é a camada que não sabe de plano nem de
     // conta. Falha fechado (erro = Flash) e tem memo de 60 s, pra não consultar a cada turno.
     const proPesadas = await podeProNasPesadas(userId);
+    // o contexto do turno numa variável só: o harness da Aura E os motores da orquestra leem o MESMO
+    const systemContextDoTurno = [params.systemContext, memBlock, cartolinaBlock, tccBlock, entregaveisBlock, skillBlock, blocoDosAnexos(params.anexos ?? []), colada.fonte ? blocoFonteColada(colada.fonte) : ""].filter(Boolean).join("\n\n") || undefined;
     const deps = buildHarnessDeps(hctx, {
       modelo: escolhido?.provedor === "google" ? escolhido.vertex : undefined,
       modeloEhPadrao: escolhido?.id === MODELO_PADRAO,
@@ -244,7 +246,7 @@ export async function runChatTurn(
       // A VOZ: troca "Você é a Aura" pelo nome da agente nos prompts do harness (lib/agents/voz).
       // undefined pra Aura — o caminho dela fica idêntico ao de antes.
       transformarSystem: vozDoTurno(nomeDaAgente),
-      systemContext: [params.systemContext, memBlock, cartolinaBlock, tccBlock, entregaveisBlock, skillBlock, blocoDosAnexos(params.anexos ?? []), colada.fonte ? blocoFonteColada(colada.fonte) : ""].filter(Boolean).join("\n\n") || undefined,
+      systemContext: systemContextDoTurno,
       history: params.history,
       baseConhecimento: baseCurta,
       // C5: cada chamada do turno grava no TokenLedger com quem/onde (mentor em agentKey E mentorSlug, como o registrarUso).
@@ -262,9 +264,21 @@ export async function runChatTurn(
     // cartolina, uso…). Não achou: o motor de sempre — e a resposta boa vai pro cache depois (fire-and-forget).
     const doCache = await cacheP;
     if (doCache) narrar(serializarProgresso({ fase: "finalize", rotulo: "Já respondi isso antes" }));
+    // A ORQUESTRA (lib/orquestra, flag ORQUESTRA): decide QUEM trabalha — a Aura, um agente profundo
+    // (DeepSeek/Tongyi) ou um enxame (Kimi/misto) — pelo plano da conta × formato do pedido. Com a flag
+    // desligada é o `runTrajectoryTraced` de sempre, byte a byte.
+    const orq = doCache ? null : await orquestrarTurno({
+      objetivo, hctx, deps, userId,
+      emSegundoPlano: !!turnId,
+      trabalhoGeradoNoCliente: surface === "pesquisa" && !multi,
+      systemContext: systemContextDoTurno,
+      history: params.history,
+      ledger: ledgerTurno,
+      narrar,
+    });
     const { answer, state } = doCache
       ? { answer: doCache.answer as any, state: { intent: doCache.intent, kind: doCache.kind, artifacts: [], degraded: false } as any }
-      : await runTrajectoryTraced(objetivo, hctx, deps);
+      : orq!;
     if (!doCache && usaCache && cache.respostaGuardavel(answer as any, state.intent, !!state.degraded)) {
       void Promise.all([import("@/lib/rag/pg"), import("@/lib/rag/embed")])
         .then(async ([{ ragPg }, { embedPerguntaCompartilhado }]) => cache.guardarNoCache(ragPg(), {
@@ -348,6 +362,7 @@ export async function runChatTurn(
     }
     const quem = servido as { modelo: string; alvo?: string } | null;
     if (doCache) narrar(serializarModelo("Aura · resposta guardada"));
+    else if (orq?.servidoPor) narrar(serializarModelo(orq.servidoPor));
     else if (quem) narrar(serializarModelo(nomeDoModeloServido(quem.modelo, quem.alvo)));
     if (turnId) await saveDone(turnId, out, narrado);
     return out;

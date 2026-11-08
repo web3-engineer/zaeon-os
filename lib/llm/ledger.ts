@@ -32,8 +32,10 @@ export type LedgerCtx = {
 
 export type LinhaLedger = LedgerCtx & {
   model: string;
-  provedor: "vertex" | "litellm" | "huggingface";
-  rota: "vertex" | "gateway";
+  // deepseek/moonshot/openrouter/dashscope: os motores abertos da orquestra (lib/orquestra/provedores).
+  // No Prisma é String — a união só documenta o que o app grava.
+  provedor: "vertex" | "litellm" | "huggingface" | "deepseek" | "moonshot" | "openrouter" | "dashscope";
+  rota: "vertex" | "gateway" | "direta";
   usage: Usage;
   ms: number;
   ok: boolean;
