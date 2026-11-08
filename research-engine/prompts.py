@@ -99,42 +99,54 @@ PROCESSO DE ANÁLISE INTERNA (raciocine antes de gerar a resposta):
 {level_block}
 └──────────────────────────────────────────────────────────────────────────────
 
-┌─ FASE 4: SELEÇÃO DE REFERÊNCIAS ───────────────────────────────────────────
-│ Selecione 5-9 trabalhos acadêmicos reais que:
-│   • Documentem a existência da lacuna identificada
-│   • Forneçam scaffolding metodológico para o estudo proposto
-│   • Sejam de periódicos reconhecidos (Scopus, WoS, PubMed, arXiv)
-│   • Cite APENAS trabalhos dos quais você tem ALTA CONFIANÇA de existência real
-│   • Prefira trabalhos de 2018-2024 (relevância atual)
-│   • Classifique a fonte:
-│       PubMed  → ciências da vida / biomedicina
-│       arXiv   → ciências exatas, computação, física, interdisciplinar
-│       DOI     → qualquer periódico com DOI verificável
-│       Scholar → trabalhos em português ou grey literature
+┌─ FASE 4: LASTRO EM REFERÊNCIAS (REGRA DURA) ───────────────────────────────
+│ Você NÃO conhece a literatura de cor. NUNCA invente, complete ou "lembre" artigos.
+│ As ÚNICAS referências que existem para você são as da lista REFERÊNCIAS FORNECIDAS
+│ (na mensagem do usuário), numeradas [1], [2], … [N].
+│   • Em "citadas", liste SÓ os índices das referências fornecidas que de fato sustentam
+│     a lacuna ou o método proposto. Índice fora de 1..N é descartado.
+│   • Se a lista vier vazia, "citadas" deve ser [] e "inline_citation" deve ser null.
+│   • "inline_citation" só se houver um trecho LITERAL no snippet de uma referência
+│     fornecida; copie o trecho exatamente (não parafraseie) e informe o índice em "ref".
+│   • Não mencione títulos, autores ou DOIs de trabalhos que não estejam na lista.
 └──────────────────────────────────────────────────────────────────────────────
 
-FORMATO DE SAÍDA — JSON PURO, SEM MARKDOWN, SEM TEXTO FORA DO JSON:
-{{
-  "suggestion": {{
-    "type": "Exploratória | Experimental | Pioneira",
-    "title": "<título completo da pesquisa proposta, máximo 180 caracteres>",
-    "rationale": "<justificativa em 1-2 frases: qual lacuna foi identificada e por quê este é um caminho científico valioso; máximo 300 caracteres>",
-    "novelty_angle": "<o que torna este trabalho diferente de tudo que existe; máximo 120 caracteres>",
-    "gap_score": <float 0.0-1.0>
-  }},
-  "references": [
-    {{
-      "source": "PubMed | arXiv | DOI | Scholar",
-      "title": "<título exato do paper>",
-      "authors": "<Sobrenome, N. et al. ou lista completa se ≤ 3 autores>",
-      "year": "<YYYY>",
-      "venue": "<nome do periódico ou conferência>",
-      "doi": "<10.XXXX/... ou null>"
-    }}
-  ],
-  "inline_citation": null
-}}"""
+FORMATO DE SAÍDA: o JSON é imposto pelo schema da API. Campos:
+  type           → Exploratória | Experimental | Pioneira (conforme a calibração de nível)
+  title          → título completo da pesquisa proposta, até 180 caracteres
+  rationale      → 1-2 frases: qual lacuna e por que é valiosa, até 300 caracteres
+  novelty_angle  → o que torna o trabalho diferente de tudo que existe, até 120 caracteres
+  gap_score      → float 0.0-1.0
+  citadas        → índices das referências fornecidas (pode ser [])
+  inline_citation→ {{"quote": "<trecho literal>", "ref": <índice>}} ou null
+Escreva em português do Brasil."""
 
 
-def build_user_message(topic: str) -> str:
-    return f'Tópico de pesquisa do estudante: "{topic}"\n\nGere a sugestão e as referências conforme o processo descrito.'
+def build_references_block(references: list | None) -> str:
+    """Lista numerada das referências REAIS fornecidas por quem chamou (ou aviso de vazio)."""
+    if not references:
+        return "REFERÊNCIAS FORNECIDAS: nenhuma. Não cite nada (citadas = [], inline_citation = null)."
+    linhas = ["REFERÊNCIAS FORNECIDAS (as únicas que você pode citar, pelo índice):"]
+    for i, r in enumerate(references, start=1):
+        partes = [r.title]
+        if r.authors:
+            partes.append(r.authors)
+        if r.year:
+            partes.append(str(r.year))
+        if r.venue:
+            partes.append(r.venue)
+        if r.doi:
+            partes.append(f"doi:{r.doi}")
+        linhas.append(f"[{i}] " + " — ".join(partes))
+        if r.snippet:
+            linhas.append(f"    snippet: {r.snippet[:1200]}")
+    return "\n".join(linhas)
+
+
+def build_user_message(topic: str, references: list | None = None, contexto: str | None = None) -> str:
+    partes = [f'Tópico de pesquisa do estudante: "{topic}"']
+    if contexto:
+        partes.append(f"Contexto adicional:\n{contexto[:4000]}")
+    partes.append(build_references_block(references))
+    partes.append("Gere a sugestão conforme o processo descrito, citando só referências fornecidas.")
+    return "\n\n".join(partes)

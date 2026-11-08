@@ -513,6 +513,35 @@ services:
     mem_limit: 1536m
     restart: unless-stopped
 
+  # ── HOST DE MOTORES PYTHON (research-engine) — perfil "motores": NÃO sobe no deploy enxuto ──
+  #    Contrato /motor/v1 (research-engine/README.md) consumido pelo adaptador motorHttp do
+  #    lib/orquestra/: o web fala http://research-engine:8002. Interno (expose, sem ports).
+  #    Credencial do Vertex: GOOGLE_CREDENTIALS, que vive no .env.secrets (por isso os dois env_file).
+  #    MOTOR_TOKEN (opcional, no .env) liga o Bearer obrigatório — o web manda o mesmo valor.
+  #    Ligar: docker compose -f docker-compose.beta.yml --profile motores up -d --build research-engine
+  research-engine:
+    build: { context: ./research-engine, dockerfile: Dockerfile }
+    container_name: zaeon_research_engine
+    profiles: ["motores"]
+    env_file: [.env, .env.secrets]
+    environment:
+      # Vertex por padrão (mesma service account do web); "false" = cai no GEMINI_API_KEY.
+      GOOGLE_GENAI_USE_VERTEXAI: ${RESEARCH_ENGINE_USE_VERTEXAI:-true}
+      # "global": onde o gemini-3.5-flash existe neste projeto (404 em us-central1).
+      GOOGLE_CLOUD_LOCATION: ${GEMINI_TEXT_LOCATION:-global}
+      RESEARCH_ENGINE_MODEL: ${RESEARCH_ENGINE_MODEL:-gemini-3.5-flash}
+    expose: ["8002"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8002/health', timeout=5).status==200 else 1)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits: { memory: 384m }
+
   # ── GATEWAY de LLM (LiteLLM, PR-G1) — perfil "gateway": NÃO sobe no deploy enxuto por acidente ──
   #    Interno (expose, sem ports): só o web fala http://litellm:4000. UI /ui só por ssh -L.
   #    Redis = este serviço redis (TCP; LiteLLM não fala Upstash REST). Config versionada em infra/.

@@ -71,17 +71,25 @@ def test_gap_score_below_zero_fails():
         )
 
 
-def test_ref_item_invalid_source_fails():
-    with pytest.raises(ValidationError):
-        RefItem(
-            source="Web",
-            title="T",
-            authors="A",
-            year="2022",
-            venue="V",
-        )
+def test_ref_item_unknown_source_is_lenient():
+    # Antes derrubava a resposta inteira (422); agora vira "outro".
+    ref = RefItem(source="Web", title="T", authors="A", year="2022", venue="V")
+    assert ref.source == "outro"
 
 
 def test_suggest_request_whitespace_topic_fails():
     with pytest.raises(ValidationError):
         SuggestRequest(topic="   ", level="grad")
+
+
+def test_suggest_request_references_optional():
+    req = SuggestRequest(topic="algo", level="phd", references=[{"title": "Paper real", "year": 2020}])
+    assert req.references[0].year == "2020" and req.references[0].source == "outro"
+    assert SuggestRequest(topic="algo", level="phd").references is None
+
+
+def test_suggest_response_default_status():
+    resp = SuggestResponse(
+        suggestion=SuggestionItem(type="Pioneira", title="T", rationale="R", novelty_angle="N", gap_score=0.9)
+    )
+    assert resp.references == [] and resp.references_status == "ausentes"
