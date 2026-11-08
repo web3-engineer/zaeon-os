@@ -21,11 +21,10 @@ struct RotaTarefa: Hashable {
 @MainActor
 @Observable
 final class EstadoApp {
-    // MARK: Configuração (URL e token no Keychain; DEMO no UserDefaults)
+    // MARK: Configuração (URL e token no Keychain). SEM modo DEMO: o console só mostra dado real da Zaeon.
 
     var urlServidor: String
     var token: String
-    var demo: Bool
 
     // MARK: Dados
 
@@ -46,45 +45,41 @@ final class EstadoApp {
     /// Intervalo do auto-refresh do painel.
     static let intervaloPainel: Duration = .seconds(10)
 
-    private static let chaveDemo = "zaeon.hermes.demo"
+    /// o servidor de produção da Zaeon — o padrão quando nada foi salvo ainda
+    static let urlPadrao = "https://zaeon.com.br"
 
     init() {
-        let url = Keychain.ler(.url) ?? ""
+        let url = Keychain.ler(.url).flatMap { $0.isEmpty ? nil : $0 } ?? Self.urlPadrao
         let token = Keychain.ler(.token) ?? ""
         self.urlServidor = url
         self.token = token
-        // Sem credencial salva, o app abre em DEMO: dá para ver tudo sem servidor.
-        let demoSalvo = UserDefaults.standard.object(forKey: Self.chaveDemo) as? Bool
-        let demo = demoSalvo ?? token.isEmpty
-        self.demo = demo
-        self.fonte = Self.criarFonte(demo: demo, url: url, token: token)
+        // o modo DEMO das versões anteriores saiu: limpa a preferência antiga pra ela não voltar
+        UserDefaults.standard.removeObject(forKey: "zaeon.hermes.demo")
+        self.fonte = Self.criarFonte(url: url, token: token)
     }
 
-    private static func criarFonte(demo: Bool, url: String, token: String) -> any FonteHermes {
-        if demo { return FonteDemo() }
-        if let c = try? APIClient(urlServidor: url, token: token) { return c }
-        return FonteDemo()
+    /// Sem URL/token válidos não há fonte de dados — nunca dados de exemplo no lugar.
+    private static func criarFonte(url: String, token: String) -> any FonteHermes {
+        if !token.isEmpty, let c = try? APIClient(urlServidor: url, token: token) { return c }
+        return FonteDesconectada()
     }
 
-    /// `nil` quando a configuração atual consegue falar com um servidor (ou está em DEMO).
+    /// `nil` quando a configuração atual consegue falar com o servidor.
     var problemaConfiguracao: String? {
-        if demo { return nil }
         if APIClient.normalizarURL(urlServidor) == nil { return "Configure a URL do servidor em Configurações." }
         if token.isEmpty { return "Configure o token (ORQUESTRA_CONSOLE_TOKEN) em Configurações." }
         return nil
     }
 
     /// Salva no Keychain e troca a fonte de dados.
-    func salvarConfiguracao(url: String, token: String, demo: Bool) {
+    func salvarConfiguracao(url: String, token: String) {
         let urlNormal = APIClient.normalizarURL(url)?.absoluteString ?? url.trimmingCharacters(in: .whitespacesAndNewlines)
         let tokenLimpo = token.trimmingCharacters(in: .whitespacesAndNewlines)
         Keychain.gravar(urlNormal, em: .url)
         Keychain.gravar(tokenLimpo, em: .token)
-        UserDefaults.standard.set(demo, forKey: Self.chaveDemo)
         self.urlServidor = urlNormal
         self.token = tokenLimpo
-        self.demo = demo
-        self.fonte = Self.criarFonte(demo: demo, url: urlNormal, token: tokenLimpo)
+        self.fonte = Self.criarFonte(url: urlNormal, token: tokenLimpo)
         self.painel = nil
         self.erro = nil
         self.caminho = []
@@ -103,7 +98,7 @@ final class EstadoApp {
         let f = fonte
         do {
             let p = try await f.painel()
-            // a fonte pode ter mudado enquanto esperávamos (troca de DEMO/servidor)
+            // a fonte pode ter mudado enquanto esperávamos (troca de servidor/token)
             guard (f as AnyObject) === (fonte as AnyObject) else { return }
             painel = p
             erro = nil
@@ -195,4 +190,15 @@ final class EstadoArena {
             self?.acompanhando = false
         }
     }
+}
+
+/// A fonte quando o console ainda não foi conectado: toda chamada falha com o motivo — nunca devolve dado inventado.
+struct FonteDesconectada: FonteHermes {
+    private var erro: ErroAPI { .naoAutorizado }
+    func painel() async throws -> Painel { throw erro }
+    func tarefas(motor: String?, status: StatusTarefa?, limite: Int?) async throws -> [ResumoTarefa] { throw erro }
+    func tarefa(id: String) async throws -> TarefaDetalhe { throw erro }
+    func arena(_ pedido: PedidoArena) async throws -> [String] { throw erro }
+    func exportar(desde: Date?) async throws -> ResultadoExportacao { throw erro }
+    func saude(horas: Int) async throws -> SaudeChat { throw erro }
 }

@@ -19,9 +19,9 @@ faixa é o **motor** (`aura`, `deepseek-v4-profundo`, `tongyi-deepresearch`, `ki
 | **Tarefa** | Resumo e decisão do roteador; abas **Texto** (markdown final, com cada `[E#]` clicável abrindo a evidência ao lado; chave sem evidência fica em vermelho), **Linha do tempo** (eventos com tempo relativo e intervalo), **Subagentes** (árvore orquestrador → subagentes → chamadas de ferramenta, com as evidências de cada um), **Evidências** (tabela com chave, afirmação, fonte clicável, ferramenta e agente) e **Ledger** (cada chamada de LLM com modelo, provedor, fase, tokens, tempo, ok/erro e custo, com totais). Enquanto a tarefa roda, recarrega a cada 3 s. |
 | **Datasets** | Nome, tipo, fonte, licença, documentos, trechos e se está conectado (— quando o banco do RAG não respondeu). |
 | **Arena** | Objetivo, intent, kind opcional e até 4 motores → `POST /arena`. As tarefas criadas aparecem lado a lado e se atualizam por polling, com selo para a mais rápida, a mais barata e a de maior cobertura; cada uma abre a trilha completa. |
-| **Configurações** | URL do servidor e token (no Keychain), modo DEMO, "Testar conexão" e "Exportar trajetórias para o Hugging Face" (`POST /exportar`). |
+| **Configurações** | URL do servidor (padrão `https://zaeon.com.br`) e token (no Keychain), "Testar conexão" e "Exportar trajetórias para o Hugging Face" (`POST /exportar`). |
 
-Barra de ferramentas: selo DEMO, modo da orquestra (`off`/`sombra`/`on`), tarefas em voo e
+Barra de ferramentas: modo da orquestra (`off`/`sombra`/`on`), tarefas em voo e
 atualizar (⌘R). O painel se atualiza sozinho a cada 10 s. Não há tela de carregamento: o app abre
 direto na interface e os carregamentos aparecem dentro dos cards.
 
@@ -50,13 +50,11 @@ swift test                   # testes do HermesCore
 UNIVERSAL=1 ./scripts/empacotar.sh   # arm64 + x86_64 (Macs Intel)
 ```
 
-## Modo DEMO
+## Só dado real
 
-Sem credencial salva, o app abre em **DEMO**: os dados vêm das fixtures em
-`Sources/HermesCore/Resources/fixtures/` (5 motores, 5 datasets, 11 tarefas, uma tarefa de enxame
-com 3 subagentes, evidências e ledger completos). A arena funciona no DEMO: cria tarefas falsas que
-terminam em alguns segundos, para ver o polling. A saúde do chat usa `saude.json` (24 h, 312 turnos);
-para 1 h e 7 d o DEMO recorta/repete a série e escala os totais. Liga e desliga em Configurações.
+O app **não tem modo DEMO**: abre apontando para `https://zaeon.com.br` e, sem token, mostra só o pedido de
+conexão — nunca dados de exemplo. As fixtures em `Sources/HermesCore/Resources/fixtures/` (e a `FonteDemo`)
+existem só para os testes do HermesCore.
 
 ## Ligar o console no servidor
 
@@ -67,7 +65,7 @@ O app fala com `GET/POST /api/admin/orquestra/*` mandando `Authorization: Bearer
    ```
 2. Refaça o deploy (rerun do último `deploy.yml`).
 3. No app, em Configurações: URL (`https://…` ou `http://localhost:3000` em dev), o mesmo token,
-   desligue o DEMO, **Salvar** e **Testar conexão**.
+   **Salvar** e **Testar conexão**.
 
 Sem a variável no servidor, o caminho por token fica desligado (só a sessão de super-admin entra) e o
 app recebe `401`. A exportação para o Hugging Face exige `HF_DATASETS_TOKEN` e `HF_DATASETS_ORG` no
@@ -86,7 +84,7 @@ Sources/HermesCore/                 # compila em macOS e Linux, sem SwiftUI/AppK
   Quadro.swift Estatisticas.swift   # kanban, filtros, métricas, arena
   Trilha.swift Formatacao.swift     # linha do tempo, árvore de subagentes, ledger, texto com [E#]
   Saude.swift                       # saúde do chat: modelos, tons, critérios de "bom"
-  Fixtures.swift                    # fixtures + FonteDemo
+  Fixtures.swift                    # fixtures + FonteDemo (só testes)
   Resources/fixtures/*.json
 Sources/ZaeonHermes/                # SwiftUI (macOS)
   Resources/zaeon-name.png          # o letreiro original (cópia de app/zaeon-name.png)

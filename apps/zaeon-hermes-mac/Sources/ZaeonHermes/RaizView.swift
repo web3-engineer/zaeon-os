@@ -30,14 +30,10 @@ struct RaizView: View {
         }
     }
 
-    /// Barra de ferramentas: selo DEMO, modo da orquestra, tarefas em voo e atualizar.
+    /// Barra de ferramentas: modo da orquestra, tarefas em voo e atualizar.
     @ToolbarContentBuilder
     private var barraFerramentas: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
-            if estado.demo {
-                Pilula(texto: "DEMO", cor: Marca.azul, icone: "play.rectangle", cheia: true)
-                    .help("Modo DEMO: dados das fixtures, sem servidor.")
-            }
             if let modo = estado.painel?.modo {
                 Pilula(texto: "modo \(modo.bruto.isEmpty ? "?" : modo.bruto)", cor: modo.cor, icone: "dial.medium")
                     .help(modo.descricao)
@@ -161,9 +157,7 @@ private struct RodapeBarraLateral: View {
                 Circle().fill(estado.erro == nil ? Color.green : Color.orange).frame(width: 6, height: 6)
             }
             Group {
-                if estado.demo {
-                    Text("DEMO · fixtures locais")
-                } else if let d = estado.ultimaAtualizacao {
+                if let d = estado.ultimaAtualizacao {
                     Text("Atualizado \(Fmt.ha(d))")
                 } else {
                     Text("Conectando…")

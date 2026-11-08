@@ -52,8 +52,8 @@ struct SaudeView: View {
         }
         .background(Marca.gradienteSuave.opacity(0.25))
         .navigationTitle("Saúde do chat")
-        // muda a janela, o DEMO ou o servidor → recomeça o laço (e cancela o anterior)
-        .task(id: "\(janela.rawValue)|\(estado.demo)|\(estado.urlServidor)|\(estado.token.count)") { await ciclo() }
+        // muda a janela ou o servidor → recomeça o laço (e cancela o anterior)
+        .task(id: "\(janela.rawValue)|\(estado.urlServidor)|\(estado.token.count)") { await ciclo() }
     }
 
     private var colunasCartoes: [GridItem] {

@@ -1,13 +1,12 @@
 import HermesCore
 import SwiftUI
 
-/// Servidor + token (Keychain), modo DEMO, teste de conexão e exportação para o Hugging Face.
+/// Servidor + token (Keychain), teste de conexão e exportação para o Hugging Face. Só dado real — sem DEMO.
 struct ConfiguracoesView: View {
     @Environment(EstadoApp.self) private var estado
 
     @State private var url = ""
     @State private var token = ""
-    @State private var demo = true
     @State private var carregou = false
 
     @State private var testando = false
@@ -40,14 +39,11 @@ struct ConfiguracoesView: View {
             }
 
             Section {
-                TextField("URL do servidor", text: $url, prompt: Text("https://zaeon.space ou http://localhost:3000"))
-                    .disabled(demo)
+                TextField("URL do servidor", text: $url, prompt: Text(EstadoApp.urlPadrao))
                 SecureField("Token do console", text: $token, prompt: Text("ORQUESTRA_CONSOLE_TOKEN (32+ caracteres)"))
-                    .disabled(demo)
-                Toggle("Modo DEMO (fixtures locais, sem servidor)", isOn: $demo)
                 HStack(spacing: 10) {
                     Button("Salvar") {
-                        estado.salvarConfiguracao(url: url, token: token, demo: demo)
+                        estado.salvarConfiguracao(url: url, token: token)
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(Marca.azul)
@@ -59,7 +55,7 @@ struct ConfiguracoesView: View {
                     } label: {
                         Label("Testar conexão", systemImage: "antenna.radiowaves.left.and.right")
                     }
-                    .disabled(testando || (!demo && (APIClient.normalizarURL(url) == nil || token.isEmpty)))
+                    .disabled(testando || APIClient.normalizarURL(url) == nil || token.isEmpty)
 
                     if testando { ProgressView().controlSize(.small) }
                     Spacer()
@@ -69,7 +65,7 @@ struct ConfiguracoesView: View {
                 } else if case .erro(let m)? = resultadoTeste {
                     Label(m, systemImage: "xmark.octagon.fill").foregroundStyle(.red)
                 }
-                if !token.isEmpty && token.count < 32 && !demo {
+                if !token.isEmpty && token.count < 32 {
                     Label("O servidor exige pelo menos 32 caracteres no ORQUESTRA_CONSOLE_TOKEN.", systemImage: "exclamationmark.triangle")
                         .font(.caption).foregroundStyle(.orange)
                 }
@@ -138,13 +134,12 @@ struct ConfiguracoesView: View {
             guard !carregou else { return }
             url = estado.urlServidor
             token = estado.token
-            demo = estado.demo
             carregou = true
         }
     }
 
     private var mudou: Bool {
-        url != estado.urlServidor || token != estado.token || demo != estado.demo
+        url != estado.urlServidor || token != estado.token
     }
 
     /// Testa com o que está no formulário (antes de salvar).
@@ -153,20 +148,16 @@ struct ConfiguracoesView: View {
         resultadoTeste = nil
         defer { testando = false }
         let fonte: any FonteHermes
-        if demo {
-            fonte = FonteDemo()
-        } else {
-            do {
-                fonte = try APIClient(urlServidor: url, token: token)
-            } catch {
-                resultadoTeste = .erro((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
-                return
-            }
+        do {
+            fonte = try APIClient(urlServidor: url, token: token)
+        } catch {
+            resultadoTeste = .erro((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+            return
         }
         do {
             let p = try await fonte.painel()
             let disp = p.motores.filter(\.disponivel).count
-            resultadoTeste = .ok("Conectado\(demo ? " (DEMO)" : ""): modo \(p.modo.bruto), \(disp)/\(p.motores.count) motores disponíveis, "
+            resultadoTeste = .ok("Conectado: modo \(p.modo.bruto), \(disp)/\(p.motores.count) motores disponíveis, "
                 + "\(p.tarefas.count) tarefas, \(p.emVoo) em voo.")
         } catch {
             resultadoTeste = .erro((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
