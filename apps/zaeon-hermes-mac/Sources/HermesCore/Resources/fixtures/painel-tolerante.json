@@ -1,0 +1,139 @@
+{
+  "geradoEm": "2026-11-08T05:00:00Z",
+  "modo": "turbo",
+  "emVoo": null,
+  "config": {
+    "planoMinimo": null,
+    "subagentesPro": null,
+    "subagentesMax": "12",
+    "maxSimultaneas": 2,
+    "prazoProfundoMs": null,
+    "prazoEnxameMs": 480000.0,
+    "sorteio": null,
+    "verificador": "parcial",
+    "motorForcado": "kimi-enxame",
+    "campoNovo": {
+      "x": 1
+    }
+  },
+  "motores": [
+    {
+      "id": "http:storm",
+      "nome": "STORM (research-engine)",
+      "origem": "stanford",
+      "formato": "hibrido",
+      "descricao": null,
+      "disponivel": null,
+      "modelos": [
+        {
+          "id": "mistral-large",
+          "nome": null,
+          "familia": null,
+          "rotas": null,
+          "preco": null
+        }
+      ],
+      "ferramentas": null,
+      "datasets": [
+        "rag:area:direito"
+      ],
+      "prompt": null,
+      "metricas": {
+        "tarefas": 0,
+        "concluidas": null,
+        "fallbacks": null,
+        "degradadas": null,
+        "msP50": null,
+        "msP90": null,
+        "custoMedioUsd": null,
+        "custoTotalUsd": null,
+        "citacoesInventadas": null,
+        "coberturaMedia": null,
+        "subagentesMedia": null
+      }
+    },
+    {
+      "id": "aura",
+      "nome": "Aura",
+      "origem": "zaeon",
+      "formato": "unico",
+      "disponivel": true,
+      "modelos": [],
+      "ferramentas": [],
+      "datasets": [],
+      "prompt": "…",
+      "metricas": null
+    }
+  ],
+  "datasets": [
+    {
+      "id": "s3:dump",
+      "nome": "Dump",
+      "tipo": "s3",
+      "fonte": "?",
+      "licenca": null,
+      "descricao": "",
+      "documentos": null,
+      "trechos": null,
+      "conectado": true
+    }
+  ],
+  "ferramentas": [
+    {
+      "nome": "planilha",
+      "descricao": "Lê planilhas",
+      "risco": "write"
+    }
+  ],
+  "tarefas": [
+    {
+      "id": "6730a1f0c9e77b2a1d4e9fa1",
+      "criadaEm": "2026-11-08T04:00:00Z",
+      "atualizadaEm": null,
+      "status": "pausada",
+      "origem": "api",
+      "motor": "http:storm",
+      "nomeMotor": null,
+      "formato": "hibrido",
+      "intent": "conversa",
+      "plano": null,
+      "objetivo": "Teste tolerante",
+      "ms": "1234",
+      "custoUsd": null,
+      "subagentes": null,
+      "evidencias": null,
+      "citadas": null,
+      "invalidas": null,
+      "cobertura": null,
+      "aprovado": null,
+      "degradado": null
+    },
+    {
+      "criadaEm": "2026-11-08T04:00:00Z",
+      "status": "concluida",
+      "objetivo": "sem id: deve ser pulada"
+    },
+    {
+      "id": "6730a1f0c9e77b2a1d4e9fa2",
+      "criadaEm": "2026-11-08T03:59:59.123456Z",
+      "atualizadaEm": "2026-11-08T04:01:00.5Z",
+      "status": "concluida",
+      "origem": "chat",
+      "motor": "aura",
+      "nomeMotor": "Aura",
+      "formato": "unico",
+      "intent": "explicar_conceito",
+      "plano": "pro",
+      "objetivo": "Data com microssegundos",
+      "ms": 4200.7,
+      "custoUsd": 0.003,
+      "subagentes": 0,
+      "evidencias": 2,
+      "citadas": 2,
+      "invalidas": 0,
+      "cobertura": 1,
+      "aprovado": true,
+      "degradado": false
+    }
+  ]
+}

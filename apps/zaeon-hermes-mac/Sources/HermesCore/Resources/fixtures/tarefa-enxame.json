@@ -1,0 +1,418 @@
+{
+  "tarefa": {
+    "id": "6730a1f0c9e77b2a1d4e9f03",
+    "criadaEm": "2026-11-08T04:41:55.120Z",
+    "atualizadaEm": "2026-11-08T04:47:07.600Z",
+    "status": "concluida",
+    "origem": "chat",
+    "motor": "kimi-enxame",
+    "nomeMotor": "Kimi K2.6 · enxame",
+    "formato": "enxame",
+    "intent": "criar_trabalho",
+    "plano": "max",
+    "objetivo": "Artigo sobre o impacto da telemedicina no acesso à atenção primária em municípios da Amazônia Legal (2018–2025)",
+    "ms": 312480,
+    "custoUsd": 0.4431,
+    "subagentes": 3,
+    "citadas": 8,
+    "invalidas": 0,
+    "cobertura": 0.86,
+    "aprovado": true,
+    "degradado": false,
+    "decisao": {
+      "motor": "kimi-enxame",
+      "formato": "enxame",
+      "motivo": "plano max × criar_trabalho amplo → enxame com até 12 subagentes + verificador global",
+      "maxSubagentes": 12,
+      "prazoMs": 480000,
+      "verificadorGlobal": true
+    },
+    "eventos": [
+      {
+        "t": 0,
+        "fase": "orquestra",
+        "rotulo": "Kimi K2.6 · enxame assumiu este pedido (enxame, até 12 subagentes)",
+        "agente": null
+      },
+      {
+        "t": 4120,
+        "fase": "ferramenta",
+        "rotulo": "literature_search: telemedicina atenção primária Amazônia Legal",
+        "agente": "Kimi K2.6"
+      },
+      {
+        "t": 18650,
+        "fase": "enxame",
+        "rotulo": "Kimi K2.6 criou 3 subagentes (total 3)",
+        "agente": "Kimi K2.6"
+      },
+      {
+        "t": 18702,
+        "fase": "subagente",
+        "rotulo": "subagente 1 · Kimi K2.6: Contexto e marco legal da telessaúde",
+        "agente": "subagente 1 · Kimi K2.6"
+      },
+      {
+        "t": 18710,
+        "fase": "subagente",
+        "rotulo": "subagente 2 · Kimi K2.6: Evidências de efetividade na atenção primária",
+        "agente": "subagente 2 · Kimi K2.6"
+      },
+      {
+        "t": 18731,
+        "fase": "subagente",
+        "rotulo": "subagente 3 · Kimi K2.6: Barreiras de conectividade e infraestrutura",
+        "agente": "subagente 3 · Kimi K2.6"
+      },
+      {
+        "t": 26440,
+        "fase": "ferramenta",
+        "rotulo": "literature_search: Lei 14.510/2022 telessaúde",
+        "agente": "subagente 1 · Kimi K2.6"
+      },
+      {
+        "t": 29180,
+        "fase": "ferramenta",
+        "rotulo": "literature_search: teleconsulta UBS ribeirinhas efetividade",
+        "agente": "subagente 2 · Kimi K2.6"
+      },
+      {
+        "t": 31055,
+        "fase": "ferramenta",
+        "rotulo": "web_search: cobertura 4G municípios Amazonas Anatel 2024",
+        "agente": "subagente 3 · Kimi K2.6"
+      },
+      {
+        "t": 58900,
+        "fase": "ferramenta",
+        "rotulo": "base_conhecimento: Telessaúde Brasil Redes avaliação",
+        "agente": "subagente 1 · Kimi K2.6"
+      },
+      {
+        "t": 74210,
+        "fase": "ferramenta",
+        "rotulo": "literature_search: telemedicine primary care Amazon systematic review",
+        "agente": "subagente 2 · Kimi K2.6"
+      },
+      {
+        "t": 96300,
+        "fase": "ferramenta",
+        "rotulo": "web_search: Programa Norte Conectado infovias",
+        "agente": "subagente 3 · Kimi K2.6"
+      },
+      {
+        "t": 188400,
+        "fase": "orquestra",
+        "rotulo": "3 relatórios recebidos; escrevendo a síntese",
+        "agente": "Kimi K2.6"
+      },
+      {
+        "t": 251020,
+        "fase": "verificador",
+        "rotulo": "Conferindo as citações contra as fontes",
+        "agente": null
+      },
+      {
+        "t": 268400,
+        "fase": "verificador",
+        "rotulo": "Revisando 2 ponto(s) apontado(s) pelo verificador",
+        "agente": null
+      },
+      {
+        "t": 312380,
+        "fase": "orquestra",
+        "rotulo": "Concluído: 8 citações, 0 inventadas, cobertura 86%",
+        "agente": null
+      }
+    ],
+    "evidencias": [
+      {
+        "chave": "E1",
+        "claim": "A Lei 14.510/2022 autoriza e disciplina a prática da telessaúde em todo o território nacional.",
+        "source": {
+          "title": "Lei nº 14.510, de 27 de dezembro de 2022",
+          "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2022/lei/l14510.htm",
+          "authors": "Brasil",
+          "year": 2022
+        },
+        "ferramenta": "literature_search",
+        "agente": "subagente 1 · Kimi K2.6"
+      },
+      {
+        "chave": "E2",
+        "claim": "O Programa Telessaúde Brasil Redes ofereceu teleconsultorias a equipes de atenção primária em mais de 4 mil municípios.",
+        "source": {
+          "title": "Telessaúde Brasil Redes: avaliação de uma década",
+          "url": "https://www.scielo.br/j/csc/a/telessaude-dez-anos",
+          "authors": "Haddad AE; Silva AB",
+          "year": 2021
+        },
+        "ferramenta": "base_conhecimento",
+        "agente": "subagente 1 · Kimi K2.6"
+      },
+      {
+        "chave": "E3",
+        "claim": "Teleconsultorias reduziram em 30% a 60% os encaminhamentos evitáveis para a atenção especializada.",
+        "source": {
+          "title": "Teleconsultation and referral reduction in Brazilian primary care",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/34567890/",
+          "authors": "Marcolino MS et al.",
+          "year": 2023
+        },
+        "ferramenta": "literature_search",
+        "agente": "subagente 2 · Kimi K2.6"
+      },
+      {
+        "chave": "E4",
+        "claim": "Em UBS fluviais do Amazonas, a teleconsulta encurtou o tempo até o diagnóstico de condições crônicas.",
+        "source": {
+          "title": "Teleconsulta em unidades básicas de saúde fluviais",
+          "url": "https://www.scielo.br/j/rsp/a/ubs-fluviais-2024",
+          "authors": "Garnelo L; Lima JG",
+          "year": 2024
+        },
+        "ferramenta": "literature_search",
+        "agente": "subagente 2 · Kimi K2.6"
+      },
+      {
+        "chave": "E5",
+        "claim": "Revisão sistemática encontrou efeito positivo moderado da telemedicina no acesso de populações rurais.",
+        "source": {
+          "title": "Telemedicine for rural primary care: a systematic review",
+          "url": "https://doi.org/10.1016/j.ijmedinf.2022.104812",
+          "authors": "Bashshur RL et al.",
+          "year": 2022
+        },
+        "ferramenta": "literature_search",
+        "agente": "subagente 2 · Kimi K2.6"
+      },
+      {
+        "chave": "E6",
+        "claim": "Em 2024, 38% dos municípios do Amazonas ainda não tinham cobertura 4G em toda a área urbana.",
+        "source": {
+          "title": "Painel de cobertura móvel por município",
+          "url": "https://informacoes.anatel.gov.br/paineis/infraestrutura",
+          "authors": "Anatel",
+          "year": 2024
+        },
+        "ferramenta": "web_search",
+        "agente": "subagente 3 · Kimi K2.6"
+      },
+      {
+        "chave": "E7",
+        "claim": "O Programa Norte Conectado prevê 12 mil km de cabos subfluviais (infovias) ligando 59 municípios.",
+        "source": {
+          "title": "Programa Norte Conectado",
+          "url": "https://www.gov.br/mcom/pt-br/acesso-a-informacao/acoes-e-programas/programas-projetos-acoes-obras-e-atividades/norte-conectado",
+          "authors": "Ministério das Comunicações",
+          "year": 2025
+        },
+        "ferramenta": "web_search",
+        "agente": "subagente 3 · Kimi K2.6"
+      },
+      {
+        "chave": "E8",
+        "claim": "A falta de conectividade estável é a barreira mais citada por profissionais da atenção primária na região Norte.",
+        "source": {
+          "title": "Barreiras à telessaúde na Amazônia: estudo qualitativo",
+          "url": "https://www.scielo.br/j/sausoc/a/barreiras-telessaude",
+          "authors": "Santos FV; Oliveira R",
+          "year": 2023
+        },
+        "ferramenta": "literature_search",
+        "agente": "subagente 3 · Kimi K2.6"
+      },
+      {
+        "chave": "E9",
+        "claim": "O número de teleconsultas registradas no SUS cresceu mais de dez vezes entre 2019 e 2021.",
+        "source": {
+          "title": "Telemedicina no SUS durante a pandemia de COVID-19",
+          "url": "https://www.scielo.br/j/ress/a/telemedicina-pandemia",
+          "authors": "Caetano R et al.",
+          "year": 2022
+        },
+        "ferramenta": "literature_search",
+        "agente": "Kimi K2.6"
+      },
+      {
+        "chave": "E10",
+        "claim": "Dados do e-SUS APS permitem identificar atendimentos remotos por município desde 2020.",
+        "source": {
+          "title": "Nota técnica e-SUS APS: registro de teleatendimento",
+          "url": null,
+          "authors": "Ministério da Saúde",
+          "year": 2020
+        },
+        "ferramenta": "base_conhecimento",
+        "agente": "subagente 1 · Kimi K2.6"
+      }
+    ],
+    "texto": "# Telemedicina e acesso à atenção primária na Amazônia Legal (2018–2025)\n\n## Introdução\n\nA telessaúde ganhou base legal permanente com a Lei 14.510/2022 [E1], depois de uma década de experiência do Programa Telessaúde Brasil Redes na atenção primária [E2]. O uso explodiu durante a pandemia: as teleconsultas registradas no SUS cresceram mais de dez vezes entre 2019 e 2021 [E9].\n\n## Métodos\n\nRevisão narrativa com busca em SciELO, PubMed e documentos oficiais, complementada por dados de conectividade da Anatel e do e-SUS APS [E10].\n\n## Resultados\n\n- **Efetividade:** teleconsultorias reduziram de 30% a 60% os encaminhamentos evitáveis [E3]; em UBS fluviais, encurtaram o tempo até o diagnóstico [E4].\n- **Acesso rural:** a literatura internacional aponta efeito positivo moderado [E5].\n- **Infraestrutura:** 38% dos municípios do Amazonas ainda não tinham 4G em toda a área urbana em 2024 [E6], e a falta de conexão estável é a barreira mais citada [E8].\n\n## Discussão\n\nO ganho de acesso é real, mas desigual: depende de conectividade que só agora chega pelas infovias do Norte Conectado [E7]. Sem ela, a telemedicina reforça a vantagem dos municípios já conectados [E6, E8].\n\n## Conclusão\n\nA telemedicina amplia o acesso à atenção primária na Amazônia Legal quando há rede; a política de saúde precisa andar junto com a de conectividade.\n",
+    "motivo": null,
+    "erro": null,
+    "uso": {
+      "promptTokens": 315421,
+      "completionTokens": 30244,
+      "chamadas": 13,
+      "custoUsd": 0.4431
+    },
+    "ledger": [
+      {
+        "at": "2026-11-08T04:41:59.300Z",
+        "model": "kimi-k2.6",
+        "provedor": "moonshot",
+        "phase": "orquestra",
+        "promptTokens": 6120,
+        "completionTokens": 410,
+        "ms": 3920,
+        "ok": true,
+        "erro": null,
+        "custoUsd": 0.0074
+      },
+      {
+        "at": "2026-11-08T04:42:13.800Z",
+        "model": "kimi-k2.6",
+        "provedor": "moonshot",
+        "phase": "orquestra",
+        "promptTokens": 11840,
+        "completionTokens": 1260,
+        "ms": 9870,
+        "ok": true,
+        "erro": null,
+        "custoUsd": 0.0163
+      },
+      {
+        "at": "2026-11-08T04:42:20.900Z",
+        "model": "kimi-k2.6",
+        "provedor": "moonshot",
+        "phase": "subagente",
+        "promptTokens": 4210,
+        "completionTokens": 0,
+        "ms": 1180,
+        "ok": false,
+        "erro": "429 Too Many Requests (Retry-After 2s)",
+        "custoUsd": 0
+      },
+      {
+        "at": "2026-11-08T04:42:24.100Z",
+        "model": "kimi-k2.6",
+        "provedor": "moonshot",
+        "phase": "subagente",
+        "promptTokens": 4210,
+        "completionTokens": 980,
+        "ms": 6240,
+        "ok": true,
+        "erro": null,
+        "custoUsd": 0.0079
+      },
+      {
+        "at": "2026-11-08T04:42:24.900Z",
+        "model": "kimi-k2.6",
+        "provedor": "moonshot",
+        "phase": "subagente",
+        "promptTokens": 4388,
+        "completionTokens": 1102,
+        "ms": 7050,
+        "ok": true,
+        "erro": null,
+        "custoUsd": 0.0086
+      },
+      {
+        "at": "2026-11-08T04:42:26.700Z",
+        "model": "kimi-k2.6",
+        "provedor": "openrouter",
+        "phase": "subagente",
+        "promptTokens": 4302,
+        "completionTokens": 1043,
+        "ms": 8110,
+        "ok": true,
+        "erro": null,
+        "custoUsd": 0.0083
+      },
+      {
+        "at": "2026-11-08T04:43:35.000Z",
+        "model": "kimi-k2.6",
+        "provedor": "moonshot",
+        "phase": "subagente",
+        "promptTokens": 38650,
+        "completionTokens": 2870,
+        "ms": 31200,
+        "ok": true,
+        "erro": null,
+        "custoUsd": 0.0482
+      },
+      {
+        "at": "2026-11-08T04:43:51.200Z",
+        "model": "kimi-k2.6",
+        "provedor": "moonshot",
+        "phase": "subagente",
+        "promptTokens": 41020,
+        "completionTokens": 3104,
+        "ms": 35800,
+        "ok": true,
+        "erro": null,
+        "custoUsd": 0.0514
+      },
+      {
+        "at": "2026-11-08T04:44:02.600Z",
+        "model": "kimi-k2.6",
+        "provedor": "moonshot",
+        "phase": "subagente",
+        "promptTokens": 39877,
+        "completionTokens": 2955,
+        "ms": 40100,
+        "ok": true,
+        "erro": null,
+        "custoUsd": 0.0497
+      },
+      {
+        "at": "2026-11-08T04:45:58.400Z",
+        "model": "kimi-k2.6",
+        "provedor": "moonshot",
+        "phase": "orquestra",
+        "promptTokens": 52310,
+        "completionTokens": 6840,
+        "ms": 62300,
+        "ok": true,
+        "erro": null,
+        "custoUsd": 0.077
+      },
+      {
+        "at": "2026-11-08T04:46:12.900Z",
+        "model": "deepseek-v4-pro",
+        "provedor": "deepseek",
+        "phase": "verificador",
+        "promptTokens": 24190,
+        "completionTokens": 1320,
+        "ms": 14200,
+        "ok": true,
+        "erro": null,
+        "custoUsd": 0.0434
+      },
+      {
+        "at": "2026-11-08T04:47:05.800Z",
+        "model": "kimi-k2.6",
+        "provedor": "moonshot",
+        "phase": "orquestra",
+        "promptTokens": 58900,
+        "completionTokens": 7720,
+        "ms": 43900,
+        "ok": true,
+        "erro": null,
+        "custoUsd": 0.0868
+      },
+      {
+        "at": "2026-11-08T04:47:07.100Z",
+        "model": "deepseek-v4-pro",
+        "provedor": "deepseek",
+        "phase": "verificador",
+        "promptTokens": 25404,
+        "completionTokens": 640,
+        "ms": 9900,
+        "ok": true,
+        "erro": null,
+        "custoUsd": 0.0381
+      }
+    ]
+  }
+}

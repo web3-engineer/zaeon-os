@@ -1,0 +1,688 @@
+{
+  "geradoEm": "2026-11-08T05:00:00.000Z",
+  "modo": "sombra",
+  "emVoo": 2,
+  "config": {
+    "planoMinimo": "max",
+    "subagentesPro": 4,
+    "subagentesMax": 12,
+    "maxSimultaneas": 2,
+    "prazoProfundoMs": 240000,
+    "prazoEnxameMs": 480000,
+    "sorteio": false,
+    "verificador": "max",
+    "motorForcado": null
+  },
+  "motores": [
+    {
+      "id": "aura",
+      "nome": "Aura",
+      "origem": "zaeon",
+      "formato": "unico",
+      "descricao": "O harness de hoje: classify → plano → coleta → rascunho → crítica. Atende todo pedido curto e assume quando outro motor falha.",
+      "disponivel": true,
+      "modelos": [
+        {
+          "id": "gemini-2.5-pro",
+          "nome": "Gemini 2.5 Pro",
+          "familia": "google",
+          "rotas": [
+            {
+              "provedor": "vertex",
+              "modelo": "gemini-2.5-pro",
+              "configurado": true
+            }
+          ],
+          "preco": {
+            "prompt": 1.25,
+            "completion": 10.0,
+            "cached": 0.31
+          }
+        },
+        {
+          "id": "gemini-2.5-flash",
+          "nome": "Gemini 2.5 Flash",
+          "familia": "google",
+          "rotas": [
+            {
+              "provedor": "vertex",
+              "modelo": "gemini-2.5-flash",
+              "configurado": true
+            }
+          ],
+          "preco": {
+            "prompt": 0.3,
+            "completion": 2.5,
+            "cached": 0.075
+          }
+        }
+      ],
+      "ferramentas": [
+        "literature_search",
+        "web_search",
+        "base_conhecimento",
+        "memoria"
+      ],
+      "datasets": [
+        "rag:area:medicina",
+        "rag:area:engenharia",
+        "rag:turma",
+        "rag:pessoal",
+        "hf:scielo-pt"
+      ],
+      "prompt": "Você é a Aura, a tutora acadêmica da Zaeon.\n\nFluxo: classify → plano → coleta → rascunho → crítica.\nContexto do aluno: Engenharia Civil · 6º período · plano PLUS.\nPedido de exemplo: \"Explique o que é módulo de elasticidade e como ele aparece no ensaio de tração.\"\n\n- Responda em português do Brasil, em linguagem clara, com exemplos do curso.\n- Cite as fontes com as chaves [E#] que as ferramentas devolverem; nunca invente referência.\n- Se o pedido for um trabalho, siga as normas ABNT do perfil do aluno.",
+      "metricas": {
+        "tarefas": 38,
+        "concluidas": 37,
+        "fallbacks": 0,
+        "degradadas": 1,
+        "msP50": 9800,
+        "msP90": 24100,
+        "custoMedioUsd": 0.0083,
+        "custoTotalUsd": 0.3154,
+        "citacoesInventadas": 0,
+        "coberturaMedia": 0.74,
+        "subagentesMedia": 0
+      }
+    },
+    {
+      "id": "deepseek-v4-profundo",
+      "nome": "DeepSeek V4 Pro · profundo",
+      "origem": "deepseek",
+      "formato": "profundo",
+      "descricao": "DeepSeek V4 Pro, ReAct com function-calling nativo e raciocínio mantido entre as chamadas, até 30 passos.",
+      "disponivel": true,
+      "modelos": [
+        {
+          "id": "deepseek-v4-pro",
+          "nome": "DeepSeek V4 Pro",
+          "familia": "deepseek",
+          "rotas": [
+            {
+              "provedor": "deepseek",
+              "modelo": "deepseek-v4-pro",
+              "configurado": true
+            },
+            {
+              "provedor": "openrouter",
+              "modelo": "deepseek/deepseek-v4-pro",
+              "configurado": true
+            }
+          ],
+          "preco": {
+            "prompt": 1.25,
+            "completion": 10.0,
+            "cached": 0.125
+          }
+        }
+      ],
+      "ferramentas": [
+        "literature_search",
+        "web_search",
+        "base_conhecimento",
+        "ler_documento"
+      ],
+      "datasets": [
+        "rag:area:medicina",
+        "rag:area:engenharia",
+        "rag:turma",
+        "rag:pessoal"
+      ],
+      "prompt": "Você é o DeepSeek V4 Pro em modo profundo (ReAct com function-calling nativo, até 30 passos).\n\nTarefa: revisar o capítulo de metodologia enviado pelo aluno (plano MAX · intent revisar).\nFerramentas: literature_search, web_search, base_conhecimento, ler_documento.\nMantenha o raciocínio entre as chamadas. Toda correção que dependa de literatura precisa de [E#].\nEntregue: (1) problemas encontrados, por gravidade; (2) sugestões de reescrita; (3) referências.",
+      "metricas": {
+        "tarefas": 12,
+        "concluidas": 11,
+        "fallbacks": 1,
+        "degradadas": 0,
+        "msP50": 97400,
+        "msP90": 188000,
+        "custoMedioUsd": 0.118,
+        "custoTotalUsd": 1.416,
+        "citacoesInventadas": 1,
+        "coberturaMedia": 0.89,
+        "subagentesMedia": 0
+      }
+    },
+    {
+      "id": "tongyi-deepresearch",
+      "nome": "Tongyi DeepResearch 30B",
+      "origem": "alibaba",
+      "formato": "profundo",
+      "descricao": "Tongyi DeepResearch 30B-A3B (Apache-2.0, RL para pesquisa longa) via OpenRouter, até 40 passos.",
+      "disponivel": true,
+      "modelos": [
+        {
+          "id": "tongyi-deepresearch-30b",
+          "nome": "Tongyi DeepResearch 30B-A3B",
+          "familia": "qwen",
+          "rotas": [
+            {
+              "provedor": "openrouter",
+              "modelo": "alibaba/tongyi-deepresearch-30b-a3b",
+              "configurado": true
+            },
+            {
+              "provedor": "dashscope",
+              "modelo": "tongyi-deepresearch-30b-a3b",
+              "configurado": false
+            }
+          ],
+          "preco": {
+            "prompt": 0.09,
+            "completion": 0.4,
+            "cached": null
+          }
+        }
+      ],
+      "ferramentas": [
+        "literature_search",
+        "web_search",
+        "base_conhecimento"
+      ],
+      "datasets": [
+        "rag:area:medicina",
+        "rag:turma",
+        "hf:scielo-pt"
+      ],
+      "prompt": "Você é o Tongyi DeepResearch 30B-A3B (Alibaba, Apache-2.0), agente de pesquisa longa.\n\nTarefa: levantar fontes sobre o pedido do aluno (plano MAX · intent pesquisar_fontes).\nAté 40 passos. Use <tool_call> no formato de function-calling recebido.\nPara cada fonte: título, autores, ano, link e por que ela importa. Chaves [E#] obrigatórias.",
+      "metricas": {
+        "tarefas": 9,
+        "concluidas": 6,
+        "fallbacks": 3,
+        "degradadas": 1,
+        "msP50": 186300,
+        "msP90": 241000,
+        "custoMedioUsd": 0.071,
+        "custoTotalUsd": 0.639,
+        "citacoesInventadas": 5,
+        "coberturaMedia": 0.68,
+        "subagentesMedia": 0
+      }
+    },
+    {
+      "id": "kimi-enxame",
+      "nome": "Kimi K2.6 · enxame",
+      "origem": "moonshot",
+      "formato": "enxame",
+      "descricao": "Kimi K2.6 como orquestrador criando subagentes Kimi em paralelo (runtime de enxame da Zaeon: delegar, contexto isolado, registro de evidência único).",
+      "disponivel": true,
+      "modelos": [
+        {
+          "id": "kimi-k2.6",
+          "nome": "Kimi K2.6",
+          "familia": "moonshot",
+          "rotas": [
+            {
+              "provedor": "moonshot",
+              "modelo": "kimi-k2.6",
+              "configurado": true
+            },
+            {
+              "provedor": "openrouter",
+              "modelo": "moonshotai/kimi-k2.6",
+              "configurado": true
+            }
+          ],
+          "preco": {
+            "prompt": 0.95,
+            "completion": 4.0,
+            "cached": 0.16
+          }
+        }
+      ],
+      "ferramentas": [
+        "literature_search",
+        "web_search",
+        "base_conhecimento",
+        "delegar"
+      ],
+      "datasets": [
+        "rag:area:medicina",
+        "rag:area:engenharia",
+        "rag:turma",
+        "rag:pessoal",
+        "hf:scielo-pt"
+      ],
+      "prompt": "Você é o Kimi K2.6, orquestrador de um enxame de pesquisa acadêmica da Zaeon.\n\nTarefa do aluno (plano MAX · intent criar_trabalho · kind artigo):\n\"Artigo sobre o impacto da telemedicina no acesso à atenção primária em municípios da Amazônia Legal (2018–2025)\"\n\nRegras:\n1. Decomponha o pedido em partes independentes e use a ferramenta `delegar` (até 12 subagentes no total).\n2. Cada subagente tem contexto isolado: escreva instruções completas, com o recorte e o tipo de fonte.\n3. Toda afirmação factual precisa de uma chave [E#] devolvida por uma ferramenta. Chave inventada é cortada.\n4. Prefira SciELO, PubMed, CAPES e documentos oficiais (Ministério da Saúde, DATASUS).\n5. Escreva a entrega final em português do Brasil, em ABNT, com seções: Introdução, Métodos, Resultados, Discussão, Conclusão.\n6. Prazo de relógio: 480 s. Ao receber os relatórios, sintetize; não delegue de novo o que já voltou.",
+      "metricas": {
+        "tarefas": 14,
+        "concluidas": 11,
+        "fallbacks": 1,
+        "degradadas": 2,
+        "msP50": 312480,
+        "msP90": 455000,
+        "custoMedioUsd": 0.43,
+        "custoTotalUsd": 6.02,
+        "citacoesInventadas": 2,
+        "coberturaMedia": 0.84,
+        "subagentesMedia": 4.6
+      }
+    },
+    {
+      "id": "enxame-misto",
+      "nome": "Enxame misto",
+      "origem": "zaeon",
+      "formato": "enxame",
+      "descricao": "Orquestrador (Kimi ou DeepSeek) + subagentes de laboratórios diferentes em rodízio.",
+      "disponivel": false,
+      "modelos": [
+        {
+          "id": "deepseek-v4-pro",
+          "nome": "DeepSeek V4 Pro",
+          "familia": "deepseek",
+          "rotas": [
+            {
+              "provedor": "deepseek",
+              "modelo": "deepseek-v4-pro",
+              "configurado": true
+            }
+          ],
+          "preco": {
+            "prompt": 1.25,
+            "completion": 10.0,
+            "cached": 0.125
+          }
+        },
+        {
+          "id": "deepseek-v4-flash",
+          "nome": "DeepSeek V4 Flash",
+          "familia": "deepseek",
+          "rotas": [
+            {
+              "provedor": "deepseek",
+              "modelo": "deepseek-v4-flash",
+              "configurado": true
+            }
+          ],
+          "preco": {
+            "prompt": 0.27,
+            "completion": 1.1,
+            "cached": 0.07
+          }
+        },
+        {
+          "id": "qwen3-235b",
+          "nome": "Qwen3 235B",
+          "familia": "qwen",
+          "rotas": [
+            {
+              "provedor": "dashscope",
+              "modelo": "qwen3-235b-a22b",
+              "configurado": false
+            },
+            {
+              "provedor": "openrouter",
+              "modelo": "qwen/qwen3-235b-a22b",
+              "configurado": false
+            }
+          ],
+          "preco": {
+            "prompt": 0.2,
+            "completion": 0.6,
+            "cached": null
+          }
+        }
+      ],
+      "ferramentas": [
+        "literature_search",
+        "web_search",
+        "base_conhecimento",
+        "delegar"
+      ],
+      "datasets": [
+        "rag:area:medicina",
+        "rag:area:engenharia",
+        "rag:turma",
+        "rag:pessoal",
+        "hf:scielo-pt"
+      ],
+      "prompt": "Você é o orquestrador do Enxame misto da Zaeon (orquestrador: DeepSeek V4 Pro).\n\nOs subagentes vêm de laboratórios diferentes, em rodízio: Kimi K2.6, DeepSeek V4 Flash, Qwen3 235B.\nUse `delegar` para dividir o trabalho (até 12 subagentes). O registro de evidência é único e compartilhado.\nToda afirmação precisa de [E#]. Ao final, o verificador global lê o texto contra as evidências.",
+      "metricas": {
+        "tarefas": 4,
+        "concluidas": 2,
+        "fallbacks": 2,
+        "degradadas": 0,
+        "msP50": 402100,
+        "msP90": 471000,
+        "custoMedioUsd": 0.58,
+        "custoTotalUsd": 2.32,
+        "citacoesInventadas": 1,
+        "coberturaMedia": 0.81,
+        "subagentesMedia": 6.5
+      }
+    }
+  ],
+  "datasets": [
+    {
+      "id": "rag:area:medicina",
+      "nome": "Área · medicina",
+      "tipo": "rag-area",
+      "fonte": "SciELO pt + Wikipédia pt + rhaymison/medicine-*",
+      "licenca": "CC-BY-4.0 / CC-BY-SA / Apache-2.0",
+      "descricao": "Base da área de saúde, em português.",
+      "documentos": 18342,
+      "trechos": 412907,
+      "conectado": true
+    },
+    {
+      "id": "rag:area:engenharia",
+      "nome": "Área · engenharia",
+      "tipo": "rag-area",
+      "fonte": "SciELO pt (engenharias) + normas abertas",
+      "licenca": "CC-BY-4.0",
+      "descricao": "Artigos de engenharia civil, elétrica e mecânica.",
+      "documentos": 7410,
+      "trechos": 158230,
+      "conectado": true
+    },
+    {
+      "id": "rag:turma",
+      "nome": "Turma",
+      "tipo": "rag-turma",
+      "fonte": "Material enviado pelos professores da turma",
+      "licenca": "Privado (por turma)",
+      "descricao": "Só a turma do aluno enxerga.",
+      "documentos": 1287,
+      "trechos": 30544,
+      "conectado": true
+    },
+    {
+      "id": "rag:pessoal",
+      "nome": "Pessoal",
+      "tipo": "rag-pessoal",
+      "fonte": "PDFs e anotações do próprio aluno",
+      "licenca": "Privado (por aluno)",
+      "descricao": "Isolado por usuário.",
+      "documentos": null,
+      "trechos": null,
+      "conectado": false
+    },
+    {
+      "id": "hf:scielo-pt",
+      "nome": "SciELO pt (HF)",
+      "tipo": "hf-dataset",
+      "fonte": "hf.co/datasets/zaeon/scielo-pt",
+      "licenca": "CC-BY-4.0",
+      "descricao": "Espelho no Hugging Face usado para avaliação.",
+      "documentos": 96500,
+      "trechos": null,
+      "conectado": true
+    }
+  ],
+  "ferramentas": [
+    {
+      "nome": "literature_search",
+      "descricao": "As 8 bases acadêmicas do Scholar (SciELO, PubMed, CAPES, OpenAlex, …).",
+      "risco": "read"
+    },
+    {
+      "nome": "web_search",
+      "descricao": "Busca na web aberta, com domínio e data de cada resultado.",
+      "risco": "read"
+    },
+    {
+      "nome": "base_conhecimento",
+      "descricao": "RAG da área, da turma e pessoal do aluno.",
+      "risco": "read"
+    },
+    {
+      "nome": "ler_documento",
+      "descricao": "Lê um PDF ou URL inteiro e devolve trechos com página.",
+      "risco": "read"
+    },
+    {
+      "nome": "memoria",
+      "descricao": "Memória do aluno (preferências, curso, trabalhos anteriores).",
+      "risco": "read"
+    },
+    {
+      "nome": "delegar",
+      "descricao": "Cria subagentes em paralelo com contexto isolado (runtime de enxame).",
+      "risco": "read"
+    }
+  ],
+  "tarefas": [
+    {
+      "id": "6730a1f0c9e77b2a1d4e9f01",
+      "criadaEm": "2026-11-08T04:58:12.311Z",
+      "atualizadaEm": "2026-11-08T04:59:40.002Z",
+      "status": "rodando",
+      "origem": "chat",
+      "motor": "kimi-enxame",
+      "nomeMotor": "Kimi K2.6 · enxame",
+      "formato": "enxame",
+      "intent": "criar_trabalho",
+      "plano": "max",
+      "objetivo": "TCC: gestão de resíduos da construção civil em Belém — diagnóstico, legislação municipal e proposta de plano de gerenciamento",
+      "ms": null,
+      "custoUsd": null,
+      "subagentes": null,
+      "evidencias": null,
+      "citadas": null,
+      "invalidas": null,
+      "cobertura": null,
+      "aprovado": null,
+      "degradado": null
+    },
+    {
+      "id": "6730a1f0c9e77b2a1d4e9f02",
+      "criadaEm": "2026-11-08T04:57:03Z",
+      "atualizadaEm": "2026-11-08T04:59:31Z",
+      "status": "rodando",
+      "origem": "arena",
+      "motor": "deepseek-v4-profundo",
+      "nomeMotor": "DeepSeek V4 Pro · profundo",
+      "formato": "profundo",
+      "intent": "revisar",
+      "plano": "max",
+      "objetivo": "Revisar a metodologia de um estudo transversal sobre adesão ao tratamento de hipertensão em UBS de Fortaleza",
+      "ms": null,
+      "custoUsd": null,
+      "subagentes": null,
+      "evidencias": null,
+      "citadas": null,
+      "invalidas": null,
+      "cobertura": null,
+      "aprovado": null,
+      "degradado": null
+    },
+    {
+      "id": "6730a1f0c9e77b2a1d4e9f03",
+      "criadaEm": "2026-11-08T04:41:55.120Z",
+      "atualizadaEm": "2026-11-08T04:47:07.600Z",
+      "status": "concluida",
+      "origem": "chat",
+      "motor": "kimi-enxame",
+      "nomeMotor": "Kimi K2.6 · enxame",
+      "formato": "enxame",
+      "intent": "criar_trabalho",
+      "plano": "max",
+      "objetivo": "Artigo sobre o impacto da telemedicina no acesso à atenção primária em municípios da Amazônia Legal (2018–2025)",
+      "ms": 312480,
+      "custoUsd": 0.4431,
+      "subagentes": 3,
+      "evidencias": 10,
+      "citadas": 8,
+      "invalidas": 0,
+      "cobertura": 0.86,
+      "aprovado": true,
+      "degradado": false
+    },
+    {
+      "id": "6730a1f0c9e77b2a1d4e9f04",
+      "criadaEm": "2026-11-08T04:39:10.004Z",
+      "atualizadaEm": "2026-11-08T04:39:18.424Z",
+      "status": "concluida",
+      "origem": "chat",
+      "motor": "aura",
+      "nomeMotor": "Aura",
+      "formato": "unico",
+      "intent": "explicar_conceito",
+      "plano": "plus",
+      "objetivo": "O que é módulo de elasticidade e como ele aparece no ensaio de tração?",
+      "ms": 8420,
+      "custoUsd": 0.0062,
+      "subagentes": 0,
+      "evidencias": 4,
+      "citadas": 3,
+      "invalidas": 0,
+      "cobertura": 1.0,
+      "aprovado": true,
+      "degradado": false
+    },
+    {
+      "id": "6730a1f0c9e77b2a1d4e9f05",
+      "criadaEm": "2026-11-08T04:20:33.000Z",
+      "atualizadaEm": "2026-11-08T04:23:39.300Z",
+      "status": "concluida",
+      "origem": "arena",
+      "motor": "tongyi-deepresearch",
+      "nomeMotor": "Tongyi DeepResearch 30B",
+      "formato": "profundo",
+      "intent": "pesquisar_fontes",
+      "plano": "max",
+      "objetivo": "Levantar fontes sobre letramento digital de idosos e uso do Meu SUS Digital",
+      "ms": 186300,
+      "custoUsd": 0.093,
+      "subagentes": 0,
+      "evidencias": 22,
+      "citadas": 15,
+      "invalidas": 2,
+      "cobertura": 0.71,
+      "aprovado": true,
+      "degradado": false
+    },
+    {
+      "id": "6730a1f0c9e77b2a1d4e9f06",
+      "criadaEm": "2026-11-08T04:02:47.900Z",
+      "atualizadaEm": "2026-11-08T04:07:02.100Z",
+      "status": "fallback",
+      "origem": "chat",
+      "motor": "tongyi-deepresearch",
+      "nomeMotor": "Tongyi DeepResearch 30B",
+      "formato": "profundo",
+      "intent": "revisar",
+      "plano": "max",
+      "objetivo": "Revisar o referencial teórico do meu TCC sobre evasão no ensino superior a distância",
+      "ms": 254200,
+      "custoUsd": 0.0512,
+      "subagentes": 0,
+      "evidencias": 6,
+      "citadas": 4,
+      "invalidas": 0,
+      "cobertura": 0.58,
+      "aprovado": true,
+      "degradado": true
+    },
+    {
+      "id": "6730a1f0c9e77b2a1d4e9f07",
+      "criadaEm": "2026-11-08T03:31:00.000Z",
+      "atualizadaEm": "2026-11-08T03:37:42.100Z",
+      "status": "concluida",
+      "origem": "arena",
+      "motor": "enxame-misto",
+      "nomeMotor": "Enxame misto",
+      "formato": "enxame",
+      "intent": "criar_trabalho",
+      "plano": "max",
+      "objetivo": "Revisão narrativa: uso de inteligência artificial na correção de redações do ENEM",
+      "ms": 402100,
+      "custoUsd": 0.6118,
+      "subagentes": 7,
+      "evidencias": 38,
+      "citadas": 24,
+      "invalidas": 1,
+      "cobertura": 0.83,
+      "aprovado": true,
+      "degradado": false
+    },
+    {
+      "id": "6730a1f0c9e77b2a1d4e9f08",
+      "criadaEm": "2026-11-08T03:12:19.500Z",
+      "atualizadaEm": "2026-11-08T03:12:34.700Z",
+      "status": "falhou",
+      "origem": "arena",
+      "motor": "kimi-enxame",
+      "nomeMotor": "Kimi K2.6 · enxame",
+      "formato": "enxame",
+      "intent": "pesquisar_fontes",
+      "plano": "max",
+      "objetivo": "Fontes sobre microplásticos em água potável no Brasil",
+      "ms": 15200,
+      "custoUsd": 0.0041,
+      "subagentes": 0,
+      "evidencias": 0,
+      "citadas": 0,
+      "invalidas": 0,
+      "cobertura": 0,
+      "aprovado": false,
+      "degradado": false
+    },
+    {
+      "id": "6730a1f0c9e77b2a1d4e9f09",
+      "criadaEm": "2026-11-08T02:48:06.000Z",
+      "atualizadaEm": "2026-11-08T02:49:43.400Z",
+      "status": "concluida",
+      "origem": "chat",
+      "motor": "deepseek-v4-profundo",
+      "nomeMotor": "DeepSeek V4 Pro · profundo",
+      "formato": "profundo",
+      "intent": "revisar",
+      "plano": "max",
+      "objetivo": "Revisar a análise estatística (qui-quadrado e regressão logística) do capítulo 4",
+      "ms": 97400,
+      "custoUsd": 0.1204,
+      "subagentes": 0,
+      "evidencias": 9,
+      "citadas": 7,
+      "invalidas": 0,
+      "cobertura": 0.92,
+      "aprovado": true,
+      "degradado": false
+    },
+    {
+      "id": "6730a1f0c9e77b2a1d4e9f0a",
+      "criadaEm": "2026-11-08T02:15:44.000Z",
+      "atualizadaEm": "2026-11-08T02:16:05.300Z",
+      "status": "concluida",
+      "origem": "chat",
+      "motor": "aura",
+      "nomeMotor": "Aura",
+      "formato": "unico",
+      "intent": "criar_trabalho",
+      "plano": "free",
+      "objetivo": "Resumo expandido sobre fotossíntese C4 para a feira de ciências",
+      "ms": 21300,
+      "custoUsd": 0.0109,
+      "subagentes": 0,
+      "evidencias": 5,
+      "citadas": 3,
+      "invalidas": 0,
+      "cobertura": 0.64,
+      "aprovado": true,
+      "degradado": false
+    },
+    {
+      "id": "6730a1f0c9e77b2a1d4e9f0b",
+      "criadaEm": "2026-11-08T01:50:12.000Z",
+      "atualizadaEm": "2026-11-08T01:58:12.000Z",
+      "status": "fallback",
+      "origem": "arena",
+      "motor": "enxame-misto",
+      "nomeMotor": "Enxame misto",
+      "formato": "enxame",
+      "intent": "criar_trabalho",
+      "plano": "max",
+      "objetivo": "Artigo: políticas de cotas e desempenho acadêmico em universidades federais",
+      "ms": 480000,
+      "custoUsd": 0.5521,
+      "subagentes": 6,
+      "evidencias": 19,
+      "citadas": 0,
+      "invalidas": 0,
+      "cobertura": 0.42,
+      "aprovado": false,
+      "degradado": true
+    }
+  ]
+}
