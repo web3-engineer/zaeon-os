@@ -1,5 +1,35 @@
 # Handoff · Eiffel, CAD na Zaeon
 
+> **STATUS EM 2026-11-08** — leia isto antes de qualquer coisa.
+>
+> **PRONTO e commitado** na branch `claude/eiffel-cad` (em cima de `8a74789c`, que precisa entrar
+> antes — ver "Dependência de merge" no fim):
+>
+> | arquivo | o que já está lá |
+> |---|---|
+> | `constants/courses.ts` | `"Engenharia Civil"` criado |
+> | `lib/plugins/chatPlugins.ts` | `PluginChat` = `"octa-code" \| "eiffel-cad"` |
+> | `lib/estudos/vitrine.ts` | item `eiffel-cad` no `CATALOGO`, grátis, `plugavel: "eiffel-cad"` |
+> | `lib/agents/chatAgentes.ts` | `AgenteChatId` ganha `"eiffel"`; entrada com `tela: "chat"`, `plugin: "eiffel-cad"` |
+> | `lib/ai/personas.ts` | persona `eiffel` completa, com o guardrail CREA/ART |
+> | `lib/agent/mentors.ts` | `MentorSkill` ganha `"cad"`; em `ALL_MENTOR_SKILLS` e `RUNTIME_SKILLS`; Eiffel com a skill |
+> | `lib/agents/capacidades.ts` | `CONECTOR_CAD`, `TOOLS_DO_SOLIDCRAFT` (as 19), `TOOLS_POR_HABILIDADE.cad` (18 nomes), `CAPACIDADES.eiffel` |
+> | `lib/office/mapa.ts` | departamento `cad` → "Prancheta" |
+> | `lib/agents/eiffel.test.ts` | 12 testes (curso, loja, identidade) |
+> | `lib/agents/capacidades.test.ts` | verificação da superfície do conector |
+> | `lib/office/mapa.test.ts` | o pod do Eiffel virou Prancheta |
+>
+> Gates nesse estado: **`tsc` limpo · 6.502 testes, 0 falhas**.
+>
+> **FALTA** (nesta ordem, cada um com seu passo na seção 10):
+> 1. `lib/cad/mcp.ts` — o conector, com `riscoMaximo` por conector
+> 2. `Dockerfile` — estágio Rust **com `strip`**
+> 3. `/api/health` — o recibo `cad`
+> 4. `studioKind: "cad"` + `CadView` (glTF no three.js)
+> 5. O bundle WASM, a host page e o modo edição
+> 6. Os testes T3 a T8
+
+
 **Objetivo:** o Eiffel conectável no chat, com a habilidade `cad`, um workspace CAD dentro da
 conversa, funcionando na Zaeon — e com os testes que provam que ele opera como o repositório de
 referência, só que dentro da nossa casa.
@@ -479,3 +509,370 @@ como invariante quebra em produção.
 4. O `studioKind: "cad"` e o `CadView` com glTF (E3, primeira metade) com T3.
 5. O bundle WASM, a host page e o modo edição (E3, segunda metade) com T5 e T6.
 6. T4 — o sandbox, por negação. Antes de qualquer coisa ir a produção.
+
+
+---
+
+## 8 · Os contratos exatos que o executor vai tocar
+
+Tudo abaixo foi lido no código, não suposto. Linha quando ela importa.
+
+### `ConnectorConfig` — `lib/agent/mcp.ts:29`
+
+```ts
+export type ConnectorConfig = {
+  id?: string;
+  name: string;                 // slug único — namespaceia as tools
+  transport: "http" | "stdio";
+  endpoint: string;             // URL (http) OU linha de comando (stdio)
+  authType?: "none" | "bearer" | "header";
+  authRef?: string;             // NOME da env var, nunca o segredo
+  minPlan?: Plan;
+};
+```
+
+### `MCP_CATALOG` — `lib/agent/mcp.ts:337`
+
+Entradas são `CatalogEntry` = `{ name, label, transport, endpoint, note, experimental?, indisponivel? }`.
+O precedente é o `scholar`:
+
+```ts
+{ name: "scholar", label: "Scholar (acadêmico)", transport: "stdio",
+  endpoint: "node node_modules/scholar-mcp/dist/index.js",
+  note: "pinado 1.2.0 · handshake real OK, 9/10 tools admitidas", experimental: true },
+```
+
+**Caminho relativo de propósito:** o processo sobe com cwd `/app` no container e na raiz do repo em
+dev. Para o SolidCraft o binário é absoluto (`/usr/local/bin/solidcraft-cli`), porque ele vem da
+imagem, não do `node_modules`.
+
+### Como um conector é escolhido — `lib/agent/mcp-boot.ts:25`
+
+`ENV_CONECTORES = "MCP_CONECTORES"`. A env var escolhe **por nome do catálogo**, e o comentário em
+`mcp-boot.ts:10` diz por quê: *"Endpoint arbitrário vindo de env daria ao modelo uma superfície"*
+que ninguém revisou. **Não invente um caminho novo de registro:** acrescente a entrada ao catálogo
+e ligue por `MCP_CONECTORES`.
+
+⚠️ **CONSEQUÊNCIA QUE O EXECUTOR PRECISA DECIDIR:** `MCP_CATALOG` é **estático**, então o
+`--allow-path` dele é fixo. Um `--allow-path` **por conversa** não cabe no catálogo. As duas saídas:
+- **(a) uma raiz compartilhada** `--allow-path /app/cad`, e o isolamento por conversa passa a ser
+  **nosso**: o wrapper da tool valida que todo caminho cai em `/app/cad/<scopeId>`. O sandbox do
+  SolidCraft continua barrando `/etc`, dotfiles, `..` e symlink — só não separa conversa de conversa;
+- **(b) registro por turno**, fora do catálogo — mais isolado, e **quebra** a propriedade "nunca um
+  endpoint arbitrário" se feito sem cuidado.
+
+**Recomendo (a) para a v1**, com o teste T4b afirmando que o wrapper recusa caminho de outra
+conversa. E escreva no código que a separação entre conversas é **nossa**, não do SolidCraft, nessa
+configuração — senão alguém vai ler o sandbox dele e supor mais do que ele dá.
+
+### A política de risco — `lib/agent/mcp.ts:73`
+
+```ts
+export const RISCO_MAXIMO_CHAT: ToolRisk = "read";
+const ORDEM_RISCO: Record<ToolRisk, number> = { read: 0, write: 1, destructive: 2 };
+export function toolsAdmitidas(tools, riscoMaximo = RISCO_MAXIMO_CHAT) { … }
+export async function registerMcpConnector(cfg, opts?: { connect?: ConnectFn; riscoMaximo?: ToolRisk })
+```
+
+`registerMcpConnector` **já aceita `riscoMaximo` por chamada** (`lib/agent/mcp.ts:247`). É por aí
+que a decisão (c) se implementa — sem tocar na constante global.
+
+E o segundo portão, `lib/agent/runtime.ts:137`: `if (def.risk === "destructive") return "REQUIRE_APPROVAL"`.
+Então reclassificar na admissão **não basta**: o `ToolDef` tem de nascer com `risk: "write"`.
+`mcpToolToToolDef` (`lib/agent/mcp.ts:159`) define `risk: riskFromAnnotations(tool.annotations)` —
+é esse ponto que precisa do override, não o `toolsAdmitidas`.
+
+### O nome da tool no registro — `lib/agent/mcp.ts:141` e `:161`
+
+```ts
+name: `mcp:${connector.name}:${tool.name}`
+```
+
+Com `name: "solidcraft"`, as tools são `mcp:solidcraft:execute`, `mcp:solidcraft:batch`, etc. Já
+estão escritas assim em `TOOLS_POR_HABILIDADE.cad`.
+
+### O artefato — `components/studio/StudioBlock.tsx` e `components/study/StudyCoworkChat.tsx:162`
+
+`StudioBlockData` = `{ studioKind, title, data, artifactId? }`.
+
+E tem um detalhe que decide o desenho do CAD. Em `StudyCoworkChat.tsx:162`:
+
+```ts
+const leve = (b?: StudioBlockData) =>
+  (b && (b.studioKind === "diagram" || b.studioKind === "aula") && b.artifactId
+    ? { ...b, data: null } : undefined);
+```
+
+Os artefatos **pesados** (`diagram`, `aula`) viajam com `data: null` e só o `artifactId` — o
+conteúdo é buscado depois. **O CAD é pesado** (glTF + STEP + PNG), então ele entra nessa lista, não
+inline. Esquecer isso joga megabytes no histórico da conversa.
+
+### O precedente de visualizador 3D — `components/studio/MoleculeView.tsx`
+
+Três coisas para copiar dele, e a terceira é a que quebra se esquecida:
+1. `"use client"`;
+2. import **dinâmico** da biblioteca, **depois da montagem** — o cabeçalho dele diz: *"a biblioteca é
+   UMD e mexe em `window`, então o import é DINÂMICO e só depois da montagem — em SSR ela quebra"*;
+3. é montado em **dois** lugares: `StudioBlock.tsx` e `MagazineAnswerView.tsx:558`. Um `CadView`
+   registrado só num deles aparece pela metade.
+
+### O Dockerfile — dois estágios hoje
+
+```
+FROM node:20-bookworm-slim AS builder   (linha 10)
+FROM node:20-bookworm-slim AS runtime   (linha 91)
+COPY --from=builder /app ./             (linha 113)
+```
+
+### O recibo — `app/api/health/route.ts:129`
+
+`atlas: atlasDeAnatomia()` é o padrão: uma função que devolve o estado **lido do disco**, não uma
+constante.
+
+---
+
+## 9 · As armadilhas que eu já encontrei
+
+Não repita nenhuma delas. Cada uma me custou uma volta.
+
+| armadilha | o que acontece |
+|---|---|
+| **`strip` esquecido no Dockerfile** | o binário vai com 646,5 MB em vez de 133,9 MB. O perfil release do SolidCraft é `[optimized + debuginfo]` |
+| **Nome de tool inventado** | escrevi `octa_patch`/`octa_run` sem olhar o registro; nenhuma existe. Tool de MCP é `mcp:<conector>:<tool>`, nunca o nome cru |
+| **Tool de MCP não está no registry em teste** | `registerMcpConnector` só registra com servidor de pé. A autoridade sobre esses nomes é `TOOLS_DO_SOLIDCRAFT` (a superfície que eu medi), não `listTools()` |
+| **`destructive` passa pela admissão e morre no `permit`** | são DOIS portões. Reclassificar só na admissão deixa a tool entrar e a chamada falhar |
+| **Record exaustivo** | `MentorSkill` novo faz o `tsc` cobrar `TOOLS_POR_HABILIDADE`, `CAPACIDADES` e `lib/office/mapa.ts` (`Record<MentorSkill, Departamento>`). Isso é o tipo funcionando — preencha, não faça cast |
+| **O pod do Escritório se move** | `departamentoDe` escolhe a skill mais **rara**. `cad` virou a mais rara, então o pod do Eiffel saiu de "Biblioteca" para "Prancheta" e `lib/office/mapa.test.ts` cobrou. A verdade nova é a certa |
+| **`ufrgs.br` está fora** | HTTP 000/503. Não é fonte confiável agora |
+| **`git clone` de release do GitHub** | reescrever `github.com/.../releases/download/...` para `raw.githubusercontent.com` dá 404. Release é no host original |
+| **O API do GitHub é restrito nesta sessão** | `api.github.com` responde "not enabled for this session"; `raw.githubusercontent.com` funciona para qualquer repo público |
+
+---
+
+## 10 · O passo a passo
+
+Cada passo tem **o que escrever**, **como verificar** e **quando parar**. Não siga para o próximo
+sem o verde do anterior.
+
+### Passo 1 · O conector (`lib/cad/mcp.ts`)
+
+**Escrever:**
+- a entrada no `MCP_CATALOG`:
+  ```ts
+  { name: "solidcraft", label: "SolidCraft (CAD)", transport: "stdio",
+    endpoint: "/usr/local/bin/solidcraft-cli mcp --headless --allow-path /app/cad",
+    note: "0.40.0-rc.3 · handshake real OK, 21/21 tools anotadas · execute/batch são destructive: ver riscoMaximo por conector",
+    experimental: true },
+  ```
+- o override de risco. **Não** mexa em `RISCO_MAXIMO_CHAT`. O ponto é `mcpToolToToolDef`
+  (`lib/agent/mcp.ts:159`), que hoje faz `risk: riskFromAnnotations(tool.annotations)`. Acrescente
+  um parâmetro opcional de reclassificação por conector, com o motivo **no código**:
+  *o `destructiveHint` do SolidCraft significa "pode alterar o design", e o design é um arquivo
+  descartável dentro de `--allow-path`; não há dado de usuário, repositório nem mundo externo*;
+- o wrapper que valida caminho: toda tool que recebe `path` tem o caminho forçado para
+  `/app/cad/<scopeId>/…` antes de ir ao servidor.
+
+**Verificar:** `npx vitest run lib/cad lib/agent/mcp` — e os testes T2 e T4b da seção 5.
+
+**Parar se:** o handshake não responder. Nesse caso o binário não está na imagem: volte ao passo 2.
+
+### Passo 2 · O Dockerfile
+
+**Escrever**, antes do estágio `runtime`:
+
+```dockerfile
+FROM rust:1-bookworm AS cad
+WORKDIR /src
+# PINADO. 0.40.0-rc.3 é release candidate: não siga `main`.
+RUN git clone --depth 1 --branch <TAG-OU-COMMIT> https://github.com/tangency-labs/solidcraft .
+RUN cargo build --release -p solidcraft-cli
+RUN strip target/release/solidcraft-cli
+```
+
+e no `runtime`: `COPY --from=cad /src/target/release/solidcraft-cli /usr/local/bin/solidcraft-cli`.
+
+**Números medidos nesta máquina (4 vCPU, 15 GB):** 15m51s de parede, 56m42s de CPU, `target/` 3,5 GB,
+binário 646,5 MB → **133,9 MB** depois do `strip`.
+
+**Verificar:** build local da imagem e `docker run --rm <img> solidcraft-cli commands | head`.
+Depois o par do passo 3: `run examples/bracket.json --out /tmp/b.step` e conferir
+`ISO-10303-21;` + `volume_mm3 ≈ 22385.31`.
+
+**Parar se:** o tempo de CI for inaceitável. A mitigação é `cargo-chef` ou runner com mais núcleos
+(o build usou 56 minutos de CPU — escala bem). **Não** volte ao binário baixado sem registrar por quê.
+
+### Passo 3 · O recibo no `/api/health`
+
+**Escrever:** `cad: { cli: "on"|"off", wasm: "on"|"off", versao?: string }`, no molde do
+`atlasDeAnatomia()` — lendo o **disco** (`existsSync("/usr/local/bin/solidcraft-cli")` e o bundle em
+`public/cad/`), nunca uma constante.
+
+**Verificar:** T8. E o teste compara com `existsSync`, não com um valor fixo — foi assim que eu
+errei uma vez no recibo do atlas, afirmando fato de ambiente como invariante.
+
+### Passo 4 · O artefato `cad`
+
+**Escrever:**
+- `lib/agent/tools.ts`: `StudioKind` ganha `"cad"`; entra em `STUDIO_KINDS`, `STUDIO_LABEL`
+  (`"peça CAD"`) e nos `ALIASES` (`"cad"`, `"peça"`, `"peca"`, `"modelo 3d"` — **cuidado:**
+  `"modelo 3d"` já é alias de `molecule`; decida e deixe escrito);
+- `components/studio/CadView.tsx`: three.js + `GLTFLoader`, no molde do `MoleculeView` (as três
+  coisas da seção 8);
+- registrar em **`StudioBlock.tsx` E `MagazineAnswerView.tsx`**;
+- `StudyCoworkChat.tsx:162`: acrescentar `"cad"` à lista de pesados do `leve()`.
+
+**Verificar:** T3 (o script → STEP, com o número) e um teste de render do `CadView` com um glTF
+mínimo.
+
+### Passo 5 · O workspace (modo edição)
+
+**Escrever:**
+- estágio no Dockerfile para o WASM: `cargo install trunk`, target `wasm32-unknown-unknown`,
+  `cd apps/solidcraft-web && trunk build --release --public-url ./`, saída para `public/cad/`;
+- `app/cad/editor/page.tsx`: a host page que enquadra `?embed=editor` **da nossa origem** e guarda o
+  design com os três métodos (`document.export`, `document.saved`, `document.import`).
+
+**Verificar:** T5 e T6, com Playwright e o Chromium pré-instalado.
+
+**Parar se:** o bundle WASM passar de alguns MB sem compressão — meça antes de prometer. **Eu não
+medi esse build.**
+
+---
+
+## 11 · Dependência de merge
+
+| branch | contém | situação |
+|---|---|---|
+| `claude/eiffel-cad` | este trabalho | **em cima** da de baixo |
+| `claude/escopo-protocolo-cargo` | `8a74789c` — `termosProprios`, `protocolo`, o portão de escopo | **sem PR**; o Eiffel não compila sem ela |
+| `origin/main` | `daf315b9` | andou (#728, #732) depois das duas |
+
+**Ordem obrigatória:** `8a74789c` primeiro. E as duas precisam de rebase na `main` atual — o
+conflito conhecido é em `lib/agent/aura-harness.ts`, que a #728 também tocou.
+
+
+---
+
+## 12 · O 1:1 — e por que ele é um ARQUIVO, não um fork
+
+Pedido do dono (2026-11-08): *"se certifique de que o repositorio base seja realmente bem
+aproveitado. quero 1:1 com apenas as cores, cards e visuais caracteristicos da zaeon."*
+
+Fui medir o que "1:1" significa em número antes de propor qualquer coisa.
+
+### O tamanho do que está em jogo
+
+| crate | linhas `.rs` |
+|---|---|
+| **`ui-egui`** | **383.019** |
+| `engine` | 255.581 |
+| `doc` | 83.734 |
+| `kernel` | 70.531 |
+| `render` | 55.574 |
+| `geom` | 36.653 |
+| `sketch` | 32.659 |
+| `gpu` | 25.990 |
+| `smlib` | 24.546 |
+| `io` | 18.963 |
+| `step` | 9.122 |
+| `mcp` | 7.717 |
+| …e mais 6 | ~7.600 |
+| **TOTAL `crates/`** | **1.011.706** |
+| **TOTAL `apps/`** | **26.878** |
+
+**Mais de um milhão de linhas de Rust.** E a superfície funcional, medida rodando
+`solidcraft-cli commands` no binário que eu compilei:
+
+| família | comandos | | família | comandos |
+|---|---|---|---|---|
+| `sketch` | **129** | | `inspect` | 20 |
+| `render` | **65** | | `construct` | 20 |
+| `view` | 44 | | `surface` | 19 |
+| `solid` | 36 | | `joint` | 19 |
+| `component` | 32 | | `panel` | 16 |
+| `timeline` | 22 | | `file` | 16 |
+| | | | `sheet` · `parameters` · `motion` · `appearance` · `browser` · `config` | 13 · 13 · 11 · 10 · 9 · 8 |
+
+**610 comandos.** Esse é o 1:1 — e ele não se reimplementa. Qualquer tentativa de reescrever a UI
+em React joga fora 383 mil linhas e entrega uma fração.
+
+### Onde a cor mora — e é exatamente onde precisávamos que morasse
+
+O `ui-egui` tem um sistema de tema inteiro, e o `theme_files.rs` (3.221 linhas) abre dizendo:
+
+> *"Colour and shape themes as files (#2255): a `solidcraft-theme/1` JSON file names a base palette
+> (the built-in Dark or Light) and sets any of its `Tokens` by name, so a theme can be a handful of
+> lines. Built-in themes (Gruvbox and others) are such files under `assets/styles/ui/themes/`;
+> imported ones are kept in the preferences (`Prefs::custom_themes`), **so they also work in the
+> browser**."*
+
+**Um tema é um arquivo JSON.** E ele controla:
+
+| | quanto |
+|---|---|
+| tokens de **cor** | **192** (`accent`, `panel`, `app_bar`, `axis_x/y/z`, `agent_ok`, `agent_busy`, …) |
+| **raios de canto** | **6** — `radius_sm`, `radius_md`, `radius_lg`, `radius_xl`, `control_radius`, `sketch_mode_radius` |
+| tokens de **forma** no total | 54 (larguras, gaps, alturas, insets, tamanhos de fonte) |
+| temas de exemplo já no repo | **25** — de `gruvbox` e `nord` a `cga`, `solidcraft-95` e **`blueprint`** |
+
+Os limites de entrada hostil estão declarados: 256 KB por arquivo, 512 cores, 64 temas importados.
+E os modos de visão de cor se aplicam **por cima** do tema (`Tokens::with_vision`), com 1.355 linhas
+de teste só para isso.
+
+Formato real, do `blueprint.json` (155 cores definidas):
+
+```json
+{
+  "format": "solidcraft-theme/1",
+  "name": "Blueprint",
+  "base": "dark",
+  "order": 160,
+  "provenance": "…",
+  "colors": {
+    "accent": "#66ddff",
+    "accent_soft": "#153c60",
+    "app_bar": "#07192f",
+    "agent_ok": "#6ee0bb",
+    "app_bar_icon": ["#eceff4", "#a4b0c2", "#88c0d0"]
+  }
+}
+```
+
+Uma cor é hex **ou** lista de hex (ícones de várias camadas). Chave ausente herda da base.
+
+### A conclusão, e é a entrega mais barata desta sessão
+
+**O "Zaeon" é UM ARQUIVO: `zaeon.json`.** Nada de fork, nada de patch no `ui-egui`, nada de
+divergência para manter. 610 comandos 1:1, nossas cores e nossos cantos, e funciona **no desktop e
+no navegador** porque temas importados vivem nas preferências.
+
+Isso também **corrige a seção E3 deste handoff**, que eu escrevi antes de medir. Ela propunha um
+`CadView` em three.js como o workspace, e isso seria reimplementar UI. O desenho certo tem duas
+camadas, com papéis diferentes:
+
+| camada | o que é | por quê |
+|---|---|---|
+| **bolha da conversa** | leve: o PNG do `screenshot` (ou o glTF no three.js, molde do `MoleculeView`) | uma bolha de chat não deve subir um CAD inteiro. Precisa aparecer em milissegundos |
+| **workspace** | **o app deles**, WASM, `?embed=editor`, com o tema `zaeon.json` | é aqui que o 1:1 vive: os 610 comandos, a timeline, os parâmetros, o histórico de undo |
+
+O `CadView` continua valendo — como **miniatura**, não como editor.
+
+### O que o executor faz, concretamente
+
+1. **Escrever `zaeon.json`** no formato acima, sobre `base: "dark"`, mirando o `blueprint.json` como
+   referência de quantidade (155 de 192 cores). As nossas: o ciano/violeta da marca, o fundo
+   `#05060c` do cyberespaço, e os cantos do nosso padrão.
+2. **Colocá-lo no bundle**, em `assets/styles/ui/themes/zaeon.json`, no estágio de build do WASM — é
+   um arquivo de asset, não um patch de código.
+3. **Selecioná-lo como padrão** no embed. Confirmar **como** se seleciona: há
+   `crates/ui-egui/src/prefs/theme_picker.rs` e `theme_options.rs`, e provavelmente um comando
+   `config.*` na família de 8 — `list_commands` com `prefix: "config."` responde isso em uma chamada.
+   **Eu não verifiquei qual comando é.**
+4. **Teste T9 (novo):** carregar o embed, ler um token de cor via `solidcraft.request("ui.inspect")`
+   e afirmar que o valor é o nosso, não o padrão. É o que prova que o tema pegou, em vez de confiar
+   que pegou.
+
+⚠️ **O que eu NÃO verifiquei nesta rodada:** qual comando ou preferência seleciona o tema no embed,
+e se um tema pode vir embutido no bundle WASM como padrão (em vez de importado pelo usuário). São as
+duas perguntas que o passo 3 tem de responder antes de escrever código — e `list_commands` com
+`prefix: "config."` é onde olhar primeiro.
