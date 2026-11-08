@@ -487,14 +487,56 @@ docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes wik
 docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes wikipt --wiki-shards 6
 ```
 
-### 10.3 · O que mais existe no HF, com licença conferida
+### 10.3 · A fonte `mmlu` — MMLU em português
+
+`FreedomIntelligence/MMLU_Portuguese`, licença **MIT** (lida do `cardData`). É o MMLU (Hendrycks et
+al., 2021) traduzido: **57 matérias**, splits `dev` e `test`, em CSV. São 114 arquivos pequenos
+baixados por `resolve` — nada de parquet, nada da API de linhas.
+
+O parser de CSV é escrito à mão em `lib/rag/mmlu.ts` porque o enunciado do MMLU tem vírgula, aspas e
+**quebra de linha dentro do campo** (equação em várias linhas): `split(",")` perderia questão.
+Conferido contra o módulo `csv` do Python em 3 arquivos reais, incluindo um de 1,8 MB:
+
+```
+college_physics          meu= 102  python= 102  ✓   professional_law  meu=1534  python=1534  ✓
+high_school_mathematics  meu= 270  python= 270  ✓   → 3/3 idênticos, 100% das linhas viraram questão
+```
+
+**20 questões por documento**, não uma: o RAG devolve DOCUMENTO, e mil documentos de 300 caracteres
+entopem a busca e fazem a citação ao aluno virar "uma questão" sem contexto de matéria. É o mesmo
+desenho da fonte `medicina`. O gabarito sai **escrito** (`Gabarito: C) 600 nm`) e não só como letra,
+porque o trecho recuperado pode cortar as alternativas.
+
+**Execução real, 2026-11-08 — 114 CSVs, nenhum erro de rede, nenhuma linha torta:**
+
+```
+743 documentos · geral 406 · medicina 87 · matematica 65 · psicologia 59 · fisica 34
+biologia 24 · seguranca 19 · quimica 17 · dados-ia 12 · eng-computacao 12 · eng-energias 8
+```
+
+O maior ganho é **`geral` com 406 documentos**, e isso importa mais do que parece: `areasDoTurno`
+sempre devolve `area:geral` junto da área do agente, então essa base é consultada por **todos** — e
+ela estava VAZIA na VPS.
+
+O mapa matéria→área é explícito e conservador: matéria que não é claramente de uma das nossas áreas
+vai pra `geral`, nunca forçada. As três de direito (`international_law`, `jurisprudence`,
+`professional_law` — 1.778 questões) ficam em `geral` porque a área `direito` ainda não tem mentor;
+quando ele existir, é trocar `null` por `"direito"` no mapa e reingerir. `lib/rag/mmlu.test.ts` trava
+as 57 matérias contra a listagem real da API, então matéria nova ou renomeada no dataset acusa.
+
+```bash
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes mmlu --seco
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes mmlu
+```
+
+### 10.4 · O que mais existe no HF, com licença conferida
 
 Verificado via `cardData.license` na API, não de memória:
 
 | dataset | licença | serve para |
 |---|---|---|
 | `wikimedia/wikipedia` (`20231101.pt`) | cc-by-sa-3.0 + gfdl | **em produção** — as 17 áreas, em PT |
-| `FreedomIntelligence/MMLU_Portuguese` | mit | 57 matérias de prova em PT (anatomy, college_physics, …) — CSVs pequenos |
+| `FreedomIntelligence/MMLU_Portuguese` | mit | **em produção** — 743 docs, fonte `mmlu` (ver 10.3) |
 | `liaad/math_dataset_portuguese` | mit | matemática em PT (sintético, DeepMind traduzido) |
 | `maritaca-ai/enem` | apache-2.0 | **já em produção** na fonte `enem` |
 | `kamel-usp/aes_enem_dataset` | apache-2.0 | redação do ENEM |
