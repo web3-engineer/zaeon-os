@@ -30,9 +30,9 @@ describe("escritório como dado", () => {
   });
 
   it("DISTINTIVO é o mais RARO, não o primeiro declarado — e a contagem sai do seed", () => {
-    // `literature` está em 12 dos 13 mentores: é tão pouco distintiva quanto memory e studio, e
+    // `literature` está em 16 dos 17 mentores: é tão pouco distintiva quanto memory e studio, e
     // antes vencia só por vir primeiro na lista. Agora perde para qualquer skill mais rara.
-    expect(MENTORES_POR_SKILL.get("literature")).toBe(12);
+    expect(MENTORES_POR_SKILL.get("literature")).toBe(16);
     expect(MENTORES_POR_SKILL.get("anatomia"), "anatomia é de um mentor só").toBe(1);
     expect(departamentoDe({ enabledSkills: ["literature", "memory", "studio", "anatomia"] })).toBe(DEPARTAMENTOS.anatomia);
     expect(departamentoDe({ enabledSkills: ["literature", "memory", "studio", "molecule"] })).toBe(DEPARTAMENTOS.molecule);
@@ -49,13 +49,17 @@ describe("escritório como dado", () => {
     // dizer "Prancheta" (1 em 13), que é exatamente o que a regra do departamento mais raro existe
     // pra fazer: o pod mostra o que DISTINGUE o agente, não o que todos têm.
     expect(dep("eng-civil"), "ganhou cad: o pod dele agora é a Prancheta").toBe("cad");
-    expect(dep("biologia"), "era Biblioteca; molecule está em 3 de 13").toBe("molecule");
-    // os outros dez continuam onde estavam (o eng-civil saiu desta lista: ele é o caso acima)
+    expect(dep("biologia"), "era Biblioteca; molecule está em 3 de 17").toBe("molecule");
+    // O esquadrão das exatas entrou (software/infra/seguranca/dados-ia) e os quatro declaram `code`,
+    // que subiu de 1 para 5 em 17. Continua a mais rara entre as que eles têm, então os quatro caem
+    // na Oficina — e, por isso mesmo, o pod do Turing NÃO se mexe: pra ele `code` (5) segue mais
+    // rara que literature (16) e studio (17). Era o risco real desta mudança, e está afirmado aqui.
     for (const [slug, esperado] of [
       ["enfermagem", "literature"], ["eng-computacao", "code"], ["eng-energias", "literature"],
       ["matematica", "studio"], ["fisica", "literature"], ["agronomia", "literature"],
       ["quimica", "molecule"], ["veterinaria", "literature"],
       ["psicologia", "literature"], ["farmacia", "molecule"],
+      ["software", "code"], ["infra", "code"], ["seguranca", "code"], ["dados-ia", "code"],
     ] as const) {
       expect(dep(slug), `${slug} mudou de departamento sem ninguém pedir`).toBe(esperado);
     }

@@ -53,6 +53,8 @@ async function main() {
   })();
   const { ingerirTexto, ingerirPdf } = await import("../lib/rag/ingerir");
   const placar: Record<string, { novo: number; reaproveitado: number; erro: number }> = {};
+  /** Áreas que vieram no dado e não existem em lib/rag/areas. Falha no fim, nunca em silêncio. */
+  const semArea = new Set<string>();
   const gravar = async (area: string, fonte: string, d: { chave: string; titulo: string; texto: string }) => {
     const k = `${area} · ${fonte}`;
     placar[k] ??= { novo: 0, reaproveitado: 0, erro: 0 };
@@ -185,13 +187,21 @@ async function main() {
         }
       }
     }
-    if (desconhecidas.size) {
-      // Não é aviso: é falha. Com a área ausente de lib/rag/areas o aluno nunca veria esse documento.
-      throw new Error(`áreas que não existem em lib/rag/areas: ${[...desconhecidas].sort().join(", ")} — crie-as em AREAS antes de ingerir`);
-    }
+    for (const a of desconhecidas) semArea.add(a);
   }
 
   console.log(SECO ? "[seco] nada gravado — contagem do que entraria:" : "[fim] resultado:");
   for (const [k, v] of Object.entries(placar).sort()) console.log(`  ${k.padEnd(28)} novos=${v.novo} reaproveitados=${v.reaproveitado} erros=${v.erro}`);
+
+  // A falha vem DEPOIS do placar, de propósito: o que tinha área já foi ingerido e o operador precisa
+  // ver o que entrou antes de ler o que ficou de fora. Mas sai com erro, porque pular área em
+  // silêncio é como se perde uma carga: ingerida, contabilizada e invisível pro aluno.
+  if (semArea.size) {
+    throw new Error(
+      `${[...semArea].sort().join(", ")}: área inexistente em lib/rag/areas — o que está acima FOI ingerido; `
+      + "estes documentos NÃO, e não entram até a área existir COM o mentor dela "
+      + "(área órfã rouba a classificação de quem tem dono e desliga o portão de escopo).",
+    );
+  }
 }
 main().then(() => process.exit(0), (e) => { console.error(e); process.exit(1); });

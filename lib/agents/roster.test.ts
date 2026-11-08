@@ -7,7 +7,7 @@ import { PERSONAS } from "@/lib/ai/personas";
 import { MENTOR_SEED } from "@/lib/agent/mentors";
 
 describe("roster · base", () => {
-  it("junta personas + 13 mentores, chaves únicas", () => {
+  it("junta personas + os mentores do seed, chaves únicas", () => {
     const r = rosterBase();
     expect(r.length).toBe(Object.keys(PERSONAS).length + MENTOR_SEED.length);
     expect(new Set(r.map((a) => a.agentKey)).size).toBe(r.length);

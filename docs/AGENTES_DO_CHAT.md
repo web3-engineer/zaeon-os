@@ -329,3 +329,96 @@ fotossíntese"*, *"me explica a integral"*) **não classificam** e caem em `neut
 O escopo continua fechado — `neutro` também recusa continuar —, mas o **encaminhamento pelo nome**
 só sai quando a área alheia dá sinal claro. É conservador de propósito: apontar o colega errado é
 pior que não apontar.
+
+---
+
+## 9 · O esquadrão das exatas e o DATASET
+
+Decisão do dono (2026-11-08): *"zaeon tem que ser o agente especialista em dados e IA. software,
+téo continua. infra, precisamos de um novo agente chamado janaina. e segurança, o octa-code."*
+
+### 9.1 · Os quatro, e o endereço de cada um
+
+| mentor | slug / área | curso (existe em `ALL_COURSES`) | corpus já baixado | licença |
+|---|---|---|---|---|
+| **Téo** | `software` | Engenharia de Software | MDN Web Docs — **10.654** páginas | CC BY-SA 2.5 |
+| **Janaina** | `infra` | Redes de Computadores | documentação do Kubernetes — **1.113** páginas | CC BY 4.0 |
+| **Octa** | `seguranca` | Segurança da Informação / Cibersegurança | CWE **956** + MITRE ATT&CK **706** | MITRE, comercial liberado |
+| **Zaeon** | `dados-ia` | Ciência de Dados | arXiv cs.LG aberto + estatística do REA-MECC | aberta / CC BY-SA 3.0 |
+
+Os quatro entram em `MENTOR_SEED` (order 14–17), com look em `lib/avatars/looks.ts`, pod no
+escritório e área em `lib/rag/areas.ts`. `direito` **não** entrou: a Constituição está baixada (412
+artigos em vigor, CC0 e art. 8º IV da Lei 9.610/98), mas o agente de leis é decisão adiada — e a
+área espera o mentor, nunca o contrário. Ver 9.3.
+
+### 9.2 · Por que área e mentor são UMA mudança
+
+Tentei criar as cinco áreas sozinhas primeiro. Dois testes recusaram, e os dois estavam certos:
+
+1. **`lib/rag/areas.test.ts`** exige um-para-um entre `SLUGS_AREA` e `MENTOR_SEED`. Sem o mentor,
+   `idArea("seguranca")` produz um `turmaId` que `areasDoTurno` nunca pede — o documento é ingerido,
+   contabilizado no placar, e **nenhum agente o alcança**. Já perdemos uma carga assim.
+2. **`lib/agents/escopo.test.ts`** pegou o estrago pior, que eu não tinha previsto: **a área órfã
+   rouba a classificação de uma área que tem dono.** Com `dados-ia` existindo sem ninguém, a pergunta
+   *"como funciona uma rede neural artificial?"* deixou de cair em `eng-computacao` (que tem o
+   Turing) e passou a cair numa área sem responsável. `responsavelDaArea` devolveu `null`, e o
+   veredicto desabou de `nega` para `neutro`: a Zenita, em vez de encaminhar, passou a **torcer a
+   pergunta de rede neural pro lado da medicina**. Uma área vazia é pior que área nenhuma.
+
+### 9.3 · O termo tem um dono só
+
+`areaDaPergunta` devolve `null` no empate (exige 2× a segunda colocada). Então **termo repetido em
+duas áreas desliga o portão**. A entrada do esquadrão me fez criar quatro duplicatas, e a varredura
+achou mais uma colisão por substring. Todas corrigidas:
+
+- `rede neural`, `aprendizado de maquina`, `ciencia de dados`, `inteligencia artificial`,
+  `mineracao de dados` — saíram de `eng-computacao` e ficaram com `dados-ia`. Quando chega um
+  especialista, o termo muda de dono; o Turing fica com algoritmo, computabilidade e linguagem.
+- `software` cru saiu de `eng-computacao` para `software`.
+- `probabilidade` é da `matematica` (Noether); `dados-ia` fica com a inferência.
+- `paradigma de programacao` continha `programacao` (do Turing) — trocado.
+- `disponibilidade` (infra) estava **dentro** de `biodisponibilidade` (farmácia): um artigo de
+  farmacologia pontuava para infra. Agora é `alta disponibilidade`, que é o termo do ofício.
+
+A única colisão restante é anterior a esta mudança: `molecula` (química) ⊂ `molecular` (biologia).
+
+### 9.4 · O DATASET: como ele sai deste container
+
+O corpus são 66 MB de JSONL e PDF — grandes demais pro git. Então o repositório guarda o **caminho**,
+e a VPS refaz o dado. Mesmo padrão da geometria do atlas: caro no deploy, barato no turno.
+
+```bash
+# 1. montar (origens fixadas por commit; só precisa de rede)
+node scripts/dataset-montar.mjs --saida /opt/zaeon/dataset
+
+# 2. ingerir (dentro do contêiner, pelo mesmo caminho dos PDFs do aluno)
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts \
+  --fontes dataset --dir /opt/zaeon/dataset --seco     # confere primeiro
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts \
+  --fontes dataset --dir /opt/zaeon/dataset            # grava
+```
+
+O que conferir no fim do passo 1 (é o que eu medi em 2026-11-08):
+
+```
+constituicao 412 · infra 1113 · seguranca 1662 (cwe 956 + attack 706) · software 10654 · 14 PDFs
+```
+
+Duas armadilhas que a execução de prova pegou, e que o script agora trava:
+
+- **`git fetch --depth 1 origin <sha>` só aceita o hash COMPLETO de 40.** Com o abreviado o git
+  responde `couldn't find remote ref`, que parece erro de rede e não é. Os pins são de 40, e uma
+  trava recusa pin curto nomeando a fonte.
+- **`createWriteStream` + `process.exit(0)` descartava tudo.** O script dizia "412 documentos" e o
+  diretório ficava vazio. Escrita síncrona em lotes.
+- **`PDF_LOADER_URL` ausente** faz `extractPdfStructured` devolver `null` em silêncio: os 14 PDFs
+  entrariam todos como `erro: leitura_falhou`. O script para antes, dizendo o que falta.
+- **Área inexistente é FALHA, não aviso** — e a falha vem depois do placar, pro operador ver o que
+  entrou antes de ler o que ficou de fora.
+
+### 9.5 · O que isto NÃO faz
+
+Os quatro são **mentores** (Escritório + rota de mentor do turno), não agentes do seletor do chat.
+`areasDoTurno(cap.area ?? mentor?.slug)` em `lib/agent/runChatTurn.ts:149` é o que faz a base chegar:
+pela área da agente **ou** pelo slug do mentor ativo. Colocá-los no seletor de `AGENTES_CHAT` é uma
+decisão separada, com persona, voz e vitrine próprias — como foi feito com o Eiffel.

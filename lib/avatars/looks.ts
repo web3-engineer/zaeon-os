@@ -101,6 +101,13 @@ const MENTOR_LOOKS: Record<string, AvatarLook> = {
   veterinaria: { agentId: "veterinaria", nome: "Pasteur", cor: ["#a7f3d0", "#047857"], personagem: "Pasteur, a gentle veterinary medicine mentor: a young man with dark brown skin and short curly black hair, warm dark eyes, wearing light green veterinary scrubs with a small paw-print badge; gentle closed-mouth smile." },
   psicologia: { agentId: "psicologia", nome: "James", cor: ["#e9d5ff", "#6b21a8"], personagem: "James, an empathetic psychology mentor: a young man with tousled light brown hair, soft grey eyes, wearing a beige turtleneck under a tweed blazer with a small brain-shaped pin; empathetic closed-mouth smile." },
   farmacia: { agentId: "farmacia", nome: "Kekulé", cor: ["#99f6e4", "#115e59"], personagem: "Kekulé, a precise pharmacy mentor: a young man with warm brown skin and neat dark hair, thin rectangular glasses, wearing a white pharmacist coat with a small hexagon-shaped pin; friendly closed-mouth smile." },
+
+  // O esquadrão das exatas. Tons ainda não usados pelos treze, pra legenda do escritório e os
+  // cards não terem dois mentores da mesma cor.
+  software: { agentId: "software", nome: "Téo", cor: ["#fdba74", "#9a3412"], personagem: "Téo, a pragmatic software engineering mentor: a young man with warm olive skin, short dark curly hair and a trimmed beard, wearing a plain charcoal t-shirt under an unzipped grey hoodie; calm, attentive closed-mouth smile." },
+  infra: { agentId: "infra", nome: "Janaina", cor: ["#94a3b8", "#334155"], personagem: "Janaina, a steady infrastructure and platform mentor: a Black woman with warm dark skin and short coiled natural hair, small gold hoop earrings, wearing a slate-blue technical shirt with rolled sleeves; composed, confident closed-mouth smile." },
+  seguranca: { agentId: "seguranca", nome: "Octa", cor: ["#cbd5e1", "#0f172a"], personagem: "Octa, a vigilant defensive-security mentor: a person with pale skin, cropped ash-grey hair and sharp dark eyes, wearing a high-collared matte black jacket with a small octagon-shaped pin; even, unhurried closed-mouth expression." },
+  "dados-ia": { agentId: "dados-ia", nome: "Zaeon", cor: ["#818cf8", "#312e81"], personagem: "Zaeon, an analytical data science and AI mentor: a person with light brown skin and straight black shoulder-length hair tucked behind one ear, thin wire-frame glasses, wearing a deep indigo button-down shirt; thoughtful, measured closed-mouth smile." },
 };
 
 /** Todos os agentes com visual definido: personas da casa + mentores. */

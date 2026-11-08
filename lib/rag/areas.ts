@@ -30,7 +30,11 @@ export const AREAS: readonly Area[] = [
     wikipedia: ["Enfermagem", "Sinais vitais", "Biossegurança", "Atenção primária à saúde", "Sistema Único de Saúde", "Cuidados paliativos", "Infecção hospitalar"] },
   { slug: "biologia", termos: ["especie", "especies", "ecolog", "genetic", "evolu", "biodiversidade", "celula", "celular", "fauna", "flora", "molecular", "taxonom"],
     wikipedia: ["Biologia", "Célula", "Genética", "Evolução", "Ecologia", "DNA", "Fotossíntese", "Respiração celular", "Mitose", "Meiose", "Biodiversidade", "Seleção natural"] },
-  { slug: "eng-computacao", termos: ["algoritm", "software", "computacao$", "computacional", "aprendizado de maquina", "rede neural", "redes neurais", "banco de dados", "mineracao de dados", "ciencia de dados", "sistema de informacao", "programacao", "inteligencia artificial", "linguagem de programacao"],
+  // O Turing cedeu os termos de IA/dados ao `dados-ia` (Zaeon) e `software` ao `software` (Téo)
+  // quando esses mentores passaram a existir. Não é poda cosmética: termo em DUAS áreas é empate, e
+  // `areaDaPergunta` devolve null no empate — o portão de escopo desliga e a agente para de
+  // encaminhar. O Turing fica com o que é dele: algoritmo, computabilidade, linguagem, estrutura.
+  { slug: "eng-computacao", termos: ["algoritm", "computacao$", "computacional", "banco de dados", "sistema de informacao", "programacao", "linguagem de programacao", "estrutura de dados", "sistema operacional", "compilac", "complexidade computacional"],
     wikipedia: ["Ciência da computação", "Algoritmo", "Estrutura de dados", "Engenharia de software", "Aprendizado de máquina", "Rede neural artificial", "Banco de dados", "Sistema operativo", "Rede de computadores", "Criptografia", "Blockchain"] },
   { slug: "eng-energias", termos: ["energia", "solar", "eolic", "fotovolta", "eletric", "biocombust", "biomassa", "hidreletric", "renovave", "biogas"],
     wikipedia: ["Energia renovável", "Energia solar", "Energia eólica", "Célula fotovoltaica", "Energia hidrelétrica", "Biocombustível", "Sistemas elétricos de potência", "Eficiência energética", "Termodinâmica"] },
@@ -48,6 +52,36 @@ export const AREAS: readonly Area[] = [
     wikipedia: ["Medicina veterinária", "Zoonose", "Bovinocultura", "Saúde animal", "Vacinação", "Bem-estar animal", "Parasitologia"] },
   { slug: "psicologia", termos: ["psicolog", "comportament", "ansiedade", "depressao", "saude mental", "cognitiv", "emocional", "psiquiatr", "subjetividade"],
     wikipedia: ["Psicologia", "Psicologia cognitiva", "Behaviorismo", "Psicanálise", "Transtorno de ansiedade", "Transtorno depressivo maior", "Desenvolvimento humano", "Neuropsicologia", "Psicologia social"] },
+  /**
+   * AS QUATRO ÁREAS DO ESQUADRÃO DAS EXATAS (2026-11-08). Elas não existiam, e isso era o bloqueio
+   * real do DATASET: sem a área, `idArea("seguranca")` produz um `turmaId` que `areasDoTurno` nunca
+   * pede — o documento entra na base e fica invisível. Área é o ENDEREÇO do agente, não enfeite.
+   *
+   * Cada uma entra COM o mentor dela no mesmo commit (lib/agent/mentors), porque uma área órfã faz
+   * pior que nada: ela rouba a classificação de uma área que tem dono e derruba o portão de escopo
+   * de `nega` pra `neutro` — a Zenita para de encaminhar e passa a torcer a pergunta pro lado dela.
+   *
+   * Corpus já baixado, licença conferida na fonte (scripts/dataset-montar.mjs):
+   *   software   → Téo      → MDN Web Docs, 10.654 páginas, CC BY-SA 2.5
+   *   infra      → Janaina  → documentação do Kubernetes, 1.113 páginas, CC BY 4.0
+   *   seguranca  → Octa     → CWE (956) + MITRE ATT&CK (706), uso comercial liberado pelo MITRE
+   *   dados-ia   → Zaeon    → arXiv cs.LG aberto + estatística do REA-MECC, em português
+   *
+   * `direito` fica FORA de propósito: a Constituição está baixada (412 artigos em vigor, CC0 e art.
+   * 8º IV da Lei 9.610/98), mas o agente de leis é decisão adiada do dono. A área espera o mentor.
+   *
+   * Os TERMOS aqui são para classificar ARTIGO (título 3×, resumo 1×, mínimo 5 pontos) — vocabulário
+   * acadêmico, não de pergunta. Quem fecha o escopo do agente na conversa é o `termosProprios` de
+   * lib/agents/capacidades, que é outra lista, com outro limiar e outro propósito.
+   */
+  { slug: "software", termos: ["software", "engenharia de software", "codigo-fonte", "refatorac", "teste de software", "integracao continua", "controle de versao", "api rest", "framework", "orientacao a objetos", "depurac", "tipagem estatica", "revisao de codigo"],
+    wikipedia: ["Engenharia de software", "Programação orientada a objetos", "Teste de software", "Integração contínua", "Git", "API", "Padrão de projeto de software", "Refatoração", "Controle de versão", "JavaScript", "TypeScript", "Compilador"] },
+  { slug: "infra", termos: ["infraestrutura", "servidor", "container", "kubernetes", "docker", "orquestrac", "devops", "implantac", "balanceador", "escalabilidade", "monitorament", "alta disponibilidade", "sistema distribuido", "em nuvem", "virtualizac"],
+    wikipedia: ["Computação em nuvem", "Kubernetes", "Docker (software)", "DevOps", "Virtualização", "Sistema distribuído", "Balanceamento de carga", "Linux", "Protocolo de rede", "Infraestrutura como código", "Observabilidade"] },
+  { slug: "seguranca", termos: ["seguranca da informacao", "vulnerabilidad", "criptografi", "autenticac", "ameaca", "malware", "ataque", "exploracao de falha", "controle de acesso", "firewall", "pentest", "forense digital", "resposta a incidente", "hardening", "sql injection", "injecao de sql", "xss", "cross-site", "estouro de buffer", "buffer overflow", "escalada de privilegio", "cwe", "ransomware", "phishing"],
+    wikipedia: ["Segurança da informação", "Criptografia", "Vulnerabilidade (computação)", "Autenticação", "Malware", "Firewall", "Ataque de negação de serviço", "Engenharia social (segurança)", "Teste de penetração", "Perícia forense computacional", "Assinatura digital"] },
+  { slug: "dados-ia", termos: ["aprendizado de maquina", "aprendizado profundo", "rede neural", "inferencia estatistica", "regressao", "classificac", "conjunto de dados", "treinament", "modelo preditivo", "validacao cruzada", "inferencia bayesiana", "ciencia de dados", "estatistic", "sobreajuste", "vazamento de dado"],
+    wikipedia: ["Ciência de dados", "Aprendizado de máquina", "Aprendizado profundo", "Rede neural artificial", "Estatística", "Inferência estatística", "Inferência bayesiana", "Regressão linear", "Teorema de Bayes", "Probabilidade", "Validação cruzada", "Processamento de linguagem natural"] },
   { slug: "farmacia", termos: ["farmac", "medicamento", "farmaco", "fitoterap", "dosagem", "posologia", "excipiente", "biodisponibilidade", "toxicolog"],
     wikipedia: ["Farmácia", "Farmacologia", "Farmacocinética", "Farmacodinâmica", "Medicamento genérico", "Fitoterapia", "Toxicologia", "Antibiótico"] },
 ];
