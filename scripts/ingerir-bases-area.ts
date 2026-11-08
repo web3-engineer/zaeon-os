@@ -4,7 +4,7 @@
  *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --seco              # só conta (nada grava)
  *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes scielo,wiki,medicina,enem
  *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes dataset --dir /opt/zaeon/dataset
- *   opções: --por-area 1500  --dir /tmp/bases (JSONL gerados por scripts/scielo-para-jsonl.py)  --linhas N (teto lido da SciELO)
+ *   opções: --por-area 1500  --dir <pasta> (o JSONL da SciELO, feito por scripts/scielo-para-jsonl.ts)  --linhas N
  *
  * A fonte `dataset` lê o DATASET montado por scripts/dataset-montar.mjs: cada `<area>/<nome>.jsonl` já vem no
  * contrato {chave, titulo, texto, area} com a licença no rodapé do texto, e cada `<area>/*.pdf` entra por
@@ -13,6 +13,7 @@
  *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes wikipt --wiki-shards 6
  *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes mmlu
  *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes arxiv
+ *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes wikilivros
  *
  * A fonte `wikipt` lê o dataset `wikimedia/wikipedia` (config 20231101.pt) DIRETO DOS PARQUETS, por
  * requisição de faixa (HTTP range) — o `hyparquet` baixa só os pedaços de que precisa, então não há
@@ -21,9 +22,10 @@
  * nginx do HF devolve 502 depois de ~23 chamadas anônimas (medido: 20/20 falhas em sequência).
  * A decisão de cada verbete é pura e mora em lib/rag/wikipedia (com testes); aqui fica só o I/O.
  *
- * A API de linhas do HF (datasets-server) não serve a SciELO (parquet de 2,8 GB) e devolve 429 rápido nas outras, então
- * os parquets viram JSONL antes (scielo.jsonl, medical_meadow_wikidoc_pt.jsonl, information-pt.jsonl com --cru) e o
- * ENEM vem direto dos .jsonl do repositório.
+ * A API de linhas do HF (datasets-server) devolve 502 depois de ~23 chamadas anônimas, então nenhuma
+ * fonte aqui depende dela. As pequenas e bem repartidas (`medicina`) são lidas do parquet DIRETO; a
+ * SciELO não cabe nesse caminho (2 grupos de linha, pico de 11 GB) e passa pelo
+ * scripts/scielo-para-jsonl.ts antes; o ENEM vem dos .jsonl do repositório dele.
  *
  * Grava pelo MESMO caminho dos PDFs (lib/rag/ingerir `ingerirTexto`): dedupe por hash, trechos, fila de vetores
  * (o worker rag-index gera os embeddings depois; até lá a busca por palavra já acha). Rodar de novo é seguro.
@@ -101,7 +103,7 @@ async function main() {
   };
 
   if (FONTES.includes("scielo")) {
-    // {doc_id, year, titulo, resumo} — scripts/scielo-para-jsonl.py
+    // {doc_id, year, titulo, resumo} — scripts/scielo-para-jsonl.ts
     const porArea: Record<string, Array<{ pontos: number; titulo: string; resumo: string; id: string; ano: number }>> = {};
     let lidas = 0;
     for await (const row of jsonl(`${DIR}/scielo.jsonl`)) {
@@ -223,6 +225,59 @@ async function main() {
         const alts = Array.isArray(q.alternatives) ? q.alternatives.map((a: string, i: number) => `${"ABCDE"[i]}) ${a}`).join("\n") : "";
         await gravar(AREA_GERAL, "enem", { chave: `enem-${ano}-${q.id}`, titulo: `ENEM ${ano} — ${q.id}`, texto: `${q.question}\n\n${alts}\n\nGabarito: ${q.label}\n\nFonte: maritaca-ai/enem (Hugging Face) — licença Apache-2.0.` });
       }
+    }
+  }
+
+  if (FONTES.includes("wikilivros")) {
+    // Wikilivros e Wikiversidade em português — o último corpus aberto que alcança enfermagem,
+    // farmácia, veterinária e agronomia, e em PORTUGUÊS, então o classificador funciona nele.
+    //
+    // Vem do dump Enterprise (.json.tar.gz) e NÃO do pages-articles.xml.bz2: nem o zlib do node nem
+    // o contêiner de produção abrem bz2 (a imagem instala só openssl, ca-certificates e ffmpeg).
+    // O tar tem UM membro, cujo cabeçalho são 512 bytes fixos — é o que o Transform abaixo pula.
+    // Tudo por FLUXO: 70,7 MB comprimidos não precisam caber na memória nem no disco.
+    const { createGunzip } = await import("node:zlib");
+    const { createInterface } = await import("node:readline");
+    const { Readable, Transform } = await import("node:stream");
+    const { BLOCO_TAR, WIKIS, documentoDoWikilivro, ehDescarte, urlDoWiki } = await import("../lib/rag/wikilivros");
+
+    const porArea: Record<string, number> = {};
+    for (const wiki of WIKIS) {
+      const r = await fetch(urlDoWiki(wiki), { headers: UA }).catch(() => null);
+      if (!r?.ok || !r.body) { console.warn(`[wikilivros] ${wiki}: HTTP ${r?.status ?? "falhou"}`); continue; }
+
+      let aPular = BLOCO_TAR;
+      const pularCabecalho = new Transform({
+        transform(pedaco: Buffer, _enc, cb) {
+          if (aPular > 0) {
+            const corta = Math.min(aPular, pedaco.length);
+            aPular -= corta;
+            pedaco = pedaco.subarray(corta);
+          }
+          cb(null, pedaco);
+        },
+      });
+
+      const descartes: Record<string, number> = {};
+      let lidas = 0, aceitos = 0;
+      const linhas = createInterface({
+        input: Readable.fromWeb(r.body as never).pipe(createGunzip()).pipe(pularCabecalho),
+        crlfDelay: Infinity,
+      });
+      for await (const linha of linhas) {
+        if (!linha.trim()) continue;
+        let o: unknown;
+        // o tar enche o fim do membro com NUL: essas linhas não são JSON, e pular é o certo
+        try { o = JSON.parse(linha); } catch { continue; }
+        lidas++;
+        const d = documentoDoWikilivro(wiki, o as never);
+        if (ehDescarte(d)) { descartes[d.descarte] = (descartes[d.descarte] ?? 0) + 1; continue; }
+        if ((porArea[d.area] ?? 0) >= POR_AREA) { descartes.area_cheia = (descartes.area_cheia ?? 0) + 1; continue; }
+        porArea[d.area] = (porArea[d.area] ?? 0) + 1;
+        aceitos++;
+        await gravar(d.area, wiki, { chave: d.chave, titulo: d.titulo, texto: d.texto });
+      }
+      console.log(`[wikilivros] ${wiki}: ${lidas.toLocaleString("pt-BR")} páginas, ${aceitos} aceitas · descartes: ${Object.entries(descartes).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}=${v}`).join(" ") || "nenhum"}`);
     }
   }
 

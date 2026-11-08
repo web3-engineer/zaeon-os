@@ -83,7 +83,7 @@ export type FonteDeBase = {
 export const FONTES_DE_BASE: readonly FonteDeBase[] = [
   {
     id: "scielo",
-    origem: "SciELO em português (parquet convertido por scripts/scielo-para-jsonl.py)",
+    origem: "SciELO em português (parquet convertido por scripts/scielo-para-jsonl.ts)",
     licenca: "CC BY 4.0", comercial: true,
     area: { tipo: "classificador" },
     estado: "pronta",
@@ -180,6 +180,31 @@ export const FONTES_DE_BASE: readonly FonteDeBase[] = [
     }],
     nota: "8.108 documentos medidos no shard 0 de 6 (185.375 verbetes varridos), nas 17 áreas. "
       + "Com os 6 shards, ~48 mil. Lido por faixa HTTP: não baixa o arquivo.",
+  },
+  {
+    id: "wikilivros",
+    origem: "Wikilivros e Wikiversidade em português, dump Enterprise HTML (.json.tar.gz) da Wikimedia",
+    licenca: "CC BY-SA 3.0 (declarada em cada registro do dump)", comercial: true,
+    area: { tipo: "classificador" },
+    estado: "pronta",
+    // `enciclopedico`, e isto é escolha conservadora. É material DIDÁTICO — livro aberto e material
+    // de curso, não enciclopédia e não artigo acadêmico. Mas é texto de comunidade wiki, a mesma
+    // procedência da Wikipédia, e chamá-lo de `proprio` inflaria a cobertura de 16 áreas nas costas
+    // de texto wiki. Como as 17 áreas já têm corpus do ofício, classificar aqui não muda veredicto
+    // nenhum — só evita contar como especialidade o que não é.
+    natureza: "enciclopedico",
+    medicoes: [{
+      data: "2026-11-08", onde: "ensaio",
+      nota: "22.867 páginas lidas por fluxo (13.802 + 9.065); descartes: curto 11.044, sem área 9.266, estrutura 412",
+      porArea: {
+        "eng-computacao": 463, matematica: 306, biologia: 249, software: 213, medicina: 193,
+        infra: 136, "eng-energias": 107, agronomia: 93, quimica: 88, seguranca: 66,
+        "dados-ia": 63, psicologia: 63, fisica: 37, "eng-civil": 19, farmacia: 19, veterinaria: 16,
+      },
+    }],
+    nota: "Vem do dump Enterprise porque o `pages-articles.xml.bz2` é bz2, e nem o zlib do node nem "
+      + "a imagem de produção abrem bz2. `enfermagem` fica em ZERO aqui: o vocabulário dela empata "
+      + "com medicina em texto curto e `classificarArea` recusa empate — está em lib/rag/wikilivros.test.",
   },
   {
     id: "arxiv",
