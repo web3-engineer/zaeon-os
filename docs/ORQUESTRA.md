@@ -69,6 +69,38 @@ O Kimi usa isso como foi treinado; qualquer outro modelo usa porque o prompt man
 | JSON no prompt, até 6 voltas × 3 ferramentas | Function-calling nativo e dezenas de passos; o freio é prazo e teto de ferramentas |
 | Crítico heurístico, sem modelo | Portão de citação determinístico (sempre) + verificador global por modelo (MAX), com uma revisão |
 
+## Os datasets da casa chegam aos motores
+
+As bases do RAG só chegavam à Aura, injetadas no prompt. São elas:
+- as áreas: SciELO pt, Wikipédia pt, medicina/enfermagem/farmácia e ENEM;
+- a base da turma;
+- a base pessoal do aluno.
+
+Agora todo motor de fora recebe a ferramenta **`base_conhecimento`** (`lib/orquestra/datasets.ts`). Ela faz a
+**mesma** busca do turno (permissão, corte de similaridade, disjuntor), com as áreas da agente e do mentor,
+e cada trecho vira evidência `[E#]`. Sem `RAG_PG_URL`, a ferramenta não existe: o motor não é avisado de
+uma base que não está lá. Na arena, sem aluno, só as bases públicas por área respondem.
+
+## Console interno: Zaeon Hermes (app macOS)
+
+Cada tarefa assumida por um motor fica gravada em `OrquestraTarefa` (`lib/orquestra/trilha.ts`):
+- a decisão;
+- os eventos no tempo;
+- as evidências;
+- o texto com `[E#]`;
+- as métricas.
+
+O custo de cada chamada fica no TokenLedger, ligado por `taskId`. O app **Zaeon Hermes**
+(`apps/zaeon-hermes-mac`) lê tudo pelas rotas `/api/admin/orquestra/*`. Ele tem:
+- um quadro kanban;
+- o dashboard de cada motor;
+- a trilha de cada tarefa;
+- os datasets;
+- a arena;
+- o export das trajetórias para um dataset do Hugging Face.
+
+Contrato e autenticação: `docs/HERMES_ZAEON.md`.
+
 ## Portão de qualidade (`lib/orquestra/verificador.ts`)
 
 1. **Citação.** Cada achado de ferramenta ganha uma chave `[E#]`, e a observação já chega ao modelo com as chaves (desenho do PaperQA2). Chave que nenhuma ferramenta devolveu é **cortada** do texto e contada em `invalidas`. A cobertura mede quantos parágrafos substantivos têm fonte.

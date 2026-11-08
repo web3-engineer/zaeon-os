@@ -1814,3 +1814,32 @@ model Blueprint {
    @@map("rea_learning_outbox")
  }
 
+
+// ORQUESTRA (lib/orquestra/trilha · docs/HERMES_ZAEON.md): uma linha por tarefa que um motor da orquestra
+// assumiu (chat ou arena). É o que o console Zaeon Hermes lê: decisão, eventos no tempo, evidências [E#],
+// texto final e métricas. O custo por chamada fica no TokenLedger, ligado por `taskId` = este `id`.
+// Escrita best-effort (nunca derruba o turno). `userId` é interno — o export pro dataset NUNCA o leva.
+model OrquestraTarefa {
+  id           String   @id @map("_id") @db.ObjectId
+  criadaEm     DateTime @default(now())
+  atualizadaEm DateTime @updatedAt
+  status       String                    // "rodando" | "concluida" | "fallback" | "falhou"
+  origem       String                    // "chat" | "arena"
+  motor        String
+  nomeMotor    String
+  formato      String
+  intent       String
+  plano        String
+  objetivo     String
+  userId       String?  @db.ObjectId
+  decisao      Json
+  eventos      Json?                     // [{ t, fase, rotulo, agente }] (t = ms desde o início; teto 400)
+  evidencias   Json?                     // [{ chave, claim, source, ferramenta, agente }] (teto 300)
+  texto        String?                   // markdown final com as chaves [E#]
+  relatorio    Json?                     // RelatorioOrquestra (ms, uso, passos, subagentes, citações, cobertura…)
+  erro         String?
+
+  @@index([criadaEm])
+  @@index([motor, criadaEm])
+  @@index([status, criadaEm])
+}

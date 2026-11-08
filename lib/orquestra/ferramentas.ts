@@ -14,7 +14,7 @@
  * Só ferramentas de LEITURA entram (risk "read" + permit ALLOW). Motor de fora não escreve nada
  * na casa — mesma regra do MCP (lib/agent/mcp.ts RISCO_MAXIMO_CHAT).
  */
-import { permit, runToolByName, toolsDoTurno, type ToolContext, type ToolDef, type ToolResult } from "@/lib/agent/runtime";
+import { permit, runTool, runToolByName, toolsDoTurno, type ToolContext, type ToolDef, type ToolResult } from "@/lib/agent/runtime";
 import { FORA_DO_MENU } from "@/lib/agent/acao";
 import type { CaixaDeFerramentas, Evidencia, FerramentaVisivel } from "@/lib/orquestra/contrato";
 import { correrContraPrazo, ehPrazo, type Prazo } from "@/lib/orquestra/prazo";
@@ -60,11 +60,17 @@ export type OpcoesCaixa = {
   executarTool?: (nome: string, args: unknown, ctx: ToolContext) => Promise<ToolResult>;
   /** injetável (teste): as tools do turno. Default = toolsDoTurno(ctx) */
   ferramentasDoTurno?: (ctx: ToolContext) => ToolDef[];
+  /** tools SÓ da orquestra, fora do registry global (ex.: `base_conhecimento` — lib/orquestra/datasets) */
+  extras?: ToolDef[];
 };
 
 export function criarCaixa(ctx: ToolContext, opts: OpcoesCaixa = {}): CaixaDeFerramentas & { chamadas(): number } {
-  const executarTool = opts.executarTool ?? ((n, a, c) => runToolByName(n, a, c));
-  const defs = (opts.ferramentasDoTurno ?? toolsDoTurno)(ctx).filter(
+  const extrasPorNome = new Map((opts.extras ?? []).map((d) => [d.name, d]));
+  const executarTool = opts.executarTool ?? ((n, a, c) => {
+    const extra = extrasPorNome.get(n);
+    return extra ? runTool(extra, a, c) : runToolByName(n, a, c);
+  });
+  const defs = [...(opts.ferramentasDoTurno ?? toolsDoTurno)(ctx), ...(opts.extras ?? [])].filter(
     (d) => d.risk === "read" && !SO_ORQUESTRA.has(d.name) && permit(d, ctx) === "ALLOW",
   );
   const porNome = new Map(defs.map((d) => [d.name, d]));

@@ -24,6 +24,9 @@ import { todosOsMotores } from "@/lib/orquestra/motores";
 import { planoDaConta } from "@/lib/orquestra/plano";
 import { revisarGlobal, verificarCitacoes, type Veredito } from "@/lib/orquestra/verificador";
 import { paraStructuredAnswer } from "@/lib/orquestra/formatar";
+import { baseConhecimentoDef } from "@/lib/orquestra/datasets";
+import { areasDoTurno } from "@/lib/rag/areas";
+import { criarTrilha, type Trilha } from "@/lib/orquestra/trilha";
 import type { Plan } from "@/lib/plans";
 
 type Env = Record<string, string | undefined>;
@@ -39,6 +42,14 @@ export type EntradaOrquestra = {
   history: Array<{ role: string; text: string }>;
   ledger: LedgerBase;
   narrar(chunk: string): void;
+  /** as bases por área do RAG que este turno consulta (lib/rag/areas areasDoTurno) — viram a tool `base_conhecimento` */
+  areas?: string[];
+  /** quem gerou a tarefa (o console separa o chat da arena) */
+  origem?: "chat" | "arena";
+  /** injetável (teste); default = a trilha no Mongo (lib/orquestra/trilha) */
+  trilha?: Trilha;
+  /** id da tarefa já reservado por quem chamou (a arena devolve o id antes de rodar) */
+  tarefaId?: string;
   /** o cancelamento de quem chamou (aluno fechou a aba, worker desligando) */
   signal?: AbortSignal;
   /** injeções (teste/arena) */
@@ -128,10 +139,16 @@ async function rodarMotor(
 ): Promise<SaidaOrquestra> {
   const motor = motores.find((m) => m.id === decisao.motor)!;
   const tarefa: Tarefa = {
-    id: novoIdDeTarefa(), objetivo: e.objetivo, intent: r.intent, kind: r.kind,
+    id: e.tarefaId ?? novoIdDeTarefa(), objetivo: e.objetivo, intent: r.intent, kind: r.kind,
     contexto: e.systemContext, historico: e.history, plano,
   };
-  const emitirProgresso = (fase: string, rotulo: string) => {
+  const trilha = e.trilha ?? criarTrilha({ env });
+  trilha.iniciar({
+    id: tarefa.id, origem: e.origem ?? "chat", motor: motor.id, nomeMotor: motor.nome, formato: motor.formato,
+    intent: r.intent, plano, objetivo: e.objetivo, userId: e.userId, decisao,
+  });
+  const emitirProgresso = (fase: string, rotulo: string, agente?: string) => {
+    trilha.evento(fase, rotulo, agente);
     try { e.narrar(serializarProgresso({ fase, rotulo })); } catch { /* progresso é enfeite */ }
   };
   const extra = decisao.formato === "enxame" ? ` · até ${decisao.maxSubagentes} subagentes` : "";
@@ -139,13 +156,17 @@ async function rodarMotor(
 
   const t0 = Date.now();
   const prazo = criarPrazo(decisao.prazoMs, e.signal ?? null, `motor ${motor.id}`);
-  const caixa = e.caixa ?? criarCaixa(e.hctx, { maxChamadas: Number(env.ORQ_MAX_FERRAMENTAS) > 0 ? Number(env.ORQ_MAX_FERRAMENTAS) : 80 });
+  const caixa = e.caixa ?? criarCaixa(e.hctx, {
+    maxChamadas: Number(env.ORQ_MAX_FERRAMENTAS) > 0 ? Number(env.ORQ_MAX_FERRAMENTAS) : 80,
+    // os DATASETS da casa pros motores de fora (sem RAG configurado, a tool não existe — não promete o que não tem)
+    extras: env.RAG_PG_URL?.trim() ? [baseConhecimentoDef({ userId: e.userId, areas: e.areas ?? areasDoTurno(null) })] : [],
+  });
   const x = {
     prazo, caixa, env, ledger: e.ledger,
     chamar: e.chamar ?? chamarModeloPadrao,
     maxSubagentes: decisao.maxSubagentes,
     emitir: (ev: { fase: string; rotulo: string; agente?: string }) =>
-      emitirProgresso(ev.fase, ev.agente && !ev.rotulo.startsWith(ev.agente) ? `${ev.agente} · ${ev.rotulo}` : ev.rotulo),
+      emitirProgresso(ev.fase, ev.agente && !ev.rotulo.startsWith(ev.agente) ? `${ev.agente} · ${ev.rotulo}` : ev.rotulo, ev.agente),
   };
 
   try {
@@ -176,6 +197,7 @@ async function rodarMotor(
       aprovado, degradado,
     };
     console.info("[orquestra] concluído", JSON.stringify(relatorio));
+    void trilha.concluir({ status: "concluida", evidencias: res.evidencias, texto: veredito.texto, relatorio: { ...relatorio, motivo: res.motivo ?? null, modelos: res.modelos } });
     return {
       answer,
       state: { intent: r.intent, kind: r.kind, mode: r.mode, artifacts: [], degraded: degradado },
@@ -184,7 +206,12 @@ async function rodarMotor(
     };
   } catch (err) {
     // o aluno não fica sem resposta: a Aura assume. Se foi o PRÓPRIO aluno que cancelou, não.
-    if (e.signal?.aborted) throw err;
+    const erro = String((err as Error)?.message ?? err).slice(0, 2_000);
+    if (e.signal?.aborted) {
+      void trilha.concluir({ status: "falhou", evidencias: caixa.evidencias(), erro: `cancelado: ${erro}`, relatorio: { ms: Date.now() - t0 } });
+      throw err;
+    }
+    void trilha.concluir({ status: "fallback", evidencias: caixa.evidencias(), erro, relatorio: { ms: Date.now() - t0 } });
     console.warn(`[orquestra] motor ${motor.id} falhou — a Aura assume:`, String((err as Error)?.message ?? err).slice(0, 240));
     emitirProgresso("orquestra", `${motor.nome} não concluiu — a Aura assume`);
     return runTrajectoryTraced(e.objetivo, e.hctx, depsMemo);

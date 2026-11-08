@@ -13,6 +13,14 @@ import { decidir, escolherMotor, modoOrquestra } from "@/lib/orquestra/roteador"
 import { MOTORES_NATIVOS, enxameMisto, kimiEnxame, motoresHttpDoEnv, motorHttp, trabalhadoresMistos } from "@/lib/orquestra/motores";
 import { orquestrarTurno } from "@/lib/orquestra/orquestrador";
 import { planoDe } from "@/lib/orquestra/plano";
+import { criarTrilha, type Trilha } from "@/lib/orquestra/trilha";
+import { baseConhecimentoDef, catalogoDeDatasets, contarPorArea, DONO_NEUTRO } from "@/lib/orquestra/datasets";
+
+function trilhaFalsa(): Trilha & { fins: any[]; inicios: any[] } {
+  const fins: any[] = [], inicios: any[] = [];
+  const t = criarTrilha({ env: { ORQ_TRILHA: "0" } });
+  return { ...t, iniciar: (i) => { inicios.push(i); t.iniciar(i); }, concluir: async (f) => { fins.push(f); }, fins, inicios };
+}
 import type { ChamarModelo, PedidoModelo, RespostaModelo } from "@/lib/orquestra/provedores";
 import type { Evidencia, Execucao, Tarefa } from "@/lib/orquestra/contrato";
 import type { ToolDef } from "@/lib/agent/runtime";
@@ -274,7 +282,7 @@ describe("orquestrador · a Zaeon decide quem trabalha", () => {
   const entrada = (extra: Record<string, unknown> = {}) => ({
     objetivo: "Escreva um artigo sobre CRISPR", hctx: { plan: "free", execMode: "auto" } as any, deps, userId: "u".repeat(24),
     emSegundoPlano: true, trabalhoGeradoNoCliente: false, history: [], ledger: { agentKey: "aura", surface: "estudos" as const },
-    narrar: vi.fn(), plano: "max" as const, ...extra,
+    narrar: vi.fn(), plano: "max" as const, trilha: trilhaFalsa(), ...extra,
   });
   beforeEach(() => { runTrajectoryTraced.mockReset().mockResolvedValue(aura); classify.mockClear(); });
 
@@ -310,10 +318,23 @@ describe("orquestrador · a Zaeon decide quem trabalha", () => {
     expect(progresso).toContain("criou 3 subagentes");
   });
 
-  it("motor que falha: a Aura assume, com aviso no progresso", async () => {
+  it("a trilha registra início, eventos com tempo e o fim com evidências e texto [E#]", async () => {
+    const trilha = trilhaFalsa();
+    await orquestrarTurno(entrada({ env: { ORQUESTRA: "on", MOONSHOT_API_KEY: "k", ORQ_VERIFICADOR: "0" }, chamar: roteiroDoEnxame(), caixa: caixaFalsa(), trilha, origem: "arena", tarefaId: "c".repeat(24) }));
+    expect(trilha.inicios[0]).toMatchObject({ id: "c".repeat(24), origem: "arena", motor: "kimi-enxame", intent: "criar_trabalho", plano: "max" });
+    expect(trilha.eventos().some((e) => e.fase === "subagente" && e.agente?.startsWith("subagente"))).toBe(true);
+    expect(trilha.fins[0].status).toBe("concluida");
+    expect(trilha.fins[0].texto).toContain("[E1]");
+    expect(trilha.fins[0].evidencias).toHaveLength(3);
+    expect(trilha.fins[0].relatorio).toMatchObject({ subagentes: 3, invalidas: 1 });
+  });
+
+  it("motor que falha: a Aura assume, com aviso no progresso — e a trilha grava fallback", async () => {
     const narrar = vi.fn();
-    const r = await orquestrarTurno(entrada({ env: { ORQUESTRA: "on", DEEPSEEK_API_KEY: "k" }, chamar: async () => { throw new Error("503 geral"); }, caixa: caixaFalsa(), narrar }));
+    const trilha = trilhaFalsa();
+    const r = await orquestrarTurno(entrada({ env: { ORQUESTRA: "on", DEEPSEEK_API_KEY: "k" }, chamar: async () => { throw new Error("503 geral"); }, caixa: caixaFalsa(), narrar, trilha }));
     expect(r.answer.nucleo).toBe("da Aura");
+    expect(trilha.fins[0]).toMatchObject({ status: "fallback", erro: "503 geral" });
     expect(narrar.mock.calls.map((c) => String(c[0])).join("")).toContain("não concluiu — a Aura assume");
   });
 
@@ -341,5 +362,56 @@ describe("orquestrador · a Zaeon decide quem trabalha", () => {
     await orquestrarTurno(entrada({ env: { ORQUESTRA: "on", DEEPSEEK_API_KEY: "k" }, plano: "free" }));
     expect(classify).not.toHaveBeenCalled();
     expect(runTrajectoryTraced).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("trilha · gravação best-effort", () => {
+  it("cria rodando, atualiza no fim; banco fora não lança; userId inválido vira null", async () => {
+    const create = vi.fn(async () => ({})), update = vi.fn(async () => ({}));
+    let t = 1_000;
+    const tr = criarTrilha({ db: { orquestraTarefa: { create, update } } as any, env: {}, agora: () => t });
+    tr.iniciar({ id: "d".repeat(24), origem: "chat", motor: "m", nomeMotor: "M", formato: "profundo", intent: "revisar", plano: "pro", objetivo: "o", userId: "anon", decisao: {} as any });
+    t = 1_250;
+    tr.evento("ferramenta", "web_search: x", "M");
+    await tr.concluir({ status: "concluida", texto: "ok [E1]" });
+    expect((create.mock.calls[0] as any)[0].data).toMatchObject({ status: "rodando", userId: null });
+    expect((update.mock.calls[0] as any)[0].data).toMatchObject({ status: "concluida", texto: "ok [E1]", eventos: [{ t: 250, fase: "ferramenta", rotulo: "web_search: x", agente: "M" }] });
+
+    const quebrado = criarTrilha({ db: { orquestraTarefa: { create: async () => { throw new Error("mongo fora"); }, update: async () => { throw new Error("mongo fora"); } } } as any, env: {} });
+    quebrado.iniciar({ id: "e".repeat(24), origem: "chat", motor: "m", nomeMotor: "M", formato: "unico", intent: "x", plano: "max", objetivo: "o", userId: null, decisao: {} as any });
+    await expect(quebrado.concluir({ status: "falhou" })).resolves.toBeUndefined();
+  });
+});
+
+describe("datasets · as bases da casa pros motores de fora", () => {
+  it("base_conhecimento busca com as áreas do turno e vira evidência; sem aluno usa o dono neutro", async () => {
+    const buscar = vi.fn(async () => ({ status: "ok" as const, trechos: [
+      { trechoId: "t1", documentoId: "d1", titulo: "Fotossíntese", texto: "A fotossíntese converte luz em energia química.", paginaIni: 0, paginaFim: 0, score: 1, similaridade: 0.8, porTexto: false, publico: true },
+      { trechoId: "t2", documentoId: "d2", titulo: "Apostila da turma", texto: "Clorofila absorve luz azul e vermelha.", paginaIni: 4, paginaFim: 5, score: 1, similaridade: 0.7, porTexto: true },
+    ] }));
+    const def = baseConhecimentoDef({ userId: null, areas: ["area:biologia", "area:geral"] }, buscar as any);
+    const r = await def.run({ query: "o que é fotossíntese" }, {} as any);
+    expect(buscar).toHaveBeenCalledWith({ userId: DONO_NEUTRO, pergunta: "o que é fotossíntese", areas: ["area:biologia", "area:geral"] });
+    expect(r.findings?.map((f) => f.source?.title)).toEqual(["Fotossíntese", "Apostila da turma (p. 4–5)"]);
+    expect(r.findings?.[0].confidence).toBe("alta");
+  });
+
+  it("base indisponível vira falha (o laço contorna); vazia vira 'nada útil'", async () => {
+    const off = baseConhecimentoDef({ userId: "u", areas: [] }, (async () => ({ status: "indisponivel", trechos: [] })) as any);
+    expect(await off.run({ query: "x" }, {} as any)).toMatchObject({ ok: false, code: "skill_offline" });
+    const caixa = criarCaixa({ plan: "free", execMode: "auto" } as any, { ferramentasDoTurno: () => [], extras: [baseConhecimentoDef({ userId: "u", areas: [] }, (async () => ({ status: "sem_trecho", trechos: [] })) as any)] });
+    expect(caixa.visiveis().map((v) => v.name)).toEqual(["base_conhecimento"]);
+    expect(await caixa.executar("base_conhecimento", { query: "x" }, "a", criarPrazo(5_000))).toMatch(/não encontrou nada/);
+  });
+
+  it("catálogo: todas as áreas + turma + pessoal + datasets do HF, com contagem do Postgres", async () => {
+    const db = { query: vi.fn(async (sql: string) => ({ rowCount: 1, rows: sql.includes("rag_documentos") ? [{ area: "area:medicina", n: "12" }] : [{ area: "area:medicina", n: "340" }] })) };
+    const contagem = await contarPorArea(db as any);
+    const cat = catalogoDeDatasets(contagem, { RAG_PG_URL: "postgres://x", HF_DATASETS_TOKEN: "t", HF_DATASETS_ORG: "nk" });
+    expect(cat.find((d) => d.id === "rag:area:medicina")).toMatchObject({ documentos: 12, trechos: 340, conectado: true });
+    expect(cat.find((d) => d.id === "rag:area:fisica")).toMatchObject({ trechos: 0, conectado: false });
+    expect(cat.find((d) => d.id === "hf:zaeon-orquestra-trajetorias")).toMatchObject({ fonte: "nk/zaeon-orquestra-trajetorias", conectado: true });
+    expect(await contarPorArea({ query: async () => { throw new Error("pg fora"); } } as any)).toBeNull();
+    expect(catalogoDeDatasets(null, {}).find((d) => d.id === "rag:area:geral")).toMatchObject({ documentos: null, conectado: false });
   });
 });

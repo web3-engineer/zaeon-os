@@ -275,6 +275,8 @@ export async function runChatTurn(
       history: params.history,
       ledger: ledgerTurno,
       narrar,
+      // as MESMAS bases por área do RAG do turno (a da agente antes da do mentor) — viram a tool dos motores
+      areas: (await import("@/lib/rag/areas")).areasDoTurno(cap.area ?? mentor?.slug),
     });
     const { answer, state } = doCache
       ? { answer: doCache.answer as any, state: { intent: doCache.intent, kind: doCache.kind, artifacts: [], degraded: false } as any }
