@@ -92,11 +92,12 @@ describe("#681 · excluir e erro ao carregar", () => {
     await waitFor(() => expect(pendentes.a).toBeTruthy());
     await soltar("a");
     let ok = false;
-    await act(async () => { ok = await result.current.excluir("a"); });
+    await act(async () => { ok = await result.current.excluir("a", 0); });
     expect(ok).toBe(true);
-    expect(f.mock.calls.filter((c) => c[1]?.method === "DELETE").map((c) => c[0])).toEqual(["/api/blueprint/a"]);
     expect(result.current.lista!.map((b) => b.id)).toEqual(["b"]);
     expect(result.current.selecionado).toBe("b");
+    // #731: o pedido ao servidor sai depois do tempo de desfazer
+    await waitFor(() => expect(f.mock.calls.filter((c) => c[1]?.method === "DELETE").map((c) => c[0])).toEqual(["/api/blueprint/a"]));
   });
   it("excluir que falha não tira da lista", async () => {
     const f = fetch as unknown as ReturnType<typeof vi.fn>;
@@ -104,10 +105,10 @@ describe("#681 · excluir e erro ao carregar", () => {
     f.mockImplementation((url: string, o?: RequestInit) => (o?.method === "DELETE" ? Promise.resolve(new Response("{}", { status: 500 })) : antes(url, o)));
     const { result } = renderHook(() => useBlueprint());
     await waitFor(() => expect(result.current.lista).toHaveLength(2));
-    let ok = true;
-    await act(async () => { ok = await result.current.excluir("a"); });
-    expect(ok).toBe(false);
-    expect(result.current.lista).toHaveLength(2);
+    await act(async () => { await result.current.excluir("a", 0); });
+    // #731: o servidor recusou depois do tempo de desfazer: volta para a lista e avisa
+    await waitFor(() => expect(result.current.lista).toHaveLength(2));
+    expect(result.current.falhaExcluir).toMatch(/Não deu para excluir/);
   });
   it("renomear que falha volta o nome de antes", async () => {
     const f = fetch as unknown as ReturnType<typeof vi.fn>;
@@ -152,5 +153,55 @@ describe("#683 · ver mais", () => {
     expect(f.mock.calls.map((c) => c[0]).filter((u: string) => u.startsWith("/api/blueprint?"))).toContain("/api/blueprint?limite=80");
     expect(result.current.temMais).toBe(false);
     expect(result.current.limite).toBe(80);
+  });
+});
+
+describe("#731 · desfazer, falha ao abrir e menos pedidos", () => {
+  it("desfazer antes do tempo: nenhum DELETE, o blueprint volta", async () => {
+    const f = fetch as unknown as ReturnType<typeof vi.fn>;
+    const { result } = renderHook(() => useBlueprint());
+    await waitFor(() => expect(result.current.lista).toHaveLength(2));
+    await act(async () => { await result.current.excluir("a", 60_000); });
+    expect(result.current.lista!.map((b) => b.id)).toEqual(["b"]);
+    expect(result.current.excluidoRecente).toMatchObject({ id: "a" });
+    act(() => { result.current.desfazer(); });
+    await waitFor(() => expect(result.current.lista).toHaveLength(2));
+    expect(result.current.excluidoRecente).toBeNull();
+    expect(result.current.selecionado).toBe("a");
+    expect(f.mock.calls.some((c) => c[1]?.method === "DELETE")).toBe(false);
+  });
+
+  it("sair com a exclusão esperando manda o DELETE na hora", async () => {
+    const f = fetch as unknown as ReturnType<typeof vi.fn>;
+    const { result, unmount } = renderHook(() => useBlueprint());
+    await waitFor(() => expect(result.current.lista).toHaveLength(2));
+    await act(async () => { await result.current.excluir("a", 60_000); });
+    unmount();
+    expect(f.mock.calls.filter((c) => c[1]?.method === "DELETE").map((c) => c[0])).toEqual(["/api/blueprint/a"]);
+  });
+
+  it("o blueprint que não abre para de 'carregar' e marca a falha", async () => {
+    const { result } = renderHook(() => useBlueprint());
+    await waitFor(() => expect(pendentes.a).toBeTruthy());
+    await act(async () => { pendentes.a!(new Response("{}", { status: 500 })); await Promise.resolve(); });
+    await waitFor(() => expect(result.current.falhaAbrir).toBe("a"));
+    expect(result.current.carregando).toBe(false);
+  });
+
+  it("a recarga de 20 s não relê o aberto quando a data na lista é a mesma", async () => {
+    const f = fetch as unknown as ReturnType<typeof vi.fn>;
+    const antes = f.getMockImplementation()!;
+    // a lista traz a MESMA data do blueprint aberto
+    f.mockImplementation((url: string, o?: RequestInit) => url.startsWith("/api/blueprint?")
+      ? Promise.resolve(new Response(JSON.stringify({ blueprints: [{ ...resumo("a"), updatedAt: bp("a").updatedAt }, resumo("b")] })))
+      : antes(url, o));
+    const { result } = renderHook(() => useBlueprint());
+    await waitFor(() => expect(pendentes.a).toBeTruthy());
+    await soltar("a");
+    await waitFor(() => expect(result.current.atual?.id).toBe("a"));
+    const pedidosDoA = () => f.mock.calls.filter((c) => c[0] === "/api/blueprint/a").length;
+    const n = pedidosDoA();
+    await act(async () => { await result.current.recarregar(); });
+    expect(pedidosDoA()).toBe(n);
   });
 });
