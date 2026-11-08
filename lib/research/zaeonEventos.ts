@@ -18,7 +18,9 @@ export const PERSONAS: readonly { id: PersonaId; nome: string }[] = [
   { id: "nina", nome: "Nina" },
 ];
 /** o agente do chat → a persona do painel (null = sem avatar: o Octa Code, ou qualquer outro) */
-export const personaDoAgente = (agente: unknown): PersonaId | null => PERSONAS.find((p) => p.id === agente)?.id ?? null;
+// agente da orquestra (orq-*) fala com a voz — e o avatar — da Aura
+export const personaDoAgente = (agente: unknown): PersonaId | null =>
+  PERSONAS.find((p) => p.id === agente)?.id ?? (typeof agente === "string" && agente.startsWith("orq-") ? PERSONAS.find((p) => p.id === "aura")?.id ?? null : null);
 export const nomeDaPersona = (id: PersonaId) => PERSONAS.find((p) => p.id === id)?.nome ?? "Aura";
 /** `detail` = a PersonaId do agente escolhido, ou null */
 export const EVT_PERSONA = "zaeon:persona";

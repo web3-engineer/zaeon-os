@@ -108,6 +108,10 @@ services:
       # F2 · o modelo escolhe a ferramenta. VOLTAS = teto de custo (vazio = padrão 2).
       HARNESS_ACAO: ${HARNESS_ACAO:-1}
       HARNESS_VOLTAS_ACAO: ${HARNESS_VOLTAS_ACAO:-}
+      # ORQUESTRA (lib/orquestra · docs/ORQUESTRA.md): LIGADA. Os agentes plugados na Loja e o roteador por plano
+      # entregam o trabalho a DeepSeek/Tongyi/Kimi/enxames — só quando a chave do laboratório está no .env (sem
+      # chave, a Aura responde como antes). Desligar: ORQUESTRA=off no .env da VPS + recriar web e worker.
+      ORQUESTRA: ${ORQUESTRA:-on}
       # F7 · o Pro nas fases pesadas (plus/pro). Vazio = LIGADO (o código trata vazio como ausente);
       # `PRO_PESADAS=0` é o rollback, e precisa chegar nos DOIS serviços pra valer de verdade.
       PRO_PESADAS: ${PRO_PESADAS:-}
@@ -241,6 +245,10 @@ services:
       # F2 · o modelo escolhe a ferramenta. VOLTAS = teto de custo (vazio = padrão 2).
       HARNESS_ACAO: ${HARNESS_ACAO:-1}
       HARNESS_VOLTAS_ACAO: ${HARNESS_VOLTAS_ACAO:-}
+      # ORQUESTRA (lib/orquestra · docs/ORQUESTRA.md): LIGADA. Os agentes plugados na Loja e o roteador por plano
+      # entregam o trabalho a DeepSeek/Tongyi/Kimi/enxames — só quando a chave do laboratório está no .env (sem
+      # chave, a Aura responde como antes). Desligar: ORQUESTRA=off no .env da VPS + recriar web e worker.
+      ORQUESTRA: ${ORQUESTRA:-on}
       # F7 · o Pro nas fases pesadas (plus/pro). Vazio = LIGADO (o código trata vazio como ausente);
       # `PRO_PESADAS=0` é o rollback, e precisa chegar nos DOIS serviços pra valer de verdade.
       PRO_PESADAS: ${PRO_PESADAS:-}

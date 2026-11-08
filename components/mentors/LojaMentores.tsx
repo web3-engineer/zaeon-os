@@ -20,6 +20,7 @@ import {
 import MentoresGrid from "@/components/mentors/MentoresGrid";
 import { projetosOn } from "@/lib/research/unifiedRoom";
 import { categoriasLoja } from "@/lib/mentores/rota";
+import AgentesDaOrquestra from "@/components/orquestra/AgentesDaOrquestra";
 
 // --- INTERFACE ---
 interface Plugin {
@@ -215,6 +216,8 @@ export default function LojaMentores({ initialCategory }: { initialCategory?: st
 
                 {/* ─── ASSISTENTES (camada agêntica): nativos + mentores plugáveis ─────────────────── */}
                 {/* nativos (já inclusos) + mentores (plugáveis), em crachás vivos */}
+                {/* os AGENTES DA ORQUESTRA (outros laboratórios, plugáveis no chat) — lib/orquestra/catalogo */}
+                {showNativos && <AgentesDaOrquestra busca={search} />}
                 {(showMentores || showNativos) && <MentoresGrid search={search} nativos={showNativos} mentores={showMentores} />}
 
                 {/* GRID DE PLUGINS (some na categoria Mentores — lá só entram os mentores) */}

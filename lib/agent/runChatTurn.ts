@@ -69,6 +69,11 @@ export type ChatTurnParams = {
    * texto; e assim o turno atravessa a fila do CHAT_BG como JSON. Vazio/ausente = turno sem anexo.
    */
   anexos?: import("@/lib/agent/anexos").AnexoDoTurno[];
+  /**
+   * O MOTOR que o aluno escolheu ao plugar um agente da orquestra na Loja (lib/orquestra/catalogo). O turno
+   * continua sendo da Aura; a orquestra confere plano e chave e, se puder, entrega o trabalho a esse motor.
+   */
+  motorPedido?: string;
 };
 
 export async function runChatTurn(
@@ -278,6 +283,7 @@ export async function runChatTurn(
       history: params.history,
       ledger: ledgerTurno,
       narrar,
+      motorPedido: params.motorPedido,
       // as MESMAS bases por área do RAG do turno (a da agente antes da do mentor) — viram a tool dos motores
       areas: (await import("@/lib/rag/areas")).areasDoTurno(cap.area ?? mentor?.slug),
     });

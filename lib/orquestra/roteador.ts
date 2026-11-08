@@ -19,6 +19,7 @@ import type { IntentId, Mode } from "@/lib/agent/contracts";
 import { planAtLeast, type Plan } from "@/lib/plans";
 import type { Formato, Motor } from "@/lib/orquestra/contrato";
 import { todosOsMotores } from "@/lib/orquestra/motores";
+import { planoMinimoDoMotor } from "@/lib/orquestra/catalogo";
 
 type Env = Record<string, string | undefined>;
 
@@ -36,8 +37,13 @@ export type EntradaRoteador = {
   emSegundoPlano: boolean;
   /** criar_trabalho na Sala de Pesquisa SEM chat único: quem gera é o cliente (sentinela research) */
   trabalhoGeradoNoCliente: boolean;
-  /** motor pedido explicitamente (arena / admin / ORQ_MOTOR) */
+  /** motor pedido explicitamente (arena / admin / ORQ_MOTOR) — sem portão de plano */
   forcado?: string | null;
+  /**
+   * motor que o ALUNO escolheu ao plugar um agente da orquestra na Loja (lib/orquestra/catalogo). Diferente do
+   * `forcado`: passa pelo portão de plano do catálogo e pelas regras de conversa rápida/inline.
+   */
+  pedido?: string | null;
 };
 
 export type Decisao = {
@@ -98,6 +104,23 @@ export function decidir(e: EntradaRoteador, env: Env = process.env, motores: Mot
   if (SEMPRE_AURA.has(e.intent)) return AURA(`intenção ${e.intent} fica com a Aura (rápida)`);
   if (!e.emSegundoPlano) return AURA("turno inline (maxDuration 60 s): motor longo só no worker");
   if (e.intent === "criar_trabalho" && e.trabalhoGeradoNoCliente) return AURA("trabalho da Sala de Pesquisa é gerado no cliente");
+  // O AGENTE QUE O ALUNO PLUGOU NA LOJA: vale pra qualquer pedido de trabalho (não só os amplos), com o plano do
+  // catálogo. Sem plano ou sem chave → Aura, com o motivo no log (a Loja já mostra o cadeado / "aguardando chave").
+  if (e.pedido) {
+    const m = motores.find((x) => x.id === e.pedido);
+    const min = planoMinimoDoMotor(e.pedido);
+    if (!m || !min) return AURA(`motor pedido desconhecido (${e.pedido})`);
+    if (!planAtLeast(e.plano, min)) return AURA(`${m.nome} exige o plano ${min} (conta ${e.plano})`);
+    if (!m.disponivel(env)) return AURA(`${m.nome} sem chave configurada no servidor`);
+    const maxP = planAtLeast(e.plano, "max");
+    return {
+      motor: m.id, formato: m.formato, motivo: `escolhido pelo aluno na Loja (${e.plano} · ${e.intent})`,
+      maxSubagentes: m.formato === "enxame" ? (maxP ? num(env.ORQ_SUBAGENTES_MAX, 12) : num(env.ORQ_SUBAGENTES_PRO, 4)) : 0,
+      prazoMs: m.formato === "enxame" ? prazoEnxame : prazoProfundo,
+      verificadorGlobal: env.ORQ_VERIFICADOR === "1" || (maxP && env.ORQ_VERIFICADOR !== "0"),
+    };
+  }
+
   const minimo = (env.ORQ_PLANO_MINIMO?.trim() || "pro") as Plan;
   if (!planAtLeast(e.plano, minimo)) return AURA(`plano ${e.plano} abaixo de ${minimo}`);
 

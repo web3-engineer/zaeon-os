@@ -6,7 +6,8 @@
  */
 import { useEffect, useState } from "react";
 
-export type PluginChat = "octa-code";
+// os agentes da ORQUESTRA (lib/orquestra/catalogo) entram pelo mesmo trilho do Octa Code
+export type PluginChat = "octa-code" | import("@/lib/orquestra/catalogo").AgenteOrquestraId;
 const CHAVE = "zaeon.chat.plugins";
 const EVENTO = "zaeon:chat:plugins";
 

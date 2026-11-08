@@ -46,6 +46,8 @@ export type EntradaOrquestra = {
   areas?: string[];
   /** quem gerou a tarefa (o console separa o chat da arena) */
   origem?: "chat" | "arena";
+  /** o motor do agente que o aluno plugou na Loja (lib/orquestra/catalogo) — o roteador confere plano e chave */
+  motorPedido?: string | null;
   /** injetável (teste); default = a trilha no Mongo (lib/orquestra/trilha) */
   trilha?: Trilha;
   /** id da tarefa já reservado por quem chamou (a arena devolve o id antes de rodar) */
@@ -109,6 +111,7 @@ export async function orquestrarTurno(e: EntradaOrquestra): Promise<SaidaOrquest
   const motores = e.motores ?? todosOsMotores(env);
   const decisao = decidir({
     plano, intent: r.intent, mode: r.mode, emSegundoPlano: e.emSegundoPlano, trabalhoGeradoNoCliente: e.trabalhoGeradoNoCliente,
+    pedido: e.motorPedido ?? null,
   }, env, motores);
   console.info("[orquestra]", JSON.stringify({ modo, plano, intent: r.intent, motor: decisao.motor, motivo: decisao.motivo }));
 

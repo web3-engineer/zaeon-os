@@ -1,5 +1,6 @@
 "use client";
 
+import { agenteOrquestra } from "@/lib/orquestra/catalogo";
 import { useArmazemDaConta } from "@/lib/chat/contaNoNavegador";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { BRAZILIAN_UNIVERSITIES } from "@/constants/universities";
@@ -2777,7 +2778,13 @@ export default function HomeworkPage({
                 agentes={agentesDisponiveis(agentesPlugados)}
                 atual={agente.id}
                 // eslint-disable-next-line @next/next/no-img-element
-                icone={(id) => (id === "octa" ? <OctaIcon size={20} /> : <img src={`/avatars/${id}/idle.sm.webp`} alt="" width={32} height={32} className="h-8 w-8 rounded-full object-cover object-top" />)}
+                icone={(id) => {
+                  if (id === "octa") return <OctaIcon size={20} />;
+                  // agente da orquestra (plugado na Loja): selo com a sigla e a cor do laboratório — não tem avatar 3D
+                  const orq = agenteOrquestra(id);
+                  if (orq) return <span className="flex h-8 w-8 items-center justify-center rounded-full font-mono text-[11px] font-black text-white ring-1 ring-white/20" style={{ background: `linear-gradient(135deg, ${orq.cor}, #0b1020)` }}>{orq.sigla}</span>;
+                  return <img src={`/avatars/${id}/idle.sm.webp`} alt="" width={32} height={32} className="h-8 w-8 rounded-full object-cover object-top" />;
+                }}
                 onEscolher={(id) => void trocarAgente(id)}
                 onFechar={() => setSeletorAgente(null)}
               />

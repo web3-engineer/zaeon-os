@@ -5,8 +5,9 @@
  * Agente de vitrine (Marketplace) só aparece no seletor depois de adicionado lá. PURO.
  */
 import type { PluginChat } from "@/lib/plugins/chatPlugins";
+import { AGENTES_ORQUESTRA } from "@/lib/orquestra/catalogo";
 
-export type AgenteChatId = "aura" | "zenita" | "nina" | "octa";
+export type AgenteChatId = "aura" | "zenita" | "nina" | "octa" | import("@/lib/orquestra/catalogo").AgenteOrquestraId;
 export type AgenteChat = {
   id: AgenteChatId;
   nome: string;
@@ -22,6 +23,9 @@ export const AGENTES_CHAT: readonly AgenteChat[] = [
   { id: "zenita", nome: "Zenita", papel: "Agenda, aulas e provas", tela: "chat" },
   { id: "nina", nome: "Nina", papel: "Caderno, resumos e plano de estudo", tela: "chat" },
   { id: "octa", nome: "Octa Code", papel: "Agente de código · IDE", tela: "ide", plugin: "octa-code" },
+  // OS AGENTES DA ORQUESTRA (lib/orquestra/catalogo): plugados pela Loja, falam no chat com a voz da Aura e
+  // pedem o motor deles à orquestra (DeepSeek, Tongyi, Kimi em enxame, enxame misto).
+  ...AGENTES_ORQUESTRA.map((a): AgenteChat => ({ id: a.id, nome: a.nome, papel: `${a.laboratorio} · ${a.formato === "enxame" ? "equipe de agentes" : "pesquisa profunda"}`, tela: "chat", plugin: a.id })),
 ];
 
 export const agenteChat = (id: AgenteChatId): AgenteChat => AGENTES_CHAT.find((a) => a.id === id) ?? AGENTES_CHAT[0];

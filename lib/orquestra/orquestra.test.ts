@@ -358,6 +358,16 @@ describe("orquestrador · a Zaeon decide quem trabalha", () => {
     expect((await primeiro).relatorio?.motor).toBe("deepseek-v4-profundo");
   });
 
+  it("agente plugado na Loja: PRO pedindo o DeepSeek pra explicar um conceito — o motor dele trabalha", async () => {
+    classify.mockImplementationOnce(async () => ({ intent: "explicar_conceito" as any, mode: "elaborated" as any, academicMode: "flexible" as any, kind: undefined as any }));
+    let n = 0;
+    const chamar: ChamarModelo = async (p) => (++n === 1 ? resp("", [chamada("literature_search", { query: "fotossintese" })], p.modelo) : resp("Explicação com fonte [E1].", [], p.modelo));
+    const r = await orquestrarTurno(entrada({ env: { ORQUESTRA: "on", DEEPSEEK_API_KEY: "k" }, plano: "pro", motorPedido: "deepseek-v4-profundo", chamar, caixa: caixaFalsa() }));
+    expect(r.relatorio).toMatchObject({ motor: "deepseek-v4-profundo" });
+    expect(r.relatorio?.decisao.motivo).toMatch(/escolhido pelo aluno/);
+    expect(runTrajectoryTraced).not.toHaveBeenCalled();
+  });
+
   it("plano free nem classifica: direto pra Aura", async () => {
     await orquestrarTurno(entrada({ env: { ORQUESTRA: "on", DEEPSEEK_API_KEY: "k" }, plano: "free" }));
     expect(classify).not.toHaveBeenCalled();
