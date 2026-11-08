@@ -11,7 +11,8 @@ import { useEffect, useState } from "react";
  * (SolidCraft via MCP — docs/HANDOFF_EIFFEL_CAD.md). Plugável pela loja como o Octa, porque é
  * agente de ofício: quem não faz projeto não quer um CAD no seletor.
  */
-export type PluginChat = "octa-code" | "eiffel-cad";
+// + os agentes da ORQUESTRA (lib/orquestra/catalogo), pelo mesmo trilho do Octa e do Eiffel
+export type PluginChat = "octa-code" | "eiffel-cad" | import("@/lib/orquestra/catalogo").AgenteOrquestraId;
 const CHAVE = "zaeon.chat.plugins";
 const EVENTO = "zaeon:chat:plugins";
 

@@ -11,6 +11,7 @@
  * o blueprint dele fica VENDÁVEL (lib/estudos/blueprint).
  */
 import type { Raridade } from "./blueprint";
+import { AGENTES_ORQUESTRA } from "@/lib/orquestra/catalogo";
 import type { PluginChat } from "@/lib/plugins/chatPlugins";
 
 /** o desenho 3D do tema (components/estudos/modelos3d) */
@@ -44,6 +45,17 @@ export const MOEDA = { simbolo: "ZAEON", nome: "ZAEON stable", ativa: false } as
 export const CATALOGO: readonly ItemVitrine[] = [
   { id: "octa-code", titulo: "Octa Code", subtitulo: "O agente de código da Zaeon, com a IDE dele — e freio de mão: não mexe onde você não pediu", tipo: "agente", execucao: "agente", modelo: "robo", autor: "Zaeon", raridade: "lendaria", profundidade: 90, preco: 0, fracoes: { total: 1, vendidas: 0 }, selos: { supervisionado: false, linksOk: true, codigoPrivado: false }, entrega: ["a IDE do Octa: editor, seu repositório do GitHub e execução no navegador", "revisão de código que aponta o trecho, sem reescrever o arquivo", "mudanças só no escopo pedido (as 4 perguntas antes de cada extra)", "telas mobile no padrão nativo (Expo/RN, Apple HIG)", "código colado é dado, nunca ordem — e segredo nunca vai pro modelo"], tags: ["código", "agente", "IDE", "grátis"], plugavel: "octa-code" },
   { id: "eiffel-cad", titulo: "Eiffel", subtitulo: "O engenheiro de estruturas da Zaeon — modela a peça em CAD paramétrico e te dá o STEP", tipo: "agente", execucao: "agente", modelo: "predio", autor: "Zaeon", raridade: "lendaria", profundidade: 88, preco: 0, fracoes: { total: 1, vendidas: 0 }, selos: { supervisionado: true, linksOk: true, codigoPrivado: false }, entrega: ["CAD paramétrico de verdade (SolidCraft, MIT/Apache-2.0): esboço, extrusão, filete, chanfro", "a peça vira ARTEFATO na conversa, com visualizador 3D e o STEP pra baixar", "modo edição: você mexe na peça, com timeline e parâmetros", "cada etapa verificada com medida real — volume, área, massa, centro de massa", "caminho de carga explicado: de onde a força vem, por onde desce, onde sai"], tags: ["engenharia", "CAD", "estruturas", "agente", "grátis"], plugavel: "eiffel-cad" },
+  // OS AGENTES DA ORQUESTRA (lib/orquestra/catalogo): blueprints que viram agente no seletor, como o Octa — o
+  // estado de cada um (liberado / exige plano / em breve) vem do servidor no modal (GET /api/orquestra/agentes).
+  ...AGENTES_ORQUESTRA.map((a): ItemVitrine => ({
+    id: a.id, titulo: a.nome, subtitulo: a.resumo, tipo: "agente", execucao: "agente",
+    modelo: a.formato === "enxame" ? "ondas" : "robo", autor: a.laboratorio,
+    raridade: a.formato === "enxame" ? "lendaria" : "epica", profundidade: a.formato === "enxame" ? 95 : 85,
+    preco: 0, fracoes: { total: 1, vendidas: 0 }, selos: { supervisionado: false, linksOk: true, codigoPrivado: false },
+    entrega: [a.comoTrabalha, "fontes reais: bases acadêmicas, web e a base da Zaeon", "citações conferidas — chave que nenhuma busca devolveu é cortada", `incluso a partir do plano ${a.minPlan === "max" ? "Max" : "Pro"}`],
+    tags: [a.laboratorio, a.formato === "enxame" ? "equipe de agentes" : "pesquisa profunda", "orquestra"],
+    plugavel: a.id,
+  })),
   { id: "ps5-rev", titulo: "Engenharia reversa do PS5", subtitulo: "Do boot ROM ao hypervisor — o mapa completo, com as fontes", tipo: "curso", execucao: "dyom", modelo: "console", autor: "Lia Monteiro", raridade: "lendaria", profundidade: 91, preco: 48, fracoes: { total: 1000, vendidas: 812 }, selos: { supervisionado: true, linksOk: true, codigoPrivado: true }, entrega: ["12 aulas em vídeo", "o dump comentado (privado)", "o blueprint do boot seguro", "laboratório com Raspberry Pi"], tags: ["hardware", "segurança", "consoles"] },
   { id: "horta-vertical", titulo: "Horta vertical que paga a conta de luz", subtitulo: "Hidroponia + painel solar num muro de 6 m² — com a planilha de retorno", tipo: "rwa", execucao: "dyom", modelo: "planta", autor: "Coletivo Raiz", raridade: "epica", profundidade: 74, preco: 12, fracoes: { total: 500, vendidas: 233 }, selos: { supervisionado: true, linksOk: true, codigoPrivado: false }, entrega: ["projeto elétrico e hidráulico", "lista de compras com preços", "a horta-piloto (fração do que ela produz)"], tags: ["agro", "energia", "RWA"] },
   { id: "llm-8gb", titulo: "Seu próprio LLM num notebook de 8 GB", subtitulo: "Quantização, RAG e um agente local — sem placa de vídeo", tipo: "codigo", execucao: "dyom", modelo: "chip", autor: "comunidade Zaeon", raridade: "rara", profundidade: 58, preco: 0, fracoes: { total: 1, vendidas: 0 }, selos: { supervisionado: false, linksOk: true, codigoPrivado: false }, entrega: ["repositório open source", "guia passo a passo", "benchmarks reais"], tags: ["IA", "open source", "grátis"] },

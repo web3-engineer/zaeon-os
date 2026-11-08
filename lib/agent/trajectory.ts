@@ -316,6 +316,8 @@ async function finalize(st: TrajectoryState, d: HarnessDeps): Promise<Structured
   emit(d, st, "finalize");
   charge(st, "finalize", 1, d);
   const answer: StructuredAnswer = st.draft ?? { nucleo: "" };
+  // o rascunho que falhou NUNCA é sucesso: `degraded` é o que o tira do cache de respostas (lib/agent/runChatTurn)
+  if (answer.rascunhoFalhou) st.degraded = true;
   // anexa o que as tools reuniram, se o draft não trouxe
   if ((!answer.artifacts || answer.artifacts.length === 0) && st.artifacts.length) answer.artifacts = st.artifacts;
   if ((!answer.evidencia || answer.evidencia.length === 0) && st.evidence.length) {

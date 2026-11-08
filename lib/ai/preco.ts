@@ -22,6 +22,13 @@ export const USD_POR_MILHAO: Record<string, Preco> = {
   // Reserva do chat pelo Hugging Face (lib/llm/reservaHf): gpt-oss-120b na Cerebras/Groq, preço do provedor
   // sem acréscimo do HF. Cerebras ~0,25/0,69, Groq ~0,15/0,75 — fica o maior de cada (conferido 2026-10).
   "gpt-oss-120b":          { prompt: 0.25, completion: 0.75, cached: 0 },
+  // Motores abertos da orquestra (lib/orquestra/provedores). PROVISÓRIO, nov/2026, de listagens de terceiros
+  // (OpenRouter/agregadores) — conferir no painel de cada provedor antes de usar pra cobrar.
+  "kimi-k2.6":                          { prompt: 0.95, completion: 4.00, cached: 0.16 },
+  "alibaba/tongyi-deepresearch-30b-a3b": { prompt: 0.09, completion: 0.45, cached: 0 },
+  // DeepSeek V4: sem preço conferido nesta data — fica o do Pro do Google (conservador) até alguém conferir.
+  "deepseek-v4-pro":                    { prompt: 1.25, completion: 10.00, cached: 0.125 },
+  "deepseek-v4-flash":                  { prompt: 0.30, completion: 2.50, cached: 0.03 },
   // Pool grátis (Fatia 7) — free tier: custo 0 dentro do teto (TETOS_DIA em lib/llm/pool.ts).
   // O MESMO "gemini-2.5-flash-lite" no Vertex custa: por isso o ledger zera pelo ALVO (custoDoAlvoUsd), não pelo nome.
   "zaeon-pool-lite":                { prompt: 0, completion: 0, cached: 0 }, // free tier — custo 0 dentro do teto (TETOS_DIA em lib/llm/pool.ts)
@@ -36,7 +43,9 @@ export const USD_POR_MILHAO: Record<string, Preco> = {
 /** Modelo desconhecido → preço do flash (conservador) e marca para o admin saber. */
 export const PRECO_DESCONHECIDO: Preco = USD_POR_MILHAO["gemini-2.5-flash"];
 
-export function precoDe(model: string): { preco: Preco; conhecido: boolean } {
+export function precoDe(modelOriginal: string): { preco: Preco; conhecido: boolean } {
+  // o Hugging Face devolve o id do repositório com maiúsculas ("moonshotai/Kimi-K2.6"); a tabela é minúscula
+  const model = String(modelOriginal ?? "").toLowerCase();
   // Exato primeiro; senão a chave MAIS LONGA que casa (senão "gemini-2.5-flash-lite" casava "gemini-2.5-flash-" e saía 3× mais caro).
   const casa = (m: string) => model === m || model.startsWith(m + "-") || model.endsWith("/" + m);
   const k = Object.keys(USD_POR_MILHAO).filter(casa).sort((x, y) => (model === y ? 1 : 0) - (model === x ? 1 : 0) || y.length - x.length)[0];

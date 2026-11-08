@@ -133,7 +133,11 @@ export async function POST(req: Request) {
         // Modelo escolhido no composer: só ids do catálogo (lib/chat/modelos) — nome solto do cliente é ignorado.
         const { modeloDoId } = await import("@/lib/chat/modelos");
         const modelo = modeloDoId(modeloPedido)?.id;
-        const agentKey = agent?.toLowerCase() || DEFAULT_AGENT_ID;
+        // AGENTE DA ORQUESTRA (plugado pela Loja — lib/orquestra/catalogo): no chat ele é a Aura (voz, harness,
+        // memória, mentor) PEDINDO outro motor à orquestra. Daqui pra baixo o turno segue como "aura"; o pedido
+        // viaja em `motorPedido` até lib/orquestra/roteador, que confere plano e chave.
+        const motorPedido = (await import("@/lib/orquestra/catalogo")).motorDoAgenteChat(agent);
+        const agentKey = motorPedido ? DEFAULT_AGENT_ID : (agent?.toLowerCase() || DEFAULT_AGENT_ID);
         /**
          * AS AGENTES DE CONVERSA — as que passam pelo HARNESS. Até aqui o gate era
          * `agentKey === "aura"` em três pontos (anexo, anexo-no-harness, turno), e isso é o que
@@ -354,6 +358,7 @@ export async function POST(req: Request) {
                  */
                 systemContext: agentKey === DEFAULT_AGENT_ID ? systemContext : [persona, systemContext].filter(Boolean).join("\n\n"),
                 agente: agentKey as import("@/lib/agents/chatAgentes").AgenteChatId,
+                ...(motorPedido ? { motorPedido } : {}),
                 history: (chatHistory as any[]).map((h) => ({ role: h.role, text: h?.parts?.[0]?.text ?? "" })),
                 agentContext: (agentContext && typeof agentContext === "object") ? agentContext : null,
                 mentor: activeMentor ? { slug: activeMentor.slug, wing: activeMentor.wing } : null,

@@ -1,104 +1,113 @@
-# research-engine/engine.py
 """
-Core generation logic.
-Isolates the Gemini call so it can be mocked in tests.
+Lógica de sugestão de pesquisa (análise de lacunas), sobre o llm.py.
+
+O modelo só devolve a sugestão + ÍNDICES das referências fornecidas; quem monta a lista de
+referências da resposta é este módulo, copiando das que o chamador mandou. Assim é impossível
+uma referência inventada chegar ao aluno.
 """
-import json
+from __future__ import annotations
+
+import asyncio
 import re
-import os
-from typing import Any
+from dataclasses import dataclass
 
-import google.generativeai as genai
-
-from models import SuggestRequest, SuggestResponse, SuggestionItem, RefItem, InlineCitation
+import config
+import llm
+from models import (
+    TIPO_POR_NIVEL,
+    InlineCitation,
+    ReferenceInput,
+    RefItem,
+    SaidaModelo,
+    SuggestionItem,
+    SuggestRequest,
+    SuggestResponse,
+)
 from prompts import build_system_prompt, build_user_message
 
-_MODEL_NAME = "gemini-2.0-flash"
-_model: genai.GenerativeModel | None = None
+TEMPERATURA = 0.85
 
 
-def _get_model() -> genai.GenerativeModel:
-    global _model
-    if _model is None:
-        api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-        if not api_key:
-            raise RuntimeError("GEMINI_API_KEY or GOOGLE_API_KEY env var not set")
-        genai.configure(api_key=api_key)
-        _model = genai.GenerativeModel(_MODEL_NAME)
-    return _model
+@dataclass
+class ResultadoSugestao:
+    resposta: SuggestResponse
+    citadas: list[int]  # índices 1..N válidos, sem repetição, na ordem em que o modelo citou
+    uso: llm.Uso
 
 
-def _extract_json(raw: str) -> dict[str, Any]:
-    """Strip markdown fences and parse JSON from Gemini response."""
-    # Remove ```json ... ``` or ``` ... ```
-    cleaned = re.sub(r"```(?:json)?\s*", "", raw).replace("```", "").strip()
-    return json.loads(cleaned)
+def _norm(s: str) -> str:
+    return re.sub(r"\s+", " ", s).strip().lower()
 
 
-def parse_response(raw: str) -> SuggestResponse:
-    """
-    Parse the raw string from Gemini into a validated SuggestResponse.
-    Raises ValueError on malformed output.
-    """
-    try:
-        data = _extract_json(raw)
-    except json.JSONDecodeError as e:
-        raise ValueError(f"Gemini returned invalid JSON: {e}\nRaw: {raw[:400]}")
+def _indices_validos(citadas: list[int], n: int) -> list[int]:
+    vistos: list[int] = []
+    for i in citadas:
+        if 1 <= i <= n and i not in vistos:
+            vistos.append(i)
+    return vistos
 
-    sug_data = data.get("suggestion", {})
-    suggestion = SuggestionItem(
-        type=sug_data.get("type", "Exploratória"),
-        title=sug_data.get("title", ""),
-        rationale=sug_data.get("rationale", ""),
-        novelty_angle=sug_data.get("novelty_angle", ""),
-        gap_score=float(sug_data.get("gap_score", 0.5)),
+
+def montar_resposta(
+    saida: SaidaModelo, request: SuggestRequest
+) -> tuple[SuggestResponse, list[int]]:
+    """Converte a saída do modelo na resposta pública, descartando tudo que não tem lastro."""
+    refs: list[ReferenceInput] = list(request.references or [])
+    citadas = _indices_validos(saida.citadas, len(refs))
+
+    sugestao = SuggestionItem(
+        type=saida.type or TIPO_POR_NIVEL.get(request.level, "Exploratória"),
+        title=saida.title.strip()[:300],
+        rationale=saida.rationale.strip(),
+        novelty_angle=saida.novelty_angle.strip(),
+        gap_score=saida.gap_score,
     )
 
-    references = [
+    referencias = [
         RefItem(
-            source=r.get("source", "DOI"),
-            title=r.get("title", ""),
-            authors=r.get("authors", ""),
-            year=str(r.get("year", "")),
-            venue=r.get("venue", ""),
-            doi=r.get("doi") or None,
+            source=refs[i - 1].source,
+            title=refs[i - 1].title,
+            authors=refs[i - 1].authors or "",
+            year=refs[i - 1].year or "",
+            venue=refs[i - 1].venue or "",
+            doi=refs[i - 1].doi,
+            url=refs[i - 1].url,
         )
-        for r in data.get("references", [])
+        for i in citadas
     ]
 
-    inline_raw = data.get("inline_citation")
+    # Citação literal só sobrevive se o trecho existir de fato no snippet da referência.
     inline = None
-    if inline_raw and isinstance(inline_raw, dict):
-        inline = InlineCitation(
-            quote=inline_raw.get("quote", ""),
-            source=inline_raw.get("source", ""),
-            doi=inline_raw.get("doi") or None,
-        )
+    ic = saida.inline_citation
+    if ic and 1 <= ic.ref <= len(refs):
+        ref = refs[ic.ref - 1]
+        quote = ic.quote.strip()
+        if quote and ref.snippet and _norm(quote) in _norm(ref.snippet):
+            inline = InlineCitation(quote=quote, source=ref.source, doi=ref.doi)
 
-    return SuggestResponse(
-        suggestion=suggestion,
-        references=references,
+    resposta = SuggestResponse(
+        suggestion=sugestao,
+        references=referencias,
         inline_citation=inline,
+        references_status="fornecidas" if refs else "ausentes",
     )
+    return resposta, citadas
 
 
-def generate_suggestion(request: SuggestRequest) -> SuggestResponse:
-    """
-    Call Gemini and return a validated SuggestResponse.
-    """
-    model = _get_model()
-    system_prompt = build_system_prompt(request.level, request.exclude_titles)
-    user_message = build_user_message(request.topic)
-
-    response = model.generate_content(
-        [
-            {"role": "user", "parts": [system_prompt + "\n\n" + user_message]},
-        ],
-        generation_config=genai.types.GenerationConfig(
-            temperature=0.85,
-            max_output_tokens=1800,
-        ),
+async def gerar_sugestao(
+    request: SuggestRequest,
+    *,
+    deadline: float | None = None,
+    contexto: str | None = None,
+) -> ResultadoSugestao:
+    """Chama o Gemini (estruturado, com retentativa) e devolve a sugestão já saneada."""
+    if deadline is None:
+        deadline = asyncio.get_running_loop().time() + config.prazo_padrao_ms() / 1000
+    saida, uso = await llm.gerar_estruturado(
+        schema=SaidaModelo,
+        sistema=build_system_prompt(request.level, request.exclude_titles),
+        mensagem=build_user_message(request.topic, request.references, contexto),
+        deadline=deadline,
+        temperatura=TEMPERATURA,
     )
-
-    raw = response.text
-    return parse_response(raw)
+    resposta, citadas = montar_resposta(saida, request)
+    return ResultadoSugestao(resposta=resposta, citadas=citadas, uso=uso)

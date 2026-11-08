@@ -74,6 +74,13 @@ import type { FonteVerificada } from "@/lib/tcc/store";
 
 export type StructuredAnswer = {
   nucleo: string;                                   // resposta direta (sempre)
+  /**
+   * O RASCUNHO FALHOU e o `nucleo` é a mensagem de erro honesta (messageForError), não uma resposta. Vem do CÓDIGO
+   * (aura-harness), nunca do modelo. Existe porque a falha virava "sucesso": o turno seguia, o crítico via um texto
+   * curto e — com CACHE_RESPOSTAS — "Demorou demais pra responder…" (58 caracteres) passava no `respostaGuardavel`
+   * e era servido depois como RESPOSTA a outros alunos. Com o campo, a trajetória marca `degraded` (sem cache).
+   */
+  rascunhoFalhou?: boolean;
   desenvolvimento?: string;                         // derivação / passo a passo
   conceitos?: string[];                             // âncoras do tema
   evidencia?: { claim: string; source: Source }[];  // afirmações COM fonte (deriva do L3/memory)

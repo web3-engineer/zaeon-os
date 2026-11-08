@@ -186,7 +186,9 @@ export type CapacidadeDoAgente = {
  * tools do harness, e o ramo em streaming do caminho legado só tratava `studio_generate` e
  * `research_generate` — um `update_schedule` ali era descartado em silêncio.
  */
-export const CAPACIDADES: Readonly<Record<AgenteChatId, CapacidadeDoAgente>> = {
+// Os agentes da orquestra (orq-*) não têm entrada aqui DE PROPÓSITO: no chat eles são a Aura (voz, habilidades,
+// área) pedindo outro MOTOR — o `capacidadeDe` cai na Aura. Por isso o mapa é Partial nas chaves orq-*.
+export const CAPACIDADES: Readonly<Record<Exclude<AgenteChatId, import("@/lib/orquestra/catalogo").AgenteOrquestraId>, CapacidadeDoAgente>> = {
   aura: {
     persona: "aura",
     habilidades: ["literature"],
@@ -299,7 +301,7 @@ export const CAPACIDADES: Readonly<Record<AgenteChatId, CapacidadeDoAgente>> = {
   },
 };
 
-export const capacidadeDe = (id: AgenteChatId): CapacidadeDoAgente => CAPACIDADES[id] ?? CAPACIDADES.aura;
+export const capacidadeDe = (id: AgenteChatId): CapacidadeDoAgente => (CAPACIDADES as Partial<Record<AgenteChatId, CapacidadeDoAgente>>)[id] ?? CAPACIDADES.aura;
 
 /**
  * As tools que este turno pode usar: a base + as das habilidades. É esta lista que o portão do
