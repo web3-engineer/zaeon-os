@@ -182,6 +182,35 @@ export const FONTES_DE_BASE: readonly FonteDeBase[] = [
       + "Com os 6 shards, ~48 mil. Lido por faixa HTTP: não baixa o arquivo.",
   },
   {
+    id: "zenodo",
+    origem: "resumos de publicações no Zenodo (artigo, anais, tese), pela API de busca",
+    // Única fonte do RAG onde a licença é POR DOCUMENTO: o Zenodo é repositório aberto e cada
+    // depósito declara a sua. O portão fica em `licencaPermiteUsoComercial` (lib/rag/zenodo), é
+    // allowlist por prefixo e recusa por omissão — licença nova fica de fora até alguém olhar.
+    licenca: "por registro; só entram as que permitem uso comercial (cc-by, cc-by-sa, cc0, mit, …)",
+    comercial: true,
+    area: { tipo: "classificador" },
+    estado: "pronta",
+    natureza: "proprio",
+    medicoes: [{
+      data: "2026-11-08", onde: "ensaio",
+      nota: "varredura completa das 17 áreas em 556 pedidos, sem disjuntor disparar; "
+        + "descartes: sem área 3.807, LICENÇA RECUSADA 1.032, resumo curto 571",
+      porArea: {
+        medicina: 285, enfermagem: 201, "eng-energias": 152, psicologia: 148, biologia: 125,
+        agronomia: 124, "eng-civil": 123, farmacia: 99, software: 86, matematica: 84, quimica: 71,
+        seguranca: 51, veterinaria: 45, "eng-computacao": 41, "dados-ia": 35, infra: 35, fisica: 34,
+      },
+    }],
+    nota: "Busca por FRASE em português (os `AREAS[].wikipedia`), não por `language:por`: o idioma é "
+      + "declarado pelo depositante e numa fatia dele a descrição vinha em inglês, com 12% de "
+      + "aproveitamento. Por frase, \"Enfermagem\" rendeu 23 de 25, todos em enfermagem. "
+      + "A API aceita `size` de no máximo 25 e vai até a página 400 — 10.000 registros por consulta, "
+      + "dez vezes o teto da DOAJ. O 429 é transitório: a primeira versão abandonava a página na "
+      + "recusa e colheu 773 documentos parando na 9ª área; com recuo respeitando `Retry-After` "
+      + "foram 1.739 nas 17.",
+  },
+  {
     id: "doaj",
     origem: "resumos de artigos de revistas de acesso aberto, pela API de busca da DOAJ",
     licenca: "CC0 1.0 (metadado de artigo, pelos Termos da DOAJ)", comercial: true,

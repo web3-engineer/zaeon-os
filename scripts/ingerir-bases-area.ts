@@ -15,6 +15,7 @@
  *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes arxiv
  *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes wikilivros
  *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes doaj  [--doaj-paginas 4]
+ *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes zenodo [--zenodo-paginas 4]
  *
  * A fonte `wikipt` lê o dataset `wikimedia/wikipedia` (config 20231101.pt) DIRETO DOS PARQUETS, por
  * requisição de faixa (HTTP range) — o `hyparquet` baixa só os pedaços de que precisa, então não há
@@ -44,6 +45,7 @@ const LINHAS = Number(opt("--linhas", "1000000"));
 const DIR = opt("--dir", "/tmp/bases");
 const WIKI_SHARDS_USAR = Number(opt("--wiki-shards", "6"));
 const DOAJ_PAGINAS = Number(opt("--doaj-paginas", "0"));   // 0 = o padrão do módulo
+const ZENODO_PAGINAS = Number(opt("--zenodo-paginas", "0"));
 const WIKI_LINHAS = Number(opt("--wiki-linhas", String(Number.MAX_SAFE_INTEGER)));
 const UA = { "User-Agent": "ZaeonBot/1.0 (https://zaeon.com.br; bases de estudo)" };
 
@@ -228,6 +230,69 @@ async function main() {
         await gravar(AREA_GERAL, "enem", { chave: `enem-${ano}-${q.id}`, titulo: `ENEM ${ano} — ${q.id}`, texto: `${q.question}\n\n${alts}\n\nGabarito: ${q.label}\n\nFonte: maritaca-ai/enem (Hugging Face) — licença Apache-2.0.` });
       }
     }
+  }
+
+  if (FONTES.includes("zenodo")) {
+    // Zenodo: repositório aberto, onde QUALQUER UM deposita e cada depósito declara a sua licença.
+    // Por isso o portão de licença é por DOCUMENTO (lib/rag/zenodo), e não da fonte inteira — é o
+    // único lugar do nosso RAG assim. Medido em 200 registros: 184 cc-by-4.0, 6 cc-by-sa-4.0,
+    // 7 cc-by-nc-nd-4.0 (recusados) e 3 sem licença (recusados).
+    //
+    // Busca por FRASE em português, pelo mesmo motivo da DOAJ: `language` é declarado pelo
+    // depositante e não é confiável (numa fatia de `+language:por` a descrição vinha em inglês, e o
+    // aproveitamento caiu pra 12%). Por frase, "Enfermagem" rendeu 23 de 25, todos em enfermagem.
+    const { ESPERA_MS, PAGINAS_POR_FRASE, TENTATIVAS_POR_PAGINA, documentoDoZenodo, ehDescarte, esperaDoRecuo, frasesDaArea, urlDaBusca } =
+      await import("../lib/rag/zenodo");
+    const { SLUGS_AREA, classificarArea } = await import("../lib/rag/areas");
+    const paginas = ZENODO_PAGINAS > 0 ? ZENODO_PAGINAS : PAGINAS_POR_FRASE;
+
+    const porArea: Record<string, number> = {};
+    const descartes: Record<string, number> = {};
+    let pedidos = 0, recusasSeguidas = 0, parar = false;
+    const LIMITE_RECUSAS = 3;   // mesma lição da DOAJ: servidor dizendo não é resposta, não ruído
+    for (const area of SLUGS_AREA) {
+      if (parar) break;
+      for (const frase of frasesDaArea(area)) {
+        if (parar) break;
+        if ((porArea[area] ?? 0) >= POR_AREA) break;
+        for (let pagina = 1; pagina <= paginas; pagina++) {
+          // O 429 do Zenodo é transitório: repete-se a MESMA página, respeitando o Retry-After.
+          // Abandonar a página na primeira recusa perdia 25 registros de cada vez.
+          let r: Response | null = null;
+          for (let tentativa = 0; tentativa < TENTATIVAS_POR_PAGINA; tentativa++) {
+            r = await fetch(urlDaBusca(frase, pagina), { headers: UA }).catch(() => null);
+            pedidos++;
+            if (r?.status !== 429 && r?.status !== 403) break;
+            const espere = esperaDoRecuo(r.headers.get("retry-after"), tentativa);
+            console.warn(`[zenodo] "${frase}" p${pagina}: HTTP ${r.status} — esperando ${(espere / 1000).toFixed(1)}s (tentativa ${tentativa + 1}/${TENTATIVAS_POR_PAGINA})`);
+            await espera(espere);
+          }
+          if (r?.status === 403 || r?.status === 429) {
+            recusasSeguidas++;
+            if (recusasSeguidas >= LIMITE_RECUSAS) {
+              console.error(`[zenodo] PARANDO: ${LIMITE_RECUSAS} páginas seguidas recusadas mesmo após ${TENTATIVAS_POR_PAGINA} tentativas cada.`);
+              parar = true;
+            }
+            break;
+          }
+          if (!r?.ok) { console.warn(`[zenodo] "${frase}" p${pagina}: HTTP ${r?.status ?? "falhou"}`); break; }
+          recusasSeguidas = 0;
+          const corpo = await r.json().catch(() => null) as { hits?: { hits?: unknown[] } } | null;
+          const linhas = corpo?.hits?.hits ?? [];
+          if (!linhas.length) break;
+          for (const linha of linhas) {
+            const d = documentoDoZenodo(linha as never, classificarArea);
+            if (ehDescarte(d)) { descartes[d.descarte] = (descartes[d.descarte] ?? 0) + 1; continue; }
+            if ((porArea[d.area] ?? 0) >= POR_AREA) { descartes.area_cheia = (descartes.area_cheia ?? 0) + 1; continue; }
+            porArea[d.area] = (porArea[d.area] ?? 0) + 1;
+            await gravar(d.area, "zenodo", { chave: d.chave, titulo: d.titulo, texto: d.texto });
+          }
+          await espera(ESPERA_MS);
+        }
+      }
+      console.log(`[zenodo] ${area.padEnd(16)} ${String(porArea[area] ?? 0).padStart(5)} aceitos (${pedidos} pedidos)`);
+    }
+    console.log(`[zenodo] ${pedidos} pedidos · descartes: ${Object.entries(descartes).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}=${v}`).join(" ") || "nenhum"}`);
   }
 
   if (FONTES.includes("doaj")) {

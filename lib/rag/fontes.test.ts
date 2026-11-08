@@ -109,9 +109,15 @@ describe("catálogo das fontes de base", () => {
     expect(por("prova")).toEqual([AREA_GERAL]);
     expect(por("enciclopedico"), "agente descoberto é agente sem especialidade").toEqual([]);
     expect(COBERTURA).toHaveLength(18); // as 17 áreas + geral
-    // as quatro que eram o buraco, nomeadas, com o número que as cobriu
-    for (const [area, n] of [["agronomia", 1500], ["veterinaria", 1500], ["eng-civil", 1169], ["farmacia", 1277]] as const) {
-      expect(coberturaDaArea(area).comDeploy.proprio, area).toBe(n);
+    // As quatro que eram o buraco, nomeadas, com de ONDE vem o corpus de cada uma. Somar à mão aqui
+    // é o ponto: se uma fonte mudar de teto, o teste diz qual área mexeu e por quanto.
+    for (const [area, n, de] of [
+      ["agronomia", 1500 + 124, "scielo + zenodo"],
+      ["veterinaria", 1500 + 45, "scielo + zenodo"],
+      ["eng-civil", 1169 + 123, "scielo + zenodo"],
+      ["farmacia", 1277 + 99, "scielo + medicina-pt + zenodo"],
+    ] as const) {
+      expect(coberturaDaArea(area).comDeploy.proprio, `${area} (${de})`).toBe(n);
     }
   });
 
@@ -144,9 +150,10 @@ describe("catálogo das fontes de base", () => {
     expect(scielo.medicoes!.map((m) => m.porArea.medicina)).toEqual([1497, 1500]);
     const med = coberturaDaArea("medicina");
     expect(med.naVps.proprio, "só a medição da VPS, e sem somar com a de ensaio").toBe(1497);
-    // próprio = max(scielo) 1500 + max(medicina-pt) 753 + max(arxiv) 1500 = 3.753.
-    // NÃO é 1497+1500+753+1500: as duas medições da SciELO contam uma vez.
-    expect(med.comDeploy.proprio).toBe(3753);
+    // próprio = max(scielo) 1500 + max(medicina-pt) 753 + max(arxiv) 1500 + max(zenodo) 285 = 4.038.
+    // NÃO é 1497+1500+753+1500+285: as DUAS medições da SciELO contam UMA vez.
+    expect(med.comDeploy.proprio).toBe(1500 + 753 + 1500 + 285);
+    expect(med.comDeploy.proprio).toBe(4038);
   });
 
   it("corpus em INGLÊS nunca entra pelo classificador — é o que separa arXiv de peS2o", () => {

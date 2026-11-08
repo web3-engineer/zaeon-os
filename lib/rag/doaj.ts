@@ -26,6 +26,7 @@
  * português curadas por área e já são mantidas pela fonte `wiki`. Lista nova divergiria sozinha.
  */
 import { AREAS } from "./areas";
+import { limparHtml } from "./limpar";
 
 export const DOAJ_API = "https://doaj.org/api/search/articles";
 
@@ -72,30 +73,6 @@ export const ehDescarte = (
   r: DocumentoDoaj | { descarte: MotivoDescarte },
 ): r is { descarte: MotivoDescarte } => "descarte" in r;
 
-/**
- * O resumo da DOAJ vem com HTML. Medido em 225 resumos reais: `<i>` 56x, `<p>` 10x, `<em>` 10x,
- * `<br>` 6x, `<sub>` 6x, `<strong>` 4x, e as entidades `&gt;`/`&lt;` 93 e 92 vezes — essas últimas
- * quase sempre estatística escapada (`p &lt; 0,05`). Sem limpar, a marcação aparece no trecho citado
- * ao aluno e atrapalha o casamento de termos do classificador.
- *
- * A ORDEM é o que importa: tira-se a TAG antes de decodificar a ENTIDADE. Ao contrário, `&lt;i&gt;`
- * — que o autor escreveu pra aparecer literalmente — viraria `<i>` e seria removido como se fosse
- * marcação, comendo o texto. Assim, tag real sai e tag escapada sobrevive como texto.
- */
-export function limparResumo(bruto: string): string {
-  let t = String(bruto ?? "");
-  t = t.replace(/<\/?(?:br|p|div|li)\b[^>]*>/gi, " ");   // quebra de bloco vira espaço
-  t = t.replace(/<[^>]+>/g, "");                         // o resto da marcação some
-  t = t.replace(/&nbsp;/gi, " ")
-    .replace(/&lt;/gi, "<").replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"').replace(/&apos;/gi, "'")
-    .replace(/&rsquo;|&lsquo;/gi, "'").replace(/&rdquo;|&ldquo;/gi, '"')
-    .replace(/&ndash;/gi, "–").replace(/&mdash;/gi, "—")
-    .replace(/&amp;/gi, "&")                             // por último: não recriar entidade
-    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)));
-  return t.replace(/\s+/g, " ").trim();
-}
-
 const doi = (ids: readonly Identificador[] | null | undefined): string => {
   for (const i of ids ?? []) if (String(i?.type ?? "").toLowerCase() === "doi") return String(i?.id ?? "").trim();
   return "";
@@ -110,14 +87,14 @@ export function documentoDoDoaj(
   classificar: (titulo: string, resumo: string) => { slug: string; pontos: number } | null,
 ): DocumentoDoaj | { descarte: MotivoDescarte } {
   const b = r?.bibjson ?? {};
-  const titulo = limparResumo(String(b.title ?? ""));
+  const titulo = limparHtml(String(b.title ?? ""));
   if (!titulo) return { descarte: "sem_titulo" };
 
   // o id da DOAJ é a chave estável; sem ele o documento duplicaria a cada execução
   const id = String(r?.id ?? "").trim();
   if (!id) return { descarte: "sem_id" };
 
-  const resumo = limparResumo(String(b.abstract ?? ""));
+  const resumo = limparHtml(String(b.abstract ?? ""));
   if (resumo.length < MIN_RESUMO) return { descarte: "resumo_curto" };
 
   const c = classificar(titulo, resumo);
