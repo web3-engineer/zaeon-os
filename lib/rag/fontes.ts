@@ -15,6 +15,10 @@
  */
 import { AREA_GERAL, SLUGS_AREA } from "./areas";
 import { MATERIAS } from "./mmlu";
+import { AREAS_DO_ARXIV } from "./arxiv";
+
+/** As áreas que o mapa de matérias do MMLU alcança — derivado, nunca escrito à mão. */
+const AREAS_DO_MMLU: readonly string[] = [...new Set(Object.values(MATERIAS).map((m) => m.area ?? AREA_GERAL))].sort();
 
 /** Como a fonte decide em que área o documento cai — é isto que define de quem o dado é. */
 export type ComoEscolheArea =
@@ -22,8 +26,13 @@ export type ComoEscolheArea =
   | { tipo: "classificador" }
   /** A fonte grava sempre nestas áreas. */
   | { tipo: "fixa"; areas: readonly string[] }
-  /** A fonte tem um mapa próprio (ex.: matéria do MMLU → área), no módulo indicado. */
-  | { tipo: "mapa"; modulo: string }
+  /**
+   * A fonte tem um mapa próprio (matéria do MMLU → área; categoria do arXiv → área), no módulo
+   * indicado. As áreas vêm DERIVADAS desse mapa, nunca escritas à mão aqui — e por isso o campo
+   * existe: enquanto havia uma fonte de mapa só, `areasDaFonte` resolvia consultando o MMLU
+   * direto, e isso passaria a mentir na segunda fonte de mapa.
+   */
+  | { tipo: "mapa"; modulo: string; areas: readonly string[] }
   /** A área vem do próprio dado (campo `area` do JSONL, ou o nome da pasta). */
   | { tipo: "no-dado" };
 
@@ -149,7 +158,7 @@ export const FONTES_DE_BASE: readonly FonteDeBase[] = [
     id: "mmlu",
     origem: "FreedomIntelligence/MMLU_Portuguese (Hugging Face), 57 matérias em 114 CSVs",
     licenca: "MIT", comercial: true,
-    area: { tipo: "mapa", modulo: "lib/rag/mmlu" },
+    area: { tipo: "mapa", modulo: "lib/rag/mmlu", areas: AREAS_DO_MMLU },
     estado: "pronta",
     natureza: "prova",
     medicoes: [{
@@ -171,6 +180,26 @@ export const FONTES_DE_BASE: readonly FonteDeBase[] = [
     }],
     nota: "8.108 documentos medidos no shard 0 de 6 (185.375 verbetes varridos), nas 17 áreas. "
       + "Com os 6 shards, ~48 mil. Lido por faixa HTTP: não baixa o arquivo.",
+  },
+  {
+    id: "arxiv",
+    origem: "resumos do arXiv pela API de consulta, por categoria (physics, math, cs.LG, …)",
+    licenca: "CC0 1.0 (metadado: título e resumo)", comercial: true,
+    area: { tipo: "mapa", modulo: "lib/rag/arxiv", areas: AREAS_DO_ARXIV },
+    estado: "pronta",
+    natureza: "proprio",
+    medicoes: [{
+      data: "2026-11-08", onde: "ensaio",
+      nota: "execução real contra a API; TODAS as 11 áreas encostaram no teto de --por-area 1500, "
+        + "e o disponível é muito maior (física 1.541.518, matemática 753.931, dados-ia 498.054)",
+      porArea: {
+        fisica: 1500, matematica: 1500, "dados-ia": 1500, software: 1500, seguranca: 1500,
+        infra: 1500, "eng-computacao": 1500, biologia: 1500, "eng-energias": 1500, quimica: 1500, medicina: 1500,
+      },
+    }],
+    nota: "O arXiv já vem ROTULADO pela própria taxonomia, então não passa pelo classificador — e é "
+      + "isso que o faz servir onde o peS2o não serve. Entra SÓ o resumo: o metadado é CC0, mas o "
+      + "texto completo tem a licença do autor, com opções NonCommercial entre elas.",
   },
   {
     id: "dataset",
@@ -205,7 +234,7 @@ export const AREAS_DO_DATASET: readonly string[] = ["infra", "matematica", "segu
 export function areasDaFonte(f: FonteDeBase): readonly string[] {
   switch (f.area.tipo) {
     case "classificador": return SLUGS_AREA;
-    case "mapa": return [...new Set(Object.values(MATERIAS).map((m) => m.area ?? AREA_GERAL))].sort();
+    case "mapa": return f.area.areas;
     case "no-dado": return AREAS_DO_DATASET;
     case "fixa": return f.id === "wiki" ? SLUGS_AREA : f.area.areas;
   }

@@ -12,6 +12,7 @@
  *
  *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes wikipt --wiki-shards 6
  *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes mmlu
+ *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes arxiv
  *
  * A fonte `wikipt` lê o dataset `wikimedia/wikipedia` (config 20231101.pt) DIRETO DOS PARQUETS, por
  * requisição de faixa (HTTP range) — o `hyparquet` baixa só os pedaços de que precisa, então não há
@@ -222,6 +223,42 @@ async function main() {
         const alts = Array.isArray(q.alternatives) ? q.alternatives.map((a: string, i: number) => `${"ABCDE"[i]}) ${a}`).join("\n") : "";
         await gravar(AREA_GERAL, "enem", { chave: `enem-${ano}-${q.id}`, titulo: `ENEM ${ano} — ${q.id}`, texto: `${q.question}\n\n${alts}\n\nGabarito: ${q.label}\n\nFonte: maritaca-ai/enem (Hugging Face) — licença Apache-2.0.` });
       }
+    }
+  }
+
+  if (FONTES.includes("arxiv")) {
+    // Resumos do arXiv, que JÁ VÊM ROTULADOS pela taxonomia dele — nenhum classificador no caminho.
+    // É isto que faz o arXiv servir e o peS2o não: medi o peS2o em 84.967 registros e o
+    // classificador aproveitou 5,4%, com física e dados-ia em ZERO, porque ele é em inglês e os
+    // nossos termos são em português. Rótulo pronto resolve de graça.
+    // Licença: o METADADO (título + resumo) é CC0 1.0 pelos Termos de Uso das APIs do arXiv. O texto
+    // completo NÃO é — tem licença do autor, com opções NonCommercial — e por isso não entra.
+    const { AREAS_DO_ARXIV, ESPERA_MS, POR_PAGINA, artigosDoAtom, documentoDoArtigo, totalDoAtom, urlDaBusca } =
+      await import("../lib/rag/arxiv");
+
+    for (const area of AREAS_DO_ARXIV) {
+      let aceitos = 0, vistos = 0, curtos = 0, total = -1;
+      for (let inicio = 0; aceitos < POR_AREA; inicio += POR_PAGINA) {
+        const r = await fetch(urlDaBusca(area, inicio, POR_PAGINA), { headers: UA }).catch(() => null);
+        if (!r?.ok) { console.warn(`[arxiv] ${area} em start=${inicio}: HTTP ${r?.status ?? "falhou"}`); break; }
+        const xml = await r.text();
+        if (total < 0) total = totalDoAtom(xml);
+        const artigos = artigosDoAtom(xml);
+        // página vazia = fim da lista (ou o arXiv cortou): parar é o certo, não insistir
+        if (!artigos.length) break;
+        for (const a of artigos) {
+          vistos++;
+          const d = documentoDoArtigo(a, area);
+          if (!d) { curtos++; continue; }
+          if (aceitos >= POR_AREA) break;
+          aceitos++;
+          await gravar(area, "arxiv", { chave: d.chave, titulo: d.titulo, texto: d.texto });
+        }
+        if (inicio + POR_PAGINA >= total) break;
+        await espera(ESPERA_MS);   // os Termos de Uso do arXiv pedem 3 s entre chamadas
+      }
+      console.log(`[arxiv] ${area.padEnd(16)} ${String(aceitos).padStart(5)} de ${total.toLocaleString("pt-BR")} disponíveis (vistos ${vistos}, resumo curto ${curtos})`);
+      await espera(ESPERA_MS);
     }
   }
 
