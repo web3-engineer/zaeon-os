@@ -788,12 +788,52 @@ vizinha encheria a base do agente errado.
 docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes arxiv
 ```
 
+#### A fonte `wikilivros` — Wikilivros e Wikiversidade em português
+
+Construída depois: é o último corpus aberto que alcança enfermagem, farmácia, veterinária e
+agronomia, e é em **português**, então o nosso classificador funciona nela.
+
+Vem do dump **Enterprise HTML** (`.json.tar.gz`) e **não** do `pages-articles.xml.bz2`, porque nem o
+`zlib` do node nem a imagem de produção abrem **bz2** (o Dockerfile instala só `openssl`,
+`ca-certificates` e `ffmpeg`). O tar tem um membro só, cujo cabeçalho são 512 bytes fixos que se
+pulam. Tudo por fluxo: os 70,7 MB comprimidos não precisam caber na memória nem no disco.
+
+**A licença vem declarada em cada registro** (`license[].name` = "Creative Commons Attribution Share
+Alike 3.0 Unported"), então o rodapé cita o que o DADO diz — e se a Wikimedia mudar o regime, o
+documento novo já sai certo. Quando o registro não declara licença, o rodapé não inventa uma.
+
+**Execução real — 22.867 páginas por fluxo, 2.134 aceitas em 16 áreas:**
+
+```
+eng-computacao 463 · matematica 306 · biologia 249 · software 213 · medicina 193 · infra 136
+eng-energias 107 · agronomia 93 · quimica 88 · seguranca 66 · dados-ia 63 · psicologia 63
+fisica 37 · eng-civil 19 · farmacia 19 · veterinaria 16
+descartes: curto 11.044 · sem área 9.266 · estrutura 412
+```
+
+Filtra o que é estrutura de wiki e não conteúdo: `/Imprimir` (a MESMA obra concatenada, que entraria
+duplicada e roubaria vaga no teto), `/Índice`, `/Capa`, e o espaço administrativo que escapa no NS0.
+
+> **`enfermagem` fica em ZERO aqui, e o motivo é instrutivo.** O vocabulário de enfermagem empata com
+> medicina em texto curto — "a enfermagem cuida do paciente; sinais vitais, biossegurança e atenção
+> primária à saúde" pontua as duas quase igual, e `classificarArea` exige destaque de 2× sobre a
+> segunda. Então devolve `null` em vez de chutar. Não é defeito: é a régua recusando ambiguidade, e
+> explica por que enfermagem rende 33 documentos na Wikipédia e 7.793 na SciELO, onde o resumo
+> acadêmico é longo e específico. Está travado em `lib/rag/wikilivros.test.ts`.
+
+Classifiquei esta fonte como `enciclopedico` e isso é conservador de propósito: é material DIDÁTICO,
+não enciclopédia nem artigo acadêmico, mas é texto de comunidade wiki — a mesma procedência da
+Wikipédia. Chamá-la de `proprio` inflaria a cobertura de 16 áreas nas costas de texto wiki. Como as
+17 áreas já têm corpus do ofício, classificar aqui não muda veredicto nenhum.
+
+```bash
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes wikilivros
+```
+
 #### Verificado e disponível, ainda não construído
 
 | fonte | licença | volume medido | para |
 |---|---|---|---|
-| **Wikilivros pt** (`dumps.wikimedia.org/ptwikibooks`) | CC BY-SA | 21,2 MB · **14.354 artigos** | em PORTUGUÊS, logo o classificador funciona |
-| **Wikiversidade pt** (`ptwikiversity`) | CC BY-SA | 19,1 MB | idem |
 | **Zenodo** (API aberta) | por registro (`license.id`) | eng-civil 2.276 · veterinaria 2.238 · psicologia 2.250 · enfermagem 2.198 · farmacia 173 · agronomia 103, em `language:por` | as áreas que o arXiv não alcança |
 | **DOAJ** (API aberta) | por revista | **979.567** artigos de revistas brasileiras, com resumo | todas as áreas, em PT |
 | **peS2o** | ODC-By | ~40M artigos | só com lista de termos em inglês (ver acima) |
