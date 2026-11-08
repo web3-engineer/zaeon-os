@@ -51,18 +51,41 @@ export default function PranchaBlueprint({ id, doc, acoes, onFixar, sobre, skin 
   const [arrastando, setArrastando] = useState<{ id: string; x: number; y: number } | null>(null);
   // arrastar em QUALQUER lugar move a prancha (os cards agora ocupam quase a tela toda — pedido do dono: subir e descer
   // arrastando); só o que é de clicar/digitar dentro do card fica de fora
-  const onPointerDown = (e: React.PointerEvent) => { if (e.button !== 0 || (e.target as HTMLElement).closest?.(INTERATIVO)) return; mexeu.current = true; arrasto.current = { tipo: "pan", x0: e.clientX, y0: e.clientY, ox: cam.x, oy: cam.y }; (e.target as HTMLElement).setPointerCapture?.(e.pointerId); };
+  // #731: os dedos na tela — com DOIS, a pinça dá zoom (antes, no celular, só pelos botões + e −)
+  const dedos = useRef(new Map<number, { x: number; y: number }>());
+  const pinca = useRef<{ d0: number; z0: number; mx: number; my: number; cx: number; cy: number } | null>(null);
+  const comecarPinca = () => {
+    const [a, b] = [...dedos.current.values()]; const r = raiz.current?.getBoundingClientRect(); if (!a || !b || !r) return;
+    const mx = (a.x + b.x) / 2 - r.left, my = (a.y + b.y) / 2 - r.top;
+    pinca.current = { d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, z0: cam.z, mx, my, cx: cam.x, cy: cam.y };
+    arrasto.current = null; setArrastando(null);
+  };
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType === "touch") { dedos.current.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (dedos.current.size === 2) { mexeu.current = true; comecarPinca(); return; } }
+    if (e.button !== 0 || (e.target as HTMLElement).closest?.(INTERATIVO)) return; mexeu.current = true; arrasto.current = { tipo: "pan", x0: e.clientX, y0: e.clientY, ox: cam.x, oy: cam.y }; (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+  };
   const comecarCard = (e: React.PointerEvent, c: Caixa) => {
     if (!acoes.podeEditar || e.button !== 0) return; e.stopPropagation();
     arrasto.current = { tipo: "card", id: c.id, x0: e.clientX, y0: e.clientY, ox: c.x, oy: c.y }; (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
   };
   const onPointerMove = (e: React.PointerEvent) => {
+    if (dedos.current.has(e.pointerId)) dedos.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const p = pinca.current;
+    if (p && dedos.current.size >= 2) {
+      const [a, b] = [...dedos.current.values()];
+      const z = Math.max(0.25, Math.min(2, p.z0 * (Math.hypot(a!.x - b!.x, a!.y - b!.y) / p.d0)));
+      // o ponto entre os dedos fica parado na tela enquanto a prancha cresce ou encolhe
+      setCam({ z, x: p.mx - ((p.mx - p.cx) / p.z0) * z, y: p.my - ((p.my - p.cy) / p.z0) * z });
+      return;
+    }
     const a = arrasto.current; if (!a) return;
     const dx = e.clientX - a.x0, dy = e.clientY - a.y0;
     if (a.tipo === "pan") setCam((c) => ({ ...c, x: a.ox + dx, y: a.oy + dy }));
     else if (a.id) setArrastando({ id: a.id, x: a.ox + dx / cam.z, y: a.oy + dy / cam.z });
   };
-  const onPointerUp = () => {
+  const onPointerUp = (e?: React.PointerEvent) => {
+    if (e) dedos.current.delete(e.pointerId);
+    if (pinca.current) { if (dedos.current.size < 2) pinca.current = null; arrasto.current = null; setArrastando(null); return; }
     const a = arrasto.current; arrasto.current = null;
     if (a?.tipo === "card" && arrastando && (Math.abs(arrastando.x - a.ox) > 2 || Math.abs(arrastando.y - a.oy) > 2)) onFixar(arrastando.id, arrastando.x, arrastando.y);
     setArrastando(null);
@@ -202,11 +225,12 @@ export default function PranchaBlueprint({ id, doc, acoes, onFixar, sobre, skin 
 
       {sobre}
       <div className="absolute bottom-3 right-3 z-[90] flex items-center gap-1 font-mono text-[11px] text-sky-100" style={papel ? { color: PAPEL.tinta } : rosa ? { color: ROSA.tinta } : undefined} onPointerDown={(e) => e.stopPropagation()}>
-        <button type="button" className="rounded-sm border border-sky-300/40 px-2 py-1 hover:bg-white/10" onClick={() => { mexeu.current = true; setCam((c) => ({ ...c, z: Math.max(0.25, c.z * 0.85) })); }}>−</button>
-        <span className="w-12 text-center">{Math.round(cam.z * 100)}%</span>
-        <button type="button" className="rounded-sm border border-sky-300/40 px-2 py-1 hover:bg-white/10" onClick={() => { mexeu.current = true; setCam((c) => ({ ...c, z: Math.min(2, c.z * 1.15) })); }}>+</button>
-        <button type="button" className="ml-1 rounded-sm border border-sky-300/40 px-2 py-1 hover:bg-white/10" title="Voltar pro foco (a figura e o estudo)" onClick={() => { mexeu.current = true; encaixar(false); }}>◎</button>
-        <button type="button" className="rounded-sm border border-sky-300/40 px-2 py-1 hover:bg-white/10" title="Ver a prancha inteira" onClick={() => { mexeu.current = true; encaixar(true); }}>⤢</button>
+        {/* #731: os botões com nome (o leitor de tela lia só "menos" e "mais") e do tamanho do dedo em tela de toque */}
+        <button type="button" aria-label="Diminuir o zoom" title="Diminuir o zoom" className="rounded-sm border border-sky-300/40 px-2 py-1 hover:bg-white/10 [@media(hover:none)]:min-h-[40px] [@media(hover:none)]:min-w-[40px]" onClick={() => { mexeu.current = true; setCam((c) => ({ ...c, z: Math.max(0.25, c.z * 0.85) })); }}>−</button>
+        <span className="w-12 text-center" aria-live="polite" aria-label={`Zoom ${Math.round(cam.z * 100)}%`}>{Math.round(cam.z * 100)}%</span>
+        <button type="button" aria-label="Aumentar o zoom" title="Aumentar o zoom" className="rounded-sm border border-sky-300/40 px-2 py-1 hover:bg-white/10 [@media(hover:none)]:min-h-[40px] [@media(hover:none)]:min-w-[40px]" onClick={() => { mexeu.current = true; setCam((c) => ({ ...c, z: Math.min(2, c.z * 1.15) })); }}>+</button>
+        <button type="button" aria-label="Voltar pro foco (a figura e o estudo)" className="ml-1 rounded-sm border border-sky-300/40 px-2 py-1 hover:bg-white/10 [@media(hover:none)]:min-h-[40px] [@media(hover:none)]:min-w-[40px]" title="Voltar pro foco (a figura e o estudo)" onClick={() => { mexeu.current = true; encaixar(false); }}>◎</button>
+        <button type="button" aria-label="Ver a prancha inteira" className="rounded-sm border border-sky-300/40 px-2 py-1 hover:bg-white/10 [@media(hover:none)]:min-h-[40px] [@media(hover:none)]:min-w-[40px]" title="Ver a prancha inteira" onClick={() => { mexeu.current = true; encaixar(true); }}>⤢</button>
       </div>
       {/* #713: no celular a legenda sobe, acima dos botões de zoom (antes ficava por cima deles) */}
       <div data-tour="blueprint-legenda" className="pointer-events-none absolute bottom-3 left-3 max-sm:bottom-14 max-sm:right-3 z-[90] font-mono text-[10.5px] tracking-[0.16em] text-sky-200/55">

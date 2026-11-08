@@ -9,7 +9,7 @@ import { podeEscrever } from "@/lib/cartolina/access";
 import { COR } from "./Modulos";
 import PranchaBlueprint from "./PranchaBlueprint";
 import { useEffect, useMemo, useState } from "react";
-import { pedirConversa } from "@/lib/chat/conversasNav";
+import { irPraAbaEstudos, pedirConversa } from "@/lib/chat/conversasNav";
 import { filtrarBlueprints } from "@/lib/blueprint/busca";
 import { NOME_FASE } from "@/lib/blueprint/tipos";
 import { precisaAvaliar } from "@/lib/blueprint/fases";
@@ -17,7 +17,7 @@ import { useBlueprint } from "./useBlueprint";
 import { telaDesenhou } from "./cronometro";
 import DicasRapidas from "@/components/onboard/DicasRapidas";
 import { DICAS_SALA } from "@/lib/onboarding/dicas";
-import { CSS_BARBIE, LETRAS, MAO, PAPEL, REDONDA, ROSA, SKINS, corNaSkin, useLetraEscolhida, useSkinEscolhida, type Skin } from "./skin";
+import { CSS_BARBIE, CSS_CARTOLINA, LETRAS, MAO, PAPEL, REDONDA, ROSA, SKINS, caixaDeAviso, corNaSkin, useLetraEscolhida, useSkinEscolhida, type Skin } from "./skin";
 import dynamic from "next/dynamic";
 
 const PlayerVideoDoc = dynamic(() => import("@/components/videodoc/PlayerVideoDoc"), { ssr: false });
@@ -50,7 +50,8 @@ function ProvaForm({ criticoId, tipo, enviar }: { criticoId: string; tipo: strin
       <div className="flex gap-1.5">
         <input value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void mandar(); }} maxLength={500}
           placeholder={tipo === "repo" ? "https://github.com/você/repo" : "https://… (o link do artefato)"}
-          className="min-w-0 flex-1 rounded-sm border bg-black/20 px-2 py-1 font-mono text-[11px] text-sky-50 outline-none placeholder:text-rose-100/35" style={{ borderColor: "rgba(255,77,94,.5)" }} />
+          // #731: placeholder em opacidade — a classe `placeholder:text-rose-…` casava com a regra de cor da cartolina e pintava o texto digitado de vermelho
+          className="min-w-0 flex-1 rounded-sm border bg-black/20 px-2 py-1 font-mono text-[11px] text-sky-50 outline-none placeholder:opacity-40" style={{ borderColor: "rgba(255,77,94,.5)" }} />
         <button type="button" onClick={() => void mandar()} disabled={estado.enviando || !url.trim()} className="rounded-sm border px-2 py-1 font-mono text-[10.5px] text-white transition hover:bg-white/10 disabled:opacity-40" style={{ borderColor: COR.critico, background: "rgba(255,77,94,.25)" }}>
           {estado.enviando ? "conferindo…" : "enviar prova →"}
         </button>
@@ -105,6 +106,19 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
     setSalvando(false);
     if (ok) setAcao(null); else setFalhaAcao("Não deu para renomear agora. Tente de novo.");
   };
+  // #731: antes de ir para o chat, confere se a conversa de origem ainda existe — apagada, o aviso fica AQUI (antes a
+  // pessoa era levada ao chat só para ler que ela não existia). Sem resposta certa (sem rede, lista no teto), vai.
+  const abrirConversa = async (scopeId: string) => {
+    const r = await fetch("/api/ai/conversas?surface=estudos", { cache: "no-store" }).catch(() => null);
+    const d = r?.ok ? await r.json().catch(() => null) : null;
+    const ids: unknown = d?.conversas;
+    if (Array.isArray(ids) && ids.length < 200 && !ids.some((c: { id?: string }) => c?.id === scopeId)) {
+      setAviso("A conversa deste blueprint foi apagada. O blueprint continua aqui.");
+      setTimeout(() => setAviso(null), 7000);
+      return;
+    }
+    pedirConversa({ sala: "estudos", id: scopeId });
+  };
   const enviar = async (criticoId: string | null, url: string) => {
     const r = await B.enviarProva(criticoId, url);
     if (r.avaliacao) {
@@ -116,24 +130,28 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
   return (
     <div className={`flex h-full w-full flex-col ${papel ? "skin-cartolina" : rosa ? "skin-barbie" : ""}`} style={{ background: papel ? PAPEL.fundo : rosa ? ROSA.fundo : AZUL }}>
       {rosa && <style>{CSS_BARBIE}</style>}
+      {/* #731: a cartolina também vale na SALA (barra, sala vazia, erro) — antes só entrava com uma prancha aberta, e a sala
+          vazia ficava com o texto azul-claro do blueprint no papel creme (ilegível) */}
+      {papel && <style>{CSS_CARTOLINA}</style>}
       {/* #713: no celular a barra quebra em linhas — skin e letra em cima, a busca e as ações, e a lista rolando para o lado */}
       <div className="relative z-[96] flex flex-none items-stretch gap-2 max-sm:flex-wrap overflow-x-auto max-sm:overflow-x-visible border-b px-3 py-2" style={barra}>
         {/* a SKIN da sala: o papel azul técnico, a cartolina rabiscada ou a barbie de vidro (fica lembrada neste navegador) */}
         <div className="flex flex-none self-center overflow-hidden rounded-full border font-mono text-[11px]" style={{ borderColor: contorno }} role="group" aria-label="Skin da sala">
           {SKINS.map((k) => (
-            <button key={k.id} type="button" onClick={() => setSkin(k.id)} aria-pressed={skin === k.id} className="px-3 py-1 transition" style={skin === k.id ? ligado : desligado}>{k.nome}</button>
+            <button key={k.id} type="button" onClick={() => setSkin(k.id)} aria-pressed={skin === k.id} className="px-3 py-1 transition [@media(hover:none)]:min-h-[40px]" style={skin === k.id ? ligado : desligado}>{k.nome}</button>
           ))}
         </div>
         {/* o TAMANHO DA LETRA dos cards (lembrado neste navegador) */}
         <div className="flex flex-none items-center self-center overflow-hidden rounded-full border font-mono text-[11px]" style={{ borderColor: contorno }} role="group" aria-label="Tamanho da letra">
-          <button type="button" onClick={() => setLetra(LETRAS[Math.max(0, iLetra - 1)]!)} disabled={iLetra <= 0} aria-label="Diminuir a letra" className="px-2.5 py-1 disabled:opacity-35" style={desligado}>A−</button>
+          <button type="button" onClick={() => setLetra(LETRAS[Math.max(0, iLetra - 1)]!)} disabled={iLetra <= 0} aria-label="Diminuir a letra" className="px-2.5 py-1 disabled:opacity-35 [@media(hover:none)]:min-h-[40px] [@media(hover:none)]:px-3.5" style={desligado}>A−</button>
           <span className="px-1 tabular-nums" style={desligado}>{Math.round(letra * 100)}%</span>
-          <button type="button" onClick={() => setLetra(LETRAS[Math.min(LETRAS.length - 1, iLetra + 1)]!)} disabled={iLetra >= LETRAS.length - 1} aria-label="Aumentar a letra" className="px-2.5 py-1 text-[13px] font-bold disabled:opacity-35" style={desligado}>A+</button>
+          <button type="button" onClick={() => setLetra(LETRAS[Math.min(LETRAS.length - 1, iLetra + 1)]!)} disabled={iLetra >= LETRAS.length - 1} aria-label="Aumentar a letra" className="px-2.5 py-1 text-[13px] font-bold disabled:opacity-35 [@media(hover:none)]:min-h-[40px] [@media(hover:none)]:px-3.5" style={desligado}>A+</button>
         </div>
         <span className="max-sm:hidden self-center whitespace-nowrap pr-1 font-mono text-[11px] tracking-[0.2em] text-sky-300">BLUEPRINTS</span>
         {lista === null && !B.erro && <span className="self-center font-mono text-[11px] text-sky-200/50">carregando…</span>}
         {/* #683: a busca e as ações do aberto ficam presas à esquerda: rolar a barra não as esconde */}
-        <div className="sticky left-0 z-[1] -ml-3 flex flex-none items-stretch gap-2 pl-3 pr-2 max-sm:static max-sm:ml-0 max-sm:basis-full max-sm:flex-wrap max-sm:pl-0 max-sm:pr-0" style={{ background: fundoFixo }}>
+        {/* #731: preso em −12 px (a borda da barra), não em 0 — preso em 0 sobrava a faixa do padding com os blueprints rolando por trás */}
+        <div className="sticky -left-3 z-[1] -ml-3 flex flex-none items-stretch gap-2 pl-3 pr-2 max-sm:static max-sm:ml-0 max-sm:basis-full max-sm:flex-wrap max-sm:pl-0 max-sm:pr-0" style={{ background: fundoFixo }}>
           {/* #683: buscar pelo nome */}
           {lista && (lista.length > 1 || busca) && (
             <div className="flex flex-none items-center self-center">
@@ -146,15 +164,15 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
           {/* #683: as ações do aberto ficam no COMEÇO da barra (antes ficavam depois do último blueprint, longe) */}
           {/* voltar à conversa de onde o blueprint nasceu */}
           {atual?.scopeId && atual.id === marcado && !B.carregando && (
-            <button type="button" onClick={() => pedirConversa({ sala: "estudos", id: atual.scopeId! })} className="flex-none self-center whitespace-nowrap rounded-sm border px-2.5 py-1 font-mono text-[11px] transition hover:bg-white/10" style={{ borderColor: contorno, ...desligado }}>
+            <button type="button" onClick={() => void abrirConversa(atual.scopeId!)} className="flex-none self-center [@media(hover:none)]:min-h-[40px] whitespace-nowrap rounded-sm border px-2.5 py-1 font-mono text-[11px] transition hover:bg-white/10" style={{ borderColor: contorno, ...desligado }}>
               ← abrir a conversa
             </button>
           )}
           {/* #681: renomear e excluir o blueprint aberto (só o dono) */}
           {doDono && (
-            <div className="flex flex-none flex-col justify-center gap-1 font-mono text-[10.5px]" role="group" aria-label="Ações do blueprint">
-              <button type="button" onClick={() => { setNome(atual!.doc.titulo); setAcao("renomear"); }} aria-pressed={acao === "renomear"} className="rounded-sm border px-2 py-0.5 transition hover:bg-white/10" style={{ borderColor: contorno, ...desligado }}>renomear</button>
-              <button type="button" onClick={() => setAcao("excluir")} aria-pressed={acao === "excluir"} className="rounded-sm border px-2 py-0.5 transition hover:bg-white/10" style={{ borderColor: "rgba(255,77,94,.5)", color: corNaSkin(skin, COR.critico) }}>excluir</button>
+            <div className="flex flex-none flex-col justify-center gap-1 font-mono text-[10.5px] [@media(hover:none)]:flex-row [@media(hover:none)]:items-center [@media(hover:none)]:gap-2" role="group" aria-label="Ações do blueprint">
+              <button type="button" onClick={() => { setNome(atual!.doc.titulo); setAcao("renomear"); }} aria-pressed={acao === "renomear"} className="rounded-sm border px-2 py-0.5 transition hover:bg-white/10 [@media(hover:none)]:min-h-[40px] [@media(hover:none)]:px-3 [@media(hover:none)]:text-[12px]" style={{ borderColor: contorno, ...desligado }}>renomear</button>
+              <button type="button" onClick={() => setAcao("excluir")} aria-pressed={acao === "excluir"} className="rounded-sm border px-2 py-0.5 transition hover:bg-white/10 [@media(hover:none)]:min-h-[40px] [@media(hover:none)]:px-3 [@media(hover:none)]:text-[12px]" style={{ borderColor: "rgba(255,77,94,.5)", color: corNaSkin(skin, COR.critico) }}>excluir</button>
             </div>
           )}
         </div>
@@ -187,7 +205,7 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
         <div className="relative z-[96] flex flex-none flex-wrap items-center gap-2 border-b px-3 py-2 font-mono text-[11.5px]" style={barra} role={acao === "excluir" ? "alertdialog" : "group"} aria-label={acao === "excluir" ? "Confirmar exclusão" : "Renomear blueprint"}>
           {acao === "excluir" ? (<>
             <span className="min-w-0 flex-1">
-              Excluir <b>“{atual!.doc.titulo}”</b>? O blueprint some de vez. A conversa de onde ele nasceu continua, e não cria outro.
+              Excluir <b>“{atual!.doc.titulo}”</b>? Dá para desfazer por alguns segundos; depois, ele some de vez. A conversa de onde ele nasceu continua, e não cria outro.
               {atual!.compartilhado > 0 && <> {atual!.compartilhado === 1 ? "1 pessoa com acesso também deixa de ver." : `${atual!.compartilhado} pessoas com acesso também deixam de ver.`}</>}
             </span>
             <button type="button" onClick={() => void confirmarExclusao()} disabled={excluindo} className="rounded-sm border px-2.5 py-1 text-white disabled:opacity-50" style={{ borderColor: COR.critico, background: "rgba(255,77,94,.35)" }}>{excluindo ? "excluindo…" : "excluir"}</button>
@@ -207,9 +225,30 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
         {/* #631: clicou noutro blueprint e ele ainda não chegou: avisa (a prancha de antes fica até a nova chegar) */}
         {B.carregando && (
           // #645: no MEIO da prancha (antes, colado no topo — centralizado só na largura)
-          <div role="status" className="pointer-events-none absolute left-1/2 top-1/2 z-[97] -translate-x-1/2 -translate-y-1/2 rounded border px-3 py-1 font-mono text-[11.5px] text-sky-50"
-            style={{ background: "rgba(5,22,42,.92)", borderColor: "rgba(127,224,255,.4)" }}>
+          <div role="status" className="pointer-events-none absolute left-1/2 top-1/2 z-[97] -translate-x-1/2 -translate-y-1/2 rounded border px-3 py-1 font-mono text-[11.5px]"
+            style={caixaDeAviso(skin)}>
             carregando o blueprint…
+          </div>
+        )}
+        {/* #731: o blueprint clicado não chegou — antes ficava "carregando…" sem fim */}
+        {B.falhaAbrir && B.falhaAbrir === marcado && (
+          <div role="alert" className="absolute left-1/2 top-1/2 z-[97] flex -translate-x-1/2 -translate-y-1/2 flex-wrap items-center justify-center gap-2 rounded border px-3 py-2 text-center font-mono text-[11.5px]"
+            style={caixaDeAviso(skin, COR.critico)}>
+            <span>Não deu para abrir este blueprint agora.</span>
+            <button type="button" onClick={() => void B.abrir(B.falhaAbrir!)} className="rounded-sm border px-2.5 py-1 transition hover:bg-white/10 [@media(hover:none)]:min-h-[40px]" style={{ borderColor: contorno }}>tentar de novo</button>
+          </div>
+        )}
+        {/* #731: excluiu — dá para desfazer por alguns segundos; e o aviso se o servidor recusou */}
+        {(B.excluidoRecente || B.falhaExcluir) && (
+          <div role={B.falhaExcluir ? "alert" : "status"} className="absolute bottom-14 left-1/2 z-[97] flex max-w-[92%] -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded border px-3 py-2 font-mono text-[11.5px]"
+            style={caixaDeAviso(skin, B.falhaExcluir ? COR.critico : undefined)}>
+            {B.excluidoRecente ? (<>
+              <span className="min-w-0">“{B.excluidoRecente.titulo}” foi excluído.</span>
+              <button type="button" onClick={B.desfazer} className="rounded-sm border px-2.5 py-1 font-bold transition hover:bg-white/10 [@media(hover:none)]:min-h-[40px]" style={{ borderColor: contorno }}>desfazer</button>
+            </>) : (<>
+              <span className="min-w-0">{B.falhaExcluir}</span>
+              <button type="button" onClick={B.limparFalhaExcluir} aria-label="Fechar o aviso" className="rounded-sm border px-2 py-0.5 transition hover:bg-white/10" style={{ borderColor: contorno }}>ok</button>
+            </>)}
           </div>
         )}
         {/* #618: dicas rápidas na 1ª vez (só com um blueprint aberto — sem nenhum, o aviso da tela já explica) */}
@@ -221,7 +260,7 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
               avaliar: podeEscrever(atual.papel) && precisaAvaliar(atual.doc) ? () => { setAvaliando(true); void enviar(null, "").finally(() => setAvaliando(false)); } : undefined, recompor: atual.papel === "dono" ? B.recompor : undefined, recompondo: B.recompondo, reorganizar: B.reorganizar, temFixos: Object.keys(atual.doc.fixos).length > 0,
               extra: podeEscrever(atual.papel) ? (id) => { const c = id.startsWith("critico:") ? atual.doc.criticos.find((k) => `critico:${k.id}` === id) : undefined; return c ? <ProvaForm criticoId={c.id} tipo={c.tipoProva} enviar={enviar} /> : undefined; } : undefined }}
             sobre={<>
-              {aviso && <div className="absolute left-1/2 top-3 z-[95] -translate-x-1/2 rounded border px-3 py-1.5 font-mono text-[11.5px] text-sky-50" style={{ background: "rgba(5,22,42,.92)", borderColor: COR.avaliacao }}>{aviso}</div>}
+              {aviso && <div role="status" className="absolute left-1/2 top-3 z-[95] -translate-x-1/2 rounded border px-3 py-1.5 font-mono text-[11.5px]" style={caixaDeAviso(skin, COR.avaliacao)}>{aviso}</div>}
               {videoAberto && <PlayerVideoDoc videoId={videoAberto} onFechar={() => setVideoAberto(null)} />}
             </>} />
         ) : B.erro && lista === null ? (
@@ -238,6 +277,12 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
               <div className="mb-2 text-[11px] tracking-[0.2em] text-sky-300">NENHUM BLUEPRINT AINDA</div>
               Converse com a Aura sobre um tema que você quer dominar. Quando a conversa virar um estudo, o blueprint dele
               nasce aqui — com o percurso, os repositórios do tema, o que construir e os críticos que destravam cada fase.
+              {/* #731: o caminho até o chat (antes o aviso mandava conversar, mas não levava até lá) */}
+              <div className="mt-4">
+                <button type="button" onClick={() => irPraAbaEstudos("meus-estudos")} className="rounded-sm border px-3 py-1.5 font-bold transition hover:bg-white/10 [@media(hover:none)]:min-h-[44px]" style={{ borderColor: contorno, ...ligado }}>
+                  conversar com a Aura →
+                </button>
+              </div>
             </div>
           </div>
         ) : null}

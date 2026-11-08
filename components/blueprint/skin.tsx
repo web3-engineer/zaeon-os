@@ -8,7 +8,7 @@
  * arredondada, rosa-choque e ameixa no lugar do ciano — mais feminino.
  * A escolha é por pessoa e por navegador (localStorage — conveniência; nada no servidor), como o TAMANHO DA LETRA.
  */
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type CSSProperties } from "react";
 
 export type Skin = "blueprint" | "cartolina" | "barbie";
 export const SKINS: { id: Skin; nome: string }[] = [{ id: "blueprint", nome: "blueprint" }, { id: "cartolina", nome: "cartolina" }, { id: "barbie", nome: "barbie" }];
@@ -90,6 +90,16 @@ export function useLetraEscolhida(): [number, (n: number) => void] {
   useEffect(() => { try { const v = Number(localStorage.getItem(CHAVE_LETRA)); if ((LETRAS as readonly number[]).includes(v)) setL(v); } catch { /* sem storage */ } }, []);
   const trocar = useCallback((n: number) => { setL(n); try { localStorage.setItem(CHAVE_LETRA, String(n)); } catch { /* sem storage */ } }, []);
   return [l, trocar];
+}
+
+/**
+ * #731: a caixinha de aviso por cima da prancha ("carregando o blueprint…", o aviso da avaliação) na cor da skin — antes
+ * era sempre a caixa azul-escura do blueprint, estranha no papel creme e no rosa
+ */
+export function caixaDeAviso(skin: Skin, borda?: string): CSSProperties {
+  if (skin === "cartolina") return { background: PAPEL.card, color: PAPEL.tinta, borderColor: borda ? corNaSkin(skin, borda) : "rgba(107,90,62,.45)", boxShadow: "0 10px 24px -14px rgba(58,47,30,.55)" };
+  if (skin === "barbie") return { background: "rgba(255,255,255,.82)", color: ROSA.tinta, borderColor: borda ? corNaSkin(skin, borda) : ROSA.borda, backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", boxShadow: `0 12px 28px -14px ${ROSA.sombra}` };
+  return { background: "rgba(5,22,42,.92)", color: "#f0f9ff", borderColor: borda ?? "rgba(127,224,255,.4)" };
 }
 
 /** os filtros do traço rabiscado (uma vez por prancha) */

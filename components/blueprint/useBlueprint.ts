@@ -18,6 +18,8 @@ export type BlueprintCliente = Omit<BlueprintView, "updatedAt"> & { updatedAt: s
 export const mudouBlueprint = (a: BlueprintCliente | null, b: BlueprintCliente) =>
   !a || a.id !== b.id || a.rev !== b.rev || a.updatedAt !== b.updatedAt || a.papel !== b.papel;
 const RELER_MS = 20_000;
+/** #731: o tempo de desfazer a exclusão — o DELETE só sai depois disso (sair da página antes manda na hora) */
+export const DESFAZER_MS = 6_000;
 
 async function json<T>(url: string, init?: RequestInit): Promise<T | null> {
   try { const r = await fetch(url, { cache: "no-store", ...init, headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) } }); return r.ok ? ((await r.json()) as T) : null; } catch { return null; }
@@ -36,14 +38,20 @@ export function useBlueprint(inicialId?: string | null) {
   // #631 (revisão): o blueprint que está NA TELA — as edições vão pra ele, não pro recém-clicado que ainda carrega
   const idNaTela = useRef<string | null>(null);
   // toda escrita no `atual` passa por aqui: guarda e só troca o objeto se mudou alguma coisa
+  // #731: o que está na tela, para a recarga de 20 s saber se precisa reler o blueprint aberto
+  const atualRef = useRef<BlueprintCliente | null>(null);
   const setAtual = useCallback((v: BlueprintCliente | null | ((a: BlueprintCliente | null) => BlueprintCliente | null)) => {
     setAtualCru((a) => {
       const n = typeof v === "function" ? v(a) : v;
       if (n) guardados.current.set(n.id, n);
       idNaTela.current = n?.id ?? null;
-      return n && !mudouBlueprint(a, n) && a ? a : n;
+      const fica = n && !mudouBlueprint(a, n) && a ? a : n;
+      atualRef.current = fica;
+      return fica;
     });
   }, []);
+  // #731: o blueprint clicado que o servidor não entregou (antes ficava "carregando…" sem fim e sem aviso)
+  const [falhaAbrir, setFalhaAbrir] = useState<string | null>(null);
   const [recompondo, setRecompondo] = useState(false);
   // #681: a lista não carregou (antes isso aparecia como "nenhum blueprint ainda")
   const [erro, setErro] = useState(false);
@@ -57,13 +65,15 @@ export function useBlueprint(inicialId?: string | null) {
   const abrir = useCallback(async (id: string) => {
     idAtual.current = id;
     setSelecionado(id);   // #631: marca no clique
+    setFalhaAbrir((f) => (f === id ? null : f));
     const guardado = guardados.current.get(id);
     if (id !== idAnterior.current) comecarTroca(id, !!guardado);   // #631: o cronômetro (desligado por padrão)
     idAnterior.current = id;
     if (guardado && !emVoo(id)) setAtual(guardado);   // já visto: aparece na hora; o servidor confere por trás
     const r = await json<{ blueprint: BlueprintCliente }>(`/api/blueprint/${id}`);
     servidorRespondeu(id);
-    if (r?.blueprint && idAtual.current === id && !emVoo(id)) setAtual(r.blueprint);
+    if (!r?.blueprint) { if (idAtual.current === id) setFalhaAbrir(id); return; }
+    if (idAtual.current === id && !emVoo(id)) setAtual(r.blueprint);
   }, [setAtual]);
 
   // #683: só a leitura mais recente vale — uma recarga velha (com menos itens) que chega depois não encolhe a lista
@@ -78,8 +88,11 @@ export function useBlueprint(inicialId?: string | null) {
     const vivos = r.blueprints.filter((b) => !excluidos.current.has(b.id));
     setLista(vivos);
     const alvo = idAtual.current && vivos.some((b) => b.id === idAtual.current) ? idAtual.current : vivos[0]?.id;
+    // #731: o aberto não mudou no servidor (mesma data na lista): não pede de novo — antes eram 2 pedidos a cada 20 s
+    const naTela = atualRef.current, doAlvo = vivos.find((b) => b.id === alvo);
+    const igual = !!naTela && naTela.id === alvo && !!doAlvo && doAlvo.updatedAt === naTela.updatedAt;
     // a lista já chegou: quem espera a recarga ("ver mais") não espera também a prancha
-    if (alvo) void abrir(alvo); else setAtual(null);
+    if (alvo) { if (!igual) void abrir(alvo); } else setAtual(null);
     return true;
   }, [abrir]);
 
@@ -130,11 +143,30 @@ export function useBlueprint(inicialId?: string | null) {
     return { ok: r.ok, motivo: r.motivo, avaliacao: r.avaliacao };
   }, [atual, recarregar]);
 
-  /** #681: só o dono. Some da lista e a Sala abre o próximo (ou fica vazia). Devolve se deu certo */
-  const excluir = useCallback(async (id: string): Promise<boolean> => {
+  /**
+   * #681: só o dono. Some da lista e a Sala abre o próximo (ou fica vazia).
+   * #731: dá para DESFAZER — o pedido ao servidor só sai depois de `espera` (sair da página antes manda na hora).
+   * Se o servidor recusar, o blueprint volta para a lista e `falhaExcluir` avisa.
+   */
+  const pendente = useRef<{ id: string; titulo: string; timer: ReturnType<typeof setTimeout> } | null>(null);
+  const [excluidoRecente, setExcluidoRecente] = useState<{ id: string; titulo: string } | null>(null);
+  const [falhaExcluir, setFalhaExcluir] = useState<string | null>(null);
+  const efetivar = useCallback(async (id: string, titulo: string): Promise<boolean> => {
+    if (pendente.current?.id === id) { clearTimeout(pendente.current.timer); pendente.current = null; }
+    setExcluidoRecente((e) => (e?.id === id ? null : e));
     const r = await json<{ ok: boolean }>(`/api/blueprint/${id}`, { method: "DELETE" });
-    if (!r?.ok) return false;
-    guardados.current.delete(id);
+    if (r?.ok) { guardados.current.delete(id); return true; }
+    excluidos.current.delete(id);
+    setFalhaExcluir(`Não deu para excluir “${titulo}”. Ele voltou para a lista.`);
+    void recarregar();
+    return false;
+  }, [recarregar]);
+  const excluir = useCallback(async (id: string, espera: number = DESFAZER_MS): Promise<boolean> => {
+    // outra exclusão esperando: essa vai agora (um desfazer por vez)
+    const antes = pendente.current;
+    if (antes && antes.id !== id) void efetivar(antes.id, antes.titulo);
+    const titulo = (lista ?? []).find((b) => b.id === id)?.titulo ?? guardados.current.get(id)?.doc.titulo ?? "";
+    setFalhaExcluir(null);
     excluidos.current.add(id);
     const resto = (lista ?? []).filter((b) => b.id !== id);
     setLista(resto);
@@ -143,8 +175,29 @@ export function useBlueprint(inicialId?: string | null) {
       idAtual.current = proximo; setSelecionado(proximo);
       if (proximo) void abrir(proximo); else setAtual(null);
     }
+    pendente.current = { id, titulo, timer: setTimeout(() => { void efetivar(id, titulo); }, espera) };
+    setExcluidoRecente({ id, titulo });
     return true;
-  }, [lista, abrir, setAtual]);
+  }, [lista, abrir, setAtual, efetivar]);
+  /** #731: desfaz a exclusão que ainda não saiu: o blueprint volta e reabre */
+  const desfazer = useCallback(() => {
+    const p = pendente.current; if (!p) return;
+    clearTimeout(p.timer); pendente.current = null;
+    excluidos.current.delete(p.id);
+    setExcluidoRecente(null);
+    idAtual.current = p.id; setSelecionado(p.id);
+    void recarregar();
+  }, [recarregar]);
+  // sair da página (ou da Sala) com uma exclusão esperando: manda agora, sem esperar a resposta
+  useEffect(() => {
+    const ja = () => {
+      const p = pendente.current; if (!p) return;
+      clearTimeout(p.timer); pendente.current = null;
+      try { void fetch(`/api/blueprint/${p.id}`, { method: "DELETE", keepalive: true }).catch(() => {}); } catch { /* sem rede */ }
+    };
+    window.addEventListener("pagehide", ja);
+    return () => { window.removeEventListener("pagehide", ja); ja(); };
+  }, []);
 
   /** #681: o nome dado pela pessoa (a Zaeon não troca mais). Falhou: o nome de antes volta. Devolve se gravou */
   const renomear = useCallback(async (titulo: string): Promise<boolean> => {
@@ -170,6 +223,7 @@ export function useBlueprint(inicialId?: string | null) {
   }, [recarregar]);
 
   // #631: clicou e a prancha ainda é a de antes (o servidor não respondeu)
-  const carregando = !!selecionado && atual?.id !== selecionado;
-  return { lista, atual, selecionado, carregando, erro, temMais, limite, verMais, abrir, recarregar, fixar, reorganizar, recompor, recompondo, enviarProva, excluir, renomear, setAtual };
+  const carregando = !!selecionado && atual?.id !== selecionado && falhaAbrir !== selecionado;
+  const limparFalhaExcluir = useCallback(() => setFalhaExcluir(null), []);
+  return { lista, atual, selecionado, carregando, falhaAbrir, erro, temMais, limite, verMais, abrir, recarregar, fixar, reorganizar, recompor, recompondo, enviarProva, excluir, desfazer, excluidoRecente, falhaExcluir, limparFalhaExcluir, renomear, setAtual };
 }
