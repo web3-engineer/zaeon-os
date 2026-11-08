@@ -9,16 +9,39 @@ import {
   degradedSkills,
   isMentorSlug,
 } from "./mentors";
+import { ALL_COURSES } from "@/constants/courses";
+import { areasDoTurno } from "@/lib/rag/areas";
 
 const HEALTH = ["medicina", "enfermagem", "veterinaria", "psicologia", "farmacia"];
 
-describe("mentors · seed dos 13", () => {
-  it("são exatamente 13, slugs únicos e válidos, order 1..13", () => {
-    expect(MENTOR_SEED).toHaveLength(13);
+describe("mentors · seed dos 17", () => {
+  it("são exatamente 17, slugs únicos e válidos, order 1..17", () => {
+    expect(MENTOR_SEED).toHaveLength(17);
     const slugs = MENTOR_SEED.map((m) => m.slug);
-    expect(new Set(slugs).size).toBe(13);
+    expect(new Set(slugs).size).toBe(17);
     for (const s of slugs) expect(isMentorSlug(s)).toBe(true);
-    expect([...MENTOR_SEED].map((m) => m.order).sort((a, b) => a - b)).toEqual(Array.from({ length: 13 }, (_, i) => i + 1));
+    expect([...MENTOR_SEED].map((m) => m.order).sort((a, b) => a - b)).toEqual(Array.from({ length: 17 }, (_, i) => i + 1));
+  });
+
+  it("o esquadrão das exatas: quatro mentores, cada um com a área de RAG dele e um curso que existe", () => {
+    // Os nomes são decisão do dono (2026-11-08): Zaeon em dados e IA, Téo em software,
+    // Janaina nova em infra, Octa em segurança.
+    for (const [slug, nome] of [["software", "Téo"], ["infra", "Janaina"], ["seguranca", "Octa"], ["dados-ia", "Zaeon"]] as const) {
+      const m = mentorBySlug(slug)!;
+      expect(m, slug).toBeTruthy();
+      expect(m.name, slug).toBe(nome);
+      expect(ALL_COURSES, `${slug} servindo curso que a plataforma não oferece`).toContain(m.course);
+      // O slug É o endereço da base: `areasDoTurno(slug)` tem de achar a área dele, senão o
+      // corpus que já baixamos (MDN, Kubernetes, CWE, ATT&CK) fica invisível no turno.
+      expect(areasDoTurno(slug), slug).toEqual([`area:${slug}`, "area:geral"]);
+    }
+  });
+
+  it("o mentor de segurança é DEFENSIVO por contrato, não por bom senso do modelo", () => {
+    const octa = mentorBySlug("seguranca")!;
+    expect(octa.guardrail, "sem guardrail o catálogo de ataque do ATT&CK vira receita").toBeTruthy();
+    expect(octa.guardrail).toMatch(/exploit/i);
+    expect(octa.personaText).toMatch(/DEFENSIVO/);
   });
 
   it("todo mentor tem os campos obrigatórios do MentorTemplate", () => {

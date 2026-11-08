@@ -56,8 +56,14 @@ const SEM_DONO = [
 ];
 
 // ── fora, COM dono: nega e aponta ──
+// A rede neural era do Turing (eng-computacao) e passou a ser do Zaeon (dados-ia) no dia em que o
+// esquadrão das exatas entrou: quando chega um especialista, o termo muda de dono. O que este teste
+// protege não é QUEM atende, é que exista alguém — foi a ausência de dono que, com a área órfã,
+// derrubou o veredicto de `nega` pra `neutro` e fez a Zenita torcer a pergunta pro lado dela.
 const COM_DONO: [string, string][] = [
-  ["como funciona uma rede neural artificial?", "eng-computacao"],
+  ["como funciona uma rede neural artificial?", "dados-ia"],
+  ["o que é SQL injection e como me protejo?", "seguranca"],
+  ["como subo um pod no kubernetes?", "infra"],
   ["qual a resistência do concreto armado na construção civil?", "eng-civil"],
   ["como funciona um painel fotovoltaico de energia solar?", "eng-energias"],
 ];
