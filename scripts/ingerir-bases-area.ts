@@ -43,13 +43,36 @@ const WIKI_LINHAS = Number(opt("--wiki-linhas", String(Number.MAX_SAFE_INTEGER))
 const UA = { "User-Agent": "ZaeonBot/1.0 (https://zaeon.com.br; bases de estudo)" };
 
 const espera = (ms: number) => new Promise((r) => setTimeout(r, ms));
-async function json(url: string, tentativas = 5): Promise<any> {
+/**
+ * GET com JSON, devolvendo o MOTIVO em vez de jogar fora.
+ *
+ * Antes isto lançava um erro genérico e quem chamava fazia `.catch(() => null)`, e o resultado foi
+ * uma hora perdida na VPS: a fonte `wiki` imprimiu 122 linhas de "sem texto" quando a verdade era
+ * HTTP 429 da Wikimedia. A mensagem mentia, então ninguém podia saber. Agora o status volta.
+ *
+ * E respeita `Retry-After`: a borda da Wikimedia manda `retry-after: 1` e a escada cega de
+ * 2/4/8/16/32s gastava 62 s por verbete pra esperar um segundo. Teto de 30 s porque o cabeçalho é
+ * de terceiro e pode vir absurdo.
+ */
+type Resposta = { ok: true; dados: any } | { ok: false; motivo: string };
+
+async function buscarJson(url: string, tentativas = 5): Promise<Resposta> {
+  let ultimo = "sem resposta";
   for (let i = 0; i < tentativas; i++) {
-    const r = await fetch(url, { headers: { ...UA, ...(process.env.HF_TOKEN ? { Authorization: `Bearer ${process.env.HF_TOKEN}` } : {}) } }).catch(() => null);
-    if (r?.ok) return r.json();
-    await espera(2000 * 2 ** i);
+    const r = await fetch(url, { headers: { ...UA, ...(process.env.HF_TOKEN ? { Authorization: `Bearer ${process.env.HF_TOKEN}` } : {}) } })
+      .catch((e: unknown) => { ultimo = `rede: ${(e as Error)?.message ?? e}`; return null; });
+    if (r?.ok) {
+      const dados = await r.json().catch((e: unknown) => { ultimo = `json inválido: ${(e as Error)?.message ?? e}`; return undefined; });
+      if (dados !== undefined) return { ok: true, dados };
+    } else if (r) {
+      ultimo = `HTTP ${r.status}`;
+    }
+    if (i === tentativas - 1) break;
+    const pedido = Number(r?.headers.get("retry-after") ?? 0);
+    const espere = pedido > 0 ? Math.min(pedido, 30) * 1000 : 2000 * 2 ** i;
+    await espera(espere);
   }
-  throw new Error(`falhou: ${url.slice(0, 120)}`);
+  return { ok: false, motivo: `${ultimo} após ${tentativas} tentativas` };
 }
 async function* jsonl(caminho: string): AsyncGenerator<any> {
   const { createReadStream } = await import("node:fs");
@@ -98,15 +121,49 @@ async function main() {
   }
 
   if (FONTES.includes("wiki")) {
+    // Esta fonte são 122 sementes pela API AO VIVO da Wikipédia, e ela depende do humor da borda da
+    // Wikimedia com o IP de saída: a VPS levou 429 nas 122. Para carga de verdade use `wikipt`, que
+    // lê o instantâneo em parquet (8.108 documentos por shard) de um host que não nos limita.
+    // Os três desfechos são contados SEPARADAMENTE — foi juntá-los que escondeu o 429.
+    const wiki = { ok: 0, falhou: 0, inexistente: 0, curto: 0 };
+    const porque: Record<string, number> = {};
     for (const a of AREAS) {
       for (const t of a.wikipedia) {
-        const d = await json(`https://pt.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&exsectionformat=plain&redirects=1&format=json&titles=${encodeURIComponent(t)}`).catch(() => null);
-        const pag: any = d && Object.values(d.query?.pages ?? {})[0];
-        const texto = String(pag?.extract ?? "").slice(0, 20_000);
-        if (texto.length < 500) { console.warn(`[wiki] sem texto: ${t}`); continue; }
+        const r = await buscarJson(`https://pt.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&exsectionformat=plain&redirects=1&format=json&titles=${encodeURIComponent(t)}`);
+        if (!r.ok) {
+          wiki.falhou++;
+          porque[r.motivo] = (porque[r.motivo] ?? 0) + 1;
+          console.warn(`[wiki] FALHOU ${t}: ${r.motivo}`);
+          await espera(300);
+          continue;
+        }
+        const pag: any = Object.values(r.dados?.query?.pages ?? {})[0];
+        // `missing` é a resposta da API pra verbete que não existe — é redirecionamento morto ou
+        // título trocado na nossa lista, e tem conserto diferente de rede.
+        if (!pag || pag.missing !== undefined) {
+          wiki.inexistente++;
+          console.warn(`[wiki] verbete inexistente: ${t}`);
+          await espera(300);
+          continue;
+        }
+        const texto = String(pag.extract ?? "").slice(0, 20_000);
+        if (texto.length < 500) {
+          wiki.curto++;
+          console.warn(`[wiki] verbete curto: ${t} (${texto.length} chars)`);
+          await espera(300);
+          continue;
+        }
+        wiki.ok++;
         await gravar(a.slug, "wikipedia", { chave: `wiki-pt-${pag.title}`, titulo: `${pag.title} (Wikipédia)`, texto: `${texto}\n\nFonte: Wikipédia em português, verbete "${pag.title}" — licença CC BY-SA 4.0.` });
+        // O passo fica FORA do caminho de sucesso: antes a pausa só acontecia quando dava certo, e
+        // uma rodada limitada batia na Wikimedia sem pausa nenhuma — piorando o que já estava ruim.
         await espera(300);
       }
+    }
+    console.log(`[wiki] ${wiki.ok} ok · ${wiki.falhou} falharam · ${wiki.inexistente} inexistentes · ${wiki.curto} curtos`);
+    for (const [m, n] of Object.entries(porque).sort((x, y) => y[1] - x[1])) console.log(`[wiki]   ${n}x ${m}`);
+    if (wiki.ok === 0 && wiki.falhou > 0) {
+      console.warn("[wiki] NENHUMA semente entrou e todas falharam na rede — é limite da Wikimedia pro IP de saída, não verbete vazio. Use `--fontes wikipt`.");
     }
   }
 

@@ -529,7 +529,62 @@ docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes mml
 docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes mmlu
 ```
 
-### 10.4 · O que mais existe no HF, com licença conferida
+### 10.4 · A primeira execução na VPS, e o que ela ensinou
+
+Rodado pelo dono em 2026-11-08 na VPS. Quatro resultados, e três eram meus erros:
+
+**1. `geral · enem novos=540` — funcionou.** A base `geral`, que estava vazia, tem 540 questões do
+ENEM. É a única base que TODOS os agentes consultam.
+
+**2. `[wiki] sem texto` nas 122 sementes — a mensagem MENTIA.** A verdade era **HTTP 429** da borda
+da Wikimedia contra o IP de saída da VPS. O `json()` jogava o status fora, quem chamava fazia
+`.catch(() => null)`, e três situações diferentes (pedido falhou / verbete não existe / verbete
+curto) saíam com a mesma frase. Corrigido: o status volta, o `Retry-After` é respeitado (a Wikimedia
+manda `retry-after: 1` e a escada cega de 2/4/8/16/32 s gastava 62 s pra esperar 1 s), os três
+desfechos são contados em separado, e a pausa de 300 ms saiu do caminho de sucesso — antes uma
+rodada limitada batia na Wikimedia **sem pausa nenhuma**, piorando o que já estava ruim.
+
+Daqui, com o conserto: **167 ok · 0 falharam · 0 inexistentes · 1 curto**. Ou seja, o código está
+certo e o 429 é do IP. A fonte `wiki` são 122 sementes pela API ao vivo e depende do humor da
+Wikimedia; **`wikipt` não depende dela** — lê o instantâneo em parquet, 8.108 documentos por shard,
+de um host que não nos limita. Para carga de verdade, `wikipt`.
+
+A execução também achou **três títulos errados que eu mesmo tinha posto** nas áreas novas:
+`Infraestrutura como código` → `Infraestrutura como Código` (1.626 chars), `Observabilidade` (não
+existe em pt, só páginas de produto) → `Infraestrutura como serviço` (10.749 chars) e
+`Perícia forense computacional` → `Computação forense`. Conferidos na busca da própria Wikipédia.
+Sobra `Exame físico`, que é esboço de 410 chars — anterior a isto, e agora o log diz o porquê.
+
+**3. `--fontes mmlu,wikipt` não imprimiu nada — o código não está na VPS.** O `main` é `daf315b9` e
+só tem as fontes `scielo`, `wiki`, `medicina` e `enem`. `mmlu` e `wikipt` existem no branch. O
+`--fontes` simplesmente não casou com nada. Isto foi erro meu: entreguei comandos de código que
+ainda não estava lá.
+
+**4. `npm i hyparquet` deu EACCES — e o conserto não é esse.** O contêiner roda como usuário
+`zaeon`, não root, e `/app/node_modules` não é dele. Mas instalar no contêiner em execução seria
+remendo, porque **o código também precisa subir**. As duas coisas se resolvem com um deploy: o
+`package.json` do branch já traz o `hyparquet` em `dependencies`.
+
+> `hyparquet@1.33.0` não declara `engines` e não usa nenhuma API exclusiva do node 22
+> (`Promise.withResolvers`, `ArrayBuffer.prototype.transfer`, `structuredClone`, `Array.fromAsync`,
+> `toSorted` — todas conferidas, nenhuma presente). O contêiner é node v20.20.2, então roda.
+
+**5. `/tmp/bases/scielo.jsonl` desapareceu** (o `/tmp` foi limpo), então as áreas 7–13 não podem ser
+retomadas pela SciELO. Mas isso deixou de ser o caminho: `wikipt` + `mmlu` cobrem as sete, sem
+depender de nenhum arquivo sobrevivente.
+
+**A ordem certa, então:** deploy primeiro, carga depois.
+
+```bash
+# na VPS, com o branch já no main:
+cd ~/zaeon && git pull && docker compose up -d --build web
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes mmlu --seco
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes mmlu
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes wikipt --wiki-shards 6
+docker exec -w /app zaeon_web npx tsx scripts/bases-area-placar.ts
+```
+
+### 10.5 · O que mais existe no HF, com licença conferida
 
 Verificado via `cardData.license` na API, não de memória:
 
