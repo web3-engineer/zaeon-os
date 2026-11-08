@@ -62,8 +62,36 @@ export const TOOLS_BASE: readonly string[] = [
  * Habilidade → as tools que ELA abre, além da base. Lista vazia = a habilidade existe mas não se
  * expressa em tool (ver `molecule` no cabeçalho).
  */
+/**
+ * O conector do SolidCraft (lib/cad/mcp) e as 21 tools que ele expõe — MEDIDAS, não supostas: subi
+ * `solidcraft-cli mcp --headless` 0.40.0-rc.3, fiz o handshake e li o `tools/list`. Todas as 21 vêm
+ * anotadas (`readOnlyHint`/`destructiveHint`), então `riskFromAnnotations` as classifica certo.
+ *
+ * O nome no NOSSO registro é `mcp:<conector>:<tool>` (lib/agent/mcp.ts:141 e :161) — não `execute`.
+ */
+export const CONECTOR_CAD = "solidcraft";
+export const TOOLS_DO_SOLIDCRAFT: readonly string[] = [
+  "list_commands", "describe_command", "execute", "batch", "inspect_design", "measure",
+  "body_topology", "set_parameter", "check_parameters", "screenshot", "compare_picture",
+  "export", "pending", "crash_reports", "skill_reference", "running", "new_design", "open", "save",
+];
+const cad = (t: string) => `mcp:${CONECTOR_CAD}:${t}`;
+
 export const TOOLS_POR_HABILIDADE: Readonly<Record<MentorSkill, readonly string[]>> = {
   literature: ["literature_search", "book_search"],
+  /**
+   * `cad`: as tools do SolidCraft que o Eiffel usa. `crash_reports` fica FORA de propósito — ela lê
+   * relatórios de crash da máquina, que não é assunto de aluno e não é trabalho de engenharia.
+   * `skill_reference` entra primeiro na lista porque é por onde o agente começa: o servidor manda no
+   * `initialize` que o agente leia as skills antes de modelar.
+   */
+  cad: [
+    cad("skill_reference"), cad("list_commands"), cad("describe_command"),
+    cad("new_design"), cad("open"), cad("execute"), cad("batch"), cad("set_parameter"),
+    cad("inspect_design"), cad("measure"), cad("body_topology"), cad("check_parameters"),
+    cad("screenshot"), cad("compare_picture"), cad("export"), cad("save"),
+    cad("pending"), cad("running"),
+  ],
   anatomia: ["buscar_anatomia", "inspecionar_anatomia"],
   /**
    * O Octa tem onze tools (`octa_ler`, `octa_escrever`, `octa_publicar`, …), e TODAS moram na IDE
@@ -78,7 +106,7 @@ export const TOOLS_POR_HABILIDADE: Readonly<Record<MentorSkill, readonly string[
 };
 
 /** As quatro que DISTINGUEM uma agente da outra (o resto é base). */
-export const HABILIDADES_DISTINTIVAS: readonly MentorSkill[] = ["literature", "code", "molecule", "anatomia"];
+export const HABILIDADES_DISTINTIVAS: readonly MentorSkill[] = ["literature", "code", "molecule", "anatomia", "cad"];
 
 /**
  * O PROTOCOLO DE RACIOCÍNIO DO CARGO — o que `reflections`/`ensemble` deveriam ter sido.
@@ -216,6 +244,42 @@ export const CAPACIDADES: Readonly<Record<AgenteChatId, CapacidadeDoAgente>> = {
       reflexoes: 0,
       porque: "O valor dela é clareza didática, não variância nem fonte. Um rascunho e o que a "
         + "intenção já pedir: gastar três amostras pra resumir um caderno é custo que o aluno não vê.",
+    },
+  },
+  /**
+   * O EIFFEL (decisão do dono, 2026-11-08): engenharia civil e estrutural, com CAD paramétrico de
+   * verdade pelo SolidCraft (docs/HANDOFF_EIFFEL_CAD.md). Plugável pela loja — ele não aparece no
+   * seletor até o aluno adicionar, porque CAD é ferramenta de ofício.
+   *
+   * `Engenharia Civil` passou a existir em constants/courses.ts no mesmo commit: antes ele era um
+   * mentor servindo curso que a plataforma não oferecia.
+   */
+  eiffel: {
+    persona: "eiffel",
+    habilidades: ["cad", "literature"],
+    area: "eng-civil",
+    distincao: "Engenharia civil e estrutural: modela a peça em CAD paramétrico e entrega o STEP.",
+    // vocabulário de PERGUNTA do campo dele (as listas de lib/rag/areas são de resumo de artigo)
+    termosProprios: [
+      "estrutur", "viga", "pilar", "laje", "fundac", "sapata", "estaca", "radier",
+      "concreto", "armadur", "aco estrutural", "alvenaria", "argamassa", "cimento", "agregado",
+      "flexao", "cisalhament", "torcao", "compressao", "tracao", "momento fletor", "esforco",
+      "carga", "sobrecarga", "reacao de apoio", "treliça", "trelica", "portico", "balanco",
+      "tensao admissivel", "deformac", "flecha", "flambagem", "fadiga",
+      "nbr", "abnt nbr", "norma tecnica", "dimensionament", "memorial de calculo",
+      "topografi", "terraplen", "drenagem", "pavimento", "asfalto", "geotecn", "solo",
+      "hidraulic", "saneament", "esgoto", "reservatorio", "barragem", "ponte", "viaduto",
+      "cad", "desenho tecnico", "planta baixa", "corte", "elevacao", "cota", "escala",
+      "parametric", "extrusao", "chanfro", "filete", "esboco", "sketch", "step", "dxf",
+      "momento de inercia", "centro de massa", "modulo de elasticidade", "coeficiente de seguranca",
+    ],
+    protocolo: {
+      ensemble: 1,
+      reflexoes: 2,
+      porque: "Engenharia tem resposta VERIFICÁVEL: o `measure` do SolidCraft devolve volume, área e "
+        + "centro de massa, e o `check_parameters` testa valores sem gravar. Então o ganho está em "
+        + "revisar contra o número medido, não em reamostrar — três rascunhos de uma peça errada "
+        + "continuam errados, e o crítico não sabe estática.",
     },
   },
   octa: {
