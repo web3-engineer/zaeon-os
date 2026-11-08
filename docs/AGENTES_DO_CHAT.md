@@ -584,7 +584,75 @@ docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes wik
 docker exec -w /app zaeon_web npx tsx scripts/bases-area-placar.ts
 ```
 
-### 10.5 · O que mais existe no HF, com licença conferida
+### 10.5 · O inventário: quantas bases, e de quem
+
+A pergunta "quantos datasets temos e de quem são" não tinha onde ser respondida: as fontes moravam
+nos `if (FONTES.includes(...))` do script, a licença de cada uma no comentário ao lado, a área de
+algumas num mapa próprio, e o dono da área em `lib/agent/mentors`. Agora o catálogo é
+`lib/rag/fontes.ts` e o inventário sai de um comando:
+
+```bash
+npx tsx scripts/datasets-inventario.ts            # roda em qualquer máquina: lê só o código
+docker exec -w /app zaeon_web npx tsx scripts/bases-area-placar.ts   # a contagem REAL, só na VPS
+```
+
+A diferença entre os dois é o ponto: o inventário diz *"a Janaina lê `infra`, que tem 3 fontes"*; o
+placar diz *"`infra` tem 1.113 documentos"*. Um é desenho, o outro é realidade — e confundir os dois
+foi exatamente como se perdeu uma carga antes.
+
+**7 fontes: 1 em produção, 4 prontas, 2 bloqueadas.**
+
+| fonte | estado | licença | alcança |
+|---|---|---|---|
+| `enem` | **em produção** | Apache-2.0 | `geral` — 540 questões na VPS |
+| `wikipt` | pronta | CC BY-SA 3.0 + GFDL | as 17 áreas — 8.108/shard medidos |
+| `mmlu` | pronta | MIT | 11 áreas + `geral` — 743 docs medidos |
+| `dataset` | pronta | CC0 / CC BY 4.0 / CC BY-SA 2.5 / MITRE / CC BY-SA 3.0 | infra, matematica, seguranca, software |
+| `wiki` | pronta | CC BY-SA 4.0 | as 17 áreas — 167 sementes |
+| `scielo` | **bloqueada** | CC BY 4.0 | perdeu `/tmp/bases/scielo.jsonl`; 7.292 docs já dentro |
+| `medicina` | **bloqueada** | Apache-2.0 | perdeu os JSONL do `/tmp` |
+
+**O dono de cada base** (`sem` = sementes da Wikipédia, `mat` = matérias do MMLU — ambos derivados,
+não escritos à mão):
+
+| agente | área | sem | mat | fontes vivas |
+|---|---|---|---|---|
+| Osler | medicina | 12 | 8 | wiki, mmlu, wikipt |
+| Nightingale | enfermagem | 7 | 0 | wiki, wikipt |
+| Darwin | biologia | 12 | 2 | wiki, mmlu, wikipt |
+| Turing | eng-computacao | 11 | 2 | wiki, mmlu, wikipt |
+| Tesla | eng-energias | 9 | 1 | wiki, mmlu, wikipt |
+| Noether | matematica | 10 | 6 | wiki, mmlu, wikipt, **dataset** |
+| Feynman | fisica | 10 | 4 | wiki, mmlu, wikipt |
+| Borlaug | agronomia | 9 | 0 | wiki, wikipt |
+| Mendeleev | quimica | 10 | 2 | wiki, mmlu, wikipt |
+| Eiffel | eng-civil | 8 | 0 | wiki, wikipt |
+| Pasteur | veterinaria | 7 | 0 | wiki, wikipt |
+| James | psicologia | 9 | 2 | wiki, mmlu, wikipt |
+| Kekulé | farmacia | 8 | 0 | wiki, wikipt |
+| **Téo** | software | 12 | 0 | wiki, wikipt, **dataset** (MDN) |
+| **Janaina** | infra | 11 | 0 | wiki, wikipt, **dataset** (Kubernetes) |
+| **Octa** | seguranca | 11 | 2 | wiki, mmlu, wikipt, **dataset** (CWE+ATT&CK) |
+| **Zaeon** | dados-ia | 12 | 2 | wiki, mmlu, wikipt |
+| *(todos)* | `geral` | 0 | 26 | enem, mmlu |
+
+Três coisas que a tabela deixa à vista:
+
+1. **O classificador nunca manda pra `geral`.** `classificarArea` só escolhe entre `AREAS`, então
+   `scielo` e `wikipt` — as duas fontes mais volumosas — **não alimentam a base geral**, por mais
+   gerais que pareçam. `geral` depende só de `enem` e `mmlu`. E é a base que todo agente lê.
+2. **Quatro agentes só têm a Wikipédia:** Nightingale, Borlaug, Pasteur e Kekulé (0 matérias do MMLU,
+   sem DATASET). São justamente enfermagem, agronomia, veterinária e farmácia — e no HF não há
+   corpus aberto decente para elas, o que já foi medido em 10.5 abaixo.
+3. **Há dois "Octa".** O mentor `seguranca` chama-se Octa e lê a base de segurança; o agente do chat
+   `octa` (Octa Code) tem `tela: "ide"` e `area: null`, então lê só `area:geral`. São entidades
+   diferentes com o mesmo nome, e vale decidir se isso fica.
+
+`lib/rag/fontes.test.ts` confere o catálogo contra o script de ingestão **nos dois sentidos**: fonte
+catalogada que o script não executa é promessa vazia, e fonte que o script executa sem estar no
+catálogo é dado entrando sem dono declarado.
+
+### 10.6 · O que mais existe no HF, com licença conferida
 
 Verificado via `cardData.license` na API, não de memória:
 
