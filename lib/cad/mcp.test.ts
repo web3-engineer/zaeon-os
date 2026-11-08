@@ -13,6 +13,7 @@
  */
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  mcpToolToToolDef,
   registerMcpConnector,
   reclassificadorDeMapa,
   type CatalogEntry,
@@ -21,6 +22,7 @@ import {
   type McpToolInfo,
 } from "@/lib/agent/mcp";
 import { getTool, permit, type ToolContext } from "@/lib/agent/runtime";
+import { CAPACIDADES, toolsPermitidas } from "@/lib/agents/capacidades";
 import {
   CAMINHO_BIN_SOLIDCRAFT,
   CAMINHO_WASM_CAD,
@@ -187,6 +189,47 @@ describe("escopoDeContexto · a chave de isolamento", () => {
 
   it("sanitiza a chave (ela vira nome de pasta)", () => {
     expect(escopoDeContexto({ currentStudyId: "../../etc" } as ToolContext)).toBe("etc");
+  });
+});
+
+describe("T1 · o portão da habilidade cad", () => {
+  // uma ToolDef de execute como a que o conector registra: nome namespaceado, risco write (reclassificado)
+  const execDef = mcpToolToToolDef(
+    { name: "execute", annotations: { destructiveHint: true } },
+    { name: CONECTOR_CAD, transport: "stdio", endpoint: "x" },
+    async () => ({ content: [] }),
+    "write",
+  );
+  const ctxAuto = (habs: Parameters<typeof toolsPermitidas>[0]) =>
+    ({ toolsDoAgente: toolsPermitidas(habs), execMode: "auto" } as ToolContext);
+
+  it("o Eiffel tem `cad`; Aura, Zenita e Nina não", () => {
+    expect(CAPACIDADES.eiffel.habilidades).toContain("cad");
+    expect(CAPACIDADES.aura.habilidades).not.toContain("cad");
+    expect(CAPACIDADES.zenita.habilidades).not.toContain("cad");
+    expect(CAPACIDADES.nina.habilidades).not.toContain("cad");
+  });
+
+  it("toolsPermitidas(['cad']) traz as tools do MCP e NÃO traz crash_reports", () => {
+    const tools = toolsPermitidas(["cad"]);
+    expect(tools.has(`mcp:${CONECTOR_CAD}:execute`)).toBe(true);
+    expect(tools.has(`mcp:${CONECTOR_CAD}:batch`)).toBe(true);
+    expect(tools.has(`mcp:${CONECTOR_CAD}:measure`)).toBe(true);
+    // crash_reports lê relatório de crash da máquina — fica FORA da habilidade de propósito
+    expect(tools.has(`mcp:${CONECTOR_CAD}:crash_reports`)).toBe(false);
+  });
+
+  it("quem NÃO tem cad recebe DENY em execute (o portão do runtime.ts), quem tem recebe ALLOW", () => {
+    // Eiffel (cad) passa; Aura (sem cad) é negada — antes mesmo do plano
+    expect(permit(execDef, ctxAuto(CAPACIDADES.eiffel.habilidades))).toBe("ALLOW");
+    expect(permit(execDef, ctxAuto(CAPACIDADES.aura.habilidades))).toBe("DENY");
+    expect(permit(execDef, ctxAuto(CAPACIDADES.nina.habilidades))).toBe("DENY");
+  });
+
+  it("INJEÇÃO DE DEFEITO: tirar `cad` do Eiffel tira execute do seu conjunto — o portão acusa", () => {
+    const semCad = CAPACIDADES.eiffel.habilidades.filter((h) => h !== "cad");
+    expect(toolsPermitidas(semCad).has(`mcp:${CONECTOR_CAD}:execute`)).toBe(false);
+    expect(permit(execDef, ctxAuto(semCad))).toBe("DENY");
   });
 });
 
