@@ -14,6 +14,7 @@ faixa é o **motor** (`aura`, `deepseek-v4-profundo`, `tongyi-deepresearch`, `ki
 | Tela | O que mostra |
 |---|---|
 | **Quadro** | Kanban com as colunas Rodando · Concluída · Fallback (Aura assumiu) · Falhou. Cada cartão: selo do motor (cor pela origem), intent, objetivo, tempo, custo, subagentes, citações inventadas (vermelho se > 0) e cobertura. Filtros por motor, origem (chat/arena), busca e ordenação. Clique abre a tarefa. |
+| **Saúde do chat** | `GET /saude?horas=` (Estudos e Pesquisa, Aura e orquestra). Serve para **verificar se as correções de experiência funcionaram**. Seletor 1 h / 24 h / 7 d; cartões de taxa de falha, % de turnos na **reserva** (troca de família: âmbar acima de 5%, vermelho acima de 10%), turnos com **modelo aposentado** (vermelho se > 0) e total de turnos; tabela por fase (chamadas, falhas, taxa, p50, p90); barras por alvo (Vertex, Hugging Face…); erros por classe; tabela por modelo; série por hora (chamadas ok × falhas em barras, p50 em linha). Bom = reserva perto de 0, aposentado = 0, p90 do rascunho ≤ 12 s. Atualiza a cada 30 s. |
 | **Motores** | Na barra lateral, com o ponto de disponibilidade. O dashboard tem cabeçalho (nome, origem, formato, descrição), cartões de métricas (tarefas, concluídas, fallbacks, degradadas, p50/p90, custo médio/total, citações inventadas, cobertura média, subagentes), gráfico de barras das últimas tarefas (duração ou custo), modelos com rotas (provedor/modelo, ✓/✗ de chave) e preço por milhão de tokens, ferramentas, datasets, o system prompt (monoespaçado, com botão de copiar) e as últimas tarefas. |
 | **Tarefa** | Resumo e decisão do roteador; abas **Texto** (markdown final, com cada `[E#]` clicável abrindo a evidência ao lado; chave sem evidência fica em vermelho), **Linha do tempo** (eventos com tempo relativo e intervalo), **Subagentes** (árvore orquestrador → subagentes → chamadas de ferramenta, com as evidências de cada um), **Evidências** (tabela com chave, afirmação, fonte clicável, ferramenta e agente) e **Ledger** (cada chamada de LLM com modelo, provedor, fase, tokens, tempo, ok/erro e custo, com totais). Enquanto a tarefa roda, recarrega a cada 3 s. |
 | **Datasets** | Nome, tipo, fonte, licença, documentos, trechos e se está conectado (— quando o banco do RAG não respondeu). |
@@ -54,7 +55,8 @@ UNIVERSAL=1 ./scripts/empacotar.sh   # arm64 + x86_64 (Macs Intel)
 Sem credencial salva, o app abre em **DEMO**: os dados vêm das fixtures em
 `Sources/HermesCore/Resources/fixtures/` (5 motores, 5 datasets, 11 tarefas, uma tarefa de enxame
 com 3 subagentes, evidências e ledger completos). A arena funciona no DEMO: cria tarefas falsas que
-terminam em alguns segundos, para ver o polling. Liga e desliga em Configurações.
+terminam em alguns segundos, para ver o polling. A saúde do chat usa `saude.json` (24 h, 312 turnos);
+para 1 h e 7 d o DEMO recorta/repete a série e escala os totais. Liga e desliga em Configurações.
 
 ## Ligar o console no servidor
 
@@ -83,6 +85,7 @@ Sources/HermesCore/                 # compila em macOS e Linux, sem SwiftUI/AppK
   APIClient.swift                   # URLSession + Bearer, erros tipados (401/404/503…)
   Quadro.swift Estatisticas.swift   # kanban, filtros, métricas, arena
   Trilha.swift Formatacao.swift     # linha do tempo, árvore de subagentes, ledger, texto com [E#]
+  Saude.swift                       # saúde do chat: modelos, tons, critérios de "bom"
   Fixtures.swift                    # fixtures + FonteDemo
   Resources/fixtures/*.json
 Sources/ZaeonHermes/                # SwiftUI (macOS)

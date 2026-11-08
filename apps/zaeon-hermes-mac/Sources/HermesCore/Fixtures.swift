@@ -11,6 +11,7 @@ public enum Fixtures {
         case tarefaFallback = "tarefa-fallback"
         case arena
         case exportar
+        case saude
         case painelTolerante = "painel-tolerante"
         case erroNaoAutorizado = "erro-401"
         case erroNaoEncontrada = "erro-404"
@@ -165,5 +166,44 @@ public final class FonteDemo: FonteHermes, @unchecked Sendable {
 
     public func exportar(desde: Date?) async throws -> ResultadoExportacao {
         try Fixtures.decodificar(ResultadoExportacao.self, de: .exportar)
+    }
+
+    /// A fixture é de 24 h. Para outras janelas o DEMO recorta a série (1 h) ou a repete (7 d) e
+    /// escala os totais, só para a tela ter números coerentes com o seletor.
+    public func saude(horas: Int) async throws -> SaudeChat {
+        let base = try Fixtures.decodificar(SaudeChat.self, de: .saude)
+        let h = max(1, horas)
+        guard h != base.janelaHoras, base.janelaHoras > 0 else { return base }
+        let k = Double(h) / Double(base.janelaHoras)
+        func esc(_ v: Int) -> Int { Int((Double(v) * k).rounded()) }
+        let serieOrdenada = base.serie.sorted { $0.hora < $1.hora }
+        var serie: [PontoSaude]
+        if h <= serieOrdenada.count {
+            serie = Array(serieOrdenada.suffix(h))
+        } else {
+            // repete o dia para trás até cobrir a janela
+            serie = []
+            let dias = Int((Double(h) / 24).rounded(.up))
+            for d in stride(from: dias - 1, through: 0, by: -1) {
+                serie += serieOrdenada.map { p in
+                    var q = p
+                    q.hora = p.hora.addingTimeInterval(-Double(d) * 86_400)
+                    return q
+                }
+            }
+            serie = Array(serie.suffix(h))
+        }
+        return SaudeChat(
+            geradoEm: base.geradoEm, janelaHoras: h, chamadas: esc(base.chamadas), turnos: esc(base.turnos), falhas: esc(base.falhas),
+            taxaFalha: base.taxaFalha, turnosComReserva: esc(base.turnosComReserva), taxaReserva: base.taxaReserva,
+            turnosComModeloAposentado: esc(base.turnosComModeloAposentado),
+            porFase: base.porFase.map { FaseSaude(fase: $0.fase, chamadas: esc($0.chamadas), falhas: esc($0.falhas),
+                                                  taxaFalha: $0.taxaFalha, msP50: $0.msP50, msP90: $0.msP90) },
+            porAlvo: base.porAlvo.map { AlvoSaude(alvo: $0.alvo, chamadas: esc($0.chamadas), fracao: $0.fracao) },
+            erros: base.erros.map { ErroSaude(classe: $0.classe, n: esc($0.n)) },
+            modelos: base.modelos.map { ModeloSaude(model: $0.model, chamadas: esc($0.chamadas), falhas: esc($0.falhas),
+                                                    taxaFalha: $0.taxaFalha) },
+            serie: serie
+        )
     }
 }

@@ -5,6 +5,7 @@ import Observation
 /// Seções da barra lateral.
 enum Secao: Hashable {
     case quadro
+    case saude
     case motor(String)
     case datasets
     case arena

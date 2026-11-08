@@ -1,0 +1,259 @@
+{
+  "geradoEm": "2026-11-08T05:00:00.000Z",
+  "janelaHoras": 24,
+  "chamadas": 1186,
+  "turnos": 312,
+  "falhas": 41,
+  "taxaFalha": 0.0346,
+  "turnosComReserva": 19,
+  "taxaReserva": 0.0609,
+  "turnosComModeloAposentado": 2,
+  "porFase": [
+    {
+      "fase": "route",
+      "chamadas": 312,
+      "falhas": 3,
+      "taxaFalha": 0.0096,
+      "msP50": 420,
+      "msP90": 980
+    },
+    {
+      "fase": "plan",
+      "chamadas": 248,
+      "falhas": 4,
+      "taxaFalha": 0.0161,
+      "msP50": 1450,
+      "msP90": 3100
+    },
+    {
+      "fase": "acao",
+      "chamadas": 236,
+      "falhas": 9,
+      "taxaFalha": 0.0381,
+      "msP50": 2300,
+      "msP90": 6800
+    },
+    {
+      "fase": "draft",
+      "chamadas": 302,
+      "falhas": 17,
+      "taxaFalha": 0.0563,
+      "msP50": 4100,
+      "msP90": 9800
+    },
+    {
+      "fase": "sintese",
+      "chamadas": 41,
+      "falhas": 2,
+      "taxaFalha": 0.0488,
+      "msP50": 7900,
+      "msP90": 18400
+    },
+    {
+      "fase": "critique",
+      "chamadas": 47,
+      "falhas": 6,
+      "taxaFalha": 0.1277,
+      "msP50": 1900,
+      "msP90": 4200
+    }
+  ],
+  "porAlvo": [
+    {
+      "alvo": "vertex",
+      "chamadas": 1094,
+      "fracao": 0.9224
+    },
+    {
+      "alvo": "huggingface",
+      "chamadas": 92,
+      "fracao": 0.0776
+    }
+  ],
+  "erros": [
+    {
+      "classe": "rate_limit",
+      "n": 22
+    },
+    {
+      "classe": "timeout",
+      "n": 13
+    },
+    {
+      "classe": "modelo_inexistente",
+      "n": 6
+    }
+  ],
+  "modelos": [
+    {
+      "model": "gemini-3.5-flash",
+      "chamadas": 931,
+      "falhas": 24,
+      "taxaFalha": 0.0258
+    },
+    {
+      "model": "gemini-3.5-pro",
+      "chamadas": 157,
+      "falhas": 9,
+      "taxaFalha": 0.0573
+    },
+    {
+      "model": "gemini-2.5-pro",
+      "chamadas": 6,
+      "falhas": 6,
+      "taxaFalha": 1.0
+    },
+    {
+      "model": "openai/gpt-oss-120b",
+      "chamadas": 92,
+      "falhas": 2,
+      "taxaFalha": 0.0217
+    }
+  ],
+  "serie": [
+    {
+      "hora": "2026-11-07T06:00:00Z",
+      "chamadas": 22,
+      "falhas": 1,
+      "msP50": 3600
+    },
+    {
+      "hora": "2026-11-07T07:00:00Z",
+      "chamadas": 14,
+      "falhas": 0,
+      "msP50": 3400
+    },
+    {
+      "hora": "2026-11-07T08:00:00Z",
+      "chamadas": 9,
+      "falhas": 0,
+      "msP50": 3300
+    },
+    {
+      "hora": "2026-11-07T09:00:00Z",
+      "chamadas": 6,
+      "falhas": 0,
+      "msP50": 3200
+    },
+    {
+      "hora": "2026-11-07T10:00:00Z",
+      "chamadas": 5,
+      "falhas": 0,
+      "msP50": 3300
+    },
+    {
+      "hora": "2026-11-07T11:00:00Z",
+      "chamadas": 7,
+      "falhas": 0,
+      "msP50": 3400
+    },
+    {
+      "hora": "2026-11-07T12:00:00Z",
+      "chamadas": 12,
+      "falhas": 1,
+      "msP50": 3500
+    },
+    {
+      "hora": "2026-11-07T13:00:00Z",
+      "chamadas": 24,
+      "falhas": 1,
+      "msP50": 3700
+    },
+    {
+      "hora": "2026-11-07T14:00:00Z",
+      "chamadas": 41,
+      "falhas": 2,
+      "msP50": 3900
+    },
+    {
+      "hora": "2026-11-07T15:00:00Z",
+      "chamadas": 55,
+      "falhas": 2,
+      "msP50": 4000
+    },
+    {
+      "hora": "2026-11-07T16:00:00Z",
+      "chamadas": 64,
+      "falhas": 3,
+      "msP50": 4100
+    },
+    {
+      "hora": "2026-11-07T17:00:00Z",
+      "chamadas": 69,
+      "falhas": 2,
+      "msP50": 4200
+    },
+    {
+      "hora": "2026-11-07T18:00:00Z",
+      "chamadas": 73,
+      "falhas": 3,
+      "msP50": 4300
+    },
+    {
+      "hora": "2026-11-07T19:00:00Z",
+      "chamadas": 75,
+      "falhas": 4,
+      "msP50": 4500
+    },
+    {
+      "hora": "2026-11-07T20:00:00Z",
+      "chamadas": 77,
+      "falhas": 6,
+      "msP50": 5200
+    },
+    {
+      "hora": "2026-11-07T21:00:00Z",
+      "chamadas": 73,
+      "falhas": 5,
+      "msP50": 4900
+    },
+    {
+      "hora": "2026-11-07T22:00:00Z",
+      "chamadas": 71,
+      "falhas": 2,
+      "msP50": 4300
+    },
+    {
+      "hora": "2026-11-07T23:00:00Z",
+      "chamadas": 73,
+      "falhas": 1,
+      "msP50": 4100
+    },
+    {
+      "hora": "2026-11-08T00:00:00Z",
+      "chamadas": 79,
+      "falhas": 2,
+      "msP50": 4200
+    },
+    {
+      "hora": "2026-11-08T01:00:00Z",
+      "chamadas": 84,
+      "falhas": 2,
+      "msP50": 4300
+    },
+    {
+      "hora": "2026-11-08T02:00:00Z",
+      "chamadas": 82,
+      "falhas": 1,
+      "msP50": 4200
+    },
+    {
+      "hora": "2026-11-08T03:00:00Z",
+      "chamadas": 72,
+      "falhas": 1,
+      "msP50": 4000
+    },
+    {
+      "hora": "2026-11-08T04:00:00Z",
+      "chamadas": 58,
+      "falhas": 1,
+      "msP50": 3800
+    },
+    {
+      "hora": "2026-11-08T05:00:00Z",
+      "chamadas": 41,
+      "falhas": 1,
+      "msP50": 3700
+    }
+  ]
+}

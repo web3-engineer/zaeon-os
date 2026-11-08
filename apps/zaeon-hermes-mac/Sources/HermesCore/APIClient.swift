@@ -10,6 +10,8 @@ public protocol FonteHermes: Sendable {
     func tarefa(id: String) async throws -> TarefaDetalhe
     func arena(_ pedido: PedidoArena) async throws -> [String]
     func exportar(desde: Date?) async throws -> ResultadoExportacao
+    /// A saúde do chat nas últimas `horas` (`GET /saude?horas=`).
+    func saude(horas: Int) async throws -> SaudeChat
 }
 
 /// Erros tipados do console. A mensagem (`errorDescription`) já vem pronta para a tela.
@@ -120,6 +122,10 @@ public final class APIClient: FonteHermes, @unchecked Sendable {
 
     public func exportar(desde: Date? = nil) async throws -> ResultadoExportacao {
         try await enviar("exportar", metodo: "POST", corpo: try codificador.encode(PedidoExportacao(desde: desde)))
+    }
+
+    public func saude(horas: Int = 24) async throws -> SaudeChat {
+        try await enviar("saude", consulta: [URLQueryItem(name: "horas", value: String(max(1, horas)))])
     }
 
     // MARK: Transporte

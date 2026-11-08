@@ -65,6 +65,7 @@ struct RaizView: View {
         } else {
             switch estado.secao ?? .quadro {
             case .quadro: QuadroView()
+            case .saude: SaudeView()
             case .motor(let id): MotorDashboardView(motorId: id)
             case .datasets: DatasetsView()
             case .arena: ArenaView()
@@ -82,6 +83,7 @@ private struct BarraLateral: View {
         List(selection: $estado.secao) {
             Section("Orquestra") {
                 Label("Quadro", systemImage: "rectangle.split.3x1").tag(Secao.quadro)
+                Label("Saúde do chat", systemImage: "heart.text.square").tag(Secao.saude)
                 Label("Arena", systemImage: "flag.2.crossed").tag(Secao.arena)
                 Label("Datasets", systemImage: "externaldrive.connected.to.line.below").tag(Secao.datasets)
             }
