@@ -830,16 +830,70 @@ Wikipédia. Chamá-la de `proprio` inflaria a cobertura de 16 áreas nas costas 
 docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes wikilivros
 ```
 
+#### A fonte `doaj` — construída, e BLOQUEADA pela política da DOAJ
+
+**Licença, lida dos Termos deles:** *"Copyrights and related rights for article metadata waived via
+**CC0 1.0** Universal Public Domain Dedication"*, e *"Collecting, using and reusing part or all of
+the article-level metadata must be done under the terms of the CC0 waiver"*. O resumo é metadado de
+artigo, logo é CC0 — uso comercial livre. O rodapé credita revista e DOI de todo jeito, porque é o
+que torna a citação rastreável.
+
+**As três paredes da API, medidas:**
+
+1. `pageSize` é limitado a **50**, peça o que pedir;
+2. nenhuma consulta entrega além de **1.000 registros** (*"You cannot access results beyond 1000
+   records via this API"*) — não existe varrer 1,2 milhão por paginação;
+3. curinga é recusado (*"Query contains disallowed Lucene feature"*), então não dá pra filtrar por
+   prefixo de código LCC.
+
+**Por que a busca por frase, e não o filtro de idioma.** `bibjson.journal.language:PT` dá
+**1.199.705** artigos, mas `language` é da **revista**, não do artigo: medi 50 registros dessa fatia
+e os resumos vinham em espanhol e inglês, com **10%** classificando. Usar a busca da DOAJ com o
+vocabulário em português da área sobe muito a precisão:
+
+| frase | total na DOAJ | de 50, classificou | principal |
+|---|---:|---:|---|
+| "concreto armado" | 427 | 35 | **eng-civil 34** |
+| "enfermagem" | 51.931 | 27 | **enfermagem 18** |
+| "farmacologia" | 1.832 | 17 | farmacia 6, medicina 9 |
+| "agronomia" | 4.026 | 17 | agronomia 11 |
+| "medicina veterinária" | 10.596 | 9 | veterinaria 3 |
+
+E as frases **não são lista nova**: são os `AREAS[].wikipedia`, que já existem, já são frases em
+português curadas por área e já são mantidas pela fonte `wiki`. Lista paralela divergiria sozinha.
+A busca é só a **alavanca de colheita** — quem decide a área continua sendo `classificarArea`, igual
+à SciELO. Um artigo achado por "concreto armado" que seja de química vai pra química.
+
+**Um defeito real que o resumo da DOAJ tem:** vem com HTML. Medido em 225 resumos reais — `<i>` 56×,
+`<p>` 10×, `<em>` 10×, `<br>` 6×, `<sub>` 6×, `<strong>` 4×, e as entidades `&gt;`/`&lt;` 93 e 92
+vezes (quase sempre estatística escapada, `p &lt; 0,05`). Sem limpar, a marcação aparece no trecho
+citado ao aluno e atrapalha o casamento de termos. A ordem da limpeza importa: **tag antes de
+entidade**, senão `&lt;i&gt;` — que o autor escreveu pra aparecer literalmente — viraria `<i>` e
+seria comido como marcação.
+
+> **E então a DOAJ recusou.** HTTP **403** a pedido automatizado sustentado. Isso é **política, não
+> defeito**: os Termos dela encaminham uso em massa pelo dump de dados, liberado **caso a caso por
+> e-mail** ao platform manager. A primeira versão do meu código insistiu **168 vezes** contra um
+> servidor dizendo não — defeito meu, não deles. Agora há um **disjuntor**: três recusas seguidas e a
+> fonte para, apontando a política.
+>
+> **Não se contorna trocando User-Agent.** Tentei sondar isso e foi corretamente barrado como burla
+> de verificação. Procurar um cabeçalho que passe pela recusa é burlar política, não cumpri-la. O
+> caminho é **pedir o acesso**: o código está pronto e testado, e a precisão medida acima é o
+> argumento para o pedido.
+
+```bash
+# quando a DOAJ liberar:
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes doaj --seco
+```
+
 #### Verificado e disponível, ainda não construído
 
 | fonte | licença | volume medido | para |
 |---|---|---|---|
 | **Zenodo** (API aberta) | por registro (`license.id`) | eng-civil 2.276 · veterinaria 2.238 · psicologia 2.250 · enfermagem 2.198 · farmacia 173 · agronomia 103, em `language:por` | as áreas que o arXiv não alcança |
-| **DOAJ** (API aberta) | por revista | **979.567** artigos de revistas brasileiras, com resumo | todas as áreas, em PT |
 | **peS2o** | ODC-By | ~40M artigos | só com lista de termos em inglês (ver acima) |
 
-A DOAJ é o maior deles e o mais promissor para PT, mas o **dump em massa exige aprovação caso a caso
-por e-mail**; pela API são ~9.800 chamadas paginadas para os 979 mil.
 
 #### Recusados, com o motivo
 

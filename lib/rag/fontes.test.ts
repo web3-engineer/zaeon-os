@@ -115,8 +115,18 @@ describe("catálogo das fontes de base", () => {
     }
   });
 
-  it("nenhuma fonte fica bloqueada: as duas que perderam arquivo no /tmp foram refeitas", () => {
-    expect(FONTES_DE_BASE.filter((f) => f.estado === "bloqueada")).toEqual([]);
+  it("as duas que perderam arquivo no /tmp foram refeitas; a única bloqueada agora é a DOAJ", () => {
+    // E o motivo é diferente: scielo e medicina estavam bloqueadas por arquivo perdido, que é nosso
+    // problema e foi consertado. A DOAJ está bloqueada por POLÍTICA DELA — 403 a pedido
+    // automatizado, com uso em massa liberado caso a caso. Isso não se conserta com código.
+    expect(FONTES_DE_BASE.filter((f) => f.estado === "bloqueada").map((f) => f.id)).toEqual(["doaj"]);
+    const doaj = fonteDeBase("doaj")!;
+    expect(doaj.nota).toMatch(/403/);
+    expect(doaj.nota).toMatch(/caso a caso/);
+    // e a nota diz explicitamente que não se troca User-Agent pra passar
+    expect(doaj.nota).toMatch(/User-Agent/);
+    // fonte bloqueada não declara medição: nada foi colhido, e amostra não é carga
+    expect(doaj.medicoes, "amostra de sondagem não pode virar contagem de documentos").toBeUndefined();
     // a SciELO é REFEITA por script (sem Python), e a nota avisa do pico de memória
     expect(fonteDeBase("scielo")!.estado).toBe("pronta");
     expect(fonteDeBase("scielo")!.nota).toMatch(/scielo-para-jsonl|11 GB/);

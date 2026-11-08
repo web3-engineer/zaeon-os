@@ -14,6 +14,7 @@
  *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes mmlu
  *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes arxiv
  *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes wikilivros
+ *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes doaj  [--doaj-paginas 4]
  *
  * A fonte `wikipt` lê o dataset `wikimedia/wikipedia` (config 20231101.pt) DIRETO DOS PARQUETS, por
  * requisição de faixa (HTTP range) — o `hyparquet` baixa só os pedaços de que precisa, então não há
@@ -42,6 +43,7 @@ const POR_AREA = Number(opt("--por-area", "1500"));
 const LINHAS = Number(opt("--linhas", "1000000"));
 const DIR = opt("--dir", "/tmp/bases");
 const WIKI_SHARDS_USAR = Number(opt("--wiki-shards", "6"));
+const DOAJ_PAGINAS = Number(opt("--doaj-paginas", "0"));   // 0 = o padrão do módulo
 const WIKI_LINHAS = Number(opt("--wiki-linhas", String(Number.MAX_SAFE_INTEGER)));
 const UA = { "User-Agent": "ZaeonBot/1.0 (https://zaeon.com.br; bases de estudo)" };
 
@@ -226,6 +228,74 @@ async function main() {
         await gravar(AREA_GERAL, "enem", { chave: `enem-${ano}-${q.id}`, titulo: `ENEM ${ano} — ${q.id}`, texto: `${q.question}\n\n${alts}\n\nGabarito: ${q.label}\n\nFonte: maritaca-ai/enem (Hugging Face) — licença Apache-2.0.` });
       }
     }
+  }
+
+  if (FONTES.includes("doaj")) {
+    // DOAJ: resumo de artigo de acesso aberto. Metadado de artigo é CC0 1.0 pelos Termos da DOAJ.
+    //
+    // A BUSCA é só a ALAVANCA de colheita; quem decide a área é sempre o `classificarArea`. Um
+    // artigo achado pela frase "Concreto armado" pode ser de química, e tem de ir pra química —
+    // deixar a consulta ditar a área seria enfiar na base do agente errado o que ele não sabe.
+    // Por isso o teto é conferido na área CLASSIFICADA, não na área que fez a busca.
+    //
+    // As três paredes da API, medidas: pageSize limitado a 50, nenhuma consulta entrega além de
+    // 1.000 registros, e curinga é recusado. Daí o desenho: muitas frases curtas em vez de
+    // paginação profunda — e as frases são os `AREAS[].wikipedia`, que já existem.
+    const { ESPERA_MS, PAGINAS_POR_FRASE, documentoDoDoaj, ehDescarte, frasesDaArea, urlDaBusca } =
+      await import("../lib/rag/doaj");
+    const { SLUGS_AREA, classificarArea } = await import("../lib/rag/areas");
+    const paginas = DOAJ_PAGINAS > 0 ? DOAJ_PAGINAS : PAGINAS_POR_FRASE;
+
+    const porArea: Record<string, number> = {};
+    const descartes: Record<string, number> = {};
+    let pedidos = 0;
+    // DISJUNTOR. A primeira versão disto insistiu 168 vezes num servidor que respondia 403 — o que é
+    // defeito meu, não da DOAJ: servidor dizendo não é resposta, não ruído. Três recusas seguidas e
+    // a fonte para, apontando a política de acesso em massa deles.
+    let recusasSeguidas = 0;
+    const LIMITE_RECUSAS = 3;
+    let parar = false;
+    for (const area of SLUGS_AREA) {
+      if (parar) break;
+      for (const frase of frasesDaArea(area)) {
+        if (parar) break;
+        if ((porArea[area] ?? 0) >= POR_AREA) break;   // a área que motivou a busca já encheu
+        for (let pagina = 1; pagina <= paginas; pagina++) {
+          const r = await fetch(urlDaBusca(frase, pagina), { headers: UA }).catch(() => null);
+          pedidos++;
+          if (r?.status === 403 || r?.status === 429) {
+            recusasSeguidas++;
+            console.warn(`[doaj] "${frase}" p${pagina}: HTTP ${r.status} (recusa ${recusasSeguidas}/${LIMITE_RECUSAS})`);
+            if (recusasSeguidas >= LIMITE_RECUSAS) {
+              console.error(
+                "[doaj] PARANDO: a DOAJ recusou "
+                + `${LIMITE_RECUSAS} pedidos seguidos. Os Termos dela encaminham uso em massa pelo `
+                + "dump de dados, que é liberado CASO A CASO por e-mail ao platform manager "
+                + "(https://doaj.org/docs/public-data-dump/). Peça o acesso em vez de insistir.",
+              );
+              parar = true;
+            }
+            break;
+          }
+          if (!r?.ok) { console.warn(`[doaj] "${frase}" p${pagina}: HTTP ${r?.status ?? "falhou"}`); break; }
+          recusasSeguidas = 0;
+          const corpo = await r.json().catch(() => null) as { results?: unknown[] } | null;
+          const linhas = corpo?.results ?? [];
+          if (!linhas.length) break;
+          for (const linha of linhas) {
+            const d = documentoDoDoaj(linha as never, classificarArea);
+            if (ehDescarte(d)) { descartes[d.descarte] = (descartes[d.descarte] ?? 0) + 1; continue; }
+            if ((porArea[d.area] ?? 0) >= POR_AREA) { descartes.area_cheia = (descartes.area_cheia ?? 0) + 1; continue; }
+            porArea[d.area] = (porArea[d.area] ?? 0) + 1;
+            await gravar(d.area, "doaj", { chave: d.chave, titulo: d.titulo, texto: d.texto });
+          }
+          await espera(ESPERA_MS);
+        }
+      }
+      console.log(`[doaj] ${area.padEnd(16)} ${String(porArea[area] ?? 0).padStart(5)} aceitos (${pedidos} pedidos até aqui)`);
+    }
+    console.log(`[doaj] ${pedidos} pedidos · descartes: ${Object.entries(descartes).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}=${v}`).join(" ") || "nenhum"}`);
+    if (parar) console.log("[doaj] nada foi colhido: a fonte está bloqueada até a DOAJ liberar o acesso.");
   }
 
   if (FONTES.includes("wikilivros")) {

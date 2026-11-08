@@ -182,6 +182,25 @@ export const FONTES_DE_BASE: readonly FonteDeBase[] = [
       + "Com os 6 shards, ~48 mil. Lido por faixa HTTP: não baixa o arquivo.",
   },
   {
+    id: "doaj",
+    origem: "resumos de artigos de revistas de acesso aberto, pela API de busca da DOAJ",
+    licenca: "CC0 1.0 (metadado de artigo, pelos Termos da DOAJ)", comercial: true,
+    area: { tipo: "classificador" },
+    estado: "bloqueada",
+    natureza: "proprio",
+    // SEM `medicoes` de propósito: nada foi colhido. O que eu medi foram amostras de 50 registros em
+    // sondagens manuais, e transformar amostra em contagem de carga seria inventar documento que não
+    // existe na base. Elas ficam na nota como evidência de que vale pedir o acesso.
+    nota: "A DOAJ responde **HTTP 403** a pedido automatizado sustentado, e isso é POLÍTICA, não "
+      + "defeito: os Termos dela encaminham uso em massa pelo dump de dados, liberado caso a caso "
+      + "por e-mail ao platform manager (https://doaj.org/docs/public-data-dump/). O código está "
+      + "pronto e testado, com disjuntor que para em 3 recusas seguidas — basta o acesso. "
+      + "Vale pedir: em sondagem manual, a busca por frase em português teve precisão alta "
+      + '("concreto armado" 34 de 50 em eng-civil, "enfermagem" 18 de 50 em enfermagem, que é a '
+      + "área mais difícil de alimentar), sobre 1.199.705 artigos de revistas em português. "
+      + "NÃO se contorna o 403 trocando User-Agent: seria burlar verificação, não cumprir política.",
+  },
+  {
     id: "wikilivros",
     origem: "Wikilivros e Wikiversidade em português, dump Enterprise HTML (.json.tar.gz) da Wikimedia",
     licenca: "CC BY-SA 3.0 (declarada em cada registro do dump)", comercial: true,
