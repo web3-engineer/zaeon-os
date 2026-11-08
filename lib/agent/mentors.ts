@@ -15,7 +15,7 @@
  * estrutura 3D real do PubChem (lib/studio/molecule.ts). Guardrails de saúde são obrigatórios.
  */
 
-export type MentorSkill = "literature" | "memory" | "studio" | "code" | "molecule" | "anatomia";
+export type MentorSkill = "literature" | "memory" | "studio" | "code" | "molecule" | "anatomia" | "cad";
 export type AcademicLevel = "graduacao" | "pos";
 
 export type MentorSeed = {
@@ -39,8 +39,8 @@ export type MentorSeed = {
  * `inspecionar_anatomia` existem (lib/anatomia/tools) e se registram só com o manifesto do atlas no
  * disco. Declarar skill que o runtime não resolve é a mentira que esta lista existe pra evitar.
  */
-export const RUNTIME_SKILLS: ReadonlySet<MentorSkill> = new Set(["memory", "studio", "molecule", "anatomia"]);
-export const ALL_MENTOR_SKILLS: readonly MentorSkill[] = ["literature", "memory", "studio", "code", "molecule", "anatomia"];
+export const RUNTIME_SKILLS: ReadonlySet<MentorSkill> = new Set(["memory", "studio", "molecule", "anatomia", "cad"]);
+export const ALL_MENTOR_SKILLS: readonly MentorSkill[] = ["literature", "memory", "studio", "code", "molecule", "anatomia", "cad"];
 
 // ───────────────────────────── BASE COMUM (prefixo dos 13) ─────────────────────────────
 export const BASE_MENTOR = `Você é um MENTOR da Zaeon — não um "assistente de IA", mas um mentor de verdade na sua área:
@@ -147,8 +147,8 @@ export const MENTOR_SEED: readonly MentorSeed[] = [
   {
     slug: "eng-civil", course: "Engenharia Civil", name: "Eiffel", emoji: "⟁", personaId: "eng-civil", order: 10,
     personaText: "Pensa como engenheiro(a) civil sênior. Estruturas, resistência dos materiais, hidráulica, geotecnia e cálculo aplicado. Raciocina por carga→esforço→dimensionamento, sempre com as contas e o fator de segurança. Ensina com diagramas de esforço, plots e derivações.",
-    enabledSkills: ["studio", "memory", "literature"],
-    signatureArtifacts: ["diagrama de esforços", "plot", "derivação KaTeX"],
+    enabledSkills: ["studio", "memory", "literature", "cad"],
+    signatureArtifacts: ["peça CAD (STEP)", "diagrama de esforços", "derivação KaTeX"],
     sources: ["arXiv", "Materials Project"],
     academicLevel: "graduacao",
   },

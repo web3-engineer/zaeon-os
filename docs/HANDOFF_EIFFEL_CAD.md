@@ -38,9 +38,25 @@ O que o cargo custa de verdade (medido nesta máquina: 4 vCPU, 15 GB RAM):
 |---|---|
 | repositório | **331 MB** com `--depth 1` |
 | toolchain | `cargo 1.97.0` já satisfaz o `rust-version = 1.95` |
-| tempo de build | *(preencher com o número da medição — a compilação estava em andamento quando este documento foi escrito)* |
-| tamanho do `target/` | *(idem)* |
-| binário final | *(idem)* |
+| **tempo de build** | **15m51s de parede** (56m42s de CPU em 4 vCPU), `exit 0` |
+| tamanho do `target/` | **3,5 GB** — fica no estágio builder, não na imagem |
+| binário bruto | **646,5 MB** — o perfil release é `[optimized + debuginfo]` |
+| **binário strippado** | **133,9 MB** — é o que vai pra imagem |
+
+**E ele funciona, medido nesta máquina sem GPU:**
+
+```
+solidcraft-cli run examples/bracket.json --out bracket.step
+  → STEP de 22,8 KB, começando em `ISO-10303-21;`
+  → reply: volume_mm3 = 22385.309769646756 · vertices = 18
+
+solidcraft-cli snapshot examples/bracket.json --out bracket.png
+  → PNG de 987,8 KB
+  → warning: "drawn by the CPU rasterizer (no GPU adapter qualified…)"
+```
+
+O aviso do rasterizador de CPU é exatamente o que a documentação previa. **A cadeia inteira —
+modelar, exportar STEP e gerar miniatura — roda em container sem placa de vídeo.**
 
 **Conclusão de arquitetura, que não depende do número exato:** o build é de **imagem**, não de
 runtime. Ele acontece uma vez, num estágio `builder` do Dockerfile, e o que vai para a imagem final
@@ -246,7 +262,12 @@ decidido: ou o curso entra, ou o Eiffel é reapontado para `Arquitetura`, que é
 | arquivo | mudança |
 |---|---|
 | `lib/agent/mentors.ts` | `MentorSkill` ganha `"cad"`; `ALL_MENTOR_SKILLS` e `RUNTIME_SKILLS` acompanham |
-| `lib/agents/capacidades.ts` | `TOOLS_POR_HABILIDADE.cad` = as tools do MCP que admitimos |
+| `lib/agents/capacidades.ts` | `TOOLS_POR_HABILIDADE.cad` = as tools do MCP que admitimos, **com o nome real** |
+
+**O nome de uma tool de MCP no nosso registro é `mcp:<conector>:<tool>`** (`lib/agent/mcp.ts:141` e
+`:161`). Então o mapa de capacidades leva `mcp:solidcraft:execute`, `mcp:solidcraft:batch`, e assim
+por diante — não `execute`. Foi exatamente aqui que eu errei antes com `octa_patch`, e o teste do
+`capacidades.test.ts` compara cada nome do mapa com o registro real justamente para pegar isso.
 | `lib/cad/mcp.ts` (novo) | registra o conector, com `riscoMaximo` e `--allow-path` por conversa |
 
 **A política de risco é nossa, e tem de ser explícita.** `registerMcpConnector` filtra por
@@ -259,9 +280,53 @@ decidido: ou o curso entra, ou o Eiffel é reapontado para `Arquitetura`, que é
   `export`, `save`, `new_design`, `open`;
 - **fora**: `crash_reports` — lê relatórios de crash da máquina, que não é assunto de aluno.
 
-⚠️ `lib/agent/mcp.ts:65` documenta um limite conhecido: `riskFromAnnotations` devolve `write`
-quando o servidor não anota. **Não verifiquei** se o SolidCraft anota suas tools. Se não anotar,
-tudo vira `write` e o teto do chat pode recusar a tool inteira — é a **primeira coisa a medir**.
+#### A medição do risco — feita, e ela muda o desenho
+
+Subi o servidor (`solidcraft-cli mcp --headless`), fiz o handshake JSON-RPC e li o `tools/list`:
+
+```
+initialize: ok · servidor: solidcraft 0.40.0-rc.3
+tools: 21 · COM anotação: 21 · SEM anotação: 0
+
+list_commands     readOnly=true   destructive=false  idempotent=true
+describe_command  readOnly=true   destructive=false  idempotent=true
+inspect_design    readOnly=true   destructive=false  idempotent=true
+measure           readOnly=true   destructive=false  idempotent=true
+body_topology     readOnly=true   destructive=false  idempotent=true
+set_parameter     readOnly=false  destructive=false  idempotent=false
+execute           readOnly=false  destructive=TRUE   idempotent=false
+batch             readOnly=false  destructive=TRUE   idempotent=false
+```
+
+**Boa notícia:** todas as 21 vêm anotadas. O limite conhecido do `lib/agent/mcp.ts:65` não nos
+atinge — nada vira `write` por omissão.
+
+**Má notícia, e é a que importa:** `execute` e `batch` — justamente as duas que modelam — vêm com
+`destructiveHint: true`. E o nosso teto é **`RISCO_MAXIMO_CHAT = "read"`**. Com ele, `toolsAdmitidas`
+recusa `execute`, `batch`, `set_parameter`, `export`, `save`, `open` e `new_design`. **Só as de
+leitura entram.** O Eiffel poderia medir e inspecionar, e não poderia modelar nada.
+
+E há um segundo portão depois: `permit()` devolve `REQUIRE_APPROVAL` para `destructive`, e o turno
+do chat não passa `approve` — então mesmo admitindo a tool, a chamada morreria sem aprovação.
+
+**As três saídas, e a minha recomendação:**
+
+| | o que faz | veredito |
+|---|---|---|
+| a · `riscoMaximo: "destructive"` no conector | as tools entram, mas o `permit` exige aprovação em toda chamada de `execute`/`batch` | **não serve** sem um canal de aprovação no chat |
+| b · `riscoMaximo: "write"` | `destructive` continua recusado | **não serve** |
+| c · **reclassificar `execute`/`batch` como `write` para ESTE conector**, com o motivo declarado | as tools entram e o `permit` libera em modo `auto` | **é a saída** |
+
+O argumento de (c), e ele tem de ficar escrito no código: `destructiveHint: true` ali significa
+*"pode alterar o design"* — e o design é um arquivo descartável dentro de
+`--allow-path /app/cad/<scopeId>`. Não há dado de usuário, não há repositório, não há mundo externo.
+O sandbox do SolidCraft (seção 2) mais o workspace por conversa fazem o raio de alcance ser **um
+design descartável**. Não é afrouxar a política: é dizer que, neste conector e dentro deste
+confinamento, `write` descreve a verdade melhor que `destructive`.
+
+⚠️ **Isso é decisão de segurança e tem de ser estreita:** um `riscoMaximo` por conector, nunca mexer
+no `RISCO_MAXIMO_CHAT` global, e com teste que afirme que **nenhum outro** conector herdou a
+exceção.
 
 ### E3 · O workspace CAD
 
@@ -391,8 +456,9 @@ como invariante quebra em produção.
 
 | risco | o que fazer |
 |---|---|
-| **O SolidCraft anota suas tools MCP?** Se não, `riskFromAnnotations` devolve `write` para tudo e o teto do chat pode recusá-las | **medir primeiro** (T2). É o item que pode mudar o desenho do portão |
-| Tempo de build do Rust no CI | está na seção 1. Mitigação: `cargo-chef` ou imagem pré-construída |
+| ~~O SolidCraft anota suas tools MCP?~~ **MEDIDO**: 21 de 21 anotadas | resolvido. Mas `execute`/`batch` são `destructive` e o nosso teto é `read` — ver a decisão (c) na seção E2 |
+| Tempo de build do Rust no CI: **15m51s** em 4 vCPU | aceitável para build de imagem. Mitigação se incomodar: `cargo-chef` para cache de camada, ou runner com mais núcleos (o build usou 56m de CPU — escala bem) |
+| Binário de **133,9 MB** strippado na imagem | aceitável; sem `strip` são 646,5 MB, então o `strip` é obrigatório no Dockerfile |
 | **Não medi o build do WASM** (`trunk`) nem o tamanho do bundle | medir antes de prometer o modo edição |
 | O `?embed=editor` exige mesma origem | já tratado: o bundle é nosso. Mas **não testei** o embed |
 | `screenshot` headless sem GPU cai no rasterizador de CPU | aceitável para miniatura; medir o tempo |
@@ -404,8 +470,11 @@ como invariante quebra em produção.
 
 ## 7 · Ordem de execução
 
-1. **T2 primeiro** — descobrir se as anotações de risco existem. Muda o portão.
-2. O estágio de build no Dockerfile + o recibo no `/api/health`. Sem binário, nada mais roda.
+1. ~~T2 primeiro — descobrir se as anotações existem.~~ **FEITO.** 21 de 21 anotadas; `execute` e
+   `batch` são `destructive`; a decisão é a (c) da seção E2 — `riscoMaximo` por conector, com o
+   motivo no código e teste de não-contaminação.
+2. O estágio de build no Dockerfile (**com `strip`**) + o recibo no `/api/health`. Sem binário, nada
+   mais roda.
 3. O conector MCP + a habilidade `cad` + o Eiffel no registro (E1, E2) com T1 e T7.
 4. O `studioKind: "cad"` e o `CadView` com glTF (E3, primeira metade) com T3.
 5. O bundle WASM, a host page e o modo edição (E3, segunda metade) com T5 e T6.

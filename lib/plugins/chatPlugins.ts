@@ -6,7 +6,12 @@
  */
 import { useEffect, useState } from "react";
 
-export type PluginChat = "octa-code";
+/**
+ * `eiffel-cad`: o Eiffel, engenharia civil e estrutural, com CAD paramétrico de verdade
+ * (SolidCraft via MCP — docs/HANDOFF_EIFFEL_CAD.md). Plugável pela loja como o Octa, porque é
+ * agente de ofício: quem não faz projeto não quer um CAD no seletor.
+ */
+export type PluginChat = "octa-code" | "eiffel-cad";
 const CHAVE = "zaeon.chat.plugins";
 const EVENTO = "zaeon:chat:plugins";
 
