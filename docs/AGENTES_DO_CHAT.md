@@ -422,3 +422,87 @@ Os quatro são **mentores** (Escritório + rota de mentor do turno), não agente
 `areasDoTurno(cap.area ?? mentor?.slug)` em `lib/agent/runChatTurn.ts:149` é o que faz a base chegar:
 pela área da agente **ou** pelo slug do mentor ativo. Colocá-los no seletor de `AGENTES_CHAT` é uma
 decisão separada, com persona, voz e vitrine próprias — como foi feito com o Eiffel.
+
+---
+
+## 10 · Hugging Face: o que dá pra usar, medido
+
+Tudo nesta seção foi medido neste contêiner em 2026-11-08, anonimamente (**sem token** — o dono não
+forneceu um, e não é necessário para nada abaixo).
+
+### 10.1 · O que a rede permite
+
+| caminho | resultado |
+|---|---|
+| `huggingface.co/api/datasets/...` | **200** — metadados e licença de qualquer dataset público |
+| `.../resolve/main/<arquivo>` (pequeno) | **307 → `/api/resolve-cache/`**, fica no mesmo host, baixa |
+| `.../resolve/main/<parquet grande>` | **302 → `us.aws.cdn.hf.co`**, alcançável, aceita **range** |
+| `cdn-lfs.huggingface.co` | **bloqueado** pela política de rede (CDN antigo; não é mais usado) |
+| `datasets-server.../info`, `/splits`, `/first-rows` | **200** |
+| `datasets-server.../rows` | **funciona, mas 100 linhas por chamada e o nginx do HF devolve 502 depois de ~23 chamadas anônimas** (medido: 3/3 ok, depois 20/20 falhas) |
+
+Conclusão operacional: **a API de linhas não serve para carga em massa; os parquets servem.** Ler por
+faixa com `hyparquet` (JS puro, sem dependência nativa) dá acesso a um shard de 406 MB lendo só os
+pedaços necessários — 3 linhas em 1,9 s, sem baixar o arquivo e sem arquivo temporário.
+
+### 10.2 · A fonte `wikipt` — Wikipédia em português
+
+`wikimedia/wikipedia`, config `20231101.pt`, 6 shards, licença **`cc-by-sa-3.0` + `gfdl`** (lida no
+`cardData` da API, não de memória). É um **instantâneo datado**, não a Wikipédia de hoje: isso o
+torna reproduzível, e a data entra na chave e no crédito do texto.
+
+> **Atenção à licença:** a fonte `wiki` (API ao vivo) cita **CC BY-SA 4.0**, que é o regime atual. O
+> instantâneo de 2023 é do regime **3.0**. Citar 4.0 nele seria errado, e `lib/rag/wikipedia.test.ts`
+> trava isso.
+
+A decisão de cada verbete é pura e fica em `lib/rag/wikipedia.ts` (7 testes); o script só faz I/O.
+Filtros: mínimo **1.200 chars** (esboço não ensina, e ocupa vaga no teto por área), fora páginas de
+**desambiguação**, e a área sai do nosso `classificarArea` (limiar de 5 pontos).
+
+**Medição real, shard 0 de 6 — 185.375 verbetes:**
+
+```
+aceitos 8.108 · descartes: curto=99.909 sem_area=73.214 area_cheia=2.156 desambiguacao=1.988
+```
+
+| área | docs | área | docs | área | docs |
+|---|---|---|---|---|---|
+| biologia | 1.500 (teto) | agronomia | 834 | eng-energias | 741 |
+| medicina | 1.362 | quimica | 659 | matematica | 619 |
+| eng-computacao | 460 | eng-civil | 330 | psicologia | 295 |
+| veterinaria | 253 | software | 237 | fisica | 221 |
+| seguranca | 154 | farmacia | 151 | dados-ia | 143 |
+| infra | 116 | enfermagem | 33 | | |
+
+**As 17 áreas recebem conteúdo** — inclusive veterinária, enfermagem e farmácia, que eram justamente
+as três sem corpus aberto em lugar nenhum. Com os 6 shards isso vira ~48 mil documentos em PT-BR.
+Só `biologia` encheu o teto; as escassas recolhem o corpus inteiro.
+
+A carga é **por fluxo**, e isso é escolha, não descuido: guardar o melhor por pontos exigiria segurar
+`--por-area` × 17 × 20 KB na memória (meio giga). Então cada verbete é ingerido na hora e a área para
+quando enche; a qualidade vem do limiar do classificador e do mínimo de caracteres, não de ranquear.
+
+```bash
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes wikipt --seco
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes wikipt --wiki-shards 6
+```
+
+### 10.3 · O que mais existe no HF, com licença conferida
+
+Verificado via `cardData.license` na API, não de memória:
+
+| dataset | licença | serve para |
+|---|---|---|
+| `wikimedia/wikipedia` (`20231101.pt`) | cc-by-sa-3.0 + gfdl | **em produção** — as 17 áreas, em PT |
+| `FreedomIntelligence/MMLU_Portuguese` | mit | 57 matérias de prova em PT (anatomy, college_physics, …) — CSVs pequenos |
+| `liaad/math_dataset_portuguese` | mit | matemática em PT (sintético, DeepMind traduzido) |
+| `maritaca-ai/enem` | apache-2.0 | **já em produção** na fonte `enem` |
+| `kamel-usp/aes_enem_dataset` | apache-2.0 | redação do ENEM |
+| `tardellirs/brazilian-federal-law-corpus` | cc-by-4.0 | o agente de leis, quando ele existir |
+| `allenai/peS2o` | odc-by | ~40M artigos acadêmicos (sem viewer; só parquet) |
+| `HuggingFaceFW/fineweb-2` | odc-by | web em PT (`por_Latn`), bruta — não curada |
+| `HuggingFaceTB/cosmopedia` | apache-2.0 | livros-texto sintéticos |
+
+**O que NÃO achei:** corpus aberto decente para **veterinária** (nenhum com licença comercial clara),
+e para enfermagem/farmácia só coisas minúsculas ou sintéticas. É a Wikipédia PT que cobre esses três
+— que era exatamente o buraco levantado antes.
