@@ -137,8 +137,17 @@ export type IntentSpec = {
   required: (keyof StructuredAnswer)[];       // campos obrigatórios do schema
   reviseThreshold?: number;                   // score mínimo p/ aceitar (critic != off)
   maxRevisions?: number;                      // teto de iterações do laço
-  reflections?: number;                       // auto-reflexões do crítico (AI-Scientist)
-  ensemble?: number;                          // reviews agregados (variância; só no pesado)
+  /**
+   * `reflections` e `ensemble` SAÍRAM daqui (2026-11-07) e foram pro CARGO
+   * (lib/agents/capacidades `Protocolo`). Não é refatoração de gosto — eles não podiam funcionar
+   * aqui: vieram do AI-Scientist, onde o revisor é um MODELO, e o NOSSO crítico é CÓDIGO
+   * (lib/agent/examiner.ts não tem uma chamada de modelo). Um ensemble de função pura devolve N
+   * vereditos idênticos. Ficaram dois anos declarados e lidos por ninguém.
+   *
+   * Agora `ensemble` é N rascunhos escolhidos pelo crítico, e `reflexoes` é o `maxRevisions` do laço
+   * que já existe. Se precisarem voltar a ser por TAREFA, o lugar é aqui — mas então alguém tem que
+   * lê-los, e `maxRevisions` logo acima já faz o trabalho que `reflections` faria.
+   */
 };
 
 /**
@@ -155,11 +164,11 @@ export const INTENTS: Record<IntentId, IntentSpec> = {
   // chamada — mas era configuração que MENTE sobre a superfície do sistema para quem lê o código, e
   // agora o cardápio de capacidades é derivado do registry, onde a verdade mora.
   // (`studio_generate` nesta lista também nunca roda, pelo mesmo filtro; fica porque a tool existe.)
-  criar_trabalho:    { id: "criar_trabalho",    mode: "research",   tools: ["literature_search", "web_search", "memory_search", "studio_generate"],    critic: "full", required: ["nucleo", "work", "evidencia", "proximos_passos"], reviseThreshold: 7, maxRevisions: 2, reflections: 2, ensemble: 2 },
+  criar_trabalho:    { id: "criar_trabalho",    mode: "research",   tools: ["literature_search", "web_search", "memory_search", "studio_generate"],    critic: "full", required: ["nucleo", "work", "evidencia", "proximos_passos"], reviseThreshold: 7, maxRevisions: 2 },
   pesquisar_fontes:  { id: "pesquisar_fontes",  mode: "elaborated", tools: ["literature_search", "web_search"],                                                         critic: "leve", required: ["nucleo", "sources"], reviseThreshold: 6, maxRevisions: 1 },
   // achar UM LIVRO e entregar o caminho legal até ele (lib/livros): 1 busca, sem crítico — a lista sai do código, não do modelo
   buscar_livro:      { id: "buscar_livro",      mode: "elaborated", tools: ["book_search"],                                                               critic: "off",  required: ["nucleo"] },
-  revisar:           { id: "revisar",           mode: "research",   tools: ["examiner", "memory_search"],                                                 critic: "full", required: ["nucleo", "evidencia"], reflections: 2 },
+  revisar:           { id: "revisar",           mode: "research",   tools: ["examiner", "memory_search"],                                                 critic: "full", required: ["nucleo", "evidencia"] },
 };
 
 export const INTENT_IDS = Object.keys(INTENTS) as IntentId[];
@@ -201,8 +210,7 @@ export type ExaminerVerdict = {
   evidenceLevel: EvidenceLevel;     // grading global (open-science)
   integrity: IntegrityFinding[];    // achados de imagem/número/lógica/citação
   issues: Issue[];
-  reflections?: number;
-  ensemble?: number;
+
 };
 
 /**

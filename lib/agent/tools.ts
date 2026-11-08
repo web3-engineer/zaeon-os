@@ -29,10 +29,13 @@ export type StudioKind =
   | "diagram"
   // AULA interativa (Papermorph, Opção A — lib/aula-interativa/*): "me dá uma aula sobre X". Também é o
   // substituto do vídeo explicativo (auditoria do video-pipeline: docs/APRENDER_INTERATIVO.md).
-  | "aula";
+  | "aula"
+  // PEÇA CAD paramétrica (Eiffel, SolidCraft — lib/cad/mcp): o payload leva o script JSON + glTF (a
+  // miniatura, no CadView) + STEP (baixar) + PNG. O editor de verdade é o embed WASM (modo edição).
+  | "cad";
 
 export const STUDIO_KINDS: StudioKind[] = [
-  "guide", "mindmap", "timeline", "flashcards", "faq", "image", "podcast", "video", "molecule", "diagram", "aula",
+  "guide", "mindmap", "timeline", "flashcards", "faq", "image", "podcast", "video", "molecule", "diagram", "aula", "cad",
 ];
 
 // Rótulo humano (PT-BR) por kind — usado na confirmação e no provenance.
@@ -48,6 +51,7 @@ export const STUDIO_LABEL: Record<StudioKind, string> = {
   molecule: "molécula",
   diagram: "diagrama interativo",
   aula: "aula interativa",
+  cad: "peça CAD",
 };
 
 // Aceita sinônimos/PT que o modelo possa devolver → normaliza pro kind canônico.
@@ -65,6 +69,8 @@ const ALIASES: Record<string, StudioKind> = {
   diagrama: "diagram", diagram: "diagram", esquema: "diagram", fluxograma: "diagram",
   aula: "aula", "aula interativa": "aula", licao: "aula", "lição": "aula",
   "mapa conceitual": "mindmap", "mapa de estudo": "mindmap", "mapa de estudos": "mindmap",
+  // CAD — NÃO reusar "modelo 3d": já é molecule acima. "peça" é a palavra do Eiffel.
+  cad: "cad", "peça cad": "cad", "peca cad": "cad", "peça": "cad", "peca": "cad", "modelo cad": "cad",
 };
 
 export function normalizeStudioKind(raw: string): StudioKind {

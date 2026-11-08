@@ -18,7 +18,7 @@
  * TUDO QUE ENTRA É SÓ LEITURA (`RISCO_MAXIMO_CHAT` em lib/agent/mcp.ts) — ver lá o motivo, que é de
  * segurança e não de zelo.
  */
-import { MCP_CATALOG, registerMcpConnector, type CatalogEntry, type ConnectFn, type ConnectorStatus } from "@/lib/agent/mcp";
+import { MCP_CATALOG, registerMcpConnector, reclassificadorDeMapa, type CatalogEntry, type ConnectFn, type ConnectorStatus } from "@/lib/agent/mcp";
 
 type Env = Record<string, string | undefined>;
 
@@ -189,7 +189,14 @@ async function conectarTodos(env: Env, opts: { connect?: ConnectFn; importar?: (
   const conectores: EstadoConector[] = [];
   for (const cfg of escolhidos) {
     try {
-      const h = await registerMcpConnector(cfg, opts.connect ? { connect: opts.connect } : {});
+      // A política POR CONECTOR vem da entrada do catálogo, não de um caso-especial aqui: o boot
+      // continua genérico. Um conector sem `riscoMaximo`/`reclassificar` passa `{}` e nada muda —
+      // é o SolidCraft (lib/cad/mcp) que carrega o teto `write` e a reclassificação de execute/batch.
+      const h = await registerMcpConnector(cfg, {
+        ...(opts.connect ? { connect: opts.connect } : {}),
+        ...(cfg.riscoMaximo ? { riscoMaximo: cfg.riscoMaximo } : {}),
+        ...(cfg.reclassificar ? { reclassificar: reclassificadorDeMapa(cfg.reclassificar) } : {}),
+      });
       conectores.push({
         name: cfg.name, status: h.status, tools: h.admitidas ?? 0, recusadas: h.recusadas?.length ?? 0,
         ...(h.motivo || h.error ? { erro: h.motivo ?? h.error } : {}),

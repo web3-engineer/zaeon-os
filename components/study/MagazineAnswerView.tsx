@@ -26,6 +26,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } fr
 import type { StructuredAnswer } from "@/lib/agent/contracts";
 import StudioBlock, { type StudioBlockData } from "@/components/studio/StudioBlock";
 import MoleculeView from "@/components/studio/MoleculeView";
+import CadView from "@/components/studio/CadView";
 import { agendarChegada, chegadaInstantanea, DURACAO_CHEGADA, DURACAO_LETRA, RESPIRO_FINAL } from "@/lib/magazine/chegada";
 import { familiaDaVariavel, fonteCanvas, aplicarFonte, QUEDA_CORPO, QUEDA_DISPLAY } from "@/lib/magazine/fontes";
 import {
@@ -206,6 +207,8 @@ export default function MagazineAnswerView({
   const paragrafos = useMemo(() => emParagrafos(corpoDaResposta(answer)), [answer]);
   /** Molécula tem tratamento próprio: vira figura, não cartão. */
   const ehMolecula = artefato?.studioKind === "molecule" && !!artefato?.data?.sdf;
+  /** Peça CAD, idem: a miniatura (PNG/glTF) vira figura que o texto contorna. */
+  const ehCad = artefato?.studioKind === "cad" && (!!artefato?.data?.png || !!artefato?.data?.gltf);
   // Quando o corpo JÁ É o núcleo, mostrar o núcleo de novo em cima seria eco.
   const temLinhaFina = !!answer.desenvolvimento?.trim() && !!answer.nucleo?.trim();
   const conceitos = useMemo(() => answer.conceitos ?? [], [answer.conceitos]);
@@ -556,6 +559,8 @@ export default function MagazineAnswerView({
             >
               {ehMolecula
                 ? <MoleculeView data={artefato.data} nu />
+                : ehCad
+                ? <CadView data={artefato.data} nu />
                 : <StudioBlock block={artefato} collapsed={false} onToggle={() => {}} />}
             </figure>
           )}

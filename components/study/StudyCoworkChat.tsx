@@ -161,7 +161,7 @@ const AVISO_ARTEFATO: Record<string, string> = {
 function enxugarArtefatos(m: Msg): Msg {
   if (m.role !== "assistant" || (!m.studioBlock && !m.blocosExtra && !m.desenhando)) return m;
   // diagrama e aula são só um id (o conteúdo mora no servidor) — sobrevivem ao reload, sem o `data`
-  const leve = (b?: StudioBlockData) => (b && (b.studioKind === "diagram" || b.studioKind === "aula") && b.artifactId ? { ...b, data: null } : undefined);
+  const leve = (b?: StudioBlockData) => (b && (b.studioKind === "diagram" || b.studioKind === "aula" || b.studioKind === "cad") && b.artifactId ? { ...b, data: null } : undefined);
   const extras = (m.blocosExtra ?? []).map(leve).filter(Boolean) as StudioBlockData[];
   return { ...m, studioBlock: leve(m.studioBlock), blocosExtra: extras.length ? extras : undefined, desenhando: undefined };
 }

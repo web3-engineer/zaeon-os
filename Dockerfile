@@ -87,6 +87,28 @@ ENV NEXT_PUBLIC_ESCRITORIO_COWORK=$NEXT_PUBLIC_ESCRITORIO_COWORK \
 # agora o prisma/schema.prisma já está na imagem → gera o client e builda.
 RUN npx --yes prisma generate && npm run build
 
+# ───────────────────────── Stage 1b: CAD (SolidCraft CLI, Rust) ─────────────────────────
+# O binário `solidcraft-cli` do conector CAD do Eiffel (lib/cad/mcp.ts). Compilado AQUI, no deploy,
+# e só o binário vai pra imagem final (o target/ de ~3,5 GB fica neste estágio). Build de IMAGEM, não
+# de runtime: acontece uma vez, não por turno. Medido (handoff §1, 4 vCPU): ~16 min de parede, exit 0,
+# sem placa — a screenshot cai no rasterizador de CPU, e modelar + exportar STEP roda headless.
+#
+# PINADO POR COMMIT, nunca `main`: 0.40.0-rc.3 é release candidate. Clona a tag (raso, rápido) e AFIRMA
+# o SHA — se a tag for movida, o build falha alto em vez de compilar outro commit em silêncio.
+# docs/building.md do SolidCraft não declara dependência de sistema: é `cargo build` e pronto, e a
+# imagem `rust:1-bookworm` (full) já traz git + toolchain (rust-version mínimo do crate = 1.95).
+FROM rust:1-bookworm AS cad
+WORKDIR /src
+ARG SOLIDCRAFT_TAG=v0.40.0-rc.3
+ARG SOLIDCRAFT_SHA=7001949c49e211a430fe4747221589b2b9384f2c
+RUN git clone --depth 1 --branch "$SOLIDCRAFT_TAG" https://github.com/tangency-labs/solidcraft . \
+    && test "$(git rev-parse HEAD)" = "$SOLIDCRAFT_SHA" \
+       || { echo "ABORTANDO: $SOLIDCRAFT_TAG != $SOLIDCRAFT_SHA (tag movida?)"; exit 1; }
+# Features padrão (raytrace-cpu + profile) — o que foi medido funcionando headless. strip OBRIGATÓRIO:
+# o perfil release vem [optimized + debuginfo], 646 MB → ~134 MB sem os símbolos.
+RUN cargo build --release -p solidcraft-cli \
+    && strip target/release/solidcraft-cli
+
 # ───────────────────────── Stage 2: runtime ─────────────────────────
 FROM node:20-bookworm-slim AS runtime
 WORKDIR /app
@@ -109,6 +131,9 @@ ENV OCTA_CHROMIUM_PATH=/usr/bin/chromium \
     OCTA_CHROMIUM_SEM_SANDBOX=1
 
 RUN useradd --create-home --uid 10001 zaeon
+# O binário do CAD (SolidCraft CLI) — SÓ o binário, strippado, do estágio `cad`. Absoluto de
+# propósito: a entrada do catálogo (lib/cad/mcp.ts) aponta pra /usr/local/bin/solidcraft-cli.
+COPY --from=cad /src/target/release/solidcraft-cli /usr/local/bin/solidcraft-cli
 # Copia o app já buildado + node_modules (inclui socket.io e o client Prisma gerado)
 COPY --from=builder /app ./
 # /app/.studio é o volume dos arquivos gravados pelo app (Studio, aulas, cartolina, músicas do lounge). O processo
@@ -124,6 +149,10 @@ RUN mkdir -p /app/.next/cache/images && chown -R zaeon:zaeon /app/.next/cache
 # O manifesto (public/models/atlas.json) NÃO está aqui: ele é versionado e vem na imagem, e é por
 # isso que a busca anatômica do mentor funciona mesmo com este volume vazio.
 RUN mkdir -p /app/public/models/body && chown -R zaeon:zaeon /app/public/models
+# /app/cad é a RAIZ do sandbox do SolidCraft (--allow-path em lib/cad/mcp.ts): os designs descartáveis
+# de cada conversa vivem em /app/cad/<escopo>. Dono `zaeon` (o processo é dele) — volume novo herda
+# este dono, igual ao .studio. Deve existir antes do primeiro `export`/`save`, senão daria EACCES.
+RUN mkdir -p /app/cad && chown -R zaeon:zaeon /app/cad
 USER zaeon
 
 EXPOSE 3000

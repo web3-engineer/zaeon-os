@@ -46,6 +46,8 @@ export type EntradaOrquestra = {
   areas?: string[];
   /** quem gerou a tarefa (o console separa o chat da arena) */
   origem?: "chat" | "arena";
+  /** as opções da trajetória da AURA (ex.: `reflexoes` do protocolo do cargo) — repassadas em todo caminho em que ela responde */
+  opcoesTrajetoria?: import("@/lib/agent/trajectory").TrajectoryOpts;
   /** o motor do agente que o aluno plugou na Loja (lib/orquestra/catalogo) — o roteador confere plano e chave */
   motorPedido?: string | null;
   /** injetável (teste); default = a trilha no Mongo (lib/orquestra/trilha) */
@@ -95,7 +97,7 @@ function modeloDoVerificador(env: Env): ModeloId | null {
 export async function orquestrarTurno(e: EntradaOrquestra): Promise<SaidaOrquestra> {
   const env = e.env ?? process.env;
   const modo = modoOrquestra(env);
-  if (modo === "off") return runTrajectoryTraced(e.objetivo, e.hctx, e.deps);
+  if (modo === "off") return runTrajectoryTraced(e.objetivo, e.hctx, e.deps, e.opcoesTrajetoria);
 
   // o classify do harness, UMA vez: a decisão usa, e a trajetória da Aura reaproveita
   let rota: RouterResult | null = null;
@@ -104,7 +106,7 @@ export async function orquestrarTurno(e: EntradaOrquestra): Promise<SaidaOrquest
   const plano = e.plano ?? (await planoDaConta(e.userId));
   // plano abaixo do mínimo e sem motor forçado: nem classifica de novo — vai direto pra Aura
   if (!env.ORQ_MOTOR && plano !== "pro" && plano !== "max" && !env.ORQ_PLANO_MINIMO) {
-    return runTrajectoryTraced(e.objetivo, e.hctx, e.deps);
+    return runTrajectoryTraced(e.objetivo, e.hctx, e.deps, e.opcoesTrajetoria);
   }
 
   const r = await depsMemo.classify(e.objetivo, e.hctx);
@@ -115,7 +117,7 @@ export async function orquestrarTurno(e: EntradaOrquestra): Promise<SaidaOrquest
   }, env, motores);
   console.info("[orquestra]", JSON.stringify({ modo, plano, intent: r.intent, motor: decisao.motor, motivo: decisao.motivo }));
 
-  if (modo === "sombra" || decisao.motor === "aura") return runTrajectoryTraced(e.objetivo, e.hctx, depsMemo);
+  if (modo === "sombra" || decisao.motor === "aura") return runTrajectoryTraced(e.objetivo, e.hctx, depsMemo, e.opcoesTrajetoria);
 
   // TETO DE MOTORES LONGOS POR PROCESSO. Um enxame segura um slot do worker do chat por minutos
   // (CHAT_WORKER_CONCURRENCY, padrão 4): sem teto, quatro pedidos MAX ao mesmo tempo parariam o chat
@@ -123,7 +125,7 @@ export async function orquestrarTurno(e: EntradaOrquestra): Promise<SaidaOrquest
   const maxSimultaneas = Number(env.ORQ_MAX_SIMULTANEAS) > 0 ? Number(env.ORQ_MAX_SIMULTANEAS) : 2;
   if (emVoo >= maxSimultaneas) {
     console.info("[orquestra] lotada — a Aura responde", JSON.stringify({ emVoo, maxSimultaneas, motor: decisao.motor }));
-    return runTrajectoryTraced(e.objetivo, e.hctx, depsMemo);
+    return runTrajectoryTraced(e.objetivo, e.hctx, depsMemo, e.opcoesTrajetoria);
   }
   emVoo++;
   try {
@@ -217,7 +219,7 @@ async function rodarMotor(
     void trilha.concluir({ status: "fallback", evidencias: caixa.evidencias(), erro, relatorio: { ms: Date.now() - t0 } });
     console.warn(`[orquestra] motor ${motor.id} falhou — a Aura assume:`, String((err as Error)?.message ?? err).slice(0, 240));
     emitirProgresso("orquestra", `${motor.nome} não concluiu — a Aura assume`);
-    return runTrajectoryTraced(e.objetivo, e.hctx, depsMemo);
+    return runTrajectoryTraced(e.objetivo, e.hctx, depsMemo, e.opcoesTrajetoria);
   } finally {
     prazo.liberar();
   }

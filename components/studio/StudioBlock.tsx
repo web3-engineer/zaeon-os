@@ -11,6 +11,7 @@ import {
   GuideView, FaqView, FlashcardsView, MindmapView, TimelineView, PodcastView, ImageView, VideoView,
 } from "@/components/studio/StudioArtifactViews";
 import MoleculeView from "@/components/studio/MoleculeView";
+import CadView from "@/components/studio/CadView";
 import DiagramView from "@/components/studio/DiagramView";
 import AulaView from "@/components/aula-interativa/AulaView";
 import { artifactToText } from "@/lib/studio/artifact-text";
@@ -37,6 +38,7 @@ const KIND_META: Record<string, { emoji: string; label: string }> = {
   molecule: { emoji: "⚛️", label: "Molécula" },
   diagram: { emoji: "🧭", label: "Diagrama interativo" },
   aula: { emoji: "🎓", label: "Aula interativa" },
+  cad: { emoji: "📐", label: "Peça CAD" },
 };
 
 const TEXT_KINDS = new Set(["guide", "faq", "flashcards", "mindmap", "timeline"]);
@@ -55,6 +57,7 @@ function renderView(b: StudioBlockData) {
     case "molecule": return b.data?.sdf ? <MoleculeView data={b.data} /> : <div className="text-[12px] text-slate-400">Estrutura indisponível.</div>;
     case "diagram": return b.artifactId ? <DiagramView artifactId={b.artifactId} titulo={b.title} /> : <div className="text-[12px] text-slate-400">Diagrama indisponível.</div>;
     case "aula": return b.artifactId ? <AulaView artifactId={b.artifactId} dados={b.data} /> : <div className="text-[12px] text-slate-400">Aula indisponível.</div>;
+    case "cad": return <CadView data={b.data || {}} />;
     default: return <div className="text-[12px] text-slate-400">Conteúdo indisponível.</div>;
   }
 }
@@ -119,6 +122,20 @@ export default function StudioBlock({
         const a = document.createElement("a");
         a.href = url;
         a.download = `${safeName(block.title)}.sdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+      return;
+    }
+    if (k === "cad") {
+      // O STEP (ISO-10303-21) é o CAD padrão: abre no FreeCAD, Fusion, SolidWorks, Onshape.
+      const step = block.data?.step;
+      if (typeof step === "string" && step) {
+        const blob = new Blob([step], { type: "model/step" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${safeName(block.title)}.step`;
         a.click();
         URL.revokeObjectURL(url);
       }

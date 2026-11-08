@@ -7,7 +7,7 @@
 import type { PluginChat } from "@/lib/plugins/chatPlugins";
 import { AGENTES_ORQUESTRA } from "@/lib/orquestra/catalogo";
 
-export type AgenteChatId = "aura" | "zenita" | "nina" | "octa" | import("@/lib/orquestra/catalogo").AgenteOrquestraId;
+export type AgenteChatId = "aura" | "zenita" | "nina" | "octa" | "eiffel" | import("@/lib/orquestra/catalogo").AgenteOrquestraId;
 export type AgenteChat = {
   id: AgenteChatId;
   nome: string;
@@ -23,6 +23,9 @@ export const AGENTES_CHAT: readonly AgenteChat[] = [
   { id: "zenita", nome: "Zenita", papel: "Agenda, aulas e provas", tela: "chat" },
   { id: "nina", nome: "Nina", papel: "Caderno, resumos e plano de estudo", tela: "chat" },
   { id: "octa", nome: "Octa Code", papel: "Agente de código · IDE", tela: "ide", plugin: "octa-code" },
+  // O Eiffel fala no CHAT (tela "chat"), e o CAD dele nasce como ARTEFATO da conversa — diferente do
+  // Octa, cuja tela é a IDE. Plugável pela loja: `plugin` o esconde do seletor até ser adicionado.
+  { id: "eiffel", nome: "Eiffel", papel: "Engenharia civil e estrutural · CAD", tela: "chat", plugin: "eiffel-cad" },
   // OS AGENTES DA ORQUESTRA (lib/orquestra/catalogo): plugados pela Loja, falam no chat com a voz da Aura e
   // pedem o motor deles à orquestra (DeepSeek, Tongyi, Kimi em enxame, enxame misto).
   ...AGENTES_ORQUESTRA.map((a): AgenteChat => ({ id: a.id, nome: a.nome, papel: `${a.laboratorio} · ${a.formato === "enxame" ? "equipe de agentes" : "pesquisa profunda"}`, tela: "chat", plugin: a.id })),

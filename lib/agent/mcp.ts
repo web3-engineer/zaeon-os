@@ -21,6 +21,9 @@ import type { FunctionDeclaration } from "@google-cloud/vertexai";
 import type { Plan } from "@/lib/plans";
 import { registerTool, type ToolDef, type ToolResult, type ToolRisk } from "@/lib/agent/runtime";
 import { messageForError, classifyError } from "@/lib/agent/errors";
+// Só o VALOR da entrada vem daqui; lib/cad/mcp importa só TIPOS de volta (erasados no runtime), então
+// não há ciclo de módulo. A política do SolidCraft (teto, reclassificação, allow-path) vive lá.
+import { SOLIDCRAFT_ENTRY } from "@/lib/cad/mcp";
 
 // ───────────────────────────── tipos ─────────────────────────────
 export type McpTransportKind = "http" | "stdio";
@@ -74,16 +77,43 @@ export const RISCO_MAXIMO_CHAT: ToolRisk = "read";
 
 const ORDEM_RISCO: Record<ToolRisk, number> = { read: 0, write: 1, destructive: 2 };
 
+/**
+ * RECLASSIFICADOR DE RISCO POR CONECTOR — a exceção estreita, escrita e por conector.
+ *
+ * Recebe a tool e o risco-base (o que as annotations dizem) e devolve o risco EFETIVO deste
+ * conector. Ausente = sem exceção: vale o risco-base, byte a byte (é o caminho de todos os outros
+ * conectores). Existe por UM motivo concreto — ver `RECLASSIFICACAO_SOLIDCRAFT` em lib/cad/mcp.ts:
+ * `execute`/`batch` do SolidCraft vêm `destructiveHint:true` ("pode alterar o design"), mas o design
+ * é um arquivo DESCARTÁVEL dentro de `--allow-path /app/cad` — sem dado de usuário, sem repositório,
+ * sem mundo externo. Lá, `write` descreve a verdade melhor que `destructive`, e é o que deixa o
+ * Eiffel modelar sem um canal de aprovação que o chat não tem.
+ *
+ * SEGURANÇA: isto NÃO mexe em `RISCO_MAXIMO_CHAT` (global, permanece `read`). A exceção vive na
+ * entrada do catálogo (`CatalogEntry.reclassificar`), então um conector sem o campo NÃO herda nada —
+ * e `lib/cad/mcp.test.ts` afirma essa não-contaminação.
+ */
+export type Reclassificador = (tool: McpToolInfo, base: ToolRisk) => ToolRisk;
+
+/** Converte o mapa declarativo da entrada do catálogo (`{execute:"write"}`) num reclassificador. */
+export function reclassificadorDeMapa(mapa: Readonly<Record<string, ToolRisk>>): Reclassificador {
+  return (tool, base) => mapa[tool.name] ?? base;
+}
+
 /** Separa as tools do servidor entre o que entra no registry e o que é recusado pela política. */
 export function toolsAdmitidas(
   tools: readonly McpToolInfo[],
   riscoMaximo: ToolRisk = RISCO_MAXIMO_CHAT,
+  reclassificar?: Reclassificador,
 ): { admitidas: McpToolInfo[]; recusadas: string[] } {
   const teto = ORDEM_RISCO[riscoMaximo];
   const admitidas: McpToolInfo[] = [];
   const recusadas: string[] = [];
   for (const t of tools) {
-    const risco = riskFromAnnotations(t.annotations);
+    const base = riskFromAnnotations(t.annotations);
+    // O risco que a admissão usa é o EFETIVO (já reclassificado): tem de ser o MESMO que o
+    // `mcpToolToToolDef` grava no ToolDef, senão a tool entraria aqui e o `permit` a barraria
+    // depois (ou o contrário). Um ponto só de verdade: `riscoEfetivo`.
+    const risco = reclassificar ? reclassificar(t, base) : base;
     if (ORDEM_RISCO[risco] <= teto) admitidas.push(t);
     else recusadas.push(`${t.name} (${risco})`);
   }
@@ -155,12 +185,24 @@ export function classifyConnectorError(msg: string): ConnectorStatus {
   return /401|403|unauthor|forbidden|www-authenticate|invalid.token|precisa.autoriz/i.test(msg) ? "precisa_autorizar" : "erro";
 }
 
-/** Uma tool do MCP vira um ToolDef `runtime:"mcp"` — passa pelo mesmo `permit()` das demais. */
-export function mcpToolToToolDef(tool: McpToolInfo, connector: ConnectorConfig, callTool: (name: string, args: any) => Promise<any>): ToolDef {
+/**
+ * Uma tool do MCP vira um ToolDef `runtime:"mcp"` — passa pelo mesmo `permit()` das demais.
+ *
+ * `risco` é o risco EFETIVO (já passado pelo reclassificador do conector, quando há um). Tem de ser o
+ * mesmo que a admissão (`toolsAdmitidas`) usou: o `permit` lê este `risk`, e `destructive` nele vira
+ * REQUIRE_APPROVAL (runtime.ts) — que o chat em modo `auto` não resolve. Por isso a reclassificação
+ * precisa chegar AQUI, não só na admissão. Ausente = o risco-base das annotations.
+ */
+export function mcpToolToToolDef(
+  tool: McpToolInfo,
+  connector: ConnectorConfig,
+  callTool: (name: string, args: any) => Promise<any>,
+  risco: ToolRisk = riskFromAnnotations(tool.annotations),
+): ToolDef {
   return {
     name: `mcp:${connector.name}:${tool.name}`,
     runtime: "mcp",
-    risk: riskFromAnnotations(tool.annotations),
+    risk: risco,
     minPlan: connector.minPlan ?? "free",
     schema: { name: tool.name, description: tool.description ?? "", parameters: jsonSchemaToGemini(tool.inputSchema) } as FunctionDeclaration,
     async run(args) {
@@ -244,7 +286,7 @@ export async function testConnection(config: ConnectorConfig, opts?: { connect?:
  */
 export async function registerMcpConnector(
   config: ConnectorConfig,
-  opts?: { connect?: ConnectFn; riscoMaximo?: ToolRisk },
+  opts?: { connect?: ConnectFn; riscoMaximo?: ToolRisk; reclassificar?: Reclassificador },
 ): Promise<ConnectorHealth> {
   const connect = opts?.connect ?? connectMcp;
   const health = await testConnection(config, { connect });
@@ -253,10 +295,16 @@ export async function registerMcpConnector(
     const client = await connect(config);
     try { return await client.callTool(name, args); } finally { await client.close().catch(() => {}); }
   };
+  // UM PONTO DE VERDADE pro risco: a admissão e o ToolDef têm de ver o MESMO risco efetivo, senão a
+  // tool entra num gate e morre no outro. O reclassificador (quando há) decide, por conector.
+  const riscoEfetivo = (t: McpToolInfo): ToolRisk => {
+    const base = riskFromAnnotations(t.annotations);
+    return opts?.reclassificar ? opts.reclassificar(t, base) : base;
+  };
   // A POLÍTICA DE RISCO É APLICADA AQUI, no registro: tool recusada não existe pro permit, não
   // existe pro cardápio da F0 e não existe pro menu da F2 — não é "negada depois", é ausente.
-  const { admitidas, recusadas } = toolsAdmitidas(health.tools, opts?.riscoMaximo);
-  for (const tool of admitidas) registerTool(mcpToolToToolDef(tool, config, perCall));
+  const { admitidas, recusadas } = toolsAdmitidas(health.tools, opts?.riscoMaximo, opts?.reclassificar);
+  for (const tool of admitidas) registerTool(mcpToolToToolDef(tool, config, perCall, riscoEfetivo(tool)));
   return { ...health, admitidas: admitidas.length, recusadas };
 }
 
@@ -272,6 +320,17 @@ export type CatalogEntry = ConnectorConfig & {
   label: string; note?: string; experimental?: boolean;
   /** o endpoint não existe / não roda nesta imagem — `conectoresPedidos` recusa (ver o catálogo). */
   indisponivel?: boolean;
+  /**
+   * Teto de risco DESTE conector, sobrepondo `RISCO_MAXIMO_CHAT` só aqui. Ausente = o global (`read`).
+   * Combina com `reclassificar`: um conector que precisa modelar sobe o teto pra `write` E reclassifica
+   * as tools de escrita de `destructive`→`write` — as duas coisas, senão a tool é barrada num dos gates.
+   */
+  riscoMaximo?: ToolRisk;
+  /**
+   * Reclassificação de risco por tool, DESTE conector (ex.: `{execute:"write", batch:"write"}`).
+   * Declarativo de propósito: a não-contaminação é óbvia na leitura — só a entrada com o mapa muda.
+   */
+  reclassificar?: Readonly<Record<string, ToolRisk>>;
 };
 
 /**
@@ -346,4 +405,7 @@ export const MCP_CATALOG: CatalogEntry[] = [
   { name: "fetch", label: "Fetch (oficial)", transport: "stdio", endpoint: "npx -y @modelcontextprotocol/server-fetch", note: "não existe nesse nome (o oficial é python); e o Leitor já faz isso com allowlist", indisponivel: true },
   { name: "git", label: "Git (oficial)", transport: "stdio", endpoint: "npx -y @modelcontextprotocol/server-git", note: "não existe nesse nome (o oficial é python)", indisponivel: true },
   // NÃO incluir synthetic-sciences/openscience — não é servidor MCP (pesquisa §10.5).
+  // O SolidCraft (CAD, Eiffel) vem de lib/cad/mcp: a política dele — teto `write`, reclassificação de
+  // `execute`/`batch`, e o `--allow-path` — mora lá, num arquivo só, não espalhada no catálogo.
+  SOLIDCRAFT_ENTRY,
 ];
