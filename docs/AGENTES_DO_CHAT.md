@@ -652,7 +652,77 @@ Três coisas que a tabela deixa à vista:
 catalogada que o script não executa é promessa vazia, e fonte que o script executa sem estar no
 catálogo é dado entrando sem dono declarado.
 
-### 10.6 · O que mais existe no HF, com licença conferida
+### 10.6 · Cobertura: quem tem base e quem não tem
+
+```bash
+npx tsx scripts/datasets-inventario.ts --cobertura
+```
+
+**A régua é a NATUREZA da fonte, não o volume.** Enciclopédia alcança as 17 áreas, então contá-la
+como cobertura diria que todo agente está coberto — e esvaziaria a palavra. Três níveis:
+
+- `próprio` — corpus do ofício (artigo acadêmico da área, norma, referência técnica). O agente tem o
+  que dizer que nenhum outro teria.
+- `prova` — questão de exame com gabarito. Sabe aplicar, não tem de onde fundamentar.
+- `enciclopédico` — só verbete geral. É o piso que toda área tem, logo é o mesmo que descoberto.
+
+#### COBERTO — corpus do ofício · 9 agentes
+
+| agente | área | na VPS | c/ deploy | de onde |
+|---|---|---:|---:|---|
+| Osler | medicina | 1.497 | 2.957 | próprio 1.497 · prova 87 · encicl. 1.373 |
+| Nightingale | enfermagem | 1.500 | 1.540 | próprio 1.500 · encicl. 40 |
+| Darwin | biologia | 1.500 | 3.036 | próprio 1.500 · prova 24 · encicl. 1.512 |
+| Turing | eng-computacao | 626 | 1.109 | próprio 626 · prova 12 · encicl. 471 |
+| Tesla | eng-energias | 984 | 1.742 | próprio 984 · prova 8 · encicl. 750 |
+| Noether | matematica | 1.185 | 1.893 | próprio 1.199 · prova 65 · encicl. 629 |
+| **Téo** | software | 0 | **10.903** | próprio 10.654 (MDN) · encicl. 249 |
+| **Janaina** | infra | 0 | 1.240 | próprio 1.113 (Kubernetes) · encicl. 127 |
+| **Octa** | seguranca | 0 | 1.846 | próprio 1.662 (CWE+ATT&CK) · prova 19 · encicl. 165 |
+
+#### PARCIAL — só questão de prova · 5
+
+| agente | área | na VPS | c/ deploy | de onde |
+|---|---|---:|---:|---|
+| Feynman | fisica | 0 | 265 | prova 34 · encicl. 231 |
+| Mendeleev | quimica | 0 | 686 | prova 17 · encicl. 669 |
+| James | psicologia | 0 | 363 | prova 59 · encicl. 304 |
+| Zaeon | dados-ia | 0 | 167 | prova 12 · encicl. 155 |
+| *(todos)* | `geral` | 540 | 946 | prova 946 (ENEM + MMLU) |
+
+#### DESCOBERTO — só enciclopédia · 4
+
+| agente | área | na VPS | c/ deploy | de onde |
+|---|---|---:|---:|---|
+| Borlaug | agronomia | 0 | 843 | enciclopédia 843 |
+| Eiffel | eng-civil | 0 | 338 | enciclopédia 338 |
+| Pasteur | veterinaria | 0 | 260 | enciclopédia 260 |
+| Kekulé | farmacia | 0 | 159 | enciclopédia 159 |
+
+**Na VPS hoje: 7.832 documentos. Pronto e esperando deploy: 22.461** (e o número do `wikipt` é do
+shard 0 de 6 — com os seis é bem mais).
+
+Duas coisas que a tabela deixa clara e que mudam a prioridade:
+
+1. **Os três agentes novos do esquadrão já nascem cobertos** (Téo 10.903, Octa 1.846, Janaina 1.240),
+   e o Zaeon não — `dados-ia` tem só 12 documentos de prova. Ele é o único do esquadrão sem corpus
+   próprio, e `allenai/peS2o` (ODC-By, ~40M artigos) é a resposta natural.
+2. **Os quatro descobertos são os mesmos quatro sem corpus no HF**: agronomia, engenharia civil,
+   veterinária e farmácia. Não é coincidência nem descuido — é o buraco real, e resolver cada um
+   exige fonte fora do HF (a SciELO alcança os quatro pelo classificador, e é justamente ela que
+   está bloqueada por ter perdido o JSONL).
+
+> **A SciELO conta mesmo BLOQUEADA.** Estado da fonte e presença do dado são coisas diferentes: não
+> dá pra rodar de novo (perdeu o `/tmp/bases/scielo.jsonl`), mas os 7.292 documentos dela estão no
+> banco. Por isso enfermagem aparece como COBERTO com `na VPS 1.500` e sem a SciELO na lista de
+> fontes vivas.
+
+`lib/rag/fontes.test.ts` confere as medições contra o placar da VPS **documento por documento**: a
+soma tem de dar 7.832 e a quebra por área tem de bater linha por linha. É a melhor verificação
+disponível aqui — o catálogo é escrito à mão, o placar lê o banco de produção; se os dois batem, as
+medições não são chute.
+
+### 10.7 · O que mais existe no HF, com licença conferida
 
 Verificado via `cardData.license` na API, não de memória:
 

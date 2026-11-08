@@ -27,6 +27,30 @@ export type ComoEscolheArea =
   /** A área vem do próprio dado (campo `area` do JSONL, ou o nome da pasta). */
   | { tipo: "no-dado" };
 
+/**
+ * A NATUREZA da fonte — e é isto que decide se um agente está coberto ou só acompanhado.
+ *
+ *   `proprio`       corpus do ofício: artigo acadêmico da área, norma, referência técnica. É o que
+ *                   faz o agente ter o que dizer que outro agente não teria.
+ *   `prova`         questão de exame com gabarito. Ensina a aplicar, não a fundamentar.
+ *   `enciclopedico` verbete geral. Cobre TODAS as áreas, e por isso mesmo não distingue nenhuma:
+ *                   contar Wikipédia como cobertura é dizer que todo agente está coberto, o que
+ *                   esvazia a palavra. Serve de piso, não de especialidade.
+ */
+export type Natureza = "proprio" | "prova" | "enciclopedico";
+
+/**
+ * Uma medição REAL, com onde e quando. `vps` significa que o dado JÁ ESTÁ no banco de produção;
+ * `ensaio` significa que rodou aqui em seco e entra quando o deploy acontecer. Misturar os dois é
+ * dizer que temos o que ainda não temos.
+ */
+export type Medicao = {
+  data: string;
+  onde: "vps" | "ensaio";
+  nota?: string;
+  porArea: Readonly<Record<string, number>>;
+};
+
 export type FonteDeBase = {
   /** o que se passa em `--fontes` */
   id: string;
@@ -41,6 +65,9 @@ export type FonteDeBase = {
    * `bloqueada` — falta algo externo, e `nota` diz o quê
    */
   estado: "producao" | "pronta" | "bloqueada";
+  natureza: Natureza;
+  /** o que de fato foi contado, e onde. Vazio = nunca medimos. */
+  medicoes?: readonly Medicao[];
   nota?: string;
 };
 
@@ -51,6 +78,13 @@ export const FONTES_DE_BASE: readonly FonteDeBase[] = [
     licenca: "CC BY 4.0", comercial: true,
     area: { tipo: "classificador" },
     estado: "bloqueada",
+    natureza: "proprio",
+    // Contado na VPS pelo scripts/bases-area-placar.ts: este dado JÁ ESTÁ no banco de produção.
+    // A execução parou na área 6 de 13, e é por isso que as sete seguintes estão em zero.
+    medicoes: [{
+      data: "2026-11-08", onde: "vps", nota: "placar da VPS; execução interrompida na área 6 de 13",
+      porArea: { medicina: 1497, enfermagem: 1500, biologia: 1500, "eng-computacao": 626, "eng-energias": 984, matematica: 1185 },
+    }],
     nota: "precisa de /tmp/bases/scielo.jsonl, que foi apagado quando o /tmp da VPS foi limpo. "
       + "7.292 documentos já ingeridos em 6 áreas; a execução parou na área 6 de 13.",
   },
@@ -60,6 +94,11 @@ export const FONTES_DE_BASE: readonly FonteDeBase[] = [
     licenca: "CC BY-SA 4.0", comercial: true,
     area: { tipo: "fixa", areas: [] }, // uma semente por área: ver AREAS[].wikipedia
     estado: "pronta",
+    natureza: "enciclopedico",
+    medicoes: [{
+      data: "2026-11-08", onde: "ensaio", nota: "167 ok · 0 falharam · 1 esboço (Exame físico)",
+      porArea: { medicina: 11, enfermagem: 7, biologia: 12, "eng-computacao": 11, "eng-energias": 9, matematica: 10, fisica: 10, agronomia: 9, quimica: 10, "eng-civil": 8, veterinaria: 7, psicologia: 9, farmacia: 8, software: 12, infra: 11, seguranca: 11, "dados-ia": 12 },
+    }],
     nota: "167 sementes, uma lista por área. Depende do humor da borda da Wikimedia com o IP de "
       + "saída: na VPS as 122 levaram HTTP 429. Para carga de verdade, use `wikipt`.",
   },
@@ -69,6 +108,7 @@ export const FONTES_DE_BASE: readonly FonteDeBase[] = [
     licenca: "Apache-2.0", comercial: true,
     area: { tipo: "fixa", areas: ["medicina", "enfermagem", "farmacia"] },
     estado: "bloqueada",
+    natureza: "proprio",
     nota: "precisa dos JSONL em --dir, que também foram apagados com o /tmp.",
   },
   {
@@ -77,6 +117,11 @@ export const FONTES_DE_BASE: readonly FonteDeBase[] = [
     licenca: "Apache-2.0", comercial: true,
     area: { tipo: "fixa", areas: [AREA_GERAL] },
     estado: "producao",
+    natureza: "prova",
+    medicoes: [{
+      data: "2026-11-08", onde: "vps", nota: "ENEM 2022-2024, confirmado no placar da VPS",
+      porArea: { geral: 540 },
+    }],
     nota: "540 questões ingeridas na VPS em 2026-11-08. É a base que TODO agente consulta.",
   },
   {
@@ -85,6 +130,11 @@ export const FONTES_DE_BASE: readonly FonteDeBase[] = [
     licenca: "MIT", comercial: true,
     area: { tipo: "mapa", modulo: "lib/rag/mmlu" },
     estado: "pronta",
+    natureza: "prova",
+    medicoes: [{
+      data: "2026-11-08", onde: "ensaio", nota: "114 CSVs, nenhum erro de rede, nenhuma linha torta",
+      porArea: { geral: 406, medicina: 87, matematica: 65, psicologia: 59, fisica: 34, biologia: 24, seguranca: 19, quimica: 17, "dados-ia": 12, "eng-computacao": 12, "eng-energias": 8 },
+    }],
     nota: "743 documentos medidos em execução real (114 CSVs, nenhum erro). 406 vão pra `geral`.",
   },
   {
@@ -93,6 +143,11 @@ export const FONTES_DE_BASE: readonly FonteDeBase[] = [
     licenca: "CC BY-SA 3.0 e GFDL", comercial: true,
     area: { tipo: "classificador" },
     estado: "pronta",
+    natureza: "enciclopedico",
+    medicoes: [{
+      data: "2026-11-08", onde: "ensaio", nota: "shard 0 de 6; 185.375 verbetes varridos. `biologia` encheu o teto de --por-area",
+      porArea: { biologia: 1500, medicina: 1362, agronomia: 834, "eng-energias": 741, quimica: 659, matematica: 619, "eng-computacao": 460, "eng-civil": 330, psicologia: 295, veterinaria: 253, software: 237, fisica: 221, seguranca: 154, farmacia: 151, "dados-ia": 143, infra: 116, enfermagem: 33 },
+    }],
     nota: "8.108 documentos medidos no shard 0 de 6 (185.375 verbetes varridos), nas 17 áreas. "
       + "Com os 6 shards, ~48 mil. Lido por faixa HTTP: não baixa o arquivo.",
   },
@@ -103,6 +158,11 @@ export const FONTES_DE_BASE: readonly FonteDeBase[] = [
     comercial: true,
     area: { tipo: "no-dado" },
     estado: "pronta",
+    natureza: "proprio",
+    medicoes: [{
+      data: "2026-11-08", onde: "ensaio", nota: "MDN, Kubernetes, CWE+ATT&CK e 14 PDFs do REA-MECC; a Constituição fica fora até existir o mentor de `direito`",
+      porArea: { software: 10654, seguranca: 1662, infra: 1113, matematica: 14 },
+    }],
     nota: "13.443 documentos + 14 PDFs alcançáveis. Os 412 artigos da Constituição ficam de fora "
       + "até existir o mentor de `direito`.",
   },
@@ -133,4 +193,72 @@ export function areasDaFonte(f: FonteDeBase): readonly string[] {
 /** As fontes que podem alimentar uma área — o inverso de `areasDaFonte`. */
 export function fontesDaArea(slug: string): FonteDeBase[] {
   return FONTES_DE_BASE.filter((f) => areasDaFonte(f).includes(slug));
+}
+
+// ─────────────────────────── COBERTURA ───────────────────────────
+
+/**
+ * O nível de cobertura de uma área. A régua é a NATUREZA da fonte, não o volume:
+ *
+ *   `proprio`       tem corpus do ofício. O agente tem o que dizer que nenhum outro teria.
+ *   `prova`         só questão de exame. Sabe aplicar, não tem de onde fundamentar.
+ *   `enciclopedico` só verbete geral. É o piso que TODA área tem — então é o mesmo que
+ *                   descoberto, e chamar isso de cobertura esvaziaria a palavra.
+ *
+ * Volume não entra na régua de propósito. 10.654 páginas do MDN e 14 PDFs de matemática são os
+ * dois `proprio`, e são ordens de grandeza diferentes; o que eles têm em comum — e o que importa
+ * aqui — é que são material do ofício e não enciclopédia.
+ */
+export type Nivel = "proprio" | "prova" | "enciclopedico";
+
+export type Cobertura = {
+  area: string;
+  nivel: Nivel;
+  /** documentos por natureza, somando só o que JÁ ESTÁ no banco (medições `vps`) */
+  naVps: Record<Natureza, number>;
+  /** documentos por natureza contando também o que está pronto e espera deploy */
+  comDeploy: Record<Natureza, number>;
+  /** as fontes que alcançam a área e não estão bloqueadas */
+  fontes: string[];
+};
+
+const zero = (): Record<Natureza, number> => ({ proprio: 0, prova: 0, enciclopedico: 0 });
+
+/**
+ * A cobertura de uma área, somada das medições reais. `naVps` conta só `onde: "vps"` — e é por isso
+ * que a SciELO, mesmo BLOQUEADA pra rodar de novo, continua contando: os 7.292 documentos dela
+ * estão no banco. Estado da fonte e presença do dado são coisas diferentes.
+ */
+export function coberturaDaArea(slug: string): Cobertura {
+  const naVps = zero();
+  const comDeploy = zero();
+  for (const f of FONTES_DE_BASE) {
+    for (const m of f.medicoes ?? []) {
+      const n = m.porArea[slug] ?? 0;
+      if (!n) continue;
+      comDeploy[f.natureza] += n;
+      if (m.onde === "vps") naVps[f.natureza] += n;
+    }
+  }
+  // o nível olha o que EXISTE no desenho (pronto ou já dentro); `naVps` fica à vista pra quem
+  // precisa saber o que o aluno alcança HOJE
+  const nivel: Nivel = comDeploy.proprio > 0 ? "proprio" : comDeploy.prova > 0 ? "prova" : "enciclopedico";
+  return {
+    area: slug,
+    nivel,
+    naVps,
+    comDeploy,
+    fontes: fontesDaArea(slug).filter((f) => f.estado !== "bloqueada").map((f) => f.id),
+  };
+}
+
+export const COBERTURA: readonly Cobertura[] = [...SLUGS_AREA, AREA_GERAL].map(coberturaDaArea);
+
+/** Soma dos documentos medidos, por onde. Serve de conferência contra o placar da VPS. */
+export function totalMedido(onde: "vps" | "ensaio"): number {
+  return FONTES_DE_BASE.reduce(
+    (s, f) => s + (f.medicoes ?? []).filter((m) => m.onde === onde)
+      .reduce((t, m) => t + Object.values(m.porArea).reduce((a, b) => a + b, 0), 0),
+    0,
+  );
 }
