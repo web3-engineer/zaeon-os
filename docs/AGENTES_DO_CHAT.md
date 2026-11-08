@@ -652,75 +652,94 @@ Três coisas que a tabela deixa à vista:
 catalogada que o script não executa é promessa vazia, e fonte que o script executa sem estar no
 catálogo é dado entrando sem dono declarado.
 
-### 10.6 · Cobertura: quem tem base e quem não tem
+### 10.6 · A SciELO refeita, e a cobertura fechada
+
+A SciELO morreu assim: 7.292 documentos ingeridos, o `/tmp` da VPS limpo, e a execução sem poder ser
+retomada porque o `scielo.jsonl` tinha sumido. Ela era a única fonte que alcançava agronomia,
+engenharia civil, veterinária e farmácia — as quatro DESCOBERTAS. Refazê-la fechava as quatro de uma
+vez, e foi o que se fez.
+
+**`scripts/scielo-para-jsonl.ts` substitui o `.py`.** Sem Python e sem pyarrow (lê com `hyparquet`,
+que já é dependência), usando o **mesmo** `tituloEResumo` de `lib/rag/areas` — o `.py` tinha uma
+reimplementação da regra em Python, e duas cópias de uma regra divergem sozinhas. E a saída deixou de
+ser `/tmp`.
+
+#### O custo de memória é real, medido e alto
+
+| o que | pico de RSS | tempo |
+|---|---:|---:|
+| grupo 0 (122.491 linhas) | **10.983 MB** | 68 s |
+| grupo 1 (31.727 linhas), sozinho | 3.858 MB | 26 s |
+| os dois juntos | **10.983 MB** | 84 s · saída de 408 MB |
+
+Não é falha do leitor. O arquivo tem 2 grupos de linha (o maior com 4 GB descomprimidos), páginas de
+dados gigantes e **nenhum índice de página**. Medi as três coisas: ler 50 linhas custa o mesmo que
+ler 20 mil (19 s e 4,5 GB nas duas), e `onPage` devolveu **uma** página com 20.557 valores. Não
+existe ler um pedaço, e fatiar só multiplicaria o tempo.
+
+> **Não rode dentro do `zaeon_web`.** O contêiner web não declara limite de memória no compose, então
+> um pico de 11 GB disputa RAM com o servidor e o OOM killer do host pode escolher o node do
+> servidor. Sem ~12 GB livres, use `--grupos 1`: 31.727 artigos num pico de 3,9 GB, e ainda caem nas
+> 17 áreas (agronomia 285, eng-civil 187, farmacia 160, veterinaria 56).
+
+```bash
+docker run --rm -m 12g -v /opt/zaeon/dataset:/saida -v $PWD:/app -w /app node:20-slim \
+  sh -c "npm i -s hyparquet tsx && npx tsx scripts/scielo-para-jsonl.ts --saida /saida/scielo/scielo.jsonl"
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes scielo --dir /opt/zaeon/dataset/scielo
+```
+
+**Resultado real: 154.040 artigos extraídos, 62.032 classificados, as 17 áreas atendidas.** Com o
+teto de `--por-area 1500`, **18.034 documentos** entram:
+
+```
+medicina 1500 · enfermagem 1500 · psicologia 1500 · biologia 1500 · agronomia 1500 · veterinaria 1500
+quimica 1410 · matematica 1274 · dados-ia 1181 · eng-civil 1169 · farmacia 1017 · eng-energias 972
+infra 608 · seguranca 517 · fisica 471 · eng-computacao 262 · software 153
+```
+
+#### A fonte `medicina` também deixou de depender de arquivo
+
+Ela lia dois JSONL de `--dir`, e morreu pelo mesmo motivo. Agora lê o **parquet direto** do Hugging
+Face: 5,5 MB / 10.000 linhas / 10 grupos e 3,0 MB / 6.865 linhas / 7 grupos, pico de 90 MB. Sem
+arquivo intermediário, nada pra perder. Rende 753 docs em medicina, 493 em enfermagem, 260 em
+farmácia.
+
+#### Cobertura: NENHUM agente descoberto
 
 ```bash
 npx tsx scripts/datasets-inventario.ts --cobertura
 ```
 
-**A régua é a NATUREZA da fonte, não o volume.** Enciclopédia alcança as 17 áreas, então contá-la
-como cobertura diria que todo agente está coberto — e esvaziaria a palavra. Três níveis:
+**As 17 áreas têm corpus do ofício. Só `geral` é de prova** — e para ela isso é o certo, já que é
+feita de ENEM e MMLU.
 
-- `próprio` — corpus do ofício (artigo acadêmico da área, norma, referência técnica). O agente tem o
-  que dizer que nenhum outro teria.
-- `prova` — questão de exame com gabarito. Sabe aplicar, não tem de onde fundamentar.
-- `enciclopédico` — só verbete geral. É o piso que toda área tem, logo é o mesmo que descoberto.
+| agente | área | na VPS | c/ deploy | próprio |
+|---|---|---:|---:|---:|
+| Téo | software | 0 | 11.056 | 10.807 |
+| Osler | medicina | 1.497 | 3.713 | 2.253 |
+| Darwin | biologia | 1.500 | 3.036 | 1.500 |
+| Octa | seguranca | 0 | 2.363 | 2.179 |
+| Borlaug | **agronomia** | 0 | 2.343 | **1.500** |
+| Mendeleev | quimica | 0 | 2.096 | 1.410 |
+| Nightingale | enfermagem | 1.500 | 2.033 | 1.993 |
+| Noether | matematica | 1.185 | 1.982 | 1.288 |
+| James | psicologia | 0 | 1.863 | 1.500 |
+| Janaina | infra | 0 | 1.848 | 1.721 |
+| Pasteur | **veterinaria** | 0 | 1.760 | **1.500** |
+| Tesla | eng-energias | 984 | 1.742 | 984 |
+| Eiffel | **eng-civil** | 0 | 1.507 | **1.169** |
+| Kekulé | **farmacia** | 0 | 1.436 | **1.277** |
+| Zaeon | dados-ia | 0 | 1.348 | 1.181 |
+| Turing | eng-computacao | 626 | 1.109 | 626 |
+| Feynman | fisica | 0 | 736 | 471 |
+| *(todos)* | `geral` | 540 | 946 | 0 (prova) |
 
-#### COBERTO — corpus do ofício · 9 agentes
+**Na VPS hoje: 7.832. Pronto esperando deploy: 42.001.**
 
-| agente | área | na VPS | c/ deploy | de onde |
-|---|---|---:|---:|---|
-| Osler | medicina | 1.497 | 2.957 | próprio 1.497 · prova 87 · encicl. 1.373 |
-| Nightingale | enfermagem | 1.500 | 1.540 | próprio 1.500 · encicl. 40 |
-| Darwin | biologia | 1.500 | 3.036 | próprio 1.500 · prova 24 · encicl. 1.512 |
-| Turing | eng-computacao | 626 | 1.109 | próprio 626 · prova 12 · encicl. 471 |
-| Tesla | eng-energias | 984 | 1.742 | próprio 984 · prova 8 · encicl. 750 |
-| Noether | matematica | 1.185 | 1.893 | próprio 1.199 · prova 65 · encicl. 629 |
-| **Téo** | software | 0 | **10.903** | próprio 10.654 (MDN) · encicl. 249 |
-| **Janaina** | infra | 0 | 1.240 | próprio 1.113 (Kubernetes) · encicl. 127 |
-| **Octa** | seguranca | 0 | 1.846 | próprio 1.662 (CWE+ATT&CK) · prova 19 · encicl. 165 |
-
-#### PARCIAL — só questão de prova · 5
-
-| agente | área | na VPS | c/ deploy | de onde |
-|---|---|---:|---:|---|
-| Feynman | fisica | 0 | 265 | prova 34 · encicl. 231 |
-| Mendeleev | quimica | 0 | 686 | prova 17 · encicl. 669 |
-| James | psicologia | 0 | 363 | prova 59 · encicl. 304 |
-| Zaeon | dados-ia | 0 | 167 | prova 12 · encicl. 155 |
-| *(todos)* | `geral` | 540 | 946 | prova 946 (ENEM + MMLU) |
-
-#### DESCOBERTO — só enciclopédia · 4
-
-| agente | área | na VPS | c/ deploy | de onde |
-|---|---|---:|---:|---|
-| Borlaug | agronomia | 0 | 843 | enciclopédia 843 |
-| Eiffel | eng-civil | 0 | 338 | enciclopédia 338 |
-| Pasteur | veterinaria | 0 | 260 | enciclopédia 260 |
-| Kekulé | farmacia | 0 | 159 | enciclopédia 159 |
-
-**Na VPS hoje: 7.832 documentos. Pronto e esperando deploy: 22.461** (e o número do `wikipt` é do
-shard 0 de 6 — com os seis é bem mais).
-
-Duas coisas que a tabela deixa clara e que mudam a prioridade:
-
-1. **Os três agentes novos do esquadrão já nascem cobertos** (Téo 10.903, Octa 1.846, Janaina 1.240),
-   e o Zaeon não — `dados-ia` tem só 12 documentos de prova. Ele é o único do esquadrão sem corpus
-   próprio, e `allenai/peS2o` (ODC-By, ~40M artigos) é a resposta natural.
-2. **Os quatro descobertos são os mesmos quatro sem corpus no HF**: agronomia, engenharia civil,
-   veterinária e farmácia. Não é coincidência nem descuido — é o buraco real, e resolver cada um
-   exige fonte fora do HF (a SciELO alcança os quatro pelo classificador, e é justamente ela que
-   está bloqueada por ter perdido o JSONL).
-
-> **A SciELO conta mesmo BLOQUEADA.** Estado da fonte e presença do dado são coisas diferentes: não
-> dá pra rodar de novo (perdeu o `/tmp/bases/scielo.jsonl`), mas os 7.292 documentos dela estão no
-> banco. Por isso enfermagem aparece como COBERTO com `na VPS 1.500` e sem a SciELO na lista de
-> fontes vivas.
-
-`lib/rag/fontes.test.ts` confere as medições contra o placar da VPS **documento por documento**: a
-soma tem de dar 7.832 e a quebra por área tem de bater linha por linha. É a melhor verificação
-disponível aqui — o catálogo é escrito à mão, o placar lê o banco de produção; se os dois batem, as
-medições não são chute.
+> **Duas medições da mesma fonte são um TETO, não duas remessas.** A SciELO tem 1.497 de `medicina`
+> já na VPS e 1.500 que entrariam ao refazer; somar daria 2.997, e é falso — a ingestão dedupe pelo
+> hash do texto e devolve "reaproveitado". Então `coberturaDaArea` toma o **máximo** por fonte+área, e
+> soma só entre fontes diferentes. Está travado em teste.
 
 ### 10.7 · O que mais existe no HF, com licença conferida
 

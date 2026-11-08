@@ -169,9 +169,20 @@ async function main() {
 
   if (FONTES.includes("medicina")) {
     // "<s> [INST] <<SYS>>…<</SYS>> pergunta [/INST] resposta </s>" → lotes de 20 perguntas e respostas por documento
+    // Lê o PARQUET direto do Hugging Face, sem JSONL intermediário. Antes dependia de um arquivo em
+    // --dir, e foi assim que esta fonte morreu: o /tmp da VPS foi limpo e ela não pôde ser retomada.
+    // Dá pra ler direto porque estes dois são pequenos e bem repartidos — medido em 2026-11-08:
+    // 5,5 MB / 10.000 linhas / 10 grupos e 3,0 MB / 6.865 linhas / 7 grupos, pico de 90 MB de RSS.
+    // (A SciELO NÃO cabe nesse caminho: 2 grupos, páginas gigantes, pico de 11 GB — por isso ela
+    // continua passando pelo scripts/scielo-para-jsonl.ts.)
+    const hp = await import("hyparquet").catch((e: unknown) => {
+      throw new Error(`o pacote \`hyparquet\` não está neste contêiner. Reconstrua a imagem, ou: `
+        + `\`docker exec -u 0 -w /app zaeon_web npm i hyparquet --no-audit --no-fund\`. `
+        + `Erro original: ${(e as Error)?.message ?? e}`);
+    });
     const fontes = [
-      { ds: "rhaymison/medicine-medical_meadow_wikidoc_pt", arq: "medical_meadow_wikidoc_pt.jsonl", areas: ["medicina", "enfermagem"] },
-      { ds: "rhaymison/medicine-information-pt", arq: "information-pt.jsonl", areas: ["farmacia", "medicina"] },
+      { ds: "rhaymison/medicine-medical_meadow_wikidoc_pt", areas: ["medicina", "enfermagem"] },
+      { ds: "rhaymison/medicine-information-pt", areas: ["farmacia", "medicina"] },
     ];
     for (const f of fontes) {
       let lote: string[] = [];
@@ -184,8 +195,13 @@ async function main() {
         }
         lote = [];
       };
-      for await (const row of jsonl(`${DIR}/${f.arq}`)) {
-        const m = /\[\/SYS\]\]?|<<\/SYS>>/.exec(row.input ?? "");
+      const url = `https://huggingface.co/datasets/${f.ds}/resolve/main/data/train-00000-of-00001.parquet`;
+      const file = await hp.asyncBufferFromUrl({ url });
+      const metadata = await hp.parquetMetadataAsync(file);
+      const linhas = await hp.parquetReadObjects({ file, metadata, columns: ["input"] }) as { input?: unknown }[];
+      console.log(`[medicina] ${f.ds}: ${linhas.length.toLocaleString("pt-BR")} linhas (${(file.byteLength / 1048576).toFixed(1)} MB)`);
+      for (const row of linhas) {
+        const m = /\[\/SYS\]\]?|<<\/SYS>>/.exec(String(row.input ?? ""));
         const corpo = String(row.input ?? "").slice(m ? m.index + m[0].length : 0);
         const [perg, resp] = corpo.split("[/INST]");
         const P = perg?.replace(/<\/?s>|\[INST\]/g, "").trim(), R = resp?.replace(/<\/?s>/g, "").trim();

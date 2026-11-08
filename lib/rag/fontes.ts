@@ -77,16 +77,31 @@ export const FONTES_DE_BASE: readonly FonteDeBase[] = [
     origem: "SciELO em português (parquet convertido por scripts/scielo-para-jsonl.py)",
     licenca: "CC BY 4.0", comercial: true,
     area: { tipo: "classificador" },
-    estado: "bloqueada",
+    estado: "pronta",
     natureza: "proprio",
-    // Contado na VPS pelo scripts/bases-area-placar.ts: este dado JÁ ESTÁ no banco de produção.
-    // A execução parou na área 6 de 13, e é por isso que as sete seguintes estão em zero.
-    medicoes: [{
-      data: "2026-11-08", onde: "vps", nota: "placar da VPS; execução interrompida na área 6 de 13",
-      porArea: { medicina: 1497, enfermagem: 1500, biologia: 1500, "eng-computacao": 626, "eng-energias": 984, matematica: 1185 },
-    }],
-    nota: "precisa de /tmp/bases/scielo.jsonl, que foi apagado quando o /tmp da VPS foi limpo. "
-      + "7.292 documentos já ingeridos em 6 áreas; a execução parou na área 6 de 13.",
+    medicoes: [
+      // Contado na VPS pelo scripts/bases-area-placar.ts: este dado JÁ ESTÁ no banco de produção.
+      // A execução parou na área 6 de 13, e é por isso que as sete seguintes estavam em zero.
+      {
+        data: "2026-11-08", onde: "vps", nota: "placar da VPS; execução interrompida na área 6 de 13",
+        porArea: { medicina: 1497, enfermagem: 1500, biologia: 1500, "eng-computacao": 626, "eng-energias": 984, matematica: 1185 },
+      },
+      // O corpus INTEIRO, refeito pelo scripts/scielo-para-jsonl.ts: 154.040 artigos extraídos,
+      // 62.032 classificados, e o teto de --por-area 1500 aplicado. As 17 áreas recebem — e é isto
+      // que tira agronomia, engenharia civil, veterinária e farmácia de DESCOBERTAS.
+      {
+        data: "2026-11-08", onde: "ensaio",
+        nota: "154.040 artigos extraídos do parquet; ingestão em seco com --por-area 1500",
+        porArea: {
+          medicina: 1500, enfermagem: 1500, psicologia: 1500, biologia: 1500, agronomia: 1500, veterinaria: 1500,
+          quimica: 1410, matematica: 1274, "dados-ia": 1181, "eng-civil": 1169, farmacia: 1017, "eng-energias": 972,
+          infra: 608, seguranca: 517, fisica: 471, "eng-computacao": 262, software: 153,
+        },
+      },
+    ],
+    nota: "o JSONL foi apagado com o /tmp da VPS, e agora é REFEITO por scripts/scielo-para-jsonl.ts "
+      + "(sem Python, sem pyarrow). Pico de 11 GB de RSS no grupo 0, então roda em contêiner "
+      + "descartável, NUNCA dentro do zaeon_web; com `--grupos 1` são 3,9 GB e ainda cobre as 17 áreas.",
   },
   {
     id: "wiki",
@@ -107,9 +122,15 @@ export const FONTES_DE_BASE: readonly FonteDeBase[] = [
     origem: "rhaymison/medicine-medical_meadow_wikidoc_pt e rhaymison/medicine-information-pt (Hugging Face)",
     licenca: "Apache-2.0", comercial: true,
     area: { tipo: "fixa", areas: ["medicina", "enfermagem", "farmacia"] },
-    estado: "bloqueada",
+    estado: "pronta",
     natureza: "proprio",
-    nota: "precisa dos JSONL em --dir, que também foram apagados com o /tmp.",
+    medicoes: [{
+      data: "2026-11-08", onde: "ensaio", nota: "lido direto do parquet (5,5 MB e 3,0 MB), sem arquivo intermediário",
+      porArea: { medicina: 753, enfermagem: 493, farmacia: 260 },
+    }],
+    nota: "passou a ler o PARQUET direto do Hugging Face — não depende mais de arquivo em --dir, "
+      + "que é como ela morreu. Os dois são pequenos e bem repartidos (10 e 7 grupos de linha), "
+      + "pico de 90 MB de RSS.",
   },
   {
     id: "enem",
@@ -233,12 +254,17 @@ export function coberturaDaArea(slug: string): Cobertura {
   const naVps = zero();
   const comDeploy = zero();
   for (const f of FONTES_DE_BASE) {
-    for (const m of f.medicoes ?? []) {
-      const n = m.porArea[slug] ?? 0;
-      if (!n) continue;
-      comDeploy[f.natureza] += n;
-      if (m.onde === "vps") naVps[f.natureza] += n;
-    }
+    // MÁXIMO entre as medições da MESMA fonte, não soma — e isto não é detalhe. A SciELO tem duas
+    // medições pra `medicina`: 1.497 que já estão na VPS e 1.500 que entrariam ao refazer o corpus.
+    // Somar daria 2.997, e é falso: rodar de novo não acrescenta 1.500 documentos, encosta no mesmo
+    // teto de `--por-area` (a ingestão dedupe pelo hash do texto e devolve "reaproveitado").
+    // Duas medições da mesma fonte são duas observações de um teto, não duas remessas.
+    // Entre fontes DIFERENTES soma, porque aí são documentos diferentes mesmo.
+    const medicoes = f.medicoes ?? [];
+    const maxDe = (filtro: (m: Medicao) => boolean) =>
+      medicoes.filter(filtro).reduce((mx, m) => Math.max(mx, m.porArea[slug] ?? 0), 0);
+    comDeploy[f.natureza] += maxDe(() => true);
+    naVps[f.natureza] += maxDe((m) => m.onde === "vps");
   }
   // o nível olha o que EXISTE no desenho (pronto ou já dentro); `naVps` fica à vista pra quem
   // precisa saber o que o aluno alcança HOJE
@@ -256,9 +282,13 @@ export const COBERTURA: readonly Cobertura[] = [...SLUGS_AREA, AREA_GERAL].map(c
 
 /** Soma dos documentos medidos, por onde. Serve de conferência contra o placar da VPS. */
 export function totalMedido(onde: "vps" | "ensaio"): number {
-  return FONTES_DE_BASE.reduce(
-    (s, f) => s + (f.medicoes ?? []).filter((m) => m.onde === onde)
-      .reduce((t, m) => t + Object.values(m.porArea).reduce((a, b) => a + b, 0), 0),
-    0,
-  );
+  // Mesma regra de `coberturaDaArea`: por fonte e por área, o máximo entre as medições daquele
+  // `onde` — nunca a soma, que inventaria documentos que a dedupe recusaria.
+  let total = 0;
+  for (const f of FONTES_DE_BASE) {
+    const ms = (f.medicoes ?? []).filter((m) => m.onde === onde);
+    const areas = new Set(ms.flatMap((m) => Object.keys(m.porArea)));
+    for (const a of areas) total += ms.reduce((mx, m) => Math.max(mx, m.porArea[a] ?? 0), 0);
+  }
+  return total;
 }
