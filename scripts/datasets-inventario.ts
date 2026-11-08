@@ -4,6 +4,7 @@
  *   npx tsx scripts/datasets-inventario.ts            # o inventário inteiro
  *   npx tsx scripts/datasets-inventario.ts --agente   # só a tabela por agente
  *   npx tsx scripts/datasets-inventario.ts --fonte    # só a tabela por fonte
+ *   npx tsx scripts/datasets-inventario.ts --cobertura # quem tem base e quem não tem
  *
  * Roda em QUALQUER máquina: lê só o código (lib/rag/fontes, lib/rag/areas, lib/agent/mentors,
  * lib/agents/capacidades), nunca o banco. É a ESTRUTURA — quem é dono de quê.
@@ -14,7 +15,7 @@
  * confundir os dois foi exatamente como se perdeu uma carga antes.
  */
 import { AREAS, AREA_GERAL, SLUGS_AREA, areasDoTurno } from "../lib/rag/areas";
-import { FONTES_DE_BASE, areasDaFonte, fontesDaArea } from "../lib/rag/fontes";
+import { COBERTURA, FONTES_DE_BASE, areasDaFonte, fontesDaArea, totalMedido } from "../lib/rag/fontes";
 import { MENTOR_SEED } from "../lib/agent/mentors";
 import { MATERIAS } from "../lib/rag/mmlu";
 import { CAPACIDADES } from "../lib/agents/capacidades";
@@ -22,7 +23,7 @@ import { AGENTES_CHAT } from "../lib/agents/chatAgentes";
 
 const args = process.argv.slice(2);
 const so = (k: string) => args.includes(k);
-const tudo = !so("--agente") && !so("--fonte");
+const tudo = !so("--agente") && !so("--fonte") && !so("--cobertura");
 
 const ESTADO = { producao: "EM PRODUÇÃO", pronta: "pronta", bloqueada: "BLOQUEADA" } as const;
 
@@ -88,6 +89,41 @@ function porAgente() {
   );
 }
 
+function porCobertura() {
+  const NOME = {
+    proprio: "COBERTO — corpus do ofício",
+    prova: "PARCIAL — só questão de prova",
+    enciclopedico: "DESCOBERTO — só enciclopédia",
+  } as const;
+  const dono = (slug: string) => MENTOR_SEED.find((m) => m.slug === slug)?.name ?? "(todos)";
+  const soma = (r: Record<string, number>) => Object.values(r).reduce((a, b) => a + b, 0);
+
+  console.log("\n═══ COBERTURA: QUEM TEM BASE E QUEM NÃO TEM ═══\n");
+  console.log("  A régua é a NATUREZA da fonte, não o volume. Enciclopédia alcança as 17 áreas, então");
+  console.log("  contá-la como cobertura diria que todo agente está coberto — e esvaziaria a palavra.");
+
+  for (const nivel of ["proprio", "prova", "enciclopedico"] as const) {
+    const grupo = COBERTURA.filter((c) => c.nivel === nivel);
+    console.log(`\n── ${NOME[nivel]} · ${grupo.length} ──`);
+    console.log(`   ${"agente".padEnd(12)} ${"área".padEnd(16)} ${"na VPS".padStart(7)} ${"c/ deploy".padStart(10)}  de onde`);
+    for (const c of grupo) {
+      const de: string[] = [];
+      if (c.comDeploy.proprio) de.push(`próprio ${c.comDeploy.proprio}`);
+      if (c.comDeploy.prova) de.push(`prova ${c.comDeploy.prova}`);
+      if (c.comDeploy.enciclopedico) de.push(`enciclopédia ${c.comDeploy.enciclopedico}`);
+      console.log(
+        `   ${dono(c.area).padEnd(12)} ${c.area.padEnd(16)} ${String(soma(c.naVps)).padStart(7)} `
+        + `${String(soma(c.comDeploy)).padStart(10)}  ${de.join(" · ")}`,
+      );
+    }
+  }
+  console.log(
+    `\n  na VPS hoje: ${totalMedido("vps").toLocaleString("pt-BR")} documentos`
+    + ` · pronto e esperando deploy: ${totalMedido("ensaio").toLocaleString("pt-BR")}`,
+  );
+  console.log("  (o `c/ deploy` do wikipt é do shard 0 de 6; com os seis é bem mais)");
+}
+
 const quebrar = (t: string, n: number) => {
   const fora: string[] = [];
   let linha = "";
@@ -99,6 +135,7 @@ const quebrar = (t: string, n: number) => {
   return fora;
 };
 
+if (tudo || so("--cobertura")) porCobertura();
 if (tudo || so("--fonte")) porFonte();
 if (tudo || so("--agente")) porAgente();
 if (tudo) {
