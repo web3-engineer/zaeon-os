@@ -108,6 +108,10 @@ services:
       # F2 · o modelo escolhe a ferramenta. VOLTAS = teto de custo (vazio = padrão 2).
       HARNESS_ACAO: ${HARNESS_ACAO:-1}
       HARNESS_VOLTAS_ACAO: ${HARNESS_VOLTAS_ACAO:-}
+      # ORQUESTRA (lib/orquestra · docs/ORQUESTRA.md): LIGADA. Os agentes plugados na Loja e o roteador por plano
+      # entregam o trabalho a DeepSeek/Tongyi/Kimi/enxames — só quando a chave do laboratório está no .env (sem
+      # chave, a Aura responde como antes). Desligar: ORQUESTRA=off no .env da VPS + recriar web e worker.
+      ORQUESTRA: ${ORQUESTRA:-on}
       # F7 · o Pro nas fases pesadas (plus/pro). Vazio = LIGADO (o código trata vazio como ausente);
       # `PRO_PESADAS=0` é o rollback, e precisa chegar nos DOIS serviços pra valer de verdade.
       PRO_PESADAS: ${PRO_PESADAS:-}
@@ -241,6 +245,10 @@ services:
       # F2 · o modelo escolhe a ferramenta. VOLTAS = teto de custo (vazio = padrão 2).
       HARNESS_ACAO: ${HARNESS_ACAO:-1}
       HARNESS_VOLTAS_ACAO: ${HARNESS_VOLTAS_ACAO:-}
+      # ORQUESTRA (lib/orquestra · docs/ORQUESTRA.md): LIGADA. Os agentes plugados na Loja e o roteador por plano
+      # entregam o trabalho a DeepSeek/Tongyi/Kimi/enxames — só quando a chave do laboratório está no .env (sem
+      # chave, a Aura responde como antes). Desligar: ORQUESTRA=off no .env da VPS + recriar web e worker.
+      ORQUESTRA: ${ORQUESTRA:-on}
       # F7 · o Pro nas fases pesadas (plus/pro). Vazio = LIGADO (o código trata vazio como ausente);
       # `PRO_PESADAS=0` é o rollback, e precisa chegar nos DOIS serviços pra valer de verdade.
       PRO_PESADAS: ${PRO_PESADAS:-}
@@ -512,6 +520,35 @@ services:
     # página patológica não comer o host, não porque 1,5 GB seja o uso esperado.
     mem_limit: 1536m
     restart: unless-stopped
+
+  # ── HOST DE MOTORES PYTHON (research-engine) — perfil "motores": NÃO sobe no deploy enxuto ──
+  #    Contrato /motor/v1 (research-engine/README.md) consumido pelo adaptador motorHttp do
+  #    lib/orquestra/: o web fala http://research-engine:8002. Interno (expose, sem ports).
+  #    Credencial do Vertex: GOOGLE_CREDENTIALS, que vive no .env.secrets (por isso os dois env_file).
+  #    MOTOR_TOKEN (opcional, no .env) liga o Bearer obrigatório — o web manda o mesmo valor.
+  #    Ligar: docker compose -f docker-compose.beta.yml --profile motores up -d --build research-engine
+  research-engine:
+    build: { context: ./research-engine, dockerfile: Dockerfile }
+    container_name: zaeon_research_engine
+    profiles: ["motores"]
+    env_file: [.env, .env.secrets]
+    environment:
+      # Vertex por padrão (mesma service account do web); "false" = cai no GEMINI_API_KEY.
+      GOOGLE_GENAI_USE_VERTEXAI: ${RESEARCH_ENGINE_USE_VERTEXAI:-true}
+      # "global": onde o gemini-3.5-flash existe neste projeto (404 em us-central1).
+      GOOGLE_CLOUD_LOCATION: ${GEMINI_TEXT_LOCATION:-global}
+      RESEARCH_ENGINE_MODEL: ${RESEARCH_ENGINE_MODEL:-gemini-3.5-flash}
+    expose: ["8002"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8002/health', timeout=5).status==200 else 1)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits: { memory: 384m }
 
   # ── GATEWAY de LLM (LiteLLM, PR-G1) — perfil "gateway": NÃO sobe no deploy enxuto por acidente ──
   #    Interno (expose, sem ports): só o web fala http://litellm:4000. UI /ui só por ssh -L.

@@ -1,0 +1,92 @@
+{
+  "tarefa": {
+    "id": "6730a1f0c9e77b2a1d4e9f01",
+    "criadaEm": "2026-11-08T04:58:12.311Z",
+    "atualizadaEm": "2026-11-08T04:59:40.002Z",
+    "status": "rodando",
+    "origem": "chat",
+    "motor": "kimi-enxame",
+    "nomeMotor": "Kimi K2.6 · enxame",
+    "formato": "enxame",
+    "intent": "criar_trabalho",
+    "plano": "max",
+    "objetivo": "TCC: gestão de resíduos da construção civil em Belém — diagnóstico, legislação municipal e proposta de plano de gerenciamento",
+    "ms": null,
+    "custoUsd": null,
+    "subagentes": null,
+    "evidencias": [],
+    "citadas": null,
+    "invalidas": null,
+    "cobertura": null,
+    "aprovado": null,
+    "degradado": null,
+    "decisao": {
+      "motor": "kimi-enxame",
+      "formato": "enxame",
+      "motivo": "plano max × criar_trabalho amplo → enxame com até 12 subagentes",
+      "maxSubagentes": 12,
+      "prazoMs": 480000,
+      "verificadorGlobal": true
+    },
+    "eventos": [
+      {
+        "t": 0,
+        "fase": "orquestra",
+        "rotulo": "Kimi K2.6 · enxame assumiu este pedido (enxame, até 12 subagentes)"
+      },
+      {
+        "t": 1200,
+        "fase": "planejamento",
+        "rotulo": "Plano em 4 partes",
+        "agente": "Kimi K2.6"
+      },
+      {
+        "t": 15330,
+        "fase": "enxame",
+        "rotulo": "Kimi K2.6 criou 2 subagentes (total 2)",
+        "agente": "Kimi K2.6"
+      },
+      {
+        "t": 15390,
+        "fase": "subagente",
+        "rotulo": "subagente 1 · Kimi K2.6: Legislação municipal de Belém",
+        "agente": "subagente 1 · Kimi K2.6"
+      },
+      {
+        "t": 15402,
+        "fase": "subagente",
+        "rotulo": "subagente 2 · Kimi K2.6: Diagnóstico dos resíduos (RCC)",
+        "agente": "subagente 2 · Kimi K2.6"
+      },
+      {
+        "t": 22800,
+        "fase": "ferramenta",
+        "rotulo": "web_search: Belém plano municipal de gestão de resíduos de construção",
+        "agente": "subagente 1 · Kimi K2.6"
+      }
+    ],
+    "texto": "",
+    "motivo": null,
+    "erro": null,
+    "uso": {
+      "promptTokens": 14200,
+      "completionTokens": 1710,
+      "chamadas": 3,
+      "custoUsd": null
+    },
+    "ledger": [
+      {
+        "at": "2026-11-08T04:58:16Z",
+        "model": "kimi-k2.6",
+        "provedor": "moonshot",
+        "phase": "orquestra",
+        "promptTokens": 6020,
+        "completionTokens": 380,
+        "ms": 3800,
+        "ok": true,
+        "erro": null,
+        "custoUsd": 0.0072
+      }
+    ]
+  }
+}

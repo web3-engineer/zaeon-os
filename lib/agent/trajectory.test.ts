@@ -174,3 +174,19 @@ describe("trajectory · raciocínio dispensado pelo adaptador", () => {
     expect(steps).toContain("draft");
   });
 });
+
+describe("trajectory · rascunho que falhou nunca é sucesso", () => {
+  it("quick com rascunho falho → degraded (fica fora do cache de respostas)", async () => {
+    const { deps } = makeDeps({
+      classify: async () => ({ intent: "duvida_rapida", mode: "quick", academicMode: "flexible" }),
+      draft: async () => ({ nucleo: "Demorou demais pra responder — tenta de novo em instantes.", rascunhoFalhou: true }),
+    });
+    const { state } = await runTrajectoryTraced("quanto é 2+2?", ctx, deps);
+    expect(state.degraded).toBe(true);
+  });
+  it("rascunho bom continua não-degradado", async () => {
+    const { deps } = makeDeps({ classify: async () => ({ intent: "duvida_rapida", mode: "quick", academicMode: "flexible" }) });
+    const { state } = await runTrajectoryTraced("quanto é 2+2?", ctx, deps);
+    expect(state.degraded).toBeFalsy();
+  });
+});

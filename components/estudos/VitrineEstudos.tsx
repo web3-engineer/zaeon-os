@@ -14,6 +14,7 @@ import { COR_RARIDADE, NOME_RARIDADE } from "@/lib/estudos/blueprint";
 import type { ItemEstudo } from "@/lib/estudos/itens";
 import { criarModelo } from "./modelos3d";
 import { plugar, desplugar, usePluginsChat } from "@/lib/plugins/chatPlugins";
+import { ehAgenteOrquestra } from "@/lib/orquestra/catalogo";
 
 const hex = (c: string) => parseInt(c.slice(1), 16);
 
@@ -51,6 +52,16 @@ function SeusBlueprints() {
 export default function VitrineEstudos() {
   const [filtro, setFiltro] = useState<FiltroVitrine>("todos"), [busca, setBusca] = useState(""), [aberto, setAberto] = useState<ItemVitrine | null>(null);
   const plugados = usePluginsChat();
+  // o ESTADO dos agentes da orquestra pra este aluno (liberado / exige plano / em breve) — lib/orquestra/loja
+  const [estadoOrq, setEstadoOrq] = useState<Record<string, { estado: string; aviso: string | null }>>({});
+  useEffect(() => {
+    let vivo = true;
+    fetch("/api/orquestra/agentes", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((d) => {
+      if (!vivo || !Array.isArray(d?.agentes)) return;
+      setEstadoOrq(Object.fromEntries(d.agentes.map((a: { id: string; estado: string; aviso: string | null }) => [a.id, { estado: a.estado, aviso: a.aviso }])));
+    }).catch(() => undefined);
+    return () => { vivo = false; };
+  }, []);
   const itens = useMemo(() => filtrarVitrine(CATALOGO, filtro, busca), [filtro, busca]);
   const moldura = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement>(null), slots = useRef(new Map<string, HTMLDivElement>());
 
@@ -145,7 +156,7 @@ export default function VitrineEstudos() {
                       </div>
                     )}
                     <div className="mt-auto flex items-end justify-between pt-3">
-                      <div><div className="font-display text-[20px] font-bold" style={{ color: it.preco ? cor : "#7dffb0" }}>{precoTexto(it.preco)}</div>{it.preco > 0 && <div className="font-mono text-[9.5px] text-sky-200/50">por fração</div>}</div>
+                      <div><div className="font-display text-[20px] font-bold" style={{ color: it.preco ? cor : "#7dffb0" }}>{it.plugavel && ehAgenteOrquestra(it.plugavel) ? "no plano Pro" : precoTexto(it.preco)}</div>{it.preco > 0 && <div className="font-mono text-[9.5px] text-sky-200/50">por fração</div>}</div>
                       <button type="button" onClick={() => setAberto(it)} className="rounded-full border px-3 py-1.5 font-mono text-[11px] text-white transition hover:bg-white/10" style={{ borderColor: `${cor}99` }}>ver blueprint →</button>
                     </div>
                   </div>
@@ -168,8 +179,12 @@ export default function VitrineEstudos() {
             <ul className="mt-1.5 space-y-1 text-[13px] text-sky-50/90">{aberto.entrega.map((e) => <li key={e}>▸ {e}</li>)}</ul>
             <div className="mt-4 flex flex-wrap gap-1.5 font-mono text-[10px] text-sky-200/70">{aberto.tags.map((t) => <span key={t} className="rounded-sm border border-sky-300/25 px-1.5 py-0.5">#{t}</span>)}</div>
             <div className="mt-5 flex items-center justify-between gap-3">
-              <div className="font-display text-[22px] font-bold" style={{ color: COR_RARIDADE[aberto.raridade] }}>{precoTexto(aberto.preco)}</div>
-              {aberto.plugavel ? (
+              <div className="font-display text-[22px] font-bold" style={{ color: COR_RARIDADE[aberto.raridade] }}>{aberto.plugavel && ehAgenteOrquestra(aberto.plugavel) ? "no plano Pro" : precoTexto(aberto.preco)}</div>
+              {aberto.plugavel && ehAgenteOrquestra(aberto.plugavel) && estadoOrq[aberto.plugavel]?.estado !== "liberado" && !plugados.includes(aberto.plugavel) ? (
+                <div role="status" className="max-w-[60%] rounded-full border border-white/20 bg-white/5 px-4 py-2 text-center font-mono text-[11px] font-bold text-sky-100/80">
+                  {estadoOrq[aberto.plugavel]?.estado === "exige_plano" ? "🔒 " : "⏳ "}{estadoOrq[aberto.plugavel]?.aviso ?? "verificando…"}
+                </div>
+              ) : aberto.plugavel ? (
                 plugados.includes(aberto.plugavel) ? (
                   <button type="button" onClick={() => desplugar(aberto.plugavel!)} className="rounded-full border border-emerald-300/60 bg-emerald-300/10 px-4 py-2 font-mono text-[12px] font-black text-emerald-100 hover:bg-emerald-300/20">✓ nos seus agentes · remover</button>
                 ) : (
@@ -179,7 +194,7 @@ export default function VitrineEstudos() {
                 <button type="button" disabled title={`A ${MOEDA.nome} ainda não está no ar`} className="rounded-full bg-gradient-to-b from-amber-200 to-amber-400 px-4 py-2 font-mono text-[12px] font-black text-slate-950 disabled:opacity-50">{aberto.preco ? "comprar fração — em breve" : "pegar grátis — em breve"}</button>
               )}
             </div>
-            <p className="mt-2 text-right font-mono text-[10px] text-sky-200/50">{aberto.plugavel ? "grátis · depois, clique no rosto do agente na sidebar e escolha o Octa Code" : `catálogo de exemplo · a ${MOEDA.nome} ainda não está no ar`}</p>
+            <p className="mt-2 text-right font-mono text-[10px] text-sky-200/50">{aberto.plugavel ? `${ehAgenteOrquestra(aberto.plugavel) ? "incluso no plano" : "grátis"} · depois, clique no rosto do agente na sidebar e escolha ${aberto.titulo}` : `catálogo de exemplo · a ${MOEDA.nome} ainda não está no ar`}</p>
           </div>
         </div>
       )}

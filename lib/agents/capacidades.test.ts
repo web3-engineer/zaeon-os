@@ -6,6 +6,7 @@
  * prometer o que a casa não faz.
  */
 import { describe, expect, it } from "vitest";
+import { ehAgenteOrquestra } from "@/lib/orquestra/catalogo";
 import {
   CAPACIDADES,
   HABILIDADES_DISTINTIVAS,
@@ -97,7 +98,11 @@ describe("capacidades do chat", () => {
   });
 
   it("toda agente do seletor está no mapa (seletor e capacidade não podem divergir)", () => {
-    for (const a of AGENTES_CHAT) expect(CAPACIDADES[a.id], a.id).toBeTruthy();
+    // os agentes da ORQUESTRA (orq-*) são a Aura pedindo outro motor: a capacidade deles É a da Aura, por desenho
+    for (const a of AGENTES_CHAT) {
+      if (ehAgenteOrquestra(a.id)) expect(capacidadeDe(a.id), a.id).toBe(CAPACIDADES.aura);
+      else expect(CAPACIDADES[a.id as keyof typeof CAPACIDADES], a.id).toBeTruthy();
+    }
   });
 
   it("TODAS têm a base inteira — é o que 'mesmo nível de harness' quer dizer", () => {

@@ -91,3 +91,13 @@ describe.skipIf(!banco)("cache de respostas — no banco", () => {
     expect(rows[0]!.n).toBe(1);
   });
 });
+
+describe("cache · mensagem de erro nunca vira resposta guardada", () => {
+  it("rascunhoFalhou ou texto de erro da casa → não guarda, mesmo sem o degraded", () => {
+    const erro = "Demorou demais pra responder — tenta de novo em instantes.";
+    expect(erro.length).toBeGreaterThanOrEqual(40); // o defeito: passava no teto de 40 caracteres
+    expect(respostaGuardavel({ nucleo: erro }, "duvida_rapida")).toBe(false);
+    expect(respostaGuardavel({ nucleo: "uma resposta qualquer longa o bastante para o teto de quarenta", rascunhoFalhou: true }, "duvida_rapida")).toBe(false);
+    expect(respostaGuardavel({ nucleo: "A mitose gera duas células idênticas; a meiose gera quatro gametas." }, "duvida_rapida")).toBe(true);
+  });
+});

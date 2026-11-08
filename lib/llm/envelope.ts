@@ -110,7 +110,9 @@ export type Deps = { vertex?: TransporteVertex; vertexStream?: TransporteVertexS
    * que nunca houve. `pularVertex` sozinho não distingue os dois casos: o stream também o liga, e lá
    * o Vertex realmente falhou.
    */
-  hfPrimario?: boolean };
+  hfPrimario?: boolean;
+  /** (teste) a espera do retry de 429 */
+  esperar?: (ms: number) => Promise<void> };
 
 // ───────────────────────────── disjuntor do Vertex ─────────────────────────────
 // Medido em prod (out/2026, 7 dias): 9% dos rascunhos falharam, cada falha custando o prazo inteiro (30 s) ANTES de a
@@ -148,7 +150,9 @@ const vertexReal: TransporteVertex = async (req, modelo) => {
       ...thinkingConfigDo(modelo, req.pensar),
     } as any,
     ...(req.system ? { systemInstruction: { role: "system", parts: [{ text: req.system }] } } : {}),
-  });
+  // CANCELAMENTO DE VERDADE: o `timeout` do SDK aborta o fetch (AbortController em post_request.js). Só o `withTimeout`
+  // (Promise.race) desistia de ESPERAR, mas a chamada seguia rodando — e cobrando — enquanto a reserva já respondia.
+  }, { timeout: req.timeoutMs ?? DEFAULT_TIMEOUT_MS });
   const contents = contentsDe(req).map((m) => ({ role: m.role, parts: [{ text: m.text }] }));
   const result: any = await withTimeout(model.generateContent({ contents }), req.timeoutMs ?? DEFAULT_TIMEOUT_MS, "Gemini");
   return {
@@ -204,7 +208,7 @@ const vertexStreamReal: TransporteVertexStream = async (req, modelo, onTexto) =>
       ...thinkingConfigDo(modelo, req.pensar),
     } as any,
     ...(req.system ? { systemInstruction: { role: "system", parts: [{ text: req.system }] } } : {}),
-  });
+  }, { timeout: req.timeoutMs ?? DEFAULT_TIMEOUT_MS });   // o stream abandonado no prazo total também é abortado
   const contents = contentsDe(req).map((m) => ({ role: m.role, parts: [{ text: m.text }] }));
   const prazo = req.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const { r, acc } = await lerStreamComPrazos(() => model.generateContentStream({ contents }), onTexto, req.prazoPrimeiroMs, prazo);
@@ -339,7 +343,9 @@ export async function gerar(req: GerarReq, deps: Deps = {}): Promise<GerarRes> {
     if (!reservaHfLigada(env)) return null;
     for (const m of modelosReservaHf(env)) {
       try {
-        const r = await viaGateway({ ...req, timeoutMs: timeoutReservaHf(env), extra: { ...(req.extra ?? {}), reasoning_effort: "low" } },
+        // o PRAZO DE QUEM CHAMOU vale aqui também: um classify de 8 s não pode esperar 45 s pela reserva
+        const prazoHf = req.timeoutMs ? Math.min(timeoutReservaHf(env), req.timeoutMs) : timeoutReservaHf(env);
+        const r = await viaGateway({ ...req, timeoutMs: prazoHf, extra: { ...(req.extra ?? {}), reasoning_effort: "low" } },
           m, HF_ROUTER_URL, env.HF_TOKEN!.trim(), deps.fetchImpl ?? fetch);
         const nome = modeloSemProvedor(r.modelo || m), jv = jsonValido(r.texto);
         if (!r.texto.trim()) { gravar("huggingface", rota, r.usage, false, "outro", nome, "huggingface"); continue; }
@@ -359,22 +365,45 @@ export async function gerar(req: GerarReq, deps: Deps = {}): Promise<GerarRes> {
   // o Vertex acabou de falhar neste pedido (stream) ou está engasgado: a reserva vai primeiro (se responder, pronto)
   if (deps.pularVertex || vertexEngasgado(agora())) { const hf = await reservaHf(); if (hf) return hf; }
 
-  try {
-    const r = await (deps.vertex ?? vertexReal)(req, modelo);
-    const jv = jsonValido(r.texto);
-    gravar("vertex", rota, r.usage, true, null, r.modelo, "vertex", jv);
-    // Vertex respondeu VAZIO (safety/MAX_TOKENS sem texto): a reserva tenta antes de devolver o nada.
-    if (!r.texto.trim()) { const hf = await reservaHf(); if (hf) return hf; }
-    const { modelId: _id, ...resto } = r;
-    return { ...resto, provedor: "vertex", rota, ms: agora() - ini, alvo: "vertex", ...(jv === undefined ? {} : { jsonValido: jv }) };
-  } catch (e) {
-    const classe = classificarErroLlm(e);
-    gravar("vertex", rota, USAGE_VAZIO, false, classe, modelo, "vertex");
-    falhaNoVertex(classe, agora(), env);
-    if (erroPedeReserva(classe)) { const hf = await reservaHf(); if (hf) return hf; }
-    throw new ErroLlm(classe, "vertex", e);
+  const vertex = deps.vertex ?? vertexReal;
+  const esperar = deps.esperar ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  const tentarVertex = async (m: string): Promise<{ ok: GerarRes; vazio: boolean } | { erro: unknown; classe: ClasseErroLlm }> => {
+    try {
+      const r = await vertex(req, m);
+      const jv = jsonValido(r.texto);
+      gravar("vertex", rota, r.usage, true, null, r.modelo, "vertex", jv);
+      const { modelId: _id, ...resto } = r;
+      return { ok: { ...resto, provedor: "vertex", rota, ms: agora() - ini, alvo: "vertex", ...(jv === undefined ? {} : { jsonValido: jv }) }, vazio: !r.texto.trim() };
+    } catch (e) {
+      const classe = classificarErroLlm(e);
+      gravar("vertex", rota, USAGE_VAZIO, false, classe, m, "vertex");
+      falhaNoVertex(classe, agora(), env);
+      return { erro: e, classe };
+    }
+  };
+
+  let t = await tentarVertex(modelo);
+  // 429 é TRANSITÓRIO: uma nova tentativa curta no MESMO modelo antes de trocar de família. Antes ia direto pro
+  // gpt-oss — e a mesma conversa alternava de modelo (e de estilo) a cada pico de tráfego do Google.
+  if ("erro" in t && t.classe === "rate_limit" && !vertexEngasgado(agora()) && (req.timeoutMs ?? DEFAULT_TIMEOUT_MS) >= 6_000) {
+    await esperar(600 + Math.floor(Math.random() * 800));
+    t = await tentarVertex(modelo);
   }
+  // MODELO APOSENTADO ou sem acesso (404): o flash da casa, MESMA família, antes da reserva. É o caso do Pro das fases
+  // pesadas (GEMINI_MODEL_PRO) quando o Google desliga uma versão: sem isto, todo turno de quem paga caía no gpt-oss.
+  if ("erro" in t && t.classe === "modelo_inexistente" && modelo !== GEMINI_MODEL_FLASH) {
+    if (!avisouAposentado.has(modelo)) { avisouAposentado.add(modelo); console.error(`[llm] modelo ${modelo} inexistente no Vertex — servindo com ${GEMINI_MODEL_FLASH}. Troque GEMINI_MODEL_PRO/GEMINI_MODEL.`); }
+    t = await tentarVertex(GEMINI_MODEL_FLASH);
+  }
+  // Vertex respondeu VAZIO (safety/MAX_TOKENS sem texto): a reserva tenta antes de devolver o nada.
+  if ("ok" in t) {
+    if (t.vazio) { const hf = await reservaHf(); if (hf) return hf; }
+    return t.ok;   // vazio e sem reserva: devolve o vazio, como sempre (quem chama decide)
+  }
+  if (erroPedeReserva(t.classe)) { const hf = await reservaHf(); if (hf) return hf; }
+  throw new ErroLlm(t.classe, "vertex", t.erro);
 }
+const avisouAposentado = new Set<string>();
 
 /** = gerar({json:true}) + parse, devolvendo TAMBÉM a resposta bruta (usage) — para quem reconcilia orçamento. */
 export async function gerarJsonRes<T>(req: GerarReq, deps: Deps = {}): Promise<{ valor: T; res: GerarRes }> {

@@ -22,7 +22,8 @@
  */
 import { buildHarnessDeps, resolveHarnessOutput, type HarnessOutput } from "@/lib/agent/aura-harness";
 import { surfaceLedger } from "@/lib/llm/ledger";
-import { runTrajectoryTraced } from "@/lib/agent/trajectory";
+import { orquestrarTurno } from "@/lib/orquestra/orquestrador";
+import { novoIdDeTarefa } from "@/lib/orquestra/contrato";
 import * as mem from "@/lib/agent/memory-provider";
 import { serializarProgresso, serializarModelo, serializarPrevia } from "@/lib/agent/progresso";
 import { criarEmissorPrevia } from "@/lib/agent/previa";
@@ -69,6 +70,11 @@ export type ChatTurnParams = {
    * texto; e assim o turno atravessa a fila do CHAT_BG como JSON. Vazio/ausente = turno sem anexo.
    */
   anexos?: import("@/lib/agent/anexos").AnexoDoTurno[];
+  /**
+   * O MOTOR que o aluno escolheu ao plugar um agente da orquestra na Loja (lib/orquestra/catalogo). O turno
+   * continua sendo da Aura; a orquestra confere plano e chave e, se puder, entrega o trabalho a esse motor.
+   */
+  motorPedido?: string;
 };
 
 export async function runChatTurn(
@@ -175,7 +181,9 @@ export async function runChatTurn(
       toolsDoAgente: toolsPermitidas(habilidades),
     };
     const escolhido = modeloDoId(params.modelo);
-    const ledgerTurno = { agentKey: mentor?.slug ?? agente, mentorSlug: mentor?.slug ?? null, userId: userId ?? null, surface: surfaceLedger(surface ?? hctx.activeTab), scopeId: typeof ac.cartolinaScopeId === "string" ? ac.cartolinaScopeId : null };
+    // `taskId` = o TURNO: todas as chamadas de modelo deste turno ficam ligadas no TokenLedger (o console Zaeon Hermes
+    // agrupa por ele pra medir a saúde do chat — quantos turnos caíram na reserva, quanto cada fase levou).
+    const ledgerTurno = { agentKey: mentor?.slug ?? agente, mentorSlug: mentor?.slug ?? null, userId: userId ?? null, surface: surfaceLedger(surface ?? hctx.activeTab), scopeId: typeof ac.cartolinaScopeId === "string" ? ac.cartolinaScopeId : null, taskId: turnId ?? novoIdDeTarefa() };
     // MODELO LOCAL (Zaeon/Contabo): caminho enxuto em streaming. Não começou → segue pelo Google, abaixo.
     if (escolhido?.provedor === "zaeon" && escolhido.grupo) {
       narrar(serializarProgresso({ fase: "draft", rotulo: `${escolhido.nome} pensando no servidor Zaeon` }));
@@ -269,6 +277,8 @@ export async function runChatTurn(
     // adaptador: é uma leitura de banco, e o adaptador é a camada que não sabe de plano nem de
     // conta. Falha fechado (erro = Flash) e tem memo de 60 s, pra não consultar a cada turno.
     const proPesadas = await podeProNasPesadas(userId);
+    // o contexto do turno numa variável só: o harness da Aura E os motores da orquestra leem o MESMO
+    const systemContextDoTurno = [params.systemContext, memBlock, cartolinaBlock, tccBlock, entregaveisBlock, skillBlock, blocoDosAnexos(params.anexos ?? []), colada.fonte ? blocoFonteColada(colada.fonte) : ""].filter(Boolean).join("\n\n") || undefined;
     const deps = buildHarnessDeps(hctx, {
       modelo: escolhido?.provedor === "google" ? escolhido.vertex : undefined,
       modeloEhPadrao: escolhido?.id === MODELO_PADRAO,
@@ -284,7 +294,7 @@ export async function runChatTurn(
       // o PROTOCOLO do cargo: `ensemble` é lido no rascunho; `reflexoes` vai por TrajectoryOpts
       // (quem conhece `maxRevisions` é o motor), logo abaixo.
       protocolo: cap.protocolo,
-      systemContext: [params.systemContext, memBlock, cartolinaBlock, tccBlock, entregaveisBlock, skillBlock, blocoDosAnexos(params.anexos ?? []), colada.fonte ? blocoFonteColada(colada.fonte) : ""].filter(Boolean).join("\n\n") || undefined,
+      systemContext: systemContextDoTurno,
       history: params.history,
       baseConhecimento: baseCurta,
       // C5: cada chamada do turno grava no TokenLedger com quem/onde (mentor em agentKey E mentorSlug, como o registrarUso).
@@ -302,9 +312,26 @@ export async function runChatTurn(
     // cartolina, uso…). Não achou: o motor de sempre — e a resposta boa vai pro cache depois (fire-and-forget).
     const doCache = await cacheP;
     if (doCache) narrar(serializarProgresso({ fase: "finalize", rotulo: "Já respondi isso antes" }));
+    // A ORQUESTRA (lib/orquestra, flag ORQUESTRA): decide QUEM trabalha — a Aura, um agente profundo
+    // (DeepSeek/Tongyi) ou um enxame (Kimi/misto) — pelo plano da conta × formato do pedido. Com a flag
+    // desligada é o `runTrajectoryTraced` de sempre, byte a byte.
+    const orq = doCache ? null : await orquestrarTurno({
+      objetivo, hctx, deps, userId,
+      emSegundoPlano: !!turnId,
+      trabalhoGeradoNoCliente: surface === "pesquisa" && !multi,
+      systemContext: systemContextDoTurno,
+      history: params.history,
+      ledger: ledgerTurno,
+      narrar,
+      motorPedido: params.motorPedido,
+      // o PROTOCOLO do cargo vale também quando a Aura responde por dentro da orquestra
+      opcoesTrajetoria: { reflexoes: cap.protocolo.reflexoes },
+      // as MESMAS bases por área do RAG do turno (a da agente antes da do mentor) — viram a tool dos motores
+      areas: (await import("@/lib/rag/areas")).areasDoTurno(cap.area ?? mentor?.slug),
+    });
     const { answer, state } = doCache
       ? { answer: doCache.answer as any, state: { intent: doCache.intent, kind: doCache.kind, artifacts: [], degraded: false } as any }
-      : await runTrajectoryTraced(objetivo, hctx, deps, { reflexoes: cap.protocolo.reflexoes });
+      : orq!;
     if (!doCache && usaCache && cache.respostaGuardavel(answer as any, state.intent, !!state.degraded)) {
       void Promise.all([import("@/lib/rag/pg"), import("@/lib/rag/embed")])
         .then(async ([{ ragPg }, { embedPerguntaCompartilhado }]) => cache.guardarNoCache(ragPg(), {
@@ -388,6 +415,7 @@ export async function runChatTurn(
     }
     const quem = servido as { modelo: string; alvo?: string } | null;
     if (doCache) narrar(serializarModelo("Aura · resposta guardada"));
+    else if (orq?.servidoPor) narrar(serializarModelo(orq.servidoPor));
     else if (quem) narrar(serializarModelo(nomeDoModeloServido(quem.modelo, quem.alvo)));
     if (turnId) await saveDone(turnId, out, narrado);
     return out;

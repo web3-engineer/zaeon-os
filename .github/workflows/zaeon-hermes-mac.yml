@@ -1,0 +1,64 @@
+name: Zaeon Hermes (macOS)
+
+# O console interno da orquestra (apps/zaeon-hermes-mac, docs/HERMES_ZAEON.md) é um app SwiftUI:
+# ESTE workflow é o único lugar onde ele compila de verdade (o sandbox de dev é Linux e só testa o
+# HermesCore). Sai daqui o ZaeonHermes.app.zip como artefato.
+#
+# Diferente do ci.yml, roda também em PR de rascunho (draft): é barato (~3 min) e, sem ele, ninguém
+# vê o app quebrar antes do "Ready for review".
+on:
+  push:
+    paths:
+      - "apps/zaeon-hermes-mac/**"
+      - ".github/workflows/zaeon-hermes-mac.yml"
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "apps/zaeon-hermes-mac/**"
+      - ".github/workflows/zaeon-hermes-mac.yml"
+  workflow_dispatch:
+
+# push e pull_request da mesma branch caem no mesmo grupo: o run mais novo cancela o anterior
+# (minuto de runner macOS custa 10× o de Linux).
+concurrency:
+  group: zaeon-hermes-mac-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    runs-on: macos-15
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/zaeon-hermes-mac
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          swift --version
+
+      - name: Build (debug)
+        run: swift build
+
+      - name: Testes (HermesCoreTests)
+        run: swift test
+
+      - name: Empacotar ZaeonHermes.app (release + codesign ad-hoc + zip)
+        run: bash scripts/empacotar.sh
+
+      # O caminho do upload é relativo à raiz do repo (o working-directory não vale para `with.path`).
+      - name: Artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZaeonHermes-app
+          path: apps/zaeon-hermes-mac/dist/ZaeonHermes.app.zip
+          retention-days: 14
+          if-no-files-found: error

@@ -13,7 +13,7 @@ const okGateway = { id: "x", model: "gemini-2.5-flash", choices: [{ message: { c
 
 function deps(over: Partial<Deps> = {}): Deps & { linhas: any[] } {
   const linhas: any[] = [];
-  return { vertex: vertexOk, registrar: async (l: any) => { linhas.push(l); return true; }, env: {}, ...over, linhas } as any;
+  return { vertex: vertexOk, registrar: async (l: any) => { linhas.push(l); return true; }, env: {}, esperar: async () => {}, ...over, linhas } as any;
 }
 
 describe("gerar — rotas", () => {
@@ -257,7 +257,7 @@ describe("gerar — reserva Hugging Face (Vertex falhou)", () => {
   const vertex429: Deps["vertex"] = async () => { throw Object.assign(new Error("429 Resource exhausted"), { status: 429 }); };
   const tick = () => new Promise((x) => setTimeout(x, 0));
 
-  it("Vertex 429 → gpt-oss-120b na Cerebras pelo router do HF; ledger: vertex ok:false + huggingface ok:true", async () => {
+  it("Vertex 429 (duas vezes) → gpt-oss-120b na Cerebras pelo router do HF; ledger: vertex ok:false ×2 + huggingface ok:true", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const f = vi.fn(async () => okHf('{"via":"hf"}'));
     const d = deps({ vertex: vertex429, fetchImpl: f as any, env: HF });
@@ -269,8 +269,43 @@ describe("gerar — reserva Hugging Face (Vertex falhou)", () => {
     const body = JSON.parse(init.body);
     expect(body.model).toBe("openai/gpt-oss-120b:cerebras"); expect(body.response_format).toEqual({ type: "json_object" }); expect(body.reasoning_effort).toBe("low");
     await tick();
-    expect(d.linhas.map((l) => [l.alvo, l.ok, l.erro])).toEqual([["vertex", false, "rate_limit"], ["huggingface", true, null]]);
+    // o 429 tenta de novo NO MESMO modelo antes de trocar de família (só a 2ª falha manda pra reserva)
+    expect(d.linhas.map((l) => [l.alvo, l.ok, l.erro])).toEqual([["vertex", false, "rate_limit"], ["vertex", false, "rate_limit"], ["huggingface", true, null]]);
     warn.mockRestore();
+  });
+  it("Vertex 429 uma vez só: a 2ª tentativa no MESMO modelo serve — a família não troca", async () => {
+    _zerarDisjuntorVertex();
+    let n = 0;
+    const umaVez: Deps["vertex"] = async (r, m) => { if (++n === 1) throw Object.assign(new Error("429 Resource exhausted"), { status: 429 }); return vertexOk!(r, m); };
+    const f = vi.fn(async () => okHf("nunca"));
+    const r = await gerar({ user: "oi", ctx }, deps({ vertex: umaVez, fetchImpl: f as any, env: HF }));
+    expect(r.alvo).toBe("vertex");
+    expect(f).not.toHaveBeenCalled();
+  });
+  it("modelo aposentado (404) no Pro → o MESMO pedido no flash do Google, antes da reserva", async () => {
+    _zerarDisjuntorVertex();
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    const modelos: string[] = [];
+    const aposentado: Deps["vertex"] = async (r, m) => { modelos.push(m); if (m === "gemini-2.5-pro") throw Object.assign(new Error("Publisher Model gemini-2.5-pro was not found"), { status: 404 }); return vertexOk!(r, m); };
+    const f = vi.fn(async () => okHf("nunca"));
+    const r = await gerar({ user: "oi", ctx, model: "gemini-2.5-pro" }, deps({ vertex: aposentado, fetchImpl: f as any, env: HF }));
+    expect(r.alvo).toBe("vertex");
+    expect(modelos).toEqual(["gemini-2.5-pro", expect.stringMatching(/flash/)]);
+    expect(f).not.toHaveBeenCalled();
+    err.mockRestore();
+  });
+  it("a reserva respeita o PRAZO de quem chamou (classify de 8 s não espera 45 s)", async () => {
+    _zerarDisjuntorVertex();
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const timeout: Deps["vertex"] = async () => { throw new Error("Gemini timeout após 8000ms"); };
+    let prazoHf = 0;
+    const f = vi.fn(async (_u: string, init: any) => { prazoHf = init?.signal ? 1 : 0; return okHf("ok"); });
+    const espia = vi.spyOn(AbortSignal, "timeout");
+    await gerar({ user: "oi", ctx, timeoutMs: 8_000 }, deps({ vertex: timeout, fetchImpl: f as any, env: HF }));
+    expect(espia.mock.calls.some((c) => c[0] === 8_000)).toBe(true);
+    expect(espia.mock.calls.some((c) => c[0] === 45_000)).toBe(false);
+    espia.mockRestore();
+    expect(prazoHf).toBe(1);
   });
   it("Cerebras falha → Groq", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});

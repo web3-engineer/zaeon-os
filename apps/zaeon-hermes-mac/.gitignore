@@ -1,0 +1,9 @@
+# SwiftPM / Xcode
+.build/
+.swiftpm/
+*.xcodeproj/
+xcuserdata/
+DerivedData/
+Package.resolved
+# saída do scripts/empacotar.sh
+dist/

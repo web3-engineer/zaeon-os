@@ -1,0 +1,145 @@
+{
+  "tarefa": {
+    "id": "6730a1f0c9e77b2a1d4e9f06",
+    "criadaEm": "2026-11-08T04:02:47.900Z",
+    "atualizadaEm": "2026-11-08T04:07:02.100Z",
+    "status": "fallback",
+    "origem": "chat",
+    "motor": "tongyi-deepresearch",
+    "nomeMotor": "Tongyi DeepResearch 30B",
+    "formato": "profundo",
+    "intent": "revisar",
+    "plano": "max",
+    "objetivo": "Revisar o referencial teórico do meu TCC sobre evasão no ensino superior a distância",
+    "ms": 254200,
+    "custoUsd": 0.0512,
+    "subagentes": 0,
+    "evidencias": [
+      {
+        "chave": "E1",
+        "claim": "A taxa de evasão nos cursos de graduação a distância supera a dos presenciais.",
+        "source": {
+          "title": "Censo da Educação Superior 2023",
+          "url": "https://www.gov.br/inep/pt-br/areas-de-atuacao/pesquisas-estatisticas-e-indicadores/censo-da-educacao-superior",
+          "authors": "Inep",
+          "year": 2024
+        },
+        "ferramenta": "base_conhecimento",
+        "agente": "Aura"
+      },
+      {
+        "chave": "E2",
+        "claim": "Fatores institucionais pesam mais que os individuais na evasão em EaD.",
+        "source": {
+          "title": "Evasão na educação a distância: revisão",
+          "url": "https://www.scielo.br/j/ep/a/evasao-ead",
+          "authors": "Bittencourt IM; Mercado LP",
+          "year": 2014
+        },
+        "ferramenta": "literature_search",
+        "agente": "Aura"
+      }
+    ],
+    "citadas": 4,
+    "invalidas": 0,
+    "cobertura": 0.58,
+    "aprovado": true,
+    "degradado": true,
+    "decisao": {
+      "motor": "tongyi-deepresearch",
+      "formato": "profundo",
+      "motivo": "plano max × revisar → profundo (sorteio entre os disponíveis)",
+      "maxSubagentes": 0,
+      "prazoMs": 240000,
+      "verificadorGlobal": true
+    },
+    "eventos": [
+      {
+        "t": 0,
+        "fase": "orquestra",
+        "rotulo": "Tongyi DeepResearch 30B assumiu este pedido (profundo)"
+      },
+      {
+        "t": 3100,
+        "fase": "ferramenta",
+        "rotulo": "literature_search: evasão ensino superior EaD",
+        "agente": "Tongyi DeepResearch 30B"
+      },
+      {
+        "t": 240000,
+        "fase": "orquestra",
+        "rotulo": "Tongyi DeepResearch 30B não concluiu — a Aura assume"
+      },
+      {
+        "t": 246800,
+        "fase": "ferramenta",
+        "rotulo": "base_conhecimento: evasão EaD referencial",
+        "agente": "Aura"
+      },
+      {
+        "t": 252900,
+        "fase": "verificador",
+        "rotulo": "Conferindo as citações contra as fontes"
+      }
+    ],
+    "texto": "## Pontos de revisão\n\n1. O referencial cita dados de evasão sem a fonte oficial; use o Censo da Educação Superior [E1].\n2. Falta discutir os fatores institucionais, que a literatura aponta como os mais relevantes [E2].\n",
+    "motivo": "prazo de 240 s esgotado no passo 27",
+    "erro": "tongyi-deepresearch: AbortError (prazo)",
+    "uso": {
+      "promptTokens": 61200,
+      "completionTokens": 4310,
+      "chamadas": 6,
+      "custoUsd": 0.0512
+    },
+    "ledger": [
+      {
+        "at": "2026-11-08T04:02:51Z",
+        "model": "tongyi-deepresearch-30b",
+        "provedor": "openrouter",
+        "phase": "orquestra",
+        "promptTokens": 9800,
+        "completionTokens": 720,
+        "ms": 4100,
+        "ok": true,
+        "erro": null,
+        "custoUsd": 0.0012
+      },
+      {
+        "at": "2026-11-08T04:06:47Z",
+        "model": "tongyi-deepresearch-30b",
+        "provedor": "openrouter",
+        "phase": "orquestra",
+        "promptTokens": 41000,
+        "completionTokens": 0,
+        "ms": 30000,
+        "ok": false,
+        "erro": "AbortError: prazo da tarefa",
+        "custoUsd": null
+      },
+      {
+        "at": "2026-11-08T04:06:58Z",
+        "model": "gemini-2.5-flash",
+        "provedor": "vertex",
+        "phase": "fallback",
+        "promptTokens": 8200,
+        "completionTokens": 2900,
+        "ms": 9800,
+        "ok": true,
+        "erro": null,
+        "custoUsd": 0.0097
+      },
+      {
+        "at": "2026-11-08T04:07:01Z",
+        "model": "deepseek-v4-pro",
+        "provedor": "deepseek",
+        "phase": "verificador",
+        "promptTokens": 2200,
+        "completionTokens": 690,
+        "ms": 3100,
+        "ok": true,
+        "erro": null,
+        "custoUsd": 0.0397
+      }
+    ]
+  }
+}

@@ -884,7 +884,7 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
       } catch (e: any) {
         // degradado: núcleo honesto via messageForError (nunca string à mão), laço segue.
         // …mas a lista de livros (se a busca achou) sai mesmo assim: é dado, não depende do modelo
-        return anexarLivros({ nucleo: messageForError(classifyError(String(e?.message ?? e))) }, livrosAchados);
+        return anexarLivros({ nucleo: messageForError(classifyError(String(e?.message ?? e))), rascunhoFalhou: true }, livrosAchados);
       }
     },
 
