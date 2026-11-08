@@ -87,35 +87,55 @@ describe("catálogo das fontes de base", () => {
     }
   });
 
-  it("a cobertura NÃO conta enciclopédia como especialidade", () => {
-    // Wikipédia alcança as 17 áreas. Se ela contasse, todo agente estaria "coberto" e a palavra
-    // não significaria nada. Então área que só tem wiki/wikipt fica em `enciclopedico`.
-    const soEnciclopedico = COBERTURA.filter((c) => c.nivel === "enciclopedico").map((c) => c.area).sort();
-    expect(soEnciclopedico).toEqual(["agronomia", "eng-civil", "farmacia", "veterinaria"]);
-    for (const c of COBERTURA.filter((x) => x.nivel === "enciclopedico")) {
-      expect(c.comDeploy.proprio, `${c.area} não deveria ter corpus próprio`).toBe(0);
-      expect(c.comDeploy.prova, `${c.area} não deveria ter prova`).toBe(0);
-      expect(c.comDeploy.enciclopedico, `${c.area} tem de ter pelo menos o piso`).toBeGreaterThan(0);
+  it("a régua: enciclopédia NUNCA conta como especialidade", () => {
+    // Wikipédia alcança as 17 áreas. Se ela contasse, todo agente estaria "coberto" e a palavra não
+    // significaria nada. A régua é a natureza da fonte, e `enciclopedico` é piso, não cobertura.
+    for (const c of COBERTURA) {
+      if (c.nivel === "enciclopedico") {
+        expect(c.comDeploy.proprio, `${c.area} em enciclopédico mas com corpus próprio`).toBe(0);
+        expect(c.comDeploy.prova, `${c.area} em enciclopédico mas com prova`).toBe(0);
+      }
+      if (c.nivel === "prova") expect(c.comDeploy.proprio, `${c.area} em prova mas com corpus próprio`).toBe(0);
+      if (c.nivel === "proprio") expect(c.comDeploy.proprio, c.area).toBeGreaterThan(0);
     }
   });
 
-  it("os três níveis, nomeados — mudança de cobertura passa por aqui", () => {
+  it("as 17 áreas têm corpus do ofício; só `geral` é de prova — NENHUM agente descoberto", () => {
+    // Era o buraco: agronomia, engenharia civil, veterinária e farmácia tinham só enciclopédia,
+    // porque a SciELO (que alcança as quatro pelo classificador) havia perdido o JSONL no /tmp.
+    // Refazendo o corpus — 154.040 artigos — as quatro passaram a ter artigo acadêmico da área.
     const por = (n: string) => COBERTURA.filter((c) => c.nivel === n).map((c) => c.area).sort();
-    expect(por("proprio")).toEqual([
-      "biologia", "enfermagem", "eng-computacao", "eng-energias", "infra",
-      "matematica", "medicina", "seguranca", "software",
-    ]);
-    expect(por("prova")).toEqual(["dados-ia", "fisica", "geral", "psicologia", "quimica"]);
+    expect(por("proprio")).toEqual([...SLUGS_AREA].sort());
+    expect(por("prova")).toEqual([AREA_GERAL]);
+    expect(por("enciclopedico"), "agente descoberto é agente sem especialidade").toEqual([]);
     expect(COBERTURA).toHaveLength(18); // as 17 áreas + geral
+    // as quatro que eram o buraco, nomeadas, com o número que as cobriu
+    for (const [area, n] of [["agronomia", 1500], ["veterinaria", 1500], ["eng-civil", 1169], ["farmacia", 1277]] as const) {
+      expect(coberturaDaArea(area).comDeploy.proprio, area).toBe(n);
+    }
   });
 
-  it("a SciELO conta mesmo BLOQUEADA: estado da fonte e presença do dado são coisas diferentes", () => {
-    const f = fonteDeBase("scielo")!;
-    expect(f.estado).toBe("bloqueada");           // não dá pra rodar de novo: perdeu o JSONL
-    expect(coberturaDaArea("enfermagem").naVps.proprio).toBe(1500);  // mas os documentos estão lá
-    expect(coberturaDaArea("enfermagem").nivel).toBe("proprio");
-    // e, por isso, ela NÃO aparece na lista de fontes vivas da área
-    expect(coberturaDaArea("enfermagem").fontes).not.toContain("scielo");
+  it("nenhuma fonte fica bloqueada: as duas que perderam arquivo no /tmp foram refeitas", () => {
+    expect(FONTES_DE_BASE.filter((f) => f.estado === "bloqueada")).toEqual([]);
+    // a SciELO é REFEITA por script (sem Python), e a nota avisa do pico de memória
+    expect(fonteDeBase("scielo")!.estado).toBe("pronta");
+    expect(fonteDeBase("scielo")!.nota).toMatch(/scielo-para-jsonl|11 GB/);
+    // a `medicina` deixou de depender de arquivo: lê o parquet direto
+    expect(fonteDeBase("medicina")!.estado).toBe("pronta");
+    expect(fonteDeBase("medicina")!.nota).toMatch(/PARQUET direto/);
+  });
+
+  it("duas medições da MESMA fonte são um teto, não duas remessas", () => {
+    // A SciELO tem 1.497 de `medicina` já na VPS e 1.500 que entrariam ao refazer. Somar daria
+    // 2.997, e é falso: a ingestão dedupe pelo hash do texto e devolve "reaproveitado". Então vale
+    // o MÁXIMO por fonte+área. Entre fontes diferentes soma, porque aí são documentos diferentes.
+    const scielo = fonteDeBase("scielo")!;
+    expect(scielo.medicoes, "o teste precisa das duas medições pra valer algo").toHaveLength(2);
+    expect(scielo.medicoes!.map((m) => m.porArea.medicina)).toEqual([1497, 1500]);
+    const med = coberturaDaArea("medicina");
+    expect(med.naVps.proprio, "só a medição da VPS, e sem somar com a de ensaio").toBe(1497);
+    // próprio = max(scielo) 1500 + max(medicina-pt) 753 = 2253, não 1497+1500+753
+    expect(med.comDeploy.proprio).toBe(2253);
   });
 
   it("toda área medida existe, e nenhuma medição inventa área", () => {
@@ -128,11 +148,5 @@ describe("catálogo das fontes de base", () => {
         for (const [a, n] of Object.entries(m.porArea)) expect(n, `${f.id}/${a}`).toBeGreaterThan(0);
       }
     }
-  });
-
-  it("as fontes bloqueadas são as que perderam arquivo no /tmp, e dizem isso", () => {
-    const bloqueadas = FONTES_DE_BASE.filter((f) => f.estado === "bloqueada").map((f) => f.id).sort();
-    expect(bloqueadas).toEqual(["medicina", "scielo"]);
-    for (const id of bloqueadas) expect(fonteDeBase(id)!.nota).toMatch(/tmp|apagad/i);
   });
 });
