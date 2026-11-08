@@ -51,6 +51,12 @@ const MESSAGES: Record<ErrorCode, string> = {
 
 const isErrorCode = (v: unknown): v is ErrorCode => typeof v === "string" && v in MESSAGES;
 
+/** O texto É uma das mensagens de erro da casa? (o cinto do cache: erro nunca vira resposta guardada) */
+const TEXTOS_DE_ERRO = new Set(Object.values(MESSAGES).map((m) => m.trim()));
+export function ehMensagemDeErro(texto: unknown): boolean {
+  return typeof texto === "string" && TEXTOS_DE_ERRO.has(texto.trim());
+}
+
 /** Classifica uma string de erro CRUA (rede/modelo) → code da taxonomia (base do A2/A1). */
 export function classifyError(msg?: string | null): ErrorCode {
   const s = (msg || "").toLowerCase();

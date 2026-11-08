@@ -100,3 +100,16 @@ A arena está limitada a 4 motores por pedido e respeita o teto `ORQ_MAX_SIMULTA
 Corpo: `{ "desde": "ISO"? }` → `{ "exportadas": 12, "repo": "<org>/zaeon-orquestra-trajetorias", "arquivo": "data/…jsonl" }`.
 Exige `HF_DATASETS_TOKEN` e `HF_DATASETS_ORG`; sem eles responde `503 {"erro":"datasets_desligados"}`.
 O que vai para o dataset: pedido, motor, decisão, eventos, evidências, texto, métricas. **Nunca** userId nem e-mail.
+
+### `GET /api/admin/orquestra/saude?horas=24` — a saúde do chat (verificar as correções)
+Agrega o TokenLedger das superfícies `estudos` e `pesquisa` (Aura **e** orquestra). Cada turno do chat tem `taskId` próprio.
+```jsonc
+{ "geradoEm": "…", "janelaHoras": 24, "chamadas": 1234, "turnos": 310, "falhas": 41, "taxaFalha": 0.0332,
+  "turnosComReserva": 12, "taxaReserva": 0.0387,          // turnos em que o aluno recebeu OUTRA família (gpt-oss pela reserva HF)
+  "turnosComModeloAposentado": 0,                          // 404 de modelo (ex.: Pro aposentado) — deve ir a zero
+  "porFase": [{ "fase": "draft", "chamadas": 300, "falhas": 9, "taxaFalha": 0.03, "msP50": 4100, "msP90": 9800 }],
+  "porAlvo": [{ "alvo": "vertex", "chamadas": 1100, "fracao": 0.89 }],
+  "erros": [{ "classe": "rate_limit", "n": 20 }],
+  "modelos": [{ "model": "gemini-3.5-flash", "chamadas": 900, "falhas": 10, "taxaFalha": 0.011 }],
+  "serie": [{ "hora": "2026-11-08T06:00:00Z", "chamadas": 50, "falhas": 2, "msP50": 3900 }] }
+```

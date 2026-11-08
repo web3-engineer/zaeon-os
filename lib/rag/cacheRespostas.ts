@@ -13,6 +13,7 @@
  * Liga com CACHE_RESPOSTAS=1. Escopo = sala|mentor (a voz e o rigor mudam). CACHE_VERSAO sobe → tudo invalida.
  * Nunca derruba o turno: qualquer falha = "não achei" (com disjuntor de 60 s pro banco fora, como o RAG).
  */
+import { ehMensagemDeErro } from "@/lib/agent/errors";
 import type { RagDb } from "./pg";
 import { ehBancoIndisponivel } from "./pg";
 
@@ -63,6 +64,8 @@ export function perguntaCacheavel(pergunta: string): boolean {
 const CITA_CONVERSA = /(como (j[aá] )?(conversamos|falamos|vimos|combinamos)|voc[eê] (me )?(disse|contou|mencionou|perguntou)|seu trabalho|sua prova|sua turma|na nossa conversa)/i;
 export function respostaGuardavel(answer: Record<string, any>, intent: string, degradada = false): boolean {
   if (degradada || !["explicar_conceito", "duvida_rapida"].includes(intent)) return false;
+  // CINTO: mesmo que alguém esqueça o `degraded`, mensagem de erro nunca vira resposta guardada pra outros alunos
+  if (answer?.rascunhoFalhou || ehMensagemDeErro(answer?.nucleo)) return false;
   const nucleo = String(answer?.nucleo ?? "");
   if (nucleo.length < 40 || answer?.work || answer?.tcc || answer?.videoDoc) return false;
   const texto = `${nucleo} ${String(answer?.desenvolvimento ?? "")}`;

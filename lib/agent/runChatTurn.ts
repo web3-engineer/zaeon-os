@@ -23,6 +23,7 @@
 import { buildHarnessDeps, resolveHarnessOutput, type HarnessOutput } from "@/lib/agent/aura-harness";
 import { surfaceLedger } from "@/lib/llm/ledger";
 import { orquestrarTurno } from "@/lib/orquestra/orquestrador";
+import { novoIdDeTarefa } from "@/lib/orquestra/contrato";
 import * as mem from "@/lib/agent/memory-provider";
 import { serializarProgresso, serializarModelo, serializarPrevia } from "@/lib/agent/progresso";
 import { criarEmissorPrevia } from "@/lib/agent/previa";
@@ -140,7 +141,9 @@ export async function runChatTurn(
       toolsDoAgente: toolsPermitidas(habilidades),
     };
     const escolhido = modeloDoId(params.modelo);
-    const ledgerTurno = { agentKey: mentor?.slug ?? agente, mentorSlug: mentor?.slug ?? null, userId: userId ?? null, surface: surfaceLedger(surface ?? hctx.activeTab), scopeId: typeof ac.cartolinaScopeId === "string" ? ac.cartolinaScopeId : null };
+    // `taskId` = o TURNO: todas as chamadas de modelo deste turno ficam ligadas no TokenLedger (o console Zaeon Hermes
+    // agrupa por ele pra medir a saúde do chat — quantos turnos caíram na reserva, quanto cada fase levou).
+    const ledgerTurno = { agentKey: mentor?.slug ?? agente, mentorSlug: mentor?.slug ?? null, userId: userId ?? null, surface: surfaceLedger(surface ?? hctx.activeTab), scopeId: typeof ac.cartolinaScopeId === "string" ? ac.cartolinaScopeId : null, taskId: turnId ?? novoIdDeTarefa() };
     // MODELO LOCAL (Zaeon/Contabo): caminho enxuto em streaming. Não começou → segue pelo Google, abaixo.
     if (escolhido?.provedor === "zaeon" && escolhido.grupo) {
       narrar(serializarProgresso({ fase: "draft", rotulo: `${escolhido.nome} pensando no servidor Zaeon` }));
