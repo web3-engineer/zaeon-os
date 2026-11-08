@@ -6,7 +6,7 @@
  */
 import type { PluginChat } from "@/lib/plugins/chatPlugins";
 
-export type AgenteChatId = "aura" | "zenita" | "nina" | "octa";
+export type AgenteChatId = "aura" | "zenita" | "nina" | "octa" | "eiffel";
 export type AgenteChat = {
   id: AgenteChatId;
   nome: string;
@@ -22,6 +22,9 @@ export const AGENTES_CHAT: readonly AgenteChat[] = [
   { id: "zenita", nome: "Zenita", papel: "Agenda, aulas e provas", tela: "chat" },
   { id: "nina", nome: "Nina", papel: "Caderno, resumos e plano de estudo", tela: "chat" },
   { id: "octa", nome: "Octa Code", papel: "Agente de código · IDE", tela: "ide", plugin: "octa-code" },
+  // O Eiffel fala no CHAT (tela "chat"), e o CAD dele nasce como ARTEFATO da conversa — diferente do
+  // Octa, cuja tela é a IDE. Plugável pela loja: `plugin` o esconde do seletor até ser adicionado.
+  { id: "eiffel", nome: "Eiffel", papel: "Engenharia civil e estrutural · CAD", tela: "chat", plugin: "eiffel-cad" },
 ];
 
 export const agenteChat = (id: AgenteChatId): AgenteChat => AGENTES_CHAT.find((a) => a.id === id) ?? AGENTES_CHAT[0];

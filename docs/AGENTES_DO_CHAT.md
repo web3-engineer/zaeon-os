@@ -177,3 +177,155 @@ docker exec -w /app zaeon_web npx tsx scripts/bases-area-placar.ts --area medici
 Ele mostra documentos, trechos, quantos já têm vetor e **de que fonte** cada documento veio
 (`criado_por = "dataset:<fonte>"`). Zero documentos = os datasets não foram ingeridos nesta VPS, e o
 cabeçalho do `ingerir-bases-area.ts` tem os comandos pra encher.
+
+---
+
+## 7 · O protocolo de raciocínio por cargo
+
+Pedido do dono, 2026-11-07: *"reflections e ensemble devem ser justamente o diferencial que temos
+que criar para definir os cargos para cada agente — e seu novo modelo de raciocinio que deve ser
+debruçado totalmente em sua especialidade."*
+
+### Por que eles estavam mortos (é estrutural, não esquecimento)
+
+`reflections` e `ensemble` nasceram em `INTENTS` (`lib/agent/contracts.ts`), copiados do
+**AI-Scientist**, e nunca foram lidos. Medi o motivo: no AI-Scientist o revisor é um **modelo**, e
+faz sentido amostrá-lo N vezes e agregar. O **nosso crítico é CÓDIGO** — `lib/agent/examiner.ts` não
+tem uma única chamada de modelo, e o cabeçalho do harness diz que *"plan/reason/draft são as ÚNICAS
+chamadas de geração"*. Um ensemble de função pura devolve **N vereditos idênticos**. Eles estavam no
+único lugar onde não podiam funcionar.
+
+Como o AI-Scientist faz, de verdade (li `ai_scientist/perform_review.py`):
+
+- **ensemble**: N amostras paralelas do mesmo prompt, temperatura **fixa em 0.75**, sem
+  embaralhamento → um meta-review de LLM com persona de *Area Chair* funde a prosa → os 9 campos
+  numéricos são **sobrescritos pela média arredondada**;
+- **reflections**: `for j in range(num_reflections - 1)` (ou seja, `N` dá `N-1` rodadas) sobre o
+  veredito **já agregado**, com saída antecipada pela substring `"I am done"`;
+- ordem: **ensemble primeiro, reflexão depois**.
+- Licença: **"AI Scientist Source Code License"**, derivada da RAIL, com cláusula de divulgação
+  obrigatória. **Não é permissiva** — a ideia serve, o código não.
+
+### O que eles são aqui
+
+Saíram da **tarefa** e vieram pro **cargo** (`lib/agents/capacidades.ts` → `Protocolo`), e cada um
+foi pro lugar onde tem efeito:
+
+| campo | onde age | o que faz |
+|---|---|---|
+| `ensemble` | fase `draft` | N rascunhos independentes, à mesma temperatura (0.6), e **o crítico determinístico escolhe** o de maior score |
+| `reflexoes` | `maxRevisions` do laço que já existe | quantas voltas de revisão contra a própria crítica, acima do que a intenção já pede |
+
+O crítico ser código deixa de ser limitação e passa a ser **a peça que faz isso funcionar**: é um
+juiz grátis, consistente e sem variância própria para confundir com a das amostras. E `reflexoes`
+**não cria laço novo** — usar o `maxRevisions` do `trajectory.ts` em vez de importar o laço interno
+do AI-Scientist evita duplicar reflexão, que é o defeito de adotar um desenho sem olhar o que a casa
+já tem.
+
+Contagem **explícita**: aqui `0` é zero. No AI-Scientist `num_reflections=1` significa *nenhuma*, o
+que é uma armadilha.
+
+### Os tetos, e por que eles moram no `trajectory.ts`
+
+| modo | orçamento | base estimada | `ensemble` | `reflexoes` |
+|---|---|---|---|---|
+| `quick` | 3.000 | ~2.300 (1 tiro) | 1 | 0 |
+| `elaborated` | 12.000 | ~7.700 | 3 | 1 |
+| `research` | 40.000 | ~8.900 | 5 | 2 |
+
+Derivados do `BUDGET` e do `COST` — rascunho 1.800, volta de revisão 4.800 — e por isso moram **ao
+lado deles**, não em `capacidades.ts`. Teto longe do orçamento que o justifica é número que o ledger
+desfaz, que é a mentira que o comentário da F6 recusou escrever. `capacidades.ts` guarda só o
+**pedido** do cargo; `ensembleDoTurno` e `maxRevisionsDoTurno` cortam.
+
+A intenção é **piso** de `maxRevisions`: um cargo pode subir, nunca tornar uma tarefa menos
+exigente do que ela é.
+
+### A matriz de protocolos
+
+| cargo | `ensemble` | `reflexoes` | por quê |
+|---|---|---|---|
+| **Aura** | 1 | 2 | pesquisa se corrige relendo, não reamostrando: o risco dela é afirmação sem lastro, e isso a crítica pega. Reamostrar o mesmo prompt não acha fonte que falta |
+| **Zenita** | 3 | 0 | **Medprompt**: em fato clínico, uma amostra só é arriscada. Zero revisão é decisão: ela gasta em **largura**, a Aura em **profundidade** — reler o mesmo rascunho não reduz variância |
+| **Nina** | 1 | 0 | o valor dela é clareza didática, não variância nem fonte |
+| **Octa** | 1 | 0 | não passa pelo turno do chat |
+
+### Dois trade-offs que o dono precisa saber
+
+1. **Sem prévia ao vivo quando `ensemble > 1`.** Não se transmite um rascunho que pode ser
+   descartado: o aluno leria um texto médico e veria **outro** no lugar. Pior que esperar. Então a
+   Zenita perde a datilografia ao vivo nos turnos `elaborated`/`research`. É uma linha para reverter,
+   se você preferir o inverso.
+2. **Custo.** `ensemble: 3` são **três** chamadas de rascunho por turno da Zenita — 3× tokens e 3×
+   pressão de rate-limit, medidos pelo ledger. `reflexoes: 2` na Aura acrescenta até duas voltas de
+   `reason+draft+critique` (4.800 cada) nos modos que cabem.
+
+---
+
+## 8 · `specific_knowledge` — o portão de conhecimento específico
+
+Pedido do dono: um agente de um tema responde, ou tenta responder, **apenas** sobre aquele tema.
+
+`lib/agents/escopo.ts` roda a cada pergunta e devolve um de três:
+
+| veredito | quando | o que a agente faz |
+|---|---|---|
+| `passa` | é do campo dela | assume a resposta e segue o raciocínio normal (**nenhuma diretiva é injetada** — caminho byte a byte o de antes) |
+| `neutro` | ninguém aqui é dono do tema | procura, **dentro do contexto dado**, um fio que toque o campo dela, cita esse fio em uma frase — e **não** continua o assunto |
+| `nega` | é claramente de outra área | diz isso e **aponta quem ajuda**, pelo nome, do nosso registro |
+
+O exemplo do dono: a Zenita, perguntada sobre **GTA VI**, não comenta o jogo; pode observar que os
+GTA modelam ferimento e acidente físico com certo realismo — uma deixa para o tema dela, dentro do
+contexto, sem querer levar a conversa para lá. Perguntada sobre rede neural, é `nega`: existe quem
+responda, e ela diz quem.
+
+### Como o veredito é decidido — sem chamada de modelo
+
+O portão roda em **todo** turno. Uma chamada extra aqui seria latência antes da primeira palavra em
+100% das perguntas — o mesmo custo que fez o `pensar` da fase `acao` virar `minimal`. Então ele usa,
+em ordem:
+
+1. **O dado da própria agente.** Para quem tem `anatomia`, a pergunta é testada palavra por palavra
+   contra os **3.432 conceitos do atlas**. Alcance honesto: é o que pega o aluno que digita o nome em
+   latim ou inglês (`hippocampus`, `femur`) — `termoDeBusca` não tokeniza, por isso a pergunta vai
+   fatiada e não inteira.
+2. **O vocabulário do campo** (`CapacidadeDoAgente.termosProprios`). Existe porque as listas de
+   `lib/rag/areas` foram escritas para classificar **título + resumo de artigo da SciELO**
+   (`paciente`, `mortalidade`, `neoplasia`) e quase nunca batem numa pergunta de aluno: *"me explica
+   o ciclo de Krebs"* não casa com nenhum termo de medicina. Sem esta lista a Zenita **recusaria o
+   próprio campo** — a falha mais grave que o portão pode ter. Provei: desligando-a, **17 de 18**
+   perguntas de medicina do corpus caem em `neutro`.
+3. **A área alheia** (`areaDaPergunta`, os mesmos termos com limiar de pergunta, exigindo 2× a
+   segunda colocada) → `nega` + encaminhamento.
+4. **Nada se destaca** → `neutro`.
+
+**Generalista nunca é gateada.** Agente sem área (Aura, Nina) passa sempre: fechar o escopo de quem
+é generalista não dá personalidade, dá uma agente que recusa o próprio trabalho.
+
+### As duas diretivas novas
+
+`passa` injeta **nada** — por isso as diretivas novas são exatamente duas:
+`DIRETRIZ_FORA_DO_ESCOPO` (recusa com encaminhamento) e `DIRETRIZ_ESCOPO_NEUTRO` (o contorno de
+contexto). Entram no `sys` do rascunho **depois** da regra de tabela e **antes** das regras de campo
+obrigatório: as duas desligam `desenvolvimento`, `conceitos` e `proximos_passos`, que as linhas
+seguintes pedem, e o último a falar ganha.
+
+Ambas proíbem responder a pergunta **depois** do aviso — uma resposta dada após o aviso anula o
+aviso, e é o defeito que a regra existe para impedir. A neutra proíbe **desenvolver** o fio: ele é
+uma deixa, não um gancho para puxar a conversa; se virar parágrafo, a agente trocou de assunto no
+lugar da pessoa.
+
+### Fora do escopo não se coleta
+
+Quando o veredito não é `passa`, `plan()` devolve **zero** passos. Buscar na web sobre GTA VI para
+depois dizer "não é meu assunto" gasta volta, orçamento e tempo — e é pior: a evidência colhida fica
+no contexto do rascunho, e um modelo com evidência na mão **responde** a pergunta que a diretiva
+mandou não responder.
+
+### O limite honesto
+
+As listas de área são de vocabulário acadêmico, então muitas perguntas óbvias (*"o que é
+fotossíntese"*, *"me explica a integral"*) **não classificam** e caem em `neutro` em vez de `nega`.
+O escopo continua fechado — `neutro` também recusa continuar —, mas o **encaminhamento pelo nome**
+só sai quando a área alheia dá sinal claro. É conservador de propósito: apontar o colega errado é
+pior que não apontar.

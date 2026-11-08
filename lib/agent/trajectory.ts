@@ -103,7 +103,11 @@ export interface HarnessDeps {
   usoMedido?(): number;
 }
 
-export type TrajectoryOpts = { budget?: Budget };
+export type TrajectoryOpts = {
+  budget?: Budget;
+  /** o PEDIDO de revisões do cargo (lib/agents/capacidades Protocolo.reflexoes). O teto é do modo. */
+  reflexoes?: number;
+};
 
 // ───────────────────────────── orçamento + custo por fase ─────────────────────────────
 const BUDGET: Record<Mode, Budget> = {
@@ -111,6 +115,40 @@ const BUDGET: Record<Mode, Budget> = {
   elaborated: { tokens: 12_000, ms: 60_000 },
   research: { tokens: 40_000, ms: 180_000 },
 };
+/**
+ * OS TETOS DO PROTOCOLO DE CARGO (lib/agents/capacidades Protocolo), derivados do `BUDGET` acima e
+ * do `COST` abaixo — e por isso moram AQUI, não lá. Um teto longe do orçamento que o justifica é
+ * número que o ledger desfaz.
+ *
+ * `ENSEMBLE`: quantos rascunhos cabem. Base estimada de um turno (route+plan+gather+reason+draft+
+ * critique+finalize) × orçamento do modo, sobra ÷ custo do rascunho (1.800):
+ *   quick      3.000 — o turno é 1 tiro (route+draft+finalize = 2.300); não sobra rascunho → 1
+ *   elaborated 12.000 — base ~7.700, sobra ~4.300 → 3
+ *   research   40.000 — base ~8.900, sobra ~31.000 → 5 (o teto é o bom senso, não o orçamento)
+ *
+ * `REFLEXOES`: quantas voltas de revisão a mais que a intenção já pede. Cada volta custa
+ * reason+draft+critique = 4.800:
+ *   quick 0 (não há laço) · elaborated 1 (4.800 na sobra de 4.300: a última crítica pode ser
+ *   cortada pelo `overBudget`, e isso é o freio funcionando, não defeito) · research 2
+ */
+export const ENSEMBLE_MAX_POR_MODO: Readonly<Record<Mode, number>> = { quick: 1, elaborated: 3, research: 5 };
+export const REFLEXOES_MAX_POR_MODO: Readonly<Record<Mode, number>> = { quick: 0, elaborated: 1, research: 2 };
+
+/** O N de rascunhos que vale neste turno: o pedido do cargo, cortado pelo orçamento do modo. */
+export function ensembleDoTurno(pedido: number | undefined, modo: Mode): number {
+  return Math.max(1, Math.min(pedido ?? 1, ENSEMBLE_MAX_POR_MODO[modo] ?? 1));
+}
+
+/**
+ * `maxRevisions` deste turno. A intenção é o PISO (ela sabe o que a tarefa precisa) e o cargo pode
+ * subir, até o teto do modo. Nunca desce: um cargo não torna uma tarefa menos exigente do que ela é.
+ */
+export function maxRevisionsDoTurno(daIntencao: number | undefined, reflexoesDoCargo: number | undefined, modo: Mode): number {
+  const piso = daIntencao ?? 1;
+  const doCargo = 1 + Math.min(Math.max(reflexoesDoCargo ?? 0, 0), REFLEXOES_MAX_POR_MODO[modo] ?? 0);
+  return Math.max(piso, doCargo);
+}
+
 const COST: Record<Phase, Budget> = {
   route: { tokens: 300, ms: 500 },
   plan: { tokens: 1_200, ms: 2_500 },
@@ -253,7 +291,11 @@ function seedState(objective: string, r: RouterResult, opts?: TrajectoryOpts): T
     mode: r.mode,
     academicMode: r.academicMode,
     kind: r.kind,
-    spec: INTENTS[r.intent],
+    // o protocolo do CARGO entra aqui: `maxRevisions` da intenção é o piso, o cargo sobe até o teto
+    // do modo (maxRevisionsDoTurno). Sem `opts.reflexoes` o spec é o da tabela, intacto.
+    spec: opts?.reflexoes == null
+      ? INTENTS[r.intent]
+      : { ...INTENTS[r.intent], maxRevisions: maxRevisionsDoTurno(INTENTS[r.intent].maxRevisions, opts.reflexoes, r.mode) },
     phase: "route",
     iter: 0,
     spent: { tokens: 0, ms: 0 },

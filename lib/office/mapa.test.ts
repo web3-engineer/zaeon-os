@@ -40,16 +40,21 @@ describe("escritório como dado", () => {
     expect(departamentoDe({ enabledSkills: ["studio", "code"] })).toBe(DEPARTAMENTOS.code);
   });
 
-  it("os DOIS pods que a regra nova muda, nomeados — nenhum outro se mexe", () => {
+  it("os pods que a regra do mais raro muda, nomeados — nenhum outro se mexe", () => {
     const pods = montarEscritorio();
     const dep = (slug: string) => pods.find((p) => p.slug === slug)!.departamento.id;
     expect(dep("medicina"), "era Biblioteca; o Osler é o único com anatomia").toBe("anatomia");
+    // O Eiffel ganhou `cad` (docs/HANDOFF_EIFFEL_CAD.md) e `cad` passou a ser a skill mais rara do
+    // seed — um mentor só a tem. Então o pod dele deixa de dizer "Biblioteca" (11 em 13) e passa a
+    // dizer "Prancheta" (1 em 13), que é exatamente o que a regra do departamento mais raro existe
+    // pra fazer: o pod mostra o que DISTINGUE o agente, não o que todos têm.
+    expect(dep("eng-civil"), "ganhou cad: o pod dele agora é a Prancheta").toBe("cad");
     expect(dep("biologia"), "era Biblioteca; molecule está em 3 de 13").toBe("molecule");
-    // os outros onze continuam onde estavam
+    // os outros dez continuam onde estavam (o eng-civil saiu desta lista: ele é o caso acima)
     for (const [slug, esperado] of [
       ["enfermagem", "literature"], ["eng-computacao", "code"], ["eng-energias", "literature"],
       ["matematica", "studio"], ["fisica", "literature"], ["agronomia", "literature"],
-      ["quimica", "molecule"], ["eng-civil", "literature"], ["veterinaria", "literature"],
+      ["quimica", "molecule"], ["veterinaria", "literature"],
       ["psicologia", "literature"], ["farmacia", "molecule"],
     ] as const) {
       expect(dep(slug), `${slug} mudou de departamento sem ninguém pedir`).toBe(esperado);

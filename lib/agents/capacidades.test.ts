@@ -11,6 +11,8 @@ import {
   HABILIDADES_DISTINTIVAS,
   TOOLS_BASE,
   TOOLS_POR_HABILIDADE,
+  CONECTOR_CAD,
+  TOOLS_DO_SOLIDCRAFT,
   capacidadeDe,
   habilidadesDoTurno,
   toolsPermitidas,
@@ -40,11 +42,54 @@ describe("capacidades do chat", () => {
     expect(fantasmas).toEqual([]);
   });
 
-  it("toda tool de habilidade existe no registro", () => {
+  it("toda tool de habilidade existe no registro (as nossas)", () => {
     const existem = nomesQueExistem();
     const fantasmas = Object.entries(TOOLS_POR_HABILIDADE)
-      .flatMap(([h, tools]) => tools.filter((n) => !existem.has(n)).map((n) => `${h}:${n}`));
+      .flatMap(([h, tools]) => tools
+        // as de conector MCP têm verificação PRÓPRIA no caso abaixo: elas só entram no registry
+        // quando o servidor sobe, então o registry não é a autoridade sobre elas.
+        .filter((n) => !n.startsWith("mcp:"))
+        .filter((n) => !existem.has(n))
+        .map((n) => `${h}:${n}`));
     expect(fantasmas).toEqual([]);
+  });
+
+  /**
+   * As tools de CONECTOR não estão no registry em teste: `registerMcpConnector` só as registra
+   * quando o servidor responde, e aqui não há servidor. Então a autoridade sobre elas é a
+   * SUPERFÍCIE DECLARADA do conector — a lista que eu MEDI subindo o `solidcraft-cli mcp` e lendo o
+   * `tools/list` (21 tools, todas anotadas).
+   *
+   * Isto continua pegando nome inventado, que é o defeito que este arquivo existe pra impedir:
+   * `mcp:solidcraft:fly` não está na superfície e cai aqui.
+   */
+  it("toda tool de CAD existe na superfície declarada do SolidCraft", () => {
+    const declaradas = new Set(TOOLS_DO_SOLIDCRAFT.map((t) => `mcp:${CONECTOR_CAD}:${t}`));
+    const fantasmas = (TOOLS_POR_HABILIDADE.cad ?? []).filter((n) => !declaradas.has(n));
+    expect(fantasmas).toEqual([]);
+  });
+
+  it("…e o inverso: um nome fora da superfície do conector é acusado", () => {
+    const declaradas = new Set(TOOLS_DO_SOLIDCRAFT.map((t) => `mcp:${CONECTOR_CAD}:${t}`));
+    expect(declaradas.has("mcp:solidcraft:fly")).toBe(false);
+  });
+
+  it("`crash_reports` fica FORA do CAD de propósito: lê a máquina, não a peça", () => {
+    expect(TOOLS_DO_SOLIDCRAFT).toContain("crash_reports");          // existe no servidor
+    expect(TOOLS_POR_HABILIDADE.cad).not.toContain("mcp:solidcraft:crash_reports");
+  });
+
+  it("o Eiffel começa pela skill: `skill_reference` está na lista dele", () => {
+    expect(TOOLS_POR_HABILIDADE.cad).toContain("mcp:solidcraft:skill_reference");
+    expect(CAPACIDADES.eiffel.habilidades).toContain("cad");
+    expect(CAPACIDADES.eiffel.area).toBe("eng-civil");
+  });
+
+  it("quem não é o Eiffel NÃO tem CAD", () => {
+    for (const id of ["aura", "zenita", "nina"] as const) {
+      expect(CAPACIDADES[id].habilidades, id).not.toContain("cad");
+      expect([...toolsPermitidas(CAPACIDADES[id].habilidades)].some((t) => t.startsWith("mcp:solidcraft:")), id).toBe(false);
+    }
   });
 
   it("o mapa cobre MentorSkill inteiro — skill nova sem decisão aqui é skill sem portão", () => {
