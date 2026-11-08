@@ -329,3 +329,665 @@ fotossíntese"*, *"me explica a integral"*) **não classificam** e caem em `neut
 O escopo continua fechado — `neutro` também recusa continuar —, mas o **encaminhamento pelo nome**
 só sai quando a área alheia dá sinal claro. É conservador de propósito: apontar o colega errado é
 pior que não apontar.
+
+---
+
+## 9 · O esquadrão das exatas e o DATASET
+
+Decisão do dono (2026-11-08): *"zaeon tem que ser o agente especialista em dados e IA. software,
+téo continua. infra, precisamos de um novo agente chamado janaina. e segurança, o octa-code."*
+
+### 9.1 · Os quatro, e o endereço de cada um
+
+| mentor | slug / área | curso (existe em `ALL_COURSES`) | corpus já baixado | licença |
+|---|---|---|---|---|
+| **Téo** | `software` | Engenharia de Software | MDN Web Docs — **10.654** páginas | CC BY-SA 2.5 |
+| **Janaina** | `infra` | Redes de Computadores | documentação do Kubernetes — **1.113** páginas | CC BY 4.0 |
+| **Octa** | `seguranca` | Segurança da Informação / Cibersegurança | CWE **956** + MITRE ATT&CK **706** | MITRE, comercial liberado |
+| **Zaeon** | `dados-ia` | Ciência de Dados | arXiv cs.LG aberto + estatística do REA-MECC | aberta / CC BY-SA 3.0 |
+
+Os quatro entram em `MENTOR_SEED` (order 14–17), com look em `lib/avatars/looks.ts`, pod no
+escritório e área em `lib/rag/areas.ts`. `direito` **não** entrou: a Constituição está baixada (412
+artigos em vigor, CC0 e art. 8º IV da Lei 9.610/98), mas o agente de leis é decisão adiada — e a
+área espera o mentor, nunca o contrário. Ver 9.3.
+
+### 9.2 · Por que área e mentor são UMA mudança
+
+Tentei criar as cinco áreas sozinhas primeiro. Dois testes recusaram, e os dois estavam certos:
+
+1. **`lib/rag/areas.test.ts`** exige um-para-um entre `SLUGS_AREA` e `MENTOR_SEED`. Sem o mentor,
+   `idArea("seguranca")` produz um `turmaId` que `areasDoTurno` nunca pede — o documento é ingerido,
+   contabilizado no placar, e **nenhum agente o alcança**. Já perdemos uma carga assim.
+2. **`lib/agents/escopo.test.ts`** pegou o estrago pior, que eu não tinha previsto: **a área órfã
+   rouba a classificação de uma área que tem dono.** Com `dados-ia` existindo sem ninguém, a pergunta
+   *"como funciona uma rede neural artificial?"* deixou de cair em `eng-computacao` (que tem o
+   Turing) e passou a cair numa área sem responsável. `responsavelDaArea` devolveu `null`, e o
+   veredicto desabou de `nega` para `neutro`: a Zenita, em vez de encaminhar, passou a **torcer a
+   pergunta de rede neural pro lado da medicina**. Uma área vazia é pior que área nenhuma.
+
+### 9.3 · O termo tem um dono só
+
+`areaDaPergunta` devolve `null` no empate (exige 2× a segunda colocada). Então **termo repetido em
+duas áreas desliga o portão**. A entrada do esquadrão me fez criar quatro duplicatas, e a varredura
+achou mais uma colisão por substring. Todas corrigidas:
+
+- `rede neural`, `aprendizado de maquina`, `ciencia de dados`, `inteligencia artificial`,
+  `mineracao de dados` — saíram de `eng-computacao` e ficaram com `dados-ia`. Quando chega um
+  especialista, o termo muda de dono; o Turing fica com algoritmo, computabilidade e linguagem.
+- `software` cru saiu de `eng-computacao` para `software`.
+- `probabilidade` é da `matematica` (Noether); `dados-ia` fica com a inferência.
+- `paradigma de programacao` continha `programacao` (do Turing) — trocado.
+- `disponibilidade` (infra) estava **dentro** de `biodisponibilidade` (farmácia): um artigo de
+  farmacologia pontuava para infra. Agora é `alta disponibilidade`, que é o termo do ofício.
+
+A única colisão restante é anterior a esta mudança: `molecula` (química) ⊂ `molecular` (biologia).
+
+### 9.4 · O DATASET: como ele sai deste container
+
+O corpus são 66 MB de JSONL e PDF — grandes demais pro git. Então o repositório guarda o **caminho**,
+e a VPS refaz o dado. Mesmo padrão da geometria do atlas: caro no deploy, barato no turno.
+
+```bash
+# 1. montar (origens fixadas por commit; só precisa de rede)
+node scripts/dataset-montar.mjs --saida /opt/zaeon/dataset
+
+# 2. ingerir (dentro do contêiner, pelo mesmo caminho dos PDFs do aluno)
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts \
+  --fontes dataset --dir /opt/zaeon/dataset --seco     # confere primeiro
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts \
+  --fontes dataset --dir /opt/zaeon/dataset            # grava
+```
+
+O que conferir no fim do passo 1 (é o que eu medi em 2026-11-08):
+
+```
+constituicao 412 · infra 1113 · seguranca 1662 (cwe 956 + attack 706) · software 10654 · 14 PDFs
+```
+
+Duas armadilhas que a execução de prova pegou, e que o script agora trava:
+
+- **`git fetch --depth 1 origin <sha>` só aceita o hash COMPLETO de 40.** Com o abreviado o git
+  responde `couldn't find remote ref`, que parece erro de rede e não é. Os pins são de 40, e uma
+  trava recusa pin curto nomeando a fonte.
+- **`createWriteStream` + `process.exit(0)` descartava tudo.** O script dizia "412 documentos" e o
+  diretório ficava vazio. Escrita síncrona em lotes.
+- **`PDF_LOADER_URL` ausente** faz `extractPdfStructured` devolver `null` em silêncio: os 14 PDFs
+  entrariam todos como `erro: leitura_falhou`. O script para antes, dizendo o que falta.
+- **Área inexistente é FALHA, não aviso** — e a falha vem depois do placar, pro operador ver o que
+  entrou antes de ler o que ficou de fora.
+
+### 9.5 · O que isto NÃO faz
+
+Os quatro são **mentores** (Escritório + rota de mentor do turno), não agentes do seletor do chat.
+`areasDoTurno(cap.area ?? mentor?.slug)` em `lib/agent/runChatTurn.ts:149` é o que faz a base chegar:
+pela área da agente **ou** pelo slug do mentor ativo. Colocá-los no seletor de `AGENTES_CHAT` é uma
+decisão separada, com persona, voz e vitrine próprias — como foi feito com o Eiffel.
+
+---
+
+## 10 · Hugging Face: o que dá pra usar, medido
+
+Tudo nesta seção foi medido neste contêiner em 2026-11-08, anonimamente (**sem token** — o dono não
+forneceu um, e não é necessário para nada abaixo).
+
+### 10.1 · O que a rede permite
+
+| caminho | resultado |
+|---|---|
+| `huggingface.co/api/datasets/...` | **200** — metadados e licença de qualquer dataset público |
+| `.../resolve/main/<arquivo>` (pequeno) | **307 → `/api/resolve-cache/`**, fica no mesmo host, baixa |
+| `.../resolve/main/<parquet grande>` | **302 → `us.aws.cdn.hf.co`**, alcançável, aceita **range** |
+| `cdn-lfs.huggingface.co` | **bloqueado** pela política de rede (CDN antigo; não é mais usado) |
+| `datasets-server.../info`, `/splits`, `/first-rows` | **200** |
+| `datasets-server.../rows` | **funciona, mas 100 linhas por chamada e o nginx do HF devolve 502 depois de ~23 chamadas anônimas** (medido: 3/3 ok, depois 20/20 falhas) |
+
+Conclusão operacional: **a API de linhas não serve para carga em massa; os parquets servem.** Ler por
+faixa com `hyparquet` (JS puro, sem dependência nativa) dá acesso a um shard de 406 MB lendo só os
+pedaços necessários — 3 linhas em 1,9 s, sem baixar o arquivo e sem arquivo temporário.
+
+### 10.2 · A fonte `wikipt` — Wikipédia em português
+
+`wikimedia/wikipedia`, config `20231101.pt`, 6 shards, licença **`cc-by-sa-3.0` + `gfdl`** (lida no
+`cardData` da API, não de memória). É um **instantâneo datado**, não a Wikipédia de hoje: isso o
+torna reproduzível, e a data entra na chave e no crédito do texto.
+
+> **Atenção à licença:** a fonte `wiki` (API ao vivo) cita **CC BY-SA 4.0**, que é o regime atual. O
+> instantâneo de 2023 é do regime **3.0**. Citar 4.0 nele seria errado, e `lib/rag/wikipedia.test.ts`
+> trava isso.
+
+A decisão de cada verbete é pura e fica em `lib/rag/wikipedia.ts` (7 testes); o script só faz I/O.
+Filtros: mínimo **1.200 chars** (esboço não ensina, e ocupa vaga no teto por área), fora páginas de
+**desambiguação**, e a área sai do nosso `classificarArea` (limiar de 5 pontos).
+
+**Medição real, shard 0 de 6 — 185.375 verbetes:**
+
+```
+aceitos 8.108 · descartes: curto=99.909 sem_area=73.214 area_cheia=2.156 desambiguacao=1.988
+```
+
+| área | docs | área | docs | área | docs |
+|---|---|---|---|---|---|
+| biologia | 1.500 (teto) | agronomia | 834 | eng-energias | 741 |
+| medicina | 1.362 | quimica | 659 | matematica | 619 |
+| eng-computacao | 460 | eng-civil | 330 | psicologia | 295 |
+| veterinaria | 253 | software | 237 | fisica | 221 |
+| seguranca | 154 | farmacia | 151 | dados-ia | 143 |
+| infra | 116 | enfermagem | 33 | | |
+
+**As 17 áreas recebem conteúdo** — inclusive veterinária, enfermagem e farmácia, que eram justamente
+as três sem corpus aberto em lugar nenhum. Com os 6 shards isso vira ~48 mil documentos em PT-BR.
+Só `biologia` encheu o teto; as escassas recolhem o corpus inteiro.
+
+A carga é **por fluxo**, e isso é escolha, não descuido: guardar o melhor por pontos exigiria segurar
+`--por-area` × 17 × 20 KB na memória (meio giga). Então cada verbete é ingerido na hora e a área para
+quando enche; a qualidade vem do limiar do classificador e do mínimo de caracteres, não de ranquear.
+
+```bash
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes wikipt --seco
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes wikipt --wiki-shards 6
+```
+
+### 10.3 · A fonte `mmlu` — MMLU em português
+
+`FreedomIntelligence/MMLU_Portuguese`, licença **MIT** (lida do `cardData`). É o MMLU (Hendrycks et
+al., 2021) traduzido: **57 matérias**, splits `dev` e `test`, em CSV. São 114 arquivos pequenos
+baixados por `resolve` — nada de parquet, nada da API de linhas.
+
+O parser de CSV é escrito à mão em `lib/rag/mmlu.ts` porque o enunciado do MMLU tem vírgula, aspas e
+**quebra de linha dentro do campo** (equação em várias linhas): `split(",")` perderia questão.
+Conferido contra o módulo `csv` do Python em 3 arquivos reais, incluindo um de 1,8 MB:
+
+```
+college_physics          meu= 102  python= 102  ✓   professional_law  meu=1534  python=1534  ✓
+high_school_mathematics  meu= 270  python= 270  ✓   → 3/3 idênticos, 100% das linhas viraram questão
+```
+
+**20 questões por documento**, não uma: o RAG devolve DOCUMENTO, e mil documentos de 300 caracteres
+entopem a busca e fazem a citação ao aluno virar "uma questão" sem contexto de matéria. É o mesmo
+desenho da fonte `medicina`. O gabarito sai **escrito** (`Gabarito: C) 600 nm`) e não só como letra,
+porque o trecho recuperado pode cortar as alternativas.
+
+**Execução real, 2026-11-08 — 114 CSVs, nenhum erro de rede, nenhuma linha torta:**
+
+```
+743 documentos · geral 406 · medicina 87 · matematica 65 · psicologia 59 · fisica 34
+biologia 24 · seguranca 19 · quimica 17 · dados-ia 12 · eng-computacao 12 · eng-energias 8
+```
+
+O maior ganho é **`geral` com 406 documentos**, e isso importa mais do que parece: `areasDoTurno`
+sempre devolve `area:geral` junto da área do agente, então essa base é consultada por **todos** — e
+ela estava VAZIA na VPS.
+
+O mapa matéria→área é explícito e conservador: matéria que não é claramente de uma das nossas áreas
+vai pra `geral`, nunca forçada. As três de direito (`international_law`, `jurisprudence`,
+`professional_law` — 1.778 questões) ficam em `geral` porque a área `direito` ainda não tem mentor;
+quando ele existir, é trocar `null` por `"direito"` no mapa e reingerir. `lib/rag/mmlu.test.ts` trava
+as 57 matérias contra a listagem real da API, então matéria nova ou renomeada no dataset acusa.
+
+```bash
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes mmlu --seco
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes mmlu
+```
+
+### 10.4 · A primeira execução na VPS, e o que ela ensinou
+
+Rodado pelo dono em 2026-11-08 na VPS. Quatro resultados, e três eram meus erros:
+
+**1. `geral · enem novos=540` — funcionou.** A base `geral`, que estava vazia, tem 540 questões do
+ENEM. É a única base que TODOS os agentes consultam.
+
+**2. `[wiki] sem texto` nas 122 sementes — a mensagem MENTIA.** A verdade era **HTTP 429** da borda
+da Wikimedia contra o IP de saída da VPS. O `json()` jogava o status fora, quem chamava fazia
+`.catch(() => null)`, e três situações diferentes (pedido falhou / verbete não existe / verbete
+curto) saíam com a mesma frase. Corrigido: o status volta, o `Retry-After` é respeitado (a Wikimedia
+manda `retry-after: 1` e a escada cega de 2/4/8/16/32 s gastava 62 s pra esperar 1 s), os três
+desfechos são contados em separado, e a pausa de 300 ms saiu do caminho de sucesso — antes uma
+rodada limitada batia na Wikimedia **sem pausa nenhuma**, piorando o que já estava ruim.
+
+Daqui, com o conserto: **167 ok · 0 falharam · 0 inexistentes · 1 curto**. Ou seja, o código está
+certo e o 429 é do IP. A fonte `wiki` são 122 sementes pela API ao vivo e depende do humor da
+Wikimedia; **`wikipt` não depende dela** — lê o instantâneo em parquet, 8.108 documentos por shard,
+de um host que não nos limita. Para carga de verdade, `wikipt`.
+
+A execução também achou **três títulos errados que eu mesmo tinha posto** nas áreas novas:
+`Infraestrutura como código` → `Infraestrutura como Código` (1.626 chars), `Observabilidade` (não
+existe em pt, só páginas de produto) → `Infraestrutura como serviço` (10.749 chars) e
+`Perícia forense computacional` → `Computação forense`. Conferidos na busca da própria Wikipédia.
+Sobra `Exame físico`, que é esboço de 410 chars — anterior a isto, e agora o log diz o porquê.
+
+**3. `--fontes mmlu,wikipt` não imprimiu nada — o código não está na VPS.** O `main` é `daf315b9` e
+só tem as fontes `scielo`, `wiki`, `medicina` e `enem`. `mmlu` e `wikipt` existem no branch. O
+`--fontes` simplesmente não casou com nada. Isto foi erro meu: entreguei comandos de código que
+ainda não estava lá.
+
+**4. `npm i hyparquet` deu EACCES — e o conserto não é esse.** O contêiner roda como usuário
+`zaeon`, não root, e `/app/node_modules` não é dele. Mas instalar no contêiner em execução seria
+remendo, porque **o código também precisa subir**. As duas coisas se resolvem com um deploy: o
+`package.json` do branch já traz o `hyparquet` em `dependencies`.
+
+> `hyparquet@1.33.0` não declara `engines` e não usa nenhuma API exclusiva do node 22
+> (`Promise.withResolvers`, `ArrayBuffer.prototype.transfer`, `structuredClone`, `Array.fromAsync`,
+> `toSorted` — todas conferidas, nenhuma presente). O contêiner é node v20.20.2, então roda.
+
+**5. `/tmp/bases/scielo.jsonl` desapareceu** (o `/tmp` foi limpo), então as áreas 7–13 não podem ser
+retomadas pela SciELO. Mas isso deixou de ser o caminho: `wikipt` + `mmlu` cobrem as sete, sem
+depender de nenhum arquivo sobrevivente.
+
+**A ordem certa, então:** deploy primeiro, carga depois.
+
+```bash
+# na VPS, com o branch já no main:
+cd ~/zaeon && git pull && docker compose up -d --build web
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes mmlu --seco
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes mmlu
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes wikipt --wiki-shards 6
+docker exec -w /app zaeon_web npx tsx scripts/bases-area-placar.ts
+```
+
+### 10.5 · O inventário: quantas bases, e de quem
+
+A pergunta "quantos datasets temos e de quem são" não tinha onde ser respondida: as fontes moravam
+nos `if (FONTES.includes(...))` do script, a licença de cada uma no comentário ao lado, a área de
+algumas num mapa próprio, e o dono da área em `lib/agent/mentors`. Agora o catálogo é
+`lib/rag/fontes.ts` e o inventário sai de um comando:
+
+```bash
+npx tsx scripts/datasets-inventario.ts            # roda em qualquer máquina: lê só o código
+docker exec -w /app zaeon_web npx tsx scripts/bases-area-placar.ts   # a contagem REAL, só na VPS
+```
+
+A diferença entre os dois é o ponto: o inventário diz *"a Janaina lê `infra`, que tem 3 fontes"*; o
+placar diz *"`infra` tem 1.113 documentos"*. Um é desenho, o outro é realidade — e confundir os dois
+foi exatamente como se perdeu uma carga antes.
+
+**7 fontes: 1 em produção, 4 prontas, 2 bloqueadas.**
+
+| fonte | estado | licença | alcança |
+|---|---|---|---|
+| `enem` | **em produção** | Apache-2.0 | `geral` — 540 questões na VPS |
+| `wikipt` | pronta | CC BY-SA 3.0 + GFDL | as 17 áreas — 8.108/shard medidos |
+| `mmlu` | pronta | MIT | 11 áreas + `geral` — 743 docs medidos |
+| `dataset` | pronta | CC0 / CC BY 4.0 / CC BY-SA 2.5 / MITRE / CC BY-SA 3.0 | infra, matematica, seguranca, software |
+| `wiki` | pronta | CC BY-SA 4.0 | as 17 áreas — 167 sementes |
+| `scielo` | **bloqueada** | CC BY 4.0 | perdeu `/tmp/bases/scielo.jsonl`; 7.292 docs já dentro |
+| `medicina` | **bloqueada** | Apache-2.0 | perdeu os JSONL do `/tmp` |
+
+**O dono de cada base** (`sem` = sementes da Wikipédia, `mat` = matérias do MMLU — ambos derivados,
+não escritos à mão):
+
+| agente | área | sem | mat | fontes vivas |
+|---|---|---|---|---|
+| Osler | medicina | 12 | 8 | wiki, mmlu, wikipt |
+| Nightingale | enfermagem | 7 | 0 | wiki, wikipt |
+| Darwin | biologia | 12 | 2 | wiki, mmlu, wikipt |
+| Turing | eng-computacao | 11 | 2 | wiki, mmlu, wikipt |
+| Tesla | eng-energias | 9 | 1 | wiki, mmlu, wikipt |
+| Noether | matematica | 10 | 6 | wiki, mmlu, wikipt, **dataset** |
+| Feynman | fisica | 10 | 4 | wiki, mmlu, wikipt |
+| Borlaug | agronomia | 9 | 0 | wiki, wikipt |
+| Mendeleev | quimica | 10 | 2 | wiki, mmlu, wikipt |
+| Eiffel | eng-civil | 8 | 0 | wiki, wikipt |
+| Pasteur | veterinaria | 7 | 0 | wiki, wikipt |
+| James | psicologia | 9 | 2 | wiki, mmlu, wikipt |
+| Kekulé | farmacia | 8 | 0 | wiki, wikipt |
+| **Téo** | software | 12 | 0 | wiki, wikipt, **dataset** (MDN) |
+| **Janaina** | infra | 11 | 0 | wiki, wikipt, **dataset** (Kubernetes) |
+| **Octa** | seguranca | 11 | 2 | wiki, mmlu, wikipt, **dataset** (CWE+ATT&CK) |
+| **Zaeon** | dados-ia | 12 | 2 | wiki, mmlu, wikipt |
+| *(todos)* | `geral` | 0 | 26 | enem, mmlu |
+
+Três coisas que a tabela deixa à vista:
+
+1. **O classificador nunca manda pra `geral`.** `classificarArea` só escolhe entre `AREAS`, então
+   `scielo` e `wikipt` — as duas fontes mais volumosas — **não alimentam a base geral**, por mais
+   gerais que pareçam. `geral` depende só de `enem` e `mmlu`. E é a base que todo agente lê.
+2. **Quatro agentes só têm a Wikipédia:** Nightingale, Borlaug, Pasteur e Kekulé (0 matérias do MMLU,
+   sem DATASET). São justamente enfermagem, agronomia, veterinária e farmácia — e no HF não há
+   corpus aberto decente para elas, o que já foi medido em 10.5 abaixo.
+3. **Há dois "Octa".** O mentor `seguranca` chama-se Octa e lê a base de segurança; o agente do chat
+   `octa` (Octa Code) tem `tela: "ide"` e `area: null`, então lê só `area:geral`. São entidades
+   diferentes com o mesmo nome, e vale decidir se isso fica.
+
+`lib/rag/fontes.test.ts` confere o catálogo contra o script de ingestão **nos dois sentidos**: fonte
+catalogada que o script não executa é promessa vazia, e fonte que o script executa sem estar no
+catálogo é dado entrando sem dono declarado.
+
+### 10.6 · A SciELO refeita, e a cobertura fechada
+
+A SciELO morreu assim: 7.292 documentos ingeridos, o `/tmp` da VPS limpo, e a execução sem poder ser
+retomada porque o `scielo.jsonl` tinha sumido. Ela era a única fonte que alcançava agronomia,
+engenharia civil, veterinária e farmácia — as quatro DESCOBERTAS. Refazê-la fechava as quatro de uma
+vez, e foi o que se fez.
+
+**`scripts/scielo-para-jsonl.ts` substitui o `.py`.** Sem Python e sem pyarrow (lê com `hyparquet`,
+que já é dependência), usando o **mesmo** `tituloEResumo` de `lib/rag/areas` — o `.py` tinha uma
+reimplementação da regra em Python, e duas cópias de uma regra divergem sozinhas. E a saída deixou de
+ser `/tmp`.
+
+#### O custo de memória é real, medido e alto
+
+| o que | pico de RSS | tempo |
+|---|---:|---:|
+| grupo 0 (122.491 linhas) | **10.983 MB** | 68 s |
+| grupo 1 (31.727 linhas), sozinho | 3.858 MB | 26 s |
+| os dois juntos | **10.983 MB** | 84 s · saída de 408 MB |
+
+Não é falha do leitor. O arquivo tem 2 grupos de linha (o maior com 4 GB descomprimidos), páginas de
+dados gigantes e **nenhum índice de página**. Medi as três coisas: ler 50 linhas custa o mesmo que
+ler 20 mil (19 s e 4,5 GB nas duas), e `onPage` devolveu **uma** página com 20.557 valores. Não
+existe ler um pedaço, e fatiar só multiplicaria o tempo.
+
+> **Não rode dentro do `zaeon_web`.** O contêiner web não declara limite de memória no compose, então
+> um pico de 11 GB disputa RAM com o servidor e o OOM killer do host pode escolher o node do
+> servidor. Sem ~12 GB livres, use `--grupos 1`: 31.727 artigos num pico de 3,9 GB, e ainda caem nas
+> 17 áreas (agronomia 285, eng-civil 187, farmacia 160, veterinaria 56).
+
+```bash
+docker run --rm -m 12g -v /opt/zaeon/dataset:/saida -v $PWD:/app -w /app node:20-slim \
+  sh -c "npm i -s hyparquet tsx && npx tsx scripts/scielo-para-jsonl.ts --saida /saida/scielo/scielo.jsonl"
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes scielo --dir /opt/zaeon/dataset/scielo
+```
+
+**Resultado real: 154.040 artigos extraídos, 62.032 classificados, as 17 áreas atendidas.** Com o
+teto de `--por-area 1500`, **18.034 documentos** entram:
+
+```
+medicina 1500 · enfermagem 1500 · psicologia 1500 · biologia 1500 · agronomia 1500 · veterinaria 1500
+quimica 1410 · matematica 1274 · dados-ia 1181 · eng-civil 1169 · farmacia 1017 · eng-energias 972
+infra 608 · seguranca 517 · fisica 471 · eng-computacao 262 · software 153
+```
+
+#### A fonte `medicina` também deixou de depender de arquivo
+
+Ela lia dois JSONL de `--dir`, e morreu pelo mesmo motivo. Agora lê o **parquet direto** do Hugging
+Face: 5,5 MB / 10.000 linhas / 10 grupos e 3,0 MB / 6.865 linhas / 7 grupos, pico de 90 MB. Sem
+arquivo intermediário, nada pra perder. Rende 753 docs em medicina, 493 em enfermagem, 260 em
+farmácia.
+
+#### Cobertura: NENHUM agente descoberto
+
+```bash
+npx tsx scripts/datasets-inventario.ts --cobertura
+```
+
+**As 17 áreas têm corpus do ofício. Só `geral` é de prova** — e para ela isso é o certo, já que é
+feita de ENEM e MMLU.
+
+| agente | área | na VPS | c/ deploy | próprio |
+|---|---|---:|---:|---:|
+| Téo | software | 0 | 11.056 | 10.807 |
+| Osler | medicina | 1.497 | 3.713 | 2.253 |
+| Darwin | biologia | 1.500 | 3.036 | 1.500 |
+| Octa | seguranca | 0 | 2.363 | 2.179 |
+| Borlaug | **agronomia** | 0 | 2.343 | **1.500** |
+| Mendeleev | quimica | 0 | 2.096 | 1.410 |
+| Nightingale | enfermagem | 1.500 | 2.033 | 1.993 |
+| Noether | matematica | 1.185 | 1.982 | 1.288 |
+| James | psicologia | 0 | 1.863 | 1.500 |
+| Janaina | infra | 0 | 1.848 | 1.721 |
+| Pasteur | **veterinaria** | 0 | 1.760 | **1.500** |
+| Tesla | eng-energias | 984 | 1.742 | 984 |
+| Eiffel | **eng-civil** | 0 | 1.507 | **1.169** |
+| Kekulé | **farmacia** | 0 | 1.436 | **1.277** |
+| Zaeon | dados-ia | 0 | 1.348 | 1.181 |
+| Turing | eng-computacao | 626 | 1.109 | 626 |
+| Feynman | fisica | 0 | 736 | 471 |
+| *(todos)* | `geral` | 540 | 946 | 0 (prova) |
+
+**Na VPS hoje: 7.832. Pronto esperando deploy: 42.001.**
+
+> **Duas medições da mesma fonte são um TETO, não duas remessas.** A SciELO tem 1.497 de `medicina`
+> já na VPS e 1.500 que entrariam ao refazer; somar daria 2.997, e é falso — a ingestão dedupe pelo
+> hash do texto e devolve "reaproveitado". Então `coberturaDaArea` toma o **máximo** por fonte+área, e
+> soma só entre fontes diferentes. Está travado em teste.
+
+### 10.7 · A fonte `arxiv`, e a varredura funda por mais bases
+
+Varri o Hugging Face, o GitHub, agregadores e repositórios brasileiros. O resultado prático foi uma
+fonte nova em produção-pronta e um achado arquitetural que vale mais que ela.
+
+#### O achado: corpus em inglês não pode passar pelo classificador
+
+Medi o **peS2o** (`allenai/peS2o`, ODC-By, ~40M artigos) em **84.967 registros reais** do shard 0:
+o classificador aproveitou **5,4%**, com **física, química, eng-computação, eng-civil e dados-ia em
+ZERO**. A causa não é o corpus — é que o peS2o é em **inglês** e os termos de `lib/rag/areas` são em
+**português**. Os 5,4% vieram de cognato (`medicin` casando com `medicine`), não de classificação.
+
+> **A regra que saiu disso:** corpus em inglês só entra com **área declarada** (fixa ou por mapa),
+> nunca pelo classificador. É o que já valia pro MDN, Kubernetes e CWE sem estar escrito. Agora está,
+> e `lib/rag/fontes.test.ts` o trava. Para usar o peS2o de verdade seria preciso uma lista de termos
+> em inglês por área — trabalho real, não feito.
+
+#### A fonte `arxiv`
+
+O arXiv resolve isso de graça: **já vem rotulado pela própria taxonomia**. `cat:math.*` é matemática
+por construção. Licença conferida nos Termos de Uso das APIs do arXiv: o **metadado descritivo
+(título, resumo, autores, classificação) é CC0 1.0**. O **texto completo não é** — tem a licença que
+o autor escolheu, e há opções NonCommercial entre elas. Por isso entra **só o resumo**.
+
+Física no arXiv não é só `physics.*`: `astro-ph`, `cond-mat`, `gr-qc`, `hep-*`, `nucl-*` e `quant-ph`
+são arquivos de primeiro nível, irmãos de `physics`. Mapear só `physics*` deixaria de fora a maior
+parte da física — que é justamente a área mais fraca.
+
+**Execução real contra a API, as 11 áreas encostaram no teto de `--por-area 1500` = 16.500 docs:**
+
+| área | disponível no arXiv | área | disponível |
+|---|---:|---|---:|
+| fisica | **1.541.518** | infra | 58.986 |
+| matematica | 753.931 | biologia | 57.538 |
+| dados-ia | 498.054 | seguranca | 54.213 |
+| eng-computacao | 51.219 | eng-energias | 49.941 |
+| software | 39.532 | quimica | 28.773 |
+| medicina | 9.399 | | |
+
+O teto não é o arXiv, é o nosso `--por-area`. Não mapeia enfermagem, farmácia, veterinária,
+agronomia, psicologia nem engenharia civil: o arXiv quase não tem esses campos, e forçar categoria
+vizinha encheria a base do agente errado.
+
+```bash
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes arxiv
+```
+
+#### A fonte `wikilivros` — Wikilivros e Wikiversidade em português
+
+Construída depois: é o último corpus aberto que alcança enfermagem, farmácia, veterinária e
+agronomia, e é em **português**, então o nosso classificador funciona nela.
+
+Vem do dump **Enterprise HTML** (`.json.tar.gz`) e **não** do `pages-articles.xml.bz2`, porque nem o
+`zlib` do node nem a imagem de produção abrem **bz2** (o Dockerfile instala só `openssl`,
+`ca-certificates` e `ffmpeg`). O tar tem um membro só, cujo cabeçalho são 512 bytes fixos que se
+pulam. Tudo por fluxo: os 70,7 MB comprimidos não precisam caber na memória nem no disco.
+
+**A licença vem declarada em cada registro** (`license[].name` = "Creative Commons Attribution Share
+Alike 3.0 Unported"), então o rodapé cita o que o DADO diz — e se a Wikimedia mudar o regime, o
+documento novo já sai certo. Quando o registro não declara licença, o rodapé não inventa uma.
+
+**Execução real — 22.867 páginas por fluxo, 2.134 aceitas em 16 áreas:**
+
+```
+eng-computacao 463 · matematica 306 · biologia 249 · software 213 · medicina 193 · infra 136
+eng-energias 107 · agronomia 93 · quimica 88 · seguranca 66 · dados-ia 63 · psicologia 63
+fisica 37 · eng-civil 19 · farmacia 19 · veterinaria 16 · enfermagem 3
+descartes: curto 11.044 · sem área 9.266 · estrutura 412
+```
+
+Filtra o que é estrutura de wiki e não conteúdo: `/Imprimir` (a MESMA obra concatenada, que entraria
+duplicada e roubaria vaga no teto), `/Índice`, `/Capa`, e o espaço administrativo que escapa no NS0.
+
+> **`enfermagem` rende quase nada aqui — 3 de 2.134 — e o motivo é instrutivo.**
+> *(Correção: eu havia escrito "zero" numa versão anterior desta seção; a varredura dá 3.)*
+> O vocabulário de enfermagem empata com
+> medicina em texto curto — "a enfermagem cuida do paciente; sinais vitais, biossegurança e atenção
+> primária à saúde" pontua as duas quase igual, e `classificarArea` exige destaque de 2× sobre a
+> segunda. Então devolve `null` em vez de chutar. Não é defeito: é a régua recusando ambiguidade, e
+> explica por que enfermagem rende 33 documentos na Wikipédia e 1.500 pela SciELO, onde o resumo
+> acadêmico é longo e específico o bastante pra desempatar. Travado em `lib/rag/wikilivros.test.ts`.
+
+Classifiquei esta fonte como `enciclopedico` e isso é conservador de propósito: é material DIDÁTICO,
+não enciclopédia nem artigo acadêmico, mas é texto de comunidade wiki — a mesma procedência da
+Wikipédia. Chamá-la de `proprio` inflaria a cobertura de 16 áreas nas costas de texto wiki. Como as
+17 áreas já têm corpus do ofício, classificar aqui não muda veredicto nenhum.
+
+```bash
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes wikilivros
+```
+
+#### A fonte `doaj` — construída, e BLOQUEADA pela política da DOAJ
+
+**Licença, lida dos Termos deles:** *"Copyrights and related rights for article metadata waived via
+**CC0 1.0** Universal Public Domain Dedication"*, e *"Collecting, using and reusing part or all of
+the article-level metadata must be done under the terms of the CC0 waiver"*. O resumo é metadado de
+artigo, logo é CC0 — uso comercial livre. O rodapé credita revista e DOI de todo jeito, porque é o
+que torna a citação rastreável.
+
+**As três paredes da API, medidas:**
+
+1. `pageSize` é limitado a **50**, peça o que pedir;
+2. nenhuma consulta entrega além de **1.000 registros** (*"You cannot access results beyond 1000
+   records via this API"*) — não existe varrer 1,2 milhão por paginação;
+3. curinga é recusado (*"Query contains disallowed Lucene feature"*), então não dá pra filtrar por
+   prefixo de código LCC.
+
+**Por que a busca por frase, e não o filtro de idioma.** `bibjson.journal.language:PT` dá
+**1.199.705** artigos, mas `language` é da **revista**, não do artigo: medi 50 registros dessa fatia
+e os resumos vinham em espanhol e inglês, com **10%** classificando. Usar a busca da DOAJ com o
+vocabulário em português da área sobe muito a precisão:
+
+| frase | total na DOAJ | de 50, classificou | principal |
+|---|---:|---:|---|
+| "concreto armado" | 427 | 35 | **eng-civil 34** |
+| "enfermagem" | 51.931 | 27 | **enfermagem 18** |
+| "farmacologia" | 1.832 | 17 | farmacia 6, medicina 9 |
+| "agronomia" | 4.026 | 17 | agronomia 11 |
+| "medicina veterinária" | 10.596 | 9 | veterinaria 3 |
+
+E as frases **não são lista nova**: são os `AREAS[].wikipedia`, que já existem, já são frases em
+português curadas por área e já são mantidas pela fonte `wiki`. Lista paralela divergiria sozinha.
+A busca é só a **alavanca de colheita** — quem decide a área continua sendo `classificarArea`, igual
+à SciELO. Um artigo achado por "concreto armado" que seja de química vai pra química.
+
+**Um defeito real que o resumo da DOAJ tem:** vem com HTML. Medido em 225 resumos reais — `<i>` 56×,
+`<p>` 10×, `<em>` 10×, `<br>` 6×, `<sub>` 6×, `<strong>` 4×, e as entidades `&gt;`/`&lt;` 93 e 92
+vezes (quase sempre estatística escapada, `p &lt; 0,05`). Sem limpar, a marcação aparece no trecho
+citado ao aluno e atrapalha o casamento de termos. A ordem da limpeza importa: **tag antes de
+entidade**, senão `&lt;i&gt;` — que o autor escreveu pra aparecer literalmente — viraria `<i>` e
+seria comido como marcação.
+
+> **E então a DOAJ recusou.** HTTP **403** a pedido automatizado sustentado. Isso é **política, não
+> defeito**: os Termos dela encaminham uso em massa pelo dump de dados, liberado **caso a caso por
+> e-mail** ao platform manager. A primeira versão do meu código insistiu **168 vezes** contra um
+> servidor dizendo não — defeito meu, não deles. Agora há um **disjuntor**: três recusas seguidas e a
+> fonte para, apontando a política.
+>
+> **Não se contorna trocando User-Agent.** Tentei sondar isso e foi corretamente barrado como burla
+> de verificação. Procurar um cabeçalho que passe pela recusa é burlar política, não cumpri-la. O
+> caminho é **pedir o acesso**: o código está pronto e testado, e a precisão medida acima é o
+> argumento para o pedido.
+
+```bash
+# quando a DOAJ liberar:
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes doaj --seco
+```
+
+#### A fonte `zenodo` — 1.739 documentos, e o único portão de licença POR DOCUMENTO
+
+O Zenodo é repositório aberto: qualquer pessoa deposita e **cada depósito declara a sua própria
+licença**. Isso muda a natureza do portão — nas outras fontes a licença é uma, da fonte inteira;
+aqui é por registro, e um registro sem licença aceitável não entra de jeito nenhum.
+
+O portão (`licencaPermiteUsoComercial`) é **allowlist por prefixo** e recusa **por omissão**:
+licença nova aparecendo no Zenodo fica de fora até alguém olhar, em vez de entrar por descuido. E há
+uma segunda trava para `-nc` e `-nd`, porque `cc-by-nc-4.0` **começa com** `cc-by-` e sem ela
+passaria. Medido em 200 registros reais: 184 `cc-by-4.0`, 7 `cc-by-nc-nd-4.0` (recusados), 6
+`cc-by-sa-4.0`, 3 sem licença (recusados).
+
+**As paredes da API:** `size` aceita no máximo **25** (50 devolve "A validation error occurred") e a
+paginação vai até a **página 400** — a 401 devolve "Invalid querystring parameters". Logo **10.000
+registros por consulta**, dez vezes o teto da DOAJ.
+
+**Busca por frase, não por idioma**, pelo mesmo motivo da DOAJ: `language` é declarado pelo
+depositante e numa fatia de `+language:por` a descrição vinha em inglês, com **12%** de
+aproveitamento. Por frase, "Enfermagem" rendeu **23 de 25, todos em enfermagem**. As frases são os
+`AREAS[].wikipedia` — os mesmos de `wiki` e `doaj`.
+
+**O 429 é transitório, e isso valeu o dobro.** A primeira versão abandonava a página na primeira
+recusa: colheu **773** documentos e o disjuntor a parou na **9ª área de 17**. Com recuo respeitando
+`Retry-After` (e 1,5 s de base em vez de 1 s, que encostava no limite), a varredura completa deu
+**1.739 documentos nas 17 áreas em 556 pedidos**, sem disjuntor disparar.
+
+```
+medicina 285 · enfermagem 201 · eng-energias 152 · psicologia 148 · biologia 125 · agronomia 124
+eng-civil 123 · farmacia 99 · software 86 · matematica 84 · quimica 71 · seguranca 51
+veterinaria 45 · eng-computacao 41 · dados-ia 35 · infra 35 · fisica 34
+descartes: sem área 3.807 · LICENÇA RECUSADA 1.032 · resumo curto 571
+```
+
+O portão recusou **1.032 registros** (14% dos 7.149 vistos) só por licença. E `enfermagem` ganhou
+**201** documentos — a área que estava em zero no Wikilivros e em 33 na Wikipédia.
+
+```bash
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes zenodo
+```
+
+> **Reaproveitamento, não cópia:** o limpador de HTML saiu da `doaj` para `lib/rag/limpar.ts` quando
+> o Zenodo passou a precisar dele. Copiar a função pra cada fonte é o defeito que este repositório
+> já pagou duas vezes — a regra do `tituloEResumo` duplicada em Python e a contagem de mentores
+> escrita à mão.
+
+#### Verificado e disponível, ainda não construído
+
+| fonte | licença | volume medido | para |
+|---|---|---|---|
+| **peS2o** | ODC-By | ~40M artigos | só com lista de termos em inglês (ver acima) |
+
+
+#### Recusados, com o motivo
+
+As recusas agora são **dado**, não prosa: moram em `FONTES_RECUSADAS` (`lib/rag/fontes.ts`), cada
+uma com motivo categorizado e **evidência conferível** — e um teste exige que a evidência traga
+número ou nomeie o campo/arquivo que foi lido, porque *"não serviu"* não é motivo.
+
+```bash
+npx tsx scripts/datasets-inventario.ts --recusadas
+```
+
+**17 fontes recusadas**, por cinco motivos:
+
+| motivo | n | as mais relevantes |
+|---|---:|---|
+| **licença** | 7 | Embrapa (59.700 registros em PT, mas `dc:rights` só diz `openAccess`), acervos de PDF no GitHub (infringentes), LibreTexts e OpenStax (CC BY-NC-SA), Stack Exchange (restrição de jul/2024) |
+| **acesso** | 4 | DOAJ (403; dump liberado caso a caso), `roots_pt_*` (401 `GatedRepo`), CORE e OpenAlex (exigem chave) |
+| **inalcançável** | 2 | BDTD, SciELO Books, Teses USP, UNESP, Lume (OAI não responde); Gutendex |
+| **inadequado** | 3 | material aberto mínimo no GitHub, SciELO pequenos (4.000 e 200 linhas), benchmarks de deep research |
+| **idioma** | 1 | **peS2o** — ODC-By e 40M artigos, mas 5,4% de aproveitamento com física e dados-ia em zero |
+
+A única que está nas **duas** listas é a **DOAJ**: a fonte existe em código, testada, e não pode
+rodar. Um teste garante que nenhuma outra apareça nas duas.
+
+#### Benchmarks (de `mangopy/Deep-Research-Survey`)
+
+Aquele repositório é uma **lista de leitura** (265 links, 182 para o arXiv, **sem LICENSE**), e os 14
+datasets dele no HF são **benchmarks de avaliação de agente**, não corpus de conhecimento. Não somam
+nada à cobertura. Servem a um buraco diferente: não temos nenhum benchmark externo do nosso modo de
+pesquisa. Os de licença limpa são `ByteDance-BandAI/ReportBench` (CC0),
+`google/frames-benchmark` (Apache-2.0) e `callanwu/WebWalkerQA` (Apache-2.0).
+
+### 10.8 · O que mais existe no HF, com licença conferida
+
+Verificado via `cardData.license` na API, não de memória:
+
+| dataset | licença | serve para |
+|---|---|---|
+| `wikimedia/wikipedia` (`20231101.pt`) | cc-by-sa-3.0 + gfdl | **em produção** — as 17 áreas, em PT |
+| `FreedomIntelligence/MMLU_Portuguese` | mit | **em produção** — 743 docs, fonte `mmlu` (ver 10.3) |
+| `liaad/math_dataset_portuguese` | mit | matemática em PT (sintético, DeepMind traduzido) |
+| `maritaca-ai/enem` | apache-2.0 | **já em produção** na fonte `enem` |
+| `kamel-usp/aes_enem_dataset` | apache-2.0 | redação do ENEM |
+| `tardellirs/brazilian-federal-law-corpus` | cc-by-4.0 | o agente de leis, quando ele existir |
+| `allenai/peS2o` | odc-by | ~40M artigos acadêmicos (sem viewer; só parquet) |
+| `HuggingFaceFW/fineweb-2` | odc-by | web em PT (`por_Latn`), bruta — não curada |
+| `HuggingFaceTB/cosmopedia` | apache-2.0 | livros-texto sintéticos |
+
+**O que NÃO achei:** corpus aberto decente para **veterinária** (nenhum com licença comercial clara),
+e para enfermagem/farmácia só coisas minúsculas ou sintéticas. É a Wikipédia PT que cobre esses três
+— que era exatamente o buraco levantado antes.

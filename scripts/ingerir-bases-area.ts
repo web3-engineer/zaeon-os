@@ -3,18 +3,38 @@
  *
  *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --seco              # só conta (nada grava)
  *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes scielo,wiki,medicina,enem
- *   opções: --por-area 1500  --dir /tmp/bases (JSONL gerados por scripts/scielo-para-jsonl.py)  --linhas N (teto lido da SciELO)
+ *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes dataset --dir /opt/zaeon/dataset
+ *   opções: --por-area 1500  --dir <pasta> (o JSONL da SciELO, feito por scripts/scielo-para-jsonl.ts)  --linhas N
  *
- * A API de linhas do HF (datasets-server) não serve a SciELO (parquet de 2,8 GB) e devolve 429 rápido nas outras, então
- * os parquets viram JSONL antes (scielo.jsonl, medical_meadow_wikidoc_pt.jsonl, information-pt.jsonl com --cru) e o
- * ENEM vem direto dos .jsonl do repositório.
+ * A fonte `dataset` lê o DATASET montado por scripts/dataset-montar.mjs: cada `<area>/<nome>.jsonl` já vem no
+ * contrato {chave, titulo, texto, area} com a licença no rodapé do texto, e cada `<area>/*.pdf` entra por
+ * `ingerirPdf`, que preserva o número de página — é ele que faz a citação ao aluno apontar pra folha certa.
+ *
+ *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes wikipt --wiki-shards 6
+ *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes mmlu
+ *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes arxiv
+ *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes wikilivros
+ *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes doaj  [--doaj-paginas 4]
+ *   docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes zenodo [--zenodo-paginas 4]
+ *
+ * A fonte `wikipt` lê o dataset `wikimedia/wikipedia` (config 20231101.pt) DIRETO DOS PARQUETS, por
+ * requisição de faixa (HTTP range) — o `hyparquet` baixa só os pedaços de que precisa, então não há
+ * download de 2,4 GB nem arquivo temporário. Medido em 2026-11-08: shard de 406 MB, 185.375 linhas,
+ * 3 linhas lidas em 1,9 s. A API de linhas (/rows) NÃO serve pra isso: é 100 linhas por chamada e o
+ * nginx do HF devolve 502 depois de ~23 chamadas anônimas (medido: 20/20 falhas em sequência).
+ * A decisão de cada verbete é pura e mora em lib/rag/wikipedia (com testes); aqui fica só o I/O.
+ *
+ * A API de linhas do HF (datasets-server) devolve 502 depois de ~23 chamadas anônimas, então nenhuma
+ * fonte aqui depende dela. As pequenas e bem repartidas (`medicina`) são lidas do parquet DIRETO; a
+ * SciELO não cabe nesse caminho (2 grupos de linha, pico de 11 GB) e passa pelo
+ * scripts/scielo-para-jsonl.ts antes; o ENEM vem dos .jsonl do repositório dele.
  *
  * Grava pelo MESMO caminho dos PDFs (lib/rag/ingerir `ingerirTexto`): dedupe por hash, trechos, fila de vetores
  * (o worker rag-index gera os embeddings depois; até lá a busca por palavra já acha). Rodar de novo é seguro.
  * Licenças (comercial ok): SciELO pt CC-BY-4.0, Wikipédia CC-BY-SA, rhaymison/medicine-* Apache-2.0, maritaca-ai/enem Apache-2.0.
  * A fonte e a licença vão no fim de cada documento — a citação do chat mostra o título, e o crédito fica no texto.
  */
-import { AREAS, AREA_GERAL, classificarArea, idArea, tituloEResumo } from "../lib/rag/areas";
+import { AREAS, AREA_GERAL, SLUGS_AREA, classificarArea, idArea, tituloEResumo } from "../lib/rag/areas";
 
 const args = process.argv.slice(2);
 const opt = (k: string, d: string) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
@@ -23,16 +43,43 @@ const FONTES = opt("--fontes", "scielo,wiki,medicina,enem").split(",");
 const POR_AREA = Number(opt("--por-area", "1500"));
 const LINHAS = Number(opt("--linhas", "1000000"));
 const DIR = opt("--dir", "/tmp/bases");
+const WIKI_SHARDS_USAR = Number(opt("--wiki-shards", "6"));
+const DOAJ_PAGINAS = Number(opt("--doaj-paginas", "0"));   // 0 = o padrão do módulo
+const ZENODO_PAGINAS = Number(opt("--zenodo-paginas", "0"));
+const WIKI_LINHAS = Number(opt("--wiki-linhas", String(Number.MAX_SAFE_INTEGER)));
 const UA = { "User-Agent": "ZaeonBot/1.0 (https://zaeon.com.br; bases de estudo)" };
 
 const espera = (ms: number) => new Promise((r) => setTimeout(r, ms));
-async function json(url: string, tentativas = 5): Promise<any> {
+/**
+ * GET com JSON, devolvendo o MOTIVO em vez de jogar fora.
+ *
+ * Antes isto lançava um erro genérico e quem chamava fazia `.catch(() => null)`, e o resultado foi
+ * uma hora perdida na VPS: a fonte `wiki` imprimiu 122 linhas de "sem texto" quando a verdade era
+ * HTTP 429 da Wikimedia. A mensagem mentia, então ninguém podia saber. Agora o status volta.
+ *
+ * E respeita `Retry-After`: a borda da Wikimedia manda `retry-after: 1` e a escada cega de
+ * 2/4/8/16/32s gastava 62 s por verbete pra esperar um segundo. Teto de 30 s porque o cabeçalho é
+ * de terceiro e pode vir absurdo.
+ */
+type Resposta = { ok: true; dados: any } | { ok: false; motivo: string };
+
+async function buscarJson(url: string, tentativas = 5): Promise<Resposta> {
+  let ultimo = "sem resposta";
   for (let i = 0; i < tentativas; i++) {
-    const r = await fetch(url, { headers: { ...UA, ...(process.env.HF_TOKEN ? { Authorization: `Bearer ${process.env.HF_TOKEN}` } : {}) } }).catch(() => null);
-    if (r?.ok) return r.json();
-    await espera(2000 * 2 ** i);
+    const r = await fetch(url, { headers: { ...UA, ...(process.env.HF_TOKEN ? { Authorization: `Bearer ${process.env.HF_TOKEN}` } : {}) } })
+      .catch((e: unknown) => { ultimo = `rede: ${(e as Error)?.message ?? e}`; return null; });
+    if (r?.ok) {
+      const dados = await r.json().catch((e: unknown) => { ultimo = `json inválido: ${(e as Error)?.message ?? e}`; return undefined; });
+      if (dados !== undefined) return { ok: true, dados };
+    } else if (r) {
+      ultimo = `HTTP ${r.status}`;
+    }
+    if (i === tentativas - 1) break;
+    const pedido = Number(r?.headers.get("retry-after") ?? 0);
+    const espere = pedido > 0 ? Math.min(pedido, 30) * 1000 : 2000 * 2 ** i;
+    await espera(espere);
   }
-  throw new Error(`falhou: ${url.slice(0, 120)}`);
+  return { ok: false, motivo: `${ultimo} após ${tentativas} tentativas` };
 }
 async function* jsonl(caminho: string): AsyncGenerator<any> {
   const { createReadStream } = await import("node:fs");
@@ -46,8 +93,10 @@ async function main() {
     const [{ ragPg }, { enfileirarIndexacao }] = await Promise.all([import("../lib/rag/pg"), import("../lib/queue/rag")]);
     return { db: ragPg(), enfileirar: enfileirarIndexacao };
   })();
-  const { ingerirTexto } = await import("../lib/rag/ingerir");
+  const { ingerirTexto, ingerirPdf } = await import("../lib/rag/ingerir");
   const placar: Record<string, { novo: number; reaproveitado: number; erro: number }> = {};
+  /** Áreas que vieram no dado e não existem em lib/rag/areas. Falha no fim, nunca em silêncio. */
+  const semArea = new Set<string>();
   const gravar = async (area: string, fonte: string, d: { chave: string; titulo: string; texto: string }) => {
     const k = `${area} · ${fonte}`;
     placar[k] ??= { novo: 0, reaproveitado: 0, erro: 0 };
@@ -58,7 +107,7 @@ async function main() {
   };
 
   if (FONTES.includes("scielo")) {
-    // {doc_id, year, titulo, resumo} — scripts/scielo-para-jsonl.py
+    // {doc_id, year, titulo, resumo} — scripts/scielo-para-jsonl.ts
     const porArea: Record<string, Array<{ pontos: number; titulo: string; resumo: string; id: string; ano: number }>> = {};
     let lidas = 0;
     for await (const row of jsonl(`${DIR}/scielo.jsonl`)) {
@@ -79,23 +128,68 @@ async function main() {
   }
 
   if (FONTES.includes("wiki")) {
+    // Esta fonte são 122 sementes pela API AO VIVO da Wikipédia, e ela depende do humor da borda da
+    // Wikimedia com o IP de saída: a VPS levou 429 nas 122. Para carga de verdade use `wikipt`, que
+    // lê o instantâneo em parquet (8.108 documentos por shard) de um host que não nos limita.
+    // Os três desfechos são contados SEPARADAMENTE — foi juntá-los que escondeu o 429.
+    const wiki = { ok: 0, falhou: 0, inexistente: 0, curto: 0 };
+    const porque: Record<string, number> = {};
     for (const a of AREAS) {
       for (const t of a.wikipedia) {
-        const d = await json(`https://pt.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&exsectionformat=plain&redirects=1&format=json&titles=${encodeURIComponent(t)}`).catch(() => null);
-        const pag: any = d && Object.values(d.query?.pages ?? {})[0];
-        const texto = String(pag?.extract ?? "").slice(0, 20_000);
-        if (texto.length < 500) { console.warn(`[wiki] sem texto: ${t}`); continue; }
+        const r = await buscarJson(`https://pt.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&exsectionformat=plain&redirects=1&format=json&titles=${encodeURIComponent(t)}`);
+        if (!r.ok) {
+          wiki.falhou++;
+          porque[r.motivo] = (porque[r.motivo] ?? 0) + 1;
+          console.warn(`[wiki] FALHOU ${t}: ${r.motivo}`);
+          await espera(300);
+          continue;
+        }
+        const pag: any = Object.values(r.dados?.query?.pages ?? {})[0];
+        // `missing` é a resposta da API pra verbete que não existe — é redirecionamento morto ou
+        // título trocado na nossa lista, e tem conserto diferente de rede.
+        if (!pag || pag.missing !== undefined) {
+          wiki.inexistente++;
+          console.warn(`[wiki] verbete inexistente: ${t}`);
+          await espera(300);
+          continue;
+        }
+        const texto = String(pag.extract ?? "").slice(0, 20_000);
+        if (texto.length < 500) {
+          wiki.curto++;
+          console.warn(`[wiki] verbete curto: ${t} (${texto.length} chars)`);
+          await espera(300);
+          continue;
+        }
+        wiki.ok++;
         await gravar(a.slug, "wikipedia", { chave: `wiki-pt-${pag.title}`, titulo: `${pag.title} (Wikipédia)`, texto: `${texto}\n\nFonte: Wikipédia em português, verbete "${pag.title}" — licença CC BY-SA 4.0.` });
+        // O passo fica FORA do caminho de sucesso: antes a pausa só acontecia quando dava certo, e
+        // uma rodada limitada batia na Wikimedia sem pausa nenhuma — piorando o que já estava ruim.
         await espera(300);
       }
+    }
+    console.log(`[wiki] ${wiki.ok} ok · ${wiki.falhou} falharam · ${wiki.inexistente} inexistentes · ${wiki.curto} curtos`);
+    for (const [m, n] of Object.entries(porque).sort((x, y) => y[1] - x[1])) console.log(`[wiki]   ${n}x ${m}`);
+    if (wiki.ok === 0 && wiki.falhou > 0) {
+      console.warn("[wiki] NENHUMA semente entrou e todas falharam na rede — é limite da Wikimedia pro IP de saída, não verbete vazio. Use `--fontes wikipt`.");
     }
   }
 
   if (FONTES.includes("medicina")) {
     // "<s> [INST] <<SYS>>…<</SYS>> pergunta [/INST] resposta </s>" → lotes de 20 perguntas e respostas por documento
+    // Lê o PARQUET direto do Hugging Face, sem JSONL intermediário. Antes dependia de um arquivo em
+    // --dir, e foi assim que esta fonte morreu: o /tmp da VPS foi limpo e ela não pôde ser retomada.
+    // Dá pra ler direto porque estes dois são pequenos e bem repartidos — medido em 2026-11-08:
+    // 5,5 MB / 10.000 linhas / 10 grupos e 3,0 MB / 6.865 linhas / 7 grupos, pico de 90 MB de RSS.
+    // (A SciELO NÃO cabe nesse caminho: 2 grupos, páginas gigantes, pico de 11 GB — por isso ela
+    // continua passando pelo scripts/scielo-para-jsonl.ts.)
+    const hp = await import("hyparquet").catch((e: unknown) => {
+      throw new Error(`o pacote \`hyparquet\` não está neste contêiner. Reconstrua a imagem, ou: `
+        + `\`docker exec -u 0 -w /app zaeon_web npm i hyparquet --no-audit --no-fund\`. `
+        + `Erro original: ${(e as Error)?.message ?? e}`);
+    });
     const fontes = [
-      { ds: "rhaymison/medicine-medical_meadow_wikidoc_pt", arq: "medical_meadow_wikidoc_pt.jsonl", areas: ["medicina", "enfermagem"] },
-      { ds: "rhaymison/medicine-information-pt", arq: "information-pt.jsonl", areas: ["farmacia", "medicina"] },
+      { ds: "rhaymison/medicine-medical_meadow_wikidoc_pt", areas: ["medicina", "enfermagem"] },
+      { ds: "rhaymison/medicine-information-pt", areas: ["farmacia", "medicina"] },
     ];
     for (const f of fontes) {
       let lote: string[] = [];
@@ -108,8 +202,13 @@ async function main() {
         }
         lote = [];
       };
-      for await (const row of jsonl(`${DIR}/${f.arq}`)) {
-        const m = /\[\/SYS\]\]?|<<\/SYS>>/.exec(row.input ?? "");
+      const url = `https://huggingface.co/datasets/${f.ds}/resolve/main/data/train-00000-of-00001.parquet`;
+      const file = await hp.asyncBufferFromUrl({ url });
+      const metadata = await hp.parquetMetadataAsync(file);
+      const linhas = await hp.parquetReadObjects({ file, metadata, columns: ["input"] }) as { input?: unknown }[];
+      console.log(`[medicina] ${f.ds}: ${linhas.length.toLocaleString("pt-BR")} linhas (${(file.byteLength / 1048576).toFixed(1)} MB)`);
+      for (const row of linhas) {
+        const m = /\[\/SYS\]\]?|<<\/SYS>>/.exec(String(row.input ?? ""));
         const corpo = String(row.input ?? "").slice(m ? m.index + m[0].length : 0);
         const [perg, resp] = corpo.split("[/INST]");
         const P = perg?.replace(/<\/?s>|\[INST\]/g, "").trim(), R = resp?.replace(/<\/?s>/g, "").trim();
@@ -133,7 +232,370 @@ async function main() {
     }
   }
 
+  if (FONTES.includes("zenodo")) {
+    // Zenodo: repositório aberto, onde QUALQUER UM deposita e cada depósito declara a sua licença.
+    // Por isso o portão de licença é por DOCUMENTO (lib/rag/zenodo), e não da fonte inteira — é o
+    // único lugar do nosso RAG assim. Medido em 200 registros: 184 cc-by-4.0, 6 cc-by-sa-4.0,
+    // 7 cc-by-nc-nd-4.0 (recusados) e 3 sem licença (recusados).
+    //
+    // Busca por FRASE em português, pelo mesmo motivo da DOAJ: `language` é declarado pelo
+    // depositante e não é confiável (numa fatia de `+language:por` a descrição vinha em inglês, e o
+    // aproveitamento caiu pra 12%). Por frase, "Enfermagem" rendeu 23 de 25, todos em enfermagem.
+    const { ESPERA_MS, PAGINAS_POR_FRASE, TENTATIVAS_POR_PAGINA, documentoDoZenodo, ehDescarte, esperaDoRecuo, frasesDaArea, urlDaBusca } =
+      await import("../lib/rag/zenodo");
+    const { SLUGS_AREA, classificarArea } = await import("../lib/rag/areas");
+    const paginas = ZENODO_PAGINAS > 0 ? ZENODO_PAGINAS : PAGINAS_POR_FRASE;
+
+    const porArea: Record<string, number> = {};
+    const descartes: Record<string, number> = {};
+    let pedidos = 0, recusasSeguidas = 0, parar = false;
+    const LIMITE_RECUSAS = 3;   // mesma lição da DOAJ: servidor dizendo não é resposta, não ruído
+    for (const area of SLUGS_AREA) {
+      if (parar) break;
+      for (const frase of frasesDaArea(area)) {
+        if (parar) break;
+        if ((porArea[area] ?? 0) >= POR_AREA) break;
+        for (let pagina = 1; pagina <= paginas; pagina++) {
+          // O 429 do Zenodo é transitório: repete-se a MESMA página, respeitando o Retry-After.
+          // Abandonar a página na primeira recusa perdia 25 registros de cada vez.
+          let r: Response | null = null;
+          for (let tentativa = 0; tentativa < TENTATIVAS_POR_PAGINA; tentativa++) {
+            r = await fetch(urlDaBusca(frase, pagina), { headers: UA }).catch(() => null);
+            pedidos++;
+            if (r?.status !== 429 && r?.status !== 403) break;
+            const espere = esperaDoRecuo(r.headers.get("retry-after"), tentativa);
+            console.warn(`[zenodo] "${frase}" p${pagina}: HTTP ${r.status} — esperando ${(espere / 1000).toFixed(1)}s (tentativa ${tentativa + 1}/${TENTATIVAS_POR_PAGINA})`);
+            await espera(espere);
+          }
+          if (r?.status === 403 || r?.status === 429) {
+            recusasSeguidas++;
+            if (recusasSeguidas >= LIMITE_RECUSAS) {
+              console.error(`[zenodo] PARANDO: ${LIMITE_RECUSAS} páginas seguidas recusadas mesmo após ${TENTATIVAS_POR_PAGINA} tentativas cada.`);
+              parar = true;
+            }
+            break;
+          }
+          if (!r?.ok) { console.warn(`[zenodo] "${frase}" p${pagina}: HTTP ${r?.status ?? "falhou"}`); break; }
+          recusasSeguidas = 0;
+          const corpo = await r.json().catch(() => null) as { hits?: { hits?: unknown[] } } | null;
+          const linhas = corpo?.hits?.hits ?? [];
+          if (!linhas.length) break;
+          for (const linha of linhas) {
+            const d = documentoDoZenodo(linha as never, classificarArea);
+            if (ehDescarte(d)) { descartes[d.descarte] = (descartes[d.descarte] ?? 0) + 1; continue; }
+            if ((porArea[d.area] ?? 0) >= POR_AREA) { descartes.area_cheia = (descartes.area_cheia ?? 0) + 1; continue; }
+            porArea[d.area] = (porArea[d.area] ?? 0) + 1;
+            await gravar(d.area, "zenodo", { chave: d.chave, titulo: d.titulo, texto: d.texto });
+          }
+          await espera(ESPERA_MS);
+        }
+      }
+      console.log(`[zenodo] ${area.padEnd(16)} ${String(porArea[area] ?? 0).padStart(5)} aceitos (${pedidos} pedidos)`);
+    }
+    console.log(`[zenodo] ${pedidos} pedidos · descartes: ${Object.entries(descartes).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}=${v}`).join(" ") || "nenhum"}`);
+  }
+
+  if (FONTES.includes("doaj")) {
+    // DOAJ: resumo de artigo de acesso aberto. Metadado de artigo é CC0 1.0 pelos Termos da DOAJ.
+    //
+    // A BUSCA é só a ALAVANCA de colheita; quem decide a área é sempre o `classificarArea`. Um
+    // artigo achado pela frase "Concreto armado" pode ser de química, e tem de ir pra química —
+    // deixar a consulta ditar a área seria enfiar na base do agente errado o que ele não sabe.
+    // Por isso o teto é conferido na área CLASSIFICADA, não na área que fez a busca.
+    //
+    // As três paredes da API, medidas: pageSize limitado a 50, nenhuma consulta entrega além de
+    // 1.000 registros, e curinga é recusado. Daí o desenho: muitas frases curtas em vez de
+    // paginação profunda — e as frases são os `AREAS[].wikipedia`, que já existem.
+    const { ESPERA_MS, PAGINAS_POR_FRASE, documentoDoDoaj, ehDescarte, frasesDaArea, urlDaBusca } =
+      await import("../lib/rag/doaj");
+    const { SLUGS_AREA, classificarArea } = await import("../lib/rag/areas");
+    const paginas = DOAJ_PAGINAS > 0 ? DOAJ_PAGINAS : PAGINAS_POR_FRASE;
+
+    const porArea: Record<string, number> = {};
+    const descartes: Record<string, number> = {};
+    let pedidos = 0;
+    // DISJUNTOR. A primeira versão disto insistiu 168 vezes num servidor que respondia 403 — o que é
+    // defeito meu, não da DOAJ: servidor dizendo não é resposta, não ruído. Três recusas seguidas e
+    // a fonte para, apontando a política de acesso em massa deles.
+    let recusasSeguidas = 0;
+    const LIMITE_RECUSAS = 3;
+    let parar = false;
+    for (const area of SLUGS_AREA) {
+      if (parar) break;
+      for (const frase of frasesDaArea(area)) {
+        if (parar) break;
+        if ((porArea[area] ?? 0) >= POR_AREA) break;   // a área que motivou a busca já encheu
+        for (let pagina = 1; pagina <= paginas; pagina++) {
+          const r = await fetch(urlDaBusca(frase, pagina), { headers: UA }).catch(() => null);
+          pedidos++;
+          if (r?.status === 403 || r?.status === 429) {
+            recusasSeguidas++;
+            console.warn(`[doaj] "${frase}" p${pagina}: HTTP ${r.status} (recusa ${recusasSeguidas}/${LIMITE_RECUSAS})`);
+            if (recusasSeguidas >= LIMITE_RECUSAS) {
+              console.error(
+                "[doaj] PARANDO: a DOAJ recusou "
+                + `${LIMITE_RECUSAS} pedidos seguidos. Os Termos dela encaminham uso em massa pelo `
+                + "dump de dados, que é liberado CASO A CASO por e-mail ao platform manager "
+                + "(https://doaj.org/docs/public-data-dump/). Peça o acesso em vez de insistir.",
+              );
+              parar = true;
+            }
+            break;
+          }
+          if (!r?.ok) { console.warn(`[doaj] "${frase}" p${pagina}: HTTP ${r?.status ?? "falhou"}`); break; }
+          recusasSeguidas = 0;
+          const corpo = await r.json().catch(() => null) as { results?: unknown[] } | null;
+          const linhas = corpo?.results ?? [];
+          if (!linhas.length) break;
+          for (const linha of linhas) {
+            const d = documentoDoDoaj(linha as never, classificarArea);
+            if (ehDescarte(d)) { descartes[d.descarte] = (descartes[d.descarte] ?? 0) + 1; continue; }
+            if ((porArea[d.area] ?? 0) >= POR_AREA) { descartes.area_cheia = (descartes.area_cheia ?? 0) + 1; continue; }
+            porArea[d.area] = (porArea[d.area] ?? 0) + 1;
+            await gravar(d.area, "doaj", { chave: d.chave, titulo: d.titulo, texto: d.texto });
+          }
+          await espera(ESPERA_MS);
+        }
+      }
+      console.log(`[doaj] ${area.padEnd(16)} ${String(porArea[area] ?? 0).padStart(5)} aceitos (${pedidos} pedidos até aqui)`);
+    }
+    console.log(`[doaj] ${pedidos} pedidos · descartes: ${Object.entries(descartes).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}=${v}`).join(" ") || "nenhum"}`);
+    if (parar) console.log("[doaj] nada foi colhido: a fonte está bloqueada até a DOAJ liberar o acesso.");
+  }
+
+  if (FONTES.includes("wikilivros")) {
+    // Wikilivros e Wikiversidade em português — o último corpus aberto que alcança enfermagem,
+    // farmácia, veterinária e agronomia, e em PORTUGUÊS, então o classificador funciona nele.
+    //
+    // Vem do dump Enterprise (.json.tar.gz) e NÃO do pages-articles.xml.bz2: nem o zlib do node nem
+    // o contêiner de produção abrem bz2 (a imagem instala só openssl, ca-certificates e ffmpeg).
+    // O tar tem UM membro, cujo cabeçalho são 512 bytes fixos — é o que o Transform abaixo pula.
+    // Tudo por FLUXO: 70,7 MB comprimidos não precisam caber na memória nem no disco.
+    const { createGunzip } = await import("node:zlib");
+    const { createInterface } = await import("node:readline");
+    const { Readable, Transform } = await import("node:stream");
+    const { BLOCO_TAR, WIKIS, documentoDoWikilivro, ehDescarte, urlDoWiki } = await import("../lib/rag/wikilivros");
+
+    const porArea: Record<string, number> = {};
+    for (const wiki of WIKIS) {
+      const r = await fetch(urlDoWiki(wiki), { headers: UA }).catch(() => null);
+      if (!r?.ok || !r.body) { console.warn(`[wikilivros] ${wiki}: HTTP ${r?.status ?? "falhou"}`); continue; }
+
+      let aPular = BLOCO_TAR;
+      const pularCabecalho = new Transform({
+        transform(pedaco: Buffer, _enc, cb) {
+          if (aPular > 0) {
+            const corta = Math.min(aPular, pedaco.length);
+            aPular -= corta;
+            pedaco = pedaco.subarray(corta);
+          }
+          cb(null, pedaco);
+        },
+      });
+
+      const descartes: Record<string, number> = {};
+      let lidas = 0, aceitos = 0;
+      const linhas = createInterface({
+        input: Readable.fromWeb(r.body as never).pipe(createGunzip()).pipe(pularCabecalho),
+        crlfDelay: Infinity,
+      });
+      for await (const linha of linhas) {
+        if (!linha.trim()) continue;
+        let o: unknown;
+        // o tar enche o fim do membro com NUL: essas linhas não são JSON, e pular é o certo
+        try { o = JSON.parse(linha); } catch { continue; }
+        lidas++;
+        const d = documentoDoWikilivro(wiki, o as never);
+        if (ehDescarte(d)) { descartes[d.descarte] = (descartes[d.descarte] ?? 0) + 1; continue; }
+        if ((porArea[d.area] ?? 0) >= POR_AREA) { descartes.area_cheia = (descartes.area_cheia ?? 0) + 1; continue; }
+        porArea[d.area] = (porArea[d.area] ?? 0) + 1;
+        aceitos++;
+        await gravar(d.area, wiki, { chave: d.chave, titulo: d.titulo, texto: d.texto });
+      }
+      console.log(`[wikilivros] ${wiki}: ${lidas.toLocaleString("pt-BR")} páginas, ${aceitos} aceitas · descartes: ${Object.entries(descartes).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}=${v}`).join(" ") || "nenhum"}`);
+    }
+  }
+
+  if (FONTES.includes("arxiv")) {
+    // Resumos do arXiv, que JÁ VÊM ROTULADOS pela taxonomia dele — nenhum classificador no caminho.
+    // É isto que faz o arXiv servir e o peS2o não: medi o peS2o em 84.967 registros e o
+    // classificador aproveitou 5,4%, com física e dados-ia em ZERO, porque ele é em inglês e os
+    // nossos termos são em português. Rótulo pronto resolve de graça.
+    // Licença: o METADADO (título + resumo) é CC0 1.0 pelos Termos de Uso das APIs do arXiv. O texto
+    // completo NÃO é — tem licença do autor, com opções NonCommercial — e por isso não entra.
+    const { AREAS_DO_ARXIV, ESPERA_MS, POR_PAGINA, artigosDoAtom, documentoDoArtigo, totalDoAtom, urlDaBusca } =
+      await import("../lib/rag/arxiv");
+
+    for (const area of AREAS_DO_ARXIV) {
+      let aceitos = 0, vistos = 0, curtos = 0, total = -1;
+      for (let inicio = 0; aceitos < POR_AREA; inicio += POR_PAGINA) {
+        const r = await fetch(urlDaBusca(area, inicio, POR_PAGINA), { headers: UA }).catch(() => null);
+        if (!r?.ok) { console.warn(`[arxiv] ${area} em start=${inicio}: HTTP ${r?.status ?? "falhou"}`); break; }
+        const xml = await r.text();
+        if (total < 0) total = totalDoAtom(xml);
+        const artigos = artigosDoAtom(xml);
+        // página vazia = fim da lista (ou o arXiv cortou): parar é o certo, não insistir
+        if (!artigos.length) break;
+        for (const a of artigos) {
+          vistos++;
+          const d = documentoDoArtigo(a, area);
+          if (!d) { curtos++; continue; }
+          if (aceitos >= POR_AREA) break;
+          aceitos++;
+          await gravar(area, "arxiv", { chave: d.chave, titulo: d.titulo, texto: d.texto });
+        }
+        if (inicio + POR_PAGINA >= total) break;
+        await espera(ESPERA_MS);   // os Termos de Uso do arXiv pedem 3 s entre chamadas
+      }
+      console.log(`[arxiv] ${area.padEnd(16)} ${String(aceitos).padStart(5)} de ${total.toLocaleString("pt-BR")} disponíveis (vistos ${vistos}, resumo curto ${curtos})`);
+      await espera(ESPERA_MS);
+    }
+  }
+
+  if (FONTES.includes("mmlu")) {
+    // `FreedomIntelligence/MMLU_Portuguese`, licença MIT (lida do cardData da API). 57 matérias x 2
+    // splits = 114 CSVs pequenos baixados por `resolve` — nada de parquet e nada da API de linhas,
+    // que limita. O mapa matéria→área e o agrupamento em lotes de 20 são puros e ficam em
+    // lib/rag/mmlu, com 11 testes; aqui fica só o download.
+    const { MATERIAS, MMLU_SPLITS, documentosDaMateria, linhasDoCsv, questaoMmlu, urlDoCsv } =
+      await import("../lib/rag/mmlu");
+    const materias = Object.keys(MATERIAS).sort();
+    let tortas = 0;
+    for (const materia of materias) {
+      // os dois splits entram no MESMO balaio da matéria: `dev` tem 5 questões e sozinho daria um
+      // documento de 5, que é curto demais pra valer um documento.
+      const questoes: string[] = [];
+      for (const split of MMLU_SPLITS) {
+        const r = await fetch(urlDoCsv(split, materia), { headers: UA }).catch(() => null);
+        if (!r?.ok) { console.warn(`[mmlu] ${materia}/${split}: HTTP ${r?.status ?? "falhou"}`); continue; }
+        for (const linha of linhasDoCsv(await r.text())) {
+          const q = questaoMmlu(linha);
+          if (q) questoes.push(q); else tortas++;
+        }
+        await espera(250);
+      }
+      const docs = documentosDaMateria(materia, questoes);
+      for (const d of docs) await gravar(d.area, "mmlu-pt", { chave: d.chave, titulo: d.titulo, texto: d.texto });
+      console.log(`[mmlu] ${materia.padEnd(36)} ${String(questoes.length).padStart(5)} questões → ${docs.length} doc(s) em ${docs[0]?.area ?? "-"}`);
+    }
+    if (tortas) console.log(`[mmlu] ${tortas} linha(s) descartada(s) por formato`);
+  }
+
+  if (FONTES.includes("wikipt")) {
+    // O contêiner em produção foi construído ANTES de o `hyparquet` entrar no package.json, então o
+    // primeiro `--fontes wikipt` lá morreria com ERR_MODULE_NOT_FOUND cru. Dizer o que fazer é mais
+    // útil que a pilha de erro do node.
+    const hyparquet = await import("hyparquet").catch((e: unknown) => {
+      throw new Error(
+        "o pacote `hyparquet` não está neste contêiner (ele entrou no package.json junto com esta fonte). "
+        + "Reconstrua a imagem, ou, pra resolver agora: "
+        + "`docker exec -w /app zaeon_web npm i hyparquet --no-audit --no-fund`. "
+        + `Erro original: ${(e as Error)?.message ?? e}`,
+      );
+    });
+    const { asyncBufferFromUrl, parquetMetadataAsync, parquetReadObjects } = hyparquet;
+    const { WIKI_CONFIG, WIKI_DATASET, WIKI_SHARDS, documentoDaWikipedia, ehDescarte, urlDoShard } =
+      await import("../lib/rag/wikipedia");
+
+    // TETO POR ÁREA, em ordem do dataset — e esta é a escolha que importa aqui.
+    // Guardar o melhor por pontos exigiria segurar POR_AREA × 17 áreas × 20 KB de texto na memória
+    // (meio giga), então a carga é POR FLUXO: cada verbete é ingerido na hora e a área para quando
+    // enche. O efeito medido: área abundante (biologia 162/3.000, química 82/3.000) enche no
+    // primeiro shard; área escassa (eng-civil 2/3.000) recolhe o corpus inteiro. A qualidade vem do
+    // limiar do classificador (5 pontos) e do mínimo de 1.200 chars, não de ranquear.
+    const porArea: Record<string, number> = {};
+    const descartes: Record<string, number> = {};
+    const BLOCO = 2000;
+
+    for (let shard = 0; shard < Math.min(WIKI_SHARDS_USAR, WIKI_SHARDS); shard++) {
+      const url = urlDoShard(shard);
+      const file = await asyncBufferFromUrl({ url });
+      const metadata = await parquetMetadataAsync(file);
+      const total = Math.min(Number(metadata.num_rows), WIKI_LINHAS);
+      console.log(`[wikipt] shard ${shard}: ${(file.byteLength / 1048576).toFixed(0)} MB, ${total.toLocaleString("pt-BR")} verbetes`);
+
+      for (let ini = 0; ini < total; ini += BLOCO) {
+        const fim = Math.min(ini + BLOCO, total);
+        // só as colunas necessárias: o `id` não entra, e cada coluna a menos é faixa a menos na rede
+        const linhas = await parquetReadObjects({ file, metadata, rowStart: ini, rowEnd: fim, columns: ["title", "text", "url"] });
+        for (const linha of linhas) {
+          const d = documentoDaWikipedia(linha as Record<string, unknown>);
+          if (ehDescarte(d)) { descartes[d.descarte] = (descartes[d.descarte] ?? 0) + 1; continue; }
+          if ((porArea[d.area] ?? 0) >= POR_AREA) { descartes.area_cheia = (descartes.area_cheia ?? 0) + 1; continue; }
+          porArea[d.area] = (porArea[d.area] ?? 0) + 1;
+          await gravar(d.area, "wikipedia-pt", { chave: d.chave, titulo: d.titulo, texto: d.texto });
+        }
+        if (fim % 20000 === 0 || fim === total) {
+          const cheias = Object.keys(porArea).filter((a) => (porArea[a] ?? 0) >= POR_AREA).length;
+          console.log(`[wikipt] shard ${shard} ${fim.toLocaleString("pt-BR")}/${total.toLocaleString("pt-BR")} — aceitos ${Object.values(porArea).reduce((x, y) => x + y, 0)} · ${cheias} área(s) cheia(s)`);
+        }
+      }
+    }
+    console.log(`[wikipt] fonte: ${WIKI_DATASET} (${WIKI_CONFIG}) · descartes: ${Object.entries(descartes).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}=${v}`).join(" ") || "nenhum"}`);
+  }
+
+  if (FONTES.includes("dataset")) {
+    const { readdirSync, readFileSync, statSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    // A ÁREA É O ENDEREÇO. `idArea("seguranca")` devolve um turmaId que `areasDoTurno` só pede se o
+    // slug estiver em SLUGS_AREA — fora dele o documento entra no banco e NENHUM agente o alcança.
+    // Já perdi uma carga assim: ingerida, contabilizada, invisível. Então a área desconhecida PARA aqui.
+    const desconhecidas = new Set<string>();
+    const areaValida = (a: string) => {
+      if (a === AREA_GERAL || SLUGS_AREA.includes(a)) return true;
+      desconhecidas.add(a);
+      return false;
+    };
+    const pastas = readdirSync(DIR).filter((n) => !n.startsWith(".") && statSync(join(DIR, n)).isDirectory());
+    if (!pastas.length) throw new Error(`--dir ${DIR} não tem pasta de área nenhuma (rodou scripts/dataset-montar.mjs?)`);
+
+    for (const pasta of pastas.sort()) {
+      const dir = join(DIR, pasta);
+      for (const nome of readdirSync(dir).sort()) {
+        if (nome.endsWith(".jsonl")) {
+          let n = 0;
+          for await (const row of jsonl(join(dir, nome))) {
+            const area = String(row.area ?? pasta);
+            if (!areaValida(area)) continue;
+            if (!row.chave || !row.titulo || !String(row.texto ?? "").trim()) continue;
+            await gravar(area, nome.replace(/\.jsonl$/, ""), { chave: String(row.chave), titulo: String(row.titulo), texto: String(row.texto) });
+            if (++n % 500 === 0) console.log(`[dataset] ${pasta}/${nome}: ${n}`);
+          }
+          console.log(`[dataset] ${pasta}/${nome}: ${n} linhas`);
+        } else if (nome.toLowerCase().endsWith(".pdf")) {
+          if (!areaValida(pasta)) continue;
+          const k = `${pasta} · pdf`;
+          placar[k] ??= { novo: 0, reaproveitado: 0, erro: 0 };
+          if (SECO) { placar[k].novo++; continue; }
+          // `extrair` só é importado aqui: --seco roda de qualquer máquina, sem o parser de PDF.
+          // E PDF_LOADER_URL ausente faz `extractPdfStructured` devolver null em silêncio — os 14 PDFs
+          // entrariam todos como erro "leitura_falhou". Melhor parar antes, dizendo o que falta.
+          if (!process.env.PDF_LOADER_URL) throw new Error("PDF_LOADER_URL não está no ambiente — sem ela o parser devolve null e todo PDF falha; rode com --fontes dataset depois de configurá-la, ou mova os PDFs de fora do --dir");
+          const { extractPdfStructured } = await import("../lib/scholar/pdf");
+          const r = await ingerirPdf(
+            { ...deps!, extrair: extractPdfStructured },
+            { bytes: readFileSync(join(dir, nome)), nomeArquivo: nome, origem: "dataset", criadoPor: "dataset:pdf", permissao: { turmaId: idArea(pasta) } },
+          );
+          placar[k][r.status]++;
+          if (r.status === "erro") console.warn(`[erro] ${k} ${nome}: ${r.erro}`);
+        }
+      }
+    }
+    for (const a of desconhecidas) semArea.add(a);
+  }
+
   console.log(SECO ? "[seco] nada gravado — contagem do que entraria:" : "[fim] resultado:");
   for (const [k, v] of Object.entries(placar).sort()) console.log(`  ${k.padEnd(28)} novos=${v.novo} reaproveitados=${v.reaproveitado} erros=${v.erro}`);
+
+  // A falha vem DEPOIS do placar, de propósito: o que tinha área já foi ingerido e o operador precisa
+  // ver o que entrou antes de ler o que ficou de fora. Mas sai com erro, porque pular área em
+  // silêncio é como se perde uma carga: ingerida, contabilizada e invisível pro aluno.
+  if (semArea.size) {
+    throw new Error(
+      `${[...semArea].sort().join(", ")}: área inexistente em lib/rag/areas — o que está acima FOI ingerido; `
+      + "estes documentos NÃO, e não entram até a área existir COM o mentor dela "
+      + "(área órfã rouba a classificação de quem tem dono e desliga o portão de escopo).",
+    );
+  }
 }
 main().then(() => process.exit(0), (e) => { console.error(e); process.exit(1); });

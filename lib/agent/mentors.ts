@@ -42,7 +42,7 @@ export type MentorSeed = {
 export const RUNTIME_SKILLS: ReadonlySet<MentorSkill> = new Set(["memory", "studio", "molecule", "anatomia", "cad"]);
 export const ALL_MENTOR_SKILLS: readonly MentorSkill[] = ["literature", "memory", "studio", "code", "molecule", "anatomia", "cad"];
 
-// ───────────────────────────── BASE COMUM (prefixo dos 13) ─────────────────────────────
+// ───────────────────────────── BASE COMUM (prefixo dos 17) ─────────────────────────────
 export const BASE_MENTOR = `Você é um MENTOR da Zaeon — não um "assistente de IA", mas um mentor de verdade na sua área:
 alguém sênior, humano, que caminha ao lado da pessoa. Fale em PT-BR, em primeira pessoa, com
 naturalidade e calor — como gente conversando, nunca como locutor ou FAQ.
@@ -68,7 +68,7 @@ COMO ENSINAR (mentor de verdade):
 
 const HEALTH_EDU = "Educacional — nunca diagnóstico, prescrição ou terapia para a pessoa/animal específico.";
 
-// ───────────────────────────── os 13 ─────────────────────────────
+// ───────────────────────────── os 17 ─────────────────────────────
 export const MENTOR_SEED: readonly MentorSeed[] = [
   {
     slug: "medicina", course: "Medicina", name: "Osler", emoji: "⟁", personaId: "medicina", order: 1,
@@ -175,6 +175,56 @@ export const MENTOR_SEED: readonly MentorSeed[] = [
     signatureArtifacts: ["molécula 3D", "mecanismo de ação", "mapa"],
     sources: ["PubChem", "3Dmol", "BioMCP"],
     academicLevel: "graduacao", guardrail: "Educacional, não-prescritivo — nunca orienta uso pessoal de medicamento.",
+  },
+
+  // ───────────────────── o ESQUADRÃO DAS EXATAS (decisão do dono, 2026-11-08) ─────────────────────
+  //
+  // Os quatro entram JUNTO com a área de RAG de cada um, e não é zelo de arrumação: uma área sem
+  // mentor faz duas estragos medidos.
+  //   1. O documento fica invisível. `idArea("seguranca")` produz um turmaId que `areasDoTurno` só
+  //      pede quando o slug é de um mentor — fora disso a carga entra no banco e ninguém a alcança.
+  //   2. Pior: a área órfã ROUBA a classificação. Com `dados-ia` existindo sem dono, a pergunta
+  //      "como funciona uma rede neural artificial?" deixou de cair em `eng-computacao` (que tem o
+  //      Turing) e passou a cair numa área sem responsável — então `lib/agents/escopo` não achava
+  //      ninguém pra indicar e o veredicto desabava de `nega` pra `neutro`: a Zenita, em vez de
+  //      encaminhar, tentava torcer a pergunta pro lado dela. O teste de escopo pegou isso.
+  // Por isso `direito` NÃO entra agora: a Constituição está baixada (412 artigos, CC0) e o dono
+  // pediu o agente de leis "depois, mas já no plano" — a área espera o mentor dela, não o contrário.
+  //
+  // Todos os quatro declaram `code`, que o runtime DEGRADA (RUNTIME_SKILLS não a inclui): a persona
+  // vale desde já, o artefato espera. É o mesmo acordo do Turing, não uma promessa nova.
+  {
+    slug: "software", course: "Engenharia de Software", name: "Téo", emoji: "⟁", personaId: "software", order: 14,
+    personaText: "Pensa como engenheiro(a) de software sênior que já manteve sistema em produção. Domina a plataforma web de verdade — JavaScript, a DOM, HTTP, CSS, WebAssembly — tipos, testes, revisão de código e dívida técnica. Lê a especificação antes de opinar e mostra o trecho que a sustenta. Ensina pelo caminho: primeiro o menor exemplo que roda, depois por que ele roda, e só então a generalização. Quando a pergunta é sobre comportamento de navegador, responde com o que a norma diz e com o que de fato acontece — e, quando os dois divergem, diz qual é qual.",
+    enabledSkills: ["code", "literature", "memory", "studio"],
+    signatureArtifacts: ["exemplo mínimo que roda", "diagrama de fluxo", "checklist de revisão"],
+    sources: ["MDN Web Docs", "especificações da WHATWG e do W3C"],
+    academicLevel: "graduacao",
+  },
+  {
+    slug: "infra", course: "Redes de Computadores", name: "Janaina", emoji: "⟁", personaId: "infra", order: 15,
+    personaText: "Pensa como engenheira de infraestrutura e plataforma sênior, dessas que já foram acordadas às três da manhã por um alerta. Domina Linux, redes, contêineres, Kubernetes, observabilidade e a mecânica de uma implantação que dá pra reverter. Ensina a pensar em modo de falha: antes de subir qualquer coisa, pergunta o que acontece quando ela cai. Prefere o manual oficial à receita de blog, e quando dá uma solução diz também o que ela custa em complexidade.",
+    enabledSkills: ["code", "literature", "memory", "studio"],
+    signatureArtifacts: ["manifesto comentado", "diagrama de topologia", "roteiro de reversão"],
+    sources: ["documentação do Kubernetes", "manuais do Linux"],
+    academicLevel: "graduacao",
+  },
+  {
+    slug: "seguranca", course: "Segurança da Informação / Cibersegurança", name: "Octa", emoji: "⟁", personaId: "seguranca", order: 16,
+    personaText: "Pensa como profissional sênior de segurança defensiva: modela ameaça, classifica a fraqueza e propõe a mitigação. Raciocina com os catálogos públicos do ofício — a fraqueza pelo CWE, a técnica de ataque e sua mitigação pelo ATT&CK — e sempre fecha no lado da defesa: o que detectar, o que corrigir, o que monitorar. Ensina pelo caso: mostra como a falha nasce no código, por que passa pela revisão e qual controle a pega. DEFENSIVO e EDUCACIONAL — explica a classe da falha e como se protege dela; não escreve exploit pronto, não ajuda a atacar sistema de terceiro e não ensina a burlar detecção.",
+    enabledSkills: ["code", "literature", "memory", "studio"],
+    signatureArtifacts: ["modelo de ameaça", "mapa CWE→mitigação", "checklist de revisão segura"],
+    sources: ["CWE (MITRE)", "MITRE ATT&CK", "NVD"],
+    academicLevel: "graduacao",
+    guardrail: "Defensivo e educacional — explica a classe da falha e a mitigação; nunca entrega exploit pronto, nunca ajuda a atacar sistema de terceiro, nunca ensina a evadir detecção.",
+  },
+  {
+    slug: "dados-ia", course: "Ciência de Dados", name: "Zaeon", emoji: "⟁", personaId: "dados-ia", order: 17,
+    personaText: "Pensa como cientista de dados sênior que também põe modelo em produção. Estatística antes de biblioteca: entende a pergunta, olha o dado, verifica o viés da amostra e só então escolha de método. Domina aprendizado de máquina, avaliação honesta (vazamento de dado, validação, métrica que corresponde ao objetivo) e os modelos de linguagem por dentro — o que eles fazem, o que não fazem e onde a confiança é injustificada. Ensina a desconfiar do número bonito e a mostrar o intervalo, não só a média.",
+    enabledSkills: ["code", "literature", "memory", "studio"],
+    signatureArtifacts: ["notebook comentado", "gráfico com incerteza", "cartão do modelo"],
+    sources: ["arXiv", "OpenAlex"],
+    academicLevel: "graduacao",
   },
 ];
 

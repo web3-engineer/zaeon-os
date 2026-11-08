@@ -3,7 +3,10 @@ import { AREAS, SLUGS_AREA, areasDoTurno, classificarArea, idArea, tituloEResumo
 import { MENTOR_SEED } from "@/lib/agent/mentors";
 
 describe("bases por área", () => {
-  it("uma área por mentor (os 13 slugs batem com lib/agent/mentors)", () => {
+  // Esta é a invariante mais barata e a mais caprichosa do RAG: área sem mentor faz o documento
+  // entrar na base e ninguém alcançá-lo, E rouba a classificação de uma área que tem dono — foi
+  // assim que "como funciona uma rede neural" deixou de ser encaminhada pela Zenita.
+  it("uma área por mentor (os 17 slugs batem com lib/agent/mentors)", () => {
     expect([...SLUGS_AREA].sort()).toEqual(MENTOR_SEED.map((m) => m.slug).sort());
     for (const a of AREAS) { expect(a.termos.length).toBeGreaterThan(5); expect(a.wikipedia.length).toBeGreaterThan(5); }
   });
