@@ -258,7 +258,7 @@ export const CAPACIDADES: Readonly<Record<AgenteChatId, CapacidadeDoAgente>> = {
     persona: "eiffel",
     habilidades: ["cad", "literature"],
     area: "eng-civil",
-    distincao: "Engenharia civil e estrutural: modela a peça em CAD paramétrico e entrega o STEP.",
+    distincao: "Arquitetura e engenharia civil/estrutural: modela a peça em CAD paramétrico e entrega o STEP.",
     // vocabulário de PERGUNTA do campo dele (as listas de lib/rag/areas são de resumo de artigo)
     termosProprios: [
       "estrutur", "viga", "pilar", "laje", "fundac", "sapata", "estaca", "radier",
@@ -269,6 +269,8 @@ export const CAPACIDADES: Readonly<Record<AgenteChatId, CapacidadeDoAgente>> = {
       "nbr", "abnt nbr", "norma tecnica", "dimensionament", "memorial de calculo",
       "topografi", "terraplen", "drenagem", "pavimento", "asfalto", "geotecn", "solo",
       "hidraulic", "saneament", "esgoto", "reservatorio", "barragem", "ponte", "viaduto",
+      "arquitetur", "projeto arquitetonico", "partido", "implantac", "fachada", "ambiente",
+      "programa de necessidades", "circulac", "insolac", "layout", "ergonomia",
       "cad", "desenho tecnico", "planta baixa", "corte", "elevacao", "cota", "escala",
       "parametric", "extrusao", "chanfro", "filete", "esboco", "sketch", "step", "dxf",
       "momento de inercia", "centro de massa", "modulo de elasticidade", "coeficiente de seguranca",
