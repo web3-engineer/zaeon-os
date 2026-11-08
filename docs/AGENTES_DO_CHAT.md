@@ -887,11 +887,55 @@ seria comido como marcação.
 docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes doaj --seco
 ```
 
+#### A fonte `zenodo` — 1.739 documentos, e o único portão de licença POR DOCUMENTO
+
+O Zenodo é repositório aberto: qualquer pessoa deposita e **cada depósito declara a sua própria
+licença**. Isso muda a natureza do portão — nas outras fontes a licença é uma, da fonte inteira;
+aqui é por registro, e um registro sem licença aceitável não entra de jeito nenhum.
+
+O portão (`licencaPermiteUsoComercial`) é **allowlist por prefixo** e recusa **por omissão**:
+licença nova aparecendo no Zenodo fica de fora até alguém olhar, em vez de entrar por descuido. E há
+uma segunda trava para `-nc` e `-nd`, porque `cc-by-nc-4.0` **começa com** `cc-by-` e sem ela
+passaria. Medido em 200 registros reais: 184 `cc-by-4.0`, 7 `cc-by-nc-nd-4.0` (recusados), 6
+`cc-by-sa-4.0`, 3 sem licença (recusados).
+
+**As paredes da API:** `size` aceita no máximo **25** (50 devolve "A validation error occurred") e a
+paginação vai até a **página 400** — a 401 devolve "Invalid querystring parameters". Logo **10.000
+registros por consulta**, dez vezes o teto da DOAJ.
+
+**Busca por frase, não por idioma**, pelo mesmo motivo da DOAJ: `language` é declarado pelo
+depositante e numa fatia de `+language:por` a descrição vinha em inglês, com **12%** de
+aproveitamento. Por frase, "Enfermagem" rendeu **23 de 25, todos em enfermagem**. As frases são os
+`AREAS[].wikipedia` — os mesmos de `wiki` e `doaj`.
+
+**O 429 é transitório, e isso valeu o dobro.** A primeira versão abandonava a página na primeira
+recusa: colheu **773** documentos e o disjuntor a parou na **9ª área de 17**. Com recuo respeitando
+`Retry-After` (e 1,5 s de base em vez de 1 s, que encostava no limite), a varredura completa deu
+**1.739 documentos nas 17 áreas em 556 pedidos**, sem disjuntor disparar.
+
+```
+medicina 285 · enfermagem 201 · eng-energias 152 · psicologia 148 · biologia 125 · agronomia 124
+eng-civil 123 · farmacia 99 · software 86 · matematica 84 · quimica 71 · seguranca 51
+veterinaria 45 · eng-computacao 41 · dados-ia 35 · infra 35 · fisica 34
+descartes: sem área 3.807 · LICENÇA RECUSADA 1.032 · resumo curto 571
+```
+
+O portão recusou **1.032 registros** (14% dos 7.149 vistos) só por licença. E `enfermagem` ganhou
+**201** documentos — a área que estava em zero no Wikilivros e em 33 na Wikipédia.
+
+```bash
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes zenodo
+```
+
+> **Reaproveitamento, não cópia:** o limpador de HTML saiu da `doaj` para `lib/rag/limpar.ts` quando
+> o Zenodo passou a precisar dele. Copiar a função pra cada fonte é o defeito que este repositório
+> já pagou duas vezes — a regra do `tituloEResumo` duplicada em Python e a contagem de mentores
+> escrita à mão.
+
 #### Verificado e disponível, ainda não construído
 
 | fonte | licença | volume medido | para |
 |---|---|---|---|
-| **Zenodo** (API aberta) | por registro (`license.id`) | eng-civil 2.276 · veterinaria 2.238 · psicologia 2.250 · enfermagem 2.198 · farmacia 173 · agronomia 103, em `language:por` | as áreas que o arXiv não alcança |
 | **peS2o** | ODC-By | ~40M artigos | só com lista de termos em inglês (ver acima) |
 
 
