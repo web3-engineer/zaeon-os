@@ -741,7 +741,89 @@ feita de ENEM e MMLU.
 > hash do texto e devolve "reaproveitado". Então `coberturaDaArea` toma o **máximo** por fonte+área, e
 > soma só entre fontes diferentes. Está travado em teste.
 
-### 10.7 · O que mais existe no HF, com licença conferida
+### 10.7 · A fonte `arxiv`, e a varredura funda por mais bases
+
+Varri o Hugging Face, o GitHub, agregadores e repositórios brasileiros. O resultado prático foi uma
+fonte nova em produção-pronta e um achado arquitetural que vale mais que ela.
+
+#### O achado: corpus em inglês não pode passar pelo classificador
+
+Medi o **peS2o** (`allenai/peS2o`, ODC-By, ~40M artigos) em **84.967 registros reais** do shard 0:
+o classificador aproveitou **5,4%**, com **física, química, eng-computação, eng-civil e dados-ia em
+ZERO**. A causa não é o corpus — é que o peS2o é em **inglês** e os termos de `lib/rag/areas` são em
+**português**. Os 5,4% vieram de cognato (`medicin` casando com `medicine`), não de classificação.
+
+> **A regra que saiu disso:** corpus em inglês só entra com **área declarada** (fixa ou por mapa),
+> nunca pelo classificador. É o que já valia pro MDN, Kubernetes e CWE sem estar escrito. Agora está,
+> e `lib/rag/fontes.test.ts` o trava. Para usar o peS2o de verdade seria preciso uma lista de termos
+> em inglês por área — trabalho real, não feito.
+
+#### A fonte `arxiv`
+
+O arXiv resolve isso de graça: **já vem rotulado pela própria taxonomia**. `cat:math.*` é matemática
+por construção. Licença conferida nos Termos de Uso das APIs do arXiv: o **metadado descritivo
+(título, resumo, autores, classificação) é CC0 1.0**. O **texto completo não é** — tem a licença que
+o autor escolheu, e há opções NonCommercial entre elas. Por isso entra **só o resumo**.
+
+Física no arXiv não é só `physics.*`: `astro-ph`, `cond-mat`, `gr-qc`, `hep-*`, `nucl-*` e `quant-ph`
+são arquivos de primeiro nível, irmãos de `physics`. Mapear só `physics*` deixaria de fora a maior
+parte da física — que é justamente a área mais fraca.
+
+**Execução real contra a API, as 11 áreas encostaram no teto de `--por-area 1500` = 16.500 docs:**
+
+| área | disponível no arXiv | área | disponível |
+|---|---:|---|---:|
+| fisica | **1.541.518** | infra | 58.986 |
+| matematica | 753.931 | biologia | 57.538 |
+| dados-ia | 498.054 | seguranca | 54.213 |
+| eng-computacao | 51.219 | eng-energias | 49.941 |
+| software | 39.532 | quimica | 28.773 |
+| medicina | 9.399 | | |
+
+O teto não é o arXiv, é o nosso `--por-area`. Não mapeia enfermagem, farmácia, veterinária,
+agronomia, psicologia nem engenharia civil: o arXiv quase não tem esses campos, e forçar categoria
+vizinha encheria a base do agente errado.
+
+```bash
+docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes arxiv
+```
+
+#### Verificado e disponível, ainda não construído
+
+| fonte | licença | volume medido | para |
+|---|---|---|---|
+| **Wikilivros pt** (`dumps.wikimedia.org/ptwikibooks`) | CC BY-SA | 21,2 MB · **14.354 artigos** | em PORTUGUÊS, logo o classificador funciona |
+| **Wikiversidade pt** (`ptwikiversity`) | CC BY-SA | 19,1 MB | idem |
+| **Zenodo** (API aberta) | por registro (`license.id`) | eng-civil 2.276 · veterinaria 2.238 · psicologia 2.250 · enfermagem 2.198 · farmacia 173 · agronomia 103, em `language:por` | as áreas que o arXiv não alcança |
+| **DOAJ** (API aberta) | por revista | **979.567** artigos de revistas brasileiras, com resumo | todas as áreas, em PT |
+| **peS2o** | ODC-By | ~40M artigos | só com lista de termos em inglês (ver acima) |
+
+A DOAJ é o maior deles e o mais promissor para PT, mas o **dump em massa exige aprovação caso a caso
+por e-mail**; pela API são ~9.800 chamadas paginadas para os 979 mil.
+
+#### Recusados, com o motivo
+
+| fonte | por quê |
+|---|---|
+| `bigscience-data/roots_pt_*` (Wikilivros/Wikiversidade em parquet) | **gated** — HTTP 401 `GatedRepo`, exige autenticação |
+| **Embrapa** Infoteca-e e Alice | 59.700 registros em português e OAI-PMH funcionando, mas `dc:rights` diz só **`openAccess`** — que é declaração de ACESSO, não licença. Sem licença por item, não entra |
+| repos de "livros" no GitHub (`free-educa/books`, `ACERVO_DE_MEDICINA_VETERINARIA`) | acervos de PDF de livros comerciais, sem licença real — o "LICENSE" do acervo veterinário é um Código de Conduta. É material infringente |
+| `EngenhariaLivre/Tabelas` (Unlicense), `ArvoreDosSaberes` (CC0) | licença boa, conteúdo mínimo: tabelas em LaTeX e perfil de organização, não livro-texto |
+| **CORE**, **OpenAlex** | HTTP 429; exigem chave |
+| **BDTD/IBICT**, **SciELO Books**, **USP Teses**, **UNESP**, **Lume/UFRGS** | OAI-PMH não responde nos endpoints públicos (404 ou sem conexão) |
+| **Gutendex** (Project Gutenberg) | inalcançável deste ambiente |
+| `U4R/SurveyBench` | sem licença declarada |
+| `ByteDance-Seed/WideSearch` | licença `other`, precisa de leitura antes de usar |
+
+#### Benchmarks (de `mangopy/Deep-Research-Survey`)
+
+Aquele repositório é uma **lista de leitura** (265 links, 182 para o arXiv, **sem LICENSE**), e os 14
+datasets dele no HF são **benchmarks de avaliação de agente**, não corpus de conhecimento. Não somam
+nada à cobertura. Servem a um buraco diferente: não temos nenhum benchmark externo do nosso modo de
+pesquisa. Os de licença limpa são `ByteDance-BandAI/ReportBench` (CC0),
+`google/frames-benchmark` (Apache-2.0) e `callanwu/WebWalkerQA` (Apache-2.0).
+
+### 10.8 · O que mais existe no HF, com licença conferida
 
 Verificado via `cardData.license` na API, não de memória:
 

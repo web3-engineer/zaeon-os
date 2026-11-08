@@ -134,8 +134,39 @@ describe("catálogo das fontes de base", () => {
     expect(scielo.medicoes!.map((m) => m.porArea.medicina)).toEqual([1497, 1500]);
     const med = coberturaDaArea("medicina");
     expect(med.naVps.proprio, "só a medição da VPS, e sem somar com a de ensaio").toBe(1497);
-    // próprio = max(scielo) 1500 + max(medicina-pt) 753 = 2253, não 1497+1500+753
-    expect(med.comDeploy.proprio).toBe(2253);
+    // próprio = max(scielo) 1500 + max(medicina-pt) 753 + max(arxiv) 1500 = 3.753.
+    // NÃO é 1497+1500+753+1500: as duas medições da SciELO contam uma vez.
+    expect(med.comDeploy.proprio).toBe(3753);
+  });
+
+  it("corpus em INGLÊS nunca entra pelo classificador — é o que separa arXiv de peS2o", () => {
+    // Medi o peS2o: 84.967 registros, 5,4% classificados, e física/química/eng-computacao/
+    // eng-civil/dados-ia em ZERO. A causa não é o corpus: os termos de `lib/rag/areas` são em
+    // PORTUGUÊS, e os 5,4% foram cognato ("medicin" casando com "medicine"). Então toda fonte em
+    // inglês aqui tem de ter área DECLARADA (fixa ou por mapa), nunca `classificador`.
+    const emIngles = ["arxiv", "mmlu", "dataset"];
+    for (const id of emIngles) {
+      const f = fonteDeBase(id)!;
+      expect(f.area.tipo, `${id} em inglês não pode depender do classificador português`).not.toBe("classificador");
+    }
+    // e as que PASSAM pelo classificador são as em português
+    for (const id of ["scielo", "wikipt"]) expect(fonteDeBase(id)!.area.tipo, id).toBe("classificador");
+  });
+
+  it("o arXiv entra só com o RESUMO: o metadado é CC0, o texto completo não é", () => {
+    const f = fonteDeBase("arxiv")!;
+    expect(f.licenca).toContain("CC0");
+    expect(f.comercial).toBe(true);
+    // a fronteira legal da fonte tem de estar escrita onde alguém a leia antes de ampliá-la
+    expect(f.nota).toMatch(/SÓ o resumo/);
+    expect(f.nota).toMatch(/NonCommercial/);
+    // 11 áreas, nenhuma inventada, e as fracas entre elas
+    expect(areasDaFonte(f)).toHaveLength(11);
+    for (const a of ["fisica", "matematica", "dados-ia", "quimica"]) expect(areasDaFonte(f), a).toContain(a);
+    // e NÃO as que o arXiv não tem
+    for (const a of ["eng-civil", "farmacia", "veterinaria", "agronomia", "enfermagem", "psicologia"]) {
+      expect(areasDaFonte(f), `${a} não existe no arXiv`).not.toContain(a);
+    }
   });
 
   it("toda área medida existe, e nenhuma medição inventa área", () => {
