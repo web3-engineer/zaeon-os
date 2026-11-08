@@ -182,7 +182,18 @@ async function main() {
   }
 
   if (FONTES.includes("wikipt")) {
-    const { asyncBufferFromUrl, parquetMetadataAsync, parquetReadObjects } = await import("hyparquet");
+    // O contêiner em produção foi construído ANTES de o `hyparquet` entrar no package.json, então o
+    // primeiro `--fontes wikipt` lá morreria com ERR_MODULE_NOT_FOUND cru. Dizer o que fazer é mais
+    // útil que a pilha de erro do node.
+    const hyparquet = await import("hyparquet").catch((e: unknown) => {
+      throw new Error(
+        "o pacote `hyparquet` não está neste contêiner (ele entrou no package.json junto com esta fonte). "
+        + "Reconstrua a imagem, ou, pra resolver agora: "
+        + "`docker exec -w /app zaeon_web npm i hyparquet --no-audit --no-fund`. "
+        + `Erro original: ${(e as Error)?.message ?? e}`,
+      );
+    });
+    const { asyncBufferFromUrl, parquetMetadataAsync, parquetReadObjects } = hyparquet;
     const { WIKI_CONFIG, WIKI_DATASET, WIKI_SHARDS, documentoDaWikipedia, ehDescarte, urlDoShard } =
       await import("../lib/rag/wikipedia");
 
