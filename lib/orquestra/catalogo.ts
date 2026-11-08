@@ -9,7 +9,7 @@
  */
 import type { Plan } from "@/lib/plans";
 
-export type AgenteOrquestraId = "orq-deepseek" | "orq-tongyi" | "orq-kimi" | "orq-enxame";
+export type AgenteOrquestraId = "orq-deepseek" | "orq-tongyi" | "orq-qwen" | "orq-kimi" | "orq-enxame";
 
 export type AgenteLoja = {
   id: AgenteOrquestraId;
@@ -40,6 +40,12 @@ export const AGENTES_ORQUESTRA: readonly AgenteLoja[] = [
     comoTrabalha: "Modelo aberto da Alibaba treinado por reforço pra pesquisa longa — muitas consultas, comparando fontes antes de concluir.",
   },
   {
+    id: "orq-qwen", motor: "qwen-profundo", nome: "Qwen 3.5", laboratorio: "Alibaba", sigla: "QW", cor: "#615CED",
+    formato: "profundo", minPlan: "pro",
+    resumo: "O modelo aberto mais forte da Alibaba, pesquisando em profundidade.",
+    comoTrabalha: "Qwen 3.5 em laço longo: planeja, busca nas bases acadêmicas e na base da Zaeon, compara e só então escreve.",
+  },
+  {
     id: "orq-kimi", motor: "kimi-enxame", nome: "Kimi K2.6 · enxame", laboratorio: "Moonshot AI", sigla: "KM", cor: "#16C2A3",
     formato: "enxame", minPlan: "pro",
     resumo: "Uma equipe: o Kimi divide o pedido e põe vários subagentes pesquisando ao mesmo tempo.",
@@ -49,7 +55,7 @@ export const AGENTES_ORQUESTRA: readonly AgenteLoja[] = [
     id: "orq-enxame", motor: "enxame-misto", nome: "Enxame misto", laboratorio: "Zaeon", sigla: "ZX", cor: "#22D3EE",
     formato: "enxame", minPlan: "pro",
     resumo: "Laboratórios diferentes trabalhando juntos na mesma tarefa.",
-    comoTrabalha: "Um orquestrador distribui as partes entre subagentes DeepSeek, Kimi, Tongyi e Qwen em rodízio — arquiteturas diferentes se completando. Pro: até 4 · Max: até 12.",
+    comoTrabalha: "Um orquestrador distribui as partes entre subagentes DeepSeek, Kimi e Qwen em rodízio — arquiteturas diferentes se completando. Pro: até 4 · Max: até 12.",
   },
 ];
 

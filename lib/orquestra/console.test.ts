@@ -69,10 +69,10 @@ describe("console · painel", () => {
     const p = await montarPainel({ env, tarefas: async () => [linha()], contagem: async () => new Map([["area:medicina", { documentos: 3, trechos: 90 }]]) });
     expect(p.modo).toBe("sombra");
     const ids = p.motores.map((m) => m.id);
-    expect(ids.slice(0, 5)).toEqual(["aura", "deepseek-v4-profundo", "tongyi-deepresearch", "kimi-enxame", "enxame-misto"]);
+    expect(ids.slice(0, 6)).toEqual(["aura", "deepseek-v4-profundo", "tongyi-deepresearch", "qwen-profundo", "kimi-enxame", "enxame-misto"]);
     const kimi = p.motores.find((m) => m.id === "kimi-enxame")!;
     expect(kimi.disponivel).toBe(true);
-    expect(kimi.modelos[0].rotas).toEqual([{ provedor: "moonshot", modelo: "kimi-k2.6", configurado: true }, { provedor: "openrouter", modelo: "moonshotai/kimi-k2.6", configurado: false }]);
+    expect(kimi.modelos[0].rotas).toEqual([{ provedor: "moonshot", modelo: "kimi-k2.6", configurado: true }, { provedor: "huggingface", modelo: "moonshotai/Kimi-K2.6", configurado: false }, { provedor: "openrouter", modelo: "moonshotai/kimi-k2.6", configurado: false }]);
     expect(kimi.modelos[0].preco).toMatchObject({ prompt: 0.95 });
     expect(kimi.ferramentas).toEqual(expect.arrayContaining(["literature_search", "base_conhecimento", "delegar"]));
     expect(kimi.datasets).toContain("rag:area:medicina");

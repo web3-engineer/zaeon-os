@@ -121,6 +121,11 @@ export function decidir(e: EntradaRoteador, env: Env = process.env, motores: Mot
     };
   }
 
+  // ROTEAMENTO AUTOMÁTICO (sem o aluno pedir): só com ORQ_AUTOMATICO=1. Com uma chave de laboratório no servidor
+  // (o HF_TOKEN já está em prod), ligar a orquestra mandaria TODO trabalho de Pro/Max pra um enxame que ninguém viu
+  // rodar em produção. Primeiro a escolha explícita na Loja e a Arena; o automático vem depois, por decisão.
+  if (env.ORQ_AUTOMATICO !== "1") return AURA("roteamento automático desligado (ORQ_AUTOMATICO) — só agentes escolhidos na Loja");
+
   const minimo = (env.ORQ_PLANO_MINIMO?.trim() || "pro") as Plan;
   if (!planAtLeast(e.plano, minimo)) return AURA(`plano ${e.plano} abaixo de ${minimo}`);
 

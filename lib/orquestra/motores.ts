@@ -6,6 +6,7 @@
  *  | (aura)                | zaeon    | unico    | o harness de hoje — fica no orquestrador, não aqui (ver lá)     |
  *  | deepseek-v4-profundo  | deepseek | profundo | DeepSeek V4 Pro, ReAct nativo, raciocínio entre as chamadas     |
  *  | tongyi-deepresearch   | alibaba  | profundo | Tongyi DeepResearch 30B-A3B (RL pra pesquisa longa)             |
+ *  | qwen-profundo         | alibaba  | profundo | Qwen 3.5 397B — a Alibaba pelo Hugging Face (o Tongyi não está lá) |
  *  | kimi-enxame           | moonshot | enxame   | Kimi K2.6 orquestrando subagentes Kimi (o desenho do PARL)      |
  *  | enxame-misto          | zaeon    | enxame   | orquestrador + subagentes de laboratórios DIFERENTES em rodízio |
  *  | http:<id>             | (env)    | (env)    | serviço Python que fala o contrato (research-engine)            |
@@ -53,6 +54,12 @@ export const tongyiDeepResearch = motorProfundo(
   "Tongyi DeepResearch 30B-A3B (Alibaba, Apache-2.0), treinado por RL para pesquisa de horizonte longo.",
   // 0.6 é o que o repositório do Tongyi recomenda para inferência
   { passos: 40, temperatura: 0.6 },
+);
+
+export const qwenProfundo = motorProfundo(
+  "qwen-profundo", "alibaba", "qwen",
+  "Qwen 3.5 (Alibaba, pesos abertos) em laço ReAct longo — a rota da Alibaba pelo Hugging Face, onde o Tongyi não está.",
+  { passos: 30, temperatura: 0.5 },
 );
 
 export const kimiEnxame: Motor = {
@@ -144,7 +151,7 @@ export function motorHttp(spec: MotorHttpSpec, fetchImpl: typeof fetch = fetch):
   };
 }
 
-export const MOTORES_NATIVOS: readonly Motor[] = [deepseekProfundo, tongyiDeepResearch, kimiEnxame, enxameMisto];
+export const MOTORES_NATIVOS: readonly Motor[] = [deepseekProfundo, tongyiDeepResearch, qwenProfundo, kimiEnxame, enxameMisto];
 
 export function todosOsMotores(env: Env = process.env): Motor[] {
   return [...MOTORES_NATIVOS, ...motoresHttpDoEnv(env).map((s) => motorHttp(s))];

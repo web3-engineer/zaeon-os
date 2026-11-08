@@ -106,6 +106,25 @@ Contrato e autenticação: `docs/HERMES_ZAEON.md`.
 1. **Citação.** Cada achado de ferramenta ganha uma chave `[E#]`, e a observação já chega ao modelo com as chaves (desenho do PaperQA2). Chave que nenhuma ferramenta devolveu é **cortada** do texto e contada em `invalidas`. A cobertura mede quantos parágrafos substantivos têm fonte.
 2. **Verificador global** (MiroThinker-H1). Um modelo lê o texto contra as evidências e aponta afirmação sem lastro, citação que não sustenta a frase e pedido não atendido. Se reprovar e houver tempo, roda **uma** revisão, e o passo 1 roda de novo. Se o verificador estiver fora do ar, o texto que já passou pela citação é entregue.
 
+## Sem conta nova: tudo pelo Hugging Face
+
+O `HF_TOKEN` que a reserva do chat já usa serve também à orquestra, pelo router do Hugging Face (OpenAI-compatível).
+Conferido ao vivo na API do Hub, em nov/2026:
+
+| Modelo | Disponível no HF | Provedores |
+|---|---|---|
+| DeepSeek V4 Pro e Flash | sim | DeepInfra, Novita, Featherless |
+| Kimi K2.6 | sim | DeepInfra, Novita, Featherless |
+| Qwen 3.5 397B | sim | 5 provedores |
+| Tongyi DeepResearch | **não** | — |
+
+Com o `HF_TOKEN` funcionam DeepSeek, Qwen, Kimi em enxame e o enxame misto. O Tongyi continua precisando do OpenRouter.
+
+**Não é grátis.** A conta do HF é cobrada pelo uso: os créditos inclusos no plano e, depois deles, pay-as-you-go. A vantagem é não precisar abrir conta em cada laboratório.
+
+**Roteamento automático vs. escolha na Loja.** Com a chave em prod, os agentes escolhidos na Loja já trabalham. O roteamento
+automático (Pro/Max sem escolher nada) fica atrás de `ORQ_AUTOMATICO=1` e só deve ser ligado depois da Arena.
+
 ## Como ligar (rollout)
 
 1. **Chaves no `.env` da VPS** (o `env_file` chega ao web e ao worker): `DEEPSEEK_API_KEY`, `MOONSHOT_API_KEY`, `OPENROUTER_API_KEY` (Tongyi + reserva) e, opcionalmente, `DASHSCOPE_API_KEY`. Depois, rerun do último `deploy.yml` (regra de prod do `docs/CHAT_DESEMPENHO.md`).

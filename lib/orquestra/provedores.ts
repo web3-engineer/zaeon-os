@@ -24,7 +24,7 @@ import { esperar, ehPrazo, PrazoEsgotado, type Prazo } from "@/lib/orquestra/pra
 type Env = Record<string, string | undefined>;
 
 // ───────────────────────────── provedores ─────────────────────────────
-export type ProvedorId = "deepseek" | "moonshot" | "openrouter" | "dashscope";
+export type ProvedorId = "deepseek" | "moonshot" | "huggingface" | "openrouter" | "dashscope";
 
 type Provedor = {
   base(env: Env): string;
@@ -48,6 +48,17 @@ export const PROVEDORES: Record<ProvedorId, Provedor> = {
     base: (env) => env.MOONSHOT_BASE_URL?.trim() || "https://api.moonshot.ai/v1",
     chave: (env) => env.MOONSHOT_API_KEY?.trim() || undefined,
     raciocinioDeVolta: true,
+  },
+  /**
+   * HUGGING FACE Inference Providers: o MESMO `HF_TOKEN` que a reserva do chat já usa (lib/llm/reservaHf). O router
+   * é OpenAI-compatível e escolhe o provedor (DeepInfra, Novita, Featherless…) — conferido ao vivo em nov/2026 pela
+   * API do Hub: DeepSeek V4 Pro/Flash, Kimi K2.6 e Qwen 3.5 estão lá; o Tongyi DeepResearch NÃO. Cobra na conta do
+   * HF (créditos inclusos do plano + pay-as-you-go), sem conta nova em cada laboratório.
+   */
+  huggingface: {
+    base: (env) => env.HF_ROUTER_BASE_URL?.trim() || "https://router.huggingface.co/v1",
+    chave: (env) => env.ORQ_HF_TOKEN?.trim() || env.HF_TOKEN?.trim() || undefined,
+    raciocinioDeVolta: false,
   },
   openrouter: {
     base: (env) => env.OPENROUTER_BASE_URL?.trim() || "https://openrouter.ai/api/v1",
@@ -77,6 +88,7 @@ export const MODELOS: Record<ModeloId, ModeloSpec> = {
     nome: "DeepSeek V4 Pro", familia: "deepseek",
     rotas: [
       { provedor: "deepseek", modelo: (e) => e.ORQ_MODELO_DEEPSEEK_PRO || "deepseek-v4-pro" },
+      { provedor: "huggingface", modelo: (e) => e.ORQ_HF_DEEPSEEK_PRO || "deepseek-ai/DeepSeek-V4-Pro" },
       { provedor: "openrouter", modelo: (e) => e.ORQ_OR_DEEPSEEK_PRO || "deepseek/deepseek-v4-pro" },
     ],
   },
@@ -84,6 +96,7 @@ export const MODELOS: Record<ModeloId, ModeloSpec> = {
     nome: "DeepSeek V4 Flash", familia: "deepseek",
     rotas: [
       { provedor: "deepseek", modelo: (e) => e.ORQ_MODELO_DEEPSEEK_FLASH || "deepseek-v4-flash" },
+      { provedor: "huggingface", modelo: (e) => e.ORQ_HF_DEEPSEEK_FLASH || "deepseek-ai/DeepSeek-V4-Flash" },
       { provedor: "openrouter", modelo: (e) => e.ORQ_OR_DEEPSEEK_FLASH || "deepseek/deepseek-v4-flash" },
     ],
   },
@@ -91,6 +104,7 @@ export const MODELOS: Record<ModeloId, ModeloSpec> = {
     nome: "Kimi K2.6", familia: "moonshot",
     rotas: [
       { provedor: "moonshot", modelo: (e) => e.ORQ_MODELO_KIMI || "kimi-k2.6" },
+      { provedor: "huggingface", modelo: (e) => e.ORQ_HF_KIMI || "moonshotai/Kimi-K2.6" },
       { provedor: "openrouter", modelo: (e) => e.ORQ_OR_KIMI || "moonshotai/kimi-k2.6" },
     ],
   },
@@ -99,9 +113,10 @@ export const MODELOS: Record<ModeloId, ModeloSpec> = {
     rotas: [{ provedor: "openrouter", modelo: (e) => e.ORQ_OR_TONGYI || "alibaba/tongyi-deepresearch-30b-a3b" }],
   },
   qwen: {
-    nome: "Qwen", familia: "alibaba",
+    nome: "Qwen 3.5", familia: "alibaba",
     rotas: [
       { provedor: "dashscope", modelo: (e) => e.ORQ_MODELO_QWEN || "qwen-plus" },
+      { provedor: "huggingface", modelo: (e) => e.ORQ_HF_QWEN || "Qwen/Qwen3.5-397B-A17B" },
       { provedor: "openrouter", modelo: (e) => e.ORQ_OR_QWEN || "qwen/qwen3-max" },
     ],
   },

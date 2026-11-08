@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { AGENTES_ORQUESTRA, motorDoAgenteChat, planoMinimoDoMotor, ehAgenteOrquestra } from "@/lib/orquestra/catalogo";
 import { estadoNaLoja } from "@/lib/orquestra/loja";
 import { decidir } from "@/lib/orquestra/roteador";
@@ -71,5 +71,30 @@ describe("chat · o agente plugado aparece no seletor e fala como a Aura", () =>
     expect(agenteDoChat("orq-deepseek")).toBe("orq-deepseek");
     expect(personaDoAgente("orq-deepseek")).toBe(personaDoAgente("aura"));
     expect(personaDoAgente("ninguem")).toBeNull();
+  });
+});
+
+describe("só com o HF_TOKEN (sem conta nova em laboratório)", () => {
+  const HF = { HF_TOKEN: "hf_x" };
+  it("DeepSeek, Qwen, Kimi e o enxame misto ficam liberados; o Tongyi não está no HF", () => {
+    const e = estadoNaLoja("pro", "on", motores, HF);
+    const por = Object.fromEntries(e.map((a) => [a.id, a.estado]));
+    expect(por).toEqual({ "orq-deepseek": "liberado", "orq-tongyi": "aguardando_chave", "orq-qwen": "liberado", "orq-kimi": "liberado", "orq-enxame": "liberado" });
+  });
+  it("a chamada vai pro router do HF com o id do repositório", async () => {
+    const { criarChamarModelo } = await import("@/lib/orquestra/provedores");
+    const { criarPrazo } = await import("@/lib/orquestra/prazo");
+    const f = vi.fn(async () => new Response(JSON.stringify({ model: "moonshotai/Kimi-K2.6", choices: [{ message: { content: "oi" } }], usage: { prompt_tokens: 1, completion_tokens: 1 } }), { status: 200 }));
+    const r = await criarChamarModelo({ env: HF, fetchImpl: f as any })({ modelo: "kimi-k2.6", mensagens: [{ role: "user", content: "oi" }], prazo: criarPrazo(5_000), ledger: { agentKey: "a", surface: "estudos", taskId: "t", phase: "p" } });
+    expect(r.provedor).toBe("huggingface");
+    const [url, init] = (f.mock.calls[0] as any);
+    expect(url).toBe("https://router.huggingface.co/v1/chat/completions");
+    expect(JSON.parse(init.body).model).toBe("moonshotai/Kimi-K2.6");
+    expect(init.headers.Authorization).toBe("Bearer hf_x");
+  });
+  it("preço acha o modelo mesmo com o id do HF em maiúsculas", async () => {
+    const { precoDe } = await import("@/lib/ai/preco");
+    expect(precoDe("moonshotai/Kimi-K2.6")).toMatchObject({ conhecido: true, preco: { prompt: 0.95 } });
+    expect(precoDe("deepseek-ai/DeepSeek-V4-Pro").conhecido).toBe(true);
   });
 });

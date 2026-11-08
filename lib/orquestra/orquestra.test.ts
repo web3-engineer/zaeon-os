@@ -209,7 +209,7 @@ describe("formatar · a resposta no formato da casa", () => {
 });
 
 describe("roteador · plano × formato da tarefa", () => {
-  const envTodos = { DEEPSEEK_API_KEY: "a", MOONSHOT_API_KEY: "b", OPENROUTER_API_KEY: "c" };
+  const envTodos = { DEEPSEEK_API_KEY: "a", MOONSHOT_API_KEY: "b", OPENROUTER_API_KEY: "c", ORQ_AUTOMATICO: "1" };
   const base = { plano: "max" as const, intent: "criar_trabalho" as const, mode: "research" as const, emSegundoPlano: true, trabalhoGeradoNoCliente: false };
 
   it("flag", () => {
@@ -232,8 +232,13 @@ describe("roteador · plano × formato da tarefa", () => {
     expect(decidir({ ...base, intent: "explicar_conceito", plano: "pro" }, envTodos, [...MOTORES_NATIVOS]).motor).toBe("aura");
   });
   it("sem chave de enxame, tarefa ampla ganha um agente profundo; sem chave nenhuma, Aura", () => {
-    expect(decidir(base, { DEEPSEEK_API_KEY: "a" }, [...MOTORES_NATIVOS])).toMatchObject({ motor: "deepseek-v4-profundo", formato: "profundo" });
-    expect(decidir(base, {}, [...MOTORES_NATIVOS]).motor).toBe("aura");
+    expect(decidir(base, { DEEPSEEK_API_KEY: "a", ORQ_AUTOMATICO: "1" }, [...MOTORES_NATIVOS])).toMatchObject({ motor: "deepseek-v4-profundo", formato: "profundo" });
+    expect(decidir(base, { ORQ_AUTOMATICO: "1" }, [...MOTORES_NATIVOS]).motor).toBe("aura");
+  });
+  it("sem ORQ_AUTOMATICO, com chave e tudo, o roteador NÃO manda sozinho — só o agente escolhido na Loja", () => {
+    const { ORQ_AUTOMATICO: _a, ...semAuto } = envTodos;
+    expect(decidir(base, semAuto, [...MOTORES_NATIVOS])).toMatchObject({ motor: "aura", motivo: expect.stringMatching(/automático desligado/) });
+    expect(decidir({ ...base, pedido: "kimi-enxame" }, semAuto, [...MOTORES_NATIVOS]).motor).toBe("kimi-enxame");
   });
   it("ORQ_SORTEIO testa o mercado: sorteia entre os disponíveis do formato", () => {
     const env = { ...envTodos, ORQ_SORTEIO: "1" };
@@ -304,7 +309,7 @@ describe("orquestrador · a Zaeon decide quem trabalha", () => {
   it("on + MAX + trabalho: o enxame entrega no formato da casa, com citação conferida", async () => {
     const narrar = vi.fn();
     const r = await orquestrarTurno(entrada({
-      env: { ORQUESTRA: "on", MOONSHOT_API_KEY: "k", ORQ_VERIFICADOR: "0" },
+      env: { ORQUESTRA: "on", ORQ_AUTOMATICO: "1", MOONSHOT_API_KEY: "k", ORQ_VERIFICADOR: "0" },
       chamar: roteiroDoEnxame(), caixa: caixaFalsa(), narrar,
     }));
     expect(runTrajectoryTraced).not.toHaveBeenCalled();
@@ -320,7 +325,7 @@ describe("orquestrador · a Zaeon decide quem trabalha", () => {
 
   it("a trilha registra início, eventos com tempo e o fim com evidências e texto [E#]", async () => {
     const trilha = trilhaFalsa();
-    await orquestrarTurno(entrada({ env: { ORQUESTRA: "on", MOONSHOT_API_KEY: "k", ORQ_VERIFICADOR: "0" }, chamar: roteiroDoEnxame(), caixa: caixaFalsa(), trilha, origem: "arena", tarefaId: "c".repeat(24) }));
+    await orquestrarTurno(entrada({ env: { ORQUESTRA: "on", ORQ_AUTOMATICO: "1", MOONSHOT_API_KEY: "k", ORQ_VERIFICADOR: "0" }, chamar: roteiroDoEnxame(), caixa: caixaFalsa(), trilha, origem: "arena", tarefaId: "c".repeat(24) }));
     expect(trilha.inicios[0]).toMatchObject({ id: "c".repeat(24), origem: "arena", motor: "kimi-enxame", intent: "criar_trabalho", plano: "max" });
     expect(trilha.eventos().some((e) => e.fase === "subagente" && e.agente?.startsWith("subagente"))).toBe(true);
     expect(trilha.fins[0].status).toBe("concluida");
@@ -332,7 +337,7 @@ describe("orquestrador · a Zaeon decide quem trabalha", () => {
   it("motor que falha: a Aura assume, com aviso no progresso — e a trilha grava fallback", async () => {
     const narrar = vi.fn();
     const trilha = trilhaFalsa();
-    const r = await orquestrarTurno(entrada({ env: { ORQUESTRA: "on", DEEPSEEK_API_KEY: "k" }, chamar: async () => { throw new Error("503 geral"); }, caixa: caixaFalsa(), narrar, trilha }));
+    const r = await orquestrarTurno(entrada({ env: { ORQUESTRA: "on", ORQ_AUTOMATICO: "1", DEEPSEEK_API_KEY: "k" }, chamar: async () => { throw new Error("503 geral"); }, caixa: caixaFalsa(), narrar, trilha }));
     expect(r.answer.nucleo).toBe("da Aura");
     expect(trilha.fins[0]).toMatchObject({ status: "fallback", erro: "503 geral" });
     expect(narrar.mock.calls.map((c) => String(c[0])).join("")).toContain("não concluiu — a Aura assume");
@@ -341,7 +346,7 @@ describe("orquestrador · a Zaeon decide quem trabalha", () => {
   it("aluno cancelou: não chama a Aura de consolação", async () => {
     const ctrl = new AbortController();
     ctrl.abort(new Error("saiu"));
-    await expect(orquestrarTurno(entrada({ env: { ORQUESTRA: "on", DEEPSEEK_API_KEY: "k" }, chamar: async (p: PedidoModelo) => { throw p.prazo.signal.reason; }, caixa: caixaFalsa(), signal: ctrl.signal }))).rejects.toBeTruthy();
+    await expect(orquestrarTurno(entrada({ env: { ORQUESTRA: "on", ORQ_AUTOMATICO: "1", DEEPSEEK_API_KEY: "k" }, chamar: async (p: PedidoModelo) => { throw p.prazo.signal.reason; }, caixa: caixaFalsa(), signal: ctrl.signal }))).rejects.toBeTruthy();
     expect(runTrajectoryTraced).not.toHaveBeenCalled();
   });
 
@@ -349,7 +354,7 @@ describe("orquestrador · a Zaeon decide quem trabalha", () => {
     let soltar!: () => void;
     const segura = new Promise<void>((r) => { soltar = r; });
     const lento: ChamarModelo = async () => { await segura; return resp("feito [E1]"); };
-    const env = { ORQUESTRA: "on", DEEPSEEK_API_KEY: "k", ORQ_MAX_SIMULTANEAS: "1" };
+    const env = { ORQUESTRA: "on", ORQ_AUTOMATICO: "1", DEEPSEEK_API_KEY: "k", ORQ_MAX_SIMULTANEAS: "1" };
     const primeiro = orquestrarTurno(entrada({ env, chamar: lento, caixa: caixaFalsa() }));
     await new Promise((r) => setTimeout(r, 5));
     const segundo = await orquestrarTurno(entrada({ env, chamar: lento, caixa: caixaFalsa() }));
@@ -362,14 +367,14 @@ describe("orquestrador · a Zaeon decide quem trabalha", () => {
     classify.mockImplementationOnce(async () => ({ intent: "explicar_conceito" as any, mode: "elaborated" as any, academicMode: "flexible" as any, kind: undefined as any }));
     let n = 0;
     const chamar: ChamarModelo = async (p) => (++n === 1 ? resp("", [chamada("literature_search", { query: "fotossintese" })], p.modelo) : resp("Explicação com fonte [E1].", [], p.modelo));
-    const r = await orquestrarTurno(entrada({ env: { ORQUESTRA: "on", DEEPSEEK_API_KEY: "k" }, plano: "pro", motorPedido: "deepseek-v4-profundo", chamar, caixa: caixaFalsa() }));
+    const r = await orquestrarTurno(entrada({ env: { ORQUESTRA: "on", ORQ_AUTOMATICO: "1", DEEPSEEK_API_KEY: "k" }, plano: "pro", motorPedido: "deepseek-v4-profundo", chamar, caixa: caixaFalsa() }));
     expect(r.relatorio).toMatchObject({ motor: "deepseek-v4-profundo" });
     expect(r.relatorio?.decisao.motivo).toMatch(/escolhido pelo aluno/);
     expect(runTrajectoryTraced).not.toHaveBeenCalled();
   });
 
   it("plano free nem classifica: direto pra Aura", async () => {
-    await orquestrarTurno(entrada({ env: { ORQUESTRA: "on", DEEPSEEK_API_KEY: "k" }, plano: "free" }));
+    await orquestrarTurno(entrada({ env: { ORQUESTRA: "on", ORQ_AUTOMATICO: "1", DEEPSEEK_API_KEY: "k" }, plano: "free" }));
     expect(classify).not.toHaveBeenCalled();
     expect(runTrajectoryTraced).toHaveBeenCalledTimes(1);
   });

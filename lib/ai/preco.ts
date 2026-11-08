@@ -43,7 +43,9 @@ export const USD_POR_MILHAO: Record<string, Preco> = {
 /** Modelo desconhecido → preço do flash (conservador) e marca para o admin saber. */
 export const PRECO_DESCONHECIDO: Preco = USD_POR_MILHAO["gemini-2.5-flash"];
 
-export function precoDe(model: string): { preco: Preco; conhecido: boolean } {
+export function precoDe(modelOriginal: string): { preco: Preco; conhecido: boolean } {
+  // o Hugging Face devolve o id do repositório com maiúsculas ("moonshotai/Kimi-K2.6"); a tabela é minúscula
+  const model = String(modelOriginal ?? "").toLowerCase();
   // Exato primeiro; senão a chave MAIS LONGA que casa (senão "gemini-2.5-flash-lite" casava "gemini-2.5-flash-" e saía 3× mais caro).
   const casa = (m: string) => model === m || model.startsWith(m + "-") || model.endsWith("/" + m);
   const k = Object.keys(USD_POR_MILHAO).filter(casa).sort((x, y) => (model === y ? 1 : 0) - (model === x ? 1 : 0) || y.length - x.length)[0];

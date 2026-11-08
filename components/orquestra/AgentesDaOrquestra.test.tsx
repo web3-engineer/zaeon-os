@@ -22,8 +22,8 @@ describe("Loja · agentes da orquestra", () => {
   });
   it("sem chave: 'em breve', sem botão de adicionar; plano baixo: cadeado com o plano", async () => {
     responder([
-      ...estadoNaLoja("pro", "on", [...MOTORES_NATIVOS], {}).slice(0, 1),
-      ...estadoNaLoja("free", "on", [...MOTORES_NATIVOS], { MOONSHOT_API_KEY: "b" }).slice(2, 3),
+      estadoNaLoja("pro", "on", [...MOTORES_NATIVOS], {}).find((a) => a.id === "orq-deepseek"),
+      estadoNaLoja("free", "on", [...MOTORES_NATIVOS], { MOONSHOT_API_KEY: "b" }).find((a) => a.id === "orq-kimi"),
     ]);
     render(<AgentesDaOrquestra />);
     await screen.findByText(/falta ligar a conta da DeepSeek/);
