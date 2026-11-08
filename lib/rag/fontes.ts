@@ -248,11 +248,14 @@ export const FONTES_DE_BASE: readonly FonteDeBase[] = [
         "eng-computacao": 463, matematica: 306, biologia: 249, software: 213, medicina: 193,
         infra: 136, "eng-energias": 107, agronomia: 93, quimica: 88, seguranca: 66,
         "dados-ia": 63, psicologia: 63, fisica: 37, "eng-civil": 19, farmacia: 19, veterinaria: 16,
+        enfermagem: 3,
       },
     }],
     nota: "Vem do dump Enterprise porque o `pages-articles.xml.bz2` é bz2, e nem o zlib do node nem "
-      + "a imagem de produção abrem bz2. `enfermagem` fica em ZERO aqui: o vocabulário dela empata "
-      + "com medicina em texto curto e `classificarArea` recusa empate — está em lib/rag/wikilivros.test.",
+      + "a imagem de produção abrem bz2. `enfermagem` rende quase nada aqui — 3 de 2.134 — porque o "
+      + "vocabulário dela empata com medicina em texto curto e `classificarArea` recusa empate "
+      + "(está em lib/rag/wikilivros.test). Para comparar: a SciELO lhe dá 1.500 e o Zenodo 201, "
+      + "porque resumo acadêmico é longo e específico o bastante pra desempatar.",
   },
   {
     id: "arxiv",
@@ -394,3 +397,175 @@ export function totalMedido(onde: "vps" | "ensaio"): number {
   }
   return total;
 }
+
+// ─────────────────────────── O QUE FICOU DE FORA ───────────────────────────
+
+/**
+ * POR QUE AS RECUSAS SÃO DADO, e não um parágrafo na documentação: o dono perguntou "o que
+ * deixamos de anexar por falhas", e a resposta estava espalhada em prosa de doc e em mensagem de
+ * commit. Fonte recusada é decisão de engenharia com motivo e evidência — e sem registro ela é
+ * re-investigada do zero a cada vez, ou pior, anexada por engano depois.
+ *
+ * Cada entrada traz a EVIDÊNCIA medida, não a impressão. "Não serviu" não é motivo.
+ */
+export type MotivoRecusa =
+  /** licença não permite uso comercial, ou não existe licença declarada */
+  | "licenca"
+  /** precisa de autenticação, chave ou liberação caso a caso */
+  | "acesso"
+  /** o endereço público não responde */
+  | "inalcancavel"
+  /** licença e acesso em ordem, mas o conteúdo não serve ao RAG por área */
+  | "inadequado"
+  /** corpus em inglês que o nosso classificador em português não consegue rotear */
+  | "idioma";
+
+export type FonteRecusada = {
+  id: string;
+  origem: string;
+  motivo: MotivoRecusa;
+  /** o que foi MEDIDO, com número quando houver */
+  evidencia: string;
+  /** o que destravaria — vazio quando nada destrava */
+  destrava?: string;
+};
+
+export const FONTES_RECUSADAS: readonly FonteRecusada[] = [
+  {
+    id: "allenai/peS2o",
+    origem: "Hugging Face — ~40M artigos acadêmicos, ODC-By",
+    motivo: "idioma",
+    evidencia: "licença e acesso OK. Medi 84.967 registros reais do shard 0: o classificador "
+      + "aproveitou 5,4%, com física, química, eng-computação, eng-civil e dados-ia em ZERO. Os "
+      + "5,4% foram cognato (`medicin` casando com `medicine`), não classificação.",
+    destrava: "uma lista de termos EM INGLÊS por área em lib/rag/areas, ou área fixa por subcorpus",
+  },
+  {
+    id: "bigscience-data/roots_pt_*",
+    origem: "Hugging Face — Wikilivros/Wikiversidade/Wikipédia pt em parquet, CC BY-SA 3.0",
+    motivo: "acesso",
+    evidencia: "HTTP 401 `GatedRepo` no resolve do arquivo: exige autenticação e pedido de acesso.",
+    destrava: "token do Hugging Face com acesso aprovado — mas a fonte `wikilivros` já traz o mesmo "
+      + "conteúdo pelo dump Enterprise da Wikimedia, sem porteiro",
+  },
+  {
+    id: "embrapa",
+    origem: "Embrapa Infoteca-e e Alice — 59.700 registros em português, OAI-PMH funcionando",
+    motivo: "licenca",
+    evidencia: "o OAI responde 200 e o acervo é grande e em português, mas `dc:rights` diz só "
+      + "`openAccess` — que é declaração de ACESSO, não licença. Sem licença por item não entra.",
+    destrava: "licença explícita por item no metadado, ou permissão escrita da Embrapa",
+  },
+  {
+    id: "doaj",
+    origem: "DOAJ — 1.199.705 artigos de revistas em português, metadado CC0 1.0",
+    motivo: "acesso",
+    evidencia: "HTTP 403 a pedido automatizado sustentado. O código está pronto e testado "
+      + "(lib/rag/doaj), e em sondagem manual a precisão era alta: \"concreto armado\" 34 de 50 em "
+      + "eng-civil, \"enfermagem\" 18 de 50 em enfermagem.",
+    destrava: "o dump de dados da DOAJ, liberado caso a caso por e-mail ao platform manager. "
+      + "NÃO se contorna trocando User-Agent: seria burlar verificação, não cumprir política",
+  },
+  {
+    id: "github/acervos-de-pdf",
+    origem: "GitHub — free-educa/books, AIExxplorer/ACERVO_DE_MEDICINA_VETERINARIA e semelhantes",
+    motivo: "licenca",
+    evidencia: "acervos de PDF de livros COMERCIAIS, sem licença real. Li o arquivo `LICENSE` do "
+      + "acervo de veterinária e é um Código de Conduta (Contributor Covenant), não licença. "
+      + "É material infringente, e nenhuma licença no repositório mudaria isso.",
+  },
+  {
+    id: "github/material-aberto-minimo",
+    origem: "GitHub — EngenhariaLivre/Tabelas (Unlicense), ArvoreDosSaberes (CC0)",
+    motivo: "inadequado",
+    evidencia: "licença boa, conferida lendo o `LICENSE` de cada um (Unlicense e CC0 1.0). "
+      + "Conteúdo mínimo: tabelas em LaTeX e perfil de organização — não é livro-texto nem corpus.",
+  },
+  {
+    id: "core.ac.uk",
+    origem: "CORE — agregador de repositórios acadêmicos",
+    motivo: "acesso",
+    evidencia: "HTTP 429 em `api.core.ac.uk/v3/search/works` sem chave, no primeiro pedido — "
+      + "não é limite por volume, é exigência de credencial.",
+    destrava: "chave de API do CORE",
+  },
+  {
+    id: "openalex",
+    origem: "OpenAlex — metadado de ~250M obras",
+    motivo: "acesso",
+    evidencia: "HTTP 429 em `api.openalex.org/works` no primeiro pedido; a API passou a exigir "
+      + "chave a partir de 2026-02-13.",
+    destrava: "chave de API da OpenAlex",
+  },
+  {
+    id: "repositorios-oai-brasileiros",
+    origem: "BDTD/IBICT, SciELO Books, Teses USP, Repositório UNESP, Lume/UFRGS",
+    motivo: "inalcancavel",
+    evidencia: "os endpoints OAI-PMH públicos não respondem: 404 em BDTD, SciELO Books e UNESP; "
+      + "sem conexão em Teses USP e Lume.",
+    destrava: "endpoint correto, se existir — vale perguntar a cada repositório",
+  },
+  {
+    id: "gutenberg",
+    origem: "Project Gutenberg via Gutendex — domínio público",
+    motivo: "inalcancavel",
+    evidencia: "HTTP 000 (sem conexão) em `gutendex.com/books?languages=pt` deste ambiente; o "
+      + "domínio público em si não é o problema.",
+  },
+  {
+    id: "libretexts-openstax",
+    origem: "LibreTexts e OpenStax — livros-texto abertos",
+    motivo: "licenca",
+    evidencia: "CC BY-NC-SA nos dois: a cláusula NonCommercial impede o uso num produto pago, e "
+      + "isso não se resolve com engenharia.",
+  },
+  {
+    id: "stackexchange",
+    origem: "Stack Exchange — dumps de perguntas e respostas",
+    motivo: "licenca",
+    evidencia: "a restrição de julho de 2024 passou a excluir uso comercial, redistribuição e "
+      + "treino de modelo.",
+  },
+  {
+    id: "alpaca-data-pt-br",
+    origem: "Hugging Face — instruções em português",
+    motivo: "licenca",
+    evidencia: "CC BY-NC no cardData: a cláusula NonCommercial impede uso num produto pago.",
+  },
+  {
+    id: "U4R/SurveyBench",
+    origem: "Hugging Face — avaliação de geração de survey",
+    motivo: "licenca",
+    evidencia: "nenhuma licença declarada no cardData (campo `license` vazio), apesar dos 29 "
+      + "arquivos de dado — sem licença não entra.",
+  },
+  {
+    id: "ByteDance-Seed/WideSearch",
+    origem: "Hugging Face — avaliação de busca ampla",
+    motivo: "licenca",
+    evidencia: "cardData traz licença `other` e 201 arquivos: `other` não diz nada, e precisa "
+      + "ser lida antes de qualquer uso.",
+  },
+  {
+    id: "scielo-pequenos",
+    origem: "Hugging Face — MTEB-BR/scielo-clustering e CEIA-GAIA-EDU/gaia-edu-scielo, CC BY 4.0",
+    motivo: "inadequado",
+    evidencia: "licença boa, mas tamanho não substitui nada: 4.000 e 200 linhas, contra os 154.218 "
+      + "artigos de `dataseek/ptbr-scielo` que já usamos.",
+  },
+  {
+    id: "benchmarks-de-deep-research",
+    origem: "mangopy/Deep-Research-Survey — 14 datasets no Hugging Face",
+    motivo: "inadequado",
+    evidencia: "são benchmarks de AVALIAÇÃO de agente, não corpus de conhecimento, e nenhum em "
+      + "português. O repositório em si é lista de leitura (265 links) e não tem LICENSE. "
+      + "Os de licença limpa — ReportBench (CC0), frames-benchmark e WebWalkerQA (Apache-2.0) — "
+      + "servem a outro buraco: medir o nosso modo de pesquisa, que hoje não tem medida externa.",
+  },
+];
+
+export const recusasPorMotivo = (): Record<MotivoRecusa, FonteRecusada[]> => {
+  const m = {} as Record<MotivoRecusa, FonteRecusada[]>;
+  for (const f of FONTES_RECUSADAS) (m[f.motivo] ??= []).push(f);
+  return m;
+};

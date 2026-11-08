@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { AREAS_DO_DATASET, COBERTURA, FONTES_DE_BASE, areasDaFonte, coberturaDaArea, fonteDeBase, fontesDaArea, totalMedido } from "./fontes";
+import { AREAS_DO_DATASET, COBERTURA, FONTES_DE_BASE, FONTES_RECUSADAS, areasDaFonte, coberturaDaArea, fonteDeBase, fontesDaArea, recusasPorMotivo, totalMedido } from "./fontes";
 import { AREA_GERAL, SLUGS_AREA } from "./areas";
 import { MENTOR_SEED } from "@/lib/agent/mentors";
 
@@ -195,6 +195,59 @@ describe("catálogo das fontes de base", () => {
         for (const a of Object.keys(m.porArea)) expect(validas, `${f.id} mediu área inexistente: ${a}`).toContain(a);
         for (const [a, n] of Object.entries(m.porArea)) expect(n, `${f.id}/${a}`).toBeGreaterThan(0);
       }
+    }
+  });
+});
+
+describe("o que ficou de fora, e por quê", () => {
+  it("toda recusa tem motivo e EVIDÊNCIA medida — \"não serviu\" não é motivo", () => {
+    expect(FONTES_RECUSADAS.length).toBeGreaterThan(10);
+    for (const f of FONTES_RECUSADAS) {
+      expect(f.origem.length, f.id).toBeGreaterThan(15);
+      expect(["licenca", "acesso", "inalcancavel", "inadequado", "idioma"], f.id).toContain(f.motivo);
+      // A evidência tem de ser VERIFICÁVEL por outra pessoa — não necessariamente numérica.
+      // Para o acervo de PDF o que vale é "li o LICENSE e é um Código de Conduta": conferível,
+      // sem número. Então a régua é número OU o campo/arquivo que foi lido, nomeado.
+      expect(f.evidencia.length, f.id).toBeGreaterThan(40);
+      expect(f.evidencia, `${f.id}: evidência que ninguém consegue conferir`)
+        .toMatch(/\d|LICENSE|cardData|dc:rights|HTTP|NonCommercial|CC BY|`/);
+    }
+    expect(new Set(FONTES_RECUSADAS.map((f) => f.id)).size).toBe(FONTES_RECUSADAS.length);
+    // e a maioria TEM número: se virar prosa sem medição, isto acusa
+    const comNumero = FONTES_RECUSADAS.filter((f) => /\d/.test(f.evidencia)).length;
+    expect(comNumero / FONTES_RECUSADAS.length).toBeGreaterThan(0.6);
+  });
+
+  it("a ÚNICA fonte nas duas listas é a DOAJ — código pronto, acesso negado", () => {
+    // Estar nas duas não é contradição: a fonte EXISTE (lib/rag/doaj, com testes) e não PODE rodar.
+    // Qualquer outra em ambas seria erro de registro.
+    const emAmbas = FONTES_DE_BASE.map((f) => f.id).filter((id) => FONTES_RECUSADAS.some((r) => r.id === id));
+    expect(emAmbas).toEqual(["doaj"]);
+    expect(fonteDeBase("doaj")!.estado).toBe("bloqueada");
+    const recusa = FONTES_RECUSADAS.find((r) => r.id === "doaj")!;
+    expect(recusa.motivo).toBe("acesso");
+    expect(recusa.destrava).toMatch(/caso a caso/);
+  });
+
+  it("recusa por ACESSO ou INALCANÇÁVEL diz o que destrava; por LICENÇA pode não ter saída", () => {
+    for (const f of FONTES_RECUSADAS) {
+      if (f.motivo === "acesso") expect(f.destrava, `${f.id} é de acesso e não diz o que destrava`).toBeTruthy();
+    }
+    // NonCommercial não se destrava com engenharia: ou muda a licença, ou não entra
+    const nc = FONTES_RECUSADAS.find((f) => f.id === "libretexts-openstax")!;
+    expect(nc.motivo).toBe("licenca");
+    expect(nc.destrava).toBeUndefined();
+  });
+
+  it("os motivos usados são os que de fato ocorreram, agrupados", () => {
+    const porMotivo = recusasPorMotivo();
+    // licença é o motivo mais comum, e isso é o esperado: é o portão mais duro que temos
+    expect((porMotivo.licenca ?? []).length).toBeGreaterThanOrEqual(5);
+    expect((porMotivo.idioma ?? []).map((f) => f.id)).toEqual(["allenai/peS2o"]);
+    expect((porMotivo.inalcancavel ?? []).length).toBeGreaterThanOrEqual(2);
+    // nenhum motivo declarado no tipo pode ficar sem nenhum caso, senão é categoria inventada
+    for (const m of ["licenca", "acesso", "inalcancavel", "inadequado", "idioma"] as const) {
+      expect((porMotivo[m] ?? []).length, `motivo ${m} sem nenhum caso`).toBeGreaterThan(0);
     }
   });
 });

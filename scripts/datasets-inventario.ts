@@ -5,6 +5,8 @@
  *   npx tsx scripts/datasets-inventario.ts --agente   # só a tabela por agente
  *   npx tsx scripts/datasets-inventario.ts --fonte    # só a tabela por fonte
  *   npx tsx scripts/datasets-inventario.ts --cobertura # quem tem base e quem não tem
+ *   npx tsx scripts/datasets-inventario.ts --total     # o total, por área e por fonte
+ *   npx tsx scripts/datasets-inventario.ts --recusadas # o que ficou de fora, e por quê
  *
  * Roda em QUALQUER máquina: lê só o código (lib/rag/fontes, lib/rag/areas, lib/agent/mentors,
  * lib/agents/capacidades), nunca o banco. É a ESTRUTURA — quem é dono de quê.
@@ -15,7 +17,7 @@
  * confundir os dois foi exatamente como se perdeu uma carga antes.
  */
 import { AREAS, AREA_GERAL, SLUGS_AREA, areasDoTurno } from "../lib/rag/areas";
-import { COBERTURA, FONTES_DE_BASE, areasDaFonte, fontesDaArea, totalMedido } from "../lib/rag/fontes";
+import { COBERTURA, FONTES_DE_BASE, FONTES_RECUSADAS, areasDaFonte, fontesDaArea, recusasPorMotivo, totalMedido } from "../lib/rag/fontes";
 import { MENTOR_SEED } from "../lib/agent/mentors";
 import { MATERIAS } from "../lib/rag/mmlu";
 import { CAPACIDADES } from "../lib/agents/capacidades";
@@ -23,7 +25,7 @@ import { AGENTES_CHAT } from "../lib/agents/chatAgentes";
 
 const args = process.argv.slice(2);
 const so = (k: string) => args.includes(k);
-const tudo = !so("--agente") && !so("--fonte") && !so("--cobertura");
+const tudo = !so("--agente") && !so("--fonte") && !so("--cobertura") && !so("--total") && !so("--recusadas");
 
 const ESTADO = { producao: "EM PRODUÇÃO", pronta: "pronta", bloqueada: "BLOQUEADA" } as const;
 
@@ -89,6 +91,69 @@ function porAgente() {
   );
 }
 
+function porTotal() {
+  // A matriz área x fonte, somada das medições reais. `max` por fonte+área, nunca soma — duas
+  // medições da mesma fonte são duas observações de um teto (ver coberturaDaArea).
+  const fontes = FONTES_DE_BASE.filter((f) => (f.medicoes ?? []).length);
+  const areas = [...SLUGS_AREA, AREA_GERAL];
+  const valor = (fonteId: string, area: string, onde?: "vps" | "ensaio") => {
+    const f = FONTES_DE_BASE.find((x) => x.id === fonteId)!;
+    return (f.medicoes ?? [])
+      .filter((m) => !onde || m.onde === onde)
+      .reduce((mx, m) => Math.max(mx, m.porArea[area] ?? 0), 0);
+  };
+
+  console.log("\n═══ O TOTAL, POR ÁREA E POR FONTE ═══\n");
+  const cab = fontes.map((f) => f.id.slice(0, 7).padStart(8)).join("");
+  console.log(`${"área".padEnd(16)}${cab}${"TOTAL".padStart(9)}${"na VPS".padStart(9)}`);
+  console.log("─".repeat(16 + fontes.length * 8 + 18));
+  let geral = 0, naVpsTotal = 0;
+  for (const area of areas) {
+    const celulas = fontes.map((f) => {
+      const n = valor(f.id, area);
+      return (n ? String(n) : "·").padStart(8);
+    }).join("");
+    const total = fontes.reduce((s2, f) => s2 + valor(f.id, area), 0);
+    const naVps = fontes.reduce((s2, f) => s2 + valor(f.id, area, "vps"), 0);
+    geral += total; naVpsTotal += naVps;
+    console.log(`${area.padEnd(16)}${celulas}${String(total).padStart(9)}${String(naVps || "·").padStart(9)}`);
+  }
+  console.log("─".repeat(16 + fontes.length * 8 + 18));
+  const porFonte = fontes.map((f) => areas.reduce((s2, a) => s2 + valor(f.id, a), 0));
+  console.log(`${"por fonte".padEnd(16)}${porFonte.map((n) => String(n).padStart(8)).join("")}${String(geral).padStart(9)}${String(naVpsTotal).padStart(9)}`);
+  console.log(
+    `\n  TOTAL do dataset: ${geral.toLocaleString("pt-BR")} documentos em ${areas.length} áreas`
+    + `\n    já na VPS     : ${totalMedido("vps").toLocaleString("pt-BR")}`
+    + `\n    esperando deploy: ${(geral - totalMedido("vps")).toLocaleString("pt-BR")}`,
+  );
+  console.log("  (o número do `wikipt` é do shard 0 de 6; com os seis é bem mais)");
+}
+
+function porRecusada() {
+  const NOME = {
+    licenca: "LICENÇA — não permite uso comercial, ou não existe",
+    acesso: "ACESSO — exige chave, autenticação ou liberação",
+    inalcancavel: "INALCANÇÁVEL — o endereço público não responde",
+    inadequado: "INADEQUADO — licença e acesso OK, conteúdo não serve",
+    idioma: "IDIOMA — corpus em inglês que o classificador em português não roteia",
+  } as const;
+  console.log("\n═══ O QUE FICOU DE FORA, E POR QUÊ ═══\n");
+  const grupos = recusasPorMotivo();
+  for (const motivo of ["licenca", "acesso", "inalcancavel", "inadequado", "idioma"] as const) {
+    const g = grupos[motivo] ?? [];
+    if (!g.length) continue;
+    console.log(`── ${NOME[motivo]} · ${g.length} ──`);
+    for (const f of g) {
+      console.log(`   ${f.id}`);
+      console.log(`     ${f.origem}`);
+      for (const l of quebrar(`evidência: ${f.evidencia}`, 94)) console.log(`     ${l}`);
+      if (f.destrava) for (const l of quebrar(`destrava: ${f.destrava}`, 94)) console.log(`     ${l}`);
+      console.log("");
+    }
+  }
+  console.log(`  ${FONTES_RECUSADAS.length} fontes recusadas, cada uma com evidência conferível.`);
+}
+
 function porCobertura() {
   const NOME = {
     proprio: "COBERTO — corpus do ofício",
@@ -135,7 +200,9 @@ const quebrar = (t: string, n: number) => {
   return fora;
 };
 
+if (tudo || so("--total")) porTotal();
 if (tudo || so("--cobertura")) porCobertura();
+if (tudo || so("--recusadas")) porRecusada();
 if (tudo || so("--fonte")) porFonte();
 if (tudo || so("--agente")) porAgente();
 if (tudo) {

@@ -807,19 +807,21 @@ documento novo já sai certo. Quando o registro não declara licença, o rodapé
 ```
 eng-computacao 463 · matematica 306 · biologia 249 · software 213 · medicina 193 · infra 136
 eng-energias 107 · agronomia 93 · quimica 88 · seguranca 66 · dados-ia 63 · psicologia 63
-fisica 37 · eng-civil 19 · farmacia 19 · veterinaria 16
+fisica 37 · eng-civil 19 · farmacia 19 · veterinaria 16 · enfermagem 3
 descartes: curto 11.044 · sem área 9.266 · estrutura 412
 ```
 
 Filtra o que é estrutura de wiki e não conteúdo: `/Imprimir` (a MESMA obra concatenada, que entraria
 duplicada e roubaria vaga no teto), `/Índice`, `/Capa`, e o espaço administrativo que escapa no NS0.
 
-> **`enfermagem` fica em ZERO aqui, e o motivo é instrutivo.** O vocabulário de enfermagem empata com
+> **`enfermagem` rende quase nada aqui — 3 de 2.134 — e o motivo é instrutivo.**
+> *(Correção: eu havia escrito "zero" numa versão anterior desta seção; a varredura dá 3.)*
+> O vocabulário de enfermagem empata com
 > medicina em texto curto — "a enfermagem cuida do paciente; sinais vitais, biossegurança e atenção
 > primária à saúde" pontua as duas quase igual, e `classificarArea` exige destaque de 2× sobre a
 > segunda. Então devolve `null` em vez de chutar. Não é defeito: é a régua recusando ambiguidade, e
-> explica por que enfermagem rende 33 documentos na Wikipédia e 7.793 na SciELO, onde o resumo
-> acadêmico é longo e específico. Está travado em `lib/rag/wikilivros.test.ts`.
+> explica por que enfermagem rende 33 documentos na Wikipédia e 1.500 pela SciELO, onde o resumo
+> acadêmico é longo e específico o bastante pra desempatar. Travado em `lib/rag/wikilivros.test.ts`.
 
 Classifiquei esta fonte como `enciclopedico` e isso é conservador de propósito: é material DIDÁTICO,
 não enciclopédia nem artigo acadêmico, mas é texto de comunidade wiki — a mesma procedência da
@@ -941,17 +943,26 @@ docker exec -w /app zaeon_web npx tsx scripts/ingerir-bases-area.ts --fontes zen
 
 #### Recusados, com o motivo
 
-| fonte | por quê |
-|---|---|
-| `bigscience-data/roots_pt_*` (Wikilivros/Wikiversidade em parquet) | **gated** — HTTP 401 `GatedRepo`, exige autenticação |
-| **Embrapa** Infoteca-e e Alice | 59.700 registros em português e OAI-PMH funcionando, mas `dc:rights` diz só **`openAccess`** — que é declaração de ACESSO, não licença. Sem licença por item, não entra |
-| repos de "livros" no GitHub (`free-educa/books`, `ACERVO_DE_MEDICINA_VETERINARIA`) | acervos de PDF de livros comerciais, sem licença real — o "LICENSE" do acervo veterinário é um Código de Conduta. É material infringente |
-| `EngenhariaLivre/Tabelas` (Unlicense), `ArvoreDosSaberes` (CC0) | licença boa, conteúdo mínimo: tabelas em LaTeX e perfil de organização, não livro-texto |
-| **CORE**, **OpenAlex** | HTTP 429; exigem chave |
-| **BDTD/IBICT**, **SciELO Books**, **USP Teses**, **UNESP**, **Lume/UFRGS** | OAI-PMH não responde nos endpoints públicos (404 ou sem conexão) |
-| **Gutendex** (Project Gutenberg) | inalcançável deste ambiente |
-| `U4R/SurveyBench` | sem licença declarada |
-| `ByteDance-Seed/WideSearch` | licença `other`, precisa de leitura antes de usar |
+As recusas agora são **dado**, não prosa: moram em `FONTES_RECUSADAS` (`lib/rag/fontes.ts`), cada
+uma com motivo categorizado e **evidência conferível** — e um teste exige que a evidência traga
+número ou nomeie o campo/arquivo que foi lido, porque *"não serviu"* não é motivo.
+
+```bash
+npx tsx scripts/datasets-inventario.ts --recusadas
+```
+
+**17 fontes recusadas**, por cinco motivos:
+
+| motivo | n | as mais relevantes |
+|---|---:|---|
+| **licença** | 7 | Embrapa (59.700 registros em PT, mas `dc:rights` só diz `openAccess`), acervos de PDF no GitHub (infringentes), LibreTexts e OpenStax (CC BY-NC-SA), Stack Exchange (restrição de jul/2024) |
+| **acesso** | 4 | DOAJ (403; dump liberado caso a caso), `roots_pt_*` (401 `GatedRepo`), CORE e OpenAlex (exigem chave) |
+| **inalcançável** | 2 | BDTD, SciELO Books, Teses USP, UNESP, Lume (OAI não responde); Gutendex |
+| **inadequado** | 3 | material aberto mínimo no GitHub, SciELO pequenos (4.000 e 200 linhas), benchmarks de deep research |
+| **idioma** | 1 | **peS2o** — ODC-By e 40M artigos, mas 5,4% de aproveitamento com física e dados-ia em zero |
+
+A única que está nas **duas** listas é a **DOAJ**: a fonte existe em código, testada, e não pode
+rodar. Um teste garante que nenhuma outra apareça nas duas.
 
 #### Benchmarks (de `mangopy/Deep-Research-Survey`)
 
