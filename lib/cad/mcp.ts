@@ -148,7 +148,6 @@ export function reciboCad(
 
 /** O `path.posix` do runtime, carregado tarde (evita puxar `node:path` no bundle do cliente). */
 function posixPath(): { resolve: (...p: string[]) => string; isAbsolute: (p: string) => boolean } {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const p = require("node:path").posix as typeof import("node:path").posix;
+  const p = (require("node:path") as typeof import("node:path")).posix;
   return { resolve: (...parts: string[]) => p.resolve(...parts), isAbsolute: (x: string) => p.isAbsolute(x) };
 }
