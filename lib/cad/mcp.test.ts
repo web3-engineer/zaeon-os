@@ -22,13 +22,18 @@ import {
 } from "@/lib/agent/mcp";
 import { getTool, permit, type ToolContext } from "@/lib/agent/runtime";
 import {
+  CAMINHO_BIN_SOLIDCRAFT,
+  CAMINHO_WASM_CAD,
   CONECTOR_CAD,
   RAIZ_CAD,
   RECLASSIFICACAO_SOLIDCRAFT,
   SOLIDCRAFT_ENTRY,
+  VERSAO_SOLIDCRAFT,
   confinarEmCad,
   escopoDeContexto,
+  reciboCad,
 } from "@/lib/cad/mcp";
+import { join as joinPath } from "node:path";
 import { CONECTOR_CAD as CONECTOR_CAD_CAPACIDADES, TOOLS_POR_HABILIDADE } from "@/lib/agents/capacidades";
 
 // Um servidor falso com as anotações que MEDI no SolidCraft real: measure só-leitura, execute/batch
@@ -182,6 +187,36 @@ describe("escopoDeContexto · a chave de isolamento", () => {
 
   it("sanitiza a chave (ela vira nome de pasta)", () => {
     expect(escopoDeContexto({ currentStudyId: "../../etc" } as ToolContext)).toBe("etc");
+  });
+});
+
+describe("T8 · o recibo do /api/health (reciboCad)", () => {
+  const CWD = "/app";
+  const wasmPath = joinPath(CWD, CAMINHO_WASM_CAD);
+  // um `existe` que só diz sim pros caminhos listados — é o disco, controlado
+  const existeSo = (presentes: string[]) => (c: string) => presentes.includes(c);
+
+  it("binário presente, bundle ausente (o estado de hoje): cli on, wasm off, versao pinada", () => {
+    const r = reciboCad(existeSo([CAMINHO_BIN_SOLIDCRAFT]), CWD);
+    expect(r).toEqual({ cli: "on", wasm: "off", versao: VERSAO_SOLIDCRAFT });
+  });
+
+  it("os dois presentes: cli on, wasm on", () => {
+    const r = reciboCad(existeSo([CAMINHO_BIN_SOLIDCRAFT, wasmPath]), CWD);
+    expect(r).toEqual({ cli: "on", wasm: "on", versao: VERSAO_SOLIDCRAFT });
+  });
+
+  it("nada presente: cli off, wasm off, e SEM versao (não há binário pra versionar)", () => {
+    const r = reciboCad(existeSo([]), CWD);
+    expect(r).toEqual({ cli: "off", wasm: "off" });
+    expect(r.versao).toBeUndefined();
+  });
+
+  it("LÊ O DISCO, não é constante: virar o estado do disco vira o recibo", () => {
+    const vazio = reciboCad(existeSo([]), CWD);
+    const cheio = reciboCad(existeSo([CAMINHO_BIN_SOLIDCRAFT, wasmPath]), CWD);
+    expect(vazio.cli).not.toBe(cheio.cli);
+    expect(vazio.wasm).not.toBe(cheio.wasm);
   });
 });
 

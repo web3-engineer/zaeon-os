@@ -18,6 +18,19 @@ import type { ToolContext } from "@/lib/agent/runtime";
 /** O slug do conector. Tem de bater com `CONECTOR_CAD` de lib/agents/capacidades (um teste afirma). */
 export const CONECTOR_CAD = "solidcraft";
 
+/** O binário, no caminho ABSOLUTO que o Dockerfile instala. Uma fonte só: o endpoint vem daqui. */
+export const CAMINHO_BIN_SOLIDCRAFT = "/usr/local/bin/solidcraft-cli";
+
+/** O entry do bundle WASM (modo edição, FALTA step 5), servido estático. Relativo ao cwd. */
+export const CAMINHO_WASM_CAD = "public/cad/index.html";
+
+/**
+ * A versão PINADA — tem de acompanhar o `SOLIDCRAFT_TAG` do Dockerfile (lá `v0.40.0-rc.3`, a tag;
+ * aqui o semver, sem o `v`). É o que o `/api/health` reporta: a versão que a imagem COMPILA, não uma
+ * sonda do binário (o health é liveness, não spawna processo).
+ */
+export const VERSAO_SOLIDCRAFT = "0.40.0-rc.3";
+
 /**
  * A raiz do sandbox de arquivos. É o `--allow-path` que vai pro servidor: o SolidCraft confina as
  * próprias tools de arquivo a esta pasta (recusa `/etc`, dotfiles, `..` e symlink que sai — ver
@@ -58,8 +71,8 @@ export const SOLIDCRAFT_ENTRY: CatalogEntry = {
   name: CONECTOR_CAD,
   label: "SolidCraft (CAD)",
   transport: "stdio",
-  endpoint: `/usr/local/bin/solidcraft-cli mcp --headless --allow-path ${RAIZ_CAD}`,
-  note: "0.40.0-rc.3 · 21/21 tools anotadas · execute/batch reclassificadas destructive→write SÓ aqui (design descartável em --allow-path); teto write por conector, RISCO_MAXIMO_CHAT intacto",
+  endpoint: `${CAMINHO_BIN_SOLIDCRAFT} mcp --headless --allow-path ${RAIZ_CAD}`,
+  note: `${VERSAO_SOLIDCRAFT} · 21/21 tools anotadas · execute/batch reclassificadas destructive→write SÓ aqui (design descartável em --allow-path); teto write por conector, RISCO_MAXIMO_CHAT intacto`,
   experimental: true,
   riscoMaximo: "write",
   reclassificar: RECLASSIFICACAO_SOLIDCRAFT,
@@ -111,6 +124,26 @@ export function confinarEmCad(
     throw new Error(`caminho fora do confinamento do CAD: ${caminho} não cai em ${base}`);
   }
   return alvo;
+}
+
+// ───────────────────────────── recibo do /api/health ─────────────────────────────
+
+/**
+ * O RECIBO do CAD pro `/api/health`, no molde do `atlasDeAnatomia`: estado LIDO DO DISCO, nunca uma
+ * constante. `cli` = o binário está na imagem; `wasm` = o bundle do modo edição está servido. Os dois
+ * são fatos de ambiente, e afirmá-los como invariante quebra em produção (a lição do recibo do atlas).
+ *
+ * `existe` é injetável só pra o teste exercer cada estado sem montar uma imagem; o default do runtime
+ * é `existsSync`. `versao` só sai quando o binário está lá, e é a versão PINADA (ver VERSAO_SOLIDCRAFT).
+ */
+export function reciboCad(
+  existe: (caminho: string) => boolean,
+  cwd: string = process.cwd(),
+): { cli: "on" | "off"; wasm: "on" | "off"; versao?: string } {
+  const path = require("node:path") as typeof import("node:path");
+  const cli = existe(CAMINHO_BIN_SOLIDCRAFT) ? "on" : "off";
+  const wasm = existe(path.join(cwd, CAMINHO_WASM_CAD)) ? "on" : "off";
+  return cli === "on" ? { cli, wasm, versao: VERSAO_SOLIDCRAFT } : { cli, wasm };
 }
 
 /** O `path.posix` do runtime, carregado tarde (evita puxar `node:path` no bundle do cliente). */

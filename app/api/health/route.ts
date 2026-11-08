@@ -47,6 +47,7 @@ import { tccCrossOn } from "@/lib/tcc/store";
 import { TCC_CROSS_ON } from "@/lib/tcc/client";
 import { chatUnicoOn } from "@/lib/chat/chatUnico";
 import { resumoDoAtlas } from "@/lib/anatomia/carregar";
+import { reciboCad } from "@/lib/cad/mcp";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
@@ -127,6 +128,15 @@ export async function GET() {
      * nada carregar. É o mesmo trilho de duas metades que o `documento` já usa.
      */
     atlas: atlasDeAnatomia(),
+    /**
+     * O CAD do Eiffel (lib/cad/mcp), em DUAS metades que chegam em deploys diferentes:
+     *   `cli`  = o binário solidcraft-cli está na imagem (estágio Rust do Dockerfile) → o conector
+     *            MCP pode subir e o Eiffel modela;
+     *   `wasm` = o bundle do modo edição está servido em public/cad → o workspace editável aparece.
+     * `cli` ON com `wasm` OFF é um estado REAL (o agente modela headless, mas não há editor no
+     * navegador) — é o estado de hoje, até o step 5. Lido do disco com existsSync, nunca constante.
+     */
+    cad: reciboCad(existsSync),
     /**
      * F8 · O AGENTE DE NAVEGADOR. "on" só quando as TRÊS condições estão de pé; senão, os NOMES do
      * que falta (nunca valores). As três são de naturezas diferentes e por isso erram diferente:
