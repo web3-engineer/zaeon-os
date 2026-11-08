@@ -346,9 +346,10 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   // #705: aviso curto no chat (a conversa pedida não existe mais)
   const [avisoConversa, setAvisoConversa] = useState<string | null>(null);
   // #733: a 1ª pergunta de uma conversa nova é igual ao nome de uma que já existe — pergunta antes de criar a repetida
-  const [repetida, setRepetida] = useState<{ id: string; titulo: string } | null>(null);
-  const aceitouRepetir = useRef(false);
-  useEffect(() => { setRepetida(null); aceitouRepetir.current = false; }, [abaAtiva]);
+  const [repetida, setRepetida] = useState<{ id: string; titulo: string; prompt: string; direto: boolean } | null>(null);
+  // a pergunta exata que a pessoa decidiu mandar mesmo assim ("começar nova") — outra pergunta volta a ser conferida
+  const aceitouRepetir = useRef<string | null>(null);
+  useEffect(() => { setRepetida(null); aceitouRepetir.current = null; }, [abaAtiva]);
   useEffect(() => { if (!avisoConversa) return; const t = setTimeout(() => setAvisoConversa(null), 7000); return () => clearTimeout(t); }, [avisoConversa]);
   // #705: sem internet — avisa e não deixa a mensagem se perder
   const [semRede, setSemRede] = useState(() => typeof navigator !== "undefined" && navigator.onLine === false);
@@ -1053,11 +1054,11 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     // o TUTORIAL do tablet (lib/onboarding/tutorialLab): o tema escolhido não vai pro chat — vira a pesquisa na tela roxa
     if (temaNoTutorial()) { const tema = temaDoTexto(prompt); if (!tema) return; setInput(""); window.dispatchEvent(new CustomEvent(EVT_TEMA, { detail: { tema } })); return; }
     // #733: conversa NOVA (sem mensagens) começando com a mesma pergunta de outra que já existe: avisa antes de mandar
-    if (typeof override !== "string" && !msgsRef.current.length && !aceitouRepetir.current) {
+    if (!msgsRef.current.length && aceitouRepetir.current !== prompt) {
       const ja = conversaRepetida(threadsRef.current, abaAtivaRef.current, prompt);
-      if (ja) { setRepetida({ id: ja.id, titulo: ja.titulo }); return; }
+      if (ja) { setRepetida({ id: ja.id, titulo: ja.titulo, prompt, direto: typeof override === "string" }); return; }
     }
-    aceitouRepetir.current = false; setRepetida(null);
+    aceitouRepetir.current = null; setRepetida(null);
     // o tour do laboratório (lib/onboarding/tourSala) anda quando a pessoa pede o 1º estudo
     window.dispatchEvent(new CustomEvent(EVT_PERGUNTA_CHAT, { detail: { prompt } }));
     setQuickThinking(isQuickPrompt(prompt));
@@ -1685,7 +1686,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
               <span className="min-w-0 flex-1">Você já tem a conversa <b>“{repetida.titulo}”</b>. Quer continuar nela?</span>
               <button type="button" onClick={() => { const id = repetida.id; setRepetida(null); trocarRef.current(id); }}
                 className="rounded-full bg-cyan-600 px-3 py-1 font-bold text-white hover:bg-cyan-700 [@media(hover:none)]:min-h-[40px]">continuar nela</button>
-              <button type="button" onClick={() => { aceitouRepetir.current = true; setRepetida(null); void send(); }}
+              <button type="button" onClick={() => { const r = repetida; aceitouRepetir.current = r.prompt; setRepetida(null); void send(r.direto ? r.prompt : undefined); }}
                 className="rounded-full border border-cyan-500/50 px-3 py-1 font-bold text-cyan-800 dark:text-cyan-100 hover:bg-cyan-500/10 [@media(hover:none)]:min-h-[40px]">começar nova</button>
             </div>
           )}

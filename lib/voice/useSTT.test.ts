@@ -17,6 +17,7 @@ describe("#733 · useSTT", () => {
   it("avisoDoErro", () => {
     expect(avisoDoErro("not-allowed")).toBe("negado");
     expect(avisoDoErro("no-speech")).toBe("sem-som");
+    expect(avisoDoErro("audio-capture")).toBe("sem-microfone");
     expect(avisoDoErro("network")).toBe("sem-rede");
     expect(avisoDoErro("aborted")).toBeNull();
     expect(avisoDoErro("qualquer")).toBe("falhou");

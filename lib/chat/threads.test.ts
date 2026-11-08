@@ -295,3 +295,12 @@ describe("#733 · lista por dia e conversa repetida", () => {
     expect(conversaRepetida(ts, "x", "Nova conversa")).toBeNull();
   });
 });
+
+describe("#733 · revisão: conversa repetida", () => {
+  it("toda pontuação e o 'Aprofunde:' do sub-tema não escondem a repetida", async () => {
+    const { conversaRepetida } = await import("./threads");
+    const ts = [{ id: "a", titulo: "o que é DNA (ácido)", criadaEm: 1, tocadaEm: 1 }];
+    expect(conversaRepetida(ts, null, "o que é DNA — ácido?")?.id).toBe("a");
+    expect(conversaRepetida(ts, null, "Aprofunde: o que é DNA (ácido)")?.id).toBe("a");
+  });
+});

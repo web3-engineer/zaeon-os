@@ -293,8 +293,9 @@ export function gruposDoDia<N extends { thread: Thread }>(nos: readonly N[], ago
  * Compara sem acento, sem caixa e sem pontuação. Conversa sem nome ("Nova conversa") não conta.
  */
 export function conversaRepetida(threads: readonly Thread[], ativa: string | null, primeiraPergunta: string): Thread | null {
-  const limpar = (s: string) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[…?!.,;:"'“”]+/g, "").replace(/\s+/g, " ").trim();
-  const alvo = limpar(tituloAPartirDe(primeiraPergunta));
+  const limpar = (s: string) => (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^\p{L}\p{N}\s]+/gu, " ").replace(/\s+/g, " ").trim();
+  // (o sub-tema começa com "Aprofunde:", que o batizar tira — aqui também)
+  const alvo = limpar(tituloAPartirDe((primeiraPergunta || "").replace(/^aprofunde:\s*/i, "")));
   if (!alvo || alvo === limpar(TITULO_PADRAO)) return null;
   const iguais = threads.filter((t) => t.id !== ativa && t.titulo !== TITULO_PADRAO && limpar(t.titulo) === alvo);
   return iguais.sort((a, b) => (b.tocadaEm || 0) - (a.tocadaEm || 0))[0] ?? null;

@@ -17,12 +17,13 @@ import { useCallback, useRef, useState } from "react";
 type Opts = { lang?: string; continuous?: boolean; onResult?: (text: string, final: boolean) => void };
 
 /** por que o microfone parou sem a pessoa pedir */
-export type AvisoSTT = "desligou" | "negado" | "sem-som" | "sem-rede" | "falhou";
+export type AvisoSTT = "desligou" | "negado" | "sem-som" | "sem-microfone" | "sem-rede" | "falhou";
 
 export const TEXTO_AVISO_STT: Record<AvisoSTT, string> = {
   desligou: "O microfone desligou depois da pausa. Toque nele para falar de novo.",
   negado: "O microfone está bloqueado. Libere o microfone para este site nas configurações do navegador.",
   "sem-som": "Não ouvi nada. Toque no microfone e fale perto dele.",
+  "sem-microfone": "O navegador não encontrou um microfone funcionando. Confira se ele está ligado e escolhido no computador.",
   "sem-rede": "Sem internet, o navegador não consegue transformar a fala em texto.",
   falhou: "Não deu para usar o microfone agora. Tente de novo.",
 };
@@ -31,7 +32,8 @@ export const TEXTO_AVISO_STT: Record<AvisoSTT, string> = {
 export function avisoDoErro(erro: string | undefined): AvisoSTT | null {
   if (erro === "aborted") return null;   // parou porque outro começou, ou a pessoa parou: não é falha
   if (erro === "not-allowed" || erro === "service-not-allowed") return "negado";
-  if (erro === "no-speech" || erro === "audio-capture") return "sem-som";
+  if (erro === "no-speech") return "sem-som";
+  if (erro === "audio-capture") return "sem-microfone";
   if (erro === "network") return "sem-rede";
   return "falhou";
 }
