@@ -16,7 +16,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronRight, CornerDownRight, GitBranchPlus, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Search, SquarePen, Trash2,
 } from "lucide-react";
-import { arvoreDeThreads, marcasDasThreads, rotulosDasThreads, type Thread } from "@/lib/chat/threads";
+import { arvoreDeThreads, gruposDoDia, quandoCriada, type Thread } from "@/lib/chat/threads";
 
 const chaveRecolhida = (sala: string) => `zaeon.chat.sidebar.${sala}.recolhida`;
 
@@ -66,10 +66,6 @@ export default function ConversasSidebar({
   // Mães abertas no acordeão. A mãe da conversa ativa abre sozinha (senão a ativa some).
   const [abertas, setAbertas] = useState<Record<string, boolean>>({});
   const arvore = useMemo(() => arvoreDeThreads(threads), [threads]);
-  // #705: títulos repetidos ganham a data na lista
-  const rotulos = useMemo(() => rotulosDasThreads(threads), [threads]);
-  // #728: a data das repetidas fica fora do corte do nome
-  const marcas = useMemo(() => marcasDasThreads(threads), [threads]);
   useEffect(() => {
     const mae = threads.find((t) => t.id === ativa)?.parentId;
     if (mae) setAbertas((a) => (a[mae] ? a : { ...a, [mae]: true }));
@@ -153,15 +149,16 @@ export default function ConversasSidebar({
           onClick={() => aoTrocar(t.id)}
           onKeyDown={(e) => { if (e.key === "F2") { e.preventDefault(); setEditando(t.id); } }}
           aria-current={atual ? "true" : undefined}
-          title={rotulos.get(t.id) ?? t.titulo}
+          // #733: a data saiu do lado do nome (ela roubava o espaço); fica no título do grupo e, exata, ao passar o mouse
+          title={`${t.titulo} · ${quandoCriada(t.criadaEm)}`}
           className="flex-1 min-w-0 flex items-center gap-1.5 py-1.5 text-left rounded-md outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
         >
           {ocupada === t.id && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shrink-0" aria-label="respondendo" />}
           <span className={`flex-1 min-w-0 truncate text-[13px] ${atual ? "font-semibold" : "font-medium"}`}>{t.titulo}</span>
-          {marcas.has(t.id) && <span className="shrink-0 text-[10.5px] tabular-nums text-slate-500 dark:text-white/50">{marcas.get(t.id)}</span>}
         </button>
-        {/* Ações no hover (e com foco de teclado); na ativa ficam sempre à mão. */}
-        <span className={`shrink-0 flex items-center transition-opacity ${atual ? "opacity-100" : "opacity-0 group-hover/conv:opacity-100 group-focus-within/conv:opacity-100"} [@media(hover:none)]:opacity-100`}>
+        {/* Ações no hover (e com foco de teclado); na ativa ficam sempre à mão.
+            #733: escondidas, NÃO ocupam espaço (antes ficavam invisíveis, mas tomavam uns 70 px do nome) */}
+        <span className={`shrink-0 items-center ${atual ? "flex" : "hidden group-hover/conv:flex group-focus-within/conv:flex"} [@media(hover:none)]:flex`}>
           {!filha && aoCriarSub && (
             <button type="button" onClick={(e) => { e.stopPropagation(); aoCriarSub(t.id); setAbertas((a) => ({ ...a, [t.id]: true })); }} className={BTN_MINI} aria-label={`Novo sub-tema em ${t.titulo}`} title="Novo sub-tema">
               <GitBranchPlus size={12} />
@@ -220,11 +217,17 @@ export default function ConversasSidebar({
         {nos.length === 0 && (
           <p className="px-2 py-3 text-[12px] text-slate-500 dark:text-white/45">{termo ? "Nada com esse nome." : "Nenhuma conversa ainda."}</p>
         )}
-        {nos.map(({ thread, filhas }) => (
-          <div key={thread.id} className="flex flex-col gap-0.5">
-            {linha(thread, false, filhas.length > 0)}
-            {filhas.length > 0 && (abertas[thread.id] || !!termo) && filhas.map((f) => linha(f, true))}
-          </div>
+        {/* #733: separada por dia (Hoje, Ontem, Últimos 7 dias…), a mais nova em cima */}
+        {gruposDoDia(nos).map(({ grupo, nos: doGrupo }) => (
+          <section key={grupo} aria-label={grupo} className="flex flex-col gap-0.5">
+            <h3 className="px-2 pt-2 pb-0.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-white/45">{grupo}</h3>
+            {doGrupo.map(({ thread, filhas }) => (
+              <div key={thread.id} className="flex flex-col gap-0.5">
+                {linha(thread, false, filhas.length > 0)}
+                {filhas.length > 0 && (abertas[thread.id] || !!termo) && filhas.map((f) => linha(f, true))}
+              </div>
+            ))}
+          </section>
         ))}
       </div>
     </nav>

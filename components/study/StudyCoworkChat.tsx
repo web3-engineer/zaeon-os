@@ -25,6 +25,8 @@ import {
 } from "lucide-react";
 import { DIRETRIZ_ESTUDOS, DIRETRIZ_PESQUISA } from "@/lib/ai/salaPersona";
 import { useIsMobile } from "@/lib/ui/useIsMobile";
+/** #733: abaixo de 1024 px a biblioteca fica embaixo da conversa; com menos de 720 px de altura, ela começa recolhida */
+export const QUERY_ESTREITA_E_BAIXA = "(max-width: 1023px) and (max-height: 720px)";
 import { cliqueForaDoCerebro } from "@/components/cerebro/cliqueFora";
 import CoworkComposer from "@/components/study/CoworkComposer";
 import ChatMarkdown from "@/components/study/ChatMarkdown";
@@ -76,7 +78,7 @@ import { useSavedCitations } from "@/lib/useSavedCitations";
 import type { LibraryFile } from "@/lib/useLibraryFiles";
 import {
   carregarThreads, salvarThreads, criarThread, criarSubThread, fecharThread, renomearThread, tocarThread,
-  carregarMensagens, salvarMensagens, threadAtiva, marcarAtiva, tituloAPartirDe,
+  carregarMensagens, salvarMensagens, threadAtiva, marcarAtiva, tituloAPartirDe, conversaRepetida,
   TITULO_PADRAO, CHAVE_INDICE, type Thread,
 } from "@/lib/chat/threads";
 import type { StructuredAnswer } from "@/lib/agent/contracts";
@@ -343,6 +345,10 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   const [sending, setSending] = useState(false);
   // #705: aviso curto no chat (a conversa pedida não existe mais)
   const [avisoConversa, setAvisoConversa] = useState<string | null>(null);
+  // #733: a 1ª pergunta de uma conversa nova é igual ao nome de uma que já existe — pergunta antes de criar a repetida
+  const [repetida, setRepetida] = useState<{ id: string; titulo: string } | null>(null);
+  const aceitouRepetir = useRef(false);
+  useEffect(() => { setRepetida(null); aceitouRepetir.current = false; }, [abaAtiva]);
   useEffect(() => { if (!avisoConversa) return; const t = setTimeout(() => setAvisoConversa(null), 7000); return () => clearTimeout(t); }, [avisoConversa]);
   // #705: sem internet — avisa e não deixa a mensagem se perder
   const [semRede, setSemRede] = useState(() => typeof navigator !== "undefined" && navigator.onLine === false);
@@ -367,7 +373,10 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   const [libOpen, setLibOpen] = useState(true);
   // celular: a biblioteca começa RECOLHIDA (empilhada embaixo, ela roubava metade da tela da conversa)
   const celular = useIsMobile();
-  useEffect(() => { if (celular) setLibOpen(false); }, [celular]);
+  // #733: também em janela ESTREITA e BAIXA (abaixo de 1024 px a biblioteca desce para baixo da conversa; com pouca
+  // altura — notebook com zoom de 150% — a conversa ficava com 0 px)
+  const estreitaEBaixa = useIsMobile(QUERY_ESTREITA_E_BAIXA);
+  useEffect(() => { if (celular || estreitaEBaixa) setLibOpen(false); }, [celular, estreitaEBaixa]);
   // Editar a própria pergunta e reenviar (estilo ChatGPT) + o A−/A+ do texto.
   const [editando, setEditando] = useState<string | null>(null);
   const zoom = useChatFontScale();
@@ -1043,6 +1052,12 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     if (typeof navigator !== "undefined" && navigator.onLine === false) { setSemRede(true); if (typeof override === "string") setInput((v) => (v.trim() ? v : prompt)); return; }
     // o TUTORIAL do tablet (lib/onboarding/tutorialLab): o tema escolhido não vai pro chat — vira a pesquisa na tela roxa
     if (temaNoTutorial()) { const tema = temaDoTexto(prompt); if (!tema) return; setInput(""); window.dispatchEvent(new CustomEvent(EVT_TEMA, { detail: { tema } })); return; }
+    // #733: conversa NOVA (sem mensagens) começando com a mesma pergunta de outra que já existe: avisa antes de mandar
+    if (typeof override !== "string" && !msgsRef.current.length && !aceitouRepetir.current) {
+      const ja = conversaRepetida(threadsRef.current, abaAtivaRef.current, prompt);
+      if (ja) { setRepetida({ id: ja.id, titulo: ja.titulo }); return; }
+    }
+    aceitouRepetir.current = false; setRepetida(null);
     // o tour do laboratório (lib/onboarding/tourSala) anda quando a pessoa pede o 1º estudo
     window.dispatchEvent(new CustomEvent(EVT_PERGUNTA_CHAT, { detail: { prompt } }));
     setQuickThinking(isQuickPrompt(prompt));
@@ -1664,6 +1679,16 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
         {/* composer estilo Claude — mais largo, esticando até perto da biblioteca
             (mantém o recuo à esquerda; sem teto de largura à direita). */}
         <div ref={composerRef} className="px-4 sm:px-6 pb-4 pt-2">
+          {/* #733: já existe uma conversa com essa pergunta */}
+          {repetida && (
+            <div role="alertdialog" aria-label="Conversa repetida" className="ml-4 sm:ml-8 lg:ml-14 mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-cyan-400/40 bg-cyan-50 dark:bg-cyan-500/10 px-3 py-2 text-[12.5px] text-cyan-900 dark:text-cyan-50">
+              <span className="min-w-0 flex-1">Você já tem a conversa <b>“{repetida.titulo}”</b>. Quer continuar nela?</span>
+              <button type="button" onClick={() => { const id = repetida.id; setRepetida(null); trocarRef.current(id); }}
+                className="rounded-full bg-cyan-600 px-3 py-1 font-bold text-white hover:bg-cyan-700 [@media(hover:none)]:min-h-[40px]">continuar nela</button>
+              <button type="button" onClick={() => { aceitouRepetir.current = true; setRepetida(null); void send(); }}
+                className="rounded-full border border-cyan-500/50 px-3 py-1 font-bold text-cyan-800 dark:text-cyan-100 hover:bg-cyan-500/10 [@media(hover:none)]:min-h-[40px]">começar nova</button>
+            </div>
+          )}
           {(semRede || falhouRede || avisoConversa) && (
             <p role={avisoConversa ? "status" : "alert"} className="ml-4 sm:ml-8 lg:ml-14 mb-2 rounded-xl border border-amber-400/40 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-[12.5px] text-amber-800 dark:text-amber-100">
               {avisoConversa ?? (semRede ? "Sem conexão. Sua mensagem fica na caixa de texto até a internet voltar." : "A internet caiu e a mensagem não foi enviada. Ela voltou para a caixa de texto: envie de novo.")}
