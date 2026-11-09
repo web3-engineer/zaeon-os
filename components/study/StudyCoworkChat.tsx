@@ -97,6 +97,7 @@ import { agenteDoChatSalvo } from "@/lib/agents/agenteEscolhido";
 import { EVT_FEEDBACK } from "@/lib/chat/feedback";
 import { SeletorModelo, SeloModelo, useModeloEscolhido } from "@/components/chat/SeletorModelo";
 import { criarEstudo, gerarArtefato } from "@/lib/studio/studioClient";
+import { mensagemDeFalha } from "@/lib/studio/falhaArtefato";
 import type { SkillNodeState } from "@/lib/skilltree/types";
 import type { SkillTreeData } from "@/components/study/SkillTreePanel";
 import { TCC_CROSS_ON, tccApi, type TrabalhoResumo } from "@/lib/tcc/client";
@@ -134,6 +135,10 @@ type Msg = {
   studioBlock?: StudioBlockData;   // em "structured" = artefato embutido na MESMA bolha
   blocosExtra?: StudioBlockData[]; // 2º artefato da mesma resposta (ex.: molécula + diagrama interativo)
   desenhando?: string;             // aviso enquanto um artefato demorado sai (diagrama ~20 s, aula 1–3 min)
+  /** #745 (revisão): a bolha do "tentando de novo" — o artefato da nova tentativa entra NELA (com o "desenhando…") */
+  tentando?: boolean;
+  /** #745: o artefato pedido que falhou — a bolha do aviso ganha o botão "tentar de novo" */
+  refazer?: { kind: string; topic: string; contexto?: string; spaceId?: string };
   answer?: StructuredAnswer;
   fase?: string;             // fase que o harness está narrando agora (só enquanto chega)
   modelo?: string;           // quem respondeu DE VERDADE (nome vindo do servidor) — o selo debaixo da resposta
@@ -892,11 +897,13 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
    * "Gerando…" achando que trava. Uma bolha curta com o motivo real da API é mais honesta
    * do que silêncio — e é o que permite diagnosticar sem abrir o log do servidor.
    */
-  const avisarFalha = useCallback((motivo?: string) => {
-    const texto = motivo?.trim()
-      ? `Não consegui gerar esse artefato: ${motivo.trim()}`
-      : "Não consegui gerar esse artefato agora. Tenta de novo em instantes.";
-    setMessages((prev) => [...prev, { id: uid(), role: "assistant", kind: "text", text: texto, at: Date.now() }]);
+  // #745: o aluno lê uma frase simples (o motivo técnico, em inglês e repetido, vai para o console) e ganha "tentar de novo"
+  const avisarFalha = useCallback((motivo?: string, refazer?: Msg["refazer"], pdf?: { dataUrl: string; nome?: string }) => {
+    const { texto, tecnico } = mensagemDeFalha(refazer?.kind ?? "", motivo);
+    if (tecnico) console.warn("[artefato] falhou:", refazer?.kind, tecnico);
+    const id = uid();
+    if (pdf) pdfDoRefazer.current.set(id, pdf);
+    setMessages((prev) => [...prev, { id, role: "assistant", kind: "text", text: texto, at: Date.now(), ...(refazer ? { refazer } : {}) }]);
   }, []);
 
   /**
@@ -904,18 +911,25 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
    * explicação). Se falhar, cala — ninguém pediu, então avisar seria ruído. Pedido
    * explícito continua reclamando alto: aí a pessoa está esperando.
    */
-  const runStudioAction = useCallback(async (kind: string, topic: string, attachMsgId?: string, silencioso = false, contexto?: string, pdf?: { dataUrl: string; nome?: string }) => {
+  // #745 (revisão): o PDF de uma aula que falhou fica na memória da tela (grande demais para guardar na mensagem)
+  const pdfDoRefazer = useRef(new Map<string, { dataUrl: string; nome?: string }>());
+  const runStudioAction = useCallback(async (kind: string, topic: string, attachMsgId?: string, silencioso = false, contexto?: string, pdf?: { dataUrl: string; nome?: string }, espacoDeAntes?: string) => {
     // a conversa que pediu: o artefato volta pra ela mesmo se a pessoa trocar de conversa durante a geração
     const scopeId = abaAtivaRef.current ?? undefined;
     // Fonte da geração: o estudo EM FOCO (se a pessoa está trabalhando nele) OU um
     // estudo NOVO criado pelo tópico. Nunca pega um estudo arbitrário da biblioteca
     // (senão "gere um podcast sobre X" sairia sobre o conteúdo errado). Diagrama, mapa,
     // molécula e aula nascem do assunto e da conversa — não criam estudo vazio em "Meus estudos".
-    let spaceId: string | undefined = focusIds[0];
+    let spaceId: string | undefined = espacoDeAntes ?? focusIds[0];
     if (!spaceId && !SEM_ESTUDO.has(kind)) {
       const s = await criarEstudo(topic || "Estudo");
       if (s) { setSpaces((p) => [...p, s as any]); spaceId = s.id; }
-      if (!spaceId) return;
+      // #745 (revisão): não deu para criar o estudo — avisa (com "tentar de novo"), em vez de sumir calado
+      if (!spaceId) {
+        if (attachMsgId) setMessages((prev) => prev.filter((m) => !(m.id === attachMsgId && m.tentando)));
+        if (!silencioso) avisarFalha(undefined, { kind, topic, ...(contexto ? { contexto } : {}) }, pdf);
+        return;
+      }
     }
     if (kind === "aula") topic = assuntoDe(topic.replace(/^aula interativa:\s*/i, ""));
     const aviso = attachMsgId ? AVISO_ARTEFATO[kind] : undefined;
@@ -934,10 +948,13 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
         gravarArtefato("estudos", threadsRef.current.find((t) => t.id === scopeId), { studioKind: r.bloco.studioKind, artifactId: r.bloco.artifactId, title: r.bloco.title || topic });
         abrirDocumento({ sala: "estudos", studioKind: r.bloco.studioKind, artifactId: r.bloco.artifactId, titulo: r.bloco.title || topic, data: r.bloco.data, focar: !silencioso, scopeId });
       }
-    } else if (r.tipo === "erro" && !r.silencioso && !silencioso) {
-      avisarFalha(r.mensagem);
+    } else if (r.tipo === "erro") {
+      // a bolha do "tentando de novo" que não deu certo sai — o aviso novo (com o botão) entra no lugar
+      if (attachMsgId) setMessages((prev) => prev.filter((m) => !(m.id === attachMsgId && m.tentando)));
+      if (!r.silencioso && !silencioso) avisarFalha(r.mensagem, { kind, topic, ...(contexto ? { contexto } : {}), ...(spaceId ? { spaceId } : {}) }, pdf);
     }
   }, [focusIds, avisarFalha]);
+  const runStudioActionRef = useRef(runStudioAction); runStudioActionRef.current = runStudioAction;
 
   // ── envio pro chat da Aura ──────────────────────────────────────────────────
   // `override` = envio direto (clique numa opção/conceito da resposta do harness),
@@ -1590,6 +1607,20 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
                         ? (m.text ? <AcoesPergunta texto={m.text} ocupado={sending} onEditar={() => setEditando(m.id)} /> : null)
                         : acoesDa(m, i)}
                       {!isUser && m.answer?.livros?.length ? <LivrosCartao livros={m.answer.livros} sala="estudos" /> : null}
+                      {/* #745: o artefato que falhou — tenta de novo daqui (o aviso sai e o "desenhando…" volta) */}
+                      {!isUser && m.refazer ? (
+                        <button type="button" disabled={sending}
+                          onClick={() => {
+                            const r = m.refazer!, pdf = pdfDoRefazer.current.get(m.id);
+                            pdfDoRefazer.current.delete(m.id);
+                            // a bolha do aviso vira a bolha da nova tentativa: o "desenhando…" aparece nela, e o artefato entra nela
+                            setMessages((prev) => prev.map((x) => (x.id === m.id ? { ...x, text: "Tentando de novo:", refazer: undefined, tentando: true } : x)));
+                            void runStudioActionRef.current(r.kind, r.topic, m.id, false, r.contexto, pdf, r.spaceId);
+                          }}
+                          className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-cyan-500/40 px-3 py-1 text-[12.5px] font-bold text-cyan-700 dark:text-cyan-200 hover:bg-cyan-500/10 disabled:opacity-50 [@media(hover:none)]:min-h-[40px]">
+                          ↻ tentar de novo
+                        </button>
+                      ) : null}
                       {!isUser && (m.studioBlock || m.desenhando) ? (
                         <div className="w-full max-w-[85%]">
                           {m.studioBlock ? <BlocoOuCartao b={m.studioBlock} /> : null}

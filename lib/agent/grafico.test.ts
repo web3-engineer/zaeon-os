@@ -259,3 +259,17 @@ describe("graficosDoTurno · onde CABE é regra, não opinião do modelo", () =>
     expect(gs[1].titulo).toBe("Trechos usados por documento");
   });
 });
+
+describe("#745 · o SVG do gráfico é válido", () => {
+  it("sem height=\"auto\" como atributo (o navegador reclamava no console); a altura vai no style", () => {
+    let feitos = 0;
+    for (const forma of ["barras", "faixas", "linha"] as const) {
+      const svg = svgDoGrafico({ forma, titulo: "t", pontos: [{ label: "a", valor: 1 }, { label: "b", valor: 2 }, { label: "c", valor: 3 }] } as any);
+      feitos += svg ? 1 : 0;
+      if (!svg) continue;
+      expect(svg).not.toMatch(/<svg[^>]*\sheight\s*=\s*["']auto["']/);
+      expect(svg).toMatch(/style="height:auto;/);
+    }
+    expect(feitos).toBeGreaterThan(0);
+  });
+});
