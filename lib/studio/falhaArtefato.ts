@@ -16,7 +16,7 @@ const NOME: Record<string, string> = {
 const VERBO: Record<string, string> = { diagram: "desenhar", mindmap: "desenhar", image: "desenhar", molecule: "montar", aula: "montar" };
 
 /** cara de erro de máquina: inglês de programa, nomes de campo, códigos, pilha */
-const TECNICO = /viewBox|validador|reprovad|\bnode\b|\bstate\b|exceeds|bounds|render|schema|json|undefined|null\b|TypeError|Error:|ECONN|fetch failed|timeout|timed out|status \d{3}|\b[45]\d\d\b|\bat \S+ \(|modelo não respondeu|não descreveu|\bmeta\.|\.width|stack/i;
+const TECNICO = /viewBox|validador|reprovad|\bnode\b|\bstate\b|exceeds|bounds|render|schema|json|undefined|null\b|TypeError|Error:|ECONN|fetch failed|timeout|timed out|status \d{3}|\b[45]\d\d\b|\bat \S+ \(|modelo não respondeu|não descreveu|\bmeta\.|\.width|stack|unauthori[sz]ed|forbidden|rate.?limit|quota|credential|api.?key|token|permission denied|ENOTFOUND|EAI_AGAIN/i;
 
 /** junta "A | A | B" em "A | B" (o validador repete o mesmo diagnóstico) */
 export function semRepetir(motivo: string): string {

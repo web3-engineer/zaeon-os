@@ -267,7 +267,7 @@ describe("#745 · o SVG do gráfico é válido", () => {
       const svg = svgDoGrafico({ forma, titulo: "t", pontos: [{ label: "a", valor: 1 }, { label: "b", valor: 2 }, { label: "c", valor: 3 }] } as any);
       feitos += svg ? 1 : 0;
       if (!svg) continue;
-      expect(svg).not.toMatch(/<svg[^>]*\sheight="auto"/);
+      expect(svg).not.toMatch(/<svg[^>]*\sheight\s*=\s*["']auto["']/);
       expect(svg).toMatch(/style="height:auto;/);
     }
     expect(feitos).toBeGreaterThan(0);

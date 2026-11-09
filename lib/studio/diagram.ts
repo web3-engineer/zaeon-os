@@ -368,7 +368,9 @@ export function autoReparo(tipo: TipoDiagrama, ir: any, saida: string): any | nu
   const gravarArea = (v: [number, number]) => { novo.meta = { ...(novo.meta ?? {}), viewBox: v }; mudou = true; };
   // o archify às vezes já diz o tamanho certo: "set meta.viewBox[0] to at least N" (largura) / "[1]" (altura)
   const pede = (i: 0 | 1) => Math.max(0, ...[...t.matchAll(new RegExp(`set meta\\.viewBox\\[${i}\\] to at least (\\d+)`, "g"))].map((m) => Number(m[1])));
-  const [pedeL, pedeA] = [pede(0), pede(1)];
+  // (architecture: "increase meta.viewBox to at least [L, A] for right/bottom overflow" — moldura que passou da borda)
+  const pedeAmbos = [...t.matchAll(/increase meta\.viewBox to at least \[(\d+), (\d+)\]/g)];
+  const [pedeL, pedeA] = [Math.max(pede(0), ...pedeAmbos.map((m) => Number(m[1]))), Math.max(pede(1), ...pedeAmbos.map((m) => Number(m[2])))];
   // "Component X falls outside the viewBox 900x600 — … set a larger meta.viewBox" (architecture)
   const fora = /falls outside the viewBox (\d+)x(\d+)/.exec(t);
   const cresceL = /exceeds the horizontal bounds of the (?:viewBox|diagram)/.test(t) || !!fora;

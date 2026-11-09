@@ -174,5 +174,7 @@ describe("#745 · nó fora da área do desenho", () => {
     expect(autoReparo("lifecycle", { meta: {}, states: [] }, 'State "x" exceeds the horizontal bounds of the diagram — reduce state.width or increase meta.viewBox[0].')?.meta.viewBox).toEqual([1140, 660]);
     expect(autoReparo("lifecycle", { meta: { viewBox: [980, 660] }, states: [] }, 'State "x" exceeds the vertical lifecycle area — keep y between 64 and 500 (adjust yOffset or increase meta.viewBox[1]).')?.meta.viewBox).toEqual([980, 780]);
     expect(autoReparo("architecture", { meta: {}, components: [] }, 'Component "x" falls outside the viewBox 900x600 — adjust pos/size or set a larger meta.viewBox.')?.meta.viewBox).toEqual([1060, 720]);
+    // a moldura que passou da borda direita/de baixo: o archify diz o tamanho
+    expect(autoReparo("architecture", { meta: { viewBox: [900, 600] }, components: [] }, 'Boundary "B" extends outside the viewBox (right by 40px) — … increase meta.viewBox to at least [940, 600] for right/bottom overflow')?.meta.viewBox).toEqual([964, 624]);
   });
 });

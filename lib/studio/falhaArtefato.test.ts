@@ -21,6 +21,8 @@ describe("#745 · mensagemDeFalha", () => {
     expect(mensagemDeFalha("image").texto).toBe("Não consegui desenhar essa imagem agora. Pode tentar de novo.");
     expect(mensagemDeFalha("podcast", "fetch failed").texto).toBe("Não consegui gerar esse podcast agora. Pode tentar de novo.");
     expect(mensagemDeFalha("qualquer", "TypeError: x is undefined").texto).toBe("Não consegui gerar esse material agora. Pode tentar de novo.");
+    // acesso, limite e credencial também são técnicos
+    for (const m of ["Unauthorized", "rate_limited", "invalid credentials", "missing api key"]) expect(mensagemDeFalha("diagram", m).tecnico).toBe(m);
   });
 
   it("semRepetir junta os diagnósticos iguais", () => {
