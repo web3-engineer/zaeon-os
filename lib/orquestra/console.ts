@@ -53,6 +53,22 @@ export async function autorizar(req: Request, env: Env = process.env, sessao?: (
   }
 }
 
+/**
+ * PURO: o RECIBO do token do console — nunca o valor, só o estado.
+ *   "on"    o token existe e tem >= MIN_TOKEN: o caminho Bearer funciona.
+ *   "fraco" existe mas é curto: `tokenValido` recusa SEMPRE. É o estado perigoso,
+ *           porque de fora parece configurado e na prática está desligado.
+ *   "off"   não chegou ao processo.
+ * Existe porque "o token chegou?" só se respondia com `docker exec printenv` — e um token
+ * preenchido no .env mas COMENTADO (ou sobrescrito por .env.secrets, que vence) dá exatamente
+ * o mesmo sintoma. Mesmo molde do `autenticado: !!tokenDoAgente()` do recibo do agente.
+ */
+export function reciboConsole(env: Env = process.env): "on" | "fraco" | "off" {
+  const t = env.ORQUESTRA_CONSOLE_TOKEN?.trim();
+  if (!t) return "off";
+  return t.length >= MIN_TOKEN ? "on" : "fraco";
+}
+
 // ───────────────────────────── tarefas (linha do banco → contrato) ─────────────────────────────
 export type LinhaTarefa = {
   id: string; criadaEm: Date; atualizadaEm: Date; status: string; origem: string; motor: string; nomeMotor: string;

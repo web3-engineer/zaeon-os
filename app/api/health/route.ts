@@ -32,6 +32,7 @@ import { getTool } from "@/lib/agent/runtime";
 import { GEMINI_MODEL_FLASH, GEMINI_MODEL_PRO } from "@/lib/ai/model";
 import { proNasPesadasLigado } from "@/lib/ai/proNasPesadas";
 import { pusherFaltando } from "@/lib/collab/realtime";
+import { reciboConsole } from "@/lib/orquestra/console";
 import {
   agenteEhExterno,
   agenteFaltando,
@@ -98,6 +99,10 @@ export async function GET() {
     // NOMES que faltam (nunca os valores). Sem elas a colaboração funciona no poll de 6 s — a
     // diferença é invisível de fora, e era por isso que eu não conseguia confirmá-la pro dono.
     tempoReal: pusherFaltando().length === 0 ? "on" : { faltando: pusherFaltando() },
+    // O CONSOLE DA ORQUESTRA. `autorizar` aceita Bearer OU sessão de super-admin, então token
+    // ausente degrada em silêncio: o console segue abrindo logado e o caminho de automação morre.
+    // "fraco" é o pior dos três — parece configurado e `tokenValido` recusa sempre. Só o estado.
+    orquestra: { console: reciboConsole() },
     /**
      * O TRILHO DO DOCUMENTO, em DUAS METADES que podem divergir — e é por isso que o recibo diz as
      * duas em vez de um "on".
