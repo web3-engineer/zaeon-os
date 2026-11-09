@@ -819,6 +819,9 @@ export default function HomeworkPage({
   // Sidebar POR HOVER: passar o mouse em cima abre; tirar o mouse a devolve pro canto (o trilho de ícones). Ela passa
   // POR CIMA do módulo do chat. A lógica (e o porquê de ela ficar presa aberta antes) mora em components/lab/useSidebarHover.
   const { aberta: isSidebarOpen, navRef, handlers: hoverSidebar } = useSidebarHover<HTMLElement>();
+  // as CONVERSAS do chat só expandem com o mouse NA ÁREA DO CHAT (o agente + a lista) — hover nas outras pills da
+  // sidebar abre o trilho, mas não abre as conversas. (no celular a gaveta mostra tudo, sem hover.)
+  const [chatAtivo, setChatAtivo] = useState(false);
   // CELULAR (≤767px): não existe hover — um toque abria a sidebar por cima de tudo e ela nunca fechava. Lá a sidebar
   // vira GAVETA (☰ na barra de baixo, fecha ao escolher) e a barra de baixo leva às salas; o conteúdo usa a largura toda.
   const celular = useIsMobile();
@@ -2737,6 +2740,7 @@ export default function HomeworkPage({
             {/* O CHAT tem a aba dele: a FOTO e o NOME do agente (o nome brilha enquanto a resposta é processada), com as
                 conversas embaixo. Depois a "Sala de Estudos" (o board). O "Marketplace" (a vitrine, destacado) mora no pé da
                 lista, acima do Perfil. Sem pills no topo da sala — tudo aqui. */}
+            <div onMouseEnter={() => setChatAtivo(true)} onMouseLeave={() => setChatAtivo(false)} className="flex flex-col gap-3">
             <button
               data-tour="estudos"
               onClick={() => abrirAgente()}
@@ -2790,11 +2794,12 @@ export default function HomeworkPage({
               />
             )}
             {/* Só o módulo ATUAL abre os submódulos (conversas); os outros ficam fechadinhos. */}
-            <Ramo aberto={sidebarAberta && activeTab === "sala-de-estudos" && agente.tela === "chat"}>
+            <Ramo aberto={(celular || chatAtivo) && sidebarAberta && activeTab === "sala-de-estudos" && agente.tela === "chat"}>
               {activeTab === "sala-de-estudos"
                 ? <div ref={setSlotConversas} className={RAMO_ATIVO} />
                 : <div className={RAMO}><ConversasDaSala sala="estudos" onEntrar={() => setActiveTab("sala-de-estudos")} /></div>}
             </Ramo>
+            </div>
             <button
               data-tour="tab-feed"
               onClick={() => irEstudos("feed")}
