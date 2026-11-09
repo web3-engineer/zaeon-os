@@ -12,7 +12,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { SISTEMAS, SISTEMAS_POR_ID, VISIVEIS_PADRAO, ehSistema, explicacao, type Atlas } from "@/lib/anatomia/atlas";
 import {
-  MAX_RESULTADOS, SINONIMOS_PT, acharConceito, buscarConceitos, pecasDoConceito,
+  MAX_RESULTADOS, SINONIMOS_PT, acharConceito, buscarConceitos, pecasDoConceito, termoNaFrase,
   sistemasDoConceito, termoDeBusca,
 } from "@/lib/anatomia/busca";
 
@@ -104,6 +104,78 @@ describe("SINÔNIMOS PT→EN — o portão que impede sinônimo que não acha na
     expect(termoDeBusca("CORAÇÃO")).toEqual({ termo: "heart", viaSinonimo: true });
     expect(termoDeBusca("figado")).toEqual({ termo: "liver", viaSinonimo: true });
     expect(termoDeBusca("thalamus")).toEqual({ termo: "thalamus", viaSinonimo: false });
+  });
+});
+
+describe("COGNATAS em frase — o furo que o mapa não alcança", () => {
+  /**
+   * O #743 varre os n-gramas contra o MAPA. Boa parte da anatomia, porém, é cognata — fêmur/femur,
+   * tíbia/tibia — e esses termos nunca entraram no mapa justamente porque sozinhos já funcionam.
+   * Medido antes do conserto: "fêmur" achava os 3 conceitos, "me mostra o fêmur" achava ZERO.
+   */
+  it("a frase chega ao MESMO resultado que o termo nu — não parecido: igual", () => {
+    for (const [frase, nu] of [
+      ["me mostra o fêmur", "fêmur"],
+      ["quero ver a tíbia", "tíbia"],
+      ["o que faz o pâncreas", "pâncreas"],
+      ["explica a aorta pra mim", "aorta"],
+    ] as const) {
+      const a = buscarConceitos(atlas, frase);
+      const b = buscarConceitos(atlas, nu);
+      expect(a.achados, `"${frase}" ≠ "${nu}"`).toEqual(b.achados);
+      expect(a.achados.length, `"${frase}" não achou nada`).toBeGreaterThan(0);
+      expect(a.termo).toBe(b.termo);
+    }
+  });
+
+  it("não inventa estrutura em pergunta que não é de anatomia", () => {
+    const achou: string[] = [];
+    for (const q of [
+      "como faço um bolo de cenoura", "o que é a fotossíntese", "quanto é dois mais dois",
+      "me explica a revolução francesa", "qual a capital da frança", "o que é um polinômio",
+      "como funciona o blockchain", "quero estudar para o enem", "me da um resumo disso",
+      "o que você sabe fazer", "me ajuda com a prova de direito", "me fala sobre o Brasil",
+    ]) {
+      if (buscarConceitos(atlas, q).achados.length) achou.push(q);
+    }
+    expect(achou, "frase sem anatomia virou estrutura").toEqual([]);
+  });
+
+  it("termoNaFrase exige PALAVRA INTEIRA — 'o' não casa com 'colon', 'me' não casa com 'omentum'", () => {
+    // o perigo concreto: a busca principal usa `includes`, e aplicá-lo ao fallback faria a palavra
+    // de função mais curta da frase casar com quase todo nome do atlas.
+    expect(termoNaFrase(atlas, "o me um da no")).toBeNull();
+    expect(termoNaFrase(atlas, "me mostra o femur")).toBe("femur");
+  });
+
+  it("uma palavra só não entra no fallback: a busca já tentou e não achou", () => {
+    expect(termoNaFrase(atlas, "femur")).toBeNull();
+    expect(termoNaFrase(atlas, "")).toBeNull();
+  });
+
+  it("não atropela o MAPA: termo vetado continua ganhando da varredura da frase", () => {
+    // "osso do fêmur" tem DUAS candidatas; "osso" está no mapa, e tradução vetada vence o palpite.
+    const r = buscarConceitos(atlas, "osso do fêmur");
+    expect(r.viaSinonimo).toBe(true);
+    expect(r.termo).toBe("bone");
+  });
+
+  it("os três acertos por acidente que eram ERRADOS: clavícula, mandíbula e língua", () => {
+    // sem o mapa, a subcadeia casava e casava errado — e parecia certo, que é o pior caso.
+    // "clavicula" caía em "clavicular part of deltoid" (músculo), "lingua" em "sublingual gland".
+    for (const [pt, esperado] of [
+      ["clavícula", "clavicle"], ["mandíbula", "mandible"], ["língua", "tongue"],
+    ] as const) {
+      const r = buscarConceitos(atlas, pt, 1);
+      expect(r.termo).toBe(esperado);
+      expect(r.achados[0]?.nome.toLowerCase(), `${pt} devia cair em ${esperado}`).toBe(esperado);
+    }
+  });
+
+  it("'alvéolo' em frase continua recusando — o fallback não inventa o que o atlas não tem", () => {
+    for (const q of ["alvéolo", "como funciona o alvéolo", "me mostra um alvéolo pulmonar"]) {
+      expect(buscarConceitos(atlas, q).achados, q).toEqual([]);
+    }
   });
 });
 
