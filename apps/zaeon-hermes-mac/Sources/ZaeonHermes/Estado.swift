@@ -6,6 +6,7 @@ import Observation
 enum Secao: Hashable {
     case quadro
     case saude
+    case agentes
     case motor(String)
     case datasets
     case arena

@@ -12,6 +12,13 @@ public protocol FonteHermes: Sendable {
     func exportar(desde: Date?) async throws -> ResultadoExportacao
     /// A saúde do chat nas últimas `horas` (`GET /saude?horas=`).
     func saude(horas: Int) async throws -> SaudeChat
+    /// Os agentes da casa e o uso deles nos últimos `dias` (`GET /agentes?dias=`).
+    func agentes(dias: Int) async throws -> RespostaAgentes
+}
+
+extension FonteHermes {
+    /// Fonte sem a rota (DEMO dos testes, desconectada): falha com o motivo, nunca inventa agente.
+    public func agentes(dias: Int) async throws -> RespostaAgentes { throw ErroAPI.indisponivel(codigo: "sem_agentes") }
 }
 
 /// Erros tipados do console. A mensagem (`errorDescription`) já vem pronta para a tela.
@@ -126,6 +133,10 @@ public final class APIClient: FonteHermes, @unchecked Sendable {
 
     public func saude(horas: Int = 24) async throws -> SaudeChat {
         try await enviar("saude", consulta: [URLQueryItem(name: "horas", value: String(max(1, horas)))])
+    }
+
+    public func agentes(dias: Int = 7) async throws -> RespostaAgentes {
+        try await enviar("agentes", consulta: [URLQueryItem(name: "dias", value: String(max(1, dias)))])
     }
 
     // MARK: Transporte
