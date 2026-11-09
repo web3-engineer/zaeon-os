@@ -62,3 +62,40 @@ jobs:
           path: apps/zaeon-hermes-mac/dist/ZaeonHermes.app.zip
           retention-days: 14
           if-no-files-found: error
+
+      # ATUALIZAÇÃO AUTOMÁTICA (docs/HERMES_ZAEON.md · GET /app): só na main, manda o zip + manifesto pra VPS
+      # (<DEPLOY_PATH>/hermes-dist, montado só-leitura no container web). O app compara o build dele com o do
+      # manifesto e se troca sozinho. Sem os secrets do VPS, o passo é pulado (o artefato acima continua valendo).
+      # As actions appleboy/* são de container Docker e não rodam no runner macOS: aqui é ssh/scp do sistema.
+      - name: Publicar na VPS (atualização automática)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          if [ -z "$VPS_HOST" ] || [ -z "$VPS_SSH_KEY" ]; then
+            echo "::warning::Secrets do VPS ausentes: versão não publicada para atualização automática."
+            exit 0
+          fi
+          ZIP=dist/ZaeonHermes.app.zip
+          SHA256=$(shasum -a 256 "$ZIP" | cut -d' ' -f1)
+          TAMANHO=$(stat -f%z "$ZIP")
+          cat > dist/manifesto.json <<JSON
+          {"build": ${GITHUB_RUN_NUMBER}, "versao": "0.1.0", "sha": "${GITHUB_SHA}", "criadoEm": "$(date -u +%Y-%m-%dT%H:%M:%SZ)", "sha256": "${SHA256}", "tamanho": ${TAMANHO}, "arquivo": "ZaeonHermes.app.zip"}
+          JSON
+          cat dist/manifesto.json
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/vps && chmod 600 ~/.ssh/vps
+          PORTA="${VPS_PORT:-22}"; DESTINO="${DEPLOY_PATH:-/root/zaeon-os}/hermes-dist"
+          OPTS=(-i ~/.ssh/vps -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20)
+          ssh "${OPTS[@]}" -p "$PORTA" "${VPS_USER:-root}@${VPS_HOST}" "mkdir -p '$DESTINO'"
+          scp "${OPTS[@]}" -P "$PORTA" "$ZIP" "${VPS_USER:-root}@${VPS_HOST}:$DESTINO/ZaeonHermes.app.zip.novo"
+          scp "${OPTS[@]}" -P "$PORTA" dist/manifesto.json "${VPS_USER:-root}@${VPS_HOST}:$DESTINO/manifesto.json.novo"
+          # o zip entra antes do manifesto: quem ler no meio vê o build antigo ou nenhum (o servidor confere o sha256)
+          ssh "${OPTS[@]}" -p "$PORTA" "${VPS_USER:-root}@${VPS_HOST}" \
+            "cd '$DESTINO' && mv -f ZaeonHermes.app.zip.novo ZaeonHermes.app.zip && mv -f manifesto.json.novo manifesto.json && ls -l"
+          rm -f ~/.ssh/vps
+          echo "Publicado: build ${GITHUB_RUN_NUMBER} (${SHA256})"

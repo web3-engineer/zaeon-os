@@ -23,6 +23,11 @@ struct ZaeonHermesApp: App {
                 }
                 .keyboardShortcut("r", modifiers: .command)
             }
+            CommandGroup(after: .appInfo) {
+                Button("Procurar atualizações…") {
+                    Task { await estado.atualizador.verificar(estado.fonte) }
+                }
+            }
         }
     }
 }

@@ -132,3 +132,17 @@ Os motores da orquestra (DeepSeek, Qwen, Kimi…) continuam no `/painel`.
              "superficies": [{ "superficie": "estudos", "chamadas": 120 }], "erros": [{ "erro": "timeout", "chamadas": 3 }],
              "porDia": [{ "dia": "2026-11-09", "chamadas": 30, "falhas": 1 }] } }] }
 ```
+
+### `GET /api/admin/orquestra/app` e `GET /api/admin/orquestra/app/baixar` — atualização automática do app
+A cada push na `main` que mexe em `apps/zaeon-hermes-mac`, o workflow do app compila, assina e manda
+`ZaeonHermes.app.zip` + `manifesto.json` por SSH para `<DEPLOY_PATH>/hermes-dist`, montado só-leitura no container
+web (`HERMES_DIST_DIR`, padrão `/app/.hermes-dist`). O repositório é privado, então o app baixa daqui, com a chave do console.
+```jsonc
+// GET /app → 200 (ou 404 {"erro":"sem_build"} se nada foi publicado)
+{ "build": 123, "versao": "0.1.0", "sha": "<commit>", "criadoEm": "…", "sha256": "<64 hex>", "tamanho": 1264573, "arquivo": "ZaeonHermes.app.zip" }
+// GET /app/baixar → o zip (application/zip), só se bater com o sha256 do manifesto; headers X-Hermes-Build e X-Hermes-Sha256
+```
+O app compara com o próprio `CFBundleVersion` (o `run_number` do workflow), mostra **Atualização disponível** no pé
+da barra lateral e, com um clique, baixa, confere sha256 + assinatura + identificador, troca o `.app` e reabre.
+O app é assinado ad-hoc com **requisito designado pelo identificador** (`designated => identifier "space.zaeon.hermes"`):
+todo build é o mesmo app para o Keychain, e a chave do console sobrevive à atualização.

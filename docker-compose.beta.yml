@@ -179,6 +179,10 @@ services:
       # é entregue em /models/body/*. Montar SÓ a subpasta: o atlas.json do nível de cima vem da
       # imagem e não pode ser sombreado.
       - "anatomia_geometria:/app/public/models/body"
+      # A última versão do app Zaeon Hermes (console da orquestra), publicada pelo workflow do app por SSH em
+      # <DEPLOY_PATH>/hermes-dist. Só leitura: o servidor só ENTREGA (GET /api/admin/orquestra/app, com a chave
+      # do console); quem escreve é o runner macOS. Pasta ausente = "sem build", nada quebra.
+      - "./hermes-dist:/app/.hermes-dist:ro"
     # init (tini) como PID 1: recolhe processos órfãos — a captura do Octa (lib/octa/captura.ts) roda Chromium
     # aqui, e o `node server.js` como PID 1 nunca colhe filhos que sobram quando o navegador é morto.
     init: true

@@ -14,11 +14,17 @@ public protocol FonteHermes: Sendable {
     func saude(horas: Int) async throws -> SaudeChat
     /// Os agentes da casa e o uso deles nos últimos `dias` (`GET /agentes?dias=`).
     func agentes(dias: Int) async throws -> RespostaAgentes
+    /// A última versão publicada do app (`GET /app`); 404 = nada publicado ainda.
+    func manifestoApp() async throws -> ManifestoApp
+    /// O zip da última versão (`GET /app/baixar`).
+    func baixarApp() async throws -> Data
 }
 
 extension FonteHermes {
     /// Fonte sem a rota (DEMO dos testes, desconectada): falha com o motivo, nunca inventa agente.
     public func agentes(dias: Int) async throws -> RespostaAgentes { throw ErroAPI.indisponivel(codigo: "sem_agentes") }
+    public func manifestoApp() async throws -> ManifestoApp { throw ErroAPI.naoEncontrado(codigo: "sem_build") }
+    public func baixarApp() async throws -> Data { throw ErroAPI.naoEncontrado(codigo: "sem_build") }
 }
 
 /// Erros tipados do console. A mensagem (`errorDescription`) já vem pronta para a tela.
@@ -137,6 +143,21 @@ public final class APIClient: FonteHermes, @unchecked Sendable {
 
     public func agentes(dias: Int = 7) async throws -> RespostaAgentes {
         try await enviar("agentes", consulta: [URLQueryItem(name: "dias", value: String(max(1, dias)))])
+    }
+
+    public func manifestoApp() async throws -> ManifestoApp {
+        try await enviar("app")
+    }
+
+    /// Baixa o zip inteiro (≈ 1 MB). O app confere o sha256 contra o manifesto antes de instalar.
+    public func baixarApp() async throws -> Data {
+        var req = try requisicao("app/baixar")
+        req.setValue("application/zip", forHTTPHeaderField: "Accept")
+        req.timeoutInterval = 120
+        let (dados, resposta) = try await baixar(req)
+        guard let http = resposta as? HTTPURLResponse else { throw ErroAPI.rede("resposta sem HTTP") }
+        try APIClient.validar(status: http.statusCode, dados: dados)
+        return dados
     }
 
     // MARK: Transporte
