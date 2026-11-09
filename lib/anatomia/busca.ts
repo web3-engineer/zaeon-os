@@ -59,6 +59,46 @@ export const SINONIMOS_PT: Readonly<Record<string, string>> = {
   // "linfonodo" NÃO está aqui: o portão de busca.test.ts provou que o atlas não tem NENHUM
   // conceito de linfonodo — o sistema linfático desta referência é só baço e timo. Prometer o
   // termo faria a busca responder "não achei", que o aluno leria como "não existe no corpo".
+
+  // ───────────────────── o esqueleto, as regiões e as vísceras ─────────────────────
+  // Cada entrada abaixo foi VETADA contra o atlas real em 2026-11-09, pelo resultado ORDENADO da
+  // própria `buscarConceitos` — não pelo `includes` cru, que engana: `ear` devolve "heart" como
+  // PRIMEIRO achado, porque está dentro de "h-ear-t". Pedir orelha e receber coração é pior que não
+  // achar, então "orelha" aponta para "external ear", que é exato e único.
+  // Onde o atlas só tem a estrutura LATERALIZADA (não há "knee", há "left knee" e "right knee"), a
+  // entrada fica: o aluno que pede o joelho recebe um joelho, e isso é o dado, não um defeito.
+  "umero": "humerus", "cranio": "skull", "costela": "rib", "costelas": "rib",
+  "escapula": "scapula", "omoplata": "scapula", "patela": "patella", "rotula": "patella",
+  "esterno": "sternum", "maxila": "maxilla", "radio": "radius", "perone": "fibula",
+  "coluna": "vertebral column", "coluna vertebral": "vertebral column",
+  "pelve": "pelvis", "bacia": "pelvis", "quadril": "hip bone",
+  "joelho": "knee", "ombro": "shoulder", "punho": "wrist",
+  "mao": "hand", "maos": "hand", "pe": "foot", "pes": "foot",
+  "braco": "arm", "bracos": "arm", "perna": "leg", "pernas": "leg", "coxa": "thigh",
+  "cabeca": "head", "torax": "thorax", "pescoco": "neck",
+  "olho": "eyeball", "olhos": "eyeball", "orelha": "external ear",
+  "nariz": "nose", "dente": "tooth", "dentes": "tooth",
+  "esofago": "esophagus", "faringe": "pharynx", "laringe": "larynx",
+  "duodeno": "duodenum", "apendice": "appendix",
+  "vesicula": "gallbladder", "vesicula biliar": "gallbladder",
+  "uretra": "urethra", "testiculo": "testis", "prostata": "prostate",
+  "suprarrenal": "adrenal gland", "cerebelo": "cerebellum",
+  "peritonio": "peritoneum", "tendao": "tendon", "tendoes": "tendon",
+  // "medula espinhal" sim; "medula" sozinha NÃO: em português ela é também a medula óssea, e o
+  // atlas tem as duas coisas. Traduzir o termo ambíguo escolheria pelo aluno.
+  "medula espinhal": "spinal cord",
+  // Estas três CASAVAM sozinhas e casavam ERRADO — medido, não suposto. Sem o mapa, "clavícula"
+  // caía em "clavicular part of deltoid" (um músculo), "mandíbula" em "submandibular gland" e
+  // "língua" em "sublingual gland", uma glândula salivar. O acerto por subcadeia é pior que o erro
+  // franco: a resposta parecia certa. O alvo exato conserta as três.
+  "clavicula": "clavicle", "mandibula": "mandible", "lingua": "tongue",
+  // "reto" NÃO entra, apesar de "rectum" existir e ser exato: num produto de escola "reto" é na
+  // maioria das vezes ângulo reto, e a ferramenta de anatomia é alcançável do chat geral. Quem
+  // quer o órgão tem "intestino". O erro que isso evita é ridículo o bastante para custar caro.
+  //
+  // FORA porque o atlas NÃO TEM — conferido, não suposto: útero, ovário, tireoide, hipófise,
+  // cotovelo (elbow), tornozelo (ankle). É uma referência PARCIAL de adulto masculino, e sinônimo
+  // que não acha nada promete e falha.
 };
 
 /** As palavras da consulta, sem acento e sem pontuação. */
@@ -98,6 +138,61 @@ export function termoDeBusca(consulta: string): { termo: string; viaSinonimo: bo
   return { termo: q, viaSinonimo: false };
 }
 
+/**
+ * O piso de letras para uma palavra da frase poder ser candidata. Três, porque a anatomia inglesa
+ * TEM termos de três letras ("rib", "arm", "eye", "jaw", "hip", "leg", "ear") e cortá-los perderia
+ * estrutura de verdade; abaixo disso só há palavra de função ("o", "me", "um", "da").
+ */
+const MIN_LETRAS_NA_FRASE = 3;
+
+/**
+ * O n-grama aparece como PALAVRA INTEIRA no nome de algum conceito?
+ *
+ * Casamento mais ESTRITO que o da busca principal, e de propósito. Lá o `includes` é uma vantagem
+ * ("lung" acha "left lung"); aqui ele seria um desastre, porque "o" é subcadeia de quase todo nome
+ * e "me" está dentro de "omentum". A fronteira de palavra é o que separa "achei o fêmur" de
+ * "achei a letra o".
+ */
+function ehPalavraDeEstrutura(nomes: readonly string[], alvo: string): boolean {
+  if (alvo.replace(/ /g, "").length < MIN_LETRAS_NA_FRASE) return false;
+  const re = new RegExp(`(^|[^a-z0-9])${alvo}($|[^a-z0-9])`);
+  return nomes.some((n) => re.test(n));
+}
+
+/**
+ * Qual pedaço da FRASE é o nome de uma estrutura, segundo o próprio atlas.
+ *
+ * ────────────── o furo que isto fecha ──────────────
+ * O mapa PT→EN cobre o que foi traduzido à mão, e `termoDeBusca` varre os n-gramas contra ELE. Mas
+ * boa parte da anatomia é COGNATA — fêmur/femur, tíbia/tibia, úmero/humerus, tórax/thorax — e esses
+ * termos nunca entraram no mapa justamente porque, sozinhos, já funcionam sem tradução: tirado o
+ * acento, "fêmur" casa com `femur` no atlas.
+ *
+ * Medido hoje: "fêmur" acha os 3 conceitos de femur, e "me mostra o fêmur" acha ZERO — porque
+ * nenhum n-grama da frase está no mapa, o termo vira a frase inteira, e nome de conceito nenhum
+ * contém "me mostra o femur". O conserto do #743 só alcançava quem estava no mapa.
+ *
+ * Então, quando a busca não acha NADA e o termo não veio do mapa, perguntamos ao atlas qual pedaço
+ * da frase ele reconhece — do mais longo para o mais curto, da esquerda para a direita, a mesma
+ * ordem da varredura de sinônimos, para as duas se comportarem igual. A autoridade sobre quais
+ * nomes existem é o dado, não uma lista de palavras de parada que eu teria de adivinhar e manter.
+ */
+export function termoNaFrase(atlas: Atlas, frase: string): string | null {
+  const ws = palavras(frase);
+  // Uma palavra só já foi tentada pela busca e não achou nada. Varrer de novo daria o mesmo.
+  if (ws.length < 2) return null;
+
+  const nomes = atlas.concepts.map((c) => semAcento(c.name));
+  const maiorNome = nomes.reduce((m, n) => Math.max(m, n.split(" ").length), 1);
+  for (let tam = Math.min(ws.length, maiorNome); tam >= 1; tam--) {
+    for (let i = 0; i + tam <= ws.length; i++) {
+      const alvo = ws.slice(i, i + tam).join(" ");
+      if (ehPalavraDeEstrutura(nomes, alvo)) return alvo;
+    }
+  }
+  return null;
+}
+
 export type AchadoAnatomia = {
   id: string;
   nome: string;
@@ -126,10 +221,8 @@ function posto(nome: string, termo: string): number {
  * devolver vazio é melhor que devolver os 30 primeiros do arquivo, que é o que uma busca sem
  * filtro faria parecer resultado.
  */
-export function buscarConceitos(atlas: Atlas, consulta: string, limite = MAX_RESULTADOS): ResultadoBusca {
-  const { termo, viaSinonimo } = termoDeBusca(consulta);
-  if (!termo) return { achados: [], termo, viaSinonimo, total: 0 };
-
+/** O miolo: casar o termo contra nome e id, ordenar e cortar. Sem saber de onde o termo veio. */
+function buscaCrua(atlas: Atlas, termo: string, limite: number): Pick<ResultadoBusca, "achados" | "total"> {
   const casaram = atlas.concepts.filter(
     (c) => semAcento(c.name).includes(termo) || c.id.toLowerCase().includes(termo),
   );
@@ -141,10 +234,29 @@ export function buscarConceitos(atlas: Atlas, consulta: string, limite = MAX_RES
   });
   return {
     achados: ordenados.slice(0, Math.max(0, limite)).map((c) => ({ id: c.id, nome: c.name, pecas: c.elements.length })),
-    termo,
-    viaSinonimo,
     total: casaram.length,
   };
+}
+
+export function buscarConceitos(atlas: Atlas, consulta: string, limite = MAX_RESULTADOS): ResultadoBusca {
+  const { termo, viaSinonimo } = termoDeBusca(consulta);
+  if (!termo) return { achados: [], termo, viaSinonimo, total: 0 };
+
+  const r = buscaCrua(atlas, termo, limite);
+  if (r.total > 0) return { ...r, termo, viaSinonimo };
+
+  // Nada. Se o termo veio do MAPA, para aqui: a tradução é conferida por teste (todo alvo casa com
+  // algum conceito), então não achar é dado inconsistente, e varrer a frase seria desconfiar de uma
+  // tradução vetada. Só quando o termo é o que o aluno digitou perguntamos ao atlas o que ele vê.
+  if (viaSinonimo) return { ...r, termo, viaSinonimo };
+
+  const naFrase = termoNaFrase(atlas, termo);
+  if (!naFrase || naFrase === termo) return { ...r, termo, viaSinonimo };
+
+  // Repetimos a busca NORMAL com o pedaço achado — não a estrita. O que o aluno recebe por
+  // "me mostra o fêmur" passa a ser exatamente o que ele receberia digitando "fêmur", e isso é uma
+  // igualdade que o teste afirma, não uma coincidência.
+  return { ...buscaCrua(atlas, naFrase, limite), termo: naFrase, viaSinonimo };
 }
 
 /** `inspect_anatomical_structure`: o conceito por id exato, ou `null`. Nunca o "mais parecido". */
