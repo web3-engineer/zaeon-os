@@ -89,15 +89,23 @@ PLIST
 plutil -lint "$APP/Contents/Info.plist"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 
-echo "==> codesign ad-hoc"
-if ! codesign --force --deep -s - "$APP"; then
+# REQUISITO DESIGNADO FIXO. Assinatura ad-hoc sozinha amarra a identidade do app ao HASH do binário: cada
+# build novo é "outro app" para o macOS, e o Keychain para de entregar a chave do console (era o 401 depois de
+# atualizar). Com o requisito pelo identificador, todo build do Hermes é o MESMO app para o Keychain — e a
+# atualização automática troca o binário sem pedir a chave de novo.
+REQUISITO="designated => identifier \"$BUNDLE_ID\""
+echo "==> codesign ad-hoc (requisito: $REQUISITO)"
+if ! codesign --force --deep -s - -r="$REQUISITO" "$APP"; then
   # Alguns bundles de recursos do SwiftPM são "rasos" e o --deep tenta assiná-los como código.
   # Sem --deep eles entram selados como recursos comuns do app.
   echo "AVISO: codesign --deep falhou; assinando sem --deep." >&2
-  codesign --force -s - "$APP"
+  codesign --force -s - -r="$REQUISITO" "$APP"
 fi
 codesign --verify --strict --verbose=2 "$APP"
 codesign -dv "$APP" 2>&1 | sed 's/^/    /'
+echo "==> requisito designado gravado:"
+codesign -d -r- "$APP" 2>&1 | sed 's/^/    /'
+codesign -d -r- "$APP" 2>&1 | grep -q "identifier \"$BUNDLE_ID\"" || { echo "ERRO: requisito designado não ficou pelo identificador" >&2; exit 1; }
 
 echo "==> zip"
 ditto -c -k --sequesterRsrc --keepParent "$APP" "$DIST/$NOME.app.zip"

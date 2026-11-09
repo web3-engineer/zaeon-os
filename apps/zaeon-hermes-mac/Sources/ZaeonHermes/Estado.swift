@@ -42,6 +42,7 @@ final class EstadoApp {
     var filtro = FiltroTarefas()
 
     let arena = EstadoArena()
+    let atualizador = Atualizador()
 
     /// Intervalo do auto-refresh do painel.
     static let intervaloPainel: Duration = .seconds(10)
@@ -85,7 +86,10 @@ final class EstadoApp {
         self.erro = nil
         self.caminho = []
         arena.limpar()
-        Task { await atualizar() }
+        Task {
+            await atualizar()
+            await atualizador.verificar(fonte)
+        }
     }
 
     func atualizar() async {

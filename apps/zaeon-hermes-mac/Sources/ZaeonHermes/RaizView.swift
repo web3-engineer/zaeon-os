@@ -25,6 +25,7 @@ struct RaizView: View {
         }
         .toolbar { barraFerramentas }
         .task { await estado.cicloPainel() }
+        .task { await estado.atualizador.ciclo { estado.fonte } }
         .onChange(of: estado.secao) {
             estado.caminho = []
         }
@@ -152,6 +153,13 @@ private struct RodapeBarraLateral: View {
     @Environment(EstadoApp.self) private var estado
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            FaixaAtualizacao()
+            linhaStatus
+        }
+    }
+
+    private var linhaStatus: some View {
         HStack(spacing: 6) {
             if estado.carregando {
                 ProgressView().controlSize(.mini)
@@ -187,5 +195,45 @@ private struct FaixaErro: View {
         .padding(.vertical, 8)
         .background(.orange.opacity(0.12))
         .background(.bar)
+    }
+}
+
+/// "Atualização disponível" no pé da barra lateral: um clique baixa, troca o app e reabre.
+private struct FaixaAtualizacao: View {
+    @Environment(EstadoApp.self) private var estado
+
+    var body: some View {
+        let a = estado.atualizador
+        if a.disponivel, let m = a.manifesto {
+            VStack(alignment: .leading, spacing: 6) {
+                Label("Atualização disponível", systemImage: "arrow.down.app.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Marca.ciano)
+                Text("build \(a.buildAtual.map(String.init) ?? "?") → \(m.build)\(m.shaCurto.map { " · \($0)" } ?? "")")
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                switch a.fase {
+                case .baixando:
+                    HStack(spacing: 6) { ProgressView().controlSize(.mini); Text("Baixando…").font(.caption) }
+                case .instalando:
+                    HStack(spacing: 6) { ProgressView().controlSize(.mini); Text("Instalando e reabrindo…").font(.caption) }
+                default:
+                    Button("Atualizar e reabrir") {
+                        Task { await a.instalar(estado.fonte) }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Marca.azul)
+                    .controlSize(.small)
+                }
+                if case .falhou(let msg) = a.fase {
+                    Text(msg).font(.caption2).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(10)
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Marca.ciano.opacity(0.12)))
+            .padding(.horizontal, 10)
+            .padding(.top, 6)
+        }
     }
 }
