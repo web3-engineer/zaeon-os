@@ -12,6 +12,7 @@ import {
 } from "@/components/studio/StudioArtifactViews";
 import MoleculeView from "@/components/studio/MoleculeView";
 import CadView from "@/components/studio/CadView";
+import AnatomiaView from "@/components/studio/AnatomiaView";
 import DiagramView from "@/components/studio/DiagramView";
 import AulaView from "@/components/aula-interativa/AulaView";
 import { artifactToText } from "@/lib/studio/artifact-text";
@@ -39,6 +40,7 @@ const KIND_META: Record<string, { emoji: string; label: string }> = {
   diagram: { emoji: "🧭", label: "Diagrama interativo" },
   aula: { emoji: "🎓", label: "Aula interativa" },
   cad: { emoji: "📐", label: "Peça CAD" },
+  anatomia: { emoji: "🫁", label: "Estrutura anatômica" },
 };
 
 const TEXT_KINDS = new Set(["guide", "faq", "flashcards", "mindmap", "timeline"]);
@@ -59,6 +61,9 @@ function renderView(b: StudioBlockData) {
     case "diagram": return b.artifactId ? <DiagramView artifactId={b.artifactId} titulo={b.title} /> : <div className="text-[12px] text-slate-400">Diagrama indisponível.</div>;
     case "aula": return b.artifactId ? <AulaView artifactId={b.artifactId} dados={b.data} /> : <div className="text-[12px] text-slate-400">Aula indisponível.</div>;
     case "cad": return <CadView data={b.data || {}} />;
+    // A placa desenha mesmo sem cena (mostra nome, malhas e fonte); o portão do 3D é que depende de
+    // `estado.selected`, e o próprio AnatomiaView decide isso. Então não há ramo "indisponível" aqui.
+    case "anatomia": return <AnatomiaView data={b.data || {}} />;
     default: return <div className="text-[12px] text-slate-400">Conteúdo indisponível.</div>;
   }
 }

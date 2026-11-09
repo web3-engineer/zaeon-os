@@ -450,6 +450,22 @@ export function normalizeAnswer(out: Partial<StructuredAnswer> | null | undefine
     const central = substancias.find((n) => n.length > 2 && corpo.includes(n.toLowerCase()));
     if (central) answer.artifacts = [{ studioKind: "molecule", title: central }] as StructuredAnswer["artifacts"];
   }
+
+  // Espelho exato do `substancias` → molécula, e pelo mesmo contrato: ao modelo pedimos EXTRAÇÃO
+  // ("que estruturas do corpo esta resposta menciona?"), e quem decide se o artefato nasce é o
+  // código. Aqui a confirmação não é o PubChem, é o próprio atlas: `/api/studio/anatomia` recusa
+  // 404 quando o BodyParts3D não tem a estrutura, então nome inventado não vira cena.
+  //
+  // `!answer.artifacts` e não `!o.artifacts`: o ramo da molécula roda ANTES e pode ter acabado de
+  // preencher. Uma resposta que fala de oxigênio E de pulmão dá a molécula, porque ela veio
+  // primeiro — escolha deliberada, não ordem acidental, e o teto de 1 artefato é o que impede a
+  // resposta de virar galeria.
+  const estruturas = asArray((o as any).estruturas).map(String).map((x) => x.trim()).filter(Boolean);
+  if (estruturas.length && !o.artifacts && !answer.artifacts) {
+    const corpo = `${answer.nucleo} ${answer.desenvolvimento ?? ""}`.toLowerCase();
+    const central = estruturas.find((n) => n.length > 2 && corpo.includes(n.toLowerCase()));
+    if (central) answer.artifacts = [{ studioKind: "anatomia", title: central }] as StructuredAnswer["artifacts"];
+  }
   // `artifacts` explícito (pedido direto) continua mandando — e vinha sendo DESCARTADO
   // aqui, que era por que artefato citado numa explicação nunca nascia.
   // Teto de 2 pra resposta não virar galeria, e só kinds que o Studio sabe montar.
@@ -775,6 +791,9 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         'Inclua também substancias: ["<nome>"] com as substâncias químicas concretas de que a resposta FALA ' +
         '(ex.: cafeína, glicose, etanol, ácido acético). Só o nome, sem "molécula de". ' +
         'Não liste se a resposta não falar de nenhuma, e nunca invente uma que você não tenha certeza que existe.',
+        'Inclua também estruturas: ["<nome>"] com as estruturas ANATÔMICAS concretas de que a resposta FALA ' +
+        '(ex.: pulmão, coração, fígado, diafragma, sistema respiratório). Só o nome da estrutura, no ' +
+        'singular, sem "o" nem "do corpo". Não liste se a resposta não falar de nenhuma, e nunca invente.',
         academic + a5,
         ...(st.intent === "buscar_livro" ? [diretrizLivros(livrosAchados)] : []),
       ].filter(Boolean).join("\n");

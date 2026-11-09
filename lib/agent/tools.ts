@@ -32,10 +32,15 @@ export type StudioKind =
   | "aula"
   // PEÇA CAD paramétrica (Eiffel, SolidCraft — lib/cad/mcp): o payload leva o script JSON + glTF (a
   // miniatura, no CadView) + STEP (baixar) + PNG. O editor de verdade é o embed WASM (modo edição).
-  | "cad";
+  | "cad"
+  // ESTRUTURA ANATÔMICA (Zenita, BodyParts3D — lib/anatomia/cena-do-conceito): o payload NÃO é imagem,
+  // é o `EstadoCena` que determina o que o visualizador desenha. Ver o cabeçalho daquele módulo para
+  // por que estado e não PNG — resumo: o atlas não tem pipeline de captura, e não precisa de um.
+  | "anatomia";
 
 export const STUDIO_KINDS: StudioKind[] = [
   "guide", "mindmap", "timeline", "flashcards", "faq", "image", "podcast", "video", "molecule", "diagram", "aula", "cad",
+  "anatomia",
 ];
 
 // Rótulo humano (PT-BR) por kind — usado na confirmação e no provenance.
@@ -52,6 +57,7 @@ export const STUDIO_LABEL: Record<StudioKind, string> = {
   diagram: "diagrama interativo",
   aula: "aula interativa",
   cad: "peça CAD",
+  anatomia: "estrutura anatômica",
 };
 
 // Aceita sinônimos/PT que o modelo possa devolver → normaliza pro kind canônico.
@@ -71,6 +77,12 @@ const ALIASES: Record<string, StudioKind> = {
   "mapa conceitual": "mindmap", "mapa de estudo": "mindmap", "mapa de estudos": "mindmap",
   // CAD — NÃO reusar "modelo 3d": já é molecule acima. "peça" é a palavra do Eiffel.
   cad: "cad", "peça cad": "cad", "peca cad": "cad", "peça": "cad", "peca": "cad", "modelo cad": "cad",
+  // ANATOMIA — palavras ESPECÍFICAS do corpo, e de propósito NÃO rouba "modelo 3d" nem "estrutura 3d"
+  // de `molecule`: molécula também é modelo 3D, e tomar o termo ambíguo quebraria o pedido que já
+  // funciona para trocá-lo por outro que passa a falhar. Quem desambigua é a palavra do campo.
+  anatomia: "anatomia", "anatomico": "anatomia", "anatômico": "anatomia",
+  corpo: "anatomia", "corpo humano": "anatomia", "atlas do corpo": "anatomia",
+  orgao: "anatomia", "órgão": "anatomia", "estrutura anatomica": "anatomia", "estrutura anatômica": "anatomia",
 };
 
 export function normalizeStudioKind(raw: string): StudioKind {
