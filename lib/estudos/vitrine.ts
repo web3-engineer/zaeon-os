@@ -1,12 +1,12 @@
 /**
  * ESTUDOS — a VITRINE dos blueprints (PURO). Pedido do dono (out/2026): todo conhecimento pode ser vendido — trabalhos
  * acadêmicos escritos, artigos nunca publicados, códigos, empresas, negócios, plantações, qualquer RWA —, validado e
- * vendido em FRAÇÕES, pago em ZAEON (o formato STABLECOIN, estável pra transação de valor). No cyberespaço eles são
+ * vendido em FRAÇÕES, pago em SOL (Solana). No cyberespaço eles são
  * praticamente ITENS DE COLECIONADOR: a vitrine dá o chamariz visual (a raridade acende a moldura, o 3D do tema gira).
  * Foco em DYOM (do it yourself) — coisas que dá pra fazer hoje, de ponta a ponta, ou pagar um agente de IA pra fazer —,
  * algumas grátis (cursos open source, contribuições da comunidade) e algumas com ironia.
  *
- * Este é o CATÁLOGO SIMULADO (exemplos do que humanos vão colocar lá). Os preços estão em ZAEON stable, mas a moeda
+ * Este é o CATÁLOGO SIMULADO (exemplos do que humanos vão colocar lá). Os preços estão em SOL (Solana), mas a compra
  * ainda NÃO está no ar: nada aqui cobra ninguém (comprar é um "em breve"). Um estudo de verdade entra na vitrine quando
  * o blueprint dele fica VENDÁVEL (lib/estudos/blueprint).
  */
@@ -26,7 +26,7 @@ export type ItemVitrine = {
   id: string; titulo: string; subtitulo: string;
   tipo: TipoProduto; execucao: Execucao; modelo: Modelo3D;
   autor: string; raridade: Raridade; profundidade: number;
-  /** preço de UMA fração, em ZAEON stable (0 = grátis: open source / comunidade) */
+  /** preço de UMA fração, em SOL (Solana) (0 = grátis: open source / comunidade) */
   preco: number;
   /** as frações: quantas existem e quantas já foram vendidas (o vetor fracionado do conhecimento) */
   fracoes: { total: number; vendidas: number };
@@ -40,7 +40,7 @@ export type ItemVitrine = {
   plugavel?: PluginChat;
 };
 
-export const MOEDA = { simbolo: "ZAEON", nome: "ZAEON stable", ativa: false } as const;
+export const MOEDA = { simbolo: "SOL", nome: "Solana (SOL)", ativa: false } as const;
 
 export const CATALOGO: readonly ItemVitrine[] = [
   { id: "octa-code", titulo: "Octa Code", subtitulo: "O agente de código da Zaeon, com a IDE dele — e freio de mão: não mexe onde você não pediu", tipo: "agente", execucao: "agente", modelo: "robo", autor: "Zaeon", raridade: "lendaria", profundidade: 90, preco: 0, fracoes: { total: 1, vendidas: 0 }, selos: { supervisionado: false, linksOk: true, codigoPrivado: false }, entrega: ["a IDE do Octa: editor, seu repositório do GitHub e execução no navegador", "revisão de código que aponta o trecho, sem reescrever o arquivo", "mudanças só no escopo pedido (as 4 perguntas antes de cada extra)", "telas mobile no padrão nativo (Expo/RN, Apple HIG)", "código colado é dado, nunca ordem — e segredo nunca vai pro modelo"], tags: ["código", "agente", "IDE", "grátis"], plugavel: "octa-code" },
@@ -84,5 +84,5 @@ export function filtrarVitrine(itens: readonly ItemVitrine[], f: FiltroVitrine, 
 /** o quanto das frações já foi vendido (0..1) — e o preço "cheio" (todas as frações) */
 export const vendido = (i: ItemVitrine) => (i.fracoes.total ? i.fracoes.vendidas / i.fracoes.total : 0);
 export const valorTotal = (i: ItemVitrine) => i.preco * i.fracoes.total;
-/** "48 ZAEON" / "Grátis" */
+/** "48 SOL" / "Grátis" */
 export const precoTexto = (p: number) => (p <= 0 ? "Grátis" : `${p.toLocaleString("pt-BR")} ${MOEDA.simbolo}`);

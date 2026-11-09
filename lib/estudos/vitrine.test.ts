@@ -18,8 +18,8 @@ describe("a VITRINE de estudos (catálogo simulado)", () => {
     expect(filtrarVitrine(CATALOGO, "todos", "PS5").map((i) => i.id)).toEqual(["ps5-rev"]);
     expect(filtrarVitrine(CATALOGO, "rwa", "café").map((i) => i.id)).toEqual(["cafe-cariri"]);
   });
-  it("preço em ZAEON stable — e a moeda ainda NÃO está no ar (nada cobra ninguém)", () => {
-    expect(precoTexto(0)).toBe("Grátis"); expect(precoTexto(48)).toBe("48 ZAEON"); expect(MOEDA.ativa).toBe(false);
+  it("preço em SOL (Solana) — e a compra ainda NÃO está no ar (nada cobra ninguém)", () => {
+    expect(precoTexto(0)).toBe("Grátis"); expect(precoTexto(48)).toBe("48 SOL"); expect(MOEDA.ativa).toBe(false);
     const ps5 = CATALOGO.find((i) => i.id === "ps5-rev")!; expect(vendido(ps5)).toBeCloseTo(0.812, 6); expect(valorTotal(ps5)).toBe(48000);
   });
 });
