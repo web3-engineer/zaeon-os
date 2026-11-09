@@ -343,6 +343,51 @@ describe("molécula que nasce do contexto", () => {
   });
 });
 
+describe("estrutura anatômica que nasce do contexto (espelho do substancias)", () => {
+  const st = { intent: "explicar_conceito", objective: "pulmão" } as any;
+
+  it("estrutura citada NO TEXTO vira artefato de anatomia sem ninguém pedir", () => {
+    const a = normalizeAnswer(
+      { nucleo: "O ar entra pelo pulmão e o oxigênio passa ao sangue.", estruturas: ["pulmão"] } as any, st,
+    );
+    expect(a.artifacts?.[0]).toEqual({ studioKind: "anatomia", title: "pulmão" });
+  });
+
+  it("estrutura que o modelo listou mas não falou NÃO vira artefato", () => {
+    const a = normalizeAnswer({ nucleo: "Uma conversa sobre respiração.", estruturas: ["diafragma"] } as any, st);
+    expect(a.artifacts).toBeUndefined();
+  });
+
+  it("só uma, mesmo com duas citadas — resposta não é galeria", () => {
+    const a = normalizeAnswer(
+      { nucleo: "pulmão e coração", desenvolvimento: "os dois", estruturas: ["pulmão", "coração"] } as any, st,
+    );
+    expect(a.artifacts?.length).toBe(1);
+  });
+
+  it("a MOLÉCULA vence quando as duas aparecem: o ramo dela roda antes, e é deliberado", () => {
+    const a = normalizeAnswer(
+      { nucleo: "o oxigênio chega ao pulmão", desenvolvimento: "e volta", substancias: ["oxigênio"], estruturas: ["pulmão"] } as any, st,
+    );
+    expect(a.artifacts?.length).toBe(1);
+    expect(a.artifacts?.[0]).toEqual({ studioKind: "molecule", title: "oxigênio" });
+  });
+
+  it("pedido explícito do modelo manda mais que a extração", () => {
+    const a = normalizeAnswer(
+      { nucleo: "o pulmão", estruturas: ["pulmão"], artifacts: [{ studioKind: "anatomia", title: "coração" }] } as any, st,
+    );
+    expect(a.artifacts?.[0].title).toBe("coração");
+  });
+
+  it("'anatomia' é kind conhecido — o filtro de artifacts explícitos não o descarta", () => {
+    const a = normalizeAnswer(
+      { nucleo: "x", artifacts: [{ studioKind: "anatomia", title: "fígado" }] } as any, st,
+    );
+    expect(a.artifacts?.[0]).toEqual({ studioKind: "anatomia", title: "fígado" });
+  });
+});
+
 
 describe("ofertaDePlataforma · o cardápio de features não passa", () => {
   // O critério é QUEM FAZ. Plataforma como sujeito = oferta; aluno como sujeito = estudo.

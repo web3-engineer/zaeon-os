@@ -102,6 +102,17 @@ export async function gerarArtefato(kind: string, o: OpcoesStudio & Deps): Promi
         ? { tipo: "pronto", bloco: { studioKind: "molecule", title: data.title, data: data.meta, artifactId: data.id } }
         : { tipo: "erro", mensagem: data?.error };
     }
+    if (kind === "anatomia") {
+      // Nem LLM nem rede: o atlas é local e `cenaDoConceito` é pura. Vai no molde do molecule (e não
+      // no caminho genérico de texto no fim desta função) por UM motivo concreto: o genérico devolve
+      // o bloco SEM `artifactId`, e sem ele o `leve()` do chat não tem como re-buscar um payload que
+      // ele mesmo tirou do histórico. O `estado` é pequeno, mas quem decide isso é o chat, não aqui.
+      const res = await f("/api/studio/anatomia", { method: "POST", headers: H, body: JSON.stringify({ spaceId, topic }) });
+      const data = await json(res);
+      return res.ok && data?.meta?.estado
+        ? { tipo: "pronto", bloco: { studioKind: "anatomia", title: data.title, data: data.meta, artifactId: data.id } }
+        : { tipo: "erro", mensagem: data?.error };
+    }
     if (kind === "image") {
       const res = await f("/api/studio/image", { method: "POST", headers: H, body: JSON.stringify({ spaceId, topic }) });
       const data = await json(res);

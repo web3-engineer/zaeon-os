@@ -23,12 +23,14 @@ import { registerTool } from "@/lib/agent/runtime";
 import { SISTEMAS_POR_ID, explicacao } from "@/lib/anatomia/atlas";
 import { acharConceito, buscarConceitos, pecasDoConceito, sistemasDoConceito } from "@/lib/anatomia/busca";
 import { atlasDisponivel, carregarAtlas } from "@/lib/anatomia/carregar";
+import { FONTE_ATLAS } from "@/lib/anatomia/cena-do-conceito";
 
-/** A fonte que vai em TODO achado: o dado é CC BY 4.0 e a atribuição acompanha o uso, não só o repo. */
-export const FONTE_ATLAS = {
-  title: "BodyParts3D 4.0 — The Database Center for Life Science (CC BY 4.0)",
-  url: "https://dbarchive.biosciencedbc.jp/en/bodyparts3d/download.html",
-} as const;
+/**
+ * A fonte que vai em TODO achado: o dado é CC BY 4.0 e a atribuição acompanha o uso, não só o repo.
+ * Mora em `lib/anatomia/cena-do-conceito` (módulo puro) desde que o artefato passou a precisar dela:
+ * duas cópias da atribuição é uma que divergem. Re-exportada aqui porque era daqui que ela saía.
+ */
+export { FONTE_ATLAS } from "@/lib/anatomia/cena-do-conceito";
 
 const agora = () => new Date().toISOString();
 const semAtlas = (): ToolResult => ({
