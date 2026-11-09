@@ -22,7 +22,7 @@ Toda rota exige **um** destes:
 - `Authorization: Bearer <ORQUESTRA_CONSOLE_TOKEN>`. O token vem do env do servidor, com no mínimo 32 caracteres. Sem env = o caminho por token fica desligado.
 - uma sessão NextAuth de super-admin (o mesmo `isSuperAdmin` das outras rotas admin).
 
-Falhou: `401 {"erro":"nao_autorizado"}`. O app guarda URL e token no Keychain.
+Falhou: `401 {"erro":"nao_autorizado"}`. O app guarda URL e token em `~/Library/Application Support/space.zaeon.hermes/config.json` (0600).
 
 ## Contrato (JSON; datas ISO-8601; dinheiro em USD estimado)
 
@@ -144,5 +144,6 @@ web (`HERMES_DIST_DIR`, padrão `/app/.hermes-dist`). O repositório é privado,
 ```
 O app compara com o próprio `CFBundleVersion` (o `run_number` do workflow), mostra **Atualização disponível** no pé
 da barra lateral e, com um clique, baixa, confere sha256 + assinatura + identificador, troca o `.app` e reabre.
-O app é assinado ad-hoc com **requisito designado pelo identificador** (`designated => identifier "space.zaeon.hermes"`):
-todo build é o mesmo app para o Keychain, e a chave do console sobrevive à atualização.
+A chave do console NÃO fica no Keychain: o app é ad-hoc, e o Keychain amarra cada item ao hash exato do binário
+(toda atualização pedia a senha de login). Fica em `~/Library/Application Support/space.zaeon.hermes/config.json`
+(pasta 0700, arquivo 0600) e sobrevive a toda atualização.

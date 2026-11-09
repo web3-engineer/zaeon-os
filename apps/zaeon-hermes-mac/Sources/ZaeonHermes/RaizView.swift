@@ -26,6 +26,7 @@ struct RaizView: View {
         .toolbar { barraFerramentas }
         .task { await estado.cicloPainel() }
         .task { await estado.atualizador.ciclo { estado.fonte } }
+        .task(id: "\(estado.urlServidor)|\(estado.token.count)|\(estado.janelaAgentes.rawValue)") { await estado.cicloAgentes() }
         .onChange(of: estado.secao) {
             estado.caminho = []
         }
@@ -63,7 +64,7 @@ struct RaizView: View {
             switch estado.secao ?? .quadro {
             case .quadro: QuadroView()
             case .saude: SaudeView()
-            case .agentes: AgentesView()
+            case .agente(let id): AgenteTela(agenteId: id)
             case .motor(let id): MotorDashboardView(motorId: id)
             case .datasets: DatasetsView()
             case .arena: ArenaView()
@@ -82,7 +83,6 @@ private struct BarraLateral: View {
             Section("Orquestra") {
                 Label("Quadro", systemImage: "rectangle.split.3x1").tag(Secao.quadro)
                 Label("Saúde do chat", systemImage: "heart.text.square").tag(Secao.saude)
-                Label("Agentes da casa", systemImage: "person.3.sequence").tag(Secao.agentes)
                 Label("Arena", systemImage: "flag.2.crossed").tag(Secao.arena)
                 Label("Datasets", systemImage: "externaldrive.connected.to.line.below").tag(Secao.datasets)
             }
@@ -98,6 +98,8 @@ private struct BarraLateral: View {
                     }
                 }
             }
+
+            SecaoAgentesDaCasa()
 
             Section {
                 Label("Configurações", systemImage: "gearshape").tag(Secao.configuracoes)
@@ -234,6 +236,50 @@ private struct FaixaAtualizacao: View {
             .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Marca.ciano.opacity(0.12)))
             .padding(.horizontal, 10)
             .padding(.top, 6)
+        }
+    }
+}
+
+
+/// Os agentes da casa na barra lateral, como os motores: agentes (personas e criados no admin), os mentores
+/// num grupo recolhível, e o gasto "sistema" por último. Clicar abre `AgenteTela`.
+private struct SecaoAgentesDaCasa: View {
+    @Environment(EstadoApp.self) private var estado
+    @State private var mentoresAbertos = true
+
+    var body: some View {
+        Section {
+            if let r = estado.agentes {
+                let grupos = Elenco.grupos(r.agentes)
+                ForEach(grupos.filter { $0.tipo != .mentor }.flatMap(\.agentes)) { a in
+                    LinhaAgente(agente: a).tag(Secao.agente(a.id))
+                }
+                if let mentores = grupos.first(where: { $0.tipo == .mentor }) {
+                    DisclosureGroup(isExpanded: $mentoresAbertos) {
+                        ForEach(mentores.agentes) { a in
+                            LinhaAgente(agente: a).tag(Secao.agente(a.id))
+                        }
+                    } label: {
+                        Label("Mentores · \(mentores.agentes.count)", systemImage: "graduationcap")
+                    }
+                }
+            } else if let erro = estado.erroAgentes {
+                Label("Sem a lista de agentes", systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.orange)
+                    .help(erro)
+            } else {
+                ForEach(0..<4, id: \.self) { _ in
+                    Text("agente carregando").redacted(reason: .placeholder)
+                }
+            }
+        } header: {
+            if let r = estado.agentes {
+                let t = Elenco.totais(r.agentes)
+                Text("Agentes da casa · \(t.agentes)")
+                    .help("\(t.trabalhando) trabalharam na janela de \(estado.janelaAgentes.rotulo) · \(Fmt.inteiro(t.chamadas)) chamadas · \(Fmt.usd(t.custoUsd))")
+            } else {
+                Text("Agentes da casa")
+            }
         }
     }
 }

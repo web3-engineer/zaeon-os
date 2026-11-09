@@ -15,138 +15,40 @@ enum JanelaAgentes: Int, CaseIterable, Identifiable {
     }
 }
 
-/// Os AGENTES DA CASA (`GET /agentes`): personas, os 17 mentores e os criados no admin — o que cada um sabe
-/// fazer, com que prompt, em que bases, e o que fez em produção (TokenLedger). Atualiza a cada 30 s.
-struct AgentesView: View {
+/// Tela de UM agente da casa (a lista mora na barra lateral, seção "Agentes da casa"). Os dados vêm do
+/// `EstadoApp` (`GET /agentes`, atualizado a cada 30 s); a janela do uso fica na barra de ferramentas.
+struct AgenteTela: View {
     @Environment(EstadoApp.self) private var estado
-    @State private var janela: JanelaAgentes = .seteDias
-    @State private var resposta: RespostaAgentes?
-    @State private var erro: String?
-    @State private var carregando = false
-    @State private var atualizadoEm: Date?
-    @State private var busca = ""
-    @State private var selecionado: String?
-
-    static let intervalo: Duration = .seconds(30)
+    let agenteId: String
 
     var body: some View {
-        HStack(spacing: 0) {
-            lista
-                .frame(minWidth: 260, idealWidth: 300, maxWidth: 360)
-            Divider()
-            detalhe
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        @Bindable var estado = estado
+        Group {
+            if let a = estado.agentes?.agentes.first(where: { $0.id == agenteId }) {
+                DetalheAgente(agente: a, janela: estado.janelaAgentes)
+                    .id(a.id)
+            } else if let erro = estado.erroAgentes {
+                TelaVazia(titulo: "Não deu para ler os agentes", mensagem: erro, icone: "person.3")
+            } else if estado.agentes != nil {
+                TelaVazia(titulo: "Agente não encontrado", mensagem: "\(agenteId) não está mais no elenco.", icone: "person.crop.circle.badge.questionmark")
+            } else {
+                EsqueletoCartoes(quantidade: 4, altura: 120).padding(24)
+            }
         }
-        .navigationTitle("Agentes da casa")
+        .navigationTitle(estado.agentes?.agentes.first(where: { $0.id == agenteId })?.nome ?? "Agente")
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Picker("Janela", selection: $janela) {
+                Picker("Janela", selection: $estado.janelaAgentes) {
                     ForEach(JanelaAgentes.allCases) { j in Text(j.rotulo).tag(j) }
                 }
                 .pickerStyle(.segmented)
                 .help("Janela do uso (TokenLedger)")
             }
         }
-        .task(id: "\(janela.rawValue)|\(estado.urlServidor)|\(estado.token.count)") { await ciclo() }
-    }
-
-    // MARK: Lista
-
-    private var lista: some View {
-        VStack(spacing: 0) {
-            cabecalhoLista
-            if let r = resposta {
-                List(selection: $selecionado) {
-                    ForEach(Elenco.grupos(r.agentes, busca: busca)) { g in
-                        Section("\(g.tipo == .persona ? "Agentes" : g.tipo == .mentor ? "Mentores" : g.tipo.rotulo) · \(g.agentes.count)") {
-                            ForEach(g.agentes) { a in
-                                LinhaAgente(agente: a).tag(a.id)
-                            }
-                        }
-                    }
-                }
-                .listStyle(.sidebar)
-            } else if let erro {
-                TelaVazia(titulo: "Não deu para ler os agentes", mensagem: erro, icone: "person.3")
-            } else {
-                EsqueletoCartoes(quantidade: 8, altura: 38).padding(12)
-                Spacer()
-            }
-        }
-    }
-
-    private var cabecalhoLista: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if let r = resposta {
-                let t = Elenco.totais(r.agentes)
-                Text("\(t.agentes) agentes · \(t.trabalhando) trabalharam em \(janela.rotulo)")
-                    .font(.callout.weight(.semibold))
-                Text("\(Fmt.inteiro(t.chamadas)) chamadas · \(Fmt.inteiro(t.falhas)) falhas · \(Fmt.usd(t.custoUsd))")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                if !r.bancoOk {
-                    Label("Banco fora: elenco do código, sem uso", systemImage: "exclamationmark.triangle.fill")
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                }
-            }
-            HStack(spacing: 6) {
-                if carregando {
-                    ProgressView().controlSize(.mini)
-                } else if let atualizadoEm {
-                    Text("atualizado \(Fmt.ha(atualizadoEm))").font(.caption2).foregroundStyle(.secondary)
-                }
-                if let erro, resposta != nil {
-                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange).help(erro)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            TextField("Buscar agente ou curso", text: $busca)
-                .textFieldStyle(.roundedBorder)
-                .padding(.horizontal, 12)
-                .padding(.bottom, 8)
-        }
-    }
-
-    // MARK: Detalhe
-
-    @ViewBuilder
-    private var detalhe: some View {
-        if let id = selecionado, let a = resposta?.agentes.first(where: { $0.id == id }) {
-            DetalheAgente(agente: a, janela: janela)
-                .id(a.id)
-        } else if resposta != nil {
-            TelaVazia(titulo: "Escolha um agente", mensagem: "Cada agente mostra o que sabe fazer, o prompt, as bases que lê e o que fez em produção.",
-                      icone: "person.crop.rectangle.stack")
-        } else {
-            Color.clear
-        }
-    }
-
-    private func ciclo() async {
-        while !Task.isCancelled {
-            carregando = true
-            do {
-                let r = try await estado.fonte.agentes(dias: janela.rawValue)
-                guard !Task.isCancelled else { return }
-                resposta = r
-                erro = nil
-                atualizadoEm = Date()
-                if selecionado == nil { selecionado = r.agentes.first?.id }
-            } catch {
-                guard !Task.isCancelled else { return }
-                self.erro = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-            }
-            carregando = false
-            try? await Task.sleep(for: Self.intervalo)
-        }
     }
 }
 
-private struct LinhaAgente: View {
+struct LinhaAgente: View {
     let agente: AgenteCasa
 
     var body: some View {
