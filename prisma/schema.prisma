@@ -1843,3 +1843,16 @@ model OrquestraTarefa {
   @@index([motor, criadaEm])
   @@index([status, criadaEm])
 }
+
+/// Conversa do console da orquestra (app macOS): o admin fala com qualquer agente da casa ou motor. Cada mensagem
+/// do agente aponta pra OrquestraTarefa do turno (origem "console"), que guarda a trilha e liga o TokenLedger.
+model ConsoleConversa {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  criadaEm     DateTime @default(now())
+  atualizadaEm DateTime @updatedAt
+  titulo       String
+  agente       String                    // id do interlocutor: agente da casa (aura, zenita, medicina…) ou motor
+  mensagens    Json                      // [{ id, papel: "voce"|"agente", texto, em, tarefaId?, status?, ms?, modelo? }] (teto 200)
+
+  @@index([atualizadaEm])
+}

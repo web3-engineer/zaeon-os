@@ -89,21 +89,21 @@ final class Atualizador {
         try rodar("/usr/bin/ditto", ["-x", "-k", zip.path, pasta.path])
         let app = pasta.appendingPathComponent("ZaeonHermes.app")
         guard fm.fileExists(atPath: app.appendingPathComponent("Contents/MacOS/ZaeonHermes").path) else {
-            throw FalhaAtualizacao("o pacote não tem o ZaeonHermes.app")
+            throw FalhaAtualizacao("o pacote baixado não tem o app")
         }
         try rodar("/usr/bin/codesign", ["--verify", "--strict", app.path])
         let info = NSDictionary(contentsOf: app.appendingPathComponent("Contents/Info.plist")) as? [String: Any]
-        guard info?["CFBundleIdentifier"] as? String == identificador else { throw FalhaAtualizacao("o pacote não é o Zaeon Hermes") }
+        guard info?["CFBundleIdentifier"] as? String == identificador else { throw FalhaAtualizacao("o pacote baixado não é o console da Zaeon") }
         return app
     }
 
     /// Troca o .app em uso pelo novo DEPOIS que este processo sair, e reabre. Se a troca falhar, devolve o antigo.
     static func trocarEReabrir(novo: URL) throws {
         let atual = Bundle.main.bundleURL
-        guard atual.pathExtension == "app" else { throw FalhaAtualizacao("o Hermes não está rodando de um .app") }
+        guard atual.pathExtension == "app" else { throw FalhaAtualizacao("o console não está rodando de um .app") }
         let pai = atual.deletingLastPathComponent()
         guard FileManager.default.isWritableFile(atPath: pai.path) else {
-            throw FalhaAtualizacao("sem permissão para escrever em \(pai.path). Mova o Hermes para a pasta Aplicativos e tente de novo.")
+            throw FalhaAtualizacao("sem permissão para escrever em \(pai.path). Mova o app para a pasta Aplicativos e tente de novo.")
         }
         let q = { (s: String) in "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'" }
         let antigo = atual.path + ".antigo"

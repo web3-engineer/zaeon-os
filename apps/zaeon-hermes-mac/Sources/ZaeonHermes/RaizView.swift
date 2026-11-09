@@ -109,7 +109,7 @@ private struct BarraLateral: View {
         .safeAreaInset(edge: .top, spacing: 0) {
             VStack(alignment: .leading, spacing: 6) {
                 LetreiroZaeon(altura: 30)
-                Text("HERMES · console da orquestra")
+                Text("CONSOLE DA ORQUESTRA")
                     .font(.caption2.weight(.semibold))
                     .tracking(1.2)
                     .foregroundStyle(Marca.gradiente)

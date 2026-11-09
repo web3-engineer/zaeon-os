@@ -10,7 +10,7 @@ struct ZaeonHermesApp: App {
     @State private var estado = EstadoApp()
 
     var body: some Scene {
-        WindowGroup("Zaeon Hermes") {
+        WindowGroup("Zaeon") {
             RaizView()
                 .environment(estado)
                 .frame(minWidth: 1_040, minHeight: 660)
