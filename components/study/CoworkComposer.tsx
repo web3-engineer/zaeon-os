@@ -106,7 +106,9 @@ export default function CoworkComposer({
   // Ditado por voz (áudio → texto). Guarda o texto que já existia ao começar a gravar
   // e vai concatenando a transcrição em cima dele.
   const baseRef = useRef("");
+  // #749: contínuo + desliga sozinho depois de 2,5 s de pausa (no modo de uma frase, o Edge às vezes devolvia vazio)
   const { toggle: toggleMic, listening, supported: sttSupported, ouviu, aviso: avisoMic, limparAviso: limparAvisoMic } = useSTT({
+    pausaMs: 2500,
     onResult: (t) => onChange((baseRef.current ? baseRef.current + " " : "") + t),
   });
   // #733: o aviso de por que o microfone desligou some sozinho depois de uns segundos

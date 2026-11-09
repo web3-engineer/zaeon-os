@@ -64,7 +64,8 @@ export async function POST(req: Request) {
   const topic = typeof body.topic === "string" ? body.topic.trim() : "";
   if (!prompt && topic) {
     prompt = await craftPromptFromStudy(`Tópico pedido na conversa: ${topic}`);
-    title = `Imagem — ${topic}`;
+    // #749: o tópico já vem "imagem: …" (rótulo do studio_generate) — o título saía "Imagem — imagem: …"
+    title = `Imagem — ${topic.replace(/^imagem\s*[:—–-]\s*/i, "")}`;
   }
   if (!prompt) return NextResponse.json({ error: "Forneça um prompt ou um estudo com conteúdo." }, { status: 400 });
 

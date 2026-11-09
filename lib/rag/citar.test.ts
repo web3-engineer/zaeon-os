@@ -19,6 +19,15 @@ const tr = (over: Partial<TrechoAchado> = {}): TrechoAchado => ({
 
 const ok = (trechos: TrechoAchado[]): BaseDoTurno => ({ status: "ok", trechos });
 
+describe("#749 · trecho do assunto sem o dado pedido", () => {
+  it("o bloco manda responder mesmo assim, com a fonte, sem atribuir à base", () => {
+    const b = blocoDaBase(ok([tr()]));
+    expect(b).toMatch(/NÃO tiverem o dado pedido/);
+    expect(b).toMatch(/dizendo a fonte/);
+    expect(b).toMatch(/sem atribuir esse dado à base/);
+  });
+});
+
 describe("blocoDaBase — o que entra no prompt", () => {
   it("ok: cabeçalho de DADO, trechos numerados com página, regra de citação e fim do bloco", () => {
     const b = blocoDaBase(ok([tr(), tr({ trechoId: "t2", documentoId: "d2", titulo: "Slides", paginaIni: 2, paginaFim: 2 })]));

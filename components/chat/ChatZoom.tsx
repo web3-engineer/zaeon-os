@@ -34,19 +34,23 @@ export function useChatFontScale() {
   };
 }
 
-export default function ChatZoom({ escala, menor, maior, className = "" }: {
+export default function ChatZoom({ escala, menor, maior, className = "", alvo = "texto" }: {
   escala: number;
   menor: () => void;
   maior: () => void;
   className?: string;
+  /** #749: com um diagrama aberto na aba, os mesmos botões dão zoom nele (antes não faziam nada ali) */
+  alvo?: "texto" | "diagrama";
 }) {
-  const noMin = escala <= PASSOS[0];
-  const noMax = escala >= PASSOS[PASSOS.length - 1];
+  const noDiagrama = alvo === "diagrama";
+  const noMin = !noDiagrama && escala <= PASSOS[0];
+  const noMax = !noDiagrama && escala >= PASSOS[PASSOS.length - 1];
+  const [rotMenor, rotMaior] = noDiagrama ? ["Afastar o diagrama", "Aproximar o diagrama"] : ["Diminuir o texto", "Aumentar o texto"];
   const btn = "w-7 h-7 rounded-full flex items-center justify-center font-semibold leading-none transition-colors disabled:opacity-30 disabled:cursor-default text-slate-600 dark:text-white/60 hover:bg-slate-900/5 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500";
   return (
-    <div className={`inline-flex items-center gap-0.5 ${className}`} role="group" aria-label={`Tamanho do texto: ${Math.round(escala * 100)}%`}>
-      <button type="button" onClick={menor} disabled={noMin} className={`${btn} text-[11px]`} aria-label="Diminuir o texto" title="Diminuir o texto">A−</button>
-      <button type="button" onClick={maior} disabled={noMax} className={`${btn} text-[14px]`} aria-label="Aumentar o texto" title="Aumentar o texto">A+</button>
+    <div className={`inline-flex items-center gap-0.5 ${className}`} role="group" aria-label={noDiagrama ? "Zoom do diagrama" : `Tamanho do texto: ${Math.round(escala * 100)}%`}>
+      <button type="button" onClick={menor} disabled={noMin} className={`${btn} text-[11px]`} aria-label={rotMenor} title={rotMenor}>A−</button>
+      <button type="button" onClick={maior} disabled={noMax} className={`${btn} text-[14px]`} aria-label={rotMaior} title={rotMaior}>A+</button>
     </div>
   );
 }

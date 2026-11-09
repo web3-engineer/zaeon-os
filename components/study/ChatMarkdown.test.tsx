@@ -18,6 +18,14 @@ describe("ChatMarkdown — matemática", () => {
     expect(container.querySelectorAll("polyline").length).toBeGreaterThan(0);
     expect(container.textContent).toContain("y = x^2-4");
   });
+  it("#749 · ```grafico com barras vira gráfico de barras, com a fonte embaixo", () => {
+    const { container } = render(<ChatMarkdown text={'Pelo Censo:\n```grafico\n{"titulo":"População (milhões)","barras":[{"rotulo":"Sudeste","valor":84.8},{"rotulo":"Nordeste","valor":54.6}],"fonte":"Censo 2022 (IBGE)"}\n```'} />);
+    const fig = container.querySelector("[data-grafico-dados]");
+    expect(fig).not.toBeNull();
+    expect(fig!.querySelectorAll("path").length).toBe(2);
+    expect(fig!.textContent).toContain("Fonte: Censo 2022 (IBGE)");
+    expect(container.querySelector("polyline")).toBeNull();   // não foi para o gráfico de função
+  });
   it("gráfico inválido avisa sem quebrar", () => {
     const { container } = render(<ChatMarkdown text={'```grafico\n{"funcoes":["alert(1)"]}\n```'} />);
     expect(container.textContent).toMatch(/Não consegui desenhar/);

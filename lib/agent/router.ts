@@ -8,7 +8,10 @@
  */
 import type { AgentContext } from "@/lib/agent/context";
 import { pedeAula } from "@/lib/agent/aprender";
-import { pedeGraficoMatematico } from "@/lib/agent/matematica";
+import { pedeGraficoMatematico, pedeGraficoDeDados } from "@/lib/agent/matematica";
+
+/** gráfico de função/geometria OU de dados (#749): sai no texto como ```grafico, nunca como imagem gerada */
+const pedeGraficoNoTexto = (s: string) => pedeGraficoMatematico(s) || pedeGraficoDeDados(s);
 import { pedeLivro } from "@/lib/livros/busca";
 import {
   INTENTS,
@@ -126,7 +129,7 @@ export function classifyHeuristic(objective: string, ctx: CtxRoteador): RouterRe
   // 0.4) achar um LIVRO (PDF/link/onde ler) — antes de "fontes": "me manda o pdf do livro X" não é bibliografia
   if (pedeLivro(objective)) return decide("buscar_livro");
   // 0.5) gráfico de FUNÇÃO / figura de geometria — sai no texto como ```grafico, NÃO como imagem gerada
-  if (pedeGraficoMatematico(objective)) return decide("explicar_conceito");
+  if (pedeGraficoNoTexto(objective)) return decide("explicar_conceito");
   // 1) trabalho acadêmico completo — "escreva um artigo sobre X"
   if (genVerb && has(t, WORK_NOUNS)) return decide("criar_trabalho", workKindFrom(t) ?? "artigo");
   // 1.1) mais um trabalho na mesma conversa — "agora outro sobre Y" (o tipo é o do último, se o texto não diz)
@@ -172,7 +175,7 @@ function resultadoDe(cand: IntentId, text: string, ctx: CtxRoteador, kindDoModel
   const nt = norm(text);
   // "agora outro sobre Y" com trabalho na conversa manda mais que o palpite (que lê como conversa).
   const outro = pedeOutroTrabalho(nt, ctx);
-  const intent: IntentId = pedeAula(nt) ? "gerar_artefato" : pedeLivro(text) ? "buscar_livro" : pedeGraficoMatematico(text) ? "explicar_conceito" : outro ? "criar_trabalho" : cand;
+  const intent: IntentId = pedeAula(nt) ? "gerar_artefato" : pedeLivro(text) ? "buscar_livro" : pedeGraficoNoTexto(text) ? "explicar_conceito" : outro ? "criar_trabalho" : cand;
   const kind =
     intent === "criar_trabalho"
       ? normalizeKind(typeof kindDoModelo === "string" ? kindDoModelo : undefined) ?? workKindFrom(nt) ?? (outro ? ctx.trabalhos?.kind : undefined) ?? "artigo"

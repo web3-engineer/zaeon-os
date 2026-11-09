@@ -18,6 +18,7 @@
  * cobertura comparada.
  */
 import { pontosValidos, svgDoGrafico, type Grafico, type PontoGrafico } from "@/lib/agent/grafico";
+import { pedeGraficoDeDados } from "@/lib/agent/matematica";
 
 const DESLIGADO = /^(0|off|false|nao|não|no)$/i;
 
@@ -104,6 +105,8 @@ export function graficoCoberturaPorDocumento(
     .filter((d) => d && String(d.titulo ?? "").trim() && Array.isArray(d.trechos) && d.trechos.length > 0)
     .map((d) => ({ label: String(d.titulo).trim(), valor: d.trechos.length }));
   if (pontos.length < MIN_DOCS) return null;
+  // #749: todos com o MESMO número (no ar: 10 questões, todas com 1 trecho) não comparam nada — só ocupam a bolha
+  if (pontos.every((p) => p.valor === pontos[0]!.valor)) return null;
   return pronto({
     forma: "faixas",
     titulo: "Trechos usados por documento",
@@ -121,12 +124,15 @@ export function graficosDoTurno(entrada: {
   fontes?: readonly { year?: number }[];
   docsDaBase?: readonly { titulo: string; trechos: readonly unknown[] }[];
   env?: Record<string, string | undefined>;
+  /** #749: o pedido do turno — quem pediu um gráfico de OUTRA coisa lia a cobertura como a resposta */
+  objetivo?: string;
 }): GraficoNaResposta[] {
   if (!graficoLigado(entrada.env ?? process.env)) return [];
   const out: GraficoNaResposta[] = [];
   const ano = entrada.fontes?.length ? graficoPapersPorAno(entrada.fontes) : null;
   if (ano) out.push(ano);
-  const cob = entrada.docsDaBase?.length ? graficoCoberturaPorDocumento(entrada.docsDaBase) : null;
+  const pediuOutroGrafico = !!entrada.objetivo && pedeGraficoDeDados(entrada.objetivo);
+  const cob = entrada.docsDaBase?.length && !pediuOutroGrafico ? graficoCoberturaPorDocumento(entrada.docsDaBase) : null;
   if (cob) out.push(cob);
   return out.slice(0, MAX_GRAFICOS);
 }

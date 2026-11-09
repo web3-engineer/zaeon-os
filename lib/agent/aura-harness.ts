@@ -251,7 +251,9 @@ export function pickStudioKind(objective: string): string {
   if (/diagrama|esquema|fluxograma|como funciona/.test(t)) return "diagram";
   // "fórmula" NUNCA vira imagem (o chat renderiza LaTeX); gráfico de FUNÇÃO e figura de geometria saem
   // no texto como bloco ```grafico (lib/agent/matematica) — o roteador nem manda esses pra cá.
-  if (/imagem|figura|ilustra|desenh|gr[aá]fico/.test(t)) return "image";
+  // #749: "gráfico" saiu daqui — gráfico de DADOS também é ```grafico (barras com número e fonte); o modelo de imagem
+  // desenhava um mapa com bonequinhos e nenhum número.
+  if (/imagem|figura|ilustra|desenh/.test(t)) return "image";
   return normalizeStudioKind(t); // default "guide"
 }
 
@@ -878,6 +880,7 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         const gs = graficosDoTurno({
           fontes: st.evidence.map((f) => f.source).filter(Boolean) as { year?: number }[],
           docsDaBase: (ctx as { docsDaBase?: { titulo: string; trechos: unknown[] }[] }).docsDaBase,
+          objetivo: st.objective,
         });
         if (gs.length) comBase.graficos = gs;
         return anexarLivros(comBase, livrosAchados);
