@@ -47,6 +47,25 @@ describe("cenaDoConceito — o termo do aluno vira cena", () => {
     }
   });
 
+  it("o artefato nasce ISOLADO, e SÓ a estrutura pedida fica visível", () => {
+    /**
+     * A forma forte do invariante, e a que importa num cartão de 300 px: não basta a peça pedida
+     * estar visível, é preciso que o RESTO não esteja. Medido em produção com o navegador: sem
+     * isolar, selecionar o pulmão deixa 2.229 peças desenhadas e as 124 do pulmão somem atrás de
+     * 402 músculos — a tela não muda em nada. `pecaVisivel` garante que a malha não é descartada;
+     * não garante que alguém a enxergue.
+     */
+    const d = ok("pulmão");
+    expect(d.estado.isolate, "sem isolar o aluno recebe um corpo genérico").toBe(true);
+
+    const selecionadas = new Set(d.estado.selected);
+    const visiveis = atlas.parts.filter((parte) => pecaVisivel(d.estado, parte));
+    expect(visiveis.length).toBe(d.estado.selected.length);
+    for (const parte of visiveis) {
+      expect(selecionadas.has(parte.id), `peça ${parte.id} visível mas não é da estrutura`).toBe(true);
+    }
+  });
+
   it("os sistemas vêm nomeados e com id válido, e casam em quantidade", () => {
     const d = ok("pulmão");
     expect(d.sistemas.length).toBeGreaterThan(0);

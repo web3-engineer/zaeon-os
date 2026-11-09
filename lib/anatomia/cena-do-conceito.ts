@@ -13,16 +13,24 @@
  * desenha é o visualizador que já existe (`components/anatomia/CenaDoCorpo`, 54 linhas, que recebe
  * `EstadoCena` como prop). Então o artefato é a descrição da cena, e a renderização é do cliente.
  *
- * ────────────────────────── a decisão de visibilidade, e o que eu NÃO inventei ──────────────────────────
- * O estado é `escolherConceito(ESTADO_INICIAL, conceito)` e nada além disso. Não mexo em `visible`
- * porque `pecaVisivel` (lib/anatomia/estado) já resolve: `isolate ? selecionada : visible.includes(...)
- * || selecionada` — a SELEÇÃO VENCE sistema desligado, "de propósito", diz o comentário de lá, "é o
- * que permite buscar uma estrutura e vê-la sem ligar o sistema dela à mão".
+ * ────────────────────────── por que o artefato nasce ISOLADO ──────────────────────────
+ * Esta decisão eu primeiro tomei errada, e a corrigi DEPOIS DE RENDERIZAR, não antes.
  *
- * Eu fui tentado a apagar os outros sistemas para a estrutura "aparecer melhor". Não fiz: é julgamento
- * visual que eu não consigo conferir sem renderizar, e inventá-lo aqui o congelaria para todo aluno.
- * Em vez disso o payload publica `sistemasIds`, e o card oferece "isolar" e "só este sistema" como
- * botões. Quem decide o que quer ver é quem está olhando.
+ * A versão anterior era `escolherConceito(ESTADO_INICIAL, conceito)` e nada além, com o argumento de
+ * que `pecaVisivel` já resolvia: `isolate ? selecionada : visible.includes(...) || selecionada` — a
+ * seleção vence sistema desligado. Isso é verdade e continua verdade, mas responde a outra pergunta.
+ * `pecaVisivel` garante que a malha NÃO É DESCARTADA. Não garante que um humano a enxergue.
+ *
+ * Medido em produção em 2026-11-09, com o navegador, na página /anatomia: selecionar "left lung"
+ * com `isolate: false` deixa 2.229 peças desenhadas e as 124 do pulmão ficam ATRÁS de 402 músculos.
+ * A tela não muda. Em nada. A página se salva porque tem um botão "Isolar estrutura" ao lado; um
+ * cartão de chat de 300 px não tem, e o aluno receberia um corpo genérico como resposta a "me mostra
+ * o pulmão" — exatamente a queixa que originou este trabalho.
+ *
+ * Com `isolate: true` a mesma cena mostra as 124 peças sozinhas e legíveis. Então o artefato isola,
+ * e o contexto do corpo inteiro continua a um clique em "Abrir o atlas", onde existe o caminho de
+ * volta ("Mostrar a anatomia ao redor"). O payload segue publicando `sistemasIds` para quem quiser
+ * montar outra coisa em cima.
  */
 import { SISTEMAS, explicacao, type Atlas, type EstadoCena, type SistemaId } from "@/lib/anatomia/atlas";
 import { ESTADO_INICIAL, escolherConceito } from "@/lib/anatomia/estado";
@@ -81,7 +89,7 @@ export function dadosDoConceito(
   const idsDeSistema = [...new Set(pecas.map((p) => p.system))] as SistemaId[];
   return {
     conceito: { id: conceito.id, nome: conceito.name },
-    estado: escolherConceito(ESTADO_INICIAL, conceito),
+    estado: { ...escolherConceito(ESTADO_INICIAL, conceito), isolate: true },
     sistemas: SISTEMAS.filter((s) => idsDeSistema.includes(s.id)).map((s) => s.nome),
     sistemasIds: SISTEMAS.filter((s) => idsDeSistema.includes(s.id)).map((s) => s.id),
     pecas: pecas.length,
