@@ -332,7 +332,7 @@ export function autoReparo(tipo: TipoDiagrama, ir: any, saida: string): any | nu
   for (const m of t.matchAll(/Sublabel "([^"]+)" needs ~(\d+)px[^"]*"([^"]+)" provides (\d+)px/g)) {
     const n = nos.find((x) => x.id === m[3]);
     if (!n) continue;
-    if (tipo === "sequence") n.sublabel = texto(n.sublabel, Math.max(6, Math.floor(Number(m[4]) / 5.6)));
+    if (tipo === "sequence" || (tipo === "dataflow" && (Number(n.width) || 112) >= Math.min(168, 2 * (100 + (Number(n.stage) || 0) * 215 - 24)))) n.sublabel = texto(n.sublabel, Math.max(6, Math.floor(Number(m[4]) / 5.6)));
     else if (tipo === "architecture") n.size = [Math.min(320, (Array.isArray(n.size) ? n.size[0] : 120) + Number(m[2]) - Number(m[4]) + 12), 60];
     else n.width = Math.min(320, (Number(n.width) || 132) + Number(m[2]) - Number(m[4]) + 12);
     mudou = true;
@@ -357,8 +357,55 @@ export function autoReparo(tipo: TipoDiagrama, ir: any, saida: string): any | nu
     corrigidos.add(e);
     mudou = true;
   }
+  // #745: a peça saiu da ÁREA do desenho. O archify manda "aumentar meta.viewBox", mas o prompt proíbe a IA de mexer no
+  // viewBox — então ela tentava 2 vezes e o diagrama não saía (no ar: "Node "esofago" exceeds the horizontal bounds of
+  // the viewBox"). Quem aumenta a área é o código.
+  const area = (): [number, number] | null => {
+    const v = novo.meta?.viewBox;
+    if (Array.isArray(v) && v.length === 2 && v.every((n: unknown) => Number.isFinite(Number(n)))) return [Number(v[0]), Number(v[1])];
+    return VIEWBOX_PADRAO[tipo] ? [...VIEWBOX_PADRAO[tipo]!] : null;
+  };
+  const gravarArea = (v: [number, number]) => { novo.meta = { ...(novo.meta ?? {}), viewBox: v }; mudou = true; };
+  // o archify às vezes já diz o tamanho certo: "set meta.viewBox[0] to at least N" (largura) / "[1]" (altura)
+  const pede = (i: 0 | 1) => Math.max(0, ...[...t.matchAll(new RegExp(`set meta\\.viewBox\\[${i}\\] to at least (\\d+)`, "g"))].map((m) => Number(m[1])));
+  const [pedeL, pedeA] = [pede(0), pede(1)];
+  // "Component X falls outside the viewBox 900x600 — … set a larger meta.viewBox" (architecture)
+  const fora = /falls outside the viewBox (\d+)x(\d+)/.exec(t);
+  const cresceL = /exceeds the horizontal bounds of the (?:viewBox|diagram)/.test(t) || !!fora;
+  const cresceA = /exceeds the (?:readable diagram area|vertical lifecycle area)/.test(t) || !!fora;
+  // dataflow: as etapas têm lugar FIXO (centro em 100 + etapa × 215 px, 168 px de largura), então crescer a área não salva o nó da 1ª etapa
+  // que passou da borda esquerda, nem os vizinhos que se encostam. Ali o nó fica com a largura que cabe na etapa, e o
+  // rótulo/sublabel encurtam (com "…") — um nome encurtado é melhor que diagrama nenhum.
+  let pedeDataflow = 0;
+  if (tipo === "dataflow" && /exceeds the horizontal bounds|less than 10px apart|is wider than node|Sublabel "/.test(t)) {
+    for (const n of nos) {
+      const cx = 100 + (Number(n.stage) || 0) * 215;
+      const max = Math.max(80, Math.min(168, 2 * (cx - 24)));
+      if ((Number(n.width) || 112) > max) {
+        n.width = max;
+        n.label = texto(n.label, Math.max(6, Math.floor((max - 10) / 6.8)));
+        if (n.sublabel) n.sublabel = texto(n.sublabel, Math.max(6, Math.floor((max - 16) / 5.6)));
+        mudou = true;
+      }
+      pedeDataflow = Math.max(pedeDataflow, Math.ceil(cx + (Number(n.width) || 112) / 2 + 24));
+    }
+  }
+  if (pedeDataflow && (area()?.[0] ?? 0) < pedeDataflow) gravarArea([Math.min(VIEWBOX_MAX[0], pedeDataflow), area()?.[1] ?? 720]);
+  else if (pedeL || pedeA || cresceL || cresceA) {
+    const v = area() ?? (fora ? [Number(fora[1]), Number(fora[2])] as [number, number] : null);
+    if (v) {
+      const l = Math.min(VIEWBOX_MAX[0], Math.max(v[0] + (cresceL ? 160 : 0), pedeL ? pedeL + 24 : 0));
+      const a = Math.min(VIEWBOX_MAX[1], Math.max(v[1] + (cresceA ? 120 : 0), pedeA ? pedeA + 24 : 0));
+      if (l !== v[0] || a !== v[1]) gravarArea([l, a]);
+    }
+  }
   return mudou ? novo : null;
 }
+
+/** #745: a área padrão de cada renderer do archify quando o diagrama não diz a sua (vendor/archify/renderers/*) */
+const VIEWBOX_PADRAO: Partial<Record<TipoDiagrama, [number, number]>> = { dataflow: [940, 720], lifecycle: [980, 660], sequence: [920, 760] };
+/** o teto: crescer mais que isso vira um diagrama ilegível de tão pequeno na tela */
+const VIEWBOX_MAX: [number, number] = [2400, 1800];
 
 export const rodarArchify: RodarArchify = async (cmd, tipo, ir) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "zaeon-archify-"));
@@ -496,5 +543,6 @@ export async function gerarDiagrama(
   // Renderizou mas a composição não ficou perfeita (cruzamento, rótulo apertado): o schema passou
   // e o desenho é legível — melhor um diagrama imperfeito que nenhum. Sem render, nada sai.
   if (melhor) return { ok: true, tipo, titulo: melhor.ir.meta.title, ir: melhor.ir, html: melhor.html, tentativas: maxReparos + 1 };
-  return { ok: false, motivo: `Diagrama reprovado no validador: ${ultimo.map((d) => d.message).join(" | ").slice(0, 300)}` };
+  // #745: cada diagnóstico uma vez só (o archify repete o mesmo no render e no relatório)
+  return { ok: false, motivo: `Diagrama reprovado no validador: ${[...new Set(ultimo.map((d) => d.message))].join(" | ").slice(0, 300)}` };
 }

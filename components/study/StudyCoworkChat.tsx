@@ -97,6 +97,7 @@ import { agenteDoChatSalvo } from "@/lib/agents/agenteEscolhido";
 import { EVT_FEEDBACK } from "@/lib/chat/feedback";
 import { SeletorModelo, SeloModelo, useModeloEscolhido } from "@/components/chat/SeletorModelo";
 import { criarEstudo, gerarArtefato } from "@/lib/studio/studioClient";
+import { mensagemDeFalha } from "@/lib/studio/falhaArtefato";
 import type { SkillNodeState } from "@/lib/skilltree/types";
 import type { SkillTreeData } from "@/components/study/SkillTreePanel";
 import { TCC_CROSS_ON, tccApi, type TrabalhoResumo } from "@/lib/tcc/client";
@@ -134,6 +135,8 @@ type Msg = {
   studioBlock?: StudioBlockData;   // em "structured" = artefato embutido na MESMA bolha
   blocosExtra?: StudioBlockData[]; // 2º artefato da mesma resposta (ex.: molécula + diagrama interativo)
   desenhando?: string;             // aviso enquanto um artefato demorado sai (diagrama ~20 s, aula 1–3 min)
+  /** #745: o artefato pedido que falhou — a bolha do aviso ganha o botão "tentar de novo" */
+  refazer?: { kind: string; topic: string; contexto?: string };
   answer?: StructuredAnswer;
   fase?: string;             // fase que o harness está narrando agora (só enquanto chega)
   modelo?: string;           // quem respondeu DE VERDADE (nome vindo do servidor) — o selo debaixo da resposta
@@ -892,11 +895,11 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
    * "Gerando…" achando que trava. Uma bolha curta com o motivo real da API é mais honesta
    * do que silêncio — e é o que permite diagnosticar sem abrir o log do servidor.
    */
-  const avisarFalha = useCallback((motivo?: string) => {
-    const texto = motivo?.trim()
-      ? `Não consegui gerar esse artefato: ${motivo.trim()}`
-      : "Não consegui gerar esse artefato agora. Tenta de novo em instantes.";
-    setMessages((prev) => [...prev, { id: uid(), role: "assistant", kind: "text", text: texto, at: Date.now() }]);
+  // #745: o aluno lê uma frase simples (o motivo técnico, em inglês e repetido, vai para o console) e ganha "tentar de novo"
+  const avisarFalha = useCallback((motivo?: string, refazer?: Msg["refazer"]) => {
+    const { texto, tecnico } = mensagemDeFalha(refazer?.kind ?? "", motivo);
+    if (tecnico) console.warn("[artefato] falhou:", refazer?.kind, tecnico);
+    setMessages((prev) => [...prev, { id: uid(), role: "assistant", kind: "text", text: texto, at: Date.now(), ...(refazer ? { refazer } : {}) }]);
   }, []);
 
   /**
@@ -935,9 +938,10 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
         abrirDocumento({ sala: "estudos", studioKind: r.bloco.studioKind, artifactId: r.bloco.artifactId, titulo: r.bloco.title || topic, data: r.bloco.data, focar: !silencioso, scopeId });
       }
     } else if (r.tipo === "erro" && !r.silencioso && !silencioso) {
-      avisarFalha(r.mensagem);
+      avisarFalha(r.mensagem, { kind, topic, ...(contexto ? { contexto } : {}) });
     }
   }, [focusIds, avisarFalha]);
+  const runStudioActionRef = useRef(runStudioAction); runStudioActionRef.current = runStudioAction;
 
   // ── envio pro chat da Aura ──────────────────────────────────────────────────
   // `override` = envio direto (clique numa opção/conceito da resposta do harness),
@@ -1590,6 +1594,14 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
                         ? (m.text ? <AcoesPergunta texto={m.text} ocupado={sending} onEditar={() => setEditando(m.id)} /> : null)
                         : acoesDa(m, i)}
                       {!isUser && m.answer?.livros?.length ? <LivrosCartao livros={m.answer.livros} sala="estudos" /> : null}
+                      {/* #745: o artefato que falhou — tenta de novo daqui (o aviso sai e o "desenhando…" volta) */}
+                      {!isUser && m.refazer ? (
+                        <button type="button" disabled={sending}
+                          onClick={() => { const r = m.refazer!; setMessages((prev) => prev.filter((x) => x.id !== m.id)); void runStudioActionRef.current(r.kind, r.topic, undefined, false, r.contexto); }}
+                          className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-cyan-500/40 px-3 py-1 text-[12.5px] font-bold text-cyan-700 dark:text-cyan-200 hover:bg-cyan-500/10 disabled:opacity-50 [@media(hover:none)]:min-h-[40px]">
+                          ↻ tentar de novo
+                        </button>
+                      ) : null}
                       {!isUser && (m.studioBlock || m.desenhando) ? (
                         <div className="w-full max-w-[85%]">
                           {m.studioBlock ? <BlocoOuCartao b={m.studioBlock} /> : null}
