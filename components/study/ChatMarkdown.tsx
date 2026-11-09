@@ -3,6 +3,8 @@
 import React from "react";
 import Formula from "@/components/chat/Formula";
 import GraficoFuncao from "@/components/chat/GraficoFuncao";
+import GraficoDados from "@/components/chat/GraficoDados";
+import { ehGraficoDeDados } from "@/lib/chat/graficoDados";
 import BlocoCodigo from "@/components/chat/BlocoCodigo";
 import { segmentarBlocos, segmentarInline } from "@/lib/chat/matematica";
 
@@ -64,7 +66,7 @@ export default function ChatMarkdown({ text }: { text: string }) {
     <div className="[&_p]:leading-[1.65]">
       {pedacos.map((b, i) =>
         b.tipo === "formula" ? <Formula key={i} latex={b.conteudo} display />
-        : b.tipo === "grafico" ? <GraficoFuncao key={i} json={b.conteudo} />
+        : b.tipo === "grafico" ? (ehGraficoDeDados(b.conteudo) ? <GraficoDados key={i} json={b.conteudo} /> : <GraficoFuncao key={i} json={b.conteudo} />)
         : b.tipo === "codigo" ? <BlocoCodigo key={i} codigo={b.conteudo} lang={b.lang} />
         : <MarkdownDeLinhas key={i} text={b.conteudo.replace(/^\n|\n$/g, "")} />,
       )}

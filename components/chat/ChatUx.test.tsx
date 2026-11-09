@@ -106,6 +106,18 @@ describe("A−/A+", () => {
     expect((screen.getByRole("button", { name: "Diminuir o texto" }) as HTMLButtonElement).disabled).toBe(true);
     await semViolacoes(container);
   });
+
+  it("#749 · com o diagrama aberto, os mesmos botões dão zoom nele (nunca travados nas pontas do texto)", () => {
+    const menor = vi.fn(), maior = vi.fn();
+    render(<ChatZoom escala={0.85} alvo="diagrama" menor={menor} maior={maior} />);
+    const afastar = screen.getByRole("button", { name: "Afastar o diagrama" }) as HTMLButtonElement;
+    expect(afastar.disabled).toBe(false);
+    fireEvent.click(afastar);
+    fireEvent.click(screen.getByRole("button", { name: "Aproximar o diagrama" }));
+    expect(menor).toHaveBeenCalledTimes(1);
+    expect(maior).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("group", { name: "Zoom do diagrama" })).toBeTruthy();
+  });
 });
 
 describe("mini-ações da mensagem", () => {

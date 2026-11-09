@@ -53,7 +53,8 @@ function renderView(b: StudioBlockData) {
     case "timeline": return <TimelineView data={b.data} />;
     case "podcast": return <PodcastView audioUrl={fileUrl} data={b.data} />;
     case "video": return <VideoView url={fileUrl} />;
-    case "image": return <ImageView dataUrl={b.dataUrl || ""} prompt={b.data?.prompt} />;
+    // #749: reaberta do servidor, a imagem volta só com o número — o arquivo vem de /api/studio/<id>/file
+    case "image": return <ImageView dataUrl={b.dataUrl || fileUrl} prompt={b.data?.prompt} />;
     case "molecule": return b.data?.sdf ? <MoleculeView data={b.data} /> : <div className="text-[12px] text-slate-400">Estrutura indisponível.</div>;
     case "diagram": return b.artifactId ? <DiagramView artifactId={b.artifactId} titulo={b.title} /> : <div className="text-[12px] text-slate-400">Diagrama indisponível.</div>;
     case "aula": return b.artifactId ? <AulaView artifactId={b.artifactId} dados={b.data} /> : <div className="text-[12px] text-slate-400">Aula indisponível.</div>;
@@ -110,7 +111,7 @@ export default function StudioBlock({
         a.href = block.dataUrl;
         a.download = `${safeName(block.title)}.png`;
         a.click();
-      }
+      } else if (block.artifactId) window.open(`/api/studio/${block.artifactId}/file?download=1`, "_blank");
       return;
     }
     if (k === "molecule") {

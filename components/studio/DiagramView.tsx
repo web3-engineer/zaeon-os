@@ -10,7 +10,7 @@
  * — o painel do app desktop é um deles. O /file ainda manda CSP `sandbox` pra quem abrir o link.
  * "Abrir numa aba" usa o mesmo arquivo; o botão do bloco baixa o .html (abre offline).
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Maximize2, Minimize2, ExternalLink, RotateCw } from "lucide-react";
 
 /**
@@ -26,6 +26,16 @@ export const CSS_CELULAR = `<style data-zaeon-celular>@media (max-width:720px){
 }</style>`;
 export const comCssCelular = (html: string) => (/<\/head>/i.test(html) ? html.replace(/<\/head>/i, `${CSS_CELULAR}</head>`) : CSS_CELULAR + html);
 
+/**
+ * #749: o A−/A+ do chat dá zoom no diagrama aberto na aba. O diagrama roda num iframe sandbox (origem opaca), então
+ * a ordem vai por `postMessage` e este script, dentro dele, chama o zoom do próprio archify (`Archify.view`).
+ */
+export const EVT_ZOOM_DIAGRAMA = "zaeon:diagrama:zoom";
+export const SCRIPT_ZOOM = `<script data-zaeon-zoom>addEventListener("message",function(e){var d=e.data;if(!d||d.zaeon!=="zoom"||!window.Archify||!Archify.view)return;if(d.dir>0)Archify.view.zoomIn();else Archify.view.zoomOut();});</script>`;
+export const comZoom = (html: string) => (/<\/body>/i.test(html) ? html.replace(/<\/body>(?![\s\S]*<\/body>)/i, `${SCRIPT_ZOOM}</body>`) : html + SCRIPT_ZOOM);
+/** pede zoom no diagrama `artifactId` (+1 aproxima, −1 afasta) */
+export const zoomNoDiagrama = (artifactId: string, dir: 1 | -1) => window.dispatchEvent(new CustomEvent(EVT_ZOOM_DIAGRAMA, { detail: { artifactId, dir } }));
+
 export default function DiagramView({ artifactId, titulo, cheio = false }: { artifactId: string; titulo?: string; /** ocupa a aba inteira (documento) */ cheio?: boolean }) {
   const [alto, setAlto] = useState(false);
   const [html, setHtml] = useState<string | null>(null);
@@ -33,6 +43,15 @@ export default function DiagramView({ artifactId, titulo, cheio = false }: { art
   // #640: "Tentar de novo" sem fechar e abrir o documento
   const [tentativa, setTentativa] = useState(0);
   const url = `/api/studio/${artifactId}/file`;
+  const quadro = useRef<HTMLIFrameElement>(null);
+  useEffect(() => {
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<{ artifactId: string; dir: number }>).detail;
+      if (d?.artifactId === artifactId) quadro.current?.contentWindow?.postMessage({ zaeon: "zoom", dir: d.dir }, "*");
+    };
+    window.addEventListener(EVT_ZOOM_DIAGRAMA, on);
+    return () => window.removeEventListener(EVT_ZOOM_DIAGRAMA, on);
+  }, [artifactId]);
 
   useEffect(() => {
     let vivo = true;
@@ -66,7 +85,8 @@ export default function DiagramView({ artifactId, titulo, cheio = false }: { art
   return (
     <div className={`relative ${cheio ? "h-full" : ""}`}>
       <iframe
-        srcDoc={comCssCelular(html)}
+        ref={quadro}
+        srcDoc={comZoom(comCssCelular(html))}
         title={titulo ? `Diagrama: ${titulo}` : "Diagrama interativo"}
         sandbox="allow-scripts allow-downloads allow-popups"
         referrerPolicy="no-referrer"

@@ -59,4 +59,37 @@ describe("#733 · useSTT", () => {
     act(() => { SRFalso.ultimo!.onerror!({ error: "not-allowed" }); SRFalso.ultimo!.onend!(); });
     expect(result.current.aviso).toBe("negado");
   });
+
+  it("#749 · ouviu fala mas veio vazio: 'não entendi' (e não 'desligou depois da pausa')", () => {
+    (window as any).webkitSpeechRecognition = SRFalso;
+    const { result } = renderHook(() => useSTT());
+    act(() => { result.current.start(); });
+    const sr = SRFalso.ultimo as any;
+    act(() => { sr.onspeechstart?.(); sr.onresult!({ results: [{ 0: { transcript: "" }, isFinal: true }], resultIndex: 0 }); sr.onend!(); });
+    expect(result.current.aviso).toBe("nao-entendi");
+  });
+
+  it("#749 · com pausaMs: contínuo, desliga sozinho depois da pausa e avisa; sem fala nenhuma, 'não ouvi nada' em 10 s", () => {
+    vi.useFakeTimers();
+    try {
+      (window as any).webkitSpeechRecognition = SRFalso;
+      const onResult = vi.fn();
+      const { result } = renderHook(() => useSTT({ onResult, pausaMs: 2500 }));
+      act(() => { result.current.start(); });
+      expect(SRFalso.ultimo!.continuous).toBe(true);
+      const sr = SRFalso.ultimo as any;
+      act(() => { sr.onspeechstart?.(); sr.onresult!({ results: [{ 0: { transcript: "o que é fotossíntese" }, isFinal: true }], resultIndex: 0 }); });
+      act(() => { vi.advanceTimersByTime(2400); });
+      expect(result.current.listening).toBe(true);   // ainda dentro da pausa
+      act(() => { vi.advanceTimersByTime(200); });
+      expect(result.current.listening).toBe(false);
+      expect(result.current.aviso).toBe("desligou");
+      expect(onResult).toHaveBeenLastCalledWith("o que é fotossíntese", true);
+      // de novo, calado
+      act(() => { result.current.start(); });
+      act(() => { vi.advanceTimersByTime(10000); });
+      expect(result.current.listening).toBe(false);
+      expect(result.current.aviso).toBe("sem-som");
+    } finally { vi.useRealTimers(); }
+  });
 });

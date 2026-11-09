@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, cleanup, fireEvent, waitFor } from "@testing-library/react";
-import DiagramView, { CSS_CELULAR, comCssCelular } from "./DiagramView";
+import DiagramView, { CSS_CELULAR, comCssCelular, comZoom, SCRIPT_ZOOM, zoomNoDiagrama } from "./DiagramView";
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
@@ -44,5 +44,20 @@ describe("DiagramView no celular (#713)", () => {
     const r = render(<DiagramView artifactId="a1" />);
     await waitFor(() => expect(r.container.querySelector("iframe")).not.toBeNull());
     expect(r.container.querySelector("iframe")!.getAttribute("srcdoc")).toContain("data-zaeon-celular");
+  });
+  it("#749 · o A−/A+ chega ao diagrama: o script de zoom vai no fim do <body> e a ordem vai por postMessage", async () => {
+    expect(comZoom("<html><body>x</body></html>")).toBe(`<html><body>x${SCRIPT_ZOOM}</body></html>`);
+    expect(comZoom("<svg></svg>").endsWith(SCRIPT_ZOOM)).toBe(true);
+    expect(SCRIPT_ZOOM).toContain("Archify.view.zoomIn()");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 200, text: async () => "<html><head></head><body>d</body></html>" }));
+    const r = render(<DiagramView artifactId="a1" />);
+    await waitFor(() => expect(r.container.querySelector("iframe")).not.toBeNull());
+    const iframe = r.container.querySelector("iframe")!;
+    expect(iframe.getAttribute("srcdoc")).toContain("data-zaeon-zoom");
+    const post = vi.spyOn(iframe.contentWindow!, "postMessage");
+    zoomNoDiagrama("a1", 1);
+    zoomNoDiagrama("outro", -1);   // outro diagrama: não é com este
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledWith({ zaeon: "zoom", dir: 1 }, "*");
   });
 });

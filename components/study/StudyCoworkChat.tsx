@@ -63,6 +63,7 @@ import DocumentoArtefato from "@/components/studio/DocumentoArtefato";
 import { abrirDocumento, EVT_ABRIR_DOC, KINDS_EM_ABA, ROTULO_DOC, type DocArtefato } from "@/lib/chat/documentos";
 import { assuntoDe, pedeAula } from "@/lib/agent/aprender";
 import ChatZoom, { useChatFontScale } from "@/components/chat/ChatZoom";
+import { zoomNoDiagrama } from "@/components/studio/DiagramView";
 import { AnimatePresence } from "framer-motion";
 import BolinhaCerebro from "@/components/cerebro/BolinhaCerebro";
 import CerebroPanel from "@/components/cerebro/CerebroPanel";
@@ -153,6 +154,8 @@ type Msg = {
 
 /** Kinds que nascem do assunto/conversa, sem um estudo de origem (não criam estudo vazio). */
 const SEM_ESTUDO = new Set(["diagram", "mindmap", "molecule", "aula"]);
+/** #749: além do diagrama e da aula (que abrem em aba), o que fica guardado na conversa pelo número — o arquivo mora no servidor */
+const GUARDA_NO_SERVIDOR = new Set(["image"]);
 const AVISO_ARTEFATO: Record<string, string> = {
   diagram: "Desenhando o diagrama interativo…",
   mindmap: "Desenhando o mapa…",
@@ -166,7 +169,8 @@ const AVISO_ARTEFATO: Record<string, string> = {
 function enxugarArtefatos(m: Msg): Msg {
   if (m.role !== "assistant" || (!m.studioBlock && !m.blocosExtra && !m.desenhando)) return m;
   // diagrama e aula são só um id (o conteúdo mora no servidor) — sobrevivem ao reload, sem o `data`
-  const leve = (b?: StudioBlockData) => (b && (b.studioKind === "diagram" || b.studioKind === "aula" || b.studioKind === "cad") && b.artifactId ? { ...b, data: null } : undefined);
+  // #749: a IMAGEM também (o arquivo mora no servidor) — sem o dataUrl, que é pesado; volta por /api/studio/<id>/file
+  const leve = (b?: StudioBlockData) => (b && (b.studioKind === "diagram" || b.studioKind === "aula" || b.studioKind === "cad" || b.studioKind === "image") && b.artifactId ? { ...b, data: null, dataUrl: undefined } : undefined);
   const extras = (m.blocosExtra ?? []).map(leve).filter(Boolean) as StudioBlockData[];
   return { ...m, studioBlock: leve(m.studioBlock), blocosExtra: extras.length ? extras : undefined, desenhando: undefined };
 }
@@ -396,6 +400,8 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   // #711: antes do temaDaConversa, que o usa — definido depois, o chat quebrava ("Cannot access before initialization")
   // assim que a conversa tinha um documento ou diagrama
   const docAtivo = abaAtiva ? docAtivoPorAba[abaAtiva] ?? null : null;
+  // #749: o diagrama que ocupa a sala agora (o A−/A+ dá zoom nele, em vez de mudar o texto escondido da conversa)
+  const diagramaNaTela = !cartolinaAberta && !trabalhoAberto && docs.find((d) => d.artifactId === docAtivo)?.studioKind === "diagram" ? docAtivo : null;
   /**
    * O ASSUNTO pra frase do convite ("vem estudar comigo sobre ___"). A conversa não tem título
    * próprio, então vem do que está em jogo: o trabalho/documento ABERTO primeiro, depois o primeiro
@@ -947,6 +953,9 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
       if (KINDS_EM_ABA.has(r.bloco.studioKind) && r.bloco.artifactId) {
         gravarArtefato("estudos", threadsRef.current.find((t) => t.id === scopeId), { studioKind: r.bloco.studioKind, artifactId: r.bloco.artifactId, title: r.bloco.title || topic });
         abrirDocumento({ sala: "estudos", studioKind: r.bloco.studioKind, artifactId: r.bloco.artifactId, titulo: r.bloco.title || topic, data: r.bloco.data, focar: !silencioso, scopeId });
+      } else if (GUARDA_NO_SERVIDOR.has(r.bloco.studioKind) && r.bloco.artifactId) {
+        // #749: a imagem sumia ao reabrir a conversa (só o diagrama e a aula ficavam guardados) — guarda o número dela
+        gravarArtefato("estudos", threadsRef.current.find((t) => t.id === scopeId), { studioKind: r.bloco.studioKind, artifactId: r.bloco.artifactId, title: r.bloco.title || topic });
       }
     } else if (r.tipo === "erro") {
       // a bolha do "tentando de novo" que não deu certo sai — o aviso novo (com o botão) entra no lugar
@@ -1521,7 +1530,9 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
                 <UserPlus size={14} aria-hidden />
               </button>
             )}
-            <ChatZoom escala={zoom.escala} menor={zoom.menor} maior={zoom.maior} />
+            {diagramaNaTela
+              ? <ChatZoom escala={zoom.escala} alvo="diagrama" menor={() => zoomNoDiagrama(diagramaNaTela, -1)} maior={() => zoomNoDiagrama(diagramaNaTela, 1)} />
+              : <ChatZoom escala={zoom.escala} menor={zoom.menor} maior={zoom.maior} />}
             {bolinhaMapa}
           </>}
         />

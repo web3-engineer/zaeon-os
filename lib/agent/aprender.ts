@@ -19,7 +19,7 @@
  * Sala: os MESMOS motores nas duas; o rigor muda no prompt (Pesquisa com fonte, Estudos objetivo).
  */
 import type { IntentId, StructuredAnswer, StudioRef } from "@/lib/agent/contracts";
-import { pedeGraficoMatematico } from "@/lib/agent/matematica";
+import { pedeGraficoMatematico, pedeGraficoDeDados } from "@/lib/agent/matematica";
 
 const norm = (s: string) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
@@ -85,7 +85,8 @@ export function artefatoDeAprender(
 ): StudioRef | null {
   if (JA_TEM_DIAGRAMA(answer.artifacts ?? [])) return null;
   // gráfico de função / figura de geometria: o desenho é o ```grafico no próprio texto, não um diagrama archify
-  if (pedeGraficoMatematico(objetivo)) return null;
+  // #749: gráfico de DADOS também — "gráfico da população por região" virava um diagrama archify em vez das barras
+  if (pedeGraficoMatematico(objetivo) || pedeGraficoDeDados(objetivo)) return null;
   const quer =
     intent === "explicar_conceito" ||
     (intent === "duvida_rapida" && pedeAprender(objetivo)) ||

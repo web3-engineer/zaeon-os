@@ -106,7 +106,8 @@ export async function gerarArtefato(kind: string, o: OpcoesStudio & Deps): Promi
       const res = await f("/api/studio/image", { method: "POST", headers: H, body: JSON.stringify({ spaceId, topic }) });
       const data = await json(res);
       return res.ok && data?.dataUrl
-        ? { tipo: "pronto", bloco: { studioKind: "image", title: data.title || "Imagem", data: data.meta, dataUrl: data.dataUrl } }
+        // #749: com o número (artifactId), a imagem fica guardada na conversa e volta ao reabrir
+        ? { tipo: "pronto", bloco: { studioKind: "image", title: data.title || "Imagem", data: data.meta, dataUrl: data.dataUrl, ...(data.id ? { artifactId: data.id } : {}) } }
         : { tipo: "erro", mensagem: data?.error };
     }
     // Texto: roda em BACKGROUND no servidor (fire-and-forget) → "queued" e polling até "done".

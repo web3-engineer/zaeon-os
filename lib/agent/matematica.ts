@@ -20,7 +20,24 @@ export const DIRETRIZ_MATEMATICA = [
   '[{"tipo":"poligono","pontos":[[0,0],[4,0],[0,3]],"rotulo":"triângulo"},{"tipo":"circulo","centro":[0,0],"raio":2},',
   '{"tipo":"segmento","de":[0,0],"ate":[4,3]},{"tipo":"vetor","de":[0,0],"ate":[2,1],"rotulo":"v"}]. O desenho aparece no lugar do bloco:',
   "não descreva com palavras o que ele já mostra e nunca diga que não consegue desenhar.",
+  // #749: gráfico de DADOS (população por região, notas por ano…) — antes ia para o gerador de imagem
+  'GRÁFICO DE DADOS: quando o usuário pedir gráfico de números (comparar quantidades, regiões, anos, categorias), use o mesmo bloco com "barras":',
+  '```grafico\n{"titulo":"População por região (milhões)","barras":[{"rotulo":"Sudeste","valor":84.8},{"rotulo":"Nordeste","valor":54.6}],"unidade":"mi","fonte":"Censo 2022 (IBGE)"}\n```',
+  'Até 12 barras, valores numéricos (sem texto), e "fonte" SEMPRE (de onde vêm os números). Escreva os mesmos números no texto.',
+  "Se a base da pessoa não tiver esses números, use o que você sabe de fonte confiável e diga a fonte — nunca deixe de fazer o gráfico por isso.",
 ].join(" ");
+
+/**
+ * #749 · "faça um gráfico da população do Brasil por região" → true. Gráfico de NÚMEROS (que não é de função nem de
+ * geometria): sai no texto como ```grafico com "barras", não como imagem gerada nem diagrama.
+ */
+export function pedeGraficoDeDados(objetivo: string): boolean {
+  const t = norm(objetivo);
+  if (!/\bgraficos?\b/.test(t)) return false;
+  if (pedeGraficoMatematico(objetivo)) return false;
+  // pediu IMAGEM/ilustração de verdade ("uma imagem com um gráfico") → continua imagem
+  return !/\b(imagem|ilustra\w*|foto\w*|desenho)\b/.test(t);
+}
 
 const ALVO_GRAFICO = String.raw`(?:fun[cç][aã]o|f\s*\(\s*x\s*\)|y\s*=|par[aá]bola|reta|hip[eé]rbole|sen[oó]ide|seno|cosseno|tangente|exponencial|logar[ií]tm\w*|polin[oô]mio|equa[cç][aã]o|inequa[cç][aã]o|derivada|integral|tri[aâ]ngulo|c[ií]rculo|circunfer[eê]ncia|pol[ií]gono|quadrado|ret[aâ]ngulo|vetor(?:es)?|plano cartesiano)`;
 const GRAFICO_RE = new RegExp(String.raw`\b(?:gr[aá]fico|plot\w*|esbo[cç]\w*|desenh\w*|trac\w*|representa\w* graficamente)\b[^.?!]{0,40}?\b${ALVO_GRAFICO}`, "i");
