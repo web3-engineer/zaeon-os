@@ -6,7 +6,7 @@ import Observation
 enum Secao: Hashable {
     case quadro
     case saude
-    case agentes
+    case agente(String)
     case motor(String)
     case datasets
     case arena
@@ -31,6 +31,10 @@ final class EstadoApp {
 
     private(set) var fonte: any FonteHermes
     var painel: Painel?
+    /// os agentes da casa (`GET /agentes`): a lista vive na barra lateral, o detalhe em `AgenteTela`
+    var agentes: RespostaAgentes?
+    var erroAgentes: String?
+    var janelaAgentes: JanelaAgentes = .seteDias
     var erro: String?
     var carregando = false
     var ultimaAtualizacao: Date?
@@ -83,6 +87,8 @@ final class EstadoApp {
         self.token = tokenLimpo
         self.fonte = Self.criarFonte(url: urlNormal, token: tokenLimpo)
         self.painel = nil
+        self.agentes = nil
+        self.erroAgentes = nil
         self.erro = nil
         self.caminho = []
         arena.limpar()
@@ -118,6 +124,31 @@ final class EstadoApp {
         while !Task.isCancelled {
             await atualizar()
             try? await Task.sleep(for: Self.intervaloPainel)
+        }
+    }
+
+    /// Intervalo do refresh dos agentes da casa (o ledger agregado é mais pesado que o painel).
+    static let intervaloAgentes: Duration = .seconds(30)
+
+    func atualizarAgentes() async {
+        guard problemaConfiguracao == nil else { return }
+        let f = fonte
+        do {
+            let r = try await f.agentes(dias: janelaAgentes.rawValue)
+            guard (f as AnyObject) === (fonte as AnyObject) else { return }
+            agentes = r
+            erroAgentes = nil
+        } catch {
+            // falha no refresh não apaga a lista que já está na barra lateral
+            erroAgentes = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+    }
+
+    /// Laço dos agentes; a `.task(id:)` da raiz o recomeça quando muda o servidor, a chave ou a janela.
+    func cicloAgentes() async {
+        while !Task.isCancelled {
+            await atualizarAgentes()
+            try? await Task.sleep(for: Self.intervaloAgentes)
         }
     }
 
