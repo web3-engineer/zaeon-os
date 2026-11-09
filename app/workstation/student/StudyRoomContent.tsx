@@ -230,6 +230,8 @@ export default function StudyRoomContent({ flushTop = false, unified = false, ab
         { id: "feed", label: "Sala de Estudos", icon: BookOpen },
         ...(reaBlueprintUiOn() ? [{ id: "rea", label: "Engenharia reversa", icon: Microscope }] : []),
         { id: "community", label: "Marketplace", icon: Users },
+        // a busca na LITERATURA (o Omega) saiu do toggle da vitrine e virou aba própria
+        { id: "literatura", label: "Literatura", icon: FlaskConical },
     ], []);
 
     // Padrão = a aba "Aura" (chats/co-working). Só cai numa aba de estudo/pesquisa se
@@ -269,10 +271,9 @@ export default function StudyRoomContent({ flushTop = false, unified = false, ab
     const [boardDoLink, setBoardDoLink] = useState<{ id: string | null; convite: string | null }>({ id: null, convite: null });
     const [cadernoAberto, setCadernoAberto] = useState(false);
     const [pranchaAntiga, setPranchaAntiga] = useState(false);
-    const [estudosVista, setEstudosVista] = useState<"vitrine" | "pesquisar">("vitrine");
-    // o tutorial do tablet abre o Marketplace direto na pesquisa (a tela roxa)
+    // o tutorial do tablet abre direto na pesquisa — a literatura é ABA PRÓPRIA agora (vitrine = Marketplace)
     useEffect(() => {
-        const f = (e: Event) => { const v = (e as CustomEvent<"vitrine" | "pesquisar">).detail; if (v === "vitrine" || v === "pesquisar") setEstudosVista(v); };
+        const f = (e: Event) => { const v = (e as CustomEvent<"vitrine" | "pesquisar">).detail; if (v === "pesquisar") setActiveTab("literatura"); else if (v === "vitrine") setActiveTab("community"); };
         window.addEventListener(EVT_ESTUDOS_VISTA, f);
         return () => window.removeEventListener(EVT_ESTUDOS_VISTA, f);
     }, []);
@@ -489,14 +490,10 @@ export default function StudyRoomContent({ flushTop = false, unified = false, ab
                             </div>
                             )
                         ) : activeTab === "meus-estudos" ? null : activeTab === "community" ? (
-                            <div className="relative h-full">
-                                {estudosVista === "vitrine" ? <VitrineEstudos /> : <OmegaScholarWorkspace />}
-                                <div className="absolute right-3 top-3 z-30 flex overflow-hidden rounded-full border border-sky-300/30 bg-[#05162a]/85 font-mono text-[10.5px] backdrop-blur">
-                                    {(["vitrine", "pesquisar"] as const).map((v) => (
-                                        <button key={v} type="button" onClick={() => setEstudosVista(v)} className={`px-3 py-1 ${estudosVista === v ? "bg-sky-300/20 text-white" : "text-sky-100/70 hover:text-white"}`}>{v === "vitrine" ? "vitrine" : "pesquisar na literatura"}</button>
-                                    ))}
-                                </div>
-                            </div>
+                            <div className="relative h-full"><VitrineEstudos /></div>
+                        ) : activeTab === "literatura" ? (
+                            // a busca na LITERATURA (o Omega) — aba própria da Sala de Estudos
+                            <div className="relative h-full"><OmegaScholarWorkspace /></div>
                         ) : activeTab === "students" ? (
                             <MeusAlunosPanel />
                         ) : activeTab === "classes" && isTeacher ? (
