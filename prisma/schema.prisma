@@ -1843,3 +1843,35 @@ model OrquestraTarefa {
   @@index([motor, criadaEm])
   @@index([status, criadaEm])
 }
+
+// --- VITRINE DE ESTUDOS (admin) ---
+// os cards da vitrine ("Marketplace") cadastrados pelo admin; a UI pública junta estes (ativo=true) com o catálogo
+// embutido em lib/estudos/vitrine.ts. Espelha o tipo ItemVitrine (frações e selos achatados em campos).
+model ItemVitrine {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  slug            String   @unique            // o "id" estável usado na UI
+  titulo          String
+  subtitulo       String   @default("")
+  tipo            String   @default("curso")  // curso|codigo|artigo|negocio|rwa|agente
+  execucao        String   @default("dyom")   // dyom|agente
+  modelo          String   @default("livro")  // o ícone/tema (console|chip|planta|...)
+  autor           String   @default("")
+  raridade        String   @default("comum")  // comum|rara|epica|lendaria
+  profundidade    Int      @default(0)
+  preco           Float    @default(0)        // frações em SOL (0 = grátis)
+  fracoesTotal    Int      @default(1)
+  fracoesVendidas Int      @default(0)
+  supervisionado  Boolean  @default(false)
+  linksOk         Boolean  @default(true)
+  codigoPrivado   Boolean  @default(false)
+  entrega         String[] @default([])
+  tags            String[] @default([])
+  ironia          Boolean  @default(false)
+  ativo           Boolean  @default(true)
+  ordem           Int      @default(0)
+  criadoEm        DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("vitrine_itens")
+  @@index([ativo, ordem])
+}

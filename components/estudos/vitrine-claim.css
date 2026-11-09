@@ -83,7 +83,7 @@
 .vt-claim.forja .vt-dock { opacity: 0; transform: translateX(-50%) translateY(18px); pointer-events: none; }
 .vt-dock-info { flex: 1; min-width: 0; }
 .vt-dock-title { font-size: 14px; font-weight: 700; color: #dfeaf7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.vt-dock-sub { margin-top: 1px; font-size: 11px; line-height: 1.25; color: #7f98b6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vt-dock-sub { margin-top: 2px; font-size: 11px; line-height: 1.3; color: #7f98b6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .vt-dock-price { flex: none; display: inline-flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 800; color: color-mix(in srgb, var(--cor) 86%, #cfe0ff); }
 .vt-dock-act { flex: none; }
 .vt-dock-btn { display: inline-flex; align-items: center; gap: 7px; font-family: ui-monospace, monospace; font-size: 14px; font-weight: 900; letter-spacing: .05em; color: #02121f; background: var(--cor); border: 0; cursor: pointer; padding: 13px 26px; clip-path: polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%); box-shadow: 0 0 24px color-mix(in srgb, var(--cor) 75%, transparent); animation: vtpulse 2s ease-in-out infinite; }
