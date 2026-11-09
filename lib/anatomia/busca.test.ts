@@ -168,3 +168,57 @@ describe("explicacao — específica quando existe, do sistema quando não, e nu
     expect(VISIVEIS_PADRAO.length).toBe(14);
   });
 });
+
+describe("a consulta vem como PERGUNTA, não como termo (medido em produção, 2026-11-09)", () => {
+  const nomes = atlas.concepts.map((c) => (c.name || "").toLowerCase());
+
+  it("o artigo sozinho zerava a busca — 'o pulmão' tem de achar o mesmo que 'pulmão'", () => {
+    expect(termoDeBusca("pulmão")).toEqual({ termo: "lung", viaSinonimo: true });
+    expect(termoDeBusca("o pulmão")).toEqual({ termo: "lung", viaSinonimo: true });
+    expect(buscarConceitos(atlas, "o pulmão").achados.length)
+      .toBe(buscarConceitos(atlas, "pulmão").achados.length);
+  });
+
+  it("a pergunta inteira do aluno chega ao atlas", () => {
+    for (const p of ["como funciona um pulmão", "funcionamento do pulmão", "me explica o pulmão", "quero ver os pulmões"]) {
+      expect(termoDeBusca(p), p).toEqual({ termo: "lung", viaSinonimo: true });
+      const r = buscarConceitos(atlas, p);
+      expect(r.achados.length, p).toBeGreaterThan(0);
+      expect(r.achados.some((a) => a.nome.includes("lung")), p).toBe(true);
+    }
+  });
+
+  it("com dois órgãos na frase, o mais à esquerda ganha (regra declarada, não acidente)", () => {
+    expect(termoDeBusca("o coração e o pulmão").termo).toBe("heart");
+    expect(termoDeBusca("o pulmão e o coração").termo).toBe("lung");
+  });
+
+  it("n-grama de duas palavras resolve antes das palavras soltas", () => {
+    expect(termoDeBusca("sistema respiratório")).toEqual({ termo: "respiratory system", viaSinonimo: true });
+    expect(buscarConceitos(atlas, "como funciona o sistema respiratório").achados.length).toBeGreaterThan(0);
+  });
+
+  it("os dois sinônimos novos existem no atlas REAL (senão prometem e falham)", () => {
+    expect(nomes.filter((n) => n.includes("respiratory system")).length).toBeGreaterThan(0);
+    expect(nomes.filter((n) => n.includes("bronchus")).length).toBeGreaterThan(0);
+    expect(buscarConceitos(atlas, "brônquio").achados.length).toBeGreaterThan(0);
+  });
+
+  it("termo em inglês NÃO é marcado como traduzido (a mentora não pode afirmar que traduziu)", () => {
+    expect(termoDeBusca("lung")).toEqual({ termo: "lung", viaSinonimo: false });
+    expect(termoDeBusca("left lung").viaSinonimo).toBe(false);
+  });
+
+  it("frase sem termo anatômico NÃO inventa alvo — segue como frase e a busca recusa", () => {
+    const r = termoDeBusca("qual a melhor faculdade de medicina");
+    expect(r.viaSinonimo).toBe(false);
+    expect(r.termo).toBe("qual a melhor faculdade de medicina");
+    expect(buscarConceitos(atlas, "qual a melhor faculdade de medicina").achados).toHaveLength(0);
+  });
+
+  it("'alvéolo' continua VAZIO de propósito: o atlas tem zero, e recusar é melhor que mentir", () => {
+    expect(nomes.filter((n) => n.includes("alveol"))).toHaveLength(0);
+    expect(nomes.filter((n) => n.includes("bronchiole"))).toHaveLength(0);
+    expect(buscarConceitos(atlas, "alvéolo").achados).toHaveLength(0);
+  });
+});
