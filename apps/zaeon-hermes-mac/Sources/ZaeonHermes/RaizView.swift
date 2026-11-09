@@ -27,6 +27,7 @@ struct RaizView: View {
         .task { await estado.cicloPainel() }
         .task { await estado.atualizador.ciclo { estado.fonte } }
         .task(id: "\(estado.urlServidor)|\(estado.token.count)|\(estado.janelaAgentes.rawValue)") { await estado.cicloAgentes() }
+        .task(id: "\(estado.urlServidor)|\(estado.token.count)") { await estado.cicloConversas() }
         .onChange(of: estado.secao) {
             estado.caminho = []
         }
@@ -64,6 +65,9 @@ struct RaizView: View {
             switch estado.secao ?? .quadro {
             case .quadro: QuadroView()
             case .saude: SaudeView()
+            case .terminal: TerminalView()
+            case .novaConversa: NovaConversaView()
+            case .conversa(let id): ConversaView(conversaId: id).id(id)
             case .agente(let id): AgenteTela(agenteId: id)
             case .motor(let id): MotorDashboardView(motorId: id)
             case .datasets: DatasetsView()
@@ -83,9 +87,12 @@ private struct BarraLateral: View {
             Section("Orquestra") {
                 Label("Quadro", systemImage: "rectangle.split.3x1").tag(Secao.quadro)
                 Label("Saúde do chat", systemImage: "heart.text.square").tag(Secao.saude)
+                Label("Terminal", systemImage: "terminal").tag(Secao.terminal)
                 Label("Arena", systemImage: "flag.2.crossed").tag(Secao.arena)
                 Label("Datasets", systemImage: "externaldrive.connected.to.line.below").tag(Secao.datasets)
             }
+
+            SecaoConversas()
 
             Section("Motores") {
                 if let motores = estado.painel?.motores {

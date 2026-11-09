@@ -147,3 +147,24 @@ da barra lateral e, com um clique, baixa, confere sha256 + assinatura + identifi
 A chave do console NÃO fica no Keychain: o app é ad-hoc, e o Keychain amarra cada item ao hash exato do binário
 (toda atualização pedia a senha de login). Fica em `~/Library/Application Support/space.zaeon.hermes/config.json`
 (pasta 0700, arquivo 0600) e sobrevive a toda atualização.
+
+### Conversas do console — `GET /interlocutores`, `GET|POST /conversas`, `GET|DELETE /conversas/{id}`, `POST /conversas/{id}/mensagens`
+O admin fala com qualquer agente da casa, mentor ou motor da orquestra (`lib/orquestra/conversa.ts`), pelo mesmo
+caminho do aluno: agente da casa → `runChatTurn` (persona/mentor e base por área); motor → `orquestrarTurno` forçado,
+plano max. Sem usuário (nenhuma memória de aluno). Cada resposta é uma tarefa (`origem: "console"`); o gasto vai pro
+TokenLedger com `surface: "admin"` e `taskId` = a tarefa. O turno roda em segundo plano; `POST …/mensagens` devolve
+`202 {"tarefaId"}` (`409` se já há turno rodando) e o app acompanha por GET, que traz os passos ao vivo:
+```jsonc
+{ "conversa": { "id": "…", "titulo": "Explique mitose", "agente": "zenita", "criadaEm": "…", "atualizadaEm": "…",
+  "mensagens": [
+    { "id": "…", "papel": "voce", "texto": "Explique mitose", "em": "…" },
+    { "id": "…", "papel": "agente", "texto": "", "em": "…", "tarefaId": "…", "status": "rodando",
+      "aoVivo": { "eventos": [{ "t": 1200, "fase": "plan", "rotulo": "Planejando a resposta" }], "previa": "A mitose…", "modelo": null, "ms": 4100 } }
+  ] } }
+```
+Turno marcado "rodando" há mais de 15 min sem registro ao vivo (o servidor reiniciou) aparece como falha.
+
+### Terminal (só no app)
+Linha de comando que fala com a Zaeon pelas mesmas rotas; não executa nada na máquina nem no servidor. Texto sem barra
+conversa com o agente em uso; `/usar`, `/falar`, `/nova`, `/agentes`, `/motores`, `/conversas`, `/tarefas`, `/tarefa`,
+`/saude`, `/limpar`, `/ajuda` (`HermesCore/Terminal.swift`).

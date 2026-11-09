@@ -6,6 +6,9 @@ import Observation
 enum Secao: Hashable {
     case quadro
     case saude
+    case terminal
+    case novaConversa
+    case conversa(String)
     case agente(String)
     case motor(String)
     case datasets
@@ -35,6 +38,10 @@ final class EstadoApp {
     var agentes: RespostaAgentes?
     var erroAgentes: String?
     var janelaAgentes: JanelaAgentes = .seteDias
+    /// as conversas salvas (barra lateral) e com quem dá pra conversar
+    var conversas: [ResumoConversa] = []
+    var interlocutores: [Interlocutor] = []
+    var erroConversas: String?
     var erro: String?
     var carregando = false
     var ultimaAtualizacao: Date?
@@ -47,6 +54,7 @@ final class EstadoApp {
 
     let arena = EstadoArena()
     let atualizador = Atualizador()
+    let terminal = EstadoTerminal()
 
     /// Intervalo do auto-refresh do painel.
     static let intervaloPainel: Duration = .seconds(10)
@@ -89,6 +97,9 @@ final class EstadoApp {
         self.painel = nil
         self.agentes = nil
         self.erroAgentes = nil
+        self.conversas = []
+        self.interlocutores = []
+        self.terminal.reiniciar()
         self.erro = nil
         self.caminho = []
         arena.limpar()
@@ -151,6 +162,59 @@ final class EstadoApp {
             try? await Task.sleep(for: Self.intervaloAgentes)
         }
     }
+
+    // MARK: Conversas
+
+    static let intervaloConversas: Duration = .seconds(15)
+
+    func atualizarConversas() async {
+        guard problemaConfiguracao == nil else { return }
+        let f = fonte
+        do {
+            async let lista = f.conversas()
+            async let quem = f.interlocutores()
+            let (l, q) = try await (lista, quem)
+            guard (f as AnyObject) === (fonte as AnyObject) else { return }
+            conversas = l
+            interlocutores = q
+            erroConversas = nil
+        } catch {
+            erroConversas = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+    }
+
+    func cicloConversas() async {
+        while !Task.isCancelled {
+            await atualizarConversas()
+            try? await Task.sleep(for: Self.intervaloConversas)
+        }
+    }
+
+    /// Abre uma conversa nova com o interlocutor e navega até ela.
+    func novaConversa(com agente: String) async throws {
+        let c = try await fonte.criarConversa(agente: agente)
+        conversas.insert(ResumoConversa(id: c.id, titulo: c.titulo, agente: c.agente, atualizadaEm: c.atualizadaEm), at: 0)
+        secao = .conversa(c.id)
+    }
+
+    /// Abre a conversa sem trocar de tela (o terminal usa) e devolve o id.
+    func novaConversaSemNavegar(com agente: String) async throws -> String {
+        let c = try await fonte.criarConversa(agente: agente)
+        conversas.insert(ResumoConversa(id: c.id, titulo: c.titulo, agente: c.agente, atualizadaEm: c.atualizadaEm), at: 0)
+        return c.id
+    }
+
+    func apagarConversa(_ id: String) async {
+        do {
+            try await fonte.apagarConversa(id: id)
+            conversas.removeAll { $0.id == id }
+            if secao == .conversa(id) { secao = .novaConversa }
+        } catch {
+            erroConversas = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+    }
+
+    func nomeDe(_ agente: String) -> String { Interlocutores.nome(agente, em: interlocutores) }
 
     func motor(_ id: String) -> MotorPainel? { painel?.motor(id) }
 
