@@ -8,6 +8,8 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { VIDRO_CHIP, TXT, TXT_2, TXT_MUDO } from "@/lib/canal/vidro";
+import { AREA_GERAL, AREAS, idArea } from "@/lib/rag/areas";
+import { mentorBySlug } from "@/lib/agent/mentors";
 
 type Turma = { id: string; name: string };
 type Documento = { id: string; titulo: string; nomeArquivo: string; paginas: number; status: string; erro: string | null; totalTrechos: number; comVetor: number; createdAt: string };
@@ -15,6 +17,22 @@ type Trecho = { trechoId: string; documentoId: string; titulo: string; texto: st
 type LinhaUpload = { nome: string; estado: "enviando" | "ok" | "reaproveitado" | "erro"; detalhe?: string };
 
 export const MAX_ARQUIVOS = 10;
+
+/**
+ * PURO: as bases que o chat monta por conta própria, para aparecerem no mesmo seletor das turmas.
+ * NÃO são turmas — o id é `area:<slug>` (`idArea`), e é por isso que elas não vinham do banco:
+ * o seletor só listava `prisma.turma`, então os documentos das áreas ficavam sem tela nenhuma.
+ * `geral` vem primeiro porque TODOS os agentes a leem (`areasDoTurno`); as outras, em ordem
+ * alfabética, rotuladas com o curso e o mentor dono. Área sem mentor aparece com o slug cru —
+ * visível de propósito: área órfã rouba classificação de quem tem dono.
+ */
+export const BASES_POR_AREA: readonly { id: string; label: string }[] = [
+  { id: idArea(AREA_GERAL), label: "Geral — todos os agentes" },
+  ...AREAS.map((a) => {
+    const m = mentorBySlug(a.slug);
+    return { id: idArea(a.slug), label: m ? `${m.course} — ${m.name}` : a.slug };
+  }).sort((x, y) => x.label.localeCompare(y.label, "pt-BR")),
+];
 
 const ERROS: Record<string, string> = {
   grande_demais: "maior que 25 MB",
@@ -117,7 +135,7 @@ export default function BaseConhecimentoModule({ glassPanel }: { glassPanel?: st
     <div className="space-y-5">
       <header>
         <h2 className={`text-xl font-black tracking-tight ${TXT}`}>Base de conhecimento</h2>
-        <p className={`text-[12px] ${TXT_MUDO}`}>PDFs que o chat do Zaeon consulta para os alunos da turma escolhida.</p>
+        <p className={`text-[12px] ${TXT_MUDO}`}>O que o chat do Zaeon consulta: PDFs da turma escolhida, ou a base de uma área (essas vêm das fontes públicas, não de upload).</p>
       </header>
 
       {erro && <p role="alert" className="text-[12px] text-rose-600 dark:text-rose-300">{erro}</p>}
@@ -127,8 +145,15 @@ export default function BaseConhecimentoModule({ glassPanel }: { glassPanel?: st
           <label className={`text-[11px] font-bold uppercase tracking-wider ${TXT_MUDO}`}>
             Turma
             <select value={turmaId} onChange={(e) => { setTurmaId(e.target.value); setEnvio([]); setAchados(null); }} className={`mt-1 block min-h-[36px] px-3 rounded-xl text-[13px] normal-case tracking-normal ${VIDRO_CHIP} ${TXT}`}>
-              {turmas.length === 0 && <option value="">{carregando ? "carregando…" : "nenhuma turma"}</option>}
-              {turmas.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              <option value="">{carregando ? "carregando…" : "escolha…"}</option>
+              {turmas.length > 0 && (
+                <optgroup label="Turmas">
+                  {turmas.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </optgroup>
+              )}
+              <optgroup label="Bases por área (o chat lê sozinho)">
+                {BASES_POR_AREA.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
+              </optgroup>
             </select>
           </label>
           <label className={`text-[11px] font-bold uppercase tracking-wider ${TXT_MUDO}`}>
