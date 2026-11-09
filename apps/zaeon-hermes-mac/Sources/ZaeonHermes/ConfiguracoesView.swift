@@ -1,7 +1,7 @@
 import HermesCore
 import SwiftUI
 
-/// Servidor + token (Keychain), teste de conexão e exportação para o Hugging Face. Só dado real — sem DEMO.
+/// Servidor + token (arquivo só do usuário), teste de conexão e exportação para o Hugging Face. Só dado real — sem DEMO.
 struct ConfiguracoesView: View {
     @Environment(EstadoApp.self) private var estado
 
@@ -72,7 +72,7 @@ struct ConfiguracoesView: View {
             } header: {
                 Text("Servidor")
             } footer: {
-                Text("URL e token ficam no Keychain do macOS (serviço space.zaeon.hermes). Toda chamada vai com Authorization: Bearer <token>.")
+                Text("URL e token ficam em ~/Library/Application Support/space.zaeon.hermes/config.json, que só o seu usuário lê. Sobrevivem a toda atualização. Toda chamada vai com Authorization: Bearer <token>.")
                     .font(.caption).foregroundStyle(.secondary)
             }
 

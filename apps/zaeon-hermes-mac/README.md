@@ -19,7 +19,7 @@ faixa é o **motor** (`aura`, `deepseek-v4-profundo`, `tongyi-deepresearch`, `ki
 | **Tarefa** | Resumo e decisão do roteador; abas **Texto** (markdown final, com cada `[E#]` clicável abrindo a evidência ao lado; chave sem evidência fica em vermelho), **Linha do tempo** (eventos com tempo relativo e intervalo), **Subagentes** (árvore orquestrador → subagentes → chamadas de ferramenta, com as evidências de cada um), **Evidências** (tabela com chave, afirmação, fonte clicável, ferramenta e agente) e **Ledger** (cada chamada de LLM com modelo, provedor, fase, tokens, tempo, ok/erro e custo, com totais). Enquanto a tarefa roda, recarrega a cada 3 s. |
 | **Datasets** | Nome, tipo, fonte, licença, documentos, trechos e se está conectado (— quando o banco do RAG não respondeu). |
 | **Arena** | Objetivo, intent, kind opcional e até 4 motores → `POST /arena`. As tarefas criadas aparecem lado a lado e se atualizam por polling, com selo para a mais rápida, a mais barata e a de maior cobertura; cada uma abre a trilha completa. |
-| **Configurações** | URL do servidor (padrão `https://zaeon.com.br`) e token (no Keychain), "Testar conexão" e "Exportar trajetórias para o Hugging Face" (`POST /exportar`). |
+| **Configurações** | URL do servidor (padrão `https://zaeon.com.br`) e token (arquivo só do usuário), "Testar conexão" e "Exportar trajetórias para o Hugging Face" (`POST /exportar`). |
 
 Barra de ferramentas: modo da orquestra (`off`/`sombra`/`on`), tarefas em voo e
 atualizar (⌘R). O painel se atualiza sozinho a cada 10 s. Não há tela de carregamento: o app abre
@@ -35,8 +35,8 @@ Gatekeeper bloqueia:
 - macOS 15: abra uma vez, depois *Ajustes do Sistema → Privacidade e Segurança* → **Abrir Mesmo Assim**;
 - ou, no Terminal: `xattr -dr com.apple.quarantine /Applications/ZaeonHermes.app`.
 
-Como cada build tem uma assinatura ad-hoc nova, o macOS pode pedir a senha para o app ler o item do
-Keychain depois de uma atualização: escolha **Sempre Permitir**.
+Depois dessa primeira vez, o app se atualiza sozinho ("Atualização disponível" no pé da barra lateral) e
+nunca mais pede senha: a chave do console fica num arquivo só seu, não no Keychain (ver abaixo).
 
 **No Xcode.** Abra `apps/zaeon-hermes-mac/Package.swift` (File → Open), escolha o esquema
 `ZaeonHermes` e rode (⌘R). Xcode 16+ (Swift 5.10+), macOS 14+.
@@ -71,7 +71,9 @@ Sem a variável no servidor, o caminho por token fica desligado (só a sessão d
 app recebe `401`. A exportação para o Hugging Face exige `HF_DATASETS_TOKEN` e `HF_DATASETS_ORG` no
 servidor; sem eles, o app mostra o `503 datasets_desligados`.
 
-A URL e o token ficam no Keychain do macOS (serviço `space.zaeon.hermes`). HTTP sem TLS só é aceito
+A URL e o token ficam em `~/Library/Application Support/space.zaeon.hermes/config.json` (pasta 0700,
+arquivo 0600: só o seu usuário lê). Não no Keychain: o app é ad-hoc, e o Keychain amarra cada item ao hash
+exato do binário, então toda atualização fazia o macOS pedir a senha de login. HTTP sem TLS só é aceito
 para `localhost` (exceção de ATS no `Info.plist`).
 
 ## Estrutura

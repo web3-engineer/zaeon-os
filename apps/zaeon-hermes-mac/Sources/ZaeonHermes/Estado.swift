@@ -22,7 +22,7 @@ struct RotaTarefa: Hashable {
 @MainActor
 @Observable
 final class EstadoApp {
-    // MARK: Configuração (URL e token no Keychain). SEM modo DEMO: o console só mostra dado real da Zaeon.
+    // MARK: Configuração (URL e token em ~/Library/Application Support/space.zaeon.hermes/config.json, 0600). SEM modo DEMO: o console só mostra dado real da Zaeon.
 
     var urlServidor: String
     var token: String
@@ -55,8 +55,8 @@ final class EstadoApp {
     static let urlPadrao = "https://zaeon.com.br"
 
     init() {
-        let url = Keychain.ler(.url).flatMap { $0.isEmpty ? nil : $0 } ?? Self.urlPadrao
-        let token = Keychain.ler(.token) ?? ""
+        let url = Credenciais.ler(.url).flatMap { $0.isEmpty ? nil : $0 } ?? Self.urlPadrao
+        let token = Credenciais.ler(.token) ?? ""
         self.urlServidor = url
         self.token = token
         // o modo DEMO das versões anteriores saiu: limpa a preferência antiga pra ela não voltar
@@ -77,12 +77,12 @@ final class EstadoApp {
         return nil
     }
 
-    /// Salva no Keychain e troca a fonte de dados.
+    /// Salva no arquivo de configuração (só do usuário) e troca a fonte de dados.
     func salvarConfiguracao(url: String, token: String) {
         let urlNormal = APIClient.normalizarURL(url)?.absoluteString ?? url.trimmingCharacters(in: .whitespacesAndNewlines)
         let tokenLimpo = token.trimmingCharacters(in: .whitespacesAndNewlines)
-        Keychain.gravar(urlNormal, em: .url)
-        Keychain.gravar(tokenLimpo, em: .token)
+        Credenciais.gravar(urlNormal, em: .url)
+        Credenciais.gravar(tokenLimpo, em: .token)
         self.urlServidor = urlNormal
         self.token = tokenLimpo
         self.fonte = Self.criarFonte(url: urlNormal, token: tokenLimpo)
