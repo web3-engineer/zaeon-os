@@ -113,3 +113,22 @@ Agrega o TokenLedger das superfícies `estudos` e `pesquisa` (Aura **e** orquest
   "modelos": [{ "model": "gemini-3.5-flash", "chamadas": 900, "falhas": 10, "taxaFalha": 0.011 }],
   "serie": [{ "hora": "2026-11-08T06:00:00Z", "chamadas": 50, "falhas": 2, "msP50": 3900 }] }
 ```
+
+### `GET /api/admin/orquestra/agentes?dias=7` — os agentes da casa
+Personas (Zaeon, Aura, Nina, Zenita, Eiffel, Davi, Caio, Téo…), os 17 mentores, o Octa e os agentes criados no admin
+(`lib/orquestra/elenco.ts`). A identidade vem do roster (`lib/agents/roster`) com `AgentProfile`/`MentorTemplate` por cima; o que sabe
+fazer, de `lib/agents/capacidades` e das skills do mentor; o uso, do TokenLedger por `agentKey` na janela (1–90 dias).
+Chave do ledger que nenhum agente reclama vira uma linha `tipo: "sistema"`, para nenhum gasto ficar fora da tela.
+Os motores da orquestra (DeepSeek, Qwen, Kimi…) continuam no `/painel`.
+```jsonc
+{ "geradoEm": "…", "janelaDias": 7, "bancoOk": true,
+  "agentes": [{ "id": "zenita", "nome": "Zenita", "tipo": "persona|mentor|custom|sistema", "curso": null, "ativo": true,
+    "ondeTrabalha": ["chat do lab"], "plugin": null, "distincao": "…", "habilidades": ["anatomia", "literature"],
+    "habilidadesDegradadas": [], "ferramentas": ["buscar_anatomia", "…"], "datasets": ["rag:area:medicina", "rag:area:geral"],
+    "protocolo": { "ensemble": 3, "reflexoes": 1, "porque": "…" }, "artefatos": [], "fontes": [], "guardrail": null,
+    "chavesLedger": ["zenita"], "prompt": "…",
+    "uso": { "chamadas": 120, "falhas": 3, "taxaFalha": 0.025, "turnos": 40, "msP50": 2100, "msP90": 7400, "tokens": 340000,
+             "custoUsd": 0.42, "ultimo": "…", "modelos": [{ "modelo": "…", "chamadas": 100 }],
+             "superficies": [{ "superficie": "estudos", "chamadas": 120 }], "erros": [{ "erro": "timeout", "chamadas": 3 }],
+             "porDia": [{ "dia": "2026-11-09", "chamadas": 30, "falhas": 1 }] } }] }
+```

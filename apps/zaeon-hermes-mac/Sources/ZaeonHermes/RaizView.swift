@@ -30,14 +30,10 @@ struct RaizView: View {
         }
     }
 
-    /// Barra de ferramentas: selo DEMO, modo da orquestra, tarefas em voo e atualizar.
+    /// Barra de ferramentas: modo da orquestra, tarefas em voo e atualizar.
     @ToolbarContentBuilder
     private var barraFerramentas: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
-            if estado.demo {
-                Pilula(texto: "DEMO", cor: Marca.azul, icone: "play.rectangle", cheia: true)
-                    .help("Modo DEMO: dados das fixtures, sem servidor.")
-            }
             if let modo = estado.painel?.modo {
                 Pilula(texto: "modo \(modo.bruto.isEmpty ? "?" : modo.bruto)", cor: modo.cor, icone: "dial.medium")
                     .help(modo.descricao)
@@ -66,6 +62,7 @@ struct RaizView: View {
             switch estado.secao ?? .quadro {
             case .quadro: QuadroView()
             case .saude: SaudeView()
+            case .agentes: AgentesView()
             case .motor(let id): MotorDashboardView(motorId: id)
             case .datasets: DatasetsView()
             case .arena: ArenaView()
@@ -84,6 +81,7 @@ private struct BarraLateral: View {
             Section("Orquestra") {
                 Label("Quadro", systemImage: "rectangle.split.3x1").tag(Secao.quadro)
                 Label("Saúde do chat", systemImage: "heart.text.square").tag(Secao.saude)
+                Label("Agentes da casa", systemImage: "person.3.sequence").tag(Secao.agentes)
                 Label("Arena", systemImage: "flag.2.crossed").tag(Secao.arena)
                 Label("Datasets", systemImage: "externaldrive.connected.to.line.below").tag(Secao.datasets)
             }
@@ -161,9 +159,7 @@ private struct RodapeBarraLateral: View {
                 Circle().fill(estado.erro == nil ? Color.green : Color.orange).frame(width: 6, height: 6)
             }
             Group {
-                if estado.demo {
-                    Text("DEMO · fixtures locais")
-                } else if let d = estado.ultimaAtualizacao {
+                if let d = estado.ultimaAtualizacao {
                     Text("Atualizado \(Fmt.ha(d))")
                 } else {
                     Text("Conectando…")
