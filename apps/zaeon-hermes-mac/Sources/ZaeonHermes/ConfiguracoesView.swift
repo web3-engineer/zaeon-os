@@ -30,7 +30,7 @@ struct ConfiguracoesView: View {
                     LetreiroZaeon(altura: 32)
                     Divider().frame(height: 28)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Hermes").font(.title2.weight(.semibold))
+                        Text("Console").font(.title2.weight(.semibold))
                         Text("Console interno da orquestra de agentes. Nada daqui chega ao aluno.")
                             .font(.callout).foregroundStyle(.secondary)
                     }
@@ -72,7 +72,7 @@ struct ConfiguracoesView: View {
             } header: {
                 Text("Servidor")
             } footer: {
-                Text("URL e token ficam em ~/Library/Application Support/space.zaeon.hermes/config.json, que só o seu usuário lê. Sobrevivem a toda atualização. Toda chamada vai com Authorization: Bearer <token>.")
+                Text("URL e token ficam num arquivo de configuração que só o seu usuário do Mac lê, e sobrevivem a toda atualização. Toda chamada vai com Authorization: Bearer <token>.")
                     .font(.caption).foregroundStyle(.secondary)
             }
 

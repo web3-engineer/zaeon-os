@@ -75,6 +75,11 @@ export type ChatTurnParams = {
    * continua sendo da Aura; a orquestra confere plano e chave e, se puder, entrega o trabalho a esse motor.
    */
   motorPedido?: string;
+  /**
+   * O id da tarefa a que as chamadas deste turno pertencem no TokenLedger (`taskId`). O console da orquestra
+   * reserva o id antes de rodar, pra a trilha e o ledger do turno andarem juntos. Ausente = um id novo.
+   */
+  tarefaId?: string;
 };
 
 export async function runChatTurn(
@@ -183,7 +188,7 @@ export async function runChatTurn(
     const escolhido = modeloDoId(params.modelo);
     // `taskId` = o TURNO: todas as chamadas de modelo deste turno ficam ligadas no TokenLedger (o console Zaeon Hermes
     // agrupa por ele pra medir a saúde do chat — quantos turnos caíram na reserva, quanto cada fase levou).
-    const ledgerTurno = { agentKey: mentor?.slug ?? agente, mentorSlug: mentor?.slug ?? null, userId: userId ?? null, surface: surfaceLedger(surface ?? hctx.activeTab), scopeId: typeof ac.cartolinaScopeId === "string" ? ac.cartolinaScopeId : null, taskId: turnId ?? novoIdDeTarefa() };
+    const ledgerTurno = { agentKey: mentor?.slug ?? agente, mentorSlug: mentor?.slug ?? null, userId: userId ?? null, surface: surfaceLedger(surface ?? hctx.activeTab), scopeId: typeof ac.cartolinaScopeId === "string" ? ac.cartolinaScopeId : null, taskId: turnId ?? params.tarefaId ?? novoIdDeTarefa() };
     // MODELO LOCAL (Zaeon/Contabo): caminho enxuto em streaming. Não começou → segue pelo Google, abaixo.
     if (escolhido?.provedor === "zaeon" && escolhido.grupo) {
       narrar(serializarProgresso({ fase: "draft", rotulo: `${escolhido.nome} pensando no servidor Zaeon` }));

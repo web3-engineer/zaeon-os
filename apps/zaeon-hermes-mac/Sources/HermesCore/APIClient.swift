@@ -18,6 +18,14 @@ public protocol FonteHermes: Sendable {
     func manifestoApp() async throws -> ManifestoApp
     /// O zip da última versão (`GET /app/baixar`).
     func baixarApp() async throws -> Data
+    /// Com quem dá pra conversar: agentes da casa, mentores e motores (`GET /interlocutores`).
+    func interlocutores() async throws -> [Interlocutor]
+    func conversas() async throws -> [ResumoConversa]
+    func criarConversa(agente: String) async throws -> Conversa
+    func conversa(id: String) async throws -> Conversa
+    /// Manda uma mensagem; o turno roda em segundo plano no servidor. Devolve o id da tarefa do turno.
+    func enviarMensagem(conversa: String, texto: String) async throws -> String
+    func apagarConversa(id: String) async throws
 }
 
 extension FonteHermes {
@@ -25,6 +33,12 @@ extension FonteHermes {
     public func agentes(dias: Int) async throws -> RespostaAgentes { throw ErroAPI.indisponivel(codigo: "sem_agentes") }
     public func manifestoApp() async throws -> ManifestoApp { throw ErroAPI.naoEncontrado(codigo: "sem_build") }
     public func baixarApp() async throws -> Data { throw ErroAPI.naoEncontrado(codigo: "sem_build") }
+    public func interlocutores() async throws -> [Interlocutor] { throw ErroAPI.naoAutorizado }
+    public func conversas() async throws -> [ResumoConversa] { throw ErroAPI.naoAutorizado }
+    public func criarConversa(agente: String) async throws -> Conversa { throw ErroAPI.naoAutorizado }
+    public func conversa(id: String) async throws -> Conversa { throw ErroAPI.naoAutorizado }
+    public func enviarMensagem(conversa: String, texto: String) async throws -> String { throw ErroAPI.naoAutorizado }
+    public func apagarConversa(id: String) async throws { throw ErroAPI.naoAutorizado }
 }
 
 /// Erros tipados do console. A mensagem (`errorDescription`) já vem pronta para a tela.
@@ -158,6 +172,41 @@ public final class APIClient: FonteHermes, @unchecked Sendable {
         guard let http = resposta as? HTTPURLResponse else { throw ErroAPI.rede("resposta sem HTTP") }
         try APIClient.validar(status: http.statusCode, dados: dados)
         return dados
+    }
+
+    public func interlocutores() async throws -> [Interlocutor] {
+        let r: ListaInterlocutores = try await enviar("interlocutores")
+        return r.interlocutores
+    }
+
+    public func conversas() async throws -> [ResumoConversa] {
+        let r: ListaConversas = try await enviar("conversas")
+        return r.conversas
+    }
+
+    public func criarConversa(agente: String) async throws -> Conversa {
+        let r: RespostaConversa = try await enviar("conversas", metodo: "POST", corpo: try codificador.encode(PedidoConversa(agente: agente)))
+        return r.conversa
+    }
+
+    public func conversa(id: String) async throws -> Conversa {
+        let r: RespostaConversa = try await enviar("conversas/\(APIClient.segmento(id))")
+        return r.conversa
+    }
+
+    public func enviarMensagem(conversa: String, texto: String) async throws -> String {
+        let r: RespostaEnvio = try await enviar("conversas/\(APIClient.segmento(conversa))/mensagens", metodo: "POST",
+                                                corpo: try codificador.encode(PedidoMensagem(texto: texto)))
+        return r.tarefaId
+    }
+
+    public func apagarConversa(id: String) async throws {
+        let _: RespostaOk = try await enviar("conversas/\(APIClient.segmento(id))", metodo: "DELETE")
+    }
+
+    /// id seguro num segmento de caminho (sem "/")
+    static func segmento(_ id: String) -> String {
+        id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(CharacterSet(charactersIn: "/"))) ?? id
     }
 
     // MARK: Transporte
