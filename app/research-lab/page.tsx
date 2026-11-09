@@ -819,6 +819,19 @@ export default function HomeworkPage({
   // Sidebar POR HOVER: passar o mouse em cima abre; tirar o mouse a devolve pro canto (o trilho de ícones). Ela passa
   // POR CIMA do módulo do chat. A lógica (e o porquê de ela ficar presa aberta antes) mora em components/lab/useSidebarHover.
   const { aberta: isSidebarOpen, navRef, handlers: hoverSidebar } = useSidebarHover<HTMLElement>();
+  // as CONVERSAS do chat só expandem com o mouse/foco NA ÁREA DO CHAT (o agente + a lista); hover/foco nas outras pills
+  // abre o trilho mas não as conversas. As guardas de relatedTarget cobrem o PORTAL da lista (o cursor entrando nela não
+  // conta como sair) e o FOCO de teclado (chegar na pill do agente por Tab também abre). No celular a gaveta mostra tudo.
+  const estudosChatRef = useRef<HTMLDivElement>(null);
+  const pesquisaChatRef = useRef<HTMLDivElement>(null);
+  const [estudosChatAtivo, setEstudosChatAtivo] = useState(false);
+  const [pesquisaChatAtivo, setPesquisaChatAtivo] = useState(false);
+  const handlersChat = (ref: React.RefObject<HTMLDivElement>, set: (v: boolean) => void) => ({
+    onMouseEnter: () => set(true),
+    onFocusCapture: () => set(true),
+    onMouseLeave: (e: React.MouseEvent) => { if (!ref.current?.contains(e.relatedTarget as Node | null)) set(false); },
+    onBlurCapture: (e: React.FocusEvent) => { if (!ref.current?.contains(e.relatedTarget as Node | null)) set(false); },
+  });
   // CELULAR (≤767px): não existe hover — um toque abria a sidebar por cima de tudo e ela nunca fechava. Lá a sidebar
   // vira GAVETA (☰ na barra de baixo, fecha ao escolher) e a barra de baixo leva às salas; o conteúdo usa a largura toda.
   const celular = useIsMobile();
@@ -2737,6 +2750,7 @@ export default function HomeworkPage({
             {/* O CHAT tem a aba dele: a FOTO e o NOME do agente (o nome brilha enquanto a resposta é processada), com as
                 conversas embaixo. Depois a "Sala de Estudos" (o board). O "Marketplace" (a vitrine, destacado) mora no pé da
                 lista, acima do Perfil. Sem pills no topo da sala — tudo aqui. */}
+            <div ref={estudosChatRef} {...handlersChat(estudosChatRef, setEstudosChatAtivo)} className="flex flex-col gap-3">
             <button
               data-tour="estudos"
               onClick={() => abrirAgente()}
@@ -2790,11 +2804,12 @@ export default function HomeworkPage({
               />
             )}
             {/* Só o módulo ATUAL abre os submódulos (conversas); os outros ficam fechadinhos. */}
-            <Ramo aberto={sidebarAberta && activeTab === "sala-de-estudos" && agente.tela === "chat"}>
+            <Ramo aberto={(celular || estudosChatAtivo) && sidebarAberta && activeTab === "sala-de-estudos" && agente.tela === "chat"}>
               {activeTab === "sala-de-estudos"
                 ? <div ref={setSlotConversas} className={RAMO_ATIVO} />
                 : <div className={RAMO}><ConversasDaSala sala="estudos" onEntrar={() => setActiveTab("sala-de-estudos")} /></div>}
             </Ramo>
+            </div>
             <button
               data-tour="tab-feed"
               onClick={() => irEstudos("feed")}
@@ -2806,21 +2821,25 @@ export default function HomeworkPage({
             </button>
 
             {/* Sala de Pesquisa — no chat único ela é o MODO PESQUISA do chat da Aura (sem item próprio) */}
-            {!CHAT_UNICO && <button
-              data-tour="pesquisa"
-              onClick={() => setActiveTab("pesquisa")}
-              title="Sala de Pesquisa"
-              className={`${navItem(activeTab === "pesquisa", "purple")} ${pill(sidebarAberta)}`}
-            >
-              <AcademicCapIcon className="w-5 h-5 shrink-0" />
-              <Rotulo v={sidebarAberta}>Sala de Pesquisa</Rotulo>
-            </button>}
-            {UNIFIED && !CHAT_UNICO && (
-              <Ramo aberto={sidebarAberta && activeTab === "pesquisa"}>
-                {activeTab === "pesquisa"
-                  ? <div ref={setSlotConversas} className={RAMO_ATIVO} />
-                  : <div className={RAMO}><ConversasDaSala sala="pesquisa" onEntrar={() => setActiveTab("pesquisa")} /></div>}
-              </Ramo>
+            {!CHAT_UNICO && (
+            <div ref={pesquisaChatRef} {...handlersChat(pesquisaChatRef, setPesquisaChatAtivo)} className="flex flex-col gap-3">
+              <button
+                data-tour="pesquisa"
+                onClick={() => setActiveTab("pesquisa")}
+                title="Sala de Pesquisa"
+                className={`${navItem(activeTab === "pesquisa", "purple")} ${pill(sidebarAberta)}`}
+              >
+                <AcademicCapIcon className="w-5 h-5 shrink-0" />
+                <Rotulo v={sidebarAberta}>Sala de Pesquisa</Rotulo>
+              </button>
+              {UNIFIED && (
+                <Ramo aberto={(celular || pesquisaChatAtivo) && sidebarAberta && activeTab === "pesquisa"}>
+                  {activeTab === "pesquisa"
+                    ? <div ref={setSlotConversas} className={RAMO_ATIVO} />
+                    : <div className={RAMO}><ConversasDaSala sala="pesquisa" onEntrar={() => setActiveTab("pesquisa")} /></div>}
+                </Ramo>
+              )}
+            </div>
             )}
 
             {/* Projetos — Zaeon Code (IDE agêntica; auto-protegida por plano/curso). ESCONDIDA até
