@@ -51,16 +51,51 @@ export const SINONIMOS_PT: Readonly<Record<string, string>> = {
   "rim": "kidney", "rins": "kidney",
   "intestino": "intestine", "cartilagem": "cartilage",
   "ligamento": "ligament", "timo": "thymus",
+  // conferidos no atlas real em 2026-11-09: "respiratory system" tem 3 conceitos e "bronchus" tem 5.
+  // "alveolo" e "bronquiolo" NÃO entram: o atlas tem ZERO de cada um, e sinônimo que não acha nada
+  // promete e falha — a recusa honesta ("referência parcial") serve melhor ao aluno.
+  "sistema respiratorio": "respiratory system", "respiratorio": "respiratory system",
+  "bronquio": "bronchus", "bronquios": "bronchus",
   // "linfonodo" NÃO está aqui: o portão de busca.test.ts provou que o atlas não tem NENHUM
   // conceito de linfonodo — o sistema linfático desta referência é só baço e timo. Prometer o
   // termo faria a busca responder "não achei", que o aluno leria como "não existe no corpo".
 };
 
-/** O termo que vai de fato para a busca: o sinônimo quando houver, senão o que foi digitado. */
+/** As palavras da consulta, sem acento e sem pontuação. */
+const palavras = (s: string) => semAcento(s).split(/[^a-z0-9]+/).filter(Boolean);
+
+/** A maior chave de `SINONIMOS_PT`, em palavras — o teto da varredura de n-gramas. */
+const MAIOR_SINONIMO = Math.max(...Object.keys(SINONIMOS_PT).map((k) => k.split(" ").length));
+
+/**
+ * O termo que vai de fato para a busca: o sinônimo quando houver, senão o que foi digitado.
+ *
+ * O MAPA É DE CHAVE EXATA, e isso quebrava na prática: medido em produção em 2026-11-09, "pulmão"
+ * achava os 7 conceitos de `lung`, mas "o pulmão" achava ZERO — e "como funciona um pulmão", que é
+ * como o aluno escreve, também. A ferramenta devolvia `sem_resultado`, a mentora caía em prosa
+ * genérica, e o atlas (124 malhas no pulmão esquerdo, 156 no direito) ficava intocado.
+ *
+ * Então, antes de desistir, varremos os N-GRAMAS da consulta — do mais longo para o mais curto, e
+ * da esquerda para a direita — e o primeiro que for sinônimo ganha. Sem lista de palavras de parada:
+ * o que não é sinônimo simplesmente não casa, e isso é mais robusto que adivinhar quais palavras
+ * são "vazias" em português. Em consulta com dois órgãos, o mais à esquerda ganha.
+ *
+ * Deliberado: consertar AQUI e não na persona. Instruir o modelo a "passar só o termo" acerta na
+ * maioria das vezes e falha quando o aluno escreve de um jeito novo; normalizar é determinístico.
+ */
 export function termoDeBusca(consulta: string): { termo: string; viaSinonimo: boolean } {
   const q = semAcento(consulta);
-  const alvo = SINONIMOS_PT[q];
-  return alvo ? { termo: alvo, viaSinonimo: true } : { termo: q, viaSinonimo: false };
+  const direto = SINONIMOS_PT[q];
+  if (direto) return { termo: direto, viaSinonimo: true };
+
+  const ws = palavras(q);
+  for (let tam = Math.min(ws.length, MAIOR_SINONIMO); tam >= 1; tam--) {
+    for (let i = 0; i + tam <= ws.length; i++) {
+      const alvo = SINONIMOS_PT[ws.slice(i, i + tam).join(" ")];
+      if (alvo) return { termo: alvo, viaSinonimo: true };
+    }
+  }
+  return { termo: q, viaSinonimo: false };
 }
 
 export type AchadoAnatomia = {
