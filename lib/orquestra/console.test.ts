@@ -6,7 +6,7 @@ const ledgerFindMany = vi.fn();
 vi.mock("@/src/lib/prisma", () => ({ prisma: { orquestraTarefa: { findMany, findUnique }, tokenLedger: { findMany: ledgerFindMany } } }));
 
 import {
-  autorizar, detalheDe, dispararArena, lerPedidoArena, linhaDoDataset, metricasDe, montarPainel, resumoDe, tokenValido,
+  autorizar, detalheDe, dispararArena, lerPedidoArena, linhaDoDataset, metricasDe, montarPainel, reciboConsole, resumoDe, tokenValido,
   type LinhaTarefa,
 } from "@/lib/orquestra/console";
 
@@ -147,5 +147,35 @@ describe("rotas /api/admin/orquestra", () => {
     expect(r.status).toBe(503);
     expect(await r.json()).toEqual({ erro: "datasets_desligados" });
     vi.unstubAllEnvs();
+  });
+});
+
+describe("recibo do token do console (nunca o valor)", () => {
+  const forte = "a".repeat(32);
+
+  it("token >= 32 => on", () => {
+    expect(reciboConsole({ ORQUESTRA_CONSOLE_TOKEN: forte })).toBe("on");
+    expect(reciboConsole({ ORQUESTRA_CONSOLE_TOKEN: "b".repeat(64) })).toBe("on");
+  });
+
+  it("token curto => fraco, e e o mesmo caso em que tokenValido recusa", () => {
+    const curto = "a".repeat(31);
+    expect(reciboConsole({ ORQUESTRA_CONSOLE_TOKEN: curto })).toBe("fraco");
+    expect(tokenValido(`Bearer ${curto}`, { ORQUESTRA_CONSOLE_TOKEN: curto })).toBe(false);
+  });
+
+  it("ausente, vazio ou so espaco => off (o sintoma de linha comentada no .env)", () => {
+    expect(reciboConsole({})).toBe("off");
+    expect(reciboConsole({ ORQUESTRA_CONSOLE_TOKEN: "" })).toBe("off");
+    expect(reciboConsole({ ORQUESTRA_CONSOLE_TOKEN: "   " })).toBe("off");
+  });
+
+  it("o recibo nunca contem o valor", () => {
+    const segredo = "z".repeat(40);
+    expect(reciboConsole({ ORQUESTRA_CONSOLE_TOKEN: segredo })).not.toContain("z");
+  });
+
+  it("espaco em volta nao muda o veredito (o trim e o mesmo de tokenValido)", () => {
+    expect(reciboConsole({ ORQUESTRA_CONSOLE_TOKEN: `  ${forte}  ` })).toBe("on");
   });
 });
