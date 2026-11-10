@@ -982,9 +982,15 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         // D4 · as referências do que o `work` citou saem DAQUI, onde a lista original existe — em
         // vez de o lado do documento remontá-la e torcer pra bater. Anexo só aparece por este
         // caminho: ele não existe no `answer`.
-        if (fontesWork.length && comBase.work?.sections?.length) {
-          const refs = fontesCitadas(comBase.work.sections.map((x) => x.body).join("\n"), fontesWork);
-          if (refs.length) comBase.referencias = refs;
+        //
+        // E o veredito é ESCRITO MESMO QUANDO É VAZIO. `referencias: []` quer dizer "medi aqui e
+        // nada é citável", e `lib/tcc/turno` respeita isso em vez de cair na rede que remonta a
+        // bibliografia a partir de `fontesBase` — lista que nasce do rodapé "Da sua base", onde
+        // menção por texto é legítima e similaridade não existe mais. Sem isto, o conserto desta
+        // PR seria furado justo no caso que ele cria: `fontesWork` filtrado pode ficar vazio, a
+        // rede dispararia, e o trabalho que casou só por texto voltaria pela seção REFERÊNCIAS.
+        if (st.intent === "criar_trabalho" && comBase.work?.sections?.length) {
+          comBase.referencias = fontesCitadas(comBase.work.sections.map((x) => x.body).join("\n"), fontesWork);
         }
         // G3 · gráfico COM RECIBO: a contagem sai do que o turno apurou (papers da busca, trechos
         // por documento da F4). Nenhuma chamada de modelo, e o modelo não digita valor nenhum.

@@ -105,6 +105,22 @@ describe("a base NÃO polui a bibliografia do documento", () => {
     await deps.draft(stFor({ intent: "criar_trabalho", objective: "artigo sobre anfetamina" }));
     expect(blocoDeFontesDoPrompt(vistos.join("\n")), "sem fonte da base, como antes dos datasets").toBe("");
   });
+
+  it("nada citável ⇒ `referencias: []`: veredito ESCRITO, não campo ausente", async () => {
+    const { gen } = capturar();
+    const deps = buildHarnessDeps(ctx, {
+      genJson: gen as any,
+      retryDelayMs: 0,
+      baseConhecimento: { status: "ok", trechos: [trecho({ titulo: "Só menciona", porTexto: true })] } as any,
+    });
+    const out = await deps.draft(stFor({ intent: "criar_trabalho", objective: "artigo sobre anfetamina" }));
+    // A outra porta: `lib/tcc/turno` só liga a rede que remonta a bibliografia a partir de
+    // `fontesBase` — o rodapé "Da sua base", onde casar por TEXTO basta — quando este campo está
+    // AUSENTE. Vazio quer dizer "medi aqui e nada é citável", e é só isso que impede a menção por
+    // texto de voltar pela seção REFERÊNCIAS. Ver o par deste teste em lib/tcc/turno.test.ts.
+    expect(out.referencias, "o campo tem de EXISTIR, mesmo vazio").toBeDefined();
+    expect(out.referencias).toEqual([]);
+  });
 });
 
 describe("documento raso: o harness aprofunda as seções antes de entregar", () => {
