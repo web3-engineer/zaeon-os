@@ -55,6 +55,11 @@ export const SINONIMOS_PT: Readonly<Record<string, string>> = {
   // "alveolo" e "bronquiolo" NÃO entram: o atlas tem ZERO de cada um, e sinônimo que não acha nada
   // promete e falha — a recusa honesta ("referência parcial") serve melhor ao aluno.
   "sistema respiratorio": "respiratory system", "respiratorio": "respiratory system",
+  // Conferidos no atlas real em 2026-11-10, e entram porque SEM eles caíam na classe crua `nerve`:
+  // o atlas tem `nervous system` (60 peças), `optic nerve` (4) e `cranial nerve` (2). Chave de DUAS
+  // palavras de propósito — "nervo" sozinho continua sendo a categoria, e categoria não é resposta.
+  "sistema nervoso": "nervous system", "nervo optico": "optic nerve",
+  "nervo craniano": "cranial nerve", "nervos cranianos": "cranial nerve",
   "bronquio": "bronchus", "bronquios": "bronchus",
   // "linfonodo" NÃO está aqui: o portão de busca.test.ts provou que o atlas não tem NENHUM
   // conceito de linfonodo — o sistema linfático desta referência é só baço e timo. Prometer o
@@ -193,6 +198,73 @@ export function termoNaFrase(atlas: Atlas, frase: string): string | null {
   return null;
 }
 
+/**
+ * As CLASSES DE TECIDO — os conceitos-raiz que NUNCA são a resposta a um pedido de peça.
+ *
+ * Medido no atlas real em 2026-11-10, e é por isso que esta lista existe:
+ *
+ *     artery ... 562 peças   (um QUARTO do atlas inteiro)
+ *     vein ..... 342 peças
+ *     nerve ..... 26 peças   (e todas CRANIANAS — não há ciático, tibial nem femoral)
+ *     tendon ..... 6 peças
+ *
+ * O dono descreveu o sintoma exatamente: "se eu peço uma parte abre o atlas completo". Pedir
+ * "artéria femoral" caía em `artery` pelo mapa PT→EN e devolvia a árvore arterial do corpo todo.
+ * Pior no caso do nervo: "nervo ciático" devolvia os 26 nervos da ÓRBITA, com cara de resposta.
+ *
+ * SISTEMAS não entram aqui (`respiratory system`, `nervous system`): "me mostra o sistema
+ * respiratório" é um pedido legítimo e a resposta certa é o sistema. Classe de tecido é outra
+ * coisa — ninguém pede "me mostra uma artéria" querendo todas elas.
+ */
+export const CLASSES_GENERICAS: readonly string[] = [
+  "nerve", "artery", "vein", "bone", "muscle", "cartilage", "ligament", "tendon",
+  "intestine", "skeleton", "bone organ", "muscle organ",
+];
+
+/** O nome do conceito é uma classe de tecido crua? Comparação EXATA: "optic nerve" não é. */
+export function ehClasseGenerica(nome: string): boolean {
+  return CLASSES_GENERICAS.includes(semAcento(nome));
+}
+
+/**
+ * O termo ESPECÍFICO da frase, ignorando as palavras que são chave do mapa PT→EN.
+ *
+ * É a diferença entre "artéria femoral" virar `artery` (562 peças) e virar `femoral artery` (2).
+ * As chaves do mapa são justamente o que produz o genérico, então elas saem da disputa e sobra o
+ * qualificador — que é o que o aluno quis dizer.
+ *
+ * `raiz` desempata: entre "femoral vein" e "femoral artery", quem pediu ARTÉRIA recebe a artéria.
+ * Sem isso o desempate seria alfabético, que não tem nada a ver com o pedido.
+ */
+export function termoEspecificoNaFrase(atlas: Atlas, frase: string): string | null {
+  const ws = palavras(frase).filter((w) => !(w in SINONIMOS_PT));
+  if (!ws.length) return null;
+  const nomes = atlas.concepts.map((c) => semAcento(c.name));
+  const maiorNome = nomes.reduce((m, n) => Math.max(m, n.split(" ").length), 1);
+  for (let tam = Math.min(ws.length, maiorNome); tam >= 1; tam--) {
+    for (let i = 0; i + tam <= ws.length; i++) {
+      const alvo = ws.slice(i, i + tam).join(" ");
+      if (ehPalavraDeEstrutura(nomes, alvo)) return alvo;
+    }
+  }
+  return null;
+}
+
+/**
+ * Os conceitos REAIS sob uma classe, do nome mais curto ao mais longo — o mais genérico primeiro.
+ * É o que a recusa oferece no lugar: "o atlas não tem o que você pediu, mas tem ESTES". Nomes
+ * tirados do dado, nunca inventados.
+ */
+export function alternativasDaClasse(atlas: Atlas, raiz: string, limite = 8): AchadoAnatomia[] {
+  const r = semAcento(raiz);
+  const re = new RegExp(`(^|[^a-z0-9])${r}($|[^a-z0-9])`);
+  return atlas.concepts
+    .filter((c) => { const n = semAcento(c.name); return n !== r && re.test(n); })
+    .sort((a, b) => a.name.length - b.name.length || a.name.localeCompare(b.name))
+    .slice(0, Math.max(0, limite))
+    .map((c) => ({ id: c.id, nome: c.name, pecas: c.elements.length }));
+}
+
 export type AchadoAnatomia = {
   id: string;
   nome: string;
@@ -243,6 +315,31 @@ export function buscarConceitos(atlas: Atlas, consulta: string, limite = MAX_RES
   if (!termo) return { achados: [], termo, viaSinonimo, total: 0 };
 
   const r = buscaCrua(atlas, termo, limite);
+
+  /**
+   * ACHOU, MAS ACHOU A CATEGORIA INTEIRA. O mapa PT→EN leva "artéria femoral" a `artery`, que são
+   * 562 peças — a árvore arterial do corpo todo. Antes de entregar isso, perguntamos ao atlas qual
+   * é o termo ESPECÍFICO da frase, ignorando as palavras que são chave do mapa (são elas que
+   * produziram o genérico). Entre os achados, prefere-se o que contém a classe pedida: quem pede
+   * ARTÉRIA femoral recebe `femoral artery`, não `femoral vein`.
+   *
+   * Vale para a BUSCA e não só para o artefato porque a ferramenta do agente também passa por aqui
+   * — era ela que respondia "bone organ (203 peças)" a quem perguntou do fêmur.
+   */
+  if (r.total > 0 && r.achados[0] && ehClasseGenerica(r.achados[0].nome)) {
+    const especifico = termoEspecificoNaFrase(atlas, termo === semAcento(consulta) ? termo : `${semAcento(consulta)} ${termo}`);
+    if (especifico) {
+      const refinado = buscaCrua(atlas, especifico, limite);
+      const comARaiz = refinado.achados.find((a) => new RegExp(`(^|[^a-z0-9])${termo}($|[^a-z0-9])`, "i").test(a.nome));
+      const melhor = comARaiz ?? refinado.achados[0];
+      if (melhor && !ehClasseGenerica(melhor.nome)) {
+        // reordena pondo o melhor na frente, sem perder o resto do refinamento
+        const resto = refinado.achados.filter((a) => a.id !== melhor.id);
+        return { achados: [melhor, ...resto].slice(0, Math.max(0, limite)), termo: especifico, viaSinonimo, total: refinado.total };
+      }
+    }
+  }
+
   if (r.total > 0) return { ...r, termo, viaSinonimo };
 
   // Nada. Se o termo veio do MAPA, para aqui: a tradução é conferida por teste (todo alvo casa com

@@ -96,6 +96,66 @@ describe("cenaDoConceito — o termo do aluno vira cena", () => {
     expect(d.aviso).toContain("Não é ferramenta clínica");
   });
 
+  describe("a conversa real de 2026-11-10 — 'quantos nervos tem uma perna humana?'", () => {
+    /**
+     * REPRODUÇÃO DE UM CASO DE PRODUÇÃO, colado pelo dono. O artefato que saiu foi
+     * "Anatomia — nerve": 26 peças do conceito `nerve`, que no BodyParts3D são TODAS cranianas e
+     * orbitais (lacrimal, frontal, supraorbital, nasociliar, etmoidal). Medido: o atlas não tem
+     * ciático, tibial, femoral nem safeno — zero. O aluno perguntou da PERNA e recebeu uma cena da
+     * ÓRBITA, com cara de resposta. Isso é pior que não achar.
+     */
+    it("'nervo ciático' NÃO vira cena — o atlas não o tem, e a categoria não é resposta", () => {
+      const r = cenaDoConceito(atlas, "nervo ciático");
+      expect(r.ok).toBe(false);
+      if (r.ok) return;
+      expect(r.code).toBe("classe_generica");
+      // e a recusa ENSINA a pedir: nomes reais do atlas, nunca inventados
+      expect(r.alternativas?.length).toBeGreaterThan(0);
+      const nomes = r.alternativas!.map((a) => a.nome);
+      expect(nomes).toContain("optic nerve");
+      for (const a of r.alternativas!) expect(a.pecas).toBeGreaterThan(0);
+    });
+
+    it("pedir a CATEGORIA crua também não vira cena", () => {
+      for (const q of ["nerve", "me mostra um nervo", "artéria", "veia"]) {
+        const r = cenaDoConceito(atlas, q);
+        expect(r.ok, q).toBe(false);
+        if (!r.ok) expect(r.code, q).toBe("classe_generica");
+      }
+    });
+
+    it("o QUALIFICADOR é respeitado: pede artéria femoral, recebe a artéria — não a árvore arterial", () => {
+      const r = cenaDoConceito(atlas, "artéria femoral");
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      expect(r.dados.conceito.nome).toBe("femoral artery");
+      // `artery` cru são 562 peças — um quarto do atlas. É o "abre o atlas completo" do relato.
+      expect(r.dados.estado.selected.length).toBeLessThan(20);
+    });
+
+    it("e quem pede ARTÉRIA femoral não recebe a VEIA femoral", () => {
+      const r = cenaDoConceito(atlas, "artéria femoral");
+      if (!r.ok) throw new Error("devia achar");
+      expect(r.dados.conceito.nome).toContain("artery");
+    });
+
+    it("os nomes que o atlas TEM continuam virando cena, agora pelo nome certo", () => {
+      for (const [q, esperado, teto] of [
+        ["osso do fêmur", "femur", 10],
+        ["veia cava", "inferior vena cava", 10],
+        ["músculo tibial", "tibialis anterior", 10],
+        ["nervo óptico", "optic nerve", 10],
+        ["sistema nervoso", "nervous system", 80],
+      ] as const) {
+        const r = cenaDoConceito(atlas, q);
+        expect(r.ok, q).toBe(true);
+        if (!r.ok) continue;
+        expect(r.dados.conceito.nome, q).toBe(esperado);
+        expect(r.dados.estado.selected.length, q).toBeLessThanOrEqual(teto);
+      }
+    });
+  });
+
   it("'alvéolo' recusa dizendo que o atlas é PARCIAL — não que a estrutura não existe", () => {
     const r = cenaDoConceito(atlas, "alvéolo");
     expect(r.ok).toBe(false);

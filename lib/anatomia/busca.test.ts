@@ -153,11 +153,32 @@ describe("COGNATAS em frase — o furo que o mapa não alcança", () => {
     expect(termoNaFrase(atlas, "")).toBeNull();
   });
 
-  it("não atropela o MAPA: termo vetado continua ganhando da varredura da frase", () => {
-    // "osso do fêmur" tem DUAS candidatas; "osso" está no mapa, e tradução vetada vence o palpite.
+  it("o QUALIFICADOR vence a categoria: 'osso do fêmur' é o fêmur, não o osso genérico", () => {
+    /**
+     * ESTE TESTE AFIRMAVA O CONTRÁRIO, e estava errado. No #752 eu escrevi que "tradução vetada
+     * vence o palpite" e usei justamente este caso como prova — consagrando o defeito num teste.
+     *
+     * Medido em 2026-11-10, a partir de uma conversa real: `bone` leva a "bone organ", 203 peças.
+     * O aluno que pede o fêmur recebia metade do esqueleto. Pior em "artéria femoral", que caía em
+     * `artery`: 562 peças, um quarto do atlas. O dono descreveu assim: "se eu peço uma parte abre o
+     * atlas completo".
+     *
+     * A regra certa é mais estreita do que eu tinha escrito: o mapa vence quando o que ele devolve
+     * é uma ESTRUTURA. Quando devolve uma CLASSE DE TECIDO, o qualificador da frase manda.
+     */
     const r = buscarConceitos(atlas, "osso do fêmur");
-    expect(r.viaSinonimo).toBe(true);
-    expect(r.termo).toBe("bone");
+    expect(r.termo).toBe("femur");
+    expect(r.achados[0]?.nome).toBe("femur");
+    expect(r.achados[0]?.pecas).toBeLessThan(10);
+  });
+
+  it("e o mapa continua vencendo quando devolve ESTRUTURA, não categoria", () => {
+    // o estreitamento acima não pode virar "o mapa não vale mais": pulmão e coração seguem iguais.
+    for (const [q, esperado] of [["como funciona um pulmão", "lung"], ["o coração", "heart"]] as const) {
+      const r = buscarConceitos(atlas, q);
+      expect(r.viaSinonimo, q).toBe(true);
+      expect(r.termo, q).toBe(esperado);
+    }
   });
 
   it("os três acertos por acidente que eram ERRADOS: clavícula, mandíbula e língua", () => {

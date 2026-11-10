@@ -380,6 +380,12 @@ export function anexarLivros(a: StructuredAnswer, livros: LivroAchado[]): Struct
   };
 }
 
+/**
+ * O teto de evidências numa resposta. Vinte é mais do que qualquer leitor humano confere; muito
+ * além disso a lista deixa de ser fonte e vira ruído — o caso real tinha 87.
+ */
+export const MAX_EVIDENCIA = 20;
+
 function asArray(v: unknown): any[] { return Array.isArray(v) ? v : v == null ? [] : [v]; }
 
 /**
@@ -426,7 +432,28 @@ export function normalizeAnswer(out: Partial<StructuredAnswer> | null | undefine
     const passos = asArray(o.proximos_passos).map(String).filter(Boolean).filter((p) => !ofertaDePlataforma(p));
     if (passos.length) answer.proximos_passos = passos;
   }
-  if (o.evidencia) answer.evidencia = asArray(o.evidencia).filter((e) => e && e.claim && e.source);
+  /**
+   * EVIDÊNCIA SEM REPETIÇÃO E COM TETO. Medido numa conversa real de 2026-11-10: a lista "Fontes"
+   * veio com 87 itens numerados, ~70 deles a MESMA linha do BodyParts3D — uma por chamada da
+   * ferramenta de anatomia. `collectSources` (lib/agent/trajectory) já deduplicava as fontes do
+   * turno, mas este campo vem do MODELO e não passava por lá; a UI renderiza um <li> por entrada,
+   * então a repetição ia inteira para a tela. Oitenta e sete fontes não informam: escondem.
+   *
+   * A chave é claim+fonte, não só a fonte: duas afirmações diferentes apoiadas no mesmo atlas são
+   * duas evidências legítimas. O que sai é a repetição literal.
+   */
+  if (o.evidencia) {
+    const vistas = new Set<string>();
+    answer.evidencia = asArray(o.evidencia)
+      .filter((e) => e && e.claim && e.source)
+      .filter((e) => {
+        const k = `${String(e.claim).trim().toLowerCase()}|${e.source?.title ?? ""}|${e.source?.url ?? ""}`;
+        if (vistas.has(k)) return false;
+        vistas.add(k);
+        return true;
+      })
+      .slice(0, MAX_EVIDENCIA);
+  }
   if (o.sources) answer.sources = asArray(o.sources).filter((s: Source) => s && s.title);
   if (o.work && typeof o.work === "object") answer.work = o.work;
   // A substância extraída vira molécula SE ela for mesmo assunto: precisa aparecer no
