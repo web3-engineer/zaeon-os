@@ -15,7 +15,7 @@ import { Navbar } from "@/components/main/navbar";
 import { Mic, MicOff, Code2, Building2, Loader2 } from "lucide-react";
 import { ConversasSlotContext } from "@/components/chat/ConversasSlot";
 import ConversasDaSala from "@/components/chat/ConversasDaSala";
-import { useSidebarHover } from "@/components/lab/useSidebarHover";
+import { useSidebarHover, focoDeTeclado } from "@/components/lab/useSidebarHover";
 import { useIsMobile } from "@/lib/ui/useIsMobile";
 import { EVT_PESQUISA_SALVA, contarPalavras } from "@/lib/onboarding/tutorialLab";
 import RostoDaAba from "@/components/agents/avatar/RostoDaAba";
@@ -828,7 +828,9 @@ export default function HomeworkPage({
   const [pesquisaChatAtivo, setPesquisaChatAtivo] = useState(false);
   const handlersChat = (ref: React.RefObject<HTMLDivElement>, set: (v: boolean) => void) => ({
     onMouseEnter: () => set(true),
-    onFocusCapture: () => set(true),
+    // SÓ o foco de TECLADO (Tab) abre — o foco PROGRAMÁTICO (criar uma nova conversa, a resposta chegando, a lista
+    // re-renderizando) não; senão a sidebar "voltava ao comportamento antigo" (conversas presas abertas) depois de uma ação.
+    onFocusCapture: () => { if (focoDeTeclado()) set(true); },
     onMouseLeave: (e: React.MouseEvent) => { if (!ref.current?.contains(e.relatedTarget as Node | null)) set(false); },
     onBlurCapture: (e: React.FocusEvent) => { if (!ref.current?.contains(e.relatedTarget as Node | null)) set(false); },
   });
