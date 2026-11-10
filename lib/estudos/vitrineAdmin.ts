@@ -37,7 +37,6 @@ export function slugify(s: string): string {
 
 /** valida/normaliza o body do admin → { data } pronto pro Prisma, ou { erro } com o motivo (400).
  *  parcial=true (PATCH): só os campos que vieram; parcial=false (POST): exige título. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function normalizar(b: any, { parcial = false }: { parcial?: boolean } = {}): { data?: Record<string, unknown>; erro?: string } {
     const data: Record<string, unknown> = {};
     const str = (v: unknown, max: number) => String(v ?? "").trim().slice(0, max);

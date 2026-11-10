@@ -31,7 +31,6 @@ export async function POST(req: Request) {
     if (erro || !data) return NextResponse.json({ error: erro ?? "Dados inválidos." }, { status: 400 });
     let slug = String(b?.slug ?? "").trim().toLowerCase().replace(/[^a-z0-9-]/g, "") || slugify(String(data.titulo));
     if (await prisma.itemVitrine.findUnique({ where: { slug } })) slug = `${slug}-${Date.now().toString(36).slice(-4)}`;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const item = await prisma.itemVitrine.create({ data: { slug, ...data } as any });
     return NextResponse.json({ item }, { status: 201 });
 }

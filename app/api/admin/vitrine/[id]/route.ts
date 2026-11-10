@@ -21,7 +21,6 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (erro) return NextResponse.json({ error: erro }, { status: 400 });
     if (!data || !Object.keys(data).length) return NextResponse.json({ error: "Nada pra alterar." }, { status: 400 });
     try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const item = await prisma.itemVitrine.update({ where: { id: params.id }, data: data as any });
         return NextResponse.json({ item });
     } catch {
