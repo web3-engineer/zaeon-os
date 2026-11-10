@@ -34,7 +34,6 @@ import LivrosCartao from "@/components/chat/LivrosCartao";
 import { semListaDeLivros } from "@/lib/livros/busca";
 import AuraThinking from "@/components/study/AuraThinking";
 import AgentePilula, { RECUO_ROSTO } from "@/components/agents/avatar/AgentePilula";
-import BoasVindasAgente from "@/components/agents/avatar/BoasVindasAgente";
 import { useFalaAoChegar, useManifesto, usePublicarPresenca } from "@/components/agents/avatar/hooks";
 import { sinalDoChat } from "@/lib/avatars/presenca";
 import StudyArtifactCard from "@/components/study/StudyArtifactCard";
@@ -1581,7 +1580,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
           <div className="ml-4 sm:ml-8 lg:ml-14 mr-0 sm:mr-2 py-4 flex flex-col gap-4">
             {/* B2: cursor piscando da resposta em streaming */}
             <style>{`@keyframes zCaret { 0%,45% { opacity:1 } 50%,100% { opacity:0 } } .z-caret { display:inline-block; width:2px; height:1em; margin-left:2px; vertical-align:-0.15em; background:currentColor; opacity:.7; animation: zCaret 1s steps(1) infinite; } @media (prefers-reduced-motion: reduce) { .z-caret { animation: none; } }`}</style>
-            {messages.length === 0 ? <><BoasVindasAgente agentId="aura" nome="Aura" sinal={rosto.sinal} boca={rosto.boca} /><SugestoesConversa onEscolher={escolherSugestao} /><DicaSubTema threads={threads} ativa={abaAtiva} /></> : (
+            {messages.length === 0 ? <><SugestoesConversa onEscolher={escolherSugestao} /><DicaSubTema threads={threads} ativa={abaAtiva} /></> : (
               messages.map((m, i) => {
                 // rosto da Aura AO LADO de cada resposta; só a mais recente vive (pensa → fala → sorri)
                 const pilula = m.role === "assistant" && (m.kind === "text" || m.kind === "structured")

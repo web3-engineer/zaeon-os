@@ -834,6 +834,21 @@ export default function HomeworkPage({
     onMouseLeave: (e: React.MouseEvent) => { if (!ref.current?.contains(e.relatedTarget as Node | null)) set(false); },
     onBlurCapture: (e: React.FocusEvent) => { if (!ref.current?.contains(e.relatedTarget as Node | null)) set(false); },
   });
+  // #755: a seção de conversas NÃO pode ficar presa aberta. Regra: ao SAIR da sidebar ela se retrai — só segue aberta se
+  // houver input ativo NO CHAT (a pessoa digitando no compositor, fora da barra). Como o useSidebarHover fecha a barra de
+  // forma confiável quando o mouse sai (tem rede de segurança por pointermove), zeramos o estado junto: acaba o "stuck open"
+  // de voltar pra barra e achar a seção ainda aberta. Clicar noutra pill também sai do wrapper → o onMouseLeave já fecha.
+  const digitandoNoChat = useCallback(() => {
+    const el = typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
+    if (!el) return false;
+    const campo = /^(INPUT|TEXTAREA)$/.test(el.tagName) || el.isContentEditable;
+    return campo && !navRef.current?.contains(el);
+  }, [navRef]);
+  useEffect(() => {
+    if (isSidebarOpen || digitandoNoChat()) return;
+    setEstudosChatAtivo(false);
+    setPesquisaChatAtivo(false);
+  }, [isSidebarOpen, digitandoNoChat]);
   // CELULAR (≤767px): não existe hover — um toque abria a sidebar por cima de tudo e ela nunca fechava. Lá a sidebar
   // vira GAVETA (☰ na barra de baixo, fecha ao escolher) e a barra de baixo leva às salas; o conteúdo usa a largura toda.
   const celular = useIsMobile();
