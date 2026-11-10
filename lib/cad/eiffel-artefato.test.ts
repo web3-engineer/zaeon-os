@@ -167,12 +167,20 @@ describe("3 · CAUSA B · o Eiffel não tem as ferramentas no ar", () => {
    * — que é o que a contagem de 9 tools indicava. Se a Variable EXISTIR com outro valor, é ela que
    * manda e o padrão é ignorado: aí o conserto é no painel do GitHub, não aqui.
    */
-  it("o padrão do workflow inclui o solidcraft", async () => {
+  it("o padrão do workflow inclui o solidcraft — lendo o VALOR, não a linha", async () => {
+    /**
+     * Apontado na revisão: procurar "solidcraft" na linha inteira passaria com o conector citado
+     * apenas num COMENTÁRIO ao lado, enquanto o padrão de verdade voltava a ser só `scholar`. O
+     * teste tem de ler o valor do fallback, que é o que o deploy usa.
+     */
     const { readFileSync } = await import("node:fs");
     const yml = readFileSync(".github/workflows/deploy.yml", "utf8");
-    const linha = yml.split("\n").find((l) => l.includes("MCP_CONECTORES:"));
+    const linha = yml.split("\n").find((l) => /^\s*MCP_CONECTORES:/.test(l));
     expect(linha, "a linha do MCP_CONECTORES sumiu do deploy").toBeTruthy();
-    expect(linha).toContain("solidcraft");
+    const m = /\|\|\s*'([^']*)'\s*\}\}/.exec(linha!);
+    expect(m, `não consegui ler o padrão de: ${linha}`).toBeTruthy();
+    const conectores = m![1]!.split(",").map((x) => x.trim()).filter(Boolean);
+    expect(conectores, "o padrão do deploy tem de trazer o solidcraft").toContain("solidcraft");
   });
 });
 

@@ -38,10 +38,19 @@ import { SYSTEM_ROTEIRO, tituloDaPeca, userRoteiro } from "@/lib/cad/roteiro";
 
 export const runtime = "nodejs";
 // Mais folgado que o molecule (60 s): aqui há uma chamada de modelo MAIS três execuções do kernel.
-export const maxDuration = 180;
+// A conta tem de fechar: 60 s de modelo + 4 execuções de kernel a 25 s = 160 s, e ainda sobra
+// folga para o banco dentro dos 240. Com os 45 s por execução que eu tinha posto, o pior caso
+// estourava os 180 e o pedido morria depois de ter feito todo o trabalho.
+export const maxDuration = 240;
 
 /** O teto de parede de cada execução do binário. Peça de aula não leva minutos; travar, leva. */
-const PRAZO_CLI_MS = 45_000;
+const PRAZO_CLI_MS = 25_000;
+
+/**
+ * O teto do tema. Peça se descreve em uma linha; um tópico de dez mil caracteres só gastaria cota
+ * de modelo — a cota é compartilhada, e o balde de requisições conta PEDIDOS, não tokens.
+ */
+const MAX_TEMA = 300;
 
 const correrDeVerdade: Correr = (args) =>
   new Promise((resolve) => {
@@ -77,6 +86,9 @@ export async function POST(req: Request) {
     tema = (ctx.title || "").trim();
   }
   if (!tema) return NextResponse.json({ error: "Diga qual peça você quer." }, { status: 400 });
+  if (tema.length > MAX_TEMA) {
+    return NextResponse.json({ error: `Descreva a peça em até ${MAX_TEMA} caracteres.` }, { status: 400 });
+  }
 
   // 503 e não 404, de propósito: é o SERVIDOR que está sem o kernel, não a peça que não existe.
   // Confundir os dois faria o aluno achar que o pedido dele é que estava errado.
@@ -102,7 +114,9 @@ export async function POST(req: Request) {
   const lido = lerScript(bruto);
   if (!lido.ok) return NextResponse.json({ error: lido.motivo, code: "roteiro_invalido" }, { status: 422 });
 
-  const pasta = `${RAIZ_CAD}/${userId.slice(0, 12)}-${randomUUID().slice(0, 8)}`;
+  // UUID INTEIRO: com 8 caracteres dois pedidos do mesmo dono podiam colidir, e aí um apagaria os
+  // arquivos do outro na limpeza. O nome é descartável, não precisa ser curto.
+  const pasta = `${RAIZ_CAD}/${userId.slice(0, 12)}-${randomUUID()}`;
   try {
     await mkdir(pasta, { recursive: true });
     const r = await construirPeca(lido.script, { correr: correrDeVerdade, disco: discoDeVerdade, pasta });

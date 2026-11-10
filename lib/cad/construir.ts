@@ -134,6 +134,15 @@ export async function construirPeca(script: ScriptCad, d: DepsConstrucao): Promi
     return { ok: false, motivo: "o CLI disse que gerou a miniatura, mas ela não está no disco", code: "sem_miniatura" };
   }
   if (!pngB64) return { ok: false, motivo: "a miniatura saiu vazia", code: "sem_miniatura" };
+  /**
+   * A MINIATURA TAMBÉM TEM TETO, e é a que mais importa: o artefato inteiro vira UM documento no
+   * banco, e o Mongo recusa documento grande demais. STEP e glTF eu já descartava quando passavam
+   * do teto; a miniatura não, e sendo ela obrigatória, uma só grande o bastante derrubaria a peça
+   * inteira no `create` — depois de todo o trabalho já feito.
+   */
+  if (pngB64.length > MAX_BYTES_ANEXO) {
+    return { ok: false, motivo: "a miniatura ficou grande demais para guardar", code: "sem_miniatura" };
+  }
 
   const peca: PecaConstruida = { png: `data:image/png;base64,${pngB64}` };
 
