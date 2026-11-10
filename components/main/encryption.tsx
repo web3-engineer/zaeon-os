@@ -10,6 +10,7 @@ import MentoresCarrossel from "./MentoresCarrossel";
 import SolanaPrivacidade from "./SolanaPrivacidade";
 import ChavesApi from "./ChavesApi";
 import BlueprintsShowcase from "./BlueprintsShowcase";
+import GeradorPrototipos from "./GeradorPrototipos";
 import { TituloSecao } from "@/components/layout/secao";
 import MolecularText from "@/components/ui/MolecularText";
 
@@ -94,7 +95,11 @@ const HireAgentsSection = () => {
                 viewport={{ once: true }}
                 transition={{ duration: 0.6 }}
             >
-                <TituloSecao className="font-display" forte="Estude com os melhores e mais modernos agentes de IA." />
+                <TituloSecao className="font-display" forte="Com grandes tecnologias vêm grandes protótipos." />
+
+                {/* GERADOR GENERATIVO: protótipos de engenharia (placa solar, motor, bateria…) que reagem ao mouse —
+                    parallax da cena + o mais perto do cursor se acende. Semelhante ao gerador do anatomy. */}
+                <GeradorPrototipos className="mt-10" />
 
                 {/* carrossel LEVE: só foto, nome e função; quem passa pelo meio da tela ganha a borda destacada */}
                 <div className="mt-10">

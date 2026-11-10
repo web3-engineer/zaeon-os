@@ -1,0 +1,47 @@
+/* GeradorPrototipos — cena GENERATIVA de protótipos (placa solar, motor, bateria, PCB, turbina) que reage ao mouse.
+   As animações IDLE (giro, flutuação, carga, brilho) são CSS; o parallax e o destaque do nó mais perto do cursor são
+   setados por JS direto no DOM (sem re-render a 60 fps). Traço de neon, estilo blueprint. */
+
+.gp-wrap { position: relative; width: 100%; }
+.gp-svg { width: 100%; height: auto; display: block; touch-action: none; }
+
+.gp-grid line { stroke: rgba(127, 232, 255, 0.06); stroke-width: 0.5; }
+
+.gp-node { transition: filter .35s ease, opacity .35s ease; cursor: pointer; }
+.gp-node [stroke-role] { }
+.gp-node path, .gp-node rect, .gp-node circle, .gp-node line, .gp-node polyline, .gp-node polygon, .gp-node ellipse {
+  stroke: var(--cor, #7fe8ff); stroke-width: 1; fill: none; vector-effect: non-scaling-stroke;
+}
+.gp-node .fill { fill: color-mix(in srgb, var(--cor) 12%, transparent); stroke: none; }
+.gp-node .dim { stroke: color-mix(in srgb, var(--cor) 42%, transparent); }
+.gp-node .hot { fill: var(--cor); stroke: none; }
+
+@keyframes gpfloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.gp-float { animation: gpfloat 7s ease-in-out infinite; }
+
+@keyframes gpspin { to { transform: rotate(360deg); } }
+.gp-spin { transform-box: fill-box; transform-origin: center; animation: gpspin 16s linear infinite; }
+.gp-spin-fast { transform-box: fill-box; transform-origin: center; animation: gpspin 7s linear infinite; }
+
+@keyframes gppulse { 0%, 100% { opacity: .22; } 50% { opacity: 1; } }
+.gp-pulse { animation: gppulse 2.4s ease-in-out infinite; }
+
+@keyframes gpshimmer { 0%, 100% { opacity: .3; } 50% { opacity: .85; } }
+.gp-shimmer { animation: gpshimmer 3.6s ease-in-out infinite; }
+
+/* o nó mais perto do cursor ACENDE; os outros recuam um pouco */
+.gp-node.ativo { filter: drop-shadow(0 0 10px var(--cor)); }
+.gp-node.ativo path, .gp-node.ativo rect, .gp-node.ativo circle,
+.gp-node.ativo line, .gp-node.ativo polyline, .gp-node.ativo polygon, .gp-node.ativo ellipse { stroke-width: 1.7; }
+.gp-node:not(.ativo) { opacity: .72; }
+
+/* a linha de varredura do cursor até o nó em foco + o próprio cursor */
+.gp-scan { stroke: #7fe8ff; stroke-width: 0.75; stroke-dasharray: 3 5; opacity: .55; }
+.gp-cursor { stroke: #7fe8ff; stroke-width: 1; fill: none; opacity: .8; }
+
+.gp-label { fill: #eafcff; font-family: ui-monospace, monospace; }
+.gp-label .nota { fill: rgba(234, 252, 255, 0.58); }
+
+@media (prefers-reduced-motion: reduce) {
+  .gp-float, .gp-spin, .gp-spin-fast, .gp-pulse, .gp-shimmer { animation: none; }
+}
