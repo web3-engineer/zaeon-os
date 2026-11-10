@@ -15,7 +15,7 @@ import { Navbar } from "@/components/main/navbar";
 import { Mic, MicOff, Code2, Building2, Loader2 } from "lucide-react";
 import { ConversasSlotContext } from "@/components/chat/ConversasSlot";
 import ConversasDaSala from "@/components/chat/ConversasDaSala";
-import { useSidebarHover } from "@/components/lab/useSidebarHover";
+import { useSidebarHover, focoDeTeclado } from "@/components/lab/useSidebarHover";
 import { useIsMobile } from "@/lib/ui/useIsMobile";
 import { EVT_PESQUISA_SALVA, contarPalavras } from "@/lib/onboarding/tutorialLab";
 import RostoDaAba from "@/components/agents/avatar/RostoDaAba";
@@ -828,10 +828,27 @@ export default function HomeworkPage({
   const [pesquisaChatAtivo, setPesquisaChatAtivo] = useState(false);
   const handlersChat = (ref: React.RefObject<HTMLDivElement>, set: (v: boolean) => void) => ({
     onMouseEnter: () => set(true),
-    onFocusCapture: () => set(true),
+    // SÓ o foco de TECLADO (Tab) abre — o foco PROGRAMÁTICO (criar uma nova conversa, a resposta chegando, a lista
+    // re-renderizando) não; senão a sidebar "voltava ao comportamento antigo" (conversas presas abertas) depois de uma ação.
+    onFocusCapture: () => { if (focoDeTeclado()) set(true); },
     onMouseLeave: (e: React.MouseEvent) => { if (!ref.current?.contains(e.relatedTarget as Node | null)) set(false); },
     onBlurCapture: (e: React.FocusEvent) => { if (!ref.current?.contains(e.relatedTarget as Node | null)) set(false); },
   });
+  // #755: a seção de conversas NÃO pode ficar presa aberta. Regra: ao SAIR da sidebar ela se retrai — só segue aberta se
+  // houver input ativo NO CHAT (a pessoa digitando no compositor, fora da barra). Como o useSidebarHover fecha a barra de
+  // forma confiável quando o mouse sai (tem rede de segurança por pointermove), zeramos o estado junto: acaba o "stuck open"
+  // de voltar pra barra e achar a seção ainda aberta. Clicar noutra pill também sai do wrapper → o onMouseLeave já fecha.
+  const digitandoNoChat = useCallback(() => {
+    const el = typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
+    if (!el) return false;
+    const campo = /^(INPUT|TEXTAREA)$/.test(el.tagName) || el.isContentEditable;
+    return campo && !navRef.current?.contains(el);
+  }, [navRef]);
+  useEffect(() => {
+    if (isSidebarOpen || digitandoNoChat()) return;
+    setEstudosChatAtivo(false);
+    setPesquisaChatAtivo(false);
+  }, [isSidebarOpen, digitandoNoChat]);
   // CELULAR (≤767px): não existe hover — um toque abria a sidebar por cima de tudo e ela nunca fechava. Lá a sidebar
   // vira GAVETA (☰ na barra de baixo, fecha ao escolher) e a barra de baixo leva às salas; o conteúdo usa a largura toda.
   const celular = useIsMobile();

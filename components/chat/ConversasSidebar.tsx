@@ -20,6 +20,10 @@ import { arvoreDeThreads, gruposDoDia, quandoCriada, type Thread } from "@/lib/c
 
 const chaveRecolhida = (sala: string) => `zaeon.chat.sidebar.${sala}.recolhida`;
 
+// #754: conversas de mais de 7 dias nascem RECOLHIDAS (clicar no título abre/fecha).
+// Hoje/Ontem/Últimos 7 dias ficam sempre à vista — só o que é antigo some pra não poluir.
+const GRUPOS_RECOLHIDOS = new Set(["Últimos 30 dias", "Mais antigas"]);
+
 export default function ConversasSidebar({
   sala, threads, ativa, ocupada, aoTrocar, aoCriar, aoFechar, aoRenomear, aoCriarSub, className = "", embutida = false, rotuloNova = "Nova conversa",
 }: {
@@ -70,6 +74,11 @@ export default function ConversasSidebar({
     const mae = threads.find((t) => t.id === ativa)?.parentId;
     if (mae) setAbertas((a) => (a[mae] ? a : { ...a, [mae]: true }));
   }, [ativa, threads]);
+
+  // #754: estado por grupo de dia. Default: antigos (>7 dias) recolhidos. Buscando ou com a conversa ativa dentro, abre.
+  const [gruposAbertos, setGruposAbertos] = useState<Record<string, boolean>>({});
+  const alternarGrupo = (g: string) =>
+    setGruposAbertos((s) => ({ ...s, [g]: !(s[g] ?? !GRUPOS_RECOLHIDOS.has(g)) }));
 
   const termo = busca.trim().toLowerCase();
   const nos = useMemo(() => {
@@ -218,17 +227,33 @@ export default function ConversasSidebar({
           <p className="px-2 py-3 text-[12px] text-slate-500 dark:text-white/45">{termo ? "Nada com esse nome." : "Nenhuma conversa ainda."}</p>
         )}
         {/* #733: separada por dia (Hoje, Ontem, Últimos 7 dias…), a mais nova em cima */}
-        {gruposDoDia(nos).map(({ grupo, nos: doGrupo }) => (
-          <section key={grupo} aria-label={grupo} className="flex flex-col gap-0.5">
-            <h3 className="px-2 pt-2 pb-0.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-white/45">{grupo}</h3>
-            {doGrupo.map(({ thread, filhas }) => (
-              <div key={thread.id} className="flex flex-col gap-0.5">
-                {linha(thread, false, filhas.length > 0)}
-                {filhas.length > 0 && (abertas[thread.id] || !!termo) && filhas.map((f) => linha(f, true))}
-              </div>
-            ))}
-          </section>
-        ))}
+        {/* #754: títulos viram botões — grupos de mais de 7 dias nascem recolhidos */}
+        {gruposDoDia(nos).map(({ grupo, nos: doGrupo }) => {
+          const temAtiva = !!ativa && doGrupo.some(({ thread, filhas }) => thread.id === ativa || filhas.some((f) => f.id === ativa));
+          const aberto = !!termo || temAtiva || (gruposAbertos[grupo] ?? !GRUPOS_RECOLHIDOS.has(grupo));
+          return (
+            <section key={grupo} aria-label={grupo} className="flex flex-col gap-0.5">
+              {/* h3 mantém o papel de cabeçalho (acessibilidade/#733); o botão dentro é o controle de abrir/fechar */}
+              <h3 className="m-0">
+                <button
+                  type="button"
+                  onClick={() => alternarGrupo(grupo)}
+                  aria-expanded={aberto}
+                  className="w-full flex items-center gap-1 px-2 pt-2 pb-0.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-white/45 hover:text-slate-700 dark:hover:text-white/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500 rounded"
+                >
+                  <ChevronRight size={11} aria-hidden className={`transition-transform ${aberto ? "rotate-90" : ""}`} />
+                  {grupo}
+                </button>
+              </h3>
+              {aberto && doGrupo.map(({ thread, filhas }) => (
+                <div key={thread.id} className="flex flex-col gap-0.5">
+                  {linha(thread, false, filhas.length > 0)}
+                  {filhas.length > 0 && (abertas[thread.id] || !!termo) && filhas.map((f) => linha(f, true))}
+                </div>
+              ))}
+            </section>
+          );
+        })}
       </div>
     </nav>
   );

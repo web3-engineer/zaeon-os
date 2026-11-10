@@ -15,7 +15,6 @@ import { avisarEscrevendo } from "@/lib/research/zaeonEventos";
 import CoworkComposer from "@/components/study/CoworkComposer";
 import AuraThinking from "@/components/study/AuraThinking";
 import AgentePilula, { RECUO_ROSTO } from "@/components/agents/avatar/AgentePilula";
-import BoasVindasAgente from "@/components/agents/avatar/BoasVindasAgente";
 import { useFalaAoChegar, useManifesto, usePublicarPresenca } from "@/components/agents/avatar/hooks";
 import { sinalDoChat } from "@/lib/avatars/presenca";
 import LivrosCartao from "@/components/chat/LivrosCartao";
@@ -655,7 +654,6 @@ function ChatDaConta({
           de mini-ações (copiar/regenerar/👍👎/sub-tema; na pergunta: copiar/editar) — no hover no desktop. */}
       <div ref={listRef} className={`flex-1 min-h-0 overflow-y-auto custom-scrollbar ${compacto ? "px-3" : "px-4 sm:px-6"}`}>
         <div className={`${recuo} py-5 flex flex-col gap-4`}>
-          {messages.length === 0 && <BoasVindasAgente agentId="aura" nome="Aura" sinal={rosto.sinal} boca={rosto.boca} />}
           {messages.length === 0 && comAbas && <DicaSubTema threads={threads} ativa={abaAtiva} />}
           {messages.map((m, i) => {
             const isUser = m.role === "user";
