@@ -42,6 +42,7 @@ import type { StructuredAnswer, Source, IntentId, Issue } from "@/lib/agent/cont
 import { artefatoDeAprender, pedeAula, pedeEngenhariaReversa, DIRETRIZ_ENGENHARIA_REVERSA } from "@/lib/agent/aprender";
 import { DIRETRIZ_MATEMATICA } from "@/lib/agent/matematica";
 import { diretrizDeTabela, semTabelaNaoPedida } from "@/lib/agent/tabela";
+import { aprofundarSecoes, secoesRasas } from "@/lib/documento/aprofundar";
 import { citaveis, corteEfetivo } from "@/lib/rag/turno";
 import { diretrizDeTamanho, pedeRespostaCurta, semDesenvolvimentoNaoPedido } from "@/lib/agent/tamanho";
 import { diretrizDeEscopo } from "@/lib/agents/escopo";
@@ -922,6 +923,62 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         // observações são fato do turno, e `executadas` tira do caminho a tool que deu certo depois.
         const fv = falhasVisiveis(observations, executadas);
         if (fv.length) comBase.falhas = fv;
+        /**
+         * O DOCUMENTO RASO, CONSERTADO ONDE ELE NASCE.
+         *
+         * `work.sections` vem da MESMA resposta JSON que o núcleo, os conceitos, a evidência e as
+         * fontes — todos disputando um orçamento de saída só. Medido em produção (2026-11-10, "crie
+         * um artigo sobre anfetamina"): 57 palavras na primeira seção contra um piso de 180. Um
+         * terço do mínimo que a Sala de Pesquisa exige para a mesma seção.
+         *
+         * O diagnóstico é o da F2 (lib/documento/escritor): texto acadêmico numa resposta só volta
+         * truncado, e o conserto é uma chamada por seção. Só que aquele escritor nunca chegou ao
+         * chat. Aqui o rascunho vale como PLANO — os títulos que o modelo escolheu são bons — e só
+         * as seções abaixo do piso são reescritas, uma de cada vez, com o resto do documento à
+         * vista. Nunca piora: resposta mais curta que a original é descartada.
+         *
+         * Só em `criar_trabalho`: é a intenção que tem orçamento de voltas para pagar isto, e é a
+         * única cujo contrato promete um documento.
+         */
+        if (st.intent === "criar_trabalho" && comBase.work?.sections?.length) {
+          const rasas = secoesRasas(comBase.work.sections);
+          if (rasas.length) {
+            const r = await aprofundarSecoes(
+              {
+                tema: st.objective ?? "",
+                tipo: String(comBase.work.kind ?? "trabalho"),
+                secoes: comBase.work.sections,
+                fontes: fontesWork,
+                // sem a evidência do turno, pedir "mecanismo, história, consequências" é convite a
+                // inventar: o modelo precisa acrescentar e não recebe em que se apoiar
+                evidencia: evidenceBlock(st),
+              },
+              {
+                /**
+                 * O FORMATO vem do módulo (ele instrui o JSON no system). Antes eu mandava um
+                 * "responda JSON" aqui enquanto o system pedia texto puro — duas instruções
+                 * contraditórias, e um modelo obediente ao system devolveria texto que o `genJson`
+                 * não parsearia: reescrita nenhuma, em silêncio.
+                 */
+                escrever: async (sys2, user2) => {
+                  const o2 = await genJson<{ corpo?: string }>(sys2, user2, {
+                    // prazo por chamada compatível com o orçamento da rodada (ORCAMENTO_PADRAO_MS)
+                    temperature: 0.4, model: modelFor("draft"), timeoutMs: 20_000, phase: "aprofundar",
+                  });
+                  return String(o2?.corpo ?? "");
+                },
+              },
+            );
+            if (r.reescritas.length) comBase.work = { ...comBase.work, sections: r.secoes };
+            // O QUE FICOU RASO É DITO, nem que seja no log do servidor: silêncio aqui é a classe de
+            // defeito que esta série inteira persegue. Não vira campo da resposta porque seria uma
+            // superfície nova para o aluno, e a seção curta já aparece no documento.
+            if (r.pendentes.length) {
+              console.warn(`[documento] ${r.pendentes.length} seção(ões) seguem abaixo do piso: `
+                + r.pendentes.map((x) => `${x.titulo || "(sem título)"}=${x.motivo}`).join(", "));
+            }
+          }
+        }
         // D4 · as referências do que o `work` citou saem DAQUI, onde a lista original existe — em
         // vez de o lado do documento remontá-la e torcer pra bater. Anexo só aparece por este
         // caminho: ele não existe no `answer`.
