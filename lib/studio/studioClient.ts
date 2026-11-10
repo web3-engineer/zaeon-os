@@ -15,7 +15,12 @@ export type BlocoStudio = { studioKind: string; title?: string; data?: any; arti
 
 export type ResultadoStudio =
   | { tipo: "pronto"; bloco: BlocoStudio }
-  | { tipo: "erro"; mensagem?: string; silencioso?: boolean }
+  /**
+   * `alternativas`: quando o servidor recusa por ter entendido a CATEGORIA em vez da peça, ele manda
+   * junto os nomes REAIS que existem no atlas. Sem este campo a recusa chegava só como texto e o
+   * aluno não via o que podia pedir — a sugestão morria aqui no cliente.
+   */
+  | { tipo: "erro"; mensagem?: string; silencioso?: boolean; alternativas?: { id: string; nome: string; pecas: number }[] }
   | { tipo: "cancelado" };
 
 export const KINDS_TEXTO = ["mindmap", "guide", "faq", "flashcards", "timeline"] as const;
@@ -111,7 +116,11 @@ export async function gerarArtefato(kind: string, o: OpcoesStudio & Deps): Promi
       const data = await json(res);
       return res.ok && data?.meta?.estado
         ? { tipo: "pronto", bloco: { studioKind: "anatomia", title: data.title, data: data.meta, artifactId: data.id } }
-        : { tipo: "erro", mensagem: data?.error };
+        : {
+            tipo: "erro",
+            mensagem: data?.error,
+            ...(Array.isArray(data?.alternativas) && data.alternativas.length ? { alternativas: data.alternativas } : {}),
+          };
     }
     if (kind === "image") {
       const res = await f("/api/studio/image", { method: "POST", headers: H, body: JSON.stringify({ spaceId, topic }) });

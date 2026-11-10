@@ -12,7 +12,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { SISTEMAS, SISTEMAS_POR_ID, VISIVEIS_PADRAO, ehSistema, explicacao, type Atlas } from "@/lib/anatomia/atlas";
 import {
-  MAX_RESULTADOS, SINONIMOS_PT, acharConceito, buscarConceitos, pecasDoConceito, termoNaFrase,
+  MAX_RESULTADOS, SINONIMOS_PT, ehClasseGenerica, acharConceito, buscarConceitos, pecasDoConceito, termoNaFrase,
   sistemasDoConceito, termoDeBusca,
 } from "@/lib/anatomia/busca";
 
@@ -89,14 +89,24 @@ describe("buscarConceitos — o find_anatomy", () => {
 
 describe("SINÔNIMOS PT→EN — o portão que impede sinônimo que não acha nada", () => {
   it("TODO sinônimo em português casa com pelo menos um conceito do atlas real", () => {
-    const vazios: string[] = [];
+    /**
+     * O portão ficou MAIS forte, não mais frouxo. Antes: "todo sinônimo acha alguma coisa". Agora:
+     * todo sinônimo ou acha uma ESTRUTURA, ou é recusado como CATEGORIA com o motivo anotado. As
+     * doze categorias (osso, músculo, artéria, veia, nervo, tendão e plurais) passaram a devolver
+     * vazio DE PROPÓSITO — entregar a categoria era o defeito. Vazio sem motivo continua proibido.
+     */
+    const semMotivo: string[] = [];
     for (const [pt, en] of Object.entries(SINONIMOS_PT)) {
       const r = buscarConceitos(atlas, pt);
-      if (!r.achados.length) vazios.push(`${pt} → ${en}`);
-      expect(r.termo, `${pt} devia buscar por ${en}`).toBe(en);
-      expect(r.viaSinonimo).toBe(true);
+      if (!r.achados.length && !r.classeRecusada) semMotivo.push(`${pt} → ${en}`);
+      if (r.achados.length) {
+        expect(r.termo, `${pt} devia buscar por ${en}`).toBe(en);
+        expect(r.viaSinonimo).toBe(true);
+      } else {
+        expect(ehClasseGenerica(en), `${pt} → ${en} ficou vazio sem ser categoria`).toBe(true);
+      }
     }
-    expect(vazios, "sinônimos que prometem e não acham nada").toEqual([]);
+    expect(semMotivo, "sinônimos que não acham nada E não dizem por quê").toEqual([]);
   });
 
   it("o acento não importa, e o que não é sinônimo busca o próprio termo", () => {
@@ -104,6 +114,58 @@ describe("SINÔNIMOS PT→EN — o portão que impede sinônimo que não acha na
     expect(termoDeBusca("CORAÇÃO")).toEqual({ termo: "heart", viaSinonimo: true });
     expect(termoDeBusca("figado")).toEqual({ termo: "liver", viaSinonimo: true });
     expect(termoDeBusca("thalamus")).toEqual({ termo: "thalamus", viaSinonimo: false });
+  });
+});
+
+describe("a REVISÃO do #757 — quatro achados do Sourcery, medidos e consertados", () => {
+  /**
+   * O CI estava verde e o código estava errado. Os quatro abaixo foram verificados um a um contra o
+   * atlas real antes de virar conserto; dois dos dez achados da revisão NÃO reproduziram e estão
+   * respondidos na thread, não aqui.
+   */
+  it("1 · estrutura de OUTRO SISTEMA não serve de resposta — 'nervo da face' devolvia a FACE (80 peças)", () => {
+    // o critério sai do dado: `face` é skeletal+sensory+muscular+respiratory+digestive e NUNCA
+    // nervous, então ela não serve de nervo. `femur` é skeletal, e serve de osso.
+    for (const q of ["nervo da face", "nervo do braço", "nervo da mão"]) {
+      const r = buscarConceitos(atlas, q);
+      expect(r.achados, q).toEqual([]);
+      expect(r.classeRecusada, q).toBe("nerve");
+    }
+    expect(buscarConceitos(atlas, "osso do fêmur").achados[0]?.nome).toBe("femur");
+  });
+
+  it("2 · a FERRAMENTA do agente também deixa de receber a categoria", () => {
+    // era aqui que a resposta errada nascia: o agente recebia `nerve` (26 peças, todas da órbita) e
+    // descrevia aquilo como se fosse o nervo da perna. Consertar só o artefato não bastava.
+    for (const q of ["nervo ciático", "veia safena"]) {
+      const r = buscarConceitos(atlas, q);
+      expect(r.total, q).toBe(0);
+      expect(r.achados, q).toEqual([]);
+    }
+  });
+
+  it("3 · qualificador que TAMBÉM é chave do mapa sobrevive, e é traduzido", () => {
+    // filtrar toda chave do mapa descartava `radio` junto com `osso`, e a frase ficava sem nada.
+    for (const [q, esperado] of [
+      ["osso do rádio", "radius"], ["osso do úmero", "humerus"], ["osso da bacia", "pelvis"],
+    ] as const) {
+      expect(buscarConceitos(atlas, q).achados[0]?.nome, q).toBe(esperado);
+    }
+  });
+
+  it("4 · o limite do chamador não escolhe o vaso: artéria femoral é artéria em qualquer limite", () => {
+    for (const limite of [1, 2, 3, 30]) {
+      expect(buscarConceitos(atlas, "artéria femoral", limite).achados[0]?.nome, `limite=${limite}`)
+        .toBe("femoral artery");
+    }
+  });
+
+  it("5 · a varredura tem teto — tópico gigante não vira CPU do servidor", () => {
+    const enorme = `nervo ${"palavra ".repeat(400)}ciatico`;
+    const t0 = Date.now();
+    const r = buscarConceitos(atlas, enorme);
+    expect(Date.now() - t0, "a varredura devia ser limitada").toBeLessThan(3000);
+    expect(r.achados).toEqual([]);
   });
 });
 

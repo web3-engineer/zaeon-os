@@ -216,6 +216,9 @@ export function termoNaFrase(atlas: Atlas, frase: string): string | null {
  * respiratório" é um pedido legítimo e a resposta certa é o sistema. Classe de tecido é outra
  * coisa — ninguém pede "me mostra uma artéria" querendo todas elas.
  */
+/** O teto de palavras da varredura de n-gramas — ver `termoEspecificoNaFrase`. */
+export const MAX_PALAVRAS_NA_VARREDURA = 12;
+
 export const CLASSES_GENERICAS: readonly string[] = [
   "nerve", "artery", "vein", "bone", "muscle", "cartilage", "ligament", "tendon",
   "intestine", "skeleton", "bone organ", "muscle organ",
@@ -236,8 +239,21 @@ export function ehClasseGenerica(nome: string): boolean {
  * `raiz` desempata: entre "femoral vein" e "femoral artery", quem pediu ARTÉRIA recebe a artéria.
  * Sem isso o desempate seria alfabético, que não tem nada a ver com o pedido.
  */
-export function termoEspecificoNaFrase(atlas: Atlas, frase: string): string | null {
-  const ws = palavras(frase).filter((w) => !(w in SINONIMOS_PT));
+export function termoEspecificoNaFrase(atlas: Atlas, frase: string, generico?: string): string | null {
+  /**
+   * Tira da disputa SÓ as palavras que produziram o genérico — não toda chave do mapa.
+   * Medido: filtrar todas quebrava "osso do rádio", porque `radio` também é chave (→ radius) e saía
+   * junto com `osso`, deixando a frase sem qualificador nenhum. Com o alvo em mãos, `osso` sai (→
+   * bone) e `radio` fica (→ radius ≠ bone).
+   */
+  const ws = palavras(frase)
+    // Fora da disputa: as palavras que PRODUZIRAM o genérico (a chave do mapa que levou até ele) e
+    // o próprio termo genérico. Sem a segunda guarda, "nerve" voltava como se fosse qualificador e
+    // "nervo ciático" era "refinado" para `nerve trunk` — um nervo qualquer, com cara de acerto.
+    .filter((w) => w !== generico && (generico ? SINONIMOS_PT[w] !== generico : !(w in SINONIMOS_PT)))
+    // Teto de palavras: a varredura é O(n²) em n-gramas vezes 3.432 nomes. Tema de aluno tem meia
+    // dúzia de palavras; um tópico gigante só gastaria CPU do servidor sem achar mais nada.
+    .slice(0, MAX_PALAVRAS_NA_VARREDURA);
   if (!ws.length) return null;
   const nomes = atlas.concepts.map((c) => semAcento(c.name));
   const maiorNome = nomes.reduce((m, n) => Math.max(m, n.split(" ").length), 1);
@@ -245,6 +261,15 @@ export function termoEspecificoNaFrase(atlas: Atlas, frase: string): string | nu
     for (let i = 0; i + tam <= ws.length; i++) {
       const alvo = ws.slice(i, i + tam).join(" ");
       if (ehPalavraDeEstrutura(nomes, alvo)) return alvo;
+      /**
+       * O qualificador também pode ser CHAVE DO MAPA, e então o atlas só o conhece traduzido:
+       * "osso do rádio" tem `radio` → `radius`, que é o nome real. Sem este degrau o rádio era
+       * descartado junto com o `osso` e a frase ficava sem qualificador nenhum.
+       */
+      const traduzido = SINONIMOS_PT[alvo];
+      if (traduzido && traduzido !== generico && ehPalavraDeEstrutura(nomes, semAcento(traduzido))) {
+        return semAcento(traduzido);
+      }
     }
   }
   return null;
@@ -279,7 +304,35 @@ export type ResultadoBusca = {
   viaSinonimo: boolean;
   /** quantos conceitos casaram ANTES do corte em MAX_RESULTADOS — para dizer "há mais" sem mentir */
   total: number;
+  /**
+   * A CLASSE que foi recusada, quando a busca caiu numa categoria de tecido e não houve como
+   * refiná-la. Vem junto do resultado VAZIO de propósito: quem chamou precisa distinguir "o atlas
+   * não tem isso" de "você pediu a categoria inteira", porque a segunda tem conserto (pedir pelo
+   * nome) e a primeira não.
+   */
+  classeRecusada?: string;
 };
+
+/**
+ * Os dois conceitos compartilham ALGUM sistema anatômico?
+ *
+ * É o que separa um refinamento bom de um absurdo, e sai do DADO, não de uma lista escrita à mão:
+ * `femur` é `skeletal` e a classe `bone organ` também, então o fêmur serve de osso. Já `face` é
+ * skeletal+sensory+muscular+respiratory+digestive e NUNCA `nervous`, então ela não serve de nervo —
+ * e sem esta checagem "nervo da face" devolvia a face inteira, 80 peças.
+ */
+function mesmoSistema(atlas: Atlas, idA: string, idB: string): boolean {
+  const sis = (id: string) => {
+    const c = atlas.concepts.find((x) => x.id === id);
+    if (!c) return new Set<string>();
+    const porId = new Map(atlas.parts.map((p) => [p.id, p]));
+    return new Set(c.elements.map((e) => porId.get(e)?.system).filter(Boolean) as string[]);
+  };
+  const a = sis(idA);
+  if (!a.size) return false;
+  for (const s of sis(idB)) if (a.has(s)) return true;
+  return false;
+}
 
 function posto(nome: string, termo: string): number {
   const n = semAcento(nome);
@@ -327,17 +380,25 @@ export function buscarConceitos(atlas: Atlas, consulta: string, limite = MAX_RES
    * — era ela que respondia "bone organ (203 peças)" a quem perguntou do fêmur.
    */
   if (r.total > 0 && r.achados[0] && ehClasseGenerica(r.achados[0].nome)) {
-    const especifico = termoEspecificoNaFrase(atlas, termo === semAcento(consulta) ? termo : `${semAcento(consulta)} ${termo}`);
+    const classe = r.achados[0];
+    const especifico = termoEspecificoNaFrase(atlas, semAcento(consulta), termo);
     if (especifico) {
-      const refinado = buscaCrua(atlas, especifico, limite);
-      const comARaiz = refinado.achados.find((a) => new RegExp(`(^|[^a-z0-9])${termo}($|[^a-z0-9])`, "i").test(a.nome));
-      const melhor = comARaiz ?? refinado.achados[0];
-      if (melhor && !ehClasseGenerica(melhor.nome)) {
-        // reordena pondo o melhor na frente, sem perder o resto do refinamento
+      // Limite PRÓPRIO e generoso: escolher o melhor DEPOIS de cortar pelo limite do chamador faria
+      // uma busca com `limite: 1` devolver a veia femoral a quem pediu a artéria.
+      const refinado = buscaCrua(atlas, especifico, MAX_RESULTADOS);
+      const melhor = refinado.achados.find((a) => !ehClasseGenerica(a.nome) && mesmoSistema(atlas, a.id, classe.id));
+      if (melhor) {
         const resto = refinado.achados.filter((a) => a.id !== melhor.id);
         return { achados: [melhor, ...resto].slice(0, Math.max(0, limite)), termo: especifico, viaSinonimo, total: refinado.total };
       }
     }
+    /**
+     * Não houve como acertar. Devolver a CATEGORIA seria o defeito que esta mudança persegue: a
+     * ferramenta do agente entregaria `nerve` (26 peças, todas da órbita) a quem perguntou do nervo
+     * ciático, e o agente descreveria aquilo como se fosse a resposta — foi exatamente assim que a
+     * resposta errada de 2026-11-10 nasceu. Vazio com a classe anotada é honesto e tem conserto.
+     */
+    return { achados: [], termo, viaSinonimo, total: 0, classeRecusada: termo };
   }
 
   if (r.total > 0) return { ...r, termo, viaSinonimo };

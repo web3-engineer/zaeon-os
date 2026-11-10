@@ -128,6 +128,23 @@ export function cenaDoConceito(atlas: Atlas, consulta: string): ResultadoCena {
   }
 
   const r = buscarConceitos(atlas, texto);
+
+  /**
+   * A busca recusou a CATEGORIA. Ela devolve vazio com a classe anotada em vez da categoria inteira
+   * (ver `buscarConceitos`), e aqui isso vira uma recusa que ENSINA: os nomes reais que existem sob
+   * aquela classe, tirados do atlas. É a diferença entre "não achei" e "você pediu a categoria".
+   */
+  if (r.classeRecusada) {
+    return {
+      ok: false,
+      motivo: `"${r.classeRecusada}" é a categoria inteira neste atlas, não uma peça — e o que você `
+        + "pediu não está nele. Peça uma estrutura pelo nome",
+      code: "classe_generica",
+      termoBuscado: r.classeRecusada,
+      alternativas: alternativasDaClasse(atlas, r.classeRecusada),
+    };
+  }
+
   const primeiro = r.achados[0];
   if (!primeiro) {
     // "não achei" tem de ser distinguível de "não existe no corpo humano": o atlas é uma referência
@@ -151,28 +168,13 @@ export function cenaDoConceito(atlas: Atlas, consulta: string): ResultadoCena {
    * E entre os achados preferimos o que contém a classe pedida: quem pede ARTÉRIA femoral recebe
    * `femoral artery`, não `femoral vein`. Sem isso o desempate seria alfabético.
    */
-  let escolhido = primeiro;
-  if (ehClasseGenerica(primeiro.nome)) {
-    const especifico = termoEspecificoNaFrase(atlas, texto);
-    const refinado = especifico ? buscarConceitos(atlas, especifico) : null;
-    const comARaiz = refinado?.achados.find((a) => new RegExp(`(^|[^a-z0-9])${r.termo}($|[^a-z0-9])`, "i").test(a.nome));
-    const melhor = comARaiz ?? refinado?.achados[0];
-    if (melhor && !ehClasseGenerica(melhor.nome)) {
-      escolhido = melhor;
-    } else {
-      // Não há como acertar: devolver a classe seria entregar o atlas inteiro com cara de resposta.
-      // A recusa leva os nomes REAIS que existem sob essa classe — é como o aluno aprende a pedir.
-      return {
-        ok: false,
-        motivo: `"${r.termo}" é a categoria inteira neste atlas, não uma peça — e o que você pediu `
-          + "não está nele. Peça uma estrutura pelo nome",
-        code: "classe_generica",
-        termoBuscado: r.termo,
-        alternativas: alternativasDaClasse(atlas, r.termo),
-      };
-    }
-  }
-
+  /**
+   * O refinamento (categoria → estrutura específica) mora em `buscarConceitos`, não aqui: a
+   * ferramenta do agente passa pelo mesmo caminho, e era ela que entregava `nerve` (26 peças, todas
+   * da órbita) a quem perguntou do nervo ciático. Consertar só o artefato teria deixado a resposta
+   * em TEXTO errada do mesmo jeito.
+   */
+  const escolhido = primeiro;
   const conceito = acharConceito(atlas, escolhido.id);
   if (!conceito) {
     // Não deve acontecer: o achado vem do próprio atlas. Se acontecer, é dado inconsistente e dizer
