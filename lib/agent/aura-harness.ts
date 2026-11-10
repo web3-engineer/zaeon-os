@@ -43,6 +43,7 @@ import { artefatoDeAprender, pedeAula, pedeEngenhariaReversa, DIRETRIZ_ENGENHARI
 import { DIRETRIZ_MATEMATICA } from "@/lib/agent/matematica";
 import { diretrizDeTabela, semTabelaNaoPedida } from "@/lib/agent/tabela";
 import { aprofundarSecoes, secoesRasas } from "@/lib/documento/aprofundar";
+import { citaveis, corteEfetivo } from "@/lib/rag/turno";
 import { diretrizDeTamanho, pedeRespostaCurta, semDesenvolvimentoNaoPedido } from "@/lib/agent/tamanho";
 import { diretrizDeEscopo } from "@/lib/agents/escopo";
 import { diretrizLivros, markdownDosLivros, type LivroAchado } from "@/lib/livros/busca";
@@ -832,7 +833,14 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
       const fontesWork = st.intent === "criar_trabalho"
         ? fontesDoTurno(
             st.evidence.map((f) => f.source).filter(Boolean) as { title?: string; year?: number }[],
-            (opts.baseConhecimento?.trechos ?? []).map((t) => ({ titulo: t.titulo, paginas: String(t.paginaIni ?? "") })),
+            /**
+             * SÓ OS CITÁVEIS da base. O que casou apenas por TEXTO continua indo para o prompt como
+             * contexto (nada muda lá, inclusive a numeração [B1]..[Bn], que é posicional), mas não
+             * entra na BIBLIOGRAFIA: menção não é fundamentação. Ver `citaveis` em lib/rag/turno
+             * para a medição que motivou os dois cortes.
+             */
+            citaveis(opts.baseConhecimento?.trechos ?? [], corteEfetivo())
+              .map((t) => ({ titulo: t.titulo, paginas: String(t.paginaIni ?? "") })),
             // D4 · o anexo do turno é fonte citável: é o material que a pessoa escolheu trazer
             anexosDoCtx(ctx).map((a) => ({ nome: a.nome, texto: a.texto })),
           )
@@ -974,9 +982,15 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         // D4 · as referências do que o `work` citou saem DAQUI, onde a lista original existe — em
         // vez de o lado do documento remontá-la e torcer pra bater. Anexo só aparece por este
         // caminho: ele não existe no `answer`.
-        if (fontesWork.length && comBase.work?.sections?.length) {
-          const refs = fontesCitadas(comBase.work.sections.map((x) => x.body).join("\n"), fontesWork);
-          if (refs.length) comBase.referencias = refs;
+        //
+        // E o veredito é ESCRITO MESMO QUANDO É VAZIO. `referencias: []` quer dizer "medi aqui e
+        // nada é citável", e `lib/tcc/turno` respeita isso em vez de cair na rede que remonta a
+        // bibliografia a partir de `fontesBase` — lista que nasce do rodapé "Da sua base", onde
+        // menção por texto é legítima e similaridade não existe mais. Sem isto, o conserto desta
+        // PR seria furado justo no caso que ele cria: `fontesWork` filtrado pode ficar vazio, a
+        // rede dispararia, e o trabalho que casou só por texto voltaria pela seção REFERÊNCIAS.
+        if (st.intent === "criar_trabalho" && comBase.work?.sections?.length) {
+          comBase.referencias = fontesCitadas(comBase.work.sections.map((x) => x.body).join("\n"), fontesWork);
         }
         // G3 · gráfico COM RECIBO: a contagem sai do que o turno apurou (papers da busca, trechos
         // por documento da F4). Nenhuma chamada de modelo, e o modelo não digita valor nenhum.

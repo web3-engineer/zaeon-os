@@ -42,6 +42,87 @@ const stFor = (over: Partial<TrajectoryState> = {}): TrajectoryState =>
     ...over,
   }) as TrajectoryState;
 
+describe("a base NÃO polui a bibliografia do documento", () => {
+  /**
+   * Medido em produção (2026-11-10): "crie um artigo sobre anfetamina" saiu citando dois trabalhos
+   * sobre MEDICALIZAÇÃO ESCOLAR. Eles casaram por TEXTO (mencionam TDAH), passaram pelo corte de
+   * contexto, entraram no bloco de fontes com a citação pronta — e o modelo, obediente, citou.
+   *
+   * Este teste exercita a LIGAÇÃO: o que chega ao prompt do documento como fonte citável.
+   */
+  const trecho = (o: Record<string, unknown>) => ({
+    trechoId: "t", documentoId: "d", titulo: "T", texto: "x", paginaIni: 1, paginaFim: 1,
+    score: 0.03, similaridade: null, porTexto: false, ...o,
+  }) as any;
+
+  /** só o bloco das FONTES CITÁVEIS do prompt — o de contexto é outro e não muda. */
+  const blocoDeFontesDoPrompt = (p: string): string => {
+    const i = p.indexOf("FONTES DISPONÍVEIS");
+    return i < 0 ? "" : p.slice(i);
+  };
+
+  /** captura o `user` que o rascunho recebeu, que é onde o bloco de fontes vive */
+  const capturar = () => {
+    const vistos: string[] = [];
+    const gen = vi.fn(async (system: string, user?: string): Promise<any> => {
+      vistos.push(String(user ?? ""));
+      if (/subquestions/i.test(system)) return { subquestions: [] };
+      if (/reasoning/i.test(system)) return { reasoning: "R" };
+      return { nucleo: "N", work: { kind: "artigo", sections: [{ title: "INTRODUÇÃO", body: "x" }] } };
+    });
+    return { gen, vistos };
+  };
+
+  it("documento que só MENCIONA o termo não entra como fonte citável", async () => {
+    const { gen, vistos } = capturar();
+    const deps = buildHarnessDeps(ctx, {
+      genJson: gen as any,
+      retryDelayMs: 0,
+      baseConhecimento: {
+        status: "ok",
+        trechos: [
+          trecho({ titulo: "Medicalização escolar e TDAH", similaridade: 0.18, porTexto: true }),
+          trecho({ titulo: "Farmacologia das anfetaminas", similaridade: 0.74 }),
+        ],
+      } as any,
+    });
+    await deps.draft(stFor({ intent: "criar_trabalho", objective: "artigo sobre anfetamina" }));
+    // o bloco de CONTEXTO ("base de conhecimento") continua trazendo tudo, de propósito — a pessoa
+    // sabe o que tem na própria base. O que muda é o bloco das FONTES CITÁVEIS, e é só nele que
+    // esta asserção olha.
+    const bib = blocoDeFontesDoPrompt(vistos.join("\n"));
+    expect(bib, "o relacionado tem de ser citável").toContain("Farmacologia das anfetaminas");
+    expect(bib, "a menção por texto NÃO pode virar referência").not.toContain("Medicalização escolar");
+  });
+
+  it("base inteira só por texto: o documento fica sem fonte da base, como antes dos datasets", async () => {
+    const { gen, vistos } = capturar();
+    const deps = buildHarnessDeps(ctx, {
+      genJson: gen as any,
+      retryDelayMs: 0,
+      baseConhecimento: { status: "ok", trechos: [trecho({ titulo: "Só menciona", porTexto: true })] } as any,
+    });
+    await deps.draft(stFor({ intent: "criar_trabalho", objective: "artigo sobre anfetamina" }));
+    expect(blocoDeFontesDoPrompt(vistos.join("\n")), "sem fonte da base, como antes dos datasets").toBe("");
+  });
+
+  it("nada citável ⇒ `referencias: []`: veredito ESCRITO, não campo ausente", async () => {
+    const { gen } = capturar();
+    const deps = buildHarnessDeps(ctx, {
+      genJson: gen as any,
+      retryDelayMs: 0,
+      baseConhecimento: { status: "ok", trechos: [trecho({ titulo: "Só menciona", porTexto: true })] } as any,
+    });
+    const out = await deps.draft(stFor({ intent: "criar_trabalho", objective: "artigo sobre anfetamina" }));
+    // A outra porta: `lib/tcc/turno` só liga a rede que remonta a bibliografia a partir de
+    // `fontesBase` — o rodapé "Da sua base", onde casar por TEXTO basta — quando este campo está
+    // AUSENTE. Vazio quer dizer "medi aqui e nada é citável", e é só isso que impede a menção por
+    // texto de voltar pela seção REFERÊNCIAS. Ver o par deste teste em lib/tcc/turno.test.ts.
+    expect(out.referencias, "o campo tem de EXISTIR, mesmo vazio").toBeDefined();
+    expect(out.referencias).toEqual([]);
+  });
+});
+
 describe("documento raso: o harness aprofunda as seções antes de entregar", () => {
   /**
    * O defeito medido em produção (2026-11-10, "crie um artigo sobre anfetamina"): `work.sections`

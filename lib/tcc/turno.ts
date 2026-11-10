@@ -464,7 +464,14 @@ async function referenciasDoChat(
   try {
     // D4 · o harness já mediu, onde a lista original (com os ANEXOS) existe. O caminho de baixo
     // continua como rede pra quem chega sem o campo — e nunca inventa: se nada casar, nada entra.
-    if (answer.referencias?.length) return gravarReferencias(workId, userId, answer.referencias);
+    // O campo PRESENTE é veredito do harness, inclusive vazio: lá a lista original existe, com os
+    // anexos e com a similaridade de cada trecho da base. `[]` significa "nada é citável", e cair
+    // na rede abaixo seria trocar uma medição por um palpite — `fontesBase` vem do rodapé "Da sua
+    // base", onde casar por texto basta. Só a AUSÊNCIA do campo liga a rede.
+    if (answer.referencias) {
+      if (!answer.referencias.length) return;
+      return gravarReferencias(workId, userId, answer.referencias);
+    }
     const { fontesDoTurno, fontesCitadas } = await import("@/lib/documento/fontes");
     const fontes = fontesDoTurno(
       (answer.evidencia ?? []).map((e) => e.source).filter(Boolean) as { title?: string; year?: number }[],
