@@ -113,6 +113,17 @@ export async function gerarArtefato(kind: string, o: OpcoesStudio & Deps): Promi
         ? { tipo: "pronto", bloco: { studioKind: "anatomia", title: data.title, data: data.meta, artifactId: data.id } }
         : { tipo: "erro", mensagem: data?.error };
     }
+    // PEÇA CAD (Eiffel). Ramo próprio pelo mesmo motivo do `anatomia`: o caminho genérico lá embaixo
+    // NÃO devolve `artifactId`, e aqui ele é obrigatório — `StudyCoworkChat.leve()` tira o `data` de
+    // `cad` da conversa justamente porque glTF e STEP pesam megabytes, e sem o número o bloco não
+    // teria como voltar. Sem este ramo a peça ou some ao reabrir, ou fica inteira na conversa.
+    if (kind === "cad") {
+      const res = await f("/api/studio/cad", { method: "POST", headers: H, body: JSON.stringify({ spaceId, topic }) });
+      const data = await json(res);
+      return res.ok && data?.id && data?.meta?.png
+        ? { tipo: "pronto", bloco: { studioKind: "cad", title: data.title, data: data.meta, artifactId: data.id } }
+        : { tipo: "erro", mensagem: data?.error };
+    }
     if (kind === "image") {
       const res = await f("/api/studio/image", { method: "POST", headers: H, body: JSON.stringify({ spaceId, topic }) });
       const data = await json(res);
