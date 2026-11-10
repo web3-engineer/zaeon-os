@@ -233,18 +233,18 @@ export default function ConversasSidebar({
           const aberto = !!termo || temAtiva || (gruposAbertos[grupo] ?? !GRUPOS_RECOLHIDOS.has(grupo));
           return (
             <section key={grupo} aria-label={grupo} className="flex flex-col gap-0.5">
-              <button
-                type="button"
-                onClick={() => alternarGrupo(grupo)}
-                aria-expanded={aberto}
-                className="flex items-center gap-1 px-2 pt-2 pb-0.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-white/45 hover:text-slate-700 dark:hover:text-white/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500 rounded"
-              >
-                <ChevronRight size={11} aria-hidden className={`transition-transform ${aberto ? "rotate-90" : ""}`} />
-                <span>{grupo}</span>
-                {!aberto && (
-                  <span className="font-normal normal-case tracking-normal text-slate-400 dark:text-white/30">{doGrupo.length}</span>
-                )}
-              </button>
+              {/* h3 mantém o papel de cabeçalho (acessibilidade/#733); o botão dentro é o controle de abrir/fechar */}
+              <h3 className="m-0">
+                <button
+                  type="button"
+                  onClick={() => alternarGrupo(grupo)}
+                  aria-expanded={aberto}
+                  className="w-full flex items-center gap-1 px-2 pt-2 pb-0.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-white/45 hover:text-slate-700 dark:hover:text-white/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500 rounded"
+                >
+                  <ChevronRight size={11} aria-hidden className={`transition-transform ${aberto ? "rotate-90" : ""}`} />
+                  {grupo}
+                </button>
+              </h3>
               {aberto && doGrupo.map(({ thread, filhas }) => (
                 <div key={thread.id} className="flex flex-col gap-0.5">
                   {linha(thread, false, filhas.length > 0)}
