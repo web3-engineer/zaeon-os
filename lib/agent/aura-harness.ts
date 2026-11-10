@@ -42,6 +42,7 @@ import type { StructuredAnswer, Source, IntentId, Issue } from "@/lib/agent/cont
 import { artefatoDeAprender, pedeAula, pedeEngenhariaReversa, DIRETRIZ_ENGENHARIA_REVERSA } from "@/lib/agent/aprender";
 import { DIRETRIZ_MATEMATICA } from "@/lib/agent/matematica";
 import { diretrizDeTabela, semTabelaNaoPedida } from "@/lib/agent/tabela";
+import { aprofundarSecoes, secoesRasas } from "@/lib/documento/aprofundar";
 import { diretrizDeTamanho, pedeRespostaCurta, semDesenvolvimentoNaoPedido } from "@/lib/agent/tamanho";
 import { diretrizDeEscopo } from "@/lib/agents/escopo";
 import { diretrizLivros, markdownDosLivros, type LivroAchado } from "@/lib/livros/busca";
@@ -914,6 +915,47 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         // observações são fato do turno, e `executadas` tira do caminho a tool que deu certo depois.
         const fv = falhasVisiveis(observations, executadas);
         if (fv.length) comBase.falhas = fv;
+        /**
+         * O DOCUMENTO RASO, CONSERTADO ONDE ELE NASCE.
+         *
+         * `work.sections` vem da MESMA resposta JSON que o núcleo, os conceitos, a evidência e as
+         * fontes — todos disputando um orçamento de saída só. Medido em produção (2026-11-10, "crie
+         * um artigo sobre anfetamina"): 57 palavras na primeira seção contra um piso de 180. Um
+         * terço do mínimo que a Sala de Pesquisa exige para a mesma seção.
+         *
+         * O diagnóstico é o da F2 (lib/documento/escritor): texto acadêmico numa resposta só volta
+         * truncado, e o conserto é uma chamada por seção. Só que aquele escritor nunca chegou ao
+         * chat. Aqui o rascunho vale como PLANO — os títulos que o modelo escolheu são bons — e só
+         * as seções abaixo do piso são reescritas, uma de cada vez, com o resto do documento à
+         * vista. Nunca piora: resposta mais curta que a original é descartada.
+         *
+         * Só em `criar_trabalho`: é a intenção que tem orçamento de voltas para pagar isto, e é a
+         * única cujo contrato promete um documento.
+         */
+        if (st.intent === "criar_trabalho" && comBase.work?.sections?.length) {
+          const rasas = secoesRasas(comBase.work.sections);
+          if (rasas.length) {
+            const r = await aprofundarSecoes(
+              {
+                tema: st.objective ?? "",
+                tipo: String(comBase.work.kind ?? "trabalho"),
+                secoes: comBase.work.sections,
+                fontes: fontesWork,
+              },
+              {
+                escrever: async (sys2, user2) => {
+                  const o2 = await genJson<{ corpo?: string }>(sys2, `${user2}
+
+Responda {"corpo":"<o texto da seção>"}.`, {
+                    temperature: 0.4, model: modelFor("draft"), timeoutMs: 60_000, phase: "aprofundar",
+                  });
+                  return String(o2?.corpo ?? "");
+                },
+              },
+            );
+            if (r.reescritas.length) comBase.work = { ...comBase.work, sections: r.secoes };
+          }
+        }
         // D4 · as referências do que o `work` citou saem DAQUI, onde a lista original existe — em
         // vez de o lado do documento remontá-la e torcer pra bater. Anexo só aparece por este
         // caminho: ele não existe no `answer`.

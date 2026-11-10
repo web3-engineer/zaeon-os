@@ -41,6 +41,63 @@ const stFor = (over: Partial<TrajectoryState> = {}): TrajectoryState =>
     ...over,
   }) as TrajectoryState;
 
+describe("documento raso: o harness aprofunda as seções antes de entregar", () => {
+  /**
+   * O defeito medido em produção (2026-11-10, "crie um artigo sobre anfetamina"): `work.sections`
+   * sai da MESMA resposta JSON que o núcleo, os conceitos e a evidência, e cada seção fica com um
+   * parágrafo — 57 palavras contra um piso de 180. Estes testes exercitam o TURNO, não só o módulo:
+   * é a ligação que faltava, e é ela que pode ser esquecida numa refatoração.
+   */
+  const rasas = [
+    { title: "INTRODUÇÃO", body: "As anfetaminas estimulam o sistema nervoso central." },
+    { title: "USO CLÍNICO", body: "São prescritas para TDAH." },
+  ];
+  const fundo = "palavra ".repeat(300).trim();
+
+  /** genJson que devolve um rascunho RASO e, na fase de aprofundar, um corpo fundo. */
+  const genComWork = (intent: string) => {
+    const chamadas: string[] = [];
+    const gen = vi.fn(async (system: string, _u?: string, opts?: any): Promise<any> => {
+      chamadas.push(String(opts?.phase ?? ""));
+      if (/subquestions/i.test(system)) return { subquestions: [] };
+      if (/reasoning/i.test(system)) return { reasoning: "R" };
+      if (opts?.phase === "aprofundar") return { corpo: fundo };
+      return { nucleo: "N", work: { kind: "artigo", sections: rasas } };
+    });
+    return { gen, chamadas, intent };
+  };
+
+  it("seção abaixo do piso é REESCRITA, e o documento sai acima do piso", async () => {
+    const { gen, chamadas } = genComWork("criar_trabalho");
+    const deps = buildHarnessDeps(ctx, { genJson: gen as any, retryDelayMs: 0 });
+    const out = await deps.draft(stFor({ intent: "criar_trabalho", objective: "artigo sobre anfetamina" }));
+    expect(chamadas.filter((f) => f === "aprofundar").length, "uma chamada POR seção rasa").toBe(2);
+    for (const sec of out.work!.sections) {
+      expect(sec.body.split(/\s+/).length, sec.title).toBeGreaterThan(100);
+    }
+  });
+
+  it("NÃO aprofunda quando a intenção não é criar_trabalho — não é ela que promete documento", async () => {
+    const { gen, chamadas } = genComWork("explicar_conceito");
+    const deps = buildHarnessDeps(ctx, { genJson: gen as any, retryDelayMs: 0 });
+    await deps.draft(stFor({ intent: "explicar_conceito" }));
+    expect(chamadas).not.toContain("aprofundar");
+  });
+
+  it("documento já profundo não gasta chamada nenhuma", async () => {
+    const chamadas: string[] = [];
+    const gen = vi.fn(async (system: string, _u?: string, opts?: any): Promise<any> => {
+      chamadas.push(String(opts?.phase ?? ""));
+      if (/subquestions/i.test(system)) return { subquestions: [] };
+      if (/reasoning/i.test(system)) return { reasoning: "R" };
+      return { nucleo: "N", work: { kind: "artigo", sections: [{ title: "INTRODUÇÃO", body: fundo }] } };
+    });
+    const deps = buildHarnessDeps(ctx, { genJson: gen as any, retryDelayMs: 0 });
+    await deps.draft(stFor({ intent: "criar_trabalho" }));
+    expect(chamadas).not.toContain("aprofundar");
+  });
+});
+
 describe("aura-harness · A2 retry (só nesta camada)", () => {
   it("retenta 1x em tool_timeout e sucede", async () => {
     const runToolImpl = vi
