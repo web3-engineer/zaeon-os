@@ -163,7 +163,7 @@ export default function VitrineEstudos() {
                         <input value={busca} onChange={(e) => { setBusca(e.target.value); setVerConectados(false); }} placeholder="buscar blueprint…" className="ml-auto min-w-[200px] rounded-full border border-sky-300/25 bg-sky-950/40 px-3 py-1.5 font-mono text-[12px] text-sky-50 outline-none placeholder:text-sky-200/40" />
                     </div>
 
-                    <div className="vt-grid mt-6 grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-6">
+                    <div className="vt-grid mt-6 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-x-10 gap-y-14">
                         {mostra.map((it) => {
                             const cor = COR_RARIDADE[it.raridade];
                             const orq = it.plugavel ? ehAgenteOrquestra(it.plugavel) : false;
