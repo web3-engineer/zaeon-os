@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { ChatBubbleLeftRightIcon, PlayIcon, UserPlusIcon } from "@heroicons/react/24/outline";
+import { ChatBubbleLeftRightIcon, UsersIcon, UserPlusIcon } from "@heroicons/react/24/outline";
 import LiquidGlassButton from "@/components/ui/LiquidGlassButton";
 
 // Componentes Internos
@@ -195,8 +195,8 @@ export default function HeroPage() {
               className="mt-9 flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto items-center justify-start"
             >
               {/* PRIMÁRIO (vidro TINGIDO): sem conta, "Criar minha conta" (abre o login/cadastro — e a conta nova cai no
-                  LABORATÓRIO); conectado, o chat. SECUNDÁRIO (vidro incolor): "Iniciar jogo" — sem conta, abre o login, e
-                  esse login cai no JOGO (o jogo só abre pra quem escolhe jogar). */}
+                  LABORATÓRIO); conectado, o chat. SECUNDÁRIO (vidro incolor): "Cowork" — sem conta, abre o login, e esse
+                  login cai no espaço COWORK (o mundo 3D; só abre pra quem escolhe entrar). */}
               <LiquidGlassButton
                 onClick={() => (logado ? router.push(CHAT_ROTA) : (setDestinoLogin("lab"), setShowChatbox(true)))}
                 tom="destaque"
@@ -212,8 +212,8 @@ export default function HeroPage() {
                 tamanho="md"
                 className="w-full sm:w-auto"
               >
-                <PlayIcon className="w-4 h-4" aria-hidden="true" />
-                Iniciar jogo
+                <UsersIcon className="w-4 h-4" aria-hidden="true" />
+                Cowork
               </LiquidGlassButton>
             </motion.div>
           )}
