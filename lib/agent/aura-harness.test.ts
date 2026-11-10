@@ -10,6 +10,7 @@ import {
   ofertaDePlataforma,
   historicoNoOrcamento,
   capacidadeHonestaLigada,
+  MAX_EVIDENCIA,
 } from "./aura-harness";
 import { INTENTS, type StructuredAnswer } from "./contracts";
 import type { ToolContext } from "./runtime";
@@ -345,6 +346,37 @@ describe("molécula que nasce do contexto", () => {
 
 describe("estrutura anatômica que nasce do contexto (espelho do substancias)", () => {
   const st = { intent: "explicar_conceito", objective: "pulmão" } as any;
+
+  it("as FONTES não se repetem — o caso real de 2026-11-10 trouxe 87, ~70 iguais", () => {
+    /**
+     * Conversa colada pelo dono: a lista "Fontes" saiu com 87 itens numerados, a maioria a MESMA
+     * linha do BodyParts3D — uma por chamada da ferramenta de anatomia. A UI renderiza um <li> por
+     * entrada de `evidencia`, então a repetição ia inteira para a tela.
+     */
+    const fonte = { title: "BodyParts3D 4.0 — The Database Center for Life Science (CC BY 4.0)", url: "https://x.invalido" };
+    const a = normalizeAnswer(
+      { nucleo: "nervos", evidencia: Array.from({ length: 87 }, () => ({ claim: "o atlas tem nervos", source: fonte })) } as any,
+      st,
+    );
+    expect(a.evidencia?.length, "87 repetições viram UMA").toBe(1);
+  });
+
+  it("mas afirmações DIFERENTES na mesma fonte continuam sendo evidências diferentes", () => {
+    const fonte = { title: "BodyParts3D", url: "https://x.invalido" };
+    const a = normalizeAnswer(
+      { nucleo: "n", evidencia: [{ claim: "tem nervo óptico", source: fonte }, { claim: "não tem ciático", source: fonte }] } as any,
+      st,
+    );
+    expect(a.evidencia?.length).toBe(2);
+  });
+
+  it("e há teto: lista longa demais deixa de ser fonte e vira ruído", () => {
+    const a = normalizeAnswer(
+      { nucleo: "n", evidencia: Array.from({ length: 200 }, (_, i) => ({ claim: `afirmação ${i}`, source: { title: `fonte ${i}` } })) } as any,
+      st,
+    );
+    expect(a.evidencia?.length).toBe(MAX_EVIDENCIA);
+  });
 
   it("estrutura citada NO TEXTO vira artefato de anatomia sem ninguém pedir", () => {
     const a = normalizeAnswer(

@@ -34,7 +34,10 @@
  */
 import { SISTEMAS, explicacao, type Atlas, type EstadoCena, type SistemaId } from "@/lib/anatomia/atlas";
 import { ESTADO_INICIAL, escolherConceito } from "@/lib/anatomia/estado";
-import { acharConceito, buscarConceitos, pecasDoConceito } from "@/lib/anatomia/busca";
+import {
+  acharConceito, alternativasDaClasse, buscarConceitos, ehClasseGenerica, pecasDoConceito,
+  termoEspecificoNaFrase,
+} from "@/lib/anatomia/busca";
 
 /**
  * A fonte que acompanha TODO uso do dado. Mora aqui, no módulo puro, e não ao lado das ferramentas de
@@ -75,7 +78,14 @@ export type DadosAnatomia = {
 
 export type ResultadoCena =
   | { ok: true; dados: DadosAnatomia }
-  | { ok: false; motivo: string; code: "sem_resultado" | "consulta_vazia"; termoBuscado: string };
+  | {
+      ok: false;
+      motivo: string;
+      code: "sem_resultado" | "consulta_vazia" | "classe_generica";
+      termoBuscado: string;
+      /** o que o atlas TEM no lugar — nomes reais, para o aluno pedir certo na próxima */
+      alternativas?: AlternativaAnatomia[];
+    };
 
 const MAX_ALTERNATIVAS = 6;
 
@@ -118,6 +128,23 @@ export function cenaDoConceito(atlas: Atlas, consulta: string): ResultadoCena {
   }
 
   const r = buscarConceitos(atlas, texto);
+
+  /**
+   * A busca recusou a CATEGORIA. Ela devolve vazio com a classe anotada em vez da categoria inteira
+   * (ver `buscarConceitos`), e aqui isso vira uma recusa que ENSINA: os nomes reais que existem sob
+   * aquela classe, tirados do atlas. É a diferença entre "não achei" e "você pediu a categoria".
+   */
+  if (r.classeRecusada) {
+    return {
+      ok: false,
+      motivo: `"${r.classeRecusada}" é a categoria inteira neste atlas, não uma peça — e o que você `
+        + "pediu não está nele. Peça uma estrutura pelo nome",
+      code: "classe_generica",
+      termoBuscado: r.classeRecusada,
+      alternativas: alternativasDaClasse(atlas, r.classeRecusada),
+    };
+  }
+
   const primeiro = r.achados[0];
   if (!primeiro) {
     // "não achei" tem de ser distinguível de "não existe no corpo humano": o atlas é uma referência
@@ -131,13 +158,30 @@ export function cenaDoConceito(atlas: Atlas, consulta: string): ResultadoCena {
     };
   }
 
-  const conceito = acharConceito(atlas, primeiro.id);
+  /**
+   * ────────────── o pedido específico não pode virar a classe inteira ──────────────
+   * Se o mapa PT→EN levou a uma CLASSE DE TECIDO crua (`artery`, `nerve`, `vein`…), o aluno quase
+   * nunca queria isso: "artéria femoral" caía em `artery`, que são 562 peças — a árvore arterial do
+   * corpo todo. Antes de desistir, perguntamos ao atlas qual é o termo ESPECÍFICO da frase,
+   * ignorando as palavras que são chave do mapa (são elas que produziram o genérico).
+   *
+   * E entre os achados preferimos o que contém a classe pedida: quem pede ARTÉRIA femoral recebe
+   * `femoral artery`, não `femoral vein`. Sem isso o desempate seria alfabético.
+   */
+  /**
+   * O refinamento (categoria → estrutura específica) mora em `buscarConceitos`, não aqui: a
+   * ferramenta do agente passa pelo mesmo caminho, e era ela que entregava `nerve` (26 peças, todas
+   * da órbita) a quem perguntou do nervo ciático. Consertar só o artefato teria deixado a resposta
+   * em TEXTO errada do mesmo jeito.
+   */
+  const escolhido = primeiro;
+  const conceito = acharConceito(atlas, escolhido.id);
   if (!conceito) {
     // Não deve acontecer: o achado vem do próprio atlas. Se acontecer, é dado inconsistente e dizer
     // isso é melhor que montar uma cena com seleção vazia, que o aluno leria como "está tudo normal".
     return {
       ok: false,
-      motivo: `o atlas listou "${primeiro.nome}" (${primeiro.id}) na busca mas não tem o conceito`,
+      motivo: `o atlas listou "${escolhido.nome}" (${escolhido.id}) na busca mas não tem o conceito`,
       code: "sem_resultado",
       termoBuscado: r.termo,
     };
@@ -148,7 +192,8 @@ export function cenaDoConceito(atlas: Atlas, consulta: string): ResultadoCena {
     dados: dadosDoConceito(atlas, conceito, {
       termoBuscado: r.termo,
       viaSinonimo: r.viaSinonimo,
-      alternativas: r.achados.slice(1).map((a) => ({ id: a.id, nome: a.nome, pecas: a.pecas })),
+      alternativas: r.achados.filter((a) => a.id !== escolhido.id)
+        .map((a) => ({ id: a.id, nome: a.nome, pecas: a.pecas })),
     }),
   };
 }

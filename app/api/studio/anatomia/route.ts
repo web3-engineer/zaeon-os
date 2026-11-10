@@ -56,7 +56,14 @@ export async function POST(req: Request) {
   }
 
   const r = cenaDoConceito(atlas, termo);
-  if (!r.ok) return NextResponse.json({ error: r.motivo, code: r.code }, { status: 404 });
+  // As ALTERNATIVAS viajam com a recusa: é assim que o aluno descobre o nome certo da peça em vez
+  // de só ouvir "não achei". Nomes vindos do atlas, nunca inventados.
+  if (!r.ok) {
+    return NextResponse.json(
+      { error: r.motivo, code: r.code, ...(r.alternativas?.length ? { alternativas: r.alternativas } : {}) },
+      { status: 404 },
+    );
+  }
 
   const d = r.dados;
   const art = await prisma.studioArtifact.create({
