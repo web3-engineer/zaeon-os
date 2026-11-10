@@ -10,7 +10,7 @@
  * disponível (chat / Sala de Estudos / Escritório). O catálogo é simulado e a compra em SOL ainda não está no ar.
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { CATALOGO, FILTROS, NOME_TIPO, filtrarVitrine, precoTexto, type FiltroVitrine, type ItemVitrine } from "@/lib/estudos/vitrine";
+import { FILTROS, NOME_TIPO, filtrarVitrine, mesclarCatalogo, precoTexto, type FiltroVitrine, type ItemVitrine } from "@/lib/estudos/vitrine";
 import { COR_RARIDADE, NOME_RARIDADE } from "@/lib/estudos/blueprint";
 import { plugar, desplugar, usePluginsChat } from "@/lib/plugins/chatPlugins";
 import { ehAgenteOrquestra } from "@/lib/orquestra/catalogo";
@@ -136,8 +136,8 @@ export default function VitrineEstudos() {
     // a notificação some sozinha
     useEffect(() => { if (!aviso) return; const t = window.setTimeout(() => setAviso(null), 4900); return () => clearTimeout(t); }, [aviso]);
 
-    // junta os cards do admin (banco) com o catálogo embutido
-    const catalogo = useMemo(() => [...itensDb, ...CATALOGO], [itensDb]);
+    // junta os cards do admin (banco) com o catálogo embutido, sem repetir id
+    const catalogo = useMemo(() => mesclarCatalogo(itensDb), [itensDb]);
     const itens = useMemo(() => filtrarVitrine(catalogo, filtro, busca), [catalogo, filtro, busca]);
     const itensConectados = useMemo(() => catalogo.filter((i) => conectados.includes(i.id) || (i.plugavel && plugados.includes(i.plugavel))), [catalogo, conectados, plugados]);
     const mostra = verConectados ? itensConectados : itens;

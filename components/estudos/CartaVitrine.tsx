@@ -46,11 +46,19 @@ export default function CartaVitrine({ it, onClick, badgeGratis = false, precoFr
     className?: string;
 }) {
     const cor = COR_RARIDADE[it.raridade];
+    // acessível pelo teclado quando a CARTA é o único alvo clicável (a landing) — na vitrine o clique da carta é só
+    // atalho de mouse e quem leva o foco/teclado é o botão plug/comprar (`acaoNode`), então não viramos a carta num botão
+    // (botão dentro de botão).
+    const interativa = typeof onClick === "function" && !acaoNode;
     return (
         <article
             className={`vt-card${className ? ` ${className}` : ""}`}
             style={{ "--cor": cor, "--glow": `${glowDe(it.raridade)}px`, "--cy": "#38f0ff" } as CSSProperties}
             onClick={onClick}
+            role={interativa ? "button" : undefined}
+            tabIndex={interativa ? 0 : undefined}
+            aria-label={interativa ? it.titulo : undefined}
+            onKeyDown={interativa ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick!(); } } : undefined}
         >
             <div className="vt-frame">
                 <div className="vt-panel">

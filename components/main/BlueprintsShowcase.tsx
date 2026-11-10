@@ -13,14 +13,15 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { TituloSecao } from "@/components/layout/secao";
-import { CATALOGO, type ItemVitrine } from "@/lib/estudos/vitrine";
+import { mesclarCatalogo, type ItemVitrine } from "@/lib/estudos/vitrine";
 import { ehAgenteOrquestra } from "@/lib/orquestra/catalogo";
 import SolanaMark from "@/components/solana/SolanaMark";
 import CartaVitrine from "@/components/estudos/CartaVitrine";
 import TrilhoCarrossel from "@/components/ui/TrilhoCarrossel";
 
-/** onde a carta leva: a Sala de Estudos, que tem o Marketplace com o ritual de conexão */
-const VITRINE_ROTA = "/workstation/student";
+/** onde a carta leva: a Sala de Estudos (módulo "sala"), que tem o Marketplace com o ritual de conexão.
+ *  A rota é /workstation/student/[module] — sem o segmento do módulo ela não abre a sala. */
+const VITRINE_ROTA = "/workstation/student/sala";
 
 /** o preço da carta (SOL + número, "Grátis" ou "no plano Pro") — igual à vitrine de dentro */
 function precoDaCarta(it: ItemVitrine) {
@@ -44,8 +45,8 @@ export default function BlueprintsShowcase() {
     return () => { vivo = false; };
   }, []);
 
-  // os cards do admin primeiro, depois o catálogo embutido — exatamente como a vitrine de dentro monta
-  const cartas = useMemo(() => [...itensDb, ...CATALOGO], [itensDb]);
+  // os cards do admin primeiro, depois o catálogo embutido (sem repetir id) — exatamente como a vitrine de dentro monta
+  const cartas = useMemo(() => mesclarCatalogo(itensDb), [itensDb]);
 
   return (
     <section id="blueprints" aria-labelledby="blueprints-titulo" className="relative z-40 w-full zaeon-borda pt-16 md:pt-24 pb-6 scroll-mt-28">
