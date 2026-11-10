@@ -8,7 +8,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { palavras } from "@/lib/documento/plano";
 import {
-  MAX_SECOES_APROFUNDADAS, aprofundarSecoes, pisoDaSecao, promptDeAprofundamento, secoesRasas,
+  MAX_SECOES_APROFUNDADAS, aprofundarSecoes, citacoesNoTexto, pisoDaSecao, promptDeAprofundamento,
+  secoesRasas,
 } from "@/lib/documento/aprofundar";
 
 /** A saída de produção, verbatim. */
@@ -90,9 +91,84 @@ describe("o prompt de uma reescrita", () => {
     expect(p.sys).toContain("tabela markdown");
   });
 
-  it("leva o RESTO do documento, para a seção não repetir a vizinha", () => {
+  it("leva o CORPO das vizinhas, não só os títulos delas", () => {
+    // apontado na revisão: afirmar só o título passaria mesmo se o prompt parasse de mandar o
+    // texto — e é o texto que impede a seção de repetir o que a vizinha já disse
     expect(p.user).toContain("USO CLÍNICO E DIAGNÓSTICOS");
+    expect(p.user, "um pedaço distintivo do CORPO da vizinha").toContain("normatização social");
     expect(p.user).toContain("O QUE ELA DIZ HOJE");
+  });
+});
+
+describe("a REVISÃO do #759 — os achados, medidos e consertados", () => {
+  const entrada = { tema: "anfetamina", tipo: "artigo", secoes: ANFETAMINA_RASO };
+  const texto = (n: number) => "palavra ".repeat(n).trim();
+
+  it("1 · FORMATO: o system manda o JSON, e é a única instrução de formato", () => {
+    // o system pedia texto puro enquanto o chamador pedia JSON: um modelo obediente ao system
+    // devolveria texto que o genJson não parsearia — reescrita nenhuma, em silêncio
+    const p = promptDeAprofundamento(entrada, secoesRasas(ANFETAMINA_RASO)[0]!);
+    expect(p.sys).toContain('{"corpo"');
+    expect(p.sys).not.toContain("Responda APENAS o texto");
+  });
+
+  it("2 · PISO DE VERDADE: reescrita maior que a original mas abaixo do piso é recusada", () => {
+    return aprofundarSecoes(entrada, { escrever: async () => texto(90) }).then((r) => {
+      // 90 palavras é mais que as 8 da seção mais rasa, e menos que o piso de 100
+      expect(r.reescritas).toEqual([]);
+      expect(r.pendentes.every((x) => x.motivo === "curta")).toBe(true);
+    });
+  });
+
+  it("3 · CITAÇÃO PRESERVADA: reescrita que perde a citação da versão curta é recusada", async () => {
+    const fontes = [{ citacao: "(MENDOZA, 2014)", abnt: "MENDOZA...", origem: "base", titulo: "x" } as any];
+    const com = { ...entrada, fontes };
+    // a seção 2 cita MENDOZA; a reescrita não — a referência sumiria da bibliografia junto
+    const r = await aprofundarSecoes(com, { escrever: async () => texto(300) });
+    const uso = r.reescritas.find((x) => x.titulo.startsWith("USO CLÍNICO"));
+    expect(uso, "a seção que citava não pode ser trocada por uma sem a citação").toBeUndefined();
+    expect(r.secoes[1]!.body).toContain("(MENDOZA, 2014)");
+  });
+
+  it("e a citação a preservar vai DITA no prompt", () => {
+    const fontes = [{ citacao: "(MENDOZA, 2014)", abnt: "M", origem: "base", titulo: "x" } as any];
+    const rasa = secoesRasas(ANFETAMINA_RASO).find((x) => x.titulo.startsWith("USO CLÍNICO"))!;
+    const p = promptDeAprofundamento({ ...entrada, fontes }, rasa);
+    expect(p.user).toContain("MANTENHA estas citações");
+    expect(citacoesNoTexto(ANFETAMINA_RASO[1]!.body, fontes)).toEqual(["(MENDOZA, 2014)"]);
+  });
+
+  it("4 · ORÇAMENTO DE TEMPO: a rodada para quando o tempo acaba, e declara o que faltou", async () => {
+    // a rota do chat vive sob maxDuration=60; seis reescritas sequenciais não cabem
+    let t = 0;
+    const r = await aprofundarSecoes(entrada, {
+      escrever: async () => { t += 20_000; return texto(300); },
+      agora: () => t,
+      orcamentoMs: 25_000,
+    });
+    expect(r.reescritas.length, "só o que coube no orçamento").toBe(2);
+    expect(r.pendentes.some((x) => x.motivo === "tempo")).toBe(true);
+  });
+
+  it("5 · EVIDÊNCIA: o que o turno reuniu vai no pedido, com a regra de não extrapolar", () => {
+    const p = promptDeAprofundamento({ ...entrada, evidencia: "- anfetamina inibe a recaptação" }, secoesRasas(ANFETAMINA_RASO)[0]!);
+    expect(p.user).toContain("EVIDÊNCIA REUNIDA");
+    expect(p.user).toContain("inibe a recaptação");
+    expect(p.user).toContain("não afirme o que ela não sustenta");
+  });
+
+  it("6 · SEÇÃO MALFORMADA não derruba o rascunho inteiro", async () => {
+    const sujo = [null as any, { title: "INTRODUÇÃO", body: "curto" }, { nao: "e secao" } as any];
+    expect(() => secoesRasas(sujo)).not.toThrow();
+    const r = await aprofundarSecoes({ ...entrada, secoes: sujo }, { escrever: async () => texto(300) });
+    expect(r.secoes.length).toBe(3);
+  });
+
+  it("7 · FALHA é registrada como pendência, não sumida", async () => {
+    const r = await aprofundarSecoes(entrada, { escrever: async () => { throw new Error("rede"); } });
+    expect(r.reescritas).toEqual([]);
+    expect(r.pendentes.every((x) => x.motivo === "falhou")).toBe(true);
+    expect(r.pendentes.length).toBe(3);
   });
 });
 

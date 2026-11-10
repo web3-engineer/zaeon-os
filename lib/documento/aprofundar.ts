@@ -35,10 +35,27 @@ export type SecaoDoc = { title: string; body: string };
 /** Quantas seções uma rodada reescreve. Teto de custo: cada uma é uma chamada de modelo. */
 export const MAX_SECOES_APROFUNDADAS = 6;
 
+/**
+ * Orçamento de parede da rodada inteira. A rota do chat vive sob `maxDuration = 60`; isto deixa
+ * folga para o que já correu antes (rascunho) e para o que vem depois (gravação, resposta).
+ */
+export const ORCAMENTO_PADRAO_MS = 25_000;
+
 /** Quanto do documento já escrito vai como contexto de cada reescrita. */
 const RESUMO_POR_SECAO = 600;
 
 export type Rasa = { indice: number; titulo: string; palavras: number; piso: number };
+
+/** PURA: quais citações (string exata) das fontes aparecem neste texto. */
+export function citacoesNoTexto(texto: string, fontes?: readonly FonteDoc[]): string[] {
+  const t = String(texto ?? "");
+  return (fontes ?? []).map((f) => f.citacao).filter((c) => !!c && t.includes(c));
+}
+
+/** PURA: a seção veio num formato utilizável? O modelo pode devolver `null` dentro do array. */
+export function secaoValida(s: unknown): s is SecaoDoc {
+  return !!s && typeof s === "object" && typeof (s as SecaoDoc).title === "string";
+}
 
 /** O piso desta seção, pelo papel que o título anuncia. */
 export function pisoDaSecao(titulo: string): number {
@@ -54,7 +71,11 @@ export function pisoDaSecao(titulo: string): number {
  */
 export function secoesRasas(secoes: readonly SecaoDoc[]): Rasa[] {
   return secoes
-    .map((s, indice) => ({ indice, titulo: s.title ?? "", palavras: palavras(s.body ?? ""), piso: pisoDaSecao(s.title ?? "") }))
+    // entrada do MODELO: um `null` no array derrubaria a função e, com ela, o rascunho inteiro —
+    // o `catch` do rascunho devolveria resposta degradada e o aluno perderia até o que deu certo
+    .map((s, indice) => (secaoValida(s)
+      ? { indice, titulo: s.title, palavras: palavras(s.body ?? ""), piso: pisoDaSecao(s.title) }
+      : { indice, titulo: "", palavras: Number.POSITIVE_INFINITY, piso: 0 }))
     .filter((r) => papelDoTitulo(r.titulo) !== "referencias" && r.palavras < r.piso)
     .sort((a, b) => (a.palavras - a.piso) - (b.palavras - b.piso));
 }
@@ -64,6 +85,10 @@ export type DepsAprofundar = {
   escrever: (sys: string, user: string) => Promise<string>;
   /** teto de seções reescritas nesta rodada */
   teto?: number;
+  /** orçamento TOTAL de parede para a rodada inteira (ver o laço). Padrão `ORCAMENTO_PADRAO_MS`. */
+  orcamentoMs?: number;
+  /** relógio injetável, para o teste medir o orçamento sem esperar de verdade */
+  agora?: () => number;
 };
 
 export type Entrada = {
@@ -71,14 +96,23 @@ export type Entrada = {
   tipo: string;
   secoes: readonly SecaoDoc[];
   fontes?: readonly FonteDoc[];
+  /**
+   * A EVIDÊNCIA REUNIDA NO TURNO. Sem ela o pedido "aprofunde com mecanismo, história e
+   * consequências" é um convite a inventar: o modelo precisa acrescentar conteúdo e não recebe
+   * nada em que se apoiar. Apontado na revisão, e é a doutrina desta casa — fundamentar ou marcar.
+   */
+  evidencia?: string;
 };
 
 export type Relato = {
   secoes: SecaoDoc[];
   /** o que foi reescrito, para o recibo do turno dizer a verdade sobre o que mudou */
   reescritas: { titulo: string; de: number; para: number }[];
-  /** rasas que ficaram de fora por causa do teto — ausência declarada, não escondida */
-  pendentes: string[];
+  /**
+   * As que CONTINUAM rasas, com o motivo. Ausência declarada, nunca escondida: teto de reescritas,
+   * orçamento de tempo esgotado, a chamada falhou, ou a resposta não alcançou o piso.
+   */
+  pendentes: { titulo: string; motivo: "teto" | "tempo" | "falhou" | "curta" }[];
 };
 
 /** O pedido de UMA seção. Mesmas três regras do escritor da F2, pelo mesmo motivo. */
@@ -98,7 +132,11 @@ export function promptDeAprofundamento(e: Entrada, r: Rasa): { sys: string; user
     ...(e.fontes?.length
       ? ["Você RECEBEU fontes. Cite copiando EXATAMENTE a string de \"CITE ASSIM\" — sem reescrever."]
       : []),
-    "Responda APENAS o texto da seção, sem comentar o que você fez.",
+    // O FORMATO MORA AQUI, e só aqui. A revisão apontou que o sistema pedia texto puro enquanto o
+    // chamador pedia JSON — duas instruções contraditórias no mesmo pedido, e um modelo obediente
+    // ao sistema devolveria texto que o `genJson` não parsearia. Resultado: reescrita nenhuma, em
+    // silêncio. Uma fonte da verdade.
+    'Responda APENAS o JSON {"corpo":"<o texto da seção>"}, sem comentar o que você fez.',
   ].join("\n");
 
   const outras = e.secoes
@@ -111,7 +149,13 @@ export function promptDeAprofundamento(e: Entrada, r: Rasa): { sys: string; user
     `\nSEÇÃO A REESCREVER: ${r.titulo}`,
     `\nO QUE ELA DIZ HOJE (${r.palavras} palavras — precisa de pelo menos ${r.piso}):\n${e.secoes[r.indice]?.body ?? ""}`,
     outras ? `\nO RESTO DO DOCUMENTO (para dar continuidade e NÃO repetir):\n${outras}` : "",
+    e.evidencia?.trim() ? `\nEVIDÊNCIA REUNIDA (apoie-se nela; não afirme o que ela não sustenta):\n${e.evidencia.trim()}` : "",
     e.fontes?.length ? `\n${blocoDeFontes(e.fontes)}` : "",
+    // as citações que a versão curta JÁ tinha: perdê-las na reescrita apaga a referência do
+    // documento, porque `fontesCitadas` só lê o texto final
+    citacoesNoTexto(e.secoes[r.indice]?.body ?? "", e.fontes).length
+      ? `\nMANTENHA estas citações, que já estavam nesta seção: ${citacoesNoTexto(e.secoes[r.indice]?.body ?? "", e.fontes).join(" | ")}`
+      : "",
   ].filter(Boolean).join("\n");
 
   return { sys, user };
@@ -128,13 +172,27 @@ export function promptDeAprofundamento(e: Entrada, r: Rasa): { sys: string; user
  * aprofundamento que encurta é um defeito, não uma opinião.
  */
 export async function aprofundarSecoes(e: Entrada, d: DepsAprofundar): Promise<Relato> {
-  const secoes: SecaoDoc[] = e.secoes.map((s) => ({ title: s.title, body: s.body }));
+  const secoes: SecaoDoc[] = e.secoes.map((s) => (secaoValida(s) ? { title: s.title, body: s.body ?? "" } : { title: "", body: "" }));
   const rasas = secoesRasas(secoes);
   const teto = Math.max(0, d.teto ?? MAX_SECOES_APROFUNDADAS);
-  const vao = rasas.slice(0, teto);
-  const reescritas: Relato["reescritas"] = [];
+  const agora = d.agora ?? Date.now;
+  const limite = agora() + Math.max(0, d.orcamentoMs ?? ORCAMENTO_PADRAO_MS);
 
-  for (const r of vao) {
+  const reescritas: Relato["reescritas"] = [];
+  const pendentes: Relato["pendentes"] = rasas.slice(teto).map((r) => ({ titulo: r.titulo, motivo: "teto" as const }));
+
+  for (const r of rasas.slice(0, teto)) {
+    /**
+     * ORÇAMENTO DE PAREDE. A rota do chat vive sob `maxDuration = 60`, e seis reescritas
+     * sequenciais a 60 s cada não cabem em orçamento nenhum — o pedido morreria depois de ter
+     * feito todo o trabalho, e o aluno não receberia nem o rascunho. Então o laço para quando o
+     * tempo acaba, e o que não deu tempo é DECLARADO, não perdido em silêncio.
+     */
+    if (agora() >= limite) {
+      pendentes.push({ titulo: r.titulo, motivo: "tempo" });
+      continue;
+    }
+
     const { sys, user } = promptDeAprofundamento({ ...e, secoes }, r);
     let novo = "";
     try {
@@ -142,13 +200,31 @@ export async function aprofundarSecoes(e: Entrada, d: DepsAprofundar): Promise<R
     } catch {
       novo = "";
     }
-    const antes = palavras(secoes[r.indice]!.body ?? "");
-    const depois = palavras(novo);
-    if (novo && depois > antes) {
-      secoes[r.indice] = { title: secoes[r.indice]!.title, body: novo };
-      reescritas.push({ titulo: r.titulo, de: antes, para: depois });
+    if (!novo) {
+      pendentes.push({ titulo: r.titulo, motivo: "falhou" });
+      continue;
     }
+
+    const original = secoes[r.indice]!.body ?? "";
+    const depois = palavras(novo);
+
+    /**
+     * TRÊS PORTÕES, e cada um existe por um motivo apontado na revisão:
+     *   1. alcançar o PISO — "mais longo que antes" ainda pode estar abaixo do mínimo, e gravar
+     *      isso como "reescrita" declararia pronto o que não está;
+     *   2. não ENCURTAR — um aprofundamento que encolhe é defeito, não opinião;
+     *   3. não perder CITAÇÃO — `fontesCitadas` só lê o texto final, então uma citação que a
+     *      versão curta tinha e a nova não some da bibliografia junto com a referência.
+     */
+    const perdidas = citacoesNoTexto(original, e.fontes).filter((c) => !novo.includes(c));
+    if (depois < r.piso || depois <= palavras(original) || perdidas.length) {
+      pendentes.push({ titulo: r.titulo, motivo: "curta" });
+      continue;
+    }
+
+    secoes[r.indice] = { title: secoes[r.indice]!.title, body: novo };
+    reescritas.push({ titulo: r.titulo, de: palavras(original), para: depois });
   }
 
-  return { secoes, reescritas, pendentes: rasas.slice(teto).map((r) => r.titulo) };
+  return { secoes, reescritas, pendentes };
 }

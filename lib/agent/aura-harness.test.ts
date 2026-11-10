@@ -13,6 +13,7 @@ import {
   MAX_EVIDENCIA,
 } from "./aura-harness";
 import { INTENTS, type StructuredAnswer } from "./contracts";
+import { pisoDaSecao } from "@/lib/documento/aprofundar";
 import type { ToolContext } from "./runtime";
 import { runTrajectoryTraced, type TrajectoryState } from "./trajectory";
 
@@ -72,8 +73,10 @@ describe("documento raso: o harness aprofunda as seções antes de entregar", ()
     const deps = buildHarnessDeps(ctx, { genJson: gen as any, retryDelayMs: 0 });
     const out = await deps.draft(stFor({ intent: "criar_trabalho", objective: "artigo sobre anfetamina" }));
     expect(chamadas.filter((f) => f === "aprofundar").length, "uma chamada POR seção rasa").toBe(2);
+    // apontado na revisão: 100 para todas aceitava uma INTRODUÇÃO de 101 palavras, cujo piso é 180.
+    // A régua é a do papel de cada seção — a mesma da Sala de Pesquisa.
     for (const sec of out.work!.sections) {
-      expect(sec.body.split(/\s+/).length, sec.title).toBeGreaterThan(100);
+      expect(sec.body.split(/\s+/).length, sec.title).toBeGreaterThanOrEqual(pisoDaSecao(sec.title));
     }
   });
 

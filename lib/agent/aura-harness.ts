@@ -941,19 +941,34 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
                 tipo: String(comBase.work.kind ?? "trabalho"),
                 secoes: comBase.work.sections,
                 fontes: fontesWork,
+                // sem a evidência do turno, pedir "mecanismo, história, consequências" é convite a
+                // inventar: o modelo precisa acrescentar e não recebe em que se apoiar
+                evidencia: evidenceBlock(st),
               },
               {
+                /**
+                 * O FORMATO vem do módulo (ele instrui o JSON no system). Antes eu mandava um
+                 * "responda JSON" aqui enquanto o system pedia texto puro — duas instruções
+                 * contraditórias, e um modelo obediente ao system devolveria texto que o `genJson`
+                 * não parsearia: reescrita nenhuma, em silêncio.
+                 */
                 escrever: async (sys2, user2) => {
-                  const o2 = await genJson<{ corpo?: string }>(sys2, `${user2}
-
-Responda {"corpo":"<o texto da seção>"}.`, {
-                    temperature: 0.4, model: modelFor("draft"), timeoutMs: 60_000, phase: "aprofundar",
+                  const o2 = await genJson<{ corpo?: string }>(sys2, user2, {
+                    // prazo por chamada compatível com o orçamento da rodada (ORCAMENTO_PADRAO_MS)
+                    temperature: 0.4, model: modelFor("draft"), timeoutMs: 20_000, phase: "aprofundar",
                   });
                   return String(o2?.corpo ?? "");
                 },
               },
             );
             if (r.reescritas.length) comBase.work = { ...comBase.work, sections: r.secoes };
+            // O QUE FICOU RASO É DITO, nem que seja no log do servidor: silêncio aqui é a classe de
+            // defeito que esta série inteira persegue. Não vira campo da resposta porque seria uma
+            // superfície nova para o aluno, e a seção curta já aparece no documento.
+            if (r.pendentes.length) {
+              console.warn(`[documento] ${r.pendentes.length} seção(ões) seguem abaixo do piso: `
+                + r.pendentes.map((x) => `${x.titulo || "(sem título)"}=${x.motivo}`).join(", "));
+            }
           }
         }
         // D4 · as referências do que o `work` citou saem DAQUI, onde a lista original existe — em
