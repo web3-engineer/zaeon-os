@@ -74,6 +74,37 @@ export function relevantes(trechos: TrechoAchado[], corte: number): TrechoAchado
 }
 
 /**
+ * CITÁVEIS — o corte mais estreito, só para quem vai virar REFERÊNCIA de um documento.
+ *
+ * ────────────────────────── por que dois cortes, e não um ──────────────────────────
+ * `relevantes` deixa passar o que casou POR TEXTO, ignorando a similaridade. Para CONTEXTO isso
+ * está certo: se a base da pessoa menciona o termo que ela perguntou, mostrar o trecho é útil mesmo
+ * que o documento seja sobre outra coisa — ela sabe o que tem na própria base.
+ *
+ * Para BIBLIOGRAFIA é outra história. Medido numa saída real de produção (2026-11-10, "crie um
+ * artigo sobre anfetamina"): o documento saiu citando (MENDOZA, 2014) e (SÁ, 2014), dois trabalhos
+ * sobre MEDICALIZAÇÃO ESCOLAR, num texto de farmacologia. Um artigo que menciona "TDAH" uma vez
+ * casa por texto, passa por `relevantes`, entra no bloco de fontes com a citação pronta — e o
+ * modelo, obediente, cita. A referência fica errada sem ninguém ter mentido.
+ *
+ * O dono descreveu o problema assim: o RAG não pode complicar o mecanismo de referência que já
+ * existia e funcionava antes dos datasets. Antes, referência vinha de `literature_search` — artigos
+ * sobre o tema. A base entrou competindo, e ganhou posição sem passar pela mesma régua.
+ *
+ * Então: menção por texto serve de contexto, NÃO de citação. Para citar, o trecho tem de clarear a
+ * mesma barra de similaridade que o `relevantes` aplica ao ramo vetorial — a barra MEDIDA em
+ * 2026-10-21 (relacionadas 0.64–0.77, não relacionadas ≤ 0.57).
+ *
+ * E há uma consequência de desenho que vale dizer em voz alta: quando o embedding degrada (o prazo
+ * de `lib/rag/embed` estoura e `similaridade` volta `null`), NENHUM trecho da base é citável, e o
+ * documento volta a se apoiar só na literatura. É exatamente o comportamento de antes dos datasets
+ * — a degradação cai no estado bom conhecido, não em ruído lexical.
+ */
+export function citaveis(trechos: readonly TrechoAchado[], corte: number): TrechoAchado[] {
+  return trechos.filter((t) => typeof t.similaridade === "number" && t.similaridade >= corte);
+}
+
+/**
  * Corte em uso: `deps.corte` quando dado; senão `RAG_CORTE_SIMILARIDADE` se for número finito em [0, 1] ("0" vale);
  * qualquer outra coisa ("62", "abc", vazio, ausente) ⇒ `CORTE_SIMILARIDADE_PADRAO`.
  */
