@@ -12,7 +12,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { CATALOGO, FILTROS, NOME_TIPO, filtrarVitrine, precoTexto, type FiltroVitrine, type ItemVitrine } from "@/lib/estudos/vitrine";
 import { COR_RARIDADE, NOME_RARIDADE } from "@/lib/estudos/blueprint";
-import type { ItemEstudo } from "@/lib/estudos/itens";
 import { plugar, usePluginsChat } from "@/lib/plugins/chatPlugins";
 import { ehAgenteOrquestra } from "@/lib/orquestra/catalogo";
 import SolanaMark from "@/components/solana/SolanaMark";
@@ -70,37 +69,6 @@ const SHARDS = Array.from({ length: 18 }, (_, i) => {
     return { left: 8 + ((i * 29) % 80), top: 8 + ((i * 41) % 80), dx, dy, rot, d: (i % 5) * 40 };
 });
 
-/** os BLUEPRINTS da pessoa (lib/blueprint/itens) como itens raros — vêm de /api/estudos/itens (cardId "blueprint") */
-function SeusBlueprints() {
-    const [meus, setMeus] = useState<ItemEstudo[]>([]);
-    useEffect(() => {
-        let vivo = true;
-        fetch("/api/estudos/itens", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((j: { itens?: ItemEstudo[] } | null) => {
-            if (vivo) setMeus((j?.itens ?? []).filter((i) => i.cardId === "blueprint"));
-        }).catch(() => null);
-        return () => { vivo = false; };
-    }, []);
-    if (!meus.length) return null;
-    return (
-        <div className="mt-5">
-            <div className="font-mono text-[10px] tracking-[0.3em] text-sky-300/80">SEUS BLUEPRINTS · ITENS RAROS</div>
-            <div className="mt-2 flex gap-3 overflow-x-auto pb-1">
-                {meus.map((it) => {
-                    const cor = COR_RARIDADE[it.raridade];
-                    return (
-                        <div key={it.id} className="min-w-[220px] flex-none rounded-md border px-3 py-2" style={{ borderColor: cor, boxShadow: `0 0 18px ${cor}33`, background: "rgba(8,30,56,.8)" }}>
-                            <div className="flex items-center justify-between font-mono text-[10px] tracking-[0.14em]" style={{ color: cor }}><span>{NOME_RARIDADE[it.raridade].toUpperCase()}</span><span>nível {it.nivel}</span></div>
-                            <div className="mt-1 truncate font-mono text-[13px] font-semibold text-white">{it.titulo}</div>
-                            <div className="mt-1 font-mono text-[10.5px] text-sky-200/70">{it.componentes} peças · {it.fontes} fontes{it.vendavel ? <span className="ml-1 text-emerald-300">· VENDÁVEL</span> : null}</div>
-                            {it.proxima && <div className="mt-1 font-mono text-[10px] text-sky-200/50">faltam {it.proxima.faltam} pra {NOME_RARIDADE[it.proxima.raridade]}</div>}
-                        </div>
-                    );
-                })}
-            </div>
-        </div>
-    );
-}
-
 export default function VitrineEstudos() {
     const [filtro, setFiltro] = useState<FiltroVitrine>("todos");
     const [busca, setBusca] = useState("");
@@ -114,6 +82,16 @@ export default function VitrineEstudos() {
         fetch("/api/orquestra/agentes", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((d) => {
             if (!vivo || !Array.isArray(d?.agentes)) return;
             setEstadoOrq(Object.fromEntries(d.agentes.map((a: { id: string; estado: string; aviso: string | null }) => [a.id, { estado: a.estado, aviso: a.aviso }])));
+        }).catch(() => undefined);
+        return () => { vivo = false; };
+    }, []);
+
+    // os cards cadastrados no ADMIN (/api/estudos/vitrine, só ativos) — juntam-se ao catálogo embutido
+    const [itensDb, setItensDb] = useState<ItemVitrine[]>([]);
+    useEffect(() => {
+        let vivo = true;
+        fetch("/api/estudos/vitrine", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((d) => {
+            if (vivo && Array.isArray(d?.itens)) setItensDb(d.itens as ItemVitrine[]);
         }).catch(() => undefined);
         return () => { vivo = false; };
     }, []);
@@ -167,17 +145,17 @@ export default function VitrineEstudos() {
     // a notificação some sozinha
     useEffect(() => { if (!aviso) return; const t = window.setTimeout(() => setAviso(null), 4900); return () => clearTimeout(t); }, [aviso]);
 
-    const itens = useMemo(() => filtrarVitrine(CATALOGO, filtro, busca), [filtro, busca]);
-    const itensConectados = useMemo(() => CATALOGO.filter((i) => conectados.includes(i.id) || (i.plugavel && plugados.includes(i.plugavel))), [conectados, plugados]);
+    // junta os cards do admin (banco) com o catálogo embutido
+    const catalogo = useMemo(() => [...itensDb, ...CATALOGO], [itensDb]);
+    const itens = useMemo(() => filtrarVitrine(catalogo, filtro, busca), [catalogo, filtro, busca]);
+    const itensConectados = useMemo(() => catalogo.filter((i) => conectados.includes(i.id) || (i.plugavel && plugados.includes(i.plugavel))), [catalogo, conectados, plugados]);
     const mostra = verConectados ? itensConectados : itens;
 
     return (
         <div className="relative h-full w-full overflow-hidden" style={{ background: "radial-gradient(ellipse at 50% 0%, #0f3460 0%, #071a33 55%, #030c1a 100%)" }}>
             <div className="absolute inset-0 overflow-y-auto">
                 <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-8">
-                    <SeusBlueprints />
-
-                    <div className="mt-5 flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         {FILTROS.map((f) => (
                             <button key={f.id} type="button" onClick={() => { setFiltro(f.id); setVerConectados(false); }} className={`rounded-full border px-3 py-1.5 font-mono text-[11px] tracking-wide transition ${!verConectados && filtro === f.id ? "border-sky-300 bg-sky-300/15 text-white" : "border-sky-300/25 text-sky-100/70 hover:text-white"}`}>{f.nome}</button>
                         ))}
@@ -185,7 +163,7 @@ export default function VitrineEstudos() {
                         <input value={busca} onChange={(e) => { setBusca(e.target.value); setVerConectados(false); }} placeholder="buscar blueprint…" className="ml-auto min-w-[200px] rounded-full border border-sky-300/25 bg-sky-950/40 px-3 py-1.5 font-mono text-[12px] text-sky-50 outline-none placeholder:text-sky-200/40" />
                     </div>
 
-                    <div className="vt-grid mt-6 grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-6">
+                    <div className="vt-grid mt-6 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-x-10 gap-y-14">
                         {mostra.map((it) => {
                             const cor = COR_RARIDADE[it.raridade];
                             const orq = it.plugavel ? ehAgenteOrquestra(it.plugavel) : false;
