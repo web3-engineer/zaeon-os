@@ -153,13 +153,12 @@ export const Navbar = () => {
       }`}
     >
       {/* Navbar CHAPADA: barra full-width, hairline embaixo, sem pílula/borda redonda/sombra pesada. */}
-      {/* Apple liquid glass: translúcido, backdrop-blur + saturação, borda fina e um
-          fio de luz especular no topo. Vale nos dois modos (whitish no claro, esfumado
-          no escuro) — o material é o mesmo do 'Iniciar' e do menu principal. */}
-      <div className="pointer-events-auto w-full h-[64px] flex items-center backdrop-blur-md backdrop-saturate-[1.6]
-          bg-white/50 dark:bg-white/[0.06]
-          border-b border-white/60 dark:border-white/[0.12]
-          shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.28)]">
+      {/* A barra usa a COR DO TEMA (var(--background)) com leve transparência + blur — nada de tingir de roxo
+          por cima do fundo da landing (o `backdrop-saturate` fazia o branco translúcido puxar pro lavanda). */}
+      <div className="pointer-events-auto w-full h-[64px] flex items-center backdrop-blur-md
+          bg-background/80
+          border-b border-black/10 dark:border-white/[0.12]
+          shadow-[inset_0_1px_0_0_rgba(255,255,255,0.75)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.14)]">
         <div className="w-full zaeon-borda flex items-center justify-between">
 
           <Link href="/" className="transition-opacity hover:opacity-80">
