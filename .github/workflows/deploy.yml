@@ -250,7 +250,18 @@ jobs:
           # `scholar` por padrão (2026-11-03): o SDK e o servidor agora estão PINADOS no
           # package.json, então não há mais "exige npm i" nem download em boot.
           # Para desligar: Variable MCP_CONECTORES=0 (ou off/nenhum) — vazio cai no padrão.
-          MCP_CONECTORES: ${{ vars.MCP_CONECTORES || 'scholar' }}
+          #
+          # `solidcraft` entra no padrão em 2026-11-10. MEDIDO antes: o recibo de produção dizia
+          # `mcp: "on (9 tools)"`, e lib/agent/mcp-real.test.ts fixa que 9 é o scholar SOZINHO —
+          # ou seja, NENHUMA das 18 tools de CAD estava registrada e o Eiffel não tinha com o quê
+          # modelar. O binário já está na imagem desde o estágio Rust (`cad: {cli: "on"}` no
+          # recibo), então faltava só escolher o conector. A política de risco dele (teto `write`,
+          # reclassificação de execute/batch, --allow-path) já está em lib/cad/mcp.ts e não vaza
+          # para outro conector — lib/cad/mcp.test.ts afirma a não-contaminação.
+          #
+          # ATENÇÃO: isto só tem efeito se a Variable MCP_CONECTORES estiver VAZIA. Se ela existir
+          # com outro valor, é ela que manda, e o padrão aqui é ignorado.
+          MCP_CONECTORES: ${{ vars.MCP_CONECTORES || 'scholar,solidcraft' }}
           # LEITOR (Fatia 7): o container que lê a web sem credencial. `abrir_url` do harness só é
           # REGISTRADA quando LEITOR_PROXY_URL existe — sem ela a Aura diz que não abre endereços.
           # LEITOR_ALLOW é a allowlist default-deny (vazia = nenhum domínio sai).
