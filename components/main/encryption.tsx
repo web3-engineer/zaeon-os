@@ -6,11 +6,10 @@ import React, { useState, useEffect } from "react";
 import NextImage from "next/image";
 import { useTranslation } from "react-i18next";
 import ZaeonFlowDiagram from "./ZaeonFlowDiagram";
-import MentoresCarrossel from "./MentoresCarrossel";
 import SolanaPrivacidade from "./SolanaPrivacidade";
 import ChavesApi from "./ChavesApi";
 import BlueprintsShowcase from "./BlueprintsShowcase";
-import GeradorPrototipos from "./GeradorPrototipos";
+import PalcoIso from "./PalcoIso";
 import { TituloSecao } from "@/components/layout/secao";
 import MolecularText from "@/components/ui/MolecularText";
 
@@ -97,17 +96,13 @@ const HireAgentsSection = () => {
             >
                 <TituloSecao className="font-display" forte="Com grandes tecnologias vêm grandes protótipos." />
 
-                {/* GERADOR GENERATIVO: protótipos de engenharia (placa solar, motor, bateria…) que reagem ao mouse —
-                    parallax da cena + o mais perto do cursor se acende. Semelhante ao gerador do anatomy. */}
-                <GeradorPrototipos className="mt-10" />
-
-                {/* carrossel LEVE: só foto, nome e função; quem passa pelo meio da tela ganha a borda destacada */}
-                <div className="mt-10">
-                    <MentoresCarrossel semRotulo leve />
-                </div>
+                {/* PALCO ISOMÉTRICO: estruturas de engenharia (usina solar, data center, braço robótico, satélite,
+                    powertrain, reator) se MONTAM peça a peça e se DESMONTAM, uma de cada vez, em loop — com ícones de
+                    trabalhos científicos, peças e equipamentos flutuando em volta. */}
+                <PalcoIso className="mt-10" />
             </motion.div>
 
-            {/* "ou traga as chaves de API dos seus" + o briefing das chaves (+ as casas de modelos, #modelos) */}
+            {/* as casas de modelos (#modelos) + o card do projeto vencedor — a menção às chaves de API saiu (o dono) */}
             <ChavesApi className="mt-16 md:mt-20" />
         </div>
     );
