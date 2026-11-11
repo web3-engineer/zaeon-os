@@ -1,41 +1,29 @@
 "use client";
 /**
- * TimelineIdeia — a linha do tempo HORIZONTAL da evolução de uma ideia, num eixo só: do papel científico esquecido,
- * passando pela conversa com as IAs e pelo blueprint, até o protótipo e o PRODUTO no mundo real (placa solar, bateria).
- * Os ÍCONES são 3D (isométricos, do kit do anatomy — lib/landing/iconesIso) e ficam ACIMA da linha; um pulso corre pela
- * linha da esquerda pra direita e, ao chegar em cada nó, o ícone daquela etapa APARECE (um por vez). Sem descrições.
- * Cada etapa tinge o próprio ícone sobrescrevendo as variáveis --anatomy-* do kit com a sua cor.
+ * TimelineIdeia — a evolução de uma ideia num VISUALIZADOR ÚNICO e grande que se CONSTRÓI e CRESCE conforme a barra de
+ * progresso avança: do alicerce até uma pequena estação solar (base → estrutura → deck → gabinete → bateria →
+ * engrenagem → mastro + placa solar → antena). A estrutura 3D é isométrica (kit do anatomy, lib/landing/construcaoIso);
+ * cada peça nasce no seu lugar final quando o pulso da barra passa do seu ponto. Embaixo, a barra com os 5 marcos.
  */
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ISO_CSS } from "@/lib/anatomy/iso-kit";
-import { ICONES_ISO } from "@/lib/landing/iconesIso";
+import { CONSTRUCAO_SVG } from "@/lib/landing/construcaoIso";
 import "./timeline-ideia.css";
 
-type Etapa = { titulo: string; cor: string; svg: string };
-const ETAPAS: readonly Etapa[] = [
-  { titulo: "Papel científico", cor: "#8b5cf6", svg: ICONES_ISO[0]! },
-  { titulo: "Conversa com as IAs", cor: "#46b0ff", svg: ICONES_ISO[1]! },
-  { titulo: "Blueprint", cor: "#38f0ff", svg: ICONES_ISO[2]! },
-  { titulo: "Protótipo e testes", cor: "#49f2a0", svg: ICONES_ISO[3]! },
-  { titulo: "No mundo real", cor: "#ff9f45", svg: ICONES_ISO[4]! },
+const MARCOS: readonly { titulo: string; cor: string }[] = [
+  { titulo: "Papel científico", cor: "#8b5cf6" },
+  { titulo: "Conversa com as IAs", cor: "#46b0ff" },
+  { titulo: "Blueprint", cor: "#38f0ff" },
+  { titulo: "Protótipo e testes", cor: "#49f2a0" },
+  { titulo: "No mundo real", cor: "#ff9f45" },
 ];
+const N = MARCOS.length;
 
-/** tinge o ícone com a cor da etapa (traços/brilho na cor; os volumes seguem escuros) */
-const tint = (cor: string): CSSProperties => ({
-  color: cor,
-  "--anatomy-hi": cor,
-  "--anatomy-mid": `color-mix(in srgb, ${cor} 60%, #0b0b0b)`,
-  "--anatomy-lo": `color-mix(in srgb, ${cor} 38%, #0b0b0b)`,
-  "--anatomy-faint": `color-mix(in srgb, ${cor} 22%, #0b0b0b)`,
-  "--anatomy-lit": "#ffffff",
-  "--anatomy-dot": cor,
-} as CSSProperties);
-
-const DUR = 7200, HOLD = 2200, FADE = 700, TOTAL = DUR + HOLD + FADE;
-const N = ETAPAS.length;
+const DUR = 8200, HOLD = 2600, FADE = 800, TOTAL = DUR + HOLD + FADE;
 
 export default function TimelineIdeia({ className = "" }: { className?: string }) {
   const [ativos, setAtivos] = useState(0);
+  const vizRef = useRef<HTMLDivElement>(null);
   const fillRef = useRef<HTMLDivElement>(null);
   const cometaRef = useRef<HTMLDivElement>(null);
 
@@ -50,6 +38,15 @@ export default function TimelineIdeia({ className = "" }: { className?: string }
       else { p = 1; op = 1 - (e - DUR - HOLD) / FADE; }
       if (fillRef.current) { fillRef.current.style.width = `${(p * 80).toFixed(2)}%`; fillRef.current.style.opacity = String(op); }
       if (cometaRef.current) { cometaRef.current.style.left = `${(10 + p * 80).toFixed(2)}%`; cometaRef.current.style.opacity = String(e < DUR ? op : 0); }
+      // revela as peças da construção conforme o progresso passa do ponto de cada uma — a OPACIDADE é uma rampa que o
+      // próprio laço calcula (nada de transição do CSS, que brigava com o valor setado a cada quadro). Reconsulta os
+      // <g> a cada quadro: o SVG vem por innerHTML e os nós são estáveis, então é barato e nunca pega captura vazia.
+      const partes = vizRef.current?.querySelectorAll<SVGGElement>(".ci-part");
+      if (partes) for (const g of partes) {
+        const op = Math.max(0, Math.min(1, (p - Number(g.dataset.at)) / 0.1));
+        g.style.opacity = op.toFixed(3);
+        g.style.transform = `translateY(${((1 - op) * 9).toFixed(1)}px)`;
+      }
       let n = 0;
       for (let i = 0; i < N; i++) if (p >= i / (N - 1) - 0.001) n = i + 1;
       setAtivos((a) => (a === n ? a : n));
@@ -60,20 +57,25 @@ export default function TimelineIdeia({ className = "" }: { className?: string }
   }, []);
 
   return (
-    <div className={`iso tl-wrap ${className}`}>
+    <div className={`iso ci-wrap ${className}`}>
       <style>{ISO_CSS}</style>
-      <div className="tl-stage">
-        <div className="tl-line" />
-        <div ref={fillRef} className="tl-fill" />
-        <div ref={cometaRef} className="tl-comet" />
-        <div className="tl-row">
-          {ETAPAS.map((et, i) => (
-            <div key={i} className={`tl-cell ${i < ativos ? "on" : ""}`} style={tint(et.cor)}>
-              <div className="tl-ico" dangerouslySetInnerHTML={{ __html: et.svg }} />
-              <span className="tl-node"><span className="tl-dot" /></span>
-              <span className="tl-tit">{et.titulo}</span>
-            </div>
-          ))}
+      <div className="ci-stage">
+        {/* o VISUALIZADOR único: a estrutura 3D que cresce peça a peça */}
+        <div ref={vizRef} className="ci-viz" dangerouslySetInnerHTML={{ __html: CONSTRUCAO_SVG }} />
+
+        {/* a BARRA de progresso com os 5 marcos */}
+        <div className="ci-bar">
+          <div className="ci-line" />
+          <div ref={fillRef} className="ci-fill" />
+          <div ref={cometaRef} className="ci-comet" />
+          <div className="ci-row">
+            {MARCOS.map((m, i) => (
+              <div key={i} className={`ci-cell ${i < ativos ? "on" : ""}`} style={{ color: m.cor }}>
+                <span className="ci-node"><span className="ci-dot" /></span>
+                <span className="ci-tit">{m.titulo}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
