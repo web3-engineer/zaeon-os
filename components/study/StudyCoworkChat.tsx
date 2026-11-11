@@ -584,6 +584,18 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     })();
   }, []);
 
+  // #756: aberta SEM internet, a lista ficava só com as conversas deste aparelho e só voltava com F5 (a sincronia acima
+  // roda uma vez, na abertura). A internet voltou: junta a lista do servidor de novo. Não troca a conversa aberta.
+  useEffect(() => {
+    let vivo = true;
+    const aoVoltarInternet = async () => {
+      const juntas = await sincronizarConversas("estudos", armazem, ESCOPO_COWORK, () => threadsRef.current, textoParaHistorico as (m: MsgGuardada) => string);
+      if (vivo && juntas) { threadsRef.current = juntas; setThreads(juntas); }
+    };
+    window.addEventListener("online", aoVoltarInternet);
+    return () => { vivo = false; window.removeEventListener("online", aoVoltarInternet); };
+  }, []);
+
   // Persiste o thread (só texto + estudos; artefatos pesados do Studio ficam na sessão).
   useEffect(() => {
     try {

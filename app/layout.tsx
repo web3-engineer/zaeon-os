@@ -14,6 +14,7 @@ import { Web3Provider } from "@/src/context/Web3Context";
 // --- COMPONENTES GLOBAIS ---
 import { Navbar } from "@/components/main/navbar";
 import { RegistrarSW } from "@/components/pwa/RegistrarSW";
+import { AvisoVersaoNova } from "@/components/sistema/AvisoVersaoNova";
 import { BannerVersaoMobile } from "@/components/mobile/BannerVersaoMobile";
 
 import "../src/i18n";
@@ -116,6 +117,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             >
                 {/* Service worker (public/sw.js): só registra em produção. */}
                 <RegistrarSW />
+                {/* #756: deploy novo com a aba aberta — recarrega se faltar pedaço do site, ou avisa "versão nova" */}
+                <AvisoVersaoNova />
 
                 <ThemeProvider
                     attribute="class"

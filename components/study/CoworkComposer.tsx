@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp, Loader2, Mic, Paperclip, Zap, Compass, Square, SlidersHorizontal } from "lucide-react";
 import useSTT, { TEXTO_AVISO_STT } from "@/lib/voice/useSTT";
+import { avisarMicrofone } from "@/lib/research/zaeonEventos";
 import { useAutoFoco } from "@/lib/ui/autofoco";
 
 // execMode = automático (Aura vai ponta-a-ponta) × guiado (pausa nos gates HITL,
@@ -107,16 +108,39 @@ export default function CoworkComposer({
   // e vai concatenando a transcrição em cima dele.
   const baseRef = useRef("");
   // #749: contínuo + desliga sozinho depois de 2,5 s de pausa (no modo de uma frase, o Edge às vezes devolvia vazio)
-  const { toggle: toggleMic, listening, supported: sttSupported, ouviu, aviso: avisoMic, limparAviso: limparAvisoMic } = useSTT({
+  const { start: ligarMic, stop: desligarMic, listening, supported: sttSupported, ouviu, aviso: avisoMic, limparAviso: limparAvisoMic } = useSTT({
     pausaMs: 2500,
     onResult: (t) => onChange((baseRef.current ? baseRef.current + " " : "") + t),
   });
   // #733: o aviso de por que o microfone desligou some sozinho depois de uns segundos
   useEffect(() => { if (!avisoMic) return; const t = setTimeout(limparAvisoMic, 6000); return () => clearTimeout(t); }, [avisoMic, limparAvisoMic]);
-  const onMic = () => {
-    if (!listening) baseRef.current = value.trim();
-    toggleMic();
+  // #756: com a avatar 3D desenhando, o microfone não trazia texto. Ao tocar no 🎤: "Preparando o microfone…", a avatar
+  // faz a pose de pensativa e congela (lib/research/zaeonEventos), e SÓ ENTÃO o microfone liga. Desligou (por qualquer
+  // motivo): ela descongela.
+  const [preparandoMic, setPreparandoMic] = useState(false);
+  const pedidoMic = useRef(0);
+  const micAberto = useRef(false);
+  const onMic = async () => {
+    if (listening || preparandoMic) {
+      pedidoMic.current++; setPreparandoMic(false); desligarMic();
+      if (micAberto.current) { micAberto.current = false; void avisarMicrofone(false); }
+      return;
+    }
+    baseRef.current = value.trim();
+    const meu = ++pedidoMic.current;
+    setPreparandoMic(true); limparAvisoMic();
+    micAberto.current = true;
+    await avisarMicrofone(true);
+    if (pedidoMic.current !== meu) return;   // tocou de novo enquanto preparava: cancelou
+    setPreparandoMic(false);
+    ligarMic();
   };
+  useEffect(() => {
+    if (listening || preparandoMic || !micAberto.current) return;
+    micAberto.current = false; void avisarMicrofone(false);
+  }, [listening, preparandoMic]);
+  useEffect(() => () => { if (micAberto.current) void avisarMicrofone(false); }, []);
+  const micAtivo = listening || preparandoMic;
 
   // Cresce com o conteúdo até o teto (rola internamente depois disso) — igual ao Claude.
   // O teto é o max-height do CSS do textarea: 220px, mas nunca mais que 25% da tela — com 220px fixos,
@@ -146,10 +170,13 @@ export default function CoworkComposer({
         {opcoes && <div id="opcoes-da-conversa" className={verOpcoes ? "" : `hidden sm:block [@media(max-height:640px)]:!hidden`}>{opcoes}</div>}
         {children}
         {/* #733: o microfone diz o que está fazendo — antes só o botão piscava, e a pessoa falava sem saber se ele ouvia */}
-        {sttSupported && (listening || avisoMic) && (
+        {sttSupported && (micAtivo || avisoMic) && (
           <div role="status" data-microfone className={`mx-1 mb-1 flex items-center gap-2 rounded-xl px-3 py-1.5 text-[12.5px] font-medium
-            ${listening ? "bg-rose-500/10 text-rose-700 dark:text-rose-200" : "bg-amber-500/10 text-amber-800 dark:text-amber-100"}`}>
-            {listening ? (<>
+            ${micAtivo ? "bg-rose-500/10 text-rose-700 dark:text-rose-200" : "bg-amber-500/10 text-amber-800 dark:text-amber-100"}`}>
+            {preparandoMic ? (<>
+              <span aria-hidden className="h-2 w-2 shrink-0 rounded-full border border-rose-400 border-t-transparent animate-spin" />
+              <span>Preparando o microfone…</span>
+            </>) : listening ? (<>
               <span aria-hidden className="h-2 w-2 shrink-0 rounded-full bg-rose-500 animate-pulse" />
               <span>{ouviu ? "Ouvindo… quando parar de falar, ele desliga sozinho." : "Ouvindo… pode falar. O texto aparece aqui embaixo."}</span>
             </>) : avisoMic ? <span>{TEXTO_AVISO_STT[avisoMic]}</span> : null}
@@ -259,12 +286,12 @@ export default function CoworkComposer({
           {sttSupported && (
             <button
               type="button"
-              onClick={onMic}
-              title={listening ? "Parar gravação" : "Falar (áudio → texto)"}
-              aria-pressed={listening}
-              aria-label={listening ? "Parar gravação" : "Falar"}
+              onClick={() => { void onMic(); }}
+              title={micAtivo ? "Parar gravação" : "Falar (áudio → texto)"}
+              aria-pressed={micAtivo}
+              aria-label={micAtivo ? "Parar gravação" : "Falar"}
               className={`shrink-0 self-end mb-0.5 w-11 h-11 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-colors
-                ${listening
+                ${micAtivo
                   ? "text-white bg-rose-500 animate-pulse shadow-[0_0_16px_rgba(244,63,94,0.5)]"
                   : "text-slate-400 dark:text-white/50 hover:bg-slate-500/10 hover:text-slate-600 dark:hover:text-white/80"}`}
             >
