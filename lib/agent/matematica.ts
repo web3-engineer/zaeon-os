@@ -13,6 +13,8 @@ export const DIRETRIZ_MATEMATICA = [
   "inline entre $...$ (ex.: $f(x) = x^2 - 4$, $\\sqrt{2}$, $\\frac{a}{b}$) e fórmula em destaque numa linha própria entre $$...$$.",
   "Nunca escreva x^2, sqrt(x), a/b, * ou >= soltos no texto. Em contas passo a passo, uma igualdade por linha em $$...$$.",
   "Dinheiro em reais fica R$ 10 (sem LaTeX).",
+  // #756: "41,8%" em $…$ saía "41, 8%" (a vírgula do LaTeX ganha espaço) e a população aparecia em letra de fórmula
+  "Número comum (população, porcentagem, ano, quantidade) fica no texto normal, sem $…$: 84.847.187 habitantes (41,8%).",
   "DESENHO: quando um gráfico ou figura ajudar (o usuário pediu gráfico/esboço/desenho, estudo de função, raízes, comparar curvas,",
   "geometria, vetores), coloque no texto um bloco exatamente assim (JSON válido, numa linha só depois de ```grafico):",
   '```grafico\n{"funcoes":["x^2-4"],"x":[-5,5],"pontos":[{"x":2,"y":0,"rotulo":"raiz"}]}\n```',

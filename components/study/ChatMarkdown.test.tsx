@@ -22,7 +22,9 @@ describe("ChatMarkdown — matemática", () => {
     const { container } = render(<ChatMarkdown text={'Pelo Censo:\n```grafico\n{"titulo":"População (milhões)","barras":[{"rotulo":"Sudeste","valor":84.8},{"rotulo":"Nordeste","valor":54.6}],"fonte":"Censo 2022 (IBGE)"}\n```'} />);
     const fig = container.querySelector("[data-grafico-dados]");
     expect(fig).not.toBeNull();
-    expect(fig!.querySelectorAll("path").length).toBe(2);
+    expect(fig!.querySelectorAll("[data-barra-cheia]").length).toBe(2);   // #756: barras em HTML, não SVG
+    expect(fig!.textContent).toContain("84,8");
+    expect(fig!.textContent).toContain("54,6");   // número em TODAS as barras
     expect(fig!.textContent).toContain("Fonte: Censo 2022 (IBGE)");
     expect(container.querySelector("polyline")).toBeNull();   // não foi para o gráfico de função
   });

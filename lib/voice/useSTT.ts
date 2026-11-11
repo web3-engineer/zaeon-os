@@ -24,6 +24,10 @@ type Opts = {
   pausaMs?: number;
 };
 
+/** #756 · ouviu fala e o texto não veio: desliga depois destes prazos (com "Não entendi") */
+export const SEM_TEXTO_DEPOIS_DA_FALA_MS = 5000;
+export const SEM_TEXTO_DESDE_A_FALA_MS = 12000;
+
 /** por que o microfone parou sem a pessoa pedir */
 export type AvisoSTT = "desligou" | "nao-entendi" | "negado" | "sem-som" | "sem-microfone" | "sem-rede" | "falhou";
 
@@ -86,7 +90,17 @@ export function useSTT(opts?: Opts) {
       clearTimeout(pausa);
       pausa = setTimeout(() => { if (recRef.current === rec) { try { rec.stop(); } catch { /* ignore */ } } }, pausaMs);
     };
-    rec.onspeechstart = () => { falou = true; };
+    // #756: ouviu fala mas o texto NÃO chega (falha do serviço de voz, ou a máquina sem fôlego): antes ficava "Ouvindo…"
+    // para sempre — a pausa só conta depois de chegar texto, e o "não ouvi nada" só vale quando ninguém falou. Agora,
+    // sem texto 5 s depois do fim da fala (ou 12 s depois do começo, se o fim nunca vier), desliga: "Não entendi".
+    let semTexto: ReturnType<typeof setTimeout> | undefined;
+    const armarSemTexto = (ms: number) => {
+      if (!pausaMs || teveTexto) return;
+      clearTimeout(semTexto);
+      semTexto = setTimeout(() => { if (recRef.current === rec && !teveTexto) { try { rec.stop(); } catch { /* ignore */ } } }, ms);
+    };
+    rec.onspeechstart = () => { falou = true; armarSemTexto(SEM_TEXTO_DESDE_A_FALA_MS); };
+    rec.onspeechend = () => armarSemTexto(SEM_TEXTO_DEPOIS_DA_FALA_MS);
     // no contínuo, ninguém fala nada: desliga em 10 s com "não ouvi nada" (sem depender do navegador mandar `no-speech`)
     const silencio = pausaMs ? setTimeout(() => {
       if (recRef.current === rec && !falou && !teveTexto) { falhou = "sem-som"; try { rec.stop(); } catch { /* ignore */ } }
@@ -97,13 +111,13 @@ export function useSTT(opts?: Opts) {
       let txt = "";
       for (let i = 0; i < e.results.length; i++) txt += e.results[i][0].transcript;
       const final = !!e.results[e.results.length - 1]?.isFinal;
-      if (txt.trim()) { setOuviu(true); teveTexto = true; }
+      if (txt.trim()) { setOuviu(true); teveTexto = true; clearTimeout(semTexto); }
       optsRef.current?.onResult?.(txt.trim(), final);
       armarPausa();
     };
     rec.onerror = (e: any) => { falhou = avisoDoErro(e?.error); };
     rec.onend = () => {
-      clearTimeout(pausa); clearTimeout(silencio);
+      clearTimeout(pausa); clearTimeout(silencio); clearTimeout(semTexto);
       if (recRef.current !== rec) return;   // um mais novo já assumiu
       setListening(false);
       if (!pediuParar.current) setAviso(falhou ?? (falou && !teveTexto ? "nao-entendi" : "desligou"));

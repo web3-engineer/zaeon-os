@@ -24,6 +24,11 @@ import { EVT_PERCURSO_ABERTO } from "@/lib/onboarding/tourSala";
 
 const CerebroCanvas = dynamic(() => import("./CerebroCanvas"), { ssr: false, loading: () => <div className="h-full w-full bg-[#060a1a]" /> });
 
+/** #756 · quanto tempo o aviso de cima do mapa fica: o de sucesso 6 s; o que pede ação ("feche e abra de novo") 12 s. */
+export function tempoDoAviso(aviso: string): number {
+  return /n[ãa]o atualizou/i.test(aviso) ? 12_000 : 6_000;
+}
+
 const COR: Record<string, string> = { a_conquistar: "#e88a2e", aprendido: "#78beff", aplicado: "#aadcff", validado: "#e0f4ff" };
 
 export default function CerebroPanel({ st, onFechar, onGerar, onAbrirMensagem }: {
@@ -58,6 +63,13 @@ export default function CerebroPanel({ st, onFechar, onGerar, onAbrirMensagem }:
       try { await st.refetch([no.id]); } catch { setAviso((a) => `${a ?? "Aplicado!"} O mapa não atualizou: feche e abra de novo para ver.`); }
     } catch (e: any) { setErroCaixa(mensagemDeErro(e, "sua aplicação não foi enviada")); } finally { setAplicando(null); }
   };
+  // #756: o aviso ("Aplicado! O percurso avançou.") ficava parado para sempre em cima do mapa. Some sozinho: 6 s; o de
+  // "o mapa não atualizou" fica mais (12 s), porque pede uma ação.
+  useEffect(() => {
+    if (!aviso) return;
+    const t = setTimeout(() => setAviso(null), tempoDoAviso(aviso));
+    return () => clearTimeout(t);
+  }, [aviso]);
   const proximo = useMemo(() => (mapa ? proximoDoBackbone({ nos: mapa.nos, backbone: mapa.backbone, modoValidacao: mapa.modoValidacao }) : null), [mapa]);
   const { regioes, sinapses } = useMemo(() => (mapa ? regioesDoMapa(mapa.nos, mapa.backbone, proximo?.id ?? null, ARQUETIPOS[mapa.tipoTopico].gateHumano, st.recentes, mapa.arestas) : { regioes: [], sinapses: [] }), [mapa, proximo, st.recentes]);
   // Tocar um nó abre a FICHA: closet + gavetas verbatim (memória) + "abrir a conversa".

@@ -6,7 +6,7 @@
  *    "unidade": " mi", "fonte": "Censo 2022 (IBGE)"}
  *
  * Antes, esse pedido ia para o gerador de IMAGEM (um mapa com bonequinhos, sem número nenhum) ou virava diagrama.
- * O desenho é o mesmo SVG do G3 (lib/agent/grafico.ts). A diferença é de onde vem o número: no G3, do próprio turno
+ * O desenho (#756: barras em HTML, components/chat/GraficoDados) usa a cor e o formato do G3. A diferença é de onde vem o número: no G3, do próprio turno
  * (recibo); aqui, da Aura — por isso a `fonte` é OBRIGATÓRIA (sem ela não desenha) e a legenda diz que os números
  * são citados por ela.
  */
@@ -15,6 +15,15 @@ import { pontosValidos, type Grafico } from "@/lib/agent/grafico";
 /** o JSON do ```grafico é de dados (barras)? — o resto (funções, geometria) continua no GraficoFuncao */
 export function ehGraficoDeDados(json: string): boolean {
   try { const o = JSON.parse(json); return !!o && typeof o === "object" && Array.isArray(o.barras); } catch { return false; }
+}
+
+/**
+ * #756 · o número da barra em português: vírgula decimal e PONTO DE MILHAR ("84.847.187", "84,8"). Antes saía
+ * "84847187" quando a Aura mandava o valor inteiro. Até 2 casas, sem zero sobrando ("17,3", não "17,30").
+ */
+export function numeroBR(v: number): string {
+  if (!Number.isFinite(v)) return "";
+  return v.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 }
 
 const texto = (v: unknown, max: number) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "");

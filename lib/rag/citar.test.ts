@@ -51,10 +51,10 @@ describe("blocoDaBase — o que entra no prompt", () => {
     expect(b.match(/=== FIM DA BASE ===/g)).toHaveLength(1);
   });
 
-  it("ok: título com markdown entra escapado na linha [Bn]", () => {
+  it("#756 · ok: título com markdown entra DESARMADO na linha [Bn] (sem barra, que o chat não tira)", () => {
     const b = blocoDaBase(ok([tr({ titulo: "![x](http://t) *a*" })]));
-    expect(b).toContain("[B1] \\!\\[x\\]\\(http://t\\) \\*a\\*, p. 4–5");
-    expect(b).not.toMatch(/[^\\]\]\(/);
+    expect(b).toContain("[B1] ! [x] (http://t) ∗a∗, p. 4–5");
+    expect(b).not.toMatch(/\]\(/);
   });
 
   it("sem_base: uma linha franca, sem inventar material", () => {
@@ -149,16 +149,53 @@ describe("anexarFontesBase — só cita o que a busca devolveu", () => {
     expect(out.nucleo).toBe("N\n\n**Da sua base:** Apostila 3 (p. 3, 7–8)");
   });
 
-  it("título com markdown: o rodapé escapa (não vira imagem/link); fontesBase guarda o título cru", () => {
-    const cru = "![x](http://t) *a* [b](c) `d` <e> _f_ \\g";
+  it("#756 · título com markdown: o rodapé desarma sem barra (não vira imagem/link/fórmula); fontesBase guarda o título cru", () => {
+    const cru = "![x](http://t) *a* [b](c) `d` <e> _f_ \\g $y$";
     const out = anexarFontesBase({ nucleo: "N" }, ok([tr({ titulo: cru })]), [1]);
-    expect(out.nucleo).toBe(
-      "N\n\n**Da sua base:** \\!\\[x\\]\\(http://t\\) \\*a\\* \\[b\\]\\(c\\) \\`d\\` \\<e\\> \\_f\\_ \\\\g (p. 4–5)",
-    );
+    expect(out.nucleo).toBe("N\n\n**Da sua base:** ! [x] (http://t) ∗a∗ [b] (c) 'd' <e> _f_ ∖g ＄y＄ (p. 4–5)");
     const rodape = out.nucleo!.split("**Da sua base:** ")[1];
-    expect(rodape).not.toMatch(/(^|[^\\])\]\(/); // nenhum "](" sem escape
-    expect(rodape).not.toMatch(/(^|[^\\])!\[/); // nenhum "![" sem escape
+    expect(rodape).not.toMatch(/\]\(/);    // nenhum "](" (link)
+    expect(rodape).not.toMatch(/!\[/);     // nenhum "![" (imagem)
+    expect(rodape).not.toMatch(/[\\$*`]/); // nada que abra fórmula, negrito ou código
     expect(out.fontesBase).toEqual([{ documentoId: "d1", titulo: cru, paginas: "4–5" }]);
+  });
+
+  it("#756 · o rodapé do ar: '(MMLU pt)' e 'questao_98' saem como são, sem barra (a barra virava fórmula no chat)", async () => {
+    const t1 = tr({ titulo: "Conhecimentos gerais — questões de prova (MMLU pt) — parte 19", publico: true });
+    const t2 = tr({ trechoId: "t2", documentoId: "d2", titulo: "ENEM 2024 — questao_98", publico: true });
+    const out = anexarFontesBase({ nucleo: "N" }, ok([t1, t2]), [1, 2]);
+    expect(out.nucleo).toContain("**Referências:** Conhecimentos gerais — questões de prova (MMLU pt) — parte 19 · ENEM 2024 — questao_98");
+    expect(out.nucleo).not.toContain("\\");
+    const { segmentarInline } = await import("@/lib/chat/matematica");
+    expect(segmentarInline(out.nucleo!.split("\n").pop()!).every((p) => p.tipo === "texto")).toBe(true);   // nenhuma fórmula
+  });
+
+  it("#756 · documento citado só para dizer que NÃO serve não vira referência (o caso da mitocôndria)", () => {
+    const mmlu = [
+      tr({ trechoId: "a", documentoId: "a", titulo: "Conhecimentos gerais — questões de prova (MMLU pt) — parte 19", publico: true }),
+      tr({ trechoId: "b", documentoId: "b", titulo: "Governo e política (ensino médio) — questões de prova (MMLU pt) — parte 5", publico: true }),
+    ];
+    const nucleo = "Embora os materiais da sua base (Conhecimentos gerais — questões de prova (MMLU pt) — parte 19; Governo e política (ensino médio) — questões de prova (MMLU pt) — parte 5) não abordem a mitocôndria, podemos representá-la. A mitocôndria tem duas membranas.";
+    // pelo título no texto
+    expect(anexarFontesBase({ nucleo }, ok(mmlu), undefined).nucleo).toBe(nucleo);
+    // e mesmo que o modelo liste em citacoes_base
+    const out = anexarFontesBase({ nucleo }, ok(mmlu), [1, 2]);
+    expect(out.nucleo).toBe(nucleo);
+    expect(out.fontesBase).toBeUndefined();
+  });
+
+  it("#756 · 'nenhum deles aborda' também conta; uso de verdade com 'não tem' no conteúdo continua fonte", () => {
+    const a = tr({ titulo: "Apostila 3" });
+    expect(anexarFontesBase({ nucleo: "Os documentos (Apostila 3) tratam de política; nenhum deles aborda células." }, ok([a]), undefined).fontesBase).toBeUndefined();
+    const uso = anexarFontesBase({ nucleo: "Segundo a Apostila 3, a célula animal não tem parede celular." }, ok([a]), undefined);
+    expect(uso.fontesBase).toHaveLength(1);
+    // citado uma vez para negar e outra para usar: é fonte
+    const misto = anexarFontesBase({ nucleo: "A Apostila 3 não aborda a mitose. Já sobre a meiose, a Apostila 3 explica as fases." }, ok([a]), [1]);
+    expect(misto.fontesBase).toHaveLength(1);
+  });
+
+  it("#756 · o bloco orienta: se nenhum trecho serve, não citar os títulos e deixar citacoes_base vazio", () => {
+    expect(blocoDaBase(ok([tr()]))).toContain("Se NENHUM trecho servir para a pergunta, não liste nem cite os títulos");
   });
 
   it("várias fontes no rodapé, separadas por ·", () => {

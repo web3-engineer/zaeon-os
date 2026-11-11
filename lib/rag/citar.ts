@@ -39,13 +39,55 @@ export function tituloSemMarkdown(s: string): string {
   return String(s ?? "").replace(/[\\[\]()!*_`<>]/g, (c) => `\\${c}`);
 }
 
+/**
+ * #756 · o título como a TELA do chat mostra, sem barra de escape. O chat (ChatMarkdown) não "desescapa" barra, e pior:
+ * `\(` e `\[` abrem FÓRMULA lá — "(MMLU pt)" escapado virava "MMLUpt" em letra de fórmula, e "questao_98" aparecia
+ * "questao\_98". Aqui o que poderia virar formatação é DESARMADO sem barra:
+ *  - `](` (link) e `![` (imagem) ganham um espaço;  - `*` vira `∗` (não abre negrito/itálico);
+ *  - crase vira aspa simples (não abre código);   - `$` vira `＄` (não abre fórmula);
+ *  - barra invertida vira `∖` (não abre `\(` / `\[`).  Parênteses, colchetes e `_` ficam como são (o chat não os formata).
+ */
+export function tituloParaTela(s: string): string {
+  return String(s ?? "")
+    .replace(/\\/g, "∖")
+    .replace(/\]\(/g, "] (")
+    .replace(/!\[/g, "! [")
+    .replace(/\*/g, "∗")
+    .replace(/`/g, "'")
+    .replace(/\$/g, "＄");
+}
+
+/**
+ * #756 · o documento entrou no texto só para a Aura dizer que ele NÃO serve ("os materiais (Título A; Título B) não
+ * abordam a mitocôndria")? Então não é fonte, e não vai para "Referências". Olha a FRASE de cada menção do título: do
+ * último . ! ? ou quebra ANTES da menção até o próximo DEPOIS dela (o título pode ter ponto; a janela não corta nele).
+ */
+const NEGACAO = /(^|[^a-zà-ú])(n[ãa]o\s+(abord|trat|traz|tem|t[êe]m|cont[eé]m|menciona|fala|cobre|apresenta|inclu|descrev|explica|serv)|nenhum|nenhuma|sem\s+rela[cç][ãa]o)/i;
+const SOBRE_O_MATERIAL = /(materia|document|trecho|base|fonte|quest[õo]es|arquivo|apostila|livro|deles|delas|eles\s+n|elas\s+n|nenhum)/i;
+const FIM_DE_FRASE = [".", "!", "?", "\n"];
+function soMencionadoParaNegar(corpo: string, titulo: string): boolean {
+  let i = corpo.indexOf(titulo), achou = false;
+  while (i >= 0) {
+    achou = true;
+    const ini = Math.max(...FIM_DE_FRASE.map((c) => corpo.lastIndexOf(c, i - 1))) + 1;
+    const fims = FIM_DE_FRASE.map((c) => corpo.indexOf(c, i + titulo.length)).filter((n) => n >= 0);
+    // sem o próprio título (que pode ter "questões", "livro"… e enganar o teste de "é sobre o material")
+    const frase = corpo.slice(ini, fims.length ? Math.min(...fims) : corpo.length).split(titulo).join(" ");
+    // a negação tem que ser SOBRE o material ("os materiais… não abordam", "nenhum deles") — "(Livro, p. 3): a célula
+    // não tem parede" é uso de verdade
+    if (!NEGACAO.test(frase) || !SOBRE_O_MATERIAL.test(frase)) return false;
+    i = corpo.indexOf(titulo, i + titulo.length);
+  }
+  return achou;
+}
+
 /** O bloco da base pro `user` do reason/draft. `sem_usuario`/null ⇒ "" (o prompt fica o de antes). */
 export function blocoDaBase(b: BaseDoTurno | null | undefined): string {
   switch (b?.status) {
     case "ok": {
       const trechos = b.trechos
         .map((t, i) =>
-          `[B${i + 1}] ${tituloSemMarkdown(semDelimitador(t.titulo))}${t.publico ? " (referência pública da área)" : `, p. ${faixa(t.paginaIni, t.paginaFim)}`}\n` +
+          `[B${i + 1}] ${tituloParaTela(semDelimitador(t.titulo))}${t.publico ? " (referência pública da área)" : `, p. ${faixa(t.paginaIni, t.paginaFim)}`}\n` +
           semDelimitador(t.texto.slice(0, TETO_TRECHO_NO_BLOCO)))
         .join("\n\n");
       return [
@@ -62,6 +104,9 @@ export function blocoDaBase(b: BaseDoTurno | null | undefined): string {
         "Se os trechos forem do assunto mas NÃO tiverem o dado pedido (um número, uma data, uma lista), diga isso em uma " +
         "frase e responda mesmo assim com o que você sabe de fonte confiável, dizendo a fonte (ex.: \"Censo 2022, IBGE\") " +
         "e sem atribuir esse dado à base. Nunca deixe a pessoa sem resposta só porque a base não tem.",
+        // #756: a Aura listava os títulos que NÃO serviam ("os materiais (A; B; C) não abordam…") e eles viravam referência
+        "Se NENHUM trecho servir para a pergunta, não liste nem cite os títulos deles: diga só, em uma frase, que a base " +
+        "não tem isso, e deixe `citacoes_base` vazio ([]).",
       ].join("\n");
     }
     case "sem_base":
@@ -118,23 +163,30 @@ export function anexarFontesBase(a: StructuredAnswer, b: BaseDoTurno | null | un
   if (b?.status !== "ok" || !b.trechos.length) return a;
   const idx = indicesValidos(citacoes, b.trechos.length);
   let usados: TrechoAchado[];
+  const corpo = `${a.nucleo ?? ""} ${a.desenvolvimento ?? ""}`.toLowerCase();
+  // O bloco mostra o título desarmado (antes: escapado com barra); o modelo pode copiar qualquer das formas.
+  const formas = (t: TrechoAchado) => {
+    const x = t.titulo.trim().toLowerCase();
+    return x ? [...new Set([x, tituloParaTela(x), tituloSemMarkdown(x)])] : [];
+  };
+  // #756: só aparece no texto em frase de "não aborda / nenhum deles" → não é fonte
+  const negado = (t: TrechoAchado) => {
+    const ditas = formas(t).filter((f) => corpo.includes(f));
+    return ditas.length > 0 && ditas.every((f) => soMencionadoParaNegar(corpo, f));
+  };
   if (idx.length) {
-    usados = idx.map((n) => b.trechos[n - 1]);
+    // mesmo listado em `citacoes_base`, o documento que a resposta só cita para dizer que não serve fica de fora
+    usados = idx.map((n) => b.trechos[n - 1]).filter((t) => !negado(t));
   } else {
-    const corpo = `${a.nucleo ?? ""} ${a.desenvolvimento ?? ""}`.toLowerCase();
-    // O bloco mostra o título escapado; o modelo pode copiar qualquer das duas formas.
-    usados = b.trechos.filter((t) => {
-      const titulo = t.titulo.trim().toLowerCase();
-      return titulo !== "" && (corpo.includes(titulo) || corpo.includes(tituloSemMarkdown(titulo)));
-    });
+    usados = b.trechos.filter((t) => formas(t).some((f) => corpo.includes(f)) && !negado(t));
   }
   if (!usados.length) return a;
   const fontesBase = agruparPorDocumento(usados);
   // Base da pessoa (com página) e referências públicas por área (sem página) em linhas separadas.
   const daBase = fontesBase.filter((f) => !f.publico), publicas = fontesBase.filter((f) => f.publico);
   const rodape = [
-    daBase.length ? "**Da sua base:** " + daBase.map((f) => `${tituloSemMarkdown(f.titulo)} (p. ${f.paginas})`).join(" · ") : "",
-    publicas.length ? "**Referências:** " + publicas.map((f) => tituloSemMarkdown(f.titulo)).join(" · ") : "",
+    daBase.length ? "**Da sua base:** " + daBase.map((f) => `${tituloParaTela(f.titulo)} (p. ${f.paginas})`).join(" · ") : "",
+    publicas.length ? "**Referências:** " + publicas.map((f) => tituloParaTela(f.titulo)).join(" · ") : "",
   ].filter(Boolean).join("\n");
   return {
     ...a,

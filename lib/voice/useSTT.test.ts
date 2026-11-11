@@ -93,3 +93,49 @@ describe("#733 · useSTT", () => {
     } finally { vi.useRealTimers(); }
   });
 });
+
+describe("#756 · o microfone nunca fica 'Ouvindo…' para sempre", () => {
+  it("ouviu fala, o texto não veio: desliga 5 s depois do fim da fala com 'não entendi'", () => {
+    vi.useFakeTimers();
+    try {
+      (window as any).webkitSpeechRecognition = SRFalso;
+      const { result } = renderHook(() => useSTT({ pausaMs: 2500 }));
+      act(() => { result.current.start(); });
+      const sr = SRFalso.ultimo as any;
+      act(() => { sr.onspeechstart?.(); vi.advanceTimersByTime(2000); sr.onspeechend?.(); });
+      act(() => { vi.advanceTimersByTime(4900); });
+      expect(result.current.listening).toBe(true);
+      act(() => { vi.advanceTimersByTime(200); });
+      expect(result.current.listening).toBe(false);
+      expect(result.current.aviso).toBe("nao-entendi");
+    } finally { vi.useRealTimers(); }
+  });
+  it("o fim da fala nunca veio: desliga 12 s depois do começo", () => {
+    vi.useFakeTimers();
+    try {
+      (window as any).webkitSpeechRecognition = SRFalso;
+      const { result } = renderHook(() => useSTT({ pausaMs: 2500 }));
+      act(() => { result.current.start(); });
+      const sr = SRFalso.ultimo as any;
+      act(() => { sr.onspeechstart?.(); vi.advanceTimersByTime(11900); });
+      expect(result.current.listening).toBe(true);
+      act(() => { vi.advanceTimersByTime(200); });
+      expect(result.current.listening).toBe(false);
+      expect(result.current.aviso).toBe("nao-entendi");
+    } finally { vi.useRealTimers(); }
+  });
+  it("com texto chegando, a trava não corta a fala (quem desliga é a pausa)", () => {
+    vi.useFakeTimers();
+    try {
+      (window as any).webkitSpeechRecognition = SRFalso;
+      const { result } = renderHook(() => useSTT({ pausaMs: 2500 }));
+      act(() => { result.current.start(); });
+      const sr = SRFalso.ultimo as any;
+      act(() => { sr.onspeechstart?.(); sr.onresult!({ results: [{ 0: { transcript: "oi" }, isFinal: false }], resultIndex: 0 }); });
+      for (let i = 0; i < 8; i++) act(() => { vi.advanceTimersByTime(2000); sr.onresult!({ results: [{ 0: { transcript: "oi aura " + i }, isFinal: false }], resultIndex: 0 }); });
+      expect(result.current.listening).toBe(true);   // 16 s falando: segue ouvindo
+      act(() => { vi.advanceTimersByTime(2600); });
+      expect(result.current.aviso).toBe("desligou");
+    } finally { vi.useRealTimers(); }
+  });
+});

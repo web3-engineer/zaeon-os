@@ -34,3 +34,24 @@ export function personaSalva(): PersonaId | null {
 export function avisarPersona(agente: string) {
   window.dispatchEvent(new CustomEvent(EVT_PERSONA, { detail: personaDoAgente(agente) }));
 }
+
+/**
+ * #756 · o MICROFONE do chat e a avatar. Com a avatar 3D desenhando na tela, o microfone ficava "Ouvindo…" e não
+ * trazia texto (Edge e Chrome); com o painel dela recolhido, funcionava na hora. Então, ao ligar o microfone, a avatar
+ * faz a pose de PENSATIVA e CONGELA (para de desenhar) — e só depois o microfone liga; ao desligar, ela volta.
+ *
+ * `detail.ligado` diz o que aconteceu; quem congela (ZaeonDocumentos) põe em `detail.esperar` uma promessa que
+ * resolve quando ela já está parada. Sem avatar na tela, ninguém põe nada e o microfone liga na hora.
+ */
+export const EVT_ZAEON_MICROFONE = "zaeon:microfone";
+export type DetalheMicrofone = { ligado: boolean; esperar: Promise<unknown>[] };
+/** o teto da espera: a avatar travou ou demorou — o microfone liga mesmo assim */
+export const TETO_ESPERA_AVATAR_MS = 1800;
+
+export async function avisarMicrofone(ligado: boolean, teto = TETO_ESPERA_AVATAR_MS): Promise<void> {
+  if (typeof window === "undefined") return;
+  const detail: DetalheMicrofone = { ligado, esperar: [] };
+  window.dispatchEvent(new CustomEvent<DetalheMicrofone>(EVT_ZAEON_MICROFONE, { detail }));
+  if (!ligado || !detail.esperar.length) return;
+  await Promise.race([Promise.allSettled(detail.esperar), new Promise((r) => setTimeout(r, teto))]);
+}
