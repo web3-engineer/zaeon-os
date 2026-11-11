@@ -1,0 +1,27 @@
+/* TimelineIdeia — uma linha do tempo HORIZONTAL da evolução de uma ideia: papel científico → conversa com as IAs →
+   blueprint → protótipo → produto (placa solar, bateria). Tudo ALINHADO num eixo só (nada espalhado). Um pulso corre
+   pela linha da esquerda pra direita e vai ACENDENDO cada etapa; ao fim, segura e recomeça. Traço de neon. */
+
+.tl-wrap { position: relative; width: 100%; overflow-x: auto; scrollbar-width: none; }
+.tl-wrap::-webkit-scrollbar { display: none; }
+.tl-svg { display: block; width: 100%; min-width: 760px; height: auto; }
+
+.tl-base { stroke: rgba(127, 232, 255, 0.14); stroke-width: 3; stroke-linecap: round; }
+
+.tl-st .head { transition: transform .45s cubic-bezier(.2, .8, .2, 1), filter .45s; transform-box: fill-box; transform-origin: center; }
+.tl-st .ring { fill: color-mix(in srgb, currentColor 9%, #06101c); stroke: color-mix(in srgb, currentColor 38%, transparent); stroke-width: 1.5; transition: stroke .45s, fill .45s; }
+.tl-st .ico { color: currentColor; opacity: .5; transition: opacity .45s; }
+.tl-st .num { fill: rgba(234, 252, 255, 0.38); font-family: ui-monospace, monospace; font-weight: 800; transition: fill .45s; }
+.tl-st .tit { fill: rgba(234, 252, 255, 0.55); font-family: ui-monospace, monospace; font-weight: 700; transition: fill .45s; }
+.tl-st .cap { fill: rgba(234, 252, 255, 0.3); font-family: ui-monospace, monospace; transition: fill .45s; }
+
+.tl-st.on .head { transform: scale(1.14); filter: drop-shadow(0 0 10px currentColor); }
+.tl-st.on .ring { stroke: currentColor; fill: color-mix(in srgb, currentColor 20%, #06101c); }
+.tl-st.on .ico { opacity: 1; }
+.tl-st.on .num { fill: currentColor; }
+.tl-st.on .tit { fill: #eafcff; }
+.tl-st.on .cap { fill: rgba(234, 252, 255, 0.6); }
+
+@media (prefers-reduced-motion: reduce) {
+  .tl-st .head { transition: none; }
+}

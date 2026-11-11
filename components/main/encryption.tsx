@@ -9,7 +9,7 @@ import ZaeonFlowDiagram from "./ZaeonFlowDiagram";
 import SolanaPrivacidade from "./SolanaPrivacidade";
 import ChavesApi from "./ChavesApi";
 import BlueprintsShowcase from "./BlueprintsShowcase";
-import PalcoIso from "./PalcoIso";
+import TimelineIdeia from "./TimelineIdeia";
 import { TituloSecao } from "@/components/layout/secao";
 import MolecularText from "@/components/ui/MolecularText";
 
@@ -96,10 +96,9 @@ const HireAgentsSection = () => {
             >
                 <TituloSecao className="font-display" forte="Com grandes tecnologias vêm grandes protótipos." />
 
-                {/* PALCO ISOMÉTRICO: estruturas de engenharia (usina solar, data center, braço robótico, satélite,
-                    powertrain, reator) se MONTAM peça a peça e se DESMONTAM, uma de cada vez, em loop — com ícones de
-                    trabalhos científicos, peças e equipamentos flutuando em volta. */}
-                <PalcoIso className="mt-10" />
+                {/* TIMELINE HORIZONTAL: a evolução de uma ideia num eixo só — papel científico → conversa com as IAs →
+                    blueprint → protótipo → produto no mundo real (placa solar, bateria). Um pulso acende etapa por etapa. */}
+                <TimelineIdeia className="mt-12" />
             </motion.div>
 
             {/* as casas de modelos (#modelos) + o card do projeto vencedor — a menção às chaves de API saiu (o dono) */}
