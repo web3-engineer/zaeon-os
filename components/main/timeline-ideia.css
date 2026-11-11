@@ -1,27 +1,33 @@
-/* TimelineIdeia — uma linha do tempo HORIZONTAL da evolução de uma ideia: papel científico → conversa com as IAs →
-   blueprint → protótipo → produto (placa solar, bateria). Tudo ALINHADO num eixo só (nada espalhado). Um pulso corre
-   pela linha da esquerda pra direita e vai ACENDENDO cada etapa; ao fim, segura e recomeça. Traço de neon. */
+/* TimelineIdeia — a linha do tempo HORIZONTAL da evolução de uma ideia. Os ÍCONES 3D (isométricos, do kit do anatomy)
+   ficam ACIMA da linha e APARECEM UM POR VEZ conforme o pulso corre pela linha e acende cada nó. Sem descrições. */
 
 .tl-wrap { position: relative; width: 100%; overflow-x: auto; scrollbar-width: none; }
 .tl-wrap::-webkit-scrollbar { display: none; }
-.tl-svg { display: block; width: 100%; min-width: 760px; height: auto; }
 
-.tl-base { stroke: rgba(127, 232, 255, 0.14); stroke-width: 3; stroke-linecap: round; }
+.tl-stage { position: relative; min-width: 780px; padding-bottom: 6px; }
 
-.tl-st .head { transition: transform .45s cubic-bezier(.2, .8, .2, 1), filter .45s; transform-box: fill-box; transform-origin: center; }
-.tl-st .ring { fill: color-mix(in srgb, currentColor 9%, #06101c); stroke: color-mix(in srgb, currentColor 38%, transparent); stroke-width: 1.5; transition: stroke .45s, fill .45s; }
-.tl-st .ico { color: currentColor; opacity: .5; transition: opacity .45s; }
-.tl-st .num { fill: rgba(234, 252, 255, 0.38); font-family: ui-monospace, monospace; font-weight: 800; transition: fill .45s; }
-.tl-st .tit { fill: rgba(234, 252, 255, 0.55); font-family: ui-monospace, monospace; font-weight: 700; transition: fill .45s; }
-.tl-st .cap { fill: rgba(234, 252, 255, 0.3); font-family: ui-monospace, monospace; transition: fill .45s; }
+/* a linha do tempo (atrás dos nós) + o preenchimento que corre + o cometa */
+.tl-line, .tl-fill { position: absolute; top: 148px; left: 10%; height: 2px; border-radius: 2px; }
+.tl-line { right: 10%; background: rgba(127, 232, 255, 0.14); }
+.tl-fill { width: 0; background: linear-gradient(90deg, #8b5cf6, #46b0ff, #38f0ff, #49f2a0, #ff9f45); box-shadow: 0 0 6px rgba(127, 232, 255, 0.5); }
+.tl-comet { position: absolute; top: 148px; left: 10%; width: 12px; height: 12px; margin: -5px 0 0 -6px; border-radius: 50%; background: #eafcff; box-shadow: 0 0 10px #bdfcff, 0 0 18px rgba(189, 252, 255, 0.5); opacity: 0; }
 
-.tl-st.on .head { transform: scale(1.14); filter: drop-shadow(0 0 10px currentColor); }
-.tl-st.on .ring { stroke: currentColor; fill: color-mix(in srgb, currentColor 20%, #06101c); }
-.tl-st.on .ico { opacity: 1; }
-.tl-st.on .num { fill: currentColor; }
-.tl-st.on .tit { fill: #eafcff; }
-.tl-st.on .cap { fill: rgba(234, 252, 255, 0.6); }
+.tl-row { position: relative; display: flex; }
+.tl-cell { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; }
+
+/* o ícone 3D: ancorado embaixo (perto da linha), nasce subindo e acende */
+.tl-ico { height: 132px; width: 100%; display: flex; align-items: flex-end; justify-content: center; }
+.tl-ico .tli-fig { width: 128px; max-width: 92%; height: auto; opacity: 0; transform: translateY(18px) scale(0.9); transition: opacity .55s ease, transform .55s cubic-bezier(.2, .8, .2, 1); }
+.tl-cell.on .tl-ico .tli-fig { opacity: 1; transform: none; }
+
+/* o nó na linha */
+.tl-node { height: 28px; display: grid; place-items: center; position: relative; z-index: 2; }
+.tl-dot { width: 12px; height: 12px; border-radius: 50%; background: #06101c; box-shadow: inset 0 0 0 2px color-mix(in srgb, currentColor 45%, transparent); transition: box-shadow .4s, background .4s; }
+.tl-cell.on .tl-dot { background: currentColor; box-shadow: 0 0 10px currentColor, inset 0 0 0 2px currentColor; }
+
+.tl-tit { margin-top: 8px; text-align: center; font-family: ui-monospace, monospace; font-size: 12.5px; font-weight: 700; letter-spacing: .02em; color: rgba(234, 252, 255, 0.5); transition: color .4s; }
+.tl-cell.on .tl-tit { color: #eafcff; }
 
 @media (prefers-reduced-motion: reduce) {
-  .tl-st .head { transition: none; }
+  .tl-ico .tli-fig { transition: opacity .3s; transform: none; }
 }
