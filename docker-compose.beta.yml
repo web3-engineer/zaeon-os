@@ -122,6 +122,17 @@ services:
       NEXT_PUBLIC_PUSHER_CLUSTER: ${NEXT_PUBLIC_PUSHER_CLUSTER:-}
       # a fase `reason` no `elaborated` (o código a pula por padrão; "1" liga)
       RACIOCINIO_ELABORADO: ${RACIOCINIO_ELABORADO:-}
+      # ── LIGADOS POR PADRÃO (dono, 2026-11-12: "nada off, quero tudo on") ──────────────────────
+      # Cinco recursos do harness que subiam DESLIGADOS e fora do pipeline: só ligavam editando o
+      # `.env` do VPS à mão, e o /api/health não dizia o estado de nenhum. O default mora AQUI, no
+      # compose, e não no `script:` do deploy.yml (que tem teto de 21.000 bytes). Para desligar um
+      # deles sem deploy de código: `NOME=0` no `.env` do VPS e recriar o container.
+      # No web E no worker, porque com CHAT_BG=1 é o worker que roda o turno do chat.
+      VISAO_HARNESS: ${VISAO_HARNESS:-1}        # descrever_imagem no harness; exige a credencial Vertex
+      MEMORY_L3: ${MEMORY_L3:-1}                # memória semântica (memory_drawers no Atlas); falha no boot = segue sem memória
+      CACHE_RESPOSTAS: ${CACHE_RESPOSTAS:-1}    # pergunta de conceito já respondida volta sem modelo
+      ROTEADOR_KNN: ${ROTEADOR_KNN:-on}         # roteador de intenção por embedding; "sombra" só mede, "off" desliga
+      ORQ_AUTOMATICO: ${ORQ_AUTOMATICO:-1}      # orquestra roteia sozinha o trabalho de Pro/Max (motores externos: custo)
       # F8 · agente de navegador (rota /api/agentic/run + tela /agente, ambas só de fundador).
       # SÓ NO WEB, de propósito: o agente roda onde a ROTA existe, e o `worker` não serve rota
       # nenhuma. Pôr aqui é topologia, não descuido — a mesma razão do CANAL_QUEUE acima. Default
@@ -263,6 +274,17 @@ services:
       NEXT_PUBLIC_PUSHER_CLUSTER: ${NEXT_PUBLIC_PUSHER_CLUSTER:-}
       # a fase `reason` no `elaborated` (o código a pula por padrão; "1" liga)
       RACIOCINIO_ELABORADO: ${RACIOCINIO_ELABORADO:-}
+      # ── LIGADOS POR PADRÃO (dono, 2026-11-12: "nada off, quero tudo on") ──────────────────────
+      # Cinco recursos do harness que subiam DESLIGADOS e fora do pipeline: só ligavam editando o
+      # `.env` do VPS à mão, e o /api/health não dizia o estado de nenhum. O default mora AQUI, no
+      # compose, e não no `script:` do deploy.yml (que tem teto de 21.000 bytes). Para desligar um
+      # deles sem deploy de código: `NOME=0` no `.env` do VPS e recriar o container.
+      # No web E no worker, porque com CHAT_BG=1 é o worker que roda o turno do chat.
+      VISAO_HARNESS: ${VISAO_HARNESS:-1}        # descrever_imagem no harness; exige a credencial Vertex
+      MEMORY_L3: ${MEMORY_L3:-1}                # memória semântica (memory_drawers no Atlas); falha no boot = segue sem memória
+      CACHE_RESPOSTAS: ${CACHE_RESPOSTAS:-1}    # pergunta de conceito já respondida volta sem modelo
+      ROTEADOR_KNN: ${ROTEADOR_KNN:-on}         # roteador de intenção por embedding; "sombra" só mede, "off" desliga
+      ORQ_AUTOMATICO: ${ORQ_AUTOMATICO:-1}      # orquestra roteia sozinha o trabalho de Pro/Max (motores externos: custo)
       # Os de CONSUMIR vivem AQUI, onde consumir é o trabalho do container. `SCHOLAR_WORKER` não
       # aparece de propósito: já é "1" fixo acima, e um `${SCHOLAR_WORKER:-}` o sobrescreveria com
       # VAZIO — o worker dedicado pararia de consumir a fila do scholar. Foi o erro que o parser do

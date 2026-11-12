@@ -30,6 +30,7 @@ import { escritaPorSecaoLigada } from "@/lib/documento/escritor";
 import { graficoLigado } from "@/lib/agent/graficosDoTurno";
 import { getTool } from "@/lib/agent/runtime";
 import { visaoNoHarnessLigado } from "@/lib/agent/toolsVisao";
+import { reciboDeFlags } from "@/lib/flags/recibo";
 import { visaoDisponivel } from "@/lib/ai/descreverImagem";
 import { GEMINI_MODEL_FLASH, GEMINI_MODEL_PRO } from "@/lib/ai/model";
 import { provedoresConfigurados } from "@/lib/search/web";
@@ -231,6 +232,16 @@ export async function GET() {
       // credencial Vertex é o que faz a visão responder. "sem_credencial" = flag on mas Vertex ausente
       // (a tool se registra mas falharia) — é o estado que o recibo tem de deixar visível, não esconder.
       visao: !visaoNoHarnessLigado() ? "off" : (visaoDisponivel() ? "on" : "sem_credencial"),
+    },
+    // TODAS AS FLAGS DE RECURSO, por nome (lib/flags/recibo): o que está ligado e o que está
+    // desligado NESTE servidor. Antes, "tem update subindo com flag off?" só se respondia lendo o
+    // deploy.yml, o compose e o `.env` do VPS. Só nomes e estado — nenhum valor, nenhum segredo.
+    // `memoria` separa a flag da conexão: "sem_banco" = MEMORY_L3 ligada mas sem DATABASE_URL.
+    flags: {
+      ...reciboDeFlags(),
+      memoria: process.env.MEMORY_L3 !== "1" ? "off" : (process.env.DATABASE_URL ? "on" : "sem_banco"),
+      cache: process.env.CACHE_RESPOSTAS === "1" ? "on" : "off",
+      orquestraAutomatica: process.env.ORQ_AUTOMATICO === "1" ? "on" : "off",
     },
     pool: poolConfigurado(),
     // a mesma regra de lib/canal/queue `filaLigada` (sem importar a fila: o health fica leve)
