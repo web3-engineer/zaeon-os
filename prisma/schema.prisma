@@ -1888,3 +1888,32 @@ model ItemVitrine {
   @@map("vitrine_itens")
   @@index([ativo, ordem])
 }
+
+// PESQUISAS da vitrine (lib/estudos/pesquisas): cada uma é uma PASTA e as `partes` são os papéis dentro dela
+// (artigo, dados, protocolo, revisão, código, anexo). Entram pelo admin/console (já "publicada") ou pelo usuário,
+// a partir de um trabalho da Sala de Pesquisa (entra "pendente" e espera a aprovação do admin).
+model PesquisaVitrine {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  slug        String   @unique
+  titulo      String
+  resumo      String   @default("")
+  nicho       String   @default("")
+  tags        String[] @default([])
+  raridade    String   @default("comum")  // comum|rara|epica|lendaria
+  autor       String   @default("")       // o nome mostrado quando não há conta ligada
+  contaId     String?  @db.ObjectId       // a CONTA que publicou (User)
+  workId      String?  @db.ObjectId       // o trabalho da Sala de Pesquisa de onde veio (origem "usuario")
+  origem      String   @default("admin")  // admin|console|usuario
+  status      String   @default("publicada") // pendente|publicada|recusada
+  motivo      String?                     // por que foi recusada (a pessoa vê)
+  partes      Json                        // [{ tipo, titulo, conteudo?, url? }]
+  validadores Int      @default(0)
+  ordem       Int      @default(0)
+  criadoEm    DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("vitrine_pesquisas")
+  @@index([status, ordem])
+  @@index([contaId])
+  @@index([workId])
+}

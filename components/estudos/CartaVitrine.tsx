@@ -10,12 +10,13 @@
 import { type CSSProperties, type ReactNode } from "react";
 import { COR_RARIDADE, NOME_RARIDADE } from "@/lib/estudos/blueprint";
 import { NOME_TIPO, type ItemVitrine } from "@/lib/estudos/vitrine";
+import { COR_PARTE, NOME_PARTE } from "@/lib/estudos/pesquisas";
 import "./vitrine-card.css";
 
 /** o DESENHO do tema (emoji/ícone, com variedade) — no lugar do wireframe 3D antigo */
 export const GLYPH: Record<string, string> = {
     console: "🎮", chip: "🧠", planta: "🌱", predio: "🏛️", drone: "🚁", foguete: "🚀",
-    molecula: "🧬", engrenagem: "⚙️", livro: "📖", graos: "☕", ondas: "📡", robo: "🤖",
+    molecula: "🧬", engrenagem: "⚙️", livro: "📖", graos: "☕", ondas: "📡", robo: "🤖", pasta: "📂",
 };
 
 /** o nº de série (escassez de colecionador): quantas frações já foram cunhadas / o total */
@@ -51,9 +52,12 @@ export default function CartaVitrine({ it, onClick, badgeGratis = false, precoFr
     // atalho de mouse e quem leva o foco/teclado é o botão plug/comprar (`acaoNode`), então não viramos a carta num botão
     // (botão dentro de botão).
     const interativa = typeof onClick === "function" && !acaoNode;
+    // PESQUISA: a carta é uma PASTA — aba em cima e os papéis (as partes) espiando atrás (até 4 na borda)
+    const pasta = it.pasta;
+    const papeis = pasta ? pasta.partes.slice(0, 4) : [];
     return (
         <article
-            className={`vt-card${className ? ` ${className}` : ""}`}
+            className={`vt-card${pasta ? " vt-pasta" : ""}${className ? ` ${className}` : ""}`}
             style={{ "--cor": cor, "--glow": `${glowDe(it.raridade)}px`, "--cy": "#38f0ff" } as CSSProperties}
             onClick={onClick ? (e) => onClick(e.currentTarget) : undefined}
             role={interativa ? "button" : undefined}
@@ -61,6 +65,16 @@ export default function CartaVitrine({ it, onClick, badgeGratis = false, precoFr
             aria-label={interativa ? it.titulo : undefined}
             onKeyDown={interativa ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick!(e.currentTarget); } } : undefined}
         >
+            {pasta && (
+                <>
+                    <div className="vt-papeis" aria-hidden="true">
+                        {papeis.map((p, i) => (
+                            <span key={i} className="vt-papel" style={{ "--i": i, "--meio": (papeis.length - 1) / 2, "--pcor": COR_PARTE[p.tipo] } as CSSProperties}><b>{NOME_PARTE[p.tipo]} · {p.titulo}</b></span>
+                        ))}
+                    </div>
+                    <div className="vt-aba">▤ PASTA · {pasta.partes.length}</div>
+                </>
+            )}
             <div className="vt-frame">
                 <div className="vt-panel">
                     <div className="vt-spine">{NOME_RARIDADE[it.raridade].toUpperCase()}</div>
@@ -69,10 +83,15 @@ export default function CartaVitrine({ it, onClick, badgeGratis = false, precoFr
                         <div className="vt-serial">{serialDe(it)}<span className="vt-barcode" /></div>
                         {badgeGratis && <span className="vt-free">GRÁTIS</span>}
                         <div className="vt-glyph"><b>{GLYPH[it.modelo] ?? "✦"}</b></div>
+                        {pasta && (
+                            <div className="vt-pasta-lista" aria-hidden="true">
+                                {pasta.partes.slice(0, 6).map((p, i) => <span key={i} style={{ "--pcor": COR_PARTE[p.tipo] } as CSSProperties}>{NOME_PARTE[p.tipo].toUpperCase()}</span>)}
+                            </div>
+                        )}
                         <div className="vt-desc">{it.subtitulo}</div>
                     </div>
                     <div className="vt-plate">
-                        <div className="vt-type">{NOME_TIPO[it.tipo].toUpperCase()}</div>
+                        <div className="vt-type">{NOME_TIPO[it.tipo].toUpperCase()}{pasta ? ` · ${pasta.partes.length} ${pasta.partes.length === 1 ? "PARTE" : "PARTES"}` : ""}</div>
                         <h3 className="vt-title">{it.titulo}</h3>
                         <div className="vt-meter"><span className="vt-segs">{segmentos(it.profundidade).map((on, i) => <i key={i} className={on ? "on" : ""} />)}</span></div>
                         <div className="vt-pr">

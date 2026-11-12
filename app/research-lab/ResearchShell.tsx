@@ -41,6 +41,9 @@ interface ResearchShellProps {
   /** "Minhas coisas": criar um trabalho novo e excluir um trabalho salvo. */
   onNewWork?: () => void;
   onDeleteWork?: (id: string) => void;
+  /** publicar um trabalho na vitrine (pasta de pesquisa) e o status de cada um — passa direto pro DocumentDesktop */
+  onPublishWork?: (id: string) => void;
+  publicacoes?: Record<string, { status: string; motivo?: string | null }>;
   /** Tipo de trabalho atual + setter — o pill "Minha pesquisa" reage a isto.
    *  `WorkType` e nao `string`: o `string` deixava esta prop aceitar qualquer coisa, e era
    *  por isso que o tsc reclamava ao receber o `switchWorkType` da página, que é estrito.
@@ -98,6 +101,8 @@ export default function ResearchShell({
   onOpenSession,
   onNewWork,
   onDeleteWork,
+  onPublishWork,
+  publicacoes,
   workType,
   onWorkType,
   onRelate,
@@ -517,6 +522,8 @@ export default function ResearchShell({
                 onOpenSession={onOpenSession}
                 onNewWork={onNewWork}
                 onDeleteWork={onDeleteWork}
+                onPublishWork={onPublishWork}
+                publicacoes={publicacoes}
                 onRelate={onRelate}
                 onView={(f) => viewDoc(f.id)}
                 onDropFiles={onDropFiles}

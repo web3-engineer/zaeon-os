@@ -32,6 +32,10 @@ interface DocumentDesktopProps {
   /** "Minhas coisas": novo trabalho / excluir trabalho. */
   onNewWork?: () => void;
   onDeleteWork?: (id: string) => void;
+  /** PUBLICAR um trabalho na vitrine como PASTA de pesquisa (lib/estudos/pesquisas) — só a Sala de Pesquisa liga. */
+  onPublishWork?: (id: string) => void;
+  /** o status de cada trabalho já mandado pra vitrine (workId → pendente/publicada/recusada) */
+  publicacoes?: Record<string, { status: string; motivo?: string | null }>;
   /** Arrastar um doc sobre outro → relacionar as pesquisas. */
   onRelate?: (sourceId: string, targetId: string) => void;
   /** Abrir o PDF na folha (＋ verde / soltar na folha). */
@@ -60,6 +64,8 @@ export default function DocumentDesktop({
   onOpenSession,
   onNewWork,
   onDeleteWork,
+  onPublishWork,
+  publicacoes,
   onRelate,
   onView,
   onDropFiles,
@@ -196,7 +202,24 @@ export default function DocumentDesktop({
                 <button onClick={() => onOpenSession(s.id)} className="text-left w-full px-3 py-2 text-[10.5px] text-white/80">
                   <p className="font-semibold line-clamp-1 pr-5">{s.title}</p>
                   {s.updatedAt && <p className="text-white/35 text-[9px] mt-0.5">{s.updatedAt}</p>}
+                  {publicacoes?.[s.id] && (
+                    <p
+                      className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[8.5px] font-black uppercase tracking-wider ${publicacoes[s.id].status === "publicada" ? "bg-emerald-400/15 text-emerald-300" : publicacoes[s.id].status === "recusada" ? "bg-rose-400/15 text-rose-300" : "bg-amber-400/15 text-amber-200"}`}
+                      title={publicacoes[s.id].status === "recusada" ? publicacoes[s.id].motivo || "recusada pelo admin" : undefined}
+                    >
+                      {publicacoes[s.id].status === "publicada" ? "▤ na vitrine" : publicacoes[s.id].status === "recusada" ? "▤ recusada" : "▤ na fila da vitrine"}
+                    </p>
+                  )}
                 </button>
+                {onPublishWork && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onPublishWork(s.id); }}
+                    title={publicacoes?.[s.id] ? "Mandar de novo pra vitrine (atualiza a cópia)" : "Publicar na vitrine como pasta de pesquisa"}
+                    className="absolute top-1.5 right-6 opacity-0 group-hover:opacity-100 text-white/35 hover:text-cyan-300 text-[11px] leading-none"
+                  >
+                    ▤
+                  </button>
+                )}
                 {onDeleteWork && (
                   <button
                     onClick={(e) => { e.stopPropagation(); onDeleteWork(s.id); }}
