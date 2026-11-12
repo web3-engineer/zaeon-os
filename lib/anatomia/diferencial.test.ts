@@ -30,7 +30,9 @@ import {
 import { esconderTodos } from "@/lib/anatomia/estado";
 import { estruturaNomeada } from "@/lib/anatomia/pedido";
 import { artefatosComAnatomia, validarArtefatosDeAnatomia } from "@/lib/agent/anatomiaDoTurno";
-import { estadoDaEstruturaPedida } from "@/components/anatomia/AtlasDoCorpo";
+import { estadoDaEstruturaPedida, veioDeDentro } from "@/components/anatomia/AtlasDoCorpo";
+import { CHAT_ROTA } from "@/lib/ui/loungeHub";
+import { readFileSync } from "node:fs";
 import type { StudioRef } from "@/lib/agent/contracts";
 
 const atlas = carregarAtlas();
@@ -373,5 +375,37 @@ describe("ABRIR O ATLAS · o corpo inteiro é uma ESCOLHA, não o padrão", () =
     expect(contarVisiveis(atlas!.parts, nascimento)).toBe(0);
     // e o estado antigo, que era o padrão, desenhava quase tudo — é o que deixou de ser automático
     expect(contarVisiveis(atlas!.parts, ESTADO_INICIAL)).toBeGreaterThan(atlas!.parts.length * 0.9);
+  });
+});
+
+describe("página do atlas · só o necessário na tela (dono, 2026-11-12)", () => {
+  const fonte = readFileSync("components/anatomia/AtlasDoCorpo.tsx", "utf8");
+  // o que o aluno LÊ: sem os comentários do código
+  const tela = fonte.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+  it("tem o Voltar ao chat, e ele aponta para o chat", () => {
+    expect(tela).toContain("data-voltar-ao-chat");
+    expect(tela).toContain("Voltar ao chat");
+    expect(CHAT_ROTA).toMatch(/^\/research-lab\?.*estudo=chat/);
+  });
+
+  it("voltar só usa o histórico quando a página anterior é desta casa", () => {
+    expect(veioDeDentro("https://zaeon.app/research-lab?estudo=chat", "https://zaeon.app")).toBe(true);
+    expect(veioDeDentro("https://google.com/search?q=atlas", "https://zaeon.app")).toBe(false);
+    expect(veioDeDentro("", "https://zaeon.app")).toBe(false);
+    expect(veioDeDentro(null, "https://zaeon.app")).toBe(false);
+    expect(veioDeDentro("isto não é url", "https://zaeon.app")).toBe(false);
+  });
+
+  it("saíram o título, os contadores do cabeçalho, a dica de rodapé e a busca do topo", () => {
+    for (const fora of ["Atlas do Corpo", "Anatomia interativa", "peças modeladas · BodyParts3D", "Pinça ou roda", "Peça por peça", "Painéis do explorador"]) {
+      expect(tela, fora).not.toContain(fora);
+    }
+    expect(tela).not.toMatch(/<kbd/);
+  });
+
+  it("a atribuição do dado (CC BY) continua alcançável, e a classe que a cena mede continua lá", () => {
+    expect(tela).toContain("Sobre este atlas");
+    expect(tela).toContain("anatomia-identidade");
   });
 });
