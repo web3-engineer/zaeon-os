@@ -143,17 +143,20 @@ export function allowEhAberta(allow: readonly string[]): boolean {
   return allow.includes(ABERTO);
 }
 
-/** → { ok, url } | { ok: false, erro, status }. Em modo aberto, só o predicado de domínio cede. */
+/**
+ * → { ok, url } | { ok: false, erro, status }. Em modo aberto, só o predicado de domínio cede.
+ *
+ * O MODO ABERTO (`*`) agora mora no `urlPermitida` (guarda.mjs) — UMA definição, pras duas portas
+ * (este agente e o leitor-proxy). Aqui é só delegar: fechado, a allowlist decide; aberto, o domínio
+ * cede e todas as demais guardas (esquema, porta, credencial, IP-literal) seguem valendo, com o
+ * `ipBloqueado` de cada IP resolvido no socket de quem fala. Antes este wrapper reconstruía o modo
+ * aberto por fora (`[host]`); mantê-lo seria a segunda definição de "que domínio pode" que a F8 recusou.
+ */
 export function urlDoAgente(
   entrada: string,
   allow: readonly string[],
 ): { ok: true; url: URL } | { ok: false; erro: string; status: number } {
-  if (!allowEhAberta(allow)) return urlPermitida(entrada, allow as string[]);
-  // Precisa do host pra montar a lista de um item — e um endereço que nem parseia é recusado pelo
-  // próprio `urlPermitida` abaixo, com o mesmo código de erro de sempre.
-  let host = "";
-  try { host = new URL(String(entrada ?? "").trim()).hostname.replace(/^\[|\]$/g, ""); } catch { host = ""; }
-  return urlPermitida(entrada, host ? [host.toLowerCase()] : []);
+  return urlPermitida(entrada, allow as string[]);
 }
 
 /**
