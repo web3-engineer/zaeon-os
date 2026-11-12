@@ -7,8 +7,8 @@
  * Cada peça é um <g class="ci-part" data-at="<0..1>"> com a cor da sua etapa nas variáveis --anatomy-*.
  */
 import {
-  slabOf, cylinder, extrude, solidSvg, lineSvg, lineOnTop, dotsSvg, dotGrid, knurl, ring, iso,
-  figureSvg, fitProjection, boxCorners, type Plane, type Point3, type Projection,
+  slabOf, cylinder, extrude, solidSvg, lineSvg, lineOnTop, knurl, ring, iso, axisVector,
+  figureSvg, fitProjection, boxCorners, type Plane, type Projection,
 } from "@/lib/anatomy/iso-kit";
 
 const W = 384, H = 448;
@@ -44,26 +44,35 @@ function engrenagem(cx: number, cy: number, z: number, h: number): string {
   return solidSvg(extrude(anel, z, h, proj, { convex: false }), { tone: "hi" }) + lineSvg(ring(cx, cy, 1.8, z + h, proj, 18), { tone: "lo" });
 }
 
-/** um conector/flange nas pontas de um cabo */
-function conector(x: number, y: number): string {
-  return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.4" fill="#2a1d0a" stroke="#e8c468" stroke-width="1"/>`;
+const bv = axisVector(proj, [1, 0, 0]);   // o eixo X da esteira, projetado em tela (direção que os produtos correm)
+const REP = 6;                            // o período (em unidades) do laço da esteira
+
+/** a ESTEIRA: o leito + os dois rolos nas pontas */
+function esteira(): string {
+  return solidSvg(slabOf({ x: -14, y: -3.5, w: 28, d: 7, r: 1 }, 15.4, 1.6, proj), { tone: "hi" })
+    + solidSvg(cylinder(-13, 0, 2.2, 15.4, 1.6, proj, 16), { tone: "mid" })
+    + solidSvg(cylinder(13, 0, 2.2, 15.4, 1.6, proj, 16), { tone: "mid" });
 }
-/** um CABO grosso (solarpunk) curvo entre dois pontos 3D: sombra + miolo cobre + brilho + conectores nas pontas */
-function cabo(a: Point3, b: Point3, cor = "#c9872e", sag = 9): string {
-  const [ax, ay] = iso(a, proj), [bx, by] = iso(b, proj);
-  const mx = (ax + bx) / 2, my = (ay + by) / 2 + sag;
-  const d = `M${ax.toFixed(1)} ${ay.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${bx.toFixed(1)} ${by.toFixed(1)}`;
-  return `<path d="${d}" fill="none" stroke="#171006" stroke-width="5.2" stroke-linecap="round"/>`
-    + `<path d="${d}" fill="none" stroke="${cor}" stroke-width="3.2" stroke-linecap="round"/>`
-    + `<path d="${d}" fill="none" stroke="#ffeab0" stroke-width="0.9" stroke-linecap="round" opacity=".55"/>`
-    + conector(ax, ay) + conector(bx, by);
+
+/** a superfície da esteira RODANDO: setas (chevrons) e produtos que correm, recortados na tampa (clip) */
+function esteiraRolando(): string {
+  const q = [iso([-14, -3.5, 17], proj), iso([14, -3.5, 17], proj), iso([14, 3.5, 17], proj), iso([-14, 3.5, 17], proj)];
+  const clip = `<clipPath id="ci-esteira-clip"><polygon points="${q.map((p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ")}"/></clipPath>`;
+  let conteudo = "";
+  for (let x = -22; x <= 22; x += 2) {
+    const a = iso([x - 0.8, -2.2, 17.05], proj), b = iso([x + 0.6, 0, 17.05], proj), c = iso([x - 0.8, 2.2, 17.05], proj);
+    conteudo += `<polyline points="${a[0].toFixed(1)},${a[1].toFixed(1)} ${b[0].toFixed(1)},${b[1].toFixed(1)} ${c[0].toFixed(1)},${c[1].toFixed(1)}" fill="none" stroke="#bff3ff" stroke-width="1" opacity=".5"/>`;
+  }
+  for (let x = -18; x <= 18; x += REP) conteudo += solidSvg(slabOf({ x: x - 1.6, y: -1.6, w: 3.2, d: 3.2, r: 0.4 }, 17.1, 2.6, proj), { tone: "hi", lit: true });
+  return `<defs>${clip}</defs><g clip-path="url(#ci-esteira-clip)"><g class="ci-esteira" style="--ex:${(bv[0] * REP).toFixed(1)}px;--ey:${(bv[1] * REP).toFixed(1)}px">${conteudo}</g></g>`;
 }
-/** uma VÁLVULA de roda (solarpunk) num ponto 3D */
-function valvula(x: number, y: number, z: number, cor = "#86b06a"): string {
-  const [cx, cy] = iso([x, y, z], proj), r = 5;
-  let s = "";
-  for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + Math.PI / 8; s += `<line x1="${cx.toFixed(1)}" y1="${cy.toFixed(1)}" x2="${(cx + Math.cos(a) * r).toFixed(1)}" y2="${(cy + Math.sin(a) * r).toFixed(1)}" stroke="${cor}" stroke-width="1.5"/>`; }
-  return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r}" fill="#0a140c" stroke="${cor}" stroke-width="1.8"/>${s}<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="1.4" fill="${cor}"/>`;
+
+/** a PRENSA sobre a esteira: pórtico (dois postes + viga) e a cabeça que desce e sobe (ci-prensa) */
+function prensa(): string {
+  return solidSvg(cylinder(-7, -4.5, 0.8, 15.4, 9, proj, 10), { tone: "mid" })
+    + solidSvg(cylinder(-7, 4.5, 0.8, 15.4, 9, proj, 10), { tone: "mid" })
+    + solidSvg(slabOf({ x: -8.6, y: -5.5, w: 3.2, d: 11, r: 0.5 }, 24, 1.2, proj), { tone: "hi" })
+    + `<g class="ci-prensa">${solidSvg(slabOf({ x: -8, y: -2.6, w: 2.6, d: 5.2, r: 0.4 }, 19, 2.6, proj), { tone: "hi" })}</g>`;
 }
 
 /** uma torre em (cx,cy): duas caixas empilhadas (a de cima mais estreita) — os pilares das "conversas" */
@@ -72,17 +81,18 @@ function torre(cx: number, cy: number): string {
     + solidSvg(slabOf({ x: cx - 2.6, y: cy - 2.6, w: 5.2, d: 5.2, r: 1 }, 9.4, 4, proj), { tone: "hi" });
 }
 
-/** o EMISSOR: um disco projetor no topo do gadget, de onde sobe o feixe do holograma */
+/** o EMISSOR: um mastro atrás da esteira com um disco projetor, de onde sobe o feixe do holograma */
 function emissor(): string {
-  return solidSvg(cylinder(0, 0, 3.4, 24.4, 1.4, proj, 20), { tone: "hi" })
-    + lineSvg(ring(0, 0, 2.2, 25.8, proj, 20), { tone: "lit" });
+  return solidSvg(cylinder(0, -9, 1.4, 15.4, 5.5, proj, 12), { tone: "mid" })
+    + solidSvg(cylinder(0, -9, 2.8, 20.9, 1.3, proj, 18), { tone: "hi" })
+    + lineSvg(ring(0, -9, 1.8, 22.2, proj, 18), { tone: "lit" });
 }
 
 /** o MUNDO HOLOGRÁFICO: uma esfera grande, ciano e translúcida, flutuando DESTACADA acima do gadget — grade de
  *  meridianos/paralelos, continentes em contorno que rolam (o giro), scanlines, brilho, e o feixe do projetor subindo. */
 function mundoHolografico(): string {
-  const [ex, ey] = iso([0, 0, 25.8], proj);   // o emissor
-  const gx = ex, gy = ey - 118, R = 52;        // o mundo flutua bem acima, grande
+  const [ex, ey] = iso([0, -9, 22.2], proj);   // o emissor (atrás da esteira)
+  const gx = ex, gy = ey - 112, R = 52;         // o mundo flutua bem acima, grande
   const terra = (dx: number) =>
     `<path d="M${(gx - 34 + dx).toFixed(1)} ${(gy - 10).toFixed(1)} q11,-14 25,-7 q11,6 4,17 q-15,8 -27,1 q-8,-7 -2,-12Z" fill="none" stroke="#9af0ff" stroke-width="1.2" opacity=".8"/>`
     + `<ellipse cx="${(gx - 8 + dx).toFixed(1)}" cy="${(gy + 16).toFixed(1)}" rx="14" ry="7.5" fill="none" stroke="#9af0ff" stroke-width="1" opacity=".7"/>`
@@ -133,18 +143,16 @@ const PECAS: readonly Peca[] = [
   { at: 0.20, cor: "#46b0ff", corpo: torre(-14, -14) + torre(14, -14) + torre(-14, 14) + torre(14, 14) },
   // 03 — blueprint: o deck (plataforma) sobre as torres
   { at: 0.42, cor: "#38f0ff", corpo: solidSvg(slabOf({ x: -18, y: -18, w: 36, d: 36, r: 2 }, 13.4, 2, proj), { tone: "hi" }) },
-  // 03 — blueprint: o gabinete (o núcleo) com "tela" de pontos
-  { at: 0.50, cor: "#38f0ff", corpo: solidSvg(slabOf({ x: -12, y: -12, w: 20, d: 18, r: 2 }, 15.4, 9, proj), { tone: "hi" }) + dotsSvg(dotGrid(-8, -8, 5, 4, 3, 24.4, proj), { tone: "mid", size: 0.6 }) },
-  // 04 — protótipo e testes (ROXO): bateria 18650
-  { at: 0.56, cor: "#8b5cf6", corpo: solidSvg(cylinder(15, -6, 4, 15.4, 12, proj, 20), { tone: "hi" }) + solidSvg(cylinder(15, -6, 1.7, 27.4, 1.6, proj, 14), { tone: "hi" }) + lineSvg(knurl(15, -6, 4, 17, 26, 14, proj), { tone: "lo" }) },
-  // 04 — protótipo e testes (ROXO): engrenagem no deck
-  { at: 0.64, cor: "#8b5cf6", corpo: engrenagem(-13, 12, 15.4, 3) },
-  // — o GADGET se fecha: CABOS grossos (cobre) e VÁLVULAS ligam a bateria, a engrenagem e os pilares ao núcleo
-  { at: 0.74, cor: "#c9872e", corpo:
-    cabo([15, -6, 19], [7, -4, 22]) + valvula(11, -5, 20.5)
-    + cabo([-13, 12, 17], [-5, 2, 18]) + valvula(-9, 7, 17.5)
-    + cabo([14, 14, 12], [7, 7, 15], "#9fae6a", 6) + cabo([-14, -14, 12], [-7, -7, 15], "#9fae6a", 6)
-    + valvula(0, -9, 23, "#c9872e") },
+  // 03 — blueprint: a MÁQUINA começa — a ESTEIRA (leito + rolos) sobre o deck
+  { at: 0.48, cor: "#38f0ff", corpo: esteira() },
+  // 03 — blueprint: a esteira RODANDO (setas + produtos correndo)
+  { at: 0.54, cor: "#38f0ff", corpo: esteiraRolando() },
+  // 04 — protótipo e testes (ROXO): a PRENSA que desce e sobe sobre a esteira
+  { at: 0.60, cor: "#8b5cf6", corpo: prensa() },
+  // 04 — protótipo e testes (ROXO): a engrenagem MOTRIZ (gira) na ponta da esteira
+  { at: 0.66, cor: "#8b5cf6", corpo: `<g class="ci-giro">${engrenagem(13, 5, 15.4, 3)}</g>` },
+  // 04 — protótipo e testes (ROXO): a bateria que alimenta a máquina
+  { at: 0.72, cor: "#8b5cf6", corpo: solidSvg(cylinder(-14, 10, 3.4, 15.4, 10, proj, 18), { tone: "hi" }) + solidSvg(cylinder(-14, 10, 1.5, 25.4, 1.4, proj, 14), { tone: "hi" }) + lineSvg(knurl(-14, 10, 3.4, 16.8, 24.4, 14, proj), { tone: "lo" }) },
   // 05 — no mundo real: o EMISSOR do holograma no topo do gadget
   { at: 0.82, cor: "#22d3ee", corpo: emissor() },
   // 05 — no mundo real: o MUNDO HOLOGRÁFICO, grande e girando, flutuando acima

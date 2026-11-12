@@ -19,7 +19,20 @@
 /* o MUNDO holográfico gira: os continentes rolam (dois tiles de 104px — R*2 — pra o laço ser sem costura) */
 @keyframes ci-globo-spin { from { transform: translateX(0); } to { transform: translateX(-104px); } }
 .ci-globo-spin { animation: ci-globo-spin 12s linear infinite; }
-@media (prefers-reduced-motion: reduce) { .ci-globo-spin { animation: none; } }
+
+/* a ESTEIRA corre: o conteúdo desliza um período (--ex/--ey, setados inline pela cena) e volta — laço sem costura */
+@keyframes ci-esteira { from { transform: translate(0, 0); } to { transform: translate(var(--ex), var(--ey)); } }
+.ci-esteira { animation: ci-esteira 2.6s linear infinite; }
+
+/* a PRENSA desce e sobe */
+@keyframes ci-prensa { 0%, 100% { transform: translateY(-1px); } 45%, 55% { transform: translateY(6px); } }
+.ci-prensa { transform-box: fill-box; transform-origin: center; animation: ci-prensa 1.8s ease-in-out infinite; }
+
+/* a engrenagem MOTRIZ gira */
+@keyframes ci-giro { to { transform: rotate(360deg); } }
+.ci-giro { transform-box: fill-box; transform-origin: center; animation: ci-giro 7s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) { .ci-globo-spin, .ci-esteira, .ci-prensa, .ci-giro { animation: none; } }
 
 /* a barra de progresso */
 .ci-bar { position: relative; width: 100%; margin-top: 10px; }
