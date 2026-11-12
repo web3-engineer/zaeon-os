@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { itemDaSkill, itensDasSkills, itensDasSkillsDoDisco } from "@/lib/estudos/vitrineSkills";
 import { carregarSkillsDaCasa, fsDeDisco, type CardDaSkill } from "@/lib/agent/skills-dir";
+import { DONO_VITRINE } from "@/lib/auth/roles";
 import { FILTROS, NOME_TIPO, filtrarVitrine } from "@/lib/estudos/vitrine";
 
 const card = (over: Partial<CardDaSkill> = {}): CardDaSkill => ({
@@ -11,6 +12,8 @@ const card = (over: Partial<CardDaSkill> = {}): CardDaSkill => ({
   tags: ["t1"],
   entrega: ["e1", "e2"],
   app: null,
+  precoBRL: 0,
+  familia: "procedimento",
   ...over,
 });
 
@@ -51,6 +54,34 @@ describe("a SEÇÃO de skills na vitrine", () => {
   it("a busca da vitrine acha a skill pelo app que ela comanda", () => {
     const skill = itemDaSkill(card({ app: "atlas-anatomia" }));
     expect(filtrarVitrine([skill], "todos", "atlas-anatomia")).toHaveLength(1);
+  });
+});
+
+describe("REGRA DO DONO — pago e curso pertencem ao fundador", () => {
+  it("skill paga: o item carrega precoBRL e o dono é o fundador, não o que a skill disser", () => {
+    const i = itemDaSkill(card({ precoBRL: 545, familia: "course" }));
+    expect(i.precoBRL).toBe(545);
+    expect(i.dono).toBe(DONO_VITRINE);
+  });
+
+  it("curso GRÁTIS também é do fundador — a posse é da família, não do preço", () => {
+    const i = itemDaSkill(card({ precoBRL: 0, familia: "course" }));
+    expect(i.dono).toBe(DONO_VITRINE);
+    expect(i.tipo).toBe("curso");
+  });
+
+  it("skill paga de procedimento (sem ser curso) também é do fundador", () => {
+    expect(itemDaSkill(card({ precoBRL: 33, familia: "pago" })).dono).toBe(DONO_VITRINE);
+  });
+
+  it("procedimento grátis NÃO tem dono — é parte da plataforma, não um produto vendido", () => {
+    const i = itemDaSkill(card());
+    expect(i.dono).toBeUndefined();
+    expect(i.precoBRL).toBeUndefined();
+  });
+
+  it("o preço NÃO é lido de volta como SOL do catálogo — `preco` fica 0", () => {
+    expect(itemDaSkill(card({ precoBRL: 545, familia: "course" })).preco).toBe(0);
   });
 });
 

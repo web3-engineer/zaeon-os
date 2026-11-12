@@ -105,6 +105,16 @@ export type CardDaSkill = {
   entrega: string[];
   /** o app open-source secundário que a skill comanda (`null` = skill só de procedimento) */
   app: string | null;
+  /**
+   * preço FIXO em reais. 0 ou ausente = grátis. A conversão para SOL é ao vivo, na exibição
+   * (lib/solana/cotacao) — guardar reais é decisão do dono: o preço não derrete com o mercado.
+   */
+  precoBRL: number;
+  /**
+   * a família do card: "procedimento" (a skill da casa comum), "pago" (tem preço), "device"
+   * (espelho de download + instruções), "course" (curso completo). Decide o que o PORTÃO cobra.
+   */
+  familia: "procedimento" | "pago" | "device" | "course";
 };
 
 const lista = (v: unknown): string[] =>
@@ -129,6 +139,14 @@ export function cardDaSkill(s: SkillDaCasa): CardDaSkill | null {
   const subtitulo = texto(m["zaeon-subtitulo"]);
   const entrega = lista(m["zaeon-entrega"]);
   if (!subtitulo || !entrega.length) return null;
+
+  // preço: número >= 0, ou 0 quando ausente/torto. Preço negativo vira 0 (grátis) em vez de
+  // virar um crédito ao aluno; quem valida que um `pago` tem preço > 0 é o portão.
+  const precoBRL = Math.max(0, Number(texto(m["zaeon-preco-brl"])) || 0);
+  const fam = texto(m["zaeon-familia"]) as CardDaSkill["familia"];
+  const familia: CardDaSkill["familia"] =
+    (["procedimento", "pago", "device", "course"] as const).includes(fam) ? fam : "procedimento";
+
   return {
     slug: s.manifest.name,
     titulo,
@@ -137,6 +155,8 @@ export function cardDaSkill(s: SkillDaCasa): CardDaSkill | null {
     tags: lista(m["zaeon-tags"]),
     entrega,
     app: texto(m["zaeon-app"]) || null,
+    precoBRL,
+    familia,
   };
 }
 

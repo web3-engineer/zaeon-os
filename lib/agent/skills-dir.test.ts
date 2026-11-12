@@ -16,6 +16,8 @@ import {
 import { MAX_DESC, MAX_NAME, NAME_RE } from "@/lib/agent/skills";
 import { getTool } from "@/lib/agent/runtime";
 import { registrarAnatomia } from "@/lib/anatomia/tools";
+import { itemDaSkill } from "@/lib/estudos/vitrineSkills";
+import { DONO_VITRINE } from "@/lib/auth/roles";
 
 /** Um SKILL.md mínimo e válido, para cada teste mexer num campo só. */
 const md = (over: Partial<Record<string, string>> = {}, corpo = "linha a\nlinha b\nlinha c") => {
@@ -121,7 +123,26 @@ describe("cardDaSkill — tudo-ou-nada", () => {
     expect(card).toEqual({
       slug: "exemplo", titulo: "T", subtitulo: "S", modelo: "livro",
       tags: ["t1", "t2"], entrega: ["a", "b"], app: null,
+      precoBRL: 0, familia: "procedimento", // sem envelope de preço → grátis, procedimento
     });
+  });
+
+  it("lê preço e família do envelope; preço negativo vira 0 (grátis), não crédito", () => {
+    const pago = cardDaSkill(comMeta(
+      "  zaeon-titulo: T\n  zaeon-subtitulo: S\n  zaeon-entrega: a\n  zaeon-preco-brl: 545\n  zaeon-familia: course",
+    ))!;
+    expect(pago.precoBRL).toBe(545);
+    expect(pago.familia).toBe("course");
+
+    const neg = cardDaSkill(comMeta(
+      "  zaeon-titulo: T\n  zaeon-subtitulo: S\n  zaeon-entrega: a\n  zaeon-preco-brl: -10",
+    ))!;
+    expect(neg.precoBRL).toBe(0);
+
+    const familiaTorta = cardDaSkill(comMeta(
+      "  zaeon-titulo: T\n  zaeon-subtitulo: S\n  zaeon-entrega: a\n  zaeon-familia: inventada",
+    ))!;
+    expect(familiaTorta.familia, "família desconhecida cai em procedimento").toBe("procedimento");
   });
 
   it("app e modelo vêm do envelope quando declarados", () => {
@@ -248,6 +269,32 @@ describe(`PORTÃO das skills da casa · ${DIR_SKILLS_CASA}`, () => {
         expect(MODELOS_3D as readonly string[]).toContain(card.modelo);
         expect(card.entrega.length, "card sem entrega não diz ao aluno o que ele ganha")
           .toBeGreaterThan(0);
+      });
+
+      it("REGRA DO DONO: card pago ou de curso pertence ao fundador, e com preço coerente", () => {
+        const card = cardDaSkill(s);
+        if (!card) return;
+        const item = itemDaSkill(card);
+        const pago = card.precoBRL > 0;
+        const curso = card.familia === "course";
+
+        if (pago) {
+          expect(Number.isFinite(card.precoBRL) && card.precoBRL > 0,
+            `"${s.manifest.name}" é paga mas o preço não é um número positivo`).toBe(true);
+        }
+        if (pago || curso) {
+          expect(item.dono,
+            `"${s.manifest.name}" é ${curso ? "curso" : "paga"} e tem de pertencer ao fundador`)
+            .toBe(DONO_VITRINE);
+        } else {
+          expect(item.dono, `"${s.manifest.name}" é grátis de procedimento e não deve ter dono`)
+            .toBeUndefined();
+        }
+
+        // Uma família "pago" sem preço, ou um preço numa família que não cobra, é contradição.
+        if (card.familia === "pago") {
+          expect(card.precoBRL, `"${s.manifest.name}" é família "pago" mas custa 0`).toBeGreaterThan(0);
+        }
       });
     },
   );

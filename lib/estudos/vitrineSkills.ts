@@ -15,6 +15,7 @@
  * existe.
  */
 import type { ItemVitrine, Modelo3D, TipoProduto } from "@/lib/estudos/vitrine";
+import { DONO_VITRINE } from "@/lib/auth/roles";
 import {
   cardsDasSkills, carregarSkillsDaCasa, fsDeDisco, type CardDaSkill, type CatalogoDaCasa,
 } from "@/lib/agent/skills-dir";
@@ -28,20 +29,31 @@ const MODELOS: readonly string[] = [
 /**
  * Card da skill → item da vitrine. A `entrega` do card é a entrega do item: é o que diz ao aluno
  * o que ele ganha ao plugar, e o portão (`skills-dir.test.ts`) exige que ela exista.
+ *
+ * REGRA DO DONO, aplicada AQUI e não lida da skill: todo item PAGO e todo CURSO pertencem ao
+ * fundador (`DONO_VITRINE`). Atribuir em vez de ler é de propósito — uma skill não pode se declarar
+ * dona de um produto pago; o dono é da conta, não do arquivo. O portão confere que foi isso que
+ * aconteceu, então um refactor que passe a ler o dono da skill cai no CI.
  */
 export function itemDaSkill(card: CardDaSkill): ItemVitrine {
   const modelo = (MODELOS.includes(card.modelo) ? card.modelo : "livro") as Modelo3D;
+  const pago = card.precoBRL > 0;
+  const curso = card.familia === "course";
+  // Pago OU curso → do fundador. Grátis de procedimento → sem dono (é parte da plataforma).
+  const dono = pago || curso ? DONO_VITRINE : undefined;
   return {
     id: `skill:${card.slug}`,
     titulo: card.titulo,
     subtitulo: card.subtitulo,
-    tipo: "skill" as TipoProduto,
+    tipo: curso ? ("curso" as TipoProduto) : ("skill" as TipoProduto),
     execucao: "agente",
     modelo,
     autor: "Zaeon",
     raridade: "comum",
     profundidade: 0,
-    preco: 0,
+    preco: 0,                               // o preço em SOL do catálogo simulado não se aplica
+    ...(pago ? { precoBRL: card.precoBRL } : {}),
+    ...(dono ? { dono } : {}),
     fracoes: { total: 1, vendidas: 0 },
     selos: { supervisionado: false, linksOk: true, codigoPrivado: false },
     entrega: card.entrega,

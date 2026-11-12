@@ -36,6 +36,17 @@ export type ItemVitrine = {
   entrega: string[];
   /** um toque de ironia (o dono: "outras tipificações profundas — ou não — contêm ironia") */
   ironia?: boolean;
+  /**
+   * preço FIXO em reais, quando o item é pago. `undefined` = o preço vem de `preco` (SOL, catálogo
+   * simulado). Itens de skill (pago/curso) usam ESTE campo: o dono quis o preço fixo em reais, com
+   * a conversão para SOL feita ao vivo na exibição (lib/solana/cotacao).
+   */
+  precoBRL?: number;
+  /**
+   * a conta DONA do item. Todo item pago e todo curso pertencem ao fundador (DONO_VITRINE) — regra
+   * do dono, verificada no portão das skills. `undefined` nos itens grátis e no catálogo simulado.
+   */
+  dono?: string;
   tags: string[];
   /** blueprint que vira AGENTE no seletor da sidebar (não espera a moeda: adicionar é grátis e instantâneo) */
   plugavel?: PluginChat;
