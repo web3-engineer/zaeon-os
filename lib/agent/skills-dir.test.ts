@@ -21,6 +21,7 @@ import { itemDaSkill } from "@/lib/estudos/vitrineSkills";
 import { DONO_VITRINE } from "@/lib/auth/roles";
 import { carregarCurso, leitorDeDisco } from "@/lib/curso/carregar";
 import { resumoDoCurso } from "@/lib/curso/formato";
+import { carregarSpec, leitorAgenticDeDisco } from "@/lib/agentic-skill/runner";
 
 /** Um SKILL.md mínimo e válido, para cada teste mexer num campo só. */
 const md = (over: Partial<Record<string, string>> = {}, corpo = "linha a\nlinha b\nlinha c") => {
@@ -338,6 +339,21 @@ describe(`PORTÃO das skills da casa · ${DIR_SKILLS_CASA}`, () => {
           const resumo = resumoDoCurso(r.curso);
           expect(resumo.modulos, "curso precisa de pelo menos 2 módulos").toBeGreaterThanOrEqual(2);
           expect(resumo.blocosDeProva, "curso sem prova nenhuma não avalia").toBeGreaterThan(0);
+        }
+      });
+
+      it("AGENTIC: declara um agentic.json válido com os três modelos", () => {
+        const card = cardDaSkill(s);
+        if (!card || card.familia !== "agentic") return;
+        // Offline: a skill promete os três modelos e tem tarefa + contrato. A prova REAL de que os
+        // três cumprem o contrato é o AGENTIC_E2E (runner.test), que precisa das chaves — não há
+        // nesta sessão, por isso a comparação real não entra no CI padrão.
+        const r = carregarSpec(leitorAgenticDeDisco(), s.pasta);
+        expect(r.ok, `agentic.json de "${s.manifest.name}" inválido: ${r.ok ? "" : r.problemas.join("; ")}`).toBe(true);
+        if (r.ok) {
+          for (const m of ["claude", "codex", "octa"]) {
+            expect(r.spec.modelos, `"${s.manifest.name}" não promete o modelo "${m}"`).toContain(m);
+          }
         }
       });
     },
