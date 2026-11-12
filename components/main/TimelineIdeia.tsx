@@ -12,8 +12,8 @@ import "./timeline-ideia.css";
 
 const MARCOS: readonly { titulo: string; cor: string }[] = [
   { titulo: "Papel científico", cor: "#f5c542" },
-  { titulo: "Conversa com as IAs", cor: "#46b0ff" },
-  { titulo: "Blueprint", cor: "#38f0ff" },
+  { titulo: "Conversa com as IAs", cor: "#2bd47a" },
+  { titulo: "Blueprint", cor: "#2d6ae8" },
   { titulo: "Protótipo e testes", cor: "#8b5cf6" },
   { titulo: "No mundo real", cor: "#22d3ee" },
 ];
