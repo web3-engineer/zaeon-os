@@ -33,6 +33,27 @@ model_list:
       vertex_credentials: os.environ/GOOGLE_CREDENTIALS
     model_info: { id: vertex-real }
 
+  # ── MODELOS PREMIUM (Octa, opt-in) — conta de API da ORG da Zaeon, NÃO assinatura ───────────────
+  # Claude/Codex rodando no harness do Octa (lib/octa/modelosPremium + /api/octa/agente), só plano Max.
+  # A chave é da conta de API da ORG (Console Anthropic / Platform OpenAI): a assinatura Max/ChatGPT é
+  # BLOQUEADA no servidor pelos dois provedores pra app de terceiros e bane a conta. A chave vive SÓ
+  # aqui no gateway — infra do dono: pôr ANTHROPIC_API_KEY / OPENAI_API_KEY no env do container do
+  # gateway (sem elas, o grupo falha e o app cai na reserva Google). Trocar o modelo (ex.: Sonnet →
+  # Opus) = editar o `model:` abaixo. FORA das fallback chains de propósito: o fallback é NO APP
+  # (lib/octa/modelo — premium cai no Gemini "forte", e o `servidoPor` da rota mostra quem serviu).
+  - model_name: zaeon-claude
+    litellm_params:
+      model: anthropic/claude-sonnet-5-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+      timeout: 120
+    model_info: { id: anthropic-sonnet }
+  - model_name: zaeon-codex
+    litellm_params:
+      model: openai/gpt-5-codex
+      api_key: os.environ/OPENAI_API_KEY
+      timeout: 120
+    model_info: { id: openai-codex }
+
   # ── POOL GRÁTIS (Fatia 7) ──────────────────────────────────────────────────────────────
   # Primário: Gemini Flash-Lite no AI Studio — key de conta Google DEDICADA, nunca a do negócio
   # (a do negócio guarda o crédito GenAI, o Vertex dos chats e o OAuth do login). O free tier
