@@ -5,15 +5,19 @@
  *   Papel #f5c542 (dourado) → Conversa #2bd47a (verde) → Blueprint #2d6ae8 (azul escuro) → Protótipo #8b5cf6 (roxo)
  *   → Mundo real #22d3ee (teal).
  * Há PROGRESSÃO DE COR além de elementos: cada trilha/pad nasce já na cor do seu ponto na timeline, então a cor varre
- * a placa em sincronia com a barra. Os 5 NANOCHIPS ficam espalhados (formato de placa de verdade) e a ordem é só de
- * COR e de APARIÇÃO: acendem um a cada marco (gold→verde→azul→roxo→teal), não pela posição em pixel. Sem sinais
- * viajando. Cada peça é um <g class="ci-part" data-at="0..0.9"> que a TimelineIdeia revela pela rampa de progresso.
+ * a placa em sincronia com a barra. O PAPEL CIENTÍFICO é a BASE DO CHIP: a faixa e os dedos do conector em ouro na borda
+ * de baixo, a primeira coisa a acender (tudo nasce do papel). Os outros 4 marcos são NANOCHIPS espalhados (formato de
+ * placa de verdade); a ordem é só de COR e de APARIÇÃO (verde→azul→roxo→teal, um a cada marco), não pela posição em
+ * pixel. Sem sinais viajando. Cada peça é um <g class="ci-part" data-at="0..0.9"> que a TimelineIdeia revela pela rampa
+ * de progresso.
  */
 
 const W = 1000, H = 1000;
 
 /* ---- as 5 cores da TIMELINE, NA ORDEM dos marcos da barra de baixo ---- */
 const RAMP = ["#f5c542", "#2bd47a", "#2d6ae8", "#8b5cf6", "#22d3ee"] as const;
+/** o ouro do PAPEL CIENTÍFICO (a base do chip) */
+const OURO = RAMP[0];
 
 /* ---- tons do vidro escuro ---- */
 const VIDRO1 = "#0b1322";
@@ -117,11 +121,11 @@ add(0.06, (() => {
   return s + `</g>`;
 })(), 5);
 
-// — os 5 NANOCHIPS num layout espalhado (formato de placa de verdade). A ORDEM é só de COR e de APARIÇÃO: cada chip
-// acende no seu marco (at 0.10→0.88, cor gold→verde→azul→roxo→teal), independente de onde está na placa.
+// — os NANOCHIPS dos marcos 2–5 num layout espalhado (formato de placa de verdade). A ORDEM é só de COR e de APARIÇÃO:
+// cada chip acende no seu marco (at 0.30→0.88, verde→azul→roxo→teal), independente de onde está na placa. O marco 1
+// (Papel, dourado) não é chip: é a BASE, logo abaixo.
 // [x, y, w, h, ci(cor/ordem), at(≈ limiar do marco), traço de ligação ao núcleo]
 const chips: { x: number; y: number; w: number; h: number; ci: number; at: number; liga: [number, number][] }[] = [
-  { x: 232, y: 150, w: 150, h: 72, ci: 0, at: 0.10, liga: [[382, 186], [430, 186], [430, 300], [470, 340], [470, PY]] }, // dourado, topo-esq
   { x: 716, y: 236, w: 150, h: 86, ci: 1, at: 0.30, liga: [[716, 300], [640, 300], [600, 340], [PX + PW, 452]] },        // verde, topo-dir
   { x: 122, y: 606, w: 150, h: 92, ci: 2, at: 0.50, liga: [[272, 652], [360, 652], [400, 616], [PX, 560]] },             // azul, baixo-esq
   { x: 708, y: 642, w: 160, h: 92, ci: 3, at: 0.70, liga: [[708, 688], [640, 688], [600, 648], [PX + PW, 540]] },        // roxo, baixo-dir
@@ -141,17 +145,10 @@ for (let i = 0; i < 6; i++) { // direita
   const y = 430 + i * 24, x1 = 862 - (i % 2) * 16, at = 0.17 + i * 0.016;
   add(at, trilha([[PX + PW, y], [PX + PW + 48, y], [x1, y]], cor(at), 3) + pad(x1, y, 6, cor(at)));
 }
-for (let i = 0; i < 6; i++) { // baixo → dedos do conector
-  const x = 418 + i * 30, at = 0.3 + i * 0.016;
-  add(at, trilha([[x, PY + PH], [x, 640], [x + (i - 3) * 6, 700], [360 + i * 56, 760], [360 + i * 56, 890]], cor(at), 3) + pad(x, PY + PH + 8, 4, cor(at)));
+for (let i = 0; i < 6; i++) { // baixo → a BASE dourada (o papel): as trilhas que sobem dela até o núcleo são de ouro
+  const x = 418 + i * 30, at = 0.1 + i * 0.012;
+  add(at, trilha([[x, PY + PH], [x, 640], [x + (i - 3) * 6, 700], [360 + i * 56, 760], [360 + i * 56, 884]], OURO, 3) + pad(x, PY + PH + 8, 4, OURO));
 }
-
-// — bobina/indutor em espiral
-add(0.64, (() => {
-  const cx = 290, cy = 775; let d = `M${cx},${cy}`, a = 0, rr = 4;
-  for (let s = 0; s < 44; s++) { a += 0.5; rr += 1.1; d += ` L${r1(cx + Math.cos(a) * rr)},${r1(cy + Math.sin(a) * rr)}`; }
-  return `<path d="${d}" fill="none" stroke="${cor(0.64)}" stroke-width="3" stroke-linecap="round"/>` + pad(cx, cy, 5, cor(0.64));
-})(), 2);
 
 // — campo de VIAS/pads preenchendo vazios
 const vias: [number, number, number][] = [
@@ -161,6 +158,16 @@ const vias: [number, number, number][] = [
   [620, 620, 0.5], [780, 820, 0.64], [940, 460, 0.36], [90, 440, 0.26], [905, 250, 0.3],
 ];
 for (const [x, y, at] of vias) add(at, pad(x, y, 5, cor(at)));
+// — MAIS PONTOS: um campo denso de vias menores, preenchendo os vazios (o canto de cima, as laterais e o pé da placa)
+const viasFinas: [number, number, number][] = [
+  [110, 120, 0.12], [170, 150, 0.14], [240, 110, 0.16], [120, 205, 0.15], [205, 255, 0.2], [300, 240, 0.18],
+  [335, 168, 0.22], [262, 330, 0.24], [360, 300, 0.26], [360, 382, 0.28], [620, 110, 0.3], [702, 142, 0.32],
+  [782, 120, 0.34], [880, 172, 0.36], [652, 222, 0.4], [640, 382, 0.42], [905, 382, 0.38], [92, 722, 0.46],
+  [170, 802, 0.5], [242, 862, 0.52], [318, 822, 0.54], [300, 722, 0.56], [262, 775, 0.55], [900, 762, 0.6],
+  [862, 862, 0.62], [702, 862, 0.64], [942, 642, 0.66], [580, 700, 0.6], [940, 300, 0.4], [60, 300, 0.2],
+  [60, 600, 0.44], [500, 360, 0.3], [130, 880, 0.58], [910, 920, 0.7],
+];
+for (const [x, y, at] of viasFinas) add(at, `<circle cx="${x}" cy="${y}" r="3.6" fill="${cor(at)}" opacity="0.9"/>`);
 
 // — SMDs espalhados
 const smds: [number, number, number][] = [
@@ -178,10 +185,11 @@ const finas: [[number, number][], number][] = [
 ];
 for (const [pts, at] of finas) add(at, trilha(pts, cor(at), 1.6));
 
-// — dedos do CONECTOR na borda de baixo (gradiente da timeline na ordem)
-let fingers = "";
-for (let i = 0; i < 11; i++) fingers += `<rect x="${360 + i * 26}" y="896" width="16" height="70" rx="2" fill="${cor(i / 10 * 0.9)}" opacity="0.92"/>`;
-add(0.78, fingers, 3);
+// — a BASE DO CHIP = o PAPEL CIENTÍFICO (dourado): a faixa e os dedos do conector na borda de baixo. É o 1º marco, então
+// é a primeira coisa a acender — o núcleo e o resto da placa crescem a partir dela.
+let base = `<g filter="url(#cs-glow)"><rect x="344" y="882" width="312" height="10" rx="3" fill="url(#cs-ouro)"/>`;
+for (let i = 0; i < 11; i++) base += `<rect x="${360 + i * 26}" y="896" width="16" height="70" rx="2" fill="url(#cs-ouro)" opacity="0.95"/>`;
+add(0.08, base + `</g>`, 3);
 
 // — pontinhos/decoração por último
 const dots: [number, number, number, number][] = [
@@ -206,6 +214,11 @@ const defs = `
       <stop offset="52%" stop-color="#2d6ae8"/>
       <stop offset="76%" stop-color="#8b5cf6"/>
       <stop offset="100%" stop-color="#22d3ee"/>
+    </linearGradient>
+    <linearGradient id="cs-ouro" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffe08a"/>
+      <stop offset="45%" stop-color="#f5c542"/>
+      <stop offset="100%" stop-color="#b8860b"/>
     </linearGradient>
     <linearGradient id="cs-borda" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.9"/>
