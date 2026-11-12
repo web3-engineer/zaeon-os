@@ -1,0 +1,22 @@
+.spark{position:absolute;left:var(--x);top:var(--y);width:var(--w);height:2px;background:linear-gradient(90deg,transparent,var(--color),white);box-shadow:0 0 7px var(--color);opacity:0}
+.run .spark{animation:converge .34s cubic-bezier(.22,.65,.4,1) var(--delay) both}.run .bird{animation:arrive .39s cubic-bezier(.14,.8,.25,1) both}.run .eye{animation:blink 1.6s .36s both}.run.depart .bird{animation:depart .32s cubic-bezier(.5,0,.86,.48) both}
+@keyframes converge{0%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--angle)) scaleX(2.6)}25%{opacity:1}85%{opacity:1}100%{opacity:0;transform:translate(0,0) rotate(var(--angle)) scaleX(.12)}}
+@keyframes arrive{0%,28%{opacity:0;transform:translate(-28vw,12vh) rotate(-16deg) scale(.64);filter:blur(4px) brightness(2)}75%{opacity:1;transform:translate(5px,-2px) rotate(2deg);filter:brightness(1.65)}100%{opacity:1;transform:none;filter:none}}
+@keyframes blink{0%,28%,44%,100%{transform:scaleY(0)}34%,38%{transform:scaleY(1)}}
+@keyframes depart{0%{opacity:1;transform:none}25%{opacity:1;transform:translate(-10px,5px) rotate(-4deg)}100%{opacity:0;transform:translate(62vw,-24vh) rotate(-14deg) scale(.64);filter:blur(3px) brightness(1.6)}}
+@media(prefers-reduced-motion:reduce){.run .bird,.run.depart .bird,.run .spark,.run .eye{animation:none}.run.depart .bird{opacity:0}}
+.wing{position:absolute;inset:0;clip-path:polygon(5% 6%,46% 19%,58% 44%,53% 52%,30% 51%,12% 35%);transform-origin:53% 46%;}.bird>.body{clip-path:polygon(0 0,100% 0,100% 100%,0 100%,0 51%,30% 51%,53% 52%,58% 44%,46% 19%,5% 6%,0 51%)}
+.run .wing{animation:wingbeat .19s ease-in-out .28s infinite}.run.depart .wing{animation-duration:.085s}
+.bolts{position:absolute;inset:-70%;width:240%;height:240%;pointer-events:none;overflow:visible}.bolts path{fill:none;stroke:var(--bolt);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:1;opacity:0;filter:drop-shadow(0 0 4px var(--bolt))}
+@keyframes wingbeat{0%,100%{transform:rotate(0deg) scaleY(1)}50%{transform:rotate(-13deg) scaleY(.74)}}
+@media(prefers-reduced-motion:reduce){.run .wing,.bolts{animation:none}.bolts{display:none}}
+.bolts path{stroke:#c9f6ff;stroke-dasharray:none;stroke-width:1.35;filter:drop-shadow(0 0 2px #1d9dff) drop-shadow(0 0 6px #246aff)}.bolts .branch{stroke:#78cdff;stroke-width:.57}.run .arrival path,.run.depart .exit path{animation:storm-strike .29s linear var(--delay) both}
+@keyframes storm-strike{0%,100%{opacity:0}12%{opacity:1}22%{opacity:.28}34%{opacity:.88}57%{opacity:.34}78%{opacity:.12}}
+.run .flash,.run.depart .flash{animation:storm-light .34s ease-out both}.run.depart .flash{animation-name:storm-light-exit}.flash{position:absolute;inset:-90%;pointer-events:none;background:radial-gradient(ellipse,#3695ff65,transparent 55%);opacity:0}
+@keyframes storm-light{0%,100%{opacity:0}27%{opacity:.8}45%{opacity:.22}57%{opacity:.43}}
+@keyframes storm-light-exit{0%,100%{opacity:0}27%{opacity:.8}45%{opacity:.22}57%{opacity:.43}}
+@media(prefers-reduced-motion:reduce){.flash{display:none}}
+.wing.far-wing{transform:rotate(42deg) scale(.81,.88);filter:brightness(.68) hue-rotate(19deg)}
+.run .wing.far-wing{animation-name:far-wingbeat;animation-delay:.31s}
+@keyframes far-wingbeat{0%,100%{transform:rotate(42deg) scale(.81,.88)}50%{transform:rotate(54deg) scale(.81,.66)}}
+@media(prefers-reduced-motion:reduce){.run .wing.far-wing,.run.depart .wing.far-wing{animation:none}}
