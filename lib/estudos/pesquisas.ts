@@ -41,7 +41,46 @@ export const LIMITES = {
   titulo: 120, resumo: 4000, nicho: 60, tituloParte: 80, conteudo: 200_000, partes: 12, tags: 12, tag: 32,
   /** quantas pesquisas PENDENTES uma pessoa pode ter na fila ao mesmo tempo */
   pendentesPorConta: 10,
+  /** teto da meta de apoio em SOL (um número grande, só pra barrar valor absurdo) */
+  metaSol: 1_000_000,
 } as const;
+
+// ───────────────────────────── apoio (financiamento em SOL) ─────────────────────────────
+// Uma pesquisa pode ficar ABERTA A APOIO: a comunidade apoia a continuidade dela em SOL (Solana). Igual ao resto da
+// vitrine, a liquidação on-chain ainda é "em breve" (MOEDA.ativa=false): o botão roda o fluxo, mas nada cobra ninguém
+// nem envia pra carteira externa. Os números de arrecadação de um exemplo são dado SEMENTE, pra demonstrar a tela.
+export type Apoio = {
+  /** a pesquisa está aberta a apoio */
+  ativo: boolean;
+  /** a meta de apoio, em SOL */
+  metaSol: number;
+  /** quanto já foi apoiado, em SOL */
+  arrecadadoSol: number;
+  /** quantas pessoas apoiaram */
+  apoiadores: number;
+};
+
+/** o apoio de uma linha do banco, ou undefined quando a pesquisa não está aberta a apoio */
+export function apoioDe(r: { apoioAtivo?: boolean | null; metaSol?: number | null; arrecadadoSol?: number | null; apoiadores?: number | null }): Apoio | undefined {
+  if (!r.apoioAtivo) return undefined;
+  const meta = Number(r.metaSol) || 0;
+  if (meta <= 0) return undefined;
+  return {
+    ativo: true,
+    metaSol: meta,
+    arrecadadoSol: Math.max(0, Math.min(meta, Number(r.arrecadadoSol) || 0)),
+    apoiadores: Math.max(0, Math.floor(Number(r.apoiadores) || 0)),
+  };
+}
+
+/** o progresso do apoio, 0..1 */
+export const pctApoio = (a: Apoio): number => (a.metaSol > 0 ? Math.max(0, Math.min(1, a.arrecadadoSol / a.metaSol)) : 0);
+
+/** "12,5 SOL" — valor em SOL com no máximo 3 casas, sem zeros à toa */
+export const solFmt = (n: number): string => `${(Math.round(n * 1000) / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} SOL`;
+
+/** os valores de apoio sugeridos no botão (SOL) */
+export const VALORES_APOIO = [0.5, 1, 5, 10, 25] as const;
 
 const RARIDADES: Raridade[] = ["comum", "rara", "epica", "lendaria"];
 
@@ -98,6 +137,11 @@ export function normalizarPesquisa(b: any, { parcial = false }: { parcial?: bool
   if (b?.ordem !== undefined) { const n = Number(b.ordem); if (Number.isFinite(n)) data.ordem = Math.trunc(n); }
   if (b?.status !== undefined) { if (!STATUS.includes(b.status)) return { erro: "status inválido." }; data.status = b.status; }
   if (b?.motivo !== undefined) data.motivo = str(b.motivo, 400) || null;
+  // apoio (financiamento em SOL)
+  if (b?.apoioAtivo !== undefined) data.apoioAtivo = !!b.apoioAtivo;
+  if (b?.metaSol !== undefined) { const n = Number(b.metaSol); if (!Number.isFinite(n) || n < 0 || n > LIMITES.metaSol) return { erro: `meta de apoio: entre 0 e ${LIMITES.metaSol} SOL.` }; data.metaSol = n; }
+  if (b?.arrecadadoSol !== undefined) { const n = Number(b.arrecadadoSol); if (!Number.isFinite(n) || n < 0) return { erro: "apoiado (SOL): número ≥ 0." }; data.arrecadadoSol = n; }
+  if (b?.apoiadores !== undefined) { const n = Number(b.apoiadores); if (!Number.isInteger(n) || n < 0) return { erro: "apoiadores: inteiro ≥ 0." }; data.apoiadores = n; }
   if (!parcial || b?.partes !== undefined) {
     const { partes, erro } = normalizarPartes(b?.partes);
     if (erro) return { erro };
@@ -129,6 +173,7 @@ export function partesDoTrabalho(w: { title?: string | null; content?: string | 
 export type PesquisaRow = {
   slug: string; titulo: string; resumo: string; nicho: string; tags: string[]; raridade: string; autor: string;
   validadores: number; partes: unknown; status?: string;
+  apoioAtivo?: boolean | null; metaSol?: number | null; arrecadadoSol?: number | null; apoiadores?: number | null;
   conta?: { id: string; name?: string | null; image?: string | null } | null;
 };
 
@@ -161,6 +206,7 @@ export function pesquisaParaUI(r: PesquisaRow): ItemVitrine {
     ...(r.resumo ? { descricao: r.resumo } : {}),
     validadores: r.validadores,
     pasta: { slug: r.slug, partes: resumirPartes(partes) },
+    ...(apoioDe(r) ? { apoio: apoioDe(r) } : {}),
   };
 }
 
