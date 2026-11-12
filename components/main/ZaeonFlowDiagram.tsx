@@ -47,7 +47,7 @@ const ROTULO_PT: Record<string, string> = {
 };
 const RESUMO_PT = "Ideias viram projetos, estudos viram pesquisas e empresas viram negócios.";
 
-const BRAIN = "/assets/zaeon-brain-logo.png";
+const HUMMINGBIRD = "/assets/zaeon-hummingbird.png";
 
 /* ── geometria: computada, nunca escrita a mao ──────────────────────────── */
 
@@ -505,7 +505,7 @@ function Cerebro({
                 style={{ ...centro, animation: anima("zf-gira 9s linear infinite"), transition: "stroke .5s ease" }} />
             <g>
                 <image
-                    href={BRAIN}
+                    href={HUMMINGBIRD}
                     x={cx - r * 0.62}
                     y={cy - r * 0.62}
                     width={r * 1.24}
