@@ -19,7 +19,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV JAVA_HOME=/usr/lib/jvm/temurin-21-jdk-amd64
 ENV PATH="$JAVA_HOME/bin:$PATH"
 
-# Android/JADX is a separate provider: Ghidra does not supply it. Audited REA 6.5.0 metadata.
+# Android/JADX is a separate provider: Ghidra does not supply it. rea-agents 6.9.0 audits exactly
+# this jar (dist/android/JadxRelease.js: version 0.7.1, same sha256, revision 5844800) — unchanged
+# from 6.5.0, so no re-pin. "JADX 1.5.6" in the skill is the engine bundled inside this 0.7.1 wrapper.
 RUN mkdir -p /opt/rea-android && wget -q https://github.com/1013503897/jadx-headless-mcp/releases/download/v0.7.1/jadx-headless-mcp-0.7.1-all.jar -O /opt/rea-android/jadx.jar \
     && echo '6e5eacf500b64292bfb73c49797c1958f6ee44646e43e868039ae7feb573ff75  /opt/rea-android/jadx.jar' | sha256sum -c -
 ENV REA_JADX_MCP_JAR=/opt/rea-android/jadx.jar

@@ -43,6 +43,12 @@ Verificar (da própria Contabo, ou de um host na Tailscale):
 docker exec zaeon_rea_engine rea --version      # deve dizer 6.9.0
 curl -s http://100.113.137.74:8799/health       # { ok, rea, ghidra }
 ```
+Audite a deny-list contra o catálogo real do 6.9 (uma vez, na Contabo):
+```bash
+node infra/rea-engine/audit-denylist.mjs   # lista negados e grita LIBERADOS que cheiram a efeito colateral
+```
+rc=1 se algum suspeito escapou — aí é só acrescentar o prefixo em DENY_PREFIXOS (bridge.mjs E lib/octa/rea.ts) e reconstruir.
+
 No Octa, com `OCTA_REA=1` + `REA_BRIDGE_URL/TOKEN`, peça uma análise estática (ex.: um alvo novo do 6.9:
 EVM/WASM/Rust) e confira que a Evidence volta.
 

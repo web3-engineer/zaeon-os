@@ -71,8 +71,8 @@
       "veredito": "binario-pinado",
       "versao": "0.7.1",
       "sha256": "6e5eacf500b64292bfb73c49797c1958f6ee44646e43e868039ae7feb573ff75",
-      "uso": "Android REA static provider, isolated process; source identity pinned by rea-agents 6.5.0",
-      "revisao": "Upstream release binary checked against REA audited digest; no APK execution, runtime downloads or arbitrary jar path in user input."
+      "uso": "Android REA static provider, isolated process; source identity pinned by rea-agents 6.9.0 (unchanged from 6.5.0)",
+      "revisao": "Upstream release binary checked against REA audited digest (rea-agents 6.9.0 dist/android/JadxRelease.js: version 0.7.1, sha256 6e5eacf5…, revision 5844800a); idêntico ao 6.5.0, sem re-pin. No APK execution, runtime downloads or arbitrary jar path in user input."
     }
   ]
 }
