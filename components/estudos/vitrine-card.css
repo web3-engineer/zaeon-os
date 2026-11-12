@@ -86,3 +86,9 @@
 .vt-abrir-pasta { flex: none; display: inline-flex; align-items: center; gap: 5px; font-family: ui-monospace, monospace; font-size: 11px; font-weight: 800; letter-spacing: .06em; color: #02121f; background: var(--cor); padding: 6px 13px; clip-path: polygon(7px 0,100% 0,calc(100% - 7px) 100%,0 100%); box-shadow: 0 0 12px color-mix(in srgb, var(--cor) 72%, transparent); border: 0; cursor: pointer; transition: box-shadow .3s; }
 .vt-card:hover .vt-abrir-pasta { box-shadow: 0 0 20px var(--cor); }
 @media (prefers-reduced-motion: reduce) { .vt-papel { transition: none; } }
+
+/* ── A FOTO do card (curadoria do dono, lib/estudos/curadoria): ocupa a arte inteira no lugar do emoji; as scanlines e
+   os colchetes do HUD continuam por cima, então a foto entra no mesmo idioma da carta. No hover ela acende. ── */
+.vt-foto { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; object-fit: cover; filter: saturate(.85) contrast(1.05) brightness(.85); transition: filter .35s, transform .6s cubic-bezier(.2,.8,.2,1); }
+.vt-card:hover .vt-foto { filter: saturate(1.1) contrast(1.05) brightness(1); transform: scale(1.04); }
+.vt-art:has(.vt-foto)::before { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; background: linear-gradient(180deg, transparent 55%, color-mix(in srgb, var(--cor) 22%, #030c18cc)); }

@@ -66,6 +66,8 @@ export type ItemVitrine = {
   descricao?: string;
   /** quantas pessoas validaram a build */
   validadores?: number;
+  /** a FOTO do card, posta pelo dono na curadoria (lib/estudos/curadoria) — no lugar do emoji do tema */
+  imagem?: string;
   /** PESQUISA: o card é uma PASTA e estes são os papéis dentro dela (o texto de cada um vem sob demanda, pelo slug) */
   pasta?: { slug: string; partes: ParteResumo[] };
 };

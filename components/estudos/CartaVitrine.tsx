@@ -31,6 +31,12 @@ export const segmentos = (prof: number) => {
     return Array.from({ length: 10 }, (_, i) => i < n);
 };
 
+/** a FOTO do card (curadoria do dono, lib/estudos/curadoria) — ocupa a arte no lugar do emoji do tema */
+export function ImagemCarta({ src }: { src: string }) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img className="vt-foto" src={src} alt="" loading="lazy" decoding="async" draggable={false} />;
+}
+
 const glowDe = (r: ItemVitrine["raridade"]) => (r === "lendaria" ? 34 : r === "epica" ? 24 : r === "rara" ? 16 : 12);
 
 export default function CartaVitrine({ it, onClick, badgeGratis = false, precoFree = false, precoNode, acaoNode, className }: {
@@ -82,7 +88,7 @@ export default function CartaVitrine({ it, onClick, badgeGratis = false, precoFr
                         <span className="vt-br tl" /><span className="vt-br tr" /><span className="vt-br bl" /><span className="vt-br brr" />
                         <div className="vt-serial">{serialDe(it)}<span className="vt-barcode" /></div>
                         {badgeGratis && <span className="vt-free">GRÁTIS</span>}
-                        <div className="vt-glyph"><b>{GLYPH[it.modelo] ?? "✦"}</b></div>
+                        {it.imagem ? <ImagemCarta src={it.imagem} /> : <div className="vt-glyph"><b>{GLYPH[it.modelo] ?? "✦"}</b></div>}
                         {pasta && (
                             <div className="vt-pasta-lista" aria-hidden="true">
                                 {pasta.partes.slice(0, 6).map((p, i) => <span key={i} style={{ "--pcor": COR_PARTE[p.tipo] } as CSSProperties}>{NOME_PARTE[p.tipo].toUpperCase()}</span>)}

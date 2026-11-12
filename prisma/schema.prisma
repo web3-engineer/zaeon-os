@@ -1889,6 +1889,24 @@ model ItemVitrine {
   @@index([ativo, ordem])
 }
 
+// CURADORIA da vitrine (lib/estudos/curadoria): um AJUSTE por card (catálogo embutido, agentes, skills do disco,
+// cadastrados e pesquisas) — sobrepõe só o que o dono mexeu. Apagar o ajuste = o card volta ao original.
+model VitrineAjuste {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  itemId      String   @unique              // o id do card na vitrine ("ps5-rev", "skill:anki-flashcards", "pesquisa-x"…)
+  titulo      String?
+  subtitulo   String?
+  tags        Json?                         // null = mantém as tags do card; [] = sem tags
+  imagem      String?                       // /api/estudos/vitrine/imagem/vimg_<hash>.<ext>
+  raridade    String?
+  ordem       Int?
+  oculto      Boolean  @default(false)
+  atualizadoPor String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("vitrine_ajustes")
+}
+
 // PESQUISAS da vitrine (lib/estudos/pesquisas): cada uma é uma PASTA e as `partes` são os papéis dentro dela
 // (artigo, dados, protocolo, revisão, código, anexo). Entram pelo admin/console (já "publicada") ou pelo usuário,
 // a partir de um trabalho da Sala de Pesquisa (entra "pendente" e espera a aprovação do admin).

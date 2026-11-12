@@ -3,13 +3,16 @@
  * VitrineModule — o CRUD dos cards da VITRINE ("Marketplace") no Modo CEO. Lista todos os itens, cria/edita por um
  * formulário e remove. Escreve em /api/admin/vitrine (super-admin); a vitrine pública (components/estudos/VitrineEstudos)
  * junta os ativos com o catálogo embutido. O gate real é nas rotas — aqui a UI só reage ao 401/403.
- * A aba PESQUISAS (PesquisasVitrine) é a fila de moderação e a publicação das pastas de pesquisa.
+ * A aba CURADORIA (CuradoriaVitrine) mostra TODOS os cards da vitrine — de qualquer origem — com foto, tags, textos,
+ * raridade, ordem e ocultar editáveis. A aba PESQUISAS (PesquisasVitrine) é a fila de moderação e a publicação das
+ * pastas de pesquisa. A aba NOVOS CARDS é o CRUD dos cards cadastrados no banco.
  */
 import { useCallback, useEffect, useState } from "react";
 import { TIPOS, EXECUCOES, MODELOS, RARIDADES } from "@/lib/estudos/vitrineAdmin";
 import { NOME_TIPO } from "@/lib/estudos/vitrine";
 import { NOME_RARIDADE } from "@/lib/estudos/blueprint";
 import PesquisasVitrine from "./PesquisasVitrine";
+import CuradoriaVitrine from "./CuradoriaVitrine";
 
 type Row = {
     id: string; slug: string; titulo: string; subtitulo: string; tipo: string; execucao: string; modelo: string;
@@ -42,7 +45,7 @@ export default function VitrineModule({ glassPanel }: { glassPanel: string }) {
     const [editId, setEditId] = useState<string | null>(null);
     const [msg, setMsg] = useState<string | null>(null);
     const [salvando, setSalvando] = useState(false);
-    const [aba, setAba] = useState<"cards" | "pesquisas">("cards");
+    const [aba, setAba] = useState<"curadoria" | "cards" | "pesquisas">("curadoria");
 
     const carregar = useCallback(async () => {
         try {
@@ -99,11 +102,12 @@ export default function VitrineModule({ glassPanel }: { glassPanel: string }) {
 
     const abas = (
         <div className="flex gap-2">
-            {([["cards", "Cards"], ["pesquisas", "▤ Pesquisas"]] as const).map(([id, nome]) => (
+            {([["curadoria", "✦ Curadoria"], ["cards", "Novos cards"], ["pesquisas", "▤ Pesquisas"]] as const).map(([id, nome]) => (
                 <button key={id} onClick={() => setAba(id)} className={`rounded-full border px-4 py-1.5 text-[11px] font-black uppercase tracking-widest ${aba === id ? "border-cyan-300 bg-cyan-300/15 text-white" : "border-white/15 text-white/55 hover:text-white"}`}>{nome}</button>
             ))}
         </div>
     );
+    if (aba === "curadoria") return <div className="flex-1 min-h-0 flex flex-col gap-3">{abas}<CuradoriaVitrine glassPanel={glassPanel} /></div>;
     if (aba === "pesquisas") return <div className="flex-1 min-h-0 flex flex-col gap-3">{abas}<PesquisasVitrine glassPanel={glassPanel} /></div>;
 
     return (

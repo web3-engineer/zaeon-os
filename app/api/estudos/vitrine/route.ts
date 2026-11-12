@@ -12,6 +12,16 @@ import { itensDasSkillsDoDisco } from "@/lib/estudos/vitrineSkills";
 import { pesquisaParaUI } from "@/lib/estudos/pesquisas";
 import { comContas } from "@/lib/estudos/pesquisasDb";
 
+/** a CURADORIA do dono (lib/estudos/curadoria): os ajustes por card — a tela aplica por cima de tudo, inclusive do
+ *  catálogo embutido que só ela conhece. Falha aqui = vitrine sem curadoria, não vitrine fora do ar. */
+async function ajustesDaCuradoria() {
+    try {
+        return await prisma.vitrineAjuste.findMany({ select: { itemId: true, titulo: true, subtitulo: true, tags: true, imagem: true, raridade: true, ordem: true, oculto: true } });
+    } catch {
+        return [];
+    }
+}
+
 /** as PESQUISAS publicadas, como cards-pasta (lib/estudos/pesquisas). Falha aqui não derruba o resto da vitrine. */
 async function pesquisasPublicadas() {
     try {
@@ -28,12 +38,13 @@ export async function GET() {
     // mostra as skills, e banco fora não some com elas.
     const skills = itensDasSkillsDoDisco();
     try {
-        const [rows, pesquisas] = await Promise.all([
+        const [rows, pesquisas, ajustes] = await Promise.all([
             prisma.itemVitrine.findMany({ where: { ativo: true }, orderBy: [{ ordem: "asc" }, { criadoEm: "desc" }] }),
             pesquisasPublicadas(),
+            ajustesDaCuradoria(),
         ]);
-        return NextResponse.json({ itens: [...skills, ...rows.map(paraUI), ...pesquisas] });
+        return NextResponse.json({ itens: [...skills, ...rows.map(paraUI), ...pesquisas], ajustes });
     } catch {
-        return NextResponse.json({ itens: skills });
+        return NextResponse.json({ itens: skills, ajustes: [] });
     }
 }
