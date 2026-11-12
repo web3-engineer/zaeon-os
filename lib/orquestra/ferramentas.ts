@@ -37,7 +37,7 @@ export function paraJsonSchema(s: unknown): Record<string, unknown> {
   return r;
 }
 
-const SO_ORQUESTRA = new Set([...FORA_DO_MENU, "examiner"]);
+const SO_ORQUESTRA = new Set(FORA_DO_MENU);
 const MAX_OBSERVACAO = 3_500;
 
 function chaveDaFonte(e: { claim: string; source?: { title?: string; url?: string } }): string {

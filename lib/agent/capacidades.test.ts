@@ -19,7 +19,7 @@ import {
 /** o registry REAL de hoje (lib/agent/runtime.ts:382) — é contra ele que o cardápio é medido */
 const REGISTRY_HOJE = [
   "studio_generate", "research_generate", "memory_search",
-  "literature_search", "web_search", "examiner", "book_search",
+  "literature_search", "web_search", "book_search",
 ];
 
 const classe = (id: string) => CLASSES_DE_ACAO.find((c) => c.id === id)!;
