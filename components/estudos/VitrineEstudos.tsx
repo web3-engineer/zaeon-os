@@ -12,15 +12,20 @@
  *    evidência; ao conectar, ela para RETA, as prensas finas entram, a energia flui estilo TRON, o plug acontece, a carta
  *    DESINTEGRA e vem a escolha: voltar à vitrine ou abrir a build onde ela ficou (chat / Sala de Estudos / Escritório).
  * Em "Já conectados", a ação do card vira DESCONECTAR.
+ *
+ * PESQUISAS (lib/estudos/pesquisas) reagem diferente: a carta é uma PASTA. Não tem plug nem compra — clicar abre a
+ * pasta e os papéis (as partes da pesquisa) saem em leque pra ler ou baixar (components/estudos/PastaPesquisa).
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { FILTROS, NOME_TIPO, filtrarVitrine, mesclarCatalogo, precoTexto, type FiltroVitrine, type ItemVitrine } from "@/lib/estudos/vitrine";
+import { FILTROS, NOME_TIPO, filtrarVitrine, filtrosVisiveis, mesclarCatalogo, precoTexto, type FiltroVitrine, type ItemVitrine } from "@/lib/estudos/vitrine";
 import { COR_RARIDADE, NOME_RARIDADE } from "@/lib/estudos/blueprint";
 import { plugar, desplugar, usePluginsChat } from "@/lib/plugins/chatPlugins";
 import { ehAgenteOrquestra } from "@/lib/orquestra/catalogo";
 import SolanaMark from "@/components/solana/SolanaMark";
-import CartaVitrine, { GLYPH, segmentos } from "./CartaVitrine";
+import CartaVitrine, { GLYPH, ImagemCarta, segmentos } from "./CartaVitrine";
 import DetalhesBuild from "./DetalhesBuild";
+import { aplicarAjustes, type Ajuste } from "@/lib/estudos/curadoria";
+import PastaPesquisa from "./PastaPesquisa";
 import { destinoDe, type Destino } from "@/lib/estudos/detalhes";
 import { EVT_ESTUDOS_CHAT } from "@/lib/chat/conversasNav";
 import "./vitrine-card.css";
@@ -91,10 +96,13 @@ export default function VitrineEstudos() {
 
     // os cards cadastrados no ADMIN (/api/estudos/vitrine, só ativos) — juntam-se ao catálogo embutido
     const [itensDb, setItensDb] = useState<ItemVitrine[]>([]);
+    // a CURADORIA do dono (lib/estudos/curadoria): textos, tags, foto, raridade, ordem e cards escondidos
+    const [ajustes, setAjustes] = useState<Ajuste[]>([]);
     useEffect(() => {
         let vivo = true;
         fetch("/api/estudos/vitrine", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((d) => {
             if (vivo && Array.isArray(d?.itens)) setItensDb(d.itens as ItemVitrine[]);
+            if (vivo && Array.isArray(d?.ajustes)) setAjustes(d.ajustes as Ajuste[]);
         }).catch(() => undefined);
         return () => { vivo = false; };
     }, []);
@@ -107,6 +115,7 @@ export default function VitrineEstudos() {
     const [depois, setDepois] = useState<ItemVitrine | null>(null);
     const [detalhe, setDetalhe] = useState<{ it: ItemVitrine; origem: DOMRect } | null>(null);
     const abrirDetalhes = (it: ItemVitrine, alvo: HTMLElement) => setDetalhe({ it, origem: alvo.getBoundingClientRect() });
+    const [pastaAberta, setPastaAberta] = useState<ItemVitrine | null>(null);
     const spinRef = useRef<HTMLDivElement>(null);
     const forjandoRef = useRef(false);
     const timersRef = useRef<number[]>([]);
@@ -164,10 +173,12 @@ export default function VitrineEstudos() {
     };
 
     // junta os cards do admin (banco) com o catálogo embutido, sem repetir id
-    const catalogo = useMemo(() => mesclarCatalogo(itensDb), [itensDb]);
+    const catalogo = useMemo(() => aplicarAjustes(mesclarCatalogo(itensDb), ajustes), [itensDb, ajustes]);
     const itens = useMemo(() => filtrarVitrine(catalogo, filtro, busca), [catalogo, filtro, busca]);
     const itensConectados = useMemo(() => catalogo.filter((i) => conectados.includes(i.id) || (i.plugavel && plugados.includes(i.plugavel))), [catalogo, conectados, plugados]);
     const mostra = verConectados ? itensConectados : itens;
+    // as abas que só existem quando o banco tem item (Pesquisas) ficam escondidas até a primeira chegar
+    const abas = useMemo(() => filtrosVisiveis(catalogo), [catalogo]);
 
     return (
         <div className="relative h-full w-full overflow-hidden" style={{ background: "radial-gradient(ellipse at 50% 0%, #0f3460 0%, #071a33 55%, #030c1a 100%)" }}>
@@ -184,7 +195,7 @@ export default function VitrineEstudos() {
                     </div>
                     {filtrosAbertos && (
                         <div className="mt-2 flex flex-wrap gap-2">
-                            {FILTROS.map((f) => (
+                            {abas.map((f) => (
                                 <button key={f.id} type="button" onClick={() => { setFiltro(f.id); setVerConectados(false); }} className={`rounded-full border px-3 py-1.5 font-mono text-[11px] tracking-wide transition ${!verConectados && filtro === f.id ? "border-sky-300 bg-sky-300/15 text-white" : "border-sky-300/25 text-sky-100/70 hover:text-white"}`}>{f.nome}</button>
                             ))}
                         </div>
@@ -192,6 +203,20 @@ export default function VitrineEstudos() {
 
                     <div className="vt-grid mt-6 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-x-10 gap-y-14">
                         {mostra.map((it) => {
+                            if (it.pasta) {
+                                // a PASTA de pesquisa: sem plug nem compra — abrir mostra os papéis
+                                return (
+                                    <CartaVitrine
+                                        key={it.id}
+                                        it={it}
+                                        onClick={() => setPastaAberta(it)}
+                                        badgeGratis
+                                        precoFree
+                                        precoNode="Aberta"
+                                        acaoNode={<button type="button" className="vt-abrir-pasta" onClick={(e) => { e.stopPropagation(); setPastaAberta(it); }}>▤ abrir pasta</button>}
+                                    />
+                                );
+                            }
                             const p = precoDe(it);
                             const conectado = estaConectado(it);
                             const acao = verConectados
@@ -242,7 +267,7 @@ export default function VitrineEstudos() {
                                     <div className="vt-face vt-face-front">
                                         <div className="vt-frame"><div className="vt-panel">
                                             <div className="vt-spine">{NOME_RARIDADE[it.raridade].toUpperCase()}</div>
-                                            <div className="vt-art"><span className="vt-br tl" /><span className="vt-br tr" /><span className="vt-br bl" /><span className="vt-br brr" /><div className="vt-glyph"><b>{GLYPH[it.modelo] ?? "✦"}</b></div><div className="vt-tron" /></div>
+                                            <div className="vt-art"><span className="vt-br tl" /><span className="vt-br tr" /><span className="vt-br bl" /><span className="vt-br brr" />{it.imagem ? <ImagemCarta src={it.imagem} /> : <div className="vt-glyph"><b>{GLYPH[it.modelo] ?? "✦"}</b></div>}<div className="vt-tron" /></div>
                                             <div className="vt-plate"><div className="vt-type">{NOME_TIPO[it.tipo].toUpperCase()}</div><h3 className="vt-title">{it.titulo}</h3><div className="vt-meter"><span className="vt-segs">{segmentos(it.profundidade).map((on, i) => <i key={i} className={on ? "on" : ""} />)}</span></div></div>
                                         </div></div>
                                     </div>
@@ -290,6 +315,11 @@ export default function VitrineEstudos() {
                     />
                 );
             })()}
+
+            {/* ── PASTA DE PESQUISA: a capa tomba e os papéis saem em leque ── */}
+            {pastaAberta && (
+                <PastaPesquisa key={pastaAberta.id} item={pastaAberta} cor={COR_RARIDADE[pastaAberta.raridade]} onFechar={() => setPastaAberta(null)} />
+            )}
 
             {/* ── DEPOIS DO PLUG: voltar à vitrine ou abrir onde a build ficou ── */}
             {depois && (

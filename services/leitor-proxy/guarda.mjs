@@ -2,8 +2,8 @@
  * services/leitor-proxy/guarda.mjs — as regras PURAS do Leitor (Fatia 7, G6). Zero dependência.
  * Importável pelo vitest (lib/leitor/guarda.test.ts). O servidor (server.mjs) só orquestra.
  *
- *  - urlPermitida: só http/https, porta 80/443/implícita, host na allowlist (vazia = nega tudo),
- *    host nunca IP literal, sem usuário/senha na URL.
+ *  - urlPermitida: só http/https, porta 80/443/implícita, host na allowlist (vazia = nega tudo;
+ *    `*` = qualquer domínio, o MODO ABERTO), host nunca IP literal, sem usuário/senha na URL.
  *  - ipBloqueado: privados, loopback, link-local (169.254 = METADATA da nuvem), CGNAT, ULA, mapeados.
  *  - extrairTexto: HTML → texto (sem script/style/noscript/comentários/tags), entidades básicas.
  */
@@ -33,7 +33,14 @@ export function urlPermitida(entrada, allow) {
   if (u.port && u.port !== "80" && u.port !== "443") return { ok: false, erro: "porta_proibida", status: 400 };
   const host = u.hostname.replace(/^\[|\]$/g, "");
   if (net.isIP(host)) return { ok: false, erro: "ip_literal", status: 400 };
-  if (!allow.length || !hostNaLista(host, allow)) return { ok: false, erro: "dominio_fora_da_lista", status: 403 };
+  // MODO ABERTO (`*` na allowlist): só o predicado de DOMÍNIO cede — e só ele. Esquema, credencial,
+  // porta e IP-literal já foram barrados acima, e o `ipBloqueado` de TODO IP resolvido roda no socket
+  // do servidor (server.mjs). É o pedido do dono ("navegue na internet e faça pesquisas"): a trava que
+  // impede o agente de virar leitor da rede INTERNA nunca foi o domínio, é o IP. Uma definição de
+  // "aberto", aqui, pras DUAS portas (leitor-proxy e agente-navegador) não envelhecerem em separado —
+  // antes ela vivia só no `urlDoAgente`, e duas definições de "que domínio pode" é o defeito que a F8
+  // passou inteira evitando.
+  if (!allow.includes("*") && (!allow.length || !hostNaLista(host, allow))) return { ok: false, erro: "dominio_fora_da_lista", status: 403 };
   u.hash = "";
   return { ok: true, url: u };
 }

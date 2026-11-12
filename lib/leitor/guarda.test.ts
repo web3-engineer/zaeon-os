@@ -25,6 +25,30 @@ describe("urlPermitida", () => {
   });
 });
 
+describe("urlPermitida · MODO ABERTO (`*`)", () => {
+  const aberta = ["*"];
+  it("`*` libera QUALQUER domínio público — o que a allowlist curada negava", () => {
+    expect(urlPermitida("https://www.example.com/noticia", aberta).ok).toBe(true);
+    expect(urlPermitida("https://news.ycombinator.com/", aberta).ok).toBe(true);
+    expect(urlPermitida("http://blog.qualquer.coisa/post", aberta).ok).toBe(true);
+    // o mesmo domínio que a lista acadêmica recusava (evilgov.br) agora passa — é o ponto do modo aberto
+    expect(urlPermitida("https://evilgov.br/", aberta).ok).toBe(true);
+  });
+  it("`*` cede SÓ o domínio: esquema, porta, credencial e IP-literal continuam barrados", () => {
+    expect(urlPermitida("file:///etc/passwd", aberta).ok).toBe(false);
+    expect(urlPermitida("javascript:alert(1)", aberta).ok).toBe(false);
+    // metadados da nuvem por IP literal: a trava que importa não é o domínio, é esta
+    expect(urlPermitida("http://169.254.169.254/latest/meta-data/", aberta)).toMatchObject({ ok: false, erro: "ip_literal" });
+    expect(urlPermitida("http://[::1]/", aberta)).toMatchObject({ ok: false, erro: "ip_literal" });
+    expect(urlPermitida("https://example.com:8080/", aberta)).toMatchObject({ ok: false, erro: "porta_proibida" });
+    expect(urlPermitida("https://u:p@example.com/", aberta)).toMatchObject({ ok: false, erro: "credencial_na_url" });
+  });
+  it("`*` numa lista MISTA abre tudo (um `*` basta); sem `*`, a lista curada segue valendo", () => {
+    expect(urlPermitida("https://example.com/", ["*.gov.br", "*"]).ok).toBe(true);
+    expect(urlPermitida("https://example.com/", ["*.gov.br"]).ok).toBe(false);
+  });
+});
+
 describe("ipBloqueado", () => {
   it("bloqueia metadata, privados, loopback, CGNAT, ULA, link-local e mapeados", () => {
     for (const ip of ["169.254.169.254", "10.0.0.1", "172.31.255.255", "172.16.0.1", "192.168.0.1", "127.0.0.1", "0.0.0.0", "100.64.0.1", "::1", "::", "fd00::1", "fe80::1", "::ffff:10.0.0.1", "::ffff:169.254.169.254", "64:ff9b::a00:1", "lixo"]) {
