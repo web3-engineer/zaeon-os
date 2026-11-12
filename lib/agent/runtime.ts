@@ -4,8 +4,8 @@
  * ToolDef / ToolResult / runTool + o middleware permit() (DENY-BY-DEFAULT). Ponto ÚNICO de
  * gating: risco × plano (minPlan) × GPU-por-demanda × execMode. `runTool` NUNCA lança — tool
  * que estoura/nega/expira vira `{ok:false,error,code}`. Registra as tools da Fase 0 como ToolDef
- * (`studio_generate`, `research_generate`, `literature_search` real via lib/scholar) + stubs
- * (`memory_search` free, `examiner`). Tipos ricos: importe de contracts.ts; NÃO reinvente.
+ * (`studio_generate`, `research_generate`, `literature_search` real via lib/scholar) + stub
+ * (`memory_search` free). Tipos ricos: importe de contracts.ts; NÃO reinvente.
  */
 import type { FunctionDeclaration } from "@google-cloud/vertexai";
 import type { AgentContext } from "@/lib/agent/context";
@@ -388,18 +388,6 @@ export const webSearchDef: ToolDef = {
   },
 };
 
-/** examiner — STUB até o PR05 (o crítico ScholarEval). */
-export const examinerDef: ToolDef = {
-  name: "examiner",
-  runtime: "ts",
-  risk: "read",
-  minPlan: "free",
-  schema: stubSchema("examiner", "Avalia um rascunho (ScholarEval) e devolve um veredito com issues.", false),
-  async run() {
-    return { ok: false, error: "examiner ainda não implementado", code: "not_implemented", provenance: {} };
-  },
-};
-
 // Registra a Fase 0 + stubs no boot do módulo.
 /**
  * book_search — acha um LIVRO e o caminho LEGAL até ele (lib/livros/busca): OpenStax, Project Gutenberg,
@@ -439,7 +427,7 @@ export const bookSearchDef: ToolDef = {
   },
 };
 
-[studioGenerateDef, researchGenerateDef, memorySearchDef, literatureSearchDef, webSearchDef, examinerDef, bookSearchDef].forEach(registerTool);
+[studioGenerateDef, researchGenerateDef, memorySearchDef, literatureSearchDef, webSearchDef, bookSearchDef].forEach(registerTool);
 
 /**
  * `abrir_url` (F1) é CONDICIONAL: só entra no registry quando o Leitor está configurado
