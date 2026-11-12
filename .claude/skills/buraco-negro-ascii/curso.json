@@ -1,0 +1,86 @@
+{
+  "modulos": [
+    {
+      "titulo": "Desenhar com caracteres — a rampa de brilho",
+      "estudo": "Toda arte ASCII vive de uma ideia só: trocar brilho por caractere. Um ponto da imagem tem uma intensidade, de 0 (escuro) a 1 (claro), e você escolhe um caractere que \"pesa\" aquilo na tela. Um espaço quase não marca o papel; um '#' ou um '@' enchem a célula. Se você ordenar os caracteres do mais vazio ao mais cheio — por exemplo \" .,:~+*oO0#@\" — tem uma RAMPA: o índice na rampa é a intensidade. Na obra BLACK HOLE, JIN2 usa vários 'pools' de caracteres do escuro ao brilhante e escolhe dentro do pool certo conforme o brilho do ponto. Por que a ORDEM importa tanto: se um caractere \"pesado\" aparece onde devia estar escuro, o olho vê um borrão fora de lugar e a forma some. A rampa é o que transforma uma matriz de números numa imagem que o olho lê. Regra prática: mapeie a intensidade i (0..1) para o índice arredondando i*(N-1), onde N é o tamanho da rampa, e sempre prenda o valor entre 0 e 1 antes (clamp), senão um ponto mais claro que 1 estoura o índice. É esse clamp + mapeamento que você vai escrever no sandbox.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Numa rampa ASCII \" .,:~+*oO0#@\" (do vazio ao cheio), um ponto de intensidade ALTA deve usar qual caractere?",
+            "options": [
+              { "text": "'@' (perto do fim da rampa)", "isCorrect": true, "explanation": "Fim da rampa = mais 'cheio' = mais brilho." },
+              { "text": "' ' (o espaço, início da rampa)", "isCorrect": false, "explanation": "O espaço é o mais escuro; usá-lo no brilho apaga a forma." },
+              { "text": "qualquer um, a ordem não importa", "isCorrect": false, "explanation": "A ordem é tudo: é ela que liga brilho a caractere." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "Por que é preciso 'prender' (clamp) a intensidade entre 0 e 1 antes de mapear para o índice da rampa? Responda em uma frase.",
+            "accepted": ["para não estourar o índice", "evitar índice fora da rampa", "um valor maior que 1 passaria do fim da rampa", "para o índice ficar dentro da rampa", "senão o índice sai do intervalo"],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Uma rampa tem N caracteres. Escreva a fórmula do índice a partir da intensidade i (já entre 0 e 1).",
+          "accepted": ["round(i*(N-1))", "i*(N-1)", "round(i*(n-1))", "int(i*(N-1))", "i(N-1)"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "python",
+        "inicial": "RAMPA = \" .,:~+*oO0#@\"\n\ndef caractere(i):\n    \"\"\"Recebe uma intensidade i (float) e devolve o caractere da RAMPA.\n    Prenda i entre 0 e 1 antes de mapear para o índice.\"\"\"\n    # seu código aqui\n    return RAMPA[0]\n",
+        "teste": "assert caractere(0) == ' '\nassert caractere(1) == '@'\nassert caractere(-5) == ' '   # clamp inferior\nassert caractere(9) == '@'    # clamp superior\nassert caractere(0.5) == RAMPA[round(0.5*(len(RAMPA)-1))]\nprint('ok')\n"
+      }
+    },
+    {
+      "titulo": "A física do disco — órbitas que giram, o lado que brilha",
+      "estudo": "A imagem de um buraco negro não é inventada: ela segue física. No centro há a SOMBRA — nada escapa de dentro do horizonte de eventos — cercada por um anel fino de luz. Em volta gira o DISCO DE ACREÇÃO: gás caindo, achatado num prato visto quase de lado. Duas coisas dão vida ao disco. Primeiro, KEPLER: quanto mais perto do centro, mais rápido o gás orbita — a velocidade cai com a raiz da distância (v ∝ 1/√r). Por isso as órbitas internas 'borram' mais rápido que as externas, e JIN2 anima exatamente isso. Segundo, o LADO QUE BRILHA: o gás que vem em sua direção parece mais brilhante que o que se afasta (um efeito relativístico de feixe, o 'relativistic beaming'). Por isso um lado do disco acende mais que o outro — não é iluminação, é movimento. A famosa foto do M87 e as visualizações da NASA mostram esse anel assimétrico. Para desenhar: cada célula da tela vira um raio r e um ângulo no disco; a velocidade vem de 1/√r; o brilho soma a cor base do gás com um empurrão conforme o ponto vem vindo ou indo. Depois, a rampa do Módulo 1 transforma esse brilho em caractere.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Num disco de acreção, por que as órbitas de DENTRO giram mais rápido que as de fora?",
+            "options": [
+              { "text": "Porque a velocidade orbital cai com a distância (v ∝ 1/√r, Kepler)", "isCorrect": true, "explanation": "Mais perto da massa, mais rápido — a mesma lei das órbitas dos planetas." },
+              { "text": "Porque o gás de fora é mais pesado", "isCorrect": false, "explanation": "Não é o peso do gás; é a distância ao centro." },
+              { "text": "Elas giram todas na mesma velocidade", "isCorrect": false, "explanation": "Se girassem juntas o disco não 'borraria' por dentro." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "Por que um lado do disco de acreção parece mais brilhante que o outro? Uma frase.",
+            "accepted": ["o gás que vem em nossa direção parece mais brilhante", "relativistic beaming", "efeito de feixe relativístico", "o lado que se aproxima brilha mais", "porque o gás vem vindo", "o movimento em nossa direção aumenta o brilho"],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-choice",
+        "block": {
+          "text": "A região escura no centro da imagem, de onde nem a luz escapa, é:",
+          "options": [
+            { "text": "a sombra do buraco negro (dentro do horizonte de eventos)", "isCorrect": true, "explanation": "O horizonte de eventos é o ponto sem retorno; dentro dele nada sai." },
+            { "text": "só falta de gás ali", "isCorrect": false, "explanation": "Não é ausência de gás — é ausência de luz que escapa." },
+            { "text": "uma falha do desenho", "isCorrect": false, "explanation": "A sombra é parte real da física, não um erro." }
+          ],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "python",
+        "inicial": "import math\n\ndef velocidade(r):\n    \"\"\"Velocidade orbital kepleriana (em unidades onde GM=1): v = 1/sqrt(r).\n    r é a distância ao centro (r > 0).\"\"\"\n    # seu código aqui\n    return 0.0\n",
+        "teste": "assert abs(velocidade(1) - 1.0) < 1e-9\nassert abs(velocidade(4) - 0.5) < 1e-9        # 1/sqrt(4) = 0.5\nassert velocidade(1) > velocidade(9)          # dentro gira mais rapido\nprint('ok')\n"
+      }
+    }
+  ]
+}
