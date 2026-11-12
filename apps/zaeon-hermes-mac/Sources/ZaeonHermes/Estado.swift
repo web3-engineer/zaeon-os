@@ -13,6 +13,8 @@ enum Secao: Hashable {
     case motor(String)
     case datasets
     case arena
+    /// a vitrine: publicar pesquisas (pastas) e moderar a fila
+    case pesquisas
     case configuracoes
 }
 
