@@ -108,8 +108,8 @@ const CyberTitle = ({
     const { displayText: sText, isComplete: sDone } = useScrambleText(secondaryText, startAnimations);
     const { displayText: mText, isComplete: mDone } = useScrambleText(mainText, startAnimations);
 
-    // v2: o texto PRINCIPAL em cima ("Seja quem você nasceu pra ser.") e o subtexto azul embaixo ("conquiste sua
-    // evolução"); os dois nascem dos ideogramas (scramble) e assentam.
+    // o texto PRINCIPAL em cima ("Construa sem limites.") e o subtexto azul embaixo ("da ideia ao mundo real");
+    // os dois nascem dos ideogramas (scramble) e assentam.
     return (
         <div className="text-center mb-16 relative z-20 min-h-[220px] flex flex-col justify-center max-w-5xl mx-auto">
             <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter text-white font-mono uppercase leading-[1.05] min-h-[2.1em]">
@@ -185,10 +185,6 @@ const TextBlock = ({
 
 interface MoleculeNode {
     readonly level: string;
-    readonly title: string;
-    readonly subtitle?: string;
-    readonly description: string;
-    readonly tags: readonly string[];
     readonly glowColor: string;
     readonly borderClass: string;
     readonly bgClass: string;
@@ -197,14 +193,10 @@ interface MoleculeNode {
     readonly pulseClass: string;
 }
 
-// ─── MOLECULE DATA ────────────────────────────────────────────────────────────
+// ─── MOLECULE DATA (o texto de cada camada fica em about.layers.n1…n3 do i18n) ───
 const MOLECULE_NODES: readonly MoleculeNode[] = [
     {
         level: "01",
-        title: "Crie, Contrate & Colabore",
-        description:
-            "Crie o seu agente perfeito para você. Defina voz, personalidade e habilidades.",
-        tags: ["Designer", "Advogado", "Dev", "Professor", "Médico", "Empreendedor"],
         glowColor: "rgba(34,211,238,0.6)",
         borderClass: "border-cyan-500/50",
         bgClass: "bg-cyan-950/60",
@@ -214,11 +206,6 @@ const MOLECULE_NODES: readonly MoleculeNode[] = [
     },
     {
         level: "02",
-        title: "Construa Projetos",
-        subtitle: "IA trabalhando ao seu lado",
-        description:
-            "Colabore com seus agentes em projetos reais. Automatize tarefas, gere conteúdo, analise dados e evolua a cada sessão. Tudo que você cria é protegido como sua propriedade intelectual.",
-        tags: ["Automação", "Criação", "Análise", "Produtividade"],
         glowColor: "rgba(168,85,247,0.6)",
         borderClass: "border-purple-500/50",
         bgClass: "bg-purple-950/60",
@@ -228,11 +215,6 @@ const MOLECULE_NODES: readonly MoleculeNode[] = [
     },
     {
         level: "03",
-        title: "Compartilhe no Mural",
-        subtitle: "Comunidade + IP protegido",
-        description:
-            "Publique experimentos, ideias e projetos no mural da plataforma. Público, privado ou apenas para o seu time — você decide. O que foi criado entre você e seu agente sempre será seu.",
-        tags: ["Mural Público", "Projeto Privado", "Time", "IP Protegido"],
         glowColor: "rgba(16,185,129,0.6)",
         borderClass: "border-emerald-500/50",
         bgClass: "bg-emerald-950/60",
@@ -288,6 +270,7 @@ const FlowBond = ({
 // 3 nós conectados por ligações com fluxo animado.
 // Cada nó se acende conforme entra na viewport ao rolar a tela.
 const MoleculeSection = () => {
+    const { t } = useTranslation();
     const node0Ref = useRef<HTMLDivElement>(null);
     const node1Ref = useRef<HTMLDivElement>(null);
     const node2Ref = useRef<HTMLDivElement>(null);
@@ -309,12 +292,12 @@ const MoleculeSection = () => {
                 className="text-center mb-20"
             >
                 <p className="text-[10px] font-black uppercase tracking-[0.5em] text-cyan-500/70 mb-4">
-                    Na plataforma
+                    {t("about.layers.kicker")}
                 </p>
                 <h2 className="text-3xl md:text-5xl font-black text-white tracking-tighter">
-                    Três camadas.{" "}
+                    {t("about.layers.title_a")}{" "}
                     <span className="text-cyan-400 drop-shadow-[0_0_20px_rgba(34,211,238,0.4)]">
-                        Um ecossistema.
+                        {t("about.layers.title_b")}
                     </span>
                 </h2>
             </motion.div>
@@ -324,6 +307,8 @@ const MoleculeSection = () => {
                 {MOLECULE_NODES.map((node, i) => {
                     const isActive = activeMap[i];
                     const isEven = i % 2 === 0;
+                    const chave = `about.layers.n${i + 1}`;
+                    const tags = t(`${chave}.tags`, { returnObjects: true });
 
                     return (
                         <div key={i} className="flex flex-col items-center w-full">
@@ -383,11 +368,20 @@ const MoleculeSection = () => {
                                     className={`flex-1 p-5 md:p-7 rounded-[1.8rem] backdrop-blur-xl ${node.bgClass} border ${node.borderClass} shadow-xl`}
                                 >
                                     <h3 className="text-lg md:text-xl font-black text-white mt-1 mb-2 tracking-tight">
-                                        {node.title}
+                                        {t(`${chave}.title`)}
                                     </h3>
                                     <p className="text-xs md:text-sm text-white/60 leading-relaxed">
-                                        {node.description}
+                                        {t(`${chave}.desc`)}
                                     </p>
+                                    {Array.isArray(tags) && (
+                                        <div className="mt-4 flex flex-wrap gap-2">
+                                            {(tags as string[]).map((tag) => (
+                                                <span key={tag} className={`px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider ${node.tagClass}`}>
+                                                    {tag}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
                                 </motion.div>
                             </div>
 
@@ -414,7 +408,7 @@ const MoleculeSection = () => {
             >
                 <div className="w-20 h-[2px] bg-gradient-to-r from-cyan-500 via-purple-500 to-emerald-500 mx-auto mb-5 rounded-full shadow-[0_0_15px_rgba(34,211,238,0.5)]" />
                 <p className="text-[10px] font-black uppercase tracking-[0.4em] text-cyan-400">
-                    Você cria. Você controla. Você decide o que compartilha.
+                    {t("about.layers.footer")}
                 </p>
             </motion.div>
         </div>
@@ -422,9 +416,10 @@ const MoleculeSection = () => {
 };
 
 // ─── COMO FUNCIONA (copy no bloco `about.architecture` do i18n) ──────────────
+// A ideia passa pelos mesmos marcos da placa-chip da landing (components/main/TimelineIdeia), nas mesmas cores.
+const ETAPAS = ["#e2e8f0", "#f5c542", "#2bd47a", "#2d6ae8", "#8b5cf6", "#22d3ee"] as const;
 const ComoFunciona = () => {
     const { t } = useTranslation();
-    const steps = [1, 2, 3, 4, 5, 6, 7];
     return (
         <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -436,12 +431,15 @@ const ComoFunciona = () => {
             <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight uppercase">{t("about.architecture.title")}</h2>
             <p className="mt-3 text-white/70 max-w-2xl mx-auto">{t("about.architecture.subtitle")}</p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-2 md:gap-3">
-                {steps.map((n, i) => (
-                    <div key={n} className="flex items-center gap-2 md:gap-3">
-                        <span className="px-3 py-2 rounded-full border border-cyan-400/30 bg-cyan-500/10 text-[10px] md:text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
-                            {t(`about.architecture.flow.step${n}`)}
+                {ETAPAS.map((cor, i) => (
+                    <div key={cor} className="flex items-center gap-2 md:gap-3">
+                        <span
+                            className="px-3 py-2 rounded-full border text-[10px] md:text-xs font-black tracking-[0.18em]"
+                            style={{ color: cor, borderColor: `${cor}55`, background: `${cor}14`, boxShadow: `0 0 18px ${cor}22` }}
+                        >
+                            {t(`about.architecture.flow.step${i + 1}`)}
                         </span>
-                        {i < steps.length - 1 && <span className="text-cyan-400/60" aria-hidden>→</span>}
+                        {i < ETAPAS.length - 1 && <span className="text-white/30" aria-hidden>→</span>}
                     </div>
                 ))}
             </div>
@@ -506,9 +504,9 @@ export default function AboutUsPage() {
                 {/* Hero Title */}
                 <CyberTitle
                     startAnimations={true}
-                    mainText={t("about.title_hero", "Seja quem você nasceu pra ser.")}
-                    secondaryText={t("about.title_secondary", "conquiste sua evolução")}
-                    scrollText={t("about.scroll_down", "Descubra mais")}
+                    mainText={t("about.title_hero", "Construa sem limites.")}
+                    secondaryText={t("about.title_secondary", "da ideia ao mundo real")}
+                    scrollText={t("about.scroll_down", "role pra conhecer")}
                 />
 
                 {/* ── Card 1: Gênese (copy no bloco `about` do i18n) ── */}
@@ -524,11 +522,10 @@ export default function AboutUsPage() {
                         <span className="text-cyan-400 font-bold drop-shadow-[0_0_5px_rgba(34,211,238,0.3)]">
                             {t("about.genesis.p2")}
                         </span>
-                        {t("about.genesis.p2_highlight") ? <> {t("about.genesis.p2_highlight")}</> : null}
                     </p>
                 </TextBlock>
 
-                {/* ── Card 2: Mural & IP ── */}
+                {/* ── Card 2: o que você constrói é seu ── */}
                 <div ref={missionRef} className="w-full max-w-7xl flex items-center justify-end gap-16 relative">
                     <motion.div
                         style={{ x: missionX, opacity: missionOpacity }}
@@ -557,7 +554,7 @@ export default function AboutUsPage() {
                     </TextBlock>
                 </div>
 
-                {/* ── Como funciona: da pergunta à solução verificável ── */}
+                {/* ── Como funciona: da ideia ao mundo real ── */}
                 <ComoFunciona />
 
                 {/* ── Molécula ── */}
@@ -566,8 +563,8 @@ export default function AboutUsPage() {
                 {/* ── PLANOS ── */}
                 <div id="planos" className="relative z-40 max-w-6xl mx-auto px-4 pb-[12vh] scroll-mt-24">
                     <div className="text-center mb-12">
-                        <h2 className="text-4xl md:text-6xl font-black text-white tracking-tighter drop-shadow-2xl">Planos</h2>
-                        <p className="text-cyan-300/70 text-sm font-bold uppercase tracking-[0.25em] mt-3">Comece grátis · evolua quando quiser</p>
+                        <h2 className="text-4xl md:text-6xl font-black text-white tracking-tighter drop-shadow-2xl">{t("about.plans.title", "Planos")}</h2>
+                        <p className="text-cyan-300/70 text-sm font-bold uppercase tracking-[0.25em] mt-3">{t("about.plans.subtitle")}</p>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                         {PLAN_INFO.map((p) => {
@@ -576,7 +573,7 @@ export default function AboutUsPage() {
                                 <div key={p.id}
                                     className={`relative rounded-[1.8rem] p-[1.5px] ${featured ? "bg-gradient-to-br from-violet-500 to-cyan-400 shadow-[0_20px_60px_-20px_rgba(34,211,238,0.6)]" : "bg-white/10"}`}>
                                     <div className="h-full rounded-[1.7rem] bg-[#0b1120]/90 backdrop-blur-2xl border border-white/5 p-6 flex flex-col">
-                                        {featured && <span className="self-start mb-2 text-[9px] font-black uppercase tracking-widest text-white px-2 py-0.5 rounded-full" style={{ background: "linear-gradient(135deg,#7c3aed,#06b6d4)" }}>Mais popular</span>}
+                                        {featured && <span className="self-start mb-2 text-[9px] font-black uppercase tracking-widest text-white px-2 py-0.5 rounded-full" style={{ background: "linear-gradient(135deg,#7c3aed,#06b6d4)" }}>{t("about.plans.popular", "Mais popular")}</span>}
                                         <h3 className="text-xl font-black text-white">{p.name}</h3>
                                         <p className="text-[11px] text-white/50 uppercase tracking-widest mt-0.5">{p.tagline}</p>
                                         <div className="my-4 text-cyan-300 font-black text-lg">{p.price}</div>

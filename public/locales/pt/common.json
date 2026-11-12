@@ -231,43 +231,80 @@
     },
     "about": {
         "back": "Voltar",
-        "scroll_down": "role para baixo pra conhecer",
-        "title_secondary": "conquiste sua evolução",
-        "title_main": "Conhecimento que vira entrega.",
+        "scroll_down": "role pra conhecer",
+        "title_hero": "Construa sem limites.",
+        "title_secondary": "da ideia ao mundo real",
+        "title_main": "Você vale o que você constrói.",
         "genesis": {
-            "title": "Estude. Escreva. Aprenda sobre tudo.",
-            "p1": "A Zaeon é o seu espaço de estudo: uma sala onde os melhores agentes de IA leem com você, explicam no seu ritmo e ajudam a escrever trabalhos de verdade — do primeiro rascunho à versão final, com fontes verificadas e formatação pronta.",
-            "p2": "Qualquer assunto, qualquer nível. Você entra com uma dúvida e sai com domínio.",
-            "p2_highlight": ""
+            "title": "Um ambiente pra construir qualquer coisa.",
+            "p1": "A Zaeon é onde ideias viram coisas de verdade. Você chega com uma ideia — um foguete, um app, uma pesquisa, um negócio — e uma orquestra de agentes de IA constrói com você: lê a ciência por trás, desenha, calcula, escreve o código e testa.",
+            "p2": "Sem dezenas de abas, sem conversa que se perde no histórico. Aqui cada conversa vira construção."
         },
         "mission": {
-            "title": "Produtos reais. Mundo real. Pessoas reais.",
-            "p1": "Aqui o estudo não para no caderno. Ideias viram projetos e projetos viram produtos — construídos por pessoas de verdade, validados por professores e instituições, e registrados como credenciais que são suas. A Zaeon é onde o que você aprende sai pro mundo.",
-            "p2": ""
+            "title": "O que você constrói é seu.",
+            "p1": "Cada build guarda a base científica, as decisões e o blueprint, com a sua autoria. Você escolhe: publicar na vitrine, manter privado ou abrir só pro seu time — e se conectar com quem valida, testa e leva pro mundo real."
         },
         "architecture": {
-            "title": "Como funciona",
-            "subtitle": "Agentes autônomos que levam uma pergunta científica até uma solução verificável.",
-            "card_title": "DO LABORATÓRIO AO MUNDO",
-            "card_desc": "Pesquisa rigorosa que vira tecnologia, medicina e bens públicos — aberta e auditável.",
+            "title": "Como uma ideia vira coisa",
+            "subtitle": "Os mesmos marcos da placa que se acende na página inicial: cada etapa deixa a sua build mais perto do mundo real.",
+            "card_title": "SEM LIMITE DE ASSUNTO",
+            "card_desc": "Engenharia, ciência, software, negócios, arte — se dá pra pensar, dá pra construir aqui.",
             "flow": {
-                "step1": "PESQUISAR",
-                "step2": "SINTETIZAR",
-                "step3": "HIPÓTESE",
-                "step4": "SOLUÇÃO",
-                "step5": "VALIDAÇÃO",
-                "step6": "ENTREGA",
-                "step7": "IMPACTO"
+                "step1": "IDEIA",
+                "step2": "BASE CIENTÍFICA",
+                "step3": "CONVERSA COM AS IAs",
+                "step4": "PROPRIEDADE INTELECTUAL",
+                "step5": "PROTÓTIPO E TESTES",
+                "step6": "NO MUNDO REAL"
             }
+        },
+        "layers": {
+            "kicker": "Na plataforma",
+            "title_a": "Três camadas.",
+            "title_b": "Um ambiente.",
+            "footer": "Você constrói. Você controla. Você decide o que compartilha.",
+            "n1": {
+                "title": "Monte a sua orquestra",
+                "desc": "Agentes da casa e motores especializados, cada um bom numa coisa. Plugue os que a sua ideia precisa direto da vitrine e eles trabalham juntos.",
+                "tags": [
+                    "Agentes da casa",
+                    "Motores",
+                    "Plug na vitrine"
+                ]
+            },
+            "n2": {
+                "title": "Construa sem limites",
+                "desc": "Pesquisa, cálculo, código, desenho e testes no mesmo lugar. A orquestra divide o trabalho, você decide os rumos e a build cresce a cada sessão.",
+                "tags": [
+                    "Blueprints",
+                    "Protótipos",
+                    "Código",
+                    "Pesquisa"
+                ]
+            },
+            "n3": {
+                "title": "Mostre ao mundo",
+                "desc": "Publique na vitrine com o seu perfil. Outras pessoas validam, conversam com você e plugam o que você criou — o crédito continua seu.",
+                "tags": [
+                    "Vitrine",
+                    "Validadores",
+                    "Perfil",
+                    "Autoria"
+                ]
+            }
+        },
+        "plans": {
+            "title": "Planos",
+            "subtitle": "Comece grátis · cresça quando a build pedir",
+            "popular": "Mais popular"
         },
         "cta": {
             "tour_title": "Quer ver a arquitetura por dentro?",
             "button_go": "IR !"
         },
-        "title_hero": "Seja quem você nasceu pra ser.",
         "team": {
             "title": "Conheça a equipe",
-            "subtitle": "Duas pessoas, uma obsessão: fazer o aprendizado render de verdade."
+            "subtitle": "Duas pessoas, uma obsessão: um lugar onde dá pra construir qualquer coisa."
         }
     },
     "tech_room": {
