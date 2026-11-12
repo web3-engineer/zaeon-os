@@ -111,10 +111,15 @@ export type CardDaSkill = {
    */
   precoBRL: number;
   /**
-   * a família do card: "procedimento" (a skill da casa comum), "pago" (tem preço), "device"
-   * (espelho de download + instruções), "course" (curso completo). Decide o que o PORTÃO cobra.
+   * a família do card, que decide o que o PORTÃO cobra:
+   *   · "procedimento" — a skill da casa comum (anatomia-3d).
+   *   · "agentic"      — roda em QUALQUER modelo (Claude, Codex, Octa); o portão prova que os três
+   *                      produzem uma saída que satisfaz o mesmo contrato.
+   *   · "pago"         — tem preço (pertence ao fundador).
+   *   · "device"       — espelho de download + instruções (roda na máquina do aluno).
+   *   · "course"       — curso completo autorado (pertence ao fundador).
    */
-  familia: "procedimento" | "pago" | "device" | "course";
+  familia: "procedimento" | "agentic" | "pago" | "device" | "course";
   /**
    * DEVICE: o que o aluno baixa e roda na MÁQUINA DELE. Preenchido só na família "device".
    * O app roda no dispositivo do aluno, não no nosso servidor — é o que torna seguro oferecer um
@@ -164,7 +169,7 @@ export function cardDaSkill(s: SkillDaCasa): CardDaSkill | null {
   const precoBRL = Math.max(0, Number(texto(m["zaeon-preco-brl"])) || 0);
   const fam = texto(m["zaeon-familia"]) as CardDaSkill["familia"];
   const familia: CardDaSkill["familia"] =
-    (["procedimento", "pago", "device", "course"] as const).includes(fam) ? fam : "procedimento";
+    (["procedimento", "agentic", "pago", "device", "course"] as const).includes(fam) ? fam : "procedimento";
 
   return {
     slug: s.manifest.name,
