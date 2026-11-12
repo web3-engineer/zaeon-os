@@ -85,7 +85,7 @@ describe("OctaIDE · modo projeto", () => {
     expect(screen.getByText("Estilo escolhido: Notion")).toBeTruthy();
     expect(await screen.findByText("Pronto!")).toBeTruthy();
     const post = chamadas((u, i) => u === "/api/octa/turnos" && i?.method === "POST")[0];
-    expect(JSON.parse(String(post[1]!.body))).toEqual({ projetoId: ID, pedido: "uma landing pra minha confeitaria, escura e minimalista" });
+    expect(JSON.parse(String(post[1]!.body))).toEqual({ projetoId: ID, pedido: "uma landing pra minha confeitaria, escura e minimalista", modelo: "gemini-3.5-flash"});
   });
 
   it("aprovação: o cartão aparece e Aprovar manda { aprovado: true }", async () => {

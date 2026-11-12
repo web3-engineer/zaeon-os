@@ -10,7 +10,7 @@ import { authOptions } from "@/src/lib/auth";
 import { guard } from "@/src/lib/ratelimit";
 import { rodarAgenteOcta, FERRAMENTAS_GATEWAY, type Workspace } from "@/lib/octa/agente";
 import { emitirVirtualKey, classificarRespostaGateway, octaGatewayConfigurado, gatewayCfg } from "@/lib/octa/litellm";
-import { criarChamadorOcta, nomeDoModelo, type ChamarGateway } from "@/lib/octa/modelo";
+import { criarChamadorOcta, escolhaModeloOcta, nomeDoModelo, type ChamarGateway } from "@/lib/octa/modelo";
 
 export const runtime = "nodejs";
 export const maxDuration = 300; // turno no local (CPU) pode levar até OCTA_LOCAL_ORCAMENTO_MS + a reserva
@@ -78,7 +78,10 @@ export async function POST(req: Request) {
       const m = j.choices?.[0]?.message ?? {};
       return { content: m.content ?? null, tool_calls: m.tool_calls, usage: j.usage, modeloId: r.headers.get("x-litellm-model-id") };
     };
-    const chamar = criarChamadorOcta(gateway);
+    // modelo escolhido no seletor do Octa (id do catálogo lib/chat/modelos); inválido/ausente = padrão por env
+    const { modeloDoId } = await import("@/lib/chat/modelos");
+    const escolhido = modeloDoId(body.modelo);
+    const chamar = criarChamadorOcta(gateway, escolhaModeloOcta(process.env, undefined, escolhido));
     const r = await rodarAgenteOcta({ historico, pedido, workspace, modo, liberados, arquivoAtivo: typeof body.arquivoAtivo === "string" ? body.arquivoAtivo : undefined }, chamar, { sessionId, userId });
     const servidos = chamar.servidos;
     console.info(`[octa] ${sessionId} ${servidos.map((x) => `${x.modelo}(${x.modeloId ?? "?"}) ${x.ms}ms${x.motivo ? ` ←${x.motivo}` : ""}`).join(" · ")}`);

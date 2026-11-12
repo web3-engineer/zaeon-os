@@ -21,6 +21,22 @@ const ligado = (over: Partial<EscolhaOcta> = {}): EscolhaOcta => ({ ...escolhaMo
 
 beforeEach(() => _resetPausaOcta());
 
+import { modeloDoId } from "@/lib/chat/modelos";
+
+describe("octa · modelo escolhido no seletor (catálogo)", () => {
+  it("Claude escolhido → é o primário (grupo do gateway), pula o local", () => {
+    const e = escolhaModeloOcta({ ...PROD, OCTA_MODELO_LOCAL: "1" }, undefined, modeloDoId("claude-opus"));
+    expect(e.local).toBeNull();
+    expect(e.reserva).toBe("claude-opus");
+  });
+  it("Gemini escolhido → vertex_ai/<id>", () => {
+    expect(escolhaModeloOcta(PROD, undefined, modeloDoId("gemini-2.5-pro")).reserva).toBe("vertex_ai/gemini-2.5-pro");
+  });
+  it("sem escolha (null) → comportamento por env de antes", () => {
+    expect(escolhaModeloOcta(PROD, undefined, null).reserva).toBe("vertex_ai/gemini-2.5-pro");
+  });
+});
+
 describe("octa · escolha do modelo", () => {
   it("flag desligada: nada de local, o Google 'forte' de sempre", () => {
     const e = escolhaModeloOcta(PROD);

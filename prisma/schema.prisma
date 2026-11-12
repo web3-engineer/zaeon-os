@@ -1633,6 +1633,7 @@ model OctaTurno {
   email     String   // do dono (sessão) — o job precisa pra achar o GitHub do aluno; nunca vai pro cliente
   projetoId String
   pedido    String
+  modelo    String?  // id do catálogo (lib/chat/modelos) escolhido no seletor do Octa; null = padrão
   status    String   // rodando | aguardando_aprovacao | pronto | erro
   runId     String?  // a execução que reivindicou o turno (processarTurno); null = livre pra ser reivindicado
   estado    Json?    // { msgs } para retomar; na retomada ganha { aprovado }

@@ -110,10 +110,10 @@ export function useTurnoOcta(opts: { intervaloMs?: number; semNovidadeMs?: numbe
     timer.current = setTimeout(() => laco(g)(), 0);
   }, [laco, parar]);
 
-  const iniciar = useCallback(async (projetoId: string, pedido: string): Promise<InicioTurno> => {
+  const iniciar = useCallback(async (projetoId: string, pedido: string, modelo?: string): Promise<InicioTurno> => {
     let r: Response;
     try {
-      r = await fetch("/api/octa/turnos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ projetoId, pedido }) });
+      r = await fetch("/api/octa/turnos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ projetoId, pedido, modelo}) });
     } catch { return { ok: false, status: 0 }; }
     const j: any = await r.json().catch(() => ({}));
     if (r.status === 409 && typeof j?.turnoId === "string") { acompanhar(j.turnoId); return { ok: true, turnoId: j.turnoId, jaAtivo: true }; }

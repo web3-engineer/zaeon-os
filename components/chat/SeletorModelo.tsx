@@ -7,16 +7,19 @@
 import { useEffect, useRef, useState } from "react";
 import { CHAVE_MODELO, MODELOS_CHAT, MODELO_PADRAO, modeloDoId, type ModeloChat } from "@/lib/chat/modelos";
 
-/** A escolha do aparelho (localStorage), com o padrão quando não há ou o id saiu do catálogo. */
-export function useModeloEscolhido(): [ModeloChat, (id: string) => void] {
+/**
+ * A escolha do aparelho (localStorage), com o padrão quando não há ou o id saiu do catálogo.
+ * `chave` permite escolhas independentes por superfície (o chat e o Octa não compartilham o modelo).
+ */
+export function useModeloEscolhido(chave: string = CHAVE_MODELO): [ModeloChat, (id: string) => void] {
   const [id, setId] = useState<string>(MODELO_PADRAO);
   useEffect(() => {
-    try { const salvo = localStorage.getItem(CHAVE_MODELO); if (modeloDoId(salvo)) setId(salvo!); } catch { /* sem storage: padrão */ }
-  }, []);
+    try { const salvo = localStorage.getItem(chave); if (modeloDoId(salvo)) setId(salvo!); } catch { /* sem storage: padrão */ }
+  }, [chave]);
   const escolher = (novo: string) => {
     if (!modeloDoId(novo)) return;
     setId(novo);
-    try { localStorage.setItem(CHAVE_MODELO, novo); } catch { /* só não lembra */ }
+    try { localStorage.setItem(chave, novo); } catch { /* só não lembra */ }
   };
   return [modeloDoId(id) ?? MODELOS_CHAT[0], escolher];
 }

@@ -29,6 +29,7 @@
 import { semImagens, type ChamarModelo, type MsgModelo, type RespostaModelo } from "@/lib/octa/agente";
 import { modeloReal } from "@/lib/octa/litellm";
 import { ehProvedorTerceiro, semSegredos } from "@/lib/octa/noPii";
+import { viaGateway, type ModeloChat } from "@/lib/chat/modelos";
 
 type Env = Record<string, string | undefined>;
 const num = (v: string | undefined, d: number) => (Number(v) > 0 ? Number(v) : d);
@@ -48,7 +49,17 @@ export type EscolhaOcta = {
 
 const SEM_TETO = Number.MAX_SAFE_INTEGER;
 
-export function escolhaModeloOcta(env: Env = process.env, fluxo?: "landing"): EscolhaOcta {
+/** O modelo do catálogo (lib/chat/modelos) no formato que o gateway roteia: gateway→grupo, google→vertex_ai/… */
+export function modeloOctaDoCatalogo(m: ModeloChat): string {
+  return viaGateway(m) ? m.grupo : `vertex_ai/${m.vertex}`;
+}
+
+/**
+ * `escolhido`: o modelo que o aluno pegou no seletor do Octa (catálogo de lib/chat/modelos). Quando
+ * vem, ele é o PRIMÁRIO (pula o local) — é a escolha explícita do aluno, Claude incluso. Null/landing
+ * seguem o comportamento por env.
+ */
+export function escolhaModeloOcta(env: Env = process.env, fluxo?: "landing", escolhido?: ModeloChat | null): EscolhaOcta {
   const ligado = env.OCTA_MODELO_LOCAL === "1";
   if (fluxo === "landing") {
     return {
@@ -60,6 +71,17 @@ export function escolhaModeloOcta(env: Env = process.env, fluxo?: "landing"): Es
       pausaMs: num(env.OCTA_LOCAL_PAUSA_MS, 120_000),
       landing: true,
       reservaSemImagem: ligado,
+    };
+  }
+  // Escolha explícita do aluno no seletor do Octa → é o primário, pula o local.
+  if (escolhido) {
+    return {
+      local: null,
+      reserva: modeloOctaDoCatalogo(escolhido),
+      timeoutMs: num(env.OCTA_LOCAL_TIMEOUT_MS, 120_000),
+      orcamentoMs: num(env.OCTA_LOCAL_ORCAMENTO_MS, 240_000),
+      maxPromptTok: SEM_TETO,
+      pausaMs: num(env.OCTA_LOCAL_PAUSA_MS, 120_000),
     };
   }
   return {
