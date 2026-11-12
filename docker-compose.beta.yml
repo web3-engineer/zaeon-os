@@ -285,6 +285,23 @@ services:
       CACHE_RESPOSTAS: ${CACHE_RESPOSTAS:-1}    # pergunta de conceito já respondida volta sem modelo
       ROTEADOR_KNN: ${ROTEADOR_KNN:-on}         # roteador de intenção por embedding; "sombra" só mede, "off" desliga
       ORQ_AUTOMATICO: ${ORQ_AUTOMATICO:-1}      # orquestra roteia sozinha o trabalho de Pro/Max (motores externos: custo)
+      # ── O QUE O TURNO DO CHAT LÊ, ESPELHADO DO `web` ──
+      # Com CHAT_BG=1 (o default do deploy desde 05/nov) é ESTE container que roda o turno do chat.
+      # Estas chaves existiam só no `web`: o deploy as exporta no shell e o compose só as entrega a
+      # quem as declara. Sem elas, no turno em 2º plano: a busca na web sumia (SEARXNG_URL), o cartão
+      # verde do REA não nascia (REA_BLUEPRINT), o vídeo do documento idem (VIDEO_DOC). O agente de
+      # navegador (AGENTE_*) fica FORA de propósito: lib/agent/agenteCompose.test.ts. Os valores são as MESMAS expressões do `web` — o teste
+      # lib/flags/workerEnv.test.ts recusa divergência e chave nova que só entre no `web`.
+      SEARXNG_URL: http://searxng:8080
+      REA_BLUEPRINT: ${REA_BLUEPRINT:-0}
+      VIDEO_DOC: ${VIDEO_DOC:-0}
+      BLUEPRINT_PRATICO: ${BLUEPRINT_PRATICO:-0}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      MAP_HARNESS: ${MAP_HARNESS:-0}
+      ESTUDO_GATEKEEPER: ${ESTUDO_GATEKEEPER:-0}
+      AURA_ECONOMY: ${AURA_ECONOMY:-0}
+      GATEWAY_URL: ${GATEWAY_URL:-}
+      NEXTAUTH_URL: ${APP_URL:-https://75-119-140-97.sslip.io}
       # Os de CONSUMIR vivem AQUI, onde consumir é o trabalho do container. `SCHOLAR_WORKER` não
       # aparece de propósito: já é "1" fixo acima, e um `${SCHOLAR_WORKER:-}` o sobrescreveria com
       # VAZIO — o worker dedicado pararia de consumir a fila do scholar. Foi o erro que o parser do
