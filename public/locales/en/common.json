@@ -231,43 +231,80 @@
     },
     "about": {
         "back": "Back",
-        "scroll_down": "scroll down to meet us",
-        "title_secondary": "earn your evolution",
-        "title_main": "Knowledge that becomes delivery.",
+        "scroll_down": "scroll to meet us",
+        "title_hero": "Build without limits.",
+        "title_secondary": "from idea to the real world",
+        "title_main": "You are worth what you build.",
         "genesis": {
-            "title": "Study. Write. Learn about everything.",
-            "p1": "Zaeon is your study space: a room where the best AI agents read with you, explain at your pace and help you write real papers — from first draft to final version, with verified sources and ready formatting.",
-            "p2": "Any subject, any level. You come in with a question and leave with mastery.",
-            "p2_highlight": ""
+            "title": "A place to build anything.",
+            "p1": "Zaeon is where ideas become real things. You arrive with an idea — a rocket, an app, a study, a business — and an orchestra of AI agents builds it with you: it reads the science behind it, draws, calculates, writes the code and tests.",
+            "p2": "No dozens of tabs, no conversations lost in the history. Here every conversation becomes a build."
         },
         "mission": {
-            "title": "Real products. Real world. Real people.",
-            "p1": "Here, studying doesn't stop at the notebook. Ideas become projects and projects become products — built by real people, validated by teachers and institutions, and recorded as credentials that are yours. Zaeon is where what you learn goes out into the world.",
-            "p2": ""
+            "title": "What you build is yours.",
+            "p1": "Every build keeps its scientific base, its decisions and its blueprint, under your authorship. You choose: publish it on the showcase, keep it private or open it only to your team — and connect with the people who validate, test and take it to the real world."
         },
         "architecture": {
-            "title": "How it works",
-            "subtitle": "Autonomous agents that take a scientific question all the way to a verifiable solution.",
-            "card_title": "FROM THE LAB TO THE WORLD",
-            "card_desc": "Rigorous research that becomes technology, medicine and public goods — open and auditable.",
+            "title": "How an idea becomes a thing",
+            "subtitle": "The same milestones as the board that lights up on the home page: each step brings your build closer to the real world.",
+            "card_title": "NO SUBJECT IS OFF LIMITS",
+            "card_desc": "Engineering, science, software, business, art — if you can think it, you can build it here.",
             "flow": {
-                "step1": "RESEARCH",
-                "step2": "SYNTHESIZE",
-                "step3": "HYPOTHESIS",
-                "step4": "SOLUTION",
-                "step5": "VALIDATION",
-                "step6": "DELIVERY",
-                "step7": "IMPACT"
+                "step1": "IDEA",
+                "step2": "SCIENTIFIC BASE",
+                "step3": "TALKING WITH AIs",
+                "step4": "BLUEPRINT",
+                "step5": "PROTOTYPE & TESTS",
+                "step6": "IN THE REAL WORLD"
             }
+        },
+        "layers": {
+            "kicker": "On the platform",
+            "title_a": "Three layers.",
+            "title_b": "One place.",
+            "footer": "You build. You control. You decide what you share.",
+            "n1": {
+                "title": "Assemble your orchestra",
+                "desc": "House agents and specialized engines, each great at one thing. Plug the ones your idea needs straight from the showcase and they work together.",
+                "tags": [
+                    "House agents",
+                    "Engines",
+                    "Showcase plug"
+                ]
+            },
+            "n2": {
+                "title": "Build without limits",
+                "desc": "Research, math, code, drawings and tests in one place. The orchestra splits the work, you set the direction and the build grows every session.",
+                "tags": [
+                    "Blueprints",
+                    "Prototypes",
+                    "Code",
+                    "Research"
+                ]
+            },
+            "n3": {
+                "title": "Show it to the world",
+                "desc": "Publish on the showcase with your profile. Other people validate it, talk to you and plug what you made — the credit stays yours.",
+                "tags": [
+                    "Showcase",
+                    "Validators",
+                    "Profile",
+                    "Authorship"
+                ]
+            }
+        },
+        "plans": {
+            "title": "Plans",
+            "subtitle": "Start free · grow when your build asks for it",
+            "popular": "Most popular"
         },
         "cta": {
             "tour_title": "Want to see the architecture inside?",
             "button_go": "GO !"
         },
-        "title_hero": "Be who you were born to be.",
         "team": {
             "title": "Meet the team",
-            "subtitle": "Two people, one obsession: making learning actually pay off."
+            "subtitle": "Two people, one obsession: a place where you can build anything."
         }
     },
     "tech_room": {

@@ -231,43 +231,80 @@
     },
     "about": {
         "back": "Zurück",
-        "scroll_down": "scrolle, um uns kennenzulernen",
-        "title_secondary": "erobere deine Evolution",
-        "title_main": "Wissen, das zur Lieferung wird.",
+        "scroll_down": "scrollen, um uns kennenzulernen",
+        "title_hero": "Bau ohne Grenzen.",
+        "title_secondary": "von der Idee in die echte Welt",
+        "title_main": "Du bist so viel wert wie das, was du baust.",
         "genesis": {
-            "title": "Lerne. Schreibe. Verstehe alles.",
-            "p1": "Zaeon ist dein Lernraum: ein Ort, an dem die besten KI-Agenten mit dir lesen, in deinem Tempo erklären und dir helfen, echte Arbeiten zu schreiben — vom ersten Entwurf bis zur Endfassung, mit geprüften Quellen und fertiger Formatierung.",
-            "p2": "Jedes Thema, jedes Niveau. Du kommst mit einer Frage und gehst mit Können.",
-            "p2_highlight": ""
+            "title": "Ein Ort, um alles zu bauen.",
+            "p1": "Zaeon ist der Ort, an dem Ideen zu echten Dingen werden. Du kommst mit einer Idee — einer Rakete, einer App, einer Studie, einem Unternehmen — und ein Orchester aus KI-Agenten baut sie mit dir: Es liest die Wissenschaft dahinter, zeichnet, rechnet, schreibt den Code und testet.",
+            "p2": "Keine Dutzenden Tabs, keine Gespräche, die im Verlauf verschwinden. Hier wird jedes Gespräch zu einem Build."
         },
         "mission": {
-            "title": "Echte Produkte. Echte Welt. Echte Menschen.",
-            "p1": "Hier endet das Lernen nicht im Heft. Ideen werden Projekte, Projekte werden Produkte — gebaut von echten Menschen, geprüft von Lehrenden und Institutionen und als Nachweise festgehalten, die dir gehören. Zaeon ist der Ort, an dem das, was du lernst, in die Welt geht.",
-            "p2": ""
+            "title": "Was du baust, gehört dir.",
+            "p1": "Jeder Build bewahrt seine wissenschaftliche Basis, seine Entscheidungen und seinen Blueprint — unter deiner Urheberschaft. Du entscheidest: im Schaufenster veröffentlichen, privat halten oder nur für dein Team öffnen — und dich mit den Menschen verbinden, die validieren, testen und ihn in die echte Welt bringen."
         },
         "architecture": {
-            "title": "So funktioniert es",
-            "subtitle": "Autonome Agenten, die eine wissenschaftliche Frage bis zu einer überprüfbaren Lösung führen.",
-            "card_title": "VOM LABOR IN DIE WELT",
-            "card_desc": "Strenge Forschung, die zu Technologie, Medizin und öffentlichen Gütern wird – offen und nachprüfbar.",
+            "title": "Wie aus einer Idee etwas wird",
+            "subtitle": "Dieselben Meilensteine wie die Platine, die auf der Startseite aufleuchtet: Jeder Schritt bringt deinen Build näher an die echte Welt.",
+            "card_title": "KEIN THEMA IST TABU",
+            "card_desc": "Ingenieurwesen, Wissenschaft, Software, Business, Kunst — was man denken kann, kann man hier bauen.",
             "flow": {
-                "step1": "ERFORSCHEN",
-                "step2": "SYNTHETISIEREN",
-                "step3": "HYPOTHESE",
-                "step4": "LÖSUNG",
-                "step5": "VALIDIERUNG",
-                "step6": "LIEFERUNG",
-                "step7": "WIRKUNG"
+                "step1": "IDEE",
+                "step2": "WISSENSCHAFTLICHE BASIS",
+                "step3": "GESPRÄCH MIT DEN KIs",
+                "step4": "BLUEPRINT",
+                "step5": "PROTOTYP & TESTS",
+                "step6": "IN DER ECHTEN WELT"
             }
+        },
+        "layers": {
+            "kicker": "Auf der Plattform",
+            "title_a": "Drei Ebenen.",
+            "title_b": "Ein Ort.",
+            "footer": "Du baust. Du kontrollierst. Du entscheidest, was du teilst.",
+            "n1": {
+                "title": "Stell dein Orchester zusammen",
+                "desc": "Hauseigene Agenten und spezialisierte Engines, jede stark in einer Sache. Steck die ein, die deine Idee braucht, direkt aus dem Schaufenster — und sie arbeiten zusammen.",
+                "tags": [
+                    "Hausagenten",
+                    "Engines",
+                    "Plug im Schaufenster"
+                ]
+            },
+            "n2": {
+                "title": "Bau ohne Grenzen",
+                "desc": "Recherche, Berechnung, Code, Zeichnung und Tests an einem Ort. Das Orchester teilt die Arbeit auf, du gibst die Richtung vor und der Build wächst mit jeder Sitzung.",
+                "tags": [
+                    "Blueprints",
+                    "Prototypen",
+                    "Code",
+                    "Recherche"
+                ]
+            },
+            "n3": {
+                "title": "Zeig es der Welt",
+                "desc": "Veröffentliche im Schaufenster mit deinem Profil. Andere validieren, sprechen mit dir und stecken ein, was du gebaut hast — die Anerkennung bleibt deine.",
+                "tags": [
+                    "Schaufenster",
+                    "Validatoren",
+                    "Profil",
+                    "Urheberschaft"
+                ]
+            }
+        },
+        "plans": {
+            "title": "Pläne",
+            "subtitle": "Kostenlos starten · wachsen, wenn dein Build es verlangt",
+            "popular": "Am beliebtesten"
         },
         "cta": {
             "tour_title": "Willst du die Architektur von innen sehen?",
-            "button_go": "GEHEN !"
+            "button_go": "LOS !"
         },
-        "title_hero": "Sei, wer du geboren wurdest zu sein.",
         "team": {
             "title": "Lerne das Team kennen",
-            "subtitle": "Zwei Menschen, eine Obsession: dass Lernen sich wirklich auszahlt."
+            "subtitle": "Zwei Menschen, eine Obsession: ein Ort, an dem man alles bauen kann."
         }
     },
     "tech_room": {

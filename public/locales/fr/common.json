@@ -230,44 +230,81 @@
         "project_rank": "Rang du projet"
     },
     "about": {
-        "back": "Dos",
-        "scroll_down": "fais défiler pour nous découvrir",
-        "title_secondary": "conquiers ton évolution",
-        "title_main": "Un savoir qui devient livraison.",
+        "back": "Retour",
+        "scroll_down": "défilez pour nous découvrir",
+        "title_hero": "Construisez sans limites.",
+        "title_secondary": "de l'idée au monde réel",
+        "title_main": "Vous valez ce que vous construisez.",
         "genesis": {
-            "title": "Étudie. Écris. Apprends sur tout.",
-            "p1": "Zaeon est ton espace d'étude : une salle où les meilleurs agents IA lisent avec toi, expliquent à ton rythme et t'aident à écrire de vrais travaux — du premier brouillon à la version finale, avec sources vérifiées et mise en forme prête.",
-            "p2": "N'importe quel sujet, n'importe quel niveau. Tu entres avec une question, tu ressors avec la maîtrise.",
-            "p2_highlight": ""
+            "title": "Un lieu pour construire n'importe quoi.",
+            "p1": "Zaeon, c'est là où les idées deviennent de vraies choses. Vous arrivez avec une idée — une fusée, une app, une recherche, une entreprise — et un orchestre d'agents IA la construit avec vous : il lit la science derrière, dessine, calcule, écrit le code et teste.",
+            "p2": "Pas de dizaines d'onglets, pas de conversations perdues dans l'historique. Ici, chaque conversation devient construction."
         },
         "mission": {
-            "title": "Produits réels. Monde réel. Personnes réelles.",
-            "p1": "Ici, l'étude ne s'arrête pas au cahier. Les idées deviennent des projets et les projets des produits — construits par de vraies personnes, validés par des enseignants et des institutions, et enregistrés comme des certifications qui t'appartiennent. Zaeon, c'est là où ce que tu apprends sort dans le monde.",
-            "p2": ""
+            "title": "Ce que vous construisez vous appartient.",
+            "p1": "Chaque build garde sa base scientifique, ses décisions et son blueprint, sous votre nom. À vous de choisir : la publier dans la vitrine, la garder privée ou l'ouvrir à votre équipe — et rencontrer ceux qui valident, testent et l'emmènent dans le monde réel."
         },
         "architecture": {
-            "title": "Comment ça marche",
-            "subtitle": "Des agents autonomes qui mènent une question scientifique jusqu'à une solution vérifiable.",
-            "card_title": "DU LABORATOIRE AU MONDE",
-            "card_desc": "Une recherche rigoureuse qui devient technologie, médecine et biens publics — ouverte et vérifiable.",
+            "title": "Comment une idée devient réalité",
+            "subtitle": "Les mêmes étapes que la carte qui s'allume sur la page d'accueil : chaque étape rapproche votre build du monde réel.",
+            "card_title": "AUCUN SUJET HORS LIMITES",
+            "card_desc": "Ingénierie, science, logiciel, business, art — si on peut l'imaginer, on peut le construire ici.",
             "flow": {
-                "step1": "RECHERCHER",
-                "step2": "SYNTHÉTISER",
-                "step3": "HYPOTHÈSE",
-                "step4": "SOLUTION",
-                "step5": "VALIDATION",
-                "step6": "LIVRAISON",
-                "step7": "IMPACT"
+                "step1": "IDÉE",
+                "step2": "BASE SCIENTIFIQUE",
+                "step3": "DIALOGUE AVEC LES IA",
+                "step4": "PROPRIÉTÉ INTELLECTUELLE",
+                "step5": "PROTOTYPE ET TESTS",
+                "step6": "DANS LE MONDE RÉEL"
             }
+        },
+        "layers": {
+            "kicker": "Sur la plateforme",
+            "title_a": "Trois couches.",
+            "title_b": "Un seul lieu.",
+            "footer": "Vous construisez. Vous contrôlez. Vous décidez de ce que vous partagez.",
+            "n1": {
+                "title": "Composez votre orchestre",
+                "desc": "Agents maison et moteurs spécialisés, chacun excellent dans un domaine. Branchez ceux dont votre idée a besoin directement depuis la vitrine et ils travaillent ensemble.",
+                "tags": [
+                    "Agents maison",
+                    "Moteurs",
+                    "Branchement vitrine"
+                ]
+            },
+            "n2": {
+                "title": "Construisez sans limites",
+                "desc": "Recherche, calcul, code, dessin et tests au même endroit. L'orchestre répartit le travail, vous fixez le cap et la build grandit à chaque session.",
+                "tags": [
+                    "Blueprints",
+                    "Prototypes",
+                    "Code",
+                    "Recherche"
+                ]
+            },
+            "n3": {
+                "title": "Montrez-le au monde",
+                "desc": "Publiez dans la vitrine avec votre profil. D'autres personnes valident, échangent avec vous et branchent ce que vous avez créé — le crédit reste à vous.",
+                "tags": [
+                    "Vitrine",
+                    "Validateurs",
+                    "Profil",
+                    "Paternité"
+                ]
+            }
+        },
+        "plans": {
+            "title": "Offres",
+            "subtitle": "Commencez gratuitement · évoluez quand votre build le demande",
+            "popular": "Le plus populaire"
         },
         "cta": {
             "tour_title": "Envie de voir l'architecture de l'intérieur ?",
-            "button_go": "ALLER !"
+            "button_go": "GO !"
         },
-        "title_hero": "Sois qui tu es né pour être.",
         "team": {
             "title": "Rencontrez l'équipe",
-            "subtitle": "Deux personnes, une obsession : faire que l'apprentissage rapporte vraiment."
+            "subtitle": "Deux personnes, une obsession : un lieu où l'on peut construire n'importe quoi."
         }
     },
     "tech_room": {
