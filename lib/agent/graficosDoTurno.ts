@@ -117,6 +117,34 @@ export function graficoCoberturaPorDocumento(
 }
 
 /**
+ * ONDE "PAPERS POR ANO" CABE. O número sempre teve recibo; o que faltava era a PERGUNTA.
+ *
+ * A série entrava em TODO turno em que a busca de literatura devolvesse 4 papers em 3 anos — e a
+ * busca roda em toda explicação de conceito. Resultado, visto pelo dono: o aluno pergunta como
+ * funciona o coração e recebe, embaixo da resposta, um gráfico de barras chamado "Papers por ano",
+ * sobre nada que ele perguntou. Gráfico honesto no lugar errado é ruído.
+ *
+ * Ele cabe quando o turno é SOBRE a literatura: o aluno foi buscar fontes, está escrevendo um
+ * trabalho, ou perguntou pelo panorama do tema (estado da arte, tendência, quanto se publica,
+ * lacuna). Fora disso não sai — e isso é o caso comum.
+ */
+const INTENCOES_DE_LITERATURA: ReadonlySet<string> = new Set(["pesquisar_fontes", "criar_trabalho"]);
+const PANORAMA_RE =
+  /\b(estado da arte|revisao (?:de|da|sistematica|bibliografica) ?(?:literatura)?|panorama|tendencias?|producao cientifica|bibliometri\w*|levantamento bibliografico|lacunas?|pouco (?:explorad|estudad|pesquisad)\w*|quant[oa]s (?:artigos|papers|estudos|trabalhos|publicacoes|pesquisas)|(?:artigos|papers|estudos|publicacoes|pesquisas?) (?:por ano|ao longo|nos ultimos|recentes)|evolucao (?:da|das) (?:pesquisas?|publicacoes|literatura)|o que (?:a literatura|a ciencia|os estudos) (?:diz|dizem))/;
+const semAcento = (s: string) => (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+export function cabePapersPorAno(intent: string | undefined, objetivo: string | undefined): boolean {
+  if (intent && INTENCOES_DE_LITERATURA.has(intent)) return true;
+  return !!objetivo && PANORAMA_RE.test(semAcento(objetivo));
+}
+
+/** O tema, curto, para o título dizer DO QUE é a contagem. */
+function temaCurto(objetivo: string | undefined): string {
+  const t = (objetivo || "").replace(/\s+/g, " ").trim().replace(/[?!.]+$/, "");
+  return t.length > 70 ? `${t.slice(0, 67).trimEnd()}…` : t;
+}
+
+/**
  * Os gráficos deste turno, na ordem de utilidade. Nada aqui consulta modelo: ou o turno apurou o
  * número, ou não há gráfico.
  */
@@ -126,11 +154,22 @@ export function graficosDoTurno(entrada: {
   env?: Record<string, string | undefined>;
   /** #749: o pedido do turno — quem pediu um gráfico de OUTRA coisa lia a cobertura como a resposta */
   objetivo?: string;
+  /** a intenção do turno: "papers por ano" só sai quando o turno é sobre a literatura (cabePapersPorAno) */
+  intent?: string;
 }): GraficoNaResposta[] {
   if (!graficoLigado(entrada.env ?? process.env)) return [];
   const out: GraficoNaResposta[] = [];
-  const ano = entrada.fontes?.length ? graficoPapersPorAno(entrada.fontes) : null;
-  if (ano) out.push(ano);
+  const ano = entrada.fontes?.length && cabePapersPorAno(entrada.intent, entrada.objetivo)
+    ? graficoPapersPorAno(entrada.fontes)
+    : null;
+  if (ano) {
+    // COM CONTEXTO: o título diz do que é a contagem, e a fonte diz o que ela mede (quanto o tema é
+    // pesquisado) — "Papers por ano", sozinho, não dizia papers de quê nem por que estava ali.
+    const tema = temaCurto(entrada.objetivo);
+    const titulo = tema ? `Papers por ano — ${tema}` : ano.titulo;
+    const fonte = `${ano.fonte} para esta pergunta; mostra quanto o tema é pesquisado ao longo do tempo`;
+    out.push({ ...ano, titulo, fonte, alt: `${titulo} — ${fonte}` });
+  }
   const pediuOutroGrafico = !!entrada.objetivo && pedeGraficoDeDados(entrada.objetivo);
   const cob = entrada.docsDaBase?.length && !pediuOutroGrafico ? graficoCoberturaPorDocumento(entrada.docsDaBase) : null;
   if (cob) out.push(cob);

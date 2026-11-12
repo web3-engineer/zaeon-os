@@ -68,7 +68,10 @@ export function assuntoDe(objetivo: string): string {
   return (limpo || t).slice(0, 200);
 }
 
-const JA_TEM_DIAGRAMA = (arts: StudioRef[]) => arts.some((a) => a.studioKind === "diagram" || a.studioKind === "mindmap");
+// `anatomia` entra aqui: quando a peça do atlas já viaja com a resposta, ela É a figura do turno. Antes, toda pergunta
+// de "como funciona o coração" ganhava um diagrama automático AO LADO da peça (ou no lugar dela) — o dono viu a agente
+// de medicina "devolvendo diagramas" para quem pediu uma parte do corpo.
+const JA_TEM_DIAGRAMA = (arts: StudioRef[]) => arts.some((a) => a.studioKind === "diagram" || a.studioKind === "mindmap" || a.studioKind === "anatomia");
 
 /**
  * O artefato que a intenção pede (ou null). Chamado no fim do turno, com a resposta pronta:
