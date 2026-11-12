@@ -55,8 +55,8 @@ describe("render · o menu que o modelo vê", () => {
     expect(menuDeTools([])).toBe("(nenhuma ferramenta disponível)");
   });
 
-  it("artefato e stub NÃO entram no menu — a decisão de produto não volta pro modelo", () => {
-    const todas = [{ name: "web_search" }, { name: "studio_generate" }, { name: "research_generate" }, { name: "examiner" }, { name: "abrir_url" }];
+  it("artefato NÃO entra no menu — a decisão de produto não volta pro modelo", () => {
+    const todas = [{ name: "web_search" }, { name: "studio_generate" }, { name: "research_generate" }, { name: "abrir_url" }];
     expect(toolsDoMenu(todas).map((t) => t.name)).toEqual(["web_search", "abrir_url"]);
     expect(FORA_DO_MENU).toContain("studio_generate");
   });

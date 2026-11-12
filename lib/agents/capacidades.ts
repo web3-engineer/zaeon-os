@@ -54,7 +54,6 @@ export const TOOLS_BASE: readonly string[] = [
   "listar_anexos",
   "ler_anexo",
   "descrever_imagem",
-  "examiner",
   "studio_generate",
   "research_generate",
   // as BÁSICAS do dia a dia (lib/agent/toolsBasicas): puras, sempre registradas, toda agente tem.

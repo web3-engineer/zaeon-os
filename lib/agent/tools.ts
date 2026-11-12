@@ -8,7 +8,7 @@
  * o Studio client-orchestrated como já é (mesmo padrão do summon/plan).
  *
  * `literature_search` é real (lib/agent/runtime.ts → lib/scholar/retrieve, bases gratuitas);
- * memory_search e examiner seguem como stubs no runtime.
+ * memory_search segue como stub no runtime (sem base de memória configurada).
  */
 import type { FunctionDeclaration } from "@google-cloud/vertexai";
 
