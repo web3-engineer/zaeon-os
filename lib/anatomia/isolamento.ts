@@ -81,3 +81,31 @@ export function linkDoAtlas(idDoConceito: string | null | undefined): string | n
   const id = String(idDoConceito ?? "").trim();
   return /^[A-Za-z]{2,5}\d{1,9}$/.test(id) ? `/anatomia?${PARAM_ESTRUTURA}=${encodeURIComponent(id)}` : null;
 }
+
+/**
+ * COMO A PÁGINA DO ATLAS ABRE. Decisão do dono (2026-11-12): "só deixa a página completa se o
+ * usuário quiser ver o corpo inteiro."
+ *
+ * Então o corpo inteiro deixa de ser o PADRÃO e passa a ser uma ESCOLHA. Três jeitos de chegar:
+ *   · `?estrutura=<id>`  → a estrutura, isolada (é como o cartão do chat chega);
+ *   · `?corpo=inteiro`   → o corpo inteiro, porque foi pedido com todas as letras;
+ *   · sem nada           → `escolha`: a página abre VAZIA e pergunta — buscar uma estrutura, ou ver
+ *                          o corpo inteiro. Nada é desenhado até a pessoa dizer o que quer.
+ * A estrutura ganha do corpo quando os dois vêm juntos: o pedido mais específico manda.
+ */
+export const PARAM_CORPO = "corpo";
+export const VALOR_CORPO_INTEIRO = "inteiro";
+/** O link de quem QUER o corpo inteiro (o botão da própria página, e o que mais precisar). */
+export const LINK_DO_CORPO_INTEIRO = `/anatomia?${PARAM_CORPO}=${VALOR_CORPO_INTEIRO}`;
+
+export type AberturaDoAtlas =
+  | { modo: "estrutura"; id: string }
+  | { modo: "corpo" }
+  | { modo: "escolha" };
+
+export function aberturaDoAtlas(search: string | null | undefined): AberturaDoAtlas {
+  const q = new URLSearchParams(String(search ?? ""));
+  const id = q.get(PARAM_ESTRUTURA)?.trim();
+  if (id) return { modo: "estrutura", id };
+  return q.get(PARAM_CORPO)?.trim().toLowerCase() === VALOR_CORPO_INTEIRO ? { modo: "corpo" } : { modo: "escolha" };
+}

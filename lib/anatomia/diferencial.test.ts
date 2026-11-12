@@ -24,8 +24,10 @@ import { cenaDoConceito, type ResultadoCena } from "@/lib/anatomia/cena-do-conce
 import { ladoDaFrase, buscarConceitos } from "@/lib/anatomia/busca";
 import { contarVisiveis, escolherConceito, ESTADO_INICIAL } from "@/lib/anatomia/estado";
 import {
-  FRACAO_DE_CORPO_INTEIRO, ehCorpoInteiro, estadoEstaIsolado, linkDoAtlas, verificarIsolamento,
+  FRACAO_DE_CORPO_INTEIRO, LINK_DO_CORPO_INTEIRO, aberturaDoAtlas, ehCorpoInteiro, estadoEstaIsolado, linkDoAtlas,
+  verificarIsolamento,
 } from "@/lib/anatomia/isolamento";
+import { esconderTodos } from "@/lib/anatomia/estado";
 import { estruturaNomeada } from "@/lib/anatomia/pedido";
 import { artefatosComAnatomia, validarArtefatosDeAnatomia } from "@/lib/agent/anatomiaDoTurno";
 import { estadoDaEstruturaPedida } from "@/components/anatomia/AtlasDoCorpo";
@@ -342,5 +344,34 @@ describe.runIf(!!atlas)("ABRIR O ATLAS · a página chega NA estrutura, não no 
     const r = estadoDaEstruturaPedida(atlas!, corpo.id);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.motivo).toMatch(/corpo/);
+  });
+});
+
+describe("ABRIR O ATLAS · o corpo inteiro é uma ESCOLHA, não o padrão", () => {
+  it("sem pedido nenhum, a página não abre o corpo: abre a pergunta", () => {
+    expect(aberturaDoAtlas("")).toEqual({ modo: "escolha" });
+    expect(aberturaDoAtlas(null)).toEqual({ modo: "escolha" });
+    expect(aberturaDoAtlas("?utm_source=x")).toEqual({ modo: "escolha" });
+    expect(aberturaDoAtlas("?corpo=")).toEqual({ modo: "escolha" });
+    expect(aberturaDoAtlas("?corpo=metade")).toEqual({ modo: "escolha" });
+  });
+
+  it("o corpo inteiro abre quando é pedido com todas as letras", () => {
+    expect(aberturaDoAtlas("?corpo=inteiro")).toEqual({ modo: "corpo" });
+    expect(aberturaDoAtlas("?corpo=INTEIRO")).toEqual({ modo: "corpo" });
+    expect(aberturaDoAtlas(LINK_DO_CORPO_INTEIRO.split("?")[1])).toEqual({ modo: "corpo" });
+  });
+
+  it("a estrutura pedida ganha do corpo inteiro: o pedido mais específico manda", () => {
+    expect(aberturaDoAtlas("?estrutura=FMA7088")).toEqual({ modo: "estrutura", id: "FMA7088" });
+    expect(aberturaDoAtlas("?corpo=inteiro&estrutura=FMA7088")).toEqual({ modo: "estrutura", id: "FMA7088" });
+    expect(aberturaDoAtlas(linkDoAtlas("FMA7309")!.split("?")[1])).toEqual({ modo: "estrutura", id: "FMA7309" });
+  });
+
+  it.runIf(!!atlas)("o estado com que a página nasce não desenha peça nenhuma", () => {
+    const nascimento = esconderTodos(ESTADO_INICIAL);
+    expect(contarVisiveis(atlas!.parts, nascimento)).toBe(0);
+    // e o estado antigo, que era o padrão, desenhava quase tudo — é o que deixou de ser automático
+    expect(contarVisiveis(atlas!.parts, ESTADO_INICIAL)).toBeGreaterThan(atlas!.parts.length * 0.9);
   });
 });

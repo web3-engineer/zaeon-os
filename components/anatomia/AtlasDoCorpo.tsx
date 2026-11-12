@@ -42,7 +42,7 @@ import {
   contarVisiveis, definirExplosao, definirSistemas, definirVista, dicaDeArraste, escolherConceito,
   escolherPeca, esconderTodos, legenda, limparSelecao, presetAtivo, reiniciar, soSistema,
 } from "@/lib/anatomia/estado";
-import { PARAM_ESTRUTURA, verificarIsolamento } from "@/lib/anatomia/isolamento";
+import { aberturaDoAtlas, verificarIsolamento } from "@/lib/anatomia/isolamento";
 
 const CenaDoCorpo = dynamic(() => import("./CenaDoCorpo"), { ssr: false });
 
@@ -77,7 +77,11 @@ export function estadoDaEstruturaPedida(
 
 export default function AtlasDoCorpo() {
   const [atlas, setAtlas] = useState<Atlas | null>(null);
-  const [estado, setEstado] = useState(ESTADO_INICIAL);
+  // NASCE VAZIA: o corpo inteiro só entra quando a pessoa pede (dono, 2026-11-12). Antes o estado
+  // inicial eram as 2.229 peças, para qualquer um que abrisse a página.
+  const [estado, setEstado] = useState(() => esconderTodos(ESTADO_INICIAL));
+  /** `true` enquanto a pessoa ainda não disse o que quer ver — é o que mostra a pergunta. */
+  const [escolhendo, setEscolhendo] = useState(false);
   const [progresso, setProgresso] = useState(0);
   const [erro, setErro] = useState("");
   const [painel, setPainel] = useState<"sistemas" | "busca" | null>(null);
@@ -127,9 +131,11 @@ export default function AtlasDoCorpo() {
   useEffect(() => {
     if (!atlas || abriuNaEstrutura.current) return;
     abriuNaEstrutura.current = true;
-    const pedido = new URLSearchParams(window.location.search).get(PARAM_ESTRUTURA)?.trim();
-    if (!pedido) return;
-    const r = estadoDaEstruturaPedida(atlas, pedido);
+    const abertura = aberturaDoAtlas(window.location.search);
+    // pediu o corpo inteiro com todas as letras → é o que abre. Sem pedido nenhum → a pergunta.
+    if (abertura.modo === "corpo") { setEstado(ESTADO_INICIAL); return; }
+    if (abertura.modo === "escolha") { setEscolhendo(true); return; }
+    const r = estadoDaEstruturaPedida(atlas, abertura.id);
     if (!r.ok) {
       // NADA na tela no lugar: `esconderTodos` em vez do estado inicial, que desenharia as 2.229
       // peças — medido no navegador, era o que acontecia com um id inexistente. O aviso é próprio
@@ -171,6 +177,7 @@ export default function AtlasDoCorpo() {
   }, [atlas, consulta, conceitosPorId]);
 
   const escolher = useCallback((c: Conceito) => {
+    setEscolhendo(false);
     setEscolhido(c);
     setEstado((s) => escolherConceito(s, c));
     setDetalhe(true);
@@ -437,6 +444,22 @@ export default function AtlasDoCorpo() {
             <div className="mt-1 h-1 w-44 overflow-hidden rounded bg-slate-200">
               <i className="block h-full bg-emerald-500 transition-[width]" style={{ width: `${progresso}%` }} />
             </div>
+          </div>
+        </div>
+      )}
+      {escolhendo && !erroDeEstrutura && (
+        <div data-escolha-do-atlas className={cn(vidro, "absolute left-1/2 top-1/2 z-40 flex w-[min(92vw,26rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-3 px-5 py-4")} role="dialog" aria-label="O que você quer ver?">
+          <p className="text-base font-semibold text-slate-800">O que você quer ver?</p>
+          <p className="text-sm text-slate-600">O atlas abre só o que você pedir. Busque uma estrutura pelo nome (em português mesmo), ou abra o corpo inteiro para explorar.</p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className={cn(botao, "shrink-0")}
+              onClick={() => { setEscolhendo(false); setPainel("busca"); setDetalhe(false); }}>
+              Buscar uma estrutura
+            </button>
+            <button type="button" className={cn(botao, "shrink-0")}
+              onClick={() => { setEscolhendo(false); setEstado(ESTADO_INICIAL); }}>
+              Ver o corpo inteiro
+            </button>
           </div>
         </div>
       )}
