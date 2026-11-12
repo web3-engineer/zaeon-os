@@ -12,6 +12,7 @@ import { readFileSync } from "node:fs";
 import {
   DIR_SKILLS_CASA, appsDoCatalogo, cardDaSkill, cardsDasSkills, carregarSkillsDaCasa, fsDeDisco,
   type FsDeSkills, type SkillDaCasa,
+  PLATAFORMAS_DEVICE,
 } from "@/lib/agent/skills-dir";
 import { MAX_DESC, MAX_NAME, NAME_RE } from "@/lib/agent/skills";
 import { getTool } from "@/lib/agent/runtime";
@@ -123,7 +124,7 @@ describe("cardDaSkill — tudo-ou-nada", () => {
     expect(card).toEqual({
       slug: "exemplo", titulo: "T", subtitulo: "S", modelo: "livro",
       tags: ["t1", "t2"], entrega: ["a", "b"], app: null,
-      precoBRL: 0, familia: "procedimento", // sem envelope de preço → grátis, procedimento
+      precoBRL: 0, familia: "procedimento", device: null, // sem envelope → grátis, procedimento
     });
   });
 
@@ -296,6 +297,55 @@ describe(`PORTÃO das skills da casa · ${DIR_SKILLS_CASA}`, () => {
           expect(card.precoBRL, `"${s.manifest.name}" é família "pago" mas custa 0`).toBeGreaterThan(0);
         }
       });
+
+      it("DEVICE: espelho de download válido, plataforma conhecida, e integridade quando pago", () => {
+        const card = cardDaSkill(s);
+        if (!card || card.familia !== "device") return;
+        const d = card.device;
+        expect(d, `"${s.manifest.name}" é device mas não tem bloco device`).toBeTruthy();
+
+        // o ESPELHO: uma URL https de verdade. Sem ele o card não tem o que o aluno baixa.
+        expect(() => new URL(d!.mirror), `"${s.manifest.name}" mirror inválido: ${d!.mirror}`).not.toThrow();
+        expect(d!.mirror.startsWith("https://"),
+          `"${s.manifest.name}" mirror tem de ser https`).toBe(true);
+
+        // a plataforma diz ONDE o app roda — é o que a instrução de instalação precisa saber.
+        expect(PLATAFORMAS_DEVICE as readonly string[],
+          `"${s.manifest.name}" plataforma desconhecida: ${d!.plataforma || "<vazia>"}`)
+          .toContain(d!.plataforma);
+
+        // INTEGRIDADE: device PAGO exige sha256 (dinheiro troca de mão, o aluno tem de poder
+        // conferir o que baixou). Device grátis pode não ter — mas se tiver, tem de ser 64 hex.
+        if (card.precoBRL > 0) {
+          expect(d!.sha256, `"${s.manifest.name}" é device PAGO e precisa de sha256 do espelho`)
+            .not.toBeNull();
+          expect(d!.sha256!).toMatch(/^[0-9a-f]{64}$/);
+        } else if (d!.sha256 !== null) {
+          expect(d!.sha256).toMatch(/^[0-9a-f]{64}$/);
+        }
+      });
+    },
+  );
+});
+
+/**
+ * DEVICE_E2E — a checagem REAL do espelho. Opt-in (DEVICE_E2E=1), como o [rede real] da cotação,
+ * porque bate em rede externa: o CI padrão não pode ficar vermelho por o GitHub estar fora do ar,
+ * nem por a rede do CI bloquear github.com (o proxy desta sessão bloqueia — por isso é opt-in).
+ *
+ * É este teste que o dono/CI roda ANTES de promover um device para produção, de um ambiente que
+ * alcança o espelho. Ele prova o que o portão offline não pode: que o download resolve de verdade.
+ */
+describe.runIf(process.env.DEVICE_E2E === "1")("[rede real] espelhos de device resolvem", () => {
+  const devices = catalogo.skills
+    .map(cardDaSkill)
+    .filter((c): c is NonNullable<ReturnType<typeof cardDaSkill>> => !!c && c.familia === "device");
+
+  it.each(devices.map((c) => [c.slug, c.device!.mirror] as const))(
+    "%s → %s responde",
+    async (_slug, mirror) => {
+      const r = await fetch(mirror, { method: "HEAD", redirect: "follow" });
+      expect(r.status, `o espelho devolveu ${r.status}`).toBeLessThan(400);
     },
   );
 });

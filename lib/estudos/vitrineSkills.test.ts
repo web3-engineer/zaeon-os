@@ -14,6 +14,7 @@ const card = (over: Partial<CardDaSkill> = {}): CardDaSkill => ({
   app: null,
   precoBRL: 0,
   familia: "procedimento",
+  device: null,
   ...over,
 });
 
