@@ -14,6 +14,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { CHAVE_ULTIMO_PROJETO } from "@/lib/octa/ideNav";
 import {
   Play, Plus, X, FileText, Folder, FolderOpen, Trash2, Undo2, Send, Loader2, ShieldCheck, Pencil, ChevronRight, ChevronDown, Square,
   Github, Rocket, Globe, ExternalLink, Code, Eye, Palette, ChevronsUpDown, Check, LogOut, FolderPlus, HardDrive, Microscope,
@@ -74,7 +75,8 @@ type Publicacao =
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const CHAVE_CHAT = "zaeon.octa.chat.v1";
-const CHAVE_ULTIMO = "zaeon.octa.projeto.ultimo";
+// a chave do "último projeto" mora em lib/octa/ideNav (fonte única: a ponte REA→Octa grava nela)
+const CHAVE_ULTIMO = CHAVE_ULTIMO_PROJETO;
 const chaveChatProjeto = (id: string) => `zaeon.octa.chat.${id}`;
 const chaveTurno = (id: string) => `zaeon.octa.turno.${id}`;
 const linkSeguro = (u: unknown): string | null => (typeof u === "string" && /^https:\/\//i.test(u) ? u : null);
