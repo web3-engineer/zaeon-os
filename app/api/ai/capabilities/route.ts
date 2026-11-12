@@ -9,11 +9,13 @@ import { authOptions } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { effectivePlan, planCapabilities, type PlanState } from "@/lib/plans";
 import { isSuperAdmin } from "@/lib/auth/roles";
+import { cameraAoVivoLigada } from "@/lib/ai/camera";
+import { visaoDisponivel } from "@/lib/ai/descreverImagem";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const FREE = { plan: "free", voice: false, deepThink: false, deepMode: "none", projects: false, researchUnlimited: false };
+const FREE = { plan: "free", voice: false, deepThink: false, deepMode: "none", projects: false, researchUnlimited: false, camera: false };
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -46,5 +48,8 @@ export async function GET() {
     deepMode,
     projects,
     researchUnlimited: sa || caps.researchUnlimited,
+    // câmera ao vivo ("be my eyes"): só quando a flag está ligada E há credencial Vertex. A UI usa
+    // isto pra mostrar o botão da câmera — sem isto, o aluno veria um botão que não funciona.
+    camera: cameraAoVivoLigada() && visaoDisponivel(),
   });
 }

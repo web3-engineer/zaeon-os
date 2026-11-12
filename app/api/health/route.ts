@@ -32,6 +32,7 @@ import { getTool } from "@/lib/agent/runtime";
 import { visaoNoHarnessLigado } from "@/lib/agent/toolsVisao";
 import { reciboDeFlags } from "@/lib/flags/recibo";
 import { visaoDisponivel } from "@/lib/ai/descreverImagem";
+import { cameraAoVivoLigada } from "@/lib/ai/camera";
 import { GEMINI_MODEL_FLASH, GEMINI_MODEL_PRO } from "@/lib/ai/model";
 import { provedoresConfigurados } from "@/lib/search/web";
 import { proNasPesadasLigado } from "@/lib/ai/proNasPesadas";
@@ -232,6 +233,8 @@ export async function GET() {
       // credencial Vertex é o que faz a visão responder. "sem_credencial" = flag on mas Vertex ausente
       // (a tool se registra mas falharia) — é o estado que o recibo tem de deixar visível, não esconder.
       visao: !visaoNoHarnessLigado() ? "off" : (visaoDisponivel() ? "on" : "sem_credencial"),
+      // câmera ao vivo (/api/ai/camera): a flag VISAO_CAMERA + a mesma credencial Vertex da visão.
+      camera: !cameraAoVivoLigada() ? "off" : (visaoDisponivel() ? "on" : "sem_credencial"),
     },
     // TODAS AS FLAGS DE RECURSO, por nome (lib/flags/recibo): o que está ligado e o que está
     // desligado NESTE servidor. Antes, "tem update subindo com flag off?" só se respondia lendo o

@@ -18,7 +18,7 @@ type Props = {
 };
 
 /**
- * A ENTRADA do site: sem botão — o cérebro azul surge e a barra clássica corre (components/ui/CerebroCarregando),
+ * A ENTRADA do site: sem botão — o beija-flor surge e a barra clássica corre (components/ui/CerebroCarregando),
  * enquanto as salas pré-carregam de verdade. SEM música (o som do site só é liberado ao conectar no cyberespaço).
  */
 export default function IntroOverlay({ show = true, onDone }: Props) {

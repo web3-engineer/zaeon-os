@@ -8,8 +8,12 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Loader2, Mic, Paperclip, Zap, Compass, Square, SlidersHorizontal } from "lucide-react";
+import { ArrowUp, Loader2, Mic, Paperclip, Zap, Compass, Square, SlidersHorizontal, Camera } from "lucide-react";
+import dynamic from "next/dynamic";
 import useSTT, { TEXTO_AVISO_STT } from "@/lib/voice/useSTT";
+
+// Carregado sob demanda (usa APIs de mídia do navegador): não entra no bundle de quem nunca abre a câmera.
+const CameraAoVivo = dynamic(() => import("@/components/chat/CameraAoVivo"), { ssr: false });
 import { avisarMicrofone } from "@/lib/research/zaeonEventos";
 import { useAutoFoco } from "@/lib/ui/autofoco";
 
@@ -66,6 +70,18 @@ export default function CoworkComposer({
   opcoesAtivas = false,
 }: CoworkComposerProps) {
   const [verOpcoes, setVerOpcoes] = useState(false);
+  const [camAberta, setCamAberta] = useState(false);
+  // Câmera ao vivo ("be my eyes"): o botão só aparece quando o servidor diz que a câmera está ligada
+  // (/api/ai/capabilities → `camera`: flag VISAO_CAMERA + credencial Vertex). Default false, falha quieto.
+  const [cameraDisponivel, setCameraDisponivel] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    fetch("/api/ai/capabilities")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (vivo && j && typeof j.camera === "boolean") setCameraDisponivel(j.camera); })
+      .catch(() => { /* sem capabilities = sem botão de câmera, e tudo bem */ });
+    return () => { vivo = false; };
+  }, []);
   const ref = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -298,6 +314,20 @@ export default function CoworkComposer({
               <Mic size={17} />
             </button>
           )}
+
+          {/* Câmera ao vivo — "be my eyes" (flag VISAO_CAMERA + credencial Vertex; vem de capabilities) */}
+          {cameraDisponivel && (
+            <button
+              type="button"
+              onClick={() => setCamAberta(true)}
+              title="Câmera ao vivo — descrever o que a câmera vê"
+              aria-label="Abrir câmera ao vivo"
+              className="shrink-0 self-end mb-0.5 w-11 h-11 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-slate-400 dark:text-white/50 hover:bg-slate-500/10 hover:text-slate-600 dark:hover:text-white/80 transition-colors"
+            >
+              <Camera size={17} />
+            </button>
+          )}
+          {camAberta && <CameraAoVivo onFechar={() => setCamAberta(false)} />}
 
           {/* Enviar OU Parar (gap N §7): quando ocupado e há onStop, vira botão de parar. */}
           {busy && onStop ? (
