@@ -16,6 +16,7 @@
  * `escritorio` (#645): "fila" (os turnos dos agentes rodam no worker — que o deploy também precisa atualizar) ou
  * "inline" (rodam aqui no web). Só o modo, nenhum segredo.
  */
+import { nivelDoVideo } from "@/lib/agent/toolsVideo";
 import { NextResponse } from "next/server";
 import { estadoGateway, provedorAtual } from "@/lib/llm/saude";
 import { estadoLeitor } from "@/lib/leitor/saude";
@@ -228,6 +229,8 @@ export async function GET() {
       // as duas tools do Leitor: registradas = o cardápio PODE prometer "abro páginas"/"baixo
       // arquivo". É aqui que se vê a diferença entre a flag ligada e a capacidade existindo.
       abrirUrl: !!getTool("abrir_url"),
+      // vídeo do YouTube pelo link: "completo" = com descrição (há YOUTUBE_API_KEY); "basico" = só título e canal
+      descreverVideo: getTool("descrever_video") ? nivelDoVideo() : "off",
       baixarParaBase: !!getTool("baixar_para_base"),
       // F-visão ("be my eyes"): a flag VISAO_HARNESS liga o roteamento de imagem pro harness; a
       // credencial Vertex é o que faz a visão responder. "sem_credencial" = flag on mas Vertex ausente
