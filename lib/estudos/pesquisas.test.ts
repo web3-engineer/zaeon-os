@@ -124,3 +124,63 @@ describe("legendas", () => {
     expect(partesDe("não é lista")).toEqual([]);
   });
 });
+
+import { apoioDe, pctApoio, solFmt, VALORES_APOIO } from "./pesquisas";
+import { PESQUISAS_EXEMPLO } from "./pesquisasExemplos";
+
+describe("apoio (financiamento em SOL)", () => {
+  it("apoioDe só devolve quando está ativo e tem meta > 0; limita o arrecadado à meta", () => {
+    expect(apoioDe({ apoioAtivo: false, metaSol: 100 })).toBeUndefined();
+    expect(apoioDe({ apoioAtivo: true, metaSol: 0 })).toBeUndefined();
+    expect(apoioDe({ apoioAtivo: true, metaSol: 100, arrecadadoSol: 250, apoiadores: 3 }))
+      .toEqual({ ativo: true, metaSol: 100, arrecadadoSol: 100, apoiadores: 3 });
+    expect(apoioDe({ apoioAtivo: true, metaSol: 100, arrecadadoSol: -5, apoiadores: -2 }))
+      .toEqual({ ativo: true, metaSol: 100, arrecadadoSol: 0, apoiadores: 0 });
+  });
+
+  it("pctApoio e solFmt", () => {
+    expect(pctApoio({ ativo: true, metaSol: 100, arrecadadoSol: 25, apoiadores: 0 })).toBe(0.25);
+    expect(pctApoio({ ativo: true, metaSol: 0, arrecadadoSol: 5, apoiadores: 0 })).toBe(0);
+    expect(solFmt(12.5)).toBe("12,5 SOL");
+    expect(solFmt(10)).toBe("10 SOL");
+    expect(VALORES_APOIO.length).toBeGreaterThan(0);
+  });
+
+  it("normalizarPesquisa valida os campos de apoio", () => {
+    expect(normalizarPesquisa({ apoioAtivo: true, metaSol: -1 }, { parcial: true }).erro).toMatch(/meta/);
+    expect(normalizarPesquisa({ arrecadadoSol: -1 }, { parcial: true }).erro).toMatch(/apoiado/);
+    expect(normalizarPesquisa({ apoiadores: 2.5 }, { parcial: true }).erro).toMatch(/apoiadores/);
+    expect(normalizarPesquisa({ apoioAtivo: 1, metaSol: 120, arrecadadoSol: 30, apoiadores: 5 }, { parcial: true }).data)
+      .toEqual({ apoioAtivo: true, metaSol: 120, arrecadadoSol: 30, apoiadores: 5 });
+  });
+
+  it("pesquisaParaUI leva o apoio quando ativo", () => {
+    const base = { slug: "x", titulo: "T", resumo: "", nicho: "", tags: [], raridade: "comum", autor: "", validadores: 0, partes: [{ tipo: "artigo", titulo: "A", conteudo: "t" }] };
+    expect(pesquisaParaUI({ ...base, apoioAtivo: true, metaSol: 50, arrecadadoSol: 10, apoiadores: 4 }).apoio)
+      .toEqual({ ativo: true, metaSol: 50, arrecadadoSol: 10, apoiadores: 4 });
+    expect(pesquisaParaUI(base).apoio).toBeUndefined();
+  });
+});
+
+describe("as 10 pesquisas de exemplo", () => {
+  it("são 10, todas abertas a apoio e válidas pelo normalizador", () => {
+    expect(PESQUISAS_EXEMPLO).toHaveLength(10);
+    const titulos = new Set<string>();
+    for (const ex of PESQUISAS_EXEMPLO) {
+      titulos.add(ex.titulo);
+      expect(ex.apoioAtivo).toBe(true);
+      expect(ex.metaSol).toBeGreaterThan(0);
+      expect(ex.arrecadadoSol).toBeLessThanOrEqual(ex.metaSol);
+      expect(ex.partes.length).toBeGreaterThan(0);
+      const { erro } = normalizarPesquisa(ex, { parcial: false });
+      expect(erro, `exemplo "${ex.titulo}"`).toBeUndefined();
+    }
+    expect(titulos.size).toBe(10); // títulos únicos (o seed é idempotente por título)
+  });
+
+  it("não prometem cura nem dão recomendação clínica", () => {
+    const texto = JSON.stringify(PESQUISAS_EXEMPLO).toLowerCase();
+    expect(texto).not.toMatch(/\bcura\b|\bcurar\b/);
+    expect(texto).not.toContain("rnafoundry");
+  });
+});

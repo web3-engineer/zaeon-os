@@ -26,6 +26,8 @@ import CartaVitrine, { GLYPH, ImagemCarta, segmentos } from "./CartaVitrine";
 import DetalhesBuild from "./DetalhesBuild";
 import { aplicarAjustes, type Ajuste } from "@/lib/estudos/curadoria";
 import PastaPesquisa from "./PastaPesquisa";
+import PesquisaAberta from "./PesquisaAberta";
+import { pctApoio, solFmt } from "@/lib/estudos/pesquisas";
 import { destinoDe, type Destino } from "@/lib/estudos/detalhes";
 import { EVT_ESTUDOS_CHAT } from "@/lib/chat/conversasNav";
 import "./vitrine-card.css";
@@ -116,6 +118,7 @@ export default function VitrineEstudos() {
     const [detalhe, setDetalhe] = useState<{ it: ItemVitrine; origem: DOMRect } | null>(null);
     const abrirDetalhes = (it: ItemVitrine, alvo: HTMLElement) => setDetalhe({ it, origem: alvo.getBoundingClientRect() });
     const [pastaAberta, setPastaAberta] = useState<ItemVitrine | null>(null);
+    const [pesquisaAberta, setPesquisaAberta] = useState<ItemVitrine | null>(null);
     const spinRef = useRef<HTMLDivElement>(null);
     const forjandoRef = useRef(false);
     const timersRef = useRef<number[]>([]);
@@ -204,7 +207,21 @@ export default function VitrineEstudos() {
                     <div className="vt-grid mt-6 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-x-10 gap-y-14">
                         {mostra.map((it) => {
                             if (it.pasta) {
-                                // a PASTA de pesquisa: sem plug nem compra — abrir mostra os papéis
+                                // PESQUISA aberta a APOIO: abre o painel formal (tela cheia) com o botão de apoiar.
+                                if (it.apoio?.ativo) {
+                                    const pct = Math.round(pctApoio(it.apoio) * 100);
+                                    return (
+                                        <CartaVitrine
+                                            key={it.id}
+                                            it={it}
+                                            onClick={() => setPesquisaAberta(it)}
+                                            precoFree
+                                            precoNode={<span title={`${solFmt(it.apoio.arrecadadoSol)} de ${solFmt(it.apoio.metaSol)}`}><SolanaMark size={12} title="SOL" /> {pct}% · apoio</span>}
+                                            acaoNode={<button type="button" className="vt-abrir-pasta" onClick={(e) => { e.stopPropagation(); setPesquisaAberta(it); }}>◎ apoiar</button>}
+                                        />
+                                    );
+                                }
+                                // a PASTA de pesquisa comum: sem plug nem compra — abrir mostra os papéis
                                 return (
                                     <CartaVitrine
                                         key={it.id}
@@ -317,6 +334,9 @@ export default function VitrineEstudos() {
             })()}
 
             {/* ── PASTA DE PESQUISA: a capa tomba e os papéis saem em leque ── */}
+            {pesquisaAberta && (
+                <PesquisaAberta key={pesquisaAberta.id} item={pesquisaAberta} cor={COR_RARIDADE[pesquisaAberta.raridade]} onFechar={() => setPesquisaAberta(null)} />
+            )}
             {pastaAberta && (
                 <PastaPesquisa key={pastaAberta.id} item={pastaAberta} cor={COR_RARIDADE[pastaAberta.raridade]} onFechar={() => setPastaAberta(null)} />
             )}

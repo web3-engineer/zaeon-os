@@ -27,10 +27,11 @@ export default function PesquisasVitrine({ glassPanel }: { glassPanel: string })
     const [linhas, setLinhas] = useState<Linha[]>([]);
     const [estado, setEstado] = useState<"carregando" | "ok" | "403" | "erro">("carregando");
     const [aberta, setAberta] = useState<string | null>(null);
-    const [form, setForm] = useState({ titulo: "", resumo: "", nicho: "", contaEmail: "" });
+    const [form, setForm] = useState({ titulo: "", resumo: "", nicho: "", autor: "", tags: "", contaEmail: "", apoioAtivo: false, metaSol: "", arrecadadoSol: "", apoiadores: "" });
     const [partes, setPartes] = useState<ParteForm[]>([PARTE0]);
     const [msg, setMsg] = useState<string | null>(null);
     const [salvando, setSalvando] = useState(false);
+    const [semeando, setSemeando] = useState(false);
 
     const carregar = useCallback(async () => {
         try {
@@ -63,16 +64,29 @@ export default function PesquisasVitrine({ glassPanel }: { glassPanel: string })
         setSalvando(true); setMsg(null);
         try {
             const body = {
-                titulo: form.titulo, resumo: form.resumo, nicho: form.nicho,
+                titulo: form.titulo, resumo: form.resumo, nicho: form.nicho, autor: form.autor, tags: form.tags,
                 ...(form.contaEmail.trim() ? { contaEmail: form.contaEmail.trim() } : {}),
+                apoioAtivo: form.apoioAtivo,
+                ...(form.apoioAtivo ? { metaSol: Number(form.metaSol) || 0, arrecadadoSol: Number(form.arrecadadoSol) || 0, apoiadores: Number(form.apoiadores) || 0 } : {}),
                 partes: partes.map((p) => ({ tipo: p.tipo, titulo: p.titulo, ...(p.conteudo.trim() ? { conteudo: p.conteudo } : {}), ...(p.url.trim() ? { url: p.url.trim() } : {}) })),
             };
             const r = await fetch("/api/admin/vitrine/pesquisas", { method: "POST", headers: H, body: JSON.stringify(body) });
             const j = await r.json().catch(() => ({}));
             if (!r.ok) { setMsg(j?.erro ?? "Falhou."); return; }
-            setForm({ titulo: "", resumo: "", nicho: "", contaEmail: "" }); setPartes([PARTE0]);
+            setForm({ titulo: "", resumo: "", nicho: "", autor: "", tags: "", contaEmail: "", apoioAtivo: false, metaSol: "", arrecadadoSol: "", apoiadores: "" }); setPartes([PARTE0]);
             setStatus("publicada"); await carregar();
         } catch { setMsg("Erro de rede."); } finally { setSalvando(false); }
+    };
+
+    const popular = async () => {
+        setSemeando(true); setMsg(null);
+        try {
+            const r = await fetch("/api/admin/vitrine/pesquisas/exemplos", { method: "POST", headers: H });
+            const j = await r.json().catch(() => ({}));
+            if (!r.ok) { setMsg(j?.erro ?? "Falhou."); return; }
+            setMsg(`${j.criadas} exemplo(s) criado(s)${j.jaExistiam?.length ? ` · ${j.jaExistiam.length} já existiam` : ""}.`);
+            setStatus("publicada"); await carregar();
+        } catch { setMsg("Erro de rede."); } finally { setSemeando(false); }
     };
 
     if (estado === "403") return (
@@ -91,7 +105,24 @@ export default function PesquisasVitrine({ glassPanel }: { glassPanel: string })
                     <div><label className={lbl}>Título</label><input className={inp} value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} /></div>
                     <div><label className={lbl}>Nicho</label><input className={inp} value={form.nicho} onChange={(e) => setForm({ ...form, nicho: e.target.value })} placeholder="ex.: Biologia do solo" /></div>
                     <div><label className={lbl}>Resumo</label><textarea className={`${inp} h-20 resize-none`} value={form.resumo} onChange={(e) => setForm({ ...form, resumo: e.target.value })} /></div>
+                    <div><label className={lbl}>Autor (nome, opcional)</label><input className={inp} value={form.autor} onChange={(e) => setForm({ ...form, autor: e.target.value })} placeholder="sem conta = quem aparece como autor" /></div>
+                    <div><label className={lbl}>Tags (vírgula)</label><input className={inp} value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} placeholder="dados abertos, oncologia" /></div>
                     <div><label className={lbl}>Conta que publica (e-mail, opcional)</label><input className={inp} value={form.contaEmail} onChange={(e) => setForm({ ...form, contaEmail: e.target.value })} placeholder="sem conta = autor Zaeon" /></div>
+                    <div className="rounded-xl border border-cyan-300/25 bg-cyan-300/[0.04] p-3 space-y-2">
+                        <label className="flex items-center gap-2 text-[12px] font-semibold text-cyan-100">
+                            <input type="checkbox" checked={form.apoioAtivo} onChange={(e) => setForm({ ...form, apoioAtivo: e.target.checked })} /> ◎ Aberta a apoio (SOL)
+                        </label>
+                        {form.apoioAtivo && (
+                            <>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <div><label className={lbl}>Meta (SOL)</label><input type="number" min={0} className={inp} value={form.metaSol} onChange={(e) => setForm({ ...form, metaSol: e.target.value })} /></div>
+                                    <div><label className={lbl}>Apoiado (SOL)</label><input type="number" min={0} className={inp} value={form.arrecadadoSol} onChange={(e) => setForm({ ...form, arrecadadoSol: e.target.value })} /></div>
+                                    <div><label className={lbl}>Apoiadores</label><input type="number" min={0} className={inp} value={form.apoiadores} onChange={(e) => setForm({ ...form, apoiadores: e.target.value })} /></div>
+                                </div>
+                                <p className="text-[10px] text-cyan-200/50">A liquidação on-chain ainda é &quot;em breve&quot;: o botão de apoiar roda o fluxo, mas nada cobra ninguém.</p>
+                            </>
+                        )}
+                    </div>
                     {partes.map((p, i) => (
                         <div key={i} className="rounded-xl border border-white/10 bg-black/20 p-3 space-y-2">
                             <div className="flex items-center gap-2">
@@ -106,6 +137,10 @@ export default function PesquisasVitrine({ glassPanel }: { glassPanel: string })
                     {partes.length < 12 && <button onClick={() => setPartes((ps) => [...ps, { ...PARTE0, tipo: "dados" }])} className="text-[11px] text-cyan-300 hover:text-cyan-100">+ outra parte</button>}
                     {msg && <div className="rounded-lg bg-red-500/15 border border-red-500/30 px-3 py-2 text-[12px] text-red-200">{msg}</div>}
                     <button onClick={publicar} disabled={salvando} className="w-full rounded-xl bg-cyan-500 py-2.5 text-[13px] font-black uppercase tracking-widest text-black hover:bg-cyan-400 disabled:opacity-50">{salvando ? "Publicando…" : "Publicar pesquisa"}</button>
+                    <div className="mt-2 border-t border-white/10 pt-3">
+                        <button onClick={popular} disabled={semeando} className="w-full rounded-xl border border-cyan-300/30 py-2 text-[12px] font-bold text-cyan-200 hover:bg-cyan-300/10 disabled:opacity-50">{semeando ? "Populando…" : "✦ Popular com 10 exemplos (abertas a apoio)"}</button>
+                        <p className="mt-1 text-[10px] text-white/35">Pesquisas de exemplo, abertas a apoio em SOL. Não recria as que já existem.</p>
+                    </div>
                 </div>
             </div>
 
