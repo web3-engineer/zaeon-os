@@ -149,6 +149,11 @@ services:
       # DB SEPARADA (litellm) no mesmo Postgres: o prisma do LiteLLM cria ~30 tabelas
       # e não deve se misturar com o RAG. Criada no 1º boot por initdb/01-zaeon.sql.
       DATABASE_URL: postgresql://${ZAEON_PG_USER:-zaeon}:${ZAEON_PG_PASSWORD}@pgvector:5432/litellm
+      # Claude SÓ pro REA (litellm-config: claude-opus/claude-sonnet com os.environ/ANTHROPIC_API_KEY).
+      # O config lê do AMBIENTE DO CONTAINER, então a chave precisa ser passada aqui — pôr só no .env
+      # não basta (o .env do compose serve a substituição ${…}, não injeta no container). Vazio = Claude
+      # off; os outros modelos (locais/Vertex) seguem iguais.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     volumes:
       - ./litellm-config.yaml:/app/config.yaml:ro
     command: ["--config", "/app/config.yaml", "--port", "4000"]

@@ -92,7 +92,12 @@ O raciocínio do REA pode rodar no Claude pelos créditos do dono, pelo MESMO ga
 
 **Roteamento:** Opus no AGENTE (`octa_rea`, raciocínio sobre binário/decompilação) e Sonnet na REDAÇÃO (o compositor do blueprint do chat).
 
-**1. Chave na Contabo (gateway):** `ANTHROPIC_API_KEY` no `.env` do projeto `zaeon-models` (onde roda o LiteLLM). O `litellm-config.yaml` já tem os modelos `claude-opus` e `claude-sonnet` lendo `os.environ/ANTHROPIC_API_KEY`. Recarregue o gateway:
+**1. Chave na Contabo (gateway):** três coisas no projeto `zaeon-models` (o `.env` da box é arquivo solto, o repo não está lá):
+  a. no `litellm-config.yaml`, os blocos `claude-opus` e `claude-sonnet` (anthropic/…, `api_key: os.environ/ANTHROPIC_API_KEY`);
+  b. no `docker-compose.zaeon-models.yaml`, no serviço `litellm`, a linha `ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}` em `environment:` — SEM ela a chave do `.env` NÃO chega no container (o `.env` do compose só faz substituição `${…}`, não injeta no container);
+  c. `ANTHROPIC_API_KEY=sk-ant-…` no `.env` ao lado do compose.
+
+Depois recarregue o gateway:
 ```bash
 docker compose -p zaeon-models -f infra/zaeon-models/docker-compose.zaeon-models.yaml up -d litellm   # pega a chave + config novos
 ```
