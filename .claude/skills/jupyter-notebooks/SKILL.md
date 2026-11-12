@@ -17,6 +17,7 @@ metadata:
   zaeon-modelo: livro
   zaeon-tags: Jupyter, JupyterLite, Python, notebook, open source
   zaeon-entrega: o modelo mental de célula, kernel e ordem de execução; como abrir um notebook no navegador com JupyterLite; o roteiro de um notebook reprodutível; os erros clássicos de estado escondido e como evitá-los
+  zaeon-agente: noether
   zaeon-app-licenca: BSD-3-Clause (Project Jupyter Contributors; JupyterLite Contributors)
 ---
 

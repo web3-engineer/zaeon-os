@@ -17,6 +17,8 @@ metadata:
   zaeon-modelo: livro
   zaeon-tags: SymPy, matemática, cálculo, álgebra, Python, open source
   zaeon-entrega: o roteiro de símbolos, expressões e simplificação; derivada, integral, limite e série; resolução de equações e sistemas; como conferir uma conta feita à mão; a saída em LaTeX
+  zaeon-agente: noether
+  zaeon-card: agente
   zaeon-app-licenca: BSD-3-Clause (SymPy, SymPy Development Team)
 ---
 

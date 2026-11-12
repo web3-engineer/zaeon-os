@@ -17,6 +17,7 @@ metadata:
   zaeon-modelo: engrenagem
   zaeon-tags: Mermaid, diagrama, fluxograma, UML, agente
   zaeon-entrega: o diagrama em sintaxe Mermaid válida; a escolha do tipo certo de diagrama para o pedido; o título e a leitura do diagrama em uma frase; roda em Claude, Codex e Octa; renderização pelo Mermaid (MIT)
+  zaeon-agente: noether
   zaeon-app-licenca: MIT (Mermaid, Knut Sveidqvist e contribuidores)
 ---
 

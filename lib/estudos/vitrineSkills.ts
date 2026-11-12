@@ -17,7 +17,7 @@
 import type { ItemVitrine, Modelo3D, TipoProduto } from "@/lib/estudos/vitrine";
 import { DONO_VITRINE } from "@/lib/auth/roles";
 import {
-  cardsDasSkills, carregarSkillsDaCasa, fsDeDisco, type CardDaSkill, type CatalogoDaCasa,
+  cardsDasSkills, carregarSkillsDaCasa, fsDeDisco, type CardDaSkill, type CatalogoDaCasa, type SkillDaCasa,
 } from "@/lib/agent/skills-dir";
 
 /** `livro` é o fallback: modelo desconhecido não pode quebrar o render da vitrine. */
@@ -64,8 +64,30 @@ export function itemDaSkill(card: CardDaSkill): ItemVitrine {
   };
 }
 
+/**
+ * SKILL QUE VEM DENTRO DE UM AGENTE não tem card próprio (decisão do dono, 2026-11-12: "put the
+ * agent on the card on the vitrine instead of the skills"). O metadado `zaeon-card: agente` diz que
+ * o card daquela skill é o do agente a que ela pertence (`zaeon-agente`) — a Noether, em
+ * lib/estudos/vitrine. A skill continua no cardápio do chat; só a loja deixa de mostrá-la avulsa.
+ *
+ * Só some da loja a skill que DECLARA os dois: `zaeon-card: agente` sem `zaeon-agente` seria uma
+ * skill escondida sem card nenhum, e essa fica visível (o portão em noether.test.ts cobra o par).
+ */
+export function cardEhDoAgente(s: SkillDaCasa): boolean {
+  const m = (s.manifest.metadata ?? {}) as Record<string, unknown>;
+  const txt = (v: unknown) => (typeof v === "string" ? v.trim().toLowerCase() : "");
+  return txt(m["zaeon-card"]) === "agente" && !!txt(m["zaeon-agente"]);
+}
+
+/** O agente a que a skill está ligada (`zaeon-agente`), ou null. */
+export function agenteDaSkill(s: SkillDaCasa): string | null {
+  const v = ((s.manifest.metadata ?? {}) as Record<string, unknown>)["zaeon-agente"];
+  return typeof v === "string" && v.trim() ? v.trim().toLowerCase() : null;
+}
+
 /** Os itens de vitrine de um catálogo já carregado (puro — é o que o teste exercita). */
-export const itensDasSkills = (c: CatalogoDaCasa): ItemVitrine[] => cardsDasSkills(c).map(itemDaSkill);
+export const itensDasSkills = (c: CatalogoDaCasa): ItemVitrine[] =>
+  cardsDasSkills({ ...c, skills: c.skills.filter((s) => !cardEhDoAgente(s)) }).map(itemDaSkill);
 
 /** Lê o disco e devolve os itens. Nunca lança: vitrine sem skill é vitrine, não erro. */
 export function itensDasSkillsDoDisco(): ItemVitrine[] {
