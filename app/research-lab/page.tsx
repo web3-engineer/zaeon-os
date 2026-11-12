@@ -186,6 +186,7 @@ import { LOUNGE_ROTA, MSG_FECHAR_TABLET, MSG_IA, pedeFoco, pedeTablet, pedeTutor
 import { instalarMonitorIA } from "@/lib/ui/monitorIA";
 import { onEnterSubmit } from "@/lib/ui/enterSubmit";
 import { escritorioCowork } from "@/lib/canal/flags";
+import PublicarPesquisa from "@/components/estudos/PublicarPesquisa";
 import { unifiedResearchRoom, resolveLabTab, isSubTab, projetosOn, type LabTab, type ResearchSubTab } from "@/lib/research/unifiedRoom";
 import { EVT_ANEXAR, pdfDaBiblioteca } from "@/components/chat/useAnexoChat";
 import { chatUnicoOn, pedidoDoLink, pedirAoChat } from "@/lib/chat/chatUnico";
@@ -1080,6 +1081,21 @@ export default function HomeworkPage({
       .catch(() => {});
   }, []);
   useEffect(() => { loadWorks(); }, [loadWorks]);
+  // PUBLICAR NA VITRINE (lib/estudos/pesquisas): o status de cada trabalho já mandado (workId → status) e a janelinha
+  const [publicacoes, setPublicacoes] = useState<Record<string, { status: string; motivo?: string | null }>>({});
+  const [publicando, setPublicando] = useState<{ id: string; title: string } | null>(null);
+  const loadPublicacoes = useCallback(() => {
+    fetch("/api/estudos/vitrine/pesquisas?minhas=1", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!Array.isArray(d?.minhas)) return;
+        const m: Record<string, { status: string; motivo?: string | null }> = {};
+        for (const p of d.minhas as { workId?: string | null; status: string; motivo?: string | null }[]) if (p.workId) m[p.workId] = { status: p.status, motivo: p.motivo };
+        setPublicacoes(m);
+      })
+      .catch(() => {});
+  }, []);
+  useEffect(() => { loadPublicacoes(); }, [loadPublicacoes]);
   const [citationContent, setCitationContent] = useState<string | null>(null);
   const [activeCitationText, setActiveCitationText] = useState<string | null>(
     null,
@@ -3019,6 +3035,14 @@ export default function HomeworkPage({
                 multiple
                 onChange={(e) => handleFiles(e.target.files)}
               />
+              {publicando && (
+                <PublicarPesquisa
+                  work={publicando}
+                  jaEnviado={publicacoes[publicando.id]}
+                  onFechar={() => setPublicando(null)}
+                  onEnviado={loadPublicacoes}
+                />
+              )}
               <ResearchShell
                 tccWorkId={tccWorkId}
                 flipped={isChatLeft}
@@ -3048,6 +3072,8 @@ export default function HomeworkPage({
                 sessions={sessions}
                 onNewWork={handleNewWork}
                 onDeleteWork={handleDeleteWork}
+                onPublishWork={(id) => setPublicando({ id, title: sessions.find((x) => x.id === id)?.title ?? "Pesquisa sem título" })}
+                publicacoes={publicacoes}
                 onOpenSession={handleOpenWork}
                 researchWindowContent={
                   <div

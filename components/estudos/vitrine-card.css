@@ -69,3 +69,20 @@
   .vt-frame { animation: none; }
   .vt-crt, .vt-glyph b { animation: none; }
 }
+
+/* ── A CARTA-PASTA (PESQUISA, lib/estudos/pesquisas): a carta vira uma PASTA. A aba da pasta fica em cima, na cor da
+   raridade; os PAPÉIS (as partes da pesquisa) ficam ATRÁS da carta, só a borda de cima espiando — no hover eles sobem
+   em leque, cada um com a etiqueta da sua parte. O resto da carta é a mesma (moldura, lombada, placa). ── */
+.vt-pasta .vt-frame { z-index: 1; }
+.vt-aba { position: absolute; z-index: 2; top: -15px; left: 30px; height: 17px; padding: 0 16px 0 10px; display: flex; align-items: center; gap: 6px; font-family: ui-monospace, monospace; font-size: 8.5px; font-weight: 900; letter-spacing: .16em; color: #02121f; background: linear-gradient(180deg, color-mix(in srgb, var(--cor) 80%, #fff), var(--cor)); clip-path: polygon(0 100%, 6px 0, calc(100% - 10px) 0, 100% 100%); box-shadow: 0 0 14px color-mix(in srgb, var(--cor) 60%, transparent); white-space: nowrap; }
+.vt-papeis { position: absolute; z-index: 0; left: 14%; right: 10%; top: 0; height: 60px; pointer-events: none; }
+.vt-papel { position: absolute; top: 0; left: calc(var(--i) * 15%); width: 46%; height: 60px; border-radius: 3px 3px 0 0; background: repeating-linear-gradient(180deg, transparent 0 9px, #9fb3cc33 9px 10px), linear-gradient(180deg, #f4f8ff, #d9e4f2); box-shadow: 0 -2px 10px rgba(0,0,0,.35); transform: translateY(-9px) rotate(calc((var(--i) - var(--meio)) * 2deg)); transform-origin: 50% 100%; transition: transform .45s cubic-bezier(.2,.9,.25,1.2); transition-delay: calc(var(--i) * 45ms); }
+.vt-papel::before { content: ""; position: absolute; left: 8px; top: 5px; width: 34%; height: 5px; border-radius: 2px; background: var(--pcor); box-shadow: 0 0 8px var(--pcor); }
+.vt-papel b { position: absolute; left: 8px; right: 6px; top: 13px; font: 800 7.5px/1.1 ui-monospace, monospace; letter-spacing: .12em; color: #23364f; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0; transition: opacity .3s; }
+.vt-card.vt-pasta:hover .vt-papel { transform: translateY(-24px) rotate(calc((var(--i) - var(--meio)) * 6deg)); }
+.vt-card.vt-pasta:hover .vt-papel b { opacity: 1; }
+.vt-pasta-lista { position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 4; display: flex; flex-wrap: wrap; gap: 4px; }
+.vt-pasta-lista span { font: 800 7.5px/1 ui-monospace, monospace; letter-spacing: .12em; padding: 3px 5px; border-radius: 3px; color: #02121f; background: var(--pcor); box-shadow: 0 0 8px color-mix(in srgb, var(--pcor) 60%, transparent); }
+.vt-abrir-pasta { flex: none; display: inline-flex; align-items: center; gap: 5px; font-family: ui-monospace, monospace; font-size: 11px; font-weight: 800; letter-spacing: .06em; color: #02121f; background: var(--cor); padding: 6px 13px; clip-path: polygon(7px 0,100% 0,calc(100% - 7px) 100%,0 100%); box-shadow: 0 0 12px color-mix(in srgb, var(--cor) 72%, transparent); border: 0; cursor: pointer; transition: box-shadow .3s; }
+.vt-card:hover .vt-abrir-pasta { box-shadow: 0 0 20px var(--cor); }
+@media (prefers-reduced-motion: reduce) { .vt-papel { transition: none; } }

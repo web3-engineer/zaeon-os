@@ -12,15 +12,19 @@
  *    evidência; ao conectar, ela para RETA, as prensas finas entram, a energia flui estilo TRON, o plug acontece, a carta
  *    DESINTEGRA e vem a escolha: voltar à vitrine ou abrir a build onde ela ficou (chat / Sala de Estudos / Escritório).
  * Em "Já conectados", a ação do card vira DESCONECTAR.
+ *
+ * PESQUISAS (lib/estudos/pesquisas) reagem diferente: a carta é uma PASTA. Não tem plug nem compra — clicar abre a
+ * pasta e os papéis (as partes da pesquisa) saem em leque pra ler ou baixar (components/estudos/PastaPesquisa).
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { FILTROS, NOME_TIPO, filtrarVitrine, mesclarCatalogo, precoTexto, type FiltroVitrine, type ItemVitrine } from "@/lib/estudos/vitrine";
+import { FILTROS, NOME_TIPO, filtrarVitrine, filtrosVisiveis, mesclarCatalogo, precoTexto, type FiltroVitrine, type ItemVitrine } from "@/lib/estudos/vitrine";
 import { COR_RARIDADE, NOME_RARIDADE } from "@/lib/estudos/blueprint";
 import { plugar, desplugar, usePluginsChat } from "@/lib/plugins/chatPlugins";
 import { ehAgenteOrquestra } from "@/lib/orquestra/catalogo";
 import SolanaMark from "@/components/solana/SolanaMark";
 import CartaVitrine, { GLYPH, segmentos } from "./CartaVitrine";
 import DetalhesBuild from "./DetalhesBuild";
+import PastaPesquisa from "./PastaPesquisa";
 import { destinoDe, type Destino } from "@/lib/estudos/detalhes";
 import { EVT_ESTUDOS_CHAT } from "@/lib/chat/conversasNav";
 import "./vitrine-card.css";
@@ -107,6 +111,7 @@ export default function VitrineEstudos() {
     const [depois, setDepois] = useState<ItemVitrine | null>(null);
     const [detalhe, setDetalhe] = useState<{ it: ItemVitrine; origem: DOMRect } | null>(null);
     const abrirDetalhes = (it: ItemVitrine, alvo: HTMLElement) => setDetalhe({ it, origem: alvo.getBoundingClientRect() });
+    const [pastaAberta, setPastaAberta] = useState<ItemVitrine | null>(null);
     const spinRef = useRef<HTMLDivElement>(null);
     const forjandoRef = useRef(false);
     const timersRef = useRef<number[]>([]);
@@ -168,6 +173,8 @@ export default function VitrineEstudos() {
     const itens = useMemo(() => filtrarVitrine(catalogo, filtro, busca), [catalogo, filtro, busca]);
     const itensConectados = useMemo(() => catalogo.filter((i) => conectados.includes(i.id) || (i.plugavel && plugados.includes(i.plugavel))), [catalogo, conectados, plugados]);
     const mostra = verConectados ? itensConectados : itens;
+    // as abas que só existem quando o banco tem item (Pesquisas) ficam escondidas até a primeira chegar
+    const abas = useMemo(() => filtrosVisiveis(catalogo), [catalogo]);
 
     return (
         <div className="relative h-full w-full overflow-hidden" style={{ background: "radial-gradient(ellipse at 50% 0%, #0f3460 0%, #071a33 55%, #030c1a 100%)" }}>
@@ -184,7 +191,7 @@ export default function VitrineEstudos() {
                     </div>
                     {filtrosAbertos && (
                         <div className="mt-2 flex flex-wrap gap-2">
-                            {FILTROS.map((f) => (
+                            {abas.map((f) => (
                                 <button key={f.id} type="button" onClick={() => { setFiltro(f.id); setVerConectados(false); }} className={`rounded-full border px-3 py-1.5 font-mono text-[11px] tracking-wide transition ${!verConectados && filtro === f.id ? "border-sky-300 bg-sky-300/15 text-white" : "border-sky-300/25 text-sky-100/70 hover:text-white"}`}>{f.nome}</button>
                             ))}
                         </div>
@@ -192,6 +199,20 @@ export default function VitrineEstudos() {
 
                     <div className="vt-grid mt-6 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-x-10 gap-y-14">
                         {mostra.map((it) => {
+                            if (it.pasta) {
+                                // a PASTA de pesquisa: sem plug nem compra — abrir mostra os papéis
+                                return (
+                                    <CartaVitrine
+                                        key={it.id}
+                                        it={it}
+                                        onClick={() => setPastaAberta(it)}
+                                        badgeGratis
+                                        precoFree
+                                        precoNode="Aberta"
+                                        acaoNode={<button type="button" className="vt-abrir-pasta" onClick={(e) => { e.stopPropagation(); setPastaAberta(it); }}>▤ abrir pasta</button>}
+                                    />
+                                );
+                            }
                             const p = precoDe(it);
                             const conectado = estaConectado(it);
                             const acao = verConectados
@@ -290,6 +311,11 @@ export default function VitrineEstudos() {
                     />
                 );
             })()}
+
+            {/* ── PASTA DE PESQUISA: a capa tomba e os papéis saem em leque ── */}
+            {pastaAberta && (
+                <PastaPesquisa key={pastaAberta.id} item={pastaAberta} cor={COR_RARIDADE[pastaAberta.raridade]} onFechar={() => setPastaAberta(null)} />
+            )}
 
             {/* ── DEPOIS DO PLUG: voltar à vitrine ou abrir onde a build ficou ── */}
             {depois && (
