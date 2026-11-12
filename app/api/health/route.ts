@@ -30,6 +30,7 @@ import { escritaPorSecaoLigada } from "@/lib/documento/escritor";
 import { graficoLigado } from "@/lib/agent/graficosDoTurno";
 import { getTool } from "@/lib/agent/runtime";
 import { GEMINI_MODEL_FLASH, GEMINI_MODEL_PRO } from "@/lib/ai/model";
+import { provedoresConfigurados } from "@/lib/search/web";
 import { proNasPesadasLigado } from "@/lib/ai/proNasPesadas";
 import { pusherFaltando } from "@/lib/collab/realtime";
 import { reciboConsole } from "@/lib/orquestra/console";
@@ -193,9 +194,17 @@ export async function GET() {
      * convidaria a ler como "um domínio chamado asterisco".
      */
     dominios: {
-      leitor: parseAllow(process.env.LEITOR_ALLOW),
+      leitor: allowEhAberta(parseAllow(process.env.LEITOR_ALLOW)) ? "aberto" : parseAllow(process.env.LEITOR_ALLOW),
       agente: allowEhAberta(allowDoAgente()) ? "aberto" : allowDoAgente(),
     },
+    /**
+     * A BUSCA WEB — o ponto cego do recibo até aqui. `web_search` é a ÚNICA tool registrada SEM
+     * condição (runtime.ts) cujo backend pode estar ausente: sem provedor, ela devolve
+     * `web_unavailable` em toda chamada e o cardápio promete "busco na internet" sem buscar. O recibo
+     * passa a dizer QUAIS provedores estão configurados — só os NOMES (searxng/tavily/brave); nenhuma
+     * key, nenhuma URL. Lista vazia = a casa não busca na web (responde pelo conhecimento do modelo).
+     */
+    busca: { web: provedoresConfigurados() },
     // F5: o estado dos conectores MCP (memoizado do boot; nunca conecta aqui)
     mcp: resumoMcp(),
     capacidades: {
