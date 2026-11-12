@@ -115,6 +115,25 @@ export type CardDaSkill = {
    * (espelho de download + instruções), "course" (curso completo). Decide o que o PORTÃO cobra.
    */
   familia: "procedimento" | "pago" | "device" | "course";
+  /**
+   * DEVICE: o que o aluno baixa e roda na MÁQUINA DELE. Preenchido só na família "device".
+   * O app roda no dispositivo do aluno, não no nosso servidor — é o que torna seguro oferecer um
+   * AGPL (poki, por ex.): a cláusula de rede não nos alcança porque não executamos o código.
+   * O card mostra o botão de download (o espelho) e as instruções (o corpo da skill) após o plug.
+   */
+  device: DeviceInfo | null;
+};
+
+/** As plataformas de um card device. */
+export const PLATAFORMAS_DEVICE = ["ios", "macos", "android", "windows", "linux"] as const;
+export type PlataformaDevice = (typeof PLATAFORMAS_DEVICE)[number];
+
+export type DeviceInfo = {
+  plataforma: PlataformaDevice;
+  /** o ESPELHO: a URL estável de download (release do GitHub, pacote, imagem) */
+  mirror: string;
+  /** integridade: o sha256 do que o espelho entrega. `null` = não declarado (o portão avisa). */
+  sha256: string | null;
 };
 
 const lista = (v: unknown): string[] =>
@@ -157,6 +176,23 @@ export function cardDaSkill(s: SkillDaCasa): CardDaSkill | null {
     app: texto(m["zaeon-app"]) || null,
     precoBRL,
     familia,
+    device: familia === "device" ? deviceInfo(m) : null,
+  };
+}
+
+/**
+ * Lê o bloco DEVICE do envelope. Devolve o objeto mesmo INCOMPLETO (mirror vazio, plataforma
+ * desconhecida) — a completude é o portão que cobra, não aqui: um device pela metade tem de
+ * aparecer como device quebrado no teste, não sumir como se não fosse device.
+ */
+function deviceInfo(m: Record<string, unknown>): DeviceInfo {
+  const p = texto(m["zaeon-device-plataforma"]).toLowerCase() as PlataformaDevice;
+  const plataforma = (PLATAFORMAS_DEVICE as readonly string[]).includes(p) ? p : ("" as PlataformaDevice);
+  const sha = texto(m["zaeon-device-sha256"]).toLowerCase();
+  return {
+    plataforma,
+    mirror: texto(m["zaeon-device-mirror"]),
+    sha256: /^[0-9a-f]{64}$/.test(sha) ? sha : null,
   };
 }
 

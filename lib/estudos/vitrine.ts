@@ -47,6 +47,11 @@ export type ItemVitrine = {
    * do dono, verificada no portão das skills. `undefined` nos itens grátis e no catálogo simulado.
    */
   dono?: string;
+  /**
+   * DEVICE: o que o aluno baixa e roda na máquina dele. Presente só nos itens de família "device".
+   * É o que a UI usa para mostrar o botão de download (o espelho) e as instruções APÓS o plug.
+   */
+  device?: { plataforma: string; mirror: string; sha256: string | null };
   tags: string[];
   /** blueprint que vira AGENTE no seletor da sidebar (não espera a moeda: adicionar é grátis e instantâneo) */
   plugavel?: PluginChat;

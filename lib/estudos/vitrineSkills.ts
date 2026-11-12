@@ -54,6 +54,7 @@ export function itemDaSkill(card: CardDaSkill): ItemVitrine {
     preco: 0,                               // o preço em SOL do catálogo simulado não se aplica
     ...(pago ? { precoBRL: card.precoBRL } : {}),
     ...(dono ? { dono } : {}),
+    ...(card.device ? { device: card.device } : {}),
     fracoes: { total: 1, vendidas: 0 },
     selos: { supervisionado: false, linksOk: true, codigoPrivado: false },
     entrega: card.entrega,
