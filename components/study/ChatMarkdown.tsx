@@ -7,7 +7,9 @@ import GraficoDados from "@/components/chat/GraficoDados";
 import { ehGraficoDeDados } from "@/lib/chat/graficoDados";
 import BlocoCodigo from "@/components/chat/BlocoCodigo";
 import GeometriaDinamica from "@/components/chat/GeometriaDinamica";
-import { ehGeometria } from "@/lib/chat/geometria";
+import PassosMatematica from "@/components/chat/PassosMatematica";
+import DiagramaMermaid from "@/components/chat/DiagramaMermaid";
+import { figuraDoBloco, figuraDoJson, type Figura } from "@/lib/chat/figuras";
 import { segmentarBlocos, segmentarInline } from "@/lib/chat/matematica";
 
 /**
@@ -24,16 +26,18 @@ import { segmentarBlocos, segmentarInline } from "@/lib/chat/matematica";
  * (só http/https, nova aba). A matemática é separada ANTES do markdown: o `*` de "a*b" não vira itálico.
  * Bloco de código (```lang … ```, #634) também sai antes: vira a caixa do BlocoCodigo, com o de dentro cru.
  *
- * Geometria dinâmica (skill `geometria-jsxgraph`): a construção em JSON vira figura interativa
- * (GeometriaDinamica). Ela chega de três jeitos — num bloco ```geometria, num bloco ```json / sem
- * linguagem, ou como a resposta INTEIRA (a skill manda "apenas o array JSON") — e nos dois últimos
- * só vira figura se for uma construção válida de ponta a ponta; JSON de outra coisa segue como código.
+ * FIGURAS das skills agentic (lib/chat/figuras): a construção de geometria, a resolução passo a
+ * passo e o diagrama chegam como JSON — num bloco com a linguagem da figura, num bloco ```json, ou
+ * como a resposta INTEIRA (as skills mandam "apenas o JSON"). Nos dois últimos casos só vira figura
+ * o que valida de ponta a ponta; JSON de outra coisa segue como código.
  */
 
-/** O bloco de código é uma construção de geometria? ```geometria sempre; ```json ou sem linguagem, só se validar. */
-export function ehBlocoDeGeometria(lang: string, conteudo: string): boolean {
-  if (lang === "geometria") return true;
-  return (lang === "json" || lang === "") && conteudo.trimStart().startsWith("[") && ehGeometria(conteudo);
+/** A figura já decidida → o componente que a desenha. */
+function desenhar(figura: Figura, conteudo: string, key?: number): React.ReactNode {
+  if (figura === "geometria") return <GeometriaDinamica key={key} json={conteudo} />;
+  if (figura === "passos") return <PassosMatematica key={key} json={conteudo} />;
+  if (figura === "mermaid") return <DiagramaMermaid key={key} codigo={conteudo} />;
+  return <DiagramaMermaid key={key} json={conteudo} />;
 }
 
 // ── inline: fórmula ($…$) primeiro; no resto, ***x*** / **x** / *x* / `code` / [link](https://…) ──
@@ -73,8 +77,8 @@ function inlineMarkdown(s: string): React.ReactNode[] {
 
 export default function ChatMarkdown({ text }: { text: string }) {
   // blocos de display/gráfico primeiro (podem ocupar várias linhas); o resto é markdown de linha
-  const cru = text.trim();
-  if (cru.startsWith("[") && cru.endsWith("]") && ehGeometria(cru)) return <GeometriaDinamica json={cru} />;
+  const inteira = figuraDoJson(text);
+  if (inteira) return <>{desenhar(inteira, text.trim())}</>;
   const pedacos = segmentarBlocos(text);
   if (pedacos.length === 1 && pedacos[0].tipo === "texto") return <MarkdownDeLinhas text={text} />;
   return (
@@ -82,7 +86,7 @@ export default function ChatMarkdown({ text }: { text: string }) {
       {pedacos.map((b, i) =>
         b.tipo === "formula" ? <Formula key={i} latex={b.conteudo} display />
         : b.tipo === "grafico" ? (ehGraficoDeDados(b.conteudo) ? <GraficoDados key={i} json={b.conteudo} /> : <GraficoFuncao key={i} json={b.conteudo} />)
-        : b.tipo === "codigo" && ehBlocoDeGeometria(b.lang, b.conteudo) ? <GeometriaDinamica key={i} json={b.conteudo} />
+        : b.tipo === "codigo" && figuraDoBloco(b.lang, b.conteudo) ? desenhar(figuraDoBloco(b.lang, b.conteudo)!, b.conteudo, i)
         : b.tipo === "codigo" ? <BlocoCodigo key={i} codigo={b.conteudo} lang={b.lang} />
         : <MarkdownDeLinhas key={i} text={b.conteudo.replace(/^\n|\n$/g, "")} />,
       )}

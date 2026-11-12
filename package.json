@@ -96,6 +96,7 @@
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.552.0",
     "mammoth": "^1.13.0",
+    "mermaid": "^11.17.2",
     "mongodb": "^6.21.0",
     "mongoose": "^8.24.8",
     "next": "14.2.15",

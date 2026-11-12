@@ -32,6 +32,14 @@ const EXEMPLO = [
   "```geometria",
   '[{"nome":"A","tipo":"point","pais":[-3,-2],"papel":"vértice livre"},{"nome":"B","tipo":"point","pais":[4,-1],"papel":"vértice livre"},{"nome":"C","tipo":"point","pais":[0,4],"papel":"vértice livre"},{"nome":"t","tipo":"polygon","pais":["A","B","C"],"papel":"triângulo ABC"},{"nome":"ab","tipo":"segment","pais":["A","B"],"papel":"lado AB"},{"nome":"bc","tipo":"segment","pais":["B","C"],"papel":"lado BC"},{"nome":"M","tipo":"midpoint","pais":["A","B"],"papel":"ponto médio de AB"},{"nome":"N","tipo":"midpoint","pais":["B","C"],"papel":"ponto médio de BC"},{"nome":"m1","tipo":"perpendicular","pais":["ab","M"],"papel":"mediatriz de AB"},{"nome":"m2","tipo":"perpendicular","pais":["bc","N"],"papel":"mediatriz de BC"},{"nome":"O","tipo":"intersection","pais":["m1","m2",0],"papel":"circuncentro"},{"nome":"c","tipo":"circle","pais":["O","A"],"papel":"circunferência circunscrita"}]',
   "```",
+  "## Resolução passo a passo (KaTeX)",
+  "```passos",
+  '[{"passo":1,"latex":"2x^2 - 8x + 6 = 0","explicacao":"Equação original."},{"passo":2,"latex":"x^2 - 4x + 3 = 0","explicacao":"Divide os dois lados por 2."},{"passo":3,"latex":"(x - 1)(x - 3) = 0","explicacao":"Fatora: dois números de soma 4 e produto 3."},{"passo":4,"latex":"x = 1 \\\\quad \\\\text{ou} \\\\quad x = 3","explicacao":"Um produto é zero quando um dos fatores é zero."}]',
+  "```",
+  "## Diagrama (Mermaid)",
+  "```diagrama",
+  '{"titulo":"Envio da redação","tipo":"flowchart","mermaid":"flowchart TD\\n  A[\\"Aluno envia a redação\\"] --> B{\\"É PDF?\\"}\\n  B -->|não| C[\\"Pedir novo envio\\"]\\n  C --> A\\n  B -->|sim| D[\\"Professor corrige\\"]\\n  D --> E{\\"Nota < 6?\\"}\\n  E -->|sim| F[\\"Reescrita\\"]\\n  E -->|não| G[\\"Aprovada\\"]","leitura":"De cima para baixo; cada losango é uma decisão."}',
+  "```",
   "Dinheiro continua texto: custa R$ 10,00 e o link é [o PDF](https://www.gutenberg.org/).",
 ].join("\n");
 
