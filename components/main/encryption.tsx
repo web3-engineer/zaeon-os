@@ -5,11 +5,11 @@ import { motion } from "framer-motion";
 import React, { useState, useEffect } from "react";
 import NextImage from "next/image";
 import { useTranslation } from "react-i18next";
-import ZaeonFlowDiagram from "./ZaeonFlowDiagram";
-import MentoresCarrossel from "./MentoresCarrossel";
+import ContadorProjetos from "./ContadorProjetos";
 import SolanaPrivacidade from "./SolanaPrivacidade";
-import ChavesApi from "./ChavesApi";
+import ProjetoVencedor from "./ProjetoVencedor";
 import BlueprintsShowcase from "./BlueprintsShowcase";
+import TimelineIdeia from "./TimelineIdeia";
 import { TituloSecao } from "@/components/layout/secao";
 import MolecularText from "@/components/ui/MolecularText";
 
@@ -94,16 +94,16 @@ const HireAgentsSection = () => {
                 viewport={{ once: true }}
                 transition={{ duration: 0.6 }}
             >
-                <TituloSecao className="font-display" forte="Estude com os melhores e mais modernos agentes de IA." />
-
-                {/* carrossel LEVE: só foto, nome e função; quem passa pelo meio da tela ganha a borda destacada */}
-                <div className="mt-10">
-                    <MentoresCarrossel semRotulo leve />
-                </div>
+                <TituloSecao className="font-display" forte={<>Somos uma startup brasileira financiada pelo Ministério da Tecnologia e Desenvolvimento do Brasil. <span aria-hidden="true">🇧🇷</span></>} />
             </motion.div>
 
-            {/* "ou traga as chaves de API dos seus" + o briefing das chaves (+ as casas de modelos, #modelos) */}
-            <ChavesApi className="mt-16 md:mt-20" />
+            {/* o card do PRODUTO VENCEDOR (Centelha, categoria blockchain) */}
+            <ProjetoVencedor className="mt-12 md:mt-16" />
+
+            {/* "Financiado e apoiado por: [sponsors]" — no lugar das casas de modelos; mantém a âncora #modelos do rodapé */}
+            <div id="modelos" className="scroll-mt-24 mt-6">
+                <SponsorsTicker opacity={1} />
+            </div>
         </div>
     );
 };
@@ -129,23 +129,10 @@ export default function Encryption() {
                 <div className="zaeon-borda">
                     <TituloSecao className="font-display" forte={t("landing.knowledge_title", "Transforme sua ideia em realidade.")} />
 
-                    {/* DIAGRAMA VIVO: entrada -> cerebro Zaeon -> saida.
-                        O painel nao e enfeite: o ParticleSystem da landing corre
-                        atras da pagina inteira e passava por cima do card da
-                        direita. Uma chapa escura com borda de 1px devolve o
-                        diagrama para um fundo calmo sem desligar o fundo. */}
-                    {/* CLARO: vidro AZUL glossy (gradiente + brilho no topo), estilo do botão
-                        "Iniciar", no lugar do branco lavado. ESCURO: segue o navy de sempre. */}
-                    {/* Sem o card grande em volta: só os cards do diagrama, AZULADOS e tingidos pelo fluxo em foco.
-                        `dark` força o estilo escuro dentro (texto claro sobre os cards azulados) nos dois temas. */}
-                    <div className="dark mt-12 md:mt-16">
-                        <ZaeonFlowDiagram />
-                    </div>
-                </div>
-
-                {/* o marquee e de proposito full-bleed: ele corre de borda a borda */}
-                <div className="w-full mt-14 md:mt-20">
-                    <SponsorsTicker opacity={1} />
+                    {/* SUBHEADER: a TIMELINE da evolução de uma ideia (o visualizador 3D que se constrói conforme a barra
+                        de progresso avança) + o contador grande de projetos da comunidade. */}
+                    <TimelineIdeia className="mt-12 md:mt-16" />
+                    <ContadorProjetos className="mt-14 md:mt-20" />
                 </div>
             </section>
 

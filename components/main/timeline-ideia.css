@@ -1,0 +1,50 @@
+/* TimelineIdeia — um VISUALIZADOR único e grande (estrutura 3D isométrica do kit anatomy) que se CONSTRÓI e cresce peça
+   a peça conforme a barra de progresso avança. Embaixo, a barra com os 5 marcos. Sem descrições. */
+
+.ci-wrap { position: relative; width: 100%; overflow-x: auto; scrollbar-width: none; }
+.ci-wrap::-webkit-scrollbar { display: none; }
+
+.ci-stage { position: relative; min-width: 720px; display: flex; flex-direction: column; align-items: center; }
+
+/* o visualizador único */
+.ci-viz { width: 100%; display: flex; justify-content: center; }
+.ci-viz .ci-fig { width: 360px; max-width: 82%; height: auto; overflow: visible; }
+
+/* cada peça nasce (do chão pra cima) conforme o progresso a alcança — a opacidade/transform vêm INLINE do laço da
+   TimelineIdeia (sem transição do CSS, que brigava com o valor por quadro). Só o brilho de neon fica aqui. */
+.ci-viz .iso-line { stroke-linecap: round; }
+.ci-part { transform-box: fill-box; transform-origin: center bottom; opacity: 0; }
+.ci-part .iso-edge { filter: drop-shadow(0 0 3px color-mix(in srgb, var(--anatomy-hi) 55%, transparent)); }
+
+/* o MUNDO holográfico gira: os continentes rolam (dois tiles de 104px — R*2 — pra o laço ser sem costura) */
+@keyframes ci-globo-spin { from { transform: translateX(0); } to { transform: translateX(-104px); } }
+.ci-globo-spin { animation: ci-globo-spin 12s linear infinite; }
+
+/* a ESTEIRA corre: o conteúdo desliza um período (--ex/--ey, setados inline pela cena) e volta — laço sem costura */
+@keyframes ci-esteira { from { transform: translate(0, 0); } to { transform: translate(var(--ex), var(--ey)); } }
+.ci-esteira { animation: ci-esteira 2.6s linear infinite; }
+
+/* a PRENSA desce e sobe */
+@keyframes ci-prensa { 0%, 100% { transform: translateY(-1px); } 45%, 55% { transform: translateY(6px); } }
+.ci-prensa { transform-box: fill-box; transform-origin: center; animation: ci-prensa 1.8s ease-in-out infinite; }
+
+/* a engrenagem MOTRIZ gira */
+@keyframes ci-giro { to { transform: rotate(360deg); } }
+.ci-giro { transform-box: fill-box; transform-origin: center; animation: ci-giro 7s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) { .ci-globo-spin, .ci-esteira, .ci-prensa, .ci-giro { animation: none; } }
+
+/* a barra de progresso */
+.ci-bar { position: relative; width: 100%; margin-top: 10px; }
+.ci-line, .ci-fill { position: absolute; top: 12px; left: 10%; height: 2px; border-radius: 2px; }
+.ci-line { right: 10%; background: rgba(127, 232, 255, 0.14); }
+.ci-fill { width: 0; background: linear-gradient(90deg, #f5c542, #46b0ff, #38f0ff, #8b5cf6, #22d3ee); box-shadow: 0 0 6px rgba(127, 232, 255, 0.5); }
+.ci-comet { position: absolute; top: 12px; left: 10%; width: 12px; height: 12px; margin: -5px 0 0 -6px; border-radius: 50%; background: #eafcff; box-shadow: 0 0 10px #bdfcff, 0 0 18px rgba(189, 252, 255, 0.5); opacity: 0; }
+
+.ci-row { position: relative; display: flex; }
+.ci-cell { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; }
+.ci-node { height: 24px; display: grid; place-items: center; position: relative; z-index: 2; }
+.ci-dot { width: 12px; height: 12px; border-radius: 50%; background: #06101c; box-shadow: inset 0 0 0 2px color-mix(in srgb, currentColor 45%, transparent); transition: box-shadow .4s, background .4s; }
+.ci-cell.on .ci-dot { background: currentColor; box-shadow: 0 0 10px currentColor, inset 0 0 0 2px currentColor; }
+.ci-tit { margin-top: 8px; text-align: center; font-family: ui-monospace, monospace; font-size: 12.5px; font-weight: 700; letter-spacing: .02em; color: rgba(234, 252, 255, 0.5); transition: color .4s; }
+.ci-cell.on .ci-tit { color: #eafcff; }
