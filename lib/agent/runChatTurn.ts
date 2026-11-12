@@ -378,6 +378,30 @@ export async function runChatTurn(
         }
       } catch { /* a peça é um ganho, não uma condição: o turno segue como estava */ }
     }
+    /**
+     * O PORTÃO DO ISOLAMENTO, para TODO agente (lib/agent/anatomiaDoTurno `validarArtefatosDeAnatomia`):
+     * artefato de anatomia só viaja se o atlas consegue mostrá-lo ISOLADO. Título que é classe
+     * genérica, o corpo inteiro ou estrutura que o atlas não tem cai aqui — carregar o que não é a
+     * parte pedida é erro (decisão do dono, 2026-11-12), e erro não vira cartão.
+     */
+    {
+      const atuais = ((respostaFinal as { artifacts?: any[] }).artifacts ?? state.artifacts ?? []) as any[];
+      if (atuais.some((a) => String(a?.studioKind) === "anatomia")) {
+        try {
+          const [{ carregarAtlas }, { cenaDoConceito }, { validarArtefatosDeAnatomia }] = await Promise.all([
+            import("@/lib/anatomia/carregar"), import("@/lib/anatomia/cena-do-conceito"), import("@/lib/agent/anatomiaDoTurno"),
+          ]);
+          const atlas = carregarAtlas();
+          if (atlas) {
+            const validos = validarArtefatosDeAnatomia(atuais, (titulo) => {
+              const r = cenaDoConceito(atlas, titulo);
+              return r.ok ? { ok: true, nome: r.dados.conceito.nome } : { ok: false };
+            });
+            respostaFinal = { ...(respostaFinal as object), artifacts: validos } as typeof answer;
+          }
+        } catch { /* sem atlas no disco a rota do cartão já recusa (503): nada a validar aqui */ }
+      }
+    }
     const out = resolveHarnessOutput(state, respostaFinal, surface, objetivo, { trabalhoNoEditor: multi });
     // TCC cross-sala: "crie um TCC sobre X" cria o TCC da conversa; nos turnos seguintes
     // `work.sections` vira operação por seção. AGUARDADO (é só banco, sem modelo) porque o cliente

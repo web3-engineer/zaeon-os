@@ -48,3 +48,34 @@ export function artefatosComAnatomia(o: {
   const resto = atuais.filter((a) => !PALPITES.has(String(a.studioKind)));
   return [peca, ...resto].slice(0, 2);
 }
+
+/**
+ * O PORTÃO DO ARTEFATO DE ANATOMIA: só viaja a peça que o atlas consegue mostrar ISOLADA.
+ *
+ * O artefato de anatomia nasce de três lugares — o pedido (acima), o campo `estruturas` que o modelo
+ * extrai da própria resposta, e um `artifacts` explícito do modelo — e nos dois últimos o título é
+ * texto de modelo: pode ser uma classe ("osso"), o corpo ("human body"), ou algo que o atlas não
+ * tem. Antes, isso só era descoberto no cliente, com um cartão que falhava ou abria errado.
+ *
+ * `resolver` é `cenaDoConceito` (injetado, para este módulo seguir puro): ele já recusa classe
+ * genérica, corpo inteiro e cena não isolada (lib/anatomia/isolamento). O que ele recusa NÃO VIAJA —
+ * carregar o que não é a parte pedida é erro, e erro não vira cartão. O que ele aceita viaja com o
+ * NOME CANÔNICO do atlas, que é o que a rota do cartão resolve de volta para a mesma peça.
+ * E uma só: resposta não é galeria de órgãos.
+ */
+export function validarArtefatosDeAnatomia(
+  artefatos: readonly StudioRef[],
+  resolver: (titulo: string) => { ok: true; nome: string } | { ok: false },
+): StudioRef[] {
+  const out: StudioRef[] = [];
+  let jaTemPeca = false;
+  for (const a of artefatos) {
+    if (String(a.studioKind) !== "anatomia") { out.push(a); continue; }
+    if (jaTemPeca) continue;
+    const r = resolver(String(a.title ?? ""));
+    if (!r.ok) continue;
+    out.push({ ...a, title: r.nome });
+    jaTemPeca = true;
+  }
+  return out;
+}

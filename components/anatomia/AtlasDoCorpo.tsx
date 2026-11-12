@@ -42,6 +42,7 @@ import {
   contarVisiveis, definirExplosao, definirSistemas, definirVista, dicaDeArraste, escolherConceito,
   escolherPeca, esconderTodos, legenda, limparSelecao, presetAtivo, reiniciar, soSistema,
 } from "@/lib/anatomia/estado";
+import { PARAM_ESTRUTURA, verificarIsolamento } from "@/lib/anatomia/isolamento";
 
 const CenaDoCorpo = dynamic(() => import("./CenaDoCorpo"), { ssr: false });
 
@@ -58,6 +59,21 @@ const VISTAS: { id: Vista; rotulo: string; titulo: string }[] = [
 const LIMITE_DA_BUSCA = 80;
 /** Quantas peças o painel de detalhe lista antes de resumir. Valor do original. */
 const LIMITE_DA_LISTA = 50;
+
+/**
+ * PURA: o estado com que a página abre quando chega com uma estrutura pedida. Isolada, ou erro.
+ * Exportada para o teste: é a regra, e a regra não deve depender de WebGL para ser conferida.
+ */
+export function estadoDaEstruturaPedida(
+  atlas: Atlas, id: string,
+): { ok: true; conceito: Conceito; estado: typeof ESTADO_INICIAL } | { ok: false; motivo: string } {
+  const conceito = atlas.concepts.find((c) => c.id.toLowerCase() === id.toLowerCase());
+  if (!conceito) return { ok: false, motivo: `o atlas não tem a estrutura "${id.slice(0, 40)}" — nada foi aberto no lugar dela` };
+  const estado = { ...escolherConceito(ESTADO_INICIAL, conceito), isolate: true };
+  const v = verificarIsolamento(atlas, estado, conceito.elements);
+  if (!v.ok) return { ok: false, motivo: `não abri "${conceito.name}": ${v.motivo}` };
+  return { ok: true, conceito, estado };
+}
 
 export default function AtlasDoCorpo() {
   const [atlas, setAtlas] = useState<Atlas | null>(null);
@@ -98,6 +114,34 @@ export default function AtlasDoCorpo() {
   }, []);
 
   useEffect(() => { if (painel === "busca") campoDeBusca.current?.focus(); }, [painel]);
+
+  /**
+   * ABRIR NA ESTRUTURA (`/anatomia?estrutura=FMA7088`). É por aqui que o cartão do chat chega, e o
+   * que ele pediu é UMA estrutura: então a página nasce com ela escolhida e ISOLADA, não com o corpo
+   * inteiro. O caminho de volta existe e é do aluno ("Mostrar a anatomia ao redor").
+   * Id que o atlas não tem é ERRO dito na tela — cair calado no corpo inteiro seria justamente o
+   * carregamento não isolado que o dono mandou tratar como erro. Roda uma vez, quando o atlas chega.
+   */
+  const abriuNaEstrutura = useRef(false);
+  const [erroDeEstrutura, setErroDeEstrutura] = useState("");
+  useEffect(() => {
+    if (!atlas || abriuNaEstrutura.current) return;
+    abriuNaEstrutura.current = true;
+    const pedido = new URLSearchParams(window.location.search).get(PARAM_ESTRUTURA)?.trim();
+    if (!pedido) return;
+    const r = estadoDaEstruturaPedida(atlas, pedido);
+    if (!r.ok) {
+      // NADA na tela no lugar: `esconderTodos` em vez do estado inicial, que desenharia as 2.229
+      // peças — medido no navegador, era o que acontecia com um id inexistente. O aviso é próprio
+      // (não o `erro` da cena, que a carga da geometria sobrescreve).
+      setEstado(esconderTodos(ESTADO_INICIAL));
+      setErroDeEstrutura(r.motivo);
+      return;
+    }
+    setEscolhido(r.conceito);
+    setEstado(r.estado);
+    setDetalhe(true);
+  }, [atlas]);
 
   const pecasPorId = useMemo(() => new Map((atlas?.parts ?? []).map((p) => [p.id, p])), [atlas]);
   const conceitosPorId = useMemo(() => new Map((atlas?.concepts ?? []).map((c) => [c.id, c])), [atlas]);
@@ -394,6 +438,12 @@ export default function AtlasDoCorpo() {
               <i className="block h-full bg-emerald-500 transition-[width]" style={{ width: `${progresso}%` }} />
             </div>
           </div>
+        </div>
+      )}
+      {erroDeEstrutura && (
+        <div data-erro-de-estrutura className={cn(vidro, "absolute left-1/2 top-24 z-40 flex -translate-x-1/2 items-center gap-3 px-4 py-3")} role="alert">
+          <p className="max-w-sm text-sm text-rose-700">{erroDeEstrutura}. Use a busca para escolher uma estrutura.</p>
+          <button type="button" onClick={() => { setErroDeEstrutura(""); setPainel("busca"); }} className={cn(botao, "shrink-0")}>Buscar</button>
         </div>
       )}
       {erro && (

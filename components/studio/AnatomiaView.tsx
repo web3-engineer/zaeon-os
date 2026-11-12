@@ -20,6 +20,7 @@ import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Box, FileText, Layers, ExternalLink } from "lucide-react";
 import type { Atlas, EstadoCena, SistemaId } from "@/lib/anatomia/atlas";
+import { estadoEstaIsolado, linkDoAtlas } from "@/lib/anatomia/isolamento";
 
 const CenaDoCorpo = dynamic(() => import("@/components/anatomia/CenaDoCorpo"), { ssr: false });
 
@@ -44,9 +45,13 @@ export function rotuloDeMalhas(n: unknown): string {
   return k === 1 ? "1 malha" : `${k.toLocaleString("pt-BR")} malhas`;
 }
 
-/** PURA: o estado é utilizável? Sem peça selecionada a cena desenha o corpo todo sem destaque. */
+/**
+ * PURA: o estado é utilizável? Só o ISOLADO é (lib/anatomia/isolamento). Sem peça selecionada a cena
+ * desenha o corpo todo; com seleção e sem isolamento, a peça fica atrás de centenas de outras. Os
+ * dois casos são ERRO (decisão do dono, 2026-11-12) — o cartão avisa em vez de montar o visor.
+ */
 export function cenaUtilizavel(d: AnatomiaData): boolean {
-  return Array.isArray(d.estado?.selected) && d.estado!.selected.length > 0;
+  return estadoEstaIsolado(d.estado);
 }
 
 /** O visor 3D. Só monta quando chamado — busca o atlas na hora e solta na saída. */
@@ -153,6 +158,11 @@ export default function AnatomiaView({ data, nu = false }: { data: AnatomiaData;
           : <Placa d={data} />}
       </div>
 
+      {!podeVer3D && (
+        <p data-anatomia-erro role="alert" className="m-0 rounded-xl border border-amber-300/50 bg-amber-50/60 dark:bg-amber-400/[0.07] px-3 py-2 text-[11px] text-amber-800 dark:text-amber-200">
+          Esta cena não veio isolada, então o 3D não abre: mostrar o corpo inteiro no lugar de {nome} seria um erro. Peça a estrutura de novo pelo nome.
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-1.5">
         {podeVer3D && (
           <button
@@ -164,10 +174,13 @@ export default function AnatomiaView({ data, nu = false }: { data: AnatomiaData;
           </button>
         )}
         <a
-          href="/anatomia"
+          // JÁ NA ESTRUTURA: este link era `/anatomia` seco e abria o corpo inteiro, sem nada
+          // selecionado — o defeito que o dono viu. Sem id de conceito, o link nem aparece.
+          href={linkDoAtlas(data.conceito?.id) ?? undefined}
+          hidden={!linkDoAtlas(data.conceito?.id)}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold text-slate-700 dark:text-white/80 border border-slate-200 dark:border-white/10 hover:border-cyan-400/50 transition-colors"
         >
-          <ExternalLink size={12} /> Abrir o atlas
+          <ExternalLink size={12} /> Abrir {nome} no atlas
         </a>
         {data.fonte?.url && (
           <a
