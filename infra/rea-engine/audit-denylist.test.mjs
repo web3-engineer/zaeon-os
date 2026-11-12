@@ -72,3 +72,22 @@ test("parecePerigoso é a heurística ampla (falso positivo é aceitável)", () 
   assert.ok(!parecePerigoso("inspect-sqlite-database"));
   assert.ok(!parecePerigoso("analyze"));
 });
+
+test("as famílias device/frida/runtime (família no meio do nome) agora são negadas", () => {
+  const bridge = readFileSync(join(AQUI, "bridge.mjs"), "utf8");
+  const prefixos = extrairLista(bridge, "DENY_PREFIXOS");
+  const exatos = extrairLista(bridge, "DENY_EXATOS");
+  for (const c of ["install-adb-package", "list-adb-devices", "list-frida-processes", "list-javascript-runtime-targets"]) {
+    assert.equal(permitido(c, prefixos, exatos), false, c);
+  }
+});
+
+test("os suspeitos REVISADOS (leitura estática de arquivo) não são mais apontados", async () => {
+  const { REVISADOS_OK } = await import("./audit-denylist.mjs");
+  // um catálogo com um revisado-ok (lê pcap) e um suspeito NOVO (spawn) → só o novo é apontado
+  const cat = new Set(["analyze", "inspect-pcap-capture", "spawn-proc-novo"]);
+  const r = auditar(cat, [], []); // sem deny, pra testar só o filtro de revisados
+  assert.ok(REVISADOS_OK.has("inspect-pcap-capture"));
+  assert.ok(!r.suspeitos.includes("inspect-pcap-capture"), "revisado-ok não é suspeito");
+  assert.ok(r.suspeitos.includes("spawn-proc-novo"), "escapada nova ainda é apontada");
+});

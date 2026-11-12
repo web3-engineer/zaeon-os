@@ -50,12 +50,23 @@ export const PALAVRAS_EFEITO = [
 ];
 export const parecePerigoso = (cmd) => PALAVRAS_EFEITO.some((w) => cmd.includes(w));
 
+/**
+ * Suspeitos já REVISADOS e considerados seguros: leitura estática de um ARQUIVO gravado (captura,
+ * trace, pcap, crash), não ação em alvo/host vivo. Ficam fora da lista de suspeitos pra o audit só
+ * gritar escapada NOVA. Rever esta lista quando o catálogo do REA mudar (ela é afirmação, não fé).
+ */
+export const REVISADOS_OK = new Set([
+  "compare-process-captures", "compare-static-and-observed-endpoints", "compare-web-captures",
+  "decode-signal-recording", "inspect-native-dispatch-metadata", "inspect-packet-capture",
+  "inspect-pcap-capture", "inspect-playwright-trace", "inspect-recorded-crash", "inspect-web-network-capture",
+]);
+
 /** Cruza catálogo × deny-list e devolve o laudo. PURA (o IO fica no main). */
 export function auditar(catalogo, prefixos, exatos) {
   const cmds = [...catalogo].sort();
   const liberados = cmds.filter((c) => permitido(c, prefixos, exatos));
   const negados = cmds.filter((c) => !permitido(c, prefixos, exatos));
-  const suspeitos = liberados.filter(parecePerigoso); // liberados que cheiram a efeito colateral
+  const suspeitos = liberados.filter((c) => parecePerigoso(c) && !REVISADOS_OK.has(c)); // liberados que cheiram a efeito colateral e ainda não revisados
   return { total: cmds.length, liberados, negados, suspeitos };
 }
 

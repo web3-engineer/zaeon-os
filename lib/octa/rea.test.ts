@@ -32,10 +32,20 @@ describe("octa · REA bridge (fatia 2)", () => {
       expect(comandoRea(c), c).toBe(false);
     }
   });
-  // os ALVOS ESTÁTICOS novos do 6.9 continuam liberados (análise/leitura, sem efeito colateral)
-  it("libera os alvos estáticos novos do 6.9 (EVM, Rust, modelos de IA, WASM, SQLite…)", () => {
+  // achados do audit em prod (6.9, 198 comandos): famílias device/frida/runtime cujo nome tem a
+  // família NO MEIO (list-adb-…, list-frida-…) escapavam da deny por-prefixo. Agora negadas.
+  it("recusa device/instrumentação/runtime quando a família está no meio do nome", () => {
+    for (const c of ["install-adb-package", "list-adb-devices", "list-adb-packages", "list-adb-processes",
+      "list-frida-devices", "list-frida-processes", "list-javascript-runtime-targets"]) {
+      expect(comandoRea(c), c).toBe(false);
+    }
+  });
+  // os ALVOS ESTÁTICOS novos do 6.9 continuam liberados (análise/leitura de arquivo, sem efeito colateral)
+  it("libera os alvos estáticos novos do 6.9 (EVM, Rust, WASM, pcap, trace, crash…)", () => {
     for (const c of ["inspect-evm-interface", "inspect-rust-binary", "inspect-model-artifact", "inspect-wasm-artifact",
-      "inspect-sqlite-database", "inspect-kernel-module", "audit-release-exposure", "decode-signal-recording"]) {
+      "inspect-sqlite-database", "inspect-kernel-module", "audit-release-exposure", "decode-signal-recording",
+      "inspect-packet-capture", "inspect-pcap-capture", "inspect-playwright-trace", "inspect-recorded-crash",
+      "inspect-web-network-capture", "compare-web-captures"]) {
       expect(comandoRea(c), c).toBe(true);
     }
   });
