@@ -22,8 +22,9 @@ import { COR_RARIDADE, NOME_RARIDADE } from "@/lib/estudos/blueprint";
 import { plugar, desplugar, usePluginsChat } from "@/lib/plugins/chatPlugins";
 import { ehAgenteOrquestra } from "@/lib/orquestra/catalogo";
 import SolanaMark from "@/components/solana/SolanaMark";
-import CartaVitrine, { GLYPH, segmentos } from "./CartaVitrine";
+import CartaVitrine, { GLYPH, ImagemCarta, segmentos } from "./CartaVitrine";
 import DetalhesBuild from "./DetalhesBuild";
+import { aplicarAjustes, type Ajuste } from "@/lib/estudos/curadoria";
 import PastaPesquisa from "./PastaPesquisa";
 import { destinoDe, type Destino } from "@/lib/estudos/detalhes";
 import { EVT_ESTUDOS_CHAT } from "@/lib/chat/conversasNav";
@@ -95,10 +96,13 @@ export default function VitrineEstudos() {
 
     // os cards cadastrados no ADMIN (/api/estudos/vitrine, só ativos) — juntam-se ao catálogo embutido
     const [itensDb, setItensDb] = useState<ItemVitrine[]>([]);
+    // a CURADORIA do dono (lib/estudos/curadoria): textos, tags, foto, raridade, ordem e cards escondidos
+    const [ajustes, setAjustes] = useState<Ajuste[]>([]);
     useEffect(() => {
         let vivo = true;
         fetch("/api/estudos/vitrine", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((d) => {
             if (vivo && Array.isArray(d?.itens)) setItensDb(d.itens as ItemVitrine[]);
+            if (vivo && Array.isArray(d?.ajustes)) setAjustes(d.ajustes as Ajuste[]);
         }).catch(() => undefined);
         return () => { vivo = false; };
     }, []);
@@ -169,7 +173,7 @@ export default function VitrineEstudos() {
     };
 
     // junta os cards do admin (banco) com o catálogo embutido, sem repetir id
-    const catalogo = useMemo(() => mesclarCatalogo(itensDb), [itensDb]);
+    const catalogo = useMemo(() => aplicarAjustes(mesclarCatalogo(itensDb), ajustes), [itensDb, ajustes]);
     const itens = useMemo(() => filtrarVitrine(catalogo, filtro, busca), [catalogo, filtro, busca]);
     const itensConectados = useMemo(() => catalogo.filter((i) => conectados.includes(i.id) || (i.plugavel && plugados.includes(i.plugavel))), [catalogo, conectados, plugados]);
     const mostra = verConectados ? itensConectados : itens;
@@ -263,7 +267,7 @@ export default function VitrineEstudos() {
                                     <div className="vt-face vt-face-front">
                                         <div className="vt-frame"><div className="vt-panel">
                                             <div className="vt-spine">{NOME_RARIDADE[it.raridade].toUpperCase()}</div>
-                                            <div className="vt-art"><span className="vt-br tl" /><span className="vt-br tr" /><span className="vt-br bl" /><span className="vt-br brr" /><div className="vt-glyph"><b>{GLYPH[it.modelo] ?? "✦"}</b></div><div className="vt-tron" /></div>
+                                            <div className="vt-art"><span className="vt-br tl" /><span className="vt-br tr" /><span className="vt-br bl" /><span className="vt-br brr" />{it.imagem ? <ImagemCarta src={it.imagem} /> : <div className="vt-glyph"><b>{GLYPH[it.modelo] ?? "✦"}</b></div>}<div className="vt-tron" /></div>
                                             <div className="vt-plate"><div className="vt-type">{NOME_TIPO[it.tipo].toUpperCase()}</div><h3 className="vt-title">{it.titulo}</h3><div className="vt-meter"><span className="vt-segs">{segmentos(it.profundidade).map((on, i) => <i key={i} className={on ? "on" : ""} />)}</span></div></div>
                                         </div></div>
                                     </div>
