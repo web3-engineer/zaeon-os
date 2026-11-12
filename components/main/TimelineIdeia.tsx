@@ -6,22 +6,25 @@
  * cada peça nasce no seu lugar final quando o pulso da barra passa do seu ponto. Embaixo, a barra com os 5 marcos.
  */
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ISO_CSS } from "@/lib/anatomy/iso-kit";
 import { CONSTRUCAO_SVG } from "@/lib/landing/construcaoIso";
 import "./timeline-ideia.css";
 
-const MARCOS: readonly { titulo: string; cor: string }[] = [
-  { titulo: "Papel científico", cor: "#f5c542" },
-  { titulo: "Conversa com as IAs", cor: "#46b0ff" },
-  { titulo: "Blueprint", cor: "#38f0ff" },
-  { titulo: "Protótipo e testes", cor: "#8b5cf6" },
-  { titulo: "No mundo real", cor: "#22d3ee" },
+/** os 5 marcos (chave i18n em landing.timeline.*, com o texto em português de reserva) */
+const MARCOS: readonly { chave: string; titulo: string; cor: string }[] = [
+  { chave: "base", titulo: "Base científica", cor: "#f5c542" },
+  { chave: "conversa", titulo: "Conversa com as IAs", cor: "#2bd47a" },
+  { chave: "blueprint", titulo: "Propriedade intelectual", cor: "#2d6ae8" },
+  { chave: "prototipo", titulo: "Protótipo e testes", cor: "#8b5cf6" },
+  { chave: "mundo", titulo: "No mundo real", cor: "#22d3ee" },
 ];
 const N = MARCOS.length;
 
 const DUR = 8200, HOLD = 2600, FADE = 800, TOTAL = DUR + HOLD + FADE;
 
 export default function TimelineIdeia({ className = "" }: { className?: string }) {
+  const { t } = useTranslation();
   const [ativos, setAtivos] = useState(0);
   const vizRef = useRef<HTMLDivElement>(null);
   const fillRef = useRef<HTMLDivElement>(null);
@@ -72,7 +75,7 @@ export default function TimelineIdeia({ className = "" }: { className?: string }
             {MARCOS.map((m, i) => (
               <div key={i} className={`ci-cell ${i < ativos ? "on" : ""}`} style={{ color: m.cor }}>
                 <span className="ci-node"><span className="ci-dot" /></span>
-                <span className="ci-tit">{m.titulo}</span>
+                <span className="ci-tit">{t(`landing.timeline.${m.chave}`, m.titulo)}</span>
               </div>
             ))}
           </div>

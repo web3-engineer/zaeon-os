@@ -348,6 +348,13 @@
         "success_message": "Credentials Updated"
     },
     "landing": {
+        "timeline": {
+            "base": "Scientific base",
+            "conversa": "Talking with AIs",
+            "blueprint": "Blueprint",
+            "prototipo": "Prototype & tests",
+            "mundo": "In the real world"
+        },
         "hero_tagline": "More than conversations with chatbots and open tabs — here you build <hl>ideas that become finished products</hl>.",
         "knowledge_title": "Turn your idea into reality.",
         "privacidade_titulo": "Build your idea with privacy.",

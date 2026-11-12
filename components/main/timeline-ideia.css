@@ -6,39 +6,35 @@
 
 .ci-stage { position: relative; min-width: 720px; display: flex; flex-direction: column; align-items: center; }
 
-/* o visualizador único */
+/* o visualizador único — uma PLACA DE CIRCUITOS em VIDRO PRETO (pôster quadrado) que se COMPLETA conforme a barra
+   avança, com a cor varrendo o gradiente da timeline */
 .ci-viz { width: 100%; display: flex; justify-content: center; }
-.ci-viz .ci-fig { width: 360px; max-width: 82%; height: auto; overflow: visible; }
+.ci-viz .ci-fig { width: 470px; max-width: 92%; height: auto; overflow: hidden; border-radius: 26px;
+  box-shadow: 0 18px 60px -20px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(127, 232, 255, 0.08); }
 
-/* cada peça nasce (do chão pra cima) conforme o progresso a alcança — a opacidade/transform vêm INLINE do laço da
-   TimelineIdeia (sem transição do CSS, que brigava com o valor por quadro). Só o brilho de neon fica aqui. */
-.ci-viz .iso-line { stroke-linecap: round; }
+/* cada peça (trilha/pad/chip) nasce conforme o progresso a alcança — a opacidade/transform vêm INLINE do laço da
+   TimelineIdeia (sem transição do CSS, que brigava com o valor por quadro). As micro-animações abaixo ficam em
+   elementos FILHOS (o laço sobrescreve o transform do .ci-part, então nunca anime o próprio grupo). */
 .ci-part { transform-box: fill-box; transform-origin: center bottom; opacity: 0; }
-.ci-part .iso-edge { filter: drop-shadow(0 0 3px color-mix(in srgb, var(--anatomy-hi) 55%, transparent)); }
 
-/* o MUNDO holográfico gira: os continentes rolam (dois tiles de 104px — R*2 — pra o laço ser sem costura) */
-@keyframes ci-globo-spin { from { transform: translateX(0); } to { transform: translateX(-104px); } }
-.ci-globo-spin { animation: ci-globo-spin 12s linear infinite; }
+/* os LEDs dos nanochips pulsam (e o halo do núcleo) */
+@keyframes cs-luz { 0%, 100% { opacity: 1; } 45% { opacity: 0.4; } }
+.cs-luz { animation: cs-luz 2.8s ease-in-out infinite; }
+@keyframes cs-luz2 { 0%, 100% { opacity: 0.1; } 50% { opacity: 0.26; } }
+.cs-luz2 { animation: cs-luz2 4s ease-in-out infinite; }
 
-/* a ESTEIRA corre: o conteúdo desliza um período (--ex/--ey, setados inline pela cena) e volta — laço sem costura */
-@keyframes ci-esteira { from { transform: translate(0, 0); } to { transform: translate(var(--ex), var(--ey)); } }
-.ci-esteira { animation: ci-esteira 2.6s linear infinite; }
+/* os pontinhos de decoração boiam de leve */
+@keyframes cs-dot { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+.cs-dot { transform-box: fill-box; animation: cs-dot 7s ease-in-out infinite; }
 
-/* a PRENSA desce e sobe */
-@keyframes ci-prensa { 0%, 100% { transform: translateY(-1px); } 45%, 55% { transform: translateY(6px); } }
-.ci-prensa { transform-box: fill-box; transform-origin: center; animation: ci-prensa 1.8s ease-in-out infinite; }
-
-/* a engrenagem MOTRIZ gira */
-@keyframes ci-giro { to { transform: rotate(360deg); } }
-.ci-giro { transform-box: fill-box; transform-origin: center; animation: ci-giro 7s linear infinite; }
-
-@media (prefers-reduced-motion: reduce) { .ci-globo-spin, .ci-esteira, .ci-prensa, .ci-giro { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .cs-run, .cs-luz, .cs-luz2, .cs-dot { animation: none; } }
 
 /* a barra de progresso */
-.ci-bar { position: relative; width: 100%; margin-top: 10px; }
+/* a timeline fica bem abaixo da placa: o chip é o destaque */
+.ci-bar { position: relative; width: 100%; margin-top: 44px; }
 .ci-line, .ci-fill { position: absolute; top: 12px; left: 10%; height: 2px; border-radius: 2px; }
 .ci-line { right: 10%; background: rgba(127, 232, 255, 0.14); }
-.ci-fill { width: 0; background: linear-gradient(90deg, #f5c542, #46b0ff, #38f0ff, #8b5cf6, #22d3ee); box-shadow: 0 0 6px rgba(127, 232, 255, 0.5); }
+.ci-fill { width: 0; background: linear-gradient(90deg, #f5c542, #2bd47a, #2d6ae8, #8b5cf6, #22d3ee); box-shadow: 0 0 6px rgba(127, 232, 255, 0.5); }
 .ci-comet { position: absolute; top: 12px; left: 10%; width: 12px; height: 12px; margin: -5px 0 0 -6px; border-radius: 50%; background: #eafcff; box-shadow: 0 0 10px #bdfcff, 0 0 18px rgba(189, 252, 255, 0.5); opacity: 0; }
 
 .ci-row { position: relative; display: flex; }
@@ -48,3 +44,20 @@
 .ci-cell.on .ci-dot { background: currentColor; box-shadow: 0 0 10px currentColor, inset 0 0 0 2px currentColor; }
 .ci-tit { margin-top: 8px; text-align: center; font-family: ui-monospace, monospace; font-size: 12.5px; font-weight: 700; letter-spacing: .02em; color: rgba(234, 252, 255, 0.5); transition: color .4s; }
 .ci-cell.on .ci-tit { color: #eafcff; }
+
+/* CELULAR: nada de rolagem lateral — a placa ocupa a largura e os 5 marcos cabem na tela (o título quebra em 2 linhas) */
+@media (max-width: 640px) {
+  .ci-stage { min-width: 0; }
+  .ci-viz .ci-fig { width: 100%; max-width: 420px; border-radius: 20px; }
+  .ci-bar { margin-top: 30px; }
+  .ci-line, .ci-fill, .ci-comet { top: 10px; }
+  .ci-node { height: 20px; }
+  .ci-dot { width: 10px; height: 10px; }
+  /* a monoespaçada é larga demais pra 5 colunas num celular estreito: no celular, a proporcional, sem hifenizar */
+  .ci-tit { margin-top: 6px; padding: 0 3px; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 10.5px; font-weight: 600; line-height: 1.25; letter-spacing: 0; overflow-wrap: normal; hyphens: manual; }
+}
+/* telas muito estreitas (iPhone SE e afins) */
+@media (max-width: 350px) {
+  .ci-tit { font-size: 9.5px; padding: 0 1px; }
+}

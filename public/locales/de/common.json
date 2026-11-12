@@ -348,6 +348,13 @@
         "success_message": "Anmeldeinformationen aktualisiert"
     },
     "landing": {
+        "timeline": {
+            "base": "Wissenschaftliche Basis",
+            "conversa": "Gespräch mit KIs",
+            "blueprint": "Blueprint",
+            "prototipo": "Prototyp & Tests",
+            "mundo": "In der echten Welt"
+        },
         "hero_tagline": "Mehr als Gespräche mit Chatbots und offenen Tabs – hier bauen Sie <hl>Ideen, die zu fertigen Produkten werden</hl>.",
         "knowledge_title": "Verwandeln Sie Ihre Idee in Realität.",
         "privacidade_titulo": "Bauen Sie Ihre Idee mit Privatsphäre.",

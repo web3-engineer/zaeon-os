@@ -348,6 +348,13 @@
         "success_message": "凭证已更新"
     },
     "landing": {
+        "timeline": {
+            "base": "科学基础",
+            "conversa": "与AI对话",
+            "blueprint": "Blueprint",
+            "prototipo": "原型与测试",
+            "mundo": "走向现实"
+        },
         "hero_tagline": "不只是和聊天机器人对话、开着一堆标签页——在这里，你打造<hl>能成为最终产品的想法</hl>。",
         "knowledge_title": "把你的想法变成现实。",
         "privacidade_titulo": "在保护隐私的前提下实现你的想法。",
