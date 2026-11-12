@@ -21,26 +21,6 @@ const ligado = (over: Partial<EscolhaOcta> = {}): EscolhaOcta => ({ ...escolhaMo
 
 beforeEach(() => _resetPausaOcta());
 
-describe("octa · REA + Claude (Opus no agente)", () => {
-  it("OCTA_REA=1 + REA_MODELO_AGENTE: o Opus vira o primário, pulando o local", () => {
-    const e = escolhaModeloOcta({ ...PROD, OCTA_REA: "1", REA_MODELO_AGENTE: "claude-opus", OCTA_MODELO_LOCAL: "1" });
-    expect(e.local).toBeNull();
-    expect(e.reserva).toBe("claude-opus");
-  });
-  it("sem OCTA_REA, a env sozinha não muda nada (segue o Google de sempre)", () => {
-    const e = escolhaModeloOcta({ ...PROD, REA_MODELO_AGENTE: "claude-opus" });
-    expect(e.reserva).toBe("vertex_ai/gemini-2.5-pro");
-  });
-  it("OCTA_REA=1 mas sem REA_MODELO_AGENTE: comportamento de antes", () => {
-    const e = escolhaModeloOcta({ ...PROD, OCTA_REA: "1" });
-    expect(e.reserva).toBe("vertex_ai/gemini-2.5-pro");
-  });
-  it("o override não vale no fluxo landing (não é RE)", () => {
-    const e = escolhaModeloOcta({ ...PROD, OCTA_REA: "1", REA_MODELO_AGENTE: "claude-opus" }, "landing");
-    expect(e.reserva).not.toBe("claude-opus");
-  });
-});
-
 describe("octa · escolha do modelo", () => {
   it("flag desligada: nada de local, o Google 'forte' de sempre", () => {
     const e = escolhaModeloOcta(PROD);

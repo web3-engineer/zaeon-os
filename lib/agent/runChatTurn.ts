@@ -434,7 +434,9 @@ export async function runChatTurn(
         const id = await srv.iniciarRea(userId, scopeIdRea, titulo).catch(() => null);
         if (id) {
           out.answer = { ...out.answer, reaBlueprint: { id, titulo, gerando: true } };
-          void srv.reaBlueprintDoTurno({ userId, scopeId: scopeIdRea, titulo, prompt, answerTexto: textoDaResposta(out.answer), history: params.history }).catch(() => null);
+          // o REA herda o modelo da superfície: se o aluno escolheu um modelo de gateway (Claude/Zaeon),
+          // o blueprint é redigido por ele; senão, Gemini (ver genPadrao em rea-blueprint/server).
+          void srv.reaBlueprintDoTurno({ userId, scopeId: scopeIdRea, titulo, prompt, answerTexto: textoDaResposta(out.answer), history: params.history, grupoGateway: viaGateway(escolhido) ? escolhido.grupo : null }).catch(() => null);
         }
       }
     }

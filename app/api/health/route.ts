@@ -17,7 +17,6 @@
  * "inline" (rodam aqui no web). Só o modo, nenhum segredo.
  */
 import { nivelDoVideo } from "@/lib/agent/toolsVideo";
-import { reaClaude } from "@/lib/octa/reaModelo";
 import { NextResponse } from "next/server";
 import { estadoGateway, provedorAtual } from "@/lib/llm/saude";
 import { estadoLeitor } from "@/lib/leitor/saude";
@@ -239,9 +238,6 @@ export async function GET() {
       visao: !visaoNoHarnessLigado() ? "off" : (visaoDisponivel() ? "on" : "sem_credencial"),
       // câmera ao vivo (/api/ai/camera): a flag VISAO_CAMERA + a mesma credencial Vertex da visão.
       camera: !cameraAoVivoLigada() ? "off" : (visaoDisponivel() ? "on" : "sem_credencial"),
-      // REA com Claude (créditos Anthropic pelo gateway): os NOMES de modelo roteados (ex.: claude-opus
-      // no agente, claude-sonnet na redação) — não são segredo; "off" quando não configurado.
-      reaClaude: { agente: reaClaude().agente ?? "off", redacao: reaClaude().redacao ?? "off" },
     },
     // TODAS AS FLAGS DE RECURSO, por nome (lib/flags/recibo): o que está ligado e o que está
     // desligado NESTE servidor. Antes, "tem update subindo com flag off?" só se respondia lendo o

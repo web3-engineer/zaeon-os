@@ -87,32 +87,15 @@ No Octa (com `OCTA_REA=1` + `REA_BRIDGE_URL/TOKEN`), peça uma análise de um al
 ### 5. Rollback
 Os `.bak` do passo 2 preservam os arquivos 6.5.0. Se o 6.9 der problema: `cp Dockerfile.bak Dockerfile; cp compose.yml.bak compose.yml; cp bridge.mjs.bak bridge.mjs`, depois `build` + `rm -f zaeon_rea_engine` + `up -d` de novo (escopado). A imagem 6.9 nova não apaga a anterior; a antiga fica como `<none>` até um `prune` **escopado** (`docker image prune` sem `-a`, nunca o global). Nunca `prune -a`/`down` sem `-p`.
 
-## REA com o Claude (qualidade máxima, créditos Anthropic)
-O raciocínio do REA pode rodar no Claude pelos créditos do dono, pelo MESMO gateway LiteLLM — sem SDK nem chave no app. Opt-in; desligado por padrão.
+## Claude no catálogo (créditos Anthropic pelo gateway)
+O Claude (Opus/Sonnet) entra no catálogo ÚNICO de modelos (`lib/chat/modelos`), compartilhado por chat (Aura), Octa e REA. Roteado pelo MESMO gateway LiteLLM — sem SDK nem chave no app; a `ANTHROPIC_API_KEY` mora na Contabo (gateway). **O REA não tem modelo próprio:** ele herda o modelo selecionado na superfície (octa/aura/zaeon). Se o aluno escolher Claude, o blueprint e a análise de binário usam Claude; senão, o modelo de sempre.
 
-**Roteamento:** Opus no AGENTE (`octa_rea`, raciocínio sobre binário/decompilação) e Sonnet na REDAÇÃO (o compositor do blueprint do chat).
+**Ligar (uma vez, na Contabo — gateway `zaeon-models`):**
+  a. no `litellm-config.yaml`, os blocos `claude-opus`/`claude-sonnet` (anthropic/…, `api_key: os.environ/ANTHROPIC_API_KEY`);
+  b. no `docker-compose.zaeon-models.yaml` (serviço `litellm`), `ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}` em `environment:` (sem ela a chave do `.env` não chega no container);
+  c. `ANTHROPIC_API_KEY=sk-ant-…` no `.env` ao lado do compose; recarregar o litellm.
 
-**1. Chave na Contabo (gateway):** três coisas no projeto `zaeon-models` (o `.env` da box é arquivo solto, o repo não está lá):
-  a. no `litellm-config.yaml`, os blocos `claude-opus` e `claude-sonnet` (anthropic/…, `api_key: os.environ/ANTHROPIC_API_KEY`);
-  b. no `docker-compose.zaeon-models.yaml`, no serviço `litellm`, a linha `ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}` em `environment:` — SEM ela a chave do `.env` NÃO chega no container (o `.env` do compose só faz substituição `${…}`, não injeta no container);
-  c. `ANTHROPIC_API_KEY=sk-ant-…` no `.env` ao lado do compose.
-
-Depois recarregue o gateway:
-```bash
-docker compose -p zaeon-models -f infra/zaeon-models/docker-compose.zaeon-models.yaml up -d litellm   # pega a chave + config novos
-```
-Se a Anthropic recusar o id do modelo, troque em `litellm-config.yaml` pelo nome datado (ex.: `anthropic/claude-opus-4-1-YYYYMMDD`).
-
-**2. Ligar no app (`.env` da VPS do app):**
-```
-REA_MODELO_AGENTE=claude-opus     # Opus no agente octa_rea (só com OCTA_REA=1)
-REA_MODELO_REDACAO=claude-sonnet  # Sonnet no writeup do blueprint
-```
-Sem essas envs, cada ponto segue no Gemini de antes.
-
-**⚠️ Blast radius do agente:** o Octa é um agente só, um modelo por turno. Com `REA_MODELO_AGENTE` e `OCTA_REA=1`, o Octa usa o Opus em TODO turno enquanto o REA está ligado — não só nas tools do REA. Em sessão de engenharia reversa é o desejado; se o Octa também é muito usado pra código geral, pese o custo. A redação (Sonnet) é isolada: só o blueprint.
-
-**Verificar:** `GET /api/health` → `capacidades.reaClaude` = `{ agente, redacao }` (os nomes roteados, ou `off`). Depois, um turno de RE deve aparecer no gasto da sua conta Anthropic.
+Verificar: `curl $BIND_ADDR:4000/v1/models` lista `claude-opus`/`claude-sonnet`; um chat de teste com `model=claude-sonnet` responde. No app, o modelo aparece na pílula do composer (provedor "Claude"); o REA passa a usar o que estiver selecionado.
 
 ## O que falta (futuro)
 - As famílias com efeito colateral (capture/observe/trace/debug/adb) — pedem autorização por-ação.

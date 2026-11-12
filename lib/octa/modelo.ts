@@ -29,8 +29,6 @@
 import { semImagens, type ChamarModelo, type MsgModelo, type RespostaModelo } from "@/lib/octa/agente";
 import { modeloReal } from "@/lib/octa/litellm";
 import { ehProvedorTerceiro, semSegredos } from "@/lib/octa/noPii";
-import { reaLigado } from "@/lib/octa/skills";
-import { modeloReaAgente } from "@/lib/octa/reaModelo";
 
 type Env = Record<string, string | undefined>;
 const num = (v: string | undefined, d: number) => (Number(v) > 0 ? Number(v) : d);
@@ -62,20 +60,6 @@ export function escolhaModeloOcta(env: Env = process.env, fluxo?: "landing"): Es
       pausaMs: num(env.OCTA_LOCAL_PAUSA_MS, 120_000),
       landing: true,
       reservaSemImagem: ligado,
-    };
-  }
-  // REA + Claude (Opus): com OCTA_REA=1 e REA_MODELO_AGENTE configurado, o modelo PRIMÁRIO do agente
-  // vira o Opus pelo gateway, pulando o local (queremos a qualidade máxima no raciocínio de RE, não a
-  // reserva local). Opt-in; ver o blast radius em lib/octa/reaModelo. Desligado → comportamento de antes.
-  const claude = reaLigado(env) ? modeloReaAgente(env) : null;
-  if (claude) {
-    return {
-      local: null,
-      reserva: claude,
-      timeoutMs: num(env.OCTA_LOCAL_TIMEOUT_MS, 120_000),
-      orcamentoMs: num(env.OCTA_LOCAL_ORCAMENTO_MS, 240_000),
-      maxPromptTok: SEM_TETO,
-      pausaMs: num(env.OCTA_LOCAL_PAUSA_MS, 120_000),
     };
   }
   return {
