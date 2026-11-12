@@ -7,15 +7,18 @@ import { MODELOS_CHAT, CHAVE_MODELO } from "@/lib/chat/modelos";
 afterEach(() => { cleanup(); localStorage.clear(); });
 
 describe("SeletorModelo", () => {
-  it("mostra símbolo + nome; abre a lista dos 3 e troca", () => {
+  it("mostra símbolo + nome; abre a lista e troca", () => {
     const onChange = vi.fn();
     render(<SeletorModelo valor={MODELOS_CHAT[0]} onChange={onChange} />);
     const pilula = screen.getByRole("button", { name: /Gemini 3\.5 Flash/ });
     expect(pilula.textContent).toContain("✦");
     fireEvent.click(pilula);
     const opcoes = screen.getAllByRole("option");
-    expect(opcoes.map((o) => o.textContent)).toEqual(expect.arrayContaining([expect.stringContaining("Gemini 2.5 Pro")]));
-    expect(opcoes).toHaveLength(3);
+    const textos = opcoes.map((o) => o.textContent);
+    expect(textos).toEqual(expect.arrayContaining([expect.stringContaining("Gemini 2.5 Pro")]));
+    expect(textos.some((t) => t?.includes("Claude Opus"))).toBe(true);
+    expect(textos.some((t) => t?.includes("Claude Sonnet"))).toBe(true);
+    expect(opcoes).toHaveLength(5);
     fireEvent.click(screen.getByText("Gemini 2.5 Pro"));
     expect(onChange).toHaveBeenCalledWith("gemini-2.5-pro");
     expect(screen.queryAllByRole("option")).toHaveLength(0);

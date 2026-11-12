@@ -21,9 +21,13 @@ export function useModeloEscolhido(): [ModeloChat, (id: string) => void] {
   return [modeloDoId(id) ?? MODELOS_CHAT[0], escolher];
 }
 
-const corDo = (m: ModeloChat) => (m.provedor === "zaeon"
-  ? "text-emerald-700 dark:text-emerald-300 border-emerald-500/45 bg-emerald-500/10"
-  : "text-sky-700 dark:text-sky-300 border-sky-500/40 bg-sky-500/10");
+/** Rótulo e cores por provedor — o catálogo mistura Google, Zaeon (local) e Claude (Anthropic). */
+const PROVEDOR: Record<ModeloChat["provedor"], { rotulo: string; pilula: string; simbolo: string }> = {
+  google: { rotulo: "Google", pilula: "text-sky-700 dark:text-sky-300 border-sky-500/40 bg-sky-500/10", simbolo: "text-sky-600 dark:text-sky-300" },
+  zaeon: { rotulo: "Zaeon", pilula: "text-emerald-700 dark:text-emerald-300 border-emerald-500/45 bg-emerald-500/10", simbolo: "text-emerald-600 dark:text-emerald-300" },
+  anthropic: { rotulo: "Claude", pilula: "text-violet-700 dark:text-violet-300 border-violet-500/45 bg-violet-500/10", simbolo: "text-violet-600 dark:text-violet-300" },
+};
+const corDo = (m: ModeloChat) => PROVEDOR[m.provedor].pilula;
 
 export function SeletorModelo({ valor, onChange, desabilitado }: { valor: ModeloChat; onChange: (id: string) => void; desabilitado?: boolean }) {
   const [aberto, setAberto] = useState(false);
@@ -68,11 +72,11 @@ export function SeletorModelo({ valor, onChange, desabilitado }: { valor: Modelo
                   onClick={() => { onChange(m.id); setAberto(false); }}
                   className={`w-full text-left flex items-start gap-2 px-2.5 py-2 rounded-xl transition-colors ${sel ? "bg-slate-100 dark:bg-white/10" : "hover:bg-slate-50 dark:hover:bg-white/5"}`}
                 >
-                  <span aria-hidden className={`mt-0.5 text-[13px] ${m.provedor === "zaeon" ? "text-emerald-600 dark:text-emerald-300" : "text-sky-600 dark:text-sky-300"}`}>{m.simbolo}</span>
+                  <span aria-hidden className={`mt-0.5 text-[13px] ${PROVEDOR[m.provedor].simbolo}`}>{m.simbolo}</span>
                   <span className="flex-1 min-w-0">
                     <span className="block text-[12.5px] font-semibold text-slate-900 dark:text-white">
                       {m.nome}
-                      <span className="ml-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-400 dark:text-white/40">{m.provedor === "zaeon" ? "Zaeon" : "Google"}</span>
+                      <span className="ml-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-400 dark:text-white/40">{PROVEDOR[m.provedor].rotulo}</span>
                     </span>
                     <span className="block text-[11px] text-slate-500 dark:text-white/50">{m.descricao}</span>
                   </span>

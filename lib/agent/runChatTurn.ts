@@ -31,7 +31,7 @@ import { blocoFonteColada, objetivoComFonte, pedidoParaTitulo, separarFonteColad
 import { blocoDosAnexos } from "@/lib/agent/anexos";
 import { sinteseLigada } from "@/lib/agent/sintese-flag";
 import { graficoLigado } from "@/lib/agent/graficosDoTurno";
-import { MODELO_PADRAO, modeloDoId, nomeDoModeloServido } from "@/lib/chat/modelos";
+import { MODELO_PADRAO, modeloDoId, nomeDoModeloServido, viaGateway } from "@/lib/chat/modelos";
 import { podeProNasPesadas } from "@/lib/ai/proNasPesadas";
 import { markRunning, saveDone, saveError } from "@/lib/agent/chat-turn-store";
 import type { Wing } from "@/lib/agent/memory";
@@ -199,17 +199,19 @@ export async function runChatTurn(
     // `taskId` = o TURNO: todas as chamadas de modelo deste turno ficam ligadas no TokenLedger (o console Zaeon Hermes
     // agrupa por ele pra medir a saúde do chat — quantos turnos caíram na reserva, quanto cada fase levou).
     const ledgerTurno = { agentKey: mentor?.slug ?? agente, mentorSlug: mentor?.slug ?? null, userId: userId ?? null, surface: surfaceLedger(surface ?? hctx.activeTab), scopeId: typeof ac.cartolinaScopeId === "string" ? ac.cartolinaScopeId : null, taskId: turnId ?? params.tarefaId ?? novoIdDeTarefa() };
-    // MODELO LOCAL (Zaeon/Contabo): caminho enxuto em streaming. Não começou → segue pelo Google, abaixo.
-    if (escolhido?.provedor === "zaeon" && escolhido.grupo) {
-      narrar(serializarProgresso({ fase: "draft", rotulo: `${escolhido.nome} pensando no servidor Zaeon` }));
+    // MODELO PELO GATEWAY (Zaeon/Contabo local OU Claude/Anthropic): caminho enxuto em streaming, sem as
+    // tools do harness. Não começou → segue pelo Google (harness completo), abaixo.
+    if (viaGateway(escolhido)) {
+      const ondePensa = escolhido.provedor === "zaeon" ? "no servidor Zaeon" : "pelos créditos Anthropic";
+      narrar(serializarProgresso({ fase: "draft", rotulo: `${escolhido.nome} pensando ${ondePensa}` }));
       try {
         const [{ turnoLocal }, { blocoDaBase }] = await Promise.all([import("@/lib/agent/turnoLocal"), import("@/lib/rag/citar")]);
         const s = await turnoLocal({
           prompt, history: params.history, systemContext: params.systemContext,
           base: blocoDaBase(await basePromise) || undefined, grupo: escolhido.grupo, ctx: ledgerTurno,
         }, (pedaco) => narrar(pedaco));
-        if (s.interrompido) narrar("\n\n_(a resposta local foi interrompida aqui)_");
-        narrar(serializarModelo(nomeDoModeloServido(escolhido.grupo, "contabo")));
+        if (s.interrompido) narrar("\n\n_(a resposta foi interrompida aqui)_");
+        narrar(serializarModelo(nomeDoModeloServido(escolhido.grupo)));
         const outLocal: HarnessOutput = { mode: "text", text: "" };
         if (userId) {
           void Promise.all([import("@/lib/canal/usage"), import("@/src/lib/prisma")])
