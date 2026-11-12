@@ -200,9 +200,7 @@ describe("EMPACOTAMENTO · a skill tem de chegar na imagem", () => {
 
   it("a skill de verdade está VISÍVEL para o git (não é só teoria do padrão)", () => {
     // `git check-ignore` sai 1 quando o caminho NÃO é ignorado — é o que queremos.
-    /* eslint-disable @typescript-eslint/no-require-imports */
     const { spawnSync } = require("node:child_process") as typeof import("node:child_process");
-    /* eslint-enable @typescript-eslint/no-require-imports */
     const alvo = `${DIR_SKILLS_CASA}/${catalogo.skills[0]?.pasta ?? "anatomia-3d"}/SKILL.md`;
     const r = spawnSync("git", ["check-ignore", "-q", alvo], { encoding: "utf8" });
     expect(r.status, `${alvo} está ignorado pelo git — a skill não chegaria ao repositório`).toBe(1);

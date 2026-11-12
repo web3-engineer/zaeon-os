@@ -31,10 +31,8 @@ export function promptDaTarefa(corpoDaSkill: string, tarefa: string): { system: 
 export type LeitorAgentic = { ler: (pasta: string) => string | null };
 
 export function leitorAgenticDeDisco(dir = ".claude/skills"): LeitorAgentic {
-  /* eslint-disable @typescript-eslint/no-require-imports */
   const nodeFs = require("node:fs") as typeof import("node:fs");
   const path = require("node:path") as typeof import("node:path");
-  /* eslint-enable @typescript-eslint/no-require-imports */
   return {
     ler: (pasta) => {
       const p = path.join(dir, pasta, "agentic.json");

@@ -47,10 +47,8 @@ export function carregarCurso(leitor: LeitorDeCurso, pasta: string): CursoCarreg
 
 /** O leitor de disco. Só servidor e teste chamam. */
 export function leitorDeDisco(dir = ".claude/skills"): LeitorDeCurso {
-  /* eslint-disable @typescript-eslint/no-require-imports */
   const nodeFs = require("node:fs") as typeof import("node:fs");
   const path = require("node:path") as typeof import("node:path");
-  /* eslint-enable @typescript-eslint/no-require-imports */
   return {
     ler: (pasta) => {
       const p = path.join(dir, pasta, ARQUIVO_CURSO);

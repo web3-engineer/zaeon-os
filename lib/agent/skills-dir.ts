@@ -215,10 +215,8 @@ export const appsDoCatalogo = (c: CatalogoDaCasa): string[] =>
 
 /** Isolado aqui para o resto do módulo seguir testável sem disco. Só servidor e teste chamam. */
 export function fsDeDisco(): FsDeSkills {
-  /* eslint-disable @typescript-eslint/no-require-imports */
   const nodeFs = require("node:fs") as typeof import("node:fs");
   const path = require("node:path") as typeof import("node:path");
-  /* eslint-enable @typescript-eslint/no-require-imports */
   return {
     listar: (dir) =>
       nodeFs.readdirSync(dir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name),
