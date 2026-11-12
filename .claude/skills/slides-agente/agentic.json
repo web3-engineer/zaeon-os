@@ -1,0 +1,5 @@
+{
+  "tarefa": "Monte um deck de 5 a 7 slides sobre: \"Por que times pequenos entregam mais rápido\". Responda APENAS o array JSON de slides, no formato do procedimento.",
+  "contrato": { "tipo": "json", "chaves": ["titulo", "conteudo"] },
+  "modelos": ["claude", "codex", "octa"]
+}

@@ -1,0 +1,5 @@
+{
+  "tarefa": "Audite este trecho do ponto de vista DEFENSIVO (proteger o próprio release). Responda APENAS o array JSON de exposições, no formato do procedimento.\n\n```js\nconst LICENSE_SECRET = 'sk_live_9f2b...';\nfunction checkLicense(key) {\n  // valida a licença no cliente, com o segredo embutido\n  return hmac(key, LICENSE_SECRET) === expected;\n}\n```",
+  "contrato": { "tipo": "json", "chaves": ["exposicao", "tecnica", "recomendacao"] },
+  "modelos": ["claude", "codex", "octa"]
+}
