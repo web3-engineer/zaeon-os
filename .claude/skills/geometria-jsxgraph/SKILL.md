@@ -17,6 +17,8 @@ metadata:
   zaeon-modelo: planta
   zaeon-tags: geometria, JSXGraph, geometria dinâmica, funções, agente
   zaeon-entrega: a construção em JSON, um elemento por item; pontos livres que o aluno arrasta e elementos dependentes que acompanham; o gráfico de funções; roda em Claude, Codex e Octa; renderização pelo JSXGraph (MIT ou LGPL)
+  zaeon-agente: noether
+  zaeon-card: agente
   zaeon-app-licenca: MIT OR LGPL-3.0-or-later (JSXGraph, Matthias Ehmann, Michael Gerhäuser, Carsten Miller, Alfred Wassermann e contribuidores — Universidade de Bayreuth)
 ---
 

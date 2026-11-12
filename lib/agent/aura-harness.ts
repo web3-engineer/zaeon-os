@@ -1014,6 +1014,7 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
           fontes: st.evidence.map((f) => f.source).filter(Boolean) as { year?: number }[],
           docsDaBase: (ctx as { docsDaBase?: { titulo: string; trechos: unknown[] }[] }).docsDaBase,
           objetivo: st.objective,
+          intent: st.intent,
         });
         if (gs.length) comBase.graficos = gs;
         return anexarLivros(comBase, livrosAchados);

@@ -17,6 +17,8 @@ metadata:
   zaeon-modelo: livro
   zaeon-tags: matemática, LaTeX, KaTeX, passo a passo, agente
   zaeon-entrega: a resolução em passos numerados; a fórmula de cada passo em LaTeX compatível com KaTeX; a justificativa de cada passo em uma frase; roda em Claude, Codex e Octa; renderização pelo KaTeX (MIT)
+  zaeon-agente: noether
+  zaeon-card: agente
   zaeon-app-licenca: MIT (KaTeX, Khan Academy e contribuidores)
 ---
 

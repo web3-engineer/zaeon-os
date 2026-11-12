@@ -19,6 +19,7 @@ metadata:
   zaeon-entrega: o espelho oficial de download do Scilab (GPL-2.0); a instalação; os primeiros comandos com matrizes e gráficos; o primeiro diagrama de blocos no Xcos; a tabela de equivalência com MATLAB e com Python (NumPy)
   zaeon-device-plataforma: windows
   zaeon-device-mirror: https://www.scilab.org/download
+  zaeon-agente: noether
   zaeon-app-licenca: GPL-2.0 (Scilab, desde a versão 6.0; Dassault Systèmes, Scilab Enterprises, Inria e contribuidores)
 ---
 

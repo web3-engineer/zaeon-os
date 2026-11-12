@@ -18,6 +18,7 @@ metadata:
   zaeon-tags: algoritmos, Python, complexidade, busca binária, ordenação, open source
   zaeon-entrega: três módulos com conteúdo de estudo; prova e desafio por módulo; sandbox Python com teste automático que distingue a solução certa do atalho; crédito e link para o TheAlgorithms/Python (MIT)
   zaeon-curso-fonte: https://github.com/TheAlgorithms/Python
+  zaeon-agente: noether
   zaeon-app-licenca: MIT (TheAlgorithms/Python, TheAlgorithms e contribuidores)
 ---
 

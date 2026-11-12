@@ -17,6 +17,7 @@ metadata:
   zaeon-modelo: graos
   zaeon-tags: pandas, ciência de dados, Python, CSV, análise, open source
   zaeon-entrega: o roteiro de análise exploratória em sete passos; leitura de CSV brasileiro (separador e decimal); limpeza de faltantes sem esconder o problema; groupby e merge explicados; os erros que geram conclusão falsa
+  zaeon-agente: noether
   zaeon-app-licenca: BSD-3-Clause (pandas, AQR Capital Management, Lambda Foundry e PyData Development Team)
 ---
 

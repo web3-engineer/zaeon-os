@@ -355,7 +355,30 @@ export async function runChatTurn(
         }))
         .catch((e) => console.error("[cache] guardar falhou:", String((e as Error)?.message ?? e).slice(0, 160)));
     }
-    const out = resolveHarnessOutput(state, answer, surface, objetivo, { trabalhoNoEditor: multi });
+    /**
+     * A PEÇA DO ATLAS NO LUGAR DO PALPITE (lib/agent/anatomiaDoTurno). Para quem tem a habilidade
+     * `anatomia`: se o PEDIDO nomeia uma estrutura que o atlas tem, o artefato do turno é ela — e não
+     * o diagrama, a imagem ou o guia que o harness escolheria sozinho. Decidido pelo dado, sem modelo;
+     * vale também para a resposta que veio do cache. Best-effort: sem atlas no disco, nada muda.
+     */
+    let respostaFinal = answer;
+    if (habilidades.includes("anatomia")) {
+      try {
+        const [{ carregarAtlas }, { estruturaNomeada }, { artefatosComAnatomia }] = await Promise.all([
+          import("@/lib/anatomia/carregar"), import("@/lib/anatomia/pedido"), import("@/lib/agent/anatomiaDoTurno"),
+        ]);
+        const atlas = carregarAtlas();
+        const estrutura = atlas ? estruturaNomeada(atlas, objetivo) : null;
+        if (estrutura) {
+          const artefatos = artefatosComAnatomia({
+            artefatos: (answer as { artifacts?: any[] }).artifacts ?? state.artifacts ?? [],
+            objetivo, estrutura, explicito: state.intent === "gerar_artefato",
+          });
+          respostaFinal = { ...(answer as object), artifacts: artefatos } as typeof answer;
+        }
+      } catch { /* a peça é um ganho, não uma condição: o turno segue como estava */ }
+    }
+    const out = resolveHarnessOutput(state, respostaFinal, surface, objetivo, { trabalhoNoEditor: multi });
     // TCC cross-sala: "crie um TCC sobre X" cria o TCC da conversa; nos turnos seguintes
     // `work.sections` vira operação por seção. AGUARDADO (é só banco, sem modelo) porque o cliente
     // precisa do workId pra abrir a aba — e best-effort: null nunca derruba o turno.

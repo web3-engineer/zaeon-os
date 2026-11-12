@@ -252,7 +252,8 @@ describe("graficosDoTurno · onde CABE é regra, não opinião do modelo", () =>
   });
 
   it("os dois juntos saem na ordem de utilidade, dentro do teto", () => {
-    const gs = graficosDoTurno({ fontes, docsDaBase: docs, env: {} });
+    // "papers por ano" só cabe em turno SOBRE a literatura (cabePapersPorAno) — aqui, uma busca de fontes
+    const gs = graficosDoTurno({ fontes, docsDaBase: docs, env: {}, intent: "pesquisar_fontes" });
     expect(gs).toHaveLength(2);
     expect(gs.length).toBeLessThanOrEqual(MAX_GRAFICOS);
     expect(gs[0].titulo).toBe("Papers por ano");
