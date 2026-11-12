@@ -7,12 +7,17 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { paraUI } from "@/lib/estudos/vitrineAdmin";
+import { itensDasSkillsDoDisco } from "@/lib/estudos/vitrineSkills";
 
 export async function GET() {
+    // As SKILLS DA CASA vêm do diretório `.claude/skills`, não do banco: o catálogo é o diretório
+    // (ver lib/agent/skills-dir). Fora do try do Prisma de propósito — vitrine sem banco ainda
+    // mostra as skills, e banco fora não some com elas.
+    const skills = itensDasSkillsDoDisco();
     try {
         const rows = await prisma.itemVitrine.findMany({ where: { ativo: true }, orderBy: [{ ordem: "asc" }, { criadoEm: "desc" }] });
-        return NextResponse.json({ itens: rows.map(paraUI) });
+        return NextResponse.json({ itens: [...skills, ...rows.map(paraUI)] });
     } catch {
-        return NextResponse.json({ itens: [] });
+        return NextResponse.json({ itens: skills });
     }
 }
