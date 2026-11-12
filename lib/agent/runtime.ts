@@ -20,6 +20,7 @@ import {
 } from "@/lib/agent/tools";
 // `toolsWeb` importa SÓ TIPOS daqui de volta (apagados na compilação), então não há ciclo.
 import { abrirUrlDef, baixarParaBaseDef } from "@/lib/agent/toolsWeb";
+import { TOOLS_BASICAS } from "@/lib/agent/toolsBasicas";
 import { lerAnexoDef, listarAnexosDef } from "@/lib/agent/toolsAnexo";
 
 // ───────────────────────────── contratos do runtime (§11.2) ─────────────────────────────
@@ -474,3 +475,8 @@ registrarBaixarParaBase();
 // Anexo (F3): registradas SEMPRE — quem decide é `disponivelNoTurno`, não o boot. Não há
 // configuração pra depender: ou a conversa tem arquivo, ou não tem.
 [listarAnexosDef, lerAnexoDef].forEach(registerTool);
+
+// Básicas do dia a dia (calcular/converter/data_hora): PURAS — zero rede, zero configuração de
+// servidor de que dependam, então registradas SEM condição, como as demais tools de raciocínio.
+// É o kit que todo assistente sério tem e que o harness não tinha; entram em TOOLS_BASE (capacidades).
+TOOLS_BASICAS.forEach(registerTool);
