@@ -1,0 +1,267 @@
+{
+  "modulos": [
+    {
+      "titulo": "Busca binária — achar em log n",
+      "estudo": "Procurar um nome numa lista telefônica de papel ninguém faz página por página: abre-se no meio, vê-se se o nome vem antes ou depois, e joga-se METADE fora. Isso é a busca binária, e ela só funciona por uma razão: a lista está ORDENADA. Sem ordem, olhar o meio não diz nada sobre onde o alvo está.\n\nO algoritmo guarda dois índices, `inicio` e `fim`, que cercam o trecho onde o alvo ainda pode estar. A cada passo calcula `meio = (inicio + fim) // 2` e compara. Se `lista[meio]` é o alvo, achou. Se é MENOR que o alvo, o alvo só pode estar à direita: `inicio = meio + 1`. Se é MAIOR, só pode estar à esquerda: `fim = meio - 1`. Quando `inicio` passa de `fim`, o trecho ficou vazio: o alvo não está na lista, e a função devolve -1.\n\nPor que é rápido: cada comparação corta o problema pela metade. Uma lista de 1.000.000 de itens precisa de no máximo 20 comparações, porque 2 elevado a 20 passa de um milhão. A busca linear, item por item, precisaria de até um milhão. Essa diferença tem nome: O(log n) contra O(n).\n\nOs dois erros clássicos: (1) esquecer o `+ 1` e o `- 1` — sem eles o trecho não encolhe e o laço nunca termina; (2) usar `while inicio < fim` em vez de `<=` e deixar de olhar o último candidato. O invariante que protege dos dois: 'se o alvo existe, ele está entre inicio e fim, inclusive'. Cada linha do laço tem de manter essa frase verdadeira.\n\nReferência de implementação: `searches/binary_search.py` no repositório TheAlgorithms/Python (MIT).",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Qual é a condição para a busca binária funcionar?",
+            "options": [
+              {
+                "text": "A lista estar ordenada",
+                "isCorrect": true,
+                "explanation": "É a ordem que permite descartar metade a cada comparação."
+              },
+              {
+                "text": "A lista ter tamanho par",
+                "isCorrect": false,
+                "explanation": "O tamanho não importa; a divisão inteira resolve o meio."
+              },
+              {
+                "text": "Os itens serem todos diferentes",
+                "isCorrect": false,
+                "explanation": "Com repetidos ela ainda acha uma ocorrência; o que não pode faltar é a ordem."
+              }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Numa lista ordenada de 1.000.000 de itens, quantas comparações a busca binária faz no pior caso, aproximadamente?",
+            "options": [
+              {
+                "text": "20",
+                "isCorrect": true,
+                "explanation": "2^20 = 1.048.576, então 20 cortes pela metade bastam."
+              },
+              {
+                "text": "1.000",
+                "isCorrect": false,
+                "explanation": "Isso seria a raiz quadrada; a busca binária é logarítmica."
+              },
+              {
+                "text": "500.000",
+                "isCorrect": false,
+                "explanation": "Isso é a média da busca linear, não da binária."
+              }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "Se lista[meio] é MENOR que o alvo, qual atribuição o algoritmo faz? Escreva a linha.",
+            "accepted": [
+              "inicio = meio + 1",
+              "inicio=meio+1",
+              "inicio = meio+1",
+              "início = meio + 1",
+              "lo = mid + 1",
+              "low = mid + 1"
+            ],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Por que escrever `inicio = meio` (sem o + 1) pode travar o programa? Responda em uma frase.",
+          "accepted": [
+            "o trecho não encolhe",
+            "o intervalo não diminui e o laço nunca termina",
+            "laço infinito",
+            "loop infinito",
+            "inicio pode ficar igual para sempre",
+            "o intervalo para de diminuir"
+          ],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "python",
+        "inicial": "def busca_binaria(lista, alvo):\n    \"\"\"Devolve o índice de `alvo` em `lista` (ordenada crescente), ou -1 se não estiver.\n    Use dois índices, inicio e fim, e corte o trecho pela metade a cada passo.\"\"\"\n    # seu código aqui\n    return -1\n",
+        "teste": "dados = [2, 3, 5, 7, 11, 13, 17, 19, 23]\nfor i, v in enumerate(dados):\n    assert busca_binaria(dados, v) == i, f'não achou {v}'\nassert busca_binaria(dados, 4) == -1\nassert busca_binaria(dados, 1) == -1\nassert busca_binaria(dados, 99) == -1\nassert busca_binaria([], 5) == -1\nassert busca_binaria([8], 8) == 0\n\n# tem de ser logarítmica: conta as leituras numa lista grande\nclass Contada(list):\n    leituras = 0\n    def __getitem__(self, i):\n        Contada.leituras += 1\n        return list.__getitem__(self, i)\ngrande = Contada(range(0, 200000, 2))\nassert busca_binaria(grande, 123456) == 61728\nassert Contada.leituras <= 60, 'isso parece busca linear: leu itens demais'\nprint('ok')\n"
+      }
+    },
+    {
+      "titulo": "Ordenação por inserção — o baralho na mão",
+      "estudo": "Quem organiza cartas na mão já conhece este algoritmo: pega-se uma carta de cada vez e desliza-se ela para a esquerda até achar o lugar, entre uma menor e uma maior. A ordenação por inserção faz exatamente isso com uma lista.\n\nA ideia central é um INVARIANTE: no começo da passada `i`, o trecho `lista[0..i-1]` já está ordenado. A passada pega `chave = lista[i]` e a compara com os vizinhos da esquerda, de trás para frente. Cada vizinho MAIOR que a chave é empurrado uma casa para a direita, abrindo espaço. Quando aparece um vizinho menor ou igual (ou a lista acaba), a chave é gravada no buraco. Agora `lista[0..i]` está ordenado, e o invariante vale para a próxima passada. Depois da última, a lista inteira está em ordem.\n\nQuanto custa: no pior caso — a lista em ordem inversa — cada carta atravessa todas as anteriores, e o total de comparações cresce com o QUADRADO do tamanho: O(n²). Dobrou a lista, quadruplicou o trabalho. Mas no melhor caso — a lista já ordenada — cada carta faz uma única comparação e fica onde está: O(n). É por isso que a inserção, lenta em geral, é excelente para listas pequenas ou QUASE ordenadas, e é usada dentro de algoritmos profissionais (o Timsort do Python usa inserção nos trechos curtos).\n\nDuas propriedades que caem em prova: ela é ESTÁVEL (itens iguais mantêm a ordem relativa, porque só se empurra quem é estritamente maior) e é IN-PLACE (ordena dentro da própria lista, sem lista auxiliar).\n\nReferência de implementação: `sorts/insertion_sort.py` no repositório TheAlgorithms/Python (MIT).",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Qual é o MELHOR caso da ordenação por inserção, e quanto custa?",
+            "options": [
+              {
+                "text": "Lista já ordenada — O(n)",
+                "isCorrect": true,
+                "explanation": "Cada item faz uma comparação e não se move."
+              },
+              {
+                "text": "Lista em ordem inversa — O(n)",
+                "isCorrect": false,
+                "explanation": "Esse é o pior caso: cada item atravessa todos os anteriores, O(n²)."
+              },
+              {
+                "text": "Qualquer lista — sempre O(n²)",
+                "isCorrect": false,
+                "explanation": "O custo depende de quão desordenada a lista está."
+              }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "O que significa dizer que um algoritmo de ordenação é ESTÁVEL?",
+            "options": [
+              {
+                "text": "Itens de chave igual mantêm a ordem relativa que tinham",
+                "isCorrect": true,
+                "explanation": "Importa ao ordenar por um campo algo já ordenado por outro."
+              },
+              {
+                "text": "Ele nunca falha com listas grandes",
+                "isCorrect": false,
+                "explanation": "Estabilidade não é robustez; é sobre a ordem dos empates."
+              },
+              {
+                "text": "Ele sempre leva o mesmo tempo",
+                "isCorrect": false,
+                "explanation": "Isso seria custo constante entre casos, outra propriedade."
+              }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "Qual é o invariante da ordenação por inserção no começo da passada i? Responda em uma frase.",
+            "accepted": [
+              "o trecho à esquerda de i já está ordenado",
+              "lista[0..i-1] está ordenada",
+              "os elementos antes de i estão ordenados",
+              "a parte esquerda está ordenada",
+              "os i primeiros elementos estão ordenados"
+            ],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Dobrar o tamanho de uma lista em ordem inversa multiplica o trabalho da ordenação por inserção por quanto?",
+          "accepted": [
+            "4",
+            "quatro",
+            "por 4",
+            "quatro vezes",
+            "4 vezes",
+            "quadruplica"
+          ],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "python",
+        "inicial": "def ordenar_por_insercao(lista):\n    \"\"\"Ordena `lista` em ordem crescente NA PRÓPRIA lista (in-place) e a devolve.\n    Não use sorted() nem .sort(): escreva as passadas e os deslocamentos.\"\"\"\n    # seu código aqui\n    return lista\n",
+        "teste": "import random\n\n# sem atalho: a ordenação tem de ser escrita à mão\nclass SemAtalho(list):\n    def sort(self, *a, **k):\n        raise AssertionError('não use .sort(): escreva a inserção')\n\ncasos = [[], [1], [2, 1], [5, 2, 4, 6, 1, 3], [3, 3, 1, 2, 3], [9, 8, 7, 6, 5, 4, 3, 2, 1]]\nrandom.seed(7)\ncasos += [[random.randint(-50, 50) for _ in range(n)] for n in (10, 37, 80)]\nfor c in casos:\n    esperado = sorted(c)\n    entrada = SemAtalho(c)\n    saida = ordenar_por_insercao(entrada)\n    assert saida is entrada, 'devolva a MESMA lista (in-place)'\n    assert list(entrada) == esperado, f'{c} -> {list(entrada)}'\nprint('ok')\n"
+      }
+    },
+    {
+      "titulo": "O algoritmo de Euclides — o MDC em poucos passos",
+      "estudo": "O máximo divisor comum (MDC) de dois números é o maior inteiro que divide os dois sem resto. O jeito da escola — fatorar os dois em primos — fica impraticável para números grandes. Há cerca de 2.300 anos, Euclides descreveu um caminho muito melhor, que é provavelmente o algoritmo mais antigo ainda em uso diário: ele está dentro de toda biblioteca de frações e de toda implementação de criptografia RSA.\n\nA observação que sustenta tudo: se um número `d` divide `a` e divide `b`, então também divide o RESTO da divisão de `a` por `b`, porque esse resto é `a - q*b`. E vale a volta. Portanto os divisores comuns de `(a, b)` são exatamente os divisores comuns de `(b, a % b)` — e `mdc(a, b) = mdc(b, a % b)`.\n\nO algoritmo só repete essa troca: enquanto `b` não for zero, faça `a, b = b, a % b`. O resto é sempre menor que o divisor, então `b` diminui a cada passo e chega a zero. Nesse momento a resposta está em `a`, porque `mdc(a, 0) = a` (todo número divide zero).\n\nExemplo com 48 e 18: (48, 18) vira (18, 12), porque 48 % 18 = 12; depois (12, 6); depois (6, 0). O MDC é 6. Três passos, sem fatorar nada.\n\nPor que é rápido: a cada DOIS passos o número maior cai para menos da metade. O número de passos cresce com a quantidade de DÍGITOS dos números, não com o valor deles — é O(log n). Um detalhe de implementação: o MDC é definido como não negativo, então números negativos entram pelo valor absoluto; e `mdc(0, 0)` é 0 por convenção.\n\nReferência de implementação: `maths/greatest_common_divisor.py` no repositório TheAlgorithms/Python (MIT).",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Qual identidade o algoritmo de Euclides repete até acabar?",
+            "options": [
+              {
+                "text": "mdc(a, b) = mdc(b, a % b)",
+                "isCorrect": true,
+                "explanation": "Os divisores comuns de (a, b) e de (b, a % b) são os mesmos."
+              },
+              {
+                "text": "mdc(a, b) = mdc(a - 1, b - 1)",
+                "isCorrect": false,
+                "explanation": "Subtrair 1 dos dois não preserva os divisores comuns."
+              },
+              {
+                "text": "mdc(a, b) = a * b",
+                "isCorrect": false,
+                "explanation": "O produto se relaciona com o MMC: a*b = mdc * mmc."
+              }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Quando o laço `while b != 0: a, b = b, a % b` termina, onde está a resposta?",
+            "options": [
+              {
+                "text": "Em a",
+                "isCorrect": true,
+                "explanation": "mdc(a, 0) = a, porque todo número divide zero."
+              },
+              {
+                "text": "Em b",
+                "isCorrect": false,
+                "explanation": "b vale zero quando o laço termina."
+              },
+              {
+                "text": "Em a % b",
+                "isCorrect": false,
+                "explanation": "Com b = 0 essa conta nem existe: é divisão por zero."
+              }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "Calcule o mdc(48, 18) pelo algoritmo de Euclides. Qual é o resultado?",
+            "accepted": [
+              "6",
+              "seis",
+              "mdc = 6",
+              "é 6"
+            ],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Aplique Euclides a (1071, 462): escreva os pares pelos quais o algoritmo passa e o MDC final.",
+          "accepted": [
+            "21",
+            "(462, 147), (147, 21), (21, 0) — MDC 21",
+            "(1071,462) (462,147) (147,21) (21,0) = 21",
+            "mdc 21",
+            "o mdc é 21"
+          ],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "python",
+        "inicial": "def mdc(a, b):\n    \"\"\"Devolve o máximo divisor comum de a e b pelo algoritmo de Euclides.\n    Trate negativos pelo valor absoluto. mdc(0, 0) é 0.\"\"\"\n    # seu código aqui\n    return 1\n",
+        "teste": "assert mdc(48, 18) == 6\nassert mdc(18, 48) == 6\nassert mdc(1071, 462) == 21\nassert mdc(17, 5) == 1\nassert mdc(0, 9) == 9\nassert mdc(9, 0) == 9\nassert mdc(0, 0) == 0\nassert mdc(-12, 18) == 6\nassert mdc(12, -18) == 6\nassert mdc(100, 100) == 100\n# tem de ser Euclides: o teste cronometra. Testar divisor por divisor leva milhões de passos aqui.\nimport time\nt0 = time.perf_counter()\nassert mdc(3000017, 3000029) == 1\nassert mdc(2 * 3000017, 3 * 3000017) == 3000017\nassert time.perf_counter() - t0 < 0.05, 'lento demais: use o resto da divisão (a % b), não um laço de divisores'\nprint('ok')\n"
+      }
+    }
+  ]
+}

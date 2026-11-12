@@ -1,0 +1,17 @@
+{
+  "tarefa": "Escreva um exercício de solfejo para iniciante, com 4 compassos em 4/4, em Sol maior, usando só graus conjuntos. Responda APENAS o objeto JSON, no formato do procedimento.",
+  "contrato": {
+    "tipo": "json",
+    "chaves": [
+      "titulo",
+      "tom",
+      "abc",
+      "conceito"
+    ]
+  },
+  "modelos": [
+    "claude",
+    "codex",
+    "octa"
+  ]
+}
