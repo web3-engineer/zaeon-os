@@ -27,6 +27,11 @@ const EXEMPLO = [
   "```grafico",
   '{"formas":[{"tipo":"poligono","pontos":[[0,0],[4,0],[0,3]],"rotulo":"triângulo"},{"tipo":"circulo","centro":[0,0],"raio":1},{"tipo":"vetor","de":[0,0],"ate":[2,1.5],"rotulo":"v"}]}',
   "```",
+  "## Geometria dinâmica (JSXGraph)",
+  "A circunferência circunscrita: o centro é o encontro das mediatrizes. Arraste os vértices.",
+  "```geometria",
+  '[{"nome":"A","tipo":"point","pais":[-3,-2],"papel":"vértice livre"},{"nome":"B","tipo":"point","pais":[4,-1],"papel":"vértice livre"},{"nome":"C","tipo":"point","pais":[0,4],"papel":"vértice livre"},{"nome":"t","tipo":"polygon","pais":["A","B","C"],"papel":"triângulo ABC"},{"nome":"ab","tipo":"segment","pais":["A","B"],"papel":"lado AB"},{"nome":"bc","tipo":"segment","pais":["B","C"],"papel":"lado BC"},{"nome":"M","tipo":"midpoint","pais":["A","B"],"papel":"ponto médio de AB"},{"nome":"N","tipo":"midpoint","pais":["B","C"],"papel":"ponto médio de BC"},{"nome":"m1","tipo":"perpendicular","pais":["ab","M"],"papel":"mediatriz de AB"},{"nome":"m2","tipo":"perpendicular","pais":["bc","N"],"papel":"mediatriz de BC"},{"nome":"O","tipo":"intersection","pais":["m1","m2",0],"papel":"circuncentro"},{"nome":"c","tipo":"circle","pais":["O","A"],"papel":"circunferência circunscrita"}]',
+  "```",
   "Dinheiro continua texto: custa R$ 10,00 e o link é [o PDF](https://www.gutenberg.org/).",
 ].join("\n");
 

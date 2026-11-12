@@ -6,6 +6,8 @@ import GraficoFuncao from "@/components/chat/GraficoFuncao";
 import GraficoDados from "@/components/chat/GraficoDados";
 import { ehGraficoDeDados } from "@/lib/chat/graficoDados";
 import BlocoCodigo from "@/components/chat/BlocoCodigo";
+import GeometriaDinamica from "@/components/chat/GeometriaDinamica";
+import { ehGeometria } from "@/lib/chat/geometria";
 import { segmentarBlocos, segmentarInline } from "@/lib/chat/matematica";
 
 /**
@@ -21,7 +23,18 @@ import { segmentarBlocos, segmentarInline } from "@/lib/chat/matematica";
  * um bloco ```grafico {json} vira gráfico de função (SVG). Links [rótulo](https://…) viram link
  * (só http/https, nova aba). A matemática é separada ANTES do markdown: o `*` de "a*b" não vira itálico.
  * Bloco de código (```lang … ```, #634) também sai antes: vira a caixa do BlocoCodigo, com o de dentro cru.
+ *
+ * Geometria dinâmica (skill `geometria-jsxgraph`): a construção em JSON vira figura interativa
+ * (GeometriaDinamica). Ela chega de três jeitos — num bloco ```geometria, num bloco ```json / sem
+ * linguagem, ou como a resposta INTEIRA (a skill manda "apenas o array JSON") — e nos dois últimos
+ * só vira figura se for uma construção válida de ponta a ponta; JSON de outra coisa segue como código.
  */
+
+/** O bloco de código é uma construção de geometria? ```geometria sempre; ```json ou sem linguagem, só se validar. */
+export function ehBlocoDeGeometria(lang: string, conteudo: string): boolean {
+  if (lang === "geometria") return true;
+  return (lang === "json" || lang === "") && conteudo.trimStart().startsWith("[") && ehGeometria(conteudo);
+}
 
 // ── inline: fórmula ($…$) primeiro; no resto, ***x*** / **x** / *x* / `code` / [link](https://…) ──
 function inline(s: string): React.ReactNode[] {
@@ -60,6 +73,8 @@ function inlineMarkdown(s: string): React.ReactNode[] {
 
 export default function ChatMarkdown({ text }: { text: string }) {
   // blocos de display/gráfico primeiro (podem ocupar várias linhas); o resto é markdown de linha
+  const cru = text.trim();
+  if (cru.startsWith("[") && cru.endsWith("]") && ehGeometria(cru)) return <GeometriaDinamica json={cru} />;
   const pedacos = segmentarBlocos(text);
   if (pedacos.length === 1 && pedacos[0].tipo === "texto") return <MarkdownDeLinhas text={text} />;
   return (
@@ -67,6 +82,7 @@ export default function ChatMarkdown({ text }: { text: string }) {
       {pedacos.map((b, i) =>
         b.tipo === "formula" ? <Formula key={i} latex={b.conteudo} display />
         : b.tipo === "grafico" ? (ehGraficoDeDados(b.conteudo) ? <GraficoDados key={i} json={b.conteudo} /> : <GraficoFuncao key={i} json={b.conteudo} />)
+        : b.tipo === "codigo" && ehBlocoDeGeometria(b.lang, b.conteudo) ? <GeometriaDinamica key={i} json={b.conteudo} />
         : b.tipo === "codigo" ? <BlocoCodigo key={i} codigo={b.conteudo} lang={b.lang} />
         : <MarkdownDeLinhas key={i} text={b.conteudo.replace(/^\n|\n$/g, "")} />,
       )}

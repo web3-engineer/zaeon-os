@@ -91,6 +91,7 @@
     "i18next-http-backend": "^3.0.2",
     "ioredis": "^5.10.1",
     "jsonwebtoken": "^9.0.3",
+    "jsxgraph": "^1.14.3",
     "katex": "^0.16.47",
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.552.0",
