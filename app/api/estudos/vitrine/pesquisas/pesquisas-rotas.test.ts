@@ -117,3 +117,43 @@ describe("POST /api/admin/vitrine/pesquisas — admin ou console", () => {
     expect((await POST_ADMIN(req(`Bearer ${"x".repeat(40)}`))).status).toBe(401);
   });
 });
+
+import { POST as SEMEAR } from "@/app/api/admin/vitrine/pesquisas/exemplos/route";
+import { PESQUISAS_EXEMPLO } from "@/lib/estudos/pesquisasExemplos";
+
+describe("POST /api/admin/vitrine/pesquisas/exemplos — popular", () => {
+  const req = (auth?: string) => new Request("http://x/api/admin/vitrine/pesquisas/exemplos", { method: "POST", headers: auth ? { authorization: auth } : {} });
+
+  beforeEach(() => {
+    m.pFindUnique.mockResolvedValue(null); // slugLivre: slug livre
+    m.pCreate.mockImplementation(async ({ data }: any) => ({ id: "p", ...data }));
+  });
+
+  it("sem auth: 401, nada criado", async () => {
+    delete process.env.ORQUESTRA_CONSOLE_TOKEN;
+    m.email = null;
+    expect((await SEMEAR(req())).status).toBe(401);
+    expect(m.pCreate).not.toHaveBeenCalled();
+  });
+
+  it("com o token: cria os 10 e é idempotente (pula os que já existem por título)", async () => {
+    process.env.ORQUESTRA_CONSOLE_TOKEN = "t".repeat(40);
+    m.pFindMany.mockResolvedValue([]); // nada existe ainda
+    const r = await SEMEAR(req(`Bearer ${"t".repeat(40)}`));
+    expect(r.status).toBe(201);
+    const j = await r.json();
+    expect(j.criadas).toBe(10);
+    expect(m.pCreate).toHaveBeenCalledTimes(10);
+    // todos entram publicados, com apoio ativo
+    for (const c of m.pCreate.mock.calls) expect(c[0].data).toMatchObject({ status: "publicada", origem: "console", apoioAtivo: true });
+
+    // segunda rodada: já existem → não recria
+    m.pCreate.mockClear();
+    m.pFindMany.mockResolvedValue(PESQUISAS_EXEMPLO.map((e) => ({ titulo: e.titulo })));
+    const r2 = await SEMEAR(req(`Bearer ${"t".repeat(40)}`));
+    const j2 = await r2.json();
+    expect(j2.criadas).toBe(0);
+    expect(j2.jaExistiam).toHaveLength(10);
+    expect(m.pCreate).not.toHaveBeenCalled();
+  });
+});

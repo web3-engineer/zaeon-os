@@ -1926,6 +1926,11 @@ model PesquisaVitrine {
   motivo      String?                     // por que foi recusada (a pessoa vê)
   partes      Json                        // [{ tipo, titulo, conteudo?, url? }]
   validadores Int      @default(0)
+  // APOIO (financiamento em SOL, lib/estudos/pesquisas): a liquidação on-chain ainda é "em breve" (MOEDA.ativa=false)
+  apoioAtivo    Boolean @default(false)
+  metaSol       Float   @default(0)
+  arrecadadoSol Float   @default(0)
+  apoiadores    Int     @default(0)
   ordem       Int      @default(0)
   criadoEm    DateTime @default(now())
   updatedAt   DateTime @updatedAt

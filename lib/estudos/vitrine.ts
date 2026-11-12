@@ -13,7 +13,7 @@
 import type { Raridade } from "./blueprint";
 import { AGENTES_ORQUESTRA } from "@/lib/orquestra/catalogo";
 import type { PluginChat } from "@/lib/plugins/chatPlugins";
-import type { ParteResumo } from "./pesquisas";
+import type { ParteResumo, Apoio } from "./pesquisas";
 
 /** o desenho 3D do tema (components/estudos/modelos3d) */
 export type Modelo3D = "console" | "chip" | "planta" | "predio" | "drone" | "foguete" | "molecula" | "engrenagem" | "livro" | "graos" | "ondas" | "robo" | "pasta";
@@ -70,6 +70,8 @@ export type ItemVitrine = {
   imagem?: string;
   /** PESQUISA: o card é uma PASTA e estes são os papéis dentro dela (o texto de cada um vem sob demanda, pelo slug) */
   pasta?: { slug: string; partes: ParteResumo[] };
+  /** PESQUISA aberta a APOIO (financiamento em SOL) — lib/estudos/pesquisas */
+  apoio?: Apoio;
 };
 
 export const MOEDA = { simbolo: "SOL", nome: "Solana (SOL)", ativa: false } as const;
