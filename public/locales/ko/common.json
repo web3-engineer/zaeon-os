@@ -348,6 +348,13 @@
         "success_message": "자격 증명이 업데이트되었습니다."
     },
     "landing": {
+        "timeline": {
+            "base": "과학적 기반",
+            "conversa": "AI와의 대화",
+            "blueprint": "Blueprint",
+            "prototipo": "프로토타입과 테스트",
+            "mundo": "현실 세계로"
+        },
         "hero_tagline": "챗봇과의 대화, 열려 있는 탭 그 이상 — 여기서 당신은 <hl>완성된 제품이 되는 아이디어</hl>를 만듭니다.",
         "knowledge_title": "당신의 아이디어를 현실로 만드세요.",
         "privacidade_titulo": "프라이버시를 지키며 아이디어를 만드세요.",

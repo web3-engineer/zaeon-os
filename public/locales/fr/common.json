@@ -348,6 +348,13 @@
         "success_message": "Informations d'identification mises à jour"
     },
     "landing": {
+        "timeline": {
+            "base": "Base scientifique",
+            "conversa": "Conversation avec les IA",
+            "blueprint": "Propriété intellectuelle",
+            "prototipo": "Prototype et tests",
+            "mundo": "Dans le monde réel"
+        },
         "hero_tagline": "Bien plus que des conversations avec des chatbots et des onglets ouverts : ici, vous construisez <hl>des idées qui deviennent des produits finis</hl>.",
         "knowledge_title": "Transformez votre idée en réalité.",
         "privacidade_titulo": "Construisez votre idée en toute confidentialité.",

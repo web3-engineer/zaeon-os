@@ -348,6 +348,13 @@
         "success_message": "Credenciales actualizadas"
     },
     "landing": {
+        "timeline": {
+            "base": "Base científica",
+            "conversa": "Conversación con las IAs",
+            "blueprint": "Propiedad intelectual",
+            "prototipo": "Prototipo y pruebas",
+            "mundo": "En el mundo real"
+        },
         "hero_tagline": "Más que conversaciones con chats y pestañas abiertas: aquí construyes <hl>ideas que se convierten en productos finales</hl>.",
         "knowledge_title": "Convierte tu idea en realidad.",
         "privacidade_titulo": "Construye tu idea con privacidad.",

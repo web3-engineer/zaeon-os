@@ -5,19 +5,22 @@
  *   Papel #f5c542 (dourado) → Conversa #2bd47a (verde) → Blueprint #2d6ae8 (azul escuro) → Protótipo #8b5cf6 (roxo)
  *   → Mundo real #22d3ee (teal).
  * Há PROGRESSÃO DE COR além de elementos: cada trilha/pad nasce já na cor do seu ponto na timeline, então a cor varre
- * a placa em sincronia com a barra. O PAPEL CIENTÍFICO é a BASE DO CHIP: a faixa e os dedos do conector em ouro na borda
- * de baixo, a primeira coisa a acender (tudo nasce do papel). Os outros 4 marcos são NANOCHIPS espalhados (formato de
- * placa de verdade); a ordem é só de COR e de APARIÇÃO (verde→azul→roxo→teal, um a cada marco), não pela posição em
- * pixel. Sem sinais viajando. Cada peça é um <g class="ci-part" data-at="0..0.9"> que a TimelineIdeia revela pela rampa
- * de progresso.
+ * a placa em sincronia com a barra. Os marcos, na ordem:
+ *   1. BASE CIENTÍFICA (ouro) = a BASE DO CHIP: a faixa e os dedos do conector na borda de baixo — a 1ª coisa a acender;
+ *   2. CONVERSA COM AS IAs (verde) = os FIOS que sobem da base até o núcleo;
+ *   3–5. Propriedade intelectual/Blueprint (azul), Protótipo (roxo) e Mundo real (teal) = NANOCHIPS espalhados (formato de
+ *   placa de verdade), na ordem só de COR e de APARIÇÃO, não pela posição em pixel.
+ * Sem sinais viajando. Cada peça é um <g class="ci-part" data-at="0..0.9"> que a TimelineIdeia revela pela rampa de
+ * progresso.
  */
 
 const W = 1000, H = 1000;
 
 /* ---- as 5 cores da TIMELINE, NA ORDEM dos marcos da barra de baixo ---- */
 const RAMP = ["#f5c542", "#2bd47a", "#2d6ae8", "#8b5cf6", "#22d3ee"] as const;
-/** o ouro do PAPEL CIENTÍFICO (a base do chip) */
+/** o ouro da BASE CIENTÍFICA (a base do chip) e o verde da CONVERSA COM AS IAs (os fios que sobem dela) */
 const OURO = RAMP[0];
+const VERDE = RAMP[1];
 
 /* ---- tons do vidro escuro ---- */
 const VIDRO1 = "#0b1322";
@@ -121,12 +124,11 @@ add(0.06, (() => {
   return s + `</g>`;
 })(), 5);
 
-// — os NANOCHIPS dos marcos 2–5 num layout espalhado (formato de placa de verdade). A ORDEM é só de COR e de APARIÇÃO:
-// cada chip acende no seu marco (at 0.30→0.88, verde→azul→roxo→teal), independente de onde está na placa. O marco 1
-// (Papel, dourado) não é chip: é a BASE, logo abaixo.
+// — os NANOCHIPS dos marcos 3–5 num layout espalhado (formato de placa de verdade). A ORDEM é só de COR e de APARIÇÃO:
+// cada chip acende no seu marco (at 0.50→0.88, azul→roxo→teal), independente de onde está na placa. O marco 1 (Base
+// científica, ouro) é a BASE e o marco 2 (Conversa com as IAs, verde) são os FIOS que sobem dela — logo abaixo.
 // [x, y, w, h, ci(cor/ordem), at(≈ limiar do marco), traço de ligação ao núcleo]
 const chips: { x: number; y: number; w: number; h: number; ci: number; at: number; liga: [number, number][] }[] = [
-  { x: 716, y: 236, w: 150, h: 86, ci: 1, at: 0.30, liga: [[716, 300], [640, 300], [600, 340], [PX + PW, 452]] },        // verde, topo-dir
   { x: 122, y: 606, w: 150, h: 92, ci: 2, at: 0.50, liga: [[272, 652], [360, 652], [400, 616], [PX, 560]] },             // azul, baixo-esq
   { x: 708, y: 642, w: 160, h: 92, ci: 3, at: 0.70, liga: [[708, 688], [640, 688], [600, 648], [PX + PW, 540]] },        // roxo, baixo-dir
   { x: 420, y: 138, w: 150, h: 68, ci: 4, at: 0.88, liga: [[495, 206], [495, 300], [520, 340], [520, PY]] },             // teal, topo-centro
@@ -145,9 +147,9 @@ for (let i = 0; i < 6; i++) { // direita
   const y = 430 + i * 24, x1 = 862 - (i % 2) * 16, at = 0.17 + i * 0.016;
   add(at, trilha([[PX + PW, y], [PX + PW + 48, y], [x1, y]], cor(at), 3) + pad(x1, y, 6, cor(at)));
 }
-for (let i = 0; i < 6; i++) { // baixo → a BASE dourada (o papel): as trilhas que sobem dela até o núcleo são de ouro
-  const x = 418 + i * 30, at = 0.1 + i * 0.012;
-  add(at, trilha([[x, PY + PH], [x, 640], [x + (i - 3) * 6, 700], [360 + i * 56, 760], [360 + i * 56, 884]], OURO, 3) + pad(x, PY + PH + 8, 4, OURO));
+for (let i = 0; i < 6; i++) { // a CONVERSA COM AS IAs: os fios VERDES que sobem da base científica (ouro) até o núcleo
+  const x = 418 + i * 30, at = 0.2 + i * 0.012;
+  add(at, trilha([[x, PY + PH], [x, 640], [x + (i - 3) * 6, 700], [360 + i * 56, 760], [360 + i * 56, 884]], VERDE, 3) + pad(x, PY + PH + 8, 4, VERDE));
 }
 
 // — campo de VIAS/pads preenchendo vazios
@@ -185,7 +187,7 @@ const finas: [[number, number][], number][] = [
 ];
 for (const [pts, at] of finas) add(at, trilha(pts, cor(at), 1.6));
 
-// — a BASE DO CHIP = o PAPEL CIENTÍFICO (dourado): a faixa e os dedos do conector na borda de baixo. É o 1º marco, então
+// — a BASE DO CHIP = a BASE CIENTÍFICA (ouro): a faixa e os dedos do conector na borda de baixo. É o 1º marco, então
 // é a primeira coisa a acender — o núcleo e o resto da placa crescem a partir dela.
 let base = `<g filter="url(#cs-glow)"><rect x="344" y="882" width="312" height="10" rx="3" fill="url(#cs-ouro)"/>`;
 for (let i = 0; i < 11; i++) base += `<rect x="${360 + i * 26}" y="896" width="16" height="70" rx="2" fill="url(#cs-ouro)" opacity="0.95"/>`;

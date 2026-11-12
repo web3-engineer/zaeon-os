@@ -9,7 +9,7 @@
 /* o visualizador único — uma PLACA DE CIRCUITOS em VIDRO PRETO (pôster quadrado) que se COMPLETA conforme a barra
    avança, com a cor varrendo o gradiente da timeline */
 .ci-viz { width: 100%; display: flex; justify-content: center; }
-.ci-viz .ci-fig { width: 430px; max-width: 88%; height: auto; overflow: hidden; border-radius: 26px;
+.ci-viz .ci-fig { width: 470px; max-width: 92%; height: auto; overflow: hidden; border-radius: 26px;
   box-shadow: 0 18px 60px -20px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(127, 232, 255, 0.08); }
 
 /* cada peça (trilha/pad/chip) nasce conforme o progresso a alcança — a opacidade/transform vêm INLINE do laço da
@@ -30,7 +30,8 @@
 @media (prefers-reduced-motion: reduce) { .cs-run, .cs-luz, .cs-luz2, .cs-dot { animation: none; } }
 
 /* a barra de progresso */
-.ci-bar { position: relative; width: 100%; margin-top: 10px; }
+/* a timeline fica bem abaixo da placa: o chip é o destaque */
+.ci-bar { position: relative; width: 100%; margin-top: 44px; }
 .ci-line, .ci-fill { position: absolute; top: 12px; left: 10%; height: 2px; border-radius: 2px; }
 .ci-line { right: 10%; background: rgba(127, 232, 255, 0.14); }
 .ci-fill { width: 0; background: linear-gradient(90deg, #f5c542, #2bd47a, #2d6ae8, #8b5cf6, #22d3ee); box-shadow: 0 0 6px rgba(127, 232, 255, 0.5); }
@@ -43,3 +44,20 @@
 .ci-cell.on .ci-dot { background: currentColor; box-shadow: 0 0 10px currentColor, inset 0 0 0 2px currentColor; }
 .ci-tit { margin-top: 8px; text-align: center; font-family: ui-monospace, monospace; font-size: 12.5px; font-weight: 700; letter-spacing: .02em; color: rgba(234, 252, 255, 0.5); transition: color .4s; }
 .ci-cell.on .ci-tit { color: #eafcff; }
+
+/* CELULAR: nada de rolagem lateral — a placa ocupa a largura e os 5 marcos cabem na tela (o título quebra em 2 linhas) */
+@media (max-width: 640px) {
+  .ci-stage { min-width: 0; }
+  .ci-viz .ci-fig { width: 100%; max-width: 420px; border-radius: 20px; }
+  .ci-bar { margin-top: 30px; }
+  .ci-line, .ci-fill, .ci-comet { top: 10px; }
+  .ci-node { height: 20px; }
+  .ci-dot { width: 10px; height: 10px; }
+  /* a monoespaçada é larga demais pra 5 colunas num celular estreito: no celular, a proporcional, sem hifenizar */
+  .ci-tit { margin-top: 6px; padding: 0 3px; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 10.5px; font-weight: 600; line-height: 1.25; letter-spacing: 0; overflow-wrap: normal; hyphens: manual; }
+}
+/* telas muito estreitas (iPhone SE e afins) */
+@media (max-width: 350px) {
+  .ci-tit { font-size: 9.5px; padding: 0 1px; }
+}
