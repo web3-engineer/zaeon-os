@@ -96,3 +96,12 @@ export const vendido = (i: ItemVitrine) => (i.fracoes.total ? i.fracoes.vendidas
 export const valorTotal = (i: ItemVitrine) => i.preco * i.fracoes.total;
 /** "48 SOL" / "Grátis" */
 export const precoTexto = (p: number) => (p <= 0 ? "Grátis" : `${p.toLocaleString("pt-BR")} ${MOEDA.simbolo}`);
+
+/** junta os cards do admin (preferidos) com o catálogo embutido SEM repetir id — se um item do admin usa o mesmo id de um
+ *  embutido, fica só o do admin (senão a carta aparece duas vezes e as duas dividem o estado de "conectado", que é por id). */
+export function mesclarCatalogo(doAdmin: readonly ItemVitrine[], base: readonly ItemVitrine[] = CATALOGO): ItemVitrine[] {
+  const vistos = new Set<string>();
+  const out: ItemVitrine[] = [];
+  for (const it of [...doAdmin, ...base]) { if (!vistos.has(it.id)) { vistos.add(it.id); out.push(it); } }
+  return out;
+}
