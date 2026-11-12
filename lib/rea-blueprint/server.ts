@@ -75,6 +75,17 @@ export async function garantirRea(userId: string, scopeId: string, titulo: strin
 
 type GenJson = <T>(system: string, user: string) => Promise<T>;
 const genPadrao = (userId: string, scopeId: string): GenJson => async <T,>(system: string, user: string) => {
+  // REDAÇÃO do blueprint com o Claude (Sonnet) quando o dono configurou REA_MODELO_REDACAO e o
+  // gateway está de pé — crédito pago, opt-in. Qualquer tropeço cai no Gemini de sempre (o blueprint
+  // é melhor-esforço: nunca derruba o turno por causa do modelo).
+  const [{ modeloReaRedacao }, { gatewayJson, gatewayJsonConfigurado }] = await Promise.all([
+    import("@/lib/octa/reaModelo"), import("@/lib/octa/gatewayJson"),
+  ]);
+  const claude = modeloReaRedacao();
+  if (claude && gatewayJsonConfigurado()) {
+    try { return await gatewayJson<T>(system, user, { model: claude, temperature: 0.3, timeoutMs: 60_000 }); }
+    catch (e) { console.warn("[rea-blueprint] Claude na redação falhou, caindo no Gemini:", (e as Error)?.message?.slice(0, 120)); }
+  }
   const [{ geminiJson }, { GEMINI_MODEL_FLASH }] = await Promise.all([import("@/lib/scholar/gemini"), import("@/lib/ai/model")]);
   return geminiJson<T>(system, user, { temperature: 0.3, model: GEMINI_MODEL_FLASH, timeoutMs: 60_000, ctx: { agentKey: "zaeon", surface: "estudos", userId, scopeId, phase: "rea-blueprint" } });
 };
