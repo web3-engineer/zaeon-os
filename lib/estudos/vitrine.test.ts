@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CATALOGO, FILTROS, MOEDA, filtrarVitrine, precoTexto, valorTotal, vendido } from "./vitrine";
 import { RARIDADES } from "./blueprint";
+import { itensDasSkillsDoDisco } from "./vitrineSkills";
 
 describe("a VITRINE de estudos (catálogo simulado)", () => {
   it("o catálogo: ids únicos, frações coerentes, raridade válida, grátis = 1 fração; tem DYOM, agente, RWA, grátis e ironia", () => {
@@ -10,7 +11,15 @@ describe("a VITRINE de estudos (catálogo simulado)", () => {
       expect(i.profundidade).toBeGreaterThanOrEqual(0); expect(i.profundidade).toBeLessThanOrEqual(100); expect(i.entrega.length).toBeGreaterThan(0);
       if (i.preco === 0) expect(i.fracoes.total).toBe(1);
     }
-    for (const f of FILTROS) expect(filtrarVitrine(CATALOGO, f.id).length).toBeGreaterThan(0);
+    // NENHUMA ABA VAZIA. A régua é o conjunto que a UI mostra de verdade, não só o catálogo
+    // embutido: as SKILLS não moram aqui de propósito — o catálogo delas é o diretório
+    // `.claude/skills`, e `/api/estudos/vitrine` as junta a estes itens (lib/estudos/vitrineSkills).
+    // Checar só `CATALOGO` daria aba "Skills" vazia como se fosse invariante quebrada, quando o
+    // que mudou foi de onde o item vem.
+    const comoAUIMostra = [...CATALOGO, ...itensDasSkillsDoDisco()];
+    for (const f of FILTROS) {
+      expect(filtrarVitrine(comoAUIMostra, f.id).length, `aba "${f.nome}" vazia`).toBeGreaterThan(0);
+    }
     expect(CATALOGO.some((i) => i.id === "ps5-rev")).toBe(true);
   });
   it("filtra por tipo e busca no texto", () => {

@@ -49,6 +49,7 @@ import { diretrizDeEscopo } from "@/lib/agents/escopo";
 import { diretrizLivros, markdownDosLivros, type LivroAchado } from "@/lib/livros/busca";
 import { anexarFontesBase, blocoDaBase } from "@/lib/rag/citar";
 import { registrarAnatomia } from "@/lib/anatomia/tools";
+import { cardapioDeSkills, registrarSkillsDaCasa } from "@/lib/agent/skills-boot";
 
 /**
  * As tools de ANATOMIA entram aqui, no carregamento deste módulo, e não no boot: o registry é
@@ -57,6 +58,16 @@ import { registrarAnatomia } from "@/lib/anatomia/tools";
  * atlas, então sem o dado elas nem aparecem no cardápio — em vez de aparecerem e falharem.
  */
 registrarAnatomia();
+
+/**
+ * As SKILLS DA CASA (`.claude/skills`), pelo mesmo motivo e no mesmo lugar que as tools de
+ * anatomia: o registry é estado do processo. Registra `activate_skill`, que é como o CORPO de uma
+ * skill chega ao turno — sob demanda, nunca no prompt de todo mundo.
+ *
+ * Até aqui o pilar de skills (`lib/agent/skills.ts`) existia completo e não era consumido por
+ * NINGUÉM fora dos próprios testes. Esta linha é a tomada. Catálogo vazio ⇒ nada muda.
+ */
+registrarSkillsDaCasa();
 
 type GenJson = <T>(system: string, user: string, opts?: { temperature?: number; model?: string; timeoutMs?: number; phase?: string; /** em stream: o JSON acumulado a cada pedaço */ onTexto?: (acumulado: string) => void; /** o pensar desta fase (lib/llm/pensar) */ pensar?: NivelPensar; /** stream: sem o 1º pedaço nesse prazo → reserva */ prazoPrimeiroMs?: number }) => Promise<T>;
 
@@ -787,6 +798,11 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
             return cardapioDeCapacidades(defs.map((t) => t.name), new Map(defs.map((t) => [t.name, t.schema?.description])));
           })()]
           : []),
+        // O CARDÁPIO DE SKILLS: uma linha por skill da casa (nome + descrição), e nada mais.
+        // O corpo vem por `activate_skill`, sob demanda — é a divulgação progressiva do spec, e
+        // é o que permite dezenas de skills sem repetir o erro da diretriz incondicional.
+        // Sem skill no diretório devolve "" e o `.filter(Boolean)` abaixo o descarta.
+        cardapioDeSkills(),
         DIRETRIZ_MATEMATICA,
         // A TABELA é decidida pelo PEDIDO, nunca pela vontade do modelo (lib/agent/tabela).
         // Calar sobre o assunto era o que produzia "tabela do nada": sem esta linha o modelo não

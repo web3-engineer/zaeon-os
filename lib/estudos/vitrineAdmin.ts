@@ -5,7 +5,7 @@
 import type { ItemVitrine, TipoProduto, Execucao, Modelo3D } from "./vitrine";
 import type { Raridade } from "./blueprint";
 
-export const TIPOS: TipoProduto[] = ["curso", "codigo", "artigo", "negocio", "rwa", "agente"];
+export const TIPOS: TipoProduto[] = ["curso", "codigo", "artigo", "negocio", "rwa", "agente", "skill"];
 export const EXECUCOES: Execucao[] = ["dyom", "agente"];
 export const MODELOS: Modelo3D[] = ["console", "chip", "planta", "predio", "drone", "foguete", "molecula", "engrenagem", "livro", "graos", "ondas", "robo"];
 export const RARIDADES: Raridade[] = ["comum", "rara", "epica", "lendaria"];

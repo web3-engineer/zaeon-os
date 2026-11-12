@@ -17,8 +17,9 @@ import type { PluginChat } from "@/lib/plugins/chatPlugins";
 /** o desenho 3D do tema (components/estudos/modelos3d) */
 export type Modelo3D = "console" | "chip" | "planta" | "predio" | "drone" | "foguete" | "molecula" | "engrenagem" | "livro" | "graos" | "ondas" | "robo";
 /** o tipo de conhecimento à venda */
-export type TipoProduto = "curso" | "codigo" | "artigo" | "negocio" | "rwa" | "agente";
-export const NOME_TIPO: Record<TipoProduto, string> = { curso: "Curso", codigo: "Código", artigo: "Trabalho acadêmico", negocio: "Negócio", rwa: "Ativo real (RWA)", agente: "Feito por agente de IA" };
+/** o tipo de conhecimento à venda. `skill` = procedimento da casa (.claude/skills), plugável no chat. */
+export type TipoProduto = "curso" | "codigo" | "artigo" | "negocio" | "rwa" | "agente" | "skill";
+export const NOME_TIPO: Record<TipoProduto, string> = { curso: "Curso", codigo: "Código", artigo: "Trabalho acadêmico", negocio: "Negócio", rwa: "Ativo real (RWA)", agente: "Feito por agente de IA", skill: "Skill" };
 /** quem executa: você mesmo (DYOM) ou um agente de IA que faz por você */
 export type Execucao = "dyom" | "agente";
 
@@ -70,15 +71,15 @@ export const CATALOGO: readonly ItemVitrine[] = [
   { id: "tcc-ia-escrita", titulo: "TCC escrito com método (e sem plágio)", subtitulo: "O percurso, as fontes conferidas e a banca simulada", tipo: "artigo", execucao: "agente", modelo: "livro", autor: "Aura (Zaeon)", raridade: "rara", profundidade: 55, preco: 0, fracoes: { total: 1, vendidas: 0 }, selos: { supervisionado: true, linksOk: true, codigoPrivado: false }, entrega: ["o modelo do TCC", "o checklist ABNT", "a banca simulada"], tags: ["academia", "escrita", "grátis"] },
 ];
 
-export type FiltroVitrine = "todos" | "gratis" | "dyom" | "agente" | "rwa" | "ironia";
+export type FiltroVitrine = "todos" | "gratis" | "dyom" | "agente" | "rwa" | "skill" | "ironia";
 export const FILTROS: { id: FiltroVitrine; nome: string }[] = [
   { id: "todos", nome: "Tudo" }, { id: "dyom", nome: "Faça você mesmo" }, { id: "agente", nome: "Um agente faz" },
-  { id: "rwa", nome: "Ativos reais" }, { id: "gratis", nome: "Grátis" }, { id: "ironia", nome: "Com ironia" },
+  { id: "rwa", nome: "Ativos reais" }, { id: "skill", nome: "Skills" }, { id: "gratis", nome: "Grátis" }, { id: "ironia", nome: "Com ironia" },
 ];
 export function filtrarVitrine(itens: readonly ItemVitrine[], f: FiltroVitrine, busca = ""): ItemVitrine[] {
   const q = busca.trim().toLowerCase();
   return itens.filter((i) =>
-    (f === "todos" || (f === "gratis" && i.preco === 0) || (f === "dyom" && i.execucao === "dyom") || (f === "agente" && i.execucao === "agente") || (f === "rwa" && i.tipo === "rwa") || (f === "ironia" && !!i.ironia))
+    (f === "todos" || (f === "gratis" && i.preco === 0) || (f === "dyom" && i.execucao === "dyom") || (f === "agente" && i.execucao === "agente") || (f === "rwa" && i.tipo === "rwa") || (f === "skill" && i.tipo === "skill") || (f === "ironia" && !!i.ironia))
     && (!q || `${i.titulo} ${i.subtitulo} ${i.autor} ${i.tags.join(" ")}`.toLowerCase().includes(q)));
 }
 /** o quanto das frações já foi vendido (0..1) — e o preço "cheio" (todas as frações) */
