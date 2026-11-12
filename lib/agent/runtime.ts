@@ -21,6 +21,8 @@ import {
 // `toolsWeb` importa SÓ TIPOS daqui de volta (apagados na compilação), então não há ciclo.
 import { abrirUrlDef, baixarParaBaseDef } from "@/lib/agent/toolsWeb";
 import { TOOLS_BASICAS } from "@/lib/agent/toolsBasicas";
+import { descreverImagemDef, visaoNoHarnessLigado } from "@/lib/agent/toolsVisao";
+import { visaoDisponivel } from "@/lib/ai/descreverImagem";
 import { lerAnexoDef, listarAnexosDef } from "@/lib/agent/toolsAnexo";
 
 // ───────────────────────────── contratos do runtime (§11.2) ─────────────────────────────
@@ -480,3 +482,17 @@ registrarBaixarParaBase();
 // servidor de que dependam, então registradas SEM condição, como as demais tools de raciocínio.
 // É o kit que todo assistente sério tem e que o harness não tinha; entram em TOOLS_BASE (capacidades).
 TOOLS_BASICAS.forEach(registerTool);
+
+/**
+ * `descrever_imagem` (be my eyes) é CONDICIONAL a DUAS coisas: a credencial Vertex (sem ela a visão
+ * não chama) E a flag `VISAO_HARNESS`, que liga o roteamento de imagem pro harness no hot-path do
+ * chat. Flag off → a imagem segue no multimodal legado e esta tool nem se registra, então o cardápio
+ * não promete "eu vejo" por um caminho que não existe ainda: prod fica byte-a-byte igual ao de hoje.
+ * `disponivelNoTurno` ainda decide por-turno (só há tool quando há imagem), como o anexo da F3.
+ */
+export function registrarDescreverImagem(env: Record<string, string | undefined> = process.env): boolean {
+  if (!visaoDisponivel(env) || !visaoNoHarnessLigado(env)) return false;
+  registerTool(descreverImagemDef);
+  return true;
+}
+registrarDescreverImagem();

@@ -29,6 +29,8 @@ import { sinteseLigada } from "@/lib/agent/sintese-flag";
 import { escritaPorSecaoLigada } from "@/lib/documento/escritor";
 import { graficoLigado } from "@/lib/agent/graficosDoTurno";
 import { getTool } from "@/lib/agent/runtime";
+import { visaoNoHarnessLigado } from "@/lib/agent/toolsVisao";
+import { visaoDisponivel } from "@/lib/ai/descreverImagem";
 import { GEMINI_MODEL_FLASH, GEMINI_MODEL_PRO } from "@/lib/ai/model";
 import { provedoresConfigurados } from "@/lib/search/web";
 import { proNasPesadasLigado } from "@/lib/ai/proNasPesadas";
@@ -225,6 +227,10 @@ export async function GET() {
       // arquivo". É aqui que se vê a diferença entre a flag ligada e a capacidade existindo.
       abrirUrl: !!getTool("abrir_url"),
       baixarParaBase: !!getTool("baixar_para_base"),
+      // F-visão ("be my eyes"): a flag VISAO_HARNESS liga o roteamento de imagem pro harness; a
+      // credencial Vertex é o que faz a visão responder. "sem_credencial" = flag on mas Vertex ausente
+      // (a tool se registra mas falharia) — é o estado que o recibo tem de deixar visível, não esconder.
+      visao: !visaoNoHarnessLigado() ? "off" : (visaoDisponivel() ? "on" : "sem_credencial"),
     },
     pool: poolConfigurado(),
     // a mesma regra de lib/canal/queue `filaLigada` (sem importar a fila: o health fica leve)
