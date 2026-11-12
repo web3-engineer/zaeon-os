@@ -33,7 +33,8 @@ function CartaProjeto({ p }: { p: Projeto }) {
     <article className="vt-card" style={{ "--cor": cor, "--glow": "20px", "--cy": "#38f0ff" } as CSSProperties}>
       <div className="vt-frame">
         <div className="vt-panel">
-          <div className="vt-spine">{p.area.toUpperCase()}</div>
+          {/* a lombada fica só com a cor (o nicho da ideia não se repete mais em texto) */}
+          <div className="vt-spine" />
           <div className="vt-art">
             <span className="vt-br tl" /><span className="vt-br tr" /><span className="vt-br bl" /><span className="vt-br brr" />
             <div className="vt-glyph"><b>{p.icone}</b></div>
@@ -42,7 +43,6 @@ function CartaProjeto({ p }: { p: Projeto }) {
           <div className="vt-plate">
             <div className="vt-type">PROJETO</div>
             <h3 className="vt-title">{p.titulo}</h3>
-            <div className="vt-pr"><span className="vt-price">{p.area}</span></div>
           </div>
           <div className="vt-crt" />
         </div>

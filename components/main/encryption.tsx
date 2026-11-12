@@ -7,7 +7,7 @@ import NextImage from "next/image";
 import { useTranslation } from "react-i18next";
 import ContadorProjetos from "./ContadorProjetos";
 import SolanaPrivacidade from "./SolanaPrivacidade";
-import ChavesApi from "./ChavesApi";
+import ProjetoVencedor from "./ProjetoVencedor";
 import BlueprintsShowcase from "./BlueprintsShowcase";
 import TimelineIdeia from "./TimelineIdeia";
 import { TituloSecao } from "@/components/layout/secao";
@@ -94,11 +94,16 @@ const HireAgentsSection = () => {
                 viewport={{ once: true }}
                 transition={{ duration: 0.6 }}
             >
-                <TituloSecao className="font-display" forte="Com grandes tecnologias vêm grandes protótipos." />
+                <TituloSecao className="font-display" forte={<>Somos uma startup brasileira financiada pelo Ministério da Tecnologia e Desenvolvimento do Brasil. <span aria-hidden="true">🇧🇷</span></>} />
             </motion.div>
 
-            {/* as casas de modelos (#modelos) + o card do projeto vencedor — a menção às chaves de API saiu (o dono) */}
-            <ChavesApi className="mt-16 md:mt-20" />
+            {/* o card do PRODUTO VENCEDOR (Centelha, categoria blockchain) */}
+            <ProjetoVencedor className="mt-12 md:mt-16" />
+
+            {/* "Financiado e apoiado por: [sponsors]" — no lugar das casas de modelos; mantém a âncora #modelos do rodapé */}
+            <div id="modelos" className="scroll-mt-24 mt-6">
+                <SponsorsTicker opacity={1} />
+            </div>
         </div>
     );
 };
@@ -128,11 +133,6 @@ export default function Encryption() {
                         de progresso avança) + o contador grande de projetos da comunidade. */}
                     <TimelineIdeia className="mt-12 md:mt-16" />
                     <ContadorProjetos className="mt-14 md:mt-20" />
-                </div>
-
-                {/* o marquee e de proposito full-bleed: ele corre de borda a borda */}
-                <div className="w-full mt-14 md:mt-20">
-                    <SponsorsTicker opacity={1} />
                 </div>
             </section>
 

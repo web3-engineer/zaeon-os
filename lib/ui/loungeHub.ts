@@ -61,7 +61,7 @@ export type CopyEntrada = { cta: string; badges: string[] };
 /** Copy do CTA primário e dos badges, por estado de login. */
 export function copyEntrada(logado: boolean): CopyEntrada {
   if (logado) return { cta: "Iniciar chat · iniciar jogo", badges: [] };
-  return { cta: "Criar minha conta · iniciar jogo", badges: ["1 mês grátis", "Sem cartão", "Sem limites", "Tecnologia de ponta"] };
+  return { cta: "Criar minha conta · iniciar jogo", badges: ["1 mês grátis", "Sem cartão", "Sem limites", "Revisão com especialistas"] };
 }
 
 /** o TUTORIAL no tablet (lib/onboarding/tutorialLab): a 1ª abertura do novato leva `tutorial=1` — o laboratório roda o

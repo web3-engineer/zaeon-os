@@ -168,7 +168,7 @@ export default function HeroPage() {
                   {/* sub-header: humanos + IAs constroem juntos — com a palavra que gira (ideias, estudos, pesquisas, produtos) */}
                   <p className="max-w-2xl text-base sm:text-lg text-slate-900 dark:text-white font-light leading-relaxed">
                     <GlitchTexto
-                      texto="Aqui é onde humanos e IAs se unem para juntos construírem"
+                      texto="Onde humanos e máquinas constroem"
                       palavras={GIRO}
                       classePalavra="font-normal text-cyan-700 dark:text-cyan-200"
                       delay={0.5}

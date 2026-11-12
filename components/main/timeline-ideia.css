@@ -16,6 +16,11 @@
 .ci-part { transform-box: fill-box; transform-origin: center bottom; opacity: 0; }
 .ci-part .iso-edge { filter: drop-shadow(0 0 3px color-mix(in srgb, var(--anatomy-hi) 55%, transparent)); }
 
+/* o GLOBO gira: os continentes rolam (dois tiles de 52px — R*2 — pra o laço ser sem costura) */
+@keyframes ci-globo-spin { from { transform: translateX(0); } to { transform: translateX(-52px); } }
+.ci-globo-spin { animation: ci-globo-spin 10s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .ci-globo-spin { animation: none; } }
+
 /* a barra de progresso */
 .ci-bar { position: relative; width: 100%; margin-top: 10px; }
 .ci-line, .ci-fill { position: absolute; top: 12px; left: 10%; height: 2px; border-radius: 2px; }
