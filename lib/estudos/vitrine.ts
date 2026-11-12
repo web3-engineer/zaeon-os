@@ -38,6 +38,15 @@ export type ItemVitrine = {
   tags: string[];
   /** blueprint que vira AGENTE no seletor da sidebar (não espera a moeda: adicionar é grátis e instantâneo) */
   plugavel?: PluginChat;
+  // ── os DETALHES (painel "detalhes" do card — components/estudos/DetalhesBuild). Vêm da API, ligados à conta. ──
+  /** a CONTA que publicou (quando o card está ligado a um usuário) */
+  conta?: { id: string; nome: string; handle?: string | null; avatarUrl?: string | null; verificada?: boolean };
+  /** o nicho da build (ex.: "Aeroespacial"); sem ele, o painel mostra o tipo */
+  nicho?: string;
+  /** a descrição longa, escrita por quem publicou (sem limite de tamanho; parágrafos separados por linha em branco) */
+  descricao?: string;
+  /** quantas pessoas validaram a build */
+  validadores?: number;
 };
 
 export const MOEDA = { simbolo: "SOL", nome: "Solana (SOL)", ativa: false } as const;
@@ -49,7 +58,8 @@ export const CATALOGO: readonly ItemVitrine[] = [
   // estado de cada um (liberado / exige plano / em breve) vem do servidor no modal (GET /api/orquestra/agentes).
   ...AGENTES_ORQUESTRA.map((a): ItemVitrine => ({
     id: a.id, titulo: a.nome, subtitulo: a.resumo, tipo: "agente", execucao: "agente",
-    modelo: a.formato === "enxame" ? "ondas" : "robo", autor: a.laboratorio,
+    // quem publica é a ZAEON (o agente é dela, orquestrando o modelo do laboratório — que segue nas tags)
+    modelo: a.formato === "enxame" ? "ondas" : "robo", autor: "Zaeon",
     raridade: a.formato === "enxame" ? "lendaria" : "epica", profundidade: a.formato === "enxame" ? 95 : 85,
     preco: 0, fracoes: { total: 1, vendidas: 0 }, selos: { supervisionado: false, linksOk: true, codigoPrivado: false },
     entrega: [a.comoTrabalha, "fontes reais: bases acadêmicas, web e a base da Zaeon", "citações conferidas — chave que nenhuma busca devolveu é cortada", `incluso a partir do plano ${a.minPlan === "max" ? "Max" : "Pro"}`],

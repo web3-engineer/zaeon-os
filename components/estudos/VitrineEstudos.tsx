@@ -2,12 +2,16 @@
 /**
  * VitrineEstudos — a VITRINE de blueprints em "Estudos" (lib/estudos/vitrine): todo conhecimento pode ser vendido, em
  * frações, em SOL (Solana) — e no cyberespaço os estudos são itens de COLECIONADOR. Cada card é uma CARTA CYBERDECK
- * (retrato, chanfro, moldura de neon que corre, lombada de raridade, colchetes de HUD, nº de série, barra de energia e o
- * DESENHO do tema em emoji/ícone). No hover a carta "liga". Clicar abre o RITUAL DE CONEXÃO: a carta vira destaque,
- * girando devagar em 3D, com os dados numa barra discreta embaixo e só o botão CONECTAR em evidência. Ao conectar: a
- * carta para RETA, as prensas FINAS entram simétricas, a energia flui estilo TRON no contato, a compra/plug acontece e
- * então a carta DESINTEGRA e sai de cena — indo pra aba "Já conectados", com uma notificação sutil de onde ela ficou
- * disponível (chat / Sala de Estudos / Escritório). O catálogo é simulado e a compra em SOL ainda não está no ar.
+ * (components/estudos/CartaVitrine). No hover a carta "liga".
+ *
+ * Dois caminhos a partir do card:
+ *  - DETALHES (clicar na carta ou no botão): a vitrine desfoca, a carta sobe e fica atrás, e a tela de sumário sobe com
+ *    a borda em circuito — quem publicou, nicho, validadores e a descrição completa (components/estudos/DetalhesBuild).
+ *    Não é compra.
+ *  - ⌁ PLUG: o RITUAL DE CONEXÃO. A carta gira devagar em 3D com os dados numa barra discreta e só o CONECTAR em
+ *    evidência; ao conectar, ela para RETA, as prensas finas entram, a energia flui estilo TRON, o plug acontece, a carta
+ *    DESINTEGRA e vem a escolha: voltar à vitrine ou abrir a build onde ela ficou (chat / Sala de Estudos / Escritório).
+ * Em "Já conectados", a ação do card vira DESCONECTAR.
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { FILTROS, NOME_TIPO, filtrarVitrine, mesclarCatalogo, precoTexto, type FiltroVitrine, type ItemVitrine } from "@/lib/estudos/vitrine";
@@ -16,12 +20,20 @@ import { plugar, desplugar, usePluginsChat } from "@/lib/plugins/chatPlugins";
 import { ehAgenteOrquestra } from "@/lib/orquestra/catalogo";
 import SolanaMark from "@/components/solana/SolanaMark";
 import CartaVitrine, { GLYPH, segmentos } from "./CartaVitrine";
+import DetalhesBuild from "./DetalhesBuild";
+import { destinoDe, type Destino } from "@/lib/estudos/detalhes";
+import { EVT_ESTUDOS_CHAT } from "@/lib/chat/conversasNav";
 import "./vitrine-card.css";
 import "./vitrine-claim.css";
+import "./vitrine-detalhes.css";
 
-/** onde a feature fica disponível DEPOIS de conectar (pra notificação) */
-const destinoDe = (it: ItemVitrine) =>
-    it.tipo === "agente" ? "no chat" : (it.tipo === "negocio" || it.tipo === "rwa") ? "no Escritório" : "na Sala de Estudos";
+/** "abrir": leva pra aba onde a build ficou depois de conectar */
+function abrirDestino(d: Destino) {
+    try {
+        if (d.aba === "chat") window.dispatchEvent(new CustomEvent(EVT_ESTUDOS_CHAT));
+        else window.dispatchEvent(new CustomEvent("zaeon:set-tab", { detail: d.aba === "escritorio" ? "escritorio" : "meus-estudos" }));
+    } catch { /* evento é atalho; a vitrine segue */ }
+}
 
 // ── os itens JÁ CONECTADOS (plugáveis e comprados), por pessoa, no navegador ──
 const CHAVE_CONECTADOS = "zaeon.vitrine.conectados";
@@ -92,7 +104,9 @@ export default function VitrineEstudos() {
     // ── o RITUAL DE CONEXÃO (dois estágios + desintegração) ──
     const [inspecionando, setInspecionando] = useState<ItemVitrine | null>(null);
     const [fases, setFases] = useState<{ open?: boolean; forja?: boolean; clamp?: boolean; impact?: boolean; lit?: boolean; desintegra?: boolean }>({});
-    const [aviso, setAviso] = useState<{ titulo: string; destino: string } | null>(null);
+    const [depois, setDepois] = useState<ItemVitrine | null>(null);
+    const [detalhe, setDetalhe] = useState<{ it: ItemVitrine; origem: DOMRect } | null>(null);
+    const abrirDetalhes = (it: ItemVitrine, alvo: HTMLElement) => setDetalhe({ it, origem: alvo.getBoundingClientRect() });
     const spinRef = useRef<HTMLDivElement>(null);
     const forjandoRef = useRef(false);
     const timersRef = useRef<number[]>([]);
@@ -122,7 +136,7 @@ export default function VitrineEstudos() {
                         window.setTimeout(() => setFases((f) => ({ ...f, impact: false })), 1160),
                         window.setTimeout(() => { conectarItem(it.id); if (it.plugavel) plugar(it.plugavel); }, 1700), // COMPRA/PLUG acontece
                         window.setTimeout(() => setFases((f) => ({ ...f, desintegra: true })), 1860),        // a carta desintegra e sai de cena
-                        window.setTimeout(() => { setAviso({ titulo: it.titulo, destino: destinoDe(it) }); fecharInspect(); }, 2600),
+                        window.setTimeout(() => { setDepois(it); fecharInspect(); }, 2600),
                     );
                 } else {
                     card.style.transform = `rotateY(${angle % 360}deg)`;
@@ -133,8 +147,21 @@ export default function VitrineEstudos() {
         return () => { cancelAnimationFrame(rafOpen); cancelAnimationFrame(raf); timersRef.current.forEach(clearTimeout); timersRef.current = []; };
     }, [inspecionando]);
 
-    // a notificação some sozinha
-    useEffect(() => { if (!aviso) return; const t = window.setTimeout(() => setAviso(null), 4900); return () => clearTimeout(t); }, [aviso]);
+    // Esc fecha a escolha de depois do plug
+    useEffect(() => {
+        if (!depois) return;
+        const t = (e: KeyboardEvent) => { if (e.key === "Escape") setDepois(null); };
+        window.addEventListener("keydown", t);
+        return () => window.removeEventListener("keydown", t);
+    }, [depois]);
+
+    /** o preço que a carta mostra (SOL, "Grátis" ou "no plano Pro") */
+    const precoDe = (it: ItemVitrine) => {
+        const orq = it.plugavel ? ehAgenteOrquestra(it.plugavel) : false;
+        const planoPro = !!it.plugavel && orq;
+        const graa = !planoPro && it.preco <= 0;
+        return { orq, graa, node: planoPro ? "no plano Pro" : graa ? "Grátis" : <><SolanaMark size={13} title="SOL" />{it.preco.toLocaleString("pt-BR")}</> };
+    };
 
     // junta os cards do admin (banco) com o catálogo embutido, sem repetir id
     const catalogo = useMemo(() => mesclarCatalogo(itensDb), [itensDb]);
@@ -165,12 +192,9 @@ export default function VitrineEstudos() {
 
                     <div className="vt-grid mt-6 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-x-10 gap-y-14">
                         {mostra.map((it) => {
-                            const orq = it.plugavel ? ehAgenteOrquestra(it.plugavel) : false;
-                            const planoPro = !!it.plugavel && orq;
-                            const graa = !planoPro && it.preco <= 0;
+                            const p = precoDe(it);
                             const conectado = estaConectado(it);
-                            const precoNode = planoPro ? "no plano Pro" : graa ? "Grátis" : <><SolanaMark size={13} title="SOL" />{it.preco.toLocaleString("pt-BR")}</>;
-                            const acaoNode = verConectados
+                            const acao = verConectados
                                 ? <button type="button" className="vt-desplug" onClick={(e) => { e.stopPropagation(); desconectar(it); }}>⊘ desconectar</button>
                                 : conectado
                                     ? <span className="vt-conectado">✓ conectado</span>
@@ -179,11 +203,16 @@ export default function VitrineEstudos() {
                                 <CartaVitrine
                                     key={it.id}
                                     it={it}
-                                    onClick={verConectados ? undefined : () => inspecionar(it)}
-                                    badgeGratis={it.preco === 0 && !orq}
-                                    precoFree={graa}
-                                    precoNode={precoNode}
-                                    acaoNode={acaoNode}
+                                    onClick={(alvo) => abrirDetalhes(it, alvo)}
+                                    badgeGratis={it.preco === 0 && !p.orq}
+                                    precoFree={p.graa}
+                                    precoNode={p.node}
+                                    acaoNode={
+                                        <span className="vt-btns">
+                                            <button type="button" className="vt-det" title="Ver detalhes" onClick={(e) => { e.stopPropagation(); abrirDetalhes(it, (e.currentTarget.closest(".vt-card") as HTMLElement) ?? e.currentTarget); }}>detalhes</button>
+                                            {acao}
+                                        </span>
+                                    }
                                 />
                             );
                         })}
@@ -233,7 +262,7 @@ export default function VitrineEstudos() {
                             <div className="vt-dock-price">{planoPro ? "no plano Pro" : it.preco > 0 ? <><SolanaMark size={15} title="SOL" />{precoTexto(it.preco)}</> : "Grátis"}</div>
                             <div className="vt-dock-act">
                                 {conectado ? (
-                                    <div className="vt-dock-done">✓ conectado · disponível {destinoDe(it)}</div>
+                                    <div className="vt-dock-done">✓ conectado · disponível {destinoDe(it).texto}</div>
                                 ) : travado ? (
                                     <div className="vt-dock-lock">{estadoOrq[it.plugavel!]?.estado === "exige_plano" ? "🔒 " : "⏳ "}{estadoOrq[it.plugavel!]?.aviso ?? "verificando…"}</div>
                                 ) : (
@@ -247,11 +276,33 @@ export default function VitrineEstudos() {
                 );
             })()}
 
-            {/* ── a notificação sutil (feature agora disponível) ── */}
-            {aviso && (
-                <div className="vt-aviso" role="status">
-                    <SolanaMark size={14} title="" />
-                    <span><b>{aviso.titulo}</b> agora está disponível {aviso.destino}.</span>
+            {/* ── DETALHES: a carta sobe e fica atrás; a tela de sumário sobe com a borda em circuito ── */}
+            {detalhe && (() => {
+                const p = precoDe(detalhe.it);
+                return (
+                    <DetalhesBuild
+                        key={detalhe.it.id}
+                        item={detalhe.it}
+                        cor={COR_RARIDADE[detalhe.it.raridade]}
+                        origem={detalhe.origem}
+                        carta={<CartaVitrine it={detalhe.it} badgeGratis={detalhe.it.preco === 0 && !p.orq} precoFree={p.graa} precoNode={p.node} />}
+                        onFechar={() => setDetalhe(null)}
+                    />
+                );
+            })()}
+
+            {/* ── DEPOIS DO PLUG: voltar à vitrine ou abrir onde a build ficou ── */}
+            {depois && (
+                <div className="vd-pos" role="dialog" aria-modal="true" aria-label={`${depois.titulo} conectado`} onClick={() => setDepois(null)}>
+                    <div className="vd-pos-caixa" onClick={(e) => e.stopPropagation()}>
+                        <div className="vd-ok">✓</div>
+                        <h3>{depois.titulo} conectado</h3>
+                        <p>Já está na sua conta, disponível {destinoDe(depois).texto}. Quer abrir agora ou continuar explorando?</p>
+                        <div className="vd-dois">
+                            <button type="button" className="vd-bt voltar" onClick={() => setDepois(null)}>← voltar à vitrine</button>
+                            <button type="button" className="vd-bt abrir" onClick={() => { const d = destinoDe(depois); setDepois(null); abrirDestino(d); }}>abrir {destinoDe(depois).texto} ↗</button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

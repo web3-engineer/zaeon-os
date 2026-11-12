@@ -34,7 +34,8 @@ const glowDe = (r: ItemVitrine["raridade"]) => (r === "lendaria" ? 34 : r === "e
 
 export default function CartaVitrine({ it, onClick, badgeGratis = false, precoFree = false, precoNode, acaoNode, className }: {
     it: ItemVitrine;
-    onClick?: () => void;
+    /** clique na carta (recebe a própria carta: a vitrine usa a posição pra animar o painel de detalhes) */
+    onClick?: (carta: HTMLElement) => void;
     /** selo GRÁTIS no canto da arte */
     badgeGratis?: boolean;
     /** pinta o preço de verde (grátis) */
@@ -54,11 +55,11 @@ export default function CartaVitrine({ it, onClick, badgeGratis = false, precoFr
         <article
             className={`vt-card${className ? ` ${className}` : ""}`}
             style={{ "--cor": cor, "--glow": `${glowDe(it.raridade)}px`, "--cy": "#38f0ff" } as CSSProperties}
-            onClick={onClick}
+            onClick={onClick ? (e) => onClick(e.currentTarget) : undefined}
             role={interativa ? "button" : undefined}
             tabIndex={interativa ? 0 : undefined}
             aria-label={interativa ? it.titulo : undefined}
-            onKeyDown={interativa ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick!(); } } : undefined}
+            onKeyDown={interativa ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick!(e.currentTarget); } } : undefined}
         >
             <div className="vt-frame">
                 <div className="vt-panel">

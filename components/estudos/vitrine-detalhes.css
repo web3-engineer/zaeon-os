@@ -1,0 +1,97 @@
+/* O PAINEL DE DETALHES da vitrine (DetalhesBuild.tsx) e a escolha DEPOIS DO PLUG.
+   A vitrine desfoca, a carta clicada sobe e fica atrás (borrada) e a tela de sumário sobe de baixo com a borda em
+   CIRCUITO: as trilhas se desenham, os pads acendem e a corrente corre pelo contorno. `--cor` = a raridade. */
+
+.vd-foco { position: fixed; z-index: 50; pointer-events: none; transition: left .6s cubic-bezier(.2,.8,.2,1), top .6s cubic-bezier(.2,.8,.2,1), width .6s cubic-bezier(.2,.8,.2,1), height .6s cubic-bezier(.2,.8,.2,1), filter .6s; }
+.vd-foco .vt-card { width: 100%; height: 100%; transform: none !important; filter: none !important; }
+.vd-raiz.aberto .vd-foco { filter: blur(5px) brightness(.75); }
+.vd-veu { position: fixed; inset: 0; z-index: 55; background: radial-gradient(circle at 50% 28%, color-mix(in srgb, var(--cor) 16%, transparent), transparent 60%), rgba(2,6,14,.55); backdrop-filter: blur(10px) saturate(.6); opacity: 0; transition: opacity .4s; }
+.vd-raiz.aberto .vd-veu { opacity: 1; }
+
+.vd-sumario { --cy: #38f0ff; position: fixed; z-index: 60; left: 50%; bottom: 0; width: min(760px, 94vw); height: min(76vh, 700px); transform: translate(-50%, 104%); transition: transform .7s cubic-bezier(.16,1.12,.3,1); color: #e8f3ff; }
+.vd-raiz.aberto .vd-sumario { transform: translate(-50%, -4vh); }
+.vd-casca { position: absolute; inset: 0; clip-path: polygon(0 34px,34px 0,calc(100% - 140px) 0,calc(100% - 120px) 14px,calc(100% - 34px) 14px,100% 48px,100% 100%,0 100%); background: linear-gradient(180deg, rgba(8,26,48,.96), rgba(3,10,22,.98)); backdrop-filter: blur(14px); }
+.vd-casca::before { content: ""; position: absolute; inset: 0; background-image: radial-gradient(color-mix(in srgb, var(--cor) 22%, transparent) 1px, transparent 1.2px); background-size: 22px 22px; opacity: .18; }
+.vd-circuito { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.vd-traco { fill: none; stroke: color-mix(in srgb, var(--cor) 70%, var(--cy)); stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 3px color-mix(in srgb, var(--cor) 70%, transparent)); stroke-dasharray: var(--len); stroke-dashoffset: var(--len); }
+.vd-raiz.aberto .vd-traco { animation: vddesenha 1.1s .25s cubic-bezier(.6,0,.2,1) forwards; }
+@keyframes vddesenha { to { stroke-dashoffset: 0; } }
+.vd-corrente { fill: none; stroke: #eaffff; stroke-width: 2.2; stroke-linecap: round; stroke-dasharray: 26 var(--len); opacity: 0; filter: drop-shadow(0 0 6px var(--cy)) drop-shadow(0 0 10px var(--cor)); }
+.vd-raiz.aberto .vd-corrente { opacity: .95; animation: vdflui 4.2s 1.3s linear infinite; }
+@keyframes vdflui { to { stroke-dashoffset: calc(-1 * var(--len)); } }
+.vd-pad { fill: #04101f; stroke: color-mix(in srgb, var(--cor) 70%, var(--cy)); stroke-width: 1.4; opacity: 0; transform-box: fill-box; transform-origin: center; }
+.vd-raiz.aberto .vd-pad { animation: vdacende .4s ease-out forwards; }
+@keyframes vdacende { 0% { opacity: 0; transform: scale(.2); } 70% { opacity: 1; transform: scale(1.4); } 100% { opacity: 1; transform: scale(1); } }
+
+.vd-conteudo { position: absolute; inset: 0; padding: 36px 34px 24px 38px; display: flex; flex-direction: column; gap: 16px; opacity: 0; transform: translateY(14px); transition: opacity .45s .45s, transform .45s .45s; }
+.vd-raiz.aberto .vd-conteudo { opacity: 1; transform: none; }
+.vd-fechar { position: absolute; top: 22px; right: 26px; z-index: 3; width: 30px; height: 30px; display: grid; place-items: center; color: #9fc0e0; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1); border-radius: 8px; cursor: pointer; font-size: 14px; }
+.vd-cab { display: flex; align-items: center; gap: 14px; padding-right: 40px; }
+.vd-avatar { position: relative; width: 52px; height: 52px; flex: none; }
+.vd-avatar .vd-foto { position: absolute; inset: 5px; border-radius: 50%; overflow: hidden; background: linear-gradient(135deg, color-mix(in srgb, var(--cor) 60%, #0b2038), #0b2038); display: grid; place-items: center; font-weight: 800; font-size: 16px; color: #fff; }
+.vd-avatar .vd-foto img { width: 100%; height: 100%; object-fit: cover; }
+.vd-avatar svg { position: absolute; inset: 0; animation: vdgira 14s linear infinite; }
+@keyframes vdgira { to { transform: rotate(360deg); } }
+.vd-quem { flex: 1; min-width: 0; }
+.vd-rot { font: 9px ui-monospace, monospace; letter-spacing: .24em; color: var(--cy); opacity: .8; }
+.vd-nome { margin-top: 2px; font-size: 17px; font-weight: 800; display: flex; align-items: center; gap: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vd-nome .vd-vf { color: var(--cy); font-size: 13px; }
+.vd-handle { font: 11.5px ui-monospace, monospace; color: #7f98b6; }
+.vd-acoes { display: flex; gap: 8px; flex: none; }
+.vd-bt { font: 700 11.5px ui-monospace, monospace; letter-spacing: .03em; padding: 9px 13px; cursor: pointer; border: 0; display: inline-flex; align-items: center; gap: 7px; clip-path: polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%); transition: filter .2s, opacity .2s; }
+.vd-bt:hover:not(:disabled) { filter: brightness(1.12); }
+.vd-bt:disabled { opacity: .45; cursor: not-allowed; }
+.vd-bt.msg { color: #02121f; background: var(--cor); box-shadow: 0 0 18px color-mix(in srgb, var(--cor) 60%, transparent); }
+.vd-bt.perfil { color: #dff6ff; background: rgba(56,240,255,.1); box-shadow: inset 0 0 0 1px rgba(56,240,255,.4); }
+.vd-div { height: 1px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--cor) 50%, transparent), transparent); }
+.vd-titulo { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -.01em; line-height: 1.15; }
+.vd-meta { display: flex; flex-wrap: wrap; gap: 10px; }
+.vd-chip { display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 10px 14px; border: 1px solid rgba(56,240,255,.22); background: rgba(56,240,255,.05); clip-path: polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px); min-width: 150px; }
+.vd-chip .k { font: 9px ui-monospace, monospace; letter-spacing: .22em; color: var(--cy); opacity: .85; }
+.vd-chip .v { font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
+.vd-pilha { display: flex; }
+.vd-pilha i { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #061427; margin-left: -6px; background: linear-gradient(135deg, var(--cy), color-mix(in srgb, var(--cor) 70%, #0b2038)); display: inline-block; }
+.vd-pilha i:first-child { margin-left: 0; }
+.vd-desc { flex: 1; min-height: 0; overflow-y: auto; padding-right: 10px; font-size: 14.5px; line-height: 1.65; color: #d6e6f7; mask-image: linear-gradient(180deg, #000 90%, transparent); }
+.vd-desc p { margin: 0 0 10px; white-space: pre-line; }
+.vd-desc h4 { margin: 16px 0 6px; font: 10px ui-monospace, monospace; letter-spacing: .22em; color: var(--cy); }
+.vd-desc ul { margin: 0; padding-left: 18px; list-style: disc; } .vd-desc li { margin: 3px 0; }
+.vd-tags { display: flex; flex-wrap: wrap; gap: 6px; } .vd-tags span { font: 11px ui-monospace, monospace; color: #bfe4ff; border: 1px solid rgba(56,240,255,.25); border-radius: 999px; padding: 2px 9px; }
+.vd-desc::-webkit-scrollbar { width: 6px; } .vd-desc::-webkit-scrollbar-thumb { background: rgba(56,240,255,.25); border-radius: 9px; }
+.vd-rodape { display: flex; justify-content: space-between; align-items: center; font: 10.5px ui-monospace, monospace; color: #7f98b6; }
+.vd-rodape kbd { font: inherit; padding: 1px 6px; border: 1px solid rgba(255,255,255,.18); border-radius: 4px; }
+
+/* o botão "detalhes" no card, ao lado do plug. A linha preço + botões cabe na carta: o preço encolhe um pouco, e em
+   carta estreita o "detalhes" vira só o ícone (container query na própria carta). */
+.vt-card { container-type: inline-size; }
+.vt-pr { gap: 6px; }
+.vt-pr .vt-price { font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.vt-btns { display: flex; gap: 4px; flex: none; }
+.vt-det { flex: none; font: 700 10px ui-monospace, monospace; letter-spacing: .03em; color: #cfeeff; background: rgba(56,240,255,.08); border: 1px solid rgba(56,240,255,.35); padding: 5px 8px; cursor: pointer; clip-path: polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%); transition: background .2s, color .2s; }
+.vt-det:hover { background: rgba(56,240,255,.22); color: #fff; }
+.vt-btns .vt-plug { padding: 6px 9px; font-size: 10.5px; }
+@container (max-width: 270px) {
+  .vt-det { font-size: 0; padding: 4px 8px; }
+  .vt-det::before { content: "ⓘ"; font-size: 13px; line-height: 1; }
+}
+
+/* DEPOIS DO PLUG: voltar à vitrine ou abrir */
+.vd-pos { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; background: rgba(2,6,14,.55); backdrop-filter: blur(10px) saturate(.6); animation: vdsurge .35s ease-out; color: #e8f3ff; }
+@keyframes vdsurge { from { opacity: 0; } }
+.vd-pos-caixa { position: relative; width: min(540px, 92vw); padding: 30px 30px 26px; text-align: center; background: linear-gradient(180deg, rgba(8,26,48,.96), rgba(3,10,22,.98)); clip-path: polygon(0 26px,26px 0,100% 0,100% calc(100% - 26px),calc(100% - 26px) 100%,0 100%); box-shadow: inset 0 0 0 1px rgba(73,242,160,.25); animation: vdsobe .5s cubic-bezier(.16,1.12,.3,1); }
+@keyframes vdsobe { from { transform: translateY(20px) scale(.97); } }
+.vd-ok { width: 58px; height: 58px; margin: 0 auto 14px; border-radius: 50%; display: grid; place-items: center; font-size: 26px; color: #7dffb0; box-shadow: 0 0 0 1px #49f2a099, 0 0 30px #49f2a055; animation: vdpulsa 2.2s ease-in-out infinite; }
+@keyframes vdpulsa { 50% { box-shadow: 0 0 0 1px #49f2a0, 0 0 46px #49f2a088; } }
+.vd-pos h3 { margin: 0; font-size: 19px; font-weight: 800; }
+.vd-pos p { margin: 8px 0 22px; font-size: 13.5px; color: #7f98b6; }
+.vd-dois { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.vd-dois .vd-bt { padding: 12px 18px; font-size: 12.5px; }
+.vd-bt.voltar { color: #dff6ff; background: rgba(56,240,255,.1); box-shadow: inset 0 0 0 1px rgba(56,240,255,.4); }
+.vd-bt.abrir { color: #02121f; background: #49f2a0; box-shadow: 0 0 22px #49f2a077; }
+
+@media (max-width: 560px) { .vd-cab { flex-wrap: wrap; } .vd-acoes { width: 100%; } .vd-conteudo { padding: 30px 20px 18px 24px; } }
+@media (prefers-reduced-motion: reduce) {
+  .vd-sumario, .vd-conteudo, .vd-foco { transition: none; }
+  .vd-traco, .vd-corrente, .vd-pad, .vd-avatar svg, .vd-ok { animation: none !important; }
+  .vd-traco { stroke-dashoffset: 0; } .vd-pad { opacity: 1; }
+}
