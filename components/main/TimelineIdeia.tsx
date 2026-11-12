@@ -15,7 +15,7 @@ const MARCOS: readonly { titulo: string; cor: string }[] = [
   { titulo: "Conversa com as IAs", cor: "#46b0ff" },
   { titulo: "Blueprint", cor: "#38f0ff" },
   { titulo: "Protótipo e testes", cor: "#49f2a0" },
-  { titulo: "No mundo real", cor: "#ff9f45" },
+  { titulo: "No mundo real", cor: "#22d3ee" },
 ];
 const N = MARCOS.length;
 

@@ -7,12 +7,12 @@
  * Cada peça é um <g class="ci-part" data-at="<0..1>"> com a cor da sua etapa nas variáveis --anatomy-*.
  */
 import {
-  slabOf, cylinder, extrude, solidSvg, lineSvg, dotsSvg, dotGrid, knurl, ring, iso,
+  slabOf, cylinder, extrude, solidSvg, lineSvg, lineOnTop, dotsSvg, dotGrid, knurl, ring, iso,
   figureSvg, fitProjection, boxCorners, type Plane, type Projection,
 } from "@/lib/anatomy/iso-kit";
 
-const W = 380, H = 360;
-const proj: Projection = fitProjection(boxCorners({ x: -24, y: -24, w: 48, d: 48, r: 0 }, 0, 34), W, H, { pad: 20 });
+const W = 380, H = 380;
+const proj: Projection = fitProjection(boxCorners({ x: -24, y: -26, w: 48, d: 50, r: 0 }, 0, 40), W, H, { pad: 20 });
 
 /** cada peça vira um volume de VIDRO NEON na cor da etapa: faces translúcidas (topo mais claro), arestas acesas.
  *  O tema escuro do kit é quase preto e some no fundo da landing (também escuro) — por isso tingimos tudo. */
@@ -43,24 +43,37 @@ function engrenagem(cx: number, cy: number, z: number, h: number): string {
   return solidSvg(extrude(anel, z, h, proj, { convex: false }), { tone: "hi" }) + lineSvg(ring(cx, cy, 1.8, z + h, proj, 18), { tone: "lo" });
 }
 
+/** uma torre em (cx,cy): duas caixas empilhadas (a de cima mais estreita) — as "conversas subindo" */
+function torre(cx: number, cy: number): string {
+  return solidSvg(slabOf({ x: cx - 3.6, y: cy - 3.6, w: 7.2, d: 7.2, r: 1 }, 2, 7.4, proj), { tone: "hi" })
+    + solidSvg(slabOf({ x: cx - 2.6, y: cy - 2.6, w: 5.2, d: 5.2, r: 1 }, 9.4, 4, proj), { tone: "hi" });
+}
+
+/** o papel científico: uma PASTA com um papel (de linhas) em cima */
+const PASTA =
+  solidSvg(slabOf({ x: -19, y: -19, w: 38, d: 40, r: 2 }, 0, 2, proj), { tone: "hi" })        // corpo da pasta
+  + solidSvg(slabOf({ x: 3, y: -23, w: 13, d: 5, r: 1 }, 0, 2, proj), { tone: "hi" })          // aba de índice
+  + solidSvg(slabOf({ x: -13, y: -13, w: 26, d: 30, r: 0.8 }, 2, 0.5, proj), { tone: "mid" })  // o papel
+  + [0, 1, 2, 3].map((i) => lineSvg(lineOnTop([-8, -7 + i * 6], [12, -7 + i * 6], 2.5, proj), { tone: "lo" })).join("");
+
 type Peca = { at: number; cor: string; corpo: string };
 const PECAS: readonly Peca[] = [
-  // base
-  { at: 0.00, cor: "#8b5cf6", corpo: solidSvg(slabOf({ x: -22, y: -22, w: 44, d: 44, r: 3 }, 0, 2.2, proj), { tone: "hi" }) + dotsSvg(dotGrid(-18, -18, 9, 9, 4.5, 2.2, proj), { tone: "faint", size: 0.45 }) },
-  // estrutura (4 pilares)
-  { at: 0.16, cor: "#6f7bff", corpo: [[-18, -18], [18, -18], [-18, 18], [18, 18]].map(([x, y]) => solidSvg(cylinder(x, y, 1.6, 2.2, 9, proj, 14), { tone: "mid" })).join("") },
-  // deck
-  { at: 0.30, cor: "#46b0ff", corpo: solidSvg(slabOf({ x: -20, y: -20, w: 40, d: 40, r: 2 }, 11.2, 2, proj), { tone: "hi" }) },
-  // gabinete (corpo) com "tela" de pontos
-  { at: 0.46, cor: "#38f0ff", corpo: solidSvg(slabOf({ x: -13, y: -13, w: 22, d: 20, r: 2 }, 13.2, 10, proj), { tone: "hi" }) + dotsSvg(dotGrid(-9, -9, 5, 4, 3.4, 23.2, proj), { tone: "mid", size: 0.6 }) },
-  // bateria 18650 ao lado
-  { at: 0.58, cor: "#49f2a0", corpo: solidSvg(cylinder(16, -7, 4.2, 13.2, 13, proj, 20), { tone: "hi" }) + solidSvg(cylinder(16, -7, 1.8, 26.2, 1.6, proj, 14), { tone: "hi" }) + lineSvg(knurl(16, -7, 4.2, 15, 25, 14, proj), { tone: "lo" }) },
-  // engrenagem no deck
-  { at: 0.68, cor: "#49f2a0", corpo: engrenagem(-14, 13, 13.2, 3) },
-  // mastro + placa solar no topo do gabinete
-  { at: 0.82, cor: "#ff9f45", corpo: solidSvg(cylinder(-8, -8, 1.1, 23.2, 7, proj, 12), { tone: "mid" }) + solidSvg(cylinder(4, 2, 1.1, 23.2, 7, proj, 12), { tone: "mid" }) + solidSvg(slabOf({ x: -16, y: -14, w: 30, d: 24, r: 1 }, 30.2, 1.3, proj), { tone: "hi" }) + dotsSvg(dotGrid(-12, -10, 6, 4, 4.5, 31.5, proj), { tone: "faint", size: 0.55 }) },
-  // antena + luz
-  { at: 0.94, cor: "#ffd36b", corpo: solidSvg(cylinder(11, -10, 0.6, 23.2, 9, proj, 10), { tone: "hi" }) + dotsSvg([iso([11, -10, 32.5], proj)], { tone: "hi", size: 1.4, pulse: true }) },
+  // 01 — papel científico: uma PASTA com um papel
+  { at: 0.00, cor: "#8b5cf6", corpo: PASTA },
+  // 02 — conversas com as IAs: TORRES subindo
+  { at: 0.20, cor: "#46b0ff", corpo: [[-14, -14], [14, -14], [-14, 14], [14, 14]].map(([x, y]) => torre(x, y)).join("") },
+  // 03 — blueprint: o deck (plataforma) sobre as torres
+  { at: 0.42, cor: "#38f0ff", corpo: solidSvg(slabOf({ x: -18, y: -18, w: 36, d: 36, r: 2 }, 13.4, 2, proj), { tone: "hi" }) },
+  // 03 — blueprint: o gabinete com "tela" de pontos
+  { at: 0.50, cor: "#38f0ff", corpo: solidSvg(slabOf({ x: -12, y: -12, w: 20, d: 18, r: 2 }, 15.4, 9, proj), { tone: "hi" }) + dotsSvg(dotGrid(-8, -8, 5, 4, 3, 24.4, proj), { tone: "mid", size: 0.6 }) },
+  // 04 — protótipo: bateria 18650
+  { at: 0.62, cor: "#49f2a0", corpo: solidSvg(cylinder(15, -6, 4, 15.4, 12, proj, 20), { tone: "hi" }) + solidSvg(cylinder(15, -6, 1.7, 27.4, 1.6, proj, 14), { tone: "hi" }) + lineSvg(knurl(15, -6, 4, 17, 26, 14, proj), { tone: "lo" }) },
+  // 04 — protótipo: engrenagem no deck
+  { at: 0.70, cor: "#49f2a0", corpo: engrenagem(-13, 12, 15.4, 3) },
+  // 05 — no mundo real (azul ciano): mastro + placa solar
+  { at: 0.84, cor: "#22d3ee", corpo: solidSvg(cylinder(-7, -7, 1.1, 24.4, 6, proj, 12), { tone: "mid" }) + solidSvg(cylinder(4, 2, 1.1, 24.4, 6, proj, 12), { tone: "mid" }) + solidSvg(slabOf({ x: -15, y: -13, w: 28, d: 22, r: 1 }, 30.4, 1.3, proj), { tone: "hi" }) + dotsSvg(dotGrid(-11, -9, 6, 4, 4.2, 31.7, proj), { tone: "faint", size: 0.55 }) },
+  // 05 — no mundo real: antena + luz
+  { at: 0.94, cor: "#22d3ee", corpo: solidSvg(cylinder(10, -9, 0.6, 24.4, 8, proj, 10), { tone: "hi" }) + dotsSvg([iso([10, -9, 32.4], proj)], { tone: "hi", size: 1.4, pulse: true }) },
 ];
 
 const body = PECAS.map((p) => `<g class="ci-part" data-at="${p.at}" style="${tint(p.cor)}">${p.corpo}</g>`).join("");
