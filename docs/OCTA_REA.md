@@ -35,10 +35,10 @@ O REA (e, portanto, o Octa com a skill) **não** ajuda a: burlar DRM/verificaç�
 - O motor já roda em produção: container `zaeon_rea_engine`, imagem `zaeon-rea-engine:local`, só na Tailscale (`100.113.137.74:8799`). Atualizar = **rebuild-no-lugar**, não primeira instalação.
 
 ### 1. Ache a pasta de origem e REUSE o token
-O container foi construído de uma pasta na própria box. Ache-a (e confirme que é a box certa):
+A pasta é **`/home/zaeon/rea-engine/`** (layout PLANO: `Dockerfile`, `compose.yml`, `bridge.mjs`, `audit-denylist.mjs` direto nela — NÃO sob `infra/rea-engine/`). Confirme a box e a pasta:
 ```bash
 ip -4 addr | grep -o '100\.113\.137\.74' || echo 'BOX ERRADA — pare'
-find / -path '*rea-engine*' -name Dockerfile 2>/dev/null   # ex.: /opt/rea-engine/... 
+find / -path '*rea-engine*' -name Dockerfile 2>/dev/null   # → /home/zaeon/rea-engine/Dockerfile
 docker inspect zaeon_rea_engine --format 'img={{.Config.Image}} workdir={{.Config.WorkingDir}}'
 ```
 O token da ponte (`REA_BRIDGE_TOKEN`) **tem de ser o mesmo** que o `.env` da VPS do app usa — **não gere outro**, senão o app para. Se precisar do valor atual, leia do container (fica na sua tela, não vai pra lugar nenhum):
@@ -46,32 +46,46 @@ O token da ponte (`REA_BRIDGE_TOKEN`) **tem de ser o mesmo** que o `.env` da VPS
 docker inspect zaeon_rea_engine --format '{{range .Config.Env}}{{println .}}{{end}}' | grep REA_BRIDGE_TOKEN
 ```
 
-### 2. Atualize os arquivos para a versão nova
-- **Se a pasta é um checkout git** com acesso ao repo: `git fetch && git checkout <branch-ou-main> && git pull`.
-- **Se são arquivos soltos** (sem GitHub na box): os ajustes que importam, aplicáveis com editor/`sed`:
-  - `infra/rea-engine/Dockerfile`: `ARG REA_VERSION=6.5.0` → `6.9.0`.
-  - `infra/rea-engine/compose.yml`: `REA_VERSION: "6.5.0"` → `"6.9.0"`.
-  - `infra/rea-engine/bridge.mjs`: a linha `const DENY_PREFIXOS = [...]` ganha, no começo, `"frida", "spawn", "attach", "launch", "instrument", "interact", "run-", "extract-", "environment-", "agent-env", ` (manter idêntica à de `lib/octa/rea.ts`).
-  - copie `infra/rea-engine/audit-denylist.mjs` (novo) para a pasta.
+### 2. Atualize os arquivos (a box NÃO tem o repo — são arquivos soltos)
+Backup e os três ajustes que importam, de `/home/zaeon/rea-engine`:
+```bash
+cd /home/zaeon/rea-engine
+cp Dockerfile Dockerfile.bak; cp compose.yml compose.yml.bak; cp bridge.mjs bridge.mjs.bak
+sed -i 's/ARG REA_VERSION=6\.5\.0/ARG REA_VERSION=6.9.0/' Dockerfile
+sed -i 's/REA_VERSION: "6\.5\.0"/REA_VERSION: "6.9.0"/' compose.yml
+# deny-list idempotente (só age se ainda não tiver "frida"), idêntica à de lib/octa/rea.ts:
+grep -q '"frida"' bridge.mjs || sed -i 's/\["capture-", "observe-/["frida", "spawn", "attach", "launch", "instrument", "interact", "run-", "extract-", "environment-", "agent-env", "capture-", "observe-/' bridge.mjs
+grep 'ARG REA_VERSION' Dockerfile; grep 'REA_VERSION:' compose.yml; grep -c '"frida"' bridge.mjs
+```
+Garanta o token no `.env` ao lado (o MESMO do passo 1 — não gere outro):
+```bash
+test -f .env && grep -q REA_BRIDGE_TOKEN .env && echo "OK" || echo "crie: printf 'REA_BRIDGE_TOKEN=%s\n' '<token do inspect>' > .env"
+```
 
 ### 3. Rebuild + up, SEMPRE escopado
 ```bash
-cd <pasta-de-origem>   # a que o find achou
-docker compose -p rea-engine -f infra/rea-engine/compose.yml build --no-cache rea-engine
-docker compose -p rea-engine -f infra/rea-engine/compose.yml up -d rea-engine
+cd /home/zaeon/rea-engine
+docker compose -p rea-engine -f compose.yml build rea-engine   # sem --no-cache: reaproveita Ghidra/JDK, refaz só a camada do rea-agents
+docker rm -f zaeon_rea_engine                                  # o antigo subiu por `docker run`: remova-o pelo NOME (seguro) antes do up
+docker compose -p rea-engine -f compose.yml up -d rea-engine
 ```
-> O build precisa de internet (baixa `rea-agents@6.9.0` do npm + Ghidra + JADX). A box tem egress (baixa modelos). O `compose.yml` já traz o `REA_BRIDGE_TOKEN` do `.env` ao lado; se o container original subiu por `docker run`, crie `infra/rea-engine/.env` com o MESMO token do passo 1.
+> O build precisa de internet (npm + Ghidra/JADX já em cache). Buildar ANTES do `rm` deixa o antigo servindo durante o build; a troca é de segundos.
 
 ### 4. Verifique
 ```bash
 docker exec zaeon_rea_engine rea --version          # 6.9.0
 curl -s http://100.113.137.74:8799/health            # { ok, rea, ghidra }
-cd <pasta-de-origem> && node infra/rea-engine/audit-denylist.mjs   # rc=1 se algo perigoso escapou
+```
+Auditoria da deny-list — inline (o `audit-denylist.mjs` do repo não está nessa box; cruza o catálogo real do 6.9 com a deny-list):
+```bash
+docker exec zaeon_rea_engine rea --help | node -e 'const deny=["frida","spawn","attach","launch","instrument","interact","run-","extract-","environment-","agent-env","capture-","observe-","trace","debug-","start-adb","stop-adb","push-","pull-","read-adb","resolve-adb","inspect-adb","uninstall","collect-adb","import-","open-jeb","execute-","cutter-","annotate-","decompile-jeb","inspect-jeb","discover-webmcp","reconcile-javascript-runtime"];const ex=new Set(["setup","update","completions","evidence-import"]);const dg=["capture","observe","trace","debug","adb","spawn","attach","launch","instrument","interact","frida","exec","push","pull","install","write","delete","remove","start","stop","record","hook","annotate","patch","inject","upload","download","extract","mount","run","reset","send","kill"];let t="";process.stdin.on("data",d=>t+=d).on("end",()=>{const cat=[...t.matchAll(/^\s{2,}([a-z][a-z0-9-]+)\s{2,}/gm)].map(m=>m[1]);const ok=cat.filter(c=>!ex.has(c)&&!deny.some(p=>c.startsWith(p)));const s=ok.filter(c=>dg.some(w=>c.includes(w)));console.log("catálogo:",cat.length,"| liberados:",ok.length);console.log(s.length?"⚠️ suspeitos liberados:\n  "+s.join("\n  "):"✅ nenhum suspeito liberado");});'
+```
+Suspeito listado → acrescente o prefixo em `DENY_PREFIXOS` (bridge.mjs na box E `lib/octa/rea.ts` no repo) e reconstrua.
 ```
 No Octa (com `OCTA_REA=1` + `REA_BRIDGE_URL/TOKEN`), peça uma análise de um alvo novo do 6.9 (EVM/WASM/Rust) e confira que a Evidence volta.
 
 ### 5. Rollback
-A imagem antiga continua local (o `--no-cache` cria uma nova; a de 2 semanas atrás fica como `<none>` até um `prune` escopado). Se o 6.9 der problema, reconstrua com `--build-arg REA_VERSION=6.5.0` (ou `git checkout` da versão anterior) e `up -d` de novo. Nunca `prune` global.
+Os `.bak` do passo 2 preservam os arquivos 6.5.0. Se o 6.9 der problema: `cp Dockerfile.bak Dockerfile; cp compose.yml.bak compose.yml; cp bridge.mjs.bak bridge.mjs`, depois `build` + `rm -f zaeon_rea_engine` + `up -d` de novo (escopado). A imagem 6.9 nova não apaga a anterior; a antiga fica como `<none>` até um `prune` **escopado** (`docker image prune` sem `-a`, nunca o global). Nunca `prune -a`/`down` sem `-p`.
 
 ## O que falta (futuro)
 - As famílias com efeito colateral (capture/observe/trace/debug/adb) — pedem autorização por-ação.
