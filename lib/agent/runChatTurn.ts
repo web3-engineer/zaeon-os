@@ -71,6 +71,13 @@ export type ChatTurnParams = {
    */
   anexos?: import("@/lib/agent/anexos").AnexoDoTurno[];
   /**
+   * F-visão ("be my eyes") · as IMAGENS anexadas. Ao contrário dos `anexos` (texto), estas viajam com
+   * os BYTES (base64), porque a tool `descrever_imagem` precisa olhar a imagem — e por isso o turno de
+   * imagem roda INLINE, nunca pela fila do CHAT_BG (base64 pesado não vai pro Redis). Só a rota com a
+   * flag VISAO_HARNESS as preenche; ausente = turno sem imagem (o caminho de hoje, byte a byte).
+   */
+  imagens?: import("@/lib/agent/toolsVisao").ImagemDoTurno[];
+  /**
    * O MOTOR que o aluno escolheu ao plugar um agente da orquestra na Loja (lib/orquestra/catalogo). O turno
    * continua sendo da Aura; a orquestra confere plano e chave e, se puder, entrega o trabalho a esse motor.
    */
@@ -181,6 +188,9 @@ export async function runChatTurn(
       // F3: os anexos viajam no ToolContext — é dele que `ler_anexo`/`listar_anexos` os tiram, e é
       // ele que o `disponivelNoTurno` consulta pra decidir se as tools existem neste turno.
       ...(params.anexos?.length ? { anexos: params.anexos } : {}),
+      // F-visão: as imagens viajam no MESMO ToolContext — é delas que `descrever_imagem` tira os
+      // bytes, e é o `disponivelNoTurno` dela que vê se há imagem neste turno.
+      ...(params.imagens?.length ? { imagens: params.imagens } : {}),
       // O PORTÃO DE HABILIDADE (lib/agent/runtime ToolContext.toolsDoAgente): a base inteira pra
       // todas + as tools das habilidades desta. É o que faz `enabledSkills` deixar de ser rótulo.
       toolsDoAgente: toolsPermitidas(habilidades),

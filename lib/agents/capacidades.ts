@@ -53,6 +53,7 @@ export const TOOLS_BASE: readonly string[] = [
   "baixar_para_base",
   "listar_anexos",
   "ler_anexo",
+  "descrever_imagem",
   "examiner",
   "studio_generate",
   "research_generate",

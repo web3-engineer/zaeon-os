@@ -345,7 +345,32 @@ export async function POST(req: Request) {
             }
         }
 
-        if (stream === true && ehAgenteDeConversa && process.env.AURA_HARNESS !== "0" && (!fileData || anexos.length > 0)) {
+        // F-visão ("be my eyes", flag VISAO_HARNESS): uma IMAGEM anexada passa a entrar no HARNESS em
+        // vez do multimodal legado — mas SÓ quando a descrição EAGER funciona. Aí a imagem entra no
+        // turno descrita como evidência (paridade com o legado, que sempre a via) E com os bytes, pra a
+        // tool `descrever_imagem` voltar a olhá-la. Visão fora do ar / sem credencial → nada é setado e
+        // a imagem cai no multimodal legado de hoje, sem regressão. `anexos.length===0`: se o arquivo já
+        // virou texto (PDF com texto), aquele caminho vence; isto é só pro que não tem texto (imagem).
+        let imagens: import("@/lib/agent/toolsVisao").ImagemDoTurno[] = [];
+        if (stream === true && ehAgenteDeConversa && fileData && typeof fileData === "string" && anexos.length === 0) {
+            const { visaoNoHarnessLigado } = await import("@/lib/agent/toolsVisao");
+            if (visaoNoHarnessLigado()) {
+                const m = /^data:([^;]+);base64,(.*)$/s.exec(fileData);
+                const mime = (m?.[1] ?? "").toLowerCase();
+                const { MIMES_IMAGEM, descreverImagem } = await import("@/lib/ai/descreverImagem");
+                if (m && MIMES_IMAGEM.includes(mime)) {
+                    const dataB64 = m[2];
+                    const d = await descreverImagem({ dataB64, mime }).catch(() => ({ ok: false as const, erro: "visao_excecao" }));
+                    if (d.ok) {
+                        imagens = [{ id: "img1", nome: "imagem anexada", mime, dataB64 }];
+                        const { anexoDe } = await import("@/lib/agent/anexos");
+                        anexos = [anexoDe({ id: "img1", nome: "imagem anexada (o que a visão leu)", tipo: mime, texto: d.texto })];
+                    }
+                }
+            }
+        }
+
+        if (stream === true && ehAgenteDeConversa && process.env.AURA_HARNESS !== "0" && (!fileData || anexos.length > 0 || imagens.length > 0)) {
             const encoder = new TextEncoder();
             const turnParams = () => ({
                 prompt: String(prompt || ""),
@@ -364,6 +389,7 @@ export async function POST(req: Request) {
                 mentor: activeMentor ? { slug: activeMentor.slug, wing: activeMentor.wing } : null,
                 ...(modelo ? { modelo } : {}),
                 ...(anexos.length ? { anexos } : {}),
+                ...(imagens.length ? { imagens } : {}),
             });
 
             // ── FASE 3: MODO BACKGROUND (CHAT_BG=1) ─────────────────────────────────────
@@ -372,7 +398,9 @@ export async function POST(req: Request) {
             // reengata por GET /api/ai/chat/turns/:id (o turnId vai no header).
             // Sem sessão / sem Redis / sem bullmq / enfileirar falhou → cai no inline abaixo
             // (anônimo continua funcionando exatamente como antes da flag).
-            if (process.env.CHAT_BG === "1") {
+            // Turno de IMAGEM roda INLINE, nunca pela fila: o base64 da imagem é pesado demais pro
+            // Redis (os `anexos` de texto vão; os bytes não). Sem imagem, o CHAT_BG decide como antes.
+            if (process.env.CHAT_BG === "1" && imagens.length === 0) {
                 const [{ resolveUserId }, store, { enqueueChatJob }] = await Promise.all([
                     import("@/lib/agent/transcript"),
                     import("@/lib/agent/chat-turn-store"),
