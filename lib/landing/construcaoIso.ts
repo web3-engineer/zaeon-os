@@ -7,13 +7,13 @@
  * Cada peça é um <g class="ci-part" data-at="<0..1>"> com a cor da sua etapa nas variáveis --anatomy-*.
  */
 import {
-  slabOf, cylinder, extrude, solidSvg, lineSvg, lineOnTop, dotsSvg, dotGrid, knurl, ring, segment, iso,
-  figureSvg, fitProjection, boxCorners, type Plane, type Projection,
+  slabOf, cylinder, extrude, solidSvg, lineSvg, lineOnTop, dotsSvg, dotGrid, knurl, ring, iso,
+  figureSvg, fitProjection, boxCorners, type Plane, type Point3, type Projection,
 } from "@/lib/anatomy/iso-kit";
 
-const W = 380, H = 410;
-// headroom em cima reserva espaço pro GLOBO (que fica acima do topo da estrutura)
-const proj: Projection = fitProjection(boxCorners({ x: -24, y: -26, w: 48, d: 52, r: 0 }, 0, 32), W, H, { pad: 18, headroom: 54 });
+const W = 384, H = 448;
+// headroom bem alto: o MUNDO HOLOGRÁFICO flutua destacado acima do gadget
+const proj: Projection = fitProjection(boxCorners({ x: -24, y: -26, w: 48, d: 52, r: 0 }, 0, 28), W, H, { pad: 16, headroom: 150 });
 
 /** cada peça vira um volume de VIDRO NEON na cor da etapa: faces translúcidas (topo mais claro), arestas acesas.
  *  O tema escuro do kit é quase preto e some no fundo da landing (também escuro) — por isso tingimos tudo. */
@@ -44,10 +44,26 @@ function engrenagem(cx: number, cy: number, z: number, h: number): string {
   return solidSvg(extrude(anel, z, h, proj, { convex: false }), { tone: "hi" }) + lineSvg(ring(cx, cy, 1.8, z + h, proj, 18), { tone: "lo" });
 }
 
-/** um rótulo branco com contorno escuro num ponto 3D (legível sobre a cena) */
-function rotulo(x: number, y: number, z: number, texto: string, size = 6): string {
-  const [sx, sy] = iso([x, y, z], proj);
-  return `<text x="${sx.toFixed(1)}" y="${sy.toFixed(1)}" text-anchor="middle" font-size="${size}" font-weight="700" font-family="ui-monospace,monospace" paint-order="stroke" stroke="#06101c" stroke-width="2.4" fill="#eafcff">${texto}</text>`;
+/** um conector/flange nas pontas de um cabo */
+function conector(x: number, y: number): string {
+  return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.4" fill="#2a1d0a" stroke="#e8c468" stroke-width="1"/>`;
+}
+/** um CABO grosso (solarpunk) curvo entre dois pontos 3D: sombra + miolo cobre + brilho + conectores nas pontas */
+function cabo(a: Point3, b: Point3, cor = "#c9872e", sag = 9): string {
+  const [ax, ay] = iso(a, proj), [bx, by] = iso(b, proj);
+  const mx = (ax + bx) / 2, my = (ay + by) / 2 + sag;
+  const d = `M${ax.toFixed(1)} ${ay.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${bx.toFixed(1)} ${by.toFixed(1)}`;
+  return `<path d="${d}" fill="none" stroke="#171006" stroke-width="5.2" stroke-linecap="round"/>`
+    + `<path d="${d}" fill="none" stroke="${cor}" stroke-width="3.2" stroke-linecap="round"/>`
+    + `<path d="${d}" fill="none" stroke="#ffeab0" stroke-width="0.9" stroke-linecap="round" opacity=".55"/>`
+    + conector(ax, ay) + conector(bx, by);
+}
+/** uma VÁLVULA de roda (solarpunk) num ponto 3D */
+function valvula(x: number, y: number, z: number, cor = "#86b06a"): string {
+  const [cx, cy] = iso([x, y, z], proj), r = 5;
+  let s = "";
+  for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + Math.PI / 8; s += `<line x1="${cx.toFixed(1)}" y1="${cy.toFixed(1)}" x2="${(cx + Math.cos(a) * r).toFixed(1)}" y2="${(cy + Math.sin(a) * r).toFixed(1)}" stroke="${cor}" stroke-width="1.5"/>`; }
+  return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r}" fill="#0a140c" stroke="${cor}" stroke-width="1.8"/>${s}<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="1.4" fill="${cor}"/>`;
 }
 
 /** uma torre em (cx,cy): duas caixas empilhadas (a de cima mais estreita) — os pilares das "conversas" */
@@ -56,29 +72,40 @@ function torre(cx: number, cy: number): string {
     + solidSvg(slabOf({ x: cx - 2.6, y: cy - 2.6, w: 5.2, d: 5.2, r: 1 }, 9.4, 4, proj), { tone: "hi" });
 }
 
-/** um fio de energia/dados que corre (data-flow) entre dois pontos 3D — o que faz a estrutura virar um organismo */
-const fio = (a: [number, number, number], b: [number, number, number]) => lineSvg(segment(a, b, proj), { tone: "hi", flow: true });
+/** o EMISSOR: um disco projetor no topo do gadget, de onde sobe o feixe do holograma */
+function emissor(): string {
+  return solidSvg(cylinder(0, 0, 3.4, 24.4, 1.4, proj, 20), { tone: "hi" })
+    + lineSvg(ring(0, 0, 2.2, 25.8, proj, 20), { tone: "lit" });
+}
 
-/** o GLOBO girando (a Terra) no topo: mar + continentes que rolam (clip + translate), sombra de esfera e um meridiano */
-function globo(): string {
-  const [gx, gy] = iso([0, 0, 33], proj);
-  const R = 26;
+/** o MUNDO HOLOGRÁFICO: uma esfera grande, ciano e translúcida, flutuando DESTACADA acima do gadget — grade de
+ *  meridianos/paralelos, continentes em contorno que rolam (o giro), scanlines, brilho, e o feixe do projetor subindo. */
+function mundoHolografico(): string {
+  const [ex, ey] = iso([0, 0, 25.8], proj);   // o emissor
+  const gx = ex, gy = ey - 118, R = 52;        // o mundo flutua bem acima, grande
   const terra = (dx: number) =>
-    `<path d="M${gx - 20 + dx},${gy - 7} q6,-8 15,-4 q7,3 2,10 q-9,5 -16,1 q-5,-4 -1,-7Z" fill="#3fa06a"/>`
-    + `<ellipse cx="${gx - 5 + dx}" cy="${gy + 9}" rx="8" ry="4.5" fill="#46b57a"/>`
-    + `<path d="M${gx + 9 + dx},${gy - 11} q8,-2 10,5 q1,6 -6,8 q-8,1 -9,-6 q0,-5 5,-7Z" fill="#3fa06a"/>`
-    + `<ellipse cx="${gx + 17 + dx}" cy="${gy + 7}" rx="5" ry="6" fill="#46b57a"/>`;
+    `<path d="M${(gx - 34 + dx).toFixed(1)} ${(gy - 10).toFixed(1)} q11,-14 25,-7 q11,6 4,17 q-15,8 -27,1 q-8,-7 -2,-12Z" fill="none" stroke="#9af0ff" stroke-width="1.2" opacity=".8"/>`
+    + `<ellipse cx="${(gx - 8 + dx).toFixed(1)}" cy="${(gy + 16).toFixed(1)}" rx="14" ry="7.5" fill="none" stroke="#9af0ff" stroke-width="1" opacity=".7"/>`
+    + `<path d="M${(gx + 16 + dx).toFixed(1)} ${(gy - 18).toFixed(1)} q14,-4 17,8 q1,11 -11,14 q-14,1 -16,-10 q0,-10 10,-12Z" fill="none" stroke="#9af0ff" stroke-width="1.2" opacity=".75"/>`;
+  let scan = "";
+  for (let y = gy - R; y <= gy + R; y += 3.4) scan += `<line x1="${(gx - R).toFixed(1)}" y1="${y.toFixed(1)}" x2="${(gx + R).toFixed(1)}" y2="${y.toFixed(1)}" stroke="#7fe8ff" stroke-width=".4" opacity=".1"/>`;
+  const grade =
+    `<ellipse cx="${gx.toFixed(1)}" cy="${gy.toFixed(1)}" rx="${R}" ry="${(R * 0.32).toFixed(1)}" fill="none" stroke="#7fe8ff" stroke-width=".6" opacity=".4"/>`
+    + `<ellipse cx="${gx.toFixed(1)}" cy="${gy.toFixed(1)}" rx="${R}" ry="${(R * 0.66).toFixed(1)}" fill="none" stroke="#7fe8ff" stroke-width=".45" opacity=".28"/>`
+    + `<ellipse cx="${gx.toFixed(1)}" cy="${gy.toFixed(1)}" rx="${(R * 0.58).toFixed(1)}" ry="${R}" fill="none" stroke="#7fe8ff" stroke-width=".5" opacity=".3"/>`
+    + `<ellipse cx="${gx.toFixed(1)}" cy="${gy.toFixed(1)}" rx="${(R * 0.9).toFixed(1)}" ry="${R}" fill="none" stroke="#7fe8ff" stroke-width=".45" opacity=".2"/>`;
   return `<defs>`
     + `<clipPath id="ci-globo-clip"><circle cx="${gx.toFixed(1)}" cy="${gy.toFixed(1)}" r="${R}"/></clipPath>`
-    + `<radialGradient id="ci-globo-sb" cx="36%" cy="30%" r="82%"><stop offset="0%" stop-color="#eaffff" stop-opacity=".4"/><stop offset="42%" stop-color="#22d3ee" stop-opacity="0"/><stop offset="100%" stop-color="#001018" stop-opacity=".62"/></radialGradient>`
+    + `<radialGradient id="ci-globo-sb" cx="40%" cy="36%" r="78%"><stop offset="0%" stop-color="#bff6ff" stop-opacity=".28"/><stop offset="55%" stop-color="#22d3ee" stop-opacity=".1"/><stop offset="100%" stop-color="#22d3ee" stop-opacity=".02"/></radialGradient>`
+    + `<linearGradient id="ci-beam" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="#7fe8ff" stop-opacity="0"/><stop offset="100%" stop-color="#7fe8ff" stop-opacity=".22"/></linearGradient>`
     + `</defs>`
-    + `<g clip-path="url(#ci-globo-clip)">`
-    + `<rect x="${(gx - R).toFixed(1)}" y="${(gy - R).toFixed(1)}" width="${R * 2}" height="${R * 2}" fill="#0b4d6b"/>`
-    + `<g class="ci-globo-spin">${terra(0)}${terra(R * 2)}</g>`
-    + `<rect x="${(gx - R).toFixed(1)}" y="${(gy - R).toFixed(1)}" width="${R * 2}" height="${R * 2}" fill="url(#ci-globo-sb)"/>`
-    + `</g>`
-    + `<circle cx="${gx.toFixed(1)}" cy="${gy.toFixed(1)}" r="${R}" fill="none" stroke="#7fe8ff" stroke-width="1" opacity=".85"/>`
-    + `<ellipse cx="${gx.toFixed(1)}" cy="${gy.toFixed(1)}" rx="${R}" ry="${(R * 0.36).toFixed(1)}" fill="none" stroke="#7fe8ff" stroke-width=".5" opacity=".35"/>`;
+    // o feixe do projetor (cone de luz) do emissor até o mundo
+    + `<path d="M${(ex - 4).toFixed(1)} ${ey.toFixed(1)} L${(gx - R * 0.7).toFixed(1)} ${(gy + R * 0.55).toFixed(1)} L${(gx + R * 0.7).toFixed(1)} ${(gy + R * 0.55).toFixed(1)} L${(ex + 4).toFixed(1)} ${ey.toFixed(1)} Z" fill="url(#ci-beam)"/>`
+    // a esfera (brilho translúcido) + continentes que rolam + scanlines, recortados no círculo
+    + `<circle cx="${gx.toFixed(1)}" cy="${gy.toFixed(1)}" r="${R}" fill="url(#ci-globo-sb)"/>`
+    + `<g clip-path="url(#ci-globo-clip)"><g class="ci-globo-spin">${terra(0)}${terra(R * 2)}</g>${scan}</g>`
+    + grade
+    + `<circle cx="${gx.toFixed(1)}" cy="${gy.toFixed(1)}" r="${R}" fill="none" stroke="#7fe8ff" stroke-width="1.4" opacity=".9" style="filter:drop-shadow(0 0 7px #22d3ee)"/>`;
 }
 
 // a PASTA (amarela) e o PAPEL (documento branco) são peças separadas porque têm cores diferentes
@@ -108,18 +135,20 @@ const PECAS: readonly Peca[] = [
   { at: 0.42, cor: "#38f0ff", corpo: solidSvg(slabOf({ x: -18, y: -18, w: 36, d: 36, r: 2 }, 13.4, 2, proj), { tone: "hi" }) },
   // 03 — blueprint: o gabinete (o núcleo) com "tela" de pontos
   { at: 0.50, cor: "#38f0ff", corpo: solidSvg(slabOf({ x: -12, y: -12, w: 20, d: 18, r: 2 }, 15.4, 9, proj), { tone: "hi" }) + dotsSvg(dotGrid(-8, -8, 5, 4, 3, 24.4, proj), { tone: "mid", size: 0.6 }) },
-  // — os SELOS das IAs sobre os pilares (desenhados por cima, nos cantos do deck): GPT, Claude, Gemini, Grok
-  { at: 0.54, cor: "#46b0ff", corpo: rotulo(-16, -16, 16.2, "GPT") + rotulo(16, -16, 16.2, "Claude") + rotulo(-16, 16, 16.2, "Gemini") + rotulo(16, 16, 16.2, "Grok") },
   // 04 — protótipo e testes (ROXO): bateria 18650
-  { at: 0.60, cor: "#8b5cf6", corpo: solidSvg(cylinder(15, -6, 4, 15.4, 12, proj, 20), { tone: "hi" }) + solidSvg(cylinder(15, -6, 1.7, 27.4, 1.6, proj, 14), { tone: "hi" }) + lineSvg(knurl(15, -6, 4, 17, 26, 14, proj), { tone: "lo" }) },
+  { at: 0.56, cor: "#8b5cf6", corpo: solidSvg(cylinder(15, -6, 4, 15.4, 12, proj, 20), { tone: "hi" }) + solidSvg(cylinder(15, -6, 1.7, 27.4, 1.6, proj, 14), { tone: "hi" }) + lineSvg(knurl(15, -6, 4, 17, 26, 14, proj), { tone: "lo" }) },
   // 04 — protótipo e testes (ROXO): engrenagem no deck
-  { at: 0.68, cor: "#8b5cf6", corpo: engrenagem(-13, 12, 15.4, 3) },
-  // — as LIGAÇÕES: os selos das IAs e a bateria alimentam o núcleo, e o núcleo manda pro globo (vira um organismo)
-  { at: 0.76, cor: "#7fe8ff", corpo: fio([-14, -14, 13.4], [-6, -6, 24.4]) + fio([14, -14, 13.4], [6, -6, 24.4]) + fio([-14, 14, 13.4], [-6, 6, 24.4]) + fio([14, 14, 13.4], [6, 6, 24.4]) + fio([15, -6, 15.4], [9, -4, 22]) + fio([0, 0, 24.4], [0, 0, 32]) },
-  // 05 — no mundo real (azul ciano): o mastro
-  { at: 0.82, cor: "#22d3ee", corpo: solidSvg(cylinder(0, 0, 1, 24.4, 8, proj, 12), { tone: "mid" }) },
-  // 05 — no mundo real: o GLOBO girando (a Terra)
-  { at: 0.90, cor: "#22d3ee", corpo: globo() },
+  { at: 0.64, cor: "#8b5cf6", corpo: engrenagem(-13, 12, 15.4, 3) },
+  // — o GADGET se fecha: CABOS grossos (cobre) e VÁLVULAS ligam a bateria, a engrenagem e os pilares ao núcleo
+  { at: 0.74, cor: "#c9872e", corpo:
+    cabo([15, -6, 19], [7, -4, 22]) + valvula(11, -5, 20.5)
+    + cabo([-13, 12, 17], [-5, 2, 18]) + valvula(-9, 7, 17.5)
+    + cabo([14, 14, 12], [7, 7, 15], "#9fae6a", 6) + cabo([-14, -14, 12], [-7, -7, 15], "#9fae6a", 6)
+    + valvula(0, -9, 23, "#c9872e") },
+  // 05 — no mundo real: o EMISSOR do holograma no topo do gadget
+  { at: 0.82, cor: "#22d3ee", corpo: emissor() },
+  // 05 — no mundo real: o MUNDO HOLOGRÁFICO, grande e girando, flutuando acima
+  { at: 0.90, cor: "#22d3ee", corpo: mundoHolografico() },
 ];
 
 const body = PECAS.map((p) => `<g class="ci-part" data-at="${p.at}" style="${p.estilo ?? tint(p.cor)}">${p.corpo}</g>`).join("");
