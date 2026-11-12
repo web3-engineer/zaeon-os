@@ -20,7 +20,7 @@
 .ci-bar { position: relative; width: 100%; margin-top: 10px; }
 .ci-line, .ci-fill { position: absolute; top: 12px; left: 10%; height: 2px; border-radius: 2px; }
 .ci-line { right: 10%; background: rgba(127, 232, 255, 0.14); }
-.ci-fill { width: 0; background: linear-gradient(90deg, #8b5cf6, #46b0ff, #38f0ff, #49f2a0, #22d3ee); box-shadow: 0 0 6px rgba(127, 232, 255, 0.5); }
+.ci-fill { width: 0; background: linear-gradient(90deg, #f5c542, #46b0ff, #38f0ff, #8b5cf6, #22d3ee); box-shadow: 0 0 6px rgba(127, 232, 255, 0.5); }
 .ci-comet { position: absolute; top: 12px; left: 10%; width: 12px; height: 12px; margin: -5px 0 0 -6px; border-radius: 50%; background: #eafcff; box-shadow: 0 0 10px #bdfcff, 0 0 18px rgba(189, 252, 255, 0.5); opacity: 0; }
 
 .ci-row { position: relative; display: flex; }

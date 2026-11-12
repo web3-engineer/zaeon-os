@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { ChatBubbleLeftRightIcon, UsersIcon, UserPlusIcon } from "@heroicons/react/24/outline";
 import LiquidGlassButton from "@/components/ui/LiquidGlassButton";
 
 // Componentes Internos
@@ -76,10 +75,10 @@ function LogoModelo({ slug, name, org }: { slug: string; name: string; org?: str
   );
 }
 
-// H1 (v4): a promessa — "Evolua sua vida." + "com conhecimento." (a palavra em destaque).
-// O sub-header traz os três verbos com o glitch chinês e a palavra que gira (ideias, estudos, trabalhos, pesquisas).
-const FRASE_COMPLETA = "Evolua sua vida com conhecimento.";
-const GIRO = ["ideias", "estudos", "trabalhos", "pesquisas"];
+// H1: a promessa — "Aprenda a fazer" + "qualquer coisa." (em destaque). Somos uma plataforma onde dá pra construir de
+// tudo: hardware, software, artigos, pesquisas. O sub-header diz isso, com a palavra que gira (ideias/estudos/…).
+const FRASE_COMPLETA = "Aprenda a fazer qualquer coisa.";
+const GIRO = ["ideias", "estudos", "pesquisas", "produtos"];
 /** pra onde "Iniciar chat" leva quem já está logado: o chat da Aura (Sala de Estudos) */
 const CHAT_ROTA = "/research-lab?tab=sala-de-estudos";
 /** o GAME: o cyberespaço — a rota já abre a sessão em jogo (sem menu). Sem conta, o botão abre o login, que volta direto pra cá. */
@@ -142,17 +141,17 @@ export default function HeroPage() {
               <span className="sr-only">{FRASE_COMPLETA}</span>
               <span aria-hidden="true">
                 <span className="whitespace-nowrap">
-                  <MolecularText text="Evolua" />{" "}
-                  <MolecularText text="sua" delay={0.12} />{" "}
-                  <MolecularText text="vida" delay={0.24} />{" "}
-                  <MolecularText text="com" delay={0.36} />
+                  <MolecularText text="Aprenda" />{" "}
+                  <MolecularText text="a" delay={0.12} />{" "}
+                  <MolecularText text="fazer" delay={0.24} />
                 </span>
                 <br />
                 <span className="whitespace-nowrap">
                   <span className="text-cyan-600 dark:text-[#67d8f2]">
-                    <MolecularText text="conhecimento" delay={0.46} />
+                    <MolecularText text="qualquer" delay={0.4} />{" "}
+                    <MolecularText text="coisa" delay={0.52} />
                   </span>
-                  <MolecularText text="." delay={0.56} />
+                  <MolecularText text="." delay={0.6} />
                 </span>
               </span>
             </h1>
@@ -166,18 +165,18 @@ export default function HeroPage() {
                 transition={{ duration: 0.4, ease: "easeInOut" }}
                 className="overflow-hidden"
               >
-                  {/* sub-header: os três verbos com o GLITCH CHINÊS + a palavra que gira (ideias, estudos, trabalhos, pesquisas) */}
+                  {/* sub-header: humanos + IAs constroem juntos — com a palavra que gira (ideias, estudos, pesquisas, produtos) */}
                   <p className="max-w-2xl text-base sm:text-lg text-slate-900 dark:text-white font-light leading-relaxed">
                     <GlitchTexto
-                      texto="Aprenda, construa, entregue"
+                      texto="Aqui é onde humanos e IAs se unem para juntos construírem"
                       palavras={GIRO}
                       classePalavra="font-normal text-cyan-700 dark:text-cyan-200"
                       delay={0.5}
                     />
                   </p>
-                  {/* a frase do Figma: o que tem aqui dentro, numa linha */}
+                  {/* a plataforma: dá pra construir de tudo */}
                   <p className="mt-3 max-w-[520px] text-base leading-relaxed text-slate-700 dark:text-slate-400">
-                    Todas as principais IAs, pesquisa em bases reais e um mundo 3D para estudar acompanhado.
+                    Hardware, software, artigos, pesquisas — tudo numa plataforma só, com as melhores IAs do seu lado.
                   </p>
               </motion.div>
             )}
@@ -203,7 +202,6 @@ export default function HeroPage() {
                 tamanho="md"
                 className="w-full sm:w-auto"
               >
-                {logado ? <ChatBubbleLeftRightIcon className="w-4 h-4" aria-hidden="true" /> : <UserPlusIcon className="w-4 h-4" aria-hidden="true" />}
                 {logado ? "Iniciar chat" : "Criar minha conta"}
               </LiquidGlassButton>
               <LiquidGlassButton
@@ -212,7 +210,6 @@ export default function HeroPage() {
                 tamanho="md"
                 className="w-full sm:w-auto"
               >
-                <UsersIcon className="w-4 h-4" aria-hidden="true" />
                 Cowork
               </LiquidGlassButton>
             </motion.div>

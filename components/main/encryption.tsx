@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import React, { useState, useEffect } from "react";
 import NextImage from "next/image";
 import { useTranslation } from "react-i18next";
-import ZaeonFlowDiagram from "./ZaeonFlowDiagram";
+import ContadorProjetos from "./ContadorProjetos";
 import SolanaPrivacidade from "./SolanaPrivacidade";
 import ChavesApi from "./ChavesApi";
 import BlueprintsShowcase from "./BlueprintsShowcase";
@@ -95,10 +95,6 @@ const HireAgentsSection = () => {
                 transition={{ duration: 0.6 }}
             >
                 <TituloSecao className="font-display" forte="Com grandes tecnologias vêm grandes protótipos." />
-
-                {/* TIMELINE HORIZONTAL: a evolução de uma ideia num eixo só — papel científico → conversa com as IAs →
-                    blueprint → protótipo → produto no mundo real (placa solar, bateria). Um pulso acende etapa por etapa. */}
-                <TimelineIdeia className="mt-12" />
             </motion.div>
 
             {/* as casas de modelos (#modelos) + o card do projeto vencedor — a menção às chaves de API saiu (o dono) */}
@@ -128,18 +124,10 @@ export default function Encryption() {
                 <div className="zaeon-borda">
                     <TituloSecao className="font-display" forte={t("landing.knowledge_title", "Transforme sua ideia em realidade.")} />
 
-                    {/* DIAGRAMA VIVO: entrada -> cerebro Zaeon -> saida.
-                        O painel nao e enfeite: o ParticleSystem da landing corre
-                        atras da pagina inteira e passava por cima do card da
-                        direita. Uma chapa escura com borda de 1px devolve o
-                        diagrama para um fundo calmo sem desligar o fundo. */}
-                    {/* CLARO: vidro AZUL glossy (gradiente + brilho no topo), estilo do botão
-                        "Iniciar", no lugar do branco lavado. ESCURO: segue o navy de sempre. */}
-                    {/* Sem o card grande em volta: só os cards do diagrama, AZULADOS e tingidos pelo fluxo em foco.
-                        `dark` força o estilo escuro dentro (texto claro sobre os cards azulados) nos dois temas. */}
-                    <div className="dark mt-12 md:mt-16">
-                        <ZaeonFlowDiagram />
-                    </div>
+                    {/* SUBHEADER: a TIMELINE da evolução de uma ideia (o visualizador 3D que se constrói conforme a barra
+                        de progresso avança) + o contador grande de projetos da comunidade. */}
+                    <TimelineIdeia className="mt-12 md:mt-16" />
+                    <ContadorProjetos className="mt-14 md:mt-20" />
                 </div>
 
                 {/* o marquee e de proposito full-bleed: ele corre de borda a borda */}
