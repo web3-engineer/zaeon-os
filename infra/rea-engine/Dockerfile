@@ -1,8 +1,8 @@
 # Motor do REA (engenharia reversa) — roda SÓ na Contabo, exposto só na Tailscale (docs/OCTA_REA.md).
-# node:22 (REA exige 22+) + JDK 21 (Ghidra 11) + Ghidra + binwalk/unblob + rea-agents + a ponte fina.
+# node:22 (REA exige ^22.23.4) + JDK 21 + Ghidra 12.1.4 + binwalk/unblob + rea-agents + a ponte fina.
 FROM node:22-bookworm
 
-ARG REA_VERSION=6.5.0
+ARG REA_VERSION=6.9.0
 ARG GHIDRA_VERSION=12.1.4
 ARG GHIDRA_RELEASE=20260921
 
