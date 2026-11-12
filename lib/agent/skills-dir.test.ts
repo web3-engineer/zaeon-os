@@ -19,6 +19,8 @@ import { getTool } from "@/lib/agent/runtime";
 import { registrarAnatomia } from "@/lib/anatomia/tools";
 import { itemDaSkill } from "@/lib/estudos/vitrineSkills";
 import { DONO_VITRINE } from "@/lib/auth/roles";
+import { carregarCurso, leitorDeDisco } from "@/lib/curso/carregar";
+import { resumoDoCurso } from "@/lib/curso/formato";
 
 /** Um SKILL.md mínimo e válido, para cada teste mexer num campo só. */
 const md = (over: Partial<Record<string, string>> = {}, corpo = "linha a\nlinha b\nlinha c") => {
@@ -322,6 +324,20 @@ describe(`PORTÃO das skills da casa · ${DIR_SKILLS_CASA}`, () => {
           expect(d!.sha256!).toMatch(/^[0-9a-f]{64}$/);
         } else if (d!.sha256 !== null) {
           expect(d!.sha256).toMatch(/^[0-9a-f]{64}$/);
+        }
+      });
+
+      it("COURSE: traz um curso.json COMPLETO ao lado da skill", () => {
+        const card = cardDaSkill(s);
+        if (!card || card.familia !== "course") return;
+        // O curso é AUTORADO e estático — então o portão valida 100% dele aqui, sem modelo nenhum.
+        const r = carregarCurso(leitorDeDisco(), s.pasta);
+        const erros = r.ok ? "" : r.problemas.map((p) => `    · ${p.onde}: ${p.motivo}`).join("\n");
+        expect(r.ok, `curso de "${s.manifest.name}" incompleto:\n${erros}`).toBe(true);
+        if (r.ok) {
+          const resumo = resumoDoCurso(r.curso);
+          expect(resumo.modulos, "curso precisa de pelo menos 2 módulos").toBeGreaterThanOrEqual(2);
+          expect(resumo.blocosDeProva, "curso sem prova nenhuma não avalia").toBeGreaterThan(0);
         }
       });
     },

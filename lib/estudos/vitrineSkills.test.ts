@@ -91,7 +91,8 @@ describe("as skills REAIS do repositório viram card", () => {
     const itens = itensDasSkillsDoDisco();
     expect(itens.length, "nenhuma skill da casa virou card — o card é a porta da loja").toBeGreaterThan(0);
     for (const i of itens) {
-      expect(i.tipo).toBe("skill");
+      // procedimento/pago → "skill"; course → "curso". O id é sempre "skill:<slug>" (a origem).
+      expect(["skill", "curso"]).toContain(i.tipo);
       expect(i.id.startsWith("skill:")).toBe(true);
       expect(i.titulo.length).toBeGreaterThan(0);
       expect(i.entrega.length).toBeGreaterThan(0);
