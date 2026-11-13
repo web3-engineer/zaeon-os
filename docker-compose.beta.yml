@@ -122,6 +122,17 @@ services:
       NEXT_PUBLIC_PUSHER_CLUSTER: ${NEXT_PUBLIC_PUSHER_CLUSTER:-}
       # a fase `reason` no `elaborated` (o código a pula por padrão; "1" liga)
       RACIOCINIO_ELABORADO: ${RACIOCINIO_ELABORADO:-}
+      # ── LIGADOS POR PADRÃO (dono, 2026-11-12: "nada off, quero tudo on") ──────────────────────
+      # Cinco recursos do harness que subiam DESLIGADOS e fora do pipeline: só ligavam editando o
+      # `.env` do VPS à mão, e o /api/health não dizia o estado de nenhum. O default mora AQUI, no
+      # compose, e não no `script:` do deploy.yml (que tem teto de 21.000 bytes). Para desligar um
+      # deles sem deploy de código: `NOME=0` no `.env` do VPS e recriar o container.
+      # No web E no worker, porque com CHAT_BG=1 é o worker que roda o turno do chat.
+      VISAO_HARNESS: ${VISAO_HARNESS:-1}        # descrever_imagem no harness; exige a credencial Vertex
+      MEMORY_L3: ${MEMORY_L3:-1}                # memória semântica (memory_drawers no Atlas); falha no boot = segue sem memória
+      CACHE_RESPOSTAS: ${CACHE_RESPOSTAS:-1}    # pergunta de conceito já respondida volta sem modelo
+      ROTEADOR_KNN: ${ROTEADOR_KNN:-on}         # roteador de intenção por embedding; "sombra" só mede, "off" desliga
+      ORQ_AUTOMATICO: ${ORQ_AUTOMATICO:-1}      # orquestra roteia sozinha o trabalho de Pro/Max (motores externos: custo)
       # F8 · agente de navegador (rota /api/agentic/run + tela /agente, ambas só de fundador).
       # SÓ NO WEB, de propósito: o agente roda onde a ROTA existe, e o `worker` não serve rota
       # nenhuma. Pôr aqui é topologia, não descuido — a mesma razão do CANAL_QUEUE acima. Default
@@ -151,11 +162,11 @@ services:
       # G3 · gráfico na resposta (lib/agent/grafico): SVG desenhado aqui, com número que o turno
       # apurou. Não custa chamada de modelo. `=0` é o kill-switch.
       HARNESS_GRAFICO: ${HARNESS_GRAFICO:-1}
-      # F-visão · "be my eyes". VISAO_HARNESS liga o roteamento de IMAGEM anexada pro harness
-      # (route.ts + a tool descrever_imagem); VISAO_CAMERA liga a CÂMERA AO VIVO (/api/ai/camera).
-      # Ambas OFF por padrão e precisam da credencial Vertex (GOOGLE_*) pra responder — com a flag
-      # mas sem credencial, o recibo (/api/health) diz `sem_credencial`, não mente. `=1` liga.
-      VISAO_HARNESS: ${VISAO_HARNESS:-}
+      # F-visão · "be my eyes". VISAO_HARNESS (roteamento da IMAGEM anexada pro harness: route.ts +
+      # a tool descrever_imagem) já está no bloco "LIGADOS POR PADRÃO" acima, com default 1 — não
+      # repetir aqui, senão o Compose recusa o arquivo (chave duplicada). VISAO_CAMERA liga a CÂMERA
+      # AO VIVO (/api/ai/camera), OFF por padrão. Ambas precisam da credencial Vertex (GOOGLE_*) —
+      # com a flag mas sem credencial, o recibo (/api/health) diz `sem_credencial`, não mente.
       VISAO_CAMERA: ${VISAO_CAMERA:-}
       # F5 · conectores MCP por nome do catálogo (lib/agent/mcp MCP_CATALOG). `scholar` por padrão
       # (decisão do dono, 2026-11-03): 9 tools de LEITURA no trilho de fontes/ABNT. O servidor roda
@@ -269,6 +280,34 @@ services:
       NEXT_PUBLIC_PUSHER_CLUSTER: ${NEXT_PUBLIC_PUSHER_CLUSTER:-}
       # a fase `reason` no `elaborated` (o código a pula por padrão; "1" liga)
       RACIOCINIO_ELABORADO: ${RACIOCINIO_ELABORADO:-}
+      # ── LIGADOS POR PADRÃO (dono, 2026-11-12: "nada off, quero tudo on") ──────────────────────
+      # Cinco recursos do harness que subiam DESLIGADOS e fora do pipeline: só ligavam editando o
+      # `.env` do VPS à mão, e o /api/health não dizia o estado de nenhum. O default mora AQUI, no
+      # compose, e não no `script:` do deploy.yml (que tem teto de 21.000 bytes). Para desligar um
+      # deles sem deploy de código: `NOME=0` no `.env` do VPS e recriar o container.
+      # No web E no worker, porque com CHAT_BG=1 é o worker que roda o turno do chat.
+      VISAO_HARNESS: ${VISAO_HARNESS:-1}        # descrever_imagem no harness; exige a credencial Vertex
+      MEMORY_L3: ${MEMORY_L3:-1}                # memória semântica (memory_drawers no Atlas); falha no boot = segue sem memória
+      CACHE_RESPOSTAS: ${CACHE_RESPOSTAS:-1}    # pergunta de conceito já respondida volta sem modelo
+      ROTEADOR_KNN: ${ROTEADOR_KNN:-on}         # roteador de intenção por embedding; "sombra" só mede, "off" desliga
+      ORQ_AUTOMATICO: ${ORQ_AUTOMATICO:-1}      # orquestra roteia sozinha o trabalho de Pro/Max (motores externos: custo)
+      # ── O QUE O TURNO DO CHAT LÊ, ESPELHADO DO `web` ──
+      # Com CHAT_BG=1 (o default do deploy desde 05/nov) é ESTE container que roda o turno do chat.
+      # Estas chaves existiam só no `web`: o deploy as exporta no shell e o compose só as entrega a
+      # quem as declara. Sem elas, no turno em 2º plano: a busca na web sumia (SEARXNG_URL), o cartão
+      # verde do REA não nascia (REA_BLUEPRINT), o vídeo do documento idem (VIDEO_DOC). O agente de
+      # navegador (AGENTE_*) fica FORA de propósito: lib/agent/agenteCompose.test.ts. Os valores são as MESMAS expressões do `web` — o teste
+      # lib/flags/workerEnv.test.ts recusa divergência e chave nova que só entre no `web`.
+      SEARXNG_URL: http://searxng:8080
+      REA_BLUEPRINT: ${REA_BLUEPRINT:-0}
+      VIDEO_DOC: ${VIDEO_DOC:-0}
+      BLUEPRINT_PRATICO: ${BLUEPRINT_PRATICO:-0}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      MAP_HARNESS: ${MAP_HARNESS:-0}
+      ESTUDO_GATEKEEPER: ${ESTUDO_GATEKEEPER:-0}
+      AURA_ECONOMY: ${AURA_ECONOMY:-0}
+      GATEWAY_URL: ${GATEWAY_URL:-}
+      NEXTAUTH_URL: ${APP_URL:-https://75-119-140-97.sslip.io}
       # Os de CONSUMIR vivem AQUI, onde consumir é o trabalho do container. `SCHOLAR_WORKER` não
       # aparece de propósito: já é "1" fixo acima, e um `${SCHOLAR_WORKER:-}` o sobrescreveria com
       # VAZIO — o worker dedicado pararia de consumir a fila do scholar. Foi o erro que o parser do
@@ -283,11 +322,11 @@ services:
       # G3 · gráfico na resposta (lib/agent/grafico): SVG desenhado aqui, com número que o turno
       # apurou. Não custa chamada de modelo. `=0` é o kill-switch.
       HARNESS_GRAFICO: ${HARNESS_GRAFICO:-1}
-      # F-visão · "be my eyes". VISAO_HARNESS liga o roteamento de IMAGEM anexada pro harness
-      # (route.ts + a tool descrever_imagem); VISAO_CAMERA liga a CÂMERA AO VIVO (/api/ai/camera).
-      # Ambas OFF por padrão e precisam da credencial Vertex (GOOGLE_*) pra responder — com a flag
-      # mas sem credencial, o recibo (/api/health) diz `sem_credencial`, não mente. `=1` liga.
-      VISAO_HARNESS: ${VISAO_HARNESS:-}
+      # F-visão · "be my eyes". VISAO_HARNESS (roteamento da IMAGEM anexada pro harness: route.ts +
+      # a tool descrever_imagem) já está no bloco "LIGADOS POR PADRÃO" acima, com default 1 — não
+      # repetir aqui, senão o Compose recusa o arquivo (chave duplicada). VISAO_CAMERA liga a CÂMERA
+      # AO VIVO (/api/ai/camera), OFF por padrão. Ambas precisam da credencial Vertex (GOOGLE_*) —
+      # com a flag mas sem credencial, o recibo (/api/health) diz `sem_credencial`, não mente.
       VISAO_CAMERA: ${VISAO_CAMERA:-}
       # F5 · conectores MCP por nome do catálogo (lib/agent/mcp MCP_CATALOG). `scholar` por padrão
       # (decisão do dono, 2026-11-03): 9 tools de LEITURA no trilho de fontes/ABNT. O servidor roda

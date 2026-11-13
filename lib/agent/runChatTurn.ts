@@ -31,8 +31,9 @@ import { blocoFonteColada, objetivoComFonte, pedidoParaTitulo, separarFonteColad
 import { blocoDosAnexos } from "@/lib/agent/anexos";
 import { sinteseLigada } from "@/lib/agent/sintese-flag";
 import { graficoLigado } from "@/lib/agent/graficosDoTurno";
-import { MODELO_PADRAO, modeloDoId, nomeDoModeloServido } from "@/lib/chat/modelos";
+import { MODELO_PADRAO, modeloDoId, nomeDoModeloServido, viaGateway } from "@/lib/chat/modelos";
 import { podeProNasPesadas } from "@/lib/ai/proNasPesadas";
+import { podeClaudeNoChat } from "@/lib/chat/premiumChat";
 import { markRunning, saveDone, saveError } from "@/lib/agent/chat-turn-store";
 import type { Wing } from "@/lib/agent/memory";
 import { mentorBySlug } from "@/lib/agent/mentors";
@@ -195,21 +196,45 @@ export async function runChatTurn(
       // todas + as tools das habilidades desta. É o que faz `enabledSkills` deixar de ser rótulo.
       toolsDoAgente: toolsPermitidas(habilidades),
     };
-    const escolhido = modeloDoId(params.modelo);
+    let escolhido = modeloDoId(params.modelo);
     // `taskId` = o TURNO: todas as chamadas de modelo deste turno ficam ligadas no TokenLedger (o console Zaeon Hermes
     // agrupa por ele pra medir a saúde do chat — quantos turnos caíram na reserva, quanto cada fase levou).
     const ledgerTurno = { agentKey: mentor?.slug ?? agente, mentorSlug: mentor?.slug ?? null, userId: userId ?? null, surface: surfaceLedger(surface ?? hctx.activeTab), scopeId: typeof ac.cartolinaScopeId === "string" ? ac.cartolinaScopeId : null, taskId: turnId ?? params.tarefaId ?? novoIdDeTarefa() };
-    // MODELO LOCAL (Zaeon/Contabo): caminho enxuto em streaming. Não começou → segue pelo Google, abaixo.
-    if (escolhido?.provedor === "zaeon" && escolhido.grupo) {
-      narrar(serializarProgresso({ fase: "draft", rotulo: `${escolhido.nome} pensando no servidor Zaeon` }));
+    // GATE do Claude (Anthropic) no chat = o MESMO da #786 no Octa: plano Max + flag premium + BUDGET por
+    // pessoa (virtual key). Sem direito, sem flag, ou a key não saiu → cai pro Google (fecha fechado: nunca
+    // gasta crédito da org pela master key). Zaeon (local, grátis) não passa por aqui. lib/chat/premiumChat.
+    let keyGateway: string | undefined;
+    if (escolhido?.provedor === "anthropic") {
+      const grupoClaude = escolhido.grupo!;   // anthropic do catálogo é sempre roteado pelo grupo (viaGateway)
+      const nomeClaude = escolhido.nome;
+      if (userId && (await podeClaudeNoChat(userId))) {
+        const [{ emitirVirtualKey, modeloReal }, { premiumBudgetUsd }] = await Promise.all([
+          import("@/lib/octa/litellm"), import("@/lib/octa/modelosPremium"),
+        ]);
+        const vk = await emitirVirtualKey({
+          userId, sessionId: ledgerTurno.taskId, maxBudgetUsd: premiumBudgetUsd(),
+          duracao: "24h", modelos: [grupoClaude, modeloReal("forte")],
+        }).catch(() => null);
+        if (vk?.ok) keyGateway = vk.vk.key;
+      }
+      if (!keyGateway) {
+        narrar(serializarProgresso({ fase: "draft", rotulo: `${nomeClaude} é do plano Max — respondendo pelo Google` }));
+        escolhido = null;   // sem direito/budget: o turno segue pelo harness do Google, abaixo
+      }
+    }
+    // MODELO PELO GATEWAY (Zaeon/Contabo local OU Claude/Anthropic): caminho enxuto em streaming, sem as
+    // tools do harness. Não começou → segue pelo Google (harness completo), abaixo.
+    if (viaGateway(escolhido)) {
+      const ondePensa = escolhido.provedor === "zaeon" ? "no servidor Zaeon" : "pelos créditos Anthropic";
+      narrar(serializarProgresso({ fase: "draft", rotulo: `${escolhido.nome} pensando ${ondePensa}` }));
       try {
         const [{ turnoLocal }, { blocoDaBase }] = await Promise.all([import("@/lib/agent/turnoLocal"), import("@/lib/rag/citar")]);
         const s = await turnoLocal({
           prompt, history: params.history, systemContext: params.systemContext,
-          base: blocoDaBase(await basePromise) || undefined, grupo: escolhido.grupo, ctx: ledgerTurno,
+          base: blocoDaBase(await basePromise) || undefined, grupo: escolhido.grupo, key: keyGateway, ctx: ledgerTurno,
         }, (pedaco) => narrar(pedaco));
-        if (s.interrompido) narrar("\n\n_(a resposta local foi interrompida aqui)_");
-        narrar(serializarModelo(nomeDoModeloServido(escolhido.grupo, "contabo")));
+        if (s.interrompido) narrar("\n\n_(a resposta foi interrompida aqui)_");
+        narrar(serializarModelo(nomeDoModeloServido(escolhido.grupo)));
         const outLocal: HarnessOutput = { mode: "text", text: "" };
         if (userId) {
           void Promise.all([import("@/lib/canal/usage"), import("@/src/lib/prisma")])
@@ -378,6 +403,30 @@ export async function runChatTurn(
         }
       } catch { /* a peça é um ganho, não uma condição: o turno segue como estava */ }
     }
+    /**
+     * O PORTÃO DO ISOLAMENTO, para TODO agente (lib/agent/anatomiaDoTurno `validarArtefatosDeAnatomia`):
+     * artefato de anatomia só viaja se o atlas consegue mostrá-lo ISOLADO. Título que é classe
+     * genérica, o corpo inteiro ou estrutura que o atlas não tem cai aqui — carregar o que não é a
+     * parte pedida é erro (decisão do dono, 2026-11-12), e erro não vira cartão.
+     */
+    {
+      const atuais = ((respostaFinal as { artifacts?: any[] }).artifacts ?? state.artifacts ?? []) as any[];
+      if (atuais.some((a) => String(a?.studioKind) === "anatomia")) {
+        try {
+          const [{ carregarAtlas }, { cenaDoConceito }, { validarArtefatosDeAnatomia }] = await Promise.all([
+            import("@/lib/anatomia/carregar"), import("@/lib/anatomia/cena-do-conceito"), import("@/lib/agent/anatomiaDoTurno"),
+          ]);
+          const atlas = carregarAtlas();
+          if (atlas) {
+            const validos = validarArtefatosDeAnatomia(atuais, (titulo) => {
+              const r = cenaDoConceito(atlas, titulo);
+              return r.ok ? { ok: true, nome: r.dados.conceito.nome } : { ok: false };
+            });
+            respostaFinal = { ...(respostaFinal as object), artifacts: validos } as typeof answer;
+          }
+        } catch { /* sem atlas no disco a rota do cartão já recusa (503): nada a validar aqui */ }
+      }
+    }
     const out = resolveHarnessOutput(state, respostaFinal, surface, objetivo, { trabalhoNoEditor: multi });
     // TCC cross-sala: "crie um TCC sobre X" cria o TCC da conversa; nos turnos seguintes
     // `work.sections` vira operação por seção. AGUARDADO (é só banco, sem modelo) porque o cliente
@@ -408,7 +457,9 @@ export async function runChatTurn(
         const id = await srv.iniciarRea(userId, scopeIdRea, titulo).catch(() => null);
         if (id) {
           out.answer = { ...out.answer, reaBlueprint: { id, titulo, gerando: true } };
-          void srv.reaBlueprintDoTurno({ userId, scopeId: scopeIdRea, titulo, prompt, answerTexto: textoDaResposta(out.answer), history: params.history }).catch(() => null);
+          // o REA herda o modelo da superfície: se o aluno escolheu um modelo de gateway (Claude/Zaeon),
+          // o blueprint é redigido por ele; senão, Gemini (ver genPadrao em rea-blueprint/server).
+          void srv.reaBlueprintDoTurno({ userId, scopeId: scopeIdRea, titulo, prompt, answerTexto: textoDaResposta(out.answer), history: params.history, grupoGateway: viaGateway(escolhido) ? escolhido.grupo : null }).catch(() => null);
         }
       }
     }

@@ -5,8 +5,10 @@
  * os passos de reconstrução. Busca /api/rea/[id] e repesca enquanto está `gerando` (turnos === 0). lib/rea-blueprint.
  */
 import { useCallback, useEffect, useState } from "react";
-import { Microscope, X, Loader2, RefreshCw } from "lucide-react";
+import { Microscope, X, Loader2, RefreshCw, Github, Check } from "lucide-react";
 import { ROTULO_PROV, type DocReaBlueprint, type Prov } from "@/lib/rea-blueprint/tipos";
+import { OCTA_CODE_LIGADO } from "@/lib/octa/flag";
+import { abrirProjetoNaOcta } from "@/lib/octa/ideNav";
 
 const COR_PROV: Record<Prov, string> = {
   observacao: "border-emerald-400/40 bg-emerald-400/[0.08] text-emerald-200",
@@ -36,6 +38,25 @@ export default function ReaBlueprintView({ id, onFechar }: { id: string; onFecha
 
   const montando = doc && doc.turnos === 0 && !doc.comoFunciona && !doc.achados.length;
 
+  // Ponte REA → Octa → GitHub: cria um projeto na Octa com o scaffold (site estático) do blueprint
+  // e abre a IDE, onde o botão "Publicar" leva ao repo + GitHub Pages na conta do aluno.
+  const [paraOcta, setParaOcta] = useState<"idle" | "criando" | "feito">("idle");
+  const [erroOcta, setErroOcta] = useState<string | null>(null);
+  const temConteudo = !!doc && !montando && (!!doc.comoFunciona || doc.achados.length > 0 || doc.reconstrucao.length > 0 || !!doc.resumo);
+  const criarNaOcta = useCallback(async () => {
+    setParaOcta("criando"); setErroOcta(null);
+    try {
+      const r = await fetch(`/api/rea/${id}/para-octa`, { method: "POST" });
+      if (!r.ok) {
+        setErroOcta(r.status === 409 ? "O blueprint ainda está vazio." : "Não deu pra criar o projeto.");
+        setParaOcta("idle"); return;
+      }
+      const j = await r.json();
+      setParaOcta("feito");
+      if (typeof j?.projetoId === "string") abrirProjetoNaOcta(j.projetoId);
+    } catch { setErroOcta("Sem conexão."); setParaOcta("idle"); }
+  }, [id]);
+
   return (
     <div className="h-full overflow-y-auto bg-[#0a0f1a] text-slate-100">
       <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/10 bg-[#0a0f1a]/95 px-5 py-3 backdrop-blur">
@@ -44,11 +65,23 @@ export default function ReaBlueprintView({ id, onFechar }: { id: string; onFecha
           <span className="text-[13px] font-semibold uppercase tracking-[0.18em] text-emerald-200/90">Blueprint · Engenharia reversa</span>
         </div>
         <div className="flex items-center gap-2">
+          {OCTA_CODE_LIGADO && temConteudo ? (
+            <button
+              onClick={criarNaOcta}
+              disabled={paraOcta !== "idle"}
+              title="Cria um projeto na Octa com este blueprint e abre a IDE para publicar no seu GitHub"
+              className="flex items-center gap-1.5 rounded-lg border border-emerald-400/30 bg-emerald-400/[0.08] px-2.5 py-1 text-[12px] font-semibold text-emerald-200 transition hover:bg-emerald-400/[0.16] disabled:opacity-60"
+            >
+              {paraOcta === "criando" ? <Loader2 size={13} className="animate-spin" /> : paraOcta === "feito" ? <Check size={13} /> : <Github size={13} />}
+              {paraOcta === "criando" ? "Criando…" : paraOcta === "feito" ? "Aberto na Octa" : "Criar projeto na Octa"}
+            </button>
+          ) : null}
           <button onClick={carregar} title="Atualizar" className="p-1.5 rounded hover:bg-white/10"><RefreshCw size={14} className="text-slate-400" /></button>
           {onFechar && <button onClick={onFechar} title="Fechar" className="p-1.5 rounded hover:bg-white/10"><X size={16} className="text-slate-400" /></button>}
         </div>
       </div>
 
+      {erroOcta ? <div className="border-b border-rose-400/20 bg-rose-400/[0.06] px-5 py-2 text-[12px] text-rose-300">{erroOcta}</div> : null}
       {erro ? <div className="p-6 text-[13px] text-rose-300">{erro}</div> : !doc ? (
         <div className="flex items-center gap-2 p-6 text-slate-400"><Loader2 className="animate-spin" size={16} /> carregando…</div>
       ) : (

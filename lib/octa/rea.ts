@@ -13,10 +13,10 @@ export const reaBridgeConfigurado = (env: ReaEnv = process.env) =>
 /** as FAMÍLIAS com efeito colateral — rodar/observar/tracejar, device (adb), debug, mudar o host. O motor (a ponte
  *  em infra/rea-engine) é a autoridade; aqui é só um filtro local pra o agente ganhar um erro claro sem ir à rede.
  *  O resto da superfície do REA (análise estática/leitura) passa 1:1. */
-export const DENY_REA_PREFIXOS = ["capture-", "observe-", "trace", "debug-", "start-adb", "stop-adb", "push-", "pull-", "read-adb", "resolve-adb", "inspect-adb", "uninstall", "collect-adb", "import-", "open-jeb", "execute-", "cutter-", "annotate-", "decompile-jeb", "inspect-jeb", "discover-webmcp", "reconcile-javascript-runtime"];
+export const DENY_REA_PREFIXOS = ["frida", "spawn", "attach", "launch", "instrument", "interact", "run-", "extract-", "environment-", "agent-env", "list-adb", "install-adb", "list-frida", "list-javascript-runtime", "capture-", "observe-", "trace", "debug-", "start-adb", "stop-adb", "push-", "pull-", "read-adb", "resolve-adb", "inspect-adb", "uninstall", "collect-adb", "import-", "open-jeb", "execute-", "cutter-", "annotate-", "decompile-jeb", "inspect-jeb", "discover-webmcp", "reconcile-javascript-runtime"];
 export const DENY_REA_EXATOS = new Set(["setup", "update", "completions", "evidence-import"]);
 /** exemplos pro prompt (não é a lista toda — a superfície estática do REA inteira está liberada) */
-export const REA_EXEMPLOS = ["analyze", "analyze-javascript-application", "analyze-web-bundle", "inspect", "decompile", "function", "search", "xrefs", "read-bytes", "inspect-macho", "inspect-go-binary", "inspect-managed-members", "inspect-sqlite" as string, "inspect-android-package", "inspect-firmware-regions", "inspect-evm-interface", "inspect-packet-capture", "compare", "capabilities", "providers"];
+export const REA_EXEMPLOS = ["analyze", "analyze-javascript-application", "analyze-web-bundle", "inspect", "decompile", "function", "search", "xrefs", "read-bytes", "inspect-macho", "inspect-go-binary", "inspect-managed-members", "inspect-sqlite" as string, "inspect-android-package", "inspect-firmware-regions", "inspect-evm-interface", "inspect-rust-binary", "inspect-model-artifact", "inspect-wasm-artifact", "inspect-packet-capture", "compare", "capabilities", "providers"];
 const ehNomeRea = (c: string) => /^[a-z][a-z0-9-]{1,50}$/.test(c);
 export const comandoRea = (c: string): boolean => ehNomeRea(c) && !DENY_REA_EXATOS.has(c) && !DENY_REA_PREFIXOS.some((p) => c.startsWith(p));
 

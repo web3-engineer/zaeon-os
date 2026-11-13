@@ -20,6 +20,7 @@ import {
 } from "@/lib/agent/tools";
 // `toolsWeb` importa SÓ TIPOS daqui de volta (apagados na compilação), então não há ciclo.
 import { abrirUrlDef, baixarParaBaseDef } from "@/lib/agent/toolsWeb";
+import { descreverVideoDef } from "@/lib/agent/toolsVideo";
 import { TOOLS_BASICAS } from "@/lib/agent/toolsBasicas";
 import { descreverImagemDef, visaoNoHarnessLigado } from "@/lib/agent/toolsVisao";
 import { visaoDisponivel } from "@/lib/ai/descreverImagem";
@@ -461,6 +462,11 @@ export function registrarBaixarParaBase(env: Record<string, string | undefined> 
   return true;
 }
 registrarBaixarParaBase();
+
+// Vídeo do YouTube: registrada SEMPRE. O piso (oEmbed: título e canal) não depende de configuração
+// nenhuma — a chave `YOUTUBE_API_KEY` só acrescenta descrição, duração e data. E não passa pelo
+// Leitor: o host é fixo no código, só o ID vem da conversa (ver lib/agent/toolsVideo).
+registerTool(descreverVideoDef);
 
 // Anexo (F3): registradas SEMPRE — quem decide é `disponivelNoTurno`, não o boot. Não há
 // configuração pra depender: ou a conversa tem arquivo, ou não tem.

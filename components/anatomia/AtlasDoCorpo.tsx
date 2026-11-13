@@ -27,10 +27,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import {
-  Activity, ArrowUpRight, ChevronRight, Crosshair, Info, Layers, Pause,
+  Activity, ArrowLeft, ArrowUpRight, ChevronRight, Crosshair, Info, Layers, Pause,
   RotateCcw, RotateCw, Search, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CHAT_ROTA } from "@/lib/ui/loungeHub";
 import { temWebGL } from "@/lib/ui/globo";
 import {
   EXPLICACOES, SISTEMAS, explicacao,
@@ -39,9 +40,10 @@ import {
 import { buscarConceitos } from "@/lib/anatomia/busca";
 import {
   ESTADO_INICIAL, PRESET_ESQUELETO, PRESET_ORGAOS, alternarIsolar, alternarRotacao, alternarSistema,
-  contarVisiveis, definirExplosao, definirSistemas, definirVista, dicaDeArraste, escolherConceito,
+  contarVisiveis, definirExplosao, definirSistemas, definirVista, escolherConceito,
   escolherPeca, esconderTodos, legenda, limparSelecao, presetAtivo, reiniciar, soSistema,
 } from "@/lib/anatomia/estado";
+import { aberturaDoAtlas, verificarIsolamento } from "@/lib/anatomia/isolamento";
 
 const CenaDoCorpo = dynamic(() => import("./CenaDoCorpo"), { ssr: false });
 
@@ -59,9 +61,33 @@ const LIMITE_DA_BUSCA = 80;
 /** Quantas peças o painel de detalhe lista antes de resumir. Valor do original. */
 const LIMITE_DA_LISTA = 50;
 
+/** PURA: a página anterior é desta casa? (só então "voltar" é voltar para a conversa, e não sair do site) */
+export function veioDeDentro(referrer: string | null | undefined, origem: string): boolean {
+  try { return !!referrer && new URL(referrer).origin === origem; } catch { return false; }
+}
+
+/**
+ * PURA: o estado com que a página abre quando chega com uma estrutura pedida. Isolada, ou erro.
+ * Exportada para o teste: é a regra, e a regra não deve depender de WebGL para ser conferida.
+ */
+export function estadoDaEstruturaPedida(
+  atlas: Atlas, id: string,
+): { ok: true; conceito: Conceito; estado: typeof ESTADO_INICIAL } | { ok: false; motivo: string } {
+  const conceito = atlas.concepts.find((c) => c.id.toLowerCase() === id.toLowerCase());
+  if (!conceito) return { ok: false, motivo: `o atlas não tem a estrutura "${id.slice(0, 40)}" — nada foi aberto no lugar dela` };
+  const estado = { ...escolherConceito(ESTADO_INICIAL, conceito), isolate: true };
+  const v = verificarIsolamento(atlas, estado, conceito.elements);
+  if (!v.ok) return { ok: false, motivo: `não abri "${conceito.name}": ${v.motivo}` };
+  return { ok: true, conceito, estado };
+}
+
 export default function AtlasDoCorpo() {
   const [atlas, setAtlas] = useState<Atlas | null>(null);
-  const [estado, setEstado] = useState(ESTADO_INICIAL);
+  // NASCE VAZIA: o corpo inteiro só entra quando a pessoa pede (dono, 2026-11-12). Antes o estado
+  // inicial eram as 2.229 peças, para qualquer um que abrisse a página.
+  const [estado, setEstado] = useState(() => esconderTodos(ESTADO_INICIAL));
+  /** `true` enquanto a pessoa ainda não disse o que quer ver — é o que mostra a pergunta. */
+  const [escolhendo, setEscolhendo] = useState(false);
   const [progresso, setProgresso] = useState(0);
   const [erro, setErro] = useState("");
   const [painel, setPainel] = useState<"sistemas" | "busca" | null>(null);
@@ -99,6 +125,36 @@ export default function AtlasDoCorpo() {
 
   useEffect(() => { if (painel === "busca") campoDeBusca.current?.focus(); }, [painel]);
 
+  /**
+   * ABRIR NA ESTRUTURA (`/anatomia?estrutura=FMA7088`). É por aqui que o cartão do chat chega, e o
+   * que ele pediu é UMA estrutura: então a página nasce com ela escolhida e ISOLADA, não com o corpo
+   * inteiro. O caminho de volta existe e é do aluno ("Mostrar a anatomia ao redor").
+   * Id que o atlas não tem é ERRO dito na tela — cair calado no corpo inteiro seria justamente o
+   * carregamento não isolado que o dono mandou tratar como erro. Roda uma vez, quando o atlas chega.
+   */
+  const abriuNaEstrutura = useRef(false);
+  const [erroDeEstrutura, setErroDeEstrutura] = useState("");
+  useEffect(() => {
+    if (!atlas || abriuNaEstrutura.current) return;
+    abriuNaEstrutura.current = true;
+    const abertura = aberturaDoAtlas(window.location.search);
+    // pediu o corpo inteiro com todas as letras → é o que abre. Sem pedido nenhum → a pergunta.
+    if (abertura.modo === "corpo") { setEstado(ESTADO_INICIAL); return; }
+    if (abertura.modo === "escolha") { setEscolhendo(true); return; }
+    const r = estadoDaEstruturaPedida(atlas, abertura.id);
+    if (!r.ok) {
+      // NADA na tela no lugar: `esconderTodos` em vez do estado inicial, que desenharia as 2.229
+      // peças — medido no navegador, era o que acontecia com um id inexistente. O aviso é próprio
+      // (não o `erro` da cena, que a carga da geometria sobrescreve).
+      setEstado(esconderTodos(ESTADO_INICIAL));
+      setErroDeEstrutura(r.motivo);
+      return;
+    }
+    setEscolhido(r.conceito);
+    setEstado(r.estado);
+    setDetalhe(true);
+  }, [atlas]);
+
   const pecasPorId = useMemo(() => new Map((atlas?.parts ?? []).map((p) => [p.id, p])), [atlas]);
   const conceitosPorId = useMemo(() => new Map((atlas?.concepts ?? []).map((c) => [c.id, c])), [atlas]);
   const contagens = useMemo(() => {
@@ -127,6 +183,7 @@ export default function AtlasDoCorpo() {
   }, [atlas, consulta, conceitosPorId]);
 
   const escolher = useCallback((c: Conceito) => {
+    setEscolhendo(false);
     setEscolhido(c);
     setEstado((s) => escolherConceito(s, c));
     setDetalhe(true);
@@ -169,31 +226,32 @@ export default function AtlasDoCorpo() {
         />
       )}
 
-      {/* ── identidade. A classe é procurada por cena.ts no enquadramento do celular ── */}
-      <header className="anatomia-identidade pointer-events-none absolute left-4 top-4 z-20 sm:left-6 sm:top-6">
-        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Anatomia interativa
-        </div>
-        <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold tracking-tight sm:text-3xl">
-          Atlas do Corpo
-          <span className="rounded border border-slate-300 px-1.5 py-0.5 text-[10px] font-bold tracking-widest text-slate-500">3D</span>
-        </h1>
-        <p className="mt-1 text-xs text-slate-500">
-          {(atlas?.parts.length ?? 2234).toLocaleString("pt-BR")} peças modeladas <span className="mx-1">·</span> BodyParts3D
-        </p>
+      {/* ── VOLTAR AO CHAT (dono, 2026-11-12). No lugar do cabeçalho "Anatomia interativa · Atlas do
+          Corpo 3D · 2.234 peças modeladas", que só repetia o que a tela já mostra. A classe
+          `anatomia-identidade` fica: cena.ts mede este bloco para enquadrar no celular. ── */}
+      <header className="anatomia-identidade absolute left-4 top-4 z-20 sm:left-6 sm:top-6">
+        <a
+          href={CHAT_ROTA}
+          data-voltar-ao-chat
+          onClick={(e) => {
+            // veio do chat nesta aba → volta para ONDE estava (a conversa, no ponto em que saiu);
+            // abriu o atlas direto → vai para o chat.
+            if (veioDeDentro(document.referrer, window.location.origin) && window.history.length > 1) {
+              e.preventDefault();
+              window.history.back();
+            }
+          }}
+          className={cn(botao, "gap-2")}
+        >
+          <ArrowLeft size={16} aria-hidden />
+          <span>Voltar ao chat</span>
+        </a>
       </header>
 
-      {/* ── ações de topo ── */}
-      <nav aria-label="Painéis do explorador" className="absolute right-4 top-4 z-20 flex items-center gap-2 sm:right-6 sm:top-6">
-        <button
-          type="button"
-          onClick={() => abrirPainel("busca")}
-          className={cn(botao, painel === "busca" && ativo, "gap-2")}
-        >
-          <Search size={16} aria-hidden />
-          <span className="hidden sm:inline">Encontrar estrutura</span>
-          <kbd className="hidden rounded border border-slate-300 px-1 text-[10px] text-slate-500 sm:inline">/</kbd>
-        </button>
+      {/* ── topo direito: só o "Sobre", que carrega a ATRIBUIÇÃO do dado (CC BY 4.0 exige mantê-la
+          alcançável). A barra "Encontrar estrutura" saiu daqui a pedido do dono; a busca abre pela
+          pergunta inicial, pelo painel de sistemas e pela tecla "/". ── */}
+      <nav aria-label="Sobre este atlas" className="absolute right-4 top-4 z-20 flex items-center gap-2 sm:right-6 sm:top-6">
         <button type="button" aria-label="Sobre este atlas" title="Sobre este atlas"
           onClick={() => { setDetalhe(false); setPainel(null); setSobre(true); }} className={cn(botao, "px-2")}>
           <Info size={16} aria-hidden />
@@ -215,7 +273,6 @@ export default function AtlasDoCorpo() {
           <button type="button" onClick={() => setPainel(null)} aria-label="Fechar sistemas" className={cn(botao, "px-1.5 py-1 sm:hidden")}>
             <X size={15} aria-hidden />
           </button>
-          <span className="hidden rounded bg-slate-200/70 px-1.5 text-[11px] font-semibold text-slate-600 sm:inline">{sistemasAtivos.length}</span>
         </div>
 
         <div className="flex gap-1 border-b border-slate-200/70 px-2 py-2">
@@ -259,7 +316,12 @@ export default function AtlasDoCorpo() {
 
         <div className="flex items-center justify-between border-t border-slate-200/70 px-3 py-2 text-[11px] text-slate-500">
           <span className="tabular-nums">{visiveis.toLocaleString("pt-BR")} peças visíveis</span>
-          <button type="button" onClick={() => setEstado(esconderTodos)} className="hover:underline">Esconder tudo</button>
+          <span className="flex items-center gap-3">
+            <button type="button" onClick={() => abrirPainel("busca")} className="inline-flex items-center gap-1 hover:underline">
+              <Search size={11} aria-hidden /> Buscar
+            </button>
+            <button type="button" onClick={() => setEstado(esconderTodos)} className="hover:underline">Esconder tudo</button>
+          </span>
         </div>
       </section>
 
@@ -367,19 +429,11 @@ export default function AtlasDoCorpo() {
             onChange={(e) => setEstado((s) => definirExplosao(s, Number(e.target.value) / 100))}
             className="mt-1.5 w-full accent-emerald-600"
           />
-          <div className="flex justify-between text-[10px] text-slate-400">
-            <span>Montado</span><span>Peça por peça</span>
-          </div>
         </div>
         <button type="button" onClick={reinicio} aria-label="Montar e reiniciar" className={cn(botao, "shrink-0 gap-1.5")}>
           <RotateCcw size={15} aria-hidden /><span className="hidden sm:inline">Reiniciar</span>
         </button>
       </div>
-
-      {/* ── rodapé ── */}
-      <footer className="pointer-events-none absolute bottom-1 left-1/2 z-10 hidden -translate-x-1/2 items-center gap-2 text-[10px] text-slate-400 sm:flex">
-        <span>{dicaDeArraste(estado)} <b>·</b> Pinça ou roda para aproximar <b>·</b> Toque para inspecionar</span>
-      </footer>
 
       {/* ── progresso e erro ── */}
       {atlas && progresso < 100 && !erro && (
@@ -394,6 +448,28 @@ export default function AtlasDoCorpo() {
               <i className="block h-full bg-emerald-500 transition-[width]" style={{ width: `${progresso}%` }} />
             </div>
           </div>
+        </div>
+      )}
+      {escolhendo && !erroDeEstrutura && (
+        <div data-escolha-do-atlas className={cn(vidro, "absolute left-1/2 top-1/2 z-40 flex w-[min(92vw,26rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-3 px-5 py-4")} role="dialog" aria-label="O que você quer ver?">
+          <p className="text-base font-semibold text-slate-800">O que você quer ver?</p>
+          <p className="text-sm text-slate-600">O atlas abre só o que você pedir. Busque uma estrutura pelo nome (em português mesmo), ou abra o corpo inteiro para explorar.</p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className={cn(botao, "shrink-0")}
+              onClick={() => { setEscolhendo(false); setPainel("busca"); setDetalhe(false); }}>
+              Buscar uma estrutura
+            </button>
+            <button type="button" className={cn(botao, "shrink-0")}
+              onClick={() => { setEscolhendo(false); setEstado(ESTADO_INICIAL); }}>
+              Ver o corpo inteiro
+            </button>
+          </div>
+        </div>
+      )}
+      {erroDeEstrutura && (
+        <div data-erro-de-estrutura className={cn(vidro, "absolute left-1/2 top-24 z-40 flex -translate-x-1/2 items-center gap-3 px-4 py-3")} role="alert">
+          <p className="max-w-sm text-sm text-rose-700">{erroDeEstrutura}. Use a busca para escolher uma estrutura.</p>
+          <button type="button" onClick={() => { setErroDeEstrutura(""); setPainel("busca"); }} className={cn(botao, "shrink-0")}>Buscar</button>
         </div>
       )}
       {erro && (

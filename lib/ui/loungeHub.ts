@@ -42,6 +42,9 @@ export const MSG_ENTRAR_ESTUDO = "zaeon:enter-study";
 export const ehMsgEntrarEstudo = (data: unknown, origin: string, esperada: string): boolean =>
   origin === esperada && !!data && typeof data === "object" && (data as { type?: unknown }).type === MSG_ENTRAR_ESTUDO;
 
+/** O CHAT (Sala de Estudos, aba do chat) — para onde o "Voltar ao chat" do atlas leva quando não há de onde voltar. */
+export const CHAT_ROTA = `${LAB_ROTA}?tab=sala-de-estudos&estudo=chat`;
+
 /** A rota do Atlas do Corpo (anatomia 3D) — também imersiva: a cena ocupa a tela inteira. */
 export const ATLAS_ROTA = "/anatomia";
 

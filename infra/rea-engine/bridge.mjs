@@ -26,11 +26,11 @@ const CACHE_TTL_MS = Number(process.env.REA_CACHE_TTL_MS || 2 * 3600_000);
 const handleOk = (h) => /^[0-9a-f]{32}$/.test(String(h || ""));
 const nomeSeguro = (n) => (String(n || "artifact").replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 120) || "artifact");
 
-// A superfície: o REA tem ~155 comandos. Esta fatia libera a ANÁLISE ESTÁTICA/leitura (1:1 com o catálogo do REA)
+// A superfície: o REA (rea-agents 6.9.0, skill v62) tem ~255 tools. Esta fatia libera a ANÁLISE ESTÁTICA/leitura (1:1 com o catálogo do REA)
 // e NEGA as famílias com efeito colateral — rodar/observar/tracejar programas, controlar device (adb), debug
 // interativo, e mudar o host (setup/update/uninstall/import/annotate). Essas pedem autorização por-ação (fatia
 // futura). O catálogo vem do próprio `rea --help` no boot: nada de lista decorada que envelhece.
-const DENY_PREFIXOS = ["capture-", "observe-", "trace", "debug-", "start-adb", "stop-adb", "push-", "pull-", "read-adb", "resolve-adb", "inspect-adb", "uninstall", "collect-adb", "import-", "open-jeb", "execute-", "cutter-", "annotate-", "decompile-jeb", "inspect-jeb", "discover-webmcp", "reconcile-javascript-runtime"];
+const DENY_PREFIXOS = ["frida", "spawn", "attach", "launch", "instrument", "interact", "run-", "extract-", "environment-", "agent-env", "list-adb", "install-adb", "list-frida", "list-javascript-runtime", "capture-", "observe-", "trace", "debug-", "start-adb", "stop-adb", "push-", "pull-", "read-adb", "resolve-adb", "inspect-adb", "uninstall", "collect-adb", "import-", "open-jeb", "execute-", "cutter-", "annotate-", "decompile-jeb", "inspect-jeb", "discover-webmcp", "reconcile-javascript-runtime"];
 const DENY_EXATOS = new Set(["setup", "update", "completions", "evidence-import"]);
 const permitido = (cmd) => CATALOGO.has(cmd) && !DENY_EXATOS.has(cmd) && !DENY_PREFIXOS.some((p) => cmd.startsWith(p));
 
