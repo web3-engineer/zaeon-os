@@ -66,6 +66,7 @@ services:
       VOICE_ENGINE_URL: http://voice-engine:8004   # proxy /api/ai/voice
       ABNT_SERVICE_URL: http://abnt-service:8001    # exportação ABNT
       PDF_LOADER_URL: http://pdf-loader:8005        # leitura estruturada de PDF
+      QUALITY_ENGINE_URL: http://quality-engine:8003 # termômetro acadêmico (/api/quality)
       # Busca NA INTERNET (tool web_search / fallback da pesquisa): SearXNG self-hosted abaixo. Se o
       # container não estiver de pé, a chamada falha rápido e a IA responde pelo conhecimento do modelo.
       # Tavily/Brave: TAVILY_API_KEY / BRAVE_API_KEY no .env (WEB_SEARCH_PROVIDER força qual usar).
@@ -402,6 +403,26 @@ services:
     deploy:
       resources:
         limits: { memory: 1200m }
+
+  # ── quality-engine (FastAPI, porta 8003). Termômetro Acadêmico: pontua texto por banda. ──
+  #    Consumido por /api/quality (web → http://quality-engine:8003). Só rede interna (expose, sem ports).
+  #    Existia no repo mas nunca estava no compose → nunca subia; o cliente degradava "offline" calado e a
+  #    UI escondia o termômetro. (Achado pela trava de provas reais — ver docs/PROVAS_REAIS.md.)
+  #    NILC_METRIX_URL (opcional, no .env) liga métricas extras; sem ela, só as nativas.
+  quality-engine:
+    build: { context: ./quality-engine, dockerfile: Dockerfile }
+    container_name: zaeon_quality
+    expose: ["8003"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8003/health', timeout=5).status==200 else 1)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    deploy:
+      resources:
+        limits: { memory: 512m }
 
   # ── pdf-loader (FastAPI + opendataloader-pdf, modo FAST). Leitura estruturada de PDF. ──
   #    Sem OCR/Hybrid nesta VPS (RAM). Só rede interna (não publica porta).

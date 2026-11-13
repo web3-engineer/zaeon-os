@@ -14,7 +14,8 @@ import { criarChamadorOcta, nomeDoModelo, escolhaModeloOcta, type ChamarGateway 
 import { prisma } from "@/src/lib/prisma";
 import { effectivePlan, normalizePlan, type PlanState } from "@/lib/plans";
 import { isSuperAdmin } from "@/lib/auth/roles";
-import { premiumDisponivel, podeUsarPremium, premiumBudgetUsd, type ModeloPremium } from "@/lib/octa/modelosPremium";
+import { premiumDisponivel, podeUsarPremium, premiumBudgetUsd } from "@/lib/octa/modelosPremium";
+import { localDisponivelOcta, podeUsarLocal } from "@/lib/octa/modelosLocais";
 
 export const runtime = "nodejs";
 export const maxDuration = 300; // turno no local (CPU) pode levar até OCTA_LOCAL_ORCAMENTO_MS + a reserva
@@ -83,20 +84,31 @@ export async function POST(req: Request) {
 
   // Modelo premium (Claude/Codex da conta de API da org): opt-in por `modelo`, gateado em plano `max`
   // + flag OCTA_MODELOS_PREMIUM. Falha HONESTA: desligado → 404; plano aquém → 403. lib/octa/modelosPremium.
+  // Modelo escolhido pelo aluno: LOCAL (qwen3-coder, grátis, plano plus+) OU PREMIUM (Claude/Codex, pago,
+  // plano max). Opt-in por `modelo`. Falha HONESTA: desligado → 404; plano aquém → 403. lib/octa/modelos*.
   const modeloPedido = typeof body.modelo === "string" ? body.modelo.trim().toLowerCase() : "";
-  let premium: ModeloPremium | undefined;
+  let escolhido: { grupo: string; multimodal: boolean; tipo: "premium" | "local" } | undefined;
   let bucket = "padrao";
   let budgetUsd = BUDGET_USD;
   let modelosDaKey: string[] | undefined;
   if (modeloPedido && modeloPedido !== "octa") {
-    const m = premiumDisponivel(modeloPedido);
-    if (!m) return NextResponse.json({ error: "modelo_desligado", detalhe: "Este modelo não está ligado neste servidor." }, { status: 404 });
+    const local = localDisponivelOcta(modeloPedido);
+    const prem = local ? undefined : premiumDisponivel(modeloPedido);
+    if (!local && !prem) return NextResponse.json({ error: "modelo_desligado", detalhe: "Este modelo não está ligado neste servidor." }, { status: 404 });
     const { plano, superAdmin } = await carregarPlano(email);
-    if (!podeUsarPremium(plano, superAdmin)) return NextResponse.json({ error: "plano_insuficiente", detalhe: "Modelos premium (Claude/Codex) são do plano Max." }, { status: 403 });
-    premium = m;
-    bucket = `premium:${m.id}`;
-    budgetUsd = premiumBudgetUsd();
-    modelosDaKey = [m.grupo, modeloReal("forte")];   // a key só pode gastar no grupo premium + a reserva Google
+    if (local) {
+      if (!podeUsarLocal(plano, superAdmin)) return NextResponse.json({ error: "plano_insuficiente", detalhe: "O Qwen3-Coder é do plano Plus ou acima." }, { status: 403 });
+      escolhido = { grupo: local.grupo, multimodal: local.multimodal, tipo: "local" };
+      bucket = `local:${local.id}`;
+      // GRÁTIS: budget padrão (free) cobre só a reserva Google quando o CPU falha/enche. A key gasta no coder + reserva.
+      modelosDaKey = [local.grupo, modeloReal("padrao")];
+    } else {
+      if (!podeUsarPremium(plano, superAdmin)) return NextResponse.json({ error: "plano_insuficiente", detalhe: "Modelos premium (Claude/Codex) são do plano Max." }, { status: 403 });
+      escolhido = { grupo: prem!.grupo, multimodal: prem!.multimodal, tipo: "premium" };
+      bucket = `premium:${prem!.id}`;
+      budgetUsd = premiumBudgetUsd();
+      modelosDaKey = [prem!.grupo, modeloReal("forte")];   // a key só pode gastar no grupo premium + a reserva Google
+    }
   }
   const ck = `${userId}:${bucket}`;
 
@@ -114,7 +126,7 @@ export async function POST(req: Request) {
       const m = j.choices?.[0]?.message ?? {};
       return { content: m.content ?? null, tool_calls: m.tool_calls, usage: j.usage, modeloId: r.headers.get("x-litellm-model-id") };
     };
-    const chamar = criarChamadorOcta(gateway, premium ? escolhaModeloOcta(process.env, undefined, { grupo: premium.grupo, multimodal: premium.multimodal }) : undefined);
+    const chamar = criarChamadorOcta(gateway, escolhido ? escolhaModeloOcta(process.env, undefined, escolhido) : undefined);
     const r = await rodarAgenteOcta({ historico, pedido, workspace, modo, liberados, arquivoAtivo: typeof body.arquivoAtivo === "string" ? body.arquivoAtivo : undefined }, chamar, { sessionId, userId });
     const servidos = chamar.servidos;
     console.info(`[octa] ${sessionId} ${servidos.map((x) => `${x.modelo}(${x.modeloId ?? "?"}) ${x.ms}ms${x.motivo ? ` ←${x.motivo}` : ""}`).join(" · ")}`);
