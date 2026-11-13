@@ -99,6 +99,13 @@ export async function gerarArtefato(kind: string, o: OpcoesStudio & Deps): Promi
       if (!res.ok || !data?.id) return { tipo: "erro", mensagem: data?.error };
       return { tipo: "pronto", bloco: { studioKind: "caderno", title: data.title, data: data.meta, artifactId: data.id } };
     }
+    if (kind === "forja") {
+      // ESTUDO DE REPOSITÓRIO (lib/forja): esqueleto CURADO e determinístico — a rota devolve pronto na hora.
+      const res = await f("/api/studio/forja", { method: "POST", headers: H, body: JSON.stringify({ topic: topic || "exemplo" }) });
+      const data = await json(res);
+      if (!res.ok || !data?.id) return { tipo: "erro", mensagem: data?.error };
+      return { tipo: "pronto", bloco: { studioKind: "forja", title: data.title, data: data.meta, artifactId: data.id } };
+    }
     if (kind === "podcast" || kind === "video") {
       const res = await f(`/api/studio/${kind}`, { method: "POST", headers: H, body: JSON.stringify({ spaceId, topic }) });
       const data = await json(res);

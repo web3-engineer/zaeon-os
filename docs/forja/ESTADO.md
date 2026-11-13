@@ -12,8 +12,8 @@ Branch E0 / prompts: `claude/forja-repo-curso` · PR draft **#791**.
 | E0 | fundação (`lib/forja/`: tipos, provedor, temperatura, curso) | **feita** | #791 | 6 testes verdes |
 | A1 | E1 infra dos engines (`infra/forja-engine/`, padrão REA): Dockerfile (graphifyy py+uv; understand-anything node+pnpm), `bridge.mjs` (HTTP→engine, allowlist), `config/vetting` (versões pinadas + LICENSE), runbook Contabo | **feita** | #791 | scaffold + 9 testes node:test (vetting puro) no CI; build real na Contabo (bloqueio do dono) |
 | A2 | E2 adaptadores (`lib/forja/adaptadores/`): graph.json / `.ua` → `tipos`, puros, testados contra fixtures de saída real | **feita** | #791 | schemas lidos do CÓDIGO-FONTE (export.py / types.ts); 8 testes vitest contra fixtures fiéis; trocar por saída real da Contabo depois |
-| A3 | E3 board n8n: `studioKind` `forja` na Sala de Estudos (cards conectados + 🌡️), reusa o padrão `caderno` | **a-fazer (próxima)** | — | app-side, NÃO depende da Contabo — posso tocar inteiro |
-| A4 | E4 lições: codebox sem-colar, review, perguntas, teste, entrevista, leetcode; Zaeon examinadora (reusa `lib/guia`) | a-fazer | — | — |
+| A3 | E3 board n8n: `studioKind` `forja` na Sala de Estudos (cards conectados + 🌡️), reusa o padrão `caderno` | **feita** | #791 | ForjaView (board + temperatura) + rota curada + registro; 8 testes; main (#788) mergeado pro branch |
+| A4 | E4 lições: codebox sem-colar, review, perguntas, teste, entrevista, leetcode; Zaeon examinadora (reusa `lib/guia`) | **a-fazer (próxima)** | — | app-side; reusa `lib/guia` (já no branch via #788) |
 | A5 | E5 Octa = casa do entregável + voz (useTTS → /api/ai/voice) | a-fazer | — | — |
 
 ## Fase B — cursos dos cards de prod (só depois de A)
@@ -47,3 +47,11 @@ Branch E0 / prompts: `claude/forja-repo-curso` · PR draft **#791**.
   `desde` pela complexidade dos nós). Defensivos (toleram chaves extras/ausências). 8 testes vitest contra fixtures
   fiéis (README de proveniência). Portão: tsc 0, lint 0, vitest 7888 ok, compose 0. Trocar fixtures pela saída real
   quando a Contabo rodar. Próxima: **A3** (board n8n studioKind `forja` — app-side, não depende da box).
+- it.4 — **A3 feita**: trouxe o `main` (#788, molde do caderno) pro branch (merge limpo). `studioKind` `forja`:
+  `ForjaView` (board n8n — cards-módulo conectados em ordem + regulador 🌡️ que muda o que a Zaeon cobra,
+  reusando `lib/forja/curso` e `temperatura`), `lib/forja/cursoRepo` (esqueleto curado + licenças dos engines),
+  rota `/api/studio/forja` (serve pronto, como a do caderno), e registro (documentos KINDS_EM_ABA/ROTULO_DOC,
+  DocumentoArtefato, StudioBlock, studioClient). 8 testes novos (cursoRepo + ForjaView). Degrada com elegância
+  antes do engine (mostra o board + aviso de que o mapa entra quando o repo for analisado). Portão: tsc 0, lint 0,
+  vitest 7938 ok, compose 0. Próxima: **A4** (lições — codebox sem-colar, review, perguntas, teste, entrevista,
+  leetcode; Zaeon examinadora reusando `lib/guia`, que já veio no merge).

@@ -43,6 +43,7 @@ const KIND_META: Record<string, { emoji: string; label: string }> = {
   caderno: { emoji: "📓", label: "Caderno da Jornada" },
   cad: { emoji: "📐", label: "Peça CAD" },
   anatomia: { emoji: "🫁", label: "Estrutura anatômica" },
+  forja: { emoji: "🛠️", label: "Repositório" },
 };
 
 const TEXT_KINDS = new Set(["guide", "faq", "flashcards", "mindmap", "timeline"]);

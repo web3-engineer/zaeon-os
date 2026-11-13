@@ -102,6 +102,16 @@ export type ModuloBoard = {
 /** A licença de um engine/repo estudado — preservada e exibida (atribuição obrigatória). */
 export type Licenca = { spdx: string; titular?: string; url?: string };
 
+/** Um esqueleto CURADO de estudo de repositório (o "nós curamos" do híbrido): vira um CursoRepo pronto. */
+export type EsqueletoRepo = {
+  id: string;
+  /** o repo estudado: "owner/name". */
+  repo: string;
+  titulo: string;
+  resumo: string;
+  modo: ModoEstudo;
+};
+
 /** O curso inteiro que a Forja produz a partir de um repositório. */
 export type CursoRepo = {
   /** o repo estudado: "owner/name" ou URL. */
