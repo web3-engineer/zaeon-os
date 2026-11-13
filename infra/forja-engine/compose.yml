@@ -17,9 +17,13 @@ services:
       FORJA_GRAPHIFY_BACKEND: ${FORJA_GRAPHIFY_BACKEND:-}
       FORJA_UNDERSTAND_CMD: ${FORJA_UNDERSTAND_CMD:-}
     ports:
-      # app server: só o localhost enxerga (o app, co-locado, fala por 127.0.0.1:8800). Mais seguro que expor.
-      # Contabo: troque por "100.113.137.74:8800:8800" (só a Tailscale), como o rea-engine.
+      # bind no host só pra fumaça/debug (127.0.0.1). O APP NÃO fala por aqui — fala pela rede do app
+      # (networks abaixo), por http://zaeon_forja_engine:8800. Contabo: FORJA_BIND=100.113.137.74 (Tailscale).
       - "${FORJA_BIND:-127.0.0.1}:8800:8800"
+    networks:
+      # entra na rede do app (zaeon-beta) pra o `web`/`worker` alcançarem a ponte pelo NOME do container,
+      # sem expor porta nenhuma pra fora. No app server é obrigatório; na Contabo (fora dessa rede) remova.
+      - app
     tmpfs:
       - /tmp:size=4g
     restart: unless-stopped
@@ -30,3 +34,8 @@ services:
           # No app server deixa o site sempre com folga; na Contabo evita roubar dos modelos. Override por env.
           cpus: "${FORJA_CPUS:-4}"
           memory: ${FORJA_MEM:-8g}
+
+networks:
+  app:
+    external: true
+    name: ${FORJA_APP_NET:-zaeon-beta_default}   # a rede default do projeto do app (docker-compose.beta.yml: name zaeon-beta)

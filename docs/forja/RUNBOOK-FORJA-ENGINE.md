@@ -69,14 +69,38 @@ curl -s http://127.0.0.1:8800/forja \
 Guarde um `graph.json` e um `.ua/knowledge-graph.json` reais como **fixtures** para a A2
 (`lib/forja/adaptadores/`): é o shape real que os adaptadores vão mapear para `lib/forja/tipos`.
 
-## 5. Provisionamento dos backends (o que falta pra saída completa)
-- **graphify**: o `extract` documentado chama um backend de LLM (`--backend`). Aponte `FORJA_GRAPHIFY_BACKEND`
-  pro gateway. (O grafo tree-sitter é estático, mas a rota documentada passa pelo backend.)
-- **understand**: a análise É um pipeline multi-agente do **Claude Code** — não há CLI próprio. Instale o
-  Claude Code na box, registre o plugin (`/plugin marketplace add Egonex-AI/Understand-Anything` →
-  `/plugin install understand-anything`) e escreva o wrapper `FORJA_UNDERSTAND_CMD` que roda
-  `claude -p '/understand'` com `cwd` no repo-alvo. Enquanto não houver wrapper, `/forja engine=understand`
-  responde `503` (provisionamento), de propósito.
+## 5. Backends
+- **graphify**: NÃO precisa de backend. Usa `graphify update <repo>` — re-extração estática com tree-sitter,
+  **sem LLM** (confirmado na box: `graphify 0.9.108` devolveu o grafo real de um repo). `FORJA_GRAPHIFY_BACKEND`
+  fica vazio.
+- **understand** (opcional, marcha 2): a análise É um pipeline multi-agente do **Claude Code** — não há CLI
+  próprio. Instale o Claude Code na box, registre o plugin (`/plugin marketplace add Egonex-AI/Understand-Anything`
+  → `/plugin install understand-anything`) e escreva o wrapper `FORJA_UNDERSTAND_CMD` que roda `claude -p
+  '/understand'` com `cwd` no repo-alvo. Sem o wrapper, `engine=understand` responde `503`, de propósito.
+
+## 6. Pôr em PROD (ligar o app ao motor)
+O app roda em container (`zaeon_web`), então `127.0.0.1` do app ≠ host. A ponte entra na **rede do app** e é
+alcançada pelo NOME do container. O `web`/`worker` usam `env_file: [.env]`, então basta pôr as vars no `.env` do app.
+
+1. **Merge da #791** → o deploy builda o app novo (com o cliente `engineClient` + a rota `/api/studio/forja/mapa`).
+2. **Rebuild do motor na rede do app** (a rede `zaeon-beta_default` já existe porque o app está no ar):
+   ```
+   cd /opt/forja-engine
+   git -C /root/zaeon-os fetch origin claude/forja-repo-curso   # (ou main, após o merge)
+   git -C /root/zaeon-os archive origin/claude/forja-repo-curso infra/forja-engine | tar -x -C /opt/forja-engine --strip-components=2
+   docker compose -p forja-engine -f compose.yml up -d           # agora com networks: app
+   docker inspect zaeon_forja_engine --format '{{json .NetworkSettings.Networks}}' | grep -o zaeon-beta_default
+   ```
+3. **No `.env` do app** (ao lado do `docker-compose.beta.yml`; mesmo token da box):
+   ```
+   FORJA_BRIDGE_URL=http://zaeon_forja_engine:8800
+   FORJA_BRIDGE_TOKEN=<o mesmo FORJA_BRIDGE_TOKEN de /opt/forja-engine/.env>
+   ```
+4. **Redeploy do app** (ou `docker compose -p zaeon-beta -f docker-compose.beta.yml up -d web worker`) pra pegar o `.env`.
+5. **Confere de dentro do app**: `docker exec zaeon_web sh -lc 'curl -s http://zaeon_forja_engine:8800/health'` → `ok:true`.
+
+Pronto: ao abrir um dos 10 cursos, o `ForjaView` chama `/api/studio/forja/mapa`, o motor analisa o repo e o
+board enche com o mapa real. Sem as duas vars, o app degrada pro esqueleto curado (sem erro).
 
 ## Segurança (invariantes)
 - A ponte não é shell remoto: só os **dois** engines da allowlist (`vetting.mjs`), repo-alvo por **URL de host
