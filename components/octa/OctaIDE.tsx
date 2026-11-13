@@ -753,8 +753,9 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
             </div>
           </aside>
 
-          {/* DIREITA: os artefatos — código · prévia · estilos (a "aba de artefatos" ao lado da conversa) */}
-          <section className="order-3 w-[44%] min-w-0 shrink-0 flex flex-col">
+          {/* DIREITA: os artefatos — código · prévia · estilos (a "aba de artefatos" ao lado da conversa).
+              Largura = a MESMA do painel de documentos da Sala de Estudos (min(620px,100%)), a pedido do dono. */}
+          <section className="order-3 w-[min(620px,100%)] min-w-0 shrink-0 flex flex-col">
             {projeto && vista === "estilos" ? (
               <div className="flex-1 min-h-0">
                 <GaleriaDesign projetoId={projeto.id} designId={estiloAtual} antesDeEscolher={salvarAgora} bloqueado={travado}
