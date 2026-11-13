@@ -36,6 +36,7 @@ const SO_NO_WEB: Record<string, string> = {
   AGENTE_URL: "agente de navegador: só o web o aciona",
   AGENTE_ALLOW: "agente de navegador: só o web o aciona",
   AGENTE_TOKEN: "agente de navegador: só o web o aciona",
+  QUALITY_ENGINE_URL: "termômetro acadêmico: rota HTTP do web (/api/quality); o worker não pontua",
 };
 
 function arquivosTs(dir: string, out: string[] = []): string[] {
