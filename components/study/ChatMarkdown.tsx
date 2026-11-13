@@ -9,6 +9,7 @@ import BlocoCodigo from "@/components/chat/BlocoCodigo";
 import GeometriaDinamica from "@/components/chat/GeometriaDinamica";
 import PassosMatematica from "@/components/chat/PassosMatematica";
 import DiagramaMermaid from "@/components/chat/DiagramaMermaid";
+import Partitura from "@/components/chat/Partitura";
 import { figuraDoBloco, figuraDoJson, type Figura } from "@/lib/chat/figuras";
 import { segmentarBlocos, segmentarInline } from "@/lib/chat/matematica";
 
@@ -37,6 +38,7 @@ function desenhar(figura: Figura, conteudo: string, key?: number): React.ReactNo
   if (figura === "geometria") return <GeometriaDinamica key={key} json={conteudo} />;
   if (figura === "passos") return <PassosMatematica key={key} json={conteudo} />;
   if (figura === "mermaid") return <DiagramaMermaid key={key} codigo={conteudo} />;
+  if (figura === "partitura") return <Partitura key={key} json={conteudo} />;
   return <DiagramaMermaid key={key} json={conteudo} />;
 }
 

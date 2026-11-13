@@ -8,7 +8,7 @@
  */
 export const EVT_ABRIR_DOC = "zaeon:doc:abrir";
 /** Kinds do Studio que viram documento em aba. */
-export const KINDS_EM_ABA = new Set(["diagram", "aula"]);
+export const KINDS_EM_ABA = new Set(["diagram", "aula", "caderno"]);
 
 export type DocArtefato = {
   sala: "estudos" | "pesquisa";
@@ -26,6 +26,7 @@ export type DocArtefato = {
 export const ROTULO_DOC: Record<string, { emoji: string; nome: string }> = {
   diagram: { emoji: "🧭", nome: "Diagrama" },
   aula: { emoji: "🎓", nome: "Aula" },
+  caderno: { emoji: "📓", nome: "Caderno" },
   pdf: { emoji: "📕", nome: "Livro" },   // livro achado pelo buscar_livro, aberto no leitor (data.file = LibraryFile)
 };
 
