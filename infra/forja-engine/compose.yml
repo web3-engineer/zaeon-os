@@ -1,0 +1,25 @@
+# Forja engine na Contabo — publica a ponte SÓ na Tailscale. RUNBOOK-FORJA-ENGINE.md.
+# A IP da Tailscale abaixo é a MESMA box do rea-engine; a Forja usa outra porta (8800).
+services:
+  forja-engine:
+    build:
+      context: .
+      args:
+        GRAPHIFY_VERSION: ${GRAPHIFY_VERSION:-}
+        UNDERSTAND_REV: ${UNDERSTAND_REV:-main}
+    image: zaeon-forja-engine:local
+    container_name: zaeon_forja_engine
+    cpuset: "0-3"
+    environment:
+      FORJA_BRIDGE_TOKEN: ${FORJA_BRIDGE_TOKEN:?defina no .env}
+      FORJA_BRIDGE_PORT: "8800"
+      FORJA_GRAPHIFY_BACKEND: ${FORJA_GRAPHIFY_BACKEND:-}
+      FORJA_UNDERSTAND_CMD: ${FORJA_UNDERSTAND_CMD:-}
+    ports:
+      - "100.113.137.74:8800:8800"   # só a Tailscale enxerga
+    tmpfs:
+      - /tmp:size=4g
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { memory: 8g }

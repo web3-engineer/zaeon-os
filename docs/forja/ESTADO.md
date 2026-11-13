@@ -10,8 +10,8 @@ Branch E0 / prompts: `claude/forja-repo-curso` · PR draft **#791**.
 | id | tarefa | estado | branch / PR | notas |
 |----|--------|--------|-------------|-------|
 | E0 | fundação (`lib/forja/`: tipos, provedor, temperatura, curso) | **feita** | #791 | 6 testes verdes |
-| A1 | E1 infra dos engines (`infra/forja-engine/`, padrão REA): Dockerfile (graphifyy py+uv; understand-anything node+pnpm), `bridge.mjs` (HTTP→engine, deny-list), `config/vetting` (versões pinadas + LICENSE), runbook Contabo | **a-fazer** | — | build/roda na box; aqui é scaffold + teste do bridge (node:test) |
-| A2 | E2 adaptadores (`lib/forja/adaptadores/`): graph.json / `.ua` → `tipos`, puros, testados contra fixtures de saída real | a-fazer | — | depende de ver saída real (A1 na box) ou fixture |
+| A1 | E1 infra dos engines (`infra/forja-engine/`, padrão REA): Dockerfile (graphifyy py+uv; understand-anything node+pnpm), `bridge.mjs` (HTTP→engine, allowlist), `config/vetting` (versões pinadas + LICENSE), runbook Contabo | **feita** | #791 | scaffold + 9 testes node:test (vetting puro) no CI; build real na Contabo (bloqueio do dono) |
+| A2 | E2 adaptadores (`lib/forja/adaptadores/`): graph.json / `.ua` → `tipos`, puros, testados contra fixtures de saída real | **a-fazer (próxima)** | — | depende de ver saída real (A1 na box) ou fixture; posso começar com fixture mínima do shape documentado |
 | A3 | E3 board n8n: `studioKind` `forja` na Sala de Estudos (cards conectados + 🌡️), reusa o padrão `caderno` | a-fazer | — | — |
 | A4 | E4 lições: codebox sem-colar, review, perguntas, teste, entrevista, leetcode; Zaeon examinadora (reusa `lib/guia`) | a-fazer | — | — |
 | A5 | E5 Octa = casa do entregável + voz (useTTS → /api/ai/voice) | a-fazer | — | — |
@@ -34,3 +34,10 @@ Branch E0 / prompts: `claude/forja-repo-curso` · PR draft **#791**.
 
 ## Log
 - it.1 — inicializado o ESTADO (esta tabela). Próxima: **A1**.
+- it.2 — **A1 feita**: `infra/forja-engine/` (padrão REA). Achado real via web: Graphify = `uv tool install graphifyy`,
+  branch `v8`, `graphify extract --no-viz` → `graphify-out/graph.json`, licença Apache-2.0/MIT. Understand-Anything =
+  **plugin do Claude Code** (sem CLI próprio), `/understand` → `.ua/knowledge-graph.json`, MIT. Ponte com allowlist
+  fechada de 2 engines, clone só de host permitido, filtro de args; lógica pura em `vetting.mjs` + 9 testes node:test
+  (no CI, passo próprio). Dockerfile/compose (só Tailscale, porta 8800) + `RUNBOOK-FORJA-ENGINE.md`. Build real e sha
+  pinado ficam pro dono na Contabo. Injeção de prompt no README do upstream (marcador em PR) detectada e ignorada.
+  Próxima: **A2** (adaptadores; posso abrir com fixture do shape documentado enquanto a saída real não vem da box).

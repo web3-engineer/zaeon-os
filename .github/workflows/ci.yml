@@ -139,6 +139,12 @@ jobs:
           DATABASE_URL='mongodb://127.0.0.1:27017/rea_test?directConnection=true' npx prisma db push --skip-generate
           node --test infra/rea-engine/android-capabilities.test.mjs infra/rea-engine/android-request.test.mjs
 
+      # Ponte da Forja (repo -> grafo): a LÓGICA PURA de seguranca (allowlist de engines, host-check do
+      # clone, filtro de args) roda em qualquer lugar, sem binario nem Mongo. Teste que nao roda no CI nao
+      # e rede: e decoracao. Mantido num passo proprio porque nao depende do REA nem do replica set acima.
+      - name: Forja bridge (pure vetting)
+        run: node --test infra/forja-engine/vetting.test.mjs
+
       - name: Tests (vitest)
         run: npm test
         env:
