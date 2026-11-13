@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, fireEvent } from "@testing-library/react";
+
+vi.mock("@/lib/voice/useTTS", () => ({ useTTS: () => ({ speak: vi.fn(() => Promise.resolve()), stop: vi.fn(), speaking: false }), default: () => ({ speak: vi.fn(), stop: vi.fn(), speaking: false }) }));
+
 import ForjaView from "./ForjaView";
 import { cursoEsqueletoPorId } from "@/lib/forja/cursoRepo";
 
@@ -29,6 +32,20 @@ describe("ForjaView — board n8n + temperatura", () => {
     fireEvent.click(getByRole("tab", { name: "Avançado" }));
     expect(getByText("digitar (sem colar)")).toBeTruthy();
     expect(getByText(/exige digitação/)).toBeTruthy();
+  });
+
+  it("as lições seguem a temperatura: básico sem codebox, avançado com a caixa sem-colar", () => {
+    const { getByTestId, getByLabelText, queryByLabelText, getByRole } = render(<ForjaView data={curso} />);
+    const sec = getByTestId("forja-licoes");
+    expect(sec.textContent).toContain("Perguntas de compreensão");
+    expect(queryByLabelText(/caixa de código/)).toBeNull(); // básico não tem codebox
+    fireEvent.click(getByRole("tab", { name: "Avançado" }));
+    expect(getByLabelText(/caixa de código/)).toBeTruthy(); // avançado traz a caixa de digitação
+  });
+
+  it("monta o guia examinador da Zaeon", () => {
+    const { container } = render(<ForjaView data={curso} />);
+    expect(container.querySelector('[aria-label="Zaeon, sua guia"]')).toBeTruthy();
   });
 
   it("sem saída de engine, mostra o aviso de que o mapa entra depois", () => {

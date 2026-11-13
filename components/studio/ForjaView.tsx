@@ -9,11 +9,17 @@
  * Recebe o CursoRepo (esqueleto curado ou já preenchido pelo engine) via `data`; só com `artifactId`
  * (reaberta do servidor), busca em /api/studio/[id], como a CadernoView.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { conexoesDoBoard } from "@/lib/forja/curso";
 import { cobrancaDaTemperatura, arvoreNaTemperatura } from "@/lib/forja/temperatura";
+import { licoesDaTemperatura } from "@/lib/forja/licoes";
 import { TEMPERATURAS } from "@/lib/forja/tipos";
 import type { CursoRepo, ModuloBoard, Temperatura, TipoLicao } from "@/lib/forja/tipos";
+import CodeBox from "@/components/forja/CodeBox";
+import ZaeonGuia from "@/components/guia/ZaeonGuia";
+import { examinadora } from "@/lib/guia/comportamentos/examinadora";
+import { ociosidade } from "@/lib/guia/comportamentos/ociosidade";
+import type { Sinal } from "@/lib/guia/tipos";
 
 const EMOJI_PAPEL: Record<string, string> = { entender: "📖", espelho: "🪞", entregar: "🚀" };
 const ROTULO_TEMP: Record<Temperatura, string> = { basico: "Básico", medio: "Médio", avancado: "Avançado" };
@@ -39,6 +45,8 @@ function Card({ m }: { m: ModuloBoard }) {
 export default function ForjaView({ data, artifactId }: { data?: CursoRepo | null; artifactId?: string }) {
   const [curso, setCurso] = useState<CursoRepo | null>(data ?? null);
   const [temp, setTemp] = useState<Temperatura>("basico");
+  const enviarRef = useRef<((s: Sinal) => void) | null>(null);
+  const enviar = (s: Sinal) => enviarRef.current?.(s);
 
   useEffect(() => {
     if (curso || !artifactId) return;
@@ -51,6 +59,7 @@ export default function ForjaView({ data, artifactId }: { data?: CursoRepo | nul
   const conexoes = useMemo(() => (curso ? conexoesDoBoard(curso.modulos) : []), [curso]);
   const cobranca = useMemo(() => cobrancaDaTemperatura(temp), [temp]);
   const arvore = useMemo(() => (curso ? arvoreNaTemperatura(curso.arvore, temp) : null), [curso, temp]);
+  const licoes = useMemo(() => (curso ? licoesDaTemperatura(curso, temp) : []), [curso, temp]);
 
   if (!curso) return <div className="grid h-full place-items-center text-[13px] text-slate-400">Carregando o estudo…</div>;
   const semEngine = curso.grafo.nos.length === 0;
@@ -122,6 +131,22 @@ export default function ForjaView({ data, artifactId }: { data?: CursoRepo | nul
           )}
         </div>
 
+        {/* as lições da temperatura: a Zaeon examinadora cobra, e o codebox barra a cola */}
+        <div className="mt-6" data-testid="forja-licoes">
+          <div className="mb-2 text-[13px] font-bold text-[#0b3a66] dark:text-white">Lições — nível {ROTULO_TEMP[temp]}</div>
+          <ol className="space-y-2">
+            {licoes.map((l) => (
+              <li key={l.id} className="rounded-xl border border-white/60 bg-white/70 p-3 dark:border-white/10 dark:bg-white/[0.03]">
+                <div className="flex items-center gap-2">
+                  <span className="text-[13px] font-semibold text-[#0b3a66] dark:text-white">{l.titulo}</span>
+                  {l.semColar && <span className="rounded-full bg-amber-500/15 px-2 py-[2px] text-[10px] text-amber-700 dark:text-amber-300">digitação</span>}
+                </div>
+                {l.tipo === "codebox" && <CodeBox aoSinal={enviar} objetivoId={l.id} />}
+              </li>
+            ))}
+          </ol>
+        </div>
+
         {/* atribuição das licenças dos engines (obrigatória, sempre alcançável) */}
         {curso.licencas.length > 0 && (
           <div className="mt-6 border-t border-slate-200 pt-3 text-[11px] text-slate-400 dark:border-white/10">
@@ -135,6 +160,14 @@ export default function ForjaView({ data, artifactId }: { data?: CursoRepo | nul
           </div>
         )}
       </div>
+
+      {/* o guia da Zaeon: examinadora (digitou ≠ colou, celebra o objetivo) + ociosidade */}
+      <ZaeonGuia
+        faseInicial={curso.arvore.raiz.titulo}
+        escutaGlobal={false}
+        comportamentos={[examinadora(), ociosidade()]}
+        aoMontar={(fn) => { enviarRef.current = fn; }}
+      />
     </div>
   );
 }
