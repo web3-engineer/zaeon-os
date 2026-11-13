@@ -21,6 +21,9 @@ export type DocArtefato = {
   focar?: boolean;
   /** a conversa de onde o documento saiu (a aba entra SÓ nela); ausente = a conversa na tela */
   scopeId?: string;
+  /** auto-abertura (desbloqueio de card: forja/caderno) — NÃO nasceu de uma conversa, então entra na aba ATIVA
+   *  de agora e foca, ignorando o scopeId capturado cedo no mount (que pode ter virado uma aba fantasma pós-sync). */
+  autoAbrir?: boolean;
 };
 
 export const ROTULO_DOC: Record<string, { emoji: string; nome: string }> = {
@@ -34,4 +37,17 @@ export const ROTULO_DOC: Record<string, { emoji: string; nome: string }> = {
 export function abrirDocumento(d: DocArtefato): void {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent<DocArtefato>(EVT_ABRIR_DOC, { detail: d }));
+}
+
+/**
+ * Em qual aba o documento entra, e se ele deve ser focado AGORA. PURA (testável sem o componente).
+ *  - auto-abertura (card de forja/caderno): entra na aba ATIVA de agora e foca — ignora o scopeId capturado
+ *    cedo no mount, que a sincronização de conversas pode ter deixado para trás (aba fantasma → board some).
+ *  - caso normal: a conversa de origem (scopeId), e só foca se ela ainda é a que está na tela (não rouba a
+ *    tela de uma conversa para a qual a pessoa trocou durante a geração).
+ */
+export function destinoDoDoc(d: DocArtefato, abaAtiva: string | null): { aba: string | null; foca: boolean } {
+  const aba = d.autoAbrir ? abaAtiva : (d.scopeId ?? abaAtiva);
+  const foca = !!d.focar && !!aba && (!!d.autoAbrir || aba === abaAtiva);
+  return { aba, foca };
 }
