@@ -76,6 +76,11 @@ jobs:
       - name: Compose sem chave duplicada
         run: node scripts/compose-check.mjs
 
+      # Mock NÃO é critério de pronto: todo motor próprio precisa de uma PROVA REAL (smoke/sonda/live test)
+      # registrada em config/provas-reais.json. Reprova se um motor próprio subir só com fetch mockado.
+      - name: Provas reais dos motores (sem mock como critério)
+        run: node scripts/provas-reais-check.mjs
+
       # Supply-chain (Pack Octa §1). ANTES do npm ci: pacote novo com install script (ou versão nova) só
       # entra depois de revisado em config/vetting/install-scripts.json; repo REJEITADO não entra nunca.
       - name: Vetting de dependências (lockfile + install scripts + repos rejeitados)
