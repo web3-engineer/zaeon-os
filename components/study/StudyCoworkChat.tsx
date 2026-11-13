@@ -61,6 +61,8 @@ import CartaoArtefato from "@/components/chat/CartaoArtefato";
 import DocumentoArtefato from "@/components/studio/DocumentoArtefato";
 import { abrirDocumento, EVT_ABRIR_DOC, KINDS_EM_ABA, ROTULO_DOC, type DocArtefato } from "@/lib/chat/documentos";
 import { assuntoDe, pedeAula } from "@/lib/agent/aprender";
+import { pedeCaderno } from "@/lib/jornadas/cadernoRitmo";
+import { EVT_ABRIR_CADERNO, consumirCadernoPendente } from "@/lib/jornadas/desbloqueio";
 import ChatZoom, { useChatFontScale } from "@/components/chat/ChatZoom";
 import { zoomNoDiagrama } from "@/components/studio/DiagramView";
 import { AnimatePresence } from "framer-motion";
@@ -152,13 +154,14 @@ type Msg = {
 };
 
 /** Kinds que nascem do assunto/conversa, sem um estudo de origem (não criam estudo vazio). */
-const SEM_ESTUDO = new Set(["diagram", "mindmap", "molecule", "aula"]);
+const SEM_ESTUDO = new Set(["diagram", "mindmap", "molecule", "aula", "caderno"]);
 /** #749: além do diagrama e da aula (que abrem em aba), o que fica guardado na conversa pelo número — o arquivo mora no servidor */
 const GUARDA_NO_SERVIDOR = new Set(["image"]);
 const AVISO_ARTEFATO: Record<string, string> = {
   diagram: "Desenhando o diagrama interativo…",
   mindmap: "Desenhando o mapa…",
   aula: "Preparando a aula interativa — plano, roteiro e narração (1 a 3 min)…",
+  caderno: "Abrindo seu caderno da jornada…",
 };
 
 /**
@@ -976,6 +979,24 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   }, [focusIds, avisarFalha]);
   const runStudioActionRef = useRef(runStudioAction); runStudioActionRef.current = runStudioAction;
 
+  // P4 · laço do desbloqueio: o card de música desbloqueado deixa um Caderno PENDENTE (lib/jornadas/
+  // desbloqueio). A Sala de Estudos abre esse caderno sozinha — no mount (quem já comprou) e pelo
+  // evento (quem acabou de comprar, com a sala já aberta). Abre uma vez por id nesta sessão.
+  const cadernoAbertoRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const abrir = (id: string | null) => {
+      const c = id || "ritmo";
+      if (cadernoAbertoRef.current.has(c)) return;
+      cadernoAbertoRef.current.add(c);
+      void runStudioActionRef.current("caderno", c, undefined, false);
+    };
+    const pendente = consumirCadernoPendente();
+    if (pendente) abrir(pendente);
+    const onEvt = (e: Event) => { consumirCadernoPendente(); abrir((e as CustomEvent).detail as string); };
+    window.addEventListener(EVT_ABRIR_CADERNO, onEvt);
+    return () => window.removeEventListener(EVT_ABRIR_CADERNO, onEvt);
+  }, []);
+
   // ── envio pro chat da Aura ──────────────────────────────────────────────────
   // `override` = envio direto (clique numa opção/conceito da resposta do harness),
   // sem passar pelo campo de texto — B3 do backlog v2.
@@ -1153,6 +1174,8 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     // AULA a partir do PDF anexado: com arquivo o turno vai pelo caminho multimodal (fora do harness),
     // então o pedido de aula é atendido aqui — o PDF segue junto pra virar a aula.
     if (lendo && pedeAula(prompt)) void runStudioAction("aula", lendo.nome, asstId, false, undefined, { dataUrl: lendo.dataUrl, nome: lendo.nome });
+    // Jornada de música: "abrir meu caderno de ritmo" → abre o Caderno curado (sem depender do modelo).
+    if (pedeCaderno(prompt)) void runStudioAction("caderno", "ritmo", asstId, false);
     const systemContext = (lendo ? `O aluno anexou o arquivo "${lendo.nome}" (vai junto nesta mensagem): leia o CONTEÚDO dele e responda com base nele. ` : "") + (focusIds.length
       ? `O usuário está no co-working da Sala de Estudos e FOCOU ${focusIds.length} estudo(s): ${focusTitles.join("; ")}. Concentre-se nesse(s) estudo(s) ao responder.`
       : `O usuário está no co-working da Sala de Estudos. Converse com naturalidade, mantendo o fio do assunto entre as mensagens.`)
