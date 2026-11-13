@@ -33,6 +33,7 @@ import { sinteseLigada } from "@/lib/agent/sintese-flag";
 import { graficoLigado } from "@/lib/agent/graficosDoTurno";
 import { MODELO_PADRAO, modeloDoId, nomeDoModeloServido, viaGateway } from "@/lib/chat/modelos";
 import { podeProNasPesadas } from "@/lib/ai/proNasPesadas";
+import { podeClaudeNoChat } from "@/lib/chat/premiumChat";
 import { markRunning, saveDone, saveError } from "@/lib/agent/chat-turn-store";
 import type { Wing } from "@/lib/agent/memory";
 import { mentorBySlug } from "@/lib/agent/mentors";
@@ -195,10 +196,32 @@ export async function runChatTurn(
       // todas + as tools das habilidades desta. É o que faz `enabledSkills` deixar de ser rótulo.
       toolsDoAgente: toolsPermitidas(habilidades),
     };
-    const escolhido = modeloDoId(params.modelo);
+    let escolhido = modeloDoId(params.modelo);
     // `taskId` = o TURNO: todas as chamadas de modelo deste turno ficam ligadas no TokenLedger (o console Zaeon Hermes
     // agrupa por ele pra medir a saúde do chat — quantos turnos caíram na reserva, quanto cada fase levou).
     const ledgerTurno = { agentKey: mentor?.slug ?? agente, mentorSlug: mentor?.slug ?? null, userId: userId ?? null, surface: surfaceLedger(surface ?? hctx.activeTab), scopeId: typeof ac.cartolinaScopeId === "string" ? ac.cartolinaScopeId : null, taskId: turnId ?? params.tarefaId ?? novoIdDeTarefa() };
+    // GATE do Claude (Anthropic) no chat = o MESMO da #786 no Octa: plano Max + flag premium + BUDGET por
+    // pessoa (virtual key). Sem direito, sem flag, ou a key não saiu → cai pro Google (fecha fechado: nunca
+    // gasta crédito da org pela master key). Zaeon (local, grátis) não passa por aqui. lib/chat/premiumChat.
+    let keyGateway: string | undefined;
+    if (escolhido?.provedor === "anthropic") {
+      const grupoClaude = escolhido.grupo!;   // anthropic do catálogo é sempre roteado pelo grupo (viaGateway)
+      const nomeClaude = escolhido.nome;
+      if (userId && (await podeClaudeNoChat(userId))) {
+        const [{ emitirVirtualKey, modeloReal }, { premiumBudgetUsd }] = await Promise.all([
+          import("@/lib/octa/litellm"), import("@/lib/octa/modelosPremium"),
+        ]);
+        const vk = await emitirVirtualKey({
+          userId, sessionId: ledgerTurno.taskId, maxBudgetUsd: premiumBudgetUsd(),
+          duracao: "24h", modelos: [grupoClaude, modeloReal("forte")],
+        }).catch(() => null);
+        if (vk?.ok) keyGateway = vk.vk.key;
+      }
+      if (!keyGateway) {
+        narrar(serializarProgresso({ fase: "draft", rotulo: `${nomeClaude} é do plano Max — respondendo pelo Google` }));
+        escolhido = null;   // sem direito/budget: o turno segue pelo harness do Google, abaixo
+      }
+    }
     // MODELO PELO GATEWAY (Zaeon/Contabo local OU Claude/Anthropic): caminho enxuto em streaming, sem as
     // tools do harness. Não começou → segue pelo Google (harness completo), abaixo.
     if (viaGateway(escolhido)) {
@@ -208,7 +231,7 @@ export async function runChatTurn(
         const [{ turnoLocal }, { blocoDaBase }] = await Promise.all([import("@/lib/agent/turnoLocal"), import("@/lib/rag/citar")]);
         const s = await turnoLocal({
           prompt, history: params.history, systemContext: params.systemContext,
-          base: blocoDaBase(await basePromise) || undefined, grupo: escolhido.grupo, ctx: ledgerTurno,
+          base: blocoDaBase(await basePromise) || undefined, grupo: escolhido.grupo, key: keyGateway, ctx: ledgerTurno,
         }, (pedaco) => narrar(pedaco));
         if (s.interrompido) narrar("\n\n_(a resposta foi interrompida aqui)_");
         narrar(serializarModelo(nomeDoModeloServido(escolhido.grupo)));
