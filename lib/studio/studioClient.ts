@@ -92,6 +92,13 @@ export async function gerarArtefato(kind: string, o: OpcoesStudio & Deps): Promi
       if (data.status === "done") return { tipo: "pronto", bloco: { studioKind: "aula", title: data.title, data: data.meta, artifactId: data.id } };
       return acompanhar(data.id, 3000, 8 * 60_000, false, true, "aula");
     }
+    if (kind === "caderno") {
+      // CADERNO de Jornada (lib/jornadas): esqueleto CURADO e determinístico — a rota devolve pronto na hora.
+      const res = await f("/api/studio/caderno", { method: "POST", headers: H, body: JSON.stringify({ topic: topic || "ritmo" }) });
+      const data = await json(res);
+      if (!res.ok || !data?.id) return { tipo: "erro", mensagem: data?.error };
+      return { tipo: "pronto", bloco: { studioKind: "caderno", title: data.title, data: data.meta, artifactId: data.id } };
+    }
     if (kind === "podcast" || kind === "video") {
       const res = await f(`/api/studio/${kind}`, { method: "POST", headers: H, body: JSON.stringify({ spaceId, topic }) });
       const data = await json(res);
