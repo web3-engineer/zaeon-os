@@ -278,8 +278,9 @@ jobs:
           # OCTA_MODELOS_PREMIUM = ids ligados (ex.: "claude,codex"); vazio = nenhum (off, o default).
           # OCTA_PREMIUM_BUDGET_USD = teto USD/pessoa/janela dos turnos premium (vazio = 2, no código).
           # Só ligam DE FATO com a chave da conta de API da ORG no gateway: ANTHROPIC_API_KEY/OPENAI_API_KEY
-          # no .env.secrets do VPS (o serviço litellm faz env_file) — NÃO são Variables, são segredo. E só
-          # plano Max (ou super-admin) vê o picker. Sem isso, prod fica idêntico.
+          # no .env do VPS (mantido À MÃO; o litellm faz env_file [.env, .env.secrets]). NÃO no .env.secrets:
+          # este deploy o REESCREVE do zero a cada run (a partir dos Secrets), então chave posta nele à mão
+          # some. São segredo, não Variables. E só plano Max (ou super-admin) vê o picker. Sem isso, prod idêntico.
           OCTA_MODELOS_PREMIUM: ${{ vars.OCTA_MODELOS_PREMIUM || '' }}
           OCTA_PREMIUM_BUDGET_USD: ${{ vars.OCTA_PREMIUM_BUDGET_USD || '' }}
           GITHUB_TOKEN_BLUEPRINT: ${{ secrets.GITHUB_TOKEN_BLUEPRINT || '' }}
