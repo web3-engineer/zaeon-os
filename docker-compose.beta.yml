@@ -162,11 +162,11 @@ services:
       # G3 · gráfico na resposta (lib/agent/grafico): SVG desenhado aqui, com número que o turno
       # apurou. Não custa chamada de modelo. `=0` é o kill-switch.
       HARNESS_GRAFICO: ${HARNESS_GRAFICO:-1}
-      # F-visão · "be my eyes". VISAO_HARNESS liga o roteamento de IMAGEM anexada pro harness
-      # (route.ts + a tool descrever_imagem); VISAO_CAMERA liga a CÂMERA AO VIVO (/api/ai/camera).
-      # Ambas OFF por padrão e precisam da credencial Vertex (GOOGLE_*) pra responder — com a flag
-      # mas sem credencial, o recibo (/api/health) diz `sem_credencial`, não mente. `=1` liga.
-      VISAO_HARNESS: ${VISAO_HARNESS:-}
+      # F-visão · "be my eyes". VISAO_HARNESS (roteamento da IMAGEM anexada pro harness: route.ts +
+      # a tool descrever_imagem) já está no bloco "LIGADOS POR PADRÃO" acima, com default 1 — não
+      # repetir aqui, senão o Compose recusa o arquivo (chave duplicada). VISAO_CAMERA liga a CÂMERA
+      # AO VIVO (/api/ai/camera), OFF por padrão. Ambas precisam da credencial Vertex (GOOGLE_*) —
+      # com a flag mas sem credencial, o recibo (/api/health) diz `sem_credencial`, não mente.
       VISAO_CAMERA: ${VISAO_CAMERA:-}
       # F5 · conectores MCP por nome do catálogo (lib/agent/mcp MCP_CATALOG). `scholar` por padrão
       # (decisão do dono, 2026-11-03): 9 tools de LEITURA no trilho de fontes/ABNT. O servidor roda
@@ -322,11 +322,11 @@ services:
       # G3 · gráfico na resposta (lib/agent/grafico): SVG desenhado aqui, com número que o turno
       # apurou. Não custa chamada de modelo. `=0` é o kill-switch.
       HARNESS_GRAFICO: ${HARNESS_GRAFICO:-1}
-      # F-visão · "be my eyes". VISAO_HARNESS liga o roteamento de IMAGEM anexada pro harness
-      # (route.ts + a tool descrever_imagem); VISAO_CAMERA liga a CÂMERA AO VIVO (/api/ai/camera).
-      # Ambas OFF por padrão e precisam da credencial Vertex (GOOGLE_*) pra responder — com a flag
-      # mas sem credencial, o recibo (/api/health) diz `sem_credencial`, não mente. `=1` liga.
-      VISAO_HARNESS: ${VISAO_HARNESS:-}
+      # F-visão · "be my eyes". VISAO_HARNESS (roteamento da IMAGEM anexada pro harness: route.ts +
+      # a tool descrever_imagem) já está no bloco "LIGADOS POR PADRÃO" acima, com default 1 — não
+      # repetir aqui, senão o Compose recusa o arquivo (chave duplicada). VISAO_CAMERA liga a CÂMERA
+      # AO VIVO (/api/ai/camera), OFF por padrão. Ambas precisam da credencial Vertex (GOOGLE_*) —
+      # com a flag mas sem credencial, o recibo (/api/health) diz `sem_credencial`, não mente.
       VISAO_CAMERA: ${VISAO_CAMERA:-}
       # F5 · conectores MCP por nome do catálogo (lib/agent/mcp MCP_CATALOG). `scholar` por padrão
       # (decisão do dono, 2026-11-03): 9 tools de LEITURA no trilho de fontes/ABNT. O servidor roda
