@@ -31,6 +31,7 @@ import { pctApoio, solFmt } from "@/lib/estudos/pesquisas";
 import { destinoDe, type Destino } from "@/lib/estudos/detalhes";
 import { cadernoDoItem, marcarCadernoPendente } from "@/lib/jornadas/desbloqueio";
 import { forjaDoItem, marcarForjaPendente } from "@/lib/forja/desbloqueioForja";
+import { skillDoItem, marcarSkillPendente } from "@/lib/estudos/desbloqueioSkill";
 import { EVT_ESTUDOS_CHAT } from "@/lib/chat/conversasNav";
 import "./vitrine-card.css";
 import "./vitrine-claim.css";
@@ -148,7 +149,7 @@ export default function VitrineEstudos() {
                         window.setTimeout(() => setFases((f) => ({ ...f, clamp: true })), 70),             // prensas finas deslizam
                         window.setTimeout(() => setFases((f) => ({ ...f, impact: true, lit: true })), 700), // CONTATO: energia Tron + flash + carga
                         window.setTimeout(() => setFases((f) => ({ ...f, impact: false })), 1160),
-                        window.setTimeout(() => { conectarItem(it.id); if (it.plugavel) plugar(it.plugavel); marcarCadernoPendente(cadernoDoItem(it)); marcarForjaPendente(forjaDoItem(it)); }, 1700), // COMPRA/PLUG acontece (+ caderno de jornada ou curso de repo, se houver)
+                        window.setTimeout(() => { conectarItem(it.id); if (it.plugavel) plugar(it.plugavel); marcarCadernoPendente(cadernoDoItem(it)); marcarForjaPendente(forjaDoItem(it)); marcarSkillPendente(skillDoItem(it)); }, 1700), // COMPRA/PLUG acontece (+ caderno de jornada, curso de repo ou skill-curso, se houver)
                         window.setTimeout(() => setFases((f) => ({ ...f, desintegra: true })), 1860),        // a carta desintegra e sai de cena
                         window.setTimeout(() => { setDepois(it); fecharInspect(); }, 2600),
                     );

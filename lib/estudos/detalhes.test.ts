@@ -38,5 +38,7 @@ describe("detalhes · nicho, validadores, descrição", () => {
     expect(destinoDe(com({ tipo: "agente" })).aba).toBe("chat");
     expect(destinoDe(com({ tipo: "rwa" })).aba).toBe("escritorio");
     expect(destinoDe(com({ tipo: "curso" }))).toEqual({ texto: "na Sala de Estudos", aba: "estudos" });
+    // skill-curso (id skill:*) abre o CHAT da Sala pra Aura iniciar a aula — não a vista de estudos
+    expect(destinoDe(com({ id: "skill:astropy-astronomia", tipo: "skill" }))).toEqual({ texto: "na Sala de Estudos", aba: "chat" });
   });
 });

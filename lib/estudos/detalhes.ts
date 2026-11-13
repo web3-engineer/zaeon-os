@@ -72,6 +72,7 @@ export function descricaoDe(it: ItemVitrine): SecaoDescricao[] {
 /** onde a build fica depois de conectar — o texto e a aba que o "abrir" leva */
 export type Destino = { texto: string; aba: "chat" | "escritorio" | "estudos" };
 export const destinoDe = (it: ItemVitrine): Destino =>
-  it.tipo === "agente" ? { texto: "no chat", aba: "chat" }
+  it.id?.startsWith("skill:") ? { texto: "na Sala de Estudos", aba: "chat" } // skill-curso: a Aura abre o chat e inicia a aula
+    : it.tipo === "agente" ? { texto: "no chat", aba: "chat" }
     : it.tipo === "negocio" || it.tipo === "rwa" ? { texto: "no Escritório", aba: "escritorio" }
     : { texto: "na Sala de Estudos", aba: "estudos" };

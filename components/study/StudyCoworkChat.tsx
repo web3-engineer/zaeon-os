@@ -64,6 +64,7 @@ import { assuntoDe, pedeAula } from "@/lib/agent/aprender";
 import { pedeCaderno } from "@/lib/jornadas/cadernoRitmo";
 import { EVT_ABRIR_CADERNO, consumirCadernoPendente } from "@/lib/jornadas/desbloqueio";
 import { EVT_ABRIR_FORJA, consumirForjaPendente } from "@/lib/forja/desbloqueioForja";
+import { EVT_ABRIR_SKILL, consumirSkillPendente, primeiraMensagemDaSkill, type SkillPendente } from "@/lib/estudos/desbloqueioSkill";
 import ChatZoom, { useChatFontScale } from "@/components/chat/ChatZoom";
 import { zoomNoDiagrama } from "@/components/studio/DiagramView";
 import { AnimatePresence } from "framer-motion";
@@ -1016,6 +1017,26 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     const onEvt = (e: Event) => { consumirForjaPendente(); abrir((e as CustomEvent).detail as string); };
     window.addEventListener(EVT_ABRIR_FORJA, onEvt);
     return () => window.removeEventListener(EVT_ABRIR_FORJA, onEvt);
+  }, []);
+
+  // O MESMO laço, para as SKILLS-curso da vitrine (astropy, pandas, blender…): o card pego deixa uma
+  // skill PENDENTE (lib/estudos/desbloqueioSkill), e o chat da Sala pede a aula à Aura, que ativa a
+  // skill (activate_skill). Antes isto caía na vista de estudos e ficava em "blueprints antigos";
+  // agora a aula começa sozinha quando o aluno chega ao chat. Uma vez por slug. NÃO troca a vista
+  // aqui — quem leva ao chat é o botão "abrir" da vitrine (abrirDestino → EVT_ESTUDOS_CHAT); mexer na
+  // aba no meio do ritual de conexão arrancaria o aluno da animação.
+  const skillAbertaRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const abrir = (s: SkillPendente | null) => {
+      if (!s?.slug || skillAbertaRef.current.has(s.slug)) return;
+      skillAbertaRef.current.add(s.slug);
+      const msg = primeiraMensagemDaSkill(s);
+      requestAnimationFrame(() => sendRefA.current(msg)); // deixa o chat montar/aparecer antes de disparar o turno
+    };
+    abrir(consumirSkillPendente());
+    const onEvt = (e: Event) => { consumirSkillPendente(); abrir((e as CustomEvent).detail as SkillPendente); };
+    window.addEventListener(EVT_ABRIR_SKILL, onEvt);
+    return () => window.removeEventListener(EVT_ABRIR_SKILL, onEvt);
   }, []);
 
   // ── envio pro chat da Aura ──────────────────────────────────────────────────
