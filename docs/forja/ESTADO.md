@@ -33,10 +33,20 @@ está de pé no app; falta só a saída REAL dos engines (build na Contabo, bloq
 | C-surface | surfaçar os 10 na Sala de Estudos | **feita** — itens GRÁTIS na vitrine (`ITENS_FORJA_INICIANTES`, `preço 0` — código aberto não cobra) + desbloqueio (`desbloqueioForja`) que abre o board ao pegar o card, espelhando o das jornadas |
 | C1..C10 | encher cada curso com o MAPA REAL do código (grafo/árvore) + entregável | **bloqueado pelo motor + o elo app→ponte**: a trilha já abre (board + lições + temperatura + publicar pela Octa); falta (a) o motor rodando na box e (b) o cliente app→ponte (ver abaixo). A UI já degrada com elegância até lá |
 
+## Estado da box (app server 75.119.140.97) — motor VIVO
+- **Ponte no ar:** container `zaeon_forja_engine` em `/opt/forja-engine`, só no `127.0.0.1:8800`, teto de 2 núcleos.
+  `/health` → `{"ok":true,"graphify":"graphify 0.9.108","understand":false}`.
+- **graphify PROVADO ponta-a-ponta, SEM LLM:** `graphify update <repo>` (estático) devolveu o grafo real de
+  `WebDevSimplified/react-todo-list` (App(), addTodo(), … mapeados). O shape bate com os adaptadores (A2).
+- **understand:** ainda `false` de propósito (sem CLI próprio; precisa do wrapper Claude Code — marcha 2, opcional).
+- **Elo app→ponte:** FEITO — `lib/forja/engineClient.ts` + rota `/api/studio/forja/mapa` + `ForjaView` busca o
+  mapa preguiçosamente e enche o board. Sem `FORJA_BRIDGE_URL`/`TOKEN` no `.env` do app, degrada pro esqueleto.
+
 ## Bloqueios do dono (relatar, não girar à toa)
-- **Onde roda o motor:** DECIDIDO = o **app server `75.119.140.97`** (nossa VPS dedicada, 24 GB, quase vazia; não encosta no adapter da chipflow, que vive na Contabo). Ponte no localhost, teto de CPU. Dono sobe a box (RUNBOOK §Onde rodar).
-- **Elo que falta no app (eu faço):** não existe cliente app→ponte da Forja (pro REA é `lib/octa/rea.ts`). Sem ele, mesmo com a box no ar o board fica esqueleto. É app-side, desbloqueado — construir e ligar na rota `/api/studio/forja`.
-- Prod: o dono mergeia as PRs draft (deploy automático).
+- **Pôr em prod:** (1) mergeia a #791; (2) no `.env` do app (zaeon-beta) cabeia `FORJA_BRIDGE_URL=http://127.0.0.1:8800`
+  e `FORJA_BRIDGE_TOKEN=<o mesmo da box>`; (3) redeploy. Aí os boards dos 10 cursos enchem com o mapa real.
+- **Segurança:** o PAT do GitHub vazou no chat durante o deploy — rotacionar (já avisado).
+- **Marcha 2 (opcional):** wrapper do understand (Claude Code headless) pra ligar a tour guiada.
 
 ## Log
 - it.1 — inicializado o ESTADO (esta tabela). Próxima: **A1**.

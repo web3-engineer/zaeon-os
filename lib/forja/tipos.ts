@@ -118,6 +118,8 @@ export type EsqueletoRepo = {
 
 /** O curso inteiro que a Forja produz a partir de um repositório. */
 export type CursoRepo = {
+  /** id do esqueleto curado (allowlist: a rota de análise só aceita repos deste catálogo). */
+  cursoId?: string;
   /** o repo estudado: "owner/name" ou URL. */
   repo: string;
   modo: ModoEstudo;

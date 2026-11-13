@@ -45,6 +45,7 @@ function Card({ m }: { m: ModuloBoard }) {
 export default function ForjaView({ data, artifactId }: { data?: CursoRepo | null; artifactId?: string }) {
   const [curso, setCurso] = useState<CursoRepo | null>(data ?? null);
   const [temp, setTemp] = useState<Temperatura>("basico");
+  const [analisando, setAnalisando] = useState(false);
   const enviarRef = useRef<((s: Sinal) => void) | null>(null);
   const enviar = (s: Sinal) => enviarRef.current?.(s);
 
@@ -55,11 +56,30 @@ export default function ForjaView({ data, artifactId }: { data?: CursoRepo | nul
     return () => { vivo = false; };
   }, [artifactId, curso]);
 
+  // preguiçoso: se o board está sem mapa e tem um cursoId curado, pede o MAPA REAL pro motor (pode demorar).
+  // Sem a ponte configurada, a rota devolve grafo:null e o board segue no esqueleto — sem erro, sem travar.
+  useEffect(() => {
+    // o guard do grafo cheio já evita re-fetch quando o curso muda; nada de ref "já tentei" (quebra o
+    // double-invoke do StrictMode, que cancelaria o único fetch e nunca encheria o board).
+    if (!curso) return;
+    if (curso.grafo.nos.length > 0 || !curso.cursoId || curso.repo === "owner/exemplo") return; // já cheio, sem id, ou o demo
+    let vivo = true;
+    setAnalisando(true);
+    fetch("/api/studio/forja/mapa", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ cursoId: curso.cursoId }) })
+      .then((r) => r.json())
+      .then((j) => { if (vivo && j?.grafo?.nos?.length) setCurso((c) => (c ? { ...c, grafo: j.grafo } : c)); })
+      .catch(() => { /* degrada pro esqueleto */ })
+      .finally(() => { if (vivo) setAnalisando(false); });
+    return () => { vivo = false; };
+  }, [curso]);
+
   const modulos = useMemo(() => (curso ? [...curso.modulos].sort((a, b) => a.ordem - b.ordem) : []), [curso]);
   const conexoes = useMemo(() => (curso ? conexoesDoBoard(curso.modulos) : []), [curso]);
   const cobranca = useMemo(() => cobrancaDaTemperatura(temp), [temp]);
   const arvore = useMemo(() => (curso ? arvoreNaTemperatura(curso.arvore, temp) : null), [curso, temp]);
   const licoes = useMemo(() => (curso ? licoesDaTemperatura(curso, temp) : []), [curso, temp]);
+  // os nós mais centrais do mapa real (quando o motor já rodou) — o "coração" do código
+  const centrais = useMemo(() => (curso ? [...curso.grafo.nos].sort((a, b) => (b.grau ?? 0) - (a.grau ?? 0)).slice(0, 8) : []), [curso]);
 
   if (!curso) return <div className="grid h-full place-items-center text-[13px] text-slate-400">Carregando o estudo…</div>;
   const semEngine = curso.grafo.nos.length === 0;
@@ -114,20 +134,37 @@ export default function ForjaView({ data, artifactId }: { data?: CursoRepo | nul
         {/* a tour de entendimento, filtrada pela temperatura — ou o aviso de que o engine ainda não rodou */}
         <div className="mt-5">
           <div className="mb-2 text-[13px] font-bold text-[#0b3a66] dark:text-white">Entendimento no nível {ROTULO_TEMP[temp]}</div>
-          {semEngine || !arvore?.raiz.filhos.length ? (
-            <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-[12.5px] text-slate-500 dark:border-white/10 dark:text-white/50">
-              O mapa do código entra aqui quando o motor analisar o repositório (Graphify + Understand-Anything).
-              Por enquanto, o board e a temperatura já definem a jornada.
+          {analisando ? (
+            <div className="rounded-2xl border border-cyan-300/40 bg-cyan-500/5 p-4 text-[12.5px] text-cyan-700 dark:text-cyan-300" role="status">
+              🔬 Analisando o repositório… o motor está lendo o código e montando o mapa. Isso pode levar um instante.
+            </div>
+          ) : !semEngine ? (
+            <div className="space-y-3">
+              {/* o mapa real do código (graphify): os nós mais centrais */}
+              <div className="rounded-2xl border border-white/60 bg-white/70 p-3 dark:border-white/10 dark:bg-white/[0.03]">
+                <div data-testid="forja-mapa-resumo" className="text-[12px] text-slate-500 dark:text-white/60">{curso.grafo.nos.length} elementos mapeados · {curso.grafo.arestas.length} conexões — o coração do código:</div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {centrais.map((n) => (
+                    <span key={n.id} className="rounded-full bg-cyan-500/10 px-2.5 py-[3px] text-[12px] text-cyan-700 dark:text-cyan-300" title={n.caminho}>{n.nome}</span>
+                  ))}
+                </div>
+              </div>
+              {/* a tour guiada (understand), quando houver */}
+              {!!arvore?.raiz.filhos.length && (
+                <ol className="space-y-2">
+                  {arvore.raiz.filhos.map((n) => (
+                    <li key={n.id} className="rounded-xl border border-white/60 bg-white/70 p-3 dark:border-white/10 dark:bg-white/[0.03]">
+                      <div className="text-[13px] font-semibold text-[#0b3a66] dark:text-white">{n.titulo}</div>
+                      {n.resumo && <div className="text-[12px] text-slate-500 dark:text-white/60">{n.resumo}</div>}
+                    </li>
+                  ))}
+                </ol>
+              )}
             </div>
           ) : (
-            <ol className="space-y-2">
-              {arvore.raiz.filhos.map((n) => (
-                <li key={n.id} className="rounded-xl border border-white/60 bg-white/70 p-3 dark:border-white/10 dark:bg-white/[0.03]">
-                  <div className="text-[13px] font-semibold text-[#0b3a66] dark:text-white">{n.titulo}</div>
-                  {n.resumo && <div className="text-[12px] text-slate-500 dark:text-white/60">{n.resumo}</div>}
-                </li>
-              ))}
-            </ol>
+            <div className="rounded-2xl border border-dashed border-slate-300 p-4 text-[12.5px] text-slate-500 dark:border-white/10 dark:text-white/50">
+              O mapa do código entra aqui quando o motor analisar o repositório. Por enquanto, o board e a temperatura já definem a jornada.
+            </div>
           )}
         </div>
 

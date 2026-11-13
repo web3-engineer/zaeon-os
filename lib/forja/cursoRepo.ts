@@ -41,6 +41,7 @@ export function montarCursoEsqueleto(esq: EsqueletoRepo): CursoRepo {
     raiz: { id: "raiz", titulo: esq.titulo, resumo: esq.resumo, desde: "basico", refs: [], filhos: [] },
   };
   return {
+    cursoId: esq.id,
     repo: esq.repo,
     modo: esq.modo,
     grafo: GRAFO_VAZIO,
