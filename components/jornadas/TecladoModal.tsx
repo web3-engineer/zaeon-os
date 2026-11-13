@@ -10,6 +10,7 @@
  * Cada acerto chama `aoTocar` (vira sinal de atividade pro Guia); terminar a sequência chama `aoConcluir`.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useMicrofone } from "@/components/jornadas/useMicrofone";
 
 type NotaId = "C4" | "C#4" | "D4" | "D#4" | "E4" | "F4" | "F#4" | "G4" | "G#4" | "A4" | "A#4" | "B4" | "C5";
 type Tecla = { id: NotaId; t: "b" | "w"; pc: string; f: number; l: string };
@@ -79,6 +80,16 @@ export default function TecladoModal({
     return () => { vivo = false; };
   }, [aberto, modo, alvo, marcar]);
 
+  // confere a nota tocada contra o ALVO (teclado = oitava exata; microfone = por classe, perdoa a oitava).
+  const classe = (id: string) => id.replace(/\d+$/, "");
+  const conferirAlvo = useCallback((id: string, ignorarOitava = false) => {
+    if (modo !== "junto" || alvoIdx.current >= alvo.seq.length) return;
+    const esperado = alvo.seq[alvoIdx.current];
+    const ok = ignorarOitava ? classe(id) === classe(esperado) : id === esperado;
+    if (ok) { alvoIdx.current++; marcar(); if (alvoIdx.current >= alvo.seq.length) aoConcluir?.(); }
+  }, [modo, alvo, marcar, aoConcluir]);
+  const mic = useMicrofone({ aoNota: (n) => { aoTocar?.(); conferirAlvo(n.id, true); } });
+
   const liga = useCallback((k: Tecla) => {
     if (vivosRef.current[k.id]) return;
     const c = ac();
@@ -88,10 +99,8 @@ export default function TecladoModal({
     o.connect(g).connect(c.destination); o.start();
     vivosRef.current[k.id] = { o, g };
     aoTocar?.();
-    if (modo === "junto" && alvoIdx.current < alvo.seq.length) {
-      if (k.id === alvo.seq[alvoIdx.current]) { alvoIdx.current++; marcar(); if (alvoIdx.current >= alvo.seq.length) aoConcluir?.(); }
-    }
-  }, [ac, modo, alvo, marcar, aoTocar, aoConcluir]);
+    conferirAlvo(k.id, false);
+  }, [ac, aoTocar, conferirAlvo]);
 
   const desliga = useCallback((id: string) => {
     const v = vivosRef.current[id];
@@ -110,8 +119,9 @@ export default function TecladoModal({
     return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("keyup", onUp); };
   }, [aberto, liga, desliga]);
 
-  // limpeza ao fechar
-  useEffect(() => { if (!aberto) { Object.keys(vivosRef.current).forEach(desliga); } }, [aberto, desliga]);
+  // limpeza ao fechar: solta as teclas e desliga o microfone
+  const pararMic = mic.parar;
+  useEffect(() => { if (!aberto) { Object.keys(vivosRef.current).forEach(desliga); pararMic(); } }, [aberto, desliga, pararMic]);
 
   if (!aberto) return null;
   const whites = KEYS.filter((k) => k.t === "w");
@@ -127,7 +137,7 @@ export default function TecladoModal({
           <span className="font-semibold text-slate-800" style={{ fontFamily: "Fraunces, Georgia, serif" }}>Teclado</span>
           <div className="ml-3 flex gap-1.5">
             {(["livre", "junto"] as const).map((m) => (
-              <button key={m} type="button" onClick={() => setModo(m)}
+              <button key={m} type="button" onClick={() => { setModo(m); if (m === "livre") mic.parar(); }}
                 className="rounded-full px-3 py-1 text-[12.5px] font-semibold"
                 style={modo === m ? { background: "linear-gradient(180deg,rgba(74,166,189,.95),rgba(43,109,126,.95))", color: "#fff" } : { background: "rgba(255,255,255,.6)", color: "#2b2a26", border: "1px solid rgba(255,255,255,.75)" }}>
                 {m === "livre" ? "tocar livre" : "🎯 tocar junto"}
@@ -136,7 +146,25 @@ export default function TecladoModal({
           </div>
           <button type="button" aria-label="Fechar" onClick={onFechar} className="ml-auto grid h-8 w-8 place-items-center rounded-full text-[16px] text-slate-600" style={{ background: "rgba(0,0,0,.06)" }}>✕</button>
         </div>
-        <div className="mb-3 min-h-[22px] text-[13.5px] font-semibold text-slate-700">{status}</div>
+        <div className="mb-2 min-h-[22px] text-[13.5px] font-semibold text-slate-700">{status}</div>
+        {modo === "junto" && (
+          <div className="mb-3 flex flex-wrap items-center gap-2.5">
+            <button type="button" onClick={() => (mic.estado.ativo ? mic.parar() : void mic.iniciar())}
+              className="rounded-full px-3 py-1 text-[12.5px] font-semibold"
+              style={mic.estado.ativo ? { background: "linear-gradient(180deg,#34d399,#059669)", color: "#fff" } : { background: "rgba(255,255,255,.6)", color: "#2b2a26", border: "1px solid rgba(255,255,255,.75)" }}>
+              {mic.estado.ativo ? "🎤 ouvindo o instrumento…" : "🎤 tocar com o instrumento"}
+            </button>
+            {mic.estado.erro && <span className="text-[12px] font-medium text-rose-600">{mic.estado.erro}</span>}
+            {mic.estado.ativo && mic.estado.nota && (
+              <span className="rounded-full px-2.5 py-1 text-[12px]" style={{ background: "rgba(255,255,255,.6)", border: "1px solid rgba(255,255,255,.75)", fontFamily: "ui-monospace, monospace" }}>
+                {mic.estado.nota.id}{" "}
+                <span style={{ color: Math.abs(mic.estado.nota.cents) <= 10 ? "#059669" : "#9a6a3a" }}>
+                  {mic.estado.nota.cents > 0 ? "+" : ""}{mic.estado.nota.cents}¢
+                </span>
+              </span>
+            )}
+          </div>
+        )}
         {modo === "junto" && <div ref={pautaRef} className="mb-3 overflow-x-auto rounded-xl bg-[#fffdf8] px-2 py-1 text-slate-900" style={{ border: "1px solid rgba(120,110,90,.18)" }} />}
         <div className="relative flex h-[150px] overflow-hidden rounded-b-xl" style={{ boxShadow: "0 8px 24px rgba(0,0,0,.25)" }}
           onPointerDown={(e) => { const t = (e.target as HTMLElement).closest<HTMLElement>("[data-id]"); if (t) { e.preventDefault(); liga(BY_ID[t.dataset.id as NotaId]); } }}
