@@ -22,6 +22,7 @@ import { getTool, runToolByName, toolsDoTurno, type ToolContext, type ApproveFn 
 import { cardapioDeCapacidades, respostaHonesta } from "@/lib/agent/capacidades";
 import { temUrl, urlsDoTexto } from "@/lib/agent/urls";
 import { ehUrlDeArquivo } from "@/lib/agent/toolsWeb";
+import { ehUrlDeVideo } from "@/lib/agent/video";
 import { MAX_ANEXOS_NO_PLANO } from "@/lib/agent/anexos";
 import { anexosDoCtx } from "@/lib/agent/toolsAnexo";
 import { anexosEmJogo, blocoDaSintese, docsDaBaseEmJogo, lerSintese, promptDaSintese, sinteseUtil, type DocEmJogo } from "@/lib/agent/sintese";
@@ -300,9 +301,13 @@ export function passosDeAnexo(ctx: unknown): Step[] {
 export function passosDeUrl(objetivo: string): Step[] {
   const podeAbrir = !!getTool("abrir_url");
   const podeBaixar = !!getTool("baixar_para_base");
-  if (!podeAbrir && !podeBaixar) return [];
+  const podeVideo = !!getTool("descrever_video");
+  if (!podeAbrir && !podeBaixar && !podeVideo) return [];
   const passos: Step[] = [];
   for (const url of urlsDoTexto(objetivo)) {
+    // vídeo do YouTube NUNCA vai pro Leitor: a página é montada por script e o domínio nem está na
+    // allowlist — era o "não consigo acessar links externos" pra um vídeo de título e canal públicos
+    if (podeVideo && ehUrlDeVideo(url)) { passos.push({ tool: "descrever_video", args: { url } }); continue; }
     const arquivo = ehUrlDeArquivo(url);
     if (arquivo && podeBaixar) passos.push({ tool: "baixar_para_base", args: { url } });
     else if (podeAbrir) passos.push({ tool: "abrir_url", args: { url } });
@@ -646,7 +651,7 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
       // `quick` PULA o plan() inteiro (trajectory.ts:244: draft direto). Com um link colado, o
       // caminho rápido jamais leria a página — "resume isso: <url>" tem 3 palavras e cairia em
       // `duvida_rapida`. Sobe um degrau SÓ quando a tool existe e há endereço público de verdade.
-      if (r.mode === "quick" && (getTool("abrir_url") || getTool("baixar_para_base")) && temUrl(objective)) return { ...r, mode: "elaborated" };
+      if (r.mode === "quick" && temUrl(objective) && passosDeUrl(objective).length > 0) return { ...r, mode: "elaborated" };
       return r;
     },
 

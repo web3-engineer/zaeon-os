@@ -738,8 +738,8 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
         <BoasVindas nome={nomeNovo} setNome={setNomeNovo} criando={criando} onCriar={(n) => void criarProjeto(n)} onRascunho={() => void abrirRascunho()} erro={avisoAgente} />
       ) : ide && (
         <div className="flex-1 min-h-0 flex">
-          {/* explorador */}
-          <aside className="w-52 shrink-0 flex flex-col min-h-0" style={{ background: Z.painel, borderRight: `1px solid ${Z.borda}` }}>
+          {/* explorador — agora faz parte da doca da DIREITA (order-2), entre a conversa e os artefatos */}
+          <aside className="order-2 w-52 shrink-0 flex flex-col min-h-0" style={{ background: Z.painel, borderLeft: `1px solid ${Z.borda}`, borderRight: `1px solid ${Z.borda}` }}>
             <div className="h-8 flex items-center px-3 text-[11px] uppercase tracking-wider" style={{ color: Z.apagado }}>
               Arquivos
               <button type="button" onClick={novoArquivo} disabled={travado} title="Novo arquivo" className="ml-auto p-1 rounded hover:bg-white/10 disabled:opacity-30"><Plus className="w-3.5 h-3.5" /></button>
@@ -751,8 +751,9 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
             </div>
           </aside>
 
-          {/* centro: código · prévia · estilos */}
-          <section className="flex-1 min-w-0 flex flex-col">
+          {/* DIREITA: os artefatos — código · prévia · estilos (a "aba de artefatos" ao lado da conversa).
+              Largura = a MESMA do painel de documentos da Sala de Estudos (min(620px,100%)), a pedido do dono. */}
+          <section className="order-3 w-[min(620px,100%)] min-w-0 shrink-0 flex flex-col">
             {projeto && vista === "estilos" ? (
               <div className="flex-1 min-h-0">
                 <GaleriaDesign projetoId={projeto.id} designId={estiloAtual} antesDeEscolher={salvarAgora} bloqueado={travado}
@@ -862,14 +863,14 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
             )}
           </section>
 
-          {/* JANELA DO AGENTE — tudo que é agêntico passa por aqui */}
-          <aside className="w-[360px] shrink-0 flex flex-col min-h-0" style={{ background: Z.painel, borderLeft: `1px solid ${Z.borda}` }}>
+          {/* A CONVERSA — agora é o CENTRO largo (chat normal), e os artefatos ficam à direita */}
+          <aside className="order-1 flex-1 min-w-0 flex flex-col min-h-0" style={{ background: Z.painel, borderRight: `1px solid ${Z.borda}` }}>
             <div className="h-8 shrink-0 flex items-center gap-2 px-3 text-[11px] uppercase tracking-wider" style={{ color: Z.apagado, borderBottom: `1px solid ${Z.borda}` }}>
               <OctaIcon size={14} /> Agente
               {turnoVivo && <span className="normal-case tracking-normal flex items-center gap-1" style={{ color: Z.acento }}><span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: Z.acento }} /> trabalhando</span>}
               {msgs.length > 0 && !turno && <button type="button" onClick={() => setMsgs([])} className="ml-auto normal-case tracking-normal hover:underline">limpar</button>}
             </div>
-            <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
+            <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3 [&>*]:max-w-3xl [&>*]:w-full [&>*]:mx-auto">
               {!msgs.length && !turno && (
                 <div className="text-[12.5px] leading-relaxed" style={{ color: Z.fraco }}>
                   {projeto ? (
@@ -939,7 +940,7 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
               {avisoAgente && <div className="text-[11.5px]" style={{ color: Z.aviso }}>{avisoAgente}</div>}
               <div ref={fimChat} />
             </div>
-            <div className="shrink-0 p-3 space-y-2" style={{ borderTop: `1px solid ${Z.borda}` }}>
+            <div className="shrink-0 p-3 space-y-2 [&>*]:max-w-3xl [&>*]:w-full [&>*]:mx-auto" style={{ borderTop: `1px solid ${Z.borda}` }}>
               <div className="flex flex-wrap gap-1.5">
                 {projeto
                   ? ATALHOS_LANDING.map((a) => (

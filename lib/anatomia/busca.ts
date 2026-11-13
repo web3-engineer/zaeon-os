@@ -42,7 +42,7 @@ export const SINONIMOS_PT: Readonly<Record<string, string>> = {
   "estomago": "stomach", "baco": "spleen", "pancreas": "pancreas",
   "bexiga": "urinary bladder", "traqueia": "trachea", "diafragma": "diaphragm",
   // os quinze sistemas, pelo nome que o aluno usa
-  "esqueleto": "skeleton", "osso": "bone", "ossos": "bone",
+  "esqueleto": "skeletal system", "osso": "bone", "ossos": "bone",
   "musculo": "muscle", "musculos": "muscle",
   "arteria": "artery", "arterias": "artery",
   "veia": "vein", "veias": "vein",
@@ -85,6 +85,23 @@ export const SINONIMOS_PT: Readonly<Record<string, string>> = {
   "nariz": "nose", "dente": "tooth", "dentes": "tooth",
   "esofago": "esophagus", "faringe": "pharynx", "laringe": "larynx",
   "duodeno": "duodenum", "apendice": "appendix",
+  /**
+   * OS PARES QUE COLAPSAVAM (testes diferenciais de 2026-11-12, lib/anatomia/diferencial.test.ts).
+   * Cada um destes pedidos devolvia a peça ERRADA com cara de acerto, porque só a palavra-raiz
+   * estava no mapa e o desempate é pelo nome mais curto:
+   *   "intestino delgado"  → large intestine   (via "intestino" → intestine)
+   *   "veia cava superior" → inferior vena cava (via "veia" → vein, refinado para o mais curto)
+   *   "membro inferior"    → inferior rectus    (um músculo do OLHO)
+   * A chave de várias palavras ganha da de uma (a varredura vai do n-grama mais longo ao mais curto).
+   */
+  "intestino delgado": "small intestine", "intestino grosso": "large intestine",
+  "veia cava superior": "superior vena cava", "veia cava inferior": "inferior vena cava",
+  "membro inferior": "lower limb", "membro superior": "upper limb",
+  "membros inferiores": "lower limb", "membros superiores": "upper limb",
+  // câmaras do coração: só existem com lado no atlas (left/right ventricle, left/right atrium) —
+  // o lado da frase escolhe (ver `ladoDaFrase`); sem lado, a busca oferece o outro como alternativa
+  "ventriculo": "ventricle", "atrio": "atrium",
+  "pele": "skin", "gluteo maximo": "gluteus maximus", "gluteo medio": "gluteus medius",
   "vesicula": "gallbladder", "vesicula biliar": "gallbladder",
   "uretra": "urethra", "testiculo": "testis", "prostata": "prostate",
   "suprarrenal": "adrenal gland", "cerebelo": "cerebellum",
@@ -363,7 +380,50 @@ function buscaCrua(atlas: Atlas, termo: string, limite: number): Pick<ResultadoB
   };
 }
 
+/**
+ * O LADO que a frase pede: "pulmão direito", "o rim do lado esquerdo", "right lung".
+ *
+ * ────────────── o defeito que isto fecha ──────────────
+ * Medido em 2026-11-12 com pedidos naturais: "pulmão direito" abria o pulmão ESQUERDO. E "mão
+ * direita", "olho direito", "braço direito", "joelho direito" — todos abriam o esquerdo. O mapa
+ * PT→EN leva "pulmão" a `lung`, o atlas não tem `lung` sozinho (tem `left lung` e `right lung`), e o
+ * desempate pelo nome mais curto dá sempre `left`, que tem uma letra a menos. A palavra "direito"
+ * era simplesmente ignorada: a peça errada, isolada e bonita, com cara de resposta.
+ *
+ * Os dois lados na mesma frase ("pulmão direito e esquerdo") não escolhem nenhum.
+ */
+export type Lado = "left" | "right";
+export function ladoDaFrase(frase: string): Lado | null {
+  const ws = palavras(frase);
+  const direito = ws.some((w) => w === "direito" || w === "direita" || w === "right");
+  const esquerdo = ws.some((w) => w === "esquerdo" || w === "esquerda" || w === "left");
+  return direito === esquerdo ? null : direito ? "right" : "left";
+}
+
+const SEM_LADO = /^(left|right) /;
+
+/**
+ * Põe na frente o conceito DO LADO PEDIDO. A base é o nome do primeiro achado sem o lado: se o
+ * atlas tem exatamente `<lado> <base>`, é ele (vale também quando o primeiro achado é o par —
+ * `kidney` tem 2 peças, e quem pediu o rim direito quer `right kidney`, 1 peça). Sem conceito do
+ * lado pedido a ordem fica como estava: devolver o lado errado seria pior que devolver o par.
+ */
+function comLado(atlas: Atlas, r: ResultadoBusca, lado: Lado | null, limite: number): ResultadoBusca {
+  const primeiro = r.achados[0];
+  if (!lado || !primeiro) return r;
+  const alvo = `${lado} ${semAcento(primeiro.nome).replace(SEM_LADO, "")}`;
+  if (semAcento(primeiro.nome) === alvo) return r;
+  const c = atlas.concepts.find((x) => semAcento(x.name) === alvo);
+  if (!c) return r;
+  const doLado: AchadoAnatomia = { id: c.id, nome: c.name, pecas: c.elements.length };
+  return { ...r, achados: [doLado, ...r.achados.filter((a) => a.id !== c.id)].slice(0, Math.max(1, limite)) };
+}
+
 export function buscarConceitos(atlas: Atlas, consulta: string, limite = MAX_RESULTADOS): ResultadoBusca {
+  return comLado(atlas, buscarSemLado(atlas, consulta, limite), ladoDaFrase(consulta), limite);
+}
+
+function buscarSemLado(atlas: Atlas, consulta: string, limite: number): ResultadoBusca {
   const { termo, viaSinonimo } = termoDeBusca(consulta);
   if (!termo) return { achados: [], termo, viaSinonimo, total: 0 };
 

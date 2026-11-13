@@ -25,6 +25,42 @@ describe("octa · REA bridge (fatia 2)", () => {
     expect(await chamarRea({ command: "capture-process" }, env, f as any)).toMatchObject({ ok: false });
     expect(f).not.toHaveBeenCalled();
   });
+  // rea-agents 6.9.0 (v62, 255 tools): famílias com EFEITO COLATERAL que escapavam dos prefixos antigos.
+  it("recusa as famílias de efeito colateral do 6.9 (instrumentação, runtime, build de ambiente)", () => {
+    for (const c of ["frida-trace", "spawn-process", "attach-process", "launch-browser", "instrument-app",
+      "interact-with-target", "run-scenario", "extract-firmware", "environment-build", "agent-env-run"]) {
+      expect(comandoRea(c), c).toBe(false);
+    }
+  });
+  // achados do audit em prod (6.9, 198 comandos): famílias device/frida/runtime cujo nome tem a
+  // família NO MEIO (list-adb-…, list-frida-…) escapavam da deny por-prefixo. Agora negadas.
+  it("recusa device/instrumentação/runtime quando a família está no meio do nome", () => {
+    for (const c of ["install-adb-package", "list-adb-devices", "list-adb-packages", "list-adb-processes",
+      "list-frida-devices", "list-frida-processes", "list-javascript-runtime-targets"]) {
+      expect(comandoRea(c), c).toBe(false);
+    }
+  });
+  // os ALVOS ESTÁTICOS novos do 6.9 continuam liberados (análise/leitura de arquivo, sem efeito colateral)
+  it("libera os alvos estáticos novos do 6.9 (EVM, Rust, WASM, pcap, trace, crash…)", () => {
+    for (const c of ["inspect-evm-interface", "inspect-rust-binary", "inspect-model-artifact", "inspect-wasm-artifact",
+      "inspect-sqlite-database", "inspect-kernel-module", "audit-release-exposure", "decode-signal-recording",
+      "inspect-packet-capture", "inspect-pcap-capture", "inspect-playwright-trace", "inspect-recorded-crash",
+      "inspect-web-network-capture", "compare-web-captures"]) {
+      expect(comandoRea(c), c).toBe(true);
+    }
+  });
+  // as duas cópias da deny-list (app + motor) são mantidas à mão; discordar é defeito de segurança
+  it("a deny-list do app e a do motor (bridge.mjs) são idênticas", () => {
+    const { readFileSync } = require("node:fs") as typeof import("node:fs");
+    const extrai = (txt: string) => {
+      const m = /DENY_(?:REA_)?PREFIXOS\s*=\s*\[([^\]]*)\]/.exec(txt);
+      return m ? m[1].match(/"[^"]+"/g)!.join(",") : "NAO_ACHOU";
+    };
+    const app = extrai(readFileSync("lib/octa/rea.ts", "utf8"));
+    const motor = extrai(readFileSync("infra/rea-engine/bridge.mjs", "utf8"));
+    expect(app).not.toBe("NAO_ACHOU");
+    expect(motor).toBe(app);
+  });
   it("manda comando + artefato (base64) + token; devolve a Evidence", async () => {
     const f = vi.fn(async () => new Response(JSON.stringify({ ok: true, evidence: { modules: 3 } }), { status: 200 }));
     const r = await chamarRea({ command: "analyze-javascript-application", args: ["--deep"], artifact: { nome: "app.js", conteudo: "console.log(1)" } }, env, f as any);

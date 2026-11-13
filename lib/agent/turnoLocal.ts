@@ -42,6 +42,8 @@ export type EntradaLocal = {
   /** bloco da base (RAG) deste turno — muda a cada pergunta, então vai no fim */
   base?: string;
   grupo: string;
+  /** key do gateway pra ESTE turno: virtual key com budget (ex.: Claude premium no chat). Ausente = a master local. */
+  key?: string;
   ctx: LedgerCtx;
 };
 
@@ -73,7 +75,7 @@ export async function turnoLocal(
   const gravar = (usage: Usage, ok: boolean, erro: ReturnType<typeof classificarErroLlm> | null) =>
     void registrar({ ...e.ctx, phase: "chat-local", model: e.grupo, provedor: "litellm", rota: "gateway", usage, ms: agora() - ini, ok, erro, alvo: "contabo", jsonValido: null }).catch(() => undefined);
 
-  const key = chaveLocal(env);
+  const key = e.key?.trim() || chaveLocal(env);
   if (!gatewayLigado(env) || !key) throw new Error("turno local: sem gateway/key");
   if (emVoo >= MAX_LOCAIS_EM_VOO) throw new Error("turno local: servidor local ocupado");
   emVoo++;

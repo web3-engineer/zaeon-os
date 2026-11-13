@@ -202,6 +202,7 @@ const CHAT_UNICO = chatUnicoOn();
 import NewsPanel from "@/components/research/NewsPanel";
 import ProfilePanel from "@/components/research/ProfilePanel";
 import { EVT_VER_PERFIL, idDoEvento } from "@/lib/perfil/eventos";
+import { EVT_ABRIR_PROJETO } from "@/lib/octa/ideNav";
 import EditableProfile from "@/components/research/EditableProfile";
 import MiniTourToast from "@/components/research/MiniTourToast";
 import SavedCitationsSection from "./SavedCitationsSection";
@@ -1724,6 +1725,13 @@ export default function HomeworkPage({
     const onSetTab = (e: any) => setActiveTab(e?.detail); // inválida é ignorada na setActiveTab
     window.addEventListener("zaeon:set-tab", onSetTab);
     return () => window.removeEventListener("zaeon:set-tab", onSetTab);
+  }, []);
+  // Ponte REA → Octa: o cartão do Blueprint já gravou o id do projeto em CHAVE_ULTIMO_PROJETO; aqui
+  // só trocamos para a aba da IDE (que não aceita setActiveTab), e ela faz boot nesse projeto.
+  useEffect(() => {
+    const onAbrirOcta = () => setActiveTabRaw("octa");
+    window.addEventListener(EVT_ABRIR_PROJETO, onAbrirOcta);
+    return () => window.removeEventListener(EVT_ABRIR_PROJETO, onAbrirOcta);
   }, []);
   // #427: "Ver perfil" no escritório → aba Perfil com o perfil daquela pessoa (só leitura, sem cérebros)
   useEffect(() => {

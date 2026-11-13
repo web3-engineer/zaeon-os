@@ -34,6 +34,7 @@
  */
 import { SISTEMAS, explicacao, type Atlas, type EstadoCena, type SistemaId } from "@/lib/anatomia/atlas";
 import { ESTADO_INICIAL, escolherConceito } from "@/lib/anatomia/estado";
+import { ehCorpoInteiro, verificarIsolamento } from "@/lib/anatomia/isolamento";
 import {
   acharConceito, alternativasDaClasse, buscarConceitos, ehClasseGenerica, pecasDoConceito,
   termoEspecificoNaFrase,
@@ -81,7 +82,12 @@ export type ResultadoCena =
   | {
       ok: false;
       motivo: string;
-      code: "sem_resultado" | "consulta_vazia" | "classe_generica";
+      /**
+       * `corpo_inteiro`: o que casou É o corpo (ou mais da metade dele), não uma parte.
+       * `nao_isolada`: a cena montada não passou em `verificarIsolamento` — defeito nosso, e por isso
+       * vira recusa em vez de cena (lib/anatomia/isolamento).
+       */
+      code: "sem_resultado" | "consulta_vazia" | "classe_generica" | "corpo_inteiro" | "nao_isolada";
       termoBuscado: string;
       /** o que o atlas TEM no lugar — nomes reais, para o aluno pedir certo na próxima */
       alternativas?: AlternativaAnatomia[];
@@ -187,13 +193,34 @@ export function cenaDoConceito(atlas: Atlas, consulta: string): ResultadoCena {
     };
   }
 
-  return {
-    ok: true,
-    dados: dadosDoConceito(atlas, conceito, {
+  /**
+   * O CORPO INTEIRO NÃO É UMA PARTE. `human body` existe no atlas (1.258 peças) e, "isolado", continua
+   * sendo o corpo: é o carregamento que o dono mandou tratar como erro. Recusa que ensina, como a
+   * da classe genérica: os outros achados da busca viajam como alternativas.
+   */
+  if (ehCorpoInteiro(atlas, pecasDoConceito(atlas, conceito).length)) {
+    return {
+      ok: false,
+      motivo: `"${conceito.name}" é o corpo inteiro neste atlas, não uma parte dele. Peça uma `
+        + "estrutura, um órgão ou um sistema pelo nome",
+      code: "corpo_inteiro",
       termoBuscado: r.termo,
-      viaSinonimo: r.viaSinonimo,
-      alternativas: r.achados.filter((a) => a.id !== escolhido.id)
-        .map((a) => ({ id: a.id, nome: a.nome, pecas: a.pecas })),
-    }),
-  };
+      alternativas: r.achados.filter((a) => a.id !== escolhido.id && !ehCorpoInteiro(atlas, a.pecas))
+        .slice(0, MAX_ALTERNATIVAS).map((a) => ({ id: a.id, nome: a.nome, pecas: a.pecas })),
+    };
+  }
+
+  const dados = dadosDoConceito(atlas, conceito, {
+    termoBuscado: r.termo,
+    viaSinonimo: r.viaSinonimo,
+    alternativas: r.achados.filter((a) => a.id !== escolhido.id)
+      .map((a) => ({ id: a.id, nome: a.nome, pecas: a.pecas })),
+  });
+  // A ÚLTIMA PORTA: a cena que sai daqui mostra SÓ as peças do conceito, ou não sai.
+  const veredito = verificarIsolamento(atlas, dados.estado, conceito.elements);
+  if (!veredito.ok) {
+    return { ok: false, motivo: veredito.motivo, code: veredito.code === "corpo_inteiro" ? "corpo_inteiro" : "nao_isolada", termoBuscado: r.termo };
+  }
+  return { ok: true, dados };
 }
+
