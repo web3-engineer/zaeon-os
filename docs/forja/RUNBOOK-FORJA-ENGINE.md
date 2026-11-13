@@ -7,9 +7,23 @@ rodam **na Contabo**, nunca no app, e a ponte fica exposta **só na Tailscale** 
 > **Bloqueio do dono:** este build roda na box. A saída real dos engines (o shape do `graph.json` e do
 > `.ua/knowledge-graph.json`) é o que os adaptadores da tarefa **A2** precisam. Até rodar aqui, A2 usa fixtures.
 
+## Onde rodar (decisão de placement)
+Dois destinos possíveis — a Forja analisa **sob demanda** (como o REA), então o fator é não competir com carga crítica:
+
+| | **Contabo** (box dos modelos) | **App server** (VPS do site) |
+|---|---|---|
+| Vantagem | 18 núcleos, já tem Tailscale e o padrão REA | sem inquilino de tempo real; rede simples (pode ser localhost) |
+| Risco | **núcleos 0-3 são do adapter protegido** (chipflow) — jamais usar; compartilha 4-17 com os modelos | análise pesada divide CPU/RAM com o **app ao vivo** → pode lentificar o site |
+| Rede p/ o app | Tailscale `http://100.113.137.74:8800` | localhost `http://127.0.0.1:8800` |
+| `FORJA_CPUSET` | `4-17` (nunca 0-3) | um subconjunto pequeno, p/ não roubar do app |
+
+**Recomendação:** Contabo (análise bursty e pesada não deve lentificar o site pra todo mundo), com `FORJA_CPUSET=4-17`.
+Se o app server tiver folga de sobra e você quiser rede simples, ele serve — mas pine a Forja em poucos núcleos.
+
 ## Pré-requisitos na box
-- Docker + compose, e a box já na Tailscale (IP `100.113.137.74`, a mesma do `rea-engine`, porta **8800**).
-- Um token forte em `FORJA_BRIDGE_TOKEN` (igual ao padrão do REA; nunca em commit).
+- Docker + compose. Em Contabo, a box já está na Tailscale (`100.113.137.74`), porta **8800** (o REA usa 8799 — sem conflito).
+- Um token forte em `FORJA_BRIDGE_TOKEN` (como o do REA; nunca em commit). O MESMO valor vai no `.env` do app.
+- `FORJA_CPUSET` conforme a tabela acima (Contabo: `4-17`).
 - Gateway de LLM alcançável da box (os dois engines precisam de backend — ver abaixo).
 
 ## 1. `.env` (ao lado do `compose.yml`, não versionado)

@@ -9,7 +9,10 @@ services:
         UNDERSTAND_REV: ${UNDERSTAND_REV:-main}
     image: zaeon-forja-engine:local
     container_name: zaeon_forja_engine
-    cpuset: "0-3"
+    # Fixação de núcleos POR BOX (ver RUNBOOK-FORJA-ENGINE §Onde rodar). Override por env FORJA_CPUSET.
+    #   • Contabo (box dos modelos): NUNCA 0-3 (inquilino protegido zenith-adapter, tempo real) → use 4-17.
+    #   • App server (sem inquilino de tempo real): um subconjunto pequeno que não roube do app (ex. os 2 últimos núcleos).
+    cpuset: "${FORJA_CPUSET:-4-17}"
     environment:
       FORJA_BRIDGE_TOKEN: ${FORJA_BRIDGE_TOKEN:?defina no .env}
       FORJA_BRIDGE_PORT: "8800"
