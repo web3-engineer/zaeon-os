@@ -63,6 +63,7 @@ import { abrirDocumento, EVT_ABRIR_DOC, KINDS_EM_ABA, ROTULO_DOC, type DocArtefa
 import { assuntoDe, pedeAula } from "@/lib/agent/aprender";
 import { pedeCaderno } from "@/lib/jornadas/cadernoRitmo";
 import { EVT_ABRIR_CADERNO, consumirCadernoPendente } from "@/lib/jornadas/desbloqueio";
+import { EVT_ABRIR_FORJA, consumirForjaPendente } from "@/lib/forja/desbloqueioForja";
 import ChatZoom, { useChatFontScale } from "@/components/chat/ChatZoom";
 import { zoomNoDiagrama } from "@/components/studio/DiagramView";
 import { AnimatePresence } from "framer-motion";
@@ -154,7 +155,7 @@ type Msg = {
 };
 
 /** Kinds que nascem do assunto/conversa, sem um estudo de origem (não criam estudo vazio). */
-const SEM_ESTUDO = new Set(["diagram", "mindmap", "molecule", "aula", "caderno"]);
+const SEM_ESTUDO = new Set(["diagram", "mindmap", "molecule", "aula", "caderno", "forja"]);
 /** #749: além do diagrama e da aula (que abrem em aba), o que fica guardado na conversa pelo número — o arquivo mora no servidor */
 const GUARDA_NO_SERVIDOR = new Set(["image"]);
 const AVISO_ARTEFATO: Record<string, string> = {
@@ -162,6 +163,7 @@ const AVISO_ARTEFATO: Record<string, string> = {
   mindmap: "Desenhando o mapa…",
   aula: "Preparando a aula interativa — plano, roteiro e narração (1 a 3 min)…",
   caderno: "Abrindo seu caderno da jornada…",
+  forja: "Montando seu estudo do repositório…",
 };
 
 /**
@@ -995,6 +997,21 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     const onEvt = (e: Event) => { consumirCadernoPendente(); abrir((e as CustomEvent).detail as string); };
     window.addEventListener(EVT_ABRIR_CADERNO, onEvt);
     return () => window.removeEventListener(EVT_ABRIR_CADERNO, onEvt);
+  }, []);
+
+  // O MESMO laço, para os cursos de REPOSITÓRIO da Forja: o card OSS pego na vitrine deixa um curso
+  // PENDENTE (lib/forja/desbloqueioForja), e a Sala abre o board da Forja sozinha. Uma vez por id.
+  const forjaAbertoRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const abrir = (id: string | null) => {
+      if (!id || forjaAbertoRef.current.has(id)) return;
+      forjaAbertoRef.current.add(id);
+      void runStudioActionRef.current("forja", id, undefined, false);
+    };
+    abrir(consumirForjaPendente());
+    const onEvt = (e: Event) => { consumirForjaPendente(); abrir((e as CustomEvent).detail as string); };
+    window.addEventListener(EVT_ABRIR_FORJA, onEvt);
+    return () => window.removeEventListener(EVT_ABRIR_FORJA, onEvt);
   }, []);
 
   // ── envio pro chat da Aura ──────────────────────────────────────────────────

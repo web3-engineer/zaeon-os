@@ -33,6 +33,8 @@ import PreviaSvg from "./PreviaSvg";
 import CorrigirComOcta from "./CorrigirComOcta";
 import GaleriaDesign from "./GaleriaDesign";
 import { PassosTurno, CartaoAprovacao } from "./PassosTurno";
+import VozOcta from "./VozOcta";
+import { narracaoDoTurno } from "@/lib/octa/narracao";
 import { useTurnoOcta, type EstadoTurno, type StatusTurno } from "./useTurnoOcta";
 import { tipoProjeto } from "@/lib/octa/tipoProjeto";
 import ReaProofPanel from "./ReaProofPanel";
@@ -923,6 +925,11 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
               {/* o turno AO VIVO */}
               {turno && (
                 <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px]" style={{ color: Z.apagado }}>Octa</span>
+                    {/* a voz da Octa: narra o que o turno fez quando ele termina (só com a voz ligada) */}
+                    <VozOcta texto={turnoVivo ? "" : narracaoDoTurno(turno.eventos, turno.status)} />
+                  </div>
                   <PassosTurno eventos={turno.eventos} vivo={turnoVivo && !turno.pendente} />
                   {turno.pendente && (
                     <CartaoAprovacao tool={turno.pendente.tool} path={turno.pendente.path} ocupado={decidindo || turno.status !== "aguardando_aprovacao"} onDecidir={(a) => void decidir(a)} />
