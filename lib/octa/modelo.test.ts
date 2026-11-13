@@ -46,6 +46,48 @@ describe("octa · escolha do modelo", () => {
   });
 });
 
+describe("octa · modelo premium (Claude/Codex da conta de API da org)", () => {
+  it("claude: primário = zaeon-claude, reserva = Google forte, sem teto, lê imagem", () => {
+    const e = escolhaModeloOcta(PROD, undefined, { grupo: "zaeon-claude", multimodal: true });
+    expect(e).toMatchObject({ local: "zaeon-claude", reserva: "vertex_ai/gemini-2.5-pro", maxPromptTok: Number.MAX_SAFE_INTEGER, orcamentoMs: Number.MAX_SAFE_INTEGER, localSemImagem: false });
+  });
+
+  it("codex: não lê imagem → localSemImagem liga", () => {
+    expect(escolhaModeloOcta(PROD, undefined, { grupo: "zaeon-codex", multimodal: false })).toMatchObject({ local: "zaeon-codex", localSemImagem: true });
+  });
+
+  it("premium responde → a reserva nem é chamada; rótulo amigável", async () => {
+    const { g, chamados } = gateway({ "zaeon-claude": async () => ({ ...resp("claude"), modeloId: "anthropic-sonnet" }) });
+    const c = criarChamadorOcta(g, escolhaModeloOcta(PROD, undefined, { grupo: "zaeon-claude", multimodal: true }));
+    expect((await c(msgs)).content).toBe("claude");
+    expect(chamados).toEqual(["zaeon-claude"]);
+    expect(nomeDoModelo("zaeon-claude")).toBe("claude");
+    expect(nomeDoModelo("zaeon-codex")).toBe("codex");
+  });
+
+  it("premium cai → termina no Gemini forte, e o servidoPor mostra o motivo", async () => {
+    const { g, chamados } = gateway({
+      "zaeon-claude": async () => { throw new Error("anthropic 529"); },
+      "vertex_ai/gemini-2.5-pro": async () => resp("gemini"),
+    });
+    const c = criarChamadorOcta(g, escolhaModeloOcta(PROD, undefined, { grupo: "zaeon-claude", multimodal: true }));
+    expect((await c(msgs)).content).toBe("gemini");
+    expect(chamados).toEqual(["zaeon-claude", "vertex_ai/gemini-2.5-pro"]);
+    expect(c.servidos.at(-1)?.motivo).toMatch(/anthropic 529/);
+  });
+
+  it("codex: a captura (imagem) vira texto ANTES de ir pro primário", async () => {
+    let viuImagem = false;
+    const g: ChamarGateway = async (modelo, m) => {
+      if (modelo === "zaeon-codex") viuImagem = m.some((x) => x.role === "user" && Array.isArray(x.content) && x.content.some((p: any) => p.type === "image_url"));
+      return resp("codex");
+    };
+    const comImg: MsgModelo[] = [{ role: "user", content: [{ type: "text", text: "olha" }, { type: "image_url", image_url: { url: "data:image/jpeg;base64,/9j/AAA" } }] }];
+    await criarChamadorOcta(g, escolhaModeloOcta(PROD, undefined, { grupo: "zaeon-codex", multimodal: false }))(comImg);
+    expect(viuImagem).toBe(false);
+  });
+});
+
 describe("octa · chamador com reserva", () => {
   it("flag desligada: só o Google, nunca toca o local", async () => {
     const { g, chamados } = gateway({ "vertex_ai/gemini-2.5-pro": async () => resp("ok") });

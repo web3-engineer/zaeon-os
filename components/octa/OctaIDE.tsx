@@ -36,6 +36,7 @@ import { PassosTurno, CartaoAprovacao } from "./PassosTurno";
 import { useTurnoOcta, type EstadoTurno, type StatusTurno } from "./useTurnoOcta";
 import { tipoProjeto } from "@/lib/octa/tipoProjeto";
 import ReaProofPanel from "./ReaProofPanel";
+import { useModeloOcta, SeletorModeloOcta } from "@/components/octa/SeletorModeloOcta";
 
 const Monaco = dynamic(() => import("@monaco-editor/react").then((m) => m.default), {
   ssr: false,
@@ -179,6 +180,8 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
   const reaFileRef = useRef<HTMLInputElement>(null);
   const REA_ON = process.env.NEXT_PUBLIC_OCTA_REA === "1";
   const [modo, setModo] = useState<"review" | "change">("review");
+  // modelo do agente de código geral (rascunho): Octa padrão ou premium liberado (Claude/Codex)
+  const { modelo: modeloOcta, opcoes: opcoesModelo, escolher: escolherModelo, temPremium } = useModeloOcta();
   const [escopo, setEscopo] = useState<"ativo" | "projeto">("ativo");
   const [enviando, setEnviando] = useState(false);
   const [decidindo, setDecidindo] = useState(false);
@@ -561,7 +564,7 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
     try {
       const r = await fetch("/api/octa/agente", {
         method: "POST", signal: ac.signal, headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pedido, historico, workspace: ide.arquivos, modo: modoPedido, liberados, arquivoAtivo: ativo }),
+        body: JSON.stringify({ pedido, historico, workspace: ide.arquivos, modo: modoPedido, liberados, arquivoAtivo: ativo, modelo: modeloOcta }),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) {
@@ -966,6 +969,7 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
                         </button>
                       ))}
                     </div>
+                    {temPremium && <SeletorModeloOcta modelo={modeloOcta} opcoes={opcoesModelo} onChange={escolherModelo} desabilitado={enviando} />}
                     {modo === "change" && (
                       <select value={escopo} onChange={(e) => setEscopo(e.target.value as "ativo" | "projeto")} className="rounded-md px-1.5 py-1 bg-transparent" style={{ border: `1px solid ${Z.borda}`, color: Z.fraco }}
                         title="O que o Octa pode editar neste pedido">
