@@ -157,6 +157,13 @@ services:
       # mas sem credencial, o recibo (/api/health) diz `sem_credencial`, não mente. `=1` liga.
       VISAO_HARNESS: ${VISAO_HARNESS:-}
       VISAO_CAMERA: ${VISAO_CAMERA:-}
+      # Octa · modelos premium (Claude/Codex no agente de código geral, lib/octa/modelosPremium).
+      # OCTA_MODELOS_PREMIUM = ids ligados ("claude,codex"); vazio = off. OCTA_PREMIUM_BUDGET_USD =
+      # teto USD/pessoa/janela dos turnos premium (vazio = 2). Só ligam com a chave da conta de API
+      # da ORG no gateway (ANTHROPIC_API_KEY/OPENAI_API_KEY no .env.secrets, que o litellm faz env_file)
+      # e só plano Max vê o picker. Vazio = prod idêntico.
+      OCTA_MODELOS_PREMIUM: ${OCTA_MODELOS_PREMIUM:-}
+      OCTA_PREMIUM_BUDGET_USD: ${OCTA_PREMIUM_BUDGET_USD:-}
       # F5 · conectores MCP por nome do catálogo (lib/agent/mcp MCP_CATALOG). `scholar` por padrão
       # (decisão do dono, 2026-11-03): 9 tools de LEITURA no trilho de fontes/ABNT. O servidor roda
       # como SUBPROCESSO deste container, pelo binário do `node_modules` — pinado em `scholar-mcp:
@@ -289,6 +296,13 @@ services:
       # mas sem credencial, o recibo (/api/health) diz `sem_credencial`, não mente. `=1` liga.
       VISAO_HARNESS: ${VISAO_HARNESS:-}
       VISAO_CAMERA: ${VISAO_CAMERA:-}
+      # Octa · modelos premium (Claude/Codex no agente de código geral, lib/octa/modelosPremium).
+      # OCTA_MODELOS_PREMIUM = ids ligados ("claude,codex"); vazio = off. OCTA_PREMIUM_BUDGET_USD =
+      # teto USD/pessoa/janela dos turnos premium (vazio = 2). Só ligam com a chave da conta de API
+      # da ORG no gateway (ANTHROPIC_API_KEY/OPENAI_API_KEY no .env.secrets, que o litellm faz env_file)
+      # e só plano Max vê o picker. Vazio = prod idêntico.
+      OCTA_MODELOS_PREMIUM: ${OCTA_MODELOS_PREMIUM:-}
+      OCTA_PREMIUM_BUDGET_USD: ${OCTA_PREMIUM_BUDGET_USD:-}
       # F5 · conectores MCP por nome do catálogo (lib/agent/mcp MCP_CATALOG). `scholar` por padrão
       # (decisão do dono, 2026-11-03): 9 tools de LEITURA no trilho de fontes/ABNT. O servidor roda
       # como SUBPROCESSO deste container, pelo binário do `node_modules` — pinado em `scholar-mcp:
