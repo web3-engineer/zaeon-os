@@ -24,12 +24,15 @@ export const ALLOW_HOSTS = ["github.com", "gitlab.com", "codeberg.org", "bitbuck
  */
 export const ENGINES = {
   graphify: {
+    // `graphify update <path>` = re-extração ESTÁTICA do código, SEM LLM (confirmado no --help da 0.9.108).
+    // Não existe mais `extract` nesta versão. `--force` evita recusa de overwrite num rebuild com menos nós.
     bin: "graphify",
-    baseArgs: ["extract", "--no-viz"],
-    alvoPosicional: true,            // o repo entra como argumento posicional de `extract`
+    baseArgs: ["update"],
+    alvoPosicional: true,            // o repo entra como posicional de `update`
+    posArgs: ["--force"],            // depois do alvo
     saida: "graphify-out/graph.json",
-    saidaRelativaA: "cwd",
-    precisaBackend: true,           // `graphify extract --backend ...` usa um backend; o tree-sitter é estático mas o extract documentado chama o backend
+    saidaRelativaA: "repo",          // `update <path>` escreve graphify-out/ relativo ao alvo; a ponte também tenta o cwd
+    precisaBackend: false,           // SEM backend — `update` é tree-sitter puro
     licenca: "Apache-2.0 OR MIT",
     repo: "Graphify-Labs/graphify",
   },
@@ -100,6 +103,7 @@ export function montarComando(engine, repoDir, extras = []) {
   const e = typeof engine === "string" ? resolverEngine(engine) : engine;
   const argv = [...e.baseArgs];
   if (e.alvoPosicional) argv.push(repoDir);
+  for (const x of e.posArgs ?? []) argv.push(x);     // flags fixas DEPOIS do alvo (ex. graphify --force)
   for (const x of argsSeguros(extras)) argv.push(x);
   return { bin: e.bin, argv };
 }

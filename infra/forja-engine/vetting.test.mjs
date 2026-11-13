@@ -51,10 +51,10 @@ test("argsSeguros filtra o perigoso e mantém o resto, em ordem", () => {
   assert.deepEqual(argsSeguros("não-array"), []);
 });
 
-test("montarComando: graphify leva o repo como posicional e só args seguros", () => {
+test("montarComando: graphify usa `update <repo> --force` e só args seguros", () => {
   const { bin, argv } = montarComando("graphify", "/job/repo", ["--no-color", "; evil", "$(x)"]);
   assert.equal(bin, "graphify");
-  assert.deepEqual(argv, ["extract", "--no-viz", "/job/repo", "--no-color"]);
+  assert.deepEqual(argv, ["update", "/job/repo", "--force", "--no-color"]);
 });
 
 test("montarComando: understand usa o wrapper e não vaza args perigosos", () => {
@@ -63,9 +63,9 @@ test("montarComando: understand usa o wrapper e não vaza args perigosos", () =>
   assert.deepEqual(argv, ["/job/repo", "--language", "zh"]);
 });
 
-test("caminhoSaida: graphify no cwd do job; understand dentro do repo", () => {
+test("caminhoSaida: graphify e understand escrevem relativo ao repo", () => {
   const g = caminhoSaida("graphify", { cwd: "/job", repoDir: "/job/repo" });
-  assert.deepEqual(g, { base: "/job", rel: "graphify-out/graph.json" });
+  assert.deepEqual(g, { base: "/job/repo", rel: "graphify-out/graph.json" });
   const u = caminhoSaida("understand", { cwd: "/job", repoDir: "/job/repo" });
   assert.deepEqual(u, { base: "/job/repo", rel: ".ua/knowledge-graph.json" });
 });

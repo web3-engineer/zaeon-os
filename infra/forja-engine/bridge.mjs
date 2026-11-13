@@ -20,8 +20,8 @@ const HOST = process.env.FORJA_BRIDGE_HOST || "0.0.0.0";
 const TOKEN = process.env.FORJA_BRIDGE_TOKEN || "";
 const MAX_TARBALL = Number(process.env.FORJA_MAX_TARBALL_BYTES || 64 * 1024 * 1024); // 64 MB
 const TIMEOUT_MS = Number(process.env.FORJA_CMD_TIMEOUT_MS || 15 * 60_000);
-const GRAPHIFY_BACKEND = process.env.FORJA_GRAPHIFY_BACKEND || ""; // ex. "claude" — da CONFIG, não do chamador
 const UNDERSTAND_CMD = process.env.FORJA_UNDERSTAND_CMD || "";     // wrapper do Claude Code headless + plugin
+// obs: o graphify usa `update` (tree-sitter estático, SEM LLM) — não precisa de FORJA_GRAPHIFY_BACKEND.
 
 const lerCorpo = (req) => new Promise((ok, erro) => {
   const pedacos = []; let n = 0;
@@ -88,15 +88,14 @@ const server = createServer(async (req, res) => {
       const repoDir = corpo.repoUrl ? await clonarRepo(corpo.repoUrl, jobDir) : await extrairTarball(corpo.tarballBase64, jobDir);
 
       const { bin, argv } = montarComando(engine, repoDir, corpo.args);
-      // o backend do graphify vem da CONFIG da box (não do chamador); o understand usa o wrapper do env
-      const extraArgs = [];
-      if (corpo.engine === "graphify" && GRAPHIFY_BACKEND) extraArgs.push("--backend", GRAPHIFY_BACKEND);
       const binReal = engine.bin === "__wrapper__" ? UNDERSTAND_CMD : bin;
-      const r = await rodar(binReal, [...argv, ...extraArgs], jobDir);
+      const r = await rodar(binReal, argv, jobDir);
 
+      // o engine pode escrever a saída relativa ao alvo OU ao cwd do job — tenta os dois (robusto).
       const { base, rel } = caminhoSaida(engine, { cwd: jobDir, repoDir });
+      const candidatos = [...new Set([join(base, rel), join(repoDir, rel), join(jobDir, rel)])];
       let grafo;
-      try { grafo = JSON.parse(await readFile(join(base, rel), "utf8")); } catch { /* sem saída */ }
+      for (const p of candidatos) { try { grafo = JSON.parse(await readFile(p, "utf8")); break; } catch { /* tenta o próximo */ } }
       if (!grafo) return responder(502, { ok: false, erro: `engine não produziu ${rel}`, code: r.code, stderr: r.stderr.slice(0, 2000) });
       return responder(200, { ok: r.code === 0, engine: corpo.engine, grafo, stderr: r.stderr ? r.stderr.slice(0, 2000) : undefined });
     } finally { await rm(jobDir, { recursive: true, force: true }).catch(() => {}); }

@@ -8,16 +8,16 @@
       "registro": "PyPI",
       "cli": "graphify",
       "instala": "uv tool install graphifyy==${GRAPHIFY_VERSION}",
-      "analisa": "graphify extract <repo> --no-viz",
+      "analisa": "graphify update <repo> --force",
       "saida": "graphify-out/graph.json",
       "runtime": "python>=3.10",
       "licenca": "Apache-2.0 OR MIT",
       "titular": "Graphify-Labs (sem linha de copyright no LICENSE; Apache-2.0 + LICENSE-MIT no repo)",
       "licenca_url": "https://github.com/Graphify-Labs/graphify/blob/v8/LICENSE",
-      "versao_fixada": "PREENCHER_NO_BUILD",
+      "versao_fixada": "0.9.108",
       "sha_fixado": "PREENCHER_NO_BUILD",
-      "precisa_backend": true,
-      "nota_backend": "o `extract` documentado chama um backend de LLM (--backend); o grafo tree-sitter é estático, mas a rota documentada passa pelo backend — provisionar o gateway na Contabo (FORJA_GRAPHIFY_BACKEND)."
+      "precisa_backend": false,
+      "nota_backend": "o subcomando `update` (v0.9.108) re-extrai o código com tree-sitter SEM LLM — não precisa de backend. (O `extract --backend` do README do branch v8 não existe nesta versão do PyPI.)"
     },
     "understand": {
       "repo": "Egonex-AI/Understand-Anything",
