@@ -12,6 +12,7 @@ const exemploDoCard = (skill: string): string => {
 const PASSOS = [{ passo: 1, latex: "2x + 6 = 10", explicacao: "Equação original." }, { passo: 2, latex: "2x = 4", explicacao: "Subtrai 6." }];
 const GEO = [{ nome: "A", tipo: "point", pais: [0, 0], papel: "ponto livre" }];
 const DIAG = { titulo: "Login", tipo: "flowchart", mermaid: "flowchart TD\n  A[\"Entrar\"] --> B{\"Ok?\"}", leitura: "De cima para baixo." };
+const PART = { titulo: "Escala de Dó", tom: "C", abc: "X:1\nK:C\nC D E F | G A B c |]", conceito: "Graus conjuntos." };
 
 describe("parsePassos — a resolução da skill formulas-katex", () => {
   it("aceita o exemplo do SKILL.md e a tarefa canônica", () => {
@@ -98,13 +99,20 @@ describe("figuras — qual desenho um JSON do modelo é", () => {
     expect(figuraDoJson(j(GEO))).toBe("geometria");
     expect(figuraDoJson(j(PASSOS))).toBe("passos");
     expect(figuraDoJson(j(DIAG))).toBe("diagrama");
+    expect(figuraDoJson(j(PART))).toBe("partitura");
     expect(figuraDoJson(exemploDoCard("geometria-jsxgraph"))).toBe("geometria");
     expect(figuraDoJson(exemploDoCard("formulas-katex"))).toBe("passos");
     expect(figuraDoJson(exemploDoCard("diagrama-mermaid"))).toBe("diagrama");
+    expect(figuraDoJson(exemploDoCard("partitura-abc"))).toBe("partitura");
+  });
+
+  it("a partitura (objeto com `abc`) não colide com o diagrama (objeto com `mermaid`)", () => {
+    expect(figuraDoJson(j(PART))).toBe("partitura");
+    expect(figuraDoJson(j(DIAG))).toBe("diagrama");
   });
 
   it("as outras skills agentic da casa NÃO viram figura", () => {
-    for (const skill of ["lgpd-scan", "partitura-abc"]) {
+    for (const skill of ["lgpd-scan"]) {
       expect(figuraDoJson(exemploDoCard(skill)), skill).toBeNull();
     }
     expect(figuraDoJson(j([{ titulo: "Slide 1", conteudo: "abertura" }]))).toBeNull();   // slides-agente
@@ -118,8 +126,10 @@ describe("figuras — qual desenho um JSON do modelo é", () => {
     expect(figuraDoBloco("passos", "lixo")).toBe("passos");
     expect(figuraDoBloco("diagrama", "lixo")).toBe("diagrama");
     expect(figuraDoBloco("mermaid", "flowchart TD\n A-->B")).toBe("mermaid");
+    expect(figuraDoBloco("partitura", "lixo")).toBe("partitura");
     expect(figuraDoBloco("json", j(PASSOS))).toBe("passos");
     expect(figuraDoBloco("", j(DIAG))).toBe("diagrama");
+    expect(figuraDoBloco("json", j(PART))).toBe("partitura");
     expect(figuraDoBloco("json", '{"a":1}')).toBeNull();
     expect(figuraDoBloco("python", j(PASSOS))).toBeNull();   // código de verdade não é sequestrado
   });
