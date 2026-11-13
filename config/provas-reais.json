@@ -1,0 +1,22 @@
+{
+  "_doc": "Registro de PROVAS REAIS dos motores/serviços externos. A regra está em docs/PROVAS_REAIS.md: teste com fetch mockado prova que o REQUEST está certo, nunca que o SERVIÇO responde. Todo motor PRÓPRIO precisa de uma prova real (status 'coberto' + um arquivo que EXISTE e bate no serviço de verdade). scripts/provas-reais-check.mjs valida este registro no portão e REPROVA se um motor próprio não tem prova. Ao subir um motor/ponte novo que fala com serviço externo, ADICIONE uma linha aqui + a prova.",
+  "motores": [
+    { "nome": "REA (engenharia reversa)", "tipo": "proprio", "cliente": "lib/octa/rea.ts", "servico": "infra/rea-engine (Contabo, Tailscale :8799)", "prova": "scripts/rea-smoke.mjs", "status": "coberto" },
+    { "nome": "Forja (graphify/understand)", "tipo": "proprio", "cliente": "lib/forja/engineClient.ts", "servico": "infra/forja-engine (app server 127.0.0.1:8800)", "prova": "scripts/forja-smoke.mjs", "status": "coberto" },
+    { "nome": "Quality engine (Termômetro)", "tipo": "proprio", "cliente": "lib/quality/scoreClient.ts", "servico": "quality-engine Python :8003", "prova": "scripts/quality-smoke.mjs", "status": "coberto" },
+    { "nome": "ChipFlow (wa-adapter/WhatsApp)", "tipo": "proprio", "cliente": "lib/chipflow/operador.ts", "servico": "wa-adapter (whatsmeow) :8090", "prova": "scripts/chipflow-smoke.mjs", "status": "coberto" },
+    { "nome": "Pentest (pentagi)", "tipo": "proprio", "cliente": "lib/pentest/bridge.ts", "servico": "infra/pentagi-engine", "prova": "scripts/pentest/recon.ts", "status": "coberto" },
+    { "nome": "Navegador remoto", "tipo": "proprio", "cliente": "lib/agent/navegadorRemoto.ts", "servico": "services/agente-navegador (Chromium)", "prova": "lib/agent/navegadorServidor.smoke.test.ts", "status": "coberto" },
+    { "nome": "Orquestra (motores/provedores)", "tipo": "proprio", "cliente": "lib/orquestra/provedores.ts", "servico": "DeepSeek/Moonshot/HF/OpenRouter via motores próprios", "prova": "scripts/orquestra/arena.ts", "status": "coberto" },
+    { "nome": "LLM gateway (LiteLLM)", "tipo": "proprio", "cliente": "lib/llm/envelope.ts", "servico": "gateway LiteLLM (app + Contabo)", "prova": "scripts/gateway-sonda.mjs", "status": "coberto" },
+    { "nome": "Modelos locais Contabo (Ollama/TEI)", "tipo": "proprio", "cliente": "lib/llm/papeis.ts", "servico": "Ollama (lfm2/qwen3-coder) + TEI (embed/rerank)", "prova": "scripts/provar-papeis-locais.ts", "status": "coberto" },
+    { "nome": "Leitor (proxy de web/chore)", "tipo": "proprio", "cliente": "lib/leitor/cliente.ts", "servico": "services/leitor-proxy", "prova": "lib/leitor/proxy-server.test.ts", "status": "coberto" },
+
+    { "nome": "RAG embeddings (Vertex)", "tipo": "terceiro-gerenciado", "cliente": "lib/rag/embed.ts", "servico": "Vertex gemini-embedding-001", "prova": null, "status": "aceito", "nota": "API gerenciada do Google; a sonda de saúde da Contabo (lib/rag/saude.ts) é real, mas não exercita o caminho de embedding/dimensão 1024. Débito conhecido, prioridade menor." },
+    { "nome": "Busca web (SearXNG/Tavily/Brave)", "tipo": "terceiro", "cliente": "lib/search/web.ts", "servico": "APIs de busca de terceiros", "prova": null, "status": "aceito", "nota": "Parsers testados puros; chamada de terceiro, prioridade menor." },
+    { "nome": "Livros (OpenStax/Gutendex/...)", "tipo": "terceiro", "cliente": "lib/livros/busca.ts", "servico": "APIs de catálogo de terceiros", "prova": null, "status": "aceito", "nota": "Terceiro, prioridade menor." },
+    { "nome": "Molécula (PubChem)", "tipo": "terceiro", "cliente": "lib/studio/molecule.ts", "servico": "PubChem PUG REST", "prova": null, "status": "aceito", "nota": "Terceiro, prioridade menor." },
+    { "nome": "HF datasets", "tipo": "terceiro", "cliente": "lib/hf/datasets.ts", "servico": "Hugging Face Hub API", "prova": null, "status": "aceito", "nota": "Terceiro, prioridade menor." },
+    { "nome": "Solana (broadcast)", "tipo": "terceiro", "cliente": "lib/solana/helius.ts", "servico": "Helius/Crossmint RPC", "prova": null, "status": "aceito", "nota": "Cripto offline provada (RFC 8032); broadcast de terceiro não provado. Prioridade menor." }
+  ]
+}
