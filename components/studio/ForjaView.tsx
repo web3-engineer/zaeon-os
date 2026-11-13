@@ -91,7 +91,7 @@ export default function ForjaView({ data, artifactId }: { data?: CursoRepo | nul
         <h1 className="mt-1 text-[26px] font-black tracking-tight text-[#0b3a66] dark:text-white">{curso.arvore.raiz.titulo}</h1>
         <p className="mt-1 max-w-[56ch] text-[13.5px] text-slate-500 dark:text-white/60">{curso.arvore.raiz.resumo}</p>
         <div className="mt-1 text-[11px] uppercase tracking-wide text-slate-400">
-          modo {curso.modo === "curso" ? "curso (hiper-detalhado)" : "entregável (engines como base)"}
+          {curso.modo === "curso" ? "curso guiado" : "projeto para entregar"}
         </div>
 
         {/* o board: cards conectados em ordem (estilo n8n) */}
@@ -202,7 +202,12 @@ export default function ForjaView({ data, artifactId }: { data?: CursoRepo | nul
       <ZaeonGuia
         faseInicial={curso.arvore.raiz.titulo}
         escutaGlobal={false}
-        comportamentos={[examinadora(), ociosidade()]}
+        comportamentos={[examinadora(), ociosidade({ falas: [
+          "Travou no código? Relê o trecho com calma e segue.",
+          "Ainda por aí? Bora destrinchar o próximo pedaço.",
+          "Perdeu o fio da lógica? Volta uma função e retoma.",
+          "Tô aqui quando quiser continuar — um bloco de cada vez.",
+        ] })]}
         aoMontar={(fn) => { enviarRef.current = fn; }}
       />
     </div>

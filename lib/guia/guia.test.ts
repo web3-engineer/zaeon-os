@@ -41,6 +41,19 @@ describe("motor do guia — estado de movimento", () => {
 });
 
 describe("comportamento: ociosidade", () => {
+  it("as falas default são NEUTRAS (sem música); opts.falas sobrescreve (ForjaView passa falas de código)", () => {
+    const neutro = cenario([ociosidade({ limiteMs: 10_000 })]);
+    neutro.atividade();
+    neutro.tick(15_000);
+    expect(neutro.nudges).toHaveLength(1);
+    expect(neutro.nudges[0].texto).not.toMatch(/🎵|toca|compasso|m[úu]sica/i);
+
+    const tematico = cenario([ociosidade({ limiteMs: 10_000, falas: ["foco no código"] })]);
+    tematico.atividade();
+    tematico.tick(15_000);
+    expect(tematico.nudges[0].texto).toBe("foco no código");
+  });
+
   it("cutuca uma vez quando o movimento trava além do limite", () => {
     const c = cenario([ociosidade({ limiteMs: 25_000 })]);
     c.atividade();            // t=0, em movimento
