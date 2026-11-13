@@ -6,6 +6,7 @@
 import type { CursoRepo, EsqueletoRepo, Licenca, GrafoConhecimento, ArvoreEntendimento } from "./tipos";
 import { modulosPadrao } from "./curso";
 import { INICIANTES } from "./catalogoIniciantes";
+import { AVANCADOS } from "./catalogoAvancado";
 
 export type { EsqueletoRepo } from "./tipos";
 
@@ -15,7 +16,8 @@ export const LICENCAS_ENGINES: Licenca[] = [
   { spdx: "MIT", titular: "Yuxiang Lin; Infinite Universe, Inc.", url: "https://github.com/Egonex-AI/Understand-Anything" },
 ];
 
-/** Catálogo curado de esqueletos: o genérico "exemplo" + os 10 projetos OSS para iniciantes (Fase C). */
+/** Catálogo curado de esqueletos: o genérico "exemplo" + os 10 projetos OSS para iniciantes (Fase C)
+ *  + os 28 da trilha avançada (card #793, lib/forja/catalogoAvancado). */
 export const ESQUELETOS: EsqueletoRepo[] = [
   {
     id: "exemplo",
@@ -25,6 +27,7 @@ export const ESQUELETOS: EsqueletoRepo[] = [
     modo: "curso",
   },
   ...INICIANTES,
+  ...AVANCADOS,
 ];
 
 /** Acha um esqueleto pelo id; sem id casa, cai no primeiro (há sempre ao menos um). PURA. */

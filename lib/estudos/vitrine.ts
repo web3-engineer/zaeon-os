@@ -15,6 +15,7 @@ import { AGENTES_ORQUESTRA } from "@/lib/orquestra/catalogo";
 import type { PluginChat } from "@/lib/plugins/chatPlugins";
 import type { ParteResumo, Apoio } from "./pesquisas";
 import { INICIANTES } from "@/lib/forja/catalogoIniciantes";
+import { AVANCADOS, TEMA_AVANCADO, type TemaAvancado } from "@/lib/forja/catalogoAvancado";
 
 /** o desenho 3D do tema (components/estudos/modelos3d) */
 export type Modelo3D = "console" | "chip" | "planta" | "predio" | "drone" | "foguete" | "molecula" | "engrenagem" | "livro" | "graos" | "ondas" | "robo" | "pasta";
@@ -100,6 +101,28 @@ export const ITENS_FORJA_INICIANTES: readonly ItemVitrine[] = INICIANTES.map((e)
   tags: ["forja", "código aberto", "iniciante", "grátis", e.conceito ?? "projeto"],
 }));
 
+/**
+ * A trilha AVANÇADA da Forja (card #793, lib/forja/catalogoAvancado) como itens da vitrine — também GRÁTIS e
+ * abrindo o board `forja:<cursoId>`, mas marcados "avançado" (nunca "iniciante") e com o entregável certo
+ * do nível: estudar e rodar/simular/treinar, não publicar o primeiro projeto. Autor/licença = os do repo.
+ */
+const MODELO_TEMA_AVANCADO: Record<TemaAvancado, Modelo3D> = {
+  robotica: "robo", sistemas: "engrenagem", ia: "chip", "graficos-jogos": "console", "redes-distribuido": "ondas",
+};
+export const ITENS_FORJA_AVANCADOS: readonly ItemVitrine[] = AVANCADOS.map((e): ItemVitrine => ({
+  id: `forja:${e.id}`, titulo: e.titulo, subtitulo: e.resumo,
+  tipo: "curso", execucao: "dyom", modelo: MODELO_TEMA_AVANCADO[TEMA_AVANCADO[e.id]] ?? "chip",
+  autor: e.licenca?.titular ?? "comunidade open source", raridade: "rara", profundidade: 72,
+  preco: 0, fracoes: { total: 1, vendidas: 0 },
+  selos: { supervisionado: false, linksOk: true, codigoPrivado: false },
+  entrega: [
+    "o curso interativo da Forja: board (entender → espelho → entregar), temperatura e lições",
+    `o repositório-referência estudado de verdade (${e.repo}, ${e.licenca?.spdx ?? "open source"})`,
+    "rode, simule ou treine o projeto você mesmo — e demonstre que funciona",
+  ],
+  tags: ["forja", "código aberto", "avançado", "grátis", e.conceito ?? "projeto"],
+}));
+
 export const CATALOGO: readonly ItemVitrine[] = [
   { id: "octa-code", titulo: "Octa Code", subtitulo: "O agente de código da Zaeon, com a IDE dele — e freio de mão: não mexe onde você não pediu", tipo: "agente", execucao: "agente", modelo: "robo", autor: "Zaeon", raridade: "lendaria", profundidade: 90, preco: 0, fracoes: { total: 1, vendidas: 0 }, selos: { supervisionado: false, linksOk: true, codigoPrivado: false }, entrega: ["a IDE do Octa: editor, seu repositório do GitHub e execução no navegador", "revisão de código que aponta o trecho, sem reescrever o arquivo", "mudanças só no escopo pedido (as 4 perguntas antes de cada extra)", "telas mobile no padrão nativo (Expo/RN, Apple HIG)", "código colado é dado, nunca ordem — e segredo nunca vai pro modelo"], tags: ["código", "agente", "IDE", "grátis"], plugavel: "octa-code" },
   { id: "eiffel-cad", titulo: "Eiffel", subtitulo: "O engenheiro de estruturas da Zaeon — modela a peça em CAD paramétrico e te dá o STEP", tipo: "agente", execucao: "agente", modelo: "predio", autor: "Zaeon", raridade: "lendaria", profundidade: 88, preco: 0, fracoes: { total: 1, vendidas: 0 }, selos: { supervisionado: true, linksOk: true, codigoPrivado: false }, entrega: ["CAD paramétrico de verdade (SolidCraft, MIT/Apache-2.0): esboço, extrusão, filete, chanfro", "a peça vira ARTEFATO na conversa, com visualizador 3D e o STEP pra baixar", "modo edição: você mexe na peça, com timeline e parâmetros", "cada etapa verificada com medida real — volume, área, massa, centro de massa", "caminho de carga explicado: de onde a força vem, por onde desce, onde sai"], tags: ["engenharia", "CAD", "estruturas", "agente", "grátis"], plugavel: "eiffel-cad" },
@@ -132,6 +155,8 @@ export const CATALOGO: readonly ItemVitrine[] = [
   { id: "tcc-ia-escrita", titulo: "TCC escrito com método (e sem plágio)", subtitulo: "O percurso, as fontes conferidas e a banca simulada", tipo: "artigo", execucao: "agente", modelo: "livro", autor: "Aura (Zaeon)", raridade: "rara", profundidade: 55, preco: 0, fracoes: { total: 1, vendidas: 0 }, selos: { supervisionado: true, linksOk: true, codigoPrivado: false }, entrega: ["o modelo do TCC", "o checklist ABNT", "a banca simulada"], tags: ["academia", "escrita", "grátis"] },
   // os 10 projetos OSS para iniciantes (Forja) — grátis, abrem o board da Forja (ver ITENS_FORJA_INICIANTES)
   ...ITENS_FORJA_INICIANTES,
+  // a trilha avançada da Forja (card #793) — grátis, marcada "avançado" (ver ITENS_FORJA_AVANCADOS)
+  ...ITENS_FORJA_AVANCADOS,
 ];
 
 export type FiltroVitrine = "todos" | "gratis" | "dyom" | "agente" | "rwa" | "skill" | "pesquisa" | "ironia";
