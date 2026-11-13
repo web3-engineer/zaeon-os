@@ -98,14 +98,25 @@ o dono mergeia (→ deploy automático). Ao mergear, o card novo entra na vitrin
 
 ## 3. (Recomendado) fume o repo no motor antes de confiar
 Nem todo repo gera um grafo bonito (linguagem que o tree-sitter do graphify não cobre bem, repo grande demais).
-Confirme que o board vai encher — na box do app server (`75.119.140.97`), pela rede interna:
+Confirme que o board vai encher. **Duas formas** — use a LOCAL se você não é o dono da box de prod:
+
+**3a. LOCAL (qualquer dev, sem a box de prod)** — roda o mesmo engine na sua máquina:
+```bash
+uv tool install graphifyy            # ou: pipx install graphifyy  (precisa de Python 3.10+)
+git clone --depth 1 https://github.com/<owner>/<repo> /tmp/smoke-forja && cd /tmp/smoke-forja
+graphify update . --force            # estático, SEM LLM — é o MESMO comando que o motor usa
+python3 -c "import json;d=json.load(open('graphify-out/graph.json'));print('nós:',len(d['nodes']),'links:',len(d['links']))"
+```
+`nós > 0` → o board vai encher em prod. `0`/erro → troque o repo (ou registre mesmo assim: degrada pro esqueleto).
+
+**3b. Na box de prod (SÓ o dono — `75.119.140.97`, tem o token e a ponte):** não tente isto se você não tem SSH
+na box; é checagem do dono, não sua.
 ```bash
 TOKEN=$(grep '^FORJA_BRIDGE_TOKEN=' /opt/forja-engine/.env | cut -d= -f2)
 curl -s -m 180 http://127.0.0.1:8800/forja -H 'content-type: application/json' \
   -d "{\"token\":\"$TOKEN\",\"engine\":\"graphify\",\"repoUrl\":\"https://github.com/<owner>/<repo>\"}" \
   | python3 -c "import sys,json;d=json.load(sys.stdin);g=d.get('grafo');print('ok' if g else d.get('erro'),'nós:',len(g['nodes']) if g else 0)"
 ```
-`nós > 0` → o board vai encher. `0` ou erro → troque o repo (ou abra como curso, que degrada pro esqueleto).
 
 ---
 
@@ -135,3 +146,40 @@ type EsqueletoRepo = {
 Ligar o engine `understand` (a *tour* guiada, a `ArvoreEntendimento`) dá mais profundidade a **todo** curso,
 sem mexer em catálogo. Precisa do wrapper Claude Code na box (`FORJA_UNDERSTAND_CMD`) — ver
 `RUNBOOK-FORJA-ENGINE.md §5`. Enquanto não houver, o graphify sozinho já entrega o mapa.
+
+---
+
+## 7. Para QUEM EXECUTA este handoff (outro Claude / outro dev)
+Se você NÃO é o dono da plataforma (ex.: o Claude de um dev parceiro), tudo isto vale sem precisar da infra do dono:
+
+**O que você NÃO precisa (e não deve tentar):**
+- **Não precisa da box de prod** (`75.119.140.97`) nem do `FORJA_BRIDGE_TOKEN`. A fumaça você faz **LOCAL** (§3a).
+- **Não mergeie, não faça deploy.** Você abre **PR draft**; o dono mergeia (o motor em prod enche os boards depois).
+- **Use seu PRÓPRIO branch** (ex.: `claude/forja-cursos-avancados`), não um branch que já tem PR aberta de outra pessoa.
+- **Atribuição é SUA.** Não copie o trailer de sessão de ninguém; assine seus commits com a sua identidade.
+
+**O portão (rode da raiz do repo, antes de cada commit):**
+```bash
+NODE_OPTIONS=--max-old-space-size=8192 npx tsc --noEmit -p .   # 0 erros
+npx next lint                                                  # 0 erros
+npx vitest run lib/ app/ components/                           # verde
+node scripts/compose-check.mjs                                 # 0
+```
+
+**Registrar um TIER novo (ex.: avançado) — é um catálogo próprio, 3 pontos:**
+Não jogue cursos avançados no `catalogoIniciantes.ts` (o nome e a tag "iniciante" enganam o aluno). Crie um
+catálogo irmão e ligue-o nos dois lugares que o de iniciantes já usa:
+1. **`lib/forja/catalogoAvancado.ts`** — `export const AVANCADOS: EsqueletoRepo[] = [ ... ]` (mesma forma do
+   `catalogoIniciantes.ts`: `id`, `repo`, `titulo`, `resumo`, `modo:"curso"`, `licenca`, `conceito`).
+2. **`lib/forja/cursoRepo.ts`** — no array `ESQUELETOS`, acrescente `...AVANCADOS` (assim `esqueletoPorId` e as
+   rotas `/api/studio/forja[/mapa]` acham os cursos novos).
+3. **`lib/estudos/vitrine.ts`** — gere os itens grátis como o `ITENS_FORJA_INICIANTES` faz
+   (`AVANCADOS.map(...)` → `preco:0`, `tipo:"curso"`, `id:"forja:<id>"`) e dê `...` no `CATALOGO`.
+   O desbloqueio (`forjaDoItem`) e o board já são genéricos — abrem qualquer `forja:<id>` que exista no catálogo.
+   Crie um `lib/forja/catalogoAvancado.test.ts` espelhando o de iniciantes (ids únicos, licença permissiva, repo `owner/name`).
+
+**Reconfirme a licença no momento de registrar** — repos mudam de licença/dono com o tempo; não confie só nesta
+lista, rode a busca de novo (`gh api ... repos/<owner>/<repo>`) antes de commitar.
+
+**Coordene com o dono:** você entrega a PR draft; quando o dono mergear, o motor que já roda em prod analisa cada
+repo e enche os boards sozinho. Você não liga em nada da infra — só cura, registra, testa e abre a PR.

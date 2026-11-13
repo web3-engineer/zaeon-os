@@ -30,13 +30,15 @@ Repos avançados são grandes, e o motor (`graphify update`) clona + analisa o r
   Opções: (a) estudar como **referência** (board degrada pro esqueleto, sem mapa); (b) apontar o curso pra um
   **subdiretório** representativo do repo; (c) deixar os engines como **base passiva** (`modo: "entregavel"`).
 
-Fumaça (na box do app server), antes de confiar:
+Fumaça **LOCAL** (qualquer dev, sem a box de prod — é o MESMO `graphify update` que o motor roda):
 ```bash
-TOKEN=$(grep '^FORJA_BRIDGE_TOKEN=' /opt/forja-engine/.env | cut -d= -f2)
-curl -s -m 300 http://127.0.0.1:8800/forja -H 'content-type: application/json' \
-  -d "{\"token\":\"$TOKEN\",\"engine\":\"graphify\",\"repoUrl\":\"https://github.com/<owner>/<repo>\"}" \
-  | python3 -c "import sys,json;d=json.load(sys.stdin);g=d.get('grafo');print('ok' if g else d.get('erro'),'nós:',len(g['nodes']) if g else 0)"
+uv tool install graphifyy            # Python 3.10+ (ou: pipx install graphifyy)
+git clone --depth 1 https://github.com/<owner>/<repo> /tmp/smoke-forja && cd /tmp/smoke-forja
+graphify update . --force
+python3 -c "import json;d=json.load(open('graphify-out/graph.json'));print('nós:',len(d['nodes']),'links:',len(d['links']))"
 ```
+`nós > 0` → o board enche em prod. `0`/erro/muito lento → troque o repo ou use um subdiretório. (A variante na
+box de prod é só do dono — ver `HANDOFF-NOVOS-CURSOS.md §3b`.)
 
 ### 2. 🎯 O entregável MUDA — não é "publique seu primeiro projeto"
 No tier de iniciante, o aluno publica o próprio projeto no GitHub pela Octa. Em robótica, ML, SO, SLAM isso não
