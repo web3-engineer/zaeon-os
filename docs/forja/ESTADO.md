@@ -13,8 +13,12 @@ Branch E0 / prompts: `claude/forja-repo-curso` · PR draft **#791**.
 | A1 | E1 infra dos engines (`infra/forja-engine/`, padrão REA): Dockerfile (graphifyy py+uv; understand-anything node+pnpm), `bridge.mjs` (HTTP→engine, allowlist), `config/vetting` (versões pinadas + LICENSE), runbook Contabo | **feita** | #791 | scaffold + 9 testes node:test (vetting puro) no CI; build real na Contabo (bloqueio do dono) |
 | A2 | E2 adaptadores (`lib/forja/adaptadores/`): graph.json / `.ua` → `tipos`, puros, testados contra fixtures de saída real | **feita** | #791 | schemas lidos do CÓDIGO-FONTE (export.py / types.ts); 8 testes vitest contra fixtures fiéis; trocar por saída real da Contabo depois |
 | A3 | E3 board n8n: `studioKind` `forja` na Sala de Estudos (cards conectados + 🌡️), reusa o padrão `caderno` | **feita** | #791 | ForjaView (board + temperatura) + rota curada + registro; 8 testes; main (#788) mergeado pro branch |
-| A4 | E4 lições: codebox sem-colar, review, perguntas, teste, entrevista, leetcode; Zaeon examinadora (reusa `lib/guia`) | **a-fazer (próxima)** | — | app-side; reusa `lib/guia` (já no branch via #788) |
-| A5 | E5 Octa = casa do entregável + voz (useTTS → /api/ai/voice) | a-fazer | — | — |
+| A4 | E4 lições: codebox sem-colar, review, perguntas, teste, entrevista, leetcode; Zaeon examinadora (reusa `lib/guia`) | **feita** | #791 | `licoes.ts` + `CodeBox` (cola bloqueada) + comportamento `examinadora` (digitou≠colou); 7 testes |
+| A5 | E5 Octa = casa do entregável + voz (useTTS → /api/ai/voice) | **feita** | #791 | `narracao.ts` + `VozOcta` (lê o turno em voz alta) no OctaIDE; 6 testes |
+
+**Fase A COMPLETA** ✅ (A1 engines · A2 adaptadores · A3 board · A4 lições · A5 voz da Octa). O motor Forja
+está de pé no app; falta só a saída REAL dos engines (build na Contabo, bloqueio do dono) pra encher o grafo/
+árvore. B e C já podem rodar (geram versões estudáveis pela Forja).
 
 ## Fase B — cursos dos cards de prod (só depois de A)
 | id | tarefa | estado |
@@ -55,3 +59,10 @@ Branch E0 / prompts: `claude/forja-repo-curso` · PR draft **#791**.
   antes do engine (mostra o board + aviso de que o mapa entra quando o repo for analisado). Portão: tsc 0, lint 0,
   vitest 7938 ok, compose 0. Próxima: **A4** (lições — codebox sem-colar, review, perguntas, teste, entrevista,
   leetcode; Zaeon examinadora reusando `lib/guia`, que já veio no merge).
+- it.5 — **A4 feita**: `lib/forja/licoes.ts` (lições por temperatura a partir de `cobrancaDaTemperatura`),
+  `components/forja/CodeBox` (digitação pura — cola/arrasto barrados, cada tentativa vira sinal `colou`), e o
+  comportamento `lib/guia/comportamentos/examinadora` (a Zaeon distingue digitou≠colou e celebra o objetivo —
+  a "variedade de comportamento" que o dono pediu). Integrado no `ForjaView` (lições seguem a 🌡️; guia montado).
+  7 testes. **A5 feita**: `lib/octa/narracao.ts` (frase curta do que o turno fez) + `components/octa/VozOcta`
+  (botão que lê o turno em voz alta, useTTS → /api/ai/voice, igual ao caderno/guia), encaixado no OctaIDE. 6 testes.
+  Portão: tsc 0, lint 0, vitest 7953 ok, compose 0. **Fase A completa.** Próxima: **Fase B** (cursos dos cards de prod).
