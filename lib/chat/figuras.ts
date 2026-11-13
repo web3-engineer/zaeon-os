@@ -16,18 +16,20 @@
 import { ehGeometria } from "@/lib/chat/geometria";
 import { ehPassos } from "@/lib/chat/passos";
 import { ehDiagrama } from "@/lib/chat/diagrama";
+import { ehPartitura } from "@/lib/chat/partitura";
 
-export type Figura = "geometria" | "passos" | "diagrama" | "mermaid";
+export type Figura = "geometria" | "passos" | "diagrama" | "mermaid" | "partitura";
 
 const POR_LINGUAGEM: Readonly<Record<string, Figura>> = {
-  geometria: "geometria", passos: "passos", diagrama: "diagrama", mermaid: "mermaid",
+  geometria: "geometria", passos: "passos", diagrama: "diagrama", mermaid: "mermaid", partitura: "partitura",
 };
 
 /** A figura de um JSON cru, se ele for uma — pela forma, não pelo rótulo. */
 export function figuraDoJson(texto: string): Figura | null {
   const t = texto.trim();
   if (t.startsWith("[") && t.endsWith("]")) return ehGeometria(t) ? "geometria" : ehPassos(t) ? "passos" : null;
-  if (t.startsWith("{") && t.endsWith("}")) return ehDiagrama(t) ? "diagrama" : null;
+  // objeto: a partitura tem forma específica (chave `abc`); testada antes do diagrama pra não colidir.
+  if (t.startsWith("{") && t.endsWith("}")) return ehPartitura(t) ? "partitura" : ehDiagrama(t) ? "diagrama" : null;
   return null;
 }
 
