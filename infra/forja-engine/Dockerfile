@@ -15,12 +15,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       python3 python3-venv python3-pip git ca-certificates curl build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# uv (instalador isolado do Astral) e o graphifyy como ferramenta global → o CLI `graphify`
-ENV UV_INSTALL_DIR=/usr/local/bin
+# uv (instalador isolado do Astral) e o graphifyy como ferramenta global → o CLI `graphify`.
+# A ponte roda como usuário SEM privilégio (forja), que NÃO lê o home do root (/root é 700). Então o graphify
+# tem de viver num lugar MUNDIALMENTE legível: UV_TOOL_DIR=/opt/uv (venv da ferramenta), UV_TOOL_BIN_DIR=
+# /usr/local/bin (o CLI no PATH), e python3 do SISTEMA (not o managed do uv, que também cairia em /root).
+ENV UV_INSTALL_DIR=/usr/local/bin \
+    UV_TOOL_DIR=/opt/uv/tools \
+    UV_TOOL_BIN_DIR=/usr/local/bin \
+    UV_PYTHON_PREFERENCE=only-system
 RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
-ENV PATH="/root/.local/bin:${PATH}"
 RUN if [ -n "$GRAPHIFY_VERSION" ]; then uv tool install "graphifyy==${GRAPHIFY_VERSION}"; else uv tool install graphifyy; fi \
-    && ln -sf /root/.local/bin/graphify /usr/local/bin/graphify \
+    && chmod -R a+rX /opt/uv /usr/local/bin \
     && graphify --version
 
 # pnpm (via corepack do Node 22) e o Understand-Anything (plugin do Claude Code) — clona a revisão fixada e
@@ -29,7 +34,8 @@ RUN corepack enable && corepack prepare "pnpm@${PNPM_VERSION}" --activate
 RUN git clone --depth 1 --branch "${UNDERSTAND_REV}" https://github.com/Egonex-AI/Understand-Anything /opt/understand-anything \
     || git clone --depth 1 https://github.com/Egonex-AI/Understand-Anything /opt/understand-anything
 RUN cd /opt/understand-anything && (pnpm install --frozen-lockfile || pnpm install) \
-    && (pnpm --filter @understand-anything/core build || echo "build do core adiado — ver RUNBOOK")
+    && (pnpm --filter @understand-anything/core build || echo "build do core adiado — ver RUNBOOK") \
+    && chmod -R a+rX /opt/understand-anything   # legível pelo usuário forja (mesma armadilha do graphify)
 
 # a ponte fina (HTTP → engine), roda como usuário sem privilégio
 RUN useradd -m -u 10002 forja && mkdir -p /work && chown forja:forja /work
