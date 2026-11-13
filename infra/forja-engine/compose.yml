@@ -1,5 +1,7 @@
-# Forja engine na Contabo — publica a ponte SÓ na Tailscale. RUNBOOK-FORJA-ENGINE.md.
-# A IP da Tailscale abaixo é a MESMA box do rea-engine; a Forja usa outra porta (8800).
+# Forja engine — motor repo→curso. RUNBOOK-FORJA-ENGINE.md §Onde rodar.
+# DESTINO ESCOLHIDO: o app server (75.119.140.97, 24 GB, dedicada nossa) — co-locado com o app, então a
+# ponte é publicada SÓ no localhost (o app fala por 127.0.0.1) e o CPU é LIMITADO pra uma análise pesada
+# nunca engasgar o site. Alternativa (Contabo): ver o RUNBOOK — lá a ponte vai na Tailscale e usa cpuset.
 services:
   forja-engine:
     build:
@@ -9,20 +11,22 @@ services:
         UNDERSTAND_REV: ${UNDERSTAND_REV:-main}
     image: zaeon-forja-engine:local
     container_name: zaeon_forja_engine
-    # Fixação de núcleos POR BOX (ver RUNBOOK-FORJA-ENGINE §Onde rodar). Override por env FORJA_CPUSET.
-    #   • Contabo (box dos modelos): NUNCA 0-3 (inquilino protegido zenith-adapter, tempo real) → use 4-17.
-    #   • App server (sem inquilino de tempo real): um subconjunto pequeno que não roube do app (ex. os 2 últimos núcleos).
-    cpuset: "${FORJA_CPUSET:-4-17}"
     environment:
       FORJA_BRIDGE_TOKEN: ${FORJA_BRIDGE_TOKEN:?defina no .env}
       FORJA_BRIDGE_PORT: "8800"
       FORJA_GRAPHIFY_BACKEND: ${FORJA_GRAPHIFY_BACKEND:-}
       FORJA_UNDERSTAND_CMD: ${FORJA_UNDERSTAND_CMD:-}
     ports:
-      - "100.113.137.74:8800:8800"   # só a Tailscale enxerga
+      # app server: só o localhost enxerga (o app, co-locado, fala por 127.0.0.1:8800). Mais seguro que expor.
+      # Contabo: troque por "100.113.137.74:8800:8800" (só a Tailscale), como o rea-engine.
+      - "${FORJA_BIND:-127.0.0.1}:8800:8800"
     tmpfs:
       - /tmp:size=4g
     restart: unless-stopped
     deploy:
       resources:
-        limits: { memory: 8g }
+        limits:
+          # TETO de CPU (não fixa núcleo): a Forja analisa sob demanda e NÃO pode monopolizar a box do site.
+          # No app server deixa o site sempre com folga; na Contabo evita roubar dos modelos. Override por env.
+          cpus: "${FORJA_CPUS:-4}"
+          memory: ${FORJA_MEM:-8g}

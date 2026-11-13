@@ -1,4 +1,5 @@
-# Motor da Forja (repo → grafo/árvore) — roda SÓ na Contabo, exposto só na Tailscale (RUNBOOK-FORJA-ENGINE.md).
+# Motor da Forja (repo → grafo/árvore) — roda no app server (co-locado, ponte só no localhost) ou na Contabo
+# (ponte na Tailscale). Ver RUNBOOK-FORJA-ENGINE.md §Onde rodar. A ponte roda sem privilégio (usuário forja).
 # Python 3.11 + uv (graphifyy / Graphify) + Node 22 + pnpm (understand-anything) + a ponte fina.
 # A Forja consome a SAÍDA dos engines (graph.json / knowledge-graph.json), nunca o código-fonte deles.
 FROM node:22-bookworm

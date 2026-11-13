@@ -31,10 +31,11 @@ está de pé no app; falta só a saída REAL dos engines (build na Contabo, bloq
 |----|--------|--------|
 | C0 | achar+verificar 10 repos reais, pequenos, licença permissiva (arquétipos no prompt) | **feita** — `lib/forja/catalogoIniciantes.ts` (10 MIT reais, achados por busca ao vivo no GitHub) |
 | C-surface | surfaçar os 10 na Sala de Estudos | **feita** — itens GRÁTIS na vitrine (`ITENS_FORJA_INICIANTES`, `preço 0` — código aberto não cobra) + desbloqueio (`desbloqueioForja`) que abre o board ao pegar o card, espelhando o das jornadas |
-| C1..C10 | encher cada curso com o MAPA REAL do código (grafo/árvore) + entregável | **bloqueado só pela Contabo**: a trilha já abre (board + lições + temperatura + publicar pela Octa); falta a saída real do engine pra preencher o mapa. A UI já degrada com elegância até lá |
+| C1..C10 | encher cada curso com o MAPA REAL do código (grafo/árvore) + entregável | **bloqueado pelo motor + o elo app→ponte**: a trilha já abre (board + lições + temperatura + publicar pela Octa); falta (a) o motor rodando na box e (b) o cliente app→ponte (ver abaixo). A UI já degrada com elegância até lá |
 
 ## Bloqueios do dono (relatar, não girar à toa)
-- A1/A2 precisam do **build na Contabo** (como o REA) pra saída real dos engines.
+- **Onde roda o motor:** DECIDIDO = o **app server `75.119.140.97`** (nossa VPS dedicada, 24 GB, quase vazia; não encosta no adapter da chipflow, que vive na Contabo). Ponte no localhost, teto de CPU. Dono sobe a box (RUNBOOK §Onde rodar).
+- **Elo que falta no app (eu faço):** não existe cliente app→ponte da Forja (pro REA é `lib/octa/rea.ts`). Sem ele, mesmo com a box no ar o board fica esqueleto. É app-side, desbloqueado — construir e ligar na rota `/api/studio/forja`.
 - Prod: o dono mergeia as PRs draft (deploy automático).
 
 ## Log
