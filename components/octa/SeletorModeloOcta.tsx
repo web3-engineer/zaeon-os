@@ -1,20 +1,30 @@
 "use client";
 /**
- * SeletorModeloOcta — a pílula de modelo no composer do agente de código geral do Octa: o aluno
- * escolhe entre "Octa (padrão)" e os premium (Claude/Codex) que o servidor liberou pra ele.
+ * SeletorModeloOcta — a pílula de modelo no composer do agente de código geral do Octa: o aluno escolhe
+ * entre "Gemini" (padrão da casa), os LOCAIS grátis que o servidor liberou (qwen3-coder, plano Plus) e os
+ * PREMIUM (Claude/Codex, plano Max).
  *
- * A lista vem de GET /api/octa/modelos (flag + plano Max + gateway) — quem não pode só vê o Octa, e
- * a pílula nem aparece (temPremium=false). A escolha mora no localStorage do aparelho. O portão de
- * verdade é server-side na /api/octa/agente; aqui é só conveniência de UI.
+ * A lista vem de GET /api/octa/modelos (flag + plano + gateway), cada item com um `tipo` que pinta a cor/
+ * selo. Quem só tem o Gemini nem vê a pílula (temEscolha=false). A escolha mora no localStorage do aparelho.
+ * O portão de verdade é server-side na /api/octa/agente; aqui é só conveniência de UI.
  */
 import { useEffect, useRef, useState } from "react";
 
 const CHAVE = "octa.modelo";
-export type OpcaoModelo = { id: string; nome: string };
-const PADRAO: OpcaoModelo[] = [{ id: "octa", nome: "Octa (padrão)" }];
+export type TipoModelo = "padrao" | "local" | "premium";
+export type OpcaoModelo = { id: string; nome: string; tipo?: TipoModelo };
+const PADRAO: OpcaoModelo[] = [{ id: "octa", nome: "Gemini", tipo: "padrao" }];
+
+/** Cor, símbolo e selo por tipo de modelo. */
+const ESTILO: Record<TipoModelo, { simbolo: string; pilula: string; icone: string; selo?: string; seloCor?: string }> = {
+  padrao: { simbolo: "⬢", pilula: "text-emerald-700 dark:text-emerald-300 border-emerald-500/40 bg-emerald-500/10", icone: "text-emerald-600 dark:text-emerald-300" },
+  local: { simbolo: "⬡", pilula: "text-sky-700 dark:text-sky-300 border-sky-500/45 bg-sky-500/10", icone: "text-sky-600 dark:text-sky-300", selo: "Plus", seloCor: "text-sky-500 dark:text-sky-300/70" },
+  premium: { simbolo: "✦", pilula: "text-violet-700 dark:text-violet-300 border-violet-500/45 bg-violet-500/10", icone: "text-violet-600 dark:text-violet-300", selo: "Max", seloCor: "text-violet-400 dark:text-violet-300/60" },
+};
+const estiloDe = (o?: OpcaoModelo) => ESTILO[o?.tipo ?? "padrao"];
 
 /** A escolha do modelo do Octa + a lista liberada pro usuário (do servidor). */
-export function useModeloOcta(): { modelo: string; opcoes: OpcaoModelo[]; escolher: (id: string) => void; temPremium: boolean } {
+export function useModeloOcta(): { modelo: string; opcoes: OpcaoModelo[]; escolher: (id: string) => void; temEscolha: boolean } {
   const [opcoes, setOpcoes] = useState<OpcaoModelo[]>(PADRAO);
   const [modelo, setModelo] = useState("octa");
   useEffect(() => {
@@ -28,7 +38,7 @@ export function useModeloOcta(): { modelo: string; opcoes: OpcaoModelo[]; escolh
         let salvo = "octa";
         try { salvo = localStorage.getItem(CHAVE) || "octa"; } catch { /* sem storage: padrão */ }
         setModelo(j.modelos.some((m: OpcaoModelo) => m.id === salvo) ? salvo : "octa");  // escolha salva só vale se ainda liberada
-      } catch { /* offline: fica no Octa */ }
+      } catch { /* offline: fica no Gemini */ }
     })();
     return () => { vivo = false; };
   }, []);
@@ -38,7 +48,7 @@ export function useModeloOcta(): { modelo: string; opcoes: OpcaoModelo[]; escolh
     setModelo(id);
     try { localStorage.setItem(CHAVE, id); } catch { /* só não lembra */ }
   };
-  return { modelo, opcoes, escolher, temPremium: opcoes.length > 1 };
+  return { modelo, opcoes, escolher, temEscolha: opcoes.length > 1 };
 }
 
 export function SeletorModeloOcta({ modelo, opcoes, onChange, desabilitado }: { modelo: string; opcoes: OpcaoModelo[]; onChange: (id: string) => void; desabilitado?: boolean }) {
@@ -54,10 +64,7 @@ export function SeletorModeloOcta({ modelo, opcoes, onChange, desabilitado }: { 
   }, [aberto]);
 
   const atual = opcoes.find((m) => m.id === modelo) ?? opcoes[0];
-  const ehPremium = (id: string | undefined) => !!id && id !== "octa";
-  const corPilula = ehPremium(atual?.id)
-    ? "text-violet-700 dark:text-violet-300 border-violet-500/45 bg-violet-500/10"
-    : "text-emerald-700 dark:text-emerald-300 border-emerald-500/40 bg-emerald-500/10";
+  const est = estiloDe(atual);
 
   return (
     <div ref={raiz} className="relative">
@@ -67,11 +74,11 @@ export function SeletorModeloOcta({ modelo, opcoes, onChange, desabilitado }: { 
         onClick={() => setAberto((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={aberto}
-        title={`Modelo do Octa: ${atual?.nome ?? "Octa"}. Clique para trocar.`}
-        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-colors disabled:opacity-50 ${corPilula}`}
+        title={`Modelo do Octa: ${atual?.nome ?? "Gemini"}. Clique para trocar.`}
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-colors disabled:opacity-50 ${est.pilula}`}
       >
-        <span aria-hidden className="text-[12px] leading-none">{ehPremium(atual?.id) ? "✦" : "⬢"}</span>
-        {atual?.nome ?? "Octa"}
+        <span aria-hidden className="text-[12px] leading-none">{est.simbolo}</span>
+        {atual?.nome ?? "Gemini"}
         <span aria-hidden className="text-[9px] opacity-70">▾</span>
       </button>
       {aberto && (
@@ -82,7 +89,7 @@ export function SeletorModeloOcta({ modelo, opcoes, onChange, desabilitado }: { 
         >
           {opcoes.map((m) => {
             const sel = m.id === modelo;
-            const prem = ehPremium(m.id);
+            const e = estiloDe(m);
             return (
               <li key={m.id} role="option" aria-selected={sel}>
                 <button
@@ -90,10 +97,10 @@ export function SeletorModeloOcta({ modelo, opcoes, onChange, desabilitado }: { 
                   onClick={() => { onChange(m.id); setAberto(false); }}
                   className={`w-full text-left flex items-center gap-2 px-2.5 py-2 rounded-xl transition-colors ${sel ? "bg-slate-100 dark:bg-white/10" : "hover:bg-slate-50 dark:hover:bg-white/5"}`}
                 >
-                  <span aria-hidden className={`text-[13px] ${prem ? "text-violet-600 dark:text-violet-300" : "text-emerald-600 dark:text-emerald-300"}`}>{prem ? "✦" : "⬢"}</span>
+                  <span aria-hidden className={`text-[13px] ${e.icone}`}>{e.simbolo}</span>
                   <span className="flex-1 text-[12.5px] font-semibold text-slate-900 dark:text-white">
                     {m.nome}
-                    {prem && <span className="ml-1.5 text-[10px] font-bold uppercase tracking-wide text-violet-400 dark:text-violet-300/60">Max</span>}
+                    {e.selo && <span className={`ml-1.5 text-[10px] font-bold uppercase tracking-wide ${e.seloCor}`}>{e.selo}</span>}
                   </span>
                   {sel && <span aria-hidden className="text-[12px] text-slate-500">✓</span>}
                 </button>

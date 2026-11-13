@@ -53,22 +53,38 @@ const SEM_TETO = Number.MAX_SAFE_INTEGER;
 export function escolhaModeloOcta(
   env: Env = process.env,
   fluxo?: "landing",
-  premium?: { grupo: string; multimodal: boolean },
+  escolhido?: { grupo: string; multimodal: boolean; tipo?: "premium" | "local" },
 ): EscolhaOcta {
   const ligado = env.OCTA_MODELO_LOCAL === "1";
+  // LOCAL escolhido pelo aluno (plano plus+, lib/octa/modelosLocais): o coder da Contabo FORÇADO como
+  // primário, independente do OCTA_MODELO_LOCAL (que é o "padrão" global do dono). GRÁTIS, então ganha
+  // as mesmas proteções do CPU do fluxo local comum — orçamento/turno, teto de prompt, pausa por falha —
+  // e a reserva é o Google "padrão" (rápido/barato), que LÊ imagem: o coder não, então a captura da IDE
+  // vira texto antes de ir pro local (localSemImagem).
+  if (escolhido?.tipo === "local") {
+    return {
+      local: escolhido.grupo,
+      reserva: env.OCTA_MODELO_RESERVA || modeloReal("padrao", env as NodeJS.ProcessEnv),
+      timeoutMs: num(env.OCTA_LOCAL_TIMEOUT_MS, 120_000),
+      orcamentoMs: num(env.OCTA_LOCAL_ORCAMENTO_MS, 240_000),
+      maxPromptTok: num(env.OCTA_LOCAL_MAX_PROMPT_TOK, 3000),
+      pausaMs: num(env.OCTA_LOCAL_PAUSA_MS, 120_000),
+      localSemImagem: !escolhido.multimodal,
+    };
+  }
   // Premium (Claude/Codex da conta de API da org, lib/octa/modelosPremium): o PRIMÁRIO é o grupo
   // pedido; a reserva é o Google "forte", rede de segurança se o provedor cair (o `servidoPor` da rota
   // mostra quem serviu de fato). Sem teto de prompt nem de tempo — o teto real é o budget da virtual key.
   // Vale igual dentro ou fora do fluxo landing: o aluno escolheu o modelo, ele dirige o turno.
-  if (premium) {
+  if (escolhido) {
     return {
-      local: premium.grupo,
+      local: escolhido.grupo,
       reserva: modeloReal("forte", env as NodeJS.ProcessEnv),
       timeoutMs: num(env.OCTA_PREMIUM_TIMEOUT_MS, 120_000),
       orcamentoMs: SEM_TETO,
       maxPromptTok: SEM_TETO,
       pausaMs: num(env.OCTA_LOCAL_PAUSA_MS, 120_000),
-      localSemImagem: !premium.multimodal,   // Codex não lê imagem → a captura vira texto antes de ir
+      localSemImagem: !escolhido.multimodal,   // Codex não lê imagem → a captura vira texto antes de ir
     };
   }
   if (fluxo === "landing") {

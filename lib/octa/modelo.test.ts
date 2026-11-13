@@ -88,6 +88,27 @@ describe("octa · modelo premium (Claude/Codex da conta de API da org)", () => {
   });
 });
 
+describe("octa · modelo LOCAL escolhido (qwen3-coder, plano plus+)", () => {
+  it("força o coder como primário, reserva Google padrão, COM os tetos de CPU; coder não lê imagem → localSemImagem", () => {
+    const e = escolhaModeloOcta(PROD, undefined, { grupo: "zaeon-local-coder", multimodal: false, tipo: "local" });
+    expect(e).toMatchObject({
+      local: "zaeon-local-coder", reserva: "vertex_ai/gemini-3.5-flash",
+      timeoutMs: 120_000, orcamentoMs: 240_000, maxPromptTok: 3000, localSemImagem: true,
+    });
+  });
+  it("vale mesmo com OCTA_MODELO_LOCAL desligado — a escolha do aluno não depende do flag global do dono", () => {
+    const e = escolhaModeloOcta({ ...PROD, OCTA_MODELO_LOCAL: "0" }, undefined, { grupo: "zaeon-local-coder", multimodal: false, tipo: "local" });
+    expect(e.local).toBe("zaeon-local-coder");
+  });
+  it("coder responde → a reserva nem é chamada", async () => {
+    const { g, chamados } = gateway({ "zaeon-local-coder": async () => resp("ok do coder") });
+    const c = criarChamadorOcta(g, escolhaModeloOcta(PROD, undefined, { grupo: "zaeon-local-coder", multimodal: false, tipo: "local" }));
+    const r = await c(msgs);
+    expect(r.content).toBe("ok do coder");
+    expect(chamados).toEqual(["zaeon-local-coder"]);
+  });
+});
+
 describe("octa · chamador com reserva", () => {
   it("flag desligada: só o Google, nunca toca o local", async () => {
     const { g, chamados } = gateway({ "vertex_ai/gemini-2.5-pro": async () => resp("ok") });

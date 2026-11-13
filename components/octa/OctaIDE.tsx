@@ -182,8 +182,8 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
   const reaFileRef = useRef<HTMLInputElement>(null);
   const REA_ON = process.env.NEXT_PUBLIC_OCTA_REA === "1";
   const [modo, setModo] = useState<"review" | "change">("review");
-  // modelo do agente de código geral (rascunho): Octa padrão ou premium liberado (Claude/Codex)
-  const { modelo: modeloOcta, opcoes: opcoesModelo, escolher: escolherModelo, temPremium } = useModeloOcta();
+  // modelo do agente de código geral (rascunho): Gemini padrão, local grátis (Qwen3-Coder) ou premium (Claude/Codex)
+  const { modelo: modeloOcta, opcoes: opcoesModelo, escolher: escolherModelo, temEscolha } = useModeloOcta();
   const [escopo, setEscopo] = useState<"ativo" | "projeto">("ativo");
   const [enviando, setEnviando] = useState(false);
   const [decidindo, setDecidindo] = useState(false);
@@ -977,7 +977,7 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
                         </button>
                       ))}
                     </div>
-                    {temPremium && <SeletorModeloOcta modelo={modeloOcta} opcoes={opcoesModelo} onChange={escolherModelo} desabilitado={enviando} />}
+                    {temEscolha && <SeletorModeloOcta modelo={modeloOcta} opcoes={opcoesModelo} onChange={escolherModelo} desabilitado={enviando} />}
                     {modo === "change" && (
                       <select value={escopo} onChange={(e) => setEscopo(e.target.value as "ativo" | "projeto")} className="rounded-md px-1.5 py-1 bg-transparent" style={{ border: `1px solid ${Z.borda}`, color: Z.fraco }}
                         title="O que o Octa pode editar neste pedido">
