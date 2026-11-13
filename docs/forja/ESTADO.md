@@ -23,14 +23,15 @@ está de pé no app; falta só a saída REAL dos engines (build na Contabo, bloq
 ## Fase B — cursos dos cards de prod (só depois de A)
 | id | tarefa | estado |
 |----|--------|--------|
-| B0 | listar os cards estudáveis (`lib/estudos/vitrine` + `.claude/skills/*`) e enfileirar um por linha | a-fazer |
-| B* | um card por iteração → versão estudável (curso/entregável) pela Forja | a-fazer |
+| B0 | listar os cards estudáveis (`lib/estudos/vitrine` + `.claude/skills/*`) e enfileirar um por linha | a-fazer (próxima) |
+| B* | um card por iteração → versão estudável (curso/entregável) pela Forja | a-fazer — o pipe (esqueleto→board→vitrine→desbloqueio) já existe (ver C); B reusa pra cada card de prod |
 
 ## Fase C — 10 projetos OSS iniciantes (só depois de A)
 | id | tarefa | estado |
 |----|--------|--------|
-| C0 | achar+verificar 10 repos reais, pequenos, licença permissiva (arquétipos no prompt) | a-fazer |
-| C1..C10 | um projeto por iteração → curso + entregável publicável no GitHub via Octa | a-fazer |
+| C0 | achar+verificar 10 repos reais, pequenos, licença permissiva (arquétipos no prompt) | **feita** — `lib/forja/catalogoIniciantes.ts` (10 MIT reais, achados por busca ao vivo no GitHub) |
+| C-surface | surfaçar os 10 na Sala de Estudos | **feita** — itens GRÁTIS na vitrine (`ITENS_FORJA_INICIANTES`, `preço 0` — código aberto não cobra) + desbloqueio (`desbloqueioForja`) que abre o board ao pegar o card, espelhando o das jornadas |
+| C1..C10 | encher cada curso com o MAPA REAL do código (grafo/árvore) + entregável | **bloqueado só pela Contabo**: a trilha já abre (board + lições + temperatura + publicar pela Octa); falta a saída real do engine pra preencher o mapa. A UI já degrada com elegância até lá |
 
 ## Bloqueios do dono (relatar, não girar à toa)
 - A1/A2 precisam do **build na Contabo** (como o REA) pra saída real dos engines.
@@ -66,3 +67,11 @@ está de pé no app; falta só a saída REAL dos engines (build na Contabo, bloq
   7 testes. **A5 feita**: `lib/octa/narracao.ts` (frase curta do que o turno fez) + `components/octa/VozOcta`
   (botão que lê o turno em voz alta, useTTS → /api/ai/voice, igual ao caderno/guia), encaixado no OctaIDE. 6 testes.
   Portão: tsc 0, lint 0, vitest 7953 ok, compose 0. **Fase A completa.** Próxima: **Fase B** (cursos dos cards de prod).
+- it.6 — **C0 + C-surface feitas**: `lib/forja/catalogoIniciantes.ts` com 10 projetos OSS REAIS pra iniciante
+  (lista de tarefas, clima, calculadora, quiz, pomodoro, jogo da velha, Markdown→HTML, encurtador de URL, API REST
+  CRUD, portfólio — todos MIT, achados por busca AO VIVO no GitHub; autor/licença reais). Surfaçados na vitrine como
+  itens **grátis** (código aberto não cobra — correção do dono: a vitrine segue, só não cobra OSS) + desbloqueio
+  (`desbloqueioForja`) espelhando o das jornadas: pegar o card abre o board da Forja na Sala de Estudos. Registro:
+  `ITENS_FORJA_INICIANTES` na vitrine, `SEM_ESTUDO`/aviso/efeito no StudyCoworkChat, `marcarForjaPendente` na
+  VitrineEstudos. Testes novos (catálogo + desbloqueio + vitrine). Portão verde. Falta só o engine real (Contabo)
+  encher o mapa de cada curso. Próxima: **Fase B** (reusa este pipe pros cards de prod).

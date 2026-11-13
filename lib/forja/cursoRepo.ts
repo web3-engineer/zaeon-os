@@ -5,6 +5,7 @@
  */
 import type { CursoRepo, EsqueletoRepo, Licenca, GrafoConhecimento, ArvoreEntendimento } from "./tipos";
 import { modulosPadrao } from "./curso";
+import { INICIANTES } from "./catalogoIniciantes";
 
 export type { EsqueletoRepo } from "./tipos";
 
@@ -14,7 +15,7 @@ export const LICENCAS_ENGINES: Licenca[] = [
   { spdx: "MIT", titular: "Yuxiang Lin; Infinite Universe, Inc.", url: "https://github.com/Egonex-AI/Understand-Anything" },
 ];
 
-/** Catálogo curado de esqueletos (um por "curso de repositório" que a Zaeon oferece pronto). */
+/** Catálogo curado de esqueletos: o genérico "exemplo" + os 10 projetos OSS para iniciantes (Fase C). */
 export const ESQUELETOS: EsqueletoRepo[] = [
   {
     id: "exemplo",
@@ -23,6 +24,7 @@ export const ESQUELETOS: EsqueletoRepo[] = [
     resumo: "Entenda o código de verdade: a Zaeon lê o repo, monta o mapa e te conduz do básico ao avançado.",
     modo: "curso",
   },
+  ...INICIANTES,
 ];
 
 /** Acha um esqueleto pelo id; sem id casa, cai no primeiro (há sempre ao menos um). PURA. */
@@ -45,7 +47,7 @@ export function montarCursoEsqueleto(esq: EsqueletoRepo): CursoRepo {
     arvore,
     modulos: modulosPadrao(esq.modo),
     licoes: [],
-    licencas: LICENCAS_ENGINES,
+    licencas: [...(esq.licenca ? [esq.licenca] : []), ...LICENCAS_ENGINES],
   };
 }
 

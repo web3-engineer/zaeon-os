@@ -22,7 +22,8 @@ describe("cursoRepo — esqueleto curado", () => {
 
   it("carrega as licenças dos dois engines (atribuição preservada)", () => {
     const c = cursoEsqueletoPorId("exemplo")!;
-    expect(c.licencas).toBe(LICENCAS_ENGINES);
+    // "exemplo" não tem repo-licença própria → só as dos dois engines
+    expect(c.licencas).toEqual(LICENCAS_ENGINES);
     expect(c.licencas.map((l) => l.spdx).sort()).toEqual(["Apache-2.0 OR MIT", "MIT"]);
     expect(c.licencas.every((l) => l.url?.startsWith("https://github.com/"))).toBe(true);
   });

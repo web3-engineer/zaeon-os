@@ -110,6 +110,10 @@ export type EsqueletoRepo = {
   titulo: string;
   resumo: string;
   modo: ModoEstudo;
+  /** a licença do repo estudado (atribuição preservada, somada às dos engines). */
+  licenca?: Licenca;
+  /** o conceito/arquétipo que o aluno aprende (ex.: "lista de tarefas"). */
+  conceito?: string;
 };
 
 /** O curso inteiro que a Forja produz a partir de um repositório. */
