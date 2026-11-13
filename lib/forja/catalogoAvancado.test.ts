@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import { AVANCADOS, TEMA_AVANCADO } from "./catalogoAvancado";
 import { INICIANTES } from "./catalogoIniciantes";
 import { ESQUELETOS, esqueletoPorId, montarCursoEsqueleto } from "./cursoRepo";
+import { CATALOGO, ITENS_FORJA_AVANCADOS } from "@/lib/estudos/vitrine";
+import { forjaDoItem } from "./desbloqueioForja";
 
 // Licenças PERMISSIVAS aceitas na trilha avançada (HANDOFF-AVANCADO §4): sem copyleft (GPL/AGPL).
 const PERMISSIVAS = ["MIT", "Apache-2.0", "BSD-3-Clause", "BSD-2-Clause", "ISC", "MPL-2.0", "Unlicense", "0BSD"];
@@ -41,6 +43,24 @@ describe("catálogo da trilha AVANÇADA (card #793)", () => {
       expect(curso.licencas).toHaveLength(3); // a do repo estudado + as dos dois engines
       expect(curso.licencas[0].spdx).toBe(e.licenca?.spdx);
       expect(curso.licencas[0].titular).toBe(e.licenca?.titular);
+    }
+  });
+
+  it("estão na vitrine como itens GRÁTIS 'forja:<id>', marcados como avançados (não iniciante)", () => {
+    expect(ITENS_FORJA_AVANCADOS).toHaveLength(AVANCADOS.length);
+    const idsVitrine = CATALOGO.map((i) => i.id);
+    for (const e of AVANCADOS) {
+      const item = CATALOGO.find((i) => i.id === `forja:${e.id}`);
+      expect(item, `forja:${e.id} fora do CATALOGO`).toBeTruthy();
+      expect(idsVitrine.filter((x) => x === `forja:${e.id}`)).toHaveLength(1);
+      expect(item!.preco).toBe(0);
+      expect(item!.tipo).toBe("curso");
+      expect(item!.fracoes.total).toBe(1);
+      expect(item!.tags).toContain("avançado");
+      expect(item!.tags).not.toContain("iniciante");
+      expect(item!.entrega.join(" ")).toContain(e.repo);
+      expect(item!.entrega.join(" ")).not.toMatch(/primeiro projeto/i); // entregável é rodar/simular
+      expect(forjaDoItem(item)).toBe(e.id); // o card desbloqueia o board certo na Sala de Estudos
     }
   });
 
