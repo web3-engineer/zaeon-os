@@ -62,6 +62,7 @@ import DocumentoArtefato from "@/components/studio/DocumentoArtefato";
 import { abrirDocumento, EVT_ABRIR_DOC, KINDS_EM_ABA, ROTULO_DOC, type DocArtefato } from "@/lib/chat/documentos";
 import { assuntoDe, pedeAula } from "@/lib/agent/aprender";
 import { pedeCaderno } from "@/lib/jornadas/cadernoRitmo";
+import { EVT_ABRIR_CADERNO, consumirCadernoPendente } from "@/lib/jornadas/desbloqueio";
 import ChatZoom, { useChatFontScale } from "@/components/chat/ChatZoom";
 import { zoomNoDiagrama } from "@/components/studio/DiagramView";
 import { AnimatePresence } from "framer-motion";
@@ -977,6 +978,24 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     }
   }, [focusIds, avisarFalha]);
   const runStudioActionRef = useRef(runStudioAction); runStudioActionRef.current = runStudioAction;
+
+  // P4 · laço do desbloqueio: o card de música desbloqueado deixa um Caderno PENDENTE (lib/jornadas/
+  // desbloqueio). A Sala de Estudos abre esse caderno sozinha — no mount (quem já comprou) e pelo
+  // evento (quem acabou de comprar, com a sala já aberta). Abre uma vez por id nesta sessão.
+  const cadernoAbertoRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const abrir = (id: string | null) => {
+      const c = id || "ritmo";
+      if (cadernoAbertoRef.current.has(c)) return;
+      cadernoAbertoRef.current.add(c);
+      void runStudioActionRef.current("caderno", c, undefined, false);
+    };
+    const pendente = consumirCadernoPendente();
+    if (pendente) abrir(pendente);
+    const onEvt = (e: Event) => { consumirCadernoPendente(); abrir((e as CustomEvent).detail as string); };
+    window.addEventListener(EVT_ABRIR_CADERNO, onEvt);
+    return () => window.removeEventListener(EVT_ABRIR_CADERNO, onEvt);
+  }, []);
 
   // ── envio pro chat da Aura ──────────────────────────────────────────────────
   // `override` = envio direto (clique numa opção/conceito da resposta do harness),
