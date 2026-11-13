@@ -42,7 +42,7 @@ describe("/api/octa/turnos", () => {
     const r = await POST(post({ projetoId: ID, pedido: " faz a landing ", userId: "hacker", email: "h@x", permissao: "auto", estado: { msgs: [] } }));
     expect(r.status).toBe(202);
     expect(await r.json()).toEqual({ turnoId: "t1" });
-    expect(m.iniciar.mock.calls[0][1]).toEqual({ userId: "u1", email: "a@b.c", projetoId: ID, pedido: "faz a landing", modelo: null });
+    expect(m.iniciar.mock.calls[0][1]).toEqual({ userId: "u1", email: "a@b.c", projetoId: ID, pedido: "faz a landing" });
   });
 
   it("POST sem pedido/projetoId → 400; gateway desligado → 503", async () => {

@@ -29,7 +29,6 @@
 import { semImagens, type ChamarModelo, type MsgModelo, type RespostaModelo } from "@/lib/octa/agente";
 import { modeloReal } from "@/lib/octa/litellm";
 import { ehProvedorTerceiro, semSegredos } from "@/lib/octa/noPii";
-import { viaGateway, type ModeloChat } from "@/lib/chat/modelos";
 
 type Env = Record<string, string | undefined>;
 const num = (v: string | undefined, d: number) => (Number(v) > 0 ? Number(v) : d);
@@ -45,22 +44,33 @@ export type EscolhaOcta = {
   landing?: true;
   /** A reserva não lê imagem (qwen3-coder): as capturas viram texto antes de chamá-la. */
   reservaSemImagem?: boolean;
+  /** O PRIMÁRIO não lê imagem (ex.: Codex premium): as capturas viram texto antes de chamá-lo. */
+  localSemImagem?: boolean;
 };
 
 const SEM_TETO = Number.MAX_SAFE_INTEGER;
 
-/** O modelo do catálogo (lib/chat/modelos) no formato que o gateway roteia: gateway→grupo, google→vertex_ai/… */
-export function modeloOctaDoCatalogo(m: ModeloChat): string {
-  return viaGateway(m) ? m.grupo : `vertex_ai/${m.vertex}`;
-}
-
-/**
- * `escolhido`: o modelo que o aluno pegou no seletor do Octa (catálogo de lib/chat/modelos). Quando
- * vem, ele é o PRIMÁRIO (pula o local) — é a escolha explícita do aluno, Claude incluso. Null/landing
- * seguem o comportamento por env.
- */
-export function escolhaModeloOcta(env: Env = process.env, fluxo?: "landing", escolhido?: ModeloChat | null): EscolhaOcta {
+export function escolhaModeloOcta(
+  env: Env = process.env,
+  fluxo?: "landing",
+  premium?: { grupo: string; multimodal: boolean },
+): EscolhaOcta {
   const ligado = env.OCTA_MODELO_LOCAL === "1";
+  // Premium (Claude/Codex da conta de API da org, lib/octa/modelosPremium): o PRIMÁRIO é o grupo
+  // pedido; a reserva é o Google "forte", rede de segurança se o provedor cair (o `servidoPor` da rota
+  // mostra quem serviu de fato). Sem teto de prompt nem de tempo — o teto real é o budget da virtual key.
+  // Vale igual dentro ou fora do fluxo landing: o aluno escolheu o modelo, ele dirige o turno.
+  if (premium) {
+    return {
+      local: premium.grupo,
+      reserva: modeloReal("forte", env as NodeJS.ProcessEnv),
+      timeoutMs: num(env.OCTA_PREMIUM_TIMEOUT_MS, 120_000),
+      orcamentoMs: SEM_TETO,
+      maxPromptTok: SEM_TETO,
+      pausaMs: num(env.OCTA_LOCAL_PAUSA_MS, 120_000),
+      localSemImagem: !premium.multimodal,   // Codex não lê imagem → a captura vira texto antes de ir
+    };
+  }
   if (fluxo === "landing") {
     return {
       local: modeloReal("padrao", env as NodeJS.ProcessEnv),
@@ -71,17 +81,6 @@ export function escolhaModeloOcta(env: Env = process.env, fluxo?: "landing", esc
       pausaMs: num(env.OCTA_LOCAL_PAUSA_MS, 120_000),
       landing: true,
       reservaSemImagem: ligado,
-    };
-  }
-  // Escolha explícita do aluno no seletor do Octa → é o primário, pula o local.
-  if (escolhido) {
-    return {
-      local: null,
-      reserva: modeloOctaDoCatalogo(escolhido),
-      timeoutMs: num(env.OCTA_LOCAL_TIMEOUT_MS, 120_000),
-      orcamentoMs: num(env.OCTA_LOCAL_ORCAMENTO_MS, 240_000),
-      maxPromptTok: SEM_TETO,
-      pausaMs: num(env.OCTA_LOCAL_PAUSA_MS, 120_000),
     };
   }
   return {
@@ -147,7 +146,7 @@ export function criarChamadorOcta(
       else if (tokensDe(msgs) > escolha.maxPromptTok) motivo = "prompt_grande";
       else {
         try {
-          const r = await chamarSeguro(escolha.local, msgs, AbortSignal.timeout(Math.min(escolha.timeoutMs, resta)));
+          const r = await chamarSeguro(escolha.local, escolha.localSemImagem ? semImagens(msgs) : msgs, AbortSignal.timeout(Math.min(escolha.timeoutMs, resta)));
           gastoLocal += agora() - t0;
           if (!vazia(r)) { servidos.push({ modelo: escolha.local, modeloId: r.modeloId, ms: agora() - t0 }); return r; }
           motivo = "resposta_vazia";
@@ -198,5 +197,8 @@ export function criarChamadorOcta(
   return f;
 }
 
+/** Rótulos amigáveis dos grupos premium (espelha MODELOS_PREMIUM[].grupo em lib/octa/modelosPremium). */
+const NOMES_PREMIUM: Record<string, string> = { "zaeon-claude": "claude", "zaeon-codex": "codex" };
 /** Nome pra tela: "vertex_ai/gemini-3.5-flash" → "gemini-3.5-flash", "zaeon-local-coder" → "qwen3-coder". */
-export const nomeDoModelo = (m: string) => (m === "zaeon-local-coder" ? "qwen3-coder" : m.replace(/^vertex_ai\//, ""));
+export const nomeDoModelo = (m: string) =>
+  NOMES_PREMIUM[m] ?? (m === "zaeon-local-coder" ? "qwen3-coder" : m.replace(/^vertex_ai\//, ""));

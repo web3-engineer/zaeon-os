@@ -14,7 +14,6 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { CHAVE_ULTIMO_PROJETO } from "@/lib/octa/ideNav";
 import {
   Play, Plus, X, FileText, Folder, FolderOpen, Trash2, Undo2, Send, Loader2, ShieldCheck, Pencil, ChevronRight, ChevronDown, Square,
   Github, Rocket, Globe, ExternalLink, Code, Eye, Palette, ChevronsUpDown, Check, LogOut, FolderPlus, HardDrive, Microscope,
@@ -29,7 +28,6 @@ import {
 import { textoErroPublicar, type EventoTurno } from "@/lib/octa/passos";
 import { useArmazemDaConta } from "@/lib/chat/contaNoNavegador";
 import type { Armazem } from "@/lib/chat/threads";
-import { SeletorModelo, useModeloEscolhido } from "@/components/chat/SeletorModelo";
 import type { PermissaoOcta } from "@/lib/octa/projetos";
 import PreviaSvg from "./PreviaSvg";
 import CorrigirComOcta from "./CorrigirComOcta";
@@ -38,6 +36,7 @@ import { PassosTurno, CartaoAprovacao } from "./PassosTurno";
 import { useTurnoOcta, type EstadoTurno, type StatusTurno } from "./useTurnoOcta";
 import { tipoProjeto } from "@/lib/octa/tipoProjeto";
 import ReaProofPanel from "./ReaProofPanel";
+import { useModeloOcta, SeletorModeloOcta } from "@/components/octa/SeletorModeloOcta";
 
 const Monaco = dynamic(() => import("@monaco-editor/react").then((m) => m.default), {
   ssr: false,
@@ -76,8 +75,7 @@ type Publicacao =
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const CHAVE_CHAT = "zaeon.octa.chat.v1";
-// a chave do "último projeto" mora em lib/octa/ideNav (fonte única: a ponte REA→Octa grava nela)
-const CHAVE_ULTIMO = CHAVE_ULTIMO_PROJETO;
+const CHAVE_ULTIMO = "zaeon.octa.projeto.ultimo";
 const chaveChatProjeto = (id: string) => `zaeon.octa.chat.${id}`;
 const chaveTurno = (id: string) => `zaeon.octa.turno.${id}`;
 const linkSeguro = (u: unknown): string | null => (typeof u === "string" && /^https:\/\//i.test(u) ? u : null);
@@ -178,12 +176,12 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [chaveChat, setChaveChat] = useState<string | null>(null);
   const [input, setInput] = useState("");
-  // modelo do Octa — escolha própria (chave separada do chat da Aura); vai no turno de projeto e no rascunho
-  const [modeloOcta, escolherModeloOcta] = useModeloEscolhido("zaeon.octa.modelo.v1");
   const [reaBusy, setReaBusy] = useState(false);
   const reaFileRef = useRef<HTMLInputElement>(null);
   const REA_ON = process.env.NEXT_PUBLIC_OCTA_REA === "1";
   const [modo, setModo] = useState<"review" | "change">("review");
+  // modelo do agente de código geral (rascunho): Octa padrão ou premium liberado (Claude/Codex)
+  const { modelo: modeloOcta, opcoes: opcoesModelo, escolher: escolherModelo, temPremium } = useModeloOcta();
   const [escopo, setEscopo] = useState<"ativo" | "projeto">("ativo");
   const [enviando, setEnviando] = useState(false);
   const [decidindo, setDecidindo] = useState(false);
@@ -513,7 +511,7 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
       const foto = ideRef.current;
       antesDoTurno.current = null;
       setMsgs((v) => [...v, { id: uid(), role: "user", content: pedido }]);
-      const r = await iniciar(p.id, pedido, modeloOcta.id);
+      const r = await iniciar(p.id, pedido);
       if (!r.ok) { setMsgs((v) => [...v, { id: uid(), role: "assistant", content: erroAoIniciar(r.status, r.erro), erro: true }]); return; }
       gravarLS(chaveTurno(p.id), r.turnoId);
       // um turno que já estava rodando não começou destes arquivos: sem foto, sem desfazer
@@ -566,7 +564,7 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
     try {
       const r = await fetch("/api/octa/agente", {
         method: "POST", signal: ac.signal, headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pedido, historico, workspace: ide.arquivos, modo: modoPedido, liberados, arquivoAtivo: ativo, modelo: modeloOcta.id }),
+        body: JSON.stringify({ pedido, historico, workspace: ide.arquivos, modo: modoPedido, liberados, arquivoAtivo: ativo, modelo: modeloOcta }),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) {
@@ -972,6 +970,7 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
                         </button>
                       ))}
                     </div>
+                    {temPremium && <SeletorModeloOcta modelo={modeloOcta} opcoes={opcoesModelo} onChange={escolherModelo} desabilitado={enviando} />}
                     {modo === "change" && (
                       <select value={escopo} onChange={(e) => setEscopo(e.target.value as "ativo" | "projeto")} className="rounded-md px-1.5 py-1 bg-transparent" style={{ border: `1px solid ${Z.borda}`, color: Z.fraco }}
                         title="O que o Octa pode editar neste pedido">
@@ -983,10 +982,6 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
                 )}
               </div>
               {REA_ON && process.env.NEXT_PUBLIC_REA_SUCCESS_MEMORY === "1" && <ReaProofPanel projectId={projeto?.id ?? null} />}
-              {/* seletor de modelo do Octa (catálogo único: Gemini + Claude). Escolha própria, separada do chat. */}
-              <div className="mb-1.5 flex items-center">
-                <SeletorModelo valor={modeloOcta} onChange={escolherModeloOcta} desabilitado={!!turno || enviando} />
-              </div>
               <div className="flex items-end gap-2 rounded-lg px-2 py-1.5" style={{ background: Z.bg, border: `1px solid ${Z.borda}` }}>
                 <textarea value={input} onChange={(e) => setInput(e.target.value)} rows={2} placeholder={projeto ? (turno ? "Espere o Octa terminar…" : "Peça ao Octa… (ex.: uma landing pra minha confeitaria)") : "Peça ao Octa…"}
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void enviar(); } }}

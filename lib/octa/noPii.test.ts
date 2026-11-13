@@ -166,6 +166,11 @@ describe("noPii · destino e kill-switch", () => {
     }
   });
 
+  it("grupos premium (Claude/Codex) são terceiro → código do aluno sai redigido pra Anthropic/OpenAI", () => {
+    for (const m of ["zaeon-claude", "zaeon-codex", "ZAEON-CLAUDE"]) expect(ehProvedorTerceiro(m, {}), m).toBe(true);
+    expect(ehProvedorTerceiro("zaeon-flash", {})).toBe(false);  // Google segue intacto
+  });
+
   it("OCTA_MODELOS_TERCEIROS acrescenta nomes", () => {
     expect(ehProvedorTerceiro("meu-gpu", { OCTA_MODELOS_TERCEIROS: "meu-gpu, outro" })).toBe(true);
     expect(ehProvedorTerceiro("meu-gpu", {})).toBe(false);

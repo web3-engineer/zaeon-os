@@ -504,6 +504,17 @@ function Cerebro({
             <circle cx={cx} cy={cy} r={r * 0.9} fill="none" stroke={tom} strokeOpacity={0.55} strokeWidth={1.1} strokeDasharray="2 7" strokeLinecap="round"
                 style={{ ...centro, animation: anima("zf-gira 9s linear infinite"), transition: "stroke .5s ease" }} />
             <g>
+                <defs>
+                    <clipPath id={`zf-asa-${sufixo}`}>
+                        <polygon points="5,6 46,19 58,44 53,52 30,51 12,35" />
+                    </clipPath>
+                </defs>
+                <g transform={`translate(${cx - r * 0.62} ${cy - r * 0.62}) scale(${r * 1.24 / 100})`}>
+                    <g transform="translate(53 46) rotate(42) scale(.81 .88) translate(-53 -46)"
+                        clipPath={`url(#zf-asa-${sufixo})`} opacity={0.7}>
+                        <image href={HUMMINGBIRD} width={100} height={100} />
+                    </g>
+                </g>
                 <image
                     href={HUMMINGBIRD}
                     x={cx - r * 0.62}

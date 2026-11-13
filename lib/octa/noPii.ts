@@ -198,10 +198,14 @@ export const temSegredo = (texto: string): boolean => redigirSegredos(texto) !==
  * Vertex/Contabo NÃO entram: o Google é o provedor estabelecido do app e a Contabo é nossa.
  */
 const PROVEDORES_HF = /:(cerebras|groq|together|fireworks|deepinfra|novita|nebius|sambanova|hyperbolic|replicate|cohere|featherless|nscale)$/i;
+/** Grupos premium (lib/octa/modelosPremium): Anthropic/OpenAI são provedores externos — código do
+ *  aluno sai redigido pra eles, igual ao HF. Nomes espelham MODELOS_PREMIUM[].grupo. */
+const GRUPOS_PREMIUM = /^zaeon-(claude|codex)$/;
 export function ehProvedorTerceiro(modelo: string, env: Env = process.env): boolean {
   const m = String(modelo ?? "").trim().toLowerCase();
   if (!m) return false;
   if (/^hf[-_]/.test(m)) return true;
+  if (GRUPOS_PREMIUM.test(m)) return true;
   if (PROVEDORES_HF.test(m)) return true;
   const extra = (env.OCTA_MODELOS_TERCEIROS ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
   return extra.includes(m);

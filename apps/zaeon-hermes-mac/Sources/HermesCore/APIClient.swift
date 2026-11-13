@@ -26,6 +26,10 @@ public protocol FonteHermes: Sendable {
     /// Manda uma mensagem; o turno roda em segundo plano no servidor. Devolve o id da tarefa do turno.
     func enviarMensagem(conversa: String, texto: String) async throws -> String
     func apagarConversa(id: String) async throws
+    /// PESQUISAS da vitrine (`/api/admin/vitrine/pesquisas`): publicar (entra "publicada", origem console), listar e moderar.
+    func publicarPesquisa(_ pedido: PedidoPesquisa) async throws -> PesquisaVitrine
+    func pesquisas(status: StatusPesquisa?) async throws -> [PesquisaVitrine]
+    func moderarPesquisa(id: String, status: StatusPesquisa, motivo: String?) async throws -> PesquisaVitrine
 }
 
 extension FonteHermes {
@@ -39,6 +43,9 @@ extension FonteHermes {
     public func conversa(id: String) async throws -> Conversa { throw ErroAPI.naoAutorizado }
     public func enviarMensagem(conversa: String, texto: String) async throws -> String { throw ErroAPI.naoAutorizado }
     public func apagarConversa(id: String) async throws { throw ErroAPI.naoAutorizado }
+    public func publicarPesquisa(_ pedido: PedidoPesquisa) async throws -> PesquisaVitrine { throw ErroAPI.naoAutorizado }
+    public func pesquisas(status: StatusPesquisa?) async throws -> [PesquisaVitrine] { throw ErroAPI.naoAutorizado }
+    public func moderarPesquisa(id: String, status: StatusPesquisa, motivo: String?) async throws -> PesquisaVitrine { throw ErroAPI.naoAutorizado }
 }
 
 /// Erros tipados do console. A mensagem (`errorDescription`) já vem pronta para a tela.
@@ -68,6 +75,9 @@ public enum ErroAPI: Error, Equatable, Sendable, LocalizedError {
             c == "datasets_desligados"
                 ? "Exportação desligada no servidor (503): faltam HF_DATASETS_TOKEN e HF_DATASETS_ORG."
                 : "Serviço indisponível (503)\(c.map { ": \($0)" } ?? "")."
+        case .http(400, let c?) where !c.isEmpty:
+            // 400 = o servidor recusou o conteúdo e já disse o porquê em português (ex.: "Título obrigatório.")
+            c
         case .http(let s, let c):
             "Erro HTTP \(s)\(c.map { ": \($0)" } ?? "")."
         case .decodificacao(let m):
@@ -90,6 +100,8 @@ public final class APIClient: FonteHermes, @unchecked Sendable {
 
     /// Prefixo das rotas no servidor Next.
     public static let prefixo = "api/admin/orquestra"
+    /// Prefixo das rotas da VITRINE (pesquisas) — mesma autenticação (o Bearer do console).
+    public static let prefixoVitrine = "api/admin/vitrine"
 
     public init(baseURL: URL, token: String, sessao: URLSession? = nil) {
         self.baseURL = baseURL
@@ -204,6 +216,23 @@ public final class APIClient: FonteHermes, @unchecked Sendable {
         let _: RespostaOk = try await enviar("conversas/\(APIClient.segmento(id))", metodo: "DELETE")
     }
 
+    public func publicarPesquisa(_ pedido: PedidoPesquisa) async throws -> PesquisaVitrine {
+        let r: RespostaPesquisa = try await enviar("pesquisas", metodo: "POST", corpo: try codificador.encode(pedido), prefixo: APIClient.prefixoVitrine)
+        return r.pesquisa
+    }
+
+    public func pesquisas(status: StatusPesquisa? = nil) async throws -> [PesquisaVitrine] {
+        let q = status.map { [URLQueryItem(name: "status", value: $0.bruto)] } ?? []
+        let r: ListaPesquisas = try await enviar("pesquisas", consulta: q, prefixo: APIClient.prefixoVitrine)
+        return r.pesquisas
+    }
+
+    public func moderarPesquisa(id: String, status: StatusPesquisa, motivo: String? = nil) async throws -> PesquisaVitrine {
+        let corpo = try codificador.encode(PedidoModeracao(status: status.bruto, motivo: motivo))
+        let r: RespostaPesquisa = try await enviar("pesquisas/\(APIClient.segmento(id))", metodo: "PATCH", corpo: corpo, prefixo: APIClient.prefixoVitrine)
+        return r.pesquisa
+    }
+
     /// id seguro num segmento de caminho (sem "/")
     static func segmento(_ id: String) -> String {
         id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(CharacterSet(charactersIn: "/"))) ?? id
@@ -211,8 +240,9 @@ public final class APIClient: FonteHermes, @unchecked Sendable {
 
     // MARK: Transporte
 
-    func requisicao(_ caminho: String, consulta: [URLQueryItem] = [], metodo: String = "GET", corpo: Data? = nil) throws -> URLRequest {
-        let texto = baseURL.absoluteString + "/" + APIClient.prefixo + "/" + caminho
+    func requisicao(_ caminho: String, consulta: [URLQueryItem] = [], metodo: String = "GET", corpo: Data? = nil,
+                    prefixo: String = APIClient.prefixo) throws -> URLRequest {
+        let texto = baseURL.absoluteString + "/" + prefixo + "/" + caminho
         guard var comp = URLComponents(string: texto) else { throw ErroAPI.urlInvalida(texto) }
         if !consulta.isEmpty { comp.queryItems = consulta }
         guard let url = comp.url else { throw ErroAPI.urlInvalida(texto) }
@@ -227,8 +257,9 @@ public final class APIClient: FonteHermes, @unchecked Sendable {
         return r
     }
 
-    private func enviar<T: Decodable>(_ caminho: String, consulta: [URLQueryItem] = [], metodo: String = "GET", corpo: Data? = nil) async throws -> T {
-        let req = try requisicao(caminho, consulta: consulta, metodo: metodo, corpo: corpo)
+    private func enviar<T: Decodable>(_ caminho: String, consulta: [URLQueryItem] = [], metodo: String = "GET", corpo: Data? = nil,
+                                      prefixo: String = APIClient.prefixo) async throws -> T {
+        let req = try requisicao(caminho, consulta: consulta, metodo: metodo, corpo: corpo, prefixo: prefixo)
         let (dados, resposta) = try await baixar(req)
         guard let http = resposta as? HTTPURLResponse else { throw ErroAPI.rede("resposta sem HTTP") }
         try APIClient.validar(status: http.statusCode, dados: dados)

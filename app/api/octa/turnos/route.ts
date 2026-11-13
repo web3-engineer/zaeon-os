@@ -23,16 +23,13 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({} as any));
   const pedido = typeof body?.pedido === "string" ? body.pedido.trim().slice(0, 8000) : "";
   const projetoId = typeof body?.projetoId === "string" ? body.projetoId : "";
-  // modelo escolhido no seletor do Octa (id do catálogo lib/chat/modelos); só vale se estiver no catálogo
-  const { modeloDoId } = await import("@/lib/chat/modelos");
-  const modelo = modeloDoId(body?.modelo)?.id ?? null;
   if (!pedido || !projetoId) return NextResponse.json({ error: "projetoId e pedido são obrigatórios" }, { status: 400 });
   if (!octaGatewayConfigurado()) return NextResponse.json({ error: "gateway_off", detalhe: "O gateway de modelo (LiteLLM) não está ligado neste servidor." }, { status: 503 });
   const rl = await guard(req, "octa-turno", "ai-heavy");
   if (!rl.ok) return rl.response;
 
   try {
-    const { turnoId } = await iniciarTurno(await depsReais(), { userId, email, projetoId, pedido, modelo,...((session!.user as any).reaIdentity==="google_verified"&&process.env.REA_SUCCESS_MEMORY==="1"?{reaIdentityVerified:true,reaOwnerId:(session!.user as any).reaUserId}:{}) });
+    const { turnoId } = await iniciarTurno(await depsReais(), { userId, email, projetoId, pedido,...((session!.user as any).reaIdentity==="google_verified"&&process.env.REA_SUCCESS_MEMORY==="1"?{reaIdentityVerified:true,reaOwnerId:(session!.user as any).reaUserId}:{}) });
     return NextResponse.json({ turnoId }, { status: 202 });
   } catch (e) {
     if (e instanceof ErroTurno && e.codigo === "projeto_inexistente") return NextResponse.json({ error: "Projeto não encontrado" }, { status: 404 });

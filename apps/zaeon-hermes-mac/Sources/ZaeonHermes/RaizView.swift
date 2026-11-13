@@ -72,6 +72,7 @@ struct RaizView: View {
             case .motor(let id): MotorDashboardView(motorId: id)
             case .datasets: DatasetsView()
             case .arena: ArenaView()
+            case .pesquisas: PesquisasView()
             case .configuracoes: ConfiguracoesView()
             }
         }
@@ -93,6 +94,10 @@ private struct BarraLateral: View {
             }
 
             SecaoConversas()
+
+            Section("Vitrine") {
+                Label("Pesquisas", systemImage: "folder.badge.plus").tag(Secao.pesquisas)
+            }
 
             Section("Motores") {
                 if let motores = estado.painel?.motores {

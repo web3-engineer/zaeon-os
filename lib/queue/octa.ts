@@ -43,7 +43,7 @@ export type CodigoErroTurno = "falha_modelo" | "budget" | "projeto_inexistente" 
 export type TurnoRow = {
   reaIdentityVerified?: boolean;
   reaOwnerId?: string|null;
-  id: string; userId: string; email: string; projetoId: string; pedido: string; modelo?: string | null; status: StatusTurno; runId: string | null;
+  id: string; userId: string; email: string; projetoId: string; pedido: string; status: StatusTurno; runId: string | null;
   estado: { msgs: MsgModelo[]; aprovado?: boolean } | null; pendente: PendenteOcta | null; resposta: string | null;
   createdAt: Date; updatedAt: Date;
 };
@@ -71,7 +71,7 @@ export type FilaTurno = { add(turnoId: string): Promise<void> };
 export type DepsTurno = {
   db: TurnosDb;
   /** O modelo de UM turno (gateway + virtual key do aluno). */
-  chamador: (p: { userId: string; turnoId: string; modelo?: string | null }) => Promise<ChamarModelo>;
+  chamador: (p: { userId: string; turnoId: string }) => Promise<ChamarModelo>;
   /** Octokit do GitHub do aluno (lib/projects/github-user.getUserOctokit). */
   octokitDoAluno: (email: string) => Promise<any | null>;
   agora?: () => Date;
@@ -167,7 +167,7 @@ export async function listarEventos(
 }
 
 // ───────────────────────────── iniciar / aprovar ─────────────────────────────
-export async function iniciarTurno(deps: DepsTurno, p: { userId: string; email: string; projetoId: string; pedido: string; modelo?: string | null;reaIdentityVerified?:boolean;reaOwnerId?:string }): Promise<{ turnoId: string }> {
+export async function iniciarTurno(deps: DepsTurno, p: { userId: string; email: string; projetoId: string; pedido: string;reaIdentityVerified?:boolean;reaOwnerId?:string }): Promise<{ turnoId: string }> {
   const agora = deps.agora?.() ?? new Date();
   const projeto = await lerProjeto(deps.db, p.userId, p.projetoId);
   if (!projeto) throw new ErroTurno("projeto_inexistente");
@@ -175,7 +175,7 @@ export async function iniciarTurno(deps: DepsTurno, p: { userId: string; email: 
   const ativo = await deps.db.octaTurno.findFirst({ where: { projetoId: projeto.id, status: { in: ATIVOS } } });
   if (ativo) throw new ErroTurno("turno_ativo", ativo.id);
   const t = await deps.db.octaTurno.create({
-    data: { userId: p.userId, email: p.email, projetoId: projeto.id, pedido: p.pedido, modelo: p.modelo ?? null, status: "rodando", runId: null, estado: null, pendente: null, resposta: null,...(p.reaIdentityVerified?{reaIdentityVerified:true,reaOwnerId:p.reaOwnerId??p.userId}:{}) },
+    data: { userId: p.userId, email: p.email, projetoId: projeto.id, pedido: p.pedido, status: "rodando", runId: null, estado: null, pendente: null, resposta: null,...(p.reaIdentityVerified?{reaIdentityVerified:true,reaOwnerId:p.reaOwnerId??p.userId}:{}) },
   });
   await disparar(deps, t.id);
   return { turnoId: t.id };
@@ -273,7 +273,7 @@ export async function processarTurno(deps: DepsTurno, turnoId: string): Promise<
 
   try {
     const anteriores = t.estado?.msgs ? [] : await historico(db, t);
-    const chamar = await deps.chamador({ userId: t.userId, turnoId: t.id, modelo: t.modelo });
+    const chamar = await deps.chamador({ userId: t.userId, turnoId: t.id });
     const r = await rodarAgenteOcta(
       { historico: anteriores, pedido: t.pedido, workspace: base, modo: "change", liberados: ["**"], fluxo: "landing" },
       chamar,
@@ -353,11 +353,8 @@ export async function depsReais(env: Env = process.env): Promise<DepsTurno> {
   return {
     db: prisma as unknown as TurnosDb,
     octokitDoAluno: (email) => getUserOctokit(email),
-    async chamador({ userId, turnoId, modelo }) {
+    async chamador({ userId, turnoId }) {
       const key = await chaveDe(userId, turnoId);
-      const { modeloDoId } = await import("@/lib/chat/modelos");
-      // modelo escolhido no seletor do Octa → é o primário; sem escolha, o fluxo landing de sempre (Google primeiro)
-      const escolha = modeloDoId(modelo) ? escolhaModeloOcta(env, undefined, modeloDoId(modelo)) : escolhaModeloOcta(env, "landing");
       return criarChamadorOcta(async (model, msgs, signal) => {
         const r = await fetch(`${gatewayCfg().url}/chat/completions`, {
           method: "POST", signal,
@@ -369,7 +366,7 @@ export async function depsReais(env: Env = process.env): Promise<DepsTurno> {
         const j: any = await r.json();
         const m = j.choices?.[0]?.message ?? {};
         return { content: m.content ?? null, tool_calls: m.tool_calls, usage: j.usage, modeloId: r.headers.get("x-litellm-model-id") };
-      }, escolha);
+      }, escolhaModeloOcta(env, "landing"));
     },
   };
 }

@@ -19,6 +19,7 @@ faixa é o **motor** (`aura`, `deepseek-v4-profundo`, `tongyi-deepresearch`, `ki
 | **Tarefa** | Resumo e decisão do roteador; abas **Texto** (markdown final, com cada `[E#]` clicável abrindo a evidência ao lado; chave sem evidência fica em vermelho), **Linha do tempo** (eventos com tempo relativo e intervalo), **Subagentes** (árvore orquestrador → subagentes → chamadas de ferramenta, com as evidências de cada um), **Evidências** (tabela com chave, afirmação, fonte clicável, ferramenta e agente) e **Ledger** (cada chamada de LLM com modelo, provedor, fase, tokens, tempo, ok/erro e custo, com totais). Enquanto a tarefa roda, recarrega a cada 3 s. |
 | **Datasets** | Nome, tipo, fonte, licença, documentos, trechos e se está conectado (— quando o banco do RAG não respondeu). |
 | **Arena** | Objetivo, intent, kind opcional e até 4 motores → `POST /arena`. As tarefas criadas aparecem lado a lado e se atualizam por polling, com selo para a mais rápida, a mais barata e a de maior cobertura; cada uma abre a trilha completa. |
+| **Pesquisas** (Vitrine) | `/api/admin/vitrine/pesquisas`. À esquerda, **publicar**: título, nicho, tags, resumo, em nome de qual conta (e-mail, opcional) e as **partes** (artigo, dados, protocolo, revisão, código, anexo), cada uma com texto, um arquivo importado (.md, .txt, .csv, .json…) e/ou um link https. Entra publicada na hora (origem console) e vira uma **pasta** na vitrine, com as partes como papéis. As regras são as mesmas do servidor e o app avisa antes de mandar. À direita, a **fila**: o que os usuários mandaram da Sala de Pesquisa, com **aprovar** e **recusar com motivo**, e as abas Publicadas e Recusadas. |
 | **Configurações** | URL do servidor (padrão `https://zaeon.com.br`) e token (arquivo só do usuário), "Testar conexão" e "Exportar trajetórias para o Hugging Face" (`POST /exportar`). |
 
 Barra de ferramentas: modo da orquestra (`off`/`sombra`/`on`), tarefas em voo e
@@ -86,6 +87,7 @@ Sources/HermesCore/                 # compila em macOS e Linux, sem SwiftUI/AppK
   Quadro.swift Estatisticas.swift   # kanban, filtros, métricas, arena
   Trilha.swift Formatacao.swift     # linha do tempo, árvore de subagentes, ledger, texto com [E#]
   Saude.swift                       # saúde do chat: modelos, tons, critérios de "bom"
+  Pesquisas.swift                   # pesquisas da vitrine: rascunho com as regras do servidor, pedido, fila
   Fixtures.swift                    # fixtures + FonteDemo (só testes)
   Resources/fixtures/*.json
 Sources/ZaeonHermes/                # SwiftUI (macOS)
