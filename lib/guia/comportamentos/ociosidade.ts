@@ -1,19 +1,24 @@
 /**
  * lib/guia/comportamentos/ociosidade.ts — o PRIMEIRO comportamento do guia: o movimento travou.
  *
- * "Música é movimento." Enquanto o aluno está EM MOVIMENTO (tocando, estudando) e de repente para por
- * tempo demais, a Zaeon aparece pra retomar. Só em movimento: numa PAUSA entre objetivos o silêncio é
- * de propósito (descanso), e PARADO é antes de começar — não cutuca quem ainda nem entrou no ritmo.
+ * Enquanto o aluno está EM MOVIMENTO (estudando, praticando) e de repente para por tempo demais, a Zaeon
+ * aparece pra retomar. Só em movimento: numa PAUSA entre objetivos o silêncio é de propósito (descanso), e
+ * PARADO é antes de começar — não cutuca quem ainda nem entrou no ritmo.
  *
  * Cutuca UMA vez por episódio de ociosidade: quando o aluno volta a se mexer, o gatilho rearma.
+ *
+ * As falas default são NEUTRAS — servem a QUALQUER assunto (código, medicina, música...). Quem quiser falas
+ * temáticas passa `opts.falas` (ex.: o ForjaView passa falas de código). NÃO ponha falas de um domínio
+ * específico neste default: este comportamento é reusado por todo caderno/curso, e uma fala musical já vazou
+ * pra cursos de código (bug: a Zaeon falando "toca mais um trechinho 🎵" num curso de Pomodoro).
  */
 import type { Comportamento, EstadoGuia, Nudge, Sinal } from "../tipos";
 
 const FALAS = [
-  "Ainda por aí? Bora tocar mais um trechinho 🎵",
-  "A música pede movimento — retoma de onde parou?",
-  "Perdeu o compasso? Sem crise: começa devagar de novo.",
-  "Tô aqui quando quiser seguir. Um compasso de cada vez.",
+  "Ainda por aí? Bora retomar de onde parou.",
+  "Travou? Sem crise: um passo de cada vez.",
+  "Perdeu o fio? Volta pro ponto onde estava — devagar.",
+  "Tô aqui quando quiser seguir.",
 ];
 
 export function ociosidade(opts?: { limiteMs?: number; falas?: string[] }): Comportamento {
