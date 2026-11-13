@@ -1,0 +1,30 @@
+{
+  "version": "1.0.0",
+  "kind": "codebase",
+  "project": {
+    "name": "Demo",
+    "languages": ["typescript"],
+    "frameworks": [],
+    "description": "um app de demonstração",
+    "analyzedAt": "2026-01-01T00:00:00Z",
+    "gitCommitHash": "deadbeef"
+  },
+  "nodes": [
+    { "id": "n1", "type": "file", "name": "index.ts", "summary": "ponto de entrada", "tags": [], "complexity": "simple", "filePath": "src/index.ts" },
+    { "id": "n2", "type": "function", "name": "handle", "summary": "trata a requisição", "tags": [], "complexity": "complex", "filePath": "src/index.ts", "lineRange": [10, 40] },
+    { "id": "n3", "type": "concept", "name": "Autenticação", "summary": "ideia de autenticação", "tags": ["auth"], "complexity": "moderate" }
+  ],
+  "edges": [
+    { "source": "n1", "target": "n2", "type": "contains", "direction": "forward", "weight": 1 },
+    { "source": "n2", "target": "n3", "type": "related", "direction": "bidirectional", "weight": 0.5 },
+    { "source": "n1", "target": "n3", "type": "imports", "direction": "forward", "weight": 0.8 }
+  ],
+  "layers": [
+    { "id": "l1", "name": "núcleo", "description": "o essencial", "nodeIds": ["n1", "n2"] }
+  ],
+  "tour": [
+    { "order": 1, "title": "Visão geral", "description": "o mapa do projeto", "nodeIds": ["n1"] },
+    { "order": 0, "title": "Comece aqui", "description": "introdução", "nodeIds": [] },
+    { "order": 2, "title": "O coração", "description": "onde a lógica vive", "nodeIds": ["n2", "n3"] }
+  ]
+}

@@ -11,8 +11,8 @@ Branch E0 / prompts: `claude/forja-repo-curso` · PR draft **#791**.
 |----|--------|--------|-------------|-------|
 | E0 | fundação (`lib/forja/`: tipos, provedor, temperatura, curso) | **feita** | #791 | 6 testes verdes |
 | A1 | E1 infra dos engines (`infra/forja-engine/`, padrão REA): Dockerfile (graphifyy py+uv; understand-anything node+pnpm), `bridge.mjs` (HTTP→engine, allowlist), `config/vetting` (versões pinadas + LICENSE), runbook Contabo | **feita** | #791 | scaffold + 9 testes node:test (vetting puro) no CI; build real na Contabo (bloqueio do dono) |
-| A2 | E2 adaptadores (`lib/forja/adaptadores/`): graph.json / `.ua` → `tipos`, puros, testados contra fixtures de saída real | **a-fazer (próxima)** | — | depende de ver saída real (A1 na box) ou fixture; posso começar com fixture mínima do shape documentado |
-| A3 | E3 board n8n: `studioKind` `forja` na Sala de Estudos (cards conectados + 🌡️), reusa o padrão `caderno` | a-fazer | — | — |
+| A2 | E2 adaptadores (`lib/forja/adaptadores/`): graph.json / `.ua` → `tipos`, puros, testados contra fixtures de saída real | **feita** | #791 | schemas lidos do CÓDIGO-FONTE (export.py / types.ts); 8 testes vitest contra fixtures fiéis; trocar por saída real da Contabo depois |
+| A3 | E3 board n8n: `studioKind` `forja` na Sala de Estudos (cards conectados + 🌡️), reusa o padrão `caderno` | **a-fazer (próxima)** | — | app-side, NÃO depende da Contabo — posso tocar inteiro |
 | A4 | E4 lições: codebox sem-colar, review, perguntas, teste, entrevista, leetcode; Zaeon examinadora (reusa `lib/guia`) | a-fazer | — | — |
 | A5 | E5 Octa = casa do entregável + voz (useTTS → /api/ai/voice) | a-fazer | — | — |
 
@@ -41,3 +41,9 @@ Branch E0 / prompts: `claude/forja-repo-curso` · PR draft **#791**.
   (no CI, passo próprio). Dockerfile/compose (só Tailscale, porta 8800) + `RUNBOOK-FORJA-ENGINE.md`. Build real e sha
   pinado ficam pro dono na Contabo. Injeção de prompt no README do upstream (marcador em PR) detectada e ignorada.
   Próxima: **A2** (adaptadores; posso abrir com fixture do shape documentado enquanto a saída real não vem da box).
+- it.3 — **A2 feita**: `lib/forja/adaptadores/` (graphify.ts + understand.ts + index + fixtures). Schemas pescados
+  do CÓDIGO-FONTE dos repos (graphify `export.py` = networkx node_link_data; understand `types.ts` = interface
+  `KnowledgeGraph`), não chutados. graphify→`GrafoConhecimento`; understand→grafo + `ArvoreEntendimento` (da tour,
+  `desde` pela complexidade dos nós). Defensivos (toleram chaves extras/ausências). 8 testes vitest contra fixtures
+  fiéis (README de proveniência). Portão: tsc 0, lint 0, vitest 7888 ok, compose 0. Trocar fixtures pela saída real
+  quando a Contabo rodar. Próxima: **A3** (board n8n studioKind `forja` — app-side, não depende da box).
