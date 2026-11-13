@@ -9,6 +9,7 @@ import { Microscope, X, Loader2, RefreshCw, Github, Check } from "lucide-react";
 import { ROTULO_PROV, type DocReaBlueprint, type Prov } from "@/lib/rea-blueprint/tipos";
 import { OCTA_CODE_LIGADO } from "@/lib/octa/flag";
 import { abrirProjetoNaOcta } from "@/lib/octa/ideNav";
+import "./rea-cosmico.css";
 
 const COR_PROV: Record<Prov, string> = {
   observacao: "border-emerald-400/40 bg-emerald-400/[0.08] text-emerald-200",
@@ -58,19 +59,21 @@ export default function ReaBlueprintView({ id, onFechar }: { id: string; onFecha
   }, [id]);
 
   return (
-    <div className="h-full overflow-y-auto bg-[#0a0f1a] text-slate-100">
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/10 bg-[#0a0f1a]/95 px-5 py-3 backdrop-blur">
-        <div className="flex items-center gap-2 min-w-0">
-          <Microscope size={16} className="text-emerald-400 shrink-0" />
-          <span className="text-[13px] font-semibold uppercase tracking-[0.18em] text-emerald-200/90">Blueprint · Engenharia reversa</span>
+    <div className={`rea-cosmos ${montando ? "gerando" : ""} h-full overflow-y-auto bg-[#0a0714] text-slate-100`}>
+      <span aria-hidden className="rea-varredura" />
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-fuchsia-400/15 bg-[#0a0714]/95 px-5 py-3 backdrop-blur">
+        <div className="flex items-center gap-2 min-w-0 rea-selo">
+          <Microscope size={16} className="text-fuchsia-300 shrink-0 rea-selo-glow" />
+          <span className="text-[13px] font-semibold uppercase tracking-[0.18em] text-fuchsia-200/90">Blueprint · Engenharia reversa</span>
+          {montando ? <span className="rea-pontos ml-1" aria-hidden><i /><i /><i /></span> : null}
         </div>
         <div className="flex items-center gap-2">
           {OCTA_CODE_LIGADO && temConteudo ? (
             <button
               onClick={criarNaOcta}
               disabled={paraOcta !== "idle"}
-              title="Cria um projeto na Octa com este blueprint e abre a IDE para publicar no seu GitHub"
-              className="flex items-center gap-1.5 rounded-lg border border-emerald-400/30 bg-emerald-400/[0.08] px-2.5 py-1 text-[12px] font-semibold text-emerald-200 transition hover:bg-emerald-400/[0.16] disabled:opacity-60"
+              title="Cria um projeto na Octa com este blueprint e abre a IDE nesse projeto (para publicar no seu GitHub)"
+              className="flex items-center gap-1.5 rounded-lg border border-fuchsia-400/30 bg-fuchsia-400/[0.08] px-2.5 py-1 text-[12px] font-semibold text-fuchsia-200 transition hover:bg-fuchsia-400/[0.16] disabled:opacity-60"
             >
               {paraOcta === "criando" ? <Loader2 size={13} className="animate-spin" /> : paraOcta === "feito" ? <Check size={13} /> : <Github size={13} />}
               {paraOcta === "criando" ? "Criando…" : paraOcta === "feito" ? "Aberto na Octa" : "Criar projeto na Octa"}
@@ -87,12 +90,14 @@ export default function ReaBlueprintView({ id, onFechar }: { id: string; onFecha
       ) : (
         <article className="mx-auto max-w-3xl px-6 py-7 prose-invert">
           <h1 className="text-[22px] font-bold leading-tight text-white">{doc.titulo}</h1>
-          {doc.alvo ? <p className="mt-1 text-[12.5px] uppercase tracking-wide text-emerald-300/70">Alvo: {doc.alvo}</p> : null}
+          {doc.alvo ? <p className="mt-1 text-[12.5px] uppercase tracking-wide text-fuchsia-300/70">Alvo: {doc.alvo}</p> : null}
           {doc.ferramentas.length ? <p className="mt-1 text-[11.5px] text-slate-500">Motor do REA: {doc.ferramentas.join(", ")}</p> : null}
 
           {montando ? (
-            <div className="mt-6 flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] px-4 py-3 text-[13px] text-emerald-200/90">
-              <Loader2 className="animate-spin" size={15} /> Montando o blueprint a partir do que você está estudando…
+            <div className="rea-aurora gerando mt-6">
+              <div className="flex items-center gap-2 rounded-[12.5px] bg-[#0b0718]/90 px-4 py-3 text-[13px] text-fuchsia-100/90">
+                <Loader2 className="animate-spin text-fuchsia-300" size={15} /> Engenharia reversa rodando — varrendo o alvo e montando o blueprint…
+              </div>
             </div>
           ) : (
             <>
@@ -129,7 +134,7 @@ export default function ReaBlueprintView({ id, onFechar }: { id: string; onFecha
                   <ol className="mt-3 flex flex-col gap-2.5">
                     {doc.reconstrucao.map((p, i) => (
                       <li key={p.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
-                        <div className="text-[13.5px] font-semibold text-slate-100"><span className="mr-1.5 text-emerald-300">{i + 1}.</span>{p.titulo}</div>
+                        <div className="text-[13.5px] font-semibold text-slate-100"><span className="mr-1.5 text-fuchsia-300">{i + 1}.</span>{p.titulo}</div>
                         {p.corpo ? <p className="mt-1 text-[12.5px] leading-relaxed text-slate-400">{p.corpo}</p> : null}
                         {p.verifica ? <p className="mt-1.5 text-[11.5px] text-sky-300/80">✓ verificar: {p.verifica}</p> : null}
                       </li>

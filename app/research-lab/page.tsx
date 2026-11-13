@@ -1726,8 +1726,9 @@ export default function HomeworkPage({
     window.addEventListener("zaeon:set-tab", onSetTab);
     return () => window.removeEventListener("zaeon:set-tab", onSetTab);
   }, []);
-  // Ponte REA → Octa: o cartão do Blueprint já gravou o id do projeto em CHAVE_ULTIMO_PROJETO; aqui
-  // só trocamos para a aba da IDE (que não aceita setActiveTab), e ela faz boot nesse projeto.
+  // Ponte REA → Octa: o cartão do Blueprint dispara EVT_ABRIR_PROJETO com o projetoId; aqui só trocamos
+  // para a aba da IDE (que não aceita setActiveTab). Quem abre o projeto CERTO é a própria OctaIDE, que
+  // escuta o mesmo evento (e, se ainda vai montar, lê o handoff pendente no boot).
   useEffect(() => {
     const onAbrirOcta = () => setActiveTabRaw("octa");
     window.addEventListener(EVT_ABRIR_PROJETO, onAbrirOcta);

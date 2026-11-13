@@ -16,6 +16,7 @@
  * o texto bonito sem lib. `onConcept`/`onNext` viram novos prompts (como o Claude).
  */
 import { useEffect, useMemo, useRef } from "react";
+import "@/components/rea/rea-cosmico.css";
 import { useTypewriter } from "@/lib/ui/useTypewriter";
 import { fonteChat } from "@/lib/ui/chatFontScale";
 import { ArrowUpRight, Quote, AlertTriangle, Paperclip, RotateCcw, Link2, ClipboardPaste } from "lucide-react";
@@ -168,15 +169,21 @@ export default function StructuredAnswerView({
 
           {/* BLUEPRINT REA (engenharia reversa): um módulo próprio — abre como um paper, mas com o estilo do REA */}
           {rest && answer.reaBlueprint && reaBlueprintUiOn() ? (
-            <button type="button" onClick={() => onAbrirRea?.(answer.reaBlueprint!.id)}
-              className="mt-3 flex w-full items-center gap-3 rounded-xl border border-emerald-400/30 bg-emerald-400/[0.06] px-3 py-2.5 text-left transition hover:bg-emerald-400/[0.12]">
-              <span className="text-lg">🔬</span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[13px] font-semibold text-emerald-50">{answer.reaBlueprint.titulo}</span>
-                <span className="block text-[11px] text-emerald-200/70">{answer.reaBlueprint.gerando ? "Blueprint de engenharia reversa — montando…" : "Blueprint de engenharia reversa · toque pra abrir"}</span>
-              </span>
-              <span className="text-[11px] text-emerald-300">{answer.reaBlueprint.gerando ? "…" : "abrir →"}</span>
-            </button>
+            <div className={`rea-aurora mt-3 ${answer.reaBlueprint.gerando ? "gerando" : ""}`}>
+              <button type="button" onClick={() => onAbrirRea?.(answer.reaBlueprint!.id)}
+                title={answer.reaBlueprint.gerando ? "Engenharia reversa rodando — abra pra acompanhar" : "Abrir o blueprint de engenharia reversa"}
+                className={`rea-cosmos ${answer.reaBlueprint.gerando ? "gerando" : ""} relative flex w-full items-center gap-3 rounded-[12.5px] bg-[#0b0718]/90 px-3 py-2.5 text-left transition hover:bg-[#160b2e]/90`}>
+                <span aria-hidden className="rea-varredura" />
+                <span className="rea-selo-glow text-lg" aria-hidden>🔬</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13px] font-semibold text-fuchsia-50">{answer.reaBlueprint.titulo}</span>
+                  <span className="block text-[11px] text-fuchsia-200/70">{answer.reaBlueprint.gerando ? "Engenharia reversa — varrendo e montando…" : "Blueprint de engenharia reversa · toque pra abrir"}</span>
+                </span>
+                {answer.reaBlueprint.gerando
+                  ? <span className="rea-pontos shrink-0" aria-hidden><i /><i /><i /></span>
+                  : <span className="shrink-0 text-[11px] font-semibold text-fuchsia-300">abrir →</span>}
+              </button>
+            </div>
           ) : null}
 
           {/* mini-ações da mensagem (ordem: conteúdo → ações → botões do harness → Fontes) */}
