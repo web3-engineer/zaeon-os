@@ -6,15 +6,17 @@
  * conceito. Clicar num nó dá ZOOM e expande os filhos ALI MESMO (a árvore cresce, conectada); clicar nele
  * de novo abre o BOARD da lição (aprendizado + código destacado + teste). Scroll dá zoom, arrastar navega.
  *
- * Tudo deriva do grafo REAL (graphify → arvoreDoGrafo): repo → módulos → símbolos. Serve QUALQUER
- * curso/skill com repositório — a geometria se monta sozinha pra árvores de qualquer tamanho. O conteúdo
- * das lições é preenchido pelo understand-anything (marcha 2); por ora vem um esqueleto marcado.
+ * A árvore e as lições vêm EM CAMADAS: a base curada (o `curso.json`/SKILL.md, via `licoes` → estudo,
+ * prova e sandbox REAIS) ensina sempre, offline; o grafo do graphify e o understand-anything ENRIQUECEM
+ * por cima quando a box está no ar. O board de cada nó mostra o conteúdo real que chegou — nunca um
+ * placeholder inventado. Serve QUALQUER curso/skill: a geometria se monta sozinha pra árvores de qualquer tamanho.
  *
  * Motor imperativo (SVG + requestAnimationFrame + viewBox) montado num container via ref. Estilo Liquid
- * Glass, cores da casa. Sem grafo, degrada pro esqueleto (raiz + aviso), sem travar.
+ * Glass, cores da casa. Sem base nem grafo, degrada pro esqueleto (raiz + aviso), sem travar.
  */
 import { useEffect, useRef } from "react";
 import type { ArvoreEntendimento, CursoRepo, NoEntendimento } from "@/lib/forja/tipos";
+import type { LicaoCurada, QuestaoProva } from "@/lib/forja/licaoCurada";
 
 const NS = "http://www.w3.org/2000/svg";
 const cut = (s: string, n: number) => (s && s.length > n ? s.slice(0, n - 1) + "…" : s || "");
@@ -26,6 +28,55 @@ function navDoArvore(arvore: ArvoreEntendimento, repo: string): Nav {
   const sym = (n: NoEntendimento, modTit: string): Nav => ({ id: n.id, tipo: "sim", titulo: n.titulo, dica: "conceito central", resumo: n.resumo, mod: modTit, filhos: [] });
   const mod = (n: NoEntendimento): Nav => ({ id: n.id, tipo: "mod", titulo: n.titulo, dica: ((n.filhos?.length ?? 0) + " conceito(s)"), resumo: n.resumo, filhos: (n.filhos ?? []).map((s) => sym(s, n.titulo)) });
   return { id: "raiz", tipo: "repo", titulo: arvore.raiz.titulo || repo, dica: "o repositório inteiro", resumo: arvore.raiz.resumo, filhos: (arvore.raiz.filhos ?? []).map(mod) };
+}
+
+// ─────────────────────── montagem do BOARD da lição (PURA, testável) ───────────────────────
+// Realce de sintaxe leve (Python) e bloco de código estilo editor.
+const hl = (code: string) => code.split("\n").map((ln) => { const e = ln.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); if (/^\s*#/.test(e)) return '<span class="av-com">' + e + '</span>'; return e.replace(/(&#39;[^&]*?&#39;|&quot;[^&]*?&quot;|'[^']*'|"[^"]*")/g, '<span class="av-str">$1</span>').replace(/\b(from|import|def|class|return|as|with|if|else|elif|for|in|while|None|True|False|and|or|not|lambda|yield|raise|try|except)\b/g, '<span class="av-kw">$1</span>').replace(/\b(\d+)\b/g, '<span class="av-num">$1</span>'); }).join("\n");
+const bloco = (titulo: string, codigo: string) => '<div class="av-code"><div class="bar"><span class="dot" style="background:#ff5f56"></span><span class="dot" style="background:#ffbd2e"></span><span class="dot" style="background:#27c93f"></span><span style="margin-left:6px">' + titulo + '</span></div><pre>' + hl(codigo) + '</pre></div>';
+// markdown leve e SEGURO (escapa HTML; só `code` e **negrito**), p/ o texto autoral do curso.json.
+const esc = (s: string) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const rico = (t: string) => esc(t).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
+const paras = (t: string) => String(t || "").trim().split(/\n{2,}/).map((p) => '<p>' + rico(p).replace(/\n/g, "<br>") + "</p>").join("");
+const aspas = (s: string) => esc(s).replace(/"/g, "&quot;");
+// uma questão real da prova → HTML (q-choice com opções+explicação; q-written com campo + resposta).
+const questaoHtml = (q: QuestaoProva) => {
+  const head = '<p class="av-qperg">' + rico(q.enunciado) + "</p>";
+  if (q.tipo === "escolha") {
+    const opts = q.opcoes.map((o) => '<div class="av-opt" data-ok="' + (o.correta ? "1" : "") + '"' + (o.explicacao ? ' data-exp="' + aspas(o.explicacao) + '"' : "") + ">" + rico(o.texto) + "</div>").join("");
+    return '<div class="av-qbloco">' + head + '<div class="av-quiz">' + opts + '</div><div class="av-exp"></div></div>';
+  }
+  const resp = aspas((q.aceitas && q.aceitas[0]) || "");
+  return '<div class="av-qbloco">' + head + '<input class="av-in" placeholder="digite sua resposta…" /><button type="button" class="av-ver" data-resp="' + resp + '">ver resposta</button><div class="av-exp"></div></div>';
+};
+
+/**
+ * O HTML da lição de um nó: Aprendizado (o `estudo` real), No código (o sandbox real, ou o espelho
+ * honesto do graphify) e Teste (as provas reais). PURO e exportado — o board só injeta e liga eventos.
+ * NUNCA fabrica conteúdo: sem lição curada e sem grafo, mostra só o que há, sem inventar código/quiz.
+ */
+export function montarBoardHtml(args: { titulo: string; tipo: Nav["tipo"]; mod: string; repo: string; resumo?: string; lic?: LicaoCurada }): string {
+  const { titulo, tipo, mod, repo, resumo, lic } = args;
+  const base = String(mod).split(".py")[0];
+  const tag = tipo === "sim" ? "conceito" : tipo === "mod" ? "módulo" : "repositório";
+  const temResumo = (resumo || "").trim().length > 3;
+  const aprendHtml = lic?.estudo ? paras(lic.estudo)
+    : temResumo ? paras(resumo!)
+    : '<p><b>' + esc(titulo) + '</b> — a lição entra quando o motor analisar o repositório.</p>';
+  let codigoHtml = "";
+  if (lic?.sandbox && (lic.sandbox.inicial || "").trim()) {
+    codigoHtml = '<h3>No código — complete você mesmo</h3>' + bloco(lic.sandbox.linguagem + " · exercício", lic.sandbox.inicial);
+  } else if (!lic && tipo !== "repo") {
+    codigoHtml = '<h3>No código</h3>' + bloco("python · " + base + ".py", "# símbolo mapeado pelo graphify neste módulo\nfrom " + base + " import " + titulo);
+  }
+  let testeHtml = "";
+  if (lic?.prova?.length) testeHtml += '<h3>Teste</h3>' + lic.prova.map(questaoHtml).join("");
+  if (lic?.desafio) testeHtml += '<h3>Desafio</h3>' + questaoHtml(lic.desafio);
+  return '<div class="av-card"><div class="tag">' + tag + " · " + repo + '</div><h1>' + esc(titulo) + "</h1>"
+    + '<h3>Aprendizado</h3>' + aprendHtml
+    + codigoHtml
+    + testeHtml
+    + '<div class="av-nav"><button class="av-btn av-ghost av-voltar">‹ voltar à árvore</button><button class="av-btn av-pill av-voltar">concluir ✓</button></div></div>';
 }
 
 const CSS = `
@@ -67,9 +118,15 @@ const CSS = `
 .av-ghost{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(16px)}.av-ghost:hover{background:rgba(255,255,255,.14)}
 .av-pill{background:linear-gradient(90deg,#8b5cf6,#e879f9 48%,#22d3ee);border:0;box-shadow:0 8px 24px rgba(139,92,246,.42),inset 0 1px 0 rgba(255,255,255,.35);font-weight:700}
 .av-card b,.av-card strong{color:#d8c9ff}
+.av-card code{font-family:ui-monospace,Menlo,monospace;font-size:.9em;background:rgba(124,160,255,.14);border:1px solid rgba(255,255,255,.08);padding:1px 6px;border-radius:6px;color:#a5e88d}
+.av-qbloco{margin-top:14px}.av-qperg{font-size:15px;line-height:1.5;color:rgba(234,240,255,.92);margin:0 0 9px}
+.av-in{width:100%;box-sizing:border-box;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(3,7,15,.5);color:#eaf0ff;padding:10px 13px;font-size:14px;font-family:ui-monospace,monospace}
+.av-ver{margin-top:9px;color:rgba(230,236,255,.85);background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:6px 14px;font-size:12.5px;cursor:pointer}
+.av-ver:hover{background:rgba(255,255,255,.13)}
+.av-exp{font-size:13.5px;line-height:1.55;color:rgba(205,216,255,.82)}.av-exp p{font-size:13.5px;margin:9px 0 0}
 `;
 
-export default function CursoArvoreView({ curso, titulo, onFechar }: { curso: CursoRepo; titulo?: string; onFechar?: () => void }) {
+export default function CursoArvoreView({ curso, licoes, titulo, onFechar }: { curso: CursoRepo; licoes?: Record<string, LicaoCurada>; titulo?: string; onFechar?: () => void }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const cabecalho = (titulo || curso.arvore.raiz.titulo || "").trim();
   const semMapa = (curso.arvore.raiz.filhos?.length ?? 0) === 0;
@@ -85,6 +142,7 @@ export default function CursoArvoreView({ curso, titulo, onFechar }: { curso: Cu
     const hintEl = root.querySelector(".av-hint") as HTMLDivElement;
     const REPO = curso.repo;
     const TREE = navDoArvore(curso.arvore, REPO);
+    const LICOES: Record<string, LicaoCurada> = licoes || {};
 
     const el = (t: string, a: Record<string, string | number> = {}) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, String(a[k])); return e; };
     const parentOf = new Map<Nav, Nav>();
@@ -156,25 +214,26 @@ export default function CursoArvoreView({ curso, titulo, onFechar }: { curso: Cu
     function zoomVB(target: any, dur: number, cb?: () => void) { tween = { a: { ...vb }, b: target, t0: performance.now(), dur, cb }; }
     function loop(now: number) { if (tween) { const k = Math.min(1, (now - tween.t0) / tween.dur), e = 1 - Math.pow(1 - k, 3); vb.x = tween.a.x + (tween.b.x - tween.a.x) * e; vb.y = tween.a.y + (tween.b.y - tween.a.y) * e; vb.w = tween.a.w + (tween.b.w - tween.a.w) * e; vb.h = tween.a.h + (tween.b.h - tween.a.h) * e; setVB(); if (k >= 1) { const cb = tween.cb; tween = null; if (cb) cb(); } } raf = requestAnimationFrame(loop); }
 
-    const hl = (code: string) => code.split("\n").map((ln) => { const e = ln.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); if (/^\s*#/.test(e)) return '<span class="av-com">' + e + '</span>'; return e.replace(/(&#39;[^&]*?&#39;|&quot;[^&]*?&quot;|'[^']*'|"[^"]*")/g, '<span class="av-str">$1</span>').replace(/\b(from|import|def|class|return|as|with|if|else|elif|for|in|while|None|True|False|and|or|not|lambda|yield|raise|try|except)\b/g, '<span class="av-kw">$1</span>').replace(/\b(\d+)\b/g, '<span class="av-num">$1</span>'); }).join("\n");
-    const bloco = (titulo: string, codigo: string) => '<div class="av-code"><div class="bar"><span class="dot" style="background:#ff5f56"></span><span class="dot" style="background:#ffbd2e"></span><span class="dot" style="background:#27c93f"></span><span style="margin-left:6px">' + titulo + '</span></div><pre>' + hl(codigo) + '</pre></div>';
     function abrirBoard(ref2: Nav) { const f = pos.get(ref2) || BASE as any; zoomVB({ x: f.x - 150, y: f.y - 110, w: 300, h: 205 }, 440, () => { svg.classList.add("fade"); setTimeout(() => montarBoard(ref2), 200); }); }
     function montarBoard(r: Nav) {
-      const par = parentOf.get(r), mod = r.mod || (par ? par.titulo : REPO), base = String(mod).split(".py")[0];
-      const tag = r.tipo === "sim" ? "conceito" : r.tipo === "mod" ? "módulo" : "repositório";
-      const temResumo = (r.resumo || "").trim().length > 3;
-      const aprend = temResumo ? r.resumo : ('<b>' + r.titulo + '</b> é um conceito central de <b>' + mod + '</b>. Aqui entra a explicação real — analogia, o que é e por que importa — <i style="color:rgba(205,216,255,.6)">gerada pelo understand-anything a partir do grafo real</i>.');
-      boardEl.innerHTML = '<div class="av-card"><div class="tag">' + tag + ' · ' + REPO + '</div><h1>' + r.titulo + '</h1>'
-        + '<h3>Aprendizado</h3><p>' + aprend + '</p>'
-        + '<h3>No código</h3>' + bloco('python · ' + base + '.py', '# trecho real do repositório (via graphify)\nfrom ' + base + ' import ' + r.titulo + '\n\n# o graphify aponta onde ' + r.titulo + ' é definido e quem o usa')
-        + '<h3>Teste</h3><p>O que melhor descreve <b>' + r.titulo + '</b>?</p>'
-        + '<div class="av-quiz"><div class="av-opt" data-ok="1">Uma peça central de ' + mod + ', referenciada por vários outros símbolos</div>'
-        + '<div class="av-opt">Um arquivo de configuração sem relação com o resto</div><div class="av-opt">Apenas um trecho de documentação</div></div>'
-        + '<div class="av-nav"><button class="av-btn av-ghost av-voltar">‹ voltar à árvore</button><button class="av-btn av-pill av-voltar">concluir ✓</button></div></div>';
+      const lic = LICOES[r.id];
+      const par = parentOf.get(r), mod = r.mod || (par ? par.titulo : REPO);
+      boardEl.innerHTML = montarBoardHtml({ titulo: r.titulo, tipo: r.tipo, mod, repo: REPO, resumo: r.resumo, lic });
       boardEl.classList.add("on");
-      boardEl.querySelectorAll(".av-opt").forEach((o) => o.addEventListener("click", () => { boardEl.querySelectorAll(".av-opt").forEach((x) => x.classList.remove("ok", "no")); o.classList.add((o as HTMLElement).dataset.ok ? "ok" : "no"); }));
+      // interação por BLOCO (cada questão é independente — antes um clique zerava o board inteiro).
+      boardEl.querySelectorAll(".av-qbloco").forEach((bl) => {
+        const exp = bl.querySelector(".av-exp") as HTMLElement | null;
+        bl.querySelectorAll(".av-opt").forEach((o) => o.addEventListener("click", () => {
+          bl.querySelectorAll(".av-opt").forEach((x) => x.classList.remove("ok", "no"));
+          const el2 = o as HTMLElement;
+          o.classList.add(el2.dataset.ok ? "ok" : "no");
+          if (exp) exp.innerHTML = el2.dataset.exp ? "<p>" + el2.dataset.exp + "</p>" : "";
+        }));
+        const ver = bl.querySelector(".av-ver") as HTMLElement | null;
+        if (ver) ver.addEventListener("click", () => { if (exp) exp.innerHTML = "<p>Aceita, por exemplo: <code>" + (ver.dataset.resp || "") + "</code></p>"; });
+      });
       boardEl.querySelectorAll(".av-voltar").forEach((b) => b.addEventListener("click", voltar));
-      hintEl.innerHTML = 'a <b>lição</b>: aprendizado + código real + teste';
+      hintEl.innerHTML = lic ? 'a <b>lição</b>: estudo + código + teste reais' : 'a <b>lição</b> deste módulo';
     }
     function fecharBoard() { boardEl.classList.remove("on"); }
     function voltar() { fecharBoard(); svg.classList.remove("fade"); render(); }
@@ -189,7 +248,7 @@ export default function CursoArvoreView({ curso, titulo, onFechar }: { curso: Cu
 
     setVB(); raf = requestAnimationFrame(loop); render();
     return () => { cancelAnimationFrame(raf); svg.removeEventListener("wheel", onWheel); svg.removeEventListener("pointerdown", onDown); svg.removeEventListener("pointermove", onMove); svg.removeEventListener("pointerup", onUp); svg.removeEventListener("pointercancel", onUp); world.innerHTML = ""; boardEl.innerHTML = ""; boardEl.classList.remove("on"); };
-  }, [curso.arvore, curso.repo]);
+  }, [curso.arvore, curso.repo, licoes]);
 
   return (
     <div ref={ref} className="av-root">

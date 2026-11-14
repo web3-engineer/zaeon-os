@@ -12,6 +12,7 @@ import { guard } from "@/src/lib/ratelimit";
 import { studioUid } from "@/lib/studio/auth";
 import { montarCursoEsqueleto } from "@/lib/forja/cursoRepo";
 import { resolverEsqueleto } from "@/lib/forja/esqueletoResolver";
+import { conteudoCuradoDoCurso } from "@/lib/forja/conteudoCurado";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -28,6 +29,13 @@ export async function POST(req: Request) {
   if (!esq) return NextResponse.json({ error: "curso_inexistente" }, { status: 404 });
   const curso = montarCursoEsqueleto(esq);
 
+  // Camada 0 (base curada): o curso.json/SKILL.md é o que ENSINA, sem depender do motor. Preenche a
+  // árvore (que nasceria só com a raiz) e as lições reais (prova/sandbox) por nó. Determinístico, então
+  // recalcula a cada abertura — não depende do que ficou no artefato cacheado.
+  const curado = conteudoCuradoDoCurso(esq);
+  if (curado) curso.arvore = curado.arvore;
+  const licoesPorNo = curado?.licoesPorNo ?? {};
+
   const chave = `forja:${esq.id}`;
   const existente = await prisma.studioArtifact.findFirst({
     where: { ownerId: userId, kind: "forja", sourceIds: { has: chave }, status: "done" },
@@ -37,5 +45,5 @@ export async function POST(req: Request) {
     data: { ownerId: userId, sourceIds: [chave], kind: "forja", status: "done", title: esq.titulo, mime: "application/json", meta: curso as unknown as object },
   }));
 
-  return NextResponse.json({ id: art.id, status: "done", title: esq.titulo, meta: curso });
+  return NextResponse.json({ id: art.id, status: "done", title: esq.titulo, meta: { ...curso, licoesPorNo } });
 }
