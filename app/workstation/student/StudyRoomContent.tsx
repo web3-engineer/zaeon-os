@@ -18,6 +18,7 @@ import { blueprintUiOn } from "@/lib/blueprint/tipos";
 import { reaBlueprintUiOn } from "@/lib/rea-blueprint/tipos";
 import { EVT_ESTUDOS_VISTA } from "@/lib/onboarding/tutorialLab";
 import { EVT_ESTUDOS_CHAT, EVT_PEDIDO_CONVERSA, EVT_ESTUDOS_IR, anunciarAbaEstudos, consumirAbaEstudos, type AbaEstudos } from "@/lib/chat/conversasNav";
+import { EVT_ABRIR_CURSO, type CursoAberto } from "@/lib/forja/abrirCurso";
 import { OmegaScholarProvider } from "./omega/OmegaScholarContext";
 import OmegaScholarWorkspace from "./omega/OmegaScholarWorkspace";
 import StudyRoomSuggestionDock from "./omega/StudyRoomSuggestionDock";
@@ -196,6 +197,7 @@ const VitrineEstudos = dynamic(() => import("@/components/estudos/VitrineEstudos
 // nascidos no chat; o board livre e o caderno antigo só abrem pelos links que já existem (?board=, ?space=)
 const SalaBlueprint = dynamic(() => import("@/components/blueprint/SalaBlueprint"), { ssr: false });
 const SalaRea = dynamic(() => import("@/components/rea/SalaRea"), { ssr: false });
+const SalaCurso = dynamic(() => import("@/components/study/SalaCurso"), { ssr: false });
 const MeusAlunosPanel = dynamic(() => import("@/app/workstation/student/MeusAlunosPanel"), { ssr: false });
 
 /**
@@ -265,6 +267,18 @@ export default function StudyRoomContent({ flushTop = false, unified = false, ab
         const ir = (e: Event) => { const a = (e as CustomEvent<AbaEstudos>).detail; consumirAbaEstudos(); if (a) setActiveTab(a); };
         window.addEventListener(EVT_ESTUDOS_IR, ir);
         return () => window.removeEventListener(EVT_ESTUDOS_IR, ir);
+    }, []);
+
+    // CURSO DE CÓDIGO: abre na ÁREA PRÓPRIA (aba "curso", tela cheia) — não no chat, não no feed.
+    // forja:* e skill:* de código disparam abrirCurso (lib/forja/abrirCurso) e caem aqui.
+    const [cursoAtivo, setCursoAtivo] = useState<CursoAberto | null>(null);
+    useEffect(() => {
+        const onCurso = (e: Event) => {
+            const d = (e as CustomEvent<CursoAberto>).detail;
+            if (d?.cursoId) { setCursoAtivo(d); setActiveTab("curso"); }
+        };
+        window.addEventListener(EVT_ABRIR_CURSO, onCurso);
+        return () => window.removeEventListener(EVT_ABRIR_CURSO, onCurso);
     }, []);
 
     // o BOARD de Meus Estudos aberto por um link de convite (?board=<id>&convite=<token>) e o caderno antigo por cima
@@ -470,7 +484,10 @@ export default function StudyRoomContent({ flushTop = false, unified = false, ab
                         <div className={activeTab === "meus-estudos" ? "h-full" : "hidden"}>
                             <StudyCoworkChat active={activeTab === "meus-estudos"} />
                         </div>
-                        {activeTab === "rea" && reaBlueprintUiOn() ? (
+                        {activeTab === "curso" && cursoAtivo ? (
+                            // ÁREA PRÓPRIA do curso de código (board graphify + base de conhecimento), tela cheia
+                            <div className="relative h-full"><SalaCurso cursoId={cursoAtivo.cursoId} titulo={cursoAtivo.titulo} onFechar={() => setActiveTab("community")} /></div>
+                        ) : activeTab === "rea" && reaBlueprintUiOn() ? (
                             <div className="relative h-full"><SalaRea /></div>
                         ) : activeTab === "feed" ? (
                             // a Sala de Estudos = os BLUEPRINTS. A prancha antiga e o caderno antigo saíram do menu (pedido do
