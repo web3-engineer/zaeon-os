@@ -29,9 +29,11 @@ export default function SalaCurso({ cursoId, titulo, onFechar }: { cursoId: stri
         let c = j.meta as CursoRepo;
         setCurso(c); // mostra o esqueleto já; o grafo entra quando o motor responder
         const rm = await fetch("/api/studio/forja/mapa", { method: "POST", headers: H, body: JSON.stringify({ cursoId }) }).then((x) => x.json()).catch(() => null);
-        if (vivo && rm?.grafo?.nos?.length) {
-          const grafo = rm.grafo;
-          setCurso({ ...c, grafo, arvore: comBaseDoGrafo({ arvore: c.arvore, grafo }, titulo || c.arvore.raiz.titulo) });
+        // prefere a base de conhecimento do understand-anything (arvoreUA) quando houver; senão, deriva do grafo.
+        if (vivo && rm && (rm.arvoreUA || rm.grafo?.nos?.length)) {
+          const grafo = rm.grafo ?? c.grafo;
+          const arvore = rm.arvoreUA ?? comBaseDoGrafo({ arvore: c.arvore, grafo }, titulo || c.arvore.raiz.titulo);
+          setCurso({ ...c, grafo, arvore });
         }
       } catch {
         if (vivo) setErro(true);

@@ -4,7 +4,10 @@
  * tempo maior e é chamada preguiçosamente pelo ForjaView. Só analisa repos do CATÁLOGO CURADO (allowlist),
  * nunca um repo arbitrário do aluno. Sem a ponte configurada, devolve `engine:false` e o board fica no esqueleto.
  *
- * POST { cursoId } → { grafo: GrafoConhecimento|null, engine: boolean }
+ * POST { cursoId } → { grafo: GrafoConhecimento|null, arvoreUA: ArvoreEntendimento|null, engine: boolean }
+ *   - grafo: a estrutura (graphify), via ponte ou motor local;
+ *   - arvoreUA: a base de conhecimento do understand-anything, lida SÓ do cache (rápido; nunca gera na hora —
+ *     a geração é em lote, scripts/forja-ua-gerar.mjs). Quando presente, o curso a prefere às lições do grafo.
  */
 import { NextResponse } from "next/server";
 import { guard } from "@/src/lib/ratelimit";
@@ -12,6 +15,7 @@ import { studioUid } from "@/lib/studio/auth";
 import { resolverEsqueleto } from "@/lib/forja/esqueletoResolver";
 import { engineDisponivel, grafoDoRepo } from "@/lib/forja/engineClient";
 import { engineLocalLigado, grafoLocalDoRepo } from "@/lib/forja/graphifyLocal";
+import { arvoreUACacheada } from "@/lib/forja/understandLocal";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -33,8 +37,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ grafo: null, engine: true });
   }
 
-  const grafo = temPonte
-    ? await grafoDoRepo(esq.repo).catch(() => null)   // ponte da box
-    : await grafoLocalDoRepo(esq.repo);               // motor local (dev)
-  return NextResponse.json({ grafo, engine: true });
+  // estrutura (graphify) + base de conhecimento do understand (cacheada) em paralelo — a UA nunca bloqueia.
+  const [grafo, arvoreUA] = await Promise.all([
+    temPonte ? grafoDoRepo(esq.repo).catch(() => null) : grafoLocalDoRepo(esq.repo),
+    arvoreUACacheada(esq.repo).catch(() => null),
+  ]);
+  return NextResponse.json({ grafo, arvoreUA, engine: true });
 }
