@@ -37,10 +37,16 @@ RUN cd /opt/understand-anything && (pnpm install --frozen-lockfile || pnpm insta
     && (pnpm --filter @understand-anything/core build || echo "build do core adiado — ver RUNBOOK") \
     && chmod -R a+rX /opt/understand-anything   # legível pelo usuário forja (mesma armadilha do graphify)
 
+# Claude Code CLI (o `/understand` É um slash command dele). A AUTH e o registro do plugin são passo de
+# box em runtime (precisam de segredo/sessão): ver RUNBOOK §5. Instalar o binário aqui já deixa pronto.
+RUN npm install -g @anthropic-ai/claude-code && claude --version || echo "claude CLI adiado — ver RUNBOOK §5"
+
 # a ponte fina (HTTP → engine), roda como usuário sem privilégio
 RUN useradd -m -u 10002 forja && mkdir -p /work && chown forja:forja /work
 COPY vetting.mjs /app/vetting.mjs
 COPY bridge.mjs /app/bridge.mjs
+COPY forja-understand.sh /app/forja-understand.sh
+RUN chmod 0755 /app/forja-understand.sh
 COPY config /app/config
 USER forja
 WORKDIR /work
