@@ -22,6 +22,14 @@ const MAX_TARBALL = Number(process.env.FORJA_MAX_TARBALL_BYTES || 64 * 1024 * 10
 const TIMEOUT_MS = Number(process.env.FORJA_CMD_TIMEOUT_MS || 15 * 60_000);
 const UNDERSTAND_CMD = process.env.FORJA_UNDERSTAND_CMD || "";     // wrapper do Claude Code headless + plugin
 // obs: o graphify usa `update` (tree-sitter estático, SEM LLM) — não precisa de FORJA_GRAPHIFY_BACKEND.
+// O understand É LLM: o wrapper (Claude Code headless) precisa da auth, que o rodar() genérico filtra fora.
+// Só o engine 'understand' recebe este env repassado (allowlist estreita, configurável). O graphify NÃO.
+const UNDERSTAND_ENV_PASS = (process.env.FORJA_UNDERSTAND_ENV_PASS ||
+  "ANTHROPIC_API_KEY,ANTHROPIC_AUTH_TOKEN,ANTHROPIC_BASE_URL,ANTHROPIC_MODEL,ANTHROPIC_DEFAULT_HAIKU_MODEL," +
+  "CLAUDE_CODE_USE_BEDROCK,CLAUDE_CODE_USE_VERTEX,AWS_REGION,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_SESSION_TOKEN," +
+  "CLOUD_ML_REGION,GOOGLE_APPLICATION_CREDENTIALS,HTTPS_PROXY,HTTP_PROXY,NO_PROXY,FORJA_CLAUDE_BIN,FORJA_UNDERSTAND_PERM"
+).split(",").map((s) => s.trim()).filter(Boolean);
+const envDoUnderstand = () => Object.fromEntries(UNDERSTAND_ENV_PASS.filter((k) => process.env[k] !== undefined).map((k) => [k, process.env[k]]));
 
 const lerCorpo = (req) => new Promise((ok, erro) => {
   const pedacos = []; let n = 0;
@@ -88,8 +96,9 @@ const server = createServer(async (req, res) => {
       const repoDir = corpo.repoUrl ? await clonarRepo(corpo.repoUrl, jobDir) : await extrairTarball(corpo.tarballBase64, jobDir);
 
       const { bin, argv } = montarComando(engine, repoDir, corpo.args);
-      const binReal = engine.bin === "__wrapper__" ? UNDERSTAND_CMD : bin;
-      const r = await rodar(binReal, argv, jobDir);
+      const ehUnderstand = engine.bin === "__wrapper__";
+      const binReal = ehUnderstand ? UNDERSTAND_CMD : bin;
+      const r = await rodar(binReal, argv, jobDir, ehUnderstand ? envDoUnderstand() : {});
 
       // o engine pode escrever a saída relativa ao alvo OU ao cwd do job — tenta os dois (robusto).
       const { base, rel } = caminhoSaida(engine, { cwd: jobDir, repoDir });

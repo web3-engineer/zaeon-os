@@ -74,9 +74,24 @@ Guarde um `graph.json` e um `.ua/knowledge-graph.json` reais como **fixtures** p
   **sem LLM** (confirmado na box: `graphify 0.9.108` devolveu o grafo real de um repo). `FORJA_GRAPHIFY_BACKEND`
   fica vazio.
 - **understand** (opcional, marcha 2): a análise É um pipeline multi-agente do **Claude Code** — não há CLI
-  próprio. Instale o Claude Code na box, registre o plugin (`/plugin marketplace add Egonex-AI/Understand-Anything`
-  → `/plugin install understand-anything`) e escreva o wrapper `FORJA_UNDERSTAND_CMD` que roda `claude -p
-  '/understand'` com `cwd` no repo-alvo. Sem o wrapper, `engine=understand` responde `503`, de propósito.
+  próprio. A imagem **já traz** o Claude Code CLI e o wrapper `forja-understand.sh` (em `/app/`). Falta só
+  **provisionar na box** (auth + plugin) e **ligar**:
+  1. **Auth do Claude Code** — ponha a credencial no `.env` da ponte (a ponte repassa só pro understand, via
+     `UNDERSTAND_ENV_PASS`): `ANTHROPIC_API_KEY=...` (ou o gateway: `ANTHROPIC_BASE_URL` + `ANTHROPIC_AUTH_TOKEN`).
+  2. **Plugin** no Claude Code do usuário `forja` (uma vez, dentro do container):
+     ```
+     docker compose -p zaeon-forja -f compose.yml exec -u forja forja-engine \
+       claude plugin marketplace add Egonex-AI/Understand-Anything
+     docker compose -p zaeon-forja -f compose.yml exec -u forja forja-engine \
+       claude plugin install understand-anything   # ou registre /opt/understand-anything como marketplace local
+     ```
+     (se o build não quiser rede, o repo já está clonado em `/opt/understand-anything` — registre-o como
+     marketplace local em vez de baixar.)
+  3. **Ligar**: `FORJA_UNDERSTAND_CMD=/app/forja-understand.sh` no `.env` da ponte, e `up -d` de novo.
+     `GET /health` passa a devolver `understand:true`; `engine=understand` passa a rodar. Sem a var, responde
+     `503` de propósito.
+  4. **Fumaça**: `FORJA_BRIDGE_TOKEN=... ./smoke.sh http://127.0.0.1:8800 https://github.com/karpathy/micrograd --ua`
+     (o `--ua` leva minutos — é um run de LLM por repo).
 
 ## 6. Pôr em PROD (ligar o app ao motor)
 O app roda em container (`zaeon_web`), então `127.0.0.1` do app ≠ host. A ponte entra na **rede do app** e é
