@@ -1,10 +1,13 @@
 /**
  * lib/estudos/desbloqueioEstudo.ts — o laço do desbloqueio das SKILLS/CURSOS da vitrine, agora
- * MODULAR. Quando o aluno pega um card, a Sala de Estudos abre o MÓDULO certo (não tudo no chat):
+ * MODULAR. Quando o aluno pega um card, a Sala de Estudos ABRE o módulo certo — mas só os que de fato
+ * abrem algo:
  *
- *   · "board"  → board da Forja (graphify + cards + repo) do curso de código.
- *   · "device" → painel de download + instruções do app de dispositivo.
- *   · "agente" → a Aura abre uma conversa NOVA e inicia a aula (ativando a skill).
+ *   · "board"  → board da Forja (graphify + cards + repo) do curso de código. ABRE.
+ *   · "device" → painel de download + instruções do app de dispositivo. ABRE.
+ *   · "agente" → NÃO abre nada: a skill já está no cardápio da Aura (activate_skill), disponível VIA
+ *                PROMPT. Cuspir uma mensagem "comece a aula" era tosco — o aluno invoca quando quiser,
+ *                com as próprias palavras. Por isso `estudoDoItem` devolve null pra agente.
  *
  * Substitui o desbloqueioSkill (que mandava TODA skill pro chat — o erro do #803). `estudoDoItem` é
  * PURO (testável); o resto mora em window/localStorage, como os outros desbloqueios. O módulo já vem
@@ -17,11 +20,18 @@ export const EVT_ABRIR_ESTUDO = "zaeon:estudo:abrir";
 const CHAVE_PENDENTE = "zaeon.estudo.pendente";
 const PREFIXO = "skill:";
 
-export type EstudoPendente = { modulo: ModuloEstudo; slug: string; titulo: string };
+/** Só os módulos que ABREM algo na sala entram como pendente. "agente" fica disponível via prompt. */
+export type ModuloQueAbre = Extract<ModuloEstudo, "board" | "device">;
+export type EstudoPendente = { modulo: ModuloQueAbre; slug: string; titulo: string };
 
-/** O estudo pendente que um item da vitrine abre, ou null. Só itens de skill da casa (`skill:<slug>`). PURA. */
+/**
+ * O estudo pendente que um item da vitrine ABRE, ou null. Só itens de skill da casa (`skill:<slug>`) de
+ * módulo "board"/"device"; "agente" devolve null de propósito (a skill já está disponível via prompt,
+ * nada a abrir). PURA.
+ */
 export function estudoDoItem(item: Pick<ItemVitrine, "id" | "titulo" | "modulo"> | null | undefined): EstudoPendente | null {
-  if (!item?.id || !item.id.startsWith(PREFIXO) || !item.modulo) return null;
+  if (!item?.id || !item.id.startsWith(PREFIXO)) return null;
+  if (item.modulo !== "board" && item.modulo !== "device") return null; // agente = disponível via prompt, não abre
   const slug = item.id.slice(PREFIXO.length).trim();
   if (!slug) return null;
   return { modulo: item.modulo, slug, titulo: (item.titulo || "").trim() || slug };
@@ -44,9 +54,4 @@ export function consumirEstudoPendente(): EstudoPendente | null {
   } catch {
     return null;
   }
-}
-
-/** A mensagem inicial da aula no módulo "agente": pede a aula NOMEANDO a skill a ativar. PURA. */
-export function primeiraMensagemDaEstudo(e: EstudoPendente): string {
-  return `Quero estudar "${e.titulo}". Ative a skill ${e.slug} (activate_skill) e comece a aula por ela, do começo.`;
 }

@@ -64,7 +64,7 @@ import { assuntoDe, pedeAula } from "@/lib/agent/aprender";
 import { pedeCaderno } from "@/lib/jornadas/cadernoRitmo";
 import { EVT_ABRIR_CADERNO, consumirCadernoPendente } from "@/lib/jornadas/desbloqueio";
 import { EVT_ABRIR_FORJA, consumirForjaPendente } from "@/lib/forja/desbloqueioForja";
-import { EVT_ABRIR_ESTUDO, consumirEstudoPendente, primeiraMensagemDaEstudo, type EstudoPendente } from "@/lib/estudos/desbloqueioEstudo";
+import { EVT_ABRIR_ESTUDO, consumirEstudoPendente, type EstudoPendente } from "@/lib/estudos/desbloqueioEstudo";
 import ChatZoom, { useChatFontScale } from "@/components/chat/ChatZoom";
 import { zoomNoDiagrama } from "@/components/studio/DiagramView";
 import { AnimatePresence } from "framer-motion";
@@ -1021,25 +1021,21 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     return () => window.removeEventListener(EVT_ABRIR_FORJA, onEvt);
   }, []);
 
-  // O laço MODULAR das skills/cursos da vitrine (lib/estudos/desbloqueioEstudo): o card pego deixa um
-  // estudo PENDENTE com o módulo já decidido, e a Sala abre o módulo certo — SEMPRE numa conversa NOVA
-  // (novaAba), nunca no thread de outro assunto que estava aberto (o erro que o aluno pegou):
+  // O laço MODULAR das skills/cursos da vitrine (lib/estudos/desbloqueioEstudo): o card de board/device
+  // deixa um estudo PENDENTE, e a Sala abre o módulo certo — SEMPRE numa conversa NOVA (novaAba), nunca
+  // no thread de outro assunto (o erro que o aluno pegou):
   //   · board  → board da Forja (graphify + cards + repo) do curso de código;
-  //   · device → painel de download + instruções do app;
-  //   · agente → a Aura inicia a aula ativando a skill.
-  // Uma vez por slug. novaAba() seta abaAtivaRef SÍNCRONO, então o doc/turno cai na conversa nova.
+  //   · device → painel de download + instruções do app.
+  // Skill "agente" NÃO chega aqui (estudoDoItem devolve null): ela já está no cardápio da Aura,
+  // disponível via prompt — nada a abrir. Uma vez por slug. novaAba() seta abaAtivaRef SÍNCRONO.
   const estudoAbertoRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     const abrir = (e: EstudoPendente | null) => {
       if (!e?.slug || estudoAbertoRef.current.has(e.slug)) return;
       estudoAbertoRef.current.add(e.slug);
       novaAbaRef.current();                       // conversa nova: o módulo nunca invade um thread de outro assunto
-      if (e.modulo === "board" || e.modulo === "device") {
-        const kind = e.modulo === "board" ? "forja" : "device";
-        void runStudioActionRef.current(kind, e.slug, undefined, false, undefined, undefined, undefined, true);
-      } else {
-        requestAnimationFrame(() => sendRefA.current(primeiraMensagemDaEstudo(e))); // deixa a conversa nova montar
-      }
+      const kind = e.modulo === "board" ? "forja" : "device";
+      void runStudioActionRef.current(kind, e.slug, undefined, false, undefined, undefined, undefined, true);
     };
     abrir(consumirEstudoPendente());
     const onEvt = (ev: Event) => { consumirEstudoPendente(); abrir((ev as CustomEvent).detail as EstudoPendente); };
