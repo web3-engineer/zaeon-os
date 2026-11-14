@@ -1008,11 +1008,14 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
 
   // O MESMO laço, para os cursos de REPOSITÓRIO da Forja: o card OSS pego na vitrine deixa um curso
   // PENDENTE (lib/forja/desbloqueioForja), e a Sala abre o board da Forja sozinha. Uma vez por id.
+  // Em conversa NOVA (novaAba), como os cursos de código da skill — senão o board cai num thread antigo
+  // e, com o "abrir" levando ao chat, o aluno via só a estética blueprint do feed.
   const forjaAbertoRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     const abrir = (id: string | null) => {
       if (!id || forjaAbertoRef.current.has(id)) return;
       forjaAbertoRef.current.add(id);
+      novaAbaRef.current();
       void runStudioActionRef.current("forja", id, undefined, false, undefined, undefined, undefined, true);
     };
     abrir(consumirForjaPendente());

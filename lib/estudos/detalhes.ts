@@ -72,7 +72,10 @@ export function descricaoDe(it: ItemVitrine): SecaoDescricao[] {
 /** onde a build fica depois de conectar — o texto e a aba que o "abrir" leva */
 export type Destino = { texto: string; aba: "chat" | "escritorio" | "estudos" };
 export const destinoDe = (it: ItemVitrine): Destino =>
-  it.id?.startsWith("skill:") ? { texto: "na Sala de Estudos", aba: "chat" } // skill-curso: a Aura abre o chat e inicia a aula
+  // skill da casa E curso da Forja: o módulo (board/device) abre como DOCUMENTO na aba do chat
+  // (meus-estudos). Tem de levar pra lá — não pro "feed", que é a vitrine de blueprints (a aba "estudos"
+  // é remapeada pro feed no StudyRoomContent, e o board ficaria escondido atrás da estética blueprint).
+  it.id?.startsWith("skill:") || it.id?.startsWith("forja:") ? { texto: "na Sala de Estudos", aba: "chat" }
     : it.tipo === "agente" ? { texto: "no chat", aba: "chat" }
     : it.tipo === "negocio" || it.tipo === "rwa" ? { texto: "no Escritório", aba: "escritorio" }
     : { texto: "na Sala de Estudos", aba: "estudos" };

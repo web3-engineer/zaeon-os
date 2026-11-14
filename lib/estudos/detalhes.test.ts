@@ -38,7 +38,9 @@ describe("detalhes · nicho, validadores, descrição", () => {
     expect(destinoDe(com({ tipo: "agente" })).aba).toBe("chat");
     expect(destinoDe(com({ tipo: "rwa" })).aba).toBe("escritorio");
     expect(destinoDe(com({ tipo: "curso" }))).toEqual({ texto: "na Sala de Estudos", aba: "estudos" });
-    // skill-curso (id skill:*) abre o CHAT da Sala pra Aura iniciar a aula — não a vista de estudos
+    // skill-curso (id skill:*) e curso da Forja (id forja:*) abrem como DOCUMENTO na aba do chat —
+    // NÃO na vista "estudos", que o StudyRoomContent remapeia pro feed (a estética blueprint).
     expect(destinoDe(com({ id: "skill:astropy-astronomia", tipo: "skill" }))).toEqual({ texto: "na Sala de Estudos", aba: "chat" });
+    expect(destinoDe(com({ id: "forja:pomodoro", tipo: "curso" }))).toEqual({ texto: "na Sala de Estudos", aba: "chat" });
   });
 });
