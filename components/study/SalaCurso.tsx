@@ -7,7 +7,7 @@
  * pro esqueleto, sem travar.
  */
 import { useEffect, useState } from "react";
-import CursoCodigoView from "@/components/studio/CursoCodigoView";
+import CursoArvoreView from "@/components/studio/CursoArvoreView";
 import { comBaseDoGrafo } from "@/lib/forja/arvoreDoGrafo";
 import type { CursoRepo } from "@/lib/forja/tipos";
 
@@ -51,5 +51,5 @@ export default function SalaCurso({ cursoId, titulo, onFechar }: { cursoId: stri
     );
   }
   if (!curso) return <div className="grid h-full place-items-center bg-[#060b16] text-[13px] text-cyan-300/60">Montando o curso…</div>;
-  return <CursoCodigoView curso={curso} titulo={titulo || curso.arvore.raiz.titulo} onFechar={onFechar} />;
+  return <CursoArvoreView curso={curso} titulo={titulo || curso.arvore.raiz.titulo} onFechar={onFechar} />;
 }

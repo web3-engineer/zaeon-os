@@ -1,7 +1,7 @@
 "use client";
 // DEV ONLY: busca o grafo REAL (graphify local) e renderiza a cena do curso com ele.
 import { useEffect, useState } from "react";
-import CursoCodigoView from "@/components/studio/CursoCodigoView";
+import CursoArvoreView from "@/components/studio/CursoArvoreView";
 import { comBaseDoGrafo } from "@/lib/forja/arvoreDoGrafo";
 import type { CursoRepo } from "@/lib/forja/tipos";
 
@@ -22,7 +22,7 @@ export default function CursoRealPreview({ curso, repo, titulo }: { curso: Curso
   }, [repo]);
   return (
     <div className="relative h-screen w-screen">
-      <CursoCodigoView curso={c} titulo={titulo} />
+      <CursoArvoreView curso={c} titulo={titulo} />
       <div className="pointer-events-none fixed bottom-2 right-3 z-50 font-mono text-[11px] text-cyan-300/70">{status}</div>
     </div>
   );
