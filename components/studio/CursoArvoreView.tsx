@@ -1,47 +1,162 @@
 "use client";
 
 /**
- * CursoArvoreView — a UI/UX BASE de todo curso de CÓDIGO (repo), como ÁRVORE DA VIDA no estilo Zaeon.
- * A sequência que o dono pediu, na forma de árvore simétrica e circular:
- *   1. o GRAFO DO CÓDIGO (graphify) entra com fade + zoom — a matéria-prima, que recua pro fundo;
- *   2. a ÁRVORE DA VIDA se desenha a partir da semente: raízes espelhando a copa, tronco central,
- *      ramos (módulos) curvando simétricos até a copa, folhas (símbolos) abrindo nas pontas;
- *   3. para no PONTO INICIAL com o 1º ramo ("comece por aqui") destacado.
- * Forma de árvore da vida; CORES as da casa (cyan). Sem temperatura e sem botão de iniciar.
+ * CursoArvoreView — a UI/UX BASE de todo curso de CÓDIGO (repo) da Zaeon: a ÁRVORE DA VIDA.
+ * A jornada começa na RAIZ (semente = o repo, azul com glow constante), sobe pelo tronco e abre numa copa
+ * de ramos curvos (módulos) e folhas (símbolos), simétrica, viva (balanço fluido contínuo) e com fluxo
+ * pulsante de energia subindo da raiz. Os nós da copa são arrastáveis e voltam balançando pra casa.
+ *
+ * Motor MODULAR e imperativo (SVG + requestAnimationFrame) alimentado por layoutBotanico(curso.arvore),
+ * que deriva tudo do grafo REAL (graphify → arvoreDoGrafo). Serve QUALQUER curso/skill com repositório:
+ * basta a árvore — árvores maiores/menores se montam sozinhas. Sem o motor, degrada pro esqueleto (só
+ * tronco + raiz), sem travar.
  */
-import { useEffect, useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useRef } from "react";
 import type { CursoRepo } from "@/lib/forja/tipos";
 import { layoutBotanico, CANVAS } from "@/lib/forja/layoutBotanico";
-import { layoutCodigo } from "@/lib/forja/layoutCurso";
 
-type Fase = "codigo" | "arvore" | "pronto";
-const curto = (s: string, n = 22): string => (s && s.length > n ? s.slice(0, n - 1) + "…" : s || "");
-const CX = CANVAS.w / 2;
+const NS = "http://www.w3.org/2000/svg";
+const el = (t: string, a: Record<string, string | number> = {}) => {
+  const e = document.createElementNS(NS, t);
+  for (const k in a) e.setAttribute(k, String(a[k]));
+  return e;
+};
+const cut = (s: string, n: number) => (s && s.length > n ? s.slice(0, n - 1) + "…" : s || "");
+
+const CSS = `
+  .cav-flow{stroke:#9bf3ff;stroke-linecap:round;fill:none;stroke-dasharray:3 24;opacity:.9}
+  .cav-flow.up{animation:cavUp 1.5s linear infinite}
+  .cav-flow.in{animation:cavIn 1.7s linear infinite}
+  @keyframes cavUp{to{stroke-dashoffset:-27}}
+  @keyframes cavIn{to{stroke-dashoffset:27}}
+  .cav-halo{animation:cavBreathe 2.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+  @keyframes cavBreathe{0%,100%{opacity:.22;transform:scale(1)}50%{opacity:.55;transform:scale(1.5)}}
+  .cav-node{cursor:grab}.cav-node:active{cursor:grabbing}
+`;
+
+type NoViz = {
+  tipo: "mod" | "folha"; titulo: string; hx: number; hy: number; x: number; y: number;
+  vx: number; vy: number; r: number; parent: { x: number; y: number }; drag?: boolean;
+  phx: number; phy: number; ax: number; ay: number; sp: number;
+};
 
 export default function CursoArvoreView({ curso, titulo, onFechar }: { curso: CursoRepo; titulo?: string; onFechar?: () => void }) {
-  const [fase, setFase] = useState<Fase>("codigo");
-
-  const arvore = useMemo(() => layoutBotanico(curso.arvore), [curso.arvore]);
-  const codigo = useMemo(() => layoutCodigo(curso.grafo), [curso.grafo]);
-  const posCod = useMemo(() => new Map(codigo.map((c) => [c.id, c])), [codigo]);
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const cabecalho = (titulo || curso.arvore.raiz.titulo || "").trim();
+  const semMapa = (curso.arvore.raiz.filhos?.length ?? 0) === 0;
 
   useEffect(() => {
-    const t1 = setTimeout(() => setFase("arvore"), 1200);
-    const t2 = setTimeout(() => setFase("pronto"), 3800);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, []);
+    const svg = svgRef.current;
+    if (!svg) return;
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
 
-  const mostraArvore = fase === "arvore" || fase === "pronto";
-  const pronto = fase === "pronto";
-  const semMapa = curso.grafo.nos.length === 0;
-  const cabecalho = (titulo || curso.arvore.raiz.titulo || "").trim();
-  const entrada = arvore.ramos[0]?.id; // "comece por aqui" = o primeiro ramo
+    const L = layoutBotanico(curso.arvore);
+    const GEO = { cx: CANVAS.w / 2, baseY: L.semente.y };
+
+    // defs + css
+    const defs = el("defs");
+    const filtro = el("filter", { id: "cav-glow", x: "-60%", y: "-60%", width: "220%", height: "220%" });
+    const blur = el("feGaussianBlur", { stdDeviation: 3, result: "b" });
+    const merge = el("feMerge"); merge.appendChild(el("feMergeNode", { in: "b" })); merge.appendChild(el("feMergeNode", { in: "SourceGraphic" }));
+    filtro.appendChild(blur); filtro.appendChild(merge); defs.appendChild(filtro);
+    const grad = el("radialGradient", { id: "cav-aura", cx: "50%", cy: "50%" });
+    grad.appendChild(el("stop", { offset: "0%", "stop-color": "rgba(34,211,238,.13)" }));
+    grad.appendChild(el("stop", { offset: "100%", "stop-color": "rgba(34,211,238,0)" }));
+    defs.appendChild(grad); svg.appendChild(defs);
+    const style = el("style"); style.textContent = CSS; svg.appendChild(style);
+
+    // anel + aura
+    svg.appendChild(el("circle", { cx: L.centro.x, cy: L.centro.y, r: L.rAnel, fill: "none", stroke: "#22d3ee", "stroke-width": 1.4, "stroke-opacity": 0.2 }));
+    svg.appendChild(el("circle", { cx: L.centro.x, cy: 300, r: 250, fill: "url(#cav-aura)" }));
+
+    // raízes simétricas + fluxo entrando
+    const gRaiz = el("g"); svg.appendChild(gRaiz);
+    L.raizes.forEach((r, i) => {
+      gRaiz.appendChild(el("path", { d: r.d, fill: "none", stroke: "#1b6f86", "stroke-width": i < 2 ? 3.2 : i < 4 ? 2.7 : i < 6 ? 2.2 : 3, "stroke-linecap": "round", "stroke-opacity": 0.8 }));
+      const fw = el("path", { d: r.d, class: "cav-flow in" }); gRaiz.appendChild(fw);
+    });
+
+    // tronco (levemente curvo) + fluxo subindo
+    const gT = el("g"); svg.appendChild(gT);
+    gT.appendChild(el("path", { d: L.troncoPath, fill: "none", stroke: "#2b8fa6", "stroke-width": 9, "stroke-linecap": "round" }));
+    gT.appendChild(el("path", { d: L.troncoPath, class: "cav-flow up" }));
+
+    // nós móveis (copa)
+    const gLinks = el("g"), gFlow = el("g"), gNodes = el("g");
+    svg.appendChild(gLinks); svg.appendChild(gFlow); svg.appendChild(gNodes);
+    let seed = 1; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    const nodes: NoViz[] = [];
+    L.ramos.forEach((ramo) => {
+      const mod: NoViz = { tipo: "mod", titulo: ramo.titulo, hx: ramo.hx, hy: ramo.hy, x: ramo.hx, y: ramo.hy, vx: 0, vy: 0, r: L.ramos.length > 8 ? 7 : 9, parent: L.anchor, phx: rnd() * 6.28, phy: rnd() * 6.28, ax: 7 + rnd() * 4, ay: 6 + rnd() * 3, sp: 0.0005 + rnd() * 0.0004 };
+      nodes.push(mod);
+      ramo.folhas.forEach((lf) => {
+        nodes.push({ tipo: "folha", titulo: lf.titulo, hx: lf.hx, hy: lf.hy, x: lf.hx, y: lf.hy, vx: 0, vy: 0, r: 5, parent: mod, phx: rnd() * 6.28, phy: rnd() * 6.28, ax: 5 + rnd() * 3, ay: 5 + rnd() * 3, sp: 0.0006 + rnd() * 0.0005 });
+      });
+    });
+
+    const draw = new Map<NoViz, { ln: SVGElement; fw: SVGElement; g: SVGElement; c: SVGElement; t: SVGElement }>();
+    const cleanups: (() => void)[] = [];
+    nodes.forEach((nn) => {
+      const ehMod = nn.tipo === "mod";
+      const ln = el("path", { fill: "none", stroke: "#22d3ee", "stroke-width": ehMod ? 3 : 1.6, "stroke-opacity": ehMod ? 0.85 : 0.5 }); gLinks.appendChild(ln);
+      const fw = el("path", { class: "cav-flow up" }); if (!ehMod) (fw as SVGElement).setAttribute("style", "animation-duration:2.1s"); gFlow.appendChild(fw);
+      const g = el("g", { class: "cav-node" });
+      const c = el("circle", { r: nn.r, fill: ehMod ? "#22d3ee" : "#0e2a3a", stroke: ehMod ? "#a5f3fc" : "#22d3ee", "stroke-width": ehMod ? 2 : 1.5, filter: "url(#cav-glow)" });
+      const t = el("text", { "text-anchor": "middle", fill: ehMod ? "#fff" : "rgba(165,243,252,.72)", "font-size": ehMod ? 12 : 10, "font-weight": ehMod ? 700 : 400 });
+      t.textContent = cut(nn.titulo, ehMod ? 20 : 16); (t as SVGElement).style.pointerEvents = "none";
+      g.appendChild(c); g.appendChild(t); gNodes.appendChild(g);
+      draw.set(nn, { ln, fw, g, c, t });
+
+      const svgPt = (ev: PointerEvent) => { const p = svg.createSVGPoint(); p.x = ev.clientX; p.y = ev.clientY; return p.matrixTransform(svg.getScreenCTM()!.inverse()); };
+      const down = (e: PointerEvent) => { nn.drag = true; g.setPointerCapture(e.pointerId); e.preventDefault(); };
+      const move = (e: PointerEvent) => { if (!nn.drag) return; const p = svgPt(e); nn.x = p.x; nn.y = p.y; nn.vx = 0; nn.vy = 0; };
+      const up = () => { nn.drag = false; };
+      g.addEventListener("pointerdown", down); g.addEventListener("pointermove", move); g.addEventListener("pointerup", up); g.addEventListener("pointercancel", up);
+      cleanups.push(() => { g.removeEventListener("pointerdown", down); g.removeEventListener("pointermove", move); g.removeEventListener("pointerup", up); g.removeEventListener("pointercancel", up); });
+    });
+
+    // nó-raiz = INÍCIO: azul, glow constante
+    const gR = el("g"); svg.appendChild(gR);
+    gR.appendChild(el("circle", { cx: GEO.cx, cy: GEO.baseY, r: 16, fill: "#22d3ee", class: "cav-halo" }));
+    gR.appendChild(el("circle", { cx: GEO.cx, cy: GEO.baseY, r: 13, fill: "#0b3a66", stroke: "#a5f3fc", "stroke-width": 2.5, filter: "url(#cav-glow)" }));
+    gR.appendChild(el("circle", { cx: GEO.cx, cy: GEO.baseY, r: 5, fill: "#a5f3fc" }));
+    const st = el("text", { x: GEO.cx, y: GEO.baseY + 30, "text-anchor": "middle", fill: "#a5f3fc", "font-size": 13, "font-weight": 800 }); st.textContent = cut(L.semente.titulo, 34); gR.appendChild(st);
+    const aq = el("text", { x: GEO.cx, y: GEO.baseY + 48, "text-anchor": "middle", fill: "#22d3ee", "font-size": 11, "font-weight": 700 }); aq.textContent = "comece por aqui — pela raiz"; gR.appendChild(aq);
+
+    // física fluida: mola macia pra uma casa que balança devagar (vivo, não volátil)
+    const curva = (a: { x: number; y: number }, b: NoViz, ehMod: boolean) => {
+      if (ehMod) { const c1x = a.x + (b.x - a.x) * 0.16, c1y = a.y - 72, c2x = b.x - (b.x - a.x) * 0.14, c2y = b.y + 46; return `M ${a.x.toFixed(1)} ${a.y.toFixed(1)} C ${c1x.toFixed(1)} ${c1y.toFixed(1)} ${c2x.toFixed(1)} ${c2y.toFixed(1)} ${b.x.toFixed(1)} ${b.y.toFixed(1)}`; }
+      const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1, px = -dy / len, py = dx / len, side = b.x >= GEO.cx ? 1 : -1;
+      const mx = (a.x + b.x) / 2 + px * len * 0.26 * side, my = (a.y + b.y) / 2 + py * len * 0.26 * side;
+      return `M ${a.x.toFixed(1)} ${a.y.toFixed(1)} Q ${mx.toFixed(1)} ${my.toFixed(1)} ${b.x.toFixed(1)} ${b.y.toFixed(1)}`;
+    };
+    const t0 = performance.now();
+    let raf = 0;
+    const frame = (now: number) => {
+      const t = now - t0;
+      for (const nn of nodes) {
+        if (!nn.drag) {
+          const tx = nn.hx + Math.sin(t * nn.sp + nn.phx) * nn.ax;
+          const ty = nn.hy + Math.cos(t * nn.sp * 0.8 + nn.phy) * nn.ay;
+          nn.vx += (tx - nn.x) * 0.045; nn.vy += (ty - nn.y) * 0.045;
+          for (const o of nodes) { if (o === nn) continue; const dx = nn.x - o.x, dy = nn.y - o.y, d2 = dx * dx + dy * dy; if (d2 > 1 && d2 < 1400) { const ff = 220 / d2, d = Math.sqrt(d2); nn.vx += (dx / d) * ff; nn.vy += (dy / d) * ff; } }
+          nn.vx *= 0.84; nn.vy *= 0.84; nn.x += nn.vx; nn.y += nn.vy;
+        }
+        const s = draw.get(nn)!, ehMod = nn.tipo === "mod", d = curva(nn.parent, nn, ehMod);
+        s.ln.setAttribute("d", d); s.fw.setAttribute("d", d);
+        s.c.setAttribute("cx", String(nn.x)); s.c.setAttribute("cy", String(nn.y));
+        s.t.setAttribute("x", String(nn.x)); s.t.setAttribute("y", String(nn.y - nn.r - 6));
+      }
+      raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+
+    return () => { cancelAnimationFrame(raf); cleanups.forEach((f) => f()); while (svg.firstChild) svg.removeChild(svg.firstChild); };
+  }, [curso.arvore]);
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-[#060b16]">
-      <div className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(ellipse at 50% 38%, rgba(34,211,238,0.12), transparent 60%)" }} />
-
+      <div className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(ellipse at 50% 34%, rgba(34,211,238,0.12), transparent 60%)" }} />
       <div className="absolute left-5 top-4 z-20">
         <div className="font-mono text-[12px] text-cyan-400/90">{curso.repo}</div>
         <div className="text-[18px] font-black tracking-tight text-white">{cabecalho}</div>
@@ -50,105 +165,11 @@ export default function CursoArvoreView({ curso, titulo, onFechar }: { curso: Cu
         <button type="button" onClick={onFechar} aria-label="voltar"
           className="absolute right-4 top-4 z-30 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[12px] text-white/70 hover:text-white">← voltar</button>
       )}
-
-      <svg viewBox={`0 0 ${CANVAS.w} ${CANVAS.h}`} className="h-full w-full" preserveAspectRatio="xMidYMid meet">
-        <defs>
-          <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="3.2" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
-          <radialGradient id="aura" cx="50%" cy="50%">
-            <stop offset="0%" stopColor="rgba(34,211,238,0.14)" /><stop offset="100%" stopColor="rgba(34,211,238,0)" />
-          </radialGradient>
-        </defs>
-
-        {/* ── 1. o grafo do código (graphify): a matéria-prima, que recua pro fundo ── */}
-        <motion.g initial={{ opacity: 0, scale: 0.86 }} animate={{ opacity: mostraArvore ? 0.12 : 0.85, scale: 1 }} transition={{ duration: 1.0, ease: "easeOut" }} style={{ transformOrigin: `${CX}px 392px` }}>
-          {curso.grafo.arestas.map((a, i) => {
-            const de = posCod.get(a.de), para = posCod.get(a.para);
-            if (!de || !para) return null;
-            return <line key={`ce${i}`} x1={de.x} y1={de.y} x2={para.x} y2={para.y} stroke="#1e3a5f" strokeWidth={1} />;
-          })}
-          {codigo.map((c) => (
-            <circle key={c.id} cx={c.x} cy={c.y} r={3 + Math.min(5, c.grau)} fill="#0e2033" stroke="#2b5278" strokeWidth={1} />
-          ))}
-        </motion.g>
-
-        {/* ── 2. a Árvore da Vida se desenha ── */}
-        <AnimatePresence>
-          {mostraArvore && (
-            <g>
-              {/* aura da copa */}
-              <motion.circle cx={arvore.centro.x} cy={340} r={250} fill="url(#aura)"
-                initial={{ opacity: 0, scale: 0.6 }} animate={{ opacity: pronto ? 1 : 0, scale: 1 }} transition={{ duration: 1.2, delay: 1.4 }} />
-
-              {/* anel que emoldura a árvore */}
-              <motion.circle cx={arvore.centro.x} cy={arvore.centro.y} r={arvore.rAnel} fill="none" stroke="#22d3ee" strokeWidth={1.5} strokeOpacity={0.28}
-                initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: 1, opacity: 0.28 }} transition={{ duration: 1.6, ease: "easeInOut" }} />
-
-              {/* solo */}
-              <motion.line x1={arvore.centro.x - 300} y1={arvore.semente.y} x2={arvore.centro.x + 300} y2={arvore.semente.y}
-                stroke="#22d3ee" strokeWidth={1.5} strokeOpacity={0.35}
-                initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.8 }} />
-
-              {/* raízes espelhando a copa */}
-              {arvore.raizes.map((r, i) => (
-                <motion.path key={`raiz${i}`} d={r.d} fill="none" stroke="#1b6f86" strokeWidth={2.5} strokeLinecap="round" strokeOpacity={0.75}
-                  initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: 1, opacity: 0.75 }} transition={{ duration: 0.9, delay: 0.1 + i * 0.06 }} />
-              ))}
-
-              {/* tronco */}
-              <motion.path d={arvore.troncoPath} fill="none" stroke="#2b8fa6" strokeWidth={9} strokeLinecap="round"
-                initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.0, delay: 0.4, ease: "easeOut" }} />
-
-              {/* ramos (módulos) + folhas (símbolos) */}
-              {arvore.ramos.map((ramo, i) => {
-                const ehEntrada = ramo.id === entrada;
-                const brota = 0.8 + i * 0.22;
-                return (
-                  <g key={ramo.id}>
-                    <motion.path d={ramo.path} fill="none" stroke="#22d3ee" strokeWidth={4} strokeLinecap="round" strokeOpacity={0.9}
-                      initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.7, delay: brota }} />
-
-                    {/* folhas */}
-                    {ramo.folhas.map((f, j) => (
-                      <motion.g key={f.id} initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }}
-                        transition={{ type: "spring", stiffness: 240, damping: 18, delay: brota + 0.45 + j * 0.1 }}>
-                        <circle cx={f.x} cy={f.y} r={5} fill="#0e2a3a" stroke="#22d3ee" strokeWidth={1.5} filter="url(#glow)" />
-                        <text x={f.x} y={f.y - 10} textAnchor="middle" className="fill-cyan-200/70" style={{ fontSize: 10 }}>{curto(f.titulo, 16)}</text>
-                      </motion.g>
-                    ))}
-
-                    {/* nó do módulo na ponta */}
-                    <motion.g initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: "spring", stiffness: 260, damping: 20, delay: brota + 0.3 }}>
-                      {ehEntrada && pronto && (
-                        <motion.circle cx={ramo.x} cy={ramo.y} r={18} fill="none" stroke="#fbbf24" strokeWidth={2}
-                          animate={{ r: [16, 28], opacity: [0.7, 0] }} transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }} />
-                      )}
-                      <circle cx={ramo.x} cy={ramo.y} r={ehEntrada ? 12 : 9}
-                        fill={ehEntrada ? "#fbbf24" : "#22d3ee"} stroke={ehEntrada ? "#fde68a" : "#a5f3fc"} strokeWidth={2} filter="url(#glow)" />
-                      <text x={ramo.x} y={ramo.y - 17} textAnchor="middle" className="fill-white" style={{ fontSize: 12, fontWeight: 700 }}>{curto(ramo.titulo, 20)}</text>
-                      {ehEntrada && pronto && (
-                        <motion.text x={ramo.x} y={ramo.y + 28} textAnchor="middle" className="fill-amber-300" style={{ fontSize: 11, fontWeight: 700 }}
-                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>comece por aqui</motion.text>
-                      )}
-                    </motion.g>
-                  </g>
-                );
-              })}
-
-              {/* a semente / o repo, na base do tronco */}
-              <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
-                <circle cx={arvore.semente.x} cy={arvore.semente.y} r={7} fill="#0b3a66" stroke="#a5f3fc" strokeWidth={2} filter="url(#glow)" />
-                <text x={arvore.semente.x} y={arvore.semente.y + 24} textAnchor="middle" className="fill-cyan-100/80" style={{ fontSize: 12, fontWeight: 800 }}>{curto(arvore.semente.titulo, 32)}</text>
-              </motion.g>
-            </g>
-          )}
-        </AnimatePresence>
-      </svg>
-
+      <svg ref={svgRef} viewBox={`0 0 ${CANVAS.w} ${CANVAS.h}`} className="h-full w-full" preserveAspectRatio="xMidYMid meet" style={{ touchAction: "none" }} />
+      <div className="pointer-events-none absolute bottom-3 left-1/2 z-20 -translate-x-1/2 text-[11px] text-cyan-100/50">a jornada começa na raiz ↓ · arraste os nós da copa pra explorar</div>
       {semMapa && (
-        <div className="pointer-events-none absolute bottom-4 left-1/2 z-20 -translate-x-1/2 rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-[11px] text-amber-200/80">
-          a árvore ganha galhos quando o motor analisar o repositório
+        <div className="pointer-events-none absolute bottom-10 left-1/2 z-20 -translate-x-1/2 rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-[11px] text-amber-200/80">
+          a copa ganha galhos quando o motor analisar o repositório
         </div>
       )}
     </div>

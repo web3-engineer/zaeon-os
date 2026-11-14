@@ -12,42 +12,42 @@ const arvore: ArvoreEntendimento = {
     no("m4", "SeqFeature.py", [no("s4", "SeqFeature")]),
   ]),
 };
-
 const CX = CANVAS.w / 2;
 
-describe("layoutBotanico — a base de conhecimento como Árvore da Vida", () => {
+describe("layoutBotanico — casas simétricas da Árvore da Vida (motor modular)", () => {
   const l = layoutBotanico(arvore);
 
-  it("a semente é a raiz, na base do tronco; o tronco é central e vertical", () => {
+  it("a semente é a raiz (início), na base; o anchor (topo do tronco) fica acima", () => {
     expect(l.semente.titulo).toBe("Biopython");
     expect(l.semente.x).toBe(CX);
+    expect(l.anchor.y).toBeLessThan(l.semente.y);
     expect(l.troncoPath.startsWith(`M ${CX} `)).toBe(true);
   });
 
-  it("cada módulo vira um ramo com curva (path) e ponta", () => {
+  it("cada módulo tem uma casa na copa, acima da base", () => {
     expect(l.ramos).toHaveLength(4);
-    for (const r of l.ramos) {
-      expect(r.path.startsWith("M ")).toBe(true);
-      expect(r.path).toContain("C"); // curva de Bézier
-      expect(r.y).toBeLessThan(l.semente.y); // a copa fica acima da base
-    }
+    for (const r of l.ramos) expect(r.hy).toBeLessThan(l.semente.y);
   });
 
-  it("a copa é simétrica: o 1º e o último ramo espelham em torno do tronco", () => {
-    const a = l.ramos[0].x - CX;
-    const b = l.ramos[l.ramos.length - 1].x - CX;
+  it("a copa é simétrica: 1º e último módulo espelham em torno do tronco", () => {
+    const a = l.ramos[0].hx - CX, b = l.ramos[l.ramos.length - 1].hx - CX;
     expect(Math.sign(a)).toBe(-Math.sign(b));
-    expect(Math.abs(a + b)).toBeLessThan(1); // espelhados
+    expect(Math.abs(a + b)).toBeLessThan(1);
   });
 
-  it("os símbolos de cada módulo viram folhas nas pontas", () => {
+  it("os símbolos viram folhas com casa própria nas pontas", () => {
     expect(l.ramos[0].folhas.map((f) => f.titulo)).toEqual(["Seq", "MutableSeq"]);
     expect(l.ramos[2].folhas).toHaveLength(0);
   });
 
-  it("as raízes espelham a copa, descendo pro solo, e são simétricas", () => {
-    expect(l.raizes.length).toBeGreaterThanOrEqual(5);
-    expect(l.raizes.every((r) => r.d.startsWith("M ") && r.d.includes("C"))).toBe(true);
+  it("as raízes são simétricas (pares espelhados) + a central, e a copa escala com o nº de módulos", () => {
+    expect(l.raizes.length).toBe(7); // 3 pares + central
+    expect(l.raizes.every((r) => r.d.startsWith("M "))).toBe(true);
+    // mais módulos → copa mais larga (geometria modular)
+    const grande = layoutBotanico({ raiz: no("r", "X", Array.from({ length: 9 }, (_, i) => no("m" + i, "mod" + i))) });
+    const spanG = Math.max(...grande.ramos.map((r) => Math.abs(r.hx - CX)));
+    const spanP = Math.max(...l.ramos.map((r) => Math.abs(r.hx - CX)));
+    expect(spanG).toBeGreaterThan(spanP);
   });
 
   it("entrega o anel e o centro do desenho", () => {
