@@ -12,6 +12,7 @@ courseTags:
   - python
 metadata:
   zaeon-familia: procedimento
+  zaeon-repo: sympy/sympy
   zaeon-titulo: SymPy — a conta exata, conferida
   zaeon-subtitulo: Derivar, integrar e resolver equações em Python com resposta simbólica, sem arredondar
   zaeon-modelo: livro

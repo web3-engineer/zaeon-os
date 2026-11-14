@@ -55,7 +55,12 @@ describe("os itens REAIS da vitrine têm módulo coerente (o fio não vira enfei
 
   it("os cursos de código conhecidos abrem board", () => {
     const board = new Set(itens.filter((i) => i.modulo === "board").map((i) => i.id));
-    for (const id of ["skill:astropy-astronomia", "skill:pandas-analise-de-dados", "skill:algoritmos-classicos"]) {
+    for (const id of [
+      "skill:astropy-astronomia", "skill:pandas-analise-de-dados", "skill:algoritmos-classicos",
+      // os que estavam SEM zaeon-repo e caíam no "agente" (agora board, com o repo preenchido).
+      // sympy fica FORA: tem `zaeon-card: agente` → é card da Noether, não item avulso da vitrine.
+      "skill:jupyter-notebooks", "skill:leaflet-mapas-web", "skill:querido-diario-direito", "skill:scroll-suave-lenis",
+    ]) {
       expect(board, `${id} deveria abrir board`).toContain(id);
     }
   });

@@ -12,6 +12,7 @@ courseTags:
   - javascript
 metadata:
   zaeon-familia: procedimento
+  zaeon-repo: Leaflet/Leaflet
   zaeon-titulo: Leaflet — seu mapa interativo na web
   zaeon-subtitulo: Do mapa base ao GeoJSON colorido por dado, numa página que abre em qualquer celular
   zaeon-modelo: planta

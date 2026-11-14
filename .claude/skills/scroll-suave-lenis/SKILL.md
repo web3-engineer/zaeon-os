@@ -12,6 +12,7 @@ courseTags:
   - animacao
 metadata:
   zaeon-familia: procedimento
+  zaeon-repo: darkroomengineering/lenis
   zaeon-titulo: Rolagem suave com Lenis
   zaeon-subtitulo: Smooth scroll leve numa página web — e como integrar sem quebrar acessibilidade
   zaeon-modelo: ondas

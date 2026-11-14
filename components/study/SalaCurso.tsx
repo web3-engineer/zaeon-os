@@ -8,7 +8,7 @@
  */
 import { useEffect, useState } from "react";
 import CursoArvoreView from "@/components/studio/CursoArvoreView";
-import { comBaseDoGrafo } from "@/lib/forja/arvoreDoGrafo";
+import { comBaseDoGrafo, mesclarEnriquecimento } from "@/lib/forja/arvoreDoGrafo";
 import type { CursoRepo } from "@/lib/forja/tipos";
 import type { LicaoCurada } from "@/lib/forja/licaoCurada";
 
@@ -32,14 +32,15 @@ export default function SalaCurso({ cursoId, titulo, onFechar }: { cursoId: stri
         const c = j.meta as MetaCurso;
         setCurso(c);                        // base curada já ensina (não espera o motor)
         setLicoes(c.licoesPorNo ?? {});     // lições reais (estudo/prova/sandbox) por nó
-        // Camada 0 ganha: se a base curada já tem conteúdo, o motor não a substitui (ele só enriquece
-        // cursos sem base — ex.: repos OSS do catálogo). Senão, deriva do understand-anything ou do grafo.
+        // Camadas: a base curada (c.arvore) manda. O motor (graphify/understand), quando a box responde,
+        // ENRIQUECE por cima — some ramos do código real à base, sem apagá-la. Sem base curada, o
+        // enriquecimento É a árvore. Sem motor, nada muda (fica a base). Nunca esvazia.
         const temBaseCurada = (c.arvore?.raiz?.filhos?.length ?? 0) > 0;
-        if (temBaseCurada) return;
         const rm = await fetch("/api/studio/forja/mapa", { method: "POST", headers: H, body: JSON.stringify({ cursoId }) }).then((x) => x.json()).catch(() => null);
         if (vivo && rm && (rm.arvoreUA || rm.grafo?.nos?.length)) {
           const grafo = rm.grafo ?? c.grafo;
-          const arvore = rm.arvoreUA ?? comBaseDoGrafo({ arvore: c.arvore, grafo }, titulo || c.arvore.raiz.titulo);
+          const doMotor = rm.arvoreUA ?? comBaseDoGrafo({ arvore: { raiz: { ...c.arvore.raiz, filhos: [] } }, grafo }, titulo || c.arvore.raiz.titulo);
+          const arvore = temBaseCurada ? mesclarEnriquecimento(c.arvore, doMotor) : doMotor;
           setCurso({ ...c, grafo, arvore });
         }
       } catch {

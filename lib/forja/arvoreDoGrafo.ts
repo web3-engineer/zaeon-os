@@ -50,3 +50,19 @@ export function comBaseDoGrafo(curso: { arvore: ArvoreEntendimento; grafo: Grafo
   if (temArvore || !(curso.grafo?.nos?.length)) return curso.arvore;
   return arvoreDoGrafo(curso.grafo, titulo || curso.arvore?.raiz?.titulo || "Curso", curso.arvore?.raiz?.resumo || "");
 }
+
+/**
+ * Camada 1 — enriquecimento NÃO-DESTRUTIVO: acrescenta os ramos do motor (grafo/understand) à base
+ * curada, SEM apagá-la. Os ramos novos (ids ainda não presentes) entram DEPOIS dos curados, então a
+ * lição curada manda e o código real do repositório fica como exploração extra. Sem base, devolve o
+ * enriquecimento puro. PURA. */
+export function mesclarEnriquecimento(base: ArvoreEntendimento, extra: ArvoreEntendimento | null | undefined): ArvoreEntendimento {
+  const baseFilhos = base?.raiz?.filhos ?? [];
+  const extraFilhos = extra?.raiz?.filhos ?? [];
+  if (!baseFilhos.length) return extra?.raiz ? extra : base;     // sem base curada: o enriquecimento é a árvore
+  if (!extraFilhos.length) return base;                          // sem enriquecimento: a base intacta
+  const idsBase = new Set(baseFilhos.map((f) => f.id));
+  const novos = extraFilhos.filter((f) => !idsBase.has(f.id));
+  if (!novos.length) return base;
+  return { raiz: { ...base.raiz, filhos: [...baseFilhos, ...novos] } };
+}
