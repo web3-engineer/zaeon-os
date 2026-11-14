@@ -162,6 +162,8 @@ export function criarCenaAvatar(canvas: OffscreenCanvas | HTMLCanvasElement, o: 
   const st = { peso: { ler: 0 } as Record<Modo, number>, wTab: 0, lerAte: 0, proxGesto: 0, rostoEm: 0 };
   const zerar = () => { faseUlt = null; cicloUlt = -1; pesoGerar = 0; olharVitrine.peso = 0; olharVitrine.yaw = 0; olharVitrine.pitch = 0; st.peso.ler = 0; st.wTab = 0; st.lerAte = 0; st.proxGesto = performance.now() / 1000 + 6 + Math.random() * 6; st.rostoEm = 0; tab.animar(0, 0); seqs.zerar(); seqUlt = null; if (abrir || orbita || subir) { abrir = 0; orbita = 0; subir = 0; enquadrar(); } };
   let acoes: { gesto: (nome?: string) => void; reagir: () => void } | null = null;
+  // #764: o gesto COM NOME (a pose do microfone) que chegou antes do corpo carregar espera e toca quando ele fica pronto
+  let gestoPendente: string | null = null;
 
   const pacote = fetchPack(new URL(PACOTE, self.location.origin).href);
   const descartar = (v: VRM) => v.scene.traverse((ob) => { const m = ob as THREE.Mesh; if (m.isMesh) { m.geometry?.dispose(); for (const mt of Array.isArray(m.material) ? m.material : [m.material]) mt?.dispose(); } });
@@ -217,6 +219,7 @@ export function criarCenaAvatar(canvas: OffscreenCanvas | HTMLCanvasElement, o: 
       reagir: () => { if (Math.random() < 0.55) { st.lerAte = performance.now() / 1000 + LER_POR; ch.setFace("curious", 0.8); } else gesto("think"); },
     };
     zerar();
+    if (gestoPendente) { const g = gestoPendente; gestoPendente = null; acoes.gesto(g); }
     if (o.vitrine) vitrineDesde = performance.now() / 1000 + 1.2;   // (um respiro antes do primeiro "pensar")
     o.aoEstado("pronto"); tocar();
   };
@@ -332,7 +335,7 @@ export function criarCenaAvatar(canvas: OffscreenCanvas | HTMLCanvasElement, o: 
       if (!escrevendo && pendente) trocar(pendente);   // a troca que esperou a resposta acabar
     },
     reagir: () => acoes?.reagir(),
-    gesto: (nome) => acoes?.gesto(nome),
+    gesto: (nome) => { if (acoes) acoes.gesto(nome); else if (nome) gestoPendente = nome; },
     tamanho: (w, h) => { larg = w; alt = h; tamanhoMudou = true; enquadrar(); },
     visivel: (v) => { visivel = v; if (v) tocar(); else if (raf) { cancelarQuadro(raf); raf = 0; } },
     diag: () => {

@@ -49,6 +49,9 @@ export function nomeDaEstruturaNaTela(termo: string, nomeDoAtlas: string): strin
   const curto = t.length >= 2 && t.length <= 40 && t.split(" ").length <= 4 && /^[\p{L}\s'-]+$/u.test(t);
   // o termo É o nome do atlas (o título canônico do #777): não é português, então traduz
   const ehONomeDoAtlas = !!nomeDoAtlas && semAcento(t) === semAcento(nomeDoAtlas);
-  if (curto && !ehONomeDoAtlas) return t;
+  // termo em inglês que não é o nome exato do atlas ("lung" para "left lung"): também não é português
+  const ehIngles = !!nomeDoAtlasEmPortugues(t);
+  if (curto && !ehONomeDoAtlas && !ehIngles) return t;
+  if (ehIngles && !nomeDoAtlasEmPortugues(nomeDoAtlas)) return nomeDoAtlasEmPortugues(t)!;
   return nomeDoAtlasEmPortugues(nomeDoAtlas) || nomeDoAtlas || t || "estrutura";
 }

@@ -18,10 +18,16 @@ describe("blocoDoCampoGrafico", () => {
     expect(JSON.parse(b.split("\n")[1]!).barras).toHaveLength(3);
   });
   it("não duplica quando o texto já tem o bloco; não monta sem fonte nem com 1 barra", () => {
-    expect(blocoDoCampoGrafico(CAMPO, "x\n```grafico\n{}\n```")).toBeNull();
+    expect(blocoDoCampoGrafico(CAMPO, "x\n```grafico\n" + JSON.stringify(CAMPO) + "\n```")).toBeNull();
+    expect(blocoDoCampoGrafico(CAMPO, 'x\n```grafico\n{"fn":"x^2","xmin":-2,"xmax":2}\n```')).toBeNull();
     expect(blocoDoCampoGrafico({ ...CAMPO, fonte: "" }, "x")).toBeNull();
     expect(blocoDoCampoGrafico({ ...CAMPO, barras: [CAMPO.barras[0]] }, "x")).toBeNull();
     expect(blocoDoCampoGrafico(undefined, "x")).toBeNull();
+  });
+  it("bloco quebrado no texto não esconde o gráfico bom do campo", () => {
+    expect(blocoDoCampoGrafico(CAMPO, "x\n```grafico\n{barras: quebrado\n```")).toMatch(/^```grafico\n/);
+    expect(blocoDoCampoGrafico(CAMPO, 'x\n```grafico\n{"barras":[]}\n```')).toMatch(/^```grafico\n/);
+    expect(blocoDoCampoGrafico(CAMPO, "x\n```grafico\n{}\n```")).toMatch(/^```grafico\n/);
   });
 });
 

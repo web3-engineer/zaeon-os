@@ -17,7 +17,7 @@ Achados nos testes do #756 (11/11).
    - **Abre enquadrado:** a cena reservava as margens dos painéis da página /anatomia (110 px em cima, 170 embaixo); no cartão de 300 px sobravam 40 px. No cartão, a margem é a do cartão (`lib/anatomia/cena.ts`, opção `cartao`).
    - **Com a cor do sistema:** o realce verde de seleção pintava a estrutura isolada. No cartão, sem realce.
    - **Nome em português:** "coração", não "heart" (`lib/anatomia/nomeNaTela.ts`).
-   - **"Abrir o atlas" abre na estrutura:** `/anatomia?conceito=FMA7088`.
+   - **"Abrir o atlas" abre na estrutura:** `/anatomia?estrutura=FMA7088`.
 6. **Imagem gerada**:
    - A legenda em inglês (o pedido ao gerador) saiu da tela (`StudioArtifactViews.tsx`).
    - No pedido de imagem, a Aura termina o texto com a lista das partes e de como reconhecer cada uma.
@@ -31,7 +31,7 @@ Achados nos testes do #756 (11/11).
 - **Anatomia (5):**
   - `lib/anatomia/cena.ts`: opção nova `cartao` (margem e realce); a página /anatomia não muda.
   - `CenaDoCorpo.tsx` repassa `cartao`.
-  - `AtlasDoCorpo.tsx`: lê `?conceito=`.
+  - `AtlasDoCorpo.tsx`: igual ao da main (o link é o `?estrutura=` do #777).
   - `app/api/studio/anatomia`: `nomeNaTela` no `meta` e no título.
 - **Avatar (7):** a mensagem `gesto` ganhou `nome` (`avatarMensagens.ts`, `avatar.worker.ts`, `avatarCena.ts`); sem nome, segue igual.
 - **Harness (1, 2, 6):**

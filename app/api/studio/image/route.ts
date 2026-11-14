@@ -50,7 +50,8 @@ export async function POST(req: Request) {
 
   let prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
   let usedSourceIds: string[] = [];
-  let title = prompt ? prompt.slice(0, 60) : "Imagem";
+  // #764: o prompt direto também vira só o assunto ("vulcão em erupção", não "faça uma imagem de um vulcão…")
+  let title = prompt ? `Imagem — ${assuntoDaImagem(prompt)}` : "Imagem";
 
   // Sem prompt direto → tenta criar a partir do estudo.
   if (!prompt && (spaceId || sourceIds?.length)) {

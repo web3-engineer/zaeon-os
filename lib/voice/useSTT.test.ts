@@ -67,6 +67,15 @@ describe("#733 · useSTT", () => {
     expect(onResult).toHaveBeenLastCalledWith("olá mundo", false);
   });
 
+  it("#764 · no hook: trechos sem espaço na borda (o Edge) chegam com espaço entre as frases", () => {
+    (window as any).webkitSpeechRecognition = SRFalso;
+    const onResult = vi.fn();
+    const { result } = renderHook(() => useSTT({ onResult, continuous: true }));
+    act(() => { result.current.start(); });
+    act(() => { SRFalso.ultimo!.onresult!({ results: [{ 0: { transcript: "para mim." }, isFinal: true }, { 0: { transcript: "Por favor." }, isFinal: false }], resultIndex: 1 }); });
+    expect(onResult).toHaveBeenLastCalledWith("para mim. Por favor.", false);
+  });
+
   it("microfone bloqueado vira o aviso de liberar", () => {
     (window as any).webkitSpeechRecognition = SRFalso;
     const { result } = renderHook(() => useSTT());

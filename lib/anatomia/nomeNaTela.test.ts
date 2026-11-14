@@ -13,6 +13,10 @@ describe("nomeDaEstruturaNaTela", () => {
     expect(nomeDaEstruturaNaTela("left lung", "left lung")).toBe("pulmão (lado esquerdo)");
     expect(nomeDaEstruturaNaTela("small intestine", "small intestine")).toBe("intestino delgado");
   });
+  it("termo curto em inglês, diferente do nome do atlas: traduz também", () => {
+    expect(nomeDaEstruturaNaTela("lung", "left lung")).toBe("pulmão (lado esquerdo)");
+    expect(nomeDaEstruturaNaTela("heart", "heart wall")).toBe("coração");
+  });
   it("sem tradução, fica o nome do atlas", () => {
     expect(nomeDaEstruturaNaTela("left ventricle wall", "left ventricle wall")).toBe("left ventricle wall");
   });

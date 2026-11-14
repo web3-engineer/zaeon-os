@@ -129,27 +129,40 @@ function Placa({ d, compacta }: { d: AnatomiaData; compacta?: boolean }) {
  * #764 · a conversa reaberta só guarda o NÚMERO do artefato (como a imagem): sem o estado em mãos, busca em
  * /api/studio/<id> — o estado da cena mora no `meta` do artefato.
  */
-function useDadosDoServidor(data: AnatomiaData, artifactId?: string): { data: AnatomiaData; carregando: boolean } {
-  const [doServidor, setDoServidor] = useState<AnatomiaData | null>(null);
-  const [terminou, setTerminou] = useState(false);
+/** quanto a busca espera antes de desistir (sem isso, um pedido parado deixava o cartão "carregando" para sempre) */
+export const PRAZO_DA_BUSCA_MS = 15_000;
+
+type Busca = { id: string; meta: AnatomiaData | null; falhou: boolean };
+
+function useDadosDoServidor(data: AnatomiaData, artifactId?: string): { data: AnatomiaData; carregando: boolean; falhou: boolean } {
+  // o resultado guarda DE QUAL artefato ele é: trocou o artifactId, o resultado antigo não vale mais
+  const [busca, setBusca] = useState<Busca | null>(null);
   const precisa = !data?.estado && !!artifactId;
   useEffect(() => {
     if (!precisa) return;
+    const id = artifactId!;
     let vivo = true;
-    fetch(`/api/studio/${encodeURIComponent(artifactId!)}`, { credentials: "same-origin" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((a) => { if (vivo && a?.meta && typeof a.meta === "object") setDoServidor(a.meta as AnatomiaData); })
-      .catch(() => { /* fica a placa sem 3D */ })
-      .finally(() => { if (vivo) setTerminou(true); });
-    return () => { vivo = false; };
+    const aborto = new AbortController();
+    const prazo = setTimeout(() => aborto.abort(), PRAZO_DA_BUSCA_MS);
+    fetch(`/api/studio/${encodeURIComponent(id)}`, { credentials: "same-origin", signal: aborto.signal })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((a) => {
+        if (!vivo) return;
+        const meta = a?.meta && typeof a.meta === "object" ? (a.meta as AnatomiaData) : null;
+        setBusca({ id, meta, falhou: !meta });
+      })
+      .catch(() => { if (vivo) setBusca({ id, meta: null, falhou: true }); })
+      .finally(() => clearTimeout(prazo));
+    return () => { vivo = false; clearTimeout(prazo); aborto.abort(); };
   }, [precisa, artifactId]);
-  if (!precisa) return { data, carregando: false };
-  return { data: doServidor ?? data ?? {}, carregando: !terminou };
+  if (!precisa) return { data, carregando: false, falhou: false };
+  const atual = busca?.id === artifactId ? busca : null;
+  return { data: atual?.meta ?? data ?? {}, carregando: !atual, falhou: !!atual?.falhou };
 }
 
 export default function AnatomiaView({ data: dataDoBloco, nu = false, artifactId }: { data: AnatomiaData; nu?: boolean; artifactId?: string }) {
   // enquanto busca no servidor, ainda não dá para dizer que a cena "não veio isolada"
-  const { data, carregando } = useDadosDoServidor(dataDoBloco, artifactId);
+  const { data, carregando, falhou } = useDadosDoServidor(dataDoBloco, artifactId);
   const [modo, setModo] = useState<"fatos" | "3d">("fatos");
   const podeVer3D = cenaUtilizavel(data);
   const nome = data.nomeNaTela || data.conceito?.nome || data.termoBuscado || "estrutura";
@@ -185,7 +198,12 @@ export default function AnatomiaView({ data: dataDoBloco, nu = false, artifactId
           : <Placa d={data} />}
       </div>
 
-      {!podeVer3D && !carregando && (
+      {falhou && (
+        <p data-anatomia-falha role="alert" className="m-0 rounded-xl border border-slate-300/60 bg-slate-50/60 dark:bg-white/[0.04] px-3 py-2 text-[11px] text-slate-600 dark:text-white/60">
+          Não consegui carregar este 3D agora. Tente reabrir a conversa daqui a pouco.
+        </p>
+      )}
+      {!podeVer3D && !carregando && !falhou && (
         <p data-anatomia-erro role="alert" className="m-0 rounded-xl border border-amber-300/50 bg-amber-50/60 dark:bg-amber-400/[0.07] px-3 py-2 text-[11px] text-amber-800 dark:text-amber-200">
           Esta cena não veio isolada, então o 3D não abre: mostrar o corpo inteiro no lugar de {nome} seria um erro. Peça a estrutura de novo pelo nome.
         </p>

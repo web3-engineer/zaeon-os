@@ -33,11 +33,19 @@ export function numeroBR(v: number): string {
  * Devolve o bloco pronto, ou null quando o texto já tem um ou o campo não vale como gráfico (sem fonte, < 2 barras).
  */
 export function blocoDoCampoGrafico(campo: unknown, corpo: string): string | null {
-  if (/```grafico/.test(corpo)) return null;
+  // só um bloco que DESENHA dispensa o campo: um ```grafico quebrado no texto não pode esconder o gráfico bom do campo
+  // (o de FUNÇÃO, sem `barras`, desenha pelo GraficoFuncao e também conta)
+  const blocos = [...corpo.matchAll(/```grafico\s*\n([\s\S]*?)```/g)].map((m) => m[1]!.trim());
+  if (blocos.some((b) => (ehGraficoDeDados(b) ? parseGraficoDados(b).ok : ehJsonDeFuncao(b)))) return null;
   if (!campo || typeof campo !== "object") return null;
   const json = JSON.stringify(campo);
   if (!ehGraficoDeDados(json) || !parseGraficoDados(json).ok) return null;
   return "```grafico\n" + json + "\n```";
+}
+
+/** um ```grafico de função: JSON que é objeto, sem `barras` e com alguma coisa dentro */
+function ehJsonDeFuncao(json: string): boolean {
+  try { const o = JSON.parse(json); return !!o && typeof o === "object" && !Array.isArray(o) && Object.keys(o).length > 0; } catch { return false; }
 }
 
 const texto = (v: unknown, max: number) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "");

@@ -129,6 +129,33 @@ describe("AnatomiaView — a placa é o padrão", () => {
     } finally { globalThis.fetch = antes; }
   });
 
+  it("#764 · busca que falha avisa que não carregou — não diz que a cena 'não veio isolada'", async () => {
+    const antes = globalThis.fetch;
+    globalThis.fetch = (async () => ({ ok: false, status: 500, json: async () => ({}) })) as any;
+    try {
+      const { findByText, container } = render(<AnatomiaView data={{}} artifactId="art1" />);
+      expect(await findByText(/Não consegui carregar este 3D/)).toBeTruthy();
+      expect(container.querySelector("[data-anatomia-erro]")).toBeNull();
+    } finally { globalThis.fetch = antes; }
+  });
+
+  it("#764 · trocou o artefato: o cartão não mostra a anatomia do anterior enquanto busca", async () => {
+    const antes = globalThis.fetch;
+    let soltar: (v: unknown) => void = () => {};
+    globalThis.fetch = (async (u: string) => {
+      if (String(u).endsWith("art1")) return { ok: true, json: async () => ({ meta: PULMAO }) };
+      return new Promise((r) => { soltar = r; });
+    }) as any;
+    try {
+      const { findByText, container, rerender } = render(<AnatomiaView data={{}} artifactId="art1" />);
+      expect(await findByText("Ver em 3D")).toBeTruthy();
+      rerender(<AnatomiaView data={{}} artifactId="art2" />);
+      expect(container.textContent).not.toContain("left lung");
+      expect(container.textContent).not.toContain("Ver em 3D");
+      soltar({ ok: true, json: async () => ({}) });
+    } finally { globalThis.fetch = antes; }
+  });
+
   it("sem cena utilizável NÃO oferece 3D, e ainda assim mostra os dados", () => {
     const semCena: AnatomiaData = { ...PULMAO, estado: { ...ESTADO, selected: [] } };
     const { container } = render(<AnatomiaView data={semCena} />);

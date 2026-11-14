@@ -845,7 +845,7 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         "proximos_passos, quando fizer sentido, são passos de ESTUDO (o que entender, ler, " +
         "praticar ou checar a seguir) — jamais ofertas de recurso da plataforma.",
         "Responda SOMENTE JSON válido.",
-        `Campos obrigatórios: ${req}. Preencha TODOS. Schema: {nucleo, desenvolvimento?, conceitos?[], evidencia?[{claim,source:{title,url?}}], proximos_passos?[], sources?[{title,url?}], work?{kind,sections:[{title,body}]}, artifacts?[{studioKind,title}]${citaBase ? ", citacoes_base?[n]" : ""}}.`,
+        `Campos obrigatórios: ${req}. Preencha TODOS. Schema: {nucleo, desenvolvimento?, conceitos?[], evidencia?[{claim,source:{title,url?}}], proximos_passos?[], sources?[{title,url?}], work?{kind,sections:[{title,body}]}, artifacts?[{studioKind,title}]${citaBase ? ", citacoes_base?[n]" : ""}${pedeGraficoDeDados(st.objective) ? ", grafico{titulo,barras:[{rotulo,valor}],unidade?,fonte}" : ""}}.`,
         // Ao modelo pedimos EXTRAÇÃO, não decisão de produto: "que substâncias esta
         // resposta menciona?" é pergunta factual, que modelo responde bem. Se a molécula
         // aparece na tela, quem decide é o código (normalizeAnswer) — e o PubChem confirma.
