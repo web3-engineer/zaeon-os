@@ -50,11 +50,21 @@ describe("#756 · a avatar congela pensativa (ZaeonDocumentos)", () => {
     const fonte = readFileSync(path.resolve(__dirname, "../../components/research/ZaeonDocumentos.tsx"), "utf8");
     expect(fonte).toContain("window.addEventListener(EVT_ZAEON_MICROFONE, aoMicrofone)");
     expect(fonte).toContain("window.removeEventListener(EVT_ZAEON_MICROFONE, aoMicrofone)");
-    expect(fonte).toMatch(/tipo: "sinais", lendo: false, escrevendo: true/);                 // a pose de pensar
+    expect(fonte).toMatch(/tipo: "gesto", nome: GESTO_DO_MICROFONE/);                       // #764: a mão na cabeça
     expect(fonte).toMatch(/visivel: naTela && !document\.hidden && !microfone/);             // congelada enquanto o microfone ouve
     expect(fonte).toMatch(/tipo: "sinais", lendo: lendoRef\.current, escrevendo: gerandoRef\.current/);  // volta ao que era
-    const { POSE_PENSATIVA_MS } = await import("@/components/research/ZaeonDocumentos");
-    const { NIVEL } = await import("./sequenciaAvatar");
-    expect(POSE_PENSATIVA_MS / 1000).toBeLessThan(NIVEL.raspar);   // congela ainda no "pensar", antes dos poderes
+  });
+
+  it("#764 · congela com a mão NA cabeça: no meio do trecho em que o cotovelo do fidget_hair está todo dobrado", async () => {
+    const { POSE_PENSATIVA_MS, GESTO_DO_MICROFONE } = await import("@/components/research/ZaeonDocumentos");
+    const { TETO_ESPERA_AVATAR_MS } = await import("./zaeonEventos");
+    const { readFileSync } = await import("node:fs");
+    const path = await import("node:path");
+    const clipe = JSON.parse(readFileSync(path.resolve(__dirname, `../../public/zaeon/movimento/annie-blender/${GESTO_DO_MICROFONE}.json`), "utf8"));
+    const q = clipe.bones.rightLowerArm as number[];
+    const dobra = (f: number) => (2 * Math.acos(Math.min(1, Math.abs(q[f * 4 + 3]))) * 180) / Math.PI;
+    const quadro = Math.round((POSE_PENSATIVA_MS / 1000) * clipe.fps);
+    expect(dobra(quadro)).toBeGreaterThan(135);                    // a mão está lá em cima (o cotovelo em repouso: ~60°)
+    expect(POSE_PENSATIVA_MS).toBeLessThan(TETO_ESPERA_AVATAR_MS); // o microfone não espera o teto à toa
   });
 });

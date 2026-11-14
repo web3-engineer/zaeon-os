@@ -15,6 +15,7 @@
 import { diretrizDaSala, salaDoModo } from "@/lib/ai/salaPersona";
 import { GEMINI_MODEL_FLASH, GEMINI_MODEL_PRO } from "@/lib/ai/model";
 import { classify } from "@/lib/agent/router";
+import { pedeImagem } from "@/lib/agent/pedeImagem";
 import { previaDoRascunho } from "@/lib/agent/previa";
 import { pensarDa, type NivelPensar } from "@/lib/llm/pensar";
 import { STUDIO_KINDS } from "@/lib/agent/tools";
@@ -41,7 +42,8 @@ import { blocoDeFontes, fontesCitadas, fontesDoTurno } from "@/lib/documento/fon
 import { normalizeStudioKind } from "@/lib/agent/tools";
 import type { StructuredAnswer, Source, IntentId, Issue } from "@/lib/agent/contracts";
 import { artefatoDeAprender, pedeAula, pedeEngenhariaReversa, DIRETRIZ_ENGENHARIA_REVERSA } from "@/lib/agent/aprender";
-import { DIRETRIZ_MATEMATICA } from "@/lib/agent/matematica";
+import { DIRETRIZ_MATEMATICA, pedeGraficoDeDados } from "@/lib/agent/matematica";
+import { blocoDoCampoGrafico } from "@/lib/chat/graficoDados";
 import { diretrizDeTabela, semTabelaNaoPedida } from "@/lib/agent/tabela";
 import { aprofundarSecoes, secoesRasas } from "@/lib/documento/aprofundar";
 import { citaveis, corteEfetivo } from "@/lib/rag/turno";
@@ -445,6 +447,14 @@ export function normalizeAnswer(out: Partial<StructuredAnswer> | null | undefine
   // #728: "em 2 frases" — o parágrafo a mais sai AQUI, antes de tudo que lê o corpo (a molécula derivada do texto não
   // pode vir de um trecho que saiu) e antes do texto de falha (com núcleo vazio, o desenvolvimento É a resposta e fica)
   if (answer.desenvolvimento && !semDesenvolvimentoNaoPedido(answer, st.objective ?? "").desenvolvimento) delete answer.desenvolvimento;
+  // #764 · pediu gráfico e o texto veio sem o desenho: o bloco sai do campo `grafico` (o modelo pulava o ```grafico)
+  if (pedeGraficoDeDados(st.objective ?? "")) {
+    const bloco = blocoDoCampoGrafico((o as { grafico?: unknown }).grafico, `${answer.nucleo}\n${answer.desenvolvimento ?? ""}`);
+    if (bloco) {
+      if (answer.desenvolvimento) answer.desenvolvimento = `${answer.desenvolvimento.trimEnd()}\n\n${bloco}`;
+      else answer.nucleo = `${answer.nucleo.trimEnd()}\n\n${bloco}`;
+    }
+  }
   if (o.conceitos) answer.conceitos = asArray(o.conceitos).map(String).filter(Boolean);
   if (o.proximos_passos) {
     const passos = asArray(o.proximos_passos).map(String).filter(Boolean).filter((p) => !ofertaDePlataforma(p));
@@ -809,6 +819,14 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         // Sem skill no diretório devolve "" e o `.filter(Boolean)` abaixo o descarta.
         cardapioDeSkills(),
         DIRETRIZ_MATEMATICA,
+        // #764: o modelo às vezes pulava o desenho — no pedido de gráfico, o campo `grafico` é obrigatório
+        ...(pedeGraficoDeDados(st.objective)
+          ? ['O usuário PEDIU UM GRÁFICO: inclua OBRIGATORIAMENTE o campo grafico: {"titulo":"…","barras":[{"rotulo":"…","valor":0}],"unidade":"…","fonte":"…"} com os números da resposta (valores numéricos, "fonte" sempre). O desenho sai dele.']
+          : []),
+        // #764: a imagem gerada sai SEM rótulos (o gerador erra letras) — quem estuda precisa saber o que é cada parte
+        ...(pedeImagem(st.objective)
+          ? ["O usuário PEDIU UMA IMAGEM, que sai sem nomes escritos nela: no texto, termine com uma lista curta das partes que aparecem e de como reconhecer cada uma (cor ou posição), ex.: \"- **Átrio direito** (azul, em cima à esquerda)\"."]
+          : []),
         // A TABELA é decidida pelo PEDIDO, nunca pela vontade do modelo (lib/agent/tabela).
         // Calar sobre o assunto era o que produzia "tabela do nada": sem esta linha o modelo não
         // tinha como saber que a grade não era bem-vinda, e a única contenção era a oração vaga
@@ -827,7 +845,7 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         "proximos_passos, quando fizer sentido, são passos de ESTUDO (o que entender, ler, " +
         "praticar ou checar a seguir) — jamais ofertas de recurso da plataforma.",
         "Responda SOMENTE JSON válido.",
-        `Campos obrigatórios: ${req}. Preencha TODOS. Schema: {nucleo, desenvolvimento?, conceitos?[], evidencia?[{claim,source:{title,url?}}], proximos_passos?[], sources?[{title,url?}], work?{kind,sections:[{title,body}]}, artifacts?[{studioKind,title}]${citaBase ? ", citacoes_base?[n]" : ""}}.`,
+        `Campos obrigatórios: ${req}. Preencha TODOS. Schema: {nucleo, desenvolvimento?, conceitos?[], evidencia?[{claim,source:{title,url?}}], proximos_passos?[], sources?[{title,url?}], work?{kind,sections:[{title,body}]}, artifacts?[{studioKind,title}]${citaBase ? ", citacoes_base?[n]" : ""}${pedeGraficoDeDados(st.objective) ? ", grafico{titulo,barras:[{rotulo,valor}],unidade?,fonte}" : ""}}.`,
         // Ao modelo pedimos EXTRAÇÃO, não decisão de produto: "que substâncias esta
         // resposta menciona?" é pergunta factual, que modelo responde bem. Se a molécula
         // aparece na tela, quem decide é o código (normalizeAnswer) — e o PubChem confirma.

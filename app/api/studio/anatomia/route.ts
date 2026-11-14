@@ -19,6 +19,7 @@ import { studioUid } from "@/lib/studio/auth";
 import { loadStudyContext } from "@/lib/studio/content";
 import { atlasDisponivel, carregarAtlas } from "@/lib/anatomia/carregar";
 import { cenaDoConceito } from "@/lib/anatomia/cena-do-conceito";
+import { nomeDaEstruturaNaTela } from "@/lib/anatomia/nomeNaTela";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -66,6 +67,8 @@ export async function POST(req: Request) {
   }
 
   const d = r.dados;
+  // #764: o nome do atlas é em inglês ("heart") — na tela vai o termo pedido ("coração"), quando é um nome curto
+  const nomeNaTela = nomeDaEstruturaNaTela(termo, d.conceito.nome);
   const art = await prisma.studioArtifact.create({
     data: {
       ownerId: userId,
@@ -74,9 +77,10 @@ export async function POST(req: Request) {
       status: "done",
       // Não há arquivo: o artefato É o estado. `application/json` é o que ele é.
       mime: "application/json",
-      title: `Anatomia — ${d.conceito.nome}`,
+      title: `Anatomia — ${nomeNaTela}`,
       meta: {
         conceito: d.conceito,
+        nomeNaTela,
         estado: d.estado,
         sistemas: d.sistemas,
         sistemasIds: d.sistemasIds,

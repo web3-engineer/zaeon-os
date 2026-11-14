@@ -211,7 +211,8 @@ export default function MagazineAnswerView({
   /** Peça CAD, idem: a miniatura (PNG/glTF) vira figura que o texto contorna. */
   const ehCad = artefato?.studioKind === "cad" && (!!artefato?.data?.png || !!artefato?.data?.gltf);
   /** Anatomia, idem — e a condição é o ESTADO, não uma imagem: é dele que a cena nasce. */
-  const ehAnatomia = artefato?.studioKind === "anatomia" && !!artefato?.data?.estado;
+  // #764: ou só o NÚMERO dele (conversa reaberta) — o AnatomiaView busca o estado no servidor
+  const ehAnatomia = artefato?.studioKind === "anatomia" && (!!artefato?.data?.estado || !!artefato?.artifactId);
   // Quando o corpo JÁ É o núcleo, mostrar o núcleo de novo em cima seria eco.
   const temLinhaFina = !!answer.desenvolvimento?.trim() && !!answer.nucleo?.trim();
   const conceitos = useMemo(() => answer.conceitos ?? [], [answer.conceitos]);
@@ -565,7 +566,7 @@ export default function MagazineAnswerView({
                 : ehCad
                 ? <CadView data={artefato.data} nu />
                 : ehAnatomia
-                ? <AnatomiaView data={artefato.data} nu />
+                ? <AnatomiaView data={artefato.data || {}} artifactId={artefato.artifactId} nu />
                 : <StudioBlock block={artefato} collapsed={false} onToggle={() => {}} />}
             </figure>
           )}

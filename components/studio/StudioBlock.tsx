@@ -67,7 +67,7 @@ function renderView(b: StudioBlockData) {
     case "cad": return <CadView data={b.data || {}} />;
     // A placa desenha mesmo sem cena (mostra nome, malhas e fonte); o portão do 3D é que depende de
     // `estado.selected`, e o próprio AnatomiaView decide isso. Então não há ramo "indisponível" aqui.
-    case "anatomia": return <AnatomiaView data={b.data || {}} />;
+    case "anatomia": return <AnatomiaView data={b.data || {}} artifactId={b.artifactId} />;
     default: return <div className="text-[12px] text-slate-400">Conteúdo indisponível.</div>;
   }
 }

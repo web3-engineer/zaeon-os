@@ -179,14 +179,17 @@ export function VideoView({ url }: { url: string }) {
   );
 }
 
-export function ImageView({ dataUrl, prompt }: { dataUrl: string; prompt?: string }) {
+/**
+ * #764: o `prompt` é a instrução que a Aura mandou ao GERADOR (em inglês: "A detailed scientific cross-section…") —
+ * aparecia como legenda embaixo da imagem. Não é texto para o aluno: saiu da tela (fica só no artefato).
+ */
+export function ImageView({ dataUrl }: { dataUrl: string; prompt?: string }) {
   return (
     <div className="space-y-2">
       <div className={`${card} p-2`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={dataUrl} alt={prompt || "imagem gerada"} className="w-full rounded-xl" />
+        <img src={dataUrl} alt="imagem gerada" className="w-full rounded-xl" />
       </div>
-      {prompt && <p className="text-[11px] italic text-slate-500 dark:text-white/50">{prompt}</p>}
     </div>
   );
 }

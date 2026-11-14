@@ -42,6 +42,19 @@ export const TEXTO_AVISO_STT: Record<AvisoSTT, string> = {
   falhou: "Não deu para usar o microfone agora. Tente de novo.",
 };
 
+/**
+ * #764 · junta os pedaços da fala com espaço entre eles. O Edge manda cada frase num resultado sem o espaço da frente
+ * e o texto saía grudado: "Faça um diagrama para mim.Por favor.Ok." — agora "… para mim. Por favor. Ok.".
+ */
+export function juntarFala(pedacos: string[]): string {
+  let out = "";
+  for (const p of pedacos) {
+    if (!p) continue;
+    out += out && !/\s$/.test(out) && !/^\s/.test(p) ? ` ${p}` : p;
+  }
+  return out;
+}
+
 /** o erro do navegador (SpeechRecognitionErrorEvent.error) no aviso de quem usa */
 export function avisoDoErro(erro: string | undefined): AvisoSTT | null {
   if (erro === "aborted") return null;   // parou porque outro começou, ou a pessoa parou: não é falha
@@ -108,8 +121,9 @@ export function useSTT(opts?: Opts) {
     rec.onresult = (e: any) => {
       // #733: junta TODOS os trechos (antes, só a partir de `resultIndex` — no modo contínuo, o que já tinha sido
       // fechado sumia da caixa quando a pessoa continuava falando)
-      let txt = "";
-      for (let i = 0; i < e.results.length; i++) txt += e.results[i][0].transcript;
+      const pedacos: string[] = [];
+      for (let i = 0; i < e.results.length; i++) pedacos.push(String(e.results[i][0].transcript ?? ""));
+      const txt = juntarFala(pedacos);
       const final = !!e.results[e.results.length - 1]?.isFinal;
       if (txt.trim()) { setOuviu(true); teveTexto = true; clearTimeout(semTexto); }
       optsRef.current?.onResult?.(txt.trim(), final);
@@ -120,7 +134,8 @@ export function useSTT(opts?: Opts) {
       clearTimeout(pausa); clearTimeout(silencio); clearTimeout(semTexto);
       if (recRef.current !== rec) return;   // um mais novo já assumiu
       setListening(false);
-      if (!pediuParar.current) setAviso(falhou ?? (falou && !teveTexto ? "nao-entendi" : "desligou"));
+      // #764: desligou pela pausa DEPOIS de trazer texto é o caminho certo — sem aviso (parecia erro)
+      if (!pediuParar.current) setAviso(falhou ?? (teveTexto ? null : falou ? "nao-entendi" : "desligou"));
     };
     recRef.current = rec;
     pediuParar.current = false;

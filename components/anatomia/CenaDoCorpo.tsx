@@ -23,9 +23,11 @@ type Props = {
   aoSelecionar: (idDaPeca: string) => void;
   aoProgredir: (porcento: number) => void;
   aoErrar: (mensagem: string) => void;
+  /** #764: dentro do cartão do chat (enquadra no cartão e sem o realce verde da seleção) — ver `montarCena` */
+  cartao?: boolean;
 };
 
-export default function CenaDoCorpo({ atlas, estado, aoSelecionar, aoProgredir, aoErrar }: Props) {
+export default function CenaDoCorpo({ atlas, estado, aoSelecionar, aoProgredir, aoErrar, cartao }: Props) {
   const hospede = useRef<HTMLDivElement>(null);
   // refs lidas pelo laço: sempre a versão mais recente, sem remontar a cena
   const estadoRef = useRef(estado);
@@ -47,6 +49,7 @@ export default function CenaDoCorpo({ atlas, estado, aoSelecionar, aoProgredir, 
       aoSelecionar: (id) => selecionarRef.current(id),
       aoProgredir: (n) => progredirRef.current(n),
       aoErrar: (m) => errarRef.current(m),
+      cartao,
     });
   }, [atlas]);
 

@@ -64,6 +64,12 @@ export function tituloParaTela(s: string): string {
  */
 const NEGACAO = /(^|[^a-zà-ú])(n[ãa]o\s+(abord|trat|traz|tem|t[êe]m|cont[eé]m|menciona|fala|cobre|apresenta|inclu|descrev|explica|serv)|nenhum|nenhuma|sem\s+rela[cç][ãa]o)/i;
 const SOBRE_O_MATERIAL = /(materia|document|trecho|base|fonte|quest[õo]es|arquivo|apostila|livro|deles|delas|eles\s+n|elas\s+n|nenhum)/i;
+/**
+ * #764 · a negação com RESSALVA é uso: "os materiais não trazem imagens…, mencionando apenas a relação das erupções
+ * com as forças tectônicas (ENEM 2022 — questao_74)" — a Aura usou o trecho, e a questão sumia do rodapé.
+ */
+// (só palavras de que o material TRAZ algo: "mas podemos representá-la" e "embora… não abordem" continuam negação)
+const USO_PARCIAL = /(^|[^a-zà-ú])(apenas|somente|mencionand|citand|tratand|abordand|exceto)/i;
 const FIM_DE_FRASE = [".", "!", "?", "\n"];
 function soMencionadoParaNegar(corpo: string, titulo: string): boolean {
   let i = corpo.indexOf(titulo), achou = false;
@@ -75,7 +81,7 @@ function soMencionadoParaNegar(corpo: string, titulo: string): boolean {
     const frase = corpo.slice(ini, fims.length ? Math.min(...fims) : corpo.length).split(titulo).join(" ");
     // a negação tem que ser SOBRE o material ("os materiais… não abordam", "nenhum deles") — "(Livro, p. 3): a célula
     // não tem parede" é uso de verdade
-    if (!NEGACAO.test(frase) || !SOBRE_O_MATERIAL.test(frase)) return false;
+    if (!NEGACAO.test(frase) || !SOBRE_O_MATERIAL.test(frase) || USO_PARCIAL.test(frase)) return false;
     i = corpo.indexOf(titulo, i + titulo.length);
   }
   return achou;

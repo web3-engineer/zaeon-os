@@ -194,6 +194,14 @@ describe("anexarFontesBase — só cita o que a busca devolveu", () => {
     expect(misto.fontesBase).toHaveLength(1);
   });
 
+  it("#764 · negação com ressalva ('não trazem…, mencionando apenas…') é uso: a questão fica no rodapé", () => {
+    const q = tr({ titulo: "ENEM 2022 — questao_74" });
+    const nucleo = "Os materiais disponíveis não trazem instruções ou imagens de um vulcão em erupção, mencionando apenas a relação das erupções com as forças tectônicas (ENEM 2022 — questao_74). Para representar visualmente esse fenômeno, podemos esboçar um vulcão.";
+    expect(anexarFontesBase({ nucleo }, ok([q]), undefined).fontesBase).toHaveLength(1);
+    // sem a ressalva continua negação
+    expect(anexarFontesBase({ nucleo: "Os materiais (ENEM 2022 — questao_74) não trazem nada sobre vulcões, mas podemos desenhar um." }, ok([q]), undefined).fontesBase).toBeUndefined();
+  });
+
   it("#756 · o bloco orienta: se nenhum trecho serve, não citar os títulos e deixar citacoes_base vazio", () => {
     expect(blocoDaBase(ok([tr()]))).toContain("Se NENHUM trecho servir para a pergunta, não liste nem cite os títulos");
   });

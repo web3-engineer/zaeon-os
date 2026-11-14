@@ -15,8 +15,13 @@ import type { DaCena, ParaCena } from "./avatarMensagens";
 import { segurarPrecarga } from "@/lib/cyber/precarga";
 
 const CIANO = "#7fe8ff";
-/** #756 · quanto ela leva até a pose de pensativa antes de congelar (o "pensar" do roteiro vai de 0 a 1,4 s) */
-export const POSE_PENSATIVA_MS = 1000;
+/**
+ * #764 · a pose do microfone é a MÃO NA CABEÇA: o clipe `fidget_hair` (2,8 s) — a mão direita chega à cabeça em ~1,2 s e
+ * fica lá até ~1,6 s (medido no cotovelo, em public/zaeon/movimento/annie-blender/fidget_hair.json). Congela no meio
+ * disso. Antes (#756) era o "pensar" (`think`) congelado em 1 s: mão no queixo, braço cruzado — não o gesto pedido.
+ */
+export const GESTO_DO_MICROFONE = "fidget_hair";
+export const POSE_PENSATIVA_MS = 1400;
 /** dá pra rodar a cena num worker? (OffscreenCanvas transferível + WebGL nele) */
 function temOffscreen(): boolean {
   if (typeof window === "undefined" || typeof OffscreenCanvas === "undefined" || !("transferControlToOffscreen" in HTMLCanvasElement.prototype)) return false;
@@ -97,8 +102,8 @@ export default function ZaeonDocumentos({ persona, lendo = false, reagir = 0 }: 
       if (!d || d.ligado === microfone) return;
       clearTimeout(congelar);
       if (d.ligado) {
-        // a pose: o começo do roteiro da resposta ("pensar": mão no queixo, olhos acesos — os 1,4 s antes dos poderes)
-        w.postMessage({ tipo: "sinais", lendo: false, escrevendo: true } satisfies ParaCena);
+        // a pose (#764): a mão na cabeça — o gesto `fidget_hair`, congelado em POSE_PENSATIVA_MS
+        w.postMessage({ tipo: "gesto", nome: GESTO_DO_MICROFONE } satisfies ParaCena);
         if (!naTela || document.hidden) { microfone = true; avisar(); return; }   // ninguém vê: congela já, sem esperar
         d.esperar.push(new Promise<void>((pronto) => { congelar = window.setTimeout(() => { microfone = true; avisar(); pronto(); }, POSE_PENSATIVA_MS); }));
       } else {

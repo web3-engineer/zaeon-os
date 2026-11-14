@@ -15,4 +15,10 @@ describe("#749 · StudioBlock de imagem", () => {
     const r = render(<StudioBlock block={{ studioKind: "image", title: "Imagem — x", data: null, artifactId: "i1" } as any} collapsed={false} />);
     expect(r.container.querySelector("img")!.getAttribute("src")).toBe("/api/studio/i1/file");
   });
+  it("#764 · o pedido do gerador (em inglês) não aparece como legenda", () => {
+    const prompt = "A detailed scientific cross-section illustration of the human heart";
+    const r = render(<StudioBlock block={{ studioKind: "image", title: "Imagem — coração", data: { prompt }, dataUrl: "data:image/png;base64,AA", artifactId: "i1" } as any} collapsed={false} />);
+    expect(r.container.textContent).not.toContain("cross-section");
+    expect(r.container.querySelector("img")!.getAttribute("alt")).toBe("imagem gerada");
+  });
 });

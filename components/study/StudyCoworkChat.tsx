@@ -157,7 +157,8 @@ type Msg = {
 /** Kinds que nascem do assunto/conversa, sem um estudo de origem (não criam estudo vazio). */
 const SEM_ESTUDO = new Set(["diagram", "mindmap", "molecule", "aula", "caderno", "forja", "device"]);
 /** #749: além do diagrama e da aula (que abrem em aba), o que fica guardado na conversa pelo número — o arquivo mora no servidor */
-const GUARDA_NO_SERVIDOR = new Set(["image"]);
+// #764: a anatomia também — o cartão 3D sumia ao trocar de conversa ou recarregar (o estado da cena mora no artefato)
+const GUARDA_NO_SERVIDOR = new Set(["image", "anatomia"]);
 const AVISO_ARTEFATO: Record<string, string> = {
   diagram: "Desenhando o diagrama interativo…",
   mindmap: "Desenhando o mapa…",

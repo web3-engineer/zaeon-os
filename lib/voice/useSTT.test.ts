@@ -2,7 +2,7 @@
 /** #733 · o microfone diz o que está fazendo: "ouvindo", o que já ouviu e por que desligou. */
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { useSTT, avisoDoErro } from "./useSTT";
+import { useSTT, avisoDoErro, juntarFala } from "./useSTT";
 
 class SRFalso {
   static ultimo: SRFalso | null = null;
@@ -23,7 +23,22 @@ describe("#733 · useSTT", () => {
     expect(avisoDoErro("qualquer")).toBe("falhou");
   });
 
-  it("ouvindo → ouviu → desligou sozinho avisa; parar pela pessoa não avisa", () => {
+  it("#764 · juntarFala põe espaço entre as frases (o Edge mandava 'mim.Por favor.')", () => {
+    expect(juntarFala(["Faça um diagrama para mim.", "Por favor.", "Ok."])).toBe("Faça um diagrama para mim. Por favor. Ok.");
+    expect(juntarFala(["olá ", "mundo"])).toBe("olá mundo");
+    expect(juntarFala(["oi", " tudo bem"])).toBe("oi tudo bem");
+    expect(juntarFala(["", "oi"])).toBe("oi");
+  });
+
+  it("calado e o navegador encerrou: 'desligou' (sem texto)", () => {
+    (window as any).webkitSpeechRecognition = SRFalso;
+    const { result } = renderHook(() => useSTT());
+    act(() => { result.current.start(); });
+    act(() => { SRFalso.ultimo!.onend!(); });
+    expect(result.current.aviso).toBe("desligou");
+  });
+
+  it("ouvindo → ouviu → desligou sozinho com texto NÃO avisa (#764); parar pela pessoa não avisa", () => {
     (window as any).webkitSpeechRecognition = SRFalso;
     const onResult = vi.fn();
     const { result } = renderHook(() => useSTT({ onResult }));
@@ -36,7 +51,7 @@ describe("#733 · useSTT", () => {
     // o navegador encerrou sozinho (pausa)
     act(() => { SRFalso.ultimo!.onend!(); });
     expect(result.current.listening).toBe(false);
-    expect(result.current.aviso).toBe("desligou");
+    expect(result.current.aviso).toBeNull();
     // a pessoa parou: sem aviso
     act(() => { result.current.start(); });
     act(() => { result.current.stop(); });
@@ -50,6 +65,15 @@ describe("#733 · useSTT", () => {
     act(() => { result.current.start(); });
     act(() => { SRFalso.ultimo!.onresult!({ results: [{ 0: { transcript: "olá " }, isFinal: true }, { 0: { transcript: "mundo" }, isFinal: false }], resultIndex: 1 }); });
     expect(onResult).toHaveBeenLastCalledWith("olá mundo", false);
+  });
+
+  it("#764 · no hook: trechos sem espaço na borda (o Edge) chegam com espaço entre as frases", () => {
+    (window as any).webkitSpeechRecognition = SRFalso;
+    const onResult = vi.fn();
+    const { result } = renderHook(() => useSTT({ onResult, continuous: true }));
+    act(() => { result.current.start(); });
+    act(() => { SRFalso.ultimo!.onresult!({ results: [{ 0: { transcript: "para mim." }, isFinal: true }, { 0: { transcript: "Por favor." }, isFinal: false }], resultIndex: 1 }); });
+    expect(onResult).toHaveBeenLastCalledWith("para mim. Por favor.", false);
   });
 
   it("microfone bloqueado vira o aviso de liberar", () => {
@@ -83,7 +107,7 @@ describe("#733 · useSTT", () => {
       expect(result.current.listening).toBe(true);   // ainda dentro da pausa
       act(() => { vi.advanceTimersByTime(200); });
       expect(result.current.listening).toBe(false);
-      expect(result.current.aviso).toBe("desligou");
+      expect(result.current.aviso).toBeNull();   // #764: veio texto — desligar pela pausa é o caminho certo
       expect(onResult).toHaveBeenLastCalledWith("o que é fotossíntese", true);
       // de novo, calado
       act(() => { result.current.start(); });
@@ -135,7 +159,8 @@ describe("#756 · o microfone nunca fica 'Ouvindo…' para sempre", () => {
       for (let i = 0; i < 8; i++) act(() => { vi.advanceTimersByTime(2000); sr.onresult!({ results: [{ 0: { transcript: "oi aura " + i }, isFinal: false }], resultIndex: 0 }); });
       expect(result.current.listening).toBe(true);   // 16 s falando: segue ouvindo
       act(() => { vi.advanceTimersByTime(2600); });
-      expect(result.current.aviso).toBe("desligou");
+      expect(result.current.listening).toBe(false);
+      expect(result.current.aviso).toBeNull();
     } finally { vi.useRealTimers(); }
   });
 });

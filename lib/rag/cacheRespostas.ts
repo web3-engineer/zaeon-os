@@ -18,7 +18,9 @@ import type { RagDb } from "./pg";
 import { ehBancoIndisponivel } from "./pg";
 
 /** Subir quando o harness mudar o jeito de responder (prompts, campos): as entradas antigas deixam de valer. */
-export const CACHE_VERSAO = 1;
+// 2 (#764): as respostas guardadas antes do #756/#764 (pedido de imagem que virou explicação, gráfico sem o campo
+// `grafico`) deixam de ser servidas
+export const CACHE_VERSAO = 2;
 export const LIMIAR_PADRAO = 0.9;
 const PRAZO_CONSULTA_MS = 1500;
 const DISJUNTOR_MS = 60_000;

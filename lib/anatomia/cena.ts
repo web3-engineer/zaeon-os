@@ -50,6 +50,14 @@ export type OpcoesDaCena = {
   aoSelecionar: (idDaPeca: string) => void;
   aoProgredir: (porcento: number) => void;
   aoErrar: (mensagem: string) => void;
+  /**
+   * #764 · a cena dentro do CARTÃO do chat (300 px de altura), não na página /anatomia. Duas diferenças:
+   *  - o enquadramento do isolamento reservava as margens dos painéis da página (110 px em cima, 170 embaixo) e, num
+   *    cartão de 300 px, sobravam 40 px: o coração abria do tamanho de um ponto. No cartão, a margem é a do cartão.
+   *  - o realce de seleção (verde-água a 75%) pintava a estrutura isolada, que é a única na cena: ela saía
+   *    cinza-esverdeada em vez da cor do sistema dela. No cartão, sem realce.
+   */
+  cartao?: boolean;
 };
 
 /**
@@ -215,7 +223,7 @@ export function montarCena(o: OpcoesDaCena): () => void {
       );
       shader.fragmentShader = shader.fragmentShader.replace(
         "#include <color_fragment>",
-        "#include <color_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.42, 0.85, 0.78), partSelected * 0.75);",
+        `#include <color_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.42, 0.85, 0.78), partSelected * ${o.cartao ? "0.0" : "0.75"});`,
       );
     };
     materiais.push(m);
@@ -441,7 +449,8 @@ export function montarCena(o: OpcoesDaCena): () => void {
           const w = el.clientWidth, h = el.clientHeight;
           const celular = w < LARGURA_CELULAR, deitado = w > h && h <= 600;
           let esq = 20, dir = w - 20, topo = celular ? 175 : 110, base = h - 170;
-          if (s.inspectorOpen) {
+          if (o.cartao) { esq = 12; dir = w - 12; topo = 12; base = h - 12; }   // #764: no cartão não há painel
+          else if (s.inspectorOpen) {
             if (deitado) { dir = w - 335; topo = 100; base = h - 125; }
             else if (celular) {
               const folha = document.querySelector(".anatomia-folha")?.getBoundingClientRect();

@@ -9,6 +9,7 @@
 import type { AgentContext } from "@/lib/agent/context";
 import { pedeAula } from "@/lib/agent/aprender";
 import { pedeGraficoMatematico, pedeGraficoDeDados } from "@/lib/agent/matematica";
+import { pedeImagem } from "@/lib/agent/pedeImagem";
 
 /** gráfico de função/geometria OU de dados (#749): sai no texto como ```grafico, nunca como imagem gerada */
 const pedeGraficoNoTexto = (s: string) => pedeGraficoMatematico(s) || pedeGraficoDeDados(s);
@@ -44,20 +45,8 @@ const norm = (s: string) =>
 const GEN_VERB_RE =
   /(^|\s)(gere|gerar|gera|crie|criar|cria|faca|fazer|faz|monte|montar|produza|produzir|escreva|escrever|redija|redigir|elabore|elaborar|desenvolva|desenvolver|quero (?:um|uma)|preciso de (?:um|uma)|write|draft)(\s|$)/;
 
-/**
- * #756 · "faça uma imagem da mitocôndria" / "crie uma ilustração de X" / "desenhe uma figura de Y" → ARTEFATO (imagem).
- * O modelo do roteador lia esses pedidos como explicação (a lista de artefatos dele não falava de imagem), e explicação
- * ganha diagrama: no ar, os dois pedidos viraram diagrama interativo. Precisa do VERBO de pedir — "o que é figura de
- * linguagem" continua explicação. Gráfico de função/dados e aula são decididos antes (pedeGraficoNoTexto, pedeAula).
- */
-const IMAGEM_RE = /(^|[^a-z])(imagem|imagens|ilustracao|ilustracoes|figura|foto|desenho)(?![a-z])/;
-const VERBO_IMAGEM_RE = /(^|[^a-z])(desenhe|desenha|ilustre|ilustra|mostre|mostra|me (?:da|de|manda|mande))(?![a-z])/;
-export function pedeImagem(objetivo: string): boolean {
-  const t = norm(objetivo);
-  if (!IMAGEM_RE.test(t)) return false;
-  if (pedeGraficoNoTexto(objetivo) || pedeAula(t)) return false;
-  return GEN_VERB_RE.test(t) || VERBO_IMAGEM_RE.test(t);
-}
+/** #756 · pedido de imagem → artefato. #764: mora em lib/agent/pedeImagem (o harness e o turno também usam) */
+export { pedeImagem };
 
 /** "agora outro sobre Y" / "mais um sobre Z" — com trabalho já escrito na conversa, é pedido de OUTRO trabalho. */
 const OUTRO_TRABALHO_RE = /(^|\s)(outr[oa]|mais uma?|uma? nov[oa]|another one|one more)(\s+\w+)?\s+(sobre|acerca|a respeito|on|about)\s+\S/;

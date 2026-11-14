@@ -42,6 +42,7 @@ import { capacidadeDe, habilidadesDoTurno, toolsPermitidas } from "@/lib/agents/
 import { agenteChat, type AgenteChatId } from "@/lib/agents/chatAgentes";
 import { vozDoTurno } from "@/lib/agents/voz";
 import { escopoDoTurno } from "@/lib/agents/escopo";
+import { pedeImagem } from "@/lib/agent/pedeImagem";
 
 export type ChatTurnParams = {
   prompt: string;
@@ -253,7 +254,9 @@ export async function runChatTurn(
     // impessoal. Qualquer falha = "não achou": o turno segue normal.
     const cache = await import("@/lib/rag/cacheRespostas");
     const escopoCache = cache.escopoDoCache(surfaceLedger(surface ?? hctx.activeTab), mentor?.slug);
-    const usaCache = cache.cacheLigado() && !colada.fonte && (!escolhido || escolhido.id === MODELO_PADRAO) && cache.perguntaCacheavel(prompt);
+    // #764: pedido de IMAGEM nunca consulta o cache — "faça uma imagem do coração humano" tinha virado explicação antes
+    // do #756, e o cache seguia servindo essa explicação (com diagrama) em vez de deixar o turno gerar a imagem
+    const usaCache = cache.cacheLigado() && !colada.fonte && (!escolhido || escolhido.id === MODELO_PADRAO) && cache.perguntaCacheavel(prompt) && !pedeImagem(prompt);
     const cacheP = usaCache
       ? Promise.all([import("@/lib/rag/pg"), import("@/lib/rag/embed")])
         .then(async ([{ ragPg }, { embedPerguntaCompartilhado }]) => cache.consultarCache(ragPg(), { pergunta: prompt, vetor: await embedPerguntaCompartilhado(objetivo), escopo: escopoCache }))

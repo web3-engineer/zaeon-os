@@ -26,6 +26,8 @@ const CenaDoCorpo = dynamic(() => import("@/components/anatomia/CenaDoCorpo"), {
 
 export type AnatomiaData = {
   conceito?: { id?: string; nome?: string };
+  /** #764: o nome em português ("coração"), quando a rota tem — o do atlas é em inglês ("heart") */
+  nomeNaTela?: string;
   estado?: EstadoCena;
   sistemas?: string[];
   sistemasIds?: SistemaId[];
@@ -89,6 +91,7 @@ function Visor({ estado }: { estado: EstadoCena }) {
         aoSelecionar={() => { /* o card não troca de estrutura: quem faz isso é a página /anatomia */ }}
         aoProgredir={setPct}
         aoErrar={(m) => setErro(m)}
+        cartao
       />
       {pct > 0 && pct < 100 && (
         <div className="absolute inset-x-0 bottom-0 h-0.5 bg-slate-200/60 dark:bg-white/10">
@@ -101,7 +104,7 @@ function Visor({ estado }: { estado: EstadoCena }) {
 
 /** A placa: o que o aluno lê sem baixar geometria nenhuma. */
 function Placa({ d, compacta }: { d: AnatomiaData; compacta?: boolean }) {
-  const nome = d.conceito?.nome || d.termoBuscado || "estrutura";
+  const nome = d.nomeNaTela || d.conceito?.nome || d.termoBuscado || "estrutura";
   return (
     <div className={`flex flex-col gap-2 ${compacta ? "p-3" : "p-4"}`}>
       <div className="flex items-baseline gap-2 flex-wrap">
@@ -122,10 +125,47 @@ function Placa({ d, compacta }: { d: AnatomiaData; compacta?: boolean }) {
   );
 }
 
-export default function AnatomiaView({ data, nu = false }: { data: AnatomiaData; nu?: boolean }) {
+/**
+ * #764 · a conversa reaberta só guarda o NÚMERO do artefato (como a imagem): sem o estado em mãos, busca em
+ * /api/studio/<id> — o estado da cena mora no `meta` do artefato.
+ */
+/** quanto a busca espera antes de desistir (sem isso, um pedido parado deixava o cartão "carregando" para sempre) */
+export const PRAZO_DA_BUSCA_MS = 15_000;
+
+type Busca = { id: string; meta: AnatomiaData | null; falhou: boolean };
+
+function useDadosDoServidor(data: AnatomiaData, artifactId?: string): { data: AnatomiaData; carregando: boolean; falhou: boolean } {
+  // o resultado guarda DE QUAL artefato ele é: trocou o artifactId, o resultado antigo não vale mais
+  const [busca, setBusca] = useState<Busca | null>(null);
+  const precisa = !data?.estado && !!artifactId;
+  useEffect(() => {
+    if (!precisa) return;
+    const id = artifactId!;
+    let vivo = true;
+    const aborto = new AbortController();
+    const prazo = setTimeout(() => aborto.abort(), PRAZO_DA_BUSCA_MS);
+    fetch(`/api/studio/${encodeURIComponent(id)}`, { credentials: "same-origin", signal: aborto.signal })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((a) => {
+        if (!vivo) return;
+        const meta = a?.meta && typeof a.meta === "object" ? (a.meta as AnatomiaData) : null;
+        setBusca({ id, meta, falhou: !meta });
+      })
+      .catch(() => { if (vivo) setBusca({ id, meta: null, falhou: true }); })
+      .finally(() => clearTimeout(prazo));
+    return () => { vivo = false; clearTimeout(prazo); aborto.abort(); };
+  }, [precisa, artifactId]);
+  if (!precisa) return { data, carregando: false, falhou: false };
+  const atual = busca?.id === artifactId ? busca : null;
+  return { data: atual?.meta ?? data ?? {}, carregando: !atual, falhou: !!atual?.falhou };
+}
+
+export default function AnatomiaView({ data: dataDoBloco, nu = false, artifactId }: { data: AnatomiaData; nu?: boolean; artifactId?: string }) {
+  // enquanto busca no servidor, ainda não dá para dizer que a cena "não veio isolada"
+  const { data, carregando, falhou } = useDadosDoServidor(dataDoBloco, artifactId);
   const [modo, setModo] = useState<"fatos" | "3d">("fatos");
   const podeVer3D = cenaUtilizavel(data);
-  const nome = data.conceito?.nome || data.termoBuscado || "estrutura";
+  const nome = data.nomeNaTela || data.conceito?.nome || data.termoBuscado || "estrutura";
 
   // ── modo FIGURA (Modo Revista): sem moldura nem botão de fonte, mas o portão do 3D fica ──
   if (nu) {
@@ -158,7 +198,12 @@ export default function AnatomiaView({ data, nu = false }: { data: AnatomiaData;
           : <Placa d={data} />}
       </div>
 
-      {!podeVer3D && (
+      {falhou && (
+        <p data-anatomia-falha role="alert" className="m-0 rounded-xl border border-slate-300/60 bg-slate-50/60 dark:bg-white/[0.04] px-3 py-2 text-[11px] text-slate-600 dark:text-white/60">
+          Não consegui carregar este 3D agora. Tente reabrir a conversa daqui a pouco.
+        </p>
+      )}
+      {!podeVer3D && !carregando && !falhou && (
         <p data-anatomia-erro role="alert" className="m-0 rounded-xl border border-amber-300/50 bg-amber-50/60 dark:bg-amber-400/[0.07] px-3 py-2 text-[11px] text-amber-800 dark:text-amber-200">
           Esta cena não veio isolada, então o 3D não abre: mostrar o corpo inteiro no lugar de {nome} seria um erro. Peça a estrutura de novo pelo nome.
         </p>

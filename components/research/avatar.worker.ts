@@ -31,7 +31,7 @@ self.onmessage = (e: MessageEvent<ParaCena>) => {
     case "fala": cena?.fala(m.v, m.falando); break;
     case "sinais": cena?.sinais(m.lendo, m.escrevendo); break;
     case "reagir": cena?.reagir(); break;
-    case "gesto": cena?.gesto(); break;
+    case "gesto": cena?.gesto(m.nome); break;
     case "diag": if (cena) enviar(cena.diag()); break;
     case "saltar": cena?.saltar(m.t); break;
     case "fim": cena?.destruir(); cena = null; self.close(); break;
