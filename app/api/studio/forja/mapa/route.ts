@@ -11,6 +11,7 @@ import { guard } from "@/src/lib/ratelimit";
 import { studioUid } from "@/lib/studio/auth";
 import { resolverEsqueleto } from "@/lib/forja/esqueletoResolver";
 import { engineDisponivel, grafoDoRepo } from "@/lib/forja/engineClient";
+import { engineLocalLigado, grafoLocalDoRepo } from "@/lib/forja/graphifyLocal";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -21,15 +22,19 @@ export async function POST(req: Request) {
   const rl = await guard(req, "studio-forja-mapa", "ai-heavy");
   if (!rl.ok) return rl.response;
 
-  if (!engineDisponivel()) return NextResponse.json({ grafo: null, engine: false });
+  // A ponte da box (prod) OU o motor graphify LOCAL (dev, flag FORJA_LOCAL_ENGINE=1). Sem nenhum, esqueleto.
+  const temPonte = engineDisponivel(), temLocal = engineLocalLigado();
+  if (!temPonte && !temLocal) return NextResponse.json({ grafo: null, engine: false });
 
   const body = (await req.json().catch(() => ({}))) as { cursoId?: unknown };
   const esq = resolverEsqueleto(typeof body.cursoId === "string" ? body.cursoId : "");
-  // allowlist: só os repos curados; nunca um repo qualquer que o cliente mandar
+  // allowlist: só os repos curados / skill-cursos; nunca um repo qualquer que o cliente mandar
   if (!esq || !esq.repo.includes("/") || esq.repo === "owner/exemplo") {
     return NextResponse.json({ grafo: null, engine: true });
   }
 
-  const grafo = await grafoDoRepo(esq.repo).catch(() => null);
+  const grafo = temPonte
+    ? await grafoDoRepo(esq.repo).catch(() => null)   // ponte da box
+    : await grafoLocalDoRepo(esq.repo);               // motor local (dev)
   return NextResponse.json({ grafo, engine: true });
 }

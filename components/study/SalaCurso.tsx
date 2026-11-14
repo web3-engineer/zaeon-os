@@ -8,6 +8,7 @@
  */
 import { useEffect, useState } from "react";
 import CursoCodigoView from "@/components/studio/CursoCodigoView";
+import { comBaseDoGrafo } from "@/lib/forja/arvoreDoGrafo";
 import type { CursoRepo } from "@/lib/forja/tipos";
 
 const H = { "content-type": "application/json" };
@@ -28,7 +29,10 @@ export default function SalaCurso({ cursoId, titulo, onFechar }: { cursoId: stri
         let c = j.meta as CursoRepo;
         setCurso(c); // mostra o esqueleto já; o grafo entra quando o motor responder
         const rm = await fetch("/api/studio/forja/mapa", { method: "POST", headers: H, body: JSON.stringify({ cursoId }) }).then((x) => x.json()).catch(() => null);
-        if (vivo && rm?.grafo?.nos?.length) setCurso({ ...c, grafo: rm.grafo });
+        if (vivo && rm?.grafo?.nos?.length) {
+          const grafo = rm.grafo;
+          setCurso({ ...c, grafo, arvore: comBaseDoGrafo({ arvore: c.arvore, grafo }, titulo || c.arvore.raiz.titulo) });
+        }
       } catch {
         if (vivo) setErro(true);
       }

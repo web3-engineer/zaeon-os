@@ -16,6 +16,7 @@ import { layoutSaber, layoutCodigo, CENTRO } from "@/lib/forja/layoutCurso";
 
 const VB = { w: 1040, h: 760 };
 type Fase = "codigo" | "saber" | "pronto";
+const curto = (s: string, n = 22): string => (s && s.length > n ? s.slice(0, n - 1) + "…" : s || "");
 
 export default function CursoCodigoView({ curso, titulo, onFechar }: { curso: CursoRepo; titulo?: string; onFechar?: () => void }) {
   const [fase, setFase] = useState<Fase>("codigo");
@@ -63,11 +64,10 @@ export default function CursoCodigoView({ curso, titulo, onFechar }: { curso: Cu
               return <motion.line key={`ce${i}`} x1={de.x} y1={de.y} x2={para.x} y2={para.y} stroke="#1e3a5f" strokeWidth={1}
                 initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: 1, opacity: 1 }} transition={{ duration: 0.8, delay: 0.1 + i * 0.03 }} />;
             })}
+            {/* só os PONTOS do código, sem rótulo (o rótulo mora na base de conhecimento por cima) */}
             {codigo.map((c, i) => (
-              <motion.g key={c.id} initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.15 + i * 0.04 }}>
-                <circle cx={c.x} cy={c.y} r={4 + Math.min(6, c.grau)} fill="#0e2033" stroke="#2b5278" strokeWidth={1} />
-                <text x={c.x} y={c.y - 10 - Math.min(6, c.grau)} textAnchor="middle" className="fill-slate-500" style={{ fontSize: 10, fontFamily: "monospace" }}>{c.nome}</text>
-              </motion.g>
+              <motion.circle key={c.id} cx={c.x} cy={c.y} r={4 + Math.min(6, c.grau)} fill="#0e2033" stroke="#2b5278" strokeWidth={1}
+                initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.15 + i * 0.04 }} />
             ))}
           </g>
 
@@ -94,7 +94,7 @@ export default function CursoCodigoView({ curso, titulo, onFechar }: { curso: Cu
                       <circle cx={n.x} cy={n.y} r={r} fill={raiz ? "#22d3ee" : n.nivel === 1 ? "#0b3a66" : "#0e2033"}
                         stroke={raiz || ehEntrada ? "#a5f3fc" : "#22d3ee"} strokeWidth={raiz ? 2.5 : 1.5} />
                       <text x={n.x} y={n.y + r + 15} textAnchor="middle" className={raiz ? "fill-white" : "fill-cyan-100/80"}
-                        style={{ fontSize: raiz ? 14 : 12, fontWeight: raiz ? 800 : 600 }}>{n.titulo}</text>
+                        style={{ fontSize: raiz ? 14 : 12, fontWeight: raiz ? 800 : 600 }}>{curto(n.titulo, raiz ? 40 : 20)}</text>
                       {ehEntrada && pronto && (
                         <motion.text x={n.x} y={n.y - r - 12} textAnchor="middle" className="fill-cyan-300"
                           style={{ fontSize: 11, fontWeight: 700 }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>comece por aqui</motion.text>
