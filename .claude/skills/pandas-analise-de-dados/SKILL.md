@@ -12,6 +12,7 @@ courseTags:
   - analise-de-dados
 metadata:
   zaeon-familia: procedimento
+  zaeon-repo: pandas-dev/pandas
   zaeon-titulo: pandas — da planilha à resposta
   zaeon-subtitulo: Carregar, limpar, agrupar e cruzar dados em Python, no roteiro de uma análise exploratória honesta
   zaeon-modelo: graos

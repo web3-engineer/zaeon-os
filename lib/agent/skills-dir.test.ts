@@ -127,7 +127,7 @@ describe("cardDaSkill — tudo-ou-nada", () => {
     expect(card).toEqual({
       slug: "exemplo", titulo: "T", subtitulo: "S", modelo: "livro",
       tags: ["t1", "t2"], entrega: ["a", "b"], app: null,
-      precoBRL: 0, familia: "procedimento", device: null, // sem envelope → grátis, procedimento
+      precoBRL: 0, familia: "procedimento", device: null, repo: null, // sem envelope → grátis, procedimento, sem repo
     });
   });
 

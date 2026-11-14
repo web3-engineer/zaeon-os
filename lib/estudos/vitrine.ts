@@ -56,6 +56,16 @@ export type ItemVitrine = {
    * É o que a UI usa para mostrar o botão de download (o espelho) e as instruções APÓS o plug.
    */
   device?: { plataforma: string; mirror: string; sha256: string | null };
+  /**
+   * MÓDULO da Sala de Estudos que este item abre (só nas skills da casa; `undefined` no catálogo
+   * simulado e nos agentes). A sala é modular: cada item cai no seu módulo em vez de tudo no chat.
+   *   · "board"  — curso de CÓDIGO: board da Forja (graphify + cards + repo), usa `repo`.
+   *   · "device" — app de dispositivo: painel de download + instruções, usa `device`.
+   *   · "agente" — skill de saída única: o agente roda e mostra o artefato.
+   */
+  modulo?: "board" | "device" | "agente";
+  /** repositório "owner/name" do curso de código — presente quando `modulo === "board"`. */
+  repo?: string;
   tags: string[];
   /** blueprint que vira AGENTE no seletor da sidebar (não espera a moeda: adicionar é grátis e instantâneo) */
   plugavel?: PluginChat;

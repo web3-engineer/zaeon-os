@@ -12,6 +12,7 @@ courseTags:
   - python
 metadata:
   zaeon-familia: procedimento
+  zaeon-repo: biopython/biopython
   zaeon-titulo: Biopython — o dogma central em código
   zaeon-subtitulo: Ler FASTA, transcrever, traduzir e alinhar sequências de DNA e proteína em Python
   zaeon-modelo: molecula

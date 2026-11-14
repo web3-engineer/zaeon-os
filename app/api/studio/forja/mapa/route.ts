@@ -9,7 +9,7 @@
 import { NextResponse } from "next/server";
 import { guard } from "@/src/lib/ratelimit";
 import { studioUid } from "@/lib/studio/auth";
-import { esqueletoPorId } from "@/lib/forja/cursoRepo";
+import { resolverEsqueleto } from "@/lib/forja/esqueletoResolver";
 import { engineDisponivel, grafoDoRepo } from "@/lib/forja/engineClient";
 
 export const runtime = "nodejs";
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   if (!engineDisponivel()) return NextResponse.json({ grafo: null, engine: false });
 
   const body = (await req.json().catch(() => ({}))) as { cursoId?: unknown };
-  const esq = esqueletoPorId(typeof body.cursoId === "string" ? body.cursoId : "");
+  const esq = resolverEsqueleto(typeof body.cursoId === "string" ? body.cursoId : "");
   // allowlist: só os repos curados; nunca um repo qualquer que o cliente mandar
   if (!esq || !esq.repo.includes("/") || esq.repo === "owner/exemplo") {
     return NextResponse.json({ grafo: null, engine: true });
