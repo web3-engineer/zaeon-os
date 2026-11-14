@@ -63,7 +63,6 @@ import { abrirDocumento, destinoDoDoc, EVT_ABRIR_DOC, KINDS_EM_ABA, ROTULO_DOC, 
 import { assuntoDe, pedeAula } from "@/lib/agent/aprender";
 import { pedeCaderno } from "@/lib/jornadas/cadernoRitmo";
 import { EVT_ABRIR_CADERNO, consumirCadernoPendente } from "@/lib/jornadas/desbloqueio";
-import { EVT_ABRIR_FORJA, consumirForjaPendente } from "@/lib/forja/desbloqueioForja";
 import { EVT_ABRIR_ESTUDO, consumirEstudoPendente, type EstudoPendente } from "@/lib/estudos/desbloqueioEstudo";
 import ChatZoom, { useChatFontScale } from "@/components/chat/ChatZoom";
 import { zoomNoDiagrama } from "@/components/studio/DiagramView";
@@ -1006,36 +1005,17 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     return () => window.removeEventListener(EVT_ABRIR_CADERNO, onEvt);
   }, []);
 
-  // O MESMO laço, para os cursos de REPOSITÓRIO da Forja: o card OSS pego na vitrine deixa um curso
-  // PENDENTE (lib/forja/desbloqueioForja), e a Sala abre o board da Forja sozinha. Uma vez por id.
-  const forjaAbertoRef = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    const abrir = (id: string | null) => {
-      if (!id || forjaAbertoRef.current.has(id)) return;
-      forjaAbertoRef.current.add(id);
-      void runStudioActionRef.current("forja", id, undefined, false, undefined, undefined, undefined, true);
-    };
-    abrir(consumirForjaPendente());
-    const onEvt = (e: Event) => { consumirForjaPendente(); abrir((e as CustomEvent).detail as string); };
-    window.addEventListener(EVT_ABRIR_FORJA, onEvt);
-    return () => window.removeEventListener(EVT_ABRIR_FORJA, onEvt);
-  }, []);
-
-  // O laço MODULAR das skills/cursos da vitrine (lib/estudos/desbloqueioEstudo): o card de board/device
-  // deixa um estudo PENDENTE, e a Sala abre o módulo certo — SEMPRE numa conversa NOVA (novaAba), nunca
-  // no thread de outro assunto (o erro que o aluno pegou):
-  //   · board  → board da Forja (graphify + cards + repo) do curso de código;
-  //   · device → painel de download + instruções do app.
-  // Skill "agente" NÃO chega aqui (estudoDoItem devolve null): ela já está no cardápio da Aura,
-  // disponível via prompt — nada a abrir. Uma vez por slug. novaAba() seta abaAtivaRef SÍNCRONO.
+  // Cursos de código (Forja e skill:* board) NÃO auto-abrem aqui: quem leva à ÁREA PRÓPRIA do curso é
+  // o botão "abrir" da vitrine (VitrineEstudos → abrirCurso → StudyRoomContent, aba "curso"). Auto-abrir
+  // no meio do ritual de conexão arrancaria o aluno da vitrine/modal. Só o DEVICE abre aqui (doc em aba).
   const estudoAbertoRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     const abrir = (e: EstudoPendente | null) => {
       if (!e?.slug || estudoAbertoRef.current.has(e.slug)) return;
+      if (e.modulo !== "device") return;          // board é tratado pelo botão "abrir" (área própria do curso)
       estudoAbertoRef.current.add(e.slug);
-      novaAbaRef.current();                       // conversa nova: o módulo nunca invade um thread de outro assunto
-      const kind = e.modulo === "board" ? "forja" : "device";
-      void runStudioActionRef.current(kind, e.slug, undefined, false, undefined, undefined, undefined, true);
+      novaAbaRef.current();                       // device: conversa nova, não invade um thread de outro assunto
+      void runStudioActionRef.current("device", e.slug, undefined, false, undefined, undefined, undefined, true);
     };
     abrir(consumirEstudoPendente());
     const onEvt = (ev: Event) => { consumirEstudoPendente(); abrir((ev as CustomEvent).detail as EstudoPendente); };

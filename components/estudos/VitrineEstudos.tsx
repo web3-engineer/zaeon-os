@@ -32,6 +32,7 @@ import { destinoDe, type Destino } from "@/lib/estudos/detalhes";
 import { cadernoDoItem, marcarCadernoPendente } from "@/lib/jornadas/desbloqueio";
 import { forjaDoItem, marcarForjaPendente } from "@/lib/forja/desbloqueioForja";
 import { estudoDoItem, marcarEstudoPendente } from "@/lib/estudos/desbloqueioEstudo";
+import { abrirCurso, cursoIdDoItem } from "@/lib/forja/abrirCurso";
 import { EVT_ESTUDOS_CHAT } from "@/lib/chat/conversasNav";
 import "./vitrine-card.css";
 import "./vitrine-claim.css";
@@ -353,7 +354,7 @@ export default function VitrineEstudos() {
                         <p>Já está na sua conta, disponível {destinoDe(depois).texto}. Quer abrir agora ou continuar explorando?</p>
                         <div className="vd-dois">
                             <button type="button" className="vd-bt voltar" onClick={() => setDepois(null)}>← voltar à vitrine</button>
-                            <button type="button" className="vd-bt abrir" onClick={() => { const d = destinoDe(depois); setDepois(null); abrirDestino(d); }}>abrir {destinoDe(depois).texto} ↗</button>
+                            <button type="button" className="vd-bt abrir" onClick={() => { const cid = cursoIdDoItem(depois); setDepois(null); if (cid) abrirCurso({ cursoId: cid, titulo: depois.titulo }); else abrirDestino(destinoDe(depois)); }}>abrir {destinoDe(depois).texto} ↗</button>
                         </div>
                     </div>
                 </div>
