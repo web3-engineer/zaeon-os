@@ -64,7 +64,7 @@ import { assuntoDe, pedeAula } from "@/lib/agent/aprender";
 import { pedeCaderno } from "@/lib/jornadas/cadernoRitmo";
 import { EVT_ABRIR_CADERNO, consumirCadernoPendente } from "@/lib/jornadas/desbloqueio";
 import { EVT_ABRIR_FORJA, consumirForjaPendente } from "@/lib/forja/desbloqueioForja";
-import { EVT_ABRIR_SKILL, consumirSkillPendente, primeiraMensagemDaSkill, type SkillPendente } from "@/lib/estudos/desbloqueioSkill";
+import { EVT_ABRIR_ESTUDO, consumirEstudoPendente, primeiraMensagemDaEstudo, type EstudoPendente } from "@/lib/estudos/desbloqueioEstudo";
 import ChatZoom, { useChatFontScale } from "@/components/chat/ChatZoom";
 import { zoomNoDiagrama } from "@/components/studio/DiagramView";
 import { AnimatePresence } from "framer-motion";
@@ -156,7 +156,7 @@ type Msg = {
 };
 
 /** Kinds que nascem do assunto/conversa, sem um estudo de origem (não criam estudo vazio). */
-const SEM_ESTUDO = new Set(["diagram", "mindmap", "molecule", "aula", "caderno", "forja"]);
+const SEM_ESTUDO = new Set(["diagram", "mindmap", "molecule", "aula", "caderno", "forja", "device"]);
 /** #749: além do diagrama e da aula (que abrem em aba), o que fica guardado na conversa pelo número — o arquivo mora no servidor */
 const GUARDA_NO_SERVIDOR = new Set(["image"]);
 const AVISO_ARTEFATO: Record<string, string> = {
@@ -165,6 +165,7 @@ const AVISO_ARTEFATO: Record<string, string> = {
   aula: "Preparando a aula interativa — plano, roteiro e narração (1 a 3 min)…",
   caderno: "Abrindo seu caderno da jornada…",
   forja: "Montando seu estudo do repositório…",
+  device: "Preparando seu painel de download e instruções…",
 };
 
 /**
@@ -985,6 +986,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     }
   }, [focusIds, avisarFalha]);
   const runStudioActionRef = useRef(runStudioAction); runStudioActionRef.current = runStudioAction;
+  const novaAbaRef = useRef(novaAba); novaAbaRef.current = novaAba; // pro laço do desbloqueio abrir em conversa nova
 
   // P4 · laço do desbloqueio: o card de música desbloqueado deixa um Caderno PENDENTE (lib/jornadas/
   // desbloqueio). A Sala de Estudos abre esse caderno sozinha — no mount (quem já comprou) e pelo
@@ -1019,24 +1021,30 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     return () => window.removeEventListener(EVT_ABRIR_FORJA, onEvt);
   }, []);
 
-  // O MESMO laço, para as SKILLS-curso da vitrine (astropy, pandas, blender…): o card pego deixa uma
-  // skill PENDENTE (lib/estudos/desbloqueioSkill), e o chat da Sala pede a aula à Aura, que ativa a
-  // skill (activate_skill). Antes isto caía na vista de estudos e ficava em "blueprints antigos";
-  // agora a aula começa sozinha quando o aluno chega ao chat. Uma vez por slug. NÃO troca a vista
-  // aqui — quem leva ao chat é o botão "abrir" da vitrine (abrirDestino → EVT_ESTUDOS_CHAT); mexer na
-  // aba no meio do ritual de conexão arrancaria o aluno da animação.
-  const skillAbertaRef = useRef<Set<string>>(new Set());
+  // O laço MODULAR das skills/cursos da vitrine (lib/estudos/desbloqueioEstudo): o card pego deixa um
+  // estudo PENDENTE com o módulo já decidido, e a Sala abre o módulo certo — SEMPRE numa conversa NOVA
+  // (novaAba), nunca no thread de outro assunto que estava aberto (o erro que o aluno pegou):
+  //   · board  → board da Forja (graphify + cards + repo) do curso de código;
+  //   · device → painel de download + instruções do app;
+  //   · agente → a Aura inicia a aula ativando a skill.
+  // Uma vez por slug. novaAba() seta abaAtivaRef SÍNCRONO, então o doc/turno cai na conversa nova.
+  const estudoAbertoRef = useRef<Set<string>>(new Set());
   useEffect(() => {
-    const abrir = (s: SkillPendente | null) => {
-      if (!s?.slug || skillAbertaRef.current.has(s.slug)) return;
-      skillAbertaRef.current.add(s.slug);
-      const msg = primeiraMensagemDaSkill(s);
-      requestAnimationFrame(() => sendRefA.current(msg)); // deixa o chat montar/aparecer antes de disparar o turno
+    const abrir = (e: EstudoPendente | null) => {
+      if (!e?.slug || estudoAbertoRef.current.has(e.slug)) return;
+      estudoAbertoRef.current.add(e.slug);
+      novaAbaRef.current();                       // conversa nova: o módulo nunca invade um thread de outro assunto
+      if (e.modulo === "board" || e.modulo === "device") {
+        const kind = e.modulo === "board" ? "forja" : "device";
+        void runStudioActionRef.current(kind, e.slug, undefined, false, undefined, undefined, undefined, true);
+      } else {
+        requestAnimationFrame(() => sendRefA.current(primeiraMensagemDaEstudo(e))); // deixa a conversa nova montar
+      }
     };
-    abrir(consumirSkillPendente());
-    const onEvt = (e: Event) => { consumirSkillPendente(); abrir((e as CustomEvent).detail as SkillPendente); };
-    window.addEventListener(EVT_ABRIR_SKILL, onEvt);
-    return () => window.removeEventListener(EVT_ABRIR_SKILL, onEvt);
+    abrir(consumirEstudoPendente());
+    const onEvt = (ev: Event) => { consumirEstudoPendente(); abrir((ev as CustomEvent).detail as EstudoPendente); };
+    window.addEventListener(EVT_ABRIR_ESTUDO, onEvt);
+    return () => window.removeEventListener(EVT_ABRIR_ESTUDO, onEvt);
   }, []);
 
   // ── envio pro chat da Aura ──────────────────────────────────────────────────

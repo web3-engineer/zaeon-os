@@ -10,7 +10,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { guard } from "@/src/lib/ratelimit";
 import { studioUid } from "@/lib/studio/auth";
-import { esqueletoPorId, montarCursoEsqueleto } from "@/lib/forja/cursoRepo";
+import { montarCursoEsqueleto } from "@/lib/forja/cursoRepo";
+import { resolverEsqueleto } from "@/lib/forja/esqueletoResolver";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
 
   const body = (await req.json().catch(() => ({}))) as { cursoId?: unknown; topic?: unknown };
   const pedido = typeof body.cursoId === "string" ? body.cursoId : typeof body.topic === "string" ? body.topic : "exemplo";
-  const esq = esqueletoPorId(pedido);
+  const esq = resolverEsqueleto(pedido); // catálogo curado OU skill-curso de código (astropy, pandas…)
   if (!esq) return NextResponse.json({ error: "curso_inexistente" }, { status: 404 });
   const curso = montarCursoEsqueleto(esq);
 

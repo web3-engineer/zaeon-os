@@ -19,6 +19,7 @@ import { DONO_VITRINE } from "@/lib/auth/roles";
 import {
   cardsDasSkills, carregarSkillsDaCasa, fsDeDisco, type CardDaSkill, type CatalogoDaCasa, type SkillDaCasa,
 } from "@/lib/agent/skills-dir";
+import { moduloDaSkill } from "@/lib/estudos/moduloDoItem";
 
 /** `livro` é o fallback: modelo desconhecido não pode quebrar o render da vitrine. */
 const MODELOS: readonly string[] = [
@@ -41,6 +42,7 @@ export function itemDaSkill(card: CardDaSkill): ItemVitrine {
   const curso = card.familia === "course";
   // Pago OU curso → do fundador. Grátis de procedimento → sem dono (é parte da plataforma).
   const dono = pago || curso ? DONO_VITRINE : undefined;
+  const modulo = moduloDaSkill(card); // a Sala é modular: cada skill cai no seu módulo (board/device/agente)
   return {
     id: `skill:${card.slug}`,
     titulo: card.titulo,
@@ -55,6 +57,8 @@ export function itemDaSkill(card: CardDaSkill): ItemVitrine {
     ...(pago ? { precoBRL: card.precoBRL } : {}),
     ...(dono ? { dono } : {}),
     ...(card.device ? { device: card.device } : {}),
+    modulo,
+    ...(modulo === "board" && card.repo ? { repo: card.repo } : {}),
     fracoes: { total: 1, vendidas: 0 },
     selos: { supervisionado: false, linksOk: true, codigoPrivado: false },
     entrega: card.entrega,

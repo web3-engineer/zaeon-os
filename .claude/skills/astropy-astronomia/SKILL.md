@@ -12,6 +12,7 @@ courseTags:
   - python
 metadata:
   zaeon-familia: procedimento
+  zaeon-repo: astropy/astropy
   zaeon-titulo: Astropy — o céu em Python
   zaeon-subtitulo: Unidades, coordenadas celestes, tempo e imagens FITS com a biblioteca que os observatórios usam
   zaeon-modelo: foguete

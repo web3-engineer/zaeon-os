@@ -106,6 +106,14 @@ export async function gerarArtefato(kind: string, o: OpcoesStudio & Deps): Promi
       if (!res.ok || !data?.id) return { tipo: "erro", mensagem: data?.error };
       return { tipo: "pronto", bloco: { studioKind: "forja", title: data.title, data: data.meta, artifactId: data.id } };
     }
+    if (kind === "device") {
+      // APP DE DISPOSITIVO (skill família device): o painel de download + instruções da skill. A rota lê o
+      // espelho/sha e o corpo do SKILL.md (server) — determinístico, devolve pronto na hora. `topic` = slug.
+      const res = await f("/api/studio/device", { method: "POST", headers: H, body: JSON.stringify({ slug: topic }) });
+      const data = await json(res);
+      if (!res.ok || !data?.id) return { tipo: "erro", mensagem: data?.error };
+      return { tipo: "pronto", bloco: { studioKind: "device", title: data.title, data: data.meta, artifactId: data.id } };
+    }
     if (kind === "podcast" || kind === "video") {
       const res = await f(`/api/studio/${kind}`, { method: "POST", headers: H, body: JSON.stringify({ spaceId, topic }) });
       const data = await json(res);

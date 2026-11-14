@@ -12,6 +12,7 @@ courseTags:
   - python
 metadata:
   zaeon-familia: procedimento
+  zaeon-repo: rdkit/rdkit
   zaeon-titulo: RDKit — moléculas que o computador entende
   zaeon-subtitulo: De um SMILES à estrutura desenhada, à massa molar e à similaridade entre compostos
   zaeon-modelo: molecula

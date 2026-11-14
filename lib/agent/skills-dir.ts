@@ -127,7 +127,28 @@ export type CardDaSkill = {
    * O card mostra o botão de download (o espelho) e as instruções (o corpo da skill) após o plug.
    */
   device: DeviceInfo | null;
+  /**
+   * REPOSITÓRIO "owner/name" do projeto OSS que a skill ensina (ex: "astropy/astropy"). É o que
+   * liga uma skill-curso de CÓDIGO ao board da Forja (graphify + understand-anything rodam neste
+   * repo). `null` quando a skill não tem repo (device app, procedimento sem código). Vem do campo
+   * ESTRUTURADO `zaeon-repo` do frontmatter — nunca extraído do corpo, que é frágil.
+   */
+  repo: string | null;
 };
+
+/**
+ * Extrai "owner/name" de um campo de repositório. Aceita tanto "owner/name" cru quanto uma URL do
+ * GitHub (com ou sem `/tree/...`, `.git`, pontuação à direita) — pega os DOIS primeiros segmentos
+ * do caminho. null se não houver um par owner/name válido.
+ */
+export function repoDe(v: unknown): string | null {
+  const s = texto(v).replace(/^https?:\/\/(www\.)?github\.com\//i, "").replace(/^\/+/, "");
+  if (!s) return null;
+  const m = /^([\w.-]+)\/([\w.-]+)/.exec(s); // 1º e 2º segmentos; ignora /tree/..., querystring, etc.
+  if (!m) return null;
+  const name = m[2].replace(/\.git$/i, "").replace(/\.+$/, "");
+  return m[1] && name ? `${m[1]}/${name}` : null;
+}
 
 /** As plataformas de um card device. */
 export const PLATAFORMAS_DEVICE = ["ios", "macos", "android", "windows", "linux"] as const;
@@ -182,6 +203,9 @@ export function cardDaSkill(s: SkillDaCasa): CardDaSkill | null {
     precoBRL,
     familia,
     device: familia === "device" ? deviceInfo(m) : null,
+    // o repo do curso de código: campo dedicado `zaeon-repo` (owner/name), ou a URL `zaeon-curso-fonte`
+    // que os cursos autorais já declaram. É o que alimenta o board da Forja (graphify roda nesse repo).
+    repo: repoDe(m["zaeon-repo"] ?? m["zaeon-curso-fonte"]),
   };
 }
 

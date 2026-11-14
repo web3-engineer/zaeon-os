@@ -5,6 +5,7 @@ import DiagramView from "@/components/studio/DiagramView";
 import AulaView from "@/components/aula-interativa/AulaView";
 import CadernoView from "@/components/studio/CadernoView";
 import ForjaView from "@/components/studio/ForjaView";
+import DevicePanelView from "@/components/studio/DevicePanelView";
 import type { DocArtefato } from "@/lib/chat/documentos";
 
 // o leitor carrega o pdf.js — só quando um livro é aberto
@@ -32,6 +33,9 @@ function Conteudo({ doc }: { doc: Doc }) {
   }
   if (doc.studioKind === "forja") {
     return <ForjaView artifactId={doc.artifactId} data={doc.data} />;
+  }
+  if (doc.studioKind === "device") {
+    return <DevicePanelView artifactId={doc.artifactId} data={doc.data} />;
   }
   if (doc.studioKind === "pdf" && doc.data?.file?.pdfUrl) {
     return <div className="h-full"><LeitorDocumento file={doc.data.file} /></div>;
