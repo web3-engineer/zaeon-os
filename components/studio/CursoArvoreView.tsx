@@ -19,13 +19,13 @@ import type { ArvoreEntendimento, CursoRepo, NoEntendimento } from "@/lib/forja/
 const NS = "http://www.w3.org/2000/svg";
 const cut = (s: string, n: number) => (s && s.length > n ? s.slice(0, n - 1) + "…" : s || "");
 
-type Nav = { id: string; tipo: "repo" | "mod" | "sim"; titulo: string; dica: string; mod?: string; filhos: Nav[] };
+type Nav = { id: string; tipo: "repo" | "mod" | "sim"; titulo: string; dica: string; resumo?: string; mod?: string; filhos: Nav[] };
 
 /** Monta a árvore de navegação (repo → módulos → símbolos) a partir da base de conhecimento real. */
 function navDoArvore(arvore: ArvoreEntendimento, repo: string): Nav {
-  const sym = (n: NoEntendimento, modTit: string): Nav => ({ id: n.id, tipo: "sim", titulo: n.titulo, dica: "conceito central", mod: modTit, filhos: [] });
-  const mod = (n: NoEntendimento): Nav => ({ id: n.id, tipo: "mod", titulo: n.titulo, dica: ((n.filhos?.length ?? 0) + " conceito(s)"), filhos: (n.filhos ?? []).map((s) => sym(s, n.titulo)) });
-  return { id: "raiz", tipo: "repo", titulo: arvore.raiz.titulo || repo, dica: "o repositório inteiro", filhos: (arvore.raiz.filhos ?? []).map(mod) };
+  const sym = (n: NoEntendimento, modTit: string): Nav => ({ id: n.id, tipo: "sim", titulo: n.titulo, dica: "conceito central", resumo: n.resumo, mod: modTit, filhos: [] });
+  const mod = (n: NoEntendimento): Nav => ({ id: n.id, tipo: "mod", titulo: n.titulo, dica: ((n.filhos?.length ?? 0) + " conceito(s)"), resumo: n.resumo, filhos: (n.filhos ?? []).map((s) => sym(s, n.titulo)) });
+  return { id: "raiz", tipo: "repo", titulo: arvore.raiz.titulo || repo, dica: "o repositório inteiro", resumo: arvore.raiz.resumo, filhos: (arvore.raiz.filhos ?? []).map(mod) };
 }
 
 const CSS = `
@@ -162,8 +162,10 @@ export default function CursoArvoreView({ curso, titulo, onFechar }: { curso: Cu
     function montarBoard(r: Nav) {
       const par = parentOf.get(r), mod = r.mod || (par ? par.titulo : REPO), base = String(mod).split(".py")[0];
       const tag = r.tipo === "sim" ? "conceito" : r.tipo === "mod" ? "módulo" : "repositório";
+      const temResumo = (r.resumo || "").trim().length > 3;
+      const aprend = temResumo ? r.resumo : ('<b>' + r.titulo + '</b> é um conceito central de <b>' + mod + '</b>. Aqui entra a explicação real — analogia, o que é e por que importa — <i style="color:rgba(205,216,255,.6)">gerada pelo understand-anything a partir do grafo real</i>.');
       boardEl.innerHTML = '<div class="av-card"><div class="tag">' + tag + ' · ' + REPO + '</div><h1>' + r.titulo + '</h1>'
-        + '<h3>Aprendizado</h3><p><b>' + r.titulo + '</b> é um conceito central de <b>' + mod + '</b>. Aqui entra a explicação real — analogia, o que é e por que importa — <i style="color:rgba(205,216,255,.6)">gerada pelo understand-anything a partir do grafo real</i>.</p>'
+        + '<h3>Aprendizado</h3><p>' + aprend + '</p>'
         + '<h3>No código</h3>' + bloco('python · ' + base + '.py', '# trecho real do repositório (via graphify)\nfrom ' + base + ' import ' + r.titulo + '\n\n# o graphify aponta onde ' + r.titulo + ' é definido e quem o usa')
         + '<h3>Teste</h3><p>O que melhor descreve <b>' + r.titulo + '</b>?</p>'
         + '<div class="av-quiz"><div class="av-opt" data-ok="1">Uma peça central de ' + mod + ', referenciada por vários outros símbolos</div>'
