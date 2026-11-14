@@ -985,7 +985,6 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     }
   }, [focusIds, avisarFalha]);
   const runStudioActionRef = useRef(runStudioAction); runStudioActionRef.current = runStudioAction;
-  const novaAbaRef = useRef(novaAba); novaAbaRef.current = novaAba; // pro laço do desbloqueio abrir em conversa nova
 
   // P4 · laço do desbloqueio: o card de música desbloqueado deixa um Caderno PENDENTE (lib/jornadas/
   // desbloqueio). A Sala de Estudos abre esse caderno sozinha — no mount (quem já comprou) e pelo
@@ -1014,7 +1013,10 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
       if (!e?.slug || estudoAbertoRef.current.has(e.slug)) return;
       if (e.modulo !== "device") return;          // board é tratado pelo botão "abrir" (área própria do curso)
       estudoAbertoRef.current.add(e.slug);
-      novaAbaRef.current();                       // device: conversa nova, não invade um thread de outro assunto
+      // O painel device (download + instruções) entra na conversa ATUAL, sem criar aba vazia nem trocar a
+      // vista. Abrir um device NÃO pode "soterrar" o que o aluno está estudando: antes, `novaAba()` salvava a
+      // conversa e trocava pra uma aba vazia — a aula de música "sumia" ao abrir o MuseScore (o dado ficava,
+      // mas a tela trocava). Anexando à conversa corrente, nada some: o painel aparece junto, conectado.
       void runStudioActionRef.current("device", e.slug, undefined, false, undefined, undefined, undefined, true);
     };
     abrir(consumirEstudoPendente());
