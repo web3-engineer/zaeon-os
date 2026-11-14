@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { arvoreDoGrafo, comBaseDoGrafo } from "./arvoreDoGrafo";
-import type { ArvoreEntendimento, GrafoConhecimento } from "./tipos";
+import { arvoreDoGrafo, comBaseDoGrafo, mesclarEnriquecimento } from "./arvoreDoGrafo";
+import type { ArvoreEntendimento, GrafoConhecimento, NoEntendimento } from "./tipos";
 
 const grafo: GrafoConhecimento = {
   nos: [
@@ -39,5 +39,33 @@ describe("comBaseDoGrafo — só deriva quando a árvore está vazia", () => {
   });
   it("sem grafo → mantém a árvore como está", () => {
     expect(comBaseDoGrafo({ arvore: vazia, grafo: { nos: [], arestas: [] } }, "X")).toBe(vazia);
+  });
+});
+
+describe("mesclarEnriquecimento — camada 1 aditiva, nunca destrói a base curada", () => {
+  const ramo = (id: string, titulo: string): NoEntendimento => ({ id, titulo, resumo: "", desde: "basico", refs: [], filhos: [] });
+  const base: ArvoreEntendimento = { raiz: { id: "raiz", titulo: "Curso", resumo: "r", desde: "basico", refs: [], filhos: [ramo("mod:0", "Lição A"), ramo("mod:1", "Lição B")] } };
+
+  it("acrescenta os ramos do motor DEPOIS dos curados (a lição manda)", () => {
+    const extra: ArvoreEntendimento = { raiz: { ...base.raiz, filhos: [ramo("mod:sym1", "símbolo real")] } };
+    const r = mesclarEnriquecimento(base, extra);
+    expect(r.raiz.filhos.map((f) => f.id)).toEqual(["mod:0", "mod:1", "mod:sym1"]);
+  });
+
+  it("não duplica ramo de id já presente", () => {
+    const extra: ArvoreEntendimento = { raiz: { ...base.raiz, filhos: [ramo("mod:0", "dup"), ramo("mod:novo", "novo")] } };
+    const r = mesclarEnriquecimento(base, extra);
+    expect(r.raiz.filhos.map((f) => f.id)).toEqual(["mod:0", "mod:1", "mod:novo"]);
+  });
+
+  it("sem enriquecimento → a base intacta (mesma referência)", () => {
+    expect(mesclarEnriquecimento(base, null)).toBe(base);
+    expect(mesclarEnriquecimento(base, { raiz: { ...base.raiz, filhos: [] } })).toBe(base);
+  });
+
+  it("sem base curada → o enriquecimento é a árvore", () => {
+    const vaziaBase: ArvoreEntendimento = { raiz: { id: "raiz", titulo: "x", resumo: "", desde: "basico", refs: [], filhos: [] } };
+    const extra: ArvoreEntendimento = { raiz: { ...vaziaBase.raiz, filhos: [ramo("g:1", "do grafo")] } };
+    expect(mesclarEnriquecimento(vaziaBase, extra)).toBe(extra);
   });
 });
