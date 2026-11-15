@@ -51,3 +51,26 @@ export function nomeRepoDoCurso(cursoId: string): string {
   const limpo = String(cursoId || "curso").toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
   return `zaeon-${limpo || "curso"}`;
 }
+
+/** Os caminhos dos arquivos RESIDUAIS (que o aluno não digita; o Octa monta a partir do source). PURA. */
+export function caminhosResiduais(cards: CardDeArquivo[]): string[] {
+  const vistos = new Set<string>();
+  for (const c of cards) if (c.residual && c.arquivo) vistos.add(c.arquivo);
+  return [...vistos];
+}
+
+/**
+ * QA do projeto montado (F5, server-side — além do portão leve do navegador). PURA. Carimba "pronto pra
+ * publicação" só se: tem README não-trivial, pelo menos um arquivo de código (fora o README), e nenhum
+ * arquivo vazio. Não executa nada; é a checagem estrutural que roda ANTES do push, no servidor.
+ */
+export function qaDoProjeto(arquivos: ArquivoProjeto[]): { pronto: boolean; motivos: string[] } {
+  const motivos: string[] = [];
+  const readme = arquivos.find((a) => a.path.toLowerCase() === "readme.md");
+  if (!readme || readme.content.trim().length < 20) motivos.push("README ausente ou vazio.");
+  const codigo = arquivos.filter((a) => a.path.toLowerCase() !== "readme.md");
+  if (!codigo.length) motivos.push("Nenhum arquivo de código no projeto.");
+  const vazio = codigo.find((a) => !a.content.trim());
+  if (vazio) motivos.push(`Arquivo vazio: ${vazio.path}.`);
+  return { pronto: motivos.length === 0, motivos };
+}

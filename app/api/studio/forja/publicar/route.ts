@@ -19,7 +19,8 @@ import { guard } from "@/src/lib/ratelimit";
 import { resolverEsqueleto } from "@/lib/forja/esqueletoResolver";
 import { cardsCacheados } from "@/lib/forja/cardsLocal";
 import { tutorialDemoDoCurso } from "@/lib/forja/tutoriaisDemo";
-import { arquivosDoProjeto, nomeRepoDoCurso } from "@/lib/forja/projetoDoCurso";
+import { arquivosDoProjeto, nomeRepoDoCurso, qaDoProjeto } from "@/lib/forja/projetoDoCurso";
+import { residualDoProjeto } from "@/lib/forja/residualDoRepo";
 import { getUserOctokit, getUserConnection } from "@/lib/projects/github-user";
 import { createRepo, repoExiste, commitFiles } from "@/lib/projects/github-service";
 
@@ -59,9 +60,17 @@ export async function POST(req: Request) {
     );
   }
 
+  // F4 — residual: os arquivos que o aluno não digita, puxados do source (só os marcados pelos cards).
+  // Best-effort; vira `extras`. Hoje (sem F2) normalmente é vazio.
+  const extras = await residualDoProjeto(octokit, esq.repo, cards).catch(() => []);
+
   // Monta os arquivos do projeto do aluno a partir dos cards (PURO, server-side).
-  const arquivos = arquivosDoProjeto(cards, { titulo: esq.titulo, repo: esq.repo });
+  const arquivos = arquivosDoProjeto(cards, { titulo: esq.titulo, repo: esq.repo, extras });
   if (!arquivos.length) return NextResponse.json({ error: "projeto_vazio" }, { status: 400 });
+
+  // F5 (portão QA server-side): não publica um projeto estruturalmente incompleto, mesmo que o cliente peça.
+  const qa = qaDoProjeto(arquivos);
+  if (!qa.pronto) return NextResponse.json({ error: "qa_reprovou", motivos: qa.motivos }, { status: 422 });
 
   const nome = nomeRepoDoCurso(esq.id);
   const fullName = `${login}/${nome}`;

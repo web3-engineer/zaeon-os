@@ -75,6 +75,7 @@ export default function CardArquivo({ card, cursoId, onFechar }: { card: CardDeA
       const j = await r.json().catch(() => null);
       if (r.ok && j?.repoUrl) { setPub({ fase: "ok", url: j.repoUrl }); return; }
       if (r.status === 409) { setPub({ fase: "erro", msg: "Conecte seu GitHub para publicar.", url: "/api/projects/github/connect" }); return; }
+      if (r.status === 422 && Array.isArray(j?.motivos)) { setPub({ fase: "erro", msg: `Projeto ainda não está pronto: ${j.motivos.join(" ")}` }); return; }
       setPub({ fase: "erro", msg: j?.detalhe || "Não consegui publicar agora." });
     } catch {
       setPub({ fase: "erro", msg: "Não consegui publicar agora." });

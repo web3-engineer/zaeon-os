@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { arquivosDoProjeto, readmeDoProjeto, nomeRepoDoCurso } from "./projetoDoCurso";
+import { arquivosDoProjeto, readmeDoProjeto, nomeRepoDoCurso, caminhosResiduais, qaDoProjeto } from "./projetoDoCurso";
 import type { CardDeArquivo } from "./tutorialArquivo";
 
 const card = (arquivo: string, codigo: string, residual = false): CardDeArquivo => ({
@@ -37,5 +37,23 @@ describe("projetoDoCurso — montagem dos arquivos do projeto do aluno", () => {
     expect(nomeRepoDoCurso("algoritmos-classicos")).toBe("zaeon-algoritmos-classicos");
     expect(nomeRepoDoCurso("Skill: Pandas!!")).toBe("zaeon-skill-pandas");
     expect(nomeRepoDoCurso("")).toBe("zaeon-curso");
+  });
+
+  it("caminhosResiduais: só os arquivos marcados residuais, sem duplicata", () => {
+    const cards = [card("app.py", "x"), card("conf.py", "", true), card("conf.py", "", true)];
+    expect(caminhosResiduais(cards)).toEqual(["conf.py"]);
+    expect(caminhosResiduais([card("a.py", "x")])).toEqual([]);
+  });
+
+  it("qaDoProjeto: aprova projeto completo, reprova sem README / vazio / sem código", () => {
+    const bom = arquivosDoProjeto([card("a.py", "print(1)")], { titulo: "T", repo: "o/n" });
+    expect(qaDoProjeto(bom).pronto).toBe(true);
+
+    expect(qaDoProjeto([{ path: "a.py", content: "x" }]).motivos).toContain("README ausente ou vazio.");
+    expect(qaDoProjeto([{ path: "README.md", content: "# T\n\nprojeto de verdade aqui" }]).motivos)
+      .toContain("Nenhum arquivo de código no projeto.");
+    const comVazio = qaDoProjeto([{ path: "README.md", content: "# T\n\nprojeto de verdade aqui" }, { path: "a.py", content: "   " }]);
+    expect(comVazio.pronto).toBe(false);
+    expect(comVazio.motivos.some((m) => m.includes("Arquivo vazio"))).toBe(true);
   });
 });
