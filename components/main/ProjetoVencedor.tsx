@@ -6,15 +6,17 @@
  * dentro de "ou traga as chaves de API dos seus", no lugar dos cards de passo a passo (o dono, out/2026: "sem cards
  * menores explicando, remova eles e no lugar ponha o card que indica o projeto vencedor da categoria blockchain").
  */
+import { Trans, useTranslation } from "react-i18next";
 import NextImage from "next/image";
 import { motion } from "framer-motion";
 import TextoRevelado from "@/components/ui/TextoRevelado";
 
 export default function ProjetoVencedor({ className = "" }: { className?: string }) {
+  const { t } = useTranslation();
   return (
     <div className={`flex w-full flex-col items-center ${className}`}>
       <h4 className="mb-6 text-[10px] font-bold uppercase tracking-[0.3em] text-cyan-700 dark:text-cyan-300 transition-colors duration-300">
-        <TextoRevelado texto="Produto vencedor" />
+        <TextoRevelado texto={t("landing.premiacao.vencedor", { defaultValue: "" })} />
       </h4>
 
       {/* o card é AZUL nos dois temas → o conteúdo usa o estilo escuro (texto claro, logo do MCTI escuro) */}
@@ -28,7 +30,7 @@ export default function ProjetoVencedor({ className = "" }: { className?: string
         >
           <div className="z-10 flex max-w-2xl flex-col items-center gap-4 text-center">
             <h3 className="text-2xl font-light leading-tight text-white md:text-3xl">
-              <span className="font-bold text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.3)]">Blockchain</span> como Tecnologia de Uso Inteligente no Ceará
+              <Trans i18nKey="landing.premiacao.projeto" components={{ hl: <span className="font-bold text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.3)]" /> }} />
             </h3>
             <p className="mx-auto max-w-lg text-sm font-medium leading-relaxed text-white/90">
               <a
@@ -37,16 +39,16 @@ export default function ProjetoVencedor({ className = "" }: { className?: string
                 rel="noopener noreferrer"
                 className="relative z-50 cursor-pointer font-bold text-cyan-400 underline decoration-cyan-500/50 underline-offset-4 transition-all hover:text-cyan-300 hover:decoration-cyan-300"
               >
-                Programa Centelha (2ª Edição).
+                {t("landing.premiacao.programa", { defaultValue: "" })}
               </a>
             </p>
           </div>
 
           {/* o apoio oficial: o logo do MCTI (as versões _alpha são as oficiais com o fundo virado transparência; PNG ~4:1) */}
           <div className="z-10 flex w-full flex-col items-center justify-center border-t border-white/10 pt-8">
-            <span className="mb-6 text-[10px] font-semibold uppercase tracking-widest text-white/90">Apoio Oficial</span>
+            <span className="mb-6 text-[10px] font-semibold uppercase tracking-widest text-white/90">{t("landing.premiacao.oficial", { defaultValue: "" })}</span>
             <div className="relative h-16 w-64 opacity-95 transition-all duration-300 group-hover:scale-105 group-hover:opacity-100">
-              <NextImage src="/sponsors/MCTI_dark_alpha.png" alt="Ministério da Ciência, Tecnologia e Inovação — Governo do Brasil" fill sizes="256px" className="h-full w-full object-contain" unoptimized />
+              <NextImage src="/sponsors/MCTI_dark_alpha.png" alt={t("landing.premiacao.ministerio", { defaultValue: "" })} fill sizes="256px" className="h-full w-full object-contain" unoptimized />
             </div>
           </div>
         </motion.div>

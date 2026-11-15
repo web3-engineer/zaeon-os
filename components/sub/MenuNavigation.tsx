@@ -741,7 +741,7 @@ export default function MenuNavigation({ destino = LAB_ROTA }: { destino?: strin
                   {projetosOn() && canUseProjects && renderModule("projetos", "Projetos", recentProjects, "Novo projeto", "/research-lab?tab=projetos")}
 
                   {/* LOUNGE — co-criar com amigos */}
-                  {renderModule("lounge", "Play game", [], "Play game", LOUNGE_ROTA)}
+                  {renderModule("lounge", t("landing.interface.jogar"), [], t("landing.interface.jogar"), LOUNGE_ROTA)}
 
                   {/* OPTIONS — concentra voz, idioma, convite, founder e logout */}
                   <li className="w-full" onClick={() => setIsOptionsOpen(true)}>

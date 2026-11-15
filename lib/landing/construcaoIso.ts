@@ -45,7 +45,7 @@ function cor(at: number): string {
 /* coleta de peças */
 type Peca = { at: number; svg: string; z?: number };
 const pecas: Peca[] = [];
-const add = (at: number, svg: string, z = 0) => pecas.push({ at: Math.min(0.9, Math.max(0, at)), svg, z });
+const add = (at: number, svg: string, z = 0) => pecas.push({ at: Math.min(0.94, Math.max(0, at)), svg, z });
 
 /* ---------- helpers ---------- */
 const dPath = (pts: [number, number][]) =>
@@ -95,8 +95,10 @@ const fiducial = (x: number, y: number) =>
 
 // — vidro preto translúcido + grade + borda neon + fiduciais
 add(0,
-  `<rect x="0" y="0" width="${W}" height="${H}" rx="26" fill="url(#cs-glass)" opacity="0.82"/>` +
-  `<rect x="0" y="0" width="${W}" height="${H}" rx="26" fill="url(#cs-grid)" opacity="0.10"/>` +
+  `<rect x="0" y="0" width="${W}" height="${H}" rx="26" fill="url(#cs-placa-metal)" stroke="#71818b" stroke-width="2"/>` +
+  `<rect x="8" y="8" width="${W - 16}" height="${H - 16}" rx="22" fill="url(#cs-glass)" stroke="#0d171e" stroke-width="3"/>` +
+  `<rect x="9" y="9" width="${W - 18}" height="${H - 18}" rx="20" fill="url(#cs-escovado)" opacity=".23"/>` +
+  `<rect x="0" y="0" width="${W}" height="${H}" rx="26" fill="url(#cs-grid)" opacity="0.07"/>` +
   `<rect x="0" y="0" width="${W}" height="${H}" rx="26" fill="url(#cs-center)"/>`, -10);
 add(0.02,
   `<rect x="18" y="18" width="${W - 36}" height="${H - 36}" rx="20" fill="none" stroke="url(#cs-borda)" stroke-width="2" opacity="0.8"/>` +
@@ -104,23 +106,27 @@ add(0.02,
 
 // — o NÚCLEO central estilo Solana (três barras diagonais em gradiente + brilho) + pininhos
 const PX = 400, PY = 400, PW = 200, PH = 200;
-add(0.06, (() => {
-  let s = `<g filter="url(#cs-glow)">`;
-  s += `<rect class="cs-luz2" x="${PX - 16}" y="${PY - 16}" width="${PW + 32}" height="${PH + 32}" rx="22" fill="#2d6ae8" opacity="0.14"/>`;
-  s += `<rect x="${PX}" y="${PY}" width="${PW}" height="${PH}" rx="14" fill="${NUCLEO}" stroke="url(#cs-solana)" stroke-width="2"/>`;
-  const bw = 120, bx = PX + 40, by = PY + 56, bh = 20, gap = 36, sk = 18;
+add(0.94, (() => {
+  let s = `<g>
+    <rect x="393" y="401" width="214" height="213" rx="13" fill="#03070d" opacity=".75"/>
+    <rect x="395" y="395" width="210" height="210" rx="8" fill="#18362f" stroke="#4a685e" stroke-width="1.5"/>
+    <path d="M414 409H585L593 417V580L580 593H419L407 581V417Z" fill="url(#cs-metal)" stroke="#a3afbc" stroke-width="1.4"/>
+    <path d="M414 409H585L593 417V580L580 593H419L407 581V417Z" fill="url(#cs-escovado)"/>
+    <path d="M414 412H584L590 418M410 419V579" fill="none" stroke="#eff5f6" opacity=".73"/>
+    <rect x="428" y="436" width="144" height="128" rx="5" fill="#101823" stroke="#65717d"/>
+    <rect x="431" y="439" width="138" height="122" rx="4" fill="url(#cs-janela)" stroke="#b9d5e2" stroke-opacity=".62"/>
+  `;
+  for (let i = 0; i < 10; i++) {
+    const pos = 419 + i * 18;
+    s += `<path d="M${pos} 396v8m0 191v8M396 ${pos}h8m191 0h8" stroke="url(#cs-ouro)" stroke-width="3"/>`;
+  }
+  s += `<path d="M398 412v-12h12Z" fill="#f1cc7b"/>`;
+  const bw = 90, bx = PX + 55, by = PY + 65, bh = 13, gap = 27, sk = 13;
   for (let k = 0; k < 3; k++) {
     const yy = by + k * gap;
     s += `<path d="M${bx + sk},${yy} l${bw},0 l${-sk},${bh} l${-bw},0 z" fill="url(#cs-solana)"/>`;
   }
-  const n = 8;
-  for (let i = 0; i < n; i++) {
-    const t = PX + (PW * (i + 0.5)) / n, u = PY + (PH * (i + 0.5)) / n;
-    s += `<rect x="${r1(t) - 2}" y="${PY - 6}" width="4" height="6" fill="${PINO}"/>`;
-    s += `<rect x="${r1(t) - 2}" y="${PY + PH}" width="4" height="6" fill="${PINO}"/>`;
-    s += `<rect x="${PX - 6}" y="${r1(u) - 2}" width="6" height="4" fill="${PINO}"/>`;
-    s += `<rect x="${PX + PW}" y="${r1(u) - 2}" width="6" height="4" fill="${PINO}"/>`;
-  }
+  s += `<path d="M433 442h106l-63 116h-43Z" fill="#daf4ff" opacity=".08"/>`;
   return s + `</g>`;
 })(), 5);
 
@@ -206,6 +212,28 @@ for (let i = 0; i < dots.length; i++) {
 /* ---------- SVG final ---------- */
 const defs = `
   <defs>
+    <linearGradient id="cs-placa-metal" x2="20%" y2="100%">
+      <stop stop-color="#879aa3"/>
+      <stop offset=".3" stop-color="#465960"/>
+      <stop offset=".65" stop-color="#25373d"/>
+      <stop offset="1" stop-color="#607681"/>
+    </linearGradient>
+    <linearGradient id="cs-metal" x2="28%" y2="100%">
+      <stop stop-color="#e0e6ea"/>
+      <stop offset=".21" stop-color="#8997a5"/>
+      <stop offset=".43" stop-color="#c5cdd3"/>
+      <stop offset=".7" stop-color="#65717d"/>
+      <stop offset="1" stop-color="#aebbc5"/>
+    </linearGradient>
+    <pattern id="cs-escovado" width="19" height="7" patternUnits="userSpaceOnUse">
+      <path d="M0 1h19M4 4h11" stroke="#fff" stroke-width=".42" opacity=".33"/>
+      <path d="M0 6h19" stroke="#233541" stroke-width=".5" opacity=".35"/>
+    </pattern>
+    <linearGradient id="cs-janela" x2="100%" y2="100%">
+      <stop stop-color="#375369"/>
+      <stop offset=".48" stop-color="#102131"/>
+      <stop offset="1" stop-color="#263f60"/>
+    </linearGradient>
     <linearGradient id="cs-glass" x1="0" y1="0" x2="0.3" y2="1">
       <stop offset="0%" stop-color="${VIDRO1}"/>
       <stop offset="100%" stop-color="${VIDRO2}"/>
@@ -222,10 +250,10 @@ const defs = `
       <stop offset="45%" stop-color="#f5c542"/>
       <stop offset="100%" stop-color="#b8860b"/>
     </linearGradient>
-    <linearGradient id="cs-borda" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.9"/>
-      <stop offset="50%" stop-color="#8b5cf6" stop-opacity="0.7"/>
-      <stop offset="100%" stop-color="#2bd47a" stop-opacity="0.9"/>
+    <linearGradient id="cs-borda" x2="100%" y2="100%">
+      <stop stop-color="#a2b7bd" stop-opacity=".6"/>
+      <stop offset=".56" stop-color="#3a575f"/>
+      <stop offset="1" stop-color="#718d95" stop-opacity=".65"/>
     </linearGradient>
     <radialGradient id="cs-center" cx="50%" cy="46%" r="60%">
       <stop offset="0%" stop-color="#1a2b44" stop-opacity="0.5"/>
@@ -247,11 +275,20 @@ const body = pecas
   .map((p) => `<g class="ci-part" data-at="${p.at}">${p.svg}</g>`)
   .join("");
 
+const prensa = `
+  <g class="ci-prensa">
+    <path d="M-164 354H-19M-164 500H-19M-164 646H-19" stroke="#24374c" stroke-width="14" stroke-linecap="round"/>
+    <path d="M-160 351H-19M-160 497H-19M-160 643H-19" stroke="#7290aa" stroke-width="3"/>
+    <rect x="-22" y="293" width="22" height="414" rx="5" fill="#14263b" stroke="#527d9a" stroke-width="2"/>
+    <path d="M-2 306V694" stroke="#57d7ee" stroke-opacity=".55" stroke-width="4"/>
+    <path class="ci-impacto" d="M0 306V694" stroke="#e8ffff" stroke-width="9" stroke-linecap="round"/>
+    <path class="ci-energia" d="M-162 354H-12M-162 500H-12M-162 646H-12" fill="none" stroke="#80efff" stroke-width="4"/>
+  </g>`;
+
 export const CONSTRUCAO_SVG =
-  `<svg class="ci-fig" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" ` +
-  `aria-label="Uma placa de circuitos em vidro escuro que se completa, com a cor varrendo o gradiente da timeline conforme a ideia vira realidade">` +
+  `<svg class="ci-fig" viewBox="-122 0 ${W + 244} ${H}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">` +
   defs +
-  `<g clip-path="url(#cs-clip)">${body}</g>` +
+  `<g class="ci-placa-corpo"><g clip-path="url(#cs-clip)">${body}</g></g>${prensa}<g transform="translate(${W} 0) scale(-1 1)">${prensa}</g><g class="ci-carga"><rect x="379" y="948" width="242" height="8" rx="4" fill="#0e2c47"/><rect class="ci-carga-fill" x="379" y="948" width="0" height="8" rx="4" fill="#8bf7ff"/></g>` +
   `</svg>`;
 
 export const CONSTRUCAO_PASSOS = [0, 0.25, 0.5, 0.72, 0.88];

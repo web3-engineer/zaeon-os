@@ -1,5 +1,6 @@
+import { useTranslation } from "react-i18next";
 import Link from "next/link";
-import { lojaLabel, mentoresTab } from "@/lib/mentores/rota";
+import { mentoresTab } from "@/lib/mentores/rota";
 
 /**
  * Footer clássico da Zaeon (inspirado no da ChipFlow): blurb da marca + colunas de
@@ -12,41 +13,42 @@ type FooterCol = { title: string; links: FooterLink[] };
 
 const COLS: FooterCol[] = [
   {
-    title: "Plataforma",
+    title: "plataforma",
     links: [
-      { label: "Play game", href: "/#cyberespaco" },
-      { label: "Modelos de IA", href: "/#modelos" },
-      { label: "Laboratório", href: "/research-lab" },
-      { label: lojaLabel(), href: mentoresTab() ? "/mentores" : "/assistentes" },
+      { label: "jogar", href: "/#cyberespaco" },
+      { label: "modelos", href: "/#modelos" },
+      { label: "laboratorio", href: "/research-lab" },
+      { label: mentoresTab() ? "mentores" : "assistentes", href: mentoresTab() ? "/mentores" : "/assistentes" },
     ],
   },
   {
-    title: "Recursos",
+    title: "recursos",
     links: [
-      { label: "Como funciona", href: "/#modelos" },
-      { label: "Mentores", href: "/#modelos" },
-      { label: "Dúvidas (FAQ)", href: "/#faq" },
-      { label: "Notícias", href: "/news" },
+      { label: "funcionamento", href: "/#modelos" },
+      { label: "mentores", href: "/#modelos" },
+      { label: "duvidas", href: "/#faq" },
+      { label: "noticias", href: "/news" },
     ],
   },
   {
-    title: "Empresa",
+    title: "empresa",
     links: [
-      { label: "Sobre nós", href: "/about" },
-      { label: "Documentação", href: "/docs" },
-      { label: "Contato", href: "mailto:contato@zaeon.com.br", external: true },
+      { label: "sobre", href: "/about" },
+      { label: "documentacao", href: "/docs" },
+      { label: "contato", href: "mailto:contato@zaeon.com.br", external: true },
     ],
   },
   {
-    title: "Legal",
+    title: "legal",
     links: [
-      { label: "Termos de Uso", href: "/termos" },
-      { label: "Privacidade", href: "/privacidade" },
+      { label: "termos", href: "/termos" },
+      { label: "privacidade", href: "/privacidade" },
     ],
   },
 ];
 
 export const Footer = () => {
+  const { t } = useTranslation();
   const year = new Date().getFullYear();
   return (
     <footer className="w-full border-t border-slate-200 dark:border-white/10 bg-white/40 dark:bg-black/30 backdrop-blur-md text-slate-600 dark:text-gray-400">
@@ -58,8 +60,7 @@ export const Footer = () => {
               <span>Zaeon</span>
             </div>
             <p className="text-sm text-slate-500 dark:text-gray-500 leading-relaxed max-w-[220px]">
-              Todas as IAs num lugar só, com uma camada científica por cima. Feito pra
-              quem estuda e pesquisa de verdade.
+              {t("landing.interface.resumo", { defaultValue: "" })}
             </p>
           </div>
 
@@ -67,7 +68,7 @@ export const Footer = () => {
           {COLS.map((col) => (
             <div key={col.title}>
               <h4 className="text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-gray-500 mb-4">
-                {col.title}
+                {t(`landing.interface.${col.title}`, { defaultValue: "" })}
               </h4>
               <ul className="space-y-3">
                 {col.links.map((link) => (
@@ -77,7 +78,7 @@ export const Footer = () => {
                       {...(link.external ? { target: "_blank", rel: "noreferrer noopener" } : {})}
                       className="text-sm text-slate-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-300 transition-colors"
                     >
-                      {link.label}
+                      {t(`landing.interface.${link.label}`, { defaultValue: "" })}
                     </Link>
                   </li>
                 ))}
@@ -88,8 +89,8 @@ export const Footer = () => {
 
         {/* Linha final */}
         <div className="border-t border-slate-200 dark:border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-slate-400 dark:text-gray-600">
-          <span>&copy; {year} Zaeon. Todos os direitos reservados.</span>
-          <span className="text-[12px] uppercase tracking-widest">Onde humanos e superinteligências se encontram para criar uma nova era</span>
+          <span>&copy; {year} Zaeon. {t("landing.interface.direitos", { defaultValue: "" })}</span>
+          <span className="text-[12px] uppercase tracking-widest">{t("landing.interface.lema", { defaultValue: "" })}</span>
         </div>
       </div>
     </footer>

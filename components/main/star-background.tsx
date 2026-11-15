@@ -40,7 +40,7 @@ interface Particle {
  * cada regra: uma instância só desenha, tempo real (não por quadro), qualidade pelo aparelho,
  * sem estrobo e parado pra quem pede menos movimento.
  */
-const StarBackground: React.FC = () => {
+const StarBackground: React.FC<{ central?: boolean }> = ({ central = false }) => {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const { theme, resolvedTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
@@ -68,7 +68,7 @@ const StarBackground: React.FC = () => {
     useEffect(() => {
         if (!mounted || !dono) return;
         const canvas = canvasRef.current;
-        const ctx = canvas?.getContext("2d", { alpha: false });
+        const ctx = canvas?.getContext("2d", { alpha: central });
         if (!canvas || !ctx) return;
 
         const perfil = perfilDoAparelho({
@@ -85,8 +85,20 @@ const StarBackground: React.FC = () => {
         let time = 0;
         let dnaShift = 0;   // quanto o DNA já subiu (a grade dos degraus anda junto com as fitas)
         const DEGRAU = 22, FREQ_DNA = 0.0085;
-        const raioDna = () => Math.min(210, Math.max(120, width * 0.115));
-        let relogio: Relogio = { fase: 2, timer: 0 };
+        let ciclo = 0;
+        const raioDna = () => {
+            const raio = Math.min(210, Math.max(120, width * 0.115));
+            return central ? Math.min(raio, width * 0.27) : raio;
+        };
+        let alvoMacro: number | null = null;
+        const suave = (x: number) => {
+            const t = Math.max(0, Math.min(1, x));
+            return t * t * (3 - 2 * t);
+        };
+        const centroDna = () => width * (central ? 0.5 : 0.83);
+        let relogio: Relogio = { fase: central ? 3 : 2, timer: 0 };
+        const inicio = performance.now();
+        const animacaoDaCena = central ? canvas.parentElement?.getAnimations()[0] : undefined;
         let ultimo = 0;
         let mediaPasso = 1, amostras = 0;
         const escalas = new Float32Array(total);
@@ -181,8 +193,15 @@ const StarBackground: React.FC = () => {
             mediaPasso = mediaPasso * 0.95 + passo * 0.05;
             if (++amostras % 120 === 0) ativas = ajustarQualidade(ativas, mediaPasso, perfil.intervaloMinMs / QUADRO_MS);
 
-            fundo(fatorLerp(RASTRO, passo));
-            relogio = avancarFaseSemGlobo(relogio, passo);
+            if (central) {
+                ctx.clearRect(0, 0, width, height);
+                const tempoCena = animacaoDaCena?.currentTime;
+                const tempoDoFundo = (typeof tempoCena === "number" ? tempoCena : agora - inicio) % 58000;
+                ciclo = Math.max(0, tempoDoFundo - 30000);
+            } else {
+                fundo(fatorLerp(RASTRO, passo));
+                relogio = avancarFaseSemGlobo(relogio, passo);
+            }
             if (relogio.fase === 3 || relogio.fase === 4) dnaShift += 0.8 * passo;
             time += SNAKE_SPEED * passo;
             const { fase } = relogio;
@@ -206,7 +225,7 @@ const StarBackground: React.FC = () => {
                 } else if (fase === 3 || fase === 4) {
                     p.dnaY -= 0.8 * passo;
                     if (p.dnaY < -100) p.dnaY += height + 200;   // += (não =): o espaçamento uniforme se mantém
-                    const rad = raioDna(), cX = width * 0.83;
+                    const rad = raioDna(), cX = centroDna();
                     if (p.dnaStrand !== 0) {
                         const off = p.dnaStrand === 1 ? 0 : Math.PI;
                         const ang = p.dnaY * FREQ_DNA + off + time;
@@ -236,11 +255,32 @@ const StarBackground: React.FC = () => {
                 escalas[i] = escala;
             }
 
+            let faisca = 0;
+            const transicao = central ? suave((ciclo - 14000) / 2100) : 0;
+            if (central) {
+                ctx.save();
+                if (ciclo < 7000) alvoMacro = null;
+                else if (ciclo < 18000) {
+                    alvoMacro ??= Math.round((height / 2 + dnaShift) / DEGRAU) * DEGRAU;
+                    const y = alvoMacro - dnaShift;
+                    const x = centroDna() + Math.cos(y * FREQ_DNA + time) * raioDna();
+                    const foco = suave((ciclo - 7000) / 3800);
+                    const zoom = 1 + 19 * suave((ciclo - 7200) / 6800);
+                    faisca = suave((ciclo - 12200) / 1800);
+                    const destinoX = width * .5;
+                    const destinoY = height * .27;
+                    ctx.translate((destinoX - x) * foco + x, (destinoY - y) * foco + y);
+                    ctx.scale(zoom, zoom);
+                    ctx.translate(-x, -y);
+                    ctx.globalAlpha = 1 - transicao;
+                }
+            }
+
             // DETALHES (traço em lote, atrás dos pontos; no celular só os pontos, o DNA passa atrás do texto):
             //  • a ESPINHA de cada fita (linha fina contínua), • os DEGRAUS (barras de uma fita à outra) e
             //  • os NÓS: um pontinho mais forte onde o degrau encosta na fita da FRENTE.
-            if ((fase === 2 || fase === 3 || fase === 4) && width >= 640) {
-                const alpha = alphaDaFase(relogio), esc = escuroRef.current;
+            if ((fase === 2 || fase === 3 || fase === 4) && (central || width >= 640)) {
+                const alpha = (central ? (ciclo < 18000 ? 1 - transicao : 0) : alphaDaFase(relogio)), esc = escuroRef.current;
                 const espinha = new Path2D(), degraus = new Path2D(), nos = new Path2D();
                 if (fase === 2) {
                     for (const off of [0, Math.PI]) for (let k = 0; k <= 260; k++) { const h = helLonga(k / 260, off); if (k === 0) espinha.moveTo(h.x, h.y); else espinha.lineTo(h.x, h.y); }
@@ -252,7 +292,7 @@ const StarBackground: React.FC = () => {
                         const f = Math.sin(a1.ang) > 0 ? a1 : b1; nos.moveTo(f.x + 1.8, f.y); nos.arc(f.x, f.y, 1.8, 0, Math.PI * 2);
                     }
                 } else {
-                    const rad = raioDna(), cX = width * 0.83;
+                    const rad = raioDna(), cX = centroDna();
                     for (const off of [0, Math.PI]) for (let y = -20; y <= height + 20; y += 8) { const x = cX + Math.cos(y * FREQ_DNA + off + time) * rad; if (y === -20) espinha.moveTo(x, y); else espinha.lineTo(x, y); }
                     const y0 = -((dnaShift % DEGRAU) + DEGRAU) % DEGRAU;
                     for (let y = y0; y < height + DEGRAU; y += DEGRAU) {
@@ -262,20 +302,82 @@ const StarBackground: React.FC = () => {
                     }
                 }
                 const cor = fase === 2 ? "#a855f7" : "#22d3ee";
+                if (central) {
+                    const luz = ctx.createLinearGradient(centroDna() - raioDna(), 0, centroDna() + raioDna(), 0);
+                    luz.addColorStop(0, esc ? "#14627d" : "#276886");
+                    luz.addColorStop(.42, "#429cbb");
+                    luz.addColorStop(.62, esc ? "#b4f0ff" : "#69bdcf");
+                    luz.addColorStop(1, "#355883");
+                    ctx.globalAlpha = alpha;
+                    ctx.lineCap = "round";
+                    ctx.lineJoin = "round";
+                    ctx.strokeStyle = esc ? "#112e49" : "#254c65";
+                    ctx.lineWidth = 9;
+                    ctx.stroke(espinha);
+                    ctx.strokeStyle = luz;
+                    ctx.lineWidth = 6;
+                    ctx.stroke(espinha);
+                    ctx.globalAlpha = .62 * alpha;
+                    ctx.strokeStyle = luz;
+                    ctx.lineWidth = 3;
+                    ctx.stroke(degraus);
+                    ctx.globalAlpha = 1;
+                }
                 ctx.lineWidth = 1;
                 ctx.strokeStyle = cor; ctx.globalAlpha = alpha * (esc ? 0.2 : 0.16); ctx.stroke(espinha);
                 ctx.strokeStyle = fase === 2 ? "#e879f9" : "#22d3ee"; ctx.globalAlpha = alpha * (esc ? 0.13 : 0.11); ctx.stroke(degraus);
                 ctx.fillStyle = fase === 2 ? "#f0abfc" : "#a5f3fc"; ctx.globalAlpha = alpha * (esc ? 0.55 : 0.4); ctx.fill(nos);
                 ctx.globalAlpha = 1;
             }
-            desenharLote(alphaDaFase(relogio), (p, i) => (p.dnaStrand !== 0 && fase >= 2 && fase <= 4 ? Math.max(p.size, 1.1) : p.size) * escalas[i], fase === 2 ? VIVAS : COLORS);
+            desenharLote((central ? (ciclo < 18000 ? 1 - transicao : 0) : alphaDaFase(relogio)), (p, i) => (p.dnaStrand !== 0 && fase >= 2 && fase <= 4 ? Math.max(p.size, 1.1) : p.size) * escalas[i], fase === 2 ? VIVAS : COLORS);
+            if (central) {
+                ctx.restore();
+                const isolamento = ciclo < 18000 ? suave((ciclo - 11200) / 2600) : 0;
+                if (isolamento > 0) {
+                    const limite = Math.hypot(width, height) * (1 - isolamento) + 32;
+                    const mascara = ctx.createRadialGradient(width * .5, height * .27, limite * .17, width * .5, height * .27, limite);
+                    mascara.addColorStop(0, "#000");
+                    mascara.addColorStop(1, "#0000");
+                    ctx.save();
+                    ctx.globalCompositeOperation = "destination-in";
+                    ctx.fillStyle = mascara;
+                    ctx.fillRect(0, 0, width, height);
+                    ctx.restore();
+                }
+                if (ciclo < 17500 && faisca > 0) {
+                    const x = width * .5, y = height * .27;
+                    const pulso = .5 + .5 * Math.sin(agora / 390);
+                    const raio = (28 + 25 * pulso) * faisca;
+                    const halo = ctx.createRadialGradient(x, y, 0, x, y, raio);
+                    halo.addColorStop(0, "#f1ffff");
+                    halo.addColorStop(.14, "#b8f6ff");
+                    halo.addColorStop(.42, "#40bdfa85");
+                    halo.addColorStop(1, "#347df500");
+                    ctx.save();
+                    ctx.globalAlpha = faisca * (1 - suave((ciclo - 14400) / 3100)) * (.48 + .18 * pulso);
+                    ctx.fillStyle = halo;
+                    ctx.fillRect(x - raio, y - raio, raio * 2, raio * 2);
+                    ctx.strokeStyle = "#87dbff";
+                    ctx.lineWidth = .8;
+                    for (let i = 0; i < 5; i++) {
+                        const angulo = i * Math.PI * 2 / 5 + agora / 3200;
+                        const alcance = raio * (.38 + .28 * Math.sin(agora / 450 + i));
+                        ctx.beginPath();
+                        ctx.moveTo(x, y);
+                        ctx.lineTo(x + Math.cos(angulo) * alcance, y + Math.sin(angulo) * alcance);
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+                }
+            }
         };
 
         // Menos movimento pedido no sistema → fundo PARADO (o DNA estático, sem loop).
         const mq = window.matchMedia?.("(prefers-reduced-motion: reduce)");
         const drawStatic = () => {
-            fundo(1);
-            const rad = raioDna(), cX = width * 0.83;
+            if (central) ctx.clearRect(0, 0, width, height);
+            else fundo(1);
+            const rad = raioDna(), cX = centroDna();
             for (const p of particles) {
                 const off = p.dnaStrand === 2 ? Math.PI : 0;
                 p.x = cX + Math.cos(p.dnaY * FREQ_DNA + off) * rad; p.y = p.dnaY;
@@ -317,8 +419,9 @@ const StarBackground: React.FC = () => {
             mq?.removeEventListener?.("change", iniciar);
             redesenharRef.current = () => {};
         };
-    }, [mounted, dono]);
+    }, [mounted, dono, central]);
 
+    if (central) return <canvas ref={canvasRef} className="block h-full w-full" />;
     if (!mounted) return <div className="fixed inset-0 z-0 bg-white dark:bg-[#010816]" />;
     if (!dono) return null;
     return <div className="fixed inset-0 z-0 pointer-events-none"><canvas ref={canvasRef} className="w-full h-full" /></div>;

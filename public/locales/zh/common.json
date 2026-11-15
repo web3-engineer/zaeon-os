@@ -453,16 +453,19 @@
     "landing": {
         "timeline": {
             "base": "科学基础",
-            "conversa": "与AI对话",
-            "blueprint": "Blueprint",
+            "conversa": "与 AI 交流",
+            "blueprint": "蓝图",
             "prototipo": "原型与测试",
-            "mundo": "走向现实"
+            "mundo": "走向现实",
+            "propriedade_intelectual": "知识产权",
+            "papel": "科学论文",
+            "realidade": "走进现实世界",
+            "placa": "电路板组装"
         },
         "hero_tagline": "不只是和聊天机器人对话、开着一堆标签页——在这里，你打造<hl>能成为最终产品的想法</hl>。",
         "knowledge_title": "把你的想法变成现实。",
-        "privacidade_titulo": "在保护隐私的前提下实现你的想法。",
-        "privacidade_texto": "凭借可验证的凭证，与顶尖科学家分享知识。",
-        "privacidade_fecho": "没有人需要知道你是谁，也不需要知道你在做什么。",
+        "privacidade_titulo": "隐私、安全与匿名",
+        "privacidade_texto": "独自创作，或与世界分享你的技能。没有人需要知道你是谁，也无须知道你在做什么。",
         "flow": {
             "ideas": "想法",
             "projects": "项目",
@@ -474,20 +477,160 @@
             "summary": "想法变成项目，学习变成研究，企业变成商业。"
         },
         "blueprints": {
-            "title": "在这里，你的价值取决于你所创造的。",
+            "title": "真实的人创造真实的知识。",
             "image_alt": "蓝图预览：{{title}}",
             "tags": "标签",
             "cta_view": "在游戏中查看",
             "cta_create": "创建你自己的",
             "example_badge": "示例",
             "examples": {
-                "foguete": { "title": "探空火箭", "desc": "箭体、整流罩、尾翼和喷管——依据推进论文确定尺寸。" },
-                "motor": { "title": "喷气发动机", "desc": "风扇、压气机和尾锥，含转轴与主要尺寸。" },
-                "pcb": { "title": "PCB 电路板", "desc": "处理器、内存、走线和连接器——可直接投产。" },
-                "fonte": { "title": "电源", "desc": "机箱、风扇、散热片和电源插座。" },
-                "bateria": { "title": "电池", "desc": "带电极、电量指示和尺寸的圆柱电芯。" },
-                "solar": { "title": "太阳能板", "desc": "按当地日照计算的电池片网格、倾角和支架。" }
+                "foguete": {
+                    "title": "探空火箭",
+                    "desc": "箭体、整流罩、尾翼和喷管——依据推进论文确定尺寸。"
+                },
+                "motor": {
+                    "title": "喷气发动机",
+                    "desc": "风扇、压气机和尾锥，含转轴与主要尺寸。"
+                },
+                "pcb": {
+                    "title": "PCB 电路板",
+                    "desc": "处理器、内存、走线和连接器——可直接投产。"
+                },
+                "fonte": {
+                    "title": "电源",
+                    "desc": "机箱、风扇、散热片和电源插座。"
+                },
+                "bateria": {
+                    "title": "电池",
+                    "desc": "带电极、电量指示和尺寸的圆柱电芯。"
+                },
+                "solar": {
+                    "title": "太阳能板",
+                    "desc": "按当地日照计算的电池片网格、倾角和支架。"
+                }
+            },
+            "title_highlight": "没有限制"
+        },
+        "premiacao": {
+            "titulo": "我们是一家获得资助并在区块链类别获奖的巴西初创公司。",
+            "apoio": "资助与支持：",
+            "vencedor": "获奖产品",
+            "projeto": "<hl>区块链</hl>技术在塞阿拉州的智能应用",
+            "programa": "Centelha 计划（第二届）。",
+            "oficial": "官方支持",
+            "ministerio": "巴西政府科学、技术与创新部"
+        },
+        "solana": {
+            "talento": "我们的智能体会重点关注顶尖人才。从降低运营成本的团队到网络安全专家，作品越专业，就能触达越多企业。我们的智能体负责打电话开发潜在客户。",
+            "ranking": "排名进度",
+            "esteira": "卡片经过 Solana，先变为 SOL，再变为 USDC。",
+            "pessoa": "私密 · 个人",
+            "prova": "公开 · 证明",
+            "credenciais": "可验证凭证",
+            "verificacao": "验证如何运作",
+            "blockchain": "哪些内容会写入区块链",
+            "diagrama": "公开证明保护个人身份。"
+        },
+        "faq": {
+            "1": {
+                "q": "现在的 Zaeon 是什么？",
+                "a": "一个可以与团队协作、学习并将知识变成项目的在线空间。"
+            },
+            "2": {
+                "q": "协作空间免费吗？",
+                "a": "是的，拥有账户即可免费进入。"
+            },
+            "3": {
+                "q": "我的团队可以开展任何项目吗？",
+                "a": "可以。邀请团队成员，在这里一起推进你们的项目。"
+            },
+            "4": {
+                "q": "可以只用来学习吗？",
+                "a": "可以。你可以独立学习，也可以与他人一起学习。"
+            },
+            "5": {
+                "q": "市场里有什么？",
+                "a": "你可以探索课程、工具和智能体卡片，并将它们关联到你的账户。"
+            },
+            "6": {
+                "q": "如何开始？",
+                "a": "创建账户，然后选择上线进入协作空间。"
             }
+        },
+        "interface": {
+            "mes": "首月免费",
+            "cartao": "无需绑卡",
+            "limites": "不限次数",
+            "revisao": "专家评审",
+            "projetos": "社区创建的项目",
+            "faq_rotulo": "常见问题",
+            "faq_titulo": "常见问题。",
+            "faq_subtitulo": "直接解答。",
+            "cyber_titulo": "免费在线协作",
+            "cyber_intro": "与你的团队开展任何项目，或找个空间学习。协作空间免费向所有人开放。",
+            "cyber_moeda": "与团队一起工作",
+            "cyber_moeda_texto": "邀请队友，共同开展任何项目。",
+            "cyber_pessoas": "一起学习",
+            "cyber_pessoas_texto": "按自己的节奏学习，也可以和他人一起学习。",
+            "cyber_agentes": "实时协作",
+            "cyber_agentes_texto": "与在线用户交流，在同一个空间推进工作。",
+            "plataforma": "平台",
+            "recursos": "资源",
+            "empresa": "公司",
+            "legal": "法律信息",
+            "jogar": "上线",
+            "modelos": "AI 模型",
+            "laboratorio": "实验室",
+            "mentores": "导师",
+            "assistentes": "助手",
+            "funcionamento": "使用方式",
+            "duvidas": "常见问题",
+            "noticias": "新闻",
+            "sobre": "关于我们",
+            "documentacao": "文档",
+            "contato": "联系我们",
+            "termos": "使用条款",
+            "privacidade": "隐私政策",
+            "resumo": "在一个平台上使用主流 AI，并借助科学工具学习和研究。",
+            "direitos": "保留所有权利。",
+            "lema": "人类与超级智能相遇的地方。"
+        },
+        "vitrine": {
+            "anterior": "上一组卡片",
+            "proximo": "下一组卡片",
+            "agente": "智能体",
+            "gratis": "免费",
+            "raridade": {
+                "comum": "普通",
+                "rara": "稀有",
+                "epica": "史诗",
+                "lendaria": "传说"
+            },
+            "tipo": {
+                "curso": "课程",
+                "codigo": "代码",
+                "artigo": "学术作品",
+                "negocio": "商业项目",
+                "rwa": "现实世界资产（RWA）",
+                "agente": "由 AI 智能体制作"
+            }
+        },
+        "hero_principal": {
+            "pergunta": "问问 Zaeon…",
+            "linha": "让知识在这里",
+            "termo_0": "创造",
+            "termo_1": "研究",
+            "termo_2": "学习",
+            "termo_3": "交付",
+            "termo_4": "验证",
+            "termo_5": "查阅",
+            "termo_6": "交易",
+            "termo_7": "委托",
+            "termo_8": "出售",
+            "termo_9": "探索",
+            "termo_10": "拓展",
+            "chat": "开始聊天",
+            "conta": "创建账户"
         }
     }
 }

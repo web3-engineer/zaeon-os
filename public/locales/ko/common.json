@@ -453,16 +453,19 @@
     "landing": {
         "timeline": {
             "base": "과학적 기반",
-            "conversa": "AI와의 대화",
-            "blueprint": "Blueprint",
-            "prototipo": "프로토타입과 테스트",
-            "mundo": "현실 세계로"
+            "conversa": "AI와 대화",
+            "blueprint": "설계도",
+            "prototipo": "시제품 및 테스트",
+            "mundo": "현실 세계로",
+            "propriedade_intelectual": "지식재산",
+            "papel": "과학 논문",
+            "realidade": "현실 세계에서",
+            "placa": "회로 기판 조립"
         },
         "hero_tagline": "챗봇과의 대화, 열려 있는 탭 그 이상 — 여기서 당신은 <hl>완성된 제품이 되는 아이디어</hl>를 만듭니다.",
         "knowledge_title": "당신의 아이디어를 현실로 만드세요.",
-        "privacidade_titulo": "프라이버시를 지키며 아이디어를 만드세요.",
-        "privacidade_texto": "검증 가능한 자격 증명으로 최고 수준의 과학자들과 지식을 나누세요.",
-        "privacidade_fecho": "당신이 누구인지, 무엇을 하는지 아무도 알 필요가 없습니다.",
+        "privacidade_titulo": "개인정보 보호, 안전, 익명성",
+        "privacidade_texto": "혼자 작업하거나 세상과 전문성을 나누세요. 당신이 누구인지, 무엇을 하는지 아무도 알 필요가 없습니다.",
         "flow": {
             "ideas": "아이디어",
             "projects": "프로젝트",
@@ -474,20 +477,160 @@
             "summary": "아이디어는 프로젝트가 되고, 학습은 연구가 되며, 기업은 비즈니스가 됩니다."
         },
         "blueprints": {
-            "title": "여기서는 당신이 만드는 것이 곧 당신의 가치입니다.",
+            "title": "실제 사람들이 만든 진짜 지식.",
             "image_alt": "블루프린트 미리보기: {{title}}",
             "tags": "태그",
             "cta_view": "게임에서 보기",
             "cta_create": "직접 만들기",
             "example_badge": "예시",
             "examples": {
-                "foguete": { "title": "관측 로켓", "desc": "동체, 노즈콘, 핀, 노즐 — 추진 논문을 바탕으로 설계했습니다." },
-                "motor": { "title": "제트 엔진", "desc": "팬, 압축기, 배기 콘과 축, 주요 치수." },
-                "pcb": { "title": "PCB 기판", "desc": "프로세서, 메모리, 배선, 커넥터 — 바로 제작할 수 있습니다." },
-                "fonte": { "title": "전원 공급 장치", "desc": "케이스, 팬, 방열판, 전원 소켓." },
-                "bateria": { "title": "배터리", "desc": "단자, 충전 표시기, 치수를 갖춘 원통형 셀." },
-                "solar": { "title": "태양광 패널", "desc": "현지 일조량에 맞춰 계산한 셀 격자, 기울기, 거치대." }
+                "foguete": {
+                    "title": "관측 로켓",
+                    "desc": "동체, 노즈콘, 핀, 노즐 — 추진 논문을 바탕으로 설계했습니다."
+                },
+                "motor": {
+                    "title": "제트 엔진",
+                    "desc": "팬, 압축기, 배기 콘과 축, 주요 치수."
+                },
+                "pcb": {
+                    "title": "PCB 기판",
+                    "desc": "프로세서, 메모리, 배선, 커넥터 — 바로 제작할 수 있습니다."
+                },
+                "fonte": {
+                    "title": "전원 공급 장치",
+                    "desc": "케이스, 팬, 방열판, 전원 소켓."
+                },
+                "bateria": {
+                    "title": "배터리",
+                    "desc": "단자, 충전 표시기, 치수를 갖춘 원통형 셀."
+                },
+                "solar": {
+                    "title": "태양광 패널",
+                    "desc": "현지 일조량에 맞춰 계산한 셀 격자, 기울기, 거치대."
+                }
+            },
+            "title_highlight": "한계 없이"
+        },
+        "premiacao": {
+            "titulo": "우리는 블록체인 부문에서 자금을 지원받고 수상한 브라질 스타트업입니다.",
+            "apoio": "자금 지원 및 후원:",
+            "vencedor": "수상 제품",
+            "projeto": "세아라의 스마트 활용을 위한 <hl>블록체인</hl> 기술",
+            "programa": "센텔랴 프로그램(제2회).",
+            "oficial": "공식 지원",
+            "ministerio": "브라질 정부 과학기술혁신부"
+        },
+        "solana": {
+            "talento": "우리 에이전트는 뛰어난 인재에게 특별한 관심을 기울입니다. 운영 비용을 줄이는 팀부터 사이버 보안 전문가까지, 작업의 전문성이 높을수록 더 많은 기업에 도달합니다. 잠재 고객에게 먼저 전화를 거는 일은 우리 에이전트가 맡습니다.",
+            "ranking": "순위 상승",
+            "esteira": "카드가 솔라나를 지나 SOL로, 그다음 USDC로 바뀝니다.",
+            "pessoa": "비공개 · 사용자",
+            "prova": "공개 · 증명",
+            "credenciais": "검증 가능한 자격 증명",
+            "verificacao": "검증 작동 방식",
+            "blockchain": "블록체인에 기록되는 정보",
+            "diagrama": "공개 증명이 사용자의 신원을 보호합니다."
+        },
+        "faq": {
+            "1": {
+                "q": "지금의 Zaeon은 무엇인가요?",
+                "a": "팀과 함께 작업하고 공부하며 지식을 프로젝트로 발전시키는 온라인 공간입니다."
+            },
+            "2": {
+                "q": "코워킹은 무료인가요?",
+                "a": "네. 계정이 있으면 누구나 무료로 참여할 수 있습니다."
+            },
+            "3": {
+                "q": "팀과 어떤 프로젝트든 진행할 수 있나요?",
+                "a": "네. 팀원을 초대해 원하는 프로젝트를 함께 진행하세요."
+            },
+            "4": {
+                "q": "공부만 할 수도 있나요?",
+                "a": "네. 혼자 공부하거나 다른 사람과 함께 공부할 수 있습니다."
+            },
+            "5": {
+                "q": "마켓플레이스에는 무엇이 있나요?",
+                "a": "강좌, 도구, 에이전트 카드를 살펴보고 계정에 연결할 수 있습니다."
+            },
+            "6": {
+                "q": "어떻게 시작하나요?",
+                "a": "계정을 만들고 온라인 접속을 선택하세요."
             }
+        },
+        "interface": {
+            "mes": "한 달 무료",
+            "cartao": "카드 등록 불필요",
+            "limites": "제한 없음",
+            "revisao": "전문가 검토",
+            "projetos": "커뮤니티에서 만든 프로젝트",
+            "faq_rotulo": "자주 묻는 질문",
+            "faq_titulo": "일반적인 질문.",
+            "faq_subtitulo": "명확한 답변.",
+            "cyber_titulo": "무료 온라인 코워킹",
+            "cyber_intro": "팀과 원하는 프로젝트를 진행하거나 공부할 공간을 찾아보세요. 코워킹은 누구에게나 무료입니다.",
+            "cyber_moeda": "팀과 함께 작업하기",
+            "cyber_moeda_texto": "팀원을 초대해 원하는 프로젝트를 함께 진행하세요.",
+            "cyber_pessoas": "함께 공부하기",
+            "cyber_pessoas_texto": "자신의 속도로 공부하거나 다른 사람들과 함께 공부하세요.",
+            "cyber_agentes": "실시간 협업",
+            "cyber_agentes_texto": "온라인 사용자와 대화하고 같은 공간에서 작업하세요.",
+            "plataforma": "플랫폼",
+            "recursos": "리소스",
+            "empresa": "회사",
+            "legal": "법적 정보",
+            "jogar": "온라인 접속",
+            "modelos": "AI 모델",
+            "laboratorio": "연구실",
+            "mentores": "멘토",
+            "assistentes": "어시스턴트",
+            "funcionamento": "이용 방법",
+            "duvidas": "자주 묻는 질문",
+            "noticias": "뉴스",
+            "sobre": "회사 소개",
+            "documentacao": "문서",
+            "contato": "문의",
+            "termos": "이용약관",
+            "privacidade": "개인정보 보호",
+            "resumo": "주요 AI를 한곳에서 이용하고 학습과 연구를 위한 과학 기능을 활용하세요.",
+            "direitos": "모든 권리 보유.",
+            "lema": "사람과 초지능이 만나는 곳."
+        },
+        "vitrine": {
+            "anterior": "이전 카드",
+            "proximo": "다음 카드",
+            "agente": "에이전트",
+            "gratis": "무료",
+            "raridade": {
+                "comum": "일반",
+                "rara": "희귀",
+                "epica": "영웅",
+                "lendaria": "전설"
+            },
+            "tipo": {
+                "curso": "강좌",
+                "codigo": "코드",
+                "artigo": "학술 작업",
+                "negocio": "비즈니스",
+                "rwa": "실물 자산 (RWA)",
+                "agente": "AI 에이전트가 제작"
+            }
+        },
+        "hero_principal": {
+            "pergunta": "Zaeon에게 물어보세요…",
+            "linha": "지식을 다루는 곳",
+            "termo_0": "창조하기",
+            "termo_1": "연구하기",
+            "termo_2": "배우기",
+            "termo_3": "전달하기",
+            "termo_4": "증명하기",
+            "termo_5": "찾아보기",
+            "termo_6": "거래하기",
+            "termo_7": "의뢰하기",
+            "termo_8": "판매하기",
+            "termo_9": "탐구하기",
+            "termo_10": "확장하기",
+            "chat": "채팅 시작",
+            "conta": "계정 만들기"
         }
     }
 }

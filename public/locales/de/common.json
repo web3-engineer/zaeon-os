@@ -453,16 +453,19 @@
     "landing": {
         "timeline": {
             "base": "Wissenschaftliche Basis",
-            "conversa": "Gespräch mit KIs",
-            "blueprint": "Blueprint",
-            "prototipo": "Prototyp & Tests",
-            "mundo": "In der echten Welt"
+            "conversa": "Gespräch mit KI",
+            "blueprint": "Bauplan",
+            "prototipo": "Prototyp und Tests",
+            "mundo": "In der echten Welt",
+            "propriedade_intelectual": "Geistiges Eigentum",
+            "papel": "Wissenschaftlicher Artikel",
+            "realidade": "In der realen Welt",
+            "placa": "Aufbau einer Leiterplatte"
         },
         "hero_tagline": "Mehr als Gespräche mit Chatbots und offenen Tabs – hier bauen Sie <hl>Ideen, die zu fertigen Produkten werden</hl>.",
         "knowledge_title": "Verwandeln Sie Ihre Idee in Realität.",
-        "privacidade_titulo": "Bauen Sie Ihre Idee mit Privatsphäre.",
-        "privacidade_texto": "Teilen Sie Wissen mit Spitzenwissenschaftlern – mit überprüfbaren Nachweisen.",
-        "privacidade_fecho": "Niemand muss wissen, wer Sie sind, noch was Sie tun.",
+        "privacidade_titulo": "Privatsphäre, Sicherheit und Anonymität",
+        "privacidade_texto": "Arbeite für dich oder teile deine Fähigkeiten mit der Welt. Niemand muss wissen, wer du bist oder was du machst.",
         "flow": {
             "ideas": "Ideen",
             "projects": "Projekte",
@@ -474,20 +477,160 @@
             "summary": "Ideen werden zu Projekten, Studien zu Forschung und Unternehmen zu Geschäften."
         },
         "blueprints": {
-            "title": "Hier zählt, was Sie bauen.",
+            "title": "Echtes Wissen von echten Menschen.",
             "image_alt": "Vorschau des Blueprints {{title}}",
             "tags": "Tags",
             "cta_view": "Im Spiel ansehen",
             "cta_create": "Erstellen Sie Ihren eigenen",
             "example_badge": "Beispiel",
             "examples": {
-                "foguete": { "title": "Höhenforschungsrakete", "desc": "Rumpf, Spitze, Flossen und Düse — ausgelegt anhand von Antriebsstudien." },
-                "motor": { "title": "Strahltriebwerk", "desc": "Fan, Verdichter und Austrittskegel, mit Welle und Hauptmaßen." },
-                "pcb": { "title": "Leiterplatte", "desc": "Prozessor, Speicher, Leiterbahnen und Stecker — bereit für die Fertigung." },
-                "fonte": { "title": "Netzteil", "desc": "Gehäuse, Lüfter, Kühlrippen und Buchse." },
-                "bateria": { "title": "Akku", "desc": "Zylindrische Zelle mit Polen, Ladeanzeige und Maßen." },
-                "solar": { "title": "Solarmodul", "desc": "Zellraster, Neigung und Halterung, berechnet für die Sonne vor Ort." }
+                "foguete": {
+                    "title": "Höhenforschungsrakete",
+                    "desc": "Rumpf, Spitze, Flossen und Düse — ausgelegt anhand von Antriebsstudien."
+                },
+                "motor": {
+                    "title": "Strahltriebwerk",
+                    "desc": "Fan, Verdichter und Austrittskegel, mit Welle und Hauptmaßen."
+                },
+                "pcb": {
+                    "title": "Leiterplatte",
+                    "desc": "Prozessor, Speicher, Leiterbahnen und Stecker — bereit für die Fertigung."
+                },
+                "fonte": {
+                    "title": "Netzteil",
+                    "desc": "Gehäuse, Lüfter, Kühlrippen und Buchse."
+                },
+                "bateria": {
+                    "title": "Akku",
+                    "desc": "Zylindrische Zelle mit Polen, Ladeanzeige und Maßen."
+                },
+                "solar": {
+                    "title": "Solarmodul",
+                    "desc": "Zellraster, Neigung und Halterung, berechnet für die Sonne vor Ort."
+                }
+            },
+            "title_highlight": "OHNE LIMITS"
+        },
+        "premiacao": {
+            "titulo": "Wir sind ein brasilianisches Start-up, das in der Kategorie Blockchain gefördert und ausgezeichnet wurde.",
+            "apoio": "Finanziert und unterstützt von:",
+            "vencedor": "Ausgezeichnetes Produkt",
+            "projeto": "<hl>Blockchain</hl> als Technologie für intelligente Anwendungen in Ceará",
+            "programa": "Centelha-Programm (2. Ausgabe).",
+            "oficial": "Offizielle Unterstützung",
+            "ministerio": "Ministerium für Wissenschaft, Technologie und Innovation — Regierung Brasiliens"
+        },
+        "solana": {
+            "talento": "Unsere Agenten widmen herausragenden Talenten besondere Aufmerksamkeit. Von Teams, die Betriebskosten senken, bis zu Fachleuten für Cybersicherheit: Je professioneller die Arbeit, desto mehr Unternehmen erreicht sie. Unsere Agenten übernehmen die Kaltakquise per Telefon.",
+            "ranking": "Fortschritt in der Rangliste",
+            "esteira": "Karten laufen durch Solana und werden zu SOL, dann zu USDC.",
+            "pessoa": "Privat · die Person",
+            "prova": "Öffentlich · der Nachweis",
+            "credenciais": "Überprüfbare Nachweise",
+            "verificacao": "So funktioniert die Verifizierung",
+            "blockchain": "Was auf die Blockchain kommt",
+            "diagrama": "Ein öffentlicher Nachweis schützt die Identität der Person."
+        },
+        "faq": {
+            "1": {
+                "q": "Was ist Zaeon heute?",
+                "a": "Ein Online-Raum für Teamarbeit, Lernen und Projekte."
+            },
+            "2": {
+                "q": "Ist Coworking kostenlos?",
+                "a": "Ja. Mit einem Konto kann jeder den Coworking-Raum kostenlos betreten."
+            },
+            "3": {
+                "q": "Kann mein Team an jedem Projekt arbeiten?",
+                "a": "Ja. Lade dein Team ein und arbeitet gemeinsam an eurem Projekt."
+            },
+            "4": {
+                "q": "Kann ich einfach nur lernen?",
+                "a": "Ja. Lerne allein oder mit anderen."
+            },
+            "5": {
+                "q": "Was bietet der Marketplace?",
+                "a": "Entdecke Karten für Kurse, Werkzeuge und Agenten und verknüpfe sie mit deinem Konto."
+            },
+            "6": {
+                "q": "Wie fange ich an?",
+                "a": "Erstelle ein Konto und wähle Online gehen."
             }
+        },
+        "interface": {
+            "mes": "Ein Monat kostenlos",
+            "cartao": "Keine Karte nötig",
+            "limites": "Ohne Limits",
+            "revisao": "Prüfung durch Fachleute",
+            "projetos": "Projekte aus der Community",
+            "faq_rotulo": "Häufige Fragen",
+            "faq_titulo": "Häufige Fragen.",
+            "faq_subtitulo": "Direkte Antworten.",
+            "cyber_titulo": "Kostenloses Online-Coworking",
+            "cyber_intro": "Arbeite mit deinem Team an einem beliebigen Projekt oder finde einen Ort zum Lernen. Das Coworking ist kostenlos und für alle offen.",
+            "cyber_moeda": "Arbeite im Team",
+            "cyber_moeda_texto": "Lade dein Team ein und arbeitet gemeinsam an einem Projekt eurer Wahl.",
+            "cyber_pessoas": "Lernt zusammen",
+            "cyber_pessoas_texto": "Lerne in deinem Tempo oder gemeinsam mit anderen.",
+            "cyber_agentes": "Arbeite live zusammen",
+            "cyber_agentes_texto": "Sprich mit anderen online und arbeitet im selben Raum.",
+            "plataforma": "Plattform",
+            "recursos": "Ressourcen",
+            "empresa": "Unternehmen",
+            "legal": "Rechtliches",
+            "jogar": "Online gehen",
+            "modelos": "KI-Modelle",
+            "laboratorio": "Labor",
+            "mentores": "Mentoren",
+            "assistentes": "Assistenten",
+            "funcionamento": "So funktioniert es",
+            "duvidas": "Häufige Fragen",
+            "noticias": "Nachrichten",
+            "sobre": "Über uns",
+            "documentacao": "Dokumentation",
+            "contato": "Kontakt",
+            "termos": "Nutzungsbedingungen",
+            "privacidade": "Datenschutz",
+            "resumo": "Führende KI-Modelle an einem Ort, mit wissenschaftlichen Funktionen für Studium und Forschung.",
+            "direitos": "Alle Rechte vorbehalten.",
+            "lema": "Wo Menschen und Superintelligenzen zusammenkommen."
+        },
+        "vitrine": {
+            "anterior": "Vorherige Karten",
+            "proximo": "Nächste Karten",
+            "agente": "Agent",
+            "gratis": "Kostenlos",
+            "raridade": {
+                "comum": "Gewöhnlich",
+                "rara": "Selten",
+                "epica": "Episch",
+                "lendaria": "Legendär"
+            },
+            "tipo": {
+                "curso": "Kurs",
+                "codigo": "Code",
+                "artigo": "Wissenschaftliche Arbeit",
+                "negocio": "Unternehmen",
+                "rwa": "Realwert (RWA)",
+                "agente": "Von einem KI-Agenten erstellt"
+            }
+        },
+        "hero_principal": {
+            "pergunta": "Frag Zaeon…",
+            "linha": "Hier wird Wissen",
+            "termo_0": "geschaffen",
+            "termo_1": "erforscht",
+            "termo_2": "erlernt",
+            "termo_3": "geliefert",
+            "termo_4": "belegt",
+            "termo_5": "abgerufen",
+            "termo_6": "gehandelt",
+            "termo_7": "beauftragt",
+            "termo_8": "verkauft",
+            "termo_9": "erkundet",
+            "termo_10": "erweitert",
+            "chat": "Chat starten",
+            "conta": "Konto erstellen"
         }
     }
 }

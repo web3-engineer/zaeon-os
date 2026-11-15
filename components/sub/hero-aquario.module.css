@@ -1,0 +1,739 @@
+.aquario { background: var(--background); }
+
+.camadaMarinha {
+  background: radial-gradient(ellipse at 15% 0%, #a4efe4a6, transparent 72%),
+    radial-gradient(ellipse at 90% 100%, #6b9adb70, transparent 66%), #e7f5f7;
+}
+
+:global(.dark) .camadaMarinha {
+  background: radial-gradient(ellipse at 15% 0%, #145568, transparent 68%),
+    radial-gradient(ellipse at 90% 94%, #142c59, transparent 66%), #061822;
+}
+
+.oceano {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.camadaMarinha::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  backdrop-filter: blur(2px);
+  background: linear-gradient(143deg, #defffd30, transparent 40%, #3c86ad18);
+  box-shadow: inset 0 1px #e0ffff38, inset 0 -20px 65px #10254d18;
+}
+
+.cardume {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: 100%;
+  color: #38a8ae;
+  transform-origin: top left;
+  animation: travessia 37s linear infinite;
+}
+
+.cardume:nth-child(2 of .cardume) { color: #608dd1; animation: travessia-inversa 58s -14s linear infinite; }
+.cardume:nth-child(3 of .cardume) { color: #7797c4; animation: travessia 51s -58s linear infinite; }
+.cardume:nth-child(4 of .cardume) { color: #42b8a7; animation: travessia-inversa 38s -30s linear infinite; }
+
+.peixe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 44px;
+  height: 15px;
+  border-radius: 65% 84% 84% 65%;
+  background: linear-gradient(155deg, #e2ffffb0, currentColor 52%, #284a7350);
+  box-shadow: 0 0 16px color-mix(in srgb, currentColor, transparent 50%);
+  opacity: .72;
+  --porte: 1;
+  transform-origin: 72% 50%;
+  animation: nado 3.8s ease-in-out infinite;
+}
+
+.peixe::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 -12px;
+  width: 16px;
+  background: currentColor;
+  clip-path: polygon(0 0, 100% 50%, 0 100%, 22% 50%);
+  transform-origin: right center;
+  animation: cauda .58s ease-in-out infinite alternate;
+}
+
+.peixe:nth-child(2) { left: 64px; top: 17px; --porte: .78; animation-delay: -.9s; }
+.peixe:nth-child(3) { left: 21px; top: 39px; --porte: .86; animation-delay: -2.1s; }
+.peixe:nth-child(2)::before { animation-delay: -.22s; }
+.peixe:nth-child(3)::before { animation-delay: -.43s; }
+
+@keyframes nado {
+  0%, 100% { transform: translate(0, 0) rotate(-4deg) scale(var(--porte)); }
+  30% { transform: translate(7px, -6px) rotate(3deg) scale(var(--porte)); }
+  65% { transform: translate(-3px, 5px) rotate(6deg) scale(var(--porte)); }
+}
+
+@keyframes cauda {
+  from { transform: perspective(28px) rotateY(-38deg) skewY(-9deg); }
+  to { transform: perspective(28px) rotateY(38deg) skewY(9deg); }
+}
+
+@keyframes travessia {
+  0% { transform: translate(-145px, 79%) rotate(-14deg); }
+  24% { transform: translate(calc(24% - 75px), 52%) rotate(-19deg); }
+  55% { transform: translate(calc(55% + 15px), 40%) rotate(-8deg); }
+  78% { transform: translate(calc(78% + 81px), 12%) rotate(-18deg); }
+  100% { transform: translate(calc(100% + 145px), -8%) rotate(-14deg); }
+}
+
+@keyframes travessia-inversa {
+  0% { transform: translate(calc(100% + 145px), 11%) rotate(-19deg) scaleX(-1); }
+  26% { transform: translate(calc(74% + 70px), 37%) rotate(-12deg) scaleX(-1); }
+  52% { transform: translate(calc(48% - 6px), 46%) rotate(-20deg) scaleX(-1); }
+  79% { transform: translate(calc(21% - 84px), 75%) rotate(-13deg) scaleX(-1); }
+  100% { transform: translate(-145px, 88%) rotate(-19deg) scaleX(-1); }
+}
+
+.compositor {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  padding: .65rem;
+  padding-inline-start: 1rem;
+  border: 1px solid #a5dfe780;
+  border-radius: 1.25rem;
+  background: #f8ffff78;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 0 24px #5cb7ca40, inset 0 0 12px #f0ffff70;
+}
+
+:global(.dark) .compositor { background: #071f2daa; box-shadow: 0 0 24px #47cce533, inset 0 0 12px #b6f3ff22; }
+.compositor:focus-within { outline: 2px solid #36b1c6; outline-offset: 3px; }
+.compositor input { flex: 1; min-width: 0; background: transparent; outline: none; }
+.compositor button { width: 2.5rem; height: 2.5rem; flex: none; border-radius: .8rem; background: #17697a; color: white; font-size: 1.35rem; }
+.compositor button:hover { background: #125565; }
+
+/* Correntes de fundo, com cardumes menores e levemente fora de foco. */
+.cardume:nth-child(5 of .cardume) {
+  color: #618bc4;
+  filter: blur(1px);
+  opacity: .58;
+  animation: corrente-funda 49s -24s linear infinite;
+}
+
+.cardume:nth-child(6 of .cardume) {
+  color: #50bfb0;
+  opacity: .72;
+  animation: corrente-funda-inversa 34s -8s linear infinite;
+}
+
+@keyframes corrente-funda {
+  from { transform: translate(-130px, 39%) rotate(-8deg) scale(.66); }
+  45% { transform: translate(40%, 21.875%) rotate(4deg) scale(.66); }
+  to { transform: translate(calc(100% + 130px), 15%) rotate(-8deg) scale(.66); }
+}
+
+@keyframes corrente-funda-inversa {
+  from { transform: translate(calc(100% + 130px), 56%) rotate(-10deg) scale(-.78, .78); }
+  55% { transform: translate(42%, 69%) rotate(3deg) scale(-.78, .78); }
+  to { transform: translate(-130px, 95%) rotate(-10deg) scale(-.78, .78); }
+}
+
+.reflexos {
+  position: absolute;
+  inset: 0;
+  mask-image: linear-gradient(#000 0%, #000a 40%, transparent 88%);
+}
+
+.reflexos::before,
+.reflexos::after {
+  content: "";
+  position: absolute;
+  inset: -25%;
+  transform-origin: 50% 0;
+}
+
+.reflexos::before {
+  background: repeating-linear-gradient(114deg, transparent 0 8%, #c0f8ff35 11%, transparent 17%);
+  filter: blur(15px);
+  animation: corrente-de-luz 23s ease-in-out infinite alternate;
+}
+
+.reflexos::after {
+  background: repeating-radial-gradient(ellipse at 54% -8%, transparent 0 7%, #e3ffff35 9%, transparent 12%);
+  filter: blur(6px);
+  animation: luz-refratada 17s ease-in-out infinite alternate;
+}
+
+@keyframes corrente-de-luz {
+  0% { transform: translate(-6%, -3%) skewX(-7deg); opacity: .55; }
+  50% { transform: translate(1%, 1%) skewX(1deg); opacity: .9; }
+  100% { transform: translate(7%, -1%) skewX(8deg); opacity: .64; }
+}
+
+@keyframes luz-refratada {
+  0% { transform: translate(4%, -5%) rotate(2deg) scaleY(.86); opacity: .5; }
+  43% { transform: translate(-2%, 1%) rotate(-2deg) scaleY(1.04); opacity: .8; }
+  100% { transform: translate(-5%, -2%) rotate(1deg) scaleY(.94); opacity: .57; }
+}
+
+.fundoMarinho {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 45% 115%, #134f6352, transparent 55%);
+}
+
+.algas {
+  position: absolute;
+  bottom: -8px;
+  left: 9%;
+  width: 1px;
+  height: clamp(90px, 22%, 180px);
+  color: #1d847d;
+  opacity: .54;
+  filter: blur(.65px);
+}
+
+.algas:nth-child(2) { left: 28%; height: clamp(65px, 13%, 110px); color: #287899; opacity: .37; }
+.algas:nth-child(3) { left: 88%; height: clamp(95px, 24%, 200px); color: #268f81; }
+
+.algas i {
+  --inclinacao: -26deg;
+  --fase: 0s;
+  position: absolute;
+  bottom: 0;
+  width: clamp(12px, 2vw, 24px);
+  height: 100%;
+  border-radius: 82% 15% 75% 24%;
+  background: linear-gradient(100deg, transparent 6%, currentColor 48%, #a8ecbb65 56%, currentColor 82%);
+  clip-path: polygon(42% 100%, 27% 77%, 11% 56%, 22% 30%, 85% 0, 68% 30%, 66% 50%, 89% 74%, 58% 100%);
+  transform-origin: 50% 100%;
+  transform: rotate(var(--inclinacao));
+  animation: balanco 7s var(--fase) ease-in-out infinite alternate;
+}
+
+.algas i:nth-child(2) { --inclinacao: -12deg; --fase: -2s; height: 81%; left: -12px; }
+.algas i:nth-child(3) { --inclinacao: 9deg; --fase: -4s; left: 3px; }
+.algas i:nth-child(4) { --inclinacao: 27deg; --fase: -1s; height: 72%; left: 9px; }
+.algas i:nth-child(5) { --inclinacao: 38deg; --fase: -3s; height: 55%; left: 14px; }
+
+@keyframes balanco {
+  from { transform: rotate(var(--inclinacao)) skewX(-8deg); }
+  to { transform: rotate(calc(var(--inclinacao) + 9deg)) skewX(12deg); }
+}
+
+.bolhas {
+  position: absolute;
+  inset: 0;
+}
+
+.fluxoBolhas {
+  position: absolute;
+  inset: 0 auto 0 9%;
+  --ritmo: 0s;
+  --direcao: 1;
+}
+
+.fluxoBolhas:nth-child(2) { left: 28%; --ritmo: -4s; opacity: .55; }
+.fluxoBolhas:nth-child(3) { left: 88%; --ritmo: -7s; --direcao: -1; }
+
+.fluxoBolhas span {
+  --tamanho: 10px;
+  --intervalo: 0s;
+  --desvio: 24px;
+  position: absolute;
+  bottom: clamp(24px, 8%, 66px);
+  width: var(--tamanho);
+  aspect-ratio: 1;
+  border: 1px solid #d2faff75;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse at 31% 26%, #f4ffffcc 0%, transparent 21%),
+    radial-gradient(ellipse at 71% 81%, #b2f2ff88 0%, transparent 28%),
+    radial-gradient(circle at 45% 45%, transparent 36%, #54bcda48 74%, #dbfbff99 100%);
+  box-shadow: inset 0 0 3px #e2fbff70;
+  animation: subir 12s calc(var(--ritmo) + var(--intervalo)) linear infinite both;
+}
+
+.fluxoBolhas span:nth-child(2) { --tamanho: 6px; --intervalo: .27s; --desvio: -13px; }
+.fluxoBolhas span:nth-child(3) { --tamanho: 13px; --intervalo: .62s; --desvio: 32px; }
+.fluxoBolhas span:nth-child(4) { --tamanho: 5px; --intervalo: 1.1s; --desvio: -23px; }
+.fluxoBolhas span:nth-child(5) { --tamanho: 8px; --intervalo: 1.65s; --desvio: 14px; }
+
+@keyframes subir {
+  0% { transform: translate(0, 0) scale(.43, .65); opacity: 0; }
+  4% { transform: translate(calc(var(--direcao) * var(--desvio) * .15), -11svh) scale(.72, 1); opacity: .72; }
+  16% { transform: translate(calc(var(--direcao) * var(--desvio) * .7), -28svh) scale(.95, .86); opacity: .65; }
+  32% { transform: translate(calc(var(--direcao) * var(--desvio) * .4), -47svh) scale(.88, 1.04); }
+  50% { transform: translate(calc(var(--direcao) * var(--desvio)), -70svh) scale(1.08, .93); opacity: .4; }
+  68%, 100% { transform: translate(calc(var(--direcao) * var(--desvio) * 1.3), -106svh) scale(1.18); opacity: 0; }
+}
+
+.cardume:nth-child(7 of .cardume) {
+  color: #53b5cc;
+  opacity: .85;
+  animation: perto-do-vidro 23s -17s ease-in-out infinite;
+}
+
+.cardume:nth-child(8 of .cardume) {
+  color: #63afaa;
+  opacity: .55;
+  animation: perto-do-vidro-inverso 29s -12s ease-in-out infinite;
+}
+
+@keyframes perto-do-vidro {
+  0% { transform: translate(-190px, 91%) rotate(-25deg) scale(.85); }
+  38% { transform: translate(32%, 64%) rotate(-15deg) scale(1.3); }
+  68% { transform: translate(66%, 52%) rotate(3deg) scale(1.15); }
+  100% { transform: translate(calc(100% + 190px), 34%) rotate(-20deg) scale(.9); }
+}
+
+@keyframes perto-do-vidro-inverso {
+  0% { transform: translate(calc(100% + 190px), 18%) rotate(-15deg) scale(-.9, .9); }
+  36% { transform: translate(68%, 39%) rotate(-20deg) scale(-1.14, 1.14); }
+  70% { transform: translate(23%, 33%) rotate(11deg) scale(-1.25, 1.25); }
+  100% { transform: translate(-190px, 54%) rotate(-17deg) scale(-.8, .8); }
+}
+
+.peixe::after {
+  content: "";
+  position: absolute;
+  top: 36%;
+  right: 19%;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #163c52;
+  box-shadow: 1px -1px #eaffffb0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cardume, .peixe, .peixe::before, .reflexos::before, .reflexos::after, .algas i, .bolhas span { animation: none; }
+  .bolhas span { display: none; }
+  .peixe { transform: scale(var(--porte)); }
+  .cardume { transform: translate(15%, 22%) rotate(-12deg); }
+  .cardume:nth-child(even of .cardume) { transform: translate(68%, 78%) rotate(-12deg); }
+  .cardume:nth-child(n+3 of .cardume) { display: none; }
+}
+
+.ciclos, .cena {
+  position: absolute;
+  inset: 0;
+}
+
+.ciclos {
+  color: #127f9d;
+  mask-image: radial-gradient(ellipse, #0005 15%, #000 76%, #0009);
+}
+
+:global(.dark) .ciclos { color: #83edff; }
+
+.cena {
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  animation: revelar-cena 58s linear infinite;
+}
+
+.cena svg { width: 100%; height: 100%; overflow: hidden; }
+
+.flor {
+  transform-origin: 50% 27%;
+  background: repeating-radial-gradient(ellipse at center, transparent 0 11%, #667cde36 13%, transparent 17%);
+}
+.flor svg {
+  width: min(100%, 58rem);
+  filter: drop-shadow(0 0 7px currentColor);
+  animation: nascer-flor 58s ease-in-out infinite;
+}
+
+@keyframes revelar-cena {
+  0%, 20.6894%, 29.3099%, 100% { opacity: 0; }
+  24.1380%, 26.7244% { opacity: .62; }
+}
+
+
+@keyframes nascer-flor {
+  0%, 20.6894% { transform: translateY(-23%) scale(.06); }
+  24.1380% { transform: translateY(-8%) scale(.72); }
+  26.7244% { transform: scale(1.04); }
+  29.3099%, 100% { transform: scale(.8); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cena, .flor svg { animation: none; }
+
+}
+
+.camadaMarinha {
+  position: absolute;
+  inset: 0;
+  animation: revelar-mar 58s linear infinite;
+}
+
+.ciclos { z-index: 1; }
+
+@keyframes revelar-mar {
+  0%, 21.5516%, 100% { opacity: 1; }
+  26.7244%, 93.9660% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .camadaMarinha { animation: none; opacity: 1; }
+}
+
+.dnaOriginal {
+  position: absolute;
+  inset: 0;
+  animation: mostrar-dna 58s linear infinite;
+}
+
+@keyframes mostrar-dna {
+  0%, 49.9997%, 94.8272%, 100% { opacity: 0; }
+  53.4483%, 78.4484% { opacity: 1; }
+  83.6203% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dnaOriginal { animation: none; opacity: 0; }
+  .dnaOriginal canvas { animation: none; }
+}
+
+.dnaOriginal {
+  isolation: isolate;
+  background:
+    linear-gradient(129deg, #ffffff4d, transparent 38%, #8eacc519 67%, #ffffff38),
+    radial-gradient(ellipse at 80% 15%, #a9c6d546, transparent 58%);
+  box-shadow: inset 0 1px #ffffff80, inset 0 -1px #8ea5ba42;
+}
+
+:global(.dark) .dnaOriginal {
+  background:
+    linear-gradient(129deg, #8498b72b, transparent 37%, #9eb6cc14 69%, #8ea5bb25),
+    radial-gradient(ellipse at 80% 15%, #63779430, transparent 58%);
+  box-shadow: inset 0 1px #c6d7ec35, inset 0 -1px #c6d7ec20;
+}
+
+.dnaOriginal::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  backdrop-filter: blur(1.5px);
+  animation: retirar-vidro 58s linear infinite;
+  background: linear-gradient(118deg, transparent 14%, #e7f3ff1c 30%, transparent 47%, #e7f3ff12 79%, transparent 91%);
+}
+
+.cosmos {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  animation: revelar-cosmos 58s linear infinite;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 80% 36%, #3a28674a, transparent 55%),
+    radial-gradient(ellipse at 17% 85%, #234e6e45, transparent 53%),
+    radial-gradient(circle at 16px 32px, #d4eaffc9 0 1px, transparent 1.6px) 0 0 / 113px 137px,
+    radial-gradient(circle at 48px 19px, #eff6ff95 0 .7px, transparent 1.4px) 0 0 / 163px 101px,
+    #03040a;
+
+}
+
+
+@keyframes revelar-cosmos {
+  0%, 63.7930%, 76.7241%, 100% { opacity: 0; }
+  67.2416%, 74.1377% { opacity: 1; }
+}
+
+@keyframes retirar-vidro {
+  0%, 63.7930%, 100% { opacity: 1; }
+  67.2416%, 87.0689% { opacity: 0; }
+}
+
+.buracoNegro {
+  position: absolute;
+  width: clamp(250px, 45vw, 700px);
+  aspect-ratio: 16 / 9;
+  mask-image: radial-gradient(ellipse, #000 24%, transparent 72%);
+  top: 22%;
+  left: 86%;
+  transform: translate(-50%, -50%);
+  isolation: isolate;
+  animation: sair-portal 58s linear infinite;
+}
+
+@keyframes sair-portal {
+  0%, 74.1377% { opacity: 1; }
+  75.8620%, 100% { opacity: 0; }
+}
+
+.dnaOriginal canvas {
+  position: relative;
+  transform-origin: 50% 27%;
+  animation: nascer-dna 58s ease-in-out infinite;
+}
+
+@keyframes nascer-dna {
+  0%, 49.9997% { transform: scale(.09); }
+  53.4483%, 100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cosmos, .buracoNegro { animation: none; }
+}
+
+/* Preserve the headline contrast when the light theme enters the dark sky. */
+:global(html:not(.dark)) .aquario h1 {
+  animation: contraste-cosmos 58s linear infinite;
+}
+
+@keyframes contraste-cosmos {
+  0%, 63.7930%, 78.4484%, 100% { color: #0f172a; }
+  67.2416%, 75.8620% { color: #f1faff; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dnaOriginal::after,
+  :global(html:not(.dark)) .aquario h1 { animation: none; }
+}
+
+.camadaAtomica {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  overflow: hidden;
+  animation: revelar-atomos 58s linear infinite;
+}
+
+.mapaAtomico {
+  position: absolute;
+  left: 50%;
+  top: 27%;
+  width: clamp(240px, 56vw, 740px);
+  aspect-ratio: 1;
+  display: grid;
+  grid-template-columns: repeat(11, minmax(0, 1fr));
+  mask-image: radial-gradient(#000 20%, #000a 48%, transparent 71%);
+  animation: ampliar-atomos 58s linear infinite;
+}
+
+.mapaAtomico i {
+  --halo-atomico: #f98147;
+  background: radial-gradient(circle, #fff4b9 0%, var(--halo-atomico) 9%, #c438565e 18%, #492a7c40 34%, transparent 56%);
+}
+
+.mapaAtomico i:nth-child(4n + 2) {
+  --halo-atomico: #80aaff;
+  transform: scale(.72);
+  opacity: .66;
+}
+
+.mapaAtomico i:nth-child(7n) { opacity: .46; }
+
+@keyframes revelar-atomos {
+  0%, 75.8620%, 94.8272%, 100% { opacity: 0; }
+  78.4484% { opacity: .12; }
+  83.6203%, 91.3796% { opacity: .82; }
+}
+
+@keyframes ampliar-atomos {
+  0%, 75.8620% { transform: translate(-50%, -50%) rotate(-14deg) scale(.08); }
+  79.3106% { transform: translate(-50%, -50%) rotate(-14deg) scale(.34); }
+  84.4824% { transform: translate(-50%, -50%) rotate(-9deg) scale(1.15); }
+  90.5174% { transform: translate(-50%, -50%) rotate(19deg) scale(4.5); }
+  94.8272%, 100% { transform: translate(-50%, -50%) rotate(48deg) scale(9); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .camadaAtomica, .mapaAtomico { animation: none; }
+}
+
+.mapaAtomico {
+  animation: ampliar-atomos 58s linear infinite, pulsar-atomos 1.55s ease-in-out infinite;
+}
+
+@keyframes pulsar-atomos {
+  0%, 100% { filter: brightness(.82) hue-rotate(-20deg); }
+  50% { filter: brightness(1.17) hue-rotate(35deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mapaAtomico { animation: none; }
+}
+
+.subtextos li { animation: revelar-subtexto 820ms 220ms ease-out both; }
+.subtextos li:nth-child(2) { animation-delay: 300ms; }
+.subtextos li:nth-child(3) { animation-delay: 380ms; }
+.subtextos li:nth-child(4) { animation-delay: 460ms; }
+
+@keyframes revelar-subtexto {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .subtextos li { animation: none; }
+}
+
+.anatomia {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  opacity: 0;
+  animation: revelar-anatomia 58s linear infinite;
+  background: radial-gradient(ellipse at 50% 27%, #102e45b0, transparent 64%);
+}
+
+.corpoAnatomico {
+  position: absolute;
+  left: 50%;
+  top: 27%;
+  height: min(70vh, 38rem);
+  aspect-ratio: 17 / 24;
+  filter: drop-shadow(0 0 5px #55d9fb50);
+  transform-origin: 50% 27%;
+  animation: aproximar-anatomia 58s ease-in-out infinite, dissolver-corpo 58s linear infinite;
+}
+
+@keyframes revelar-anatomia {
+  0%, 25.0001%, 52.5861%, 100% { opacity: 0; }
+  28.4487%, 43.1036% { opacity: .9; }
+}
+
+@keyframes aproximar-anatomia {
+  0%, 25.0001% { transform: translate(-50%, -23%) scale(.72); }
+  28.4487% { transform: translate(-50%, -27%) scale(1); }
+  39.6550%, 100% { transform: translate(-50%, -27%) scale(2.4); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anatomia, .corpoAnatomico { animation: none; }
+}
+
+.coracaoAnatomico {
+  position: absolute;
+  left: 50%;
+  top: 27%;
+  width: clamp(145px, 33vw, 370px);
+  aspect-ratio: 1;
+  background: url("/models/coracao-landing.webp") center / contain no-repeat;
+  opacity: 0;
+  filter: drop-shadow(0 0 9px #ff68858a);
+  animation: revelar-coracao 58s ease-in-out infinite, batimento 1.12s ease-in-out infinite;
+}
+
+@keyframes dissolver-corpo {
+  0%, 37.0686% { opacity: 1; }
+  39.6550%, 100% { opacity: 0; }
+}
+
+@keyframes revelar-coracao {
+  0%, 37.0686%, 44.8278%, 100% { opacity: 0; }
+  39.6550%, 43.1036% { opacity: 1; }
+}
+
+@keyframes batimento {
+  0%, 100% { transform: translate(-50%, -50%) scale(.94); }
+  22% { transform: translate(-50%, -50%) scale(1.05); }
+  42% { transform: translate(-50%, -50%) scale(.97); }
+  54% { transform: translate(-50%, -50%) scale(1.01); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coracaoAnatomico { animation: none; }
+}
+
+.cerebroAnatomico {
+  position: absolute;
+  left: 50%;
+  top: 27%;
+  width: clamp(150px, 34vw, 385px);
+  aspect-ratio: 1;
+  background: url("/models/cerebro-landing.webp") center / contain no-repeat;
+  opacity: 0;
+  filter: drop-shadow(0 0 8px #57caff70);
+  animation: aproximar-cerebro 58s ease-in-out infinite;
+}
+
+@keyframes aproximar-cerebro {
+  0%, 43.2069%, 100% { opacity: 0; transform: translate(-50%, -105%) scale(.42); }
+  46.9310% { opacity: .88; transform: translate(-50%, -56%) scale(.9); }
+  49.7241% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+  52.6103% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cerebroAnatomico { animation: none; }
+}
+
+.palavraMatrix {
+  position: relative;
+  animation: decodificar-palavra 260ms ease-out both;
+}
+.codigoMatrix {
+  position: absolute;
+  inset-inline: 0;
+  pointer-events: none;
+  opacity: 0;
+  font-family: ui-monospace, monospace;
+  font-size: .75em;
+  animation: vestigio-matrix 240ms steps(3, end) both;
+}
+@keyframes decodificar-palavra {
+  from { opacity: .32; transform: translateY(2px); filter: blur(1.4px); }
+  to { opacity: 1; transform: translateY(0); filter: none; }
+}
+@keyframes vestigio-matrix {
+  from { opacity: .36; transform: translateX(-3px); }
+  to { opacity: 0; transform: translateX(4px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .palavraMatrix, .codigoMatrix { animation: none; }
+}
+
+.corpoAnatomico i {
+  position: absolute;
+  inset: 0;
+  background: center / contain no-repeat;
+  opacity: 0;
+}
+
+.corpoAnatomico .anatomiaFrente {
+  background-image: url("/models/anatomia-landing.webp");
+  animation: anatomia-frente 58s linear infinite;
+}
+
+.corpoAnatomico .anatomiaTresQuartos {
+  background-image: url("/models/anatomia-landing-tres-quartos.webp");
+  animation: anatomia-tres-quartos 58s linear infinite;
+}
+
+.corpoAnatomico .anatomiaPerfil {
+  background-image: url("/models/anatomia-landing-perfil.webp");
+  animation: anatomia-perfil 58s linear infinite;
+}
+
+@keyframes anatomia-frente {
+  0%, 28.5% { opacity: 1; }
+  30.7%, 35.2%, 100% { opacity: 0; }
+  37.5%, 40% { opacity: 1; }
+}
+
+@keyframes anatomia-tres-quartos {
+  0%, 28.5%, 33%, 35%, 37.5%, 100% { opacity: 0; }
+  30.5%, 31.2%, 36.4% { opacity: 1; }
+}
+
+@keyframes anatomia-perfil {
+  0%, 31.2%, 36.4%, 100% { opacity: 0; }
+  33%, 35% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .corpoAnatomico i { animation: none; }
+  .corpoAnatomico .anatomiaFrente { opacity: 1; }
+}

@@ -453,16 +453,19 @@
     "landing": {
         "timeline": {
             "base": "Scientific base",
-            "conversa": "Talking with AIs",
+            "conversa": "Chat with AI",
             "blueprint": "Blueprint",
-            "prototipo": "Prototype & tests",
-            "mundo": "In the real world"
+            "prototipo": "Prototype and testing",
+            "mundo": "In the real world",
+            "propriedade_intelectual": "Intellectual property",
+            "papel": "Scientific paper",
+            "realidade": "In the real world",
+            "placa": "Circuit board assembly"
         },
         "hero_tagline": "More than conversations with chatbots and open tabs — here you build <hl>ideas that become finished products</hl>.",
         "knowledge_title": "Turn your idea into reality.",
-        "privacidade_titulo": "Build your idea with privacy.",
-        "privacidade_texto": "Share knowledge with high-tier scientists, backed by verifiable credentials.",
-        "privacidade_fecho": "No one needs to know who you are, nor what you do.",
+        "privacidade_titulo": "Privacy, Safety, and Anonymity",
+        "privacidade_texto": "Work on your own or share your skills with the world. No one needs to know who you are or what you do.",
         "flow": {
             "ideas": "ideas",
             "projects": "projects",
@@ -474,20 +477,160 @@
             "summary": "Ideas become projects, studies become research and companies become business."
         },
         "blueprints": {
-            "title": "Here, you're worth what you build.",
+            "title": "Real knowledge created by real people.",
             "image_alt": "Preview of the blueprint {{title}}",
             "tags": "Tags",
             "cta_view": "View in the game",
             "cta_create": "Create your own",
             "example_badge": "Example",
             "examples": {
-                "foguete": { "title": "Sounding rocket", "desc": "Body, nose cone, fins and nozzle — sized from propulsion papers." },
-                "motor": { "title": "Jet engine", "desc": "Fan, compressor and exhaust cone, with the shaft and main dimensions." },
-                "pcb": { "title": "PCB", "desc": "Processor, memory, traces and connector — ready for fabrication." },
-                "fonte": { "title": "Power supply", "desc": "Enclosure, fan, cooling fins and power socket." },
-                "bateria": { "title": "Battery", "desc": "Cylindrical cell with terminals, charge indicator and dimensions." },
-                "solar": { "title": "Solar panel", "desc": "Cell grid, tilt and mount, calculated for the local sun." }
+                "foguete": {
+                    "title": "Sounding rocket",
+                    "desc": "Body, nose cone, fins and nozzle — sized from propulsion papers."
+                },
+                "motor": {
+                    "title": "Jet engine",
+                    "desc": "Fan, compressor and exhaust cone, with the shaft and main dimensions."
+                },
+                "pcb": {
+                    "title": "PCB",
+                    "desc": "Processor, memory, traces and connector — ready for fabrication."
+                },
+                "fonte": {
+                    "title": "Power supply",
+                    "desc": "Enclosure, fan, cooling fins and power socket."
+                },
+                "bateria": {
+                    "title": "Battery",
+                    "desc": "Cylindrical cell with terminals, charge indicator and dimensions."
+                },
+                "solar": {
+                    "title": "Solar panel",
+                    "desc": "Cell grid, tilt and mount, calculated for the local sun."
+                }
+            },
+            "title_highlight": "NO LIMITS"
+        },
+        "premiacao": {
+            "titulo": "We are a Brazilian startup that received funding and won an award in the blockchain category.",
+            "apoio": "Funded and supported by:",
+            "vencedor": "Award-winning product",
+            "projeto": "<hl>Blockchain</hl> as a Technology for Smart Applications in Ceará",
+            "programa": "Centelha Program (2nd edition).",
+            "oficial": "Official support",
+            "ministerio": "Ministry of Science, Technology and Innovation — Government of Brazil"
+        },
+        "solana": {
+            "talento": "Top-tier talent gets focused attention from our agents. From teams that cut operating costs to cybersecurity specialists, the more professional the work, the wider its reach across companies. Our agents handle the cold calls.",
+            "ranking": "Ranking progression",
+            "esteira": "Cards pass through Solana and turn into SOL, then USDC.",
+            "pessoa": "Private · the person",
+            "prova": "Public · the proof",
+            "credenciais": "Verifiable credentials",
+            "verificacao": "How verification works",
+            "blockchain": "What goes on the blockchain",
+            "diagrama": "A public proof protects the person’s identity."
+        },
+        "faq": {
+            "1": {
+                "q": "What is Zaeon today?",
+                "a": "An online space to work with your team, study, and turn knowledge into projects."
+            },
+            "2": {
+                "q": "Is coworking free?",
+                "a": "Yes. Anyone with an account can join the coworking space for free."
+            },
+            "3": {
+                "q": "Can my team work on any project?",
+                "a": "Yes. Invite your team and use the space to collaborate on your project."
+            },
+            "4": {
+                "q": "Can I use it just to study?",
+                "a": "Yes. Study on your own or alongside other people."
+            },
+            "5": {
+                "q": "What’s in the Marketplace?",
+                "a": "Explore cards for courses, tools, and agents and connect them to your account."
+            },
+            "6": {
+                "q": "How do I get started?",
+                "a": "Create an account and choose Go online to enter the coworking space."
             }
+        },
+        "interface": {
+            "mes": "One month free",
+            "cartao": "No card required",
+            "limites": "No limits",
+            "revisao": "Expert review",
+            "projetos": "Projects built by the community",
+            "faq_rotulo": "FAQ",
+            "faq_titulo": "Common questions.",
+            "faq_subtitulo": "Straight answers.",
+            "cyber_titulo": "Free online coworking",
+            "cyber_intro": "Work on any project with your team or find a place to study. Coworking is free and open to everyone.",
+            "cyber_moeda": "Work with your team",
+            "cyber_moeda_texto": "Invite your teammates and work together on any project.",
+            "cyber_pessoas": "Study together",
+            "cyber_pessoas_texto": "Join to study at your own pace or alongside others.",
+            "cyber_agentes": "Collaborate live",
+            "cyber_agentes_texto": "Talk with people who are online and work in the same space.",
+            "plataforma": "Platform",
+            "recursos": "Resources",
+            "empresa": "Company",
+            "legal": "Legal",
+            "jogar": "Go online",
+            "modelos": "AI models",
+            "laboratorio": "Lab",
+            "mentores": "Mentors",
+            "assistentes": "Assistants",
+            "funcionamento": "How it works",
+            "duvidas": "FAQ",
+            "noticias": "News",
+            "sobre": "About us",
+            "documentacao": "Documentation",
+            "contato": "Contact",
+            "termos": "Terms of use",
+            "privacidade": "Privacy",
+            "resumo": "Leading AI models in one place, with a scientific layer for study and research.",
+            "direitos": "All rights reserved.",
+            "lema": "Where humans and superintelligences meet."
+        },
+        "vitrine": {
+            "anterior": "Previous cards",
+            "proximo": "Next cards",
+            "agente": "Agent",
+            "gratis": "Free",
+            "raridade": {
+                "comum": "Common",
+                "rara": "Rare",
+                "epica": "Epic",
+                "lendaria": "Legendary"
+            },
+            "tipo": {
+                "curso": "Course",
+                "codigo": "Code",
+                "artigo": "Academic work",
+                "negocio": "Business",
+                "rwa": "Real-world asset (RWA)",
+                "agente": "Made by an AI agent"
+            }
+        },
+        "hero_principal": {
+            "pergunta": "Ask Zaeon…",
+            "linha": "Where knowledge is",
+            "termo_0": "created",
+            "termo_1": "studied",
+            "termo_2": "learned",
+            "termo_3": "delivered",
+            "termo_4": "proven",
+            "termo_5": "consulted",
+            "termo_6": "traded",
+            "termo_7": "commissioned",
+            "termo_8": "sold",
+            "termo_9": "explored",
+            "termo_10": "expanded",
+            "chat": "Start chat",
+            "conta": "Create my account"
         }
     }
 }

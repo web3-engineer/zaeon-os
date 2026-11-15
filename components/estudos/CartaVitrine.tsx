@@ -7,6 +7,7 @@
  *
  * `--cy` (o neon de apoio) é setado AQUI na carta — na vitrine ele vinha do `.vt-grid`, mas a landing não tem grid.
  */
+import { useTranslation } from "react-i18next";
 import { type CSSProperties, type ReactNode } from "react";
 import { COR_RARIDADE, NOME_RARIDADE } from "@/lib/estudos/blueprint";
 import { NOME_TIPO, type ItemVitrine } from "@/lib/estudos/vitrine";
@@ -39,7 +40,7 @@ export function ImagemCarta({ src }: { src: string }) {
 
 const glowDe = (r: ItemVitrine["raridade"]) => (r === "lendaria" ? 34 : r === "epica" ? 24 : r === "rara" ? 16 : 12);
 
-export default function CartaVitrine({ it, onClick, badgeGratis = false, precoFree = false, precoNode, acaoNode, className }: {
+export default function CartaVitrine({ it, onClick, badgeGratis = false, precoFree = false, precoNode, acaoNode, arteNode, forjada = false, className }: {
     it: ItemVitrine;
     /** clique na carta (recebe a própria carta: a vitrine usa a posição pra animar o painel de detalhes) */
     onClick?: (carta: HTMLElement) => void;
@@ -51,8 +52,11 @@ export default function CartaVitrine({ it, onClick, badgeGratis = false, precoFr
     precoNode: ReactNode;
     /** a ação à direita do preço (plug / comprar / desconectar / ✓ conectado) — opcional */
     acaoNode?: ReactNode;
+    arteNode?: ReactNode;
+    forjada?: boolean;
     className?: string;
 }) {
+    const { t } = useTranslation();
     const cor = COR_RARIDADE[it.raridade];
     // acessível pelo teclado quando a CARTA é o único alvo clicável (a landing) — na vitrine o clique da carta é só
     // atalho de mouse e quem leva o foco/teclado é o botão plug/comprar (`acaoNode`), então não viramos a carta num botão
@@ -83,12 +87,11 @@ export default function CartaVitrine({ it, onClick, badgeGratis = false, precoFr
             )}
             <div className="vt-frame">
                 <div className="vt-panel">
-                    <div className="vt-spine">{NOME_RARIDADE[it.raridade].toUpperCase()}</div>
+                    <div className="vt-spine">{t(`landing.vitrine.raridade.${it.raridade}`, { defaultValue: NOME_RARIDADE[it.raridade] }).toUpperCase()}</div>
                     <div className="vt-art">
                         <span className="vt-br tl" /><span className="vt-br tr" /><span className="vt-br bl" /><span className="vt-br brr" />
-                        <div className="vt-serial">{serialDe(it)}<span className="vt-barcode" /></div>
-                        {badgeGratis && <span className="vt-free">GRÁTIS</span>}
-                        {it.imagem ? <ImagemCarta src={it.imagem} /> : <div className="vt-glyph"><b>{GLYPH[it.modelo] ?? "✦"}</b></div>}
+                        {badgeGratis && <span className="vt-free">{t("landing.vitrine.gratis", { defaultValue: "" }).toUpperCase()}</span>}
+                        {it.imagem ? <ImagemCarta src={it.imagem} /> : <div className="vt-glyph"><b>{arteNode ?? GLYPH[it.modelo] ?? "✦"}</b></div>}
                         {pasta && (
                             <div className="vt-pasta-lista" aria-hidden="true">
                                 {pasta.partes.slice(0, 6).map((p, i) => <span key={i} style={{ "--pcor": COR_PARTE[p.tipo] } as CSSProperties}>{NOME_PARTE[p.tipo].toUpperCase()}</span>)}
@@ -97,7 +100,7 @@ export default function CartaVitrine({ it, onClick, badgeGratis = false, precoFr
                         <div className="vt-desc">{it.subtitulo}</div>
                     </div>
                     <div className="vt-plate">
-                        <div className="vt-type">{NOME_TIPO[it.tipo].toUpperCase()}{pasta ? ` · ${pasta.partes.length} ${pasta.partes.length === 1 ? "PARTE" : "PARTES"}` : ""}</div>
+                        {!forjada && <div className="vt-type">{NOME_TIPO[it.tipo].toUpperCase()}{pasta ? ` · ${pasta.partes.length} ${pasta.partes.length === 1 ? "PARTE" : "PARTES"}` : ""}</div>}
                         <h3 className="vt-title">{it.titulo}</h3>
                         <div className="vt-meter"><span className="vt-segs">{segmentos(it.profundidade).map((on, i) => <i key={i} className={on ? "on" : ""} />)}</span></div>
                         <div className="vt-pr">
