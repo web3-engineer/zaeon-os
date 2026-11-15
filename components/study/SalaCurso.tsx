@@ -7,6 +7,7 @@
  * pro esqueleto, sem travar.
  */
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import CursoArvoreView from "@/components/studio/CursoArvoreView";
 import CardArquivo from "@/components/study/CardArquivo";
 import { comBaseDoGrafo, mesclarEnriquecimento } from "@/lib/forja/arvoreDoGrafo";
@@ -18,6 +19,7 @@ const H = { "content-type": "application/json" };
 type MetaCurso = CursoRepo & { licoesPorNo?: Record<string, LicaoCurada> };
 
 export default function SalaCurso({ cursoId, titulo, onFechar }: { cursoId: string; titulo?: string; onFechar?: () => void }) {
+  const { t } = useTranslation();
   const [curso, setCurso] = useState<CursoRepo | null>(null);
   const [licoes, setLicoes] = useState<Record<string, LicaoCurada>>({});
   const [erro, setErro] = useState(false);
@@ -59,13 +61,13 @@ export default function SalaCurso({ cursoId, titulo, onFechar }: { cursoId: stri
     return (
       <div className="grid h-full place-items-center bg-[#060b16] text-center text-[13px] text-white/60">
         <div>
-          Não consegui montar este curso agora.
-          {onFechar && <div className="mt-3"><button type="button" onClick={onFechar} className="rounded-full border border-white/15 px-3 py-1 text-white/70 hover:text-white">← voltar</button></div>}
+          {t("forja.sala.erro")}
+          {onFechar && <div className="mt-3"><button type="button" onClick={onFechar} className="rounded-full border border-white/15 px-3 py-1 text-white/70 hover:text-white">{t("forja.sala.voltar")}</button></div>}
         </div>
       </div>
     );
   }
-  if (!curso) return <div className="grid h-full place-items-center bg-[#060b16] text-[13px] text-cyan-300/60">Montando o curso…</div>;
+  if (!curso) return <div className="grid h-full place-items-center bg-[#060b16] text-[13px] text-cyan-300/60">{t("forja.sala.montando")}</div>;
 
   // Tutorial de arquivo (F1): o aluno digita o código real. Por ora, demo via cards curados por curso.
   if (praticar && cards.length) {
@@ -80,7 +82,7 @@ export default function SalaCurso({ cursoId, titulo, onFechar }: { cursoId: stri
           onClick={() => setPraticar(true)}
           className="absolute bottom-5 right-5 z-20 rounded-full border-0 bg-gradient-to-r from-violet-500 to-cyan-400 px-5 py-2.5 text-[13px] font-bold text-white shadow-[0_8px_24px_rgba(139,92,246,.45)] hover:brightness-110"
         >
-          praticar: digite o código ▸
+          {t("forja.sala.praticar")}
         </button>
       )}
     </div>

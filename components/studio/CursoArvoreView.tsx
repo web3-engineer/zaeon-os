@@ -15,6 +15,7 @@
  * Glass, cores da casa. Sem base nem grafo, degrada pro esqueleto (raiz + aviso), sem travar.
  */
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import type { ArvoreEntendimento, CursoRepo, NoEntendimento } from "@/lib/forja/tipos";
 import type { LicaoCurada, QuestaoProva } from "@/lib/forja/licaoCurada";
 
@@ -39,15 +40,38 @@ const esc = (s: string) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;"
 const rico = (t: string) => esc(t).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
 const paras = (t: string) => String(t || "").trim().split(/\n{2,}/).map((p) => '<p>' + rico(p).replace(/\n/g, "<br>") + "</p>").join("");
 const aspas = (s: string) => esc(s).replace(/"/g, "&quot;");
+// i18n do board: montarBoardHtml é PURO (injetado como innerHTML, sem contexto React), então recebe uma
+// função `tr` em vez de chamar o hook. Default = PT (mantém o teste puro verde); o componente passa o `t`
+// real do react-i18next. As chaves vivem em public/locales/<lng>/common.json (forja.board.*).
+export type TrFn = (chave: string, opts?: Record<string, unknown>) => string;
+const PT_BOARD: Record<string, string> = {
+  "forja.board.verResposta": "ver resposta",
+  "forja.board.respostaPlaceholder": "digite sua resposta…",
+  "forja.board.tagConceito": "conceito",
+  "forja.board.tagModulo": "módulo",
+  "forja.board.tagRepo": "repositório",
+  "forja.board.licaoFallback": "{{titulo}} — a lição entra quando o motor analisar o repositório.",
+  "forja.board.noCodigoComplete": "No código — complete você mesmo",
+  "forja.board.exercicio": "exercício",
+  "forja.board.noCodigo": "No código",
+  "forja.board.teste": "Teste",
+  "forja.board.desafio": "Desafio",
+  "forja.board.continuar": "continuar: {{prox}} ▸",
+  "forja.board.concluir": "concluir ✓",
+  "forja.board.aprendizado": "Aprendizado",
+  "forja.board.voltarArvore": "‹ voltar à árvore",
+};
+const trPT: TrFn = (k, o) => { let s = PT_BOARD[k] ?? k; if (o) for (const kk in o) s = s.split("{{" + kk + "}}").join(String(o[kk])); return s; };
+
 // uma questão real da prova → HTML (q-choice com opções+explicação; q-written com campo + resposta).
-const questaoHtml = (q: QuestaoProva) => {
+const questaoHtml = (q: QuestaoProva, tr: TrFn) => {
   const head = '<p class="av-qperg">' + rico(q.enunciado) + "</p>";
   if (q.tipo === "escolha") {
     const opts = q.opcoes.map((o) => '<div class="av-opt" data-ok="' + (o.correta ? "1" : "") + '"' + (o.explicacao ? ' data-exp="' + aspas(o.explicacao) + '"' : "") + ">" + rico(o.texto) + "</div>").join("");
     return '<div class="av-qbloco">' + head + '<div class="av-quiz">' + opts + '</div><div class="av-exp"></div></div>';
   }
   const resp = aspas((q.aceitas && q.aceitas[0]) || "");
-  return '<div class="av-qbloco">' + head + '<input class="av-in" placeholder="digite sua resposta…" /><button type="button" class="av-ver" data-resp="' + resp + '">ver resposta</button><div class="av-exp"></div></div>';
+  return '<div class="av-qbloco">' + head + '<input class="av-in" placeholder="' + aspas(tr("forja.board.respostaPlaceholder")) + '" /><button type="button" class="av-ver" data-resp="' + resp + '">' + esc(tr("forja.board.verResposta")) + '</button><div class="av-exp"></div></div>';
 };
 
 /**
@@ -55,32 +79,33 @@ const questaoHtml = (q: QuestaoProva) => {
  * honesto do graphify) e Teste (as provas reais). PURO e exportado — o board só injeta e liga eventos.
  * NUNCA fabrica conteúdo: sem lição curada e sem grafo, mostra só o que há, sem inventar código/quiz.
  */
-export function montarBoardHtml(args: { titulo: string; tipo: Nav["tipo"]; mod: string; repo: string; resumo?: string; lic?: LicaoCurada; prox?: string; passo?: string }): string {
+export function montarBoardHtml(args: { titulo: string; tipo: Nav["tipo"]; mod: string; repo: string; resumo?: string; lic?: LicaoCurada; prox?: string; passo?: string; tr?: TrFn }): string {
   const { titulo, tipo, mod, repo, resumo, lic, prox, passo } = args;
+  const tr = args.tr ?? trPT;
   const base = String(mod).split(".py")[0];
-  const tag = tipo === "sim" ? "conceito" : tipo === "mod" ? "módulo" : "repositório";
+  const tag = tipo === "sim" ? tr("forja.board.tagConceito") : tipo === "mod" ? tr("forja.board.tagModulo") : tr("forja.board.tagRepo");
   const temResumo = (resumo || "").trim().length > 3;
   const aprendHtml = lic?.estudo ? paras(lic.estudo)
     : temResumo ? paras(resumo!)
-    : '<p><b>' + esc(titulo) + '</b> — a lição entra quando o motor analisar o repositório.</p>';
+    : '<p>' + tr("forja.board.licaoFallback", { titulo: esc(titulo) }) + '</p>';
   let codigoHtml = "";
   if (lic?.sandbox && (lic.sandbox.inicial || "").trim()) {
-    codigoHtml = '<h3>No código — complete você mesmo</h3>' + bloco(lic.sandbox.linguagem + " · exercício", lic.sandbox.inicial);
+    codigoHtml = '<h3>' + esc(tr("forja.board.noCodigoComplete")) + '</h3>' + bloco(lic.sandbox.linguagem + " · " + tr("forja.board.exercicio"), lic.sandbox.inicial);
   } else if (!lic && tipo !== "repo") {
-    codigoHtml = '<h3>No código</h3>' + bloco("python · " + base + ".py", "# símbolo mapeado pelo graphify neste módulo\nfrom " + base + " import " + titulo);
+    codigoHtml = '<h3>' + esc(tr("forja.board.noCodigo")) + '</h3>' + bloco("python · " + base + ".py", "# símbolo mapeado pelo graphify neste módulo\nfrom " + base + " import " + titulo);
   }
   let testeHtml = "";
-  if (lic?.prova?.length) testeHtml += '<h3>Teste</h3>' + lic.prova.map(questaoHtml).join("");
-  if (lic?.desafio) testeHtml += '<h3>Desafio</h3>' + questaoHtml(lic.desafio);
+  if (lic?.prova?.length) testeHtml += '<h3>' + esc(tr("forja.board.teste")) + '</h3>' + lic.prova.map((q) => questaoHtml(q, tr)).join("");
+  if (lic?.desafio) testeHtml += '<h3>' + esc(tr("forja.board.desafio")) + '</h3>' + questaoHtml(lic.desafio, tr);
   const avanco = prox
-    ? '<button class="av-btn av-pill av-continuar">continuar: ' + esc(cut(prox, 22)) + ' ▸</button>'
-    : '<button class="av-btn av-pill av-voltar">concluir ✓</button>';
+    ? '<button class="av-btn av-pill av-continuar">' + tr("forja.board.continuar", { prox: esc(cut(prox, 22)) }) + '</button>'
+    : '<button class="av-btn av-pill av-voltar">' + esc(tr("forja.board.concluir")) + '</button>';
   const selo = passo ? '<span class="av-passo">' + esc(passo) + "</span>" : "";
-  return '<div class="av-card"><div class="tag">' + selo + tag + " · " + repo + '</div><h1>' + esc(titulo) + "</h1>"
-    + '<h3>Aprendizado</h3>' + aprendHtml
+  return '<div class="av-card"><div class="tag">' + selo + esc(tag) + " · " + repo + '</div><h1>' + esc(titulo) + "</h1>"
+    + '<h3>' + esc(tr("forja.board.aprendizado")) + '</h3>' + aprendHtml
     + codigoHtml
     + testeHtml
-    + '<div class="av-nav"><button class="av-btn av-ghost av-voltar">‹ voltar à árvore</button>' + avanco + '</div></div>';
+    + '<div class="av-nav"><button class="av-btn av-ghost av-voltar">' + esc(tr("forja.board.voltarArvore")) + '</button>' + avanco + '</div></div>';
 }
 
 const CSS = `
@@ -112,7 +137,7 @@ const CSS = `
 .av-svg{position:absolute;inset:0;height:100%;width:100%;touch-action:none;transition:opacity .4s ease}.av-svg.fade{opacity:0}
 .av-svg text{user-select:none;pointer-events:none}.av-node{cursor:pointer}
 .av-halo{animation:avbr 2.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}@keyframes avbr{0%,100%{opacity:.3;transform:scale(1)}50%{opacity:.7;transform:scale(1.4)}}
-.av-trail{animation:avdash 18s linear infinite}@keyframes avdash{to{stroke-dashoffset:-240}}
+.av-trail-flow{animation:avdash 2.2s linear infinite}@keyframes avdash{to{stroke-dashoffset:-30}}
 .av-gv{width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;border-radius:14px;padding:6px 11px;background:var(--panel);backdrop-filter:blur(22px) saturate(1.4);border:1px solid var(--panel-br);box-shadow:0 8px 22px rgba(10,30,70,.18),inset 0 1px 0 rgba(255,255,255,.3)}
 .av-gv b{font-size:12px;color:var(--ink);line-height:1.1;display:flex;align-items:center;gap:6px}.av-gv small{font-size:9.5px;color:var(--soft)}
 .av-step{font-style:normal;font-size:10px;font-weight:800;color:#fff;background:var(--flow);min-width:16px;height:16px;padding:0 4px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(37,99,235,.5)}
@@ -156,6 +181,7 @@ const CSS = `
 `;
 
 export default function CursoArvoreView({ curso, licoes, titulo, onFechar }: { curso: CursoRepo; licoes?: Record<string, LicaoCurada>; titulo?: string; onFechar?: () => void }) {
+  const { t } = useTranslation();
   const ref = useRef<HTMLDivElement | null>(null);
   const cabecalho = (titulo || curso.arvore.raiz.titulo || "").trim();
   const semMapa = (curso.arvore.raiz.filhos?.length ?? 0) === 0;
@@ -213,8 +239,8 @@ export default function CursoArvoreView({ curso, licoes, titulo, onFechar }: { c
 
     function render() {
       layout(); world.innerHTML = ""; ftit.textContent = cut(focus.titulo, 46); crumbs();
-      hintEl.innerHTML = focus === TREE ? 'clique num conceito pra <b>abrir</b> · role pra <b>zoom</b>, arraste pra navegar'
-        : (temFilho(focus) && expanded.has(focus) ? '<b>' + cut(focus.titulo, 20) + '</b> abriu · clique nele <b>de novo pra aprender</b>' : 'clique em <b>' + cut(focus.titulo, 18) + '</b> pra abrir a lição');
+      hintEl.innerHTML = focus === TREE ? t("forja.arvore.hintRaiz")
+        : (temFilho(focus) && expanded.has(focus) ? t("forja.arvore.hintAbriu", { titulo: cut(focus.titulo, 20) }) : t("forja.arvore.hintAbrir", { titulo: cut(focus.titulo, 18) }));
       // raízes na base
       for (let i = 1; i <= 3; i++) { const ext = 28 + i * 30, prof = 70 + i * 14; for (const l of [-1, 1]) { const rx = BASE.x + l * ext, ry = BASE.y + prof; world.appendChild(el("path", { d: "M " + BASE.x + " " + BASE.y + " C " + (BASE.x + l * 8) + " " + (BASE.y + 32) + " " + (rx - l * 16) + " " + (ry - 24) + " " + rx + " " + ry, fill: "none", stroke: "url(#av-wire)", "stroke-width": 2.6 - i * .4, "stroke-linecap": "round", "stroke-opacity": .5 })); } }
       const gL = el("g"), gN = el("g"), gV = el("g"); world.appendChild(gL); world.appendChild(gN); world.appendChild(gV);
@@ -225,8 +251,12 @@ export default function CursoArvoreView({ curso, licoes, titulo, onFechar }: { c
           let prev = p, prevDir = -Math.PI / 2;
           for (const c of vis) {
             const cp = pos.get(c)!; const d = ramo(prev, cp, prevDir, cp.dir);
-            gL.appendChild(el("path", { d, fill: "none", stroke: "url(#av-flow)", "stroke-width": 8, "stroke-opacity": .14, "stroke-linecap": "round", filter: "url(#av-soft)" }));
-            gL.appendChild(el("path", { d, fill: "none", stroke: "url(#av-flow)", "stroke-width": 3.6, "stroke-opacity": .95, "stroke-linecap": "round", "stroke-dasharray": "13 11", class: "av-trail" }));
+            // brilho suave por baixo
+            gL.appendChild(el("path", { d, fill: "none", stroke: "url(#av-flow)", "stroke-width": 8, "stroke-opacity": .16, "stroke-linecap": "round", filter: "url(#av-soft)" }));
+            // a CONEXÃO: linha SÓLIDA contínua — a raiz liga ao módulo 1, e os módulos em sequência (sem gaps).
+            gL.appendChild(el("path", { d, fill: "none", stroke: "url(#av-flow)", "stroke-width": 3.8, "stroke-opacity": .98, "stroke-linecap": "round", class: "av-trail" }));
+            // fluxo: pontos tracejados finos animados POR CIMA (energia, sem quebrar a linha sólida).
+            gL.appendChild(el("path", { d, fill: "none", stroke: "#eaf6ff", "stroke-width": 1.7, "stroke-opacity": .85, "stroke-linecap": "round", "stroke-dasharray": "2 13", class: "av-trail-flow" }));
             prev = cp; prevDir = cp.dir;
           }
         } else {
@@ -245,9 +275,9 @@ export default function CursoArvoreView({ curso, licoes, titulo, onFechar }: { c
           const lw = 150, lh = 40, off = unit(p.dir), ax = p.x + off.x * (r + 10), ay = p.y + off.y * (r + 10), cx2 = p.x + off.x * (r + 10 + lh * .7), cy2 = p.y + off.y * (r + 10 + lh * .7);
           gV.appendChild(el("line", { x1: p.x, y1: p.y, x2: ax, y2: ay, stroke: "rgba(255,255,255,.35)", "stroke-width": 1.4 }));
           const passo = parentOf.get(node) === TREE ? TREE.filhos.indexOf(node) + 1 : 0;
-          const fo = el("foreignObject", { x: cx2 - lw / 2, y: cy2 - lh / 2, width: lw, height: lh }); const div = document.createElement("div"); div.setAttribute("xmlns", "http://www.w3.org/1999/xhtml"); div.className = "av-gv"; div.innerHTML = "<b>" + (passo ? '<i class="av-step">' + passo + "</i>" : "") + cut(node.titulo, 18) + "</b><small>" + (temFilho(node) ? (node.filhos.length + " dentro · abrir") : "abrir a lição") + "</small>"; fo.appendChild(div); fo.addEventListener("click", (e) => { e.stopPropagation(); clicar(node); }); gV.appendChild(fo);
+          const fo = el("foreignObject", { x: cx2 - lw / 2, y: cy2 - lh / 2, width: lw, height: lh }); const div = document.createElement("div"); div.setAttribute("xmlns", "http://www.w3.org/1999/xhtml"); div.className = "av-gv"; div.innerHTML = "<b>" + (passo ? '<i class="av-step">' + passo + "</i>" : "") + cut(node.titulo, 18) + "</b><small>" + (temFilho(node) ? t("forja.arvore.dentroAbrir", { n: node.filhos.length }) : t("forja.arvore.abrirLicao")) + "</small>"; fo.appendChild(div); fo.addEventListener("click", (e) => { e.stopPropagation(); clicar(node); }); gV.appendChild(fo);
         }
-        if (ehFoco) { const cw = 128, chh = 24; const fo = el("foreignObject", { x: p.x - cw / 2, y: p.y + r + 9, width: cw, height: chh }); const div = document.createElement("div"); div.setAttribute("xmlns", "http://www.w3.org/1999/xhtml"); div.className = "av-cue"; div.textContent = "clique → aprender ▸"; fo.appendChild(div); fo.addEventListener("click", (e) => { e.stopPropagation(); abrirBoard(node); }); gV.appendChild(fo); }
+        if (ehFoco) { const cw = 128, chh = 24; const fo = el("foreignObject", { x: p.x - cw / 2, y: p.y + r + 9, width: cw, height: chh }); const div = document.createElement("div"); div.setAttribute("xmlns", "http://www.w3.org/1999/xhtml"); div.className = "av-cue"; div.textContent = t("forja.arvore.cueAprender"); fo.appendChild(div); fo.addEventListener("click", (e) => { e.stopPropagation(); abrirBoard(node); }); gV.appendChild(fo); }
       }
       cameraFoco();
     }
@@ -274,8 +304,8 @@ export default function CursoArvoreView({ curso, licoes, titulo, onFechar }: { c
       const irmaos = par ? (par.filhos || []) : [];
       const idx = irmaos.indexOf(r);
       const prox = idx >= 0 && idx < irmaos.length - 1 ? irmaos[idx + 1] : null;
-      const passo = par === TREE && idx >= 0 ? "passo " + (idx + 1) + "/" + irmaos.length : "";
-      boardEl.innerHTML = montarBoardHtml({ titulo: r.titulo, tipo: r.tipo, mod, repo: REPO, resumo: r.resumo, lic, prox: prox?.titulo, passo });
+      const passo = par === TREE && idx >= 0 ? t("forja.arvore.passo", { i: idx + 1, n: irmaos.length }) : "";
+      boardEl.innerHTML = montarBoardHtml({ titulo: r.titulo, tipo: r.tipo, mod, repo: REPO, resumo: r.resumo, lic, prox: prox?.titulo, passo, tr: t });
       boardEl.classList.add("on");
       boardEl.querySelectorAll(".av-continuar").forEach((b) => b.addEventListener("click", () => {
         if (!prox) return;
@@ -292,10 +322,10 @@ export default function CursoArvoreView({ curso, licoes, titulo, onFechar }: { c
           if (exp) exp.innerHTML = el2.dataset.exp ? "<p>" + el2.dataset.exp + "</p>" : "";
         }));
         const ver = bl.querySelector(".av-ver") as HTMLElement | null;
-        if (ver) ver.addEventListener("click", () => { if (exp) exp.innerHTML = "<p>Aceita, por exemplo: <code>" + (ver.dataset.resp || "") + "</code></p>"; });
+        if (ver) ver.addEventListener("click", () => { if (exp) exp.innerHTML = "<p>" + esc(t("forja.board.aceitaExemplo")) + " <code>" + (ver.dataset.resp || "") + "</code></p>"; });
       });
       boardEl.querySelectorAll(".av-voltar").forEach((b) => b.addEventListener("click", voltar));
-      hintEl.innerHTML = lic ? 'a <b>lição</b>: estudo + código + teste reais' : 'a <b>lição</b> deste módulo';
+      hintEl.innerHTML = lic ? t("forja.arvore.licaoReais") : t("forja.arvore.licaoModulo");
     }
     function fecharBoard() { boardEl.classList.remove("on"); }
     function voltar() { fecharBoard(); svg.classList.remove("fade"); render(); }
@@ -313,7 +343,7 @@ export default function CursoArvoreView({ curso, licoes, titulo, onFechar }: { c
 
     setVB(); raf = requestAnimationFrame(loop); render();
     return () => { cancelAnimationFrame(raf); svg.removeEventListener("wheel", onWheel); svg.removeEventListener("pointerdown", onDown); svg.removeEventListener("pointermove", onMove); svg.removeEventListener("pointerup", onUp); svg.removeEventListener("pointercancel", onUp); world.innerHTML = ""; boardEl.innerHTML = ""; boardEl.classList.remove("on"); };
-  }, [curso.arvore, curso.repo, licoes]);
+  }, [curso.arvore, curso.repo, licoes, t]);
 
   return (
     <div ref={ref} className="av-root">
@@ -321,7 +351,7 @@ export default function CursoArvoreView({ curso, licoes, titulo, onFechar }: { c
       <div className="av-head"><div className="av-repo">{curso.repo}</div><div className="av-tit">{cabecalho}</div></div>
       <div className="av-crumbs" />
       <div className="av-hint" />
-      {onFechar && <button type="button" className="av-close" onClick={onFechar}>← voltar</button>}
+      {onFechar && <button type="button" className="av-close" onClick={onFechar}>{t("forja.arvore.fechar")}</button>}
       <svg className="av-svg" viewBox="0 0 1200 820" preserveAspectRatio="xMidYMid meet">
         <defs>
           <filter id="av-g" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="3" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
@@ -336,7 +366,7 @@ export default function CursoArvoreView({ curso, licoes, titulo, onFechar }: { c
       <div className="av-board" />
       <div className="av-intro"><div className="av-intro-tit" /></div>
       {semMapa && (
-        <div className="av-hint" style={{ bottom: 40 }}>a árvore ganha galhos quando o motor analisar o repositório</div>
+        <div className="av-hint" style={{ bottom: 40 }}>{t("forja.arvore.semMapa")}</div>
       )}
     </div>
   );
