@@ -104,6 +104,7 @@ import { mensagemDeFalha } from "@/lib/studio/falhaArtefato";
 import type { SkillNodeState } from "@/lib/skilltree/types";
 import type { SkillTreeData } from "@/components/study/SkillTreePanel";
 import { TCC_CROSS_ON, tccApi, type TrabalhoResumo } from "@/lib/tcc/client";
+import { blocoLeve } from "@/lib/chat/blocoLeve";
 import { chatUnicoOn, consumirPedidoChat, EVT_PEDIDO_CHAT, gravarModoPesquisa, modoPesquisaDa, type PedidoChat } from "@/lib/chat/chatUnico";
 
 const MeusEstudosFeed = dynamic(() => import("@/components/study/MeusEstudosFeed"), { ssr: false });
@@ -174,9 +175,8 @@ const AVISO_ARTEFATO: Record<string, string> = {
  */
 function enxugarArtefatos(m: Msg): Msg {
   if (m.role !== "assistant" || (!m.studioBlock && !m.blocosExtra && !m.desenhando)) return m;
-  // diagrama e aula são só um id (o conteúdo mora no servidor) — sobrevivem ao reload, sem o `data`
-  // #749: a IMAGEM também (o arquivo mora no servidor) — sem o dataUrl, que é pesado; volta por /api/studio/<id>/file
-  const leve = (b?: StudioBlockData) => (b && (b.studioKind === "diagram" || b.studioKind === "aula" || b.studioKind === "cad" || b.studioKind === "image") && b.artifactId ? { ...b, data: null, dataUrl: undefined } : undefined);
+  // diagrama, aula, imagem e anatomia são só um número (o conteúdo mora no servidor) — sobrevivem ao reload (lib/chat/blocoLeve)
+  const leve = (b?: StudioBlockData) => blocoLeve(b);
   const extras = (m.blocosExtra ?? []).map(leve).filter(Boolean) as StudioBlockData[];
   return { ...m, studioBlock: leve(m.studioBlock), blocosExtra: extras.length ? extras : undefined, desenhando: undefined };
 }

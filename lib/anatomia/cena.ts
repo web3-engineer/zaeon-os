@@ -306,7 +306,12 @@ export function montarCena(o: OpcoesDaCena): () => void {
   };
 
   const redimensionar = () => {
+    // #816: o enquadrarCamera daqui embaixo põe a câmera no corpo inteiro; com uma estrutura isolada, o próximo quadro
+    // tem que enquadrá-la de novo (a chave do isolamento só muda se o FORMATO do quadro mudar — o coração virava um ponto).
+    // O recorte do isolamento (setViewOffset) sai JUNTO: se o isolamento acabou e o quadro ainda não viu, o ramo que o
+    // limpa não roda mais (ele depende de `ultimoIsolar`), e a cena inteira ficaria cortada/deslocada
     chaveDoLayout = ""; ultimoEstado = null;
+    if (ultimoIsolar) { camera.clearViewOffset(); ultimoIsolar = ""; }
     renderizador.setPixelRatio(Math.min(devicePixelRatio, el.clientWidth < LARGURA_CELULAR || el.clientHeight < 600 ? 1.5 : 2));
     camera.aspect = (el.clientWidth || 1) / (el.clientHeight || 1);
     camera.updateProjectionMatrix();
