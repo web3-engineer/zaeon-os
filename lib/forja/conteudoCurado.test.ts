@@ -4,7 +4,12 @@ import type { EsqueletoRepo } from "./tipos";
 
 // PROVA REAL: lê os curso.json AUTORAIS do disco (não fixtures), como a vitrine faz com os cards reais.
 const esq = (id: string): EsqueletoRepo => ({ id, repo: "owner/x", titulo: `Curso ${id}`, resumo: "resumo", modo: "curso" });
-const CURSOS_COM_JSON = ["algoritmos-classicos", "buraco-negro-ascii", "game-engine-brutal", "pandas-analise-de-dados", "jupyter-notebooks"];
+const CURSOS_COM_JSON = [
+  "algoritmos-classicos", "buraco-negro-ascii", "game-engine-brutal",
+  "pandas-analise-de-dados", "jupyter-notebooks", "leaflet-mapas-web",
+  "querido-diario-direito", "scroll-suave-lenis", "astropy-astronomia",
+  "biopython-bioinformatica", "rdkit-quimica-computacional",
+];
 
 describe("conteudoCuradoDoCurso — base curada a partir dos curso.json reais", () => {
   for (const id of CURSOS_COM_JSON) {

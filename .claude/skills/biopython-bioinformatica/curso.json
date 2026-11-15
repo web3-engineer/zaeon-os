@@ -1,0 +1,133 @@
+{
+  "modulos": [
+    {
+      "titulo": "O dogma central em código",
+      "estudo": "A biologia molecular tem uma espinha dorsal, o dogma central: o DNA é transcrito em RNA, e o RNA é traduzido em proteína. O Biopython te deixa percorrer esse caminho em código, e isso torna o conceito concreto.\n\nComeça com uma sequência: `dna = Seq(\"ATGGCCATTGTA...\")`. A partir dela:\n- `dna.complement()` dá a fita complementar (A↔T, C↔G).\n- `dna.reverse_complement()` dá a outra fita lida no sentido 5'→3' (o sentido em que a célula lê).\n- `dna.transcribe()` faz a transcrição: troca cada T por U, virando RNA.\n- `rna.translate(to_stop=True)` faz a tradução: lê o RNA de três em três (os códons) e devolve a proteína, parando no primeiro códon de parada.\n\nO pulo pedagógico: antes de rodar, PREVEJA à mão. Pegue os três primeiros códons, use a tabela do código genético, e escreva qual aminoácido cada um dá. Rodar depois confirma (ou corrige) o que você entendeu — e aí o dogma deixa de ser uma frase decorada e vira algo que você consegue reproduzir.\n\nA regra que fica: DNA → (transcribe) → RNA → (translate) → proteína, nessa ordem, e o `to_stop=True` para no primeiro códon de parada.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Qual é a ordem correta do dogma central, como você o reproduz no Biopython?",
+            "options": [
+              { "text": "DNA → transcribe → RNA → translate → proteína", "isCorrect": true, "explanation": "Transcrição (DNA→RNA) primeiro, tradução (RNA→proteína) depois." },
+              { "text": "DNA → translate → proteína → transcribe → RNA", "isCorrect": false, "explanation": "A tradução não vem antes da transcrição." },
+              { "text": "proteína → RNA → DNA", "isCorrect": false, "explanation": "Essa é a ordem invertida; o fluxo padrão vai do DNA à proteína." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "O que `transcribe()` muda na sequência?",
+            "options": [
+              { "text": "Troca cada T (timina) por U (uracila), virando RNA", "isCorrect": true, "explanation": "A transcrição substitui a timina do DNA pela uracila do RNA." },
+              { "text": "Inverte a sequência de trás para frente", "isCorrect": false, "explanation": "Isso é parecido com reverse_complement, não transcribe." },
+              { "text": "Traduz direto para proteína", "isCorrect": false, "explanation": "Tradução é translate(); transcribe só faz DNA→RNA." }
+            ],
+            "marks": 2
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Qual método, e com qual argumento, traduz um RNA em proteína parando no primeiro códon de parada?",
+          "accepted": ["translate(to_stop=True)", "rna.translate(to_stop=True)", ".translate(to_stop=True)", "translate to_stop=True"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "python",
+        "inicial": "from Bio.Seq import Seq\n\ndna = Seq(\"ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG\")\nrna = dna.transcribe()              # T -> U\nproteina = rna.translate(to_stop=True)  # para no 1º códon de parada\nprint(proteina)",
+        "teste": "# a tradução para no primeiro códon de parada (to_stop=True)"
+      }
+    },
+    {
+      "titulo": "Fita, sentido e quadro de leitura",
+      "estudo": "Aqui moram os dois erros CONCEITUAIS mais comuns — e eles não dão mensagem de erro, só resultado errado.\n\nPrimeiro, a FITA. O `transcribe()` assume que a sequência que você deu é a fita CODIFICANTE (a que vira RNA direto). Mas um gene pode estar na OUTRA fita. Se estiver, você precisa de `dna.reverse_complement()` ANTES de transcrever — senão você transcreve a fita errada e a proteína sai sem sentido. Esse é o tropeço número um de quem começa.\n\nSegundo, o QUADRO DE LEITURA. A tradução lê de três em três. Mas onde começa a contagem? A mesma sequência tem TRÊS quadros possíveis por fita (começando na 1ª, 2ª ou 3ª base). Se a sua tradução sai cheia de `*` (códons de parada) picotando a proteína no meio, o mais provável NÃO é um gene quebrado — é quadro de leitura errado. Desloque o início em uma ou duas bases e tente de novo; o quadro certo costuma dar uma proteína longa e contínua.\n\nA regra que fica: confirme a FITA (reverse_complement se o gene está na outra) e o QUADRO (três opções por fita). Muito `*` no meio quase sempre é quadro errado, não biologia quebrada.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Você traduz uma sequência e a proteína sai picotada por vários `*` (códons de parada) no meio. Qual a causa mais provável?",
+            "options": [
+              { "text": "Quadro de leitura errado — tente deslocar o início em 1 ou 2 bases", "isCorrect": true, "explanation": "Há 3 quadros por fita; o errado espalha códons de parada pelo meio." },
+              { "text": "O gene está biologicamente quebrado", "isCorrect": false, "explanation": "Possível, mas bem menos provável que simplesmente o quadro errado." },
+              { "text": "O Biopython está com bug", "isCorrect": false, "explanation": "É um erro conceitual de quadro, não da biblioteca." }
+            ],
+            "marks": 3
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "O gene que você quer traduzir está na fita OPOSTA à que você tem. O que fazer antes de transcrever?",
+            "options": [
+              { "text": "dna.reverse_complement() — pegar a outra fita no sentido 5'→3'", "isCorrect": true, "explanation": "transcribe() assume a fita codificante; se o gene está na outra, inverta-complemente antes." },
+              { "text": "Traduzir direto, o Biopython acha a fita certa", "isCorrect": false, "explanation": "Ele não adivinha; transcreve o que você deu." },
+              { "text": "Usar complement() apenas", "isCorrect": false, "explanation": "complement() não inverte o sentido; o correto é reverse_complement()." }
+            ],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Quantos quadros de leitura possíveis tem uma sequência por fita?",
+          "accepted": ["3", "três", "3 quadros", "três quadros por fita"],
+          "marks": 3
+        }
+      },
+      "sandbox": {
+        "tipo": "python",
+        "inicial": "from Bio.Seq import Seq\n\ndna = Seq(\"ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG\")\n# Se o gene está na outra fita, inverta-complemente ANTES de transcrever.\ncodificante = dna.reverse_complement()\nprint(codificante.transcribe().translate(to_stop=True))",
+        "teste": "# a escolha de fita e de quadro muda totalmente a proteína resultante"
+      }
+    },
+    {
+      "titulo": "GC, FASTA e a sequência reprodutível",
+      "estudo": "Duas tarefas do dia a dia da bioinformática fecham o básico.\n\nA primeira é medir o conteúdo GC: `gc_fraction(dna)` devolve, de 0 a 1, a fração de bases que são G ou C. Isso importa porque o par G-C tem três ligações de hidrogênio (contra duas do A-T), então sequências ricas em GC são mais estáveis e derretem a temperatura mais alta — um número que aparece em design de primers, em taxonomia, em muita coisa.\n\nA segunda é LER arquivos de verdade. As sequências vêm em arquivos FASTA, e você percorre com `for reg in SeqIO.parse(\"genes.fasta\", \"fasta\"): print(reg.id, len(reg.seq))`. Cada `reg` tem um id e a sequência; um arquivo FASTA costuma ter muitas.\n\nE o fechamento é sobre MÉTODO científico, não código: toda sequência que você usa vem de uma base pública (NCBI GenBank, UniProt) com um NÚMERO DE ACESSO. Cite esse número no relatório. Sequência sem acesso não é reproduzível — outra pessoa não consegue pegar exatamente a mesma e refazer sua análise. Em ciência, um resultado que ninguém consegue repetir não vale.\n\nA regra que fica: GC vai de 0 a 1 e fala de estabilidade; FASTA se lê com SeqIO.parse; e toda sequência carrega seu número de acesso, senão a análise não se reproduz.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "`gc_fraction(dna)` devolve 0.62. O que isso significa?",
+            "options": [
+              { "text": "62% das bases são G ou C — uma sequência relativamente estável", "isCorrect": true, "explanation": "A fração GC vai de 0 a 1; G-C tem 3 ligações de H, dando mais estabilidade." },
+              { "text": "A sequência tem 62 bases", "isCorrect": false, "explanation": "É uma fração (0 a 1), não um comprimento." },
+              { "text": "62% de chance de ser um gene", "isCorrect": false, "explanation": "GC não é probabilidade de ser gene; é composição de bases." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Por que citar o número de acesso (GenBank/UniProt) da sequência no relatório?",
+            "options": [
+              { "text": "Para a análise ser reproduzível — outra pessoa pega a MESMA sequência e refaz", "isCorrect": true, "explanation": "Sem o acesso, ninguém recupera exatamente a sequência usada." },
+              { "text": "Porque o Biopython exige o número para rodar", "isCorrect": false, "explanation": "A biblioteca não exige; é rigor científico." },
+              { "text": "Para dar crédito ao autor do software", "isCorrect": false, "explanation": "O acesso identifica a SEQUÊNCIA, não o software." }
+            ],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Qual função do Biopython você usa para percorrer as sequências de um arquivo FASTA?",
+          "accepted": ["SeqIO.parse", "SeqIO.parse()", "Bio.SeqIO.parse", "parse"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "python",
+        "inicial": "from Bio import SeqIO\nfrom Bio.SeqUtils import gc_fraction\n\nfor reg in SeqIO.parse(\"genes.fasta\", \"fasta\"):\n    print(reg.id, len(reg.seq), round(gc_fraction(reg.seq), 2))",
+        "teste": "# imprime id, comprimento e fração GC (0 a 1) de cada sequência do FASTA"
+      }
+    }
+  ]
+}
