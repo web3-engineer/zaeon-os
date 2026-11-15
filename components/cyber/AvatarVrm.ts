@@ -15,6 +15,7 @@ import { VRMLoaderPlugin, VRMUtils, type VRM, type VRMHumanBoneName } from "@pix
 import { MIXAMO_PRO_VRM, ORDEM_VRM, paiExistente } from "@/lib/cyber/vrmMapa";
 import { contornarMateriais, trocarJsonDoGlb } from "@/lib/cyber/vrmContorno";
 import { respiracao, type PoseVrm } from "@/lib/cyber/posesVrm";
+import { comTentativas, ErroHttp } from "@/lib/cyber/tentarDeNovo";
 
 /** os BYTES do VRM, baixados uma vez por URL (o founder tem 16 MB): começar cedo (`precarregarVrm`) faz o corpo
  *  próprio já estar pronto quando o avatar nasce — sem aparecer o corpo padrão antes */
@@ -22,7 +23,8 @@ const bytes = new Map<string, Promise<ArrayBuffer>>();
 export function precarregarVrm(url: string): Promise<ArrayBuffer> {
   let p = bytes.get(url);
   if (!p) {
-    p = fetch(url).then((r) => { if (!r.ok) throw new Error(`VRM ${r.status}: ${url}`); return r.arrayBuffer(); });
+    // #819: o download cortado no meio (deploy, Wi-Fi oscilando) tenta de novo, em vez de deixar a avatar sem corpo
+    p = comTentativas(() => fetch(url).then((r) => { if (!r.ok) throw new ErroHttp(r.status, url); return r.arrayBuffer(); }));
     bytes.set(url, p); p.catch(() => { if (bytes.get(url) === p) bytes.delete(url); });
   }
   return p;

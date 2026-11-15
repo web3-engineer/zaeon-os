@@ -14,6 +14,16 @@
 }
 
 {$BETA_DOMAIN} {
+	# #819: os corpos das avatares (.vrm, 12–16 MB cada) saíam SEM compressão — o Next os serve como
+	# application/octet-stream, que fica fora da lista padrão do `encode`. Comprimidos caem pra menos da metade
+	# (nina.vrm 11,9 MB → 5,2 MB). O `match` aqui troca a lista padrão SÓ para os .vrm; o `encode` sem matcher
+	# (abaixo) segue igual pro resto e é ordenado por último — não comprime o .vrm de novo (já tem Content-Encoding).
+	@vrm path *.vrm
+	encode @vrm zstd gzip {
+		match {
+			header Content-Type application/octet-stream
+		}
+	}
 	encode zstd gzip
 
 	# Health check direto no proxy (não precisa subir até o app). Num `handle` próprio: com o `handle {}` de baixo

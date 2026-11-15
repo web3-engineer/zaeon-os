@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import { existsSync } from "fs";
 import { join } from "path";
-import { _reiniciarPrecarga, aguentaPesados, manifesto, ouvirPrecarga, precarregarCyber, segurarPrecarga, urlsDosCorpos, urlsDosSons } from "./precarga";
+import { _reiniciarPrecarga, aguentaPesados, manifesto, ouvirPrecarga, precarregarCorposCyber, precarregarCyber, segurarPrecarga, urlsDosCorpos, urlsDosSons } from "./precarga";
 
 describe("precarga do cyberespaço", () => {
   beforeEach(() => _reiniciarPrecarga());
@@ -60,7 +60,7 @@ describe("precarga do cyberespaço", () => {
         sinal?.addEventListener("abort", () => { abortados.push(url); pendentes.delete(url); ok(-1); });
       });
     const espera = (ms = 5) => new Promise((r) => setTimeout(r, ms));
-    precarregarCyber({ importarCodigo: async () => ({}), ambiente: { largura: 1440 }, baixarImpl, concorrencia: 1 });
+    precarregarCyber({ importarCodigo: async () => ({}), ambiente: { largura: 1440 }, baixarImpl, concorrencia: 1, comCorpos: true });
     await espera();
     // os sons vão primeiro; termina eles até o primeiro corpo começar
     while (!comecou.some((u) => u.endsWith(".vrm"))) { const [u, fim] = [...pendentes.entries()][0]!; pendentes.delete(u); fim(); await espera(); }
@@ -82,5 +82,47 @@ describe("precarga do cyberespaço", () => {
     await espera(30);
     expect(comecou.length).toBeGreaterThan(antes);
     soltarSozinha();
+  });
+
+  describe("#819 · os corpos só quando a pessoa vai jogar", () => {
+    const espera = (ms = 5) => new Promise((r) => setTimeout(r, ms));
+    const registrar = (baixados: string[]) => async (url: string, avancar: (d: number) => void, tamanho: (n: number) => void) => {
+      baixados.push(url); tamanho(10); avancar(10); return 10;
+    };
+
+    it("a página inicial (tela grande) NÃO baixa nenhum corpo", async () => {
+      const baixados: string[] = [];
+      precarregarCyber({ importarCodigo: async () => ({}), ambiente: { largura: 1440 }, baixarImpl: registrar(baixados) });
+      await new Promise<void>((ok) => ouvirPrecarga((e) => { if (e.pronto) ok(); }));
+      expect(baixados.length).toBeGreaterThan(0);
+      expect(baixados.some((u) => u.endsWith(".vrm"))).toBe(false);
+      expect(baixados.some((u) => u.includes("fundador") || u.includes("examiner"))).toBe(false);
+    });
+
+    it("passou o mouse no Play game: os corpos baixam (uma vez só), por fora da barra", async () => {
+      const baixados: string[] = [];
+      const baixarImpl = registrar(baixados);
+      precarregarCyber({ importarCodigo: async () => ({}), ambiente: { largura: 1440 }, baixarImpl });
+      await new Promise<void>((ok) => ouvirPrecarga((e) => { if (e.pronto) ok(); }));
+      precarregarCorposCyber({ ambiente: { largura: 1440 }, baixarImpl });
+      precarregarCorposCyber({ ambiente: { largura: 1440 }, baixarImpl });   // (de novo: não repete)
+      await espera(20);
+      const corpos = baixados.filter((u) => u.endsWith(".vrm"));
+      expect(corpos.sort()).toEqual([...urlsDosCorpos()].sort());
+    });
+
+    it("antes da pré-carga começar, o pedido de jogar já entra com os corpos", async () => {
+      const baixados: string[] = [];
+      precarregarCorposCyber({ ambiente: { largura: 1440 }, baixarImpl: registrar(baixados), importarCodigo: async () => ({}) });
+      await new Promise<void>((ok) => ouvirPrecarga((e) => { if (e.pronto) ok(); }));
+      expect(baixados.filter((u) => u.endsWith(".vrm")).length).toBe(urlsDosCorpos().length);
+    });
+
+    it("no celular, nem pedindo: os corpos não baixam", async () => {
+      const baixados: string[] = [];
+      precarregarCorposCyber({ ambiente: { largura: 390 }, baixarImpl: registrar(baixados), importarCodigo: async () => ({}) });
+      await espera(20);
+      expect(baixados.some((u) => u.endsWith(".vrm"))).toBe(false);
+    });
   });
 });

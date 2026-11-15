@@ -7,6 +7,12 @@
  *   - os CORPOS VRM dos personagens (lib/cyber/estiloAvatar) — PESADOS (~166 MB no total): só em tela grande,
  *     sem `saveData` e fora de 2g/3g. No celular/economia de dados a barra cobre só o essencial.
  *
+ * #819 · os CORPOS só entram quando a pessoa MOSTRA que vai jogar (`precarregarCorposCyber`: passar o mouse, focar ou
+ * tocar no "Play game"). Antes eles baixavam em toda primeira visita da página inicial (~60 dos ~68 MB) e seguiam
+ * baixando na Sala de Estudos (a pré-carga é uma por aba) — a avatar da Sala ficava minutos "chegando" no Wi-Fi lento.
+ * A barra do botão cobre o código, os sons e as texturas; os corpos baixam por fora dela, sem travar a entrada (o engine
+ * baixa o que faltar na hora de entrar).
+ *
  * Singleton por aba: começa uma vez, quem chamar depois recebe o mesmo estado (a seção do cyberespaço, o CTA do
  * hero e a navbar podem perguntar "quanto falta?" sem reiniciar nada). Nunca lança: falha de um arquivo conta
  * como concluído (o engine tenta de novo na hora de entrar) — a barra sempre chega ao fim.
@@ -153,11 +159,15 @@ export function precarregarCyber(opts: {
   ambiente?: { largura: number; saveData?: boolean; effectiveType?: string };
   concorrencia?: number;
   baixarImpl?: typeof baixar;
+  /** #819: os corpos entram nesta pré-carga (só quem pediu pra jogar — `precarregarCorposCyber`) */
+  comCorpos?: boolean;
 } = {}): EstadoPrecarga {
   if (iniciada) return estado;
   iniciada = true;
   const amb = opts.ambiente ?? lerAmbiente();
-  const pesados = aguentaPesados(amb);
+  const pesados = opts.comCorpos === true && aguentaPesados(amb);
+  if (pesados) corposIniciados = true;
+  ultimoBaixar = opts.baixarImpl ?? baixar;
   const itens = manifesto(pesados);
   const baixarFn = opts.baixarImpl ?? baixar;
   const importar = opts.importarCodigo ?? (() => import("@/components/cyber/CosmicLounge"));
@@ -214,6 +224,41 @@ export function precarregarCyber(opts: {
   return estado;
 }
 
+let corposIniciados = false;
+let ultimoBaixar: typeof baixar = baixar;
+
+/**
+ * #819 · a pessoa mostrou que vai JOGAR (passou o mouse, focou ou tocou no "Play game"): os corpos começam a baixar.
+ * Uma vez por aba; só em máquina que aguenta (`aguentaPesados`). Se a pré-carga leve ainda não começou, começa já com
+ * os corpos; se já começou (ou acabou), os corpos vão numa fila própria, por fora da barra, respeitando a TRAVA.
+ */
+export function precarregarCorposCyber(opts: {
+  ambiente?: { largura: number; saveData?: boolean; effectiveType?: string };
+  baixarImpl?: typeof baixar;
+  importarCodigo?: () => Promise<unknown>;
+} = {}): void {
+  if (corposIniciados) return;
+  const amb = opts.ambiente ?? lerAmbiente();
+  if (!aguentaPesados(amb)) return;
+  corposIniciados = true;
+  if (!iniciada) { precarregarCyber({ ...opts, ambiente: amb, comCorpos: true }); return; }
+  const baixarFn = opts.baixarImpl ?? ultimoBaixar;
+  const fila = urlsDosCorpos().map((url) => ({ url, tipo: "corpo" as const }));
+  const trabalhador = async () => {
+    for (;;) {
+      await liberada();
+      const item = fila.shift();
+      if (!item) return;
+      const ctl = new AbortController();
+      emCurso.set(item.url, { tipo: "corpo", abortar: () => ctl.abort() });
+      const lidos = await baixarFn(item.url, () => {}, () => {}, ctl.signal);
+      emCurso.delete(item.url);
+      if (lidos < 0 || ctl.signal.aborted) fila.unshift(item);   // (cancelado pela trava: volta pro começo)
+    }
+  };
+  void Promise.all([trabalhador(), trabalhador()]);
+}
+
 function lerAmbiente(): { largura: number; saveData?: boolean; effectiveType?: string } {
   if (typeof window === "undefined") return { largura: 0 };
   const c = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
@@ -222,7 +267,7 @@ function lerAmbiente(): { largura: number; saveData?: boolean; effectiveType?: s
 
 /** só pra testes */
 export function _reiniciarPrecarga() {
-  iniciada = false;
+  iniciada = false; corposIniciados = false; ultimoBaixar = baixar;
   travas.clear(); emCurso.clear(); soltarFila = null; filaPresa = null;
   estado = { progresso: 0, pronto: false, etapa: "", comCorpos: false, bytes: 0, total: 0 };
   ouvintes.clear();
