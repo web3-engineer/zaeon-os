@@ -7,6 +7,7 @@
  * useCodeRunner, no navegador) — verde só quando o que ele escreveu de fato executa.
  */
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import EditorDoCard from "@/components/study/EditorDoCard";
 import { useCodeRunner, type Language } from "@/app/agentic-modules/codelab/useCodeRunner";
 import { snippetsDoCard, validarDigitado, programaDeTeste, type CardDeArquivo, type Snippet } from "@/lib/forja/tutorialArquivo";
@@ -14,6 +15,7 @@ import { snippetsDoCard, validarDigitado, programaDeTeste, type CardDeArquivo, t
 const LANG: Record<string, Language> = { python: "python", javascript: "javascript", typescript: "typescript", html: "html" };
 
 export default function CardArquivo({ card, cursoId, onFechar }: { card: CardDeArquivo; cursoId?: string; onFechar?: () => void }) {
+  const { t } = useTranslation();
   const flat = useMemo(() => {
     const arr: { s: Snippet; aba: number; local: number }[] = [];
     (card.abas ?? []).forEach((a, ai) => (a.snippets ?? []).forEach((s, li) => arr.push({ s, aba: ai, local: li })));
@@ -39,13 +41,13 @@ export default function CardArquivo({ card, cursoId, onFechar }: { card: CardDeA
     if (!atual) return;
     if (validarDigitado(atual.s, valor)) {
       const nf = [...feitos]; nf[idx] = true; setFeitos(nf);
-      setMsg({ ok: true, txt: "✓ certo! próximo trecho." });
+      setMsg({ ok: true, txt: t("forja.card.certo") });
       // avança pro próximo snippet não-feito
       const prox = flat.findIndex((_, i) => i > idx && !nf[i]);
       if (prox !== -1) { setIdx(prox); setValor(""); setTimeout(() => setMsg(null), 1500); }
-      else { setMsg({ ok: true, txt: "✓ arquivo completo — rode os testes!" }); setValor(""); }
+      else { setMsg({ ok: true, txt: t("forja.card.completo") }); setValor(""); }
     } else {
-      setMsg({ ok: false, txt: "ainda não bate — compare com o trecho ao lado (e digite, não cole)." });
+      setMsg({ ok: false, txt: t("forja.card.naoBate") });
     }
   };
 
@@ -66,7 +68,7 @@ export default function CardArquivo({ card, cursoId, onFechar }: { card: CardDeA
     try {
       const st = await fetch("/api/octa/github").then((r) => r.json()).catch(() => null);
       if (!st?.conectado) {
-        setPub({ fase: "erro", msg: "Conecte seu GitHub para publicar.", url: "/api/projects/github/connect" });
+        setPub({ fase: "erro", msg: t("forja.card.conecteGithub"), url: "/api/projects/github/connect" });
         return;
       }
       const r = await fetch("/api/studio/forja/publicar", {
@@ -74,11 +76,11 @@ export default function CardArquivo({ card, cursoId, onFechar }: { card: CardDeA
       });
       const j = await r.json().catch(() => null);
       if (r.ok && j?.repoUrl) { setPub({ fase: "ok", url: j.repoUrl }); return; }
-      if (r.status === 409) { setPub({ fase: "erro", msg: "Conecte seu GitHub para publicar.", url: "/api/projects/github/connect" }); return; }
-      if (r.status === 422 && Array.isArray(j?.motivos)) { setPub({ fase: "erro", msg: `Projeto ainda não está pronto: ${j.motivos.join(" ")}` }); return; }
-      setPub({ fase: "erro", msg: j?.detalhe || "Não consegui publicar agora." });
+      if (r.status === 409) { setPub({ fase: "erro", msg: t("forja.card.conecteGithub"), url: "/api/projects/github/connect" }); return; }
+      if (r.status === 422 && Array.isArray(j?.motivos)) { setPub({ fase: "erro", msg: t("forja.card.naoPronto", { motivos: j.motivos.join(" ") }) }); return; }
+      setPub({ fase: "erro", msg: j?.detalhe || t("forja.card.falhaPublicar") });
     } catch {
-      setPub({ fase: "erro", msg: "Não consegui publicar agora." });
+      setPub({ fase: "erro", msg: t("forja.card.falhaPublicar") });
     }
   };
 
@@ -88,7 +90,7 @@ export default function CardArquivo({ card, cursoId, onFechar }: { card: CardDeA
       <div className="ca-card">
         <div className="ca-head">
           <div className="ca-arq">{card.arquivo}</div>
-          {onFechar && <button className="ca-x" onClick={onFechar}>← voltar</button>}
+          {onFechar && <button className="ca-x" onClick={onFechar}>{t("forja.card.voltar")}</button>}
         </div>
         <p className="ca-fun">{card.funcao}</p>
 
@@ -121,23 +123,23 @@ export default function CardArquivo({ card, cursoId, onFechar }: { card: CardDeA
       {/* DIREITA: o editor + rodar */}
       <div className="ca-lab">
         <div className="ca-lab-top">
-          <span>Digite: <b>{atual?.s.explicacao ?? "—"}</b></span>
+          <span>{t("forja.card.digite")} <b>{atual?.s.explicacao ?? "—"}</b></span>
           <span className="ca-prog">{feitos.filter(Boolean).length}/{total}</span>
         </div>
         <div className="ca-edwrap">
-          <EditorDoCard value={valor} onChange={setValor} linguagem={card.linguagem} placeholder="digite o trecho aqui (colar está desativado)" />
+          <EditorDoCard value={valor} onChange={setValor} linguagem={card.linguagem} placeholder={t("forja.card.editorPlaceholder")} />
         </div>
         {msg && <div className={"ca-msg" + (msg.ok ? " ok" : " no")}>{msg.txt}</div>}
         <div className="ca-acoes">
-          <button className="ca-btn ghost" onClick={conferir} disabled={completo}>conferir trecho</button>
+          <button className="ca-btn ghost" onClick={conferir} disabled={completo}>{t("forja.card.conferir")}</button>
           <button className="ca-btn pill" onClick={rodar} disabled={!completo || isRunning || (precisaPy && !isPyodideReady)}>
-            {isRunning ? "rodando…" : precisaPy && !isPyodideReady ? "carregando Python…" : "rodar testes ▸"}
+            {isRunning ? t("forja.card.rodando") : precisaPy && !isPyodideReady ? t("forja.card.carregandoPython") : t("forja.card.rodarTestes")}
           </button>
         </div>
-        {pyodideError && <div className="ca-msg no">Python não carregou: {pyodideError}</div>}
+        {pyodideError && <div className="ca-msg no">{t("forja.card.pythonErro")} {pyodideError}</div>}
         {resultado && (
           <div className={"ca-res" + (resultado.passou ? " ok" : " no")}>
-            <b>{resultado.passou ? "✓ passou — o código que você digitou roda!" : "✗ ainda não passou"}</b>
+            <b>{resultado.passou ? t("forja.card.passou") : t("forja.card.naoPassou")}</b>
             <pre>{resultado.saida}</pre>
           </div>
         )}
@@ -146,15 +148,15 @@ export default function CardArquivo({ card, cursoId, onFechar }: { card: CardDeA
         {resultado?.passou && cursoId && (
           <div className="ca-pub">
             {pub.fase === "ok" ? (
-              <div className="ca-msg ok">✓ no seu GitHub! <a href={pub.url} target="_blank" rel="noreferrer" style={{ color: "#a7f3d0", textDecoration: "underline" }}>abrir repositório ↗</a></div>
+              <div className="ca-msg ok">{t("forja.card.noGithub")} <a href={pub.url} target="_blank" rel="noreferrer" style={{ color: "#a7f3d0", textDecoration: "underline" }}>{t("forja.card.abrirRepo")}</a></div>
             ) : (
               <>
                 <button className="ca-btn pill" onClick={publicar} disabled={pub.fase === "indo"}>
-                  {pub.fase === "indo" ? "subindo…" : "subir pro meu GitHub ▸"}
+                  {pub.fase === "indo" ? t("forja.card.subindo") : t("forja.card.subirGithub")}
                 </button>
                 {pub.fase === "erro" && (
                   <div className="ca-msg no">
-                    {pub.msg}{pub.url ? <> <a href={pub.url} style={{ color: "#fecaca", textDecoration: "underline" }}>conectar ↗</a></> : null}
+                    {pub.msg}{pub.url ? <> <a href={pub.url} style={{ color: "#fecaca", textDecoration: "underline" }}>{t("forja.card.conectar")}</a></> : null}
                   </div>
                 )}
               </>
@@ -222,6 +224,7 @@ function Quiz({ enunciado, opcoes }: { enunciado: string; opcoes: { texto: strin
 }
 
 function DuvidaInput({ arquivo, trecho }: { arquivo: string; trecho: string }) {
+  const { t } = useTranslation();
   const [q, setQ] = useState("");
   const [enviadas, setEnviadas] = useState<string[]>([]);
   const enviar = () => {
@@ -235,13 +238,13 @@ function DuvidaInput({ arquivo, trecho }: { arquivo: string; trecho: string }) {
     <div style={{ marginTop: 12 }}>
       <div style={{ display: "flex", gap: 8 }}>
         <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && enviar()}
-          placeholder="tirar uma dúvida sobre este trecho…"
+          placeholder={t("forja.card.duvidaPlaceholder")}
           style={{ flex: 1, boxSizing: "border-box", borderRadius: 10, border: "1px solid rgba(255,255,255,.16)", background: "rgba(3,7,15,.5)", color: "#eaf0ff", padding: "9px 12px", fontSize: 13 }} />
-        <button onClick={enviar} style={{ borderRadius: 10, border: "1px solid rgba(255,255,255,.16)", background: "rgba(255,255,255,.07)", color: "#cfe", padding: "0 14px", fontSize: 12.5, cursor: "pointer" }}>perguntar</button>
+        <button onClick={enviar} style={{ borderRadius: 10, border: "1px solid rgba(255,255,255,.16)", background: "rgba(255,255,255,.07)", color: "#cfe", padding: "0 14px", fontSize: 12.5, cursor: "pointer" }}>{t("forja.card.perguntar")}</button>
       </div>
       {enviadas.map((e, i) => (
         <div key={i} style={{ fontSize: 12, color: "rgba(205,216,255,.7)", marginTop: 6 }}>
-          <b style={{ color: "#d8c9ff" }}>você:</b> {e} <i style={{ color: "rgba(205,216,255,.45)" }}>· o tutor responde na próxima fase</i>
+          <b style={{ color: "#d8c9ff" }}>{t("forja.card.voce")}</b> {e} <i style={{ color: "rgba(205,216,255,.45)" }}>{t("forja.card.tutorProxima")}</i>
         </div>
       ))}
     </div>
