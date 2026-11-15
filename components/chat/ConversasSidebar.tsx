@@ -12,11 +12,12 @@
  * Esquerda = CONVERSAS (o fio do diálogo). Documentos (TCC, pesquisa, PDFs) ficam no topo —
  * trocar de conversa aqui nunca troca o documento aberto lá.
  */
+import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronRight, CornerDownRight, GitBranchPlus, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Search, SquarePen, Trash2,
 } from "lucide-react";
-import { arvoreDeThreads, gruposDoDia, quandoCriada, type Thread } from "@/lib/chat/threads";
+import { arvoreDeThreads, gruposDoDia, type Thread } from "@/lib/chat/threads";
 
 const chaveRecolhida = (sala: string) => `zaeon.chat.sidebar.${sala}.recolhida`;
 
@@ -25,7 +26,7 @@ const chaveRecolhida = (sala: string) => `zaeon.chat.sidebar.${sala}.recolhida`;
 const GRUPOS_RECOLHIDOS = new Set(["Últimos 30 dias", "Mais antigas"]);
 
 export default function ConversasSidebar({
-  sala, threads, ativa, ocupada, aoTrocar, aoCriar, aoFechar, aoRenomear, aoCriarSub, className = "", embutida = false, rotuloNova = "Nova conversa",
+  sala, threads, ativa, ocupada, aoTrocar, aoCriar, aoFechar, aoRenomear, aoCriarSub, className = "", embutida = false, rotuloNova,
 }: {
   /** "estudos" | "pesquisa" — cada sala lembra se a barra está recolhida. */
   sala: string;
@@ -64,6 +65,8 @@ export default function ConversasSidebar({
     });
   };
 
+  const { t: traduzir, i18n } = useTranslation();
+  const nova = rotuloNova ?? traduzir(sala === "pesquisa" ? "labSidebar.newResearch" : "labSidebar.newChat");
   const [busca, setBusca] = useState("");
   const [editando, setEditando] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState<string | null>(null);
@@ -91,11 +94,11 @@ export default function ConversasSidebar({
 
   if (recolhida && !embutida) {
     return (
-      <nav aria-label="Conversas" className={`shrink-0 w-11 flex flex-col items-center gap-1 py-2 border-r border-slate-200 dark:border-white/10 ${className}`}>
+      <nav aria-label={traduzir("labSidebar.conversations")} className={`shrink-0 w-11 flex flex-col items-center gap-1 py-2 border-r border-slate-200 dark:border-white/10 ${className}`}>
         <button type="button" onClick={alternar} className={BTN_ICONE} aria-label="Mostrar conversas" title="Mostrar conversas">
           <PanelLeftOpen size={16} />
         </button>
-        <button type="button" onClick={aoCriar} className={BTN_ICONE} aria-label="Nova conversa" title="Nova conversa">
+        <button type="button" onClick={aoCriar} className={BTN_ICONE} aria-label={traduzir("labSidebar.newChat")} title={traduzir("labSidebar.newChat")}>
           <SquarePen size={16} />
         </button>
       </nav>
@@ -159,7 +162,7 @@ export default function ConversasSidebar({
           onKeyDown={(e) => { if (e.key === "F2") { e.preventDefault(); setEditando(t.id); } }}
           aria-current={atual ? "true" : undefined}
           // #733: a data saiu do lado do nome (ela roubava o espaço); fica no título do grupo e, exata, ao passar o mouse
-          title={`${t.titulo} · ${quandoCriada(t.criadaEm)}`}
+          title={`${t.titulo} · ${new Date(t.criadaEm).toLocaleString(i18n.resolvedLanguage, { dateStyle: "short", timeStyle: "short" })}`}
           className="flex-1 min-w-0 flex items-center gap-1.5 py-1.5 text-left rounded-md outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
         >
           {ocupada === t.id && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shrink-0" aria-label="respondendo" />}
@@ -185,10 +188,10 @@ export default function ConversasSidebar({
   };
 
   return (
-    <nav aria-label="Conversas" className={`${embutida ? "flex-1 w-full" : "shrink-0 w-[248px] max-w-[70vw] border-r border-slate-200 dark:border-white/10"} flex flex-col min-h-0 ${className}`}>
+    <nav aria-label={traduzir("labSidebar.conversations")} className={`${embutida ? "flex-1 w-full" : "shrink-0 w-[248px] max-w-[70vw] border-r border-slate-200 dark:border-white/10"} flex flex-col min-h-0 ${className}`}>
       {!embutida && (
         <div className="flex items-center gap-1 px-2.5 pt-2.5 pb-1">
-          <span className="flex-1 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 dark:text-white/50">Conversas</span>
+          <span className="flex-1 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 dark:text-white/50">{traduzir("labSidebar.conversations")}</span>
           <button type="button" onClick={alternar} className={BTN_ICONE} data-gaveta-fica aria-label="Recolher conversas" title="Recolher conversas">
             <PanelLeftClose size={15} />
           </button>
@@ -198,13 +201,13 @@ export default function ConversasSidebar({
         <button
           type="button"
           onClick={aoCriar}
-          title={rotuloNova}
-          aria-label={rotuloNova}
+          title={nova}
+          aria-label={nova}
           className={`w-full flex items-center gap-2 rounded-lg font-semibold transition-colors ${embutida
             ? "px-2 py-1.5 text-[12px] text-slate-700 dark:text-white/75 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06]"
             : "px-2.5 py-2 text-[13px] text-slate-800 dark:text-white/90 border border-slate-200 dark:border-white/10 hover:border-cyan-400/60 hover:text-cyan-700 dark:hover:text-cyan-200"}`}
         >
-          {embutida ? <><Plus size={14} /> Nova</> : <><SquarePen size={14} /> {rotuloNova}</>}
+          {embutida ? <><Plus size={14} /> {traduzir("labSidebar.new")}</> : <><SquarePen size={14} /> {nova}</>}
         </button>
       </div>
       {threads.length > 4 && (
@@ -215,8 +218,8 @@ export default function ConversasSidebar({
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Escape") setBusca(""); }}
-              placeholder="Buscar conversas"
-              aria-label="Buscar conversas"
+              placeholder={traduzir("labSidebar.search")}
+              aria-label={traduzir("labSidebar.search")}
               className="flex-1 min-w-0 bg-transparent text-[12px] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/40 outline-none"
             />
           </label>
@@ -230,21 +233,20 @@ export default function ConversasSidebar({
         {/* #754: títulos viram botões — grupos de mais de 7 dias nascem recolhidos */}
         {gruposDoDia(nos).map(({ grupo, nos: doGrupo }) => {
           const temAtiva = !!ativa && doGrupo.some(({ thread, filhas }) => thread.id === ativa || filhas.some((f) => f.id === ativa));
+          const nomeGrupo = traduzir({ Hoje: "labSidebar.today", Ontem: "labSidebar.yesterday", "Últimos 7 dias": "labSidebar.week", "Últimos 30 dias": "labSidebar.month", "Mais antigas": "labSidebar.older" }[grupo]);
           const aberto = !!termo || temAtiva || (gruposAbertos[grupo] ?? !GRUPOS_RECOLHIDOS.has(grupo));
           return (
-            <section key={grupo} aria-label={grupo} className="flex flex-col gap-0.5">
+            <section key={grupo} aria-label={nomeGrupo} className="flex flex-col gap-0.5">
               {/* h3 mantém o papel de cabeçalho (acessibilidade/#733); o botão dentro é o controle de abrir/fechar */}
               <h3 className="m-0">
                 <button
                   type="button"
                   onClick={() => alternarGrupo(grupo)}
-                  // #816: abrir "Últimos 7 dias" no celular fechava a GAVETA inteira (todo botão dela fecha, menos os marcados)
-                  data-gaveta-fica
                   aria-expanded={aberto}
                   className="w-full flex items-center gap-1 px-2 pt-2 pb-0.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-white/45 hover:text-slate-700 dark:hover:text-white/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500 rounded"
                 >
                   <ChevronRight size={11} aria-hidden className={`transition-transform ${aberto ? "rotate-90" : ""}`} />
-                  {grupo}
+                  {nomeGrupo}
                 </button>
               </h3>
               {aberto && doGrupo.map(({ thread, filhas }) => (

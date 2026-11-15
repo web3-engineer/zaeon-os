@@ -4,9 +4,10 @@
  * "+ Nova" e as recentes (lidas do aparelho — lib/chat/threads). Clicar entra na sala e abre a
  * conversa (lib/chat/conversasNav). A sala aberta usa a lista completa (ConversasSidebar), por portal.
  */
+import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
-import { arvoreDeThreads, listarThreads, quandoCriada, ESCOPO_COWORK, ESCOPO_PESQUISA, type Thread } from "@/lib/chat/threads";
+import { arvoreDeThreads, listarThreads, ESCOPO_COWORK, ESCOPO_PESQUISA, type Thread } from "@/lib/chat/threads";
 import { useArmazemDaConta } from "@/lib/chat/contaNoNavegador";
 import { pedirConversa, type SalaChat } from "@/lib/chat/conversasNav";
 
@@ -16,6 +17,7 @@ export default function ConversasDaSala({ sala, onEntrar, max = 5 }: {
   onEntrar: () => void;
   max?: number;
 }) {
+  const { t: traduzir, i18n } = useTranslation();
   const [recentes, setRecentes] = useState<Thread[]>([]);
   const area = useArmazemDaConta();
   useEffect(() => {
@@ -30,12 +32,12 @@ export default function ConversasDaSala({ sala, onEntrar, max = 5 }: {
   const ir = (p: { id?: string; nova?: boolean }) => { pedirConversa({ sala, ...p }); onEntrar(); };
   return (
     <div className="flex flex-col gap-0.5">
-      <button type="button" onClick={() => ir({ nova: true })} title={sala === "pesquisa" ? "Nova pesquisa" : "Nova conversa"} aria-label={sala === "pesquisa" ? "Nova pesquisa" : "Nova conversa"}
+      <button type="button" onClick={() => ir({ nova: true })} title={traduzir(sala === "pesquisa" ? "labSidebar.newResearch" : "labSidebar.newChat")} aria-label={traduzir(sala === "pesquisa" ? "labSidebar.newResearch" : "labSidebar.newChat")}
         className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-[12px] font-semibold text-slate-700 dark:text-white/75 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06]">
-        <Plus size={14} /> Nova
+        <Plus size={14} /> {traduzir("labSidebar.new")}
       </button>
       {recentes.map((t) => (
-        <button key={t.id} type="button" onClick={() => ir({ id: t.id })} title={`${t.titulo} · ${quandoCriada(t.criadaEm)}`}
+        <button key={t.id} type="button" onClick={() => ir({ id: t.id })} title={`${t.titulo} · ${new Date(t.criadaEm).toLocaleString(i18n.resolvedLanguage, { dateStyle: "short", timeStyle: "short" })}`}
           className="flex items-center gap-1.5 text-left px-2 py-1.5 rounded-lg text-[12.5px] text-slate-600 dark:text-white/60 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-white">
           {/* #733: só o nome (a data fica no passar do mouse, como na lista do chat) */}
           <span className="flex-1 min-w-0 truncate">{t.titulo}</span>

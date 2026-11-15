@@ -576,7 +576,6 @@ function ChatDaConta({
       aoCriarSub={(id) => novaSub(id)}
       className={!slotSidebar && lateral ? "h-full" : ""}
       embutida={!!slotSidebar}
-      rotuloNova="Nova pesquisa"
     />
   ) : null;
   const ultimaResposta = (() => {

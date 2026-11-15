@@ -1,4 +1,29 @@
 {
+  "labSidebar": {
+    "study": "Salle d’étude",
+    "research": "Salle de recherche",
+    "projects": "Projets",
+    "office": "Bureau",
+    "marketplace": "Marketplace",
+    "profile": "Profil",
+    "layout": "Disposition",
+    "focus": "Focus",
+    "back": "Retour",
+    "return": "Retour au cyberespace",
+    "navigation": "Navigation",
+    "menu": "Menu",
+    "studies": "Études",
+    "new": "Nouvelle",
+    "conversations": "Conversations",
+    "search": "Rechercher des conversations",
+    "newChat": "Nouvelle conversation",
+    "newResearch": "Nouvelle recherche",
+    "today": "Aujourd’hui",
+    "yesterday": "Hier",
+    "week": "7 derniers jours",
+    "month": "30 derniers jours",
+    "older": "Plus anciennes"
+  },
     "forja": {
         "board": {
             "verResposta": "voir la réponse",

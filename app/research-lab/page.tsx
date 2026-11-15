@@ -129,7 +129,7 @@ const DESTAQUE = "bg-gradient-to-r from-violet-500/15 to-cyan-500/15 border-cyan
 const AGENTE_CHAT = { id: "aura", nome: "Aura" } as const;
 /** O nome do item: some no trilho (a pill recorta, e a opacidade evita a lasquinha de texto na borda). */
 function Rotulo({ v, children }: { v: boolean; children: React.ReactNode }) {
-  return <span className={`text-[10px] font-black uppercase whitespace-nowrap transition-opacity duration-200 ${v ? "opacity-100" : "opacity-0"}`}>{children}</span>;
+  return <span className={`min-w-0 truncate text-[13px] font-bold tracking-tight transition-opacity duration-200 ${v ? "opacity-100" : "opacity-0"}`}>{children}</span>;
 }
 import { startTour, getTour, nextTour, TOUR_STEPS } from "@/lib/onboarding/tour";
 import { capabilities } from "@/lib/runtime/mode";
@@ -2779,7 +2779,7 @@ export default function HomeworkPage({
           initial={false}
           animate={{ width: sidebarAberta ? SIDEBAR_ABERTA : SIDEBAR_FECHADA, x: celular && !gaveta ? -(SIDEBAR_ABERTA + 24) : 0 }}
           transition={{ type: "tween", duration: 0.22, ease: [0.22, 0.61, 0.36, 1] }}
-          className={`fixed ${celular ? "left-2" : isChatLeft ? "right-4" : "left-4"} z-[590] py-6 rounded-[24px] border backdrop-blur-2xl overflow-hidden transition-colors
+          className={`fixed ${celular ? "left-2" : isChatLeft ? "right-4" : "left-4"} z-[590] [font-family:var(--font-tech),sans-serif] py-6 rounded-[24px] border backdrop-blur-2xl overflow-hidden transition-colors
             bg-gradient-to-b from-sky-100/90 to-blue-200/80 border-blue-300/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]
             dark:from-transparent dark:to-transparent dark:bg-[rgba(22,22,34,0.55)] dark:border-white/10 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.6)]
             ${celular ? "dark:bg-[rgba(14,14,24,0.96)] bg-sky-50" : ""}
@@ -2855,11 +2855,11 @@ export default function HomeworkPage({
             <button
               data-tour="tab-feed"
               onClick={() => irEstudos("feed")}
-              title="Sala de Estudos"
+              title={t("labSidebar.study")}
               className={`${navItem(activeTab === "sala-de-estudos" && abaEstudos === "feed", "blue")} ${pill(sidebarAberta)}`}
             >
               <DocumentTextIcon className="w-5 h-5 shrink-0" />
-              <Rotulo v={sidebarAberta}>Sala de Estudos</Rotulo>
+              <Rotulo v={sidebarAberta}>{t("labSidebar.study")}</Rotulo>
             </button>
 
             {/* Sala de Pesquisa — no chat único ela é o MODO PESQUISA do chat da Aura (sem item próprio) */}
@@ -2868,11 +2868,11 @@ export default function HomeworkPage({
               <button
                 data-tour="pesquisa"
                 onClick={() => setActiveTab("pesquisa")}
-                title="Sala de Pesquisa"
+                title={t("labSidebar.research")}
                 className={`${navItem(activeTab === "pesquisa", "purple")} ${pill(sidebarAberta)}`}
               >
                 <AcademicCapIcon className="w-5 h-5 shrink-0" />
-                <Rotulo v={sidebarAberta}>Sala de Pesquisa</Rotulo>
+                <Rotulo v={sidebarAberta}>{t("labSidebar.research")}</Rotulo>
               </button>
               {UNIFIED && (
                 <Ramo aberto={(celular || pesquisaChatAtivo) && sidebarAberta && activeTab === "pesquisa"}>
@@ -2889,22 +2889,22 @@ export default function HomeworkPage({
             {PROJETOS && (
             <button
               onClick={() => setActiveTab("projetos")}
-              title="Projetos"
+              title={t("labSidebar.projects")}
               className={`${navItem(activeTab === "projetos", "cyan")} ${pill(sidebarAberta)}`}
             >
               <Code2 className="w-5 h-5 shrink-0" />
-              <Rotulo v={sidebarAberta}>Projetos</Rotulo>
+              <Rotulo v={sidebarAberta}>{t("labSidebar.projects")}</Rotulo>
             </button>
             )}
 
             {/* Escritório: os agentes da Zaeon como um lugar */}
             <button
               onClick={() => setActiveTab("escritorio")}
-              title="Escritório"
+              title={t("labSidebar.office")}
               className={`${navItem(activeTab === "escritorio", "cyan")} ${pill(sidebarAberta)}`}
             >
               <Building2 className="w-5 h-5 shrink-0" />
-              <Rotulo v={sidebarAberta}>Escritório</Rotulo>
+              <Rotulo v={sidebarAberta}>{t("labSidebar.office")}</Rotulo>
             </button>
 
             <div className="h-[1px] bg-slate-300 dark:bg-white/10 my-1" />
@@ -2913,22 +2913,22 @@ export default function HomeworkPage({
             <button
               data-tour="tab-community"
               onClick={() => irEstudos("community")}
-              title="Marketplace"
+              title={t("labSidebar.marketplace")}
               className={`${activeTab === "sala-de-estudos" && abaEstudos === "community" ? `${NAV_BASE} ${NAV_ACTIVE_PILL} !ring-cyan-400/50` : `${NAV_BASE} ${DESTAQUE}`} ${pill(sidebarAberta)}`}
             >
               <ShoppingBagIcon className="w-5 h-5 shrink-0" />
-              <Rotulo v={sidebarAberta}>Marketplace</Rotulo>
+              <Rotulo v={sidebarAberta}>{t("labSidebar.marketplace")}</Rotulo>
             </button>
 
             {/* Perfil */}
             <button
               data-tour="profile-tab"
               onClick={() => { setPerfilVisitado(null); setActiveTab("profile"); }}
-              title="Perfil"
+              title={t("labSidebar.profile")}
               className={`${navItem(activeTab === "profile", "violet")} ${pill(sidebarAberta)}`}
             >
               <UserCircleIcon className="w-5 h-5 shrink-0" />
-              <Rotulo v={sidebarAberta}>Perfil</Rotulo>
+              <Rotulo v={sidebarAberta}>{t("labSidebar.profile")}</Rotulo>
             </button>
           </div>
 
@@ -2938,16 +2938,16 @@ export default function HomeworkPage({
             <button
               data-tour="layout-toggle"
               onClick={() => setIsChatLeft(!isChatLeft)}
-              title="Layout"
+              title={t("labSidebar.layout")}
               className={`flex items-center gap-3 p-2 rounded-xl border border-transparent hover:bg-slate-100 dark:hover:bg-white/10 text-black dark:text-white group ${pill(sidebarAberta)}`}
             >
               <ArrowsRightLeftIcon className="w-5 h-5 shrink-0 group-hover:text-cyan-500" />
-              <Rotulo v={sidebarAberta}>Layout</Rotulo>
+              <Rotulo v={sidebarAberta}>{t("labSidebar.layout")}</Rotulo>
             </button>
             <button
               data-tour="focus-mode"
               onClick={toggleFocusMode}
-              title="Foco"
+              title={t("labSidebar.focus")}
               className={`flex items-center gap-3 p-2 rounded-xl border ${isFocusMode ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30" : "border-transparent text-black dark:text-white hover:bg-slate-100 dark:hover:bg-white/5"} ${pill(sidebarAberta)}`}
             >
               {isFocusMode ? (
@@ -2955,7 +2955,7 @@ export default function HomeworkPage({
               ) : (
                 <PowerIcon className="w-5 h-5 shrink-0" />
               )}
-              <Rotulo v={sidebarAberta}>Foco</Rotulo>
+              <Rotulo v={sidebarAberta}>{t("labSidebar.focus")}</Rotulo>
             </button>
             {/* Voltar: de volta ao cyberespaço (o lounge só é carregado enquanto se está nele). */}
             <button
@@ -2965,29 +2965,29 @@ export default function HomeworkPage({
                 if (noTablet.current || (window.parent !== window && pedeTablet(window.location.search))) { window.parent.postMessage({ type: MSG_FECHAR_TABLET }, window.location.origin); return; }
                 musica().destravar(); router.push(LOUNGE_ROTA);
               }}
-              aria-label="Voltar ao cyberespaço"
-              title="Voltar ao cyberespaço"
+              aria-label={t("labSidebar.return")}
+              title={t("labSidebar.return")}
               className={`flex items-center gap-3 p-2 rounded-xl border border-transparent text-black dark:text-white hover:bg-slate-100 dark:hover:bg-white/5 group ${pill(sidebarAberta)}`}
             >
               <ArrowUturnLeftIcon className="w-5 h-5 shrink-0 group-hover:text-cyan-500" />
-              <Rotulo v={sidebarAberta}>Voltar</Rotulo>
+              <Rotulo v={sidebarAberta}>{t("labSidebar.back")}</Rotulo>
             </button>
           </div>
           </div>
         </motion.nav>
         {/* celular: a BARRA DE BAIXO — ☰ abre a gaveta (conversas, Marketplace, layout…); o resto leva direto às salas */}
         {barraCelular && (
-          <nav aria-label="Navegação" className="fixed inset-x-0 bottom-0 z-[591] flex items-stretch justify-around border-t border-slate-200 bg-white/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#0b0b16]/95"
+          <nav aria-label={t("labSidebar.navigation")} className="fixed inset-x-0 bottom-0 z-[591] [font-family:var(--font-tech),sans-serif] flex items-stretch justify-around border-t border-slate-200 bg-white/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#0b0b16]/95"
             style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
             {[
-              { id: "menu", rotulo: "Menu", icone: <span className="text-[20px] leading-none">☰</span>, ativo: gaveta, onClick: () => setGaveta((v) => !v) },
+              { id: "menu", rotulo: t("labSidebar.menu"), icone: <span className="text-[20px] leading-none">☰</span>, ativo: gaveta, onClick: () => setGaveta((v) => !v) },
               { id: "aura", rotulo: agente.nome, icone: <span className="text-[18px] leading-none text-cyan-500 dark:text-cyan-300">⟁</span>, ativo: !gaveta && (agente.tela === "ide" ? activeTab === "octa" : activeTab === "sala-de-estudos" && abaEstudos === "meus-estudos"), onClick: () => { setGaveta(false); abrirAgente(); } },
-              { id: "estudos", rotulo: "Estudos", icone: <DocumentTextIcon className="w-5 h-5" />, ativo: !gaveta && activeTab === "sala-de-estudos" && abaEstudos === "feed", onClick: () => { setGaveta(false); irEstudos("feed"); } },
-              { id: "escritorio", rotulo: "Escritório", icone: <Building2 className="w-5 h-5" />, ativo: !gaveta && activeTab === "escritorio", onClick: () => { setGaveta(false); setActiveTab("escritorio"); } },
-              { id: "perfil", rotulo: "Perfil", icone: <UserCircleIcon className="w-5 h-5" />, ativo: !gaveta && activeTab === "profile", onClick: () => { setGaveta(false); setPerfilVisitado(null); setActiveTab("profile"); } },
+              { id: "estudos", rotulo: t("labSidebar.studies"), icone: <DocumentTextIcon className="w-5 h-5" />, ativo: !gaveta && activeTab === "sala-de-estudos" && abaEstudos === "feed", onClick: () => { setGaveta(false); irEstudos("feed"); } },
+              { id: "escritorio", rotulo: t("labSidebar.office"), icone: <Building2 className="w-5 h-5" />, ativo: !gaveta && activeTab === "escritorio", onClick: () => { setGaveta(false); setActiveTab("escritorio"); } },
+              { id: "perfil", rotulo: t("labSidebar.profile"), icone: <UserCircleIcon className="w-5 h-5" />, ativo: !gaveta && activeTab === "profile", onClick: () => { setGaveta(false); setPerfilVisitado(null); setActiveTab("profile"); } },
             ].map((b) => (
               <button key={b.id} type="button" onClick={b.onClick} aria-current={b.ativo ? "page" : undefined}
-                className={`flex min-h-[60px] flex-1 flex-col items-center justify-center gap-0.5 text-[10.5px] font-semibold transition-colors ${b.ativo ? "text-blue-600 dark:text-cyan-300" : "text-slate-500 dark:text-white/55"}`}>
+                className={`flex min-h-[60px] flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-bold tracking-tight transition-colors ${b.ativo ? "text-blue-600 dark:text-cyan-300" : "text-slate-500 dark:text-white/55"}`}>
                 {b.icone}<span className="max-w-[72px] truncate">{b.rotulo}</span>
               </button>
             ))}

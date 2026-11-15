@@ -1,4 +1,29 @@
 {
+  "labSidebar": {
+    "study": "학습실",
+    "research": "연구실",
+    "projects": "프로젝트",
+    "office": "오피스",
+    "marketplace": "마켓플레이스",
+    "profile": "프로필",
+    "layout": "레이아웃",
+    "focus": "집중",
+    "back": "뒤로",
+    "return": "사이버 공간으로 돌아가기",
+    "navigation": "탐색",
+    "menu": "메뉴",
+    "studies": "학습",
+    "new": "새로 만들기",
+    "conversations": "대화",
+    "search": "대화 검색",
+    "newChat": "새 대화",
+    "newResearch": "새 연구",
+    "today": "오늘",
+    "yesterday": "어제",
+    "week": "최근 7일",
+    "month": "최근 30일",
+    "older": "이전"
+  },
     "forja": {
         "board": {
             "verResposta": "정답 보기",

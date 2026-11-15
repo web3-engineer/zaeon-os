@@ -1,4 +1,29 @@
 {
+  "labSidebar": {
+    "study": "学习室",
+    "research": "研究室",
+    "projects": "项目",
+    "office": "办公室",
+    "marketplace": "市场",
+    "profile": "个人资料",
+    "layout": "布局",
+    "focus": "专注",
+    "back": "返回",
+    "return": "返回网络空间",
+    "navigation": "导航",
+    "menu": "菜单",
+    "studies": "学习",
+    "new": "新建",
+    "conversations": "对话",
+    "search": "搜索对话",
+    "newChat": "新建对话",
+    "newResearch": "新建研究",
+    "today": "今天",
+    "yesterday": "昨天",
+    "week": "最近 7 天",
+    "month": "最近 30 天",
+    "older": "更早"
+  },
     "forja": {
         "board": {
             "verResposta": "查看答案",
