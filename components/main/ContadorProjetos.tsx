@@ -8,8 +8,11 @@ import { useEffect, useRef, useState } from "react";
 const ALVO = 433;
 const DUR = 1700;
 
+import { useTranslation } from "react-i18next";
+
 export default function ContadorProjetos({ className = "" }: { className?: string }) {
   const [n, setN] = useState(0);
+  const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
   const feito = useRef(false);
 
@@ -47,16 +50,16 @@ export default function ContadorProjetos({ className = "" }: { className?: strin
         style={{ background: "radial-gradient(60% 60% at 50% 45%, rgba(34,211,238,0.28), rgba(139,92,246,0.14) 55%, transparent 75%)", filter: "blur(6px)", animation: "zaeon-contador-brilho 3.4s ease-in-out infinite" }} />
       <div className="relative flex items-start justify-center font-[family-name:var(--font-space)] font-black leading-none tabular-nums"
         style={{ fontSize: "clamp(3.5rem, 12vw, 7.5rem)" }}>
-        <span className="mt-[0.18em] mr-1 text-cyan-300/90" style={{ fontSize: "0.5em" }}>+</span>
-        <span className="bg-gradient-to-b from-white via-cyan-100 to-cyan-400 bg-clip-text text-transparent drop-shadow-[0_0_34px_rgba(34,211,238,0.45)]">
+        <span className="mt-[0.18em] mr-1 text-cyan-700 dark:text-cyan-300/90" style={{ fontSize: "0.5em" }}>+</span>
+        <span className="bg-gradient-to-b from-slate-950 via-cyan-900 to-cyan-700 dark:from-white dark:via-cyan-100 dark:to-cyan-400 bg-clip-text text-transparent drop-shadow-[0_0_34px_rgba(34,211,238,0.45)]">
           {n.toLocaleString("pt-BR")}
         </span>
       </div>
       {/* régua de luz */}
       <div aria-hidden className="zaeon-contador-regua mt-3 h-[2px] w-[min(240px,60%)] rounded-full"
         style={{ background: "linear-gradient(90deg, transparent, #22d3ee, #8b5cf6, transparent)", animation: "zaeon-contador-regua 3.4s ease-in-out infinite" }} />
-      <p className="mt-4 font-mono text-[12px] sm:text-[13px] uppercase tracking-[0.26em] text-cyan-100/70">
-        Projetos criados pela comunidade
+      <p className="mt-4 font-mono text-[12px] sm:text-[13px] uppercase tracking-[0.26em] text-slate-700 dark:text-cyan-100/70">
+        {t("landing.interface.projetos", { defaultValue: "" })}
       </p>
     </div>
   );

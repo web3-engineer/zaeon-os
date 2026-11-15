@@ -92,3 +92,44 @@
 .vt-foto { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; object-fit: cover; filter: saturate(.85) contrast(1.05) brightness(.85); transition: filter .35s, transform .6s cubic-bezier(.2,.8,.2,1); }
 .vt-card:hover .vt-foto { filter: saturate(1.1) contrast(1.05) brightness(1); transform: scale(1.04); }
 .vt-art:has(.vt-foto)::before { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; background: linear-gradient(180deg, transparent 55%, color-mix(in srgb, var(--cor) 22%, #030c18cc)); }
+
+.vt-card--forjada .vt-title {
+  display: block;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  font-size: clamp(11px, 2.8vw, 15px);
+  min-height: 0;
+}
+
+.vt-card--forjada .vt-spine {
+  background: linear-gradient(0deg, #67d8f2, #b8f2ff);
+  box-shadow: 0 0 12px #67d8f280;
+}
+
+.vt-card--forjada .vt-frame,
+.vt-card--forjada:hover .vt-frame {
+  animation: none;
+  background: linear-gradient(142deg, #9cafb6, #3c515e 28%, #263947 68%, #6c8590);
+  box-shadow: none;
+}
+
+.vt-card--forjada .vt-panel {
+  background: repeating-linear-gradient(0deg, #d3ebff06 0 1px, transparent 1px 4px),
+    linear-gradient(153deg, #243641, #14252d 47%, #101a24);
+}
+
+.vt-card--forjada .vt-art {
+  background: linear-gradient(144deg, #d3f6ff19, transparent 40%),
+    repeating-linear-gradient(0deg, #b9e6ee0c 0 1px, transparent 1px 18px),
+    repeating-linear-gradient(90deg, #b9e6ee0c 0 1px, transparent 1px 18px), #132329;
+  box-shadow: inset 0 0 0 1px #a6cadb25, inset 0 -8px 18px #050e1466;
+}
+
+.vt-card--forjada .vt-crt,
+.vt-card--forjada .vt-glyph::before { display: none; }
+.vt-card--forjada .vt-glyph b {
+  animation: none;
+  filter: drop-shadow(0 4px 6px #030a10a6);
+}
+
+.vt-card--forjada .vt-spine { box-shadow: inset 1px 0 #e6fbff66; }

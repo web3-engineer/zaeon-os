@@ -30,7 +30,7 @@ const SponsorsTicker = ({ opacity }: { opacity: any }) => {
         <motion.div style={{ opacity }} className="w-full py-8 overflow-hidden relative z-50">
             <div className="w-full flex justify-center mb-8">
                 <h3 className="text-center text-[11px] font-black tracking-[0.35em] text-white uppercase">
-                    <TextoRevelado texto="Financiado e apoiado por:" />
+                    <TextoRevelado texto={t("landing.premiacao.apoio", { defaultValue: "" })} />
                 </h3>
             </div>
             <div className="relative">
@@ -86,19 +86,20 @@ const SponsorCard = ({ item }: { item: { name: string; src: string; url: string 
 // outros dez -- que já vivem na sala de Plugins. Esta seção agora mostra eles.
 // ══════════════════════════════════════════════════════════════════════════
 const HireAgentsSection = () => {
+    const { t } = useTranslation();
     return (
-        <div id="mentores" className="w-full zaeon-borda mt-10 mb-20 z-40 relative bg-transparent scroll-mt-28">
+        <div id="mentores" className="w-full zaeon-borda mt-8 mb-10 md:mb-14 z-40 relative bg-transparent scroll-mt-28">
             <motion.div
                 initial={{ opacity: 0, y: 24 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6 }}
             >
-                <TituloSecao className="font-display" forte={<>Somos uma startup brasileira financiada pelo Ministério da Tecnologia e Desenvolvimento do Brasil. <span aria-hidden="true">🇧🇷</span></>} />
+                <TituloSecao className="mx-auto text-center font-display" forte={<>{t("landing.premiacao.titulo", { defaultValue: "" })}{" "} <span aria-hidden="true">🇧🇷</span></>} />
             </motion.div>
 
             {/* o card do PRODUTO VENCEDOR (Centelha, categoria blockchain) */}
-            <ProjetoVencedor className="mt-12 md:mt-16" />
+            <ProjetoVencedor className="mt-8 md:mt-10" />
 
             {/* "Financiado e apoiado por: [sponsors]" — no lugar das casas de modelos; mantém a âncora #modelos do rodapé */}
             <div id="modelos" className="scroll-mt-24 mt-6">
@@ -125,14 +126,14 @@ export default function Encryption() {
 
     return (
         <div className="w-full relative">
-            <section id="como-funciona" className="relative z-[30] w-full bg-transparent pt-12 md:pt-16 pb-12 scroll-mt-28">
+            <section id="como-funciona" className="relative z-[30] w-full bg-transparent py-12 md:py-16 scroll-mt-28">
                 <div className="zaeon-borda">
-                    <TituloSecao className="font-display" forte={t("landing.knowledge_title", "Transforme sua ideia em realidade.")} />
+                    <div className="ci-titulo-secao"><TituloSecao className="mx-auto text-center font-display" forte={t("landing.knowledge_title", { defaultValue: "" })} /></div>
 
                     {/* SUBHEADER: a TIMELINE da evolução de uma ideia (o visualizador 3D que se constrói conforme a barra
                         de progresso avança) + o contador grande de projetos da comunidade. */}
-                    <TimelineIdeia className="mt-12 md:mt-16" />
-                    <ContadorProjetos className="mt-14 md:mt-20" />
+                    <TimelineIdeia className="mt-8 md:mt-10" />
+                    <ContadorProjetos className="mt-8 md:mt-12" />
                 </div>
             </section>
 
@@ -150,7 +151,7 @@ export default function Encryption() {
 
             <SolanaPrivacidade />
 
-            <div className="relative z-40 w-full overflow-x-clip flex flex-col items-center justify-center bg-transparent pt-10">
+            <div className="relative z-40 w-full overflow-x-clip flex flex-col items-center justify-center bg-transparent">
                 <HireAgentsSection />
             </div>
         </div>

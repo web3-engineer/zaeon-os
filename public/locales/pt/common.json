@@ -454,15 +454,18 @@
         "timeline": {
             "base": "Base científica",
             "conversa": "Conversa com as IAs",
-            "blueprint": "Propriedade intelectual",
+            "blueprint": "Blueprint",
             "prototipo": "Protótipo e testes",
-            "mundo": "No mundo real"
+            "mundo": "No mundo real",
+            "propriedade_intelectual": "Propriedade intelectual",
+            "papel": "Papel científico",
+            "realidade": "No mundo real",
+            "placa": "Montagem de uma placa de circuitos"
         },
         "hero_tagline": "Mais do que conversas com chats e abas abertas, aqui você constrói <hl>ideias que viram produtos finais</hl>.",
         "knowledge_title": "Transforme sua ideia em realidade.",
-        "privacidade_titulo": "Construa sua ideia com privacidade.",
-        "privacidade_texto": "Compartilhe conhecimento com cientistas de alto nível, com credenciais verificáveis.",
-        "privacidade_fecho": "Ninguém precisa saber quem você é, nem o que você faz.",
+        "privacidade_titulo": "Privacidade, segurança e anonimato",
+        "privacidade_texto": "Trabalhe por conta própria ou compartilhe suas habilidades com o mundo. Ninguém precisa saber quem você é ou o que faz.",
         "flow": {
             "ideas": "ideias",
             "projects": "projetos",
@@ -474,20 +477,160 @@
             "summary": "Ideias viram projetos, estudos viram pesquisas e empresas viram negócios."
         },
         "blueprints": {
-            "title": "Aqui você vale o que você constrói.",
+            "title": "Conhecimento real criado por pessoas reais.",
             "image_alt": "Prévia do blueprint {{title}}",
             "tags": "Tags",
             "cta_view": "Ver no game",
             "cta_create": "Criar o seu",
             "example_badge": "Exemplo",
             "examples": {
-                "foguete": { "title": "Foguete de sondagem", "desc": "Estrutura, coifa, aletas e bocal — dimensionados a partir de artigos de propulsão." },
-                "motor": { "title": "Motor a jato", "desc": "Fan, compressor e cone de saída, com o eixo e as cotas principais." },
-                "pcb": { "title": "Placa PCB", "desc": "Processador, memórias, trilhas e conector — pronta pra ir pra fabricação." },
-                "fonte": { "title": "Fonte de alimentação", "desc": "Gabinete, ventoinha, aletas de dissipação e tomada." },
-                "bateria": { "title": "Bateria", "desc": "Célula cilíndrica com polos, indicador de carga e dimensões." },
-                "solar": { "title": "Painel solar", "desc": "Grade de células, inclinação e suporte, calculados pro sol do lugar." }
+                "foguete": {
+                    "title": "Foguete de sondagem",
+                    "desc": "Estrutura, coifa, aletas e bocal — dimensionados a partir de artigos de propulsão."
+                },
+                "motor": {
+                    "title": "Motor a jato",
+                    "desc": "Fan, compressor e cone de saída, com o eixo e as cotas principais."
+                },
+                "pcb": {
+                    "title": "Placa PCB",
+                    "desc": "Processador, memórias, trilhas e conector — pronta pra ir pra fabricação."
+                },
+                "fonte": {
+                    "title": "Fonte de alimentação",
+                    "desc": "Gabinete, ventoinha, aletas de dissipação e tomada."
+                },
+                "bateria": {
+                    "title": "Bateria",
+                    "desc": "Célula cilíndrica com polos, indicador de carga e dimensões."
+                },
+                "solar": {
+                    "title": "Painel solar",
+                    "desc": "Grade de células, inclinação e suporte, calculados pro sol do lugar."
+                }
+            },
+            "title_highlight": "SEM LIMITES"
+        },
+        "premiacao": {
+            "titulo": "Somos uma startup brasileira financiada e premiada na categoria blockchain.",
+            "apoio": "Financiado e apoiado por:",
+            "vencedor": "Produto vencedor",
+            "projeto": "<hl>Blockchain</hl> como Tecnologia de Uso Inteligente no Ceará",
+            "programa": "Programa Centelha (2ª edição).",
+            "oficial": "Apoio oficial",
+            "ministerio": "Ministério da Ciência, Tecnologia e Inovação — Governo do Brasil"
+        },
+        "solana": {
+            "talento": "Nossos agentes dão atenção especial a talentos de alto nível. De equipes que reduzem custos operacionais a especialistas em cibersegurança, quanto mais profissional o trabalho, mais empresas ele alcança. Nossos agentes cuidam das ligações de prospecção.",
+            "ranking": "Progressão no ranking",
+            "esteira": "Cartas passam pela Solana e viram SOL, depois USDC.",
+            "pessoa": "Privado · a pessoa",
+            "prova": "Público · a prova",
+            "credenciais": "Credenciais verificáveis",
+            "verificacao": "Como a verificação funciona",
+            "blockchain": "O que vai para a blockchain",
+            "diagrama": "Uma prova pública protege a identidade da pessoa."
+        },
+        "faq": {
+            "1": {
+                "q": "O que é a Zaeon hoje?",
+                "a": "Um espaço online para trabalhar em equipe, estudar e transformar conhecimento em projetos."
+            },
+            "2": {
+                "q": "O coworking é gratuito?",
+                "a": "Sim. Qualquer pessoa com uma conta pode entrar no espaço de coworking gratuitamente."
+            },
+            "3": {
+                "q": "Posso trabalhar em qualquer projeto com minha equipe?",
+                "a": "Sim. Convide sua equipe e use o espaço para colaborar no projeto de vocês."
+            },
+            "4": {
+                "q": "Posso entrar só para estudar?",
+                "a": "Sim. Você pode estudar por conta própria ou junto de outras pessoas."
+            },
+            "5": {
+                "q": "O que encontro na Vitrine?",
+                "a": "Cards de cursos, ferramentas e agentes que você pode explorar e conectar à sua conta."
+            },
+            "6": {
+                "q": "Como começo?",
+                "a": "Crie sua conta e escolha Entrar online para acessar o coworking."
             }
+        },
+        "interface": {
+            "mes": "Um mês grátis",
+            "cartao": "Sem cartão",
+            "limites": "Sem limites",
+            "revisao": "Revisão com especialistas",
+            "projetos": "Projetos criados pela comunidade",
+            "faq_rotulo": "Dúvidas frequentes",
+            "faq_titulo": "Perguntas comuns.",
+            "faq_subtitulo": "Respostas diretas.",
+            "cyber_titulo": "Coworking online e gratuito",
+            "cyber_intro": "Trabalhe em qualquer projeto com sua equipe ou encontre um espaço para estudar. O coworking é gratuito e aberto a todos.",
+            "cyber_moeda": "Trabalhe em equipe",
+            "cyber_moeda_texto": "Convide sua equipe e trabalhem juntos em qualquer projeto.",
+            "cyber_pessoas": "Estude junto",
+            "cyber_pessoas_texto": "Entre para estudar no seu ritmo ou com outras pessoas.",
+            "cyber_agentes": "Colabore ao vivo",
+            "cyber_agentes_texto": "Converse com quem está online e avance no mesmo espaço.",
+            "plataforma": "Plataforma",
+            "recursos": "Recursos",
+            "empresa": "Empresa",
+            "legal": "Legal",
+            "jogar": "Entrar online",
+            "modelos": "Modelos de IA",
+            "laboratorio": "Laboratório",
+            "mentores": "Mentores",
+            "assistentes": "Assistentes",
+            "funcionamento": "Como funciona",
+            "duvidas": "Dúvidas frequentes",
+            "noticias": "Notícias",
+            "sobre": "Sobre nós",
+            "documentacao": "Documentação",
+            "contato": "Contato",
+            "termos": "Termos de uso",
+            "privacidade": "Privacidade",
+            "resumo": "Todas as IAs num lugar só, com uma camada científica para quem estuda e pesquisa.",
+            "direitos": "Todos os direitos reservados.",
+            "lema": "Onde humanos e superinteligências se encontram."
+        },
+        "vitrine": {
+            "anterior": "Cards anteriores",
+            "proximo": "Próximos cards",
+            "agente": "Agente",
+            "gratis": "Grátis",
+            "raridade": {
+                "comum": "Comum",
+                "rara": "Rara",
+                "epica": "Épica",
+                "lendaria": "Lendária"
+            },
+            "tipo": {
+                "curso": "Curso",
+                "codigo": "Código",
+                "artigo": "Trabalho acadêmico",
+                "negocio": "Negócio",
+                "rwa": "Ativo real (RWA)",
+                "agente": "Feito por agente de IA"
+            }
+        },
+        "hero_principal": {
+            "pergunta": "Pergunte à Zaeon…",
+            "linha": "Onde o conhecimento é",
+            "termo_0": "criado",
+            "termo_1": "estudado",
+            "termo_2": "aprendido",
+            "termo_3": "entregado",
+            "termo_4": "provado",
+            "termo_5": "consultado",
+            "termo_6": "negociado",
+            "termo_7": "contratado",
+            "termo_8": "vendido",
+            "termo_9": "explorado",
+            "termo_10": "expandido",
+            "chat": "Iniciar chat",
+            "conta": "Criar minha conta"
         }
     }
 }
