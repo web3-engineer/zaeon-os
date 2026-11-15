@@ -12,13 +12,22 @@
 export const ROTA_MARKETPLACE = "/marketplace";
 export const DESTINO_MARKETPLACE = "/research-lab?tab=sala-de-estudos&aba=marketplace";
 export const EVT_MARKETPLACE = "zaeon:marketplace";
+/** o menu pede pro laboratório sair da vitrine (clicou em "Laboratório" com ela aberta — a página é a mesma) */
+export const EVT_SAIR_MARKETPLACE = "zaeon:marketplace:sair";
+export function pedirSairDoMarketplace(): void {
+  window.dispatchEvent(new Event(EVT_SAIR_MARKETPLACE));
+}
 
 /** o endereço pede o Marketplace? (`?aba=marketplace`) — PURO */
 export function pedeMarketplace(search: string): boolean {
   return new URLSearchParams(search).get("aba") === "marketplace";
 }
 
-/** o endereço com/sem o `aba=marketplace`, mantendo o resto — PURO */
+/**
+ * o endereço com/sem o Marketplace, mantendo o resto — PURO. Ao sair, tira também o `tab=sala-de-estudos` que a
+ * entrada pôs: sem ele, recarregar volta pra ÚLTIMA sala visitada (o laboratório guarda), e não pra Sala de Estudos à
+ * força. Um `tab` de outra sala fica.
+ */
 export function comMarketplace(search: string, noMarketplace: boolean): string {
   const q = new URLSearchParams(search);
   if (noMarketplace) {
@@ -26,6 +35,7 @@ export function comMarketplace(search: string, noMarketplace: boolean): string {
     q.set("aba", "marketplace");
   } else if (q.get("aba") === "marketplace") {
     q.delete("aba");
+    if (q.get("tab") === "sala-de-estudos") q.delete("tab");
   }
   const s = q.toString();
   return s ? `?${s}` : "";
@@ -50,3 +60,8 @@ export function itemAtivo(pathname: string, noMarketplace: boolean): ItemMenu | 
   if (pathname.startsWith("/news")) return "news";
   return null;
 }
+
+/** o endereço de cada item do menu (o menu do celular marca o atual por ele) */
+export const HREF_DO_ITEM: Record<ItemMenu, string> = {
+  docs: "/docs", about: "/about", laboratorio: "/research-lab", marketplace: ROTA_MARKETPLACE, news: "/news",
+};

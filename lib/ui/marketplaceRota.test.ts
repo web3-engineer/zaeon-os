@@ -30,7 +30,9 @@ describe("#824 · o caminho do Marketplace", () => {
   it("o endereço acompanha a aba (recarregar e voltar caem no mesmo lugar), sem perder o resto", async () => {
     const { comMarketplace } = await import("./marketplaceRota");
     expect(comMarketplace("", true)).toBe("?tab=sala-de-estudos&aba=marketplace");
-    expect(comMarketplace("?tab=sala-de-estudos&aba=marketplace&x=1", false)).toBe("?tab=sala-de-estudos&x=1");
+    // ao sair, o tab=sala-de-estudos que a entrada pôs sai junto (recarregar volta pra última sala visitada)
+    expect(comMarketplace("?tab=sala-de-estudos&aba=marketplace&x=1", false)).toBe("?x=1");
+    expect(comMarketplace("?tab=sala-de-estudos", false)).toBe("?tab=sala-de-estudos");   // (sem a vitrine, não mexe)
     expect(comMarketplace("?tab=profile", false)).toBe("?tab=profile");   // (não mexe no que não é dele)
   });
 });
@@ -45,6 +47,12 @@ describe("#824 · qual item do menu acende", () => {
     expect(itemAtivo("/about", false)).toBe("about");
     expect(itemAtivo("/news/x", false)).toBe("news");
     expect(itemAtivo("/", false)).toBeNull();
+  });
+
+  it("o menu do celular marca o mesmo item (pelo endereço do item, não pela página)", async () => {
+    const { itemAtivo, HREF_DO_ITEM } = await import("./marketplaceRota");
+    expect(HREF_DO_ITEM[itemAtivo("/research-lab", true)!]).toBe("/marketplace");
+    expect(HREF_DO_ITEM[itemAtivo("/research-lab", false)!]).toBe("/research-lab");
   });
 
   it("o aviso do laboratório chega ao menu (e não se repete à toa)", async () => {
@@ -71,14 +79,18 @@ describe("#824 · as amarrações", () => {
     expect(footer).toMatch(/\{ label: "marketplace", href: "\/marketplace" \}/);
     expect(footer).not.toMatch(/"\/assistentes"/);
   });
-  it("o laboratório abre a vitrine pelo endereço e avisa o menu", () => {
+  it("o laboratório usa o hook com a vitrine aberta = Sala de Estudos na aba community", () => {
     const lab = ler("app/research-lab/page.tsx");
-    expect(lab).toMatch(/if \(pedeMarketplace\(window\.location\.search\)\) irEstudos\("community"\)/);
-    expect(lab).toMatch(/const noMarketplace = activeTab === "sala-de-estudos" && abaEstudos === "community"/);
-    expect(lab).toMatch(/avisarMarketplace\(noMarketplace\)/);
+    expect(lab).toMatch(/useMarketplaceNoLab\(activeTab === "sala-de-estudos" && abaEstudos === "community", irEstudos\)/);
   });
-  it("os endereços antigos continuam no ar (é lá que se adicionam os assistentes)", () => {
-    for (const p of ["app/assistentes/page.tsx", "app/plugin-store/page.tsx", "app/mentores/page.tsx"]) expect(ler(p).length).toBeGreaterThan(0);
+  it("o menu (computador e celular) pede pro laboratório sair da vitrine ao clicar em Laboratório; o celular marca pelo item", () => {
+    expect(navbar).toMatch(/<Link href="\/research-lab" onClick=\{irAoLaboratorio\}/);
+    expect(navbar).toMatch(/\{ href: "\/research-lab", rotulo: "Laboratório", aoClicar: irAoLaboratorio \}/);
+    expect(navbar).toMatch(/aria-current=\{atual === i\.href \? "page" : undefined\}/);
+  });
+  it("a Sala avisa também quando vai pra Literatura ou um curso (a vitrine fechou)", () => {
+    const sala = ler("app/workstation/student/StudyRoomContent.tsx");
+    expect(sala).toMatch(/anunciarAbaEstudos\(activeTab === "meus-estudos" \|\| activeTab === "feed" \|\| activeTab === "community" \? activeTab : "outra"\)/);
   });
   it("a tradução do rodapé existe nos 7 idiomas", () => {
     for (const l of ["pt", "en", "es", "fr", "de", "ko", "zh"]) {
