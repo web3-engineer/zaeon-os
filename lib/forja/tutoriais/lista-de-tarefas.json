@@ -1,0 +1,44 @@
+{
+  "arquivo": "lista-de-tarefas.js",
+  "funcao": "As três operações da lista de tarefas — adicionar, marcar como feita e remover — escritas de forma IMUTÁVEL: cada uma devolve uma lista NOVA, nunca altera a antiga. É o padrão que faz a interface reagir sem bugs de estado.",
+  "ordem": 0,
+  "linguagem": "javascript",
+  "abas": [
+    {
+      "titulo": "Adicionar",
+      "snippets": [
+        { "explicacao": "Recebe a lista atual e o texto da nova tarefa; devolve uma lista NOVA com a antiga + a tarefa (feita: false).", "codigo": "function adicionar(tarefas, texto) {\n  return [...tarefas, { texto, feita: false }];\n}" }
+      ],
+      "quiz": [
+        {
+          "tipo": "escolha",
+          "enunciado": "Por que `[...tarefas, nova]` em vez de `tarefas.push(nova)`?",
+          "opcoes": [
+            { "texto": "Devolve uma lista NOVA sem alterar a antiga (imutabilidade) — a interface detecta a mudança", "correta": true, "explicacao": "`push` muda a lista no lugar; o espalhamento cria outra, o que frameworks de UI esperam pra re-renderizar." },
+            { "texto": "`push` não existe em arrays", "correta": false, "explicacao": "Existe; o ponto é não MUTAR a lista original." }
+          ],
+          "pontos": 3
+        }
+      ]
+    },
+    {
+      "titulo": "Marcar e remover",
+      "snippets": [
+        { "explicacao": "Alternar: devolve uma lista nova onde SÓ a tarefa do índice tem `feita` invertido (as outras, intactas).", "codigo": "function alternar(tarefas, indice) {\n  return tarefas.map((t, i) => (i === indice ? { ...t, feita: !t.feita } : t));\n}" },
+        { "explicacao": "Remover: devolve uma lista nova sem a tarefa daquele índice.", "codigo": "function remover(tarefas, indice) {\n  return tarefas.filter((_, i) => i !== indice);\n}" }
+      ],
+      "quiz": [
+        {
+          "tipo": "escolha",
+          "enunciado": "No `alternar`, por que `{ ...t, feita: !t.feita }` em vez de `t.feita = !t.feita`?",
+          "opcoes": [
+            { "texto": "Cria um objeto NOVO pra tarefa alterada, mantendo a imutabilidade", "correta": true, "explicacao": "Espalhar copia os campos e troca só `feita`; não mexe no objeto antigo." },
+            { "texto": "São equivalentes, é só estilo", "correta": false, "explicacao": "Não: `t.feita = ...` MUTA o objeto original; o espalhamento cria um novo." }
+          ],
+          "pontos": 3
+        }
+      ]
+    }
+  ],
+  "teste": "let t = adicionar([], \"comprar pão\");\nif (t.length !== 1 || t[0].texto !== \"comprar pão\" || t[0].feita !== false) throw new Error(\"adicionar\");\nt = alternar(t, 0);\nif (t[0].feita !== true) throw new Error(\"alternar liga\");\nt = alternar(t, 0);\nif (t[0].feita !== false) throw new Error(\"alternar desliga\");\nt = adicionar(t, \"estudar\");\nt = remover(t, 0);\nif (t.length !== 1 || t[0].texto !== \"estudar\") throw new Error(\"remover\");"
+}

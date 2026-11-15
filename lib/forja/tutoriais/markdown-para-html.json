@@ -1,0 +1,49 @@
+{
+  "arquivo": "markdown-para-html.js",
+  "funcao": "O conversor: recebe um texto em Markdown e devolve HTML. Transforma `# título` em <h1>, linhas comuns em <p> e `**negrito**` em <strong> — o coração de qualquer gerador de página a partir de texto.",
+  "ordem": 0,
+  "linguagem": "javascript",
+  "abas": [
+    {
+      "titulo": "Linha a linha",
+      "snippets": [
+        { "explicacao": "Recebe o texto Markdown inteiro.", "codigo": "function markdownParaHtml(md) {" },
+        { "explicacao": "Quebra o texto em linhas — cada linha vira um bloco.", "codigo": "  return md\n    .split(\"\\n\")" },
+        { "explicacao": "Transforma cada linha: `# ` no começo vira <h1> (tirando os dois caracteres do prefixo).", "codigo": "    .map((linha) => {\n      if (linha.startsWith(\"# \")) return \"<h1>\" + linha.slice(2) + \"</h1>\";" },
+        { "explicacao": "Linha em branco vira vazio (marcador pra remover depois); qualquer outra linha vira um parágrafo <p>.", "codigo": "      if (linha.trim() === \"\") return \"\";\n      return \"<p>\" + linha + \"</p>\";\n    })" }
+      ],
+      "quiz": [
+        {
+          "tipo": "escolha",
+          "enunciado": "Por que `linha.slice(2)` ao converter `# `?",
+          "opcoes": [
+            { "texto": "Remove os dois caracteres do prefixo (\"#\" e o espaço), deixando só o título", "correta": true, "explicacao": "`# Oi` → slice(2) → `Oi` dentro do <h1>." },
+            { "texto": "Pega os dois primeiros caracteres do título", "correta": false, "explicacao": "`slice(2)` começa no índice 2 até o fim — descarta o prefixo, não o conteúdo." }
+          ],
+          "pontos": 3
+        }
+      ]
+    },
+    {
+      "titulo": "Juntar e aplicar o negrito",
+      "snippets": [
+        { "explicacao": "Tira as linhas vazias (os marcadores em branco).", "codigo": "    .filter((x) => x !== \"\")" },
+        { "explicacao": "Junta tudo de volta num texto, uma linha por bloco.", "codigo": "    .join(\"\\n\")" },
+        { "explicacao": "Por fim, troca `**...**` por <strong>...</strong> no HTML inteiro.", "codigo": "    .replace(/\\*\\*([^*]+)\\*\\*/g, \"<strong>$1</strong>\");" },
+        { "explicacao": "Fecha a função.", "codigo": "}" }
+      ],
+      "quiz": [
+        {
+          "tipo": "escolha",
+          "enunciado": "Num conversor REAL, qual o maior risco de simplesmente colar o texto do usuário dentro de <p>…</p>?",
+          "opcoes": [
+            { "texto": "XSS: se o texto tiver HTML/script, ele é injetado na página — é preciso escapar", "correta": true, "explicacao": "Um conversor de verdade escapa `<`, `>` e `&` antes de montar as tags." },
+            { "texto": "Nenhum: texto não pode conter código", "correta": false, "explicacao": "Pode, sim — por isso escapar é obrigatório num conversor publicável." }
+          ],
+          "pontos": 3
+        }
+      ]
+    }
+  ],
+  "teste": "if (markdownParaHtml(\"# Oi\") !== \"<h1>Oi</h1>\") throw new Error(\"h1\");\nif (markdownParaHtml(\"texto **forte**\") !== \"<p>texto <strong>forte</strong></p>\") throw new Error(\"negrito\");\nif (markdownParaHtml(\"a\\n\\nb\") !== \"<p>a</p>\\n<p>b</p>\") throw new Error(\"paragrafos\");"
+}

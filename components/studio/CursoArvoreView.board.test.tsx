@@ -38,6 +38,18 @@ describe("montarBoardHtml — o board renderiza o conteúdo REAL (fim do teatro)
     expect(html).not.toContain("trecho real do repositório");
   });
 
+  it("progressão: com próximo módulo mostra 'continuar' (e o selo do passo); sem próximo, 'concluir'", () => {
+    const comProx = montarBoardHtml({ titulo: ramo.titulo, tipo: "mod", mod: ramo.titulo, repo: "r", lic, prox: "Próximo módulo", passo: "passo 1/3" });
+    expect(comProx).toContain("av-continuar");
+    expect(comProx).toContain("continuar: Próximo módulo");
+    expect(comProx).toContain("passo 1/3");
+    expect(comProx).not.toContain("concluir ✓");
+
+    const semProx = montarBoardHtml({ titulo: ramo.titulo, tipo: "mod", mod: ramo.titulo, repo: "r", lic });
+    expect(semProx).toContain("concluir ✓");
+    expect(semProx).not.toContain("av-continuar");
+  });
+
   it("nó sem lição curada (nó do grafo): espelho honesto do graphify, sem inventar prova", () => {
     const h = montarBoardHtml({ titulo: "Value", tipo: "sim", mod: "engine.py", repo: "karpathy/micrograd" });
     expect(h).toContain("símbolo mapeado pelo graphify");
