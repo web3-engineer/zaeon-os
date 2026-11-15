@@ -13,6 +13,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
+import { COWORK_SUBMERSO, KIND_SALA, LIMITE_COWORK_SUBMERSO } from "@/lib/lounge3d/tipos";
 import { triggerSafe } from "@/lib/collab/realtime";
 
 export async function POST(req: Request) {
@@ -24,19 +25,37 @@ export async function POST(req: Request) {
   });
   if (!u) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const { token } = await req.json().catch(() => ({} as any));
+  const { token, submersa } = await req.json().catch(() => ({} as any));
   if (!token || typeof token !== "string") return NextResponse.json({ error: "Token ausente" }, { status: 400 });
 
   const doc = await prisma.collabDoc.findUnique({ where: { token } });
   if (!doc) return NextResponse.json({ error: "Convite inválido" }, { status: 404 });
 
+  const salaSubmersa = doc.kind === KIND_SALA && doc.sourceType === COWORK_SUBMERSO;
+  if (submersa === true && !salaSubmersa) return NextResponse.json({ error: "Convite inválido" }, { status: 404 });
+
   // Já é membro (ou é o dono) → só abre.
   if (doc.members.includes(u.id)) return NextResponse.json({ id: doc.id, already: true });
 
-  await prisma.collabDoc.update({
-    where: { id: doc.id },
-    data: { members: { push: u.id } },
-  });
+  if (salaSubmersa) {
+    let membros = doc.members;
+    let inserido = false;
+    for (let tentativa = 0; tentativa < LIMITE_COWORK_SUBMERSO; tentativa++) {
+      if (membros.includes(u.id)) return NextResponse.json({ id: doc.id, already: true });
+      if (membros.length >= LIMITE_COWORK_SUBMERSO) return NextResponse.json({ error: "Sala cheia" }, { status: 409 });
+      const resultado = await prisma.collabDoc.updateMany({
+        where: { id: doc.id, members: { equals: membros } },
+        data: { members: { push: u.id } },
+      });
+      if (resultado.count) { inserido = true; break; }
+      const atual = await prisma.collabDoc.findUnique({ where: { id: doc.id }, select: { members: true } });
+      if (!atual) return NextResponse.json({ error: "Convite inválido" }, { status: 404 });
+      membros = atual.members;
+    }
+    if (!inserido) return NextResponse.json({ error: "Tente novamente" }, { status: 409 });
+  } else {
+    await prisma.collabDoc.update({ where: { id: doc.id }, data: { members: { push: u.id } } });
+  }
 
   // ESTUDO colaborativo: dá acesso REAL ao espaço (co-edição no componente da própria sala).
   if (doc.sourceType === "study" && doc.sourceId) {

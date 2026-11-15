@@ -10,6 +10,8 @@ import type { Ritual } from "@/lib/cyber/ritual";
 export const lounge3dOn = (): boolean => process.env.NEXT_PUBLIC_LOUNGE_3D === "1";
 
 export const KIND_SALA = "lounge_canvas";
+export const COWORK_SUBMERSO = "cowork-submerso";
+export const LIMITE_COWORK_SUBMERSO = 4;
 /** Teto de ocupantes por sala — aplicado NO SERVIDOR (auth do canal de presença). */
 /** quantas pessoas cabem numa sala ao mesmo tempo — o MUNDO do cyberespaço é uma sala só pra todo mundo (lib/lounge3d/mundo;
  *  era 5). Espelhado no Colyseus (server/colyseus/src/regras `MAX_JOGADORES`); presença do Pusher aguenta até 100 */

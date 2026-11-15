@@ -49,6 +49,7 @@ import { REGIAO_PADRAO, regiaoDoFuso, type Regiao } from "@/lib/cyber/regiaoUsua
 export type CenaCyberProps = {
   /** "janela": prévia na landing (começa no menu, sem rede). "tela": cyberespaço inteiro (já em play, com a sala). */
   modo: "janela" | "tela";
+  submersa?: boolean;
   eu: PessoaCyber;
   membros: PessoaCyber[];
   remotos?: { current: Map<string, Presenca> };
@@ -303,6 +304,8 @@ export default function CenaCyber(p: CenaCyberProps) {
       onBuracoDono: (para) => { void pedir("dj", () => setTunel({ tipo: "dono", para })); },
       onTunelDireto: (d) => { engine.current?.soltarMouse(); setTunel({ tipo: "direto", para: d.para, nome: d.nome }); },   // (os níveis: o fio cósmico / o buraco negro da sala — sem menu)
       onAviso: avisar,
+      submersa: cb.current.submersa,
+      onEmergir: () => window.location.assign("/lounge-cosmico?mundo=1"),
       nascer, nascerNa, retomar, motosLiberadas: !!p.motosLiberadas, examinerLiberado: !!p.examinerLiberado,
       skinNave: (() => { try { const q = new URLSearchParams(location.search).get("skin") ?? localStorage.getItem("zaeon.skinNave"); return ehSkinMini(q) ? q : SKIN_MINI_PADRAO; } catch { return SKIN_MINI_PADRAO; } })(),   // (a skin da SUA nave: ?skin=agradavel pra testar; a escolha do usuário fica no aparelho)
       regiao: p.regiao ?? (() => { try { const f = regiaoDoFuso(Intl.DateTimeFormat().resolvedOptions().timeZone); return f && f !== "exterior" ? f : null; } catch { return null; } })() ?? REGIAO_PADRAO,
@@ -413,7 +416,7 @@ export default function CenaCyber(p: CenaCyberProps) {
   };
   const convidar = async () => {
     if (!p.tokenConvite) return;
-    const url = `${location.origin}/lounge-cosmico?sala=${p.tokenConvite}`;
+    const url = `${location.origin}/lounge-cosmico?${p.submersa ? "" : "mundo=1&"}sala=${p.tokenConvite}`;
     try { await navigator.clipboard.writeText(url); } catch { window.prompt("Copie o link de convite:", url); }
     setCopiado(true); setTimeout(() => setCopiado(false), 2200);
   };
