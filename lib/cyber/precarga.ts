@@ -4,14 +4,15 @@
  * O que baixa (e fica no cache HTTP do navegador, de onde o engine lê depois sem baixar de novo):
  *   - o CÓDIGO do cyberespaço (chunk do CosmicLounge: three + engine), via import dinâmico;
  *   - os SONS com arquivo (lib/cyber/audio.SONS, sem os sintetizados) e as TEXTURAS (Terra, logos);
- *   - os CORPOS VRM dos personagens (lib/cyber/estiloAvatar) — PESADOS (~166 MB no total): só em tela grande,
- *     sem `saveData` e fora de 2g/3g. No celular/economia de dados a barra cobre só o essencial.
+ *   - os CORPOS VRM dos personagens (lib/cyber/estiloAvatar) — PESADOS: NÃO entram por padrão (#819, abaixo); só
+ *     quando alguém pede (`precarregarCorposCyber`) e só em tela grande, sem `saveData` e fora de 2g/3g.
  *
  * #819 · os CORPOS só entram quando a pessoa MOSTRA que vai jogar (`precarregarCorposCyber`: passar o mouse, focar ou
  * tocar no "Play game"). Antes eles baixavam em toda primeira visita da página inicial (~60 dos ~68 MB) e seguiam
  * baixando na Sala de Estudos (a pré-carga é uma por aba) — a avatar da Sala ficava minutos "chegando" no Wi-Fi lento.
- * A barra do botão cobre o código, os sons e as texturas; os corpos baixam por fora dela, sem travar a entrada (o engine
- * baixa o que faltar na hora de entrar).
+ * A barra do botão cobre o código, os sons e as texturas; os corpos baixam por fora dela, DEPOIS que ela acaba (não
+ * disputam a banda do que a entrada espera nem passam do limite de downloads), sem travar a entrada (o engine baixa o
+ * que faltar na hora de entrar — e espera o download de fundo do mesmo corpo em vez de baixar duas vezes: `corpoBaixando`).
  *
  * Singleton por aba: começa uma vez, quem chamar depois recebe o mesmo estado (a seção do cyberespaço, o CTA do
  * hero e a navbar podem perguntar "quanto falta?" sem reiniciar nada). Nunca lança: falha de um arquivo conta
@@ -113,6 +114,30 @@ function liberada(): Promise<void> {
   if (!filaPresa) filaPresa = new Promise<void>((ok) => { soltarFila = ok; });
   return filaPresa;
 }
+/** espera até não haver trava NO MOMENTO em que o trabalhador volta a rodar (uma trava nova pode chegar entre a fila
+ *  ser solta e ele acordar — sem conferir de novo, o download começaria fora da varredura do `segurarPrecarga`) */
+async function semTrava(): Promise<void> {
+  while (travas.size) await liberada();
+}
+
+/** os CORPOS sendo baixados agora (por qualquer fila daqui): resolve quando o download termina ou é cancelado */
+const corposBaixando = new Map<string, Promise<void>>();
+/** #819: o download de fundo deste corpo, se houver — o `precarregarVrm` espera ele (e lê do cache) em vez de baixar
+ *  o mesmo arquivo em paralelo */
+export const corpoBaixando = (url: string): Promise<void> | undefined => corposBaixando.get(url);
+/** baixa registrando o corpo em `corposBaixando` enquanto dura */
+function comRegistro(item: ItemPrecarga, fazer: () => Promise<number>): Promise<number> {
+  if (item.tipo !== "corpo") return fazer();
+  const p = fazer();
+  const fim = p.then(() => undefined, () => undefined);
+  corposBaixando.set(item.url, fim);
+  void fim.then(() => { if (corposBaixando.get(item.url) === fim) corposBaixando.delete(item.url); });
+  return p;
+}
+
+// a pré-carga leve (a barra) acabou — os corpos de fundo só começam depois dela
+let avisarLeve: () => void = () => {};
+let leveTerminou = new Promise<void>((ok) => { avisarLeve = ok; });
 /**
  * Segura a pré-carga enquanto uma cena 3D da PÁGINA carrega (ela tem prioridade na banda): nada novo começa e os
  * corpos em andamento voltam pra fila. Devolve o `soltar` (idempotente); `maxMs` = solta sozinha depois disso (uma
@@ -197,18 +222,18 @@ export function precarregarCyber(opts: {
     const n = Math.max(1, Math.min(opts.concorrencia ?? 3, fila.length));
     const trabalhador = async () => {
       for (;;) {
-        await liberada();   // (uma cena 3D da página carregando: espera ela)
+        await semTrava();   // (uma cena 3D da página carregando: espera ela)
         const item = fila.shift();
         if (!item) return;
         atualizar(ROTULO[item.tipo]);
         const ctl = new AbortController();
         emCurso.set(item.url, { tipo: item.tipo, abortar: () => ctl.abort() });
-        const lidos = await baixarFn(
+        const lidos = await comRegistro(item, () => baixarFn(
           item.url,
           (delta) => { if (!ctl.signal.aborted) { feito.set(item.url, (feito.get(item.url) ?? 0) + delta); atualizar(); } },
           (len) => { peso.set(item.url, len); atualizar(); },
           ctl.signal,
-        );
+        ));
         emCurso.delete(item.url);
         // CANCELADO pela trava: volta pro começo da fila (e a barra devolve o que tinha contado dele)
         if (lidos < 0 || ctl.signal.aborted) { feito.delete(item.url); fila.unshift(item); continue; }
@@ -219,6 +244,7 @@ export function precarregarCyber(opts: {
     };
     await Promise.all(Array.from({ length: n }, trabalhador));
     emitir({ progresso: 1, pronto: true, etapa: "pronto", bytes: total(), total: total() });
+    avisarLeve();
   })();
 
   return estado;
@@ -229,8 +255,9 @@ let ultimoBaixar: typeof baixar = baixar;
 
 /**
  * #819 · a pessoa mostrou que vai JOGAR (passou o mouse, focou ou tocou no "Play game"): os corpos começam a baixar.
- * Uma vez por aba; só em máquina que aguenta (`aguentaPesados`). Se a pré-carga leve ainda não começou, começa já com
- * os corpos; se já começou (ou acabou), os corpos vão numa fila própria, por fora da barra, respeitando a TRAVA.
+ * Uma vez por aba; só em máquina que aguenta (`aguentaPesados`). Os corpos vão numa fila PRÓPRIA, por fora da barra
+ * (o "Play game" libera sem esperar por eles), que só começa quando a pré-carga leve acaba — se ela ainda não tinha
+ * começado, começa agora, sem corpos. Respeita a TRAVA.
  */
 export function precarregarCorposCyber(opts: {
   ambiente?: { largura: number; saveData?: boolean; effectiveType?: string };
@@ -241,22 +268,23 @@ export function precarregarCorposCyber(opts: {
   const amb = opts.ambiente ?? lerAmbiente();
   if (!aguentaPesados(amb)) return;
   corposIniciados = true;
-  if (!iniciada) { precarregarCyber({ ...opts, ambiente: amb, comCorpos: true }); return; }
+  if (!iniciada) precarregarCyber({ ...opts, ambiente: amb });
   const baixarFn = opts.baixarImpl ?? ultimoBaixar;
-  const fila = urlsDosCorpos().map((url) => ({ url, tipo: "corpo" as const }));
+  const fila: ItemPrecarga[] = urlsDosCorpos().map((url) => ({ url, tipo: "corpo" as const }));
   const trabalhador = async () => {
     for (;;) {
-      await liberada();
+      await semTrava();
       const item = fila.shift();
       if (!item) return;
       const ctl = new AbortController();
       emCurso.set(item.url, { tipo: "corpo", abortar: () => ctl.abort() });
-      const lidos = await baixarFn(item.url, () => {}, () => {}, ctl.signal);
+      const lidos = await comRegistro(item, () => baixarFn(item.url, () => {}, () => {}, ctl.signal));
       emCurso.delete(item.url);
       if (lidos < 0 || ctl.signal.aborted) fila.unshift(item);   // (cancelado pela trava: volta pro começo)
     }
   };
-  void Promise.all([trabalhador(), trabalhador()]);
+  // (depois da barra: no máximo 2 corpos ao mesmo tempo, sem somar com os 3 da fila leve)
+  void leveTerminou.then(() => Promise.all([trabalhador(), trabalhador()]));
 }
 
 function lerAmbiente(): { largura: number; saveData?: boolean; effectiveType?: string } {
@@ -268,7 +296,8 @@ function lerAmbiente(): { largura: number; saveData?: boolean; effectiveType?: s
 /** só pra testes */
 export function _reiniciarPrecarga() {
   iniciada = false; corposIniciados = false; ultimoBaixar = baixar;
-  travas.clear(); emCurso.clear(); soltarFila = null; filaPresa = null;
+  travas.clear(); emCurso.clear(); corposBaixando.clear(); soltarFila = null; filaPresa = null;
+  leveTerminou = new Promise<void>((ok) => { avisarLeve = ok; });
   estado = { progresso: 0, pronto: false, etapa: "", comCorpos: false, bytes: 0, total: 0 };
   ouvintes.clear();
 }

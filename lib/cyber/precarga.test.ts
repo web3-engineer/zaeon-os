@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import { existsSync } from "fs";
 import { join } from "path";
-import { _reiniciarPrecarga, aguentaPesados, manifesto, ouvirPrecarga, precarregarCorposCyber, precarregarCyber, segurarPrecarga, urlsDosCorpos, urlsDosSons } from "./precarga";
+import { _reiniciarPrecarga, aguentaPesados, corpoBaixando, estadoPrecarga, manifesto, ouvirPrecarga, precarregarCorposCyber, precarregarCyber, segurarPrecarga, urlsDosCorpos, urlsDosSons } from "./precarga";
 
 describe("precarga do cyberespaço", () => {
   beforeEach(() => _reiniciarPrecarga());
@@ -111,11 +111,61 @@ describe("precarga do cyberespaço", () => {
       expect(corpos.sort()).toEqual([...urlsDosCorpos()].sort());
     });
 
-    it("antes da pré-carga começar, o pedido de jogar já entra com os corpos", async () => {
-      const baixados: string[] = [];
-      precarregarCorposCyber({ ambiente: { largura: 1440 }, baixarImpl: registrar(baixados), importarCodigo: async () => ({}) });
+    it("pedido de jogar antes da pré-carga começar: a barra NÃO espera os corpos, e eles vêm depois dela", async () => {
+      const ordem: string[] = [];
+      const corposPresos: (() => void)[] = [];
+      const baixarImpl = async (url: string, avancar: (d: number) => void, tamanho: (n: number) => void) => {
+        ordem.push(url); tamanho(10);
+        if (url.endsWith(".vrm")) await new Promise<void>((ok) => corposPresos.push(ok));   // (os corpos nunca terminam aqui)
+        avancar(10); return 10;
+      };
+      precarregarCorposCyber({ ambiente: { largura: 1440 }, baixarImpl, importarCodigo: async () => ({}) });
       await new Promise<void>((ok) => ouvirPrecarga((e) => { if (e.pronto) ok(); }));
+      expect(estadoPrecarga().comCorpos).toBe(false);
+      const leves = ordem.filter((u) => !u.endsWith(".vrm")).length;
+      expect(ordem.slice(0, leves).some((u) => u.endsWith(".vrm"))).toBe(false);   // nenhum corpo no meio da barra
+      await espera(10);
+      expect(ordem.filter((u) => u.endsWith(".vrm")).length).toBe(2);   // depois dela, 2 por vez (sem somar com a fila leve)
+      corposPresos.forEach((ok) => ok());
+    });
+
+    it("trava que chega quando a fila acabou de ser solta: o corpo não começa por fora dela", async () => {
+      const baixados: string[] = [];
+      const baixarImpl = registrar(baixados);
+      precarregarCyber({ importarCodigo: async () => ({}), ambiente: { largura: 1440 }, baixarImpl });
+      await new Promise<void>((ok) => ouvirPrecarga((e) => { if (e.pronto) ok(); }));
+      const soltar1 = segurarPrecarga();
+      precarregarCorposCyber({ ambiente: { largura: 1440 }, baixarImpl });
+      await espera(10);
+      soltar1();
+      const soltar2 = segurarPrecarga();   // (no mesmo instante: os trabalhadores ainda não acordaram)
+      await espera(10);
+      expect(baixados.some((u) => u.endsWith(".vrm"))).toBe(false);
+      soltar2();
+      await espera(20);
       expect(baixados.filter((u) => u.endsWith(".vrm")).length).toBe(urlsDosCorpos().length);
+    });
+
+    it("o corpo baixando ao fundo fica visível pro precarregarVrm esperar (sem baixar duas vezes)", async () => {
+      const terminar = new Map<string, () => void>();
+      const baixarImpl = async (url: string, avancar: (d: number) => void) => {
+        if (url.endsWith(".vrm")) await new Promise<void>((ok) => { terminar.set(url, ok); });
+        avancar(10); return 10;
+      };
+      precarregarCyber({ importarCodigo: async () => ({}), ambiente: { largura: 1440 }, baixarImpl, concorrencia: 1 });
+      await new Promise<void>((ok) => ouvirPrecarga((e) => { if (e.pronto) ok(); }));
+      precarregarCorposCyber({ ambiente: { largura: 1440 }, baixarImpl });
+      await espera(10);
+      const url = urlsDosCorpos().find((u) => corpoBaixando(u))!;
+      expect(url).toBeTruthy();
+      const p = corpoBaixando(url)!;
+      let acabou = false; void p.then(() => { acabou = true; });
+      await espera(5);
+      expect(acabou).toBe(false);
+      terminar.get(url)!();
+      await espera(5);
+      expect(acabou).toBe(true);
+      terminar.forEach((ok) => ok());
     });
 
     it("no celular, nem pedindo: os corpos não baixam", async () => {

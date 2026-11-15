@@ -34,3 +34,56 @@ export async function comTentativas<T>(
     }
   }
 }
+
+/** a conexão PAROU de mandar bytes (sem cair de vez): o navegador não rejeita, a promessa ficaria pendurada pra sempre */
+export class ErroParado extends Error {
+  constructor(url: string, ms: number) { super(`nada chegou em ${Math.round(ms / 1000)} s: ${url}`); }
+}
+
+/**
+ * Baixa os bytes inteiros, com um prazo de SILÊNCIO (`paradoMs`, padrão 30 s): o relógio volta a zero a cada pedaço que
+ * chega — um Wi-Fi lento que segue mandando nunca é cortado, só a conexão que parou. Parado → `ErroParado` (vale
+ * repetir); HTTP de erro → `ErroHttp`.
+ */
+export async function baixarBytes(
+  url: string,
+  o: { paradoMs?: number; fetchImpl?: typeof fetch } = {},
+): Promise<ArrayBuffer> {
+  const paradoMs = o.paradoMs ?? 30_000;
+  const buscar = o.fetchImpl ?? fetch;
+  const ctl = new AbortController();
+  let relogio: ReturnType<typeof setTimeout> | undefined;
+  let leitor: ReadableStreamDefaultReader<Uint8Array> | undefined;
+  // o prazo REJEITA por conta própria (não depende do fetch obedecer o abort): cada espera corre contra ele
+  let romper: (e: Error) => void = () => {};
+  const parada = new Promise<never>((_, nao) => { romper = nao; });
+  parada.catch(() => {});
+  const armar = () => {
+    clearTimeout(relogio);
+    relogio = setTimeout(() => {
+      romper(new ErroParado(url, paradoMs));
+      ctl.abort(); void leitor?.cancel().catch(() => {});   // (e solta a conexão)
+    }, paradoMs);
+  };
+  try {
+    armar();
+    const r = await Promise.race([buscar(url, { signal: ctl.signal }), parada]);
+    if (!r.ok) throw new ErroHttp(r.status, url);
+    if (!r.body) return await Promise.race([r.arrayBuffer(), parada]);
+    leitor = r.body.getReader();
+    const partes: Uint8Array[] = [];
+    let n = 0;
+    for (;;) {
+      const { done, value } = await Promise.race([leitor.read(), parada]);
+      if (done) break;
+      armar();
+      partes.push(value); n += value.byteLength;
+    }
+    const tudo = new Uint8Array(n);
+    let pos = 0;
+    for (const p of partes) { tudo.set(p, pos); pos += p.byteLength; }
+    return tudo.buffer;
+  } finally {
+    clearTimeout(relogio);
+  }
+}

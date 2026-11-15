@@ -1,6 +1,6 @@
 /** #819 · o corpo da avatar tenta de novo quando a rede corta no meio */
 import { describe, it, expect } from "vitest";
-import { comTentativas, ErroHttp, vale } from "./tentarDeNovo";
+import { baixarBytes, comTentativas, ErroHttp, ErroParado, vale } from "./tentarDeNovo";
 
 const semEspera = { esperar: async () => {} };
 
@@ -40,5 +40,46 @@ describe("comTentativas", () => {
     expect(vale(new ErroHttp(429, "x"))).toBe(true);
     expect(vale(new ErroHttp(403, "x"))).toBe(false);
     expect(vale(new DOMException("cancelado", "AbortError"))).toBe(false);
+  });
+});
+
+/** uma resposta cujo corpo manda os pedaços e depois, se `paraNoFim`, fica em silêncio pra sempre */
+function resposta(pedacos: number[], paraNoFim = false, status = 200) {
+  let i = 0;
+  const body = new ReadableStream<Uint8Array>({
+    pull(c) {
+      if (i < pedacos.length) { c.enqueue(new Uint8Array(pedacos[i++]!)); return; }
+      if (paraNoFim) return new Promise<void>(() => {});   // (a conexão parou: nada chega, nada fecha)
+      c.close();
+    },
+  });
+  return new Response(body, { status });
+}
+
+describe("baixarBytes", () => {
+  it("junta os pedaços inteiros", async () => {
+    const b = await baixarBytes("/a.vrm", { fetchImpl: (async () => resposta([3, 4])) as typeof fetch });
+    expect(b.byteLength).toBe(7);
+  });
+
+  it("conexão que PAROU de mandar bytes vira ErroParado (e vale repetir), em vez de ficar pendurada", async () => {
+    const f = (async () => resposta([5], true)) as typeof fetch;
+    const e = await baixarBytes("/a.vrm", { paradoMs: 20, fetchImpl: f }).catch((x) => x);
+    expect(e).toBeInstanceOf(ErroParado);
+    expect(vale(e)).toBe(true);
+  });
+
+  it("parada na 1ª vez, inteiro na 2ª: o comTentativas segura", async () => {
+    let vezes = 0;
+    const f = (async () => { vezes++; return vezes === 1 ? resposta([5], true) : resposta([5, 5]); }) as typeof fetch;
+    const b = await comTentativas(() => baixarBytes("/a.vrm", { paradoMs: 20, fetchImpl: f }), semEspera);
+    expect(b.byteLength).toBe(10);
+    expect(vezes).toBe(2);
+  });
+
+  it("HTTP de erro vira ErroHttp", async () => {
+    const e = await baixarBytes("/x.vrm", { fetchImpl: (async () => resposta([], false, 404)) as typeof fetch }).catch((x) => x);
+    expect(e).toBeInstanceOf(ErroHttp);
+    expect(e.status).toBe(404);
   });
 });
