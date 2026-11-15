@@ -10,6 +10,9 @@ import insertionSort from "./tutoriais/insertion-sort.json";
 import euclidesMdc from "./tutoriais/euclides-mdc.json";
 import calculadora from "./tutoriais/calculadora.json";
 import jogoDaVelha from "./tutoriais/jogo-da-velha.json";
+import quiz from "./tutoriais/quiz.json";
+import markdownParaHtml from "./tutoriais/markdown-para-html.json";
+import listaDeTarefas from "./tutoriais/lista-de-tarefas.json";
 
 // cast via unknown (padrão do understand.sample.json): o JSON tem tipos literais que o import alarga.
 const card = (j: unknown) => j as unknown as CardDeArquivo;
@@ -21,6 +24,12 @@ export const TUTORIAIS: Record<string, CardDeArquivo[]> = {
   "calculadora": [card(calculadora)],
   // Jogo da velha (iniciante): a regra que decide o vencedor — lógica pura em JavaScript.
   "jogo-da-velha": [card(jogoDaVelha)],
+  // Quiz (iniciante): a pontuação (acertos/total), separada das telas.
+  "quiz": [card(quiz)],
+  // Markdown → HTML (iniciante): o mini conversor (títulos, parágrafos, negrito).
+  "markdown-para-html": [card(markdownParaHtml)],
+  // Lista de tarefas (iniciante): adicionar/marcar/remover de forma imutável.
+  "lista-de-tarefas": [card(listaDeTarefas)],
 };
 
 /** Os cards de tutorial de arquivo de um curso (vazio se ainda não houver). PURA. */
