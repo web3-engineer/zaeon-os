@@ -196,8 +196,8 @@ const StarBackground: React.FC<{ central?: boolean }> = ({ central = false }) =>
             if (central) {
                 ctx.clearRect(0, 0, width, height);
                 const tempoCena = animacaoDaCena?.currentTime;
-                const tempoDoFundo = (typeof tempoCena === "number" ? tempoCena : agora - inicio) % 58000;
-                ciclo = Math.max(0, tempoDoFundo - 30000);
+                const tempoDoFundo = (typeof tempoCena === "number" ? tempoCena : agora - inicio) % 83000;
+                ciclo = Math.max(0, tempoDoFundo - 55000);
             } else {
                 fundo(fatorLerp(RASTRO, passo));
                 relogio = avancarFaseSemGlobo(relogio, passo);

@@ -1,5 +1,6 @@
 import StarBackground from "@/components/main/star-background";
 import BuracoNegroLanding from "./BuracoNegroLanding";
+import NaturezaAquario from "./NaturezaAquario";
 import styles from "./hero-aquario.module.css";
 
 const centros = [{ x: 0, y: 0 }, ...[1, 2].flatMap((anel) =>
@@ -20,6 +21,7 @@ export default function CiclosAquario() {
         </div>
         <StarBackground central />
       </div>
+      <NaturezaAquario />
       <div className={styles.anatomia}>
         <div className={styles.corpoAnatomico}>
           <i className={styles.anatomiaFrente} />
