@@ -9,7 +9,11 @@ describe("assuntoDaImagem", () => {
     ["faça uma ilustração colorida do coração humano por dentro, com as partes nas cores dos livros de anatomia", "coração humano por dentro"],
     ["crie uma ilustração da mitocôndria", "mitocôndria"],
     ["me dá uma foto de um tucano, por favor", "tucano"],
-    ["desenhe a anatomia do coração humano", "desenhe a anatomia do coração humano"],
+    // #816: o verbo de desenhar já diz que é imagem
+    ["desenhe a anatomia do coração humano", "anatomia do coração humano"],
+    ["por favor, desenhe para mim um tucano", "tucano"],
+    ["ilustre o ciclo da água", "ciclo da água"],
+    ["faça a lista de capitais", "faça a lista de capitais"],
     ["sistema solar", "sistema solar"],
   ])("%s → %s", (pedido, assunto) => expect(assuntoDaImagem(pedido)).toBe(assunto));
 

@@ -176,7 +176,9 @@ function enxugarArtefatos(m: Msg): Msg {
   if (m.role !== "assistant" || (!m.studioBlock && !m.blocosExtra && !m.desenhando)) return m;
   // diagrama e aula são só um id (o conteúdo mora no servidor) — sobrevivem ao reload, sem o `data`
   // #749: a IMAGEM também (o arquivo mora no servidor) — sem o dataUrl, que é pesado; volta por /api/studio/<id>/file
-  const leve = (b?: StudioBlockData) => (b && (b.studioKind === "diagram" || b.studioKind === "aula" || b.studioKind === "cad" || b.studioKind === "image") && b.artifactId ? { ...b, data: null, dataUrl: undefined } : undefined);
+  // #816: e a ANATOMIA (o estado da cena mora no artefato; o cartão busca por /api/studio/<id>). Sem ela aqui, o cartão
+  // sumia ao recarregar: a tela usa esta cópia primeiro e só pede ao servidor quando ela está vazia
+  const leve = (b?: StudioBlockData) => (b && (b.studioKind === "diagram" || b.studioKind === "aula" || b.studioKind === "cad" || b.studioKind === "image" || b.studioKind === "anatomia") && b.artifactId ? { ...b, data: null, dataUrl: undefined } : undefined);
   const extras = (m.blocosExtra ?? []).map(leve).filter(Boolean) as StudioBlockData[];
   return { ...m, studioBlock: leve(m.studioBlock), blocosExtra: extras.length ? extras : undefined, desenhando: undefined };
 }

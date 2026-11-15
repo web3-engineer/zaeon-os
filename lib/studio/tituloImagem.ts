@@ -14,10 +14,20 @@ const PEDIDO = new RegExp(
   String.raw`\s+(?:(?:de|do|da|dos|das|sobre|mostrando|com)\s+)?(?:(?:uma?|o|a|os|as)\s+)?`,
   "i",
 );
+/**
+ * #816 · o verbo de DESENHAR já diz que é imagem, sem o "imagem de": "desenhe a anatomia do coração humano" saía
+ * "Imagem — desenhe a anatomia do coração humano". Só os verbos de desenho — "faça a lista…" não é pedido de imagem.
+ */
+const DESENHE = new RegExp(
+  String.raw`^(?:(?:por favor|pfv|pf)[,\s]+)?(?:me\s+)?(?:desenhe|desenha|desenhar|ilustre|ilustra|ilustrar|pinte|pinta|pintar)\s+` +
+  String.raw`(?:(?:pra|para)\s+mim\s+)?(?:(?:uma?|o|a|os|as)\s+)?`,
+  "i",
+);
 
 export function assuntoDaImagem(pedido: string): string {
   const base = String(pedido || "").replace(/^imagem\s*[:—–-]\s*/i, "").replace(/\s+/g, " ").trim();
   let t = base.replace(PEDIDO, "");
+  if (t === base) t = base.replace(DESENHE, "");
   t = t.split(/[,;]/)[0]!.replace(/\b(?:por favor|pfv)\b/gi, "").replace(/[.!?\s]+$/, "").trim();
   if (t.length < 3) t = base;
   return t.length > 60 ? `${t.slice(0, 59).trimEnd()}…` : t;
