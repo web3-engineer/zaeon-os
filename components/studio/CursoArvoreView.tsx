@@ -55,8 +55,8 @@ const questaoHtml = (q: QuestaoProva) => {
  * honesto do graphify) e Teste (as provas reais). PURO e exportado — o board só injeta e liga eventos.
  * NUNCA fabrica conteúdo: sem lição curada e sem grafo, mostra só o que há, sem inventar código/quiz.
  */
-export function montarBoardHtml(args: { titulo: string; tipo: Nav["tipo"]; mod: string; repo: string; resumo?: string; lic?: LicaoCurada }): string {
-  const { titulo, tipo, mod, repo, resumo, lic } = args;
+export function montarBoardHtml(args: { titulo: string; tipo: Nav["tipo"]; mod: string; repo: string; resumo?: string; lic?: LicaoCurada; prox?: string; passo?: string }): string {
+  const { titulo, tipo, mod, repo, resumo, lic, prox, passo } = args;
   const base = String(mod).split(".py")[0];
   const tag = tipo === "sim" ? "conceito" : tipo === "mod" ? "módulo" : "repositório";
   const temResumo = (resumo || "").trim().length > 3;
@@ -72,58 +72,87 @@ export function montarBoardHtml(args: { titulo: string; tipo: Nav["tipo"]; mod: 
   let testeHtml = "";
   if (lic?.prova?.length) testeHtml += '<h3>Teste</h3>' + lic.prova.map(questaoHtml).join("");
   if (lic?.desafio) testeHtml += '<h3>Desafio</h3>' + questaoHtml(lic.desafio);
-  return '<div class="av-card"><div class="tag">' + tag + " · " + repo + '</div><h1>' + esc(titulo) + "</h1>"
+  const avanco = prox
+    ? '<button class="av-btn av-pill av-continuar">continuar: ' + esc(cut(prox, 22)) + ' ▸</button>'
+    : '<button class="av-btn av-pill av-voltar">concluir ✓</button>';
+  const selo = passo ? '<span class="av-passo">' + esc(passo) + "</span>" : "";
+  return '<div class="av-card"><div class="tag">' + selo + tag + " · " + repo + '</div><h1>' + esc(titulo) + "</h1>"
     + '<h3>Aprendizado</h3>' + aprendHtml
     + codigoHtml
     + testeHtml
-    + '<div class="av-nav"><button class="av-btn av-ghost av-voltar">‹ voltar à árvore</button><button class="av-btn av-pill av-voltar">concluir ✓</button></div></div>';
+    + '<div class="av-nav"><button class="av-btn av-ghost av-voltar">‹ voltar à árvore</button>' + avanco + '</div></div>';
 }
 
 const CSS = `
-.av-root{position:absolute;inset:0;overflow:hidden;color:#eaf0ff;font-family:ui-sans-serif,system-ui,-apple-system,"SF Pro Display",Segoe UI,Roboto,sans-serif;
-  background:radial-gradient(1100px 760px at 20% 6%,rgba(37,99,235,.22),transparent 60%),radial-gradient(1000px 820px at 84% 90%,rgba(34,211,238,.16),transparent 62%),radial-gradient(760px 560px at 60% 42%,rgba(56,96,180,.14),transparent 60%),#04070f}
+.av-root{position:absolute;inset:0;overflow:hidden;font-family:ui-sans-serif,system-ui,-apple-system,"SF Pro Display",Segoe UI,Roboto,sans-serif;
+  --ink:#0b1b3a;--ink2:rgba(17,32,66,.92);--soft:rgba(30,52,96,.62);
+  --panel:rgba(255,255,255,.74);--panel-br:rgba(30,64,140,.16);
+  --chip:rgba(255,255,255,.72);--chip-br:rgba(30,64,140,.18);
+  --code-bg:rgba(9,20,44,.94);--code-ink:#dbe7ff;--code-br:rgba(120,160,230,.22);
+  --scrim:rgba(14,26,54,.34);--accent:#2563eb;
+  --flow:linear-gradient(90deg,#2563eb,#38bdf8 55%,#06b6d4);
+  --bg:radial-gradient(1100px 760px at 18% 4%,rgba(37,99,235,.16),transparent 60%),radial-gradient(1000px 820px at 86% 92%,rgba(6,182,212,.13),transparent 62%),linear-gradient(180deg,#eef4fe,#e6eefb);
+  color:var(--ink);background:var(--bg)}
+.dark .av-root{--ink:#eaf0ff;--ink2:rgba(234,240,255,.9);--soft:rgba(214,224,255,.6);
+  --panel:rgba(255,255,255,.07);--panel-br:rgba(255,255,255,.18);
+  --chip:rgba(255,255,255,.06);--chip-br:rgba(255,255,255,.14);
+  --code-bg:rgba(3,7,15,.55);--code-ink:#cdd9ec;--code-br:rgba(255,255,255,.12);
+  --scrim:rgba(6,8,20,.5);--accent:#60a5fa;
+  --flow:linear-gradient(90deg,#3b82f6,#38bdf8 50%,#22d3ee);
+  --bg:radial-gradient(1100px 760px at 20% 6%,rgba(37,99,235,.22),transparent 60%),radial-gradient(1000px 820px at 84% 90%,rgba(34,211,238,.16),transparent 62%),radial-gradient(760px 560px at 60% 42%,rgba(56,96,180,.14),transparent 60%),#04070f}
 .av-head{position:absolute;left:20px;top:14px;z-index:9}
-.av-repo{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:rgba(190,205,255,.75)}
-.av-tit{font-size:17px;font-weight:800;letter-spacing:-.02em;margin-top:2px;background:linear-gradient(90deg,#fff,#d8c9ff 60%,#aaf0ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.av-repo{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--soft)}
+.av-tit{font-size:17px;font-weight:800;letter-spacing:-.02em;margin-top:2px;background:var(--flow);-webkit-background-clip:text;background-clip:text;color:transparent}
 .av-crumbs{position:absolute;left:20px;top:54px;z-index:9;display:flex;gap:7px;flex-wrap:wrap;max-width:66%;font-size:12px}
-.av-crumb{color:rgba(230,236,255,.82);cursor:pointer;padding:4px 12px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(16px)}
-.av-crumb:hover{background:rgba(255,255,255,.12)}.av-crumb.cur{color:#fff;font-weight:700;background:linear-gradient(90deg,rgba(139,92,246,.5),rgba(34,211,238,.45));border-color:rgba(255,255,255,.3)}
-.av-hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);font-size:11px;color:rgba(214,224,255,.6);z-index:9;text-align:center}
-.av-close{position:absolute;right:16px;top:16px;z-index:10;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.08);color:rgba(255,255,255,.8);border-radius:999px;padding:5px 13px;font-size:12px;cursor:pointer;backdrop-filter:blur(16px)}
-.av-close:hover{background:rgba(255,255,255,.14)}
+.av-crumb{color:var(--ink2);cursor:pointer;padding:4px 12px;border-radius:999px;background:var(--chip);border:1px solid var(--chip-br);backdrop-filter:blur(16px)}
+.av-crumb:hover{filter:brightness(1.06)}.av-crumb.cur{color:#fff;font-weight:700;background:var(--flow);border-color:transparent}
+.av-hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);font-size:11px;color:var(--soft);z-index:9;text-align:center}
+.av-close{position:absolute;right:16px;top:16px;z-index:10;border:1px solid var(--chip-br);background:var(--chip);color:var(--ink2);border-radius:999px;padding:5px 13px;font-size:12px;cursor:pointer;backdrop-filter:blur(16px)}
+.av-close:hover{filter:brightness(1.06)}
 .av-svg{position:absolute;inset:0;height:100%;width:100%;touch-action:none;transition:opacity .4s ease}.av-svg.fade{opacity:0}
 .av-svg text{user-select:none;pointer-events:none}.av-node{cursor:pointer}
-.av-halo{animation:avbr 2.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}@keyframes avbr{0%,100%{opacity:.25;transform:scale(1)}50%{opacity:.6;transform:scale(1.4)}}
-.av-gv{width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;border-radius:14px;padding:6px 11px;background:rgba(255,255,255,.08);backdrop-filter:blur(22px) saturate(1.4);border:1px solid rgba(255,255,255,.2);box-shadow:0 8px 22px rgba(4,8,20,.4),inset 0 1px 0 rgba(255,255,255,.25)}
-.av-gv b{font-size:12px;color:#fff;line-height:1.1}.av-gv small{font-size:9.5px;color:rgba(205,216,255,.62)}
-.av-cue{width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:999px;font-size:10.5px;font-weight:700;color:#fff;background:linear-gradient(90deg,#8b5cf6,#e879f9 50%,#22d3ee);box-shadow:0 6px 16px rgba(139,92,246,.45)}
-.av-board{position:absolute;inset:0;z-index:12;opacity:0;visibility:hidden;transition:opacity .45s ease;display:grid;place-items:center;background:rgba(6,8,20,.5)}
+.av-halo{animation:avbr 2.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}@keyframes avbr{0%,100%{opacity:.3;transform:scale(1)}50%{opacity:.7;transform:scale(1.4)}}
+.av-trail{animation:avdash 18s linear infinite}@keyframes avdash{to{stroke-dashoffset:-240}}
+.av-gv{width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;border-radius:14px;padding:6px 11px;background:var(--panel);backdrop-filter:blur(22px) saturate(1.4);border:1px solid var(--panel-br);box-shadow:0 8px 22px rgba(10,30,70,.18),inset 0 1px 0 rgba(255,255,255,.3)}
+.av-gv b{font-size:12px;color:var(--ink);line-height:1.1;display:flex;align-items:center;gap:6px}.av-gv small{font-size:9.5px;color:var(--soft)}
+.av-step{font-style:normal;font-size:10px;font-weight:800;color:#fff;background:var(--flow);min-width:16px;height:16px;padding:0 4px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(37,99,235,.5)}
+.av-cue{width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:999px;font-size:10.5px;font-weight:700;color:#fff;background:var(--flow);box-shadow:0 6px 16px rgba(37,99,235,.5)}
+.av-board{position:absolute;inset:0;z-index:12;opacity:0;visibility:hidden;transition:opacity .45s ease;display:grid;place-items:center;background:var(--scrim)}
 .av-board.on{opacity:1;visibility:visible}
-.av-card{width:min(720px,92%);max-height:88%;overflow:auto;border-radius:30px;padding:28px 30px;background:rgba(255,255,255,.07);backdrop-filter:blur(40px) saturate(1.5);border:1px solid rgba(255,255,255,.18);box-shadow:0 30px 90px rgba(4,6,16,.6),inset 0 1px 0 rgba(255,255,255,.25)}
-.av-card .tag{font-family:ui-monospace,monospace;font-size:11px;color:#c9b8ff}
-.av-card h1{font-size:23px;margin:6px 0 2px;color:#fff}
-.av-card h3{font-size:12px;text-transform:uppercase;letter-spacing:.1em;margin:20px 0 8px;background:linear-gradient(90deg,#e879f9,#22d3ee);-webkit-background-clip:text;background-clip:text;color:transparent}
-.av-card p{font-size:15px;line-height:1.62;color:rgba(234,240,255,.9)}
-.av-code{border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.12);background:rgba(3,7,15,.55)}
+.av-card{width:min(720px,92%);max-height:88%;overflow:auto;border-radius:30px;padding:28px 30px;background:var(--panel);backdrop-filter:blur(40px) saturate(1.5);border:1px solid var(--panel-br);box-shadow:0 30px 90px rgba(8,20,50,.35),inset 0 1px 0 rgba(255,255,255,.3)}
+.av-card .tag{font-family:ui-monospace,monospace;font-size:11px;color:var(--accent);display:flex;align-items:center;gap:8px}
+.av-passo{font-family:ui-sans-serif,system-ui;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#fff;background:var(--flow);padding:3px 9px;border-radius:999px;box-shadow:0 2px 10px rgba(37,99,235,.45)}
+.av-card h1{font-size:23px;margin:10px 0 2px;color:var(--ink)}
+.av-card h3{font-size:12px;text-transform:uppercase;letter-spacing:.1em;margin:20px 0 8px;background:var(--flow);-webkit-background-clip:text;background-clip:text;color:transparent}
+.av-card p{font-size:15px;line-height:1.62;color:var(--ink2)}
+.av-code{border-radius:16px;overflow:hidden;border:1px solid var(--code-br);background:var(--code-bg)}
 .av-code .bar{display:flex;align-items:center;gap:7px;padding:8px 13px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.08);font-family:ui-monospace,monospace;font-size:11px;color:#9fb3d1}
 .av-code .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
-.av-code pre{margin:0;background:transparent;padding:14px 16px;color:#cdd9ec;white-space:pre;overflow:auto;font-family:ui-monospace,monospace;font-size:12.5px}
-.av-kw{color:#c792ea}.av-str{color:#a5e88d}.av-com{color:#6b86a6;font-style:italic}.av-num{color:#f78c6c}
+.av-code pre{margin:0;background:transparent;padding:14px 16px;color:var(--code-ink);white-space:pre;overflow:auto;font-family:ui-monospace,monospace;font-size:12.5px}
+.av-kw{color:#93b4ff}.av-str{color:#6ee7a8}.av-com{color:#7f97b8;font-style:italic}.av-num{color:#f6a56c}
 .av-quiz{margin-top:8px;display:flex;flex-direction:column;gap:9px}
-.av-opt{border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:11px 14px;cursor:pointer;font-size:14px;background:rgba(255,255,255,.05);transition:.15s}
-.av-opt:hover{border-color:rgba(255,255,255,.3);background:rgba(255,255,255,.09)}
-.av-opt.ok{border-color:rgba(110,231,183,.7);background:rgba(110,231,183,.14);color:#d1fae5}.av-opt.no{border-color:rgba(248,113,113,.6);background:rgba(248,113,113,.12)}
-.av-nav{display:flex;justify-content:space-between;margin-top:22px}
-.av-btn{color:#fff;border-radius:999px;padding:9px 18px;font-size:13px;cursor:pointer}
-.av-ghost{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(16px)}.av-ghost:hover{background:rgba(255,255,255,.14)}
-.av-pill{background:linear-gradient(90deg,#8b5cf6,#e879f9 48%,#22d3ee);border:0;box-shadow:0 8px 24px rgba(139,92,246,.42),inset 0 1px 0 rgba(255,255,255,.35);font-weight:700}
-.av-card b,.av-card strong{color:#d8c9ff}
-.av-card code{font-family:ui-monospace,Menlo,monospace;font-size:.9em;background:rgba(124,160,255,.14);border:1px solid rgba(255,255,255,.08);padding:1px 6px;border-radius:6px;color:#a5e88d}
-.av-qbloco{margin-top:14px}.av-qperg{font-size:15px;line-height:1.5;color:rgba(234,240,255,.92);margin:0 0 9px}
-.av-in{width:100%;box-sizing:border-box;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(3,7,15,.5);color:#eaf0ff;padding:10px 13px;font-size:14px;font-family:ui-monospace,monospace}
-.av-ver{margin-top:9px;color:rgba(230,236,255,.85);background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:6px 14px;font-size:12.5px;cursor:pointer}
-.av-ver:hover{background:rgba(255,255,255,.13)}
-.av-exp{font-size:13.5px;line-height:1.55;color:rgba(205,216,255,.82)}.av-exp p{font-size:13.5px;margin:9px 0 0}
+.av-opt{border:1px solid var(--chip-br);border-radius:14px;padding:11px 14px;cursor:pointer;font-size:14px;color:var(--ink2);background:var(--chip);transition:.15s}
+.av-opt:hover{filter:brightness(1.05)}
+.av-opt.ok{border-color:rgba(16,185,129,.7);background:rgba(16,185,129,.16);color:#065f46}.av-opt.no{border-color:rgba(239,68,68,.6);background:rgba(239,68,68,.12)}
+.dark .av-opt.ok{color:#d1fae5}.dark .av-opt.no{color:#fecaca}
+.av-nav{display:flex;justify-content:space-between;gap:10px;margin-top:22px}
+.av-btn{color:#fff;border-radius:999px;padding:9px 18px;font-size:13px;cursor:pointer;border:0}
+.av-ghost{background:var(--chip);border:1px solid var(--chip-br);color:var(--ink2);backdrop-filter:blur(16px)}.av-ghost:hover{filter:brightness(1.06)}
+.av-pill{background:var(--flow);border:0;box-shadow:0 8px 24px rgba(37,99,235,.42),inset 0 1px 0 rgba(255,255,255,.35);font-weight:700}
+.av-pill:hover{filter:brightness(1.07)}
+.av-card b,.av-card strong{color:var(--accent)}
+.av-card code{font-family:ui-monospace,Menlo,monospace;font-size:.9em;background:rgba(37,99,235,.12);border:1px solid var(--chip-br);padding:1px 6px;border-radius:6px;color:var(--accent)}
+.av-qbloco{margin-top:14px}.av-qperg{font-size:15px;line-height:1.5;color:var(--ink2);margin:0 0 9px}
+.av-in{width:100%;box-sizing:border-box;border-radius:12px;border:1px solid var(--code-br);background:var(--code-bg);color:var(--code-ink);padding:10px 13px;font-size:14px;font-family:ui-monospace,monospace}
+.av-ver{margin-top:9px;color:var(--ink2);background:var(--chip);border:1px solid var(--chip-br);border-radius:999px;padding:6px 14px;font-size:12.5px;cursor:pointer}
+.av-ver:hover{filter:brightness(1.06)}
+.av-exp{font-size:13.5px;line-height:1.55;color:var(--soft)}.av-exp p{font-size:13.5px;margin:9px 0 0}
+.av-intro{position:absolute;inset:0;z-index:20;display:grid;place-items:center;pointer-events:none;opacity:0;visibility:hidden;background:radial-gradient(600px 400px at 50% 50%,rgba(37,99,235,.18),transparent 70%)}
+.av-intro.play{animation:avintro 1.9s ease forwards}
+.av-intro-tit{font-size:clamp(28px,6vw,64px);font-weight:900;letter-spacing:-.03em;text-align:center;padding:0 6%;background:var(--flow);-webkit-background-clip:text;background-clip:text;color:transparent;transform:scale(.86);filter:drop-shadow(0 10px 40px rgba(37,99,235,.4))}
+.av-intro.play .av-intro-tit{animation:avintrotit 1.9s cubic-bezier(.2,.7,.2,1) forwards}
+@keyframes avintro{0%{opacity:0;visibility:visible}12%{opacity:1}72%{opacity:1}100%{opacity:0;visibility:hidden}}
+@keyframes avintrotit{0%{transform:scale(.8);opacity:0}18%{transform:scale(1);opacity:1}70%{transform:scale(1);opacity:1}100%{transform:scale(1.06);opacity:0}}
 `;
 
 export default function CursoArvoreView({ curso, licoes, titulo, onFechar }: { curso: CursoRepo; licoes?: Record<string, LicaoCurada>; titulo?: string; onFechar?: () => void }) {
@@ -140,6 +169,8 @@ export default function CursoArvoreView({ curso, licoes, titulo, onFechar }: { c
     const ftit = root.querySelector(".av-tit") as HTMLDivElement;
     const crumbsEl = root.querySelector(".av-crumbs") as HTMLDivElement;
     const hintEl = root.querySelector(".av-hint") as HTMLDivElement;
+    const introEl = root.querySelector(".av-intro") as HTMLDivElement | null;
+    const introTit = root.querySelector(".av-intro-tit") as HTMLDivElement | null;
     const REPO = curso.repo;
     const TREE = navDoArvore(curso.arvore, REPO);
     const LICOES: Record<string, LicaoCurada> = licoes || {};
@@ -162,8 +193,15 @@ export default function CursoArvoreView({ curso, licoes, titulo, onFechar }: { c
       pos.set(node, { x, y, dir, depth });
       if (!expanded.has(node)) return;
       const ch = node.filhos || [], n = ch.length; if (!n) return;
-      const spread = (depth === 0 ? 158 : Math.max(62, 100 - depth * 16)) * Math.PI / 180;
-      const L = depth === 0 ? 280 : Math.max(105, 165 - depth * 30);
+      if (depth === 0) {
+        // TRILHA de progressão: os módulos SOBEM numa trilha conectada (1 → 2 → 3), ligada à raiz —
+        // uma jornada com começo e fim, não um leque solto. Serpenteia de leve pra respirar.
+        const stepY = Math.max(96, 150 - n * 6);
+        ch.forEach((c, i) => place(c, x + Math.sin(i * 1.1) * 120, y - 150 - i * stepY, -Math.PI / 2, depth + 1));
+        return;
+      }
+      const spread = Math.max(62, 100 - depth * 16) * Math.PI / 180;
+      const L = Math.max(105, 165 - depth * 30);
       ch.forEach((c, i) => { const a = n > 1 ? dir - spread / 2 + i / (n - 1) * spread : dir; place(c, x + Math.cos(a) * L, y + Math.sin(a) * L, a, depth + 1); });
     }
     function ramo(p: any, c: any, pdir: number, cdir: number) {
@@ -180,9 +218,23 @@ export default function CursoArvoreView({ curso, licoes, titulo, onFechar }: { c
       // raízes na base
       for (let i = 1; i <= 3; i++) { const ext = 28 + i * 30, prof = 70 + i * 14; for (const l of [-1, 1]) { const rx = BASE.x + l * ext, ry = BASE.y + prof; world.appendChild(el("path", { d: "M " + BASE.x + " " + BASE.y + " C " + (BASE.x + l * 8) + " " + (BASE.y + 32) + " " + (rx - l * 16) + " " + (ry - 24) + " " + rx + " " + ry, fill: "none", stroke: "url(#av-wire)", "stroke-width": 2.6 - i * .4, "stroke-linecap": "round", "stroke-opacity": .5 })); } }
       const gL = el("g"), gN = el("g"), gV = el("g"); world.appendChild(gL); world.appendChild(gN); world.appendChild(gV);
-      for (const [node, p] of pos) { for (const c of childrenVis(node)) { const cp = pos.get(c)!; const w = Math.max(1.1, 2.6 - p.depth * .5); const d = ramo(p, cp, p.dir, cp.dir);
-        gL.appendChild(el("path", { d, fill: "none", stroke: "url(#av-wire)", "stroke-width": w + 2.5, "stroke-opacity": .1, "stroke-linecap": "round", filter: "url(#av-soft)" }));
-        gL.appendChild(el("path", { d, fill: "none", stroke: "url(#av-wire)", "stroke-width": w, "stroke-opacity": .92, "stroke-linecap": "round" })); } }
+      for (const [node, p] of pos) {
+        const vis = childrenVis(node);
+        if (node === TREE && vis.length) {
+          // a TRILHA da progressão: raiz → módulo 1 → módulo 2 → … (sequência, não raios soltos).
+          let prev = p, prevDir = -Math.PI / 2;
+          for (const c of vis) {
+            const cp = pos.get(c)!; const d = ramo(prev, cp, prevDir, cp.dir);
+            gL.appendChild(el("path", { d, fill: "none", stroke: "url(#av-flow)", "stroke-width": 8, "stroke-opacity": .14, "stroke-linecap": "round", filter: "url(#av-soft)" }));
+            gL.appendChild(el("path", { d, fill: "none", stroke: "url(#av-flow)", "stroke-width": 3.6, "stroke-opacity": .95, "stroke-linecap": "round", "stroke-dasharray": "13 11", class: "av-trail" }));
+            prev = cp; prevDir = cp.dir;
+          }
+        } else {
+          for (const c of vis) { const cp = pos.get(c)!; const w = Math.max(1.1, 2.6 - p.depth * .5); const d = ramo(p, cp, p.dir, cp.dir);
+            gL.appendChild(el("path", { d, fill: "none", stroke: "url(#av-wire)", "stroke-width": w + 2.5, "stroke-opacity": .1, "stroke-linecap": "round", filter: "url(#av-soft)" }));
+            gL.appendChild(el("path", { d, fill: "none", stroke: "url(#av-wire)", "stroke-width": w, "stroke-opacity": .92, "stroke-linecap": "round" })); }
+        }
+      }
       for (const [node, p] of pos) {
         const ehBase = node === TREE, r = ehBase ? 15 : Math.max(7, 11 - p.depth * 1.3), ehFoco = node === focus;
         const g = el("g", { class: "av-node" });
@@ -192,7 +244,8 @@ export default function CursoArvoreView({ curso, licoes, titulo, onFechar }: { c
         if (parentOf.get(node) === focus && node !== focus) {
           const lw = 150, lh = 40, off = unit(p.dir), ax = p.x + off.x * (r + 10), ay = p.y + off.y * (r + 10), cx2 = p.x + off.x * (r + 10 + lh * .7), cy2 = p.y + off.y * (r + 10 + lh * .7);
           gV.appendChild(el("line", { x1: p.x, y1: p.y, x2: ax, y2: ay, stroke: "rgba(255,255,255,.35)", "stroke-width": 1.4 }));
-          const fo = el("foreignObject", { x: cx2 - lw / 2, y: cy2 - lh / 2, width: lw, height: lh }); const div = document.createElement("div"); div.setAttribute("xmlns", "http://www.w3.org/1999/xhtml"); div.className = "av-gv"; div.innerHTML = "<b>" + cut(node.titulo, 20) + "</b><small>" + (temFilho(node) ? (node.filhos.length + " dentro · abrir") : "abrir a lição") + "</small>"; fo.appendChild(div); fo.addEventListener("click", (e) => { e.stopPropagation(); clicar(node); }); gV.appendChild(fo);
+          const passo = parentOf.get(node) === TREE ? TREE.filhos.indexOf(node) + 1 : 0;
+          const fo = el("foreignObject", { x: cx2 - lw / 2, y: cy2 - lh / 2, width: lw, height: lh }); const div = document.createElement("div"); div.setAttribute("xmlns", "http://www.w3.org/1999/xhtml"); div.className = "av-gv"; div.innerHTML = "<b>" + (passo ? '<i class="av-step">' + passo + "</i>" : "") + cut(node.titulo, 18) + "</b><small>" + (temFilho(node) ? (node.filhos.length + " dentro · abrir") : "abrir a lição") + "</small>"; fo.appendChild(div); fo.addEventListener("click", (e) => { e.stopPropagation(); clicar(node); }); gV.appendChild(fo);
         }
         if (ehFoco) { const cw = 128, chh = 24; const fo = el("foreignObject", { x: p.x - cw / 2, y: p.y + r + 9, width: cw, height: chh }); const div = document.createElement("div"); div.setAttribute("xmlns", "http://www.w3.org/1999/xhtml"); div.className = "av-cue"; div.textContent = "clique → aprender ▸"; fo.appendChild(div); fo.addEventListener("click", (e) => { e.stopPropagation(); abrirBoard(node); }); gV.appendChild(fo); }
       }
@@ -218,8 +271,17 @@ export default function CursoArvoreView({ curso, licoes, titulo, onFechar }: { c
     function montarBoard(r: Nav) {
       const lic = LICOES[r.id];
       const par = parentOf.get(r), mod = r.mod || (par ? par.titulo : REPO);
-      boardEl.innerHTML = montarBoardHtml({ titulo: r.titulo, tipo: r.tipo, mod, repo: REPO, resumo: r.resumo, lic });
+      const irmaos = par ? (par.filhos || []) : [];
+      const idx = irmaos.indexOf(r);
+      const prox = idx >= 0 && idx < irmaos.length - 1 ? irmaos[idx + 1] : null;
+      const passo = par === TREE && idx >= 0 ? "passo " + (idx + 1) + "/" + irmaos.length : "";
+      boardEl.innerHTML = montarBoardHtml({ titulo: r.titulo, tipo: r.tipo, mod, repo: REPO, resumo: r.resumo, lic, prox: prox?.titulo, passo });
       boardEl.classList.add("on");
+      boardEl.querySelectorAll(".av-continuar").forEach((b) => b.addEventListener("click", () => {
+        if (!prox) return;
+        focus = prox; if (temFilho(prox)) expanded.add(prox);
+        boardEl.scrollTop = 0; montarBoard(prox);     // avança pro próximo módulo — progressão de verdade
+      }));
       // interação por BLOCO (cada questão é independente — antes um clique zerava o board inteiro).
       boardEl.querySelectorAll(".av-qbloco").forEach((bl) => {
         const exp = bl.querySelector(".av-exp") as HTMLElement | null;
@@ -246,6 +308,9 @@ export default function CursoArvoreView({ curso, licoes, titulo, onFechar }: { c
     const onUp = () => { pan = null; };
     svg.addEventListener("wheel", onWheel, { passive: false }); svg.addEventListener("pointerdown", onDown); svg.addEventListener("pointermove", onMove); svg.addEventListener("pointerup", onUp); svg.addEventListener("pointercancel", onUp);
 
+    // intro: o TÍTULO do curso entra animado, grande e centrado, e some revelando a trilha.
+    if (introEl && introTit) { introTit.textContent = cut(curso.arvore.raiz.titulo || REPO, 42); introEl.classList.remove("play"); void introEl.offsetWidth; introEl.classList.add("play"); }
+
     setVB(); raf = requestAnimationFrame(loop); render();
     return () => { cancelAnimationFrame(raf); svg.removeEventListener("wheel", onWheel); svg.removeEventListener("pointerdown", onDown); svg.removeEventListener("pointermove", onMove); svg.removeEventListener("pointerup", onUp); svg.removeEventListener("pointercancel", onUp); world.innerHTML = ""; boardEl.innerHTML = ""; boardEl.classList.remove("on"); };
   }, [curso.arvore, curso.repo, licoes]);
@@ -261,13 +326,15 @@ export default function CursoArvoreView({ curso, licoes, titulo, onFechar }: { c
         <defs>
           <filter id="av-g" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="3" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
           <filter id="av-soft" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="4" /></filter>
-          <linearGradient id="av-grad" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stopColor="#8b5cf6" /><stop offset="50%" stopColor="#e879f9" /><stop offset="100%" stopColor="#22d3ee" /></linearGradient>
-          <linearGradient id="av-wire" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stopColor="#a855f7" /><stop offset="50%" stopColor="#3b82f6" /><stop offset="100%" stopColor="#34d399" /></linearGradient>
-          <radialGradient id="av-nodeGrad" cx="42%" cy="36%"><stop offset="0%" stopColor="#d7ccff" /><stop offset="55%" stopColor="#a78bfa" /><stop offset="100%" stopColor="#22d3ee" /></radialGradient>
+          <linearGradient id="av-grad" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stopColor="#1d4ed8" /><stop offset="50%" stopColor="#3b82f6" /><stop offset="100%" stopColor="#38bdf8" /></linearGradient>
+          <linearGradient id="av-wire" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stopColor="#2563eb" /><stop offset="50%" stopColor="#3b82f6" /><stop offset="100%" stopColor="#22d3ee" /></linearGradient>
+          <linearGradient id="av-flow" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stopColor="#60a5fa" /><stop offset="100%" stopColor="#22d3ee" /></linearGradient>
+          <radialGradient id="av-nodeGrad" cx="40%" cy="34%"><stop offset="0%" stopColor="#dbeafe" /><stop offset="45%" stopColor="#3b82f6" /><stop offset="100%" stopColor="#06b6d4" /></radialGradient>
         </defs>
         <g className="av-world" />
       </svg>
       <div className="av-board" />
+      <div className="av-intro"><div className="av-intro-tit" /></div>
       {semMapa && (
         <div className="av-hint" style={{ bottom: 40 }}>a árvore ganha galhos quando o motor analisar o repositório</div>
       )}
