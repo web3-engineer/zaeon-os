@@ -6,9 +6,11 @@
  * (/api/studio/forja/mapa); depois renderiza a CursoCodigoView em tela cheia. Sem motor, o board degrada
  * pro esqueleto, sem travar.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import CursoArvoreView from "@/components/studio/CursoArvoreView";
+import CardArquivo from "@/components/study/CardArquivo";
 import { comBaseDoGrafo, mesclarEnriquecimento } from "@/lib/forja/arvoreDoGrafo";
+import { tutorialDemoDoCurso } from "@/lib/forja/tutoriaisDemo";
 import type { CursoRepo } from "@/lib/forja/tipos";
 import type { LicaoCurada } from "@/lib/forja/licaoCurada";
 
@@ -19,6 +21,8 @@ export default function SalaCurso({ cursoId, titulo, onFechar }: { cursoId: stri
   const [curso, setCurso] = useState<CursoRepo | null>(null);
   const [licoes, setLicoes] = useState<Record<string, LicaoCurada>>({});
   const [erro, setErro] = useState(false);
+  const [praticar, setPraticar] = useState(false);
+  const cards = useMemo(() => tutorialDemoDoCurso(cursoId), [cursoId]);
 
   useEffect(() => {
     let vivo = true;
@@ -61,5 +65,23 @@ export default function SalaCurso({ cursoId, titulo, onFechar }: { cursoId: stri
     );
   }
   if (!curso) return <div className="grid h-full place-items-center bg-[#060b16] text-[13px] text-cyan-300/60">Montando o curso…</div>;
-  return <CursoArvoreView curso={curso} licoes={licoes} titulo={titulo || curso.arvore.raiz.titulo} onFechar={onFechar} />;
+
+  // Tutorial de arquivo (F1): o aluno digita o código real. Por ora, demo via cards curados por curso.
+  if (praticar && cards.length) {
+    return <CardArquivo card={cards[0]} onFechar={() => setPraticar(false)} />;
+  }
+  return (
+    <div className="relative h-full">
+      <CursoArvoreView curso={curso} licoes={licoes} titulo={titulo || curso.arvore.raiz.titulo} onFechar={onFechar} />
+      {cards.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setPraticar(true)}
+          className="absolute bottom-5 right-5 z-20 rounded-full border-0 bg-gradient-to-r from-violet-500 to-cyan-400 px-5 py-2.5 text-[13px] font-bold text-white shadow-[0_8px_24px_rgba(139,92,246,.45)] hover:brightness-110"
+        >
+          praticar: digite o código ▸
+        </button>
+      )}
+    </div>
+  );
 }
