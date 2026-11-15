@@ -8,6 +8,7 @@ import type { CardDeArquivo } from "./tutorialArquivo";
 import binarySearch from "./tutoriais/binary-search.json";
 import insertionSort from "./tutoriais/insertion-sort.json";
 import euclidesMdc from "./tutoriais/euclides-mdc.json";
+import calculadora from "./tutoriais/calculadora.json";
 
 // cast via unknown (padrão do understand.sample.json): o JSON tem tipos literais que o import alarga.
 const card = (j: unknown) => j as unknown as CardDeArquivo;
@@ -15,6 +16,8 @@ const card = (j: unknown) => j as unknown as CardDeArquivo;
 export const TUTORIAIS: Record<string, CardDeArquivo[]> = {
   // Algoritmos clássicos: os três que a skill promete — busca, ordenação e MDC — cada um um arquivo real.
   "algoritmos-classicos": [card(binarySearch), card(insertionSort), card(euclidesMdc)],
+  // Calculadora (iniciante): a lógica pura das 4 operações, em JavaScript, digitada e rodada no navegador.
+  "calculadora": [card(calculadora)],
 };
 
 /** Os cards de tutorial de arquivo de um curso (vazio se ainda não houver). PURA. */
