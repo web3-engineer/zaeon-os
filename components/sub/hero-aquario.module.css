@@ -36,8 +36,8 @@
   animation: travessia 37s linear infinite;
 }
 
-.cardume:nth-child(2 of .cardume) { color: #608dd1; animation: travessia-inversa 58s -14s linear infinite; }
-.cardume:nth-child(3 of .cardume) { color: #7797c4; animation: travessia 51s -58s linear infinite; }
+.cardume:nth-child(2 of .cardume) { color: #608dd1; animation: travessia-inversa 83s -14s linear infinite; }
+.cardume:nth-child(3 of .cardume) { color: #7797c4; animation: travessia 51s -83s linear infinite; }
 .cardume:nth-child(4 of .cardume) { color: #42b8a7; animation: travessia-inversa 38s -30s linear infinite; }
 
 .peixe {
@@ -63,7 +63,7 @@
   background: currentColor;
   clip-path: polygon(0 0, 100% 50%, 0 100%, 22% 50%);
   transform-origin: right center;
-  animation: cauda .58s ease-in-out infinite alternate;
+  animation: cauda .83s ease-in-out infinite alternate;
 }
 
 .peixe:nth-child(2) { left: 64px; top: 17px; --porte: .78; animation-delay: -.9s; }
@@ -269,7 +269,7 @@
   4% { transform: translate(calc(var(--direcao) * var(--desvio) * .15), -11svh) scale(.72, 1); opacity: .72; }
   16% { transform: translate(calc(var(--direcao) * var(--desvio) * .7), -28svh) scale(.95, .86); opacity: .65; }
   32% { transform: translate(calc(var(--direcao) * var(--desvio) * .4), -47svh) scale(.88, 1.04); }
-  50% { transform: translate(calc(var(--direcao) * var(--desvio)), -70svh) scale(1.08, .93); opacity: .4; }
+  50% { transform: translate(calc(var(--direcao) * var(--desvio)), -83svh) scale(1.08, .93); opacity: .4; }
   68%, 100% { transform: translate(calc(var(--direcao) * var(--desvio) * 1.3), -106svh) scale(1.18); opacity: 0; }
 }
 
@@ -336,7 +336,7 @@
   display: grid;
   place-items: center;
   opacity: 0;
-  animation: revelar-cena 58s linear infinite;
+  animation: revelar-cena 83s linear infinite;
 }
 
 .cena svg { width: 100%; height: 100%; overflow: hidden; }
@@ -348,20 +348,20 @@
 .flor svg {
   width: min(100%, 58rem);
   filter: drop-shadow(0 0 7px currentColor);
-  animation: nascer-flor 58s ease-in-out infinite;
+  animation: nascer-flor 83s ease-in-out infinite;
 }
 
 @keyframes revelar-cena {
-  0%, 20.6894%, 29.3099%, 100% { opacity: 0; }
-  24.1380%, 26.7244% { opacity: .62; }
+  0%, 14.4577%, 20.4816%, 100% { opacity: 0; }
+  16.8676%, 18.6749% { opacity: .62; }
 }
 
 
 @keyframes nascer-flor {
-  0%, 20.6894% { transform: translateY(-23%) scale(.06); }
-  24.1380% { transform: translateY(-8%) scale(.72); }
-  26.7244% { transform: scale(1.04); }
-  29.3099%, 100% { transform: scale(.8); }
+  0%, 14.4577% { transform: translateY(-23%) scale(.06); }
+  16.8676% { transform: translateY(-8%) scale(.72); }
+  18.6749% { transform: scale(1.04); }
+  20.4816%, 100% { transform: scale(.8); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -372,14 +372,14 @@
 .camadaMarinha {
   position: absolute;
   inset: 0;
-  animation: revelar-mar 58s linear infinite;
+  animation: revelar-mar 83s linear infinite;
 }
 
 .ciclos { z-index: 1; }
 
 @keyframes revelar-mar {
-  0%, 21.5516%, 100% { opacity: 1; }
-  26.7244%, 93.9660% { opacity: 0; }
+  0%, 15.0601%, 100% { opacity: 1; }
+  18.6749%, 95.7835% { opacity: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -389,13 +389,14 @@
 .dnaOriginal {
   position: absolute;
   inset: 0;
-  animation: mostrar-dna 58s linear infinite;
+  animation: mostrar-dna 83s linear infinite;
 }
 
 @keyframes mostrar-dna {
-  0%, 49.9997%, 94.8272%, 100% { opacity: 0; }
-  53.4483%, 78.4484% { opacity: 1; }
-  83.6203% { opacity: 0; }
+  0%, 65.0742%, 96.3853%, 100% { opacity: 0; }
+  66.1334% { opacity: .36; }
+  67.4699%, 84.9399% { opacity: 1; }
+  88.5539% { opacity: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -424,7 +425,7 @@
   inset: 0;
   pointer-events: none;
   backdrop-filter: blur(1.5px);
-  animation: retirar-vidro 58s linear infinite;
+  animation: retirar-vidro 83s linear infinite;
   background: linear-gradient(118deg, transparent 14%, #e7f3ff1c 30%, transparent 47%, #e7f3ff12 79%, transparent 91%);
 }
 
@@ -432,7 +433,7 @@
   position: absolute;
   inset: 0;
   opacity: 0;
-  animation: revelar-cosmos 58s linear infinite;
+  animation: revelar-cosmos 83s linear infinite;
   overflow: hidden;
   background:
     radial-gradient(ellipse at 80% 36%, #3a28674a, transparent 55%),
@@ -445,13 +446,13 @@
 
 
 @keyframes revelar-cosmos {
-  0%, 63.7930%, 76.7241%, 100% { opacity: 0; }
-  67.2416%, 74.1377% { opacity: 1; }
+  0%, 74.6987%, 83.7349%, 100% { opacity: 0; }
+  77.1086%, 81.9275% { opacity: 1; }
 }
 
 @keyframes retirar-vidro {
-  0%, 63.7930%, 100% { opacity: 1; }
-  67.2416%, 87.0689% { opacity: 0; }
+  0%, 74.6987%, 100% { opacity: 1; }
+  77.1086%, 90.9639% { opacity: 0; }
 }
 
 .buracoNegro {
@@ -463,23 +464,24 @@
   left: 86%;
   transform: translate(-50%, -50%);
   isolation: isolate;
-  animation: sair-portal 58s linear infinite;
+  animation: sair-portal 83s linear infinite;
 }
 
 @keyframes sair-portal {
-  0%, 74.1377% { opacity: 1; }
-  75.8620%, 100% { opacity: 0; }
+  0%, 81.9275% { opacity: 1; }
+  83.1324%, 100% { opacity: 0; }
 }
 
 .dnaOriginal canvas {
   position: relative;
   transform-origin: 50% 27%;
-  animation: nascer-dna 58s ease-in-out infinite;
+  animation: nascer-dna 83s ease-in-out infinite;
 }
 
 @keyframes nascer-dna {
-  0%, 49.9997% { transform: scale(.09); }
-  53.4483%, 100% { transform: scale(1); }
+  0%, 65.0742% { transform: scale(.05); }
+  66.1334% { transform: scale(.35); }
+  67.4699%, 100% { transform: scale(1); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -488,12 +490,12 @@
 
 /* Preserve the headline contrast when the light theme enters the dark sky. */
 :global(html:not(.dark)) .aquario h1 {
-  animation: contraste-cosmos 58s linear infinite;
+  animation: contraste-cosmos 83s linear infinite;
 }
 
 @keyframes contraste-cosmos {
-  0%, 63.7930%, 78.4484%, 100% { color: #0f172a; }
-  67.2416%, 75.8620% { color: #f1faff; }
+  0%, 74.6987%, 84.9399%, 100% { color: #0f172a; }
+  77.1086%, 83.1324% { color: #f1faff; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -506,7 +508,7 @@
   inset: 0;
   opacity: 0;
   overflow: hidden;
-  animation: revelar-atomos 58s linear infinite;
+  animation: revelar-atomos 83s linear infinite;
 }
 
 .mapaAtomico {
@@ -518,7 +520,7 @@
   display: grid;
   grid-template-columns: repeat(11, minmax(0, 1fr));
   mask-image: radial-gradient(#000 20%, #000a 48%, transparent 71%);
-  animation: ampliar-atomos 58s linear infinite;
+  animation: ampliar-atomos 83s linear infinite;
 }
 
 .mapaAtomico i {
@@ -535,17 +537,17 @@
 .mapaAtomico i:nth-child(7n) { opacity: .46; }
 
 @keyframes revelar-atomos {
-  0%, 75.8620%, 94.8272%, 100% { opacity: 0; }
-  78.4484% { opacity: .12; }
-  83.6203%, 91.3796% { opacity: .82; }
+  0%, 83.1324%, 96.3853%, 100% { opacity: 0; }
+  84.9399% { opacity: .12; }
+  88.5539%, 93.9761% { opacity: .82; }
 }
 
 @keyframes ampliar-atomos {
-  0%, 75.8620% { transform: translate(-50%, -50%) rotate(-14deg) scale(.08); }
-  79.3106% { transform: translate(-50%, -50%) rotate(-14deg) scale(.34); }
-  84.4824% { transform: translate(-50%, -50%) rotate(-9deg) scale(1.15); }
-  90.5174% { transform: translate(-50%, -50%) rotate(19deg) scale(4.5); }
-  94.8272%, 100% { transform: translate(-50%, -50%) rotate(48deg) scale(9); }
+  0%, 83.1324% { transform: translate(-50%, -50%) rotate(-14deg) scale(.08); }
+  85.5423% { transform: translate(-50%, -50%) rotate(-14deg) scale(.34); }
+  89.1564% { transform: translate(-50%, -50%) rotate(-9deg) scale(1.15); }
+  93.3736% { transform: translate(-50%, -50%) rotate(19deg) scale(4.5); }
+  96.3853%, 100% { transform: translate(-50%, -50%) rotate(48deg) scale(9); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -553,7 +555,7 @@
 }
 
 .mapaAtomico {
-  animation: ampliar-atomos 58s linear infinite, pulsar-atomos 1.55s ease-in-out infinite;
+  animation: ampliar-atomos 83s linear infinite, pulsar-atomos 1.55s ease-in-out infinite;
 }
 
 @keyframes pulsar-atomos {
@@ -584,7 +586,7 @@
   inset: 0;
   overflow: hidden;
   opacity: 0;
-  animation: revelar-anatomia 58s linear infinite;
+  animation: revelar-anatomia 83s linear infinite;
   background: radial-gradient(ellipse at 50% 27%, #102e45b0, transparent 64%);
 }
 
@@ -596,18 +598,18 @@
   aspect-ratio: 17 / 24;
   filter: drop-shadow(0 0 5px #55d9fb50);
   transform-origin: 50% 27%;
-  animation: aproximar-anatomia 58s ease-in-out infinite, dissolver-corpo 58s linear infinite;
+  animation: aproximar-anatomia 83s ease-in-out infinite, dissolver-corpo 83s linear infinite;
 }
 
 @keyframes revelar-anatomia {
-  0%, 25.0001%, 52.5861%, 100% { opacity: 0; }
-  28.4487%, 43.1036% { opacity: .9; }
+  0%, 37.9519%, 67.4699%, 100% { opacity: 0; }
+  41.6056%, 65.0742% { opacity: .9; }
 }
 
 @keyframes aproximar-anatomia {
-  0%, 25.0001% { transform: translate(-50%, -23%) scale(.72); }
-  28.4487% { transform: translate(-50%, -27%) scale(1); }
-  39.6550%, 100% { transform: translate(-50%, -27%) scale(2.4); }
+  0%, 37.9519% { transform: translate(-50%, -23%) scale(.72); }
+  41.6056% { transform: translate(-50%, -27%) scale(1); }
+  53.4782%, 100% { transform: translate(-50%, -27%) scale(2.4); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -623,17 +625,19 @@
   background: url("/models/coracao-landing.webp") center / contain no-repeat;
   opacity: 0;
   filter: drop-shadow(0 0 9px #ff68858a);
-  animation: revelar-coracao 58s ease-in-out infinite, batimento 1.12s ease-in-out infinite;
+  animation: revelar-coracao 83s ease-in-out infinite, batimento 1.12s ease-in-out infinite;
 }
 
 @keyframes dissolver-corpo {
-  0%, 37.0686% { opacity: 1; }
-  39.6550%, 100% { opacity: 0; }
+  0%, 50.7380% { opacity: 1; }
+  53.4782%, 100% { opacity: 0; }
 }
 
 @keyframes revelar-coracao {
-  0%, 37.0686%, 44.8278%, 100% { opacity: 0; }
-  39.6550%, 43.1036% { opacity: 1; }
+  0%, 49.5% { opacity: 0; width: clamp(145px, 30vw, 345px); }
+  53% { opacity: 1; width: clamp(170px, 39vw, 430px); }
+  56% { opacity: 1; width: clamp(260px, 64vw, 675px); }
+  59%, 100% { opacity: 0; width: clamp(310px, 70vw, 750px); }
 }
 
 @keyframes batimento {
@@ -656,14 +660,15 @@
   background: url("/models/cerebro-landing.webp") center / contain no-repeat;
   opacity: 0;
   filter: drop-shadow(0 0 8px #57caff70);
-  animation: aproximar-cerebro 58s ease-in-out infinite;
+  animation: aproximar-cerebro 83s ease-in-out infinite;
 }
 
 @keyframes aproximar-cerebro {
-  0%, 43.2069%, 100% { opacity: 0; transform: translate(-50%, -105%) scale(.42); }
-  46.9310% { opacity: .88; transform: translate(-50%, -56%) scale(.9); }
-  49.7241% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
-  52.6103% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+  0%, 57.2414% { opacity: 0; transform: translate(-50%, -105%) scale(.42); }
+  61.1868% { opacity: .88; transform: translate(-50%, -56%) scale(.9); }
+  62.8493% { opacity: 1; width: clamp(150px, 34vw, 385px); transform: translate(-50%, -50%) scale(1); }
+  65.0742% { opacity: 1; width: max(170%, 200svh); transform: translate(-50%, -50%) scale(1); }
+  67.4699%, 100% { opacity: 0; width: max(190%, 225svh); transform: translate(-50%, -50%) scale(1); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -704,36 +709,132 @@
 
 .corpoAnatomico .anatomiaFrente {
   background-image: url("/models/anatomia-landing.webp");
-  animation: anatomia-frente 58s linear infinite;
+  animation: anatomia-frente 83s linear infinite;
 }
 
 .corpoAnatomico .anatomiaTresQuartos {
   background-image: url("/models/anatomia-landing-tres-quartos.webp");
-  animation: anatomia-tres-quartos 58s linear infinite;
+  animation: anatomia-tres-quartos 83s linear infinite;
 }
 
 .corpoAnatomico .anatomiaPerfil {
   background-image: url("/models/anatomia-landing-perfil.webp");
-  animation: anatomia-perfil 58s linear infinite;
+  animation: anatomia-perfil 83s linear infinite;
 }
 
 @keyframes anatomia-frente {
-  0%, 28.5% { opacity: 1; }
-  30.7%, 35.2%, 100% { opacity: 0; }
-  37.5%, 40% { opacity: 1; }
+  0%, 41.6598% { opacity: 1; }
+  43.9908%, 48.7583%, 100% { opacity: 0; }
+  51.1951%, 53.8438% { opacity: 1; }
 }
 
 @keyframes anatomia-tres-quartos {
-  0%, 28.5%, 33%, 35%, 37.5%, 100% { opacity: 0; }
-  30.5%, 31.2%, 36.4% { opacity: 1; }
+  0%, 41.6598%, 46.4276%, 48.5465%, 51.1951%, 100% { opacity: 0; }
+  43.7788%, 44.5205%, 50.0297% { opacity: 1; }
 }
 
 @keyframes anatomia-perfil {
-  0%, 31.2%, 36.4%, 100% { opacity: 0; }
-  33%, 35% { opacity: 1; }
+  0%, 44.5205%, 50.0297%, 100% { opacity: 0; }
+  46.4276%, 48.5465% { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .corpoAnatomico i { animation: none; }
   .corpoAnatomico .anatomiaFrente { opacity: 1; }
+}
+
+.natureza {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  opacity: 0;
+  background: linear-gradient(#c6eced, #c6e6cb 67%, #846c56 99%);
+  animation: mostrar-natureza 83s linear infinite;
+}
+:global(.dark) .natureza { background: linear-gradient(#102e39, #235547 67%, #342c29); }
+
+.natureza::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(132deg, #efffff32, transparent 37%, #efffff14 75%, transparent);
+  backdrop-filter: blur(.9px);
+}
+
+.bosque {
+  position: absolute;
+  inset: 10% -10% 8%;
+  opacity: .54;
+  background:
+    radial-gradient(ellipse at 12% 36%, #578b65 0 12%, transparent 13%),
+    radial-gradient(ellipse at 24% 36%, #6c9c73 0 12%, transparent 13%),
+    radial-gradient(ellipse at 79% 38%, #6e9972 0 15%, transparent 16%),
+    radial-gradient(ellipse at 92% 31%, #528465 0 14%, transparent 15%),
+    linear-gradient(90deg, transparent 16%, #5e6449 16.2% 17.3%, transparent 17.5% 83%, #5e6449 83.2% 84.5%, transparent 85%) 0 80% / 100% 57% no-repeat;
+  filter: blur(6px);
+}
+
+.arvoreNatureza {
+  position: absolute;
+  width: min(60vh, 75vw, 500px);
+  height: auto;
+  bottom: 3%;
+  left: 50%;
+  transform: translateX(-50%);
+  animation: mergulhar-na-copa 83s ease-in-out infinite;
+}
+
+.arvoreNatureza g { transform-box: view-box; transform-origin: 50% 93%; }
+.semente { animation: aparecer-semente 83s linear infinite; }
+.broto { animation: crescer-broto 83s linear infinite; }
+.arvoreAdulta { animation: crescer-arvore 83s ease-in-out infinite; }
+.borboleta {
+  position: absolute;
+  top: 45%;
+  width: clamp(27px, 4vw, 48px);
+  height: auto;
+  overflow: visible;
+  color: #e28044;
+  animation: voo-borboleta 6.8s ease-in-out infinite alternate;
+}
+.borboleta:nth-of-type(2) { top: 28%; color: #eaa95d; scale: .68; opacity: .78; animation-delay: -3s; }
+.borboleta:nth-of-type(3) { top: 62%; color: #ce733e; scale: 1.22; animation-delay: -4.5s; }
+.borboleta:nth-of-type(4) { top: 39%; color: #ef9d53; scale: .86; animation-delay: -5.6s; }
+.borboleta .asaBorboleta {
+  transform-origin: 50% 52%;
+  animation: asas-borboleta .26s ease-in-out infinite alternate;
+}
+
+@keyframes voo-borboleta {
+  0% { left: -5%; transform: translateY(14px) rotate(-21deg); }
+  31% { transform: translateY(-23px) rotate(12deg); }
+  66% { transform: translateY(10px) rotate(-12deg); }
+  100% { left: 105%; transform: translateY(-34px) rotate(12deg); }
+}
+@keyframes asas-borboleta { to { transform: skewY(-10deg) scaleX(.25); } }
+@keyframes mostrar-natureza {
+  0%, 17.7108%, 40.6627%, 100% { opacity: 0; }
+  21.9307%, 37.9518% { opacity: 1; }
+}
+@keyframes aparecer-semente {
+  0%, 21.0843%, 26.1445%, 100% { opacity: 0; }
+  22.7711%, 24.4579% { opacity: 1; }
+}
+@keyframes crescer-broto {
+  0%, 24.0361% { opacity: 0; transform: scale(.1); }
+  26.1445% { opacity: 1; transform: scale(.55); }
+  27.8313% { opacity: 1; transform: scale(1.18); }
+  29.0964%, 100% { opacity: 0; transform: scale(1.45); }
+}
+@keyframes crescer-arvore {
+  0%, 27.4066% { opacity: 0; transform: scale(.13); }
+  29.0964% { opacity: 1; transform: scale(.35); }
+  32.0512%, 100% { opacity: 1; transform: scale(1); }
+}
+@keyframes mergulhar-na-copa {
+  0%, 33.8855% { transform: translateX(-50%); }
+  39.7590%, 100% { transform: translate(-50%, 30%) scale(3.6); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .natureza, .natureza * { animation: none; }
 }

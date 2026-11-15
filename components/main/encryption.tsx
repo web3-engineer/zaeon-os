@@ -8,7 +8,6 @@ import { useTranslation } from "react-i18next";
 import ContadorProjetos from "./ContadorProjetos";
 import SolanaPrivacidade from "./SolanaPrivacidade";
 import ProjetoVencedor from "./ProjetoVencedor";
-import BlueprintsShowcase from "./BlueprintsShowcase";
 import TimelineIdeia from "./TimelineIdeia";
 import { TituloSecao } from "@/components/layout/secao";
 import MolecularText from "@/components/ui/MolecularText";
@@ -145,10 +144,6 @@ export default function Encryption() {
                 scroll horizontal na pagina inteira. `clip` em vez de `hidden`
                 porque `hidden` criaria um contexto de rolagem e mataria qualquer
                 `sticky` daqui para dentro. */}
-            {/* a ORDEM (o dono, out/2026): BLUEPRINTS ("Aqui você vale o que você constrói.", em carrossel) → a SOLANA
-                (privacidade + a prova) → os AGENTES → as chaves de API com o card do projeto VENCEDOR (Centelha) */}
-            <BlueprintsShowcase />
-
             <SolanaPrivacidade />
 
             <div className="relative z-40 w-full overflow-x-clip flex flex-col items-center justify-center bg-transparent">
