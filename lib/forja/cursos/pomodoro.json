@@ -1,0 +1,125 @@
+{
+  "modulos": [
+    {
+      "titulo": "O estado do timer é uma fonte da verdade só",
+      "estudo": "Um pomodoro é um timer de foco: conta, por exemplo, 25 minutos de trabalho, avisa, e troca para um intervalo. Antes de desenhar qualquer botão, a pergunta certa é: qual é o ESTADO? Ou seja, quais variáveis, juntas, descrevem tudo o que o timer é em qualquer instante.\n\nSão poucas, e essa é a lição: `segundosRestantes` (quanto falta), `rodando` (true/false), e qual fase está em curso (foco ou intervalo). Tudo o que a tela mostra DERIVA desse estado. O display `25:00` não é uma variável separada — é `segundosRestantes` formatado. O botão que diz \"Pausar\" ou \"Iniciar\" não guarda nada próprio — ele lê `rodando`.\n\nEsse é o princípio que vale para QUALQUER app com estado, não só o pomodoro: existe uma fonte da verdade (o estado), e a interface é uma FUNÇÃO dela. Quando você clica, você muda o estado, e a tela se redesenha a partir do novo estado. O erro de iniciante é o contrário: guardar a informação na tela (no texto de um elemento) e tentar lê-la de volta — aí o app tem duas verdades que divergem.\n\nA regra que fica: defina o estado mínimo primeiro (segundos, rodando, fase). A tela é desenho do estado; nunca o lugar onde o estado mora.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "No pomodoro, de onde o display `24:59` deve vir?",
+            "options": [
+              { "text": "De `segundosRestantes` formatado — o display é derivado do estado, não uma variável própria", "isCorrect": true, "explanation": "A tela é função do estado; o número exibido é só o estado formatado." },
+              { "text": "De uma variável de texto que guarda o que está escrito na tela", "isCorrect": false, "explanation": "Guardar a verdade na tela cria duas fontes que divergem — o erro clássico." },
+              { "text": "Do próprio elemento HTML, lido de volta quando precisa", "isCorrect": false, "explanation": "Ler a informação de volta da tela é frágil; o estado deve ser a fonte única." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "Cite as (poucas) variáveis de estado mínimas de um pomodoro.",
+            "accepted": ["segundosRestantes, rodando e a fase", "segundos restantes, rodando, foco ou intervalo", "quanto falta, se está rodando, qual fase", "segundosRestantes rodando fase", "tempo restante, rodando, foco/intervalo"],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Em uma frase: por que NÃO guardar o tempo restante dentro do texto do elemento da tela?",
+          "accepted": ["cria duas fontes da verdade que divergem", "a tela deve derivar do estado, não guardá-lo", "ler de volta da tela é frágil", "o estado precisa ser único", "senão há duas verdades"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "// O estado é a fonte da verdade; o display é função dele.\nlet segundosRestantes = 25 * 60;\nlet rodando = false;\nlet fase = 'foco';          // 'foco' | 'intervalo'\n\nfunction mmss(s) {\n  const m = String(Math.floor(s / 60)).padStart(2, '0');\n  const seg = String(s % 60).padStart(2, '0');\n  return m + ':' + seg;\n}\nconsole.log(mmss(segundosRestantes));  // \"25:00\"",
+        "teste": "// mmss(1499) === '24:59' — o display é derivado do estado"
+      }
+    },
+    {
+      "titulo": "setInterval, o tick, e o perigo dos intervalos empilhados",
+      "estudo": "Para o tempo ANDAR, você precisa de algo que rode a cada segundo. Esse algo é o `setInterval`: `setInterval(tick, 1000)` chama a função `tick` a cada 1000 milissegundos. O `tick` faz uma coisa simples: `segundosRestantes -= 1`, atualiza o display, e se chegou a zero, para.\n\nMas aqui mora o bug mais comum deste app, e ele é traiçoeiro: `setInterval` DEVOLVE um identificador, e se você não guardar esse id e chamar `clearInterval(id)` para parar, o intervalo continua rodando para sempre. Pior: se o aluno clica \"Iniciar\" duas vezes sem parar o anterior, ele cria DOIS intervalos — e o tempo passa a cair de 2 em 2 por segundo, depois de 3 em 3. O sintoma (\"o timer acelera sozinho\") confunde, mas a causa é sempre a mesma: intervalos empilhados.\n\nA disciplina que resolve: guarde o id (`let idTimer = null`). Ao INICIAR, só crie um novo intervalo se não houver um rodando. Ao PAUSAR ou ZERAR, chame `clearInterval(idTimer)` e volte `idTimer = null`. Um intervalo vivo por vez, sempre.\n\nA regra que fica: todo `setInterval` tem um `clearInterval` correspondente, e você nunca inicia um segundo sem parar o primeiro.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "O timer começa a cair de 2 em 2, depois de 3 em 3 segundos. Qual a causa?",
+            "options": [
+              { "text": "Vários setInterval empilhados — \"Iniciar\" foi clicado sem parar o anterior", "isCorrect": true, "explanation": "Cada intervalo vivo decrementa uma vez; dois intervalos caem o dobro." },
+              { "text": "O computador está lento", "isCorrect": false, "explanation": "Não é desempenho; são intervalos duplicados rodando juntos." },
+              { "text": "setInterval não serve para timers", "isCorrect": false, "explanation": "Serve — o problema é não limpar o anterior." }
+            ],
+            "marks": 3
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "Qual função você chama, com o id guardado do setInterval, para parar a contagem?",
+            "accepted": ["clearInterval", "clearInterval(id)", "clearInterval(idTimer)", "clearInterval()"],
+            "marks": 2
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Qual a regra que evita o bug do timer \"acelerando\" ao clicar Iniciar duas vezes?",
+          "accepted": ["um intervalo vivo por vez", "não iniciar um novo sem parar o anterior", "clearInterval antes de um novo setInterval", "guardar o id e só criar se não houver um rodando", "sempre limpar o intervalo anterior"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "let idTimer = null;\n\nfunction iniciar() {\n  if (idTimer !== null) return;        // já está rodando: não empilha outro\n  idTimer = setInterval(tick, 1000);\n  rodando = true;\n}\nfunction pausar() {\n  clearInterval(idTimer);              // para a contagem\n  idTimer = null;\n  rodando = false;\n}\nfunction tick() {\n  segundosRestantes -= 1;\n  if (segundosRestantes <= 0) pausar();\n}",
+        "teste": "// iniciar() duas vezes seguidas NÃO deve criar dois intervalos"
+      }
+    },
+    {
+      "titulo": "Os ciclos e o aviso no navegador",
+      "estudo": "O que faz um pomodoro ser um pomodoro, e não um cronômetro qualquer, é o CICLO: ao acabar o foco, ele não para — ele troca para um intervalo (uma pausa curta), e ao acabar a pausa, volta ao foco. É a alternância que organiza o trabalho.\n\nEm código, isso é uma transição de estado quando `segundosRestantes` chega a zero: se a fase era `foco`, vire `intervalo` e recarregue `segundosRestantes` para a duração da pausa (ex.: 5 minutos); se era `intervalo`, volte para `foco` e recarregue para 25 minutos. Toda a complexidade do \"ciclo\" é essa troca de fase mais o recarregar do contador.\n\nE o toque final que torna o app útil de verdade: AVISAR quando a fase termina, mesmo que o aluno esteja em outra aba. O navegador oferece a Notification API. Mas ela exige PERMISSÃO: você pede uma vez com `Notification.requestPermission()`, e só depois de o usuário conceder é que `new Notification('Hora da pausa!')` aparece. Peça a permissão no primeiro clique de \"Iniciar\" (um gesto do usuário), nunca ao carregar a página — navegadores bloqueiam pedidos de permissão sem interação, e é má educação pedir antes de a pessoa usar o app.\n\nA regra que fica: o ciclo é só uma troca de fase + recarregar o contador em cada zero; e a notificação precisa de permissão, pedida a partir de um gesto do usuário.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Quando `segundosRestantes` chega a zero na fase de foco, o que o pomodoro faz?",
+            "options": [
+              { "text": "Troca a fase para intervalo e recarrega o contador para a duração da pausa", "isCorrect": true, "explanation": "O ciclo é a alternância foco↔intervalo com o contador recarregado a cada troca." },
+              { "text": "Simplesmente para e não faz mais nada", "isCorrect": false, "explanation": "Isso seria um cronômetro comum; o pomodoro alterna as fases." },
+              { "text": "Reinicia o foco do começo imediatamente", "isCorrect": false, "explanation": "Depois do foco vem o intervalo, não outro foco direto." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Por que pedir a permissão de notificação no clique de \"Iniciar\", e não ao carregar a página?",
+            "options": [
+              { "text": "Navegadores bloqueiam pedidos de permissão sem um gesto do usuário — e é melhor UX pedir quando a pessoa já decidiu usar", "isCorrect": true, "explanation": "A permissão precisa partir de uma interação; pedir no load costuma ser bloqueado e incomoda." },
+              { "text": "Porque a página ainda não carregou a Notification API no load", "isCorrect": false, "explanation": "A API já existe no load; o bloqueio é por falta de gesto do usuário." },
+              { "text": "Não faz diferença, pode pedir a qualquer momento", "isCorrect": false, "explanation": "Faz: sem gesto do usuário, o pedido costuma ser recusado automaticamente." }
+            ],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Qual método você chama (uma vez) para pedir ao usuário permissão de notificação?",
+          "accepted": ["Notification.requestPermission()", "requestPermission", "Notification.requestPermission", "requestPermission()"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "const DUR = { foco: 25 * 60, intervalo: 5 * 60 };\n\nfunction aoZerar() {\n  fase = (fase === 'foco') ? 'intervalo' : 'foco';   // alterna\n  segundosRestantes = DUR[fase];                      // recarrega\n  if (Notification.permission === 'granted') {\n    new Notification(fase === 'foco' ? 'Hora de focar!' : 'Hora da pausa!');\n  }\n}\n// Peça a permissão a partir de um gesto do usuário (ex.: no 1º clique em Iniciar):\n// Notification.requestPermission();",
+        "teste": "// ao zerar no foco, fase vira 'intervalo' e segundosRestantes recarrega para 5*60"
+      }
+    }
+  ]
+}

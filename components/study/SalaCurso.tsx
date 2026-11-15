@@ -8,9 +8,11 @@
  */
 import { useEffect, useState } from "react";
 import CursoArvoreView from "@/components/studio/CursoArvoreView";
+import CardArquivo from "@/components/study/CardArquivo";
 import { comBaseDoGrafo, mesclarEnriquecimento } from "@/lib/forja/arvoreDoGrafo";
 import type { CursoRepo } from "@/lib/forja/tipos";
 import type { LicaoCurada } from "@/lib/forja/licaoCurada";
+import type { CardDeArquivo } from "@/lib/forja/tutorialArquivo";
 
 const H = { "content-type": "application/json" };
 type MetaCurso = CursoRepo & { licoesPorNo?: Record<string, LicaoCurada> };
@@ -19,10 +21,12 @@ export default function SalaCurso({ cursoId, titulo, onFechar }: { cursoId: stri
   const [curso, setCurso] = useState<CursoRepo | null>(null);
   const [licoes, setLicoes] = useState<Record<string, LicaoCurada>>({});
   const [erro, setErro] = useState(false);
+  const [praticar, setPraticar] = useState(false);
+  const [cards, setCards] = useState<CardDeArquivo[]>([]);
 
   useEffect(() => {
     let vivo = true;
-    setCurso(null); setLicoes({}); setErro(false);
+    setCurso(null); setLicoes({}); setErro(false); setPraticar(false); setCards([]);
     (async () => {
       try {
         const r = await fetch("/api/studio/forja", { method: "POST", headers: H, body: JSON.stringify({ topic: cursoId }) });
@@ -32,6 +36,7 @@ export default function SalaCurso({ cursoId, titulo, onFechar }: { cursoId: stri
         const c = j.meta as MetaCurso;
         setCurso(c);                        // base curada já ensina (não espera o motor)
         setLicoes(c.licoesPorNo ?? {});     // lições reais (estudo/prova/sandbox) por nó
+        if (Array.isArray(j.cards)) setCards(j.cards as CardDeArquivo[]); // tutorial de arquivo (F2/demo)
         // Camadas: a base curada (c.arvore) manda. O motor (graphify/understand), quando a box responde,
         // ENRIQUECE por cima — some ramos do código real à base, sem apagá-la. Sem base curada, o
         // enriquecimento É a árvore. Sem motor, nada muda (fica a base). Nunca esvazia.
@@ -61,5 +66,23 @@ export default function SalaCurso({ cursoId, titulo, onFechar }: { cursoId: stri
     );
   }
   if (!curso) return <div className="grid h-full place-items-center bg-[#060b16] text-[13px] text-cyan-300/60">Montando o curso…</div>;
-  return <CursoArvoreView curso={curso} licoes={licoes} titulo={titulo || curso.arvore.raiz.titulo} onFechar={onFechar} />;
+
+  // Tutorial de arquivo (F1): o aluno digita o código real. Por ora, demo via cards curados por curso.
+  if (praticar && cards.length) {
+    return <CardArquivo card={cards[0]} cursoId={cursoId} onFechar={() => setPraticar(false)} />;
+  }
+  return (
+    <div className="relative h-full">
+      <CursoArvoreView curso={curso} licoes={licoes} titulo={titulo || curso.arvore.raiz.titulo} onFechar={onFechar} />
+      {cards.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setPraticar(true)}
+          className="absolute bottom-5 right-5 z-20 rounded-full border-0 bg-gradient-to-r from-violet-500 to-cyan-400 px-5 py-2.5 text-[13px] font-bold text-white shadow-[0_8px_24px_rgba(139,92,246,.45)] hover:brightness-110"
+        >
+          praticar: digite o código ▸
+        </button>
+      )}
+    </div>
+  );
 }

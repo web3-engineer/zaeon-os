@@ -1,0 +1,49 @@
+{
+  "arquivo": "searches/binary_search.py",
+  "funcao": "A busca binária: acha um valor numa lista ORDENADA cortando o trecho pela metade a cada passo — O(log n). É o arquivo mais fundamental de qualquer coleção de algoritmos de busca.",
+  "ordem": 0,
+  "linguagem": "python",
+  "abas": [
+    {
+      "titulo": "A varredura",
+      "snippets": [
+        { "explicacao": "A assinatura: recebe a lista (ordenada) e o alvo que queremos achar.", "codigo": "def busca_binaria(lista, alvo):" },
+        { "explicacao": "Dois índices cercam o trecho onde o alvo ainda pode estar: do começo ao fim.", "codigo": "    inicio, fim = 0, len(lista) - 1" },
+        { "explicacao": "Enquanto o trecho não ficou vazio (inicio passou de fim), continue procurando.", "codigo": "    while inicio <= fim:" },
+        { "explicacao": "O coração: olhe o MEIO do trecho atual (divisão inteira).", "codigo": "        meio = (inicio + fim) // 2" }
+      ],
+      "quiz": [
+        {
+          "tipo": "escolha",
+          "enunciado": "Por que a busca binária exige que a lista esteja ORDENADA?",
+          "opcoes": [
+            { "texto": "É a ordem que permite jogar fora metade do trecho a cada comparação", "correta": true, "explicacao": "Sem ordem, olhar o meio não diz de que lado está o alvo." },
+            { "texto": "Porque listas desordenadas não cabem na memória", "correta": false, "explicacao": "Nada a ver com memória; é a lógica do corte pela metade." }
+          ],
+          "pontos": 2
+        }
+      ]
+    },
+    {
+      "titulo": "As três decisões",
+      "snippets": [
+        { "explicacao": "Se o meio É o alvo, achamos: devolve o índice.", "codigo": "        if lista[meio] == alvo:\n            return meio" },
+        { "explicacao": "Se o meio é MENOR que o alvo, ele só pode estar à direita: suba o início.", "codigo": "        elif lista[meio] < alvo:\n            inicio = meio + 1" },
+        { "explicacao": "Senão (meio MAIOR), o alvo está à esquerda: desça o fim.", "codigo": "        else:\n            fim = meio - 1" },
+        { "explicacao": "Saiu do laço sem achar: o alvo não está na lista. Devolve -1.", "codigo": "    return -1" }
+      ],
+      "quiz": [
+        {
+          "tipo": "escolha",
+          "enunciado": "Esquecer o `+ 1` em `inicio = meio + 1` causa o quê?",
+          "opcoes": [
+            { "texto": "O trecho pode não encolher e o laço nunca termina (loop infinito)", "correta": true, "explicacao": "Sem avançar além do meio, inicio pode ficar preso." },
+            { "texto": "Um erro de sintaxe imediato", "correta": false, "explicacao": "É um bug de lógica em tempo de execução, não de sintaxe." }
+          ],
+          "pontos": 3
+        }
+      ]
+    }
+  ],
+  "teste": "dados = [2, 3, 5, 7, 11, 13, 17, 19, 23]\nfor i, v in enumerate(dados):\n    assert busca_binaria(dados, v) == i, f'falhou em {v}'\nassert busca_binaria(dados, 4) == -1, 'devia devolver -1 para ausente'\nprint('ok')"
+}

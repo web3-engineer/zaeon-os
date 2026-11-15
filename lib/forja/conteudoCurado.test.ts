@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { conteudoCuradoDoCurso } from "./conteudoCurado";
+import { INICIANTES } from "./catalogoIniciantes";
 import type { EsqueletoRepo } from "./tipos";
 
 // PROVA REAL: lê os curso.json AUTORAIS do disco (não fixtures), como a vitrine faz com os cards reais.
@@ -34,4 +35,18 @@ describe("conteudoCuradoDoCurso — base curada a partir dos curso.json reais", 
   it("id sem curso.json e sem skill no disco → null (curso depende do motor)", () => {
     expect(conteudoCuradoDoCurso(esq("nao-existe-xyz-123"))).toBeNull();
   });
+});
+
+describe("conteudoCuradoDoCurso — os cursos do CATÁLOGO iniciante têm conteúdo autoral (não dependem do motor)", () => {
+  for (const e of INICIANTES) {
+    it(`${e.id}: árvore não-vazia, cada módulo com estudo e prova`, () => {
+      const c = conteudoCuradoDoCurso(e);
+      expect(c, `${e.id} deveria ter curso autoral no catálogo (lib/forja/cursos/${e.id}.json)`).not.toBeNull();
+      expect(c!.arvore.raiz.filhos.length).toBeGreaterThan(0);
+      for (const ramo of c!.arvore.raiz.filhos) {
+        expect(ramo.resumo.trim().length, `${e.id}/${ramo.id} sem estudo`).toBeGreaterThan(20);
+        expect(c!.licoesPorNo[ramo.id]?.prova.length, `${e.id}/${ramo.id} sem prova`).toBeGreaterThan(0);
+      }
+    });
+  }
 });

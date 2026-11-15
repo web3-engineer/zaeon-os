@@ -1,0 +1,129 @@
+{
+  "modulos": [
+    {
+      "titulo": "Botões, eventos e o display como estado",
+      "estudo": "Uma calculadora é feita de cliques que mudam um estado e um display que mostra esse estado. O primeiro passo é CAPTURAR os cliques. Em vez de um `onclick` em cada um dos ~20 botões, o jeito esperto é a DELEGAÇÃO de evento: um único ouvinte no container dos botões, que descobre qual foi clicado olhando o alvo do evento (`e.target`) e o dado que o botão carrega (ex.: `data-valor=\"7\"` ou `data-acao=\"somar\"`).\n\nO estado mínimo é pequeno: o que está no visor agora (`atual`), o número guardado antes de um operador (`anterior`), e qual operação está pendente (`operacao`). O display é função de `atual` — você nunca lê o número de volta do texto do visor; o visor DESENHA `atual`.\n\nA regra que fica: um ouvinte só, que lê qual botão foi clicado pelos seus dados; e o visor é desenho do estado, não a fonte dele.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Qual a vantagem de um único ouvinte no container (delegação) em vez de um onclick por botão?",
+            "options": [
+              { "text": "Um só lugar trata todos os cliques, lendo qual botão foi pelo e.target e seus dados", "isCorrect": true, "explanation": "Menos repetição e um ponto central; o botão carrega seu valor/ação em data-*." },
+              { "text": "É a única forma de capturar cliques", "isCorrect": false, "explanation": "Dá para pôr onclick em cada um; a delegação é só mais limpa." },
+              { "text": "Deixa a calculadora mais rápida de calcular", "isCorrect": false, "explanation": "Não muda a conta; muda a organização do código." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "De onde o visor deve tirar o que mostra?",
+            "accepted": ["do estado atual", "da variável de estado, não do próprio visor", "do estado, o visor é desenho dele", "de `atual`", "do estado que guarda o número"],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Qual propriedade do evento diz qual elemento foi clicado?",
+          "accepted": ["e.target", "event.target", "target", "e.target do evento"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "let atual = '0', anterior = null, operacao = null;\n\nteclado.addEventListener('click', (e) => {\n  const b = e.target;\n  if (b.dataset.valor) digitar(b.dataset.valor);\n  else if (b.dataset.acao) acao(b.dataset.acao);\n});",
+        "teste": "// um clique num botão de dígito deve chamar digitar com o valor do data-valor"
+      }
+    },
+    {
+      "titulo": "Montar o número e a ordem das operações",
+      "estudo": "Digitar não é só mostrar a tecla — é CONSTRUIR o número. Ao clicar '7' e depois '3', o visor vira '73', não '7' e '3' soltos. Então `digitar(d)` concatena: se o atual é '0', substitui; senão, `atual = atual + d`. E o ponto decimal só entra se ainda não houver um (`if (!atual.includes('.'))`).\n\nA operação é o pulo do gato. Ao clicar '+', você não soma ainda — você GUARDA: `anterior = atual`, `operacao = '+'`, e prepara para o próximo número (zera o atual). A soma só acontece ao clicar '=' (ou outro operador): aí você pega `anterior` e `atual`, aplica a `operacao`, e o resultado vira o novo `atual`.\n\nUma calculadora simples trabalha da esquerda para a direita, operação a operação — ela não respeita a precedência de multiplicação sobre soma como uma expressão matemática faria. Está certo para o escopo; diga isso ao aluno para ele não se assustar quando `2 + 3 × 4` der 20 e não 14.\n\nA regra que fica: digitar constrói a string do número; um operador guarda o estado e espera; o '=' aplica a operação pendente entre anterior e atual.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Ao clicar '+', o que a calculadora faz?",
+            "options": [
+              { "text": "Guarda o número atual e a operação, e espera o próximo número — não soma ainda", "isCorrect": true, "explanation": "A conta só acontece no '=' (ou no próximo operador)." },
+              { "text": "Soma imediatamente o que tiver na tela", "isCorrect": false, "explanation": "Ainda não há o segundo número; só se guarda o estado." },
+              { "text": "Limpa o visor", "isCorrect": false, "explanation": "Limpar é outra ação; '+' guarda e prepara o próximo número." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Numa calculadora simples (esquerda→direita), quanto dá `2 + 3 × 4`?",
+            "options": [
+              { "text": "20 — ela aplica operação a operação, sem precedência", "isCorrect": true, "explanation": "(2+3) depois ×4 = 20; não respeita multiplicação antes de soma." },
+              { "text": "14 — respeitando a precedência matemática", "isCorrect": false, "explanation": "Isso exigiria um parser de expressão, fora do escopo básico." },
+              { "text": "Dá erro", "isCorrect": false, "explanation": "Não dá erro; só segue a ordem de clique." }
+            ],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Em uma frase: por que o ponto decimal precisa de uma verificação antes de ser adicionado?",
+          "accepted": ["para não ter dois pontos no número", "um número só pode ter um ponto decimal", "evitar 1.2.3", "checar se já existe um ponto", "senão daria número inválido"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "function digitar(d) {\n  if (d === '.' && atual.includes('.')) return;   // um ponto só\n  atual = (atual === '0' && d !== '.') ? d : atual + d;\n}\nfunction operar(op) {\n  anterior = atual; operacao = op; atual = '0';   // guarda e espera\n}\nfunction igual() {\n  const a = Number(anterior), b = Number(atual);\n  atual = String(operacao === '+' ? a + b : operacao === '-' ? a - b : operacao === '*' ? a * b : a / b);\n  operacao = null;\n}",
+        "teste": "// 2, +, 3, = deve resultar em '5'"
+      }
+    },
+    {
+      "titulo": "Os casos de borda que quebram a conta",
+      "estudo": "O que separa uma calculadora de brinquedo de uma confiável são os casos de borda — as situações que o caminho feliz ignora.\n\nDividir por zero: em JavaScript, `5 / 0` não dá erro, dá `Infinity` (ou `NaN` para `0/0`). Isso vaza para o visor como um texto esquisito. Trate: se o divisor é zero, mostre uma mensagem (\"não dá\") em vez de `Infinity`.\n\nLimpar: toda calculadora precisa de um 'C' que volta ao estado inicial — `atual = '0'`, `anterior = null`, `operacao = null`. Sem ele, um erro prende o usuário.\n\nNúmeros quebrados (ponto flutuante): `0.1 + 0.2` em JavaScript dá `0.30000000000000004`, não `0.3`. É assim que o computador guarda decimais, não é bug da sua calculadora. Para o visor, arredonde o resultado para um número razoável de casas (ex.: `Math.round(x * 1e10) / 1e10`) e o problema some para o usuário.\n\nA regra que fica: um app bom é feito nas bordas — divisão por zero tratada, um botão de limpar que zera o estado, e arredondamento para esconder o ruído do ponto flutuante.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Em JavaScript, quanto dá `0.1 + 0.2`, e por quê?",
+            "options": [
+              { "text": "0.30000000000000004 — é como o computador representa decimais em ponto flutuante, não um bug seu", "isCorrect": true, "explanation": "Arredonde para exibir; o ruído é da representação binária dos decimais." },
+              { "text": "Exatamente 0.3, sempre", "isCorrect": false, "explanation": "Em ponto flutuante não é exato; por isso o arredondamento no display." },
+              { "text": "Dá erro de arredondamento", "isCorrect": false, "explanation": "Não é erro; é a aritmética de ponto flutuante do padrão." }
+            ],
+            "marks": 3
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "O que `5 / 0` devolve em JavaScript, que você precisa tratar antes de mostrar?",
+            "options": [
+              { "text": "Infinity — melhor exibir uma mensagem em vez disso", "isCorrect": true, "explanation": "Não lança erro; vaza Infinity para a tela se você não tratar." },
+              { "text": "0", "isCorrect": false, "explanation": "Não zera; dá Infinity." },
+              { "text": "Lança uma exceção que para o programa", "isCorrect": false, "explanation": "JS não lança aqui; devolve Infinity silenciosamente." }
+            ],
+            "marks": 2
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Ao que o botão 'C' (limpar) deve devolver o estado?",
+          "accepted": ["ao estado inicial", "atual = '0', anterior = null, operacao = null", "zera o estado", "atual 0 e limpa anterior e operacao", "ao começo, visor em 0"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "function dividir(a, b) {\n  if (b === 0) return 'não dá';          // trata a divisão por zero\n  return Math.round((a / b) * 1e10) / 1e10;  // esconde o ruído do ponto flutuante\n}\nfunction limpar() {\n  atual = '0'; anterior = null; operacao = null;\n}",
+        "teste": "// dividir(5,0) === 'não dá'; dividir(0.1*10, 0.2*10/0.2) sem lixo de ponto flutuante"
+      }
+    }
+  ]
+}

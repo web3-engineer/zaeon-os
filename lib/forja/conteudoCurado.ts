@@ -10,6 +10,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ArvoreEntendimento, EsqueletoRepo } from "./tipos";
 import { arvoreELicoesDeCurso, arvoreDoCorpoSkill, type CursoJsonCru, type LicaoCurada } from "./licaoCurada";
+import { CATALOGO_CURSOS } from "./cursosCatalogo";
 import { carregarSkillsDaCasa, fsDeDisco, DIR_SKILLS_CASA } from "@/lib/agent/skills-dir";
 
 export type ConteudoCurado = { arvore: ArvoreEntendimento; licoesPorNo: Record<string, LicaoCurada> };
@@ -22,7 +23,7 @@ export function conteudoCuradoDoCurso(esq: EsqueletoRepo): ConteudoCurado | null
   const slug = String(esq?.id || "").trim();
   if (!slug) return null;
 
-  // 1) curso.json autoral (estudo + prova + sandbox) — a base mais rica.
+  // 1) curso.json autoral de uma SKILL (estudo + prova + sandbox) — a base mais rica.
   const caminho = join(process.cwd(), DIR_SKILLS_CASA, slug, "curso.json");
   if (existsSync(caminho)) {
     try {
@@ -32,6 +33,13 @@ export function conteudoCuradoDoCurso(esq: EsqueletoRepo): ConteudoCurado | null
     } catch {
       /* JSON corrompido → cai no fallback do corpo */
     }
+  }
+
+  // 1b) curso do CATÁLOGO (não é skill): conteúdo autoral importado como módulo (bundlado, sem fs).
+  const doCatalogo = CATALOGO_CURSOS[slug];
+  if (doCatalogo) {
+    const r = arvoreELicoesDeCurso(doCatalogo, esq.titulo, esq.resumo);
+    if (r) return r;
   }
 
   // 2) fallback: o corpo do SKILL.md em seções (ensina algo, mesmo sem conteúdo estruturado).

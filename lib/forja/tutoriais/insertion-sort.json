@@ -1,0 +1,46 @@
+{
+  "arquivo": "sorts/insertion_sort.py",
+  "funcao": "A ordenação por inserção: percorre a lista da esquerda pra direita e vai inserindo cada elemento na posição certa entre os que já estão ordenados — como quem ordena cartas na mão. O(n²), mas simples e ótima em listas quase ordenadas.",
+  "ordem": 1,
+  "linguagem": "python",
+  "abas": [
+    {
+      "titulo": "O laço externo",
+      "snippets": [
+        { "explicacao": "A assinatura: recebe a lista a ordenar (ela é modificada no lugar).", "codigo": "def ordenacao_por_insercao(lista):" },
+        { "explicacao": "Do segundo elemento em diante, guarde o atual e o índice j do vizinho à esquerda — o atual é a 'carta' que vamos encaixar.", "codigo": "    for i in range(1, len(lista)):\n        atual = lista[i]\n        j = i - 1" }
+      ],
+      "quiz": [
+        {
+          "tipo": "escolha",
+          "enunciado": "Por que o laço começa em 1, e não em 0?",
+          "opcoes": [
+            { "texto": "O primeiro elemento, sozinho, já é um trecho ordenado de tamanho 1", "correta": true, "explicacao": "Inserir começa a valer a partir do segundo, comparando com o que já está à esquerda." },
+            { "texto": "Porque Python não aceita índice 0 em laços", "correta": false, "explicacao": "Aceita, sim; é uma escolha da lógica do algoritmo." }
+          ],
+          "pontos": 2
+        }
+      ]
+    },
+    {
+      "titulo": "O encaixe",
+      "snippets": [
+        { "explicacao": "Enquanto houver vizinho à esquerda MAIOR que o atual, empurre-o uma casa pra direita, abrindo espaço.", "codigo": "        while j >= 0 and lista[j] > atual:\n            lista[j + 1] = lista[j]\n            j -= 1" },
+        { "explicacao": "Achou o lugar: encaixe o atual logo depois do último menor.", "codigo": "        lista[j + 1] = atual" },
+        { "explicacao": "No fim, a lista inteira está ordenada. Devolve.", "codigo": "    return lista" }
+      ],
+      "quiz": [
+        {
+          "tipo": "escolha",
+          "enunciado": "O que faz a ordenação por inserção ser rápida numa lista QUASE ordenada?",
+          "opcoes": [
+            { "texto": "O while quase não anda — cada elemento já está perto do lugar", "correta": true, "explicacao": "Poucos deslocamentos: tende a O(n) no melhor caso." },
+            { "texto": "Ela detecta a ordem e pula o laço externo", "correta": false, "explicacao": "O laço externo sempre percorre tudo; é o while interno que encurta." }
+          ],
+          "pontos": 3
+        }
+      ]
+    }
+  ],
+  "teste": "assert ordenacao_por_insercao([5, 2, 9, 1, 5, 6]) == [1, 2, 5, 5, 6, 9]\nassert ordenacao_por_insercao([]) == []\nassert ordenacao_por_insercao([3]) == [3]\nassert ordenacao_por_insercao([9, 8, 7]) == [7, 8, 9]\nprint('ok')"
+}

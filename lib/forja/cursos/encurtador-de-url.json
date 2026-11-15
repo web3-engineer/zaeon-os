@@ -1,0 +1,133 @@
+{
+  "modulos": [
+    {
+      "titulo": "A ideia: um código curto que aponta para um link longo",
+      "estudo": "Um encurtador de URL é seu primeiro BACKEND de verdade, e a ideia é simples: você guarda um link longo e devolve um código curto; quando alguém acessa o código, você o manda para o link original. É um mapa: `código → URL`.\n\nO estado do servidor é esse mapa. Na forma mais simples, um objeto em memória: `const links = {}`. Criar um link curto é: gerar um código ainda não usado (ex.: `'a1b'`), guardar `links['a1b'] = 'https://site-longo.com/pagina'`, e devolver `'a1b'` ao usuário. Acessar `/a1b` é: olhar `links['a1b']`, achar a URL, e redirecionar.\n\nA diferença para os apps anteriores (que rodavam no navegador) é que isto roda num SERVIDOR — um programa Node que fica ESCUTANDO pedidos HTTP. O navegador de qualquer pessoa manda um pedido; o seu servidor responde. O estado (o mapa de links) é compartilhado por todos os usuários, não é de um navegador só.\n\nA regra que fica: um encurtador é um mapa código→URL guardado no servidor; criar gera e guarda um código; acessar busca a URL e redireciona.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Qual estrutura de dados representa o coração de um encurtador?",
+            "options": [
+              { "text": "Um mapa de código curto → URL longa", "isCorrect": true, "explanation": "Criar guarda um par; acessar busca a URL pelo código." },
+              { "text": "Uma lista de todas as páginas da internet", "isCorrect": false, "explanation": "Você só guarda os links que foram encurtados." },
+              { "text": "Um array de números aleatórios", "isCorrect": false, "explanation": "O código é a chave de um mapa, não um array solto." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Qual a diferença essencial entre este app e os que rodam no navegador?",
+            "options": [
+              { "text": "Roda num servidor que escuta pedidos HTTP; o estado é compartilhado por todos os usuários", "isCorrect": true, "explanation": "Backend serve muitos clientes; o mapa de links é comum a todos." },
+              { "text": "Usa uma linguagem totalmente diferente de JavaScript", "isCorrect": false, "explanation": "Pode ser Node (JavaScript) no servidor também." },
+              { "text": "Não tem estado", "isCorrect": false, "explanation": "Tem — o mapa de links é o estado do servidor." }
+            ],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Em uma frase: o que acontece quando alguém acessa um código curto como `/a1b`?",
+          "accepted": ["o servidor busca a URL do código e redireciona", "olha o mapa e manda para o link original", "encontra a URL longa e redireciona para ela", "redireciona para o link guardado", "procura a1b no mapa e redireciona"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "const links = {};   // código -> URL (o estado do servidor)\n\nfunction encurtar(url) {\n  const codigo = gerarCodigo();\n  links[codigo] = url;\n  return codigo;\n}\nfunction resolver(codigo) {\n  return links[codigo] || null;   // null = código não existe\n}",
+        "teste": "// encurtar devolve um código; resolver desse código devolve a URL original"
+      }
+    },
+    {
+      "titulo": "As rotas: criar e redirecionar",
+      "estudo": "Um servidor responde a ROTAS — combinações de método HTTP + caminho. O encurtador precisa de duas:\n\n1. **Criar** — `POST /encurtar`, com a URL longa no corpo do pedido. O servidor gera o código, guarda, e responde com o link curto (ex.: `{ curto: 'https://seu.site/a1b' }`). É POST porque CRIA algo (muda o estado do servidor).\n\n2. **Redirecionar** — `GET /:codigo` (o `:codigo` é um parâmetro: casa com `/a1b`, `/xyz`, etc.). O servidor pega o código da URL, busca a URL longa, e responde com um REDIRECIONAMENTO HTTP: status `302` (ou `301`) mais um cabeçalho `Location: <url-longa>`. O navegador vê o 302 e vai sozinho para o destino.\n\nA diferença entre 301 e 302 vale saber: **301** é \"movido permanentemente\" (o navegador e os buscadores memorizam o destino e nem passam mais pelo seu servidor); **302** é \"temporário\" (sempre passa por você — útil se você quer CONTAR cliques). Para um encurtador que mede acessos, 302 é o certo.\n\nE se o código não existir? Responda `404` com uma página amigável, nunca redirecione para lugar nenhum.\n\nA regra que fica: POST cria (muda estado), GET com parâmetro redireciona; 302 passa sempre por você (conta cliques), 301 é memorizado; código inexistente é 404.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Por que a rota que CRIA um link curto usa POST, e não GET?",
+            "options": [
+              { "text": "POST é para ações que mudam o estado do servidor (criar o novo link)", "isCorrect": true, "explanation": "GET é para ler; criar/alterar usa POST." },
+              { "text": "POST é mais rápido", "isCorrect": false, "explanation": "Não é desempenho; é a semântica do método." },
+              { "text": "GET não existe em Node", "isCorrect": false, "explanation": "Existe; só não é o método certo para criar." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Seu encurtador quer CONTAR os cliques em cada link. Qual redirecionamento usar?",
+            "options": [
+              { "text": "302 (temporário) — o navegador passa pelo seu servidor toda vez, permitindo contar", "isCorrect": true, "explanation": "301 é memorizado e pula seu servidor; 302 sempre passa." },
+              { "text": "301 (permanente) — mais eficiente", "isCorrect": false, "explanation": "301 é memorizado pelo navegador; você perde a contagem dos acessos seguintes." },
+              { "text": "Nenhum; só mostrar o link", "isCorrect": false, "explanation": "O encurtador precisa redirecionar de fato." }
+            ],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Qual status HTTP você devolve quando o código curto não existe?",
+          "accepted": ["404", "404 not found", "status 404", "um 404"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "// Pseudo-rotas de um servidor Node (ex.: Express)\napp.post('/encurtar', (req, res) => {\n  const codigo = encurtar(req.body.url);\n  res.json({ curto: `${BASE}/${codigo}` });   // POST cria\n});\napp.get('/:codigo', (req, res) => {\n  const url = resolver(req.params.codigo);\n  if (!url) return res.status(404).send('não existe');\n  res.redirect(302, url);                       // 302: passa sempre por aqui\n});",
+        "teste": "// GET de um código válido responde 302 com Location da URL longa; inválido, 404"
+      }
+    },
+    {
+      "titulo": "Código único, colisão e persistência",
+      "estudo": "Dois problemas práticos separam um protótipo de um encurtador que aguenta uso real.\n\n**Colisão de código.** Se você gera códigos aleatórios, dois podem sair iguais — e o segundo sobrescreveria o primeiro, mandando usuários para o lugar errado. A defesa: ao gerar, VERIFIQUE se o código já existe no mapa; se existir, gere outro. Em escala, você usa códigos mais longos (mais combinações = colisão rara) ou um contador que nunca repete convertido para base62 (letras+números), que dá códigos curtos e garantidamente únicos.\n\n**Persistência.** Um objeto em memória some quando o servidor reinicia — todos os links encurtados se perdem. Para valer, o mapa vai para um BANCO DE DADOS (mesmo um arquivo JSON no começo, depois um banco de verdade como SQLite ou Postgres). O código muda pouco: em vez de `links[codigo] = url`, você grava no banco; em vez de ler o objeto, você consulta. A ideia (mapa código→URL) é a mesma; só o lugar de guardar muda.\n\nUm cuidado de segurança: valide a URL recebida (ela começa com http/https? não é um `javascript:`?) antes de guardar — um encurtador é um ótimo disfarce para links maliciosos, e você não quer ser o veículo.\n\nA regra que fica: cheque colisão ao gerar o código; guarde num banco para sobreviver a reinícios; e valide a URL de entrada antes de encurtar.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Por que verificar se o código gerado já existe antes de guardar?",
+            "options": [
+              { "text": "Para evitar colisão — um código repetido sobrescreveria um link e mandaria gente para o lugar errado", "isCorrect": true, "explanation": "Unicidade do código é o que garante que cada link curto aponta para um só destino." },
+              { "text": "Para o código ficar mais curto", "isCorrect": false, "explanation": "Checar colisão é sobre unicidade, não tamanho." },
+              { "text": "Não é necessário verificar", "isCorrect": false, "explanation": "Sem checar, códigos iguais corrompem os links." }
+            ],
+            "marks": 3
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Por que um objeto em memória não basta para um encurtador de verdade?",
+            "options": [
+              { "text": "Ao reiniciar o servidor, todos os links guardados se perdem — precisa de um banco de dados", "isCorrect": true, "explanation": "Persistência exige gravar fora da memória volátil." },
+              { "text": "Objetos são lentos demais", "isCorrect": false, "explanation": "É sobre durabilidade, não velocidade." },
+              { "text": "Objetos não guardam texto", "isCorrect": false, "explanation": "Guardam; o problema é sumirem no restart." }
+            ],
+            "marks": 2
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Em uma frase: por que validar a URL antes de encurtá-la?",
+          "accepted": ["um encurtador disfarça links maliciosos", "para não virar veículo de link malicioso", "evitar javascript: e URLs perigosas", "não encurtar algo malicioso", "segurança contra links ruins"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "function gerarCodigo() {\n  let c;\n  do { c = aleatorio(6); } while (links[c]);   // repete até achar um livre (sem colisão)\n  return c;\n}\nfunction urlValida(u) {\n  try { const x = new URL(u); return x.protocol === 'http:' || x.protocol === 'https:'; }\n  catch { return false; }\n}",
+        "teste": "// gerarCodigo nunca devolve um código já em uso; urlValida recusa 'javascript:...'"
+      }
+    }
+  ]
+}
