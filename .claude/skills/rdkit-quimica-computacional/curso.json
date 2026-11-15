@@ -1,0 +1,129 @@
+{
+  "modulos": [
+    {
+      "titulo": "SMILES — a molécula numa linha de texto",
+      "estudo": "Antes de calcular qualquer coisa, você precisa de um jeito de ESCREVER uma molécula para o computador. Esse jeito é o SMILES: a estrutura inteira numa linha de texto.\n\nAs regras básicas, com exemplos:\n- Átomos são as letras: `CCO` é etanol (carbono-carbono-oxigênio, com os hidrogênios implícitos).\n- Letra MINÚSCULA quer dizer aromático: `c1ccccc1` é o benzeno (o anel aromático de 6 carbonos). O `1`...`1` fecha o anel.\n- Parênteses são ramificação e `=` é ligação dupla: `CC(=O)O` é o ácido acético (um carbono ligado a um grupo C=O e a um OH).\n\nE o conselho pedagógico que vale mais que a sintaxe: ensine a LER o SMILES antes de programar. Pegue `CC(=O)Oc1ccccc1C(=O)O` e desenhe à mão o que ele descreve (é o ácido acetilsalicílico, a aspirina). Quem consegue ler um SMILES entende a molécula; quem só copia e cola está programando no escuro.\n\nA regra que fica: SMILES é a molécula como texto — maiúscula/minúscula distingue alifático de aromático, parênteses ramificam, `=` é dupla. Leia antes de rodar.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "No SMILES, o que a letra MINÚSCULA (como em `c1ccccc1`) indica?",
+            "options": [
+              { "text": "Átomo aromático — nesse caso, o anel aromático do benzeno", "isCorrect": true, "explanation": "Minúscula marca aromaticidade; `c1ccccc1` é o benzeno." },
+              { "text": "Um átomo com carga negativa", "isCorrect": false, "explanation": "Carga se escreve entre colchetes, como [O-], não por minúscula." },
+              { "text": "Um erro de digitação que o RDKit ignora", "isCorrect": false, "explanation": "Minúscula tem significado químico: é aromático." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "O que `CC(=O)O` representa?",
+            "options": [
+              { "text": "Ácido acético — os parênteses ramificam e o `=` é a dupla C=O", "isCorrect": true, "explanation": "C-C com um grupo carboxila (C(=O)O): o ácido acético." },
+              { "text": "Etanol", "isCorrect": false, "explanation": "Etanol é CCO, sem a dupla ligação com oxigênio." },
+              { "text": "Benzeno", "isCorrect": false, "explanation": "Benzeno é c1ccccc1, um anel aromático." }
+            ],
+            "marks": 2
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Qual é o SMILES do etanol (dois carbonos e um oxigênio, sem anel)?",
+          "accepted": ["CCO", "OCC", "C-C-O"],
+          "marks": 3
+        }
+      },
+      "sandbox": {
+        "tipo": "python",
+        "inicial": "from rdkit import Chem\n\n# Leia um SMILES e confirme que ele é válido.\nsmiles = \"CC(=O)Oc1ccccc1C(=O)O\"   # ácido acetilsalicílico (aspirina)\nmol = Chem.MolFromSmiles(smiles)\nprint(mol is not None)             # True = SMILES válido",
+        "teste": "# MolFromSmiles devolve um objeto molécula para SMILES válido, None para inválido"
+      }
+    },
+    {
+      "titulo": "Ler a molécula e medir propriedades (sem o erro silencioso)",
+      "estudo": "Com o SMILES, você cria a molécula: `mol = Chem.MolFromSmiles(\"CC(=O)Oc1ccccc1C(=O)O\")`. E aqui está o erro silencioso mais clássico do RDKit, que você precisa blindar DESDE O PRIMEIRO dia: um SMILES inválido NÃO lança exceção — ele devolve `None`. Sem checar, você segue usando `mol` e o programa quebra três linhas depois, com uma mensagem que não aponta a causa. Por isso: `assert mol is not None` (ou um `if mol is None:`) logo após criar. Sempre.\n\nCom a molécula válida, os descritores são chamadas diretas:\n- `Descriptors.MolWt(mol)` — a massa molar (g/mol).\n- `Descriptors.MolLogP(mol)` — o logP estimado (quão lipofílica, \"gordurosa\", a molécula é).\n- `Descriptors.NumHDonors(mol)` e `NumHAcceptors(mol)` — doadores e aceptores de ligação de hidrogênio.\n\nEsses quatro formam a **Regra de Lipinski**, uma triagem de biodisponibilidade oral: massa ≤ 500, logP ≤ 5, doadores de H ≤ 5, aceptores ≤ 10. Mas diga em voz alta: é HEURÍSTICA de triagem, não lei. Passar em Lipinski não torna nada um remédio; e boas drogas violam a regra. É um filtro grosseiro para priorizar, não um veredito.\n\nA regra que fica: `assert mol is not None` sempre; os descritores são estimativas de MODELO; e Lipinski é triagem, não lei.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "O que `Chem.MolFromSmiles` devolve quando o SMILES é inválido?",
+            "options": [
+              { "text": "None — sem lançar exceção, por isso é preciso checar `mol is not None`", "isCorrect": true, "explanation": "O erro é silencioso: None volta e o programa quebra lá na frente." },
+              { "text": "Levanta uma exceção que para o programa na hora", "isCorrect": false, "explanation": "Justamente o contrário — ele não avisa, só devolve None." },
+              { "text": "Uma molécula vazia que funciona nos cálculos", "isCorrect": false, "explanation": "É None; usá-lo nos descritores quebra." }
+            ],
+            "marks": 3
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Uma molécula passa na Regra de Lipinski. O que você pode concluir?",
+            "options": [
+              { "text": "Nada definitivo — é uma heurística de triagem de absorção oral, não garantia de que seja remédio", "isCorrect": true, "explanation": "Lipinski prioriza candidatos; eficácia e segurança são outra conversa." },
+              { "text": "Que a molécula é um medicamento seguro", "isCorrect": false, "explanation": "Passar em Lipinski não diz nada sobre segurança ou eficácia." },
+              { "text": "Que a molécula é tóxica", "isCorrect": false, "explanation": "A regra não fala de toxicidade." }
+            ],
+            "marks": 2
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Qual verificação você faz logo depois de `Chem.MolFromSmiles` para evitar o erro silencioso?",
+          "accepted": ["assert mol is not None", "mol is not None", "checar se mol é None", "if mol is None", "verificar mol is not None"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "python",
+        "inicial": "from rdkit import Chem\nfrom rdkit.Chem import Descriptors\n\nmol = Chem.MolFromSmiles(\"CC(=O)Oc1ccccc1C(=O)O\")\nassert mol is not None            # blinda o erro silencioso\nprint(round(Descriptors.MolWt(mol), 1))      # massa molar\nprint(round(Descriptors.MolLogP(mol), 2))    # logP (estimativa de modelo)",
+        "teste": "# MolWt e MolLogP são estimativas; sempre checar mol is not None antes"
+      }
+    },
+    {
+      "titulo": "Similaridade entre moléculas",
+      "estudo": "\"Essa molécula nova se parece com alguma que já conheço?\" é uma das perguntas mais úteis da quimioinformática — e a resposta é um número.\n\nO caminho tem dois passos. Primeiro, você transforma cada molécula numa IMPRESSÃO DIGITAL (fingerprint): `AllChem.GetMorganFingerprintAsBitVect(mol, 2, nBits=2048)`. Isso varre a molécula e marca, num vetor de bits, quais pedaços estruturais (até raio 2 a partir de cada átomo) ela contém. É como um código de barras da estrutura.\n\nSegundo, você compara duas impressões com a similaridade de Tanimoto: `DataStructs.TanimotoSimilarity(fp1, fp2)`. O resultado vai de 0 a 1 — 1 significa impressões idênticas (estruturas iguais), 0 significa nada de pedaços em comum. Na prática, valores acima de ~0.7 já indicam moléculas bem parecidas, úteis para buscar análogos de um composto conhecido.\n\nUm cuidado conceitual: similaridade estrutural alta SUGERE propriedades parecidas, mas não garante — pequenas mudanças em um ponto crítico mudam tudo (o chamado \"activity cliff\"). Tanimoto é uma bússola para priorizar, não um oráculo.\n\nA regra que fica: fingerprint (código de barras estrutural) + Tanimoto (0 a 1) = quão parecidas são duas moléculas. Alto é pista forte, não certeza.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "A similaridade de Tanimoto entre duas moléculas é 1.0. O que isso diz?",
+            "options": [
+              { "text": "As impressões digitais são idênticas — estruturas iguais pelos pedaços capturados", "isCorrect": true, "explanation": "Tanimoto vai de 0 (nada em comum) a 1 (idênticas)." },
+              { "text": "As moléculas não têm nada em comum", "isCorrect": false, "explanation": "Isso seria 0; 1 é o máximo de semelhança." },
+              { "text": "Uma é 1 grama mais pesada que a outra", "isCorrect": false, "explanation": "Tanimoto é adimensional (0 a 1), não massa." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "Em uma frase: por que similaridade estrutural alta SUGERE, mas não GARANTE, propriedades parecidas?",
+            "accepted": ["pequenas mudanças num ponto crítico mudam tudo", "activity cliff", "uma troca pequena pode mudar a atividade", "estrutura parecida não garante mesma propriedade", "não é garantia, é pista"],
+            "marks": 4
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Qual é o intervalo de valores da similaridade de Tanimoto?",
+          "accepted": ["de 0 a 1", "0 a 1", "entre 0 e 1", "0 (nada) a 1 (idêntico)"],
+          "marks": 3
+        }
+      },
+      "sandbox": {
+        "tipo": "python",
+        "inicial": "from rdkit import Chem, DataStructs\nfrom rdkit.Chem import AllChem\n\ndef similaridade(smiles_a, smiles_b):\n    a = Chem.MolFromSmiles(smiles_a)\n    b = Chem.MolFromSmiles(smiles_b)\n    fa = AllChem.GetMorganFingerprintAsBitVect(a, 2, nBits=2048)\n    fb = AllChem.GetMorganFingerprintAsBitVect(b, 2, nBits=2048)\n    return DataStructs.TanimotoSimilarity(fa, fb)   # 0 a 1",
+        "teste": "# Tanimoto devolve 1.0 para SMILES idênticos e menos conforme as estruturas divergem"
+      }
+    }
+  ]
+}

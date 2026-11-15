@@ -1,0 +1,118 @@
+{
+  "modulos": [
+    {
+      "titulo": "A fonte primária: por que o diário oficial",
+      "estudo": "Um ato administrativo — uma nomeação, uma licitação, um contrato, um decreto — só produz efeito depois de **publicado**. E o lugar onde ele se publica é o diário oficial. Isso faz do diário a FONTE PRIMÁRIA: não é a notícia sobre o ato, não é o release da prefeitura, é o documento que vale juridicamente.\n\nO problema, no nível municipal, é o acesso: cada cidade publica do seu jeito, muitas vezes num PDF sem busca, num site diferente. Achar \"a dispensa de licitação da merenda de 2025 na cidade X\" vira garimpo manual. O **Querido Diário**, da Open Knowledge Brasil, resolve isso: ele raspa os diários de municípios brasileiros, extrai o texto e os deixa pesquisáveis num lugar só.\n\nMas antes de digitar qualquer coisa, o primeiro passo é de MÉTODO, não de ferramenta: **defina a pergunta**. \"Quais contratos de merenda o município X firmou em 2025?\" rende uma busca muito melhor do que simplesmente digitar \"merenda\". A pergunta define o termo, o município e o período — e sem ela você afoga em resultados ou não acha nada.\n\nA regra que fica: o diário é a fonte que vale; a pesquisa começa com uma pergunta clara, não com uma palavra solta.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Por que o diário oficial é a fonte PRIMÁRIA de um ato administrativo?",
+            "options": [
+              { "text": "O ato só produz efeito depois de publicado, e é no diário que ele se publica — é o documento que vale juridicamente", "isCorrect": true, "explanation": "Publicação é condição de eficácia; o diário é onde isso acontece." },
+              { "text": "Porque é o site mais rápido de acessar", "isCorrect": false, "explanation": "Velocidade não tem a ver; é o valor jurídico da publicação." },
+              { "text": "Porque a imprensa copia o diário", "isCorrect": false, "explanation": "A notícia é fonte secundária; o diário é a primária, independente dela." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Qual é o primeiro passo de uma boa pesquisa no Querido Diário?",
+            "options": [
+              { "text": "Definir a pergunta (termo + município + período) antes de digitar", "isCorrect": true, "explanation": "A pergunta clara orienta o termo e os filtros; sem ela a busca se perde." },
+              { "text": "Digitar uma palavra genérica e ver o que aparece", "isCorrect": false, "explanation": "Isso afoga em resultados irrelevantes." },
+              { "text": "Baixar todos os diários do município", "isCorrect": false, "explanation": "Desnecessário; a busca filtrada resolve." }
+            ],
+            "marks": 2
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Em uma frase: qual a diferença entre a notícia sobre um ato e o próprio diário oficial?",
+          "accepted": ["o diário é a fonte primária, a notícia é secundária", "o diário vale juridicamente, a notícia não", "a notícia fala sobre o ato, o diário É o ato publicado", "o diário é o documento oficial"],
+          "marks": 3
+        }
+      }
+    },
+    {
+      "titulo": "Buscar com o vocabulário do ato",
+      "estudo": "Com a pergunta definida, a busca no Querido Diário se faz por **termo**, filtrando **município** e **período**. O segredo de uma boa busca está no vocabulário: use as palavras do ATO, não as da notícia. O jornal diz \"a prefeitura comprou merenda sem licitação\"; o diário diz \"dispensa de licitação\" ou \"extrato de contrato\". Quem nomeia ou demite aparece como \"nomear\", \"exonerar\". Buscar pelo jargão oficial acha o que a linguagem do dia a dia não acha.\n\nAchou um resultado? **Abra o PDF ORIGINAL.** O texto que o Querido Diário indexa vem de extração automática (OCR), que pode falhar — uma letra trocada, uma coluna embaralhada. O que vale juridicamente é o diário publicado, não o texto extraído. O índice te leva até lá; a leitura é no original.\n\nE leia o ato INTEIRO, com olhos de quem procura o essencial: a autoridade que assina, o fundamento legal citado, o objeto, o valor, as partes, a data de vigência. Anote também o que o ato NÃO diz — uma dispensa de licitação sem a justificativa exigida por lei é tão informativa quanto uma com.\n\nA regra que fica: busque pelo vocabulário do ato, confirme no PDF original, e leia o documento inteiro — inclusive os silêncios.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Você procura compras feitas sem o processo normal de licitação. Qual termo tende a achar mais no diário?",
+            "options": [
+              { "text": "\"dispensa de licitação\" — o vocabulário do ato", "isCorrect": true, "explanation": "O diário usa o jargão jurídico, não a linguagem da notícia." },
+              { "text": "\"compra sem licitação\" — como diria o jornal", "isCorrect": false, "explanation": "A linguagem da notícia raramente bate com o texto do ato." },
+              { "text": "\"corrupção na prefeitura\"", "isCorrect": false, "explanation": "Isso é juízo; o diário registra o ato, não a acusação." }
+            ],
+            "marks": 3
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Por que abrir o PDF original do resultado, e não confiar só no texto indexado?",
+            "options": [
+              { "text": "O texto indexado vem de extração automática (OCR) e pode conter erro; o que vale é o diário publicado", "isCorrect": true, "explanation": "A extração é um atalho de busca, não a fonte jurídica." },
+              { "text": "O PDF é mais bonito", "isCorrect": false, "explanation": "A razão é a fidelidade e o valor jurídico, não a estética." },
+              { "text": "Porque o texto indexado é pago", "isCorrect": false, "explanation": "Não é sobre custo; é sobre confiabilidade da fonte." }
+            ],
+            "marks": 2
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Cite dois elementos que você sempre procura ao ler um ato oficial inteiro.",
+          "accepted": ["autoridade que assina e fundamento legal", "objeto e valor", "partes e data de vigência", "fundamento legal e valor", "quem assina e o que o ato decide", "autoridade, fundamento, objeto, valor, partes, vigência"],
+          "marks": 4
+        }
+      }
+    },
+    {
+      "titulo": "Citar certo e respeitar os limites",
+      "estudo": "Achar e ler não basta: para o ato virar prova num trabalho, numa reportagem ou num processo, ele precisa ser **citado** de um jeito que outra pessoa consiga encontrar o mesmo documento. A citação de um ato de diário oficial leva: o município, o nome do diário, a data, o número da edição, a página, e o link do original. Faltou a edição e a página? A citação não fecha.\n\nPara pesquisa empírica (muitos atos, uma pergunta quantitativa), a API pública do Querido Diário devolve os resultados em JSON — e aí vale documentar a consulta: o termo, os municípios, as datas. É isso que torna a pesquisa REPETÍVEL: outra pessoa roda a mesma consulta e chega aos mesmos atos.\n\nE dois limites honestos, que você diz em voz alta:\n1. **A cobertura não é total.** Nem todo município está na base, e o histórico varia por cidade. **Ausência de resultado não prova ausência de ato** — pode ser falha de extração ou município fora da base. Confirme no site oficial da prefeitura antes de afirmar \"não existe\".\n2. **É pesquisa sobre o ATO público, não dossiê de pessoa.** O diário traz nomes e às vezes documentos de servidores e cidadãos; a LGPD vale também para dado público. Pesquisa legítima é sobre a decisão pública, com finalidade clara — não para montar perfil de alguém.\n\nA regra que fica: cite com edição, página e link; documente a consulta; e trate ausência de resultado como dúvida, não como prova.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "O que uma citação de ato de diário oficial precisa ter para outra pessoa achar o mesmo documento?",
+            "options": [
+              { "text": "Município, nome do diário, data, número da edição, página e link do original", "isCorrect": true, "explanation": "Sem edição e página, a referência não localiza o ato." },
+              { "text": "Só o link da busca", "isCorrect": false, "explanation": "Um link de busca pode mudar; a referência precisa dos dados do documento." },
+              { "text": "O nome do prefeito", "isCorrect": false, "explanation": "Irrelevante para localizar a publicação." }
+            ],
+            "marks": 3
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Sua busca não retornou nenhum ato. O que você pode concluir?",
+            "options": [
+              { "text": "Nada ainda — ausência de resultado não prova ausência de ato (pode ser falha de extração ou município fora da base)", "isCorrect": true, "explanation": "Confirme na fonte oficial da prefeitura antes de afirmar que o ato não existe." },
+              { "text": "Que o ato com certeza não existe", "isCorrect": false, "explanation": "A base não é completa; o vazio pode ser da cobertura, não do mundo." },
+              { "text": "Que a prefeitura escondeu o ato", "isCorrect": false, "explanation": "É um salto; a causa mais provável é limite de cobertura/OCR." }
+            ],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Em uma frase: por que a LGPD importa mesmo o diário sendo um documento público?",
+          "accepted": ["dado público também tem limite de finalidade", "não se pode montar dossiê de pessoa com dado público", "a finalidade precisa ser legítima", "pesquisa é sobre o ato, não sobre a pessoa", "LGPD vale para dado público também"],
+          "marks": 4
+        }
+      }
+    }
+  ]
+}

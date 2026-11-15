@@ -12,6 +12,7 @@ courseTags:
   - metodo-cientifico
 metadata:
   zaeon-familia: procedimento
+  zaeon-repo: jupyterlab/jupyterlab
   zaeon-titulo: Notebooks Jupyter, do zero ao reprodutível
   zaeon-subtitulo: Código, texto e gráfico no mesmo documento — e o JupyterLite para rodar no navegador sem instalar nada
   zaeon-modelo: livro

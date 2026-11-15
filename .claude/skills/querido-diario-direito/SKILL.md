@@ -12,6 +12,7 @@ courseTags:
   - transparencia
 metadata:
   zaeon-familia: procedimento
+  zaeon-repo: okfn-brasil/querido-diario
   zaeon-titulo: Querido Diário — diários oficiais pesquisáveis
   zaeon-subtitulo: Ache licitações, nomeações e decretos municipais na fonte oficial, e cite do jeito certo
   zaeon-modelo: predio
