@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
 import { useRouter } from "next/navigation";
 import { musica } from "@/lib/audio/musica";
 import { LOUNGE_ROTA } from "@/lib/ui/loungeHub";
-import { estadoPrecarga, ouvirPrecarga, precarregarCyber, type EstadoPrecarga } from "@/lib/cyber/precarga";
+import { estadoPrecarga, ouvirPrecarga, precarregarCorposCyber, precarregarCyber, type EstadoPrecarga } from "@/lib/cyber/precarga";
 
 export function usePrecargaCyber(): EstadoPrecarga {
   const [e, setE] = useState<EstadoPrecarga>(estadoPrecarga());
@@ -31,6 +31,7 @@ export default function CyberCta({ logado, onLogin, className = "" }: { logado: 
   const pronto = e.pronto;
 
   const entrar = () => {
+    precarregarCorposCyber();
     if (!pronto) return;
     if (!logado) { onLogin(); return; }
     musica().destravar();   // o clique é o gesto que libera o áudio (o cyberespaço já entra com som)
@@ -41,6 +42,10 @@ export default function CyberCta({ logado, onLogin, className = "" }: { logado: 
     <button
       type="button"
       onClick={entrar}
+      // #819: os corpos dos personagens (~60 MB) só baixam quando a pessoa mostra que vai jogar — não em toda visita
+      onPointerEnter={() => precarregarCorposCyber()}
+      onFocus={() => precarregarCorposCyber()}
+      onTouchStart={() => precarregarCorposCyber()}
       aria-disabled={!pronto}
       aria-busy={!pronto}
       aria-label={t("landing.interface.jogar", { defaultValue: "" })}
