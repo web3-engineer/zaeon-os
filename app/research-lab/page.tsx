@@ -26,6 +26,7 @@ import { avisarPersona } from "@/lib/research/zaeonEventos";
 import { usePluginsChat } from "@/lib/plugins/chatPlugins";
 import { usePresenca } from "@/components/agents/avatar/hooks";
 import { EVT_ESTUDOS_ABA, abaEstudosAtual, irPraAbaEstudos, type AbaEstudos } from "@/lib/chat/conversasNav";
+import { avisarMarketplace, comMarketplace, pedeMarketplace } from "@/lib/ui/marketplaceRota";
 
 // Ramo da árvore sob o nome da sala na sidebar: o da sala aberta cresce e rola; o da outra é curto.
 // Larguras da sidebar: fechada = trilho de ícones; aberta = o conteúdo inteiro (que tem largura fixa).
@@ -877,6 +878,20 @@ export default function HomeworkPage({
     return () => window.removeEventListener(EVT_ESTUDOS_ABA, f);
   }, []);
   const irEstudos = (aba: AbaEstudos) => { setActiveTab("sala-de-estudos"); irPraAbaEstudos(aba); };
+  // #824: o menu principal entra por /marketplace (→ ?aba=marketplace): abre a vitrine. E o laboratório avisa o menu
+  // quando está nela (o item "Marketplace" acende no lugar de "Laboratório"), com o endereço junto — recarregar ou
+  // voltar no navegador cai no mesmo lugar.
+  useEffect(() => {
+    if (pedeMarketplace(window.location.search)) irEstudos("community");
+    return () => avisarMarketplace(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const noMarketplace = activeTab === "sala-de-estudos" && abaEstudos === "community";
+  useEffect(() => {
+    avisarMarketplace(noMarketplace);
+    const q = comMarketplace(window.location.search, noMarketplace);
+    if (q !== window.location.search) window.history.replaceState(window.history.state, "", `${window.location.pathname}${q}${window.location.hash}`);
+  }, [noMarketplace]);
   // O AGENTE da aba de conversa (o rosto na sidebar). Clicar no rosto abre o seletor; cada agente tem a sua tela:
   // Aura = o chat da Sala de Estudos, Octa Code = a IDE dele (só depois de adicionado no Marketplace).
   const agentesPlugados = usePluginsChat();
