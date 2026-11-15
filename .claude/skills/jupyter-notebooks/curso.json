@@ -1,0 +1,129 @@
+{
+  "modulos": [
+    {
+      "titulo": "Célula e kernel — o papel e a cabeça",
+      "estudo": "Um notebook Jupyter é uma LISTA de células. Há dois tipos: a célula de **código**, que executa e devolve um resultado (um número, uma tabela, um gráfico), e a célula de **Markdown**, que explica em texto. Um bom notebook alterna as duas — a pergunta em texto, o código que a responde, e a leitura do resultado — de modo que alguém lê de cima a baixo e ENTENDE, não só vê código solto.\n\nPor trás das células vive o **kernel**: o processo que roda o código e guarda as variáveis na memória. Vale a imagem: o notebook é o PAPEL (as células que você vê e salva); o kernel é a CABEÇA (o que está lembrado agora). Essa separação explica coisas que confundem o iniciante:\n- Se você define `x = 10` numa célula e executa, o `x` passa a existir NA CABEÇA. Qualquer célula depois enxerga esse `x` — mesmo uma célula que está ACIMA na página, se você rodá-la depois.\n- Fechar o arquivo não apaga a cabeça enquanto o kernel estiver vivo; **reiniciar o kernel** (Kernel → Restart) apaga tudo e começa do zero.\n\nA regra que fica: o que o notebook SABE não é o que está escrito nele, é o que o kernel executou até agora. Guarde essa diferença — o próximo módulo mostra como ela vira armadilha.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Qual a diferença entre o notebook e o kernel?",
+            "options": [
+              { "text": "O notebook é o documento (as células); o kernel é o processo que executa e guarda as variáveis na memória", "isCorrect": true, "explanation": "Papel × cabeça: o notebook mostra o código, o kernel lembra o estado." },
+              { "text": "São a mesma coisa com nomes diferentes", "isCorrect": false, "explanation": "Não — você pode reiniciar o kernel (apagar a memória) sem mudar uma vírgula do notebook." },
+              { "text": "O kernel é o arquivo .ipynb salvo no disco", "isCorrect": false, "explanation": "O .ipynb é o notebook salvo; o kernel é o processo em execução, na memória." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "O que acontece com as variáveis quando você faz Kernel → Restart?",
+            "options": [
+              { "text": "Some tudo — o kernel começa do zero, sem nenhuma variável na memória", "isCorrect": true, "explanation": "Restart mata o processo e cria um novo, limpo." },
+              { "text": "Nada: as variáveis ficam salvas no notebook", "isCorrect": false, "explanation": "As variáveis vivem no kernel (memória), não no arquivo." },
+              { "text": "Só as variáveis da última célula são apagadas", "isCorrect": false, "explanation": "Restart apaga o estado inteiro, não só a última célula." }
+            ],
+            "marks": 2
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Em uma frase: por que uma célula de Markdown deixa o notebook melhor do que só células de código?",
+          "accepted": ["explica o que o código faz", "dá contexto e torna o notebook legível", "alterna pergunta e resposta", "quem lê entende, não só vê código", "documenta o raciocínio"],
+          "marks": 3
+        }
+      },
+      "sandbox": {
+        "tipo": "python",
+        "inicial": "# Numa célula de notebook, o kernel LEMBRA o que já rodou.\n# Defina x e y e devolva a soma — como se fosse a última célula do notebook.\nx = 10\ny = 32\nresultado = x + y  # o kernel já conhece x e y das células anteriores\nprint(resultado)",
+        "teste": "# resultado deve ser 42"
+      }
+    },
+    {
+      "titulo": "Ordem de execução ≠ ordem na página",
+      "estudo": "Aqui está o erro que mais estraga notebook, e o mais difícil de ver: a ordem em que as células RODARAM não é a ordem em que elas aparecem na página.\n\nRepare no número entre colchetes à esquerda de cada célula de código: `[1]`, `[2]`, `[7]`. Ele não é o número da linha — é a ORDEM de execução. Se a célula lá embaixo marca `[3]` e a de cima marca `[8]`, a de baixo rodou ANTES. Como o kernel guarda o estado, rodar células fora de ordem cria **estado escondido**: o notebook mostra na tela um resultado que o código visível, lido de cima a baixo, não reproduz mais.\n\nUm exemplo clássico: você define `preco = 100`, calcula, depois VOLTA na célula de cima e troca para `preco = 200`, mas esquece de rodar de novo as células seguintes. A tela ainda mostra os números do `100`. Quem abrir seu notebook amanhã — ou o professor — roda de cima a baixo e vê números diferentes, ou um erro de variável que \"existia\" só na sua sessão.\n\nA regra que fica: enquanto você explora, pode pular de célula em célula à vontade. Mas um notebook só está CERTO quando roda limpo, de cima a baixo, na ordem da página. É isso que o próximo módulo transforma em roteiro.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "O que significa o número entre colchetes, como `[7]`, à esquerda de uma célula de código?",
+            "options": [
+              { "text": "A ordem em que aquela célula foi executada", "isCorrect": true, "explanation": "É um contador de execução, não o número da linha nem da célula na página." },
+              { "text": "O número da linha da célula no arquivo", "isCorrect": false, "explanation": "Não tem relação com a posição na página." },
+              { "text": "Quantos segundos a célula levou para rodar", "isCorrect": false, "explanation": "O tempo aparece em outro lugar; o colchete é a ordem de execução." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "O que é \"estado escondido\" num notebook?",
+            "options": [
+              { "text": "Um resultado na tela que veio de código já alterado ou rodado fora de ordem — e que não se reproduz rodando de cima a baixo", "isCorrect": true, "explanation": "A memória do kernel guarda um estado que o código visível não gera mais." },
+              { "text": "Uma célula oculta que o Jupyter esconde do usuário", "isCorrect": false, "explanation": "Não há célula secreta; o escondido é o estado na memória do kernel." },
+              { "text": "Um arquivo temporário que o Jupyter cria no disco", "isCorrect": false, "explanation": "Estado escondido é sobre a memória do kernel, não arquivos." }
+            ],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Você alterou uma célula lá em cima mas não rodou as de baixo de novo. Em uma frase, qual o risco?",
+          "accepted": ["a tela mostra resultado do código antigo", "estado escondido", "o notebook não reproduz de cima a baixo", "quem abrir vê números diferentes", "o resultado na tela não bate com o código visível"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "python",
+        "inicial": "# Simulação do estado escondido: se você muda 'preco' mas não recalcula,\n# a variável antiga continua na memória. Recalcule SEMPRE depois de mudar a entrada.\npreco = 200           # (imagine que você trocou de 100 para 200 na célula de cima)\ntotal = preco * 3     # ...e RODOU esta de novo: agora o total está coerente\nprint(total)",
+        "teste": "# total deve ser 600, coerente com preco=200"
+      }
+    },
+    {
+      "titulo": "O notebook reprodutível",
+      "estudo": "Reprodutível quer dizer: outra pessoa (ou você daqui a seis meses) abre o notebook, roda, e obtém o MESMO resultado. É o que separa um rascunho de um trabalho entregável. Cinco hábitos garantem isso:\n\n1. **A primeira célula importa tudo** (`import pandas as pd`, etc.) e fixa as sementes aleatórias (`random.seed(0)`, `np.random.seed(0)`), para que o \"aleatório\" seja o mesmo em toda execução.\n2. **Caminhos relativos**, nunca `C:\\Users\\fulano\\...`. Um caminho absoluto só existe na sua máquina; `dados/vendas.csv` funciona na de qualquer um.\n3. **Antes de entregar: Kernel → Restart & Run All.** Isso mata a memória e roda tudo do zero, de cima a baixo. Se o notebook não sobrevive a isso, ele NÃO está pronto — por mais bonito que o resultado na tela pareça. É o teste que pega o estado escondido do módulo anterior.\n4. **Liste as dependências com versão** num `requirements.txt` ao lado do `.ipynb`. \"Funciona na minha máquina\" quase sempre é uma versão de biblioteca diferente.\n5. **Cada gráfico tem título, eixos com unidade e uma célula de texto** dizendo o que ele mostra. Um gráfico sem legenda é um enigma, não um resultado.\n\nA regra que fica: o selo de qualidade de um notebook é um só — ele roda limpo, de cima a baixo, num kernel reiniciado. Tudo o mais serve a isso.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Qual é o teste final que prova que um notebook está reprodutível?",
+            "options": [
+              { "text": "Kernel → Restart & Run All: roda tudo do zero, de cima a baixo, num kernel limpo", "isCorrect": true, "explanation": "É o que pega o estado escondido — se não roda limpo, não está pronto." },
+              { "text": "Salvar o arquivo .ipynb", "isCorrect": false, "explanation": "Salvar guarda o papel, mas não prova que ele roda do zero." },
+              { "text": "Conferir se todos os gráficos apareceram na tela", "isCorrect": false, "explanation": "A tela pode mostrar resultado de estado escondido; o Restart & Run All é o juiz." }
+            ],
+            "marks": 3
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "Por que usar caminho RELATIVO (`dados/x.csv`) em vez de absoluto (`C:\\Users\\voce\\x.csv`)? Uma frase.",
+            "accepted": ["o absoluto só existe na sua máquina", "caminho relativo funciona na máquina de qualquer um", "o absoluto quebra no computador de outra pessoa", "para o notebook rodar em qualquer máquina", "portabilidade"],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Que arquivo você coloca ao lado do .ipynb para que outra pessoa instale as mesmas versões de biblioteca?",
+          "accepted": ["requirements.txt", "um requirements.txt", "requirements"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "python",
+        "inicial": "import random\n\n# Fixar a semente torna o 'aleatório' reprodutível: a mesma sequência toda vez.\nrandom.seed(0)\nsorteio = [random.randint(1, 6) for _ in range(3)]\nprint(sorteio)  # com seed(0) o resultado é o MESMO em qualquer execução",
+        "teste": "# com random.seed(0), a sequência é determinística e reproduzível"
+      }
+    }
+  ]
+}
