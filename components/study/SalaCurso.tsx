@@ -6,13 +6,13 @@
  * (/api/studio/forja/mapa); depois renderiza a CursoCodigoView em tela cheia. Sem motor, o board degrada
  * pro esqueleto, sem travar.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import CursoArvoreView from "@/components/studio/CursoArvoreView";
 import CardArquivo from "@/components/study/CardArquivo";
 import { comBaseDoGrafo, mesclarEnriquecimento } from "@/lib/forja/arvoreDoGrafo";
-import { tutorialDemoDoCurso } from "@/lib/forja/tutoriaisDemo";
 import type { CursoRepo } from "@/lib/forja/tipos";
 import type { LicaoCurada } from "@/lib/forja/licaoCurada";
+import type { CardDeArquivo } from "@/lib/forja/tutorialArquivo";
 
 const H = { "content-type": "application/json" };
 type MetaCurso = CursoRepo & { licoesPorNo?: Record<string, LicaoCurada> };
@@ -22,11 +22,11 @@ export default function SalaCurso({ cursoId, titulo, onFechar }: { cursoId: stri
   const [licoes, setLicoes] = useState<Record<string, LicaoCurada>>({});
   const [erro, setErro] = useState(false);
   const [praticar, setPraticar] = useState(false);
-  const cards = useMemo(() => tutorialDemoDoCurso(cursoId), [cursoId]);
+  const [cards, setCards] = useState<CardDeArquivo[]>([]);
 
   useEffect(() => {
     let vivo = true;
-    setCurso(null); setLicoes({}); setErro(false);
+    setCurso(null); setLicoes({}); setErro(false); setPraticar(false); setCards([]);
     (async () => {
       try {
         const r = await fetch("/api/studio/forja", { method: "POST", headers: H, body: JSON.stringify({ topic: cursoId }) });
@@ -36,6 +36,7 @@ export default function SalaCurso({ cursoId, titulo, onFechar }: { cursoId: stri
         const c = j.meta as MetaCurso;
         setCurso(c);                        // base curada já ensina (não espera o motor)
         setLicoes(c.licoesPorNo ?? {});     // lições reais (estudo/prova/sandbox) por nó
+        if (Array.isArray(j.cards)) setCards(j.cards as CardDeArquivo[]); // tutorial de arquivo (F2/demo)
         // Camadas: a base curada (c.arvore) manda. O motor (graphify/understand), quando a box responde,
         // ENRIQUECE por cima — some ramos do código real à base, sem apagá-la. Sem base curada, o
         // enriquecimento É a árvore. Sem motor, nada muda (fica a base). Nunca esvazia.

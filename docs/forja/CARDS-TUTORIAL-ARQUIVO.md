@@ -1,0 +1,53 @@
+# Tutorial de arquivo — o curso é o repo real, digitado pelo aluno
+
+O curso de código é o **repositório real**, ensinado **arquivo por arquivo**. O aluno **digita o código**
+(sem colar), guiado por snippets, e o programa roda. O que o aluno não digita é **residual** (montado pelo
+Octa). Este doc descreve o modelo e a geração dos cards.
+
+## Modelo (`lib/forja/tutorialArquivo.ts`)
+- `CardDeArquivo` = um arquivo do repo: `funcao` (o que faz no projeto), `ordem` (complexidade), `abas`
+  (sub-abas horizontais, pra ficar compacto), `teste` (ponta-a-ponta), `residual?`.
+- `AbaDoCard` = `{ titulo, snippets, quiz? }`. `Snippet` = `{ explicacao, codigo }`.
+- **Invariante da harmonia:** concatenar os `codigo` dos snippets de um card = o arquivo real executável.
+  `montarArquivo`, `validarDigitado`, `estaCompleto`, `programaDeTeste` são puros e testados.
+
+## UI (`components/study/CardArquivo.tsx` + `EditorDoCard.tsx`)
+Card à esquerda (função + sub-abas + snippets + quiz + input de dúvida), editor Monaco à direita com
+**paste bloqueado**. "Rodar testes" executa no navegador (Pyodide/iframe via `useCodeRunner`) — verde só
+quando o código digitado de fato roda. Aberto pelo botão "praticar: digite o código" no `SalaCurso`.
+
+## Geração dos cards (F2) — repo → cards
+Duas metades, para **garantir a harmonia**:
+
+1. **PLANOS (LLM, na box).** Um passo de modelo lê cada arquivo do repo clonado e produz um
+   `PlanoDeArquivo` (`lib/forja/cardsDoRepo.ts`): `funcao`, `ordem`, e `cortes` — ONDE cortar (linha) e o
+   que ENSINAR por trecho (+ quiz, teste, marcação de residual). **O LLM NÃO reproduz o código**; só decide
+   cortes e pedagogia. É isto que faz o nº de cards acompanhar a complexidade do repo (graphify ordena os
+   arquivos por centralidade; o LLM corta cada um).
+   - Prompt (resumo): "Para o arquivo X, dê a função dele no projeto, e uma lista de cortes (linha inicial +
+     explicação + sub-aba) que o aluno vai digitar trecho a trecho. Cubra o arquivo do começo ao fim. Marque
+     como `residual` os arquivos de boilerplate/config que o aluno NÃO precisa digitar. Dê o teste que prova
+     o arquivo. NUNCA reescreva o código — só diga onde cortar."
+
+2. **MONTAGEM (determinística, no app/box).** `cardsValidados(planos, conteudos)` fatia cada arquivo REAL
+   nos cortes do plano e **descarta** qualquer card cujos snippets não reconstroem o arquivo (harmonia à
+   prova de erro). O script `scripts/forja-cards-gerar.mjs` faz isso e grava no cache.
+
+## Cache e entrega
+- `lib/forja/cardsLocal.ts`: `cardsCacheados(repo)` lê o cache (`FORJA_CARDS_CACHE`, volume em prod);
+  `gravarCardsCache(repo, cards)` grava (usado pelo job).
+- `app/api/studio/forja/route.ts` serve `cards`: os gerados (por repo) primeiro; senão os de demonstração
+  (`lib/forja/tutoriaisDemo.ts`, por curso). `components/study/SalaCurso.tsx` consome `j.cards`.
+
+## Provisionar (o passo pendente, como o understand)
+A metade 1 (planos via LLM) roda na box, pela ponte da Forja — mesma pegada do understand-anything. Até
+provisionar, o curso usa os **cards de demonstração** (hoje: `algoritmos-classicos` → `binary_search.py`).
+Rodar em lote: `FORJA_CARDS_CACHE=/vol npx tsx scripts/forja-cards-gerar.mjs --repo o/n --dir <clone> --planos planos.json`.
+
+## Fases seguintes
+- **F3 — residual via Octa:** o Octa monta os arquivos marcados `residual` (copiados/adaptados do source)
+  num projeto Octa, pro arquivo digitado rodar. (molde: `lib/rea-blueprint/paraOcta.ts` + `scaffold.ts`.)
+- **F4 — GitHub + auto-push:** conforme o aluno conclui cards, `publicarProjeto` sobe o progresso no repo
+  dele (reuso de `app/api/projects/github/connect` + `lib/octa/publicar.ts`). Decisão: 1 repo por curso.
+- **F5 — agente QA (pré-push):** engine na ponte da Forja que roda o projeto pronto (executável? README?)
+  e só então libera o push. Não é o residual.
