@@ -4,7 +4,8 @@
  * Gerar os cards do repo é LLM (minutos por repo), então NUNCA roda no caminho da requisição. Um job em
  * lote (scripts/forja-cards-gerar.mjs) roda na box, aplica `cardsValidados` aos arquivos reais e grava o
  * resultado JÁ VALIDADO (harmonia conferida) aqui no cache. O curso lê só do cache. Sem cache → null → o
- * curso usa os cards de demonstração (tutoriaisDemo) ou nenhum. `FORJA_CARDS_CACHE` aponta pro volume.
+ * curso usa os cards bundlados (lib/forja/tutoriais) ou nenhum. `FORJA_CARDS_CACHE` aponta pro volume.
+ * O cache é a geração em ESCALA (repos arbitrários na box); os cursos conhecidos já vêm prontos bundlados.
  */
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";

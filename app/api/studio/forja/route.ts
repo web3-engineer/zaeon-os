@@ -14,7 +14,7 @@ import { montarCursoEsqueleto } from "@/lib/forja/cursoRepo";
 import { resolverEsqueleto } from "@/lib/forja/esqueletoResolver";
 import { conteudoCuradoDoCurso } from "@/lib/forja/conteudoCurado";
 import { cardsCacheados } from "@/lib/forja/cardsLocal";
-import { tutorialDemoDoCurso } from "@/lib/forja/tutoriaisDemo";
+import { tutoriaisDoCurso } from "@/lib/forja/tutoriais";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
   // F2 — tutorial de arquivo: os cards GERADOS do repo real (cache da box) vêm primeiro; sem eles, os
   // cards de demonstração curados por curso. Vazio = o curso ainda não tem a prática "digite o código".
   const gerados = await cardsCacheados(esq.repo).catch(() => []);
-  const cards = gerados.length ? gerados : tutorialDemoDoCurso(esq.id);
+  const cards = gerados.length ? gerados : tutoriaisDoCurso(esq.id);
 
   const chave = `forja:${esq.id}`;
   const existente = await prisma.studioArtifact.findFirst({

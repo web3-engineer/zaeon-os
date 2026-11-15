@@ -18,7 +18,7 @@ import { authOptions } from "@/src/lib/auth";
 import { guard } from "@/src/lib/ratelimit";
 import { resolverEsqueleto } from "@/lib/forja/esqueletoResolver";
 import { cardsCacheados } from "@/lib/forja/cardsLocal";
-import { tutorialDemoDoCurso } from "@/lib/forja/tutoriaisDemo";
+import { tutoriaisDoCurso } from "@/lib/forja/tutoriais";
 import { arquivosDoProjeto, nomeRepoDoCurso, qaDoProjeto } from "@/lib/forja/projetoDoCurso";
 import { residualDoProjeto } from "@/lib/forja/residualDoRepo";
 import { getUserOctokit, getUserConnection } from "@/lib/projects/github-user";
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
 
   // Cards do curso (fonte dos arquivos) — montados no servidor, nunca vindos do cliente.
   const gerados = await cardsCacheados(esq.repo).catch(() => []);
-  const cards = gerados.length ? gerados : tutorialDemoDoCurso(esq.id);
+  const cards = gerados.length ? gerados : tutoriaisDoCurso(esq.id);
   if (!cards.length) return NextResponse.json({ error: "curso_sem_pratica" }, { status: 400 });
 
   // Conexão GitHub do aluno (token dele). Sem isso, não há onde publicar.

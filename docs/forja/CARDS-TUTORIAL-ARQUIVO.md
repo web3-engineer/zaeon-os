@@ -36,13 +36,18 @@ Duas metades, para **garantir a harmonia**:
 ## Cache e entrega
 - `lib/forja/cardsLocal.ts`: `cardsCacheados(repo)` lê o cache (`FORJA_CARDS_CACHE`, volume em prod);
   `gravarCardsCache(repo, cards)` grava (usado pelo job).
-- `app/api/studio/forja/route.ts` serve `cards`: os gerados (por repo) primeiro; senão os de demonstração
-  (`lib/forja/tutoriaisDemo.ts`, por curso). `components/study/SalaCurso.tsx` consome `j.cards`.
+- `app/api/studio/forja/route.ts` serve `cards`: os gerados por repo (cache) primeiro; senão os **cards
+  bundlados** (`lib/forja/tutoriais.ts`, por curso). `components/study/SalaCurso.tsx` consome `j.cards`.
 
-## Provisionar (o passo pendente, como o understand)
-A metade 1 (planos via LLM) roda na box, pela ponte da Forja — mesma pegada do understand-anything. Até
-provisionar, o curso usa os **cards de demonstração** (hoje: `algoritmos-classicos` → `binary_search.py`).
-Rodar em lote: `FORJA_CARDS_CACHE=/vol npx tsx scripts/forja-cards-gerar.mjs --repo o/n --dir <clone> --planos planos.json`.
+## Duas vias de conteúdo (nenhuma exige provisionar pra ter curso pronto)
+1. **Bundlado (cursos conhecidos, a via padrão).** Os cards dos cursos finitos já vêm prontos na imagem
+   (`lib/forja/tutoriais.ts` → `lib/forja/tutoriais/*.json`). São autorados com o arquivo real cortado em
+   snippets; a harmonia é travada por teste (`tutoriais.test.ts`) e cada arquivo foi rodado de fato. Hoje:
+   `algoritmos-classicos` → `binary_search.py`, `insertion_sort.py`, `greatest_common_divisor.py`.
+2. **Gerado em escala (repos arbitrários).** A metade 1 (planos via LLM) roda na box — mesma pegada do
+   understand-anything — pra cobrir QUALQUER repo sob demanda; o resultado validado vai pro cache.
+   Rodar em lote: `FORJA_CARDS_CACHE=/vol npx tsx scripts/forja-cards-gerar.mjs --repo o/n --dir <clone> --planos planos.json`.
+   É a única parte que depende de provisionamento — e só pra escala, não pra entregar os cursos conhecidos.
 
 ## F3 — GitHub + auto-push (ENTREGUE)
 O projeto do aluno (os arquivos que ele digitou nos cards) sobe no GitHub DELE. **1 repo por curso.**
