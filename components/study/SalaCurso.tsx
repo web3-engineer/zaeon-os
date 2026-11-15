@@ -69,7 +69,7 @@ export default function SalaCurso({ cursoId, titulo, onFechar }: { cursoId: stri
 
   // Tutorial de arquivo (F1): o aluno digita o código real. Por ora, demo via cards curados por curso.
   if (praticar && cards.length) {
-    return <CardArquivo card={cards[0]} onFechar={() => setPraticar(false)} />;
+    return <CardArquivo card={cards[0]} cursoId={cursoId} onFechar={() => setPraticar(false)} />;
   }
   return (
     <div className="relative h-full">

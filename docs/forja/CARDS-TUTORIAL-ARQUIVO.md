@@ -44,10 +44,23 @@ A metade 1 (planos via LLM) roda na box, pela ponte da Forja — mesma pegada do
 provisionar, o curso usa os **cards de demonstração** (hoje: `algoritmos-classicos` → `binary_search.py`).
 Rodar em lote: `FORJA_CARDS_CACHE=/vol npx tsx scripts/forja-cards-gerar.mjs --repo o/n --dir <clone> --planos planos.json`.
 
+## F3 — GitHub + auto-push (ENTREGUE)
+O projeto do aluno (os arquivos que ele digitou nos cards) sobe no GitHub DELE. **1 repo por curso.**
+- `lib/forja/projetoDoCurso.ts` (PURO, +test): `arquivosDoProjeto(cards, {titulo, repo, extras?})` monta os
+  arquivos a partir dos cards (cada card não-residual → seu arquivo, `montarArquivo`; + README; + `extras`
+  = residual do Octa). `nomeRepoDoCurso(cursoId)` → `zaeon-<slug>`.
+- `POST /api/studio/forja/publicar` ({cursoId}): auth por e-mail; `getUserOctokit` (token do aluno) → sem
+  conexão devolve 409 "conecte seu GitHub"; monta os arquivos NO SERVIDOR (nunca do cliente); cria o repo
+  (privado) se não existe, senão reusa; `commitFiles` no branch default. Reuso de `github-service.ts`.
+- `components/study/CardArquivo.tsx`: botão **"subir pro meu GitHub"** que só aparece com o teste VERDE
+  (portão QA leve, F5-lite), checa a conexão em `/api/octa/github` e chama a rota.
+
+**Invariante de segurança:** os arquivos são montados no servidor a partir dos cards (conteúdo canônico =
+o arquivo real), o cliente manda só o `cursoId`; push só na conta do próprio aluno; ação disparada por ele.
+
 ## Fases seguintes
-- **F3 — residual via Octa:** o Octa monta os arquivos marcados `residual` (copiados/adaptados do source)
-  num projeto Octa, pro arquivo digitado rodar. (molde: `lib/rea-blueprint/paraOcta.ts` + `scaffold.ts`.)
-- **F4 — GitHub + auto-push:** conforme o aluno conclui cards, `publicarProjeto` sobe o progresso no repo
-  dele (reuso de `app/api/projects/github/connect` + `lib/octa/publicar.ts`). Decisão: 1 repo por curso.
-- **F5 — agente QA (pré-push):** engine na ponte da Forja que roda o projeto pronto (executável? README?)
-  e só então libera o push. Não é o residual.
+- **F4 — residual via Octa (background):** o Octa monta os arquivos marcados `residual` (copiados/adaptados
+  do source) e os passa como `extras` pra `arquivosDoProjeto`, pro projeto rodar inteiro. (molde:
+  `lib/rea-blueprint/paraOcta.ts` + `scaffold.ts`.) Hoje o push leva os arquivos digitados + README.
+- **F5 — agente QA (pré-push, engine):** além do portão leve (teste verde no navegador), um engine na ponte
+  da Forja que roda o projeto PRONTO (executável? README?) e carimba "pronto pra publicação". Ops-gated.

@@ -13,7 +13,7 @@ import { snippetsDoCard, validarDigitado, programaDeTeste, type CardDeArquivo, t
 
 const LANG: Record<string, Language> = { python: "python", javascript: "javascript", typescript: "typescript", html: "html" };
 
-export default function CardArquivo({ card, onFechar }: { card: CardDeArquivo; onFechar?: () => void }) {
+export default function CardArquivo({ card, cursoId, onFechar }: { card: CardDeArquivo; cursoId?: string; onFechar?: () => void }) {
   const flat = useMemo(() => {
     const arr: { s: Snippet; aba: number; local: number }[] = [];
     (card.abas ?? []).forEach((a, ai) => (a.snippets ?? []).forEach((s, li) => arr.push({ s, aba: ai, local: li })));
@@ -25,6 +25,7 @@ export default function CardArquivo({ card, onFechar }: { card: CardDeArquivo; o
   const [valor, setValor] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; txt: string } | null>(null);
   const [resultado, setResultado] = useState<{ passou: boolean; saida: string } | null>(null);
+  const [pub, setPub] = useState<{ fase: "idle" | "indo" | "ok" | "erro"; msg?: string; url?: string }>({ fase: "idle" });
   const { run, isRunning, isPyodideReady, pyodideError } = useCodeRunner();
 
   const total = flat.length;
@@ -55,6 +56,29 @@ export default function CardArquivo({ card, onFechar }: { card: CardDeArquivo; o
     const falhou = out.some((o) => o.type === "stderr" && o.text.trim());
     const saida = out.filter((o) => o.type === "stdout" || o.type === "stderr").map((o) => o.text).join("\n").trim();
     setResultado({ passou: !falhou, saida: saida || (falhou ? "erro" : "ok") });
+  };
+
+  // F3 — subir o projeto no GitHub do aluno. Portão QA leve (F5-lite): só depois do teste VERDE. O servidor
+  // monta os arquivos a partir dos cards (nunca do editor); aqui só disparamos com o cursoId.
+  const publicar = async () => {
+    if (!cursoId) return;
+    setPub({ fase: "indo" });
+    try {
+      const st = await fetch("/api/octa/github").then((r) => r.json()).catch(() => null);
+      if (!st?.conectado) {
+        setPub({ fase: "erro", msg: "Conecte seu GitHub para publicar.", url: "/api/projects/github/connect" });
+        return;
+      }
+      const r = await fetch("/api/studio/forja/publicar", {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ cursoId }),
+      });
+      const j = await r.json().catch(() => null);
+      if (r.ok && j?.repoUrl) { setPub({ fase: "ok", url: j.repoUrl }); return; }
+      if (r.status === 409) { setPub({ fase: "erro", msg: "Conecte seu GitHub para publicar.", url: "/api/projects/github/connect" }); return; }
+      setPub({ fase: "erro", msg: j?.detalhe || "Não consegui publicar agora." });
+    } catch {
+      setPub({ fase: "erro", msg: "Não consegui publicar agora." });
+    }
   };
 
   return (
@@ -116,6 +140,26 @@ export default function CardArquivo({ card, onFechar }: { card: CardDeArquivo; o
             <pre>{resultado.saida}</pre>
           </div>
         )}
+
+        {/* F3 — publicar no GitHub do aluno. Só com o teste VERDE (portão QA leve). */}
+        {resultado?.passou && cursoId && (
+          <div className="ca-pub">
+            {pub.fase === "ok" ? (
+              <div className="ca-msg ok">✓ no seu GitHub! <a href={pub.url} target="_blank" rel="noreferrer" style={{ color: "#a7f3d0", textDecoration: "underline" }}>abrir repositório ↗</a></div>
+            ) : (
+              <>
+                <button className="ca-btn pill" onClick={publicar} disabled={pub.fase === "indo"}>
+                  {pub.fase === "indo" ? "subindo…" : "subir pro meu GitHub ▸"}
+                </button>
+                {pub.fase === "erro" && (
+                  <div className="ca-msg no">
+                    {pub.msg}{pub.url ? <> <a href={pub.url} style={{ color: "#fecaca", textDecoration: "underline" }}>conectar ↗</a></> : null}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <style>{`
@@ -149,6 +193,7 @@ export default function CardArquivo({ card, onFechar }: { card: CardDeArquivo; o
         .ca-res.ok{background:rgba(110,231,183,.12);border:1px solid rgba(110,231,183,.45)}
         .ca-res.no{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.4)}
         .ca-res pre{margin:6px 0 0;font-family:ui-monospace,monospace;font-size:11.5px;color:#cdd9ec;white-space:pre-wrap}
+        .ca-pub{margin-top:10px;display:flex;flex-direction:column;gap:8px}
       `}</style>
     </div>
   );
