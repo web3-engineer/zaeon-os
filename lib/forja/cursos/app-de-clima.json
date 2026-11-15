@@ -1,0 +1,129 @@
+{
+  "modulos": [
+    {
+      "titulo": "Consumir uma API com fetch (e esperar a resposta)",
+      "estudo": "Um app de clima busca dados de outra máquina — um servidor de previsão — e mostra o que veio. Essa busca é feita com `fetch`, e entender como ela funciona é o coração do app.\n\n`fetch(url)` não devolve os dados na hora. Pedir informação pela internet LEVA TEMPO (centenas de milissegundos), e o JavaScript não congela esperando — ele devolve uma PROMESSA (Promise): \"te aviso quando chegar\". Você espera com `await` dentro de uma função `async`:\n\n```js\nasync function buscarClima(cidade) {\n  const resposta = await fetch(`https://api.exemplo.com/clima?cidade=${cidade}`);\n  const dados = await resposta.json();\n  return dados;\n}\n```\n\nRepare nos DOIS `await`: o primeiro espera a resposta CHEGAR; o segundo espera o corpo ser convertido de texto JSON para objeto (`.json()` também é assíncrono). Esquecer um `await` é o erro clássico: você tenta usar `dados` antes de ele existir e recebe uma Promise pendente em vez do clima.\n\nA regra que fica: dados da internet chegam com atraso; `fetch` + `.json()` são assíncronos; `async/await` deixa o código esperar sem travar a página.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Por que `fetch` devolve uma Promise em vez dos dados direto?",
+            "options": [
+              { "text": "Buscar dados pela internet leva tempo; a Promise representa \"chega depois\" sem congelar a página", "isCorrect": true, "explanation": "A rede é lenta; o JS segue e avisa quando a resposta chega." },
+              { "text": "Porque os dados são secretos", "isCorrect": false, "explanation": "Nada a ver com sigilo; é sobre tempo de resposta." },
+              { "text": "Para economizar memória", "isCorrect": false, "explanation": "É sobre assincronia, não memória." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "Numa função async, o que `await resposta.json()` faz?",
+            "accepted": ["espera converter o corpo JSON em objeto", "aguarda o parse do corpo da resposta", "transforma a resposta em objeto, esperando terminar", "espera o json ser lido e convertido", "converte o corpo de texto para objeto, assíncrono"],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Em uma frase: o que acontece se você esquecer o `await` do fetch?",
+          "accepted": ["você usa uma Promise pendente em vez dos dados", "os dados não chegaram ainda e dá erro", "recebe uma Promise, não o clima", "tenta ler antes de existir", "usa a resposta antes de ela chegar"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "async function buscarClima(cidade) {\n  const resposta = await fetch(`https://api.exemplo.com/clima?cidade=${cidade}`);\n  const dados = await resposta.json();   // dois await: resposta e corpo\n  return dados;\n}",
+        "teste": "// buscarClima retorna os dados já convertidos em objeto (os dois await presentes)"
+      }
+    },
+    {
+      "titulo": "Quando a busca dá errado (e sempre dá, uma hora)",
+      "estudo": "O caminho feliz — digita a cidade, vem o clima — é o fácil. O que separa um app de verdade é tratar quando ALGO FALHA, e na internet algo sempre falha: a cidade não existe, a rede caiu, a API está fora, você estourou o limite de requisições.\n\nDois tipos de erro, tratados diferente:\n1. **A requisição falhou de vez** (sem internet, servidor inacessível): o `fetch` REJEITA a Promise, e você captura com `try/catch`. No `catch`, mostre \"não consegui buscar, tente de novo\".\n2. **A requisição foi, mas a resposta é de erro** (cidade não encontrada = 404; limite = 429): aqui o `fetch` NÃO rejeita — ele resolve normalmente, só com um status de erro. Você checa `if (!resposta.ok)` (ok é true só para status 200-299) e trata a mensagem apropriada (\"cidade não encontrada\").\n\nEsse é o ponto que quase todo iniciante erra: achar que `fetch` dá erro em 404. Não dá — 404 é uma resposta bem-sucedida do ponto de vista da rede. Você TEM de olhar `resposta.ok` ou `resposta.status`.\n\nA regra que fica: `try/catch` pega a falha de rede; `if (!resposta.ok)` pega o erro de aplicação (404/429). Os dois, sempre — e cada um com uma mensagem que ajuda o usuário.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "A API devolve 404 (cidade não encontrada). O `fetch` rejeita a Promise?",
+            "options": [
+              { "text": "Não — 404 é uma resposta recebida; você precisa checar `resposta.ok` para tratá-lo", "isCorrect": true, "explanation": "fetch só rejeita em falha de rede; erros HTTP chegam como resposta normal." },
+              { "text": "Sim, cai direto no catch", "isCorrect": false, "explanation": "Esse é o engano clássico; 404 não rejeita o fetch." },
+              { "text": "Sim, mas só às vezes", "isCorrect": false, "explanation": "Nunca por status HTTP; só por falha de rede." }
+            ],
+            "marks": 3
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "O que o `try/catch` em volta do fetch captura?",
+            "options": [
+              { "text": "A falha de REDE (sem internet, servidor inacessível) — quando o fetch rejeita", "isCorrect": true, "explanation": "A rejeição da Promise cai no catch; erros HTTP não." },
+              { "text": "Qualquer status de erro HTTP como 404 e 500", "isCorrect": false, "explanation": "Esses não rejeitam; são pegos por resposta.ok." },
+              { "text": "Erros de digitação no código", "isCorrect": false, "explanation": "try/catch pega exceções em runtime, não a lógica de status HTTP." }
+            ],
+            "marks": 2
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Qual propriedade da resposta você checa para saber se o status foi de sucesso (200-299)?",
+          "accepted": ["resposta.ok", ".ok", "ok", "resposta.ok (true em 2xx)"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "async function buscarClima(cidade) {\n  try {\n    const r = await fetch(url(cidade));\n    if (!r.ok) {                       // 404, 429... não rejeitam o fetch\n      return { erro: r.status === 404 ? 'cidade não encontrada' : 'tente mais tarde' };\n    }\n    return await r.json();\n  } catch {\n    return { erro: 'sem conexão' };    // falha de rede cai aqui\n  }\n}",
+        "teste": "// 404 deve virar erro 'cidade não encontrada'; queda de rede, 'sem conexão'"
+      }
+    },
+    {
+      "titulo": "Mostrar o clima e proteger a chave da API",
+      "estudo": "Chegaram os dados. Agora, DESENHAR. A resposta de uma API de clima é um objeto aninhado — algo como `{ main: { temp: 24.3 }, weather: [{ description: 'nublado' }] }`. Você lê os campos que importam e os coloca na tela: temperatura, descrição, talvez um ícone.\n\nDois cuidados ao exibir:\n1. **Campo que pode faltar.** Nem toda resposta traz tudo. Ler `dados.main.temp` quando `main` não veio quebra o app. Use acesso seguro (`dados?.main?.temp`) e um valor padrão (\"—\") quando faltar.\n2. **Formatar para gente.** `24.3254109` graus não se mostra assim — arredonde (`Math.round`) e ponha a unidade (`24°C`). Dado cru não é informação; formatado, sim.\n\nE um ponto de SEGURANÇA que todo app de API ensina: muitas APIs exigem uma CHAVE (uma senha de acesso). Se você colar a chave no JavaScript do navegador, qualquer um que abrir o código-fonte da página a vê e usa no seu lugar (e gasta sua cota, ou pior). A chave de uma API paga NÃO vai no front-end: ela mora num pequeno backend seu, que faz o pedido à API e repassa só o resultado. Para aprender, use APIs gratuitas sem chave ou com chave de teste; mas saiba a regra desde já.\n\nA regra que fica: leia os campos com acesso seguro, formate para humano, e NUNCA exponha uma chave de API secreta no código do navegador.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Por que não colar a chave de uma API paga no JavaScript do navegador?",
+            "options": [
+              { "text": "Qualquer um que abrir o código-fonte da página vê a chave e pode usá-la no seu lugar", "isCorrect": true, "explanation": "O front-end é público; segredo ali não é segredo. A chave fica num backend." },
+              { "text": "A chave fica lenta no navegador", "isCorrect": false, "explanation": "Não é desempenho; é exposição do segredo." },
+              { "text": "O navegador não aceita chaves", "isCorrect": false, "explanation": "Aceita — o problema é que fica visível a todos." }
+            ],
+            "marks": 3
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "A resposta às vezes não traz o campo `main`. Como ler a temperatura sem quebrar?",
+            "options": [
+              { "text": "Com acesso seguro e padrão: `dados?.main?.temp ?? '—'`", "isCorrect": true, "explanation": "O optional chaining evita o erro quando o campo falta." },
+              { "text": "`dados.main.temp` direto, confiando que sempre vem", "isCorrect": false, "explanation": "Se main faltar, isso lança erro e trava a tela." },
+              { "text": "Ignorar a temperatura", "isCorrect": false, "explanation": "A ideia é exibir com segurança, não omitir." }
+            ],
+            "marks": 2
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Em uma frase: por que arredondar e pôr unidade na temperatura antes de mostrar?",
+          "accepted": ["dado cru não é informação, formatado sim", "24.3254 não se mostra, 24°C sim", "para ficar legível para a pessoa", "formatar para humano", "número cru confunde o usuário"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "function exibir(dados) {\n  if (dados.erro) return mostrarErro(dados.erro);\n  const temp = dados?.main?.temp;\n  const desc = dados?.weather?.[0]?.description ?? '—';\n  const texto = (temp != null) ? Math.round(temp) + '°C' : '—';\n  // pinta `texto` e `desc` na tela\n}",
+        "teste": "// temp 24.32 vira '24°C'; se main faltar, mostra '—' sem quebrar"
+      }
+    }
+  ]
+}

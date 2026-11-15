@@ -1,0 +1,125 @@
+{
+  "modulos": [
+    {
+      "titulo": "A lista é o estado; a tela é desenho dela",
+      "estudo": "A lista de tarefas é o \"olá mundo\" das interfaces com estado, e ensina o princípio que vale para quase todo app: existe um ESTADO (os dados), e a tela é uma função dele.\n\nAqui o estado é um array: `let tarefas = []`. Cada tarefa é um objeto com o texto e se está feita: `{ texto: 'comprar pão', feita: false }`. Esse array é a ÚNICA fonte da verdade. A lista que aparece na tela não guarda nada próprio — ela é redesenhada a partir do array toda vez que ele muda.\n\nO ciclo é sempre o mesmo: o usuário age (adiciona, marca, remove) → você muda o ARRAY → você chama uma função `render()` que limpa a lista na tela e a redesenha a partir do array atual. O erro de iniciante é mexer direto no HTML (criar um `<li>` na mão ao adicionar, apagar um `<li>` ao remover) e deixar o array desatualizado — aí as duas verdades divergem e aparecem bugs fantasmas.\n\nA regra que fica: mude sempre o array, nunca o HTML direto; e tenha um `render()` que desenha a lista inteira a partir do array. Dados primeiro, tela depois.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Qual é a fonte da verdade numa lista de tarefas bem feita?",
+            "options": [
+              { "text": "O array de tarefas em memória; a tela é redesenhada a partir dele", "isCorrect": true, "explanation": "O estado (array) manda; a tela é função dele." },
+              { "text": "Os elementos <li> no HTML, lidos quando preciso", "isCorrect": false, "explanation": "Guardar a verdade no HTML cria divergência entre tela e dados." },
+              { "text": "Uma variável de texto com a lista concatenada", "isCorrect": false, "explanation": "A estrutura certa é um array de objetos, não uma string." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "Ao adicionar ou remover uma tarefa, o que você muda — e o que NÃO muda direto?",
+            "accepted": ["muda o array, não o HTML direto", "altera o array e chama render", "o estado; a tela é redesenhada", "mexe no array, não cria/apaga li na mão", "muda os dados e re-renderiza"],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Em uma frase: por que criar/apagar o <li> na mão e deixar o array desatualizado gera bugs?",
+          "accepted": ["cria duas verdades que divergem", "a tela e os dados ficam diferentes", "o array deixa de refletir a tela", "duas fontes da verdade", "os dados ficam dessincronizados da tela"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "let tarefas = [];\n\nfunction adicionar(texto) {\n  tarefas.push({ texto, feita: false });   // muda o ARRAY\n  render();                                 // redesenha a tela do array\n}\nfunction render() {\n  // limpa e redesenha a lista inteira a partir de `tarefas`\n}\nadicionar('comprar pão');\nconsole.log(tarefas.length);  // 1",
+        "teste": "// adicionar() deve crescer o array; a tela sai do array em render()"
+      }
+    },
+    {
+      "titulo": "Marcar e remover: encontrar a tarefa certa",
+      "estudo": "Adicionar é fácil (empurra no array). Marcar como feita e remover exigem uma coisa a mais: saber QUAL tarefa. E é aqui que entra uma decisão importante — como você identifica cada tarefa.\n\nO jeito frágil é pelo ÍNDICE (a posição no array). Funciona... até você remover uma tarefa do meio: os índices de todas as seguintes mudam, e o botão que apontava para a posição 3 agora aponta para outra tarefa. Bug clássico.\n\nO jeito robusto é dar a cada tarefa um ID único quando ela nasce (`{ id: Date.now(), texto, feita: false }`) e identificar por ele. Para marcar: ache a tarefa pelo id e inverta `feita` — `const t = tarefas.find(t => t.id === id); t.feita = !t.feita`. Para remover: filtre para fora — `tarefas = tarefas.filter(t => t.id !== id)`. O `filter` é elegante aqui: ele cria um array novo SEM a tarefa alvo, que é exatamente \"remover\".\n\nDepois de mudar o array (marcar ou remover), você chama `render()` de novo — o mesmo ciclo do módulo 1.\n\nA regra que fica: identifique tarefas por um id único, não pelo índice; `find` para marcar, `filter` para remover; e sempre re-renderize do array.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Por que identificar tarefas por um id único é melhor que pelo índice do array?",
+            "options": [
+              { "text": "Ao remover uma do meio, os índices seguintes mudam e passam a apontar para a tarefa errada", "isCorrect": true, "explanation": "O índice é posicional e instável; o id é estável." },
+              { "text": "O índice ocupa mais memória", "isCorrect": false, "explanation": "Não é sobre memória; é sobre estabilidade da referência." },
+              { "text": "JavaScript não permite acessar por índice", "isCorrect": false, "explanation": "Permite; o problema é o índice mudar quando o array muda." }
+            ],
+            "marks": 3
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Qual método do array remove a tarefa de um certo id, criando um array sem ela?",
+            "options": [
+              { "text": "filter(t => t.id !== id)", "isCorrect": true, "explanation": "filter devolve um novo array só com os que PASSAM no teste — todos menos o alvo." },
+              { "text": "find(t => t.id === id)", "isCorrect": false, "explanation": "find só localiza um item; não remove." },
+              { "text": "push(id)", "isCorrect": false, "explanation": "push adiciona; não remove." }
+            ],
+            "marks": 2
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Como você inverte o estado `feita` de uma tarefa achada por id? Escreva as duas operações.",
+          "accepted": ["find pelo id e t.feita = !t.feita", "const t = tarefas.find(t => t.id === id); t.feita = !t.feita", "achar por id e inverter feita", "find e negar feita", "localiza por id, feita = !feita"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "function marcar(id) {\n  const t = tarefas.find(t => t.id === id);\n  if (t) t.feita = !t.feita;   // inverte\n  render();\n}\nfunction remover(id) {\n  tarefas = tarefas.filter(t => t.id !== id);  // array sem o alvo\n  render();\n}",
+        "teste": "// remover do meio não deve afetar a identidade das outras tarefas (id, não índice)"
+      }
+    },
+    {
+      "titulo": "Guardar entre sessões com localStorage",
+      "estudo": "Até agora, recarregar a página apaga tudo — o array vive só na memória. Para a lista SOBREVIVER, você a guarda no navegador com o localStorage, um armazenamento simples de chave→texto que persiste entre visitas.\n\nMas o localStorage só guarda TEXTO, e o seu estado é um array de objetos. A ponte entre os dois é o JSON: `JSON.stringify(tarefas)` transforma o array num texto para salvar, e `JSON.parse(texto)` transforma o texto de volta num array ao carregar.\n\nO padrão fica: toda vez que o array muda (dentro do `render()`, ou numa função `salvar()`), você faz `localStorage.setItem('tarefas', JSON.stringify(tarefas))`. E ao abrir a página, você tenta carregar: `const salvas = localStorage.getItem('tarefas'); tarefas = salvas ? JSON.parse(salvas) : []`.\n\nDois cuidados honestos: o localStorage é POR NAVEGADOR e por dispositivo — não sincroniza entre o celular e o computador (para isso precisaria de um backend). E se o texto salvo estiver corrompido, `JSON.parse` lança erro; envolva em try/catch e caia num array vazio, para um dado ruim não travar o app inteiro.\n\nA regra que fica: estado é array; localStorage é texto; JSON é a ponte. Salve a cada mudança, carregue ao abrir, e proteja o parse.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "O localStorage só guarda texto, mas seu estado é um array de objetos. Como fazer a ponte?",
+            "options": [
+              { "text": "JSON.stringify para salvar (array→texto) e JSON.parse para carregar (texto→array)", "isCorrect": true, "explanation": "JSON serializa o array num texto e o reconstrói depois." },
+              { "text": "Guardar cada objeto numa chave separada", "isCorrect": false, "explanation": "Possível, mas desnecessário; JSON resolve o array inteiro de uma vez." },
+              { "text": "localStorage aceita objetos direto", "isCorrect": false, "explanation": "Não — ele converte para string \"[object Object]\", perdendo os dados." }
+            ],
+            "marks": 3
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "Por que envolver o JSON.parse do localStorage num try/catch?",
+            "accepted": ["se o texto estiver corrompido, parse lança erro e travaria o app", "para um dado ruim não quebrar tudo", "parse pode falhar com texto inválido", "proteger contra JSON corrompido", "evitar que um erro de parse derrube o app"],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Em uma frase: por que a lista salva no localStorage não aparece no seu celular se você a criou no computador?",
+          "accepted": ["localStorage é por navegador e dispositivo", "não sincroniza entre aparelhos", "precisa de backend para sincronizar", "é local a cada navegador", "fica só naquele navegador"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "function salvar() {\n  localStorage.setItem('tarefas', JSON.stringify(tarefas));\n}\nfunction carregar() {\n  try {\n    const salvas = localStorage.getItem('tarefas');\n    tarefas = salvas ? JSON.parse(salvas) : [];\n  } catch {\n    tarefas = [];   // dado corrompido não trava o app\n  }\n}",
+        "teste": "// salvar depois carregar deve reconstruir o mesmo array"
+      }
+    }
+  ]
+}

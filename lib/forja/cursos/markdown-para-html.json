@@ -1,0 +1,129 @@
+{
+  "modulos": [
+    {
+      "titulo": "Ler linha a linha e reconhecer o bloco",
+      "estudo": "Um conversor Markdown→HTML é o coração de muitas ferramentas (blogs, documentação, este próprio curso). E ensina um padrão valioso: ler um formato e GERAR outro. Comece pelo nível dos BLOCOS — as unidades que ocupam linhas inteiras.\n\nVocê quebra o texto em linhas (`texto.split('\\n')`) e, para cada uma, pergunta que bloco ela é:\n- Começa com `# ` → é um título h1; `## ` → h2; e assim por diante (conte os `#`).\n- Começa com `- ` ou `* ` → é um item de lista.\n- Linha vazia → separa parágrafos.\n- Qualquer outra → texto de parágrafo.\n\nUm detalhe que pega o iniciante: a LISTA é um bloco de várias linhas. Você não gera um `<ul>` por item — você detecta que entrou numa sequência de itens, abre o `<ul>` uma vez, emite os `<li>`, e fecha o `<ul>` quando a sequência acaba. Isso exige LEMBRAR se você está \"dentro de uma lista\" enquanto percorre as linhas (um pequeno estado).\n\nA regra que fica: processe por linha; o primeiro caractere decide o bloco; e blocos de várias linhas (lista) precisam que você lembre onde abriu para fechar certo.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Em Markdown, como você decide o nível de um título (h1, h2, h3)?",
+            "options": [
+              { "text": "Pela quantidade de `#` no início da linha", "isCorrect": true, "explanation": "`#` = h1, `##` = h2, etc." },
+              { "text": "Pelo tamanho da fonte", "isCorrect": false, "explanation": "Markdown é texto; não há fonte até virar HTML+CSS." },
+              { "text": "Pela cor da linha", "isCorrect": false, "explanation": "Markdown não tem cor; o nível vem dos `#`." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Por que converter uma lista Markdown exige \"lembrar\" um estado enquanto percorre as linhas?",
+            "options": [
+              { "text": "A lista é um bloco de várias linhas: abre `<ul>` uma vez, emite os `<li>`, e fecha quando a sequência acaba", "isCorrect": true, "explanation": "Sem lembrar que está dentro da lista, você não sabe quando abrir/fechar o <ul>." },
+              { "text": "Porque cada item vira um <ul> próprio", "isCorrect": false, "explanation": "Seria HTML inválido; os itens compartilham um <ul>." },
+              { "text": "Porque listas são mais lentas", "isCorrect": false, "explanation": "É sobre estrutura, não desempenho." }
+            ],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "O que uma linha que começa com `- ` deve virar em HTML (dentro da lista)?",
+          "accepted": ["um <li>", "um item de lista <li>", "li", "<li>...</li>", "um elemento li dentro de ul"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "function bloco(linha) {\n  const h = linha.match(/^(#{1,6})\\s+(.*)$/);\n  if (h) { const n = h[1].length; return `<h${n}>${h[2]}</h${n}>`; }\n  if (/^[-*]\\s+/.test(linha)) return 'ITEM:' + linha.slice(2);  // vira <li> na montagem da lista\n  if (linha.trim() === '') return '';                           // separador\n  return `<p>${linha}</p>`;\n}",
+        "teste": "// '## Olá' vira '<h2>Olá</h2>'; '- a' é reconhecido como item"
+      }
+    },
+    {
+      "titulo": "Formatação inline e a ordem das regras",
+      "estudo": "Dentro de uma linha há marcações INLINE: `**negrito**`, `*itálico*`, `` `código` ``, `[texto](link)`. Cada uma é uma substituição por expressão regular: `texto.replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>')` troca o que está entre `**` por `<strong>`.\n\nE aqui está a lição mais sutil do conversor: a ORDEM das substituições importa. Negrito usa `**` e itálico usa `*`. Se você aplicar a regra do itálico (`*`) PRIMEIRO, ela vai comer os asteriscos do negrito pela metade e bagunçar tudo. A regra: aplique o negrito (`**`, mais específico) ANTES do itálico (`*`, mais geral). Em parsing, o padrão mais específico vem primeiro.\n\nOutro cuidado: o código inline (`` `assim` ``) deve ser tratado de forma que a formatação NÃO aja dentro dele — `` `**não é negrito aqui**` `` deve sair literal. Conversores sérios extraem os trechos de código antes, aplicam o resto, e recolocam. Para um curso, basta saber que isso existe e por quê.\n\nA regra que fica: inline é substituição por regex; aplique do padrão mais específico ao mais geral (negrito antes de itálico); e código inline é uma zona onde a formatação não entra.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Por que aplicar a regra do negrito (`**`) ANTES da do itálico (`*`)?",
+            "options": [
+              { "text": "O itálico (`*`) aplicado primeiro comeria os asteriscos do negrito pela metade e quebraria a saída", "isCorrect": true, "explanation": "O padrão mais específico (`**`) deve vir antes do mais geral (`*`)." },
+              { "text": "Negrito é mais importante que itálico", "isCorrect": false, "explanation": "Não é prioridade visual; é evitar o conflito dos padrões." },
+              { "text": "A ordem não faz diferença", "isCorrect": false, "explanation": "Faz: `*` antes de `**` bagunça os marcadores." }
+            ],
+            "marks": 3
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "Que técnica (de JavaScript) você usa para trocar `**x**` por `<strong>x</strong>`?",
+            "accepted": ["replace com regex", "String.replace e uma expressão regular", "regex replace", "replace(/\\*\\*(.+?)\\*\\*/g, ...)", "substituição por expressão regular"],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Em uma frase: por que a formatação não deve agir dentro de um trecho de código inline?",
+          "accepted": ["código deve sair literal", "o que está em código não é marcação", "para mostrar os caracteres como estão", "senão ** dentro de código viraria negrito indevido", "código é texto cru"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "function inline(t) {\n  return t\n    .replace(/`([^`]+)`/g, '<code>$1</code>')       // código primeiro (zona protegida)\n    .replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>')  // negrito (mais específico)\n    .replace(/\\*(.+?)\\*/g, '<em>$1</em>')             // itálico (mais geral) por último\n    .replace(/\\[(.+?)\\]\\((.+?)\\)/g, '<a href=\"$2\">$1</a>');\n}",
+        "teste": "// '**oi** *tchau*' vira '<strong>oi</strong> <em>tchau</em>'"
+      }
+    },
+    {
+      "titulo": "Escapar HTML: a segurança que não é opcional",
+      "estudo": "Aqui está o módulo que transforma um brinquedo num conversor responsável. Se o seu Markdown vem de OUTRA PESSOA (um comentário, um post de usuário) e você gera HTML a partir dele e joga na página, você acabou de abrir a porta para XSS (cross-site scripting) — o usuário mal-intencionado escreve `<script>roubar()</script>` no \"texto\", e o seu conversor o transforma num script que RODA no navegador de quem lê.\n\nA defesa é ESCAPAR o HTML perigoso ANTES de aplicar sua formatação: trocar `<` por `&lt;`, `>` por `&gt;` e `&` por `&amp;`. Assim, `<script>` vira o TEXTO `&lt;script&gt;` — aparece na tela como texto, não executa. Você escapa a entrada bruta primeiro, e só depois introduz as suas próprias tags seguras (`<strong>`, `<h1>`) a partir da sintaxe Markdown.\n\nA ordem é a chave: escapar PRIMEIRO (neutraliza o HTML do usuário), formatar DEPOIS (adiciona só as tags que VOCÊ controla). Inverter isso escaparia suas próprias tags e não adiantaria nada.\n\nA regra que fica: todo conteúdo que vem de fora é suspeito; escape `< > &` antes de gerar HTML; e nunca injete na página HTML cru vindo de um usuário sem essa limpeza.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Por que escapar `< > &` antes de converter Markdown de um usuário em HTML?",
+            "options": [
+              { "text": "Para neutralizar HTML malicioso (como <script>) — senão ele rodaria no navegador de quem lê (XSS)", "isCorrect": true, "explanation": "Escapar transforma a tag perigosa em texto inofensivo." },
+              { "text": "Para o HTML ficar mais bonito", "isCorrect": false, "explanation": "É segurança, não estética." },
+              { "text": "Porque o navegador exige", "isCorrect": false, "explanation": "O navegador roda o script feliz; VOCÊ precisa impedir isso." }
+            ],
+            "marks": 3
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Qual a ordem correta das etapas?",
+            "options": [
+              { "text": "Escapar o HTML da entrada PRIMEIRO, depois aplicar a formatação Markdown (tags que você controla)", "isCorrect": true, "explanation": "Escapar antes neutraliza o perigo; formatar depois adiciona só o seguro." },
+              { "text": "Formatar primeiro, escapar depois", "isCorrect": false, "explanation": "Isso escaparia suas próprias tags e não protegeria a entrada." },
+              { "text": "Nunca escapar, confiar no usuário", "isCorrect": false, "explanation": "É exatamente o buraco de XSS." }
+            ],
+            "marks": 2
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Por quais entidades você troca `<` e `>` ao escapar?",
+          "accepted": ["&lt; e &gt;", "< vira &lt; e > vira &gt;", "&lt; &gt;", "menor por &lt; e maior por &gt;"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "function escapar(t) {\n  return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n}\nfunction converter(markdown) {\n  const seguro = escapar(markdown);   // ESCAPA a entrada primeiro\n  return seguro.split('\\n').map(bloco).join('\\n');  // só então formata\n}",
+        "teste": "// '<script>' na entrada deve sair como '&lt;script&gt;', sem executar"
+      }
+    }
+  ]
+}

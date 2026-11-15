@@ -1,0 +1,125 @@
+{
+  "modulos": [
+    {
+      "titulo": "O tabuleiro é um array de 9",
+      "estudo": "Antes de desenhar quadradinhos, modele o jogo. O tabuleiro do jogo da velha são 9 casas, e a estrutura mais limpa é um array de 9 posições: `let tabuleiro = Array(9).fill(null)`. Cada posição guarda `null` (vazia), `'X'` ou `'O'`. A tela são 9 células que DESENHAM esse array — de novo o princípio: o array é a verdade, a tela é o reflexo.\n\nMapear a grade 3×3 num array linear de 9 é a sacada. A casa da linha `l` e coluna `c` fica no índice `l * 3 + c`. Mas, na prática, você nem precisa pensar em linha e coluna: cada célula da tela carrega seu índice (0 a 8), e um clique na célula de índice `i` mexe em `tabuleiro[i]`.\n\nAlém do tabuleiro, o estado tem de quem é a vez: `let vez = 'X'`. X começa; a cada jogada válida, a vez alterna para 'O' e vice-versa.\n\nA regra que fica: tabuleiro = array de 9 (null/'X'/'O'); a célula da tela carrega seu índice; e uma variável guarda de quem é a vez.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Qual estrutura representa melhor o tabuleiro do jogo da velha?",
+            "options": [
+              { "text": "Um array de 9 posições, cada uma null, 'X' ou 'O'", "isCorrect": true, "explanation": "Simples e direto; a tela desenha esse array." },
+              { "text": "Nove variáveis separadas (a1, a2, ...)", "isCorrect": false, "explanation": "Nove variáveis soltas são difíceis de percorrer e checar vitória." },
+              { "text": "Um texto com os símbolos concatenados", "isCorrect": false, "explanation": "String dificulta ler e alterar uma casa específica." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "Numa grade 3×3 mapeada num array de 9, qual índice corresponde à linha l, coluna c?",
+            "accepted": ["l * 3 + c", "l*3+c", "linha vezes 3 mais coluna", "l*3 + c"],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Além do tabuleiro, que outra variável de estado o jogo precisa?",
+          "accepted": ["de quem é a vez", "a vez (X ou O)", "o jogador atual", "vez", "quem joga agora"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "let tabuleiro = Array(9).fill(null);\nlet vez = 'X';\n\nfunction jogar(i) {\n  if (tabuleiro[i] !== null) return;   // casa ocupada: ignora (módulo 2)\n  tabuleiro[i] = vez;\n  vez = (vez === 'X') ? 'O' : 'X';     // alterna\n}",
+        "teste": "// jogar(0) põe 'X' no índice 0 e passa a vez para 'O'"
+      }
+    },
+    {
+      "titulo": "Jogada válida e a troca de turno",
+      "estudo": "Nem todo clique é uma jogada. A primeira regra: só se pode jogar numa casa VAZIA. `if (tabuleiro[i] !== null) return` — se a casa já tem X ou O, o clique não faz nada. Sem essa trava, um jogador sobrescreve a peça do outro, e o jogo vira bagunça.\n\nA segunda regra é a alternância de turno, e ela só acontece numa jogada VÁLIDA. Repare na ordem: você checa se a casa está livre, marca com a vez atual, E SÓ ENTÃO troca a vez. Se você trocasse a vez antes de validar (ou mesmo num clique inválido), os turnos ficariam fora de sincronia — o jogador clica numa casa ocupada, nada marca, mas a vez passou, e agora está tudo trocado.\n\nE há um terceiro freio, do próximo módulo: depois que alguém vence, nenhuma jogada mais vale. Então a função de jogar começa com duas guardas: \"o jogo acabou?\" e \"a casa está ocupada?\". Só passando as duas é que a peça entra e a vez troca.\n\nA regra que fica: valide ANTES de agir — casa ocupada (e jogo encerrado) bloqueiam; a vez só alterna numa jogada que de fato aconteceu.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Por que a troca de vez deve vir DEPOIS de validar e marcar a jogada?",
+            "options": [
+              { "text": "Senão um clique inválido (casa ocupada) passaria a vez sem marcar nada, dessincronizando os turnos", "isCorrect": true, "explanation": "A vez só muda quando a jogada realmente aconteceu." },
+              { "text": "Porque trocar antes é mais lento", "isCorrect": false, "explanation": "Não é desempenho; é correção dos turnos." },
+              { "text": "Tanto faz a ordem", "isCorrect": false, "explanation": "Faz: a ordem errada bagunça de quem é a vez." }
+            ],
+            "marks": 3
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "Qual verificação impede jogar numa casa já ocupada?",
+            "accepted": ["if (tabuleiro[i] !== null) return", "checar se a casa é null antes de marcar", "tabuleiro[i] !== null", "se a casa não está vazia, não joga", "ver se a posição está livre"],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Cite as duas guardas que a função de jogar deve checar antes de marcar a peça.",
+          "accepted": ["jogo acabou e casa ocupada", "se há vencedor e se a casa está ocupada", "fim de jogo e casa livre", "acabou? ocupada?", "vitória já ocorreu e casa não vazia"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "let fim = false;\n\nfunction jogar(i) {\n  if (fim) return;                     // jogo encerrado\n  if (tabuleiro[i] !== null) return;   // casa ocupada\n  tabuleiro[i] = vez;                  // marca\n  // (checar vitória — módulo 3)\n  vez = (vez === 'X') ? 'O' : 'X';     // só agora troca a vez\n}",
+        "teste": "// clicar numa casa ocupada não marca nem troca a vez"
+      }
+    },
+    {
+      "titulo": "Quem venceu? As oito linhas",
+      "estudo": "A pergunta central do jogo: alguém ganhou? Vencer é ter três peças iguais numa linha, coluna ou diagonal. No array de 9, essas combinações são FIXAS — oito trincas de índices:\n\n```\n[0,1,2] [3,4,5] [6,7,8]   (linhas)\n[0,3,6] [1,4,7] [2,5,8]   (colunas)\n[0,4,8] [2,4,6]           (diagonais)\n```\n\nPara checar vitória, você percorre essas oito trincas e, para cada uma, pergunta: as três casas têm o MESMO valor e não são vazias? `const [a,b,c] = trinca; if (tab[a] && tab[a] === tab[b] && tab[b] === tab[c]) venceu = tab[a]`. O `tab[a] &&` descarta a trinca vazia (null), senão três casas vazias contariam como \"vitória\" de null.\n\nSe nenhuma trinca venceu e o tabuleiro está CHEIO (sem null), é empate (\"velha\"). Essa checagem roda depois de cada jogada; achando um vencedor, você trava o jogo (`fim = true`) e anuncia.\n\nA regra que fica: oito trincas fixas; vitória é três iguais e não-vazias numa trinca; tabuleiro cheio sem vencedor é empate. Checar depois de cada jogada.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Quantas combinações de vitória existem no jogo da velha?",
+            "options": [
+              { "text": "8 — três linhas, três colunas e duas diagonais", "isCorrect": true, "explanation": "São trincas fixas de índices no array de 9." },
+              { "text": "3, só as linhas", "isCorrect": false, "explanation": "Faltam as colunas e as diagonais." },
+              { "text": "9, uma por casa", "isCorrect": false, "explanation": "As vitórias são trincas, não casas individuais." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Por que o teste de vitória precisa do `tab[a] &&` (ou checar que não é null)?",
+            "options": [
+              { "text": "Senão três casas vazias (null === null === null) contariam como vitória", "isCorrect": true, "explanation": "A guarda de não-vazio evita a falsa vitória de null." },
+              { "text": "Para a função rodar mais rápido", "isCorrect": false, "explanation": "É correção, não desempenho." },
+              { "text": "Porque null não pode ser comparado", "isCorrect": false, "explanation": "null pode ser comparado — e é justamente por isso que três nulls dariam igual." }
+            ],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Quando o jogo é empate (\"deu velha\")?",
+          "accepted": ["tabuleiro cheio sem vencedor", "todas as casas preenchidas e ninguém venceu", "sem null e sem trinca vencedora", "cheio e sem vitória", "nenhuma trinca venceu e o tabuleiro está cheio"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "const TRINCAS = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];\n\nfunction vencedor(tab) {\n  for (const [a,b,c] of TRINCAS) {\n    if (tab[a] && tab[a] === tab[b] && tab[b] === tab[c]) return tab[a];\n  }\n  return null;   // ninguém venceu ainda\n}\nfunction empate(tab) {\n  return !vencedor(tab) && tab.every(c => c !== null);\n}",
+        "teste": "// vencedor(['X','X','X',null,...]) === 'X'; três nulls não contam"
+      }
+    }
+  ]
+}

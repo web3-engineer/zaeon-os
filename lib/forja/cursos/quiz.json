@@ -1,0 +1,125 @@
+{
+  "modulos": [
+    {
+      "titulo": "As perguntas como dados, não como HTML",
+      "estudo": "O segredo de um quiz bem feito é separar os DADOS (as perguntas) da APRESENTAÇÃO (a tela). Em vez de escrever cada pergunta direto no HTML, você as modela como um array de objetos:\n\n```js\nconst perguntas = [\n  { texto: 'Capital do Brasil?', opcoes: ['Rio', 'Brasília', 'SP'], correta: 1 },\n  { texto: '2 + 2 = ?', opcoes: ['3', '4', '5'], correta: 1 },\n];\n```\n\nCada pergunta tem o enunciado, as opções e o ÍNDICE da correta (aqui, `1` = a segunda opção). Com os dados assim, a tela vira genérica: uma função `mostrar(pergunta)` desenha QUALQUER pergunta a partir do objeto. Você escreve o código de exibição UMA vez e ele serve para 5 ou 500 perguntas.\n\nIsso é o oposto do iniciante que duplica o HTML de cada pergunta e esconde/mostra com CSS — aí adicionar uma pergunta é copiar-colar um bloco inteiro, e um erro em qualquer um vira bug. Dados primeiro: a pergunta é um objeto, e a tela é função dele.\n\nA regra que fica: perguntas são um array de objetos (texto, opções, índice da correta); uma única função desenha qualquer uma delas.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Por que modelar as perguntas como um array de objetos em vez de HTML duplicado?",
+            "options": [
+              { "text": "A tela vira genérica: uma função desenha qualquer pergunta, e adicionar uma é só mais um objeto", "isCorrect": true, "explanation": "Dados separados da apresentação escalam sem copiar-colar." },
+              { "text": "Objetos ocupam menos espaço na tela", "isCorrect": false, "explanation": "Não é sobre espaço; é sobre reaproveitar o código de exibição." },
+              { "text": "HTML não consegue mostrar perguntas", "isCorrect": false, "explanation": "Consegue; a questão é não duplicar o bloco por pergunta." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "No objeto de uma pergunta, o que o campo `correta: 1` representa?",
+            "accepted": ["o índice da opção correta", "a posição da resposta certa no array de opções", "qual opção é a certa (por índice)", "índice da correta", "a segunda opção é a certa"],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Em uma frase: qual o problema de duplicar o HTML de cada pergunta e alternar com CSS?",
+          "accepted": ["adicionar pergunta vira copiar-colar e cada cópia pode ter bug", "não escala", "difícil de manter", "repetição gera erro", "cada pergunta repetida é um ponto de falha"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "const perguntas = [\n  { texto: 'Capital do Brasil?', opcoes: ['Rio', 'Brasília', 'SP'], correta: 1 },\n  { texto: '2 + 2 = ?', opcoes: ['3', '4', '5'], correta: 1 },\n];\nfunction mostrar(p) {\n  // desenha o enunciado e as opções de QUALQUER pergunta p\n}\nmostrar(perguntas[0]);",
+        "teste": "// mostrar funciona para qualquer pergunta sem código específico dela"
+      }
+    },
+    {
+      "titulo": "Avançar, pontuar e não deixar o índice estourar",
+      "estudo": "O quiz caminha por uma variável: `let atual = 0`, o índice da pergunta em cena. Responder faz duas coisas: confere se a opção clicada é igual a `pergunta.correta` (se for, `pontos++`), e avança (`atual++`).\n\nDepois de avançar, a checagem crucial: AINDA HÁ pergunta? `if (atual < perguntas.length) mostrar(perguntas[atual]); else fim()`. Esquecer essa comparação é o bug número um do quiz — `perguntas[atual]` com `atual` além do fim devolve `undefined`, e a tela tenta ler `.texto` de undefined e quebra. O índice nunca pode passar do tamanho do array sem você tratar.\n\nA pontuação é só um contador, mas cuide de UMA coisa: uma pergunta deve contar o ponto UMA vez. Se o usuário puder clicar em duas opções antes de avançar, trave as opções após a primeira escolha (ou avance imediatamente). Senão ele \"ganha\" pontos repetidos.\n\nA regra que fica: `atual` anda de 0 até `perguntas.length`; sempre cheque `atual < length` antes de mostrar; e cada pergunta pontua uma vez só.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Depois de avançar com `atual++`, por que checar `atual < perguntas.length`?",
+            "options": [
+              { "text": "Senão `perguntas[atual]` vira undefined ao passar do fim, e a tela quebra ao ler suas propriedades", "isCorrect": true, "explanation": "O índice fora do array devolve undefined; é a hora de mostrar o resultado final." },
+              { "text": "Para o quiz contar mais rápido", "isCorrect": false, "explanation": "É proteção contra índice inválido, não desempenho." },
+              { "text": "Porque arrays em JS começam em 1", "isCorrect": false, "explanation": "Começam em 0; a checagem é para não passar do último." }
+            ],
+            "marks": 3
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "Como você decide se a resposta clicada está certa?",
+            "accepted": ["comparar o índice clicado com pergunta.correta", "se o índice da opção é igual a correta", "opcaoClicada === pergunta.correta", "comparar com o campo correta", "índice escolhido igual ao da correta"],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Em uma frase: como evitar que uma pergunta conte ponto mais de uma vez?",
+          "accepted": ["travar as opções após a primeira escolha", "avançar logo após a resposta", "desabilitar os botões depois do clique", "só aceitar uma resposta por pergunta", "bloquear novos cliques até avançar"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "let atual = 0, pontos = 0;\n\nfunction responder(indiceClicado) {\n  if (indiceClicado === perguntas[atual].correta) pontos++;\n  atual++;\n  if (atual < perguntas.length) mostrar(perguntas[atual]);\n  else fim();   // acabaram as perguntas\n}",
+        "teste": "// ao responder a última, deve chamar fim() e não acessar perguntas[atual] inexistente"
+      }
+    },
+    {
+      "titulo": "As telas: início, jogo e resultado",
+      "estudo": "Um quiz completo tem três TELAS: a inicial (\"Começar\"), a do jogo (as perguntas), e a de resultado (\"Você fez X de Y\"). Gerenciar telas é um padrão que aparece em quase todo app, e vale aprender bem aqui.\n\nO jeito limpo NÃO é ter três páginas HTML — é ter uma variável de estado `tela` ('inicio' | 'jogo' | 'fim') e mostrar só a seção certa. Uma função `irPara(novaTela)` esconde todas as seções e mostra a da tela atual. Trocar de tela é mudar essa variável e redesenhar — o mesmo princípio de estado→tela dos módulos anteriores.\n\nO começo RESETA: ao clicar \"Começar\" (ou \"Jogar de novo\"), você zera `atual = 0`, `pontos = 0`, embaralha as perguntas se quiser, e vai para a tela de jogo. Sem o reset, a segunda partida começa com a pontuação da primeira — bug comum de quem só troca a tela sem limpar o estado.\n\nA tela de resultado lê o estado final: `pontos` de `perguntas.length`, talvez com uma mensagem que depende da faixa de acerto. E oferece recomeçar, fechando o ciclo.\n\nA regra que fica: telas são um estado ('inicio'/'jogo'/'fim'), não páginas; e recomeçar RESETA pontos e índice, senão a nova partida herda a antiga.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Qual a forma limpa de alternar entre as telas de início, jogo e resultado?",
+            "options": [
+              { "text": "Uma variável de estado 'tela' e mostrar só a seção correspondente", "isCorrect": true, "explanation": "Telas viram estado; trocar é mudar a variável e redesenhar." },
+              { "text": "Três arquivos HTML separados com links entre eles", "isCorrect": false, "explanation": "Recarrega a página e perde o estado em memória; desnecessário." },
+              { "text": "Deixar tudo visível e rolar a página", "isCorrect": false, "explanation": "Mistura as telas; o usuário veria o resultado antes de jogar." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Ao clicar \"Jogar de novo\", o que NÃO pode faltar?",
+            "options": [
+              { "text": "Resetar pontos e índice (atual) para a nova partida não herdar a antiga", "isCorrect": true, "explanation": "Sem reset, a pontuação e a posição continuam da partida anterior." },
+              { "text": "Recarregar a página inteira", "isCorrect": false, "explanation": "Desnecessário e perde o estado; basta resetar as variáveis." },
+              { "text": "Apagar o array de perguntas", "isCorrect": false, "explanation": "As perguntas são reaproveitadas; o que se zera é o progresso." }
+            ],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Em uma frase: por que gerenciar telas com uma variável de estado é melhor que com páginas HTML separadas?",
+          "accepted": ["mantém o estado em memória sem recarregar", "não perde pontos e progresso ao trocar de tela", "é instantâneo e preserva o estado", "evita recarregar a página", "o estado sobrevive à troca de tela"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "let tela = 'inicio';\n\nfunction comecar() {\n  atual = 0; pontos = 0;        // RESET antes de jogar\n  tela = 'jogo';\n  mostrar(perguntas[0]);\n}\nfunction fim() {\n  tela = 'fim';\n  // mostra: pontos + ' de ' + perguntas.length\n}",
+        "teste": "// comecar() deve zerar pontos e atual antes de ir para a tela de jogo"
+      }
+    }
+  ]
+}
