@@ -24,7 +24,8 @@ import {
   PanelRightClose, PanelRightOpen, FileText, X, ChevronDown, GitBranch, GraduationCap, FlaskConical, UserPlus,
 } from "lucide-react";
 import { DIRETRIZ_ESTUDOS, DIRETRIZ_PESQUISA } from "@/lib/ai/salaPersona";
-import { useIsMobile } from "@/lib/ui/useIsMobile";
+import { useIsMobile, QUERY_CELULAR } from "@/lib/ui/useIsMobile";
+import { useFecharNoVoltar } from "@/lib/ui/useFecharNoVoltar";
 /** #733: abaixo de 1024 px a biblioteca fica embaixo da conversa; com menos de 720 px de altura, ela começa recolhida */
 export const QUERY_ESTREITA_E_BAIXA = "(max-width: 1023px) and (max-height: 720px)";
 import { cliqueForaDoCerebro } from "@/components/cerebro/cliqueFora";
@@ -395,7 +396,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   useEffect(() => { avisarEscrevendo(sending); }, [sending]);
   const [libOpen, setLibOpen] = useState(true);
   // celular: a biblioteca começa RECOLHIDA (empilhada embaixo, ela roubava metade da tela da conversa)
-  const celular = useIsMobile();
+  const celular = useIsMobile(QUERY_CELULAR);
   // #733: também em janela ESTREITA e BAIXA (abaixo de 1024 px a biblioteca desce para baixo da conversa; com pouca
   // altura — notebook com zoom de 150% — a conversa ficava com 0 px)
   const estreitaEBaixa = useIsMobile(QUERY_ESTREITA_E_BAIXA);
@@ -518,6 +519,16 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   // Árvore de habilidades: drawer opt-in; o tópico nasce do estudo focado (ou digitado no painel).
   const [treeOpen, setTreeOpen] = useState(false);
   const [treeExpandida, setTreeExpandida] = useState(false);
+  // #832: no celular, o ◀ do Android fecha o painel aberto (Studio, Biblioteca, Árvore, Blueprint) em vez de sair da página
+  // (só com a sala VISÍVEL: escondida, o ◀ seria gasto fechando um painel que ninguém vê)
+  useFecharNoVoltar(active && celular && studioOpen, () => setStudioOpen(false));
+  useFecharNoVoltar(active && celular && libOpen, () => setLibOpen(false));
+  useFecharNoVoltar(active && celular && treeOpen, () => setTreeOpen(false));
+  useFecharNoVoltar(active && celular && !!reaAberto, () => setReaAberto(null));
+  useFecharNoVoltar(active && celular && !!openStudyId, () => setOpenStudyId(null));
+  useFecharNoVoltar(active && celular && cerebroAberto, () => setCerebroAberto(false));
+  useFecharNoVoltar(active && celular && cartolinaAberta, () => setCartolinaAberta(false));
+  useFecharNoVoltar(active && celular && !!trabalhoAberto, () => setTrabalhoAberto(null));
   const [tree, setTree] = useState<SkillTreeData | null>(null);
   const [skillNode, setSkillNode] = useState<{ topicSlug: string; nodeId: string; title: string } | null>(null);
   const [treeRefresh, setTreeRefresh] = useState(0);
@@ -1543,7 +1554,8 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
             onClick={scrollToEnd}
             title="Ir para o final da conversa"
             aria-label="Ir para o final da conversa"
-            style={{ bottom: alturaComposer + 12 }}
+            // #832: nunca acima da aba "Conversa" — com pouca altura (celular deitado) ele cobria o "Traçar percurso"
+            style={{ bottom: `min(${alturaComposer + 12}px, calc(100% - 96px))` }}
             // #728: no canto direito — no meio ele cobria o texto da resposta (ex.: o título do diagrama)
             className="absolute z-20 right-4 w-9 h-9 rounded-full flex items-center justify-center
               bg-white/90 dark:bg-white/10 border border-slate-200 dark:border-white/15 shadow-lg backdrop-blur-xl
@@ -1791,7 +1803,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
 
         {/* composer estilo Claude — mais largo, esticando até perto da biblioteca
             (mantém o recuo à esquerda; sem teto de largura à direita). */}
-        <div ref={composerRef} className="px-4 sm:px-6 pb-4 pt-2">
+        <div ref={composerRef} className="px-4 sm:px-6 pb-4 pt-2 [@media(max-height:500px)_and_(pointer:coarse)]:pb-1 [@media(max-height:500px)_and_(pointer:coarse)]:pt-1">
           {/* #733: já existe uma conversa com essa pergunta */}
           {repetida && (
             <div role="alertdialog" aria-label="Conversa repetida" className="ml-4 sm:ml-8 lg:ml-14 mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-cyan-400/40 bg-cyan-50 dark:bg-cyan-500/10 px-3 py-2 text-[12.5px] text-cyan-900 dark:text-cyan-50">
@@ -1809,6 +1821,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
           )}
           <div data-tour="composer-estudos" className="ml-4 sm:ml-8 lg:ml-14 mr-0 sm:mr-2">
             <CoworkComposer
+              ativo={active}
               value={input}
               onChange={setInput}
               onSubmit={() => void send()}

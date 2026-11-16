@@ -783,7 +783,7 @@ export default function MeusEstudosFeed({ collabSpaceId, mode = "study" }: { col
     if (vid && editingYt !== it.id) {
       return (
         <div className="group relative my-3">
-          <div className="absolute -top-2 right-2 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100">
+          <div className="absolute -top-2 right-2 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
             {it.type === "note" && <button onClick={() => setEditingYt(it.id)} title="Trocar link" className="p-1 rounded bg-black/40 text-white hover:bg-black/60"><Pencil size={11} /></button>}
             {it.type === "video" && <button onClick={() => toLibrary(it.id)} title="Voltar p/ biblioteca" className="p-1 rounded bg-black/40 text-white hover:bg-black/60"><ArrowLeftToLine size={11} /></button>}
             <button onClick={() => removeItem(it.id)} title="Remover" className="p-1 rounded bg-black/40 text-white hover:bg-black/60"><X size={12} /></button>
@@ -797,7 +797,7 @@ export default function MeusEstudosFeed({ collabSpaceId, mode = "study" }: { col
     if (it.type === "image" && it.payload?.dataUrl) {
       return (
         <div className="group relative my-3">
-          <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100">
+          <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
             <button onClick={() => toLibrary(it.id)} title="Voltar p/ biblioteca" className="p-1 rounded bg-black/40 text-white hover:bg-black/60"><ArrowLeftToLine size={11} /></button>
             <button onClick={() => removeItem(it.id)} title="Remover" className="p-1 rounded bg-black/40 text-white hover:bg-black/60"><X size={12} /></button>
           </div>
@@ -810,7 +810,7 @@ export default function MeusEstudosFeed({ collabSpaceId, mode = "study" }: { col
     if (it.type === "audio" && it.payload?.dataUrl) {
       return (
         <div className="group relative my-3 rounded-2xl border p-3 bg-slate-50 border-slate-200 dark:bg-white/[0.04] dark:border-white/10">
-          <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100">
+          <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
             <button onClick={() => toLibrary(it.id)} title="Voltar p/ biblioteca" className="text-slate-400 hover:text-cyan-500"><ArrowLeftToLine size={13} /></button>
             <button onClick={() => removeItem(it.id)} title="Remover" className="text-slate-400 hover:text-rose-400"><X size={14} /></button>
           </div>
@@ -825,7 +825,7 @@ export default function MeusEstudosFeed({ collabSpaceId, mode = "study" }: { col
         <div className="group relative my-3 rounded-2xl border p-3.5 bg-slate-50 border-slate-200 dark:bg-white/[0.04] dark:border-white/10 flex items-center gap-2">
           <Paperclip size={15} className="text-cyan-600 dark:text-cyan-300 shrink-0" />
           <a href={it.payload.dataUrl} download={it.payload?.name || it.title || "arquivo"} className="text-[12px] font-semibold text-slate-800 dark:text-white truncate hover:underline">{it.title || it.payload?.name || "arquivo"}</a>
-          <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100">
+          <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
             <button onClick={() => toLibrary(it.id)} title="Voltar p/ biblioteca" className="text-slate-400 hover:text-cyan-500"><ArrowLeftToLine size={13} /></button>
             <button onClick={() => removeItem(it.id)} title="Remover" className="text-slate-400 hover:text-rose-400"><X size={14} /></button>
           </div>
@@ -838,7 +838,7 @@ export default function MeusEstudosFeed({ collabSpaceId, mode = "study" }: { col
       const url = it.payload?.url || it.payload?.text;
       return (
         <div className="group relative my-3 rounded-2xl border p-3.5 bg-slate-50 border-slate-200 shadow-sm dark:bg-white/[0.04] dark:border-white/10 dark:shadow-none">
-          <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100">
+          <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
             <SpeakButton text={it.payload?.text || it.summary || it.title || ""} size={13} />
             <button onClick={() => toLibrary(it.id)} title="Voltar p/ biblioteca" className="text-slate-400 hover:text-cyan-500"><ArrowLeftToLine size={13} /></button>
             <button onClick={() => removeItem(it.id)} title="Remover" className="text-slate-400 hover:text-rose-400"><X size={14} /></button>
@@ -890,8 +890,8 @@ export default function MeusEstudosFeed({ collabSpaceId, mode = "study" }: { col
     };
     return (
       <div className="group relative -mx-2 px-2 py-0.5 rounded-lg hover:bg-black/[0.015] dark:hover:bg-white/[0.02]">
-        <button onClick={() => removeItem(it.id)} title="Remover bloco" className="absolute -left-3 top-1.5 opacity-0 group-hover:opacity-100 text-slate-300 hover:text-rose-400"><X size={12} /></button>
-        {text.trim() && <div className="absolute -right-1 top-0.5 opacity-0 group-hover:opacity-100"><SpeakButton text={text} /></div>}
+        <button onClick={() => removeItem(it.id)} title="Remover bloco" className="absolute -left-3 top-1.5 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 text-slate-300 hover:text-rose-400"><X size={12} /></button>
+        {text.trim() && <div className="absolute -right-1 top-0.5 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100"><SpeakButton text={text} /></div>}
         <AutoGrow value={text} onChange={(v) => editText(it.id, v)} onKeyDown={onKey} placeholder={ph} className={cls} autoFocus={focusId === it.id} />
         {it.type === "note" && soloYt(text) && editingYt === it.id && (
           <button onClick={() => setEditingYt(null)} className="text-[12px] font-bold text-cyan-600 dark:text-cyan-300 hover:underline">▶ ver vídeo</button>
@@ -1177,7 +1177,7 @@ export default function MeusEstudosFeed({ collabSpaceId, mode = "study" }: { col
                   {sp.id === spaceId && <span className="text-[10px] font-black uppercase tracking-wide text-cyan-500 shrink-0">ativo</span>}
                   {spaces.length > 1 && (
                     <button onClick={() => delSpace(sp.id)} title="Apagar este estudo (vai pra lixeira)"
-                      className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-400 shrink-0">
+                      className="opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 text-slate-400 hover:text-rose-400 shrink-0">
                       <Trash2 size={12} />
                     </button>
                   )}
@@ -1206,7 +1206,7 @@ export default function MeusEstudosFeed({ collabSpaceId, mode = "study" }: { col
                       : <GripVertical size={13} className="text-slate-300 dark:text-white/20 shrink-0" />}
                     <Icon size={14} className="text-cyan-600 dark:text-cyan-300 shrink-0" />
                     <span className="flex-1 min-w-0 text-[13px] font-medium text-slate-700 dark:text-white/90 truncate">{it.title || it.payload?.text?.slice(0, 40) || it.type}</span>
-                    <button onClick={(e) => { e.stopPropagation(); removeItem(it.id); }} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-400 shrink-0"><Trash2 size={12} /></button>
+                    <button onClick={(e) => { e.stopPropagation(); removeItem(it.id); }} className="opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 text-slate-400 hover:text-rose-400 shrink-0"><Trash2 size={12} /></button>
                   </div>
                 );
               })}

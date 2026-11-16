@@ -221,7 +221,7 @@ export default function EditableProfile({ visitante = null, onVoltar }: {
                   {img ? <Image src={img} alt="avatar" fill className="object-cover rounded-full" />
                     : <span className="absolute inset-0 flex items-center justify-center text-3xl font-black text-cyan-600 dark:text-cyan-300">{(name || "Z").charAt(0).toUpperCase()}</span>}
                   {!somenteLeitura && (
-                    <div className="absolute inset-0 bg-black/55 rounded-full flex flex-col items-center justify-center opacity-0 group-hover/av:opacity-100 transition-opacity">
+                    <div className="absolute inset-0 bg-black/55 rounded-full flex flex-col items-center justify-center opacity-0 group-hover/av:opacity-100 [@media(hover:none)]:opacity-100 [@media(hover:none)]:bg-black/30 transition-opacity">
                       {uploading ? <Loader2 className="w-6 h-6 text-white animate-spin" /> : <Camera className="w-7 h-7 text-white" />}
                       <span className="text-[7px] uppercase font-bold text-white tracking-widest mt-0.5">{uploading ? "salvando" : "trocar"}</span>
                     </div>

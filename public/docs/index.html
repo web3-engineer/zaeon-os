@@ -64,8 +64,10 @@
   .steps li{counter-increment:s;position:relative;padding:6px 0 6px 34px;border-left:1px solid var(--line);margin-left:11px}
   .steps li::before{content:counter(s);position:absolute;left:-12px;top:7px;width:23px;height:23px;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center}
   .steps li b{display:block}
-  @media(max-width:860px){.flow,.sides{grid-template-columns:1fr} .flow .arrow,.sides .mid{transform:rotate(90deg);min-height:34px}}
-  @media(max-width:860px){.wrap{grid-template-columns:1fr} aside{position:fixed;z-index:20;width:280px;transform:translateX(-100%);transition:.25s} aside.open{transform:none} .menu{display:inline-block} main{padding:20px} .grid2{grid-template-columns:1fr}}
+  @media(max-width:860px){.flow,.sides{grid-template-columns:minmax(0,1fr)} .flow .arrow,.sides .mid{transform:rotate(90deg);min-height:34px}}
+  @media(max-width:860px){.wrap{grid-template-columns:minmax(0,1fr)} aside{position:fixed;z-index:20;width:280px;transform:translateX(-100%);transition:.25s} aside.open{transform:none} .menu{display:inline-block} main{padding:20px} .grid2{grid-template-columns:minmax(0,1fr)}
+    /* #832: no celular a coluna não cresce com o conteúdo (era 805 px numa tela de 375) — só o código e as tabelas rolam de lado */
+    main{min-width:0} table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}}
   .menu{display:none;border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:6px 10px;cursor:pointer}
 </style>
 
