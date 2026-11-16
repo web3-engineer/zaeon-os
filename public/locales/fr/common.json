@@ -10,7 +10,9 @@
     "close": "Fermer le menu",
     "settings": "Paramètres",
     "general": "Général",
-    "theme": "Changer de thème"
+    "theme": "Changer de thème",
+    "languageTitle": "Langue : {{name}} — cliquez pour changer",
+    "languageAria": "Langue actuelle : {{name}}. Cliquez pour changer."
   },
   "labSidebar": {
     "study": "Salle d’étude",
@@ -53,7 +55,31 @@
     "empty": "Aucune conversation pour le moment.",
     "cancel": "Annuler",
     "confirm": "Supprimer la conversation ?",
-    "confirmTopics": "Supprimer la conversation et les sous-thèmes ({{count}}) ?"
+    "confirmTopics": "Supprimer la conversation et les sous-thèmes ({{count}}) ?",
+    "studiesList": "Études de la salle d'étude",
+    "searchStudies": "Rechercher des études",
+    "noStudies": "Aucune étude pour l'instant. Discutez avec Aura : quand une conversation devient une étude, elle apparaît ici.",
+    "loading": "Chargement…",
+    "studiesError": "Impossible de charger les études.",
+    "retry": "Réessayer",
+    "more": "Voir plus",
+    "moreFailed": "Échec du chargement — réessayer",
+    "confirmStudy": "Supprimer l'étude ?",
+    "confirmStudyShared": "Supprimer l'étude ? {{count}} personne(s) y ayant accès ne la verra/verront plus.",
+    "newStudyName": "Nouveau nom de l'étude",
+    "phase": "Phase {{n}}",
+    "critical": "{{count}} critique(s)",
+    "awaitingMentor": "En attente du mentor",
+    "chatWith": "Discuter avec",
+    "moreAgents": "Ajoutez d'autres agents, comme <b>Octa Code</b>, depuis le Marketplace.",
+    "agentRole": {
+      "aura": "Études, recherche et conversation",
+      "zenita": "Agenda, cours et examens",
+      "nina": "Carnet, résumés et plan d'étude",
+      "octa": "Agent de code · IDE",
+      "eiffel": "Génie civil et structurel · CAO",
+      "noether": "Mathématiques · démonstrations, calcul et géométrie dynamique"
+    }
   },
     "forja": {
         "board": {
@@ -773,5 +799,44 @@
             "chat": "Démarrer la discussion",
             "conta": "Créer mon compte"
         }
-    }
+    },
+  "configMenu": {
+    "language": "Langue",
+    "rewatchTutorial": "Revoir le tutoriel",
+    "rewatchTutorialHint": "Aura affiche à nouveau les tutoriels et astuces de la salle d'étude et du profil.",
+    "cyberspace": "Cyberespace",
+    "tutorialMode": "Mode tutoriel",
+    "tutorialOn": "Activé : en entrant dans le cyberespace, le tutoriel est obligatoire.",
+    "tutorialOff": "Désactivé : le cyberespace normal.",
+    "graphics": "Graphismes",
+    "graphicsGroup": "Graphismes du cyberespace",
+    "graphicsAuto": "Automatique",
+    "graphicsLight": "Léger",
+    "graphicsFull": "Complet",
+    "graphicsAutoHint": "Automatique : léger sur carte graphique intégrée (Intel/AMD de portable).",
+    "graphicsLightHint": "Léger : moins de détails au loin et moins d'effets, 30 fps.",
+    "graphicsFullHint": "Complet : tout au maximum (carte graphique requise).",
+    "reopenHint": "S'applique à la prochaine ouverture du cyberespace.",
+    "sharpness": "Netteté",
+    "sharpnessGroup": "Netteté du cyberespace",
+    "sharpnessHint": "Moins de crénelage = plus de travail pour la carte. 0,75× allège ; 1,5× et 2× lissent. S'applique immédiatement.",
+    "smoothEdges": "Lisser les bords",
+    "smoothEdgesHint": "L'anticrénelage des bords. S'applique à la prochaine ouverture du cyberespace.",
+    "auto": "Auto",
+    "on": "Activé",
+    "off": "Désactivé",
+    "showFps": "Afficher les FPS",
+    "showFpsHint": "Le compteur d'images et le nom de la carte graphique dans le coin — si c'est lent, envoyez une capture.",
+    "account": "Compte",
+    "invite": "Ouvrir l'invitation",
+    "ceoMode": "Mode CEO",
+    "session": "Session",
+    "logout": "Se déconnecter",
+    "dangerZone": "Zone de danger",
+    "deleting": "Suppression…",
+    "deleteAccount": "Supprimer mon compte",
+    "deleteConfirm": "Supprimer votre compte ? Cela efface TOUTES vos données et libère l'e-mail pour repartir de zéro. Action irréversible.",
+    "deleteFailed": "Impossible de supprimer le compte pour le moment. Réessayez.",
+    "connectionError": "Erreur de connexion."
+  }
 }

@@ -17,13 +17,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronRight, CornerDownRight, GitBranchPlus, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Search, SquarePen, Trash2,
 } from "lucide-react";
-import { arvoreDeThreads, gruposDoDia, type Thread } from "@/lib/chat/threads";
+import { arvoreDeThreads, CHAVE_DO_GRUPO, GRUPOS_RECOLHIDOS, gruposDoDia, type GrupoDoDia, type Thread } from "@/lib/chat/threads";
 
 const chaveRecolhida = (sala: string) => `zaeon.chat.sidebar.${sala}.recolhida`;
 
-// #754: conversas de mais de 7 dias nascem RECOLHIDAS (clicar no título abre/fecha).
+// #754: conversas de mais de 7 dias nascem RECOLHIDAS (clicar no título abre/fecha) — GRUPOS_RECOLHIDOS (lib/chat/threads).
 // Hoje/Ontem/Últimos 7 dias ficam sempre à vista — só o que é antigo some pra não poluir.
-const GRUPOS_RECOLHIDOS = new Set(["Últimos 30 dias", "Mais antigas"]);
 
 export default function ConversasSidebar({
   sala, threads, ativa, ocupada, aoTrocar, aoCriar, aoFechar, aoRenomear, aoCriarSub, className = "", embutida = false, rotuloNova,
@@ -80,7 +79,7 @@ export default function ConversasSidebar({
 
   // #754: estado por grupo de dia. Default: antigos (>7 dias) recolhidos. Buscando ou com a conversa ativa dentro, abre.
   const [gruposAbertos, setGruposAbertos] = useState<Record<string, boolean>>({});
-  const alternarGrupo = (g: string) =>
+  const alternarGrupo = (g: GrupoDoDia) =>
     setGruposAbertos((s) => ({ ...s, [g]: !(s[g] ?? !GRUPOS_RECOLHIDOS.has(g)) }));
 
   const termo = busca.trim().toLowerCase();
@@ -233,7 +232,7 @@ export default function ConversasSidebar({
         {/* #754: títulos viram botões — grupos de mais de 7 dias nascem recolhidos */}
         {gruposDoDia(nos).map(({ grupo, nos: doGrupo }) => {
           const temAtiva = !!ativa && doGrupo.some(({ thread, filhas }) => thread.id === ativa || filhas.some((f) => f.id === ativa));
-          const nomeGrupo = traduzir({ Hoje: "labSidebar.today", Ontem: "labSidebar.yesterday", "Últimos 7 dias": "labSidebar.week", "Últimos 30 dias": "labSidebar.month", "Mais antigas": "labSidebar.older" }[grupo]);
+          const nomeGrupo = traduzir(CHAVE_DO_GRUPO[grupo]);
           const aberto = !!termo || temAtiva || (gruposAbertos[grupo] ?? !GRUPOS_RECOLHIDOS.has(grupo));
           return (
             <section key={grupo} aria-label={nomeGrupo} className="flex flex-col gap-0.5">

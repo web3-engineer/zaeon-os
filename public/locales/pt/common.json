@@ -10,7 +10,9 @@
     "close": "Fechar o menu",
     "settings": "Configurações",
     "general": "Geral",
-    "theme": "Alternar tema"
+    "theme": "Alternar tema",
+    "languageTitle": "Idioma: {{name}} — clique para trocar",
+    "languageAria": "Idioma atual: {{name}}. Clique para trocar."
   },
   "labSidebar": {
     "study": "Sala de Estudos",
@@ -53,7 +55,31 @@
     "empty": "Nenhuma conversa ainda.",
     "cancel": "Cancelar",
     "confirm": "Excluir conversa?",
-    "confirmTopics": "Excluir conversa e subtemas ({{count}})?"
+    "confirmTopics": "Excluir conversa e subtemas ({{count}})?",
+    "studiesList": "Estudos da Sala de Estudos",
+    "searchStudies": "Buscar estudos",
+    "noStudies": "Nenhum estudo ainda. Converse com a Aura: quando a conversa virar estudo, ele aparece aqui.",
+    "loading": "Carregando…",
+    "studiesError": "Não deu para carregar os estudos.",
+    "retry": "Tentar de novo",
+    "more": "Ver mais",
+    "moreFailed": "Não carregou — tentar de novo",
+    "confirmStudy": "Excluir estudo?",
+    "confirmStudyShared": "Excluir estudo? {{count}} pessoa(s) com acesso deixa(m) de ver.",
+    "newStudyName": "Novo nome do estudo",
+    "phase": "Fase {{n}}",
+    "critical": "{{count}} crítico(s)",
+    "awaitingMentor": "Aguardando mentor",
+    "chatWith": "Conversar com",
+    "moreAgents": "Mais agentes, como o <b>Octa Code</b>, você adiciona no Marketplace.",
+    "agentRole": {
+      "aura": "Estudos, pesquisa e conversa",
+      "zenita": "Agenda, aulas e provas",
+      "nina": "Caderno, resumos e plano de estudo",
+      "octa": "Agente de código · IDE",
+      "eiffel": "Engenharia civil e estrutural · CAD",
+      "noether": "Matemática · demonstração, cálculo e geometria dinâmica"
+    }
   },
     "forja": {
         "board": {
@@ -773,5 +799,44 @@
             "chat": "Iniciar chat",
             "conta": "Criar minha conta"
         }
-    }
+    },
+  "configMenu": {
+    "language": "Idioma",
+    "rewatchTutorial": "Rever tutorial",
+    "rewatchTutorialHint": "A Aura mostra de novo os tutoriais e as dicas da Sala de Estudos e do Perfil.",
+    "cyberspace": "Cyberespaço",
+    "tutorialMode": "Modo tutorial",
+    "tutorialOn": "Ligado: ao entrar no cyberespaço, o tutorial é obrigatório.",
+    "tutorialOff": "Desligado: o cyberespaço normal.",
+    "graphics": "Gráficos",
+    "graphicsGroup": "Gráficos do cyberespaço",
+    "graphicsAuto": "Automático",
+    "graphicsLight": "Leve",
+    "graphicsFull": "Completo",
+    "graphicsAutoHint": "Automático: leve em placa de vídeo integrada (Intel/AMD de notebook).",
+    "graphicsLightHint": "Leve: menos coisa ao longe e menos efeitos, 30 fps.",
+    "graphicsFullHint": "Completo: tudo no máximo (precisa de placa de vídeo).",
+    "reopenHint": "Vale ao abrir o cyberespaço de novo.",
+    "sharpness": "Nitidez",
+    "sharpnessGroup": "Nitidez do cyberespaço",
+    "sharpnessHint": "Menos serrilhado = mais trabalho pra placa. 0,75× alivia; 1,5× e 2× deixam liso. Vale na hora.",
+    "smoothEdges": "Suavizar bordas",
+    "smoothEdgesHint": "O antisserrilhado das bordas. Vale ao abrir o cyberespaço de novo.",
+    "auto": "Auto",
+    "on": "Ligado",
+    "off": "Desligado",
+    "showFps": "Mostrar FPS",
+    "showFpsHint": "O contador de quadros e o nome da placa de vídeo no canto da tela — se estiver lento, manda um print.",
+    "account": "Conta",
+    "invite": "Acessar convite",
+    "ceoMode": "Modo CEO",
+    "session": "Sessão",
+    "logout": "Sair",
+    "dangerZone": "Zona de risco",
+    "deleting": "Apagando…",
+    "deleteAccount": "Deletar minha conta",
+    "deleteConfirm": "Apagar sua conta? Isso remove TODOS os seus dados e libera o e-mail pra começar do zero. Não dá pra desfazer.",
+    "deleteFailed": "Não consegui apagar a conta agora. Tente de novo.",
+    "connectionError": "Erro de conexão."
+  }
 }

@@ -7,6 +7,7 @@
  */
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { Trans, useTranslation } from "react-i18next";
 import type { AgenteChat, AgenteChatId } from "@/lib/agents/chatAgentes";
 
 export default function SeletorDeAgente({ ancora, agentes, atual, icone, onEscolher, onFechar }: {
@@ -18,6 +19,7 @@ export default function SeletorDeAgente({ ancora, agentes, atual, icone, onEscol
   onFechar: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
   useEffect(() => {
     const fora = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) onFechar(); };
     const esc = (e: KeyboardEvent) => { if (e.key === "Escape") onFechar(); };
@@ -34,10 +36,10 @@ export default function SeletorDeAgente({ ancora, agentes, atual, icone, onEscol
   };
 
   return createPortal(
-    <div ref={ref} role="menu" aria-label="Trocar de agente" style={estilo}
+    <div ref={ref} role="menu" aria-label={t("labSidebar.agent")} style={estilo}
       className="fixed z-[700] w-[248px] p-1.5 rounded-2xl border backdrop-blur-2xl shadow-[0_20px_50px_-15px_rgba(0,0,0,0.6)]
         bg-white/90 border-blue-200/80 dark:bg-[rgba(22,22,34,0.92)] dark:border-white/10">
-      <div className="px-2.5 pt-1.5 pb-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-white/40">Conversar com</div>
+      <div className="px-2.5 pt-1.5 pb-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-white/40">{t("labSidebar.chatWith")}</div>
       {agentes.map((a) => (
         <button key={a.id} type="button" role="menuitemradio" aria-checked={a.id === atual}
           onClick={() => (a.id === atual ? onFechar() : onEscolher(a.id))}
@@ -46,13 +48,13 @@ export default function SeletorDeAgente({ ancora, agentes, atual, icone, onEscol
           <span className="grid place-items-center w-8 h-8 rounded-full shrink-0 bg-slate-100 dark:bg-white/5 text-cyan-600 dark:text-cyan-300">{icone(a.id)}</span>
           <span className="min-w-0 flex-1">
             <span className="block text-[13px] font-bold text-slate-900 dark:text-white">{a.nome}</span>
-            <span className="block text-[11px] text-slate-500 dark:text-white/50 truncate">{a.papel}</span>
+            <span className="block text-[11px] text-slate-500 dark:text-white/50 truncate">{t(`labSidebar.agentRole.${a.id}`, { defaultValue: a.papel })}</span>
           </span>
           {a.id === atual && <span className="text-cyan-500 text-[13px]" aria-hidden>✓</span>}
         </button>
       ))}
       {!agentes.some((a) => a.id === "octa") && (
-        <p className="px-2.5 pt-1 pb-1.5 text-[11px] leading-snug text-slate-500 dark:text-white/45">Mais agentes, como o <b>Octa Code</b>, você adiciona no Marketplace.</p>
+        <p className="px-2.5 pt-1 pb-1.5 text-[11px] leading-snug text-slate-500 dark:text-white/45"><Trans i18nKey="labSidebar.moreAgents" components={{ b: <b /> }} /></p>
       )}
     </div>,
     document.body,

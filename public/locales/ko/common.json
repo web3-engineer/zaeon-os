@@ -10,7 +10,9 @@
     "close": "메뉴 닫기",
     "settings": "설정",
     "general": "일반",
-    "theme": "테마 전환"
+    "theme": "테마 전환",
+    "languageTitle": "언어: {{name}} — 클릭하여 변경",
+    "languageAria": "현재 언어: {{name}}. 클릭하여 변경하세요."
   },
   "labSidebar": {
     "study": "학습실",
@@ -53,7 +55,31 @@
     "empty": "아직 대화가 없습니다.",
     "cancel": "취소",
     "confirm": "대화를 삭제할까요?",
-    "confirmTopics": "대화와 하위 주제 {{count}}개를 삭제할까요?"
+    "confirmTopics": "대화와 하위 주제 {{count}}개를 삭제할까요?",
+    "studiesList": "스터디룸 학습",
+    "searchStudies": "학습 검색",
+    "noStudies": "아직 학습이 없습니다. Aura와 대화하세요. 대화가 학습이 되면 여기에 나타납니다.",
+    "loading": "불러오는 중…",
+    "studiesError": "학습을 불러오지 못했습니다.",
+    "retry": "다시 시도",
+    "more": "더 보기",
+    "moreFailed": "불러오지 못함 — 다시 시도",
+    "confirmStudy": "학습을 삭제할까요?",
+    "confirmStudyShared": "학습을 삭제할까요? 접근 권한이 있는 {{count}}명도 더 이상 볼 수 없습니다.",
+    "newStudyName": "새 학습 이름",
+    "phase": "{{n}}단계",
+    "critical": "핵심 과제 {{count}}개",
+    "awaitingMentor": "멘토 대기 중",
+    "chatWith": "대화 상대",
+    "moreAgents": "<b>Octa Code</b> 같은 에이전트는 마켓플레이스에서 추가할 수 있습니다.",
+    "agentRole": {
+      "aura": "학습, 연구, 대화",
+      "zenita": "일정, 수업, 시험",
+      "nina": "노트, 요약, 학습 계획",
+      "octa": "코딩 에이전트 · IDE",
+      "eiffel": "토목·구조 공학 · CAD",
+      "noether": "수학 · 증명, 미적분, 동적 기하"
+    }
   },
     "forja": {
         "board": {
@@ -773,5 +799,44 @@
             "chat": "채팅 시작",
             "conta": "계정 만들기"
         }
-    }
+    },
+  "configMenu": {
+    "language": "언어",
+    "rewatchTutorial": "튜토리얼 다시 보기",
+    "rewatchTutorialHint": "Aura가 스터디룸과 프로필의 튜토리얼과 팁을 다시 보여줍니다.",
+    "cyberspace": "사이버스페이스",
+    "tutorialMode": "튜토리얼 모드",
+    "tutorialOn": "켜짐: 사이버스페이스에 들어가면 튜토리얼이 필수입니다.",
+    "tutorialOff": "꺼짐: 일반 사이버스페이스.",
+    "graphics": "그래픽",
+    "graphicsGroup": "사이버스페이스 그래픽",
+    "graphicsAuto": "자동",
+    "graphicsLight": "가볍게",
+    "graphicsFull": "전체",
+    "graphicsAutoHint": "자동: 내장 그래픽(노트북 Intel/AMD)에서는 가볍게.",
+    "graphicsLightHint": "가볍게: 먼 거리 표시와 효과를 줄이고 30fps.",
+    "graphicsFullHint": "전체: 모든 설정 최대(그래픽 카드 필요).",
+    "reopenHint": "사이버스페이스를 다시 열 때 적용됩니다.",
+    "sharpness": "선명도",
+    "sharpnessGroup": "사이버스페이스 선명도",
+    "sharpnessHint": "계단 현상이 줄수록 GPU 부담이 커집니다. 0.75×는 가볍게, 1.5×와 2×는 매끄럽게. 즉시 적용됩니다.",
+    "smoothEdges": "가장자리 부드럽게",
+    "smoothEdgesHint": "가장자리 안티앨리어싱. 사이버스페이스를 다시 열 때 적용됩니다.",
+    "auto": "자동",
+    "on": "켜짐",
+    "off": "꺼짐",
+    "showFps": "FPS 표시",
+    "showFpsHint": "화면 모서리에 프레임 수와 그래픽 카드 이름을 표시합니다 — 느리면 스크린샷을 보내 주세요.",
+    "account": "계정",
+    "invite": "초대 열기",
+    "ceoMode": "CEO 모드",
+    "session": "세션",
+    "logout": "로그아웃",
+    "dangerZone": "위험 구역",
+    "deleting": "삭제 중…",
+    "deleteAccount": "내 계정 삭제",
+    "deleteConfirm": "계정을 삭제할까요? 모든 데이터가 삭제되고 이메일을 다시 사용할 수 있게 됩니다. 되돌릴 수 없습니다.",
+    "deleteFailed": "지금은 계정을 삭제할 수 없습니다. 다시 시도해 주세요.",
+    "connectionError": "연결 오류."
+  }
 }

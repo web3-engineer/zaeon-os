@@ -278,13 +278,26 @@ export function quandoCriada(criadaEm: number, agora: number = Date.now()): stri
   return `criada em ${new Date(criadaEm).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} às ${hora}`;
 }
 
+/** as GAVETAS da sidebar: mais de 7 dias nascem recolhidas (#754) — conversas e estudos seguem a mesma regra */
+export const GRUPOS_RECOLHIDOS: ReadonlySet<GrupoDoDia> = new Set<GrupoDoDia>(["Últimos 30 dias", "Mais antigas"]);
+/** a chave de tradução (labSidebar.*) do título de cada gaveta */
+export const CHAVE_DO_GRUPO: Record<GrupoDoDia, string> = {
+  Hoje: "labSidebar.today", Ontem: "labSidebar.yesterday", "Últimos 7 dias": "labSidebar.week",
+  "Últimos 30 dias": "labSidebar.month", "Mais antigas": "labSidebar.older",
+};
+
+/** quaisquer itens em gavetas de dia pelo instante que `quando` devolve, o mais novo primeiro (empate: a ordem de entrada) */
+export function agruparPorDia<N>(itens: readonly N[], quando: (n: N) => number, agora: number = Date.now()): { grupo: GrupoDoDia; nos: N[] }[] {
+  const ordem: GrupoDoDia[] = ["Hoje", "Ontem", "Últimos 7 dias", "Últimos 30 dias", "Mais antigas"];
+  const ordenados = itens.map((n, i) => ({ n, i, t: quando(n) || 0 })).sort((a, b) => b.t - a.t || a.i - b.i);
+  const porGrupo = new Map<GrupoDoDia, N[]>();
+  for (const { n, t } of ordenados) { const g = grupoDoDia(t, agora); porGrupo.set(g, [...(porGrupo.get(g) ?? []), n]); }
+  return ordem.filter((g) => porGrupo.has(g)).map((g) => ({ grupo: g, nos: porGrupo.get(g)! }));
+}
+
 /** os nós da lista em grupos de dia, a mais nova primeiro (a ordem de dentro de cada dia não muda) */
 export function gruposDoDia<N extends { thread: Thread }>(nos: readonly N[], agora: number = Date.now()): { grupo: GrupoDoDia; nos: N[] }[] {
-  const ordem: GrupoDoDia[] = ["Hoje", "Ontem", "Últimos 7 dias", "Últimos 30 dias", "Mais antigas"];
-  const ordenados = nos.map((n, i) => ({ n, i })).sort((a, b) => (b.n.thread.criadaEm || 0) - (a.n.thread.criadaEm || 0) || a.i - b.i).map((x) => x.n);
-  const porGrupo = new Map<GrupoDoDia, N[]>();
-  for (const n of ordenados) { const g = grupoDoDia(n.thread.criadaEm || 0, agora); porGrupo.set(g, [...(porGrupo.get(g) ?? []), n]); }
-  return ordem.filter((g) => porGrupo.has(g)).map((g) => ({ grupo: g, nos: porGrupo.get(g)! }));
+  return agruparPorDia(nos, (n) => n.thread.criadaEm, agora);
 }
 
 /**

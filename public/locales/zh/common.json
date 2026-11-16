@@ -10,7 +10,9 @@
     "close": "关闭菜单",
     "settings": "设置",
     "general": "常规",
-    "theme": "切换主题"
+    "theme": "切换主题",
+    "languageTitle": "语言：{{name}} — 点击切换",
+    "languageAria": "当前语言：{{name}}。点击切换。"
   },
   "labSidebar": {
     "study": "学习室",
@@ -53,7 +55,31 @@
     "empty": "暂无对话。",
     "cancel": "取消",
     "confirm": "删除对话？",
-    "confirmTopics": "删除对话和 {{count}} 个子主题？"
+    "confirmTopics": "删除对话和 {{count}} 个子主题？",
+    "studiesList": "自习室的学习",
+    "searchStudies": "搜索学习",
+    "noStudies": "还没有学习。和 Aura 聊聊：对话变成学习后会显示在这里。",
+    "loading": "加载中…",
+    "studiesError": "无法加载学习。",
+    "retry": "重试",
+    "more": "查看更多",
+    "moreFailed": "未加载 — 重试",
+    "confirmStudy": "删除学习？",
+    "confirmStudyShared": "删除学习？有访问权限的 {{count}} 人也将无法再看到。",
+    "newStudyName": "新的学习名称",
+    "phase": "第 {{n}} 阶段",
+    "critical": "{{count}} 个关键项",
+    "awaitingMentor": "等待导师",
+    "chatWith": "对话对象",
+    "moreAgents": "更多智能体（如 <b>Octa Code</b>）可在 Marketplace 中添加。",
+    "agentRole": {
+      "aura": "学习、研究与对话",
+      "zenita": "日程、课程与考试",
+      "nina": "笔记、摘要与学习计划",
+      "octa": "编程智能体 · IDE",
+      "eiffel": "土木与结构工程 · CAD",
+      "noether": "数学 · 证明、微积分与动态几何"
+    }
   },
     "forja": {
         "board": {
@@ -773,5 +799,44 @@
             "chat": "开始聊天",
             "conta": "创建账户"
         }
-    }
+    },
+  "configMenu": {
+    "language": "语言",
+    "rewatchTutorial": "重新观看教程",
+    "rewatchTutorialHint": "Aura 会再次展示自习室和个人资料的教程与提示。",
+    "cyberspace": "赛博空间",
+    "tutorialMode": "教程模式",
+    "tutorialOn": "开启：进入赛博空间时必须完成教程。",
+    "tutorialOff": "关闭：普通赛博空间。",
+    "graphics": "图形",
+    "graphicsGroup": "赛博空间图形",
+    "graphicsAuto": "自动",
+    "graphicsLight": "轻量",
+    "graphicsFull": "完整",
+    "graphicsAutoHint": "自动：集成显卡（笔记本 Intel/AMD）上使用轻量模式。",
+    "graphicsLightHint": "轻量：远景更少、特效更少，30 fps。",
+    "graphicsFullHint": "完整：全部最高（需要独立显卡）。",
+    "reopenHint": "重新打开赛博空间时生效。",
+    "sharpness": "清晰度",
+    "sharpnessGroup": "赛博空间清晰度",
+    "sharpnessHint": "锯齿越少，显卡负担越大。0.75× 减轻负担；1.5× 和 2× 更平滑。立即生效。",
+    "smoothEdges": "平滑边缘",
+    "smoothEdgesHint": "边缘抗锯齿。重新打开赛博空间时生效。",
+    "auto": "自动",
+    "on": "开启",
+    "off": "关闭",
+    "showFps": "显示 FPS",
+    "showFpsHint": "在屏幕角落显示帧数和显卡名称 — 如果卡顿，请发截图给我们。",
+    "account": "账户",
+    "invite": "打开邀请",
+    "ceoMode": "CEO 模式",
+    "session": "会话",
+    "logout": "退出登录",
+    "dangerZone": "危险区域",
+    "deleting": "正在删除…",
+    "deleteAccount": "删除我的账户",
+    "deleteConfirm": "删除账户？这会删除你的全部数据，并释放该邮箱以便重新开始。此操作无法撤销。",
+    "deleteFailed": "暂时无法删除账户，请重试。",
+    "connectionError": "连接错误。"
+  }
 }

@@ -1,14 +1,20 @@
 "use client";
 /**
  * SalaBlueprint — a Sala de Estudos como BLUEPRINT PRÁTICO (spec docs/superpowers/specs/2026-10-22-blueprint-pratico-
- * design.md). No TOPO, o seletor: um item por conversa do chat que virou estudo (fase, críticos abertos, a barrinha das
- * 4 fases). Embaixo, a prancha do estudo aberto, com todo o espaço da tela. Flag NEXT_PUBLIC_BLUEPRINT_PRATICO.
+ * design.md). O SELETOR (um item por conversa do chat que virou estudo: fase, críticos abertos, a barrinha das 4 fases)
+ * mora na SIDEBAR principal do laboratório, em gavetas por dia como as conversas (BlueprintsSidebar, por portal —
+ * BlueprintsSlot); o board fica limpo, só com a skin, a letra e o "abrir a conversa". Sem a sidebar (workstation
+ * embutida) o seletor volta para o topo do board. Embaixo, a prancha do estudo aberto, com todo o espaço da tela.
+ * Flag NEXT_PUBLIC_BLUEPRINT_PRATICO.
  */
 import type { ResumoBlueprint } from "@/lib/blueprint/server";
 import { podeEscrever } from "@/lib/cartolina/access";
 import { COR } from "./Modulos";
 import PranchaBlueprint from "./PranchaBlueprint";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { useBlueprintsSlot } from "./BlueprintsSlot";
+import BlueprintsSidebar from "./BlueprintsSidebar";
 import { irPraAbaEstudos, pedirConversa } from "@/lib/chat/conversasNav";
 import { filtrarBlueprints } from "@/lib/blueprint/busca";
 import { NOME_FASE } from "@/lib/blueprint/tipos";
@@ -75,6 +81,8 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
   const ligado = papel ? { background: PAPEL.tinta, color: "#efe7d3" } : rosa ? { background: "linear-gradient(135deg,#ff4fa3,#e6007e)", color: "#fff" } : { background: "rgba(127,224,255,.2)", color: "#fff" };
   const desligado = { color: papel ? PAPEL.tintaSuave : rosa ? ROSA.tintaSuave : "rgba(186,230,253,.75)" };
   const { lista, atual } = B;
+  // a lista dos estudos vai para a sidebar do laboratório (undefined = não há sidebar: fica no topo do board)
+  const slot = useBlueprintsSlot(), naSidebar = slot !== undefined;
   // #683: a busca pelo nome (nos que a lista já trouxe; "ver mais" traz os antigos)
   const [busca, setBusca] = useState(""), [vendoMais, setVendoMais] = useState(false);
   const visiveis = useMemo(() => (lista ? filtrarBlueprints(lista, busca) : null), [lista, busca]);
@@ -147,13 +155,13 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
           <span className="px-1 tabular-nums" style={desligado}>{Math.round(letra * 100)}%</span>
           <button type="button" onClick={() => setLetra(LETRAS[Math.min(LETRAS.length - 1, iLetra + 1)]!)} disabled={iLetra >= LETRAS.length - 1} aria-label="Aumentar a letra" className="px-2.5 py-1 text-[13px] font-bold disabled:opacity-35 [@media(hover:none)]:min-h-[40px] [@media(hover:none)]:px-3.5" style={desligado}>A+</button>
         </div>
-        <span className="max-sm:hidden self-center whitespace-nowrap pr-1 font-mono text-[11px] tracking-[0.2em] text-sky-300">BLUEPRINTS</span>
-        {lista === null && !B.erro && <span className="self-center font-mono text-[11px] text-sky-200/50">carregando…</span>}
+        {!naSidebar && <span className="max-sm:hidden self-center whitespace-nowrap pr-1 font-mono text-[11px] tracking-[0.2em] text-sky-300">BLUEPRINTS</span>}
+        {!naSidebar && lista === null && !B.erro && <span className="self-center font-mono text-[11px] text-sky-200/50">carregando…</span>}
         {/* #683: a busca e as ações do aberto ficam presas à esquerda: rolar a barra não as esconde */}
         {/* #731: preso em −12 px (a borda da barra), não em 0 — preso em 0 sobrava a faixa do padding com os blueprints rolando por trás */}
         <div className="sticky -left-3 z-[1] -ml-3 flex flex-none items-stretch gap-2 pl-3 pr-2 max-sm:static max-sm:ml-0 max-sm:basis-full max-sm:flex-wrap max-sm:pl-0 max-sm:pr-0" style={{ background: fundoFixo }}>
           {/* #683: buscar pelo nome */}
-          {lista && (lista.length > 1 || busca) && (
+          {!naSidebar && lista && (lista.length > 1 || busca) && (
             <div className="flex flex-none items-center self-center">
               <label htmlFor="bp-busca" className="sr-only">Buscar blueprint pelo nome</label>
               <input id="bp-busca" type="search" value={busca} onChange={(e) => setBusca(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape") setBusca(""); }}
@@ -169,13 +177,14 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
             </button>
           )}
           {/* #681: renomear e excluir o blueprint aberto (só o dono) */}
-          {doDono && (
+          {!naSidebar && doDono && (
             <div className="flex flex-none flex-col justify-center gap-1 font-mono text-[10.5px] [@media(hover:none)]:flex-row [@media(hover:none)]:items-center [@media(hover:none)]:gap-2" role="group" aria-label="Ações do blueprint">
               <button type="button" onClick={() => { setNome(atual!.doc.titulo); setAcao("renomear"); }} aria-pressed={acao === "renomear"} className="rounded-sm border px-2 py-0.5 transition hover:bg-white/10 [@media(hover:none)]:min-h-[40px] [@media(hover:none)]:px-3 [@media(hover:none)]:text-[12px]" style={{ borderColor: contorno, ...desligado }}>renomear</button>
               <button type="button" onClick={() => setAcao("excluir")} aria-pressed={acao === "excluir"} className="rounded-sm border px-2 py-0.5 transition hover:bg-white/10 [@media(hover:none)]:min-h-[40px] [@media(hover:none)]:px-3 [@media(hover:none)]:text-[12px]" style={{ borderColor: "rgba(255,77,94,.5)", color: corNaSkin(skin, COR.critico) }}>excluir</button>
             </div>
           )}
         </div>
+        {!naSidebar && (
         <div className="contents max-sm:flex max-sm:basis-full max-sm:items-stretch max-sm:gap-2 max-sm:overflow-x-auto">
         {visiveis && busca.trim() && !visiveis.length && (
           <span role="status" className="self-center whitespace-nowrap font-mono text-[11px]" style={desligado}>
@@ -200,8 +209,15 @@ export default function SalaBlueprint({ inicialId }: { inicialId?: string | null
           </button>
         )}
         </div>
+        )}
       </div>
-      {doDono && acao && (
+      {slot && createPortal(
+        <BlueprintsSidebar lista={lista} erro={B.erro} marcado={marcado} temMais={B.temMais} podeMexer={doDono} compartilhado={atual?.compartilhado ?? 0}
+          aoAbrir={(id) => void B.abrir(id)} aoRecarregar={() => void B.recarregar()} aoVerMais={B.verMais}
+          aoRenomear={B.renomear} aoExcluir={(id) => void B.excluir(id)} />,
+        slot,
+      )}
+      {!naSidebar && doDono && acao && (
         <div className="relative z-[96] flex flex-none flex-wrap items-center gap-2 border-b px-3 py-2 font-mono text-[11.5px]" style={barra} role={acao === "excluir" ? "alertdialog" : "group"} aria-label={acao === "excluir" ? "Confirmar exclusão" : "Renomear blueprint"}>
           {acao === "excluir" ? (<>
             <span className="min-w-0 flex-1">
