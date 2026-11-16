@@ -12,20 +12,20 @@ const exemplos = [
   { id: "recife", skin: "historia", tipo: "curso", modelo: "predio" },
   { id: "bacias", skin: "geografia", tipo: "curso", modelo: "livro" },
   { id: "safra", skin: "agronomia", tipo: "curso", modelo: "graos" },
-  { id: "astronomia", skin: "caderno", tipo: "curso", modelo: "livro", imagem: "/videos/visio-blackhole.jpg" },
   { id: "clima", skin: "dados", tipo: "pesquisa", modelo: "livro" },
-  { id: "habitat", skin: "portfolio", tipo: "negocio", modelo: "predio", imagem: "/assets/intro-poster-desktop.jpg" },
+  { id: "literatura", skin: "caderno", tipo: "curso", modelo: "livro" },
+  { id: "ecologia", skin: "dossie", tipo: "pesquisa", modelo: "planta" },
+  { id: "direito", skin: "historia", tipo: "curso", modelo: "livro", imagem: "/assets/forja-capas-editoriais.jpg" },
+  { id: "comunicacao", skin: "estudo", tipo: "curso", modelo: "livro", imagem: "/assets/forja-capas-editoriais.jpg" },
+  { id: "educacao", skin: "estudo", tipo: "curso", modelo: "livro", imagem: "/assets/forja-capas-editoriais.jpg" },
   { id: "musica", skin: "portfolio", tipo: "curso", modelo: "ondas" },
   { id: "artes", skin: "portfolio", tipo: "curso", modelo: "livro", imagem: "/models/anatomia-landing.webp" },
   { id: "marketing", skin: "dados", tipo: "curso", modelo: "livro" },
-  { id: "ecologia", skin: "dossie", tipo: "pesquisa", modelo: "planta" },
+  { id: "astronomia", skin: "caderno", tipo: "curso", modelo: "livro", imagem: "/videos/visio-blackhole.jpg" },
+  { id: "habitat", skin: "portfolio", tipo: "negocio", modelo: "predio", imagem: "/assets/intro-poster-desktop.jpg" },
   { id: "matematica", skin: "dados", tipo: "curso", modelo: "livro" },
   { id: "arquitetura", skin: "portfolio", tipo: "curso", modelo: "predio" },
   { id: "economia", skin: "dados", tipo: "curso", modelo: "graos" },
-  { id: "direito", skin: "historia", tipo: "curso", modelo: "livro", imagem: "/assets/forja-capas-editoriais.jpg" },
-  { id: "literatura", skin: "caderno", tipo: "curso", modelo: "livro" },
-  { id: "educacao", skin: "estudo", tipo: "curso", modelo: "livro", imagem: "/assets/forja-capas-editoriais.jpg" },
-  { id: "comunicacao", skin: "estudo", tipo: "curso", modelo: "livro", imagem: "/assets/forja-capas-editoriais.jpg" },
   { id: "veterinaria", skin: "agronomia", tipo: "curso", modelo: "planta" },
 ] as const satisfies readonly Pick<ItemVitrine, "id" | "skin" | "tipo" | "modelo" | "imagem">[];
 
@@ -87,7 +87,7 @@ export default function ConhecimentoShowcase({ principal }: { principal: ReactNo
           </li>;
   };
 
-  const meio = Math.floor(exemplos.length / 2);
+  const meio = 9;
 
   return (
     <section aria-label={t("landing.knowledge_cards.label")} className="ci-carrossel">
