@@ -51,6 +51,7 @@
             "rodando": "실행 중…",
             "carregandoPython": "Python 로딩 중…",
             "rodarTestes": "테스트 실행 ▸",
+            "runtimeIndisponivel": "이 언어는 브라우저에서 실행할 수 없습니다.",
             "pythonErro": "Python이 로드되지 않았습니다:",
             "passou": "✓ 통과 — 입력한 코드가 실행됩니다!",
             "naoPassou": "✗ 아직 통과하지 못함",

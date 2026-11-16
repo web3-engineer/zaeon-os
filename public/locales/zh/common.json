@@ -51,6 +51,7 @@
             "rodando": "运行中…",
             "carregandoPython": "正在加载 Python…",
             "rodarTestes": "运行测试 ▸",
+            "runtimeIndisponivel": "此语言无法在浏览器中运行。",
             "pythonErro": "Python 未加载：",
             "passou": "✓ 通过 — 你输入的代码可以运行！",
             "naoPassou": "✗ 还没通过",

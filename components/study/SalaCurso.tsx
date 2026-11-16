@@ -6,9 +6,10 @@
  * (/api/studio/forja/mapa); depois renderiza a CursoCodigoView em tela cheia. Sem motor, o board degrada
  * pro esqueleto, sem travar.
  */
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import CursoArvoreView from "@/components/studio/CursoArvoreView";
+import PraticaDaLicao from "@/components/study/PraticaDaLicao";
 import CardArquivo from "@/components/study/CardArquivo";
 import { comBaseDoGrafo, mesclarEnriquecimento } from "@/lib/forja/arvoreDoGrafo";
 import type { CursoRepo } from "@/lib/forja/tipos";
@@ -23,12 +24,18 @@ export default function SalaCurso({ cursoId, titulo, onFechar }: { cursoId: stri
   const [curso, setCurso] = useState<CursoRepo | null>(null);
   const [licoes, setLicoes] = useState<Record<string, LicaoCurada>>({});
   const [erro, setErro] = useState(false);
-  const [praticar, setPraticar] = useState(false);
+  const [pratica, setPratica] = useState<string | null>(null);
+  const [visitadas, setVisitadas] = useState<string[]>([]);
+  const abrir = useCallback((id: string) => {
+    setVisitadas((atuais) => atuais.includes(id) ? atuais : [...atuais, id]);
+    setPratica(id);
+  }, []);
+  const abrirLicao = useCallback((id: string) => abrir(`licao:${id}`), [abrir]);
   const [cards, setCards] = useState<CardDeArquivo[]>([]);
 
   useEffect(() => {
     let vivo = true;
-    setCurso(null); setLicoes({}); setErro(false); setPraticar(false); setCards([]);
+    setCurso(null); setLicoes({}); setErro(false); setPratica(null); setVisitadas([]); setCards([]);
     (async () => {
       try {
         const r = await fetch("/api/studio/forja", { method: "POST", headers: H, body: JSON.stringify({ topic: cursoId }) });
@@ -69,21 +76,42 @@ export default function SalaCurso({ cursoId, titulo, onFechar }: { cursoId: stri
   }
   if (!curso) return <div className="grid h-full place-items-center bg-[#060b16] text-[13px] text-cyan-300/60">{t("forja.sala.montando")}</div>;
 
-  // Tutorial de arquivo (F1): o aluno digita o código real. Por ora, demo via cards curados por curso.
-  if (praticar && cards.length) {
-    return <CardArquivo card={cards[0]} cursoId={cursoId} onFechar={() => setPraticar(false)} />;
-  }
+  const arquivos = cards.filter((card) => !card.residual && card.abas.some((aba) => aba.snippets.length));
+  const opcoes = [
+    ...arquivos.map((card, i) => ({ id: `arquivo:${i}`, titulo: card.arquivo, card })),
+    ...Object.entries(licoes).flatMap(([id, licao]) => licao.sandbox ? [{
+      id: `licao:${id}`, titulo: curso.arvore.raiz.filhos.find((no) => no.id === id)?.titulo ?? id, sandbox: licao.sandbox,
+    }] : []),
+  ];
+
   return (
     <div className="relative h-full">
-      <CursoArvoreView curso={curso} licoes={licoes} titulo={titulo || curso.arvore.raiz.titulo} onFechar={onFechar} />
-      {cards.length > 0 && (
-        <button
-          type="button"
-          onClick={() => setPraticar(true)}
-          className="absolute bottom-5 right-5 z-20 rounded-full border-0 bg-gradient-to-r from-violet-500 to-cyan-400 px-5 py-2.5 text-[13px] font-bold text-white shadow-[0_8px_24px_rgba(139,92,246,.45)] hover:brightness-110"
-        >
-          {t("forja.sala.praticar")}
-        </button>
+      <div className="h-full" hidden={pratica !== null}>
+        <CursoArvoreView curso={curso} licoes={licoes} titulo={titulo || curso.arvore.raiz.titulo} onFechar={onFechar} onPraticar={abrirLicao} />
+        {opcoes.length > 0 && (
+          <button type="button" onClick={() => abrir(opcoes[0].id)}
+            className="absolute bottom-5 right-5 z-20 rounded-full bg-gradient-to-r from-violet-500 to-cyan-400 px-5 py-2.5 text-[13px] font-bold text-white">
+            {t("forja.sala.praticar")}
+          </button>
+        )}
+      </div>
+      {visitadas.length > 0 && (
+        <div hidden={pratica === null} className="h-full overflow-y-auto bg-[#060b16] text-slate-100">
+          <div className="flex flex-wrap items-center gap-3 border-b border-white/15 p-3">
+            <button type="button" onClick={() => setPratica(null)}>{t("forja.card.voltar")}</button>
+            <select aria-label={t("forja.sala.praticar")} value={pratica ?? ""} onChange={(e) => abrir(e.target.value)}
+              className="max-w-full rounded-lg bg-slate-800 p-2">
+              {opcoes.map((opcao) => <option key={opcao.id} value={opcao.id}>{opcao.titulo}</option>)}
+            </select>
+          </div>
+          {opcoes.filter((opcao) => visitadas.includes(opcao.id)).map((opcao) => (
+            <div key={opcao.id} hidden={pratica !== opcao.id}>
+              {"card" in opcao && opcao.card
+                ? <CardArquivo card={opcao.card} cursoId={cursoId} />
+                : "sandbox" in opcao && opcao.sandbox && <PraticaDaLicao sandbox={opcao.sandbox} titulo={opcao.titulo} />}
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

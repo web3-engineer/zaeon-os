@@ -51,6 +51,7 @@
             "rodando": "exécution…",
             "carregandoPython": "chargement de Python…",
             "rodarTestes": "lancer les tests ▸",
+            "runtimeIndisponivel": "Ce langage ne peut pas être exécuté dans le navigateur.",
             "pythonErro": "Python n'a pas chargé :",
             "passou": "✓ réussi — le code que tu as tapé s'exécute !",
             "naoPassou": "✗ pas encore réussi",
