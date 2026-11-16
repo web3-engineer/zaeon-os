@@ -38,8 +38,7 @@ function Borboleta() {
 export default function NaturezaAquario() {
   return (
     <div className={styles.natureza} aria-hidden="true">
-      <div className={styles.bosque} />
-      {[0, 1, 2, 3].map((i) => <Borboleta key={i} />)}
+      {[0, 1, 2, 3, 4].map((i) => <div key={i} className={styles.trajetoriaBorboleta}><Borboleta /></div>)}
       <svg className={styles.arvoreNatureza} viewBox="0 0 480 400">
         <ellipse className={styles.semente} cx="240" cy="369" rx="7" ry="4" fill="#ad854f" transform="rotate(-21 240 369)" />
         <g className={styles.broto}>

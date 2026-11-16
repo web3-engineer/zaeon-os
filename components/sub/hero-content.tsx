@@ -90,7 +90,7 @@ export default function HeroPage() {
     let timer: number | undefined;
     const sincronizar = () => {
       window.clearInterval(timer);
-      if (!movimento.matches) timer = window.setInterval(() => setPalavra((i) => (i + 1) % 11), 2100);
+      if (!movimento.matches) timer = window.setInterval(() => setPalavra((i) => (i + 1) % 12), 2100);
     };
     sincronizar();
     movimento.addEventListener("change", sincronizar);
@@ -163,8 +163,10 @@ export default function HeroPage() {
               <span aria-hidden="true">
                 {t("landing.hero_principal.linha")}
                 <span className={`block text-cyan-600 dark:text-[#67d8f2] ${styles.palavraMatrix}`} key={palavra}>
-                  <span className={styles.codigoMatrix}>01░┇▒</span>
-                  {t(`landing.hero_principal.termo_${palavra}`)}
+                  <span className={styles.codigoMatrix} aria-hidden="true">
+                    <span>10▓01┇</span><span>カ0▒1ナ</span><span>░11⟁0</span>
+                  </span>
+                  <span className={styles.termoMatrix}>{t(`landing.hero_principal.termo_${palavra}`)}</span>
                 </span>
               </span>
             </h1>
