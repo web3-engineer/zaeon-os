@@ -452,6 +452,39 @@
         "success_message": "Credentials Updated"
     },
     "landing": {
+        "knowledge_cards": {
+            "label": "Knowledge in the Marketplace",
+            "previous": "Previous card",
+            "next": "Next card",
+            "coracao": {
+                "title": "Atlas of the Heart",
+                "summary": "Anatomy, chambers and circulation."
+            },
+            "recife": {
+                "title": "Recife Through the Ages",
+                "summary": "The port and city in historical maps and documents."
+            },
+            "bacias": {
+                "title": "Watershed Atlas",
+                "summary": "How terrain shapes rivers and cities."
+            },
+            "safra": {
+                "title": "A Coffee Harvest Journal",
+                "summary": "Soil, rainfall and harvest in a field notebook."
+            },
+            "astronomia": {
+                "title": "Observational Astronomy",
+                "summary": "From the first observation to interpreting the data."
+            },
+            "clima": {
+                "title": "Climate Observations",
+                "summary": "Rainfall, temperature and seasonal cycles."
+            },
+            "habitat": {
+                "title": "Underwater Habitat",
+                "summary": "Design for a workspace beneath the sea."
+            }
+        },
         "timeline": {
             "base": "Scientific base",
             "conversa": "Chat with AI",

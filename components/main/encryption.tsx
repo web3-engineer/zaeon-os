@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import ContadorProjetos from "./ContadorProjetos";
 import SolanaPrivacidade from "./SolanaPrivacidade";
 import ProjetoVencedor from "./ProjetoVencedor";
+import ConhecimentoShowcase from "./ConhecimentoShowcase";
 import TimelineIdeia from "./TimelineIdeia";
 import { TituloSecao } from "@/components/layout/secao";
 import MolecularText from "@/components/ui/MolecularText";
@@ -132,6 +133,7 @@ export default function Encryption() {
                     {/* SUBHEADER: a TIMELINE da evolução de uma ideia (o visualizador 3D que se constrói conforme a barra
                         de progresso avança) + o contador grande de projetos da comunidade. */}
                     <TimelineIdeia className="mt-8 md:mt-10" />
+                    <ConhecimentoShowcase />
                     <ContadorProjetos className="mt-8 md:mt-12" />
                 </div>
             </section>

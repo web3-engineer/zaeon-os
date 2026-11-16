@@ -452,6 +452,39 @@
         "success_message": "Credenciais atualizadas"
     },
     "landing": {
+        "knowledge_cards": {
+            "label": "Conhecimento na vitrine",
+            "previous": "Card anterior",
+            "next": "Próximo card",
+            "coracao": {
+                "title": "Atlas do coração",
+                "summary": "Anatomia, câmaras e circulação."
+            },
+            "recife": {
+                "title": "Recife em camadas",
+                "summary": "O porto e a cidade em mapas e documentos históricos."
+            },
+            "bacias": {
+                "title": "Atlas de bacias hidrográficas",
+                "summary": "Como o relevo organiza rios e cidades."
+            },
+            "safra": {
+                "title": "Diário de uma safra de café",
+                "summary": "Solo, chuva e colheita no caderno de campo."
+            },
+            "astronomia": {
+                "title": "Astronomia observacional",
+                "summary": "Da primeira observação à leitura dos dados."
+            },
+            "clima": {
+                "title": "Observações climáticas",
+                "summary": "Chuva, temperatura e ciclos sazonais."
+            },
+            "habitat": {
+                "title": "Habitat submerso",
+                "summary": "Projeto de um espaço de trabalho sob a água."
+            }
+        },
         "timeline": {
             "base": "Base científica",
             "conversa": "Conversa com as IAs",

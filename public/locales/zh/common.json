@@ -452,6 +452,39 @@
         "success_message": "凭证已更新"
     },
     "landing": {
+        "knowledge_cards": {
+            "label": "市场中的知识",
+            "previous": "上一张卡片",
+            "next": "下一张卡片",
+            "coracao": {
+                "title": "心脏解剖图谱",
+                "summary": "心脏结构、心腔与血液循环。"
+            },
+            "recife": {
+                "title": "累西腓的历史",
+                "summary": "从历史地图和档案看港口与城市。"
+            },
+            "bacias": {
+                "title": "流域图谱",
+                "summary": "地形如何塑造河流与城市。"
+            },
+            "safra": {
+                "title": "咖啡收获日记",
+                "summary": "记录土壤、降雨与收获的田间笔记。"
+            },
+            "astronomia": {
+                "title": "观测天文学",
+                "summary": "从第一次观测到解读数据。"
+            },
+            "clima": {
+                "title": "气候观测",
+                "summary": "降雨、气温与季节周期。"
+            },
+            "habitat": {
+                "title": "海底栖居空间",
+                "summary": "海底工作空间的设计。"
+            }
+        },
         "timeline": {
             "base": "科学基础",
             "conversa": "与 AI 交流",
