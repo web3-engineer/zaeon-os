@@ -108,7 +108,7 @@ export default function CartaVitrine({ it, onClick, badgeGratis = false, precoFr
                                 {pasta.partes.slice(0, 6).map((p, i) => <span key={i} style={{ "--pcor": COR_PARTE[p.tipo] } as CSSProperties}>{NOME_PARTE[p.tipo].toUpperCase()}</span>)}
                             </div>
                         )}
-                        <div className="vt-desc">{it.subtitulo}</div>
+                        {it.subtitulo.trim() && <div className="vt-desc">{it.subtitulo}</div>}
                     </div>
                     <div className="vt-plate">
                         {!forjada && <div className="vt-type">{NOME_TIPO[it.tipo].toUpperCase()}{pasta ? ` · ${pasta.partes.length} ${pasta.partes.length === 1 ? "PARTE" : "PARTES"}` : ""}</div>}

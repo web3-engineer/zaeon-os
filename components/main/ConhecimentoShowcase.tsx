@@ -81,7 +81,7 @@ export default function ConhecimentoShowcase({ principal }: { principal: ReactNo
             entrega: [], tags: [],
           };
           return <li key={exemplo.id} className="ci-carrossel-item" data-lado={lado}>
-            <CartaVitrine it={it} precoNode={null} className="!block [&_.vt-type]:hidden [&_.vt-pr]:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500" onClick={() => router.push(ROTA_MARKETPLACE)} />
+            <CartaVitrine it={it} precoNode={null} className="ci-carrossel-card !block [&_.vt-type]:hidden [&_.vt-pr]:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500" onClick={() => router.push(ROTA_MARKETPLACE)} />
           </li>;
   };
 

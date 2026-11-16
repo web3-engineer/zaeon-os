@@ -228,3 +228,16 @@ html:not(.dark) .ci-line { background: #cbd5e1; }
   to { opacity: 1; transform: translateX(0) scale(1); }
 }
 @media (prefers-reduced-motion: reduce) { .ci-carrossel-item { animation: none; } }
+
+.ci-carrossel-card .vt-title {
+  display: block;
+  min-height: 0;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  font-size: clamp(12px, 3.1cqw, 16px);
+  line-height: 1.2;
+  text-wrap: pretty;
+}
+.ci-carrossel-card .vt-plate { flex-shrink: 0; }
+.ci-carrossel-card .vt-art { min-height: 0; }
+.ci-carrossel-card .vt-desc { max-height: 100%; overflow: auto; }
