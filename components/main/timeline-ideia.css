@@ -199,6 +199,7 @@ html:not(.dark) .ci-line { background: #cbd5e1; }
   transform: translateY(-50%);
 }
 .ci-carrossel-faixa {
+  position: relative;
   display: flex;
   gap: clamp(12px, 2vw, 24px);
   overflow-x: auto;
@@ -216,8 +217,15 @@ html:not(.dark) .ci-line { background: #cbd5e1; }
   scroll-snap-align: center;
 }
 .ci-carrossel { container-type: inline-size; }
-.ci-carrossel-item { animation: ci-revelar-card 1.15s ease-out both; }
-.ci-carrossel-item:nth-child(3) { animation-delay: .14s; }
-.ci-carrossel-item:nth-child(n+4) { animation-delay: .28s; }
-@keyframes ci-revelar-card { from { opacity: 0; } to { opacity: 1; } }
+.ci-carrossel-item {
+  --ci-entrada: 70px;
+  animation: ci-revelar-card 1.55s cubic-bezier(.22,1,.36,1) both;
+}
+.ci-carrossel-item[data-lado="esquerda"] { --ci-entrada: -70px; }
+.ci-carrossel-item:nth-child(2), .ci-carrossel-item:nth-child(6) { animation-delay: .12s; }
+.ci-carrossel-item:nth-child(1), .ci-carrossel-item:nth-child(n+7) { animation-delay: .24s; }
+@keyframes ci-revelar-card {
+  from { opacity: 0; transform: translateX(var(--ci-entrada)) scale(.97); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
 @media (prefers-reduced-motion: reduce) { .ci-carrossel-item { animation: none; } }
