@@ -1,0 +1,643 @@
+{
+  "lista-de-tarefas": {
+    "titulo": "Lista de tarefas persistente",
+    "card": {
+      "arquivo": "projeto.js",
+      "funcao": "Lista de tarefas persistente",
+      "ordem": 100,
+      "linguagem": "javascript",
+      "dependencias": [],
+      "abas": [
+        {
+          "titulo": "Construção do projeto",
+          "snippets": [
+            {
+              "explicacao": "Estruture as entradas e os dados do projeto.",
+              "codigo": "const chave = 'zaeon:lista-tarefas';\nconst armazenamento = (() => {\n  try { return JSON.parse(localStorage.getItem(chave) || '[]'); }\n  catch { return []; }\n})();\nconst itens = Array.isArray(armazenamento) ? armazenamento : [];\nconst app = document.querySelector('#app');\napp.innerHTML = '<form><label>Tarefa <input required></label><button>Adicionar</button></form><ul></ul>';"
+            },
+            {
+              "explicacao": "Implemente o comportamento principal.",
+              "codigo": "function renderizar() {\n  try { localStorage.setItem(chave, JSON.stringify(itens)); }\n  catch { /* A prévia isolada pode bloquear o armazenamento. */ }\n  const lista = app.querySelector('ul');\n  lista.replaceChildren(...itens.map((item, indice) => {\n    const li = document.createElement('li');\n    const marcar = document.createElement('button');\n    marcar.textContent = item.feita ? 'Reabrir' : 'Concluir';\n    marcar.onclick = () => { itens[indice].feita = !item.feita; renderizar(); };\n    const excluir = document.createElement('button');\n    excluir.textContent = 'Excluir';\n    excluir.onclick = () => { itens.splice(indice, 1); renderizar(); };\n    li.append(item.titulo + (item.feita ? ' ✓ ' : ' '), marcar, excluir);\n    return li;\n  }));\n}"
+            },
+            {
+              "explicacao": "Conecte e execute o fluxo completo.",
+              "codigo": "app.querySelector('form').onsubmit = (e) => {\n  e.preventDefault();\n  const input = app.querySelector('input');\n  if (!input.value.trim()) return;\n  itens.push({ titulo: input.value.trim(), feita: false });\n  input.value = '';\n  renderizar();\n};\nrenderizar();"
+            }
+          ]
+        }
+      ],
+      "teste": "app.querySelector('input').value = 'Estudar';\napp.querySelector('form').dispatchEvent(new Event('submit', {cancelable:true}));\napp.querySelector('li button').click();\nif (!app.querySelector('li').textContent.includes('✓')) throw new Error('A tarefa precisa aparecer concluída');\napp.querySelector('li button:last-child').click();\nif (app.querySelector('li')) throw new Error('A tarefa precisa ser removida');"
+    },
+    "arquivos": {}
+  },
+  "quiz": {
+    "titulo": "Quiz interativo com placar",
+    "card": {
+      "arquivo": "projeto.js",
+      "funcao": "Quiz interativo com placar",
+      "ordem": 100,
+      "linguagem": "javascript",
+      "dependencias": [],
+      "abas": [
+        {
+          "titulo": "Construção do projeto",
+          "snippets": [
+            {
+              "explicacao": "Estruture as entradas e os dados do projeto.",
+              "codigo": "const perguntas = [\n  { texto: 'Quanto é 2 + 3?', opcoes: ['4', '5'], correta: 1 },\n  { texto: 'Qual é o primeiro índice de um array em JS?', opcoes: ['0', '1'], correta: 0 },\n];\nconst app = document.querySelector('#app');\nlet indice = 0;\nlet pontos = 0;"
+            },
+            {
+              "explicacao": "Implemente o comportamento principal.",
+              "codigo": "function mostrar() {\n  app.replaceChildren();\n  const titulo = document.createElement('h2');\n  app.append(titulo);\n  const p = perguntas[indice];\n  if (!p) {\n    titulo.textContent = pontos + '/' + perguntas.length;\n    const reiniciar = document.createElement('button');\n    reiniciar.textContent = 'Reiniciar';\n    reiniciar.onclick = () => { pontos = 0; indice = 0; mostrar(); };\n    app.append(reiniciar);\n    return;\n  }\n  titulo.textContent = p.texto;\n  p.opcoes.forEach((texto, i) => {\n    const botao = document.createElement('button');\n    botao.textContent = texto;\n    botao.onclick = () => { if (i === p.correta) pontos++; indice++; mostrar(); };\n    app.append(botao);\n  });\n}\nmostrar();"
+            }
+          ]
+        }
+      ],
+      "teste": "app.querySelectorAll('button')[1].click();\napp.querySelectorAll('button')[0].click();\nif (app.querySelector('h2').textContent !== '2/2') throw new Error('Placar inválido');\napp.querySelector('button').click();\nif (app.querySelectorAll('button').length !== 2) throw new Error('Reinício inválido');"
+    },
+    "arquivos": {}
+  },
+  "jogo-da-velha": {
+    "titulo": "Jogo da velha jogável",
+    "card": {
+      "arquivo": "projeto.js",
+      "funcao": "Jogo da velha jogável",
+      "ordem": 100,
+      "linguagem": "javascript",
+      "dependencias": [],
+      "abas": [
+        {
+          "titulo": "Construção do projeto",
+          "snippets": [
+            {
+              "explicacao": "Estruture as entradas e os dados do projeto.",
+              "codigo": "const app = document.querySelector('#app');\nlet tabuleiro = Array(9).fill('');\nlet jogador = 'X';\nconst linhas = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];"
+            },
+            {
+              "explicacao": "Implemente o comportamento principal.",
+              "codigo": "function desenhar() {\n  const venceu = linhas.some(([a,b,c]) => tabuleiro[a] && tabuleiro[a] === tabuleiro[b] && tabuleiro[a] === tabuleiro[c]);\n  const empate = !venceu && tabuleiro.every(Boolean);\n  app.innerHTML = '<p></p><div style=\"display:grid;grid-template-columns:repeat(3,3rem)\"></div><button>Reiniciar</button>';\n  app.querySelector('p').textContent = venceu ? 'Venceu ' + (jogador === 'X' ? 'O' : 'X') : empate ? 'Empate' : 'Vez de ' + jogador;\n  tabuleiro.forEach((marca, i) => {\n    const casa = document.createElement('button');\n    casa.textContent = marca || '·';\n    casa.setAttribute('aria-label', 'Casa ' + (i + 1));\n    casa.disabled = !!marca || venceu || empate;\n    casa.onclick = () => { tabuleiro[i] = jogador; jogador = jogador === 'X' ? 'O' : 'X'; desenhar(); };\n    app.querySelector('div').append(casa);\n  });\n  app.querySelector(':scope > button').onclick = () => { tabuleiro = Array(9).fill(''); jogador = 'X'; desenhar(); };\n}\ndesenhar();"
+            }
+          ]
+        }
+      ],
+      "teste": "for (const i of [0,3,1,4,2]) app.querySelectorAll('div button')[i].click();\nif (app.querySelector('p').textContent !== 'Venceu X') throw new Error('Vitória não detectada');\nif (!app.querySelectorAll('div button')[8].disabled) throw new Error('O jogo terminou');"
+    },
+    "arquivos": {}
+  },
+  "markdown-para-html": {
+    "titulo": "Editor Markdown com prévia segura",
+    "card": {
+      "arquivo": "projeto.js",
+      "funcao": "Editor Markdown com prévia segura",
+      "ordem": 100,
+      "linguagem": "javascript",
+      "dependencias": [],
+      "abas": [
+        {
+          "titulo": "Construção do projeto",
+          "snippets": [
+            {
+              "explicacao": "Estruture as entradas e os dados do projeto.",
+              "codigo": "const app = document.querySelector('#app');\napp.innerHTML = '<label>Markdown <textarea></textarea></label><article></article>';\nconst entrada = app.querySelector('textarea');\nconst previa = app.querySelector('article');"
+            },
+            {
+              "explicacao": "Implemente o comportamento principal.",
+              "codigo": "function renderizar() {\n  previa.replaceChildren(...entrada.value.split('\\n').filter(Boolean).map((linha) => {\n    const titulo = linha.startsWith('# ');\n    const elemento = document.createElement(titulo ? 'h2' : 'p');\n    const texto = titulo ? linha.slice(2) : linha;\n    texto.split(/(\\*\\*[^*]+\\*\\*)/).forEach((parte) => {\n      if (parte.startsWith('**') && parte.endsWith('**')) {\n        const forte = document.createElement('strong');\n        forte.textContent = parte.slice(2, -2);\n        elemento.append(forte);\n      } else elemento.append(parte);\n    });\n    return elemento;\n  }));\n}\nentrada.oninput = renderizar;"
+            }
+          ]
+        }
+      ],
+      "teste": "entrada.value = '# Título\\n**forte** <script>texto</script>';\nentrada.dispatchEvent(new Event('input'));\nif (previa.querySelector('h2')?.textContent !== 'Título' || previa.querySelector('strong')?.textContent !== 'forte' || previa.querySelector('script')) throw new Error('Prévia incorreta');"
+    },
+    "arquivos": {}
+  },
+  "pomodoro": {
+    "titulo": "Temporizador Pomodoro com pausa e alternância",
+    "card": {
+      "arquivo": "projeto.js",
+      "funcao": "Temporizador Pomodoro com pausa e alternância",
+      "ordem": 100,
+      "linguagem": "javascript",
+      "dependencias": [],
+      "abas": [
+        {
+          "titulo": "Construção do projeto",
+          "snippets": [
+            {
+              "explicacao": "Estruture as entradas e os dados do projeto.",
+              "codigo": "const duracao = { foco: 25 * 60, pausa: 5 * 60 };\nconst app = document.querySelector('#app');\napp.innerHTML = '<output></output><button>Iniciar</button><button>Pausar</button><button>Reiniciar</button>';\nlet fase = 'foco';\nlet faltam = duracao.foco;\nlet deadline = null;"
+            },
+            {
+              "explicacao": "Implemente o comportamento principal.",
+              "codigo": "function atualizar(agora = Date.now()) {\n  if (deadline !== null) {\n    faltam = Math.max(0, Math.ceil((deadline - agora) / 1000));\n    if (faltam === 0) {\n      fase = fase === 'foco' ? 'pausa' : 'foco';\n      faltam = duracao[fase];\n      deadline = null;\n    }\n  }\n  const segundos = String(faltam % 60).padStart(2, '0');\n  app.querySelector('output').textContent = fase + ' ' + Math.floor(faltam / 60) + ':' + segundos;\n}"
+            },
+            {
+              "explicacao": "Conecte e execute o fluxo completo.",
+              "codigo": "const [iniciar, pausar, reiniciar] = app.querySelectorAll('button');\niniciar.onclick = () => { if (deadline === null) deadline = Date.now() + faltam * 1000; };\npausar.onclick = () => { atualizar(); deadline = null; };\nreiniciar.onclick = () => { fase = 'foco'; faltam = duracao.foco; deadline = null; atualizar(); };\nsetInterval(atualizar, 250);\natualizar();"
+            }
+          ]
+        }
+      ],
+      "teste": "iniciar.click();\natualizar(deadline);\nif (app.querySelector('output').textContent !== 'pausa 5:00') throw new Error('O ciclo não mudou');\nreiniciar.click();\nif (app.querySelector('output').textContent !== 'foco 25:00') throw new Error('Não reiniciou');"
+    },
+    "arquivos": {}
+  },
+  "portfolio": {
+    "titulo": "Portfólio de projetos com navegação e currículo",
+    "card": {
+      "arquivo": "projeto.js",
+      "funcao": "Portfólio de projetos com navegação e currículo",
+      "ordem": 100,
+      "linguagem": "javascript",
+      "dependencias": [],
+      "abas": [
+        {
+          "titulo": "Construção do projeto",
+          "snippets": [
+            {
+              "explicacao": "Estruture as entradas e os dados do projeto.",
+              "codigo": "const app = document.querySelector('#app');\nconst projetos = [{ titulo: 'Calculadora', resumo: 'Interface e operações em JavaScript' }, { titulo: 'Portfolio', resumo: 'Página estática acessível' }];\napp.innerHTML = '<nav><a href=\"#projetos\">Projetos</a> <a href=\"#contato\">Contato</a></nav><section id=\"projetos\"><h2>Projetos</h2><ul></ul></section><section id=\"contato\"><h2>Contato</h2><a href=\"mailto:contato@example.com\">Enviar email</a></section>';"
+            },
+            {
+              "explicacao": "Implemente o comportamento principal.",
+              "codigo": "const lista = app.querySelector('ul');\nfor (const projeto of projetos) {\n  const li = document.createElement('li');\n  const titulo = document.createElement('h3');\n  titulo.textContent = projeto.titulo;\n  const descricao = document.createElement('p');\n  descricao.textContent = projeto.resumo;\n  li.append(titulo, descricao);\n  lista.append(li);\n}"
+            }
+          ]
+        }
+      ],
+      "teste": "if (lista.children.length !== projetos.length || !app.querySelector('#contato a[href^=\"mailto:\"]')) throw new Error('O portfólio precisa ligar projetos e contato');"
+    },
+    "arquivos": {}
+  },
+  "app-de-clima": {
+    "titulo": "Painel de previsão com busca de cidade",
+    "card": {
+      "arquivo": "projeto.js",
+      "funcao": "Painel de previsão com busca de cidade",
+      "ordem": 100,
+      "linguagem": "javascript",
+      "dependencias": [],
+      "abas": [
+        {
+          "titulo": "Construção do projeto",
+          "snippets": [
+            {
+              "explicacao": "Estruture as entradas e os dados do projeto.",
+              "codigo": "const app = document.querySelector('#app');\napp.innerHTML = '<form><label>Cidade <input required></label><button>Buscar</button></form><output></output>';\nconst output = app.querySelector('output');"
+            },
+            {
+              "explicacao": "Implemente o comportamento principal.",
+              "codigo": "async function buscarCidade(cidade, requisitar = fetch) {\n  const geo = await requisitar('https://geocoding-api.open-meteo.com/v1/search?count=1&name=' + encodeURIComponent(cidade));\n  if (!geo.ok) throw new Error('Busca indisponível');\n  const local = (await geo.json()).results?.[0];\n  if (!local) throw new Error('Cidade não encontrada');\n  const url = new URL('https://api.open-meteo.com/v1/forecast');\n  url.search = new URLSearchParams({ latitude: local.latitude, longitude: local.longitude, current: 'temperature_2m' });\n  const previsao = await requisitar(url);\n  if (!previsao.ok) throw new Error('Previsão indisponível');\n  const temperatura = (await previsao.json()).current?.temperature_2m;\n  if (typeof temperatura !== 'number') throw new Error('Previsão inválida');\n  return local.name + ': ' + temperatura + ' °C';\n}"
+            },
+            {
+              "explicacao": "Conecte e execute o fluxo completo.",
+              "codigo": "let versao = 0;\napp.querySelector('form').onsubmit = async (evento) => {\n  evento.preventDefault();\n  const pedido = ++versao;\n  output.textContent = 'Buscando…';\n  try {\n    const resultado = await buscarCidade(app.querySelector('input').value.trim());\n    if (pedido === versao) output.textContent = resultado;\n  } catch (erro) {\n    if (pedido === versao) output.textContent = erro.message;\n  }\n};"
+            }
+          ]
+        }
+      ],
+      "teste": "return buscarCidade('Recife', async (url) => ({ok:true,json:async()=> String(url).includes('geocoding') ? {results:[{name:'Recife',latitude:-8,longitude:-35}]} : {current:{temperature_2m:29}}})).then((texto) => { if (texto !== 'Recife: 29 °C') throw new Error('A previsão deveria usar cidade e temperatura'); });"
+    },
+    "arquivos": {}
+  },
+  "scroll-suave-lenis": {
+    "titulo": "Página de navegação suave com preferência de movimento",
+    "card": {
+      "arquivo": "projeto.js",
+      "funcao": "Página de navegação suave com preferência de movimento",
+      "ordem": 100,
+      "linguagem": "javascript",
+      "dependencias": [],
+      "abas": [
+        {
+          "titulo": "Construção do projeto",
+          "snippets": [
+            {
+              "explicacao": "Estruture as entradas e os dados do projeto.",
+              "codigo": "const app = document.querySelector('#app');\napp.innerHTML = '<nav><a href=\"#inicio\">Início</a> <a href=\"#projetos\">Projetos</a></nav><section id=\"inicio\" style=\"min-height:80vh\"><h2>Início</h2></section><section id=\"projetos\" style=\"min-height:80vh\"><h2>Projetos</h2></section>';\nconst reduzir = matchMedia('(prefers-reduced-motion: reduce)');\nconst suave = typeof Lenis === 'function' && !reduzir.matches ? new Lenis({ autoRaf: true }) : null;"
+            },
+            {
+              "explicacao": "Implemente o comportamento principal.",
+              "codigo": "function navegar(id) {\n  const alvo = document.getElementById(id);\n  if (!alvo) return false;\n  if (suave) suave.scrollTo(alvo);\n  else alvo.scrollIntoView({ behavior: reduzir.matches ? 'instant' : 'smooth' });\n  return true;\n}\napp.querySelector('nav').onclick = (e) => {\n  const id = e.target.getAttribute('href')?.slice(1);\n  if (id && navegar(id)) { e.preventDefault(); location.hash = id; }\n};"
+            }
+          ]
+        }
+      ],
+      "teste": "if (navegar('ausente')) throw new Error('Âncora inválida aceita');\ndocument.getElementById('projetos').scrollIntoView = () => {};\nif (!navegar('projetos')) throw new Error('Âncora válida não encontrada');"
+    },
+    "arquivos": {
+      "script": "https://cdn.jsdelivr.net/npm/lenis@1.3.4/dist/lenis.min.js"
+    }
+  },
+  "leaflet-mapas-web": {
+    "titulo": "Mapa com marcadores de cidades e legenda",
+    "card": {
+      "arquivo": "projeto.js",
+      "funcao": "Mapa com marcadores de cidades e legenda",
+      "ordem": 100,
+      "linguagem": "javascript",
+      "dependencias": [],
+      "abas": [
+        {
+          "titulo": "Construção do projeto",
+          "snippets": [
+            {
+              "explicacao": "Estruture as entradas e os dados do projeto.",
+              "codigo": "const cidades = [\n  { nome: 'Fortaleza', coordenadas: [-3.73, -38.52], cor: '#0891b2' },\n  { nome: 'Recife', coordenadas: [-8.05, -34.9], cor: '#a855f7' },\n];\nconst app = document.querySelector('#app');\napp.innerHTML = '<div id=\"mapa\" style=\"height:420px\"></div><ul aria-label=\"Legenda\"></ul>';"
+            },
+            {
+              "explicacao": "Implemente o comportamento principal.",
+              "codigo": "function preencher(api) {\n  const mapa = api.map('mapa').setView([-6, -37], 6);\n  api.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors' }).addTo(mapa);\n  for (const cidade of cidades) {\n    api.circleMarker(cidade.coordenadas, { color: cidade.cor }).addTo(mapa).bindPopup(cidade.nome);\n    const li = document.createElement('li');\n    li.style.color = cidade.cor;\n    li.textContent = cidade.nome;\n    app.querySelector('ul').append(li);\n  }\n}\nif (typeof L !== 'undefined') preencher(L);"
+            }
+          ]
+        }
+      ],
+      "teste": "const pontos = [];\nconst mapa = {setView(){return this}};\npreencher({map:()=>mapa,tileLayer:()=>({addTo(){}}),circleMarker:(p)=>({addTo(){pontos.push(p); return this},bindPopup(){}})});\nif (pontos.length !== 2 || app.querySelectorAll('li').length !== 2) throw new Error('Mapa e legenda precisam usar as mesmas cidades');"
+    },
+    "arquivos": {
+      "script": "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js",
+      "css": "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    }
+  },
+  "api-rest-crud": {
+    "titulo": "API REST de tarefas com CRUD e atualização idempotente",
+    "card": {
+      "arquivo": "projeto.js",
+      "funcao": "API REST de tarefas com CRUD e atualização idempotente",
+      "ordem": 100,
+      "linguagem": "javascript",
+      "dependencias": [],
+      "abas": [
+        {
+          "titulo": "Construção do projeto",
+          "snippets": [
+            {
+              "explicacao": "Estruture as entradas e os dados do projeto.",
+              "codigo": "function criarApi() {\n  const tarefas = new Map();\n  let id = 0;"
+            },
+            {
+              "explicacao": "Implemente o comportamento principal.",
+              "codigo": "  return (metodo, caminho, dados = {}) => {\n    const chave = /^\\/tarefas\\/(\\d+)$/.exec(caminho)?.[1];\n    if (metodo === 'GET' && caminho === '/tarefas') return [200, [...tarefas.values()]];\n    if (metodo === 'GET' && tarefas.has(chave)) return [200, tarefas.get(chave)];\n    if (metodo === 'DELETE' && tarefas.delete(chave)) return [204, null];\n    const criar = metodo === 'POST' && caminho === '/tarefas';\n    const editar = metodo === 'PUT' && tarefas.has(chave);\n    if (!criar && !editar) return [404, { erro: 'Não encontrado' }];\n    if (typeof dados.titulo !== 'string' || !dados.titulo.trim()) return [400, { erro: 'Título obrigatório' }];\n    const atual = { id: criar ? String(++id) : chave, titulo: dados.titulo.trim(), feita: dados.feita === true };\n    tarefas.set(atual.id, atual);\n    return [criar ? 201 : 200, atual];\n  };\n}\nif (typeof module !== 'undefined') module.exports = criarApi;"
+            }
+          ]
+        }
+      ],
+      "teste": "const api = criarApi();\nconst [status, tarefa] = api('POST', '/tarefas', {titulo:'Estudar'});\nconst caminho = '/tarefas/' + tarefa.id;\nif (status !== 201 || api('GET', caminho)[0] !== 200) throw new Error('Falha ao criar ou buscar');\napi('PUT', caminho, {titulo:'Revisar', feita:true});\napi('PUT', caminho, {titulo:'Revisar', feita:true});\nif (api('GET', '/tarefas')[1].length !== 1 || !api('GET', caminho)[1].feita) throw new Error('PUT deve atualizar em vez de duplicar');\nif (api('DELETE', caminho)[0] !== 204 || api('GET', caminho)[0] !== 404) throw new Error('Falha ao remover');"
+    },
+    "arquivos": {
+      "server": "criarApi"
+    }
+  },
+  "encurtador-de-url": {
+    "titulo": "Encurtador com validação, persistência e redirecionamento",
+    "card": {
+      "arquivo": "projeto.js",
+      "funcao": "Encurtador com validação, persistência e redirecionamento",
+      "ordem": 100,
+      "linguagem": "javascript",
+      "dependencias": [],
+      "abas": [
+        {
+          "titulo": "Construção do projeto",
+          "snippets": [
+            {
+              "explicacao": "Estruture as entradas e os dados do projeto.",
+              "codigo": "function criarEncurtador(links = {}, guardar = () => {}) {\n  let id = Object.keys(links).length;\n  return (metodo, caminho, dados = {}) => {\n    if (metodo === 'POST' && caminho === '/links') {\n      let url;\n      try { url = new URL(dados.url); } catch { return [400, {erro:'URL inválida'}]; }\n      if (!['http:', 'https:'].includes(url.protocol)) return [400, {erro:'Protocolo inválido'}];\n      let chave;\n      do { chave = (++id).toString(36); } while (Object.hasOwn(links, chave));\n      links[chave] = url.href;\n      guardar(links);\n      return [201, { caminho: '/' + chave, destino: url.href }];\n    }\n    const chave = caminho.slice(1);\n    if (metodo === 'GET' && Object.hasOwn(links, chave)) return [302, null, { Location: links[chave] }];\n    return [404, {erro:'Link não encontrado'}];\n  };\n}\nif (typeof module !== 'undefined') module.exports = criarEncurtador;"
+            }
+          ]
+        }
+      ],
+      "teste": "let gravado;\nconst api = criarEncurtador({}, (links) => { gravado = {...links}; });\nif (api('POST', '/links', {url:'javascript:alert(1)'})[0] !== 400) throw new Error('Protocolo inválido aceito');\nconst [status, link] = api('POST','/links',{url:'https://example.org/artigo'});\nconst [redireciona,,cabecalhos] = criarEncurtador(gravado)('GET',link.caminho);\nif (status !== 201 || redireciona !== 302 || cabecalhos.Location !== 'https://example.org/artigo') throw new Error('Redirecionamento após restaurar os dados falhou');"
+    },
+    "arquivos": {
+      "server": "criarEncurtador",
+      "persistir": true
+    }
+  },
+  "algoritmos-classicos": {
+    "titulo": "CLI para busca binária, ordenação e máximo divisor comum",
+    "card": {
+      "arquivo": "projeto.py",
+      "funcao": "CLI para busca binária, ordenação e máximo divisor comum",
+      "ordem": 100,
+      "linguagem": "python",
+      "dependencias": [],
+      "abas": [
+        {
+          "titulo": "Construção do projeto",
+          "snippets": [
+            {
+              "explicacao": "Estruture as entradas e os dados do projeto.",
+              "codigo": "import argparse"
+            },
+            {
+              "explicacao": "Implemente o comportamento principal.",
+              "codigo": "def executar(operacao, numeros):\n    if not numeros:\n        raise ValueError('Informe números')\n    if operacao == 'ordenar':\n        dados = list(numeros)\n        for indice in range(1, len(dados)):\n            valor, posicao = dados[indice], indice\n            while posicao and dados[posicao - 1] > valor:\n                dados[posicao] = dados[posicao - 1]\n                posicao -= 1\n            dados[posicao] = valor\n        return dados\n    if operacao == 'mdc':\n        if len(numeros) != 2:\n            raise ValueError('O MDC recebe dois números')\n        a, b = map(abs, numeros)\n        while b:\n            a, b = b, a % b\n        return a\n    alvo, *dados = numeros\n    dados = sorted(dados)\n    inicio, fim = 0, len(dados)\n    while inicio < fim:\n        meio = (inicio + fim) // 2\n        if dados[meio] < alvo:\n            inicio = meio + 1\n        else:\n            fim = meio\n    return inicio if inicio < len(dados) and dados[inicio] == alvo else -1"
+            },
+            {
+              "explicacao": "Conecte e execute o fluxo completo.",
+              "codigo": "def main(args=None):\n    parser = argparse.ArgumentParser()\n    parser.add_argument('operacao', choices=['buscar', 'ordenar', 'mdc'])\n    parser.add_argument('numeros', nargs='+', type=int)\n    op = parser.parse_args(args)\n    return executar(op.operacao, op.numeros)"
+            }
+          ]
+        }
+      ],
+      "teste": "assert main(['ordenar','8','2','2']) == [2, 2, 8]\nassert main(['buscar','8','8','2','1']) == 2\nassert main(['buscar','7','8','2','1']) == -1\nassert main(['mdc','48','18']) == 6"
+    },
+    "arquivos": {
+      "comando": "buscar 8 8 2 1"
+    }
+  },
+  "buraco-negro-ascii": {
+    "titulo": "Animação ASCII de um disco em rotação",
+    "card": {
+      "arquivo": "projeto.py",
+      "funcao": "Animação ASCII de um disco em rotação",
+      "ordem": 100,
+      "linguagem": "python",
+      "dependencias": [],
+      "abas": [
+        {
+          "titulo": "Construção do projeto",
+          "snippets": [
+            {
+              "explicacao": "Estruture as entradas e os dados do projeto.",
+              "codigo": "import math"
+            },
+            {
+              "explicacao": "Implemente o comportamento principal.",
+              "codigo": "def quadro(tempo, largura=61, altura=23):\n    linhas = []\n    for y in range(altura):\n        linha = []\n        for x in range(largura):\n            dx, dy = (x - largura // 2) * 0.5, y - altura // 2\n            raio = math.hypot(dx, dy)\n            if 3 <= raio <= 10:\n                angulo = math.atan2(dy, dx) + tempo / raio ** 0.5\n                luminosidade = (math.cos(angulo * 3) + 1) / 2\n                linha.append('.:*#@'[int(luminosidade * 4)])\n            else:\n                linha.append(' ')\n        linhas.append(''.join(linha))\n    return '\\n'.join(linhas)"
+            },
+            {
+              "explicacao": "Conecte e execute o fluxo completo.",
+              "codigo": "def main():\n    import time\n    for frame in range(80):\n        print('\\033[H\\033[J' + quadro(frame / 4), flush=True)\n        time.sleep(0.08)\n    return ''"
+            }
+          ]
+        }
+      ],
+      "teste": "a = quadro(0)\nassert a != quadro(2)\nassert len(a.splitlines()) == 23\nassert a.splitlines()[11][30] == ' ' and '@' in a"
+    },
+    "arquivos": {}
+  },
+  "game-engine-brutal": {
+    "titulo": "Simulador 2D de entidades com pool e colisão",
+    "card": {
+      "arquivo": "projeto.py",
+      "funcao": "Simulador 2D de entidades com pool e colisão",
+      "ordem": 100,
+      "linguagem": "python",
+      "dependencias": [],
+      "abas": [
+        {
+          "titulo": "Construção do projeto",
+          "snippets": [
+            {
+              "explicacao": "Estruture as entradas e os dados do projeto.",
+              "codigo": "import math"
+            },
+            {
+              "explicacao": "Implemente o comportamento principal.",
+              "codigo": "class Mundo:\n    def __init__(self, limite):\n        self.entidades = [None] * limite"
+            },
+            {
+              "explicacao": "Conecte e execute o fluxo completo.",
+              "codigo": "    def criar(self, posicao, velocidade, raio):\n        for i, item in enumerate(self.entidades):\n            if item is None:\n                self.entidades[i] = (posicao, velocidade, raio)\n                return i\n        return None"
+            },
+            {
+              "explicacao": "Complete a integração do projeto.",
+              "codigo": "    def remover(self, indice):\n        self.entidades[indice] = None"
+            },
+            {
+              "explicacao": "Complete a integração do projeto.",
+              "codigo": "    def passo(self, dt):\n        ativos = []\n        for i, item in enumerate(self.entidades):\n            if item is None:\n                continue\n            (x, y), (vx, vy), raio = item\n            pos = (x + vx * dt, y + vy * dt)\n            self.entidades[i] = (pos, (vx, vy), raio)\n            ativos.append((i, pos, raio))\n        return [(a, b) for k, (a, p, r) in enumerate(ativos)\n                for b, q, s in ativos[k+1:] if math.dist(p, q) <= r + s]"
+            },
+            {
+              "explicacao": "Complete a integração do projeto.",
+              "codigo": "def main():\n    mundo = Mundo(2)\n    mundo.criar((0, 0), (1, 0), 0.5)\n    mundo.criar((3, 0), (-1, 0), 0.5)\n    return mundo.passo(1)"
+            }
+          ]
+        }
+      ],
+      "teste": "assert main() == [(0, 1)]\nmundo = Mundo(1)\nassert mundo.criar((0,0),(0,0),1) == 0\nassert mundo.criar((0,0),(0,0),1) is None\nmundo.remover(0)\nassert mundo.criar((0,0),(0,0),1) == 0"
+    },
+    "arquivos": {}
+  },
+  "querido-diario-direito": {
+    "titulo": "Consulta local de atos públicos com registro de fontes",
+    "card": {
+      "arquivo": "projeto.py",
+      "funcao": "Consulta local de atos públicos com registro de fontes",
+      "ordem": 100,
+      "linguagem": "python",
+      "dependencias": [],
+      "abas": [
+        {
+          "titulo": "Construção do projeto",
+          "snippets": [
+            {
+              "explicacao": "Estruture as entradas e os dados do projeto.",
+              "codigo": "import argparse\nimport json\nfrom pathlib import Path"
+            },
+            {
+              "explicacao": "Implemente o comportamento principal.",
+              "codigo": "def buscar(atos, termo, municipio=None):\n    busca = termo.casefold().split()\n    return [ato for ato in atos if\n            (not municipio or ato['municipio'].casefold() == municipio.casefold())\n            and all(p in ato['texto'].casefold() for p in busca)]"
+            },
+            {
+              "explicacao": "Conecte e execute o fluxo completo.",
+              "codigo": "def citar(ato):\n    return f\"{ato['municipio']} · {ato['data']} · {ato['titulo']} · {ato['fonte']}\""
+            },
+            {
+              "explicacao": "Complete a integração do projeto.",
+              "codigo": "def main(args=None):\n    parser = argparse.ArgumentParser()\n    parser.add_argument('termo')\n    parser.add_argument('--municipio')\n    parser.add_argument('--dados', default='amostra.json')\n    op = parser.parse_args(args)\n    atos = json.loads(Path(op.dados).read_text(encoding='utf-8'))\n    return '\\n'.join(citar(ato) for ato in buscar(atos, op.termo, op.municipio))"
+            }
+          ]
+        }
+      ],
+      "teste": "atos = [{'municipio':'Recife','data':'2026-01-01','titulo':'Aviso','fonte':'Amostra didática 1','texto':'Edital sobre bibliotecas públicas'}]\nassert buscar(atos, 'EDITAL bibliotecas', 'recife') == atos\nassert buscar(atos, 'bibliotecas', 'Fortaleza') == []\nassert 'Amostra didática 1' in citar(atos[0])"
+    },
+    "arquivos": {
+      "comando": "bibliotecas",
+      "amostra.json": "[{\"municipio\": \"Recife\", \"data\": \"2026-01-01\", \"titulo\": \"Aviso ilustrativo\", \"fonte\": \"Amostra didática, sem validade jurídica\", \"texto\": \"Edital sobre bibliotecas públicas\"}]"
+    }
+  },
+  "pandas-analise-de-dados": {
+    "titulo": "Relatório de despesas agrupadas por categoria",
+    "card": {
+      "arquivo": "projeto.py",
+      "funcao": "Relatório de despesas agrupadas por categoria",
+      "ordem": 100,
+      "linguagem": "python",
+      "dependencias": [],
+      "abas": [
+        {
+          "titulo": "Construção do projeto",
+          "snippets": [
+            {
+              "explicacao": "Estruture as entradas e os dados do projeto.",
+              "codigo": "import pandas as pd"
+            },
+            {
+              "explicacao": "Implemente o comportamento principal.",
+              "codigo": "def analisar(tabela):\n    dados = tabela.copy()\n    dados['valor'] = pd.to_numeric(dados['valor'], errors='coerce')\n    dados = dados.dropna(subset=['valor'])\n    dados['categoria'] = dados['categoria'].fillna('Sem categoria')\n    return dados.groupby('categoria')['valor'].agg(['count','sum']).sort_index()"
+            },
+            {
+              "explicacao": "Conecte e execute o fluxo completo.",
+              "codigo": "def main():\n    return analisar(pd.read_csv('despesas.csv')).to_string()"
+            }
+          ]
+        }
+      ],
+      "teste": "dados = pd.DataFrame([{'categoria':'Material','valor':'10'},{'categoria':'Material','valor':'5'},{'categoria':'Material','valor':'x'},{'categoria':None,'valor':'7'}])\nsaida = analisar(dados)\nassert saida.loc['Material', 'sum'] == 15\nassert saida.loc['Material', 'count'] == 2\nassert saida.loc['Sem categoria', 'sum'] == 7"
+    },
+    "arquivos": {
+      "pacotes": [
+        "pandas"
+      ],
+      "despesas.csv": "categoria,valor\nMaterial,10\nMaterial,5\n,7\n"
+    }
+  },
+  "biopython-bioinformatica": {
+    "titulo": "Relatório de comprimento e composição de sequências FASTA",
+    "card": {
+      "arquivo": "projeto.py",
+      "funcao": "Relatório de comprimento e composição de sequências FASTA",
+      "ordem": 100,
+      "linguagem": "python",
+      "dependencias": [],
+      "abas": [
+        {
+          "titulo": "Construção do projeto",
+          "snippets": [
+            {
+              "explicacao": "Estruture as entradas e os dados do projeto.",
+              "codigo": "from Bio import SeqIO\nfrom Bio.SeqUtils import gc_fraction\nfrom io import StringIO\nfrom pathlib import Path"
+            },
+            {
+              "explicacao": "Implemente o comportamento principal.",
+              "codigo": "def analisar(texto):\n    registros = SeqIO.parse(StringIO(texto), 'fasta')\n    return [(r.id, len(r.seq), round(gc_fraction(r.seq) * 100, 2)) for r in registros]"
+            },
+            {
+              "explicacao": "Conecte e execute o fluxo completo.",
+              "codigo": "def main():\n    return '\\n'.join(f'{nome}\t{tamanho}\t{gc:.2f}%' for nome, tamanho, gc in analisar(Path('amostra.fasta').read_text()))"
+            }
+          ]
+        }
+      ],
+      "teste": "assert analisar('>didatica\\nAGCT\\n>curta\\nAA\\n') == [('didatica',4,50.0),('curta',2,0.0)]"
+    },
+    "arquivos": {
+      "pacotes": [
+        "biopython"
+      ],
+      "amostra.fasta": ">didatica\nAGCT\n>curta\nAA\n"
+    }
+  },
+  "rdkit-quimica-computacional": {
+    "titulo": "Comparador de similaridade de estruturas didáticas",
+    "card": {
+      "arquivo": "projeto.py",
+      "funcao": "Comparador de similaridade de estruturas didáticas",
+      "ordem": 100,
+      "linguagem": "python",
+      "dependencias": [],
+      "abas": [
+        {
+          "titulo": "Construção do projeto",
+          "snippets": [
+            {
+              "explicacao": "Estruture as entradas e os dados do projeto.",
+              "codigo": "from rdkit import Chem, DataStructs\nfrom rdkit.Chem import rdFingerprintGenerator"
+            },
+            {
+              "explicacao": "Implemente o comportamento principal.",
+              "codigo": "def similaridade(smiles_a, smiles_b):\n    a, b = (Chem.MolFromSmiles(s) for s in (smiles_a, smiles_b))\n    if a is None or b is None:\n        raise ValueError('SMILES inválido')\n    gerar = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)\n    return DataStructs.TanimotoSimilarity(gerar.GetFingerprint(a), gerar.GetFingerprint(b))"
+            },
+            {
+              "explicacao": "Conecte e execute o fluxo completo.",
+              "codigo": "def main():\n    import argparse\n    cli = argparse.ArgumentParser()\n    cli.add_argument('a')\n    cli.add_argument('b')\n    args = cli.parse_args()\n    return f'{similaridade(args.a, args.b):.3f}'"
+            }
+          ]
+        }
+      ],
+      "teste": "assert similaridade('CCO','CCO') == 1\nassert 0 <= similaridade('CCO','c1ccccc1') < 1\ntry:\n    similaridade('**erro**','CCO')\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError('SMILES inválido deveria falhar')"
+    },
+    "arquivos": {
+      "pacotes": [
+        "rdkit"
+      ],
+      "comando": "CCO CCN"
+    }
+  },
+  "astropy-astronomia": {
+    "titulo": "Simulação de uma observação FITS e relatório de coordenadas",
+    "card": {
+      "arquivo": "projeto.py",
+      "funcao": "Simulação de uma observação FITS e relatório de coordenadas",
+      "ordem": 100,
+      "linguagem": "python",
+      "dependencias": [],
+      "abas": [
+        {
+          "titulo": "Construção do projeto",
+          "snippets": [
+            {
+              "explicacao": "Estruture as entradas e os dados do projeto.",
+              "codigo": "from io import BytesIO\nfrom astropy.io import fits\nfrom astropy.coordinates import SkyCoord\nfrom astropy import units as u\nimport numpy as np"
+            },
+            {
+              "explicacao": "Implemente o comportamento principal.",
+              "codigo": "def gerar_fits():\n    imagem = fits.PrimaryHDU(np.array([[1, 2], [3, 4]], dtype=np.int16))\n    imagem.header['OBJECT'] = 'Observacao didatica'\n    imagem.header['RA'] = 15.0\n    imagem.header['DEC'] = -8.0\n    saida = BytesIO()\n    imagem.writeto(saida)\n    return saida.getvalue()"
+            },
+            {
+              "explicacao": "Conecte e execute o fluxo completo.",
+              "codigo": "def resumir(dados):\n    with fits.open(BytesIO(dados)) as imagens:\n        hdu = imagens[0]\n        local = SkyCoord(hdu.header['RA'] * u.deg, hdu.header['DEC'] * u.deg)\n        return hdu.header['OBJECT'], hdu.data.shape, round(float(hdu.data.mean()), 2), local.ra.hour"
+            },
+            {
+              "explicacao": "Complete a integração do projeto.",
+              "codigo": "def main():\n    return resumir(gerar_fits())"
+            }
+          ]
+        }
+      ],
+      "teste": "nome, formato, media, ascensao = main()\nassert nome == 'Observacao didatica' and formato == (2,2) and media == 2.5\nassert abs(ascensao - 1.0) < 1e-9"
+    },
+    "arquivos": {
+      "pacotes": [
+        "astropy",
+        "numpy"
+      ]
+    }
+  },
+  "jupyter-notebooks": {
+    "titulo": "Experimento reprodutível com amostra e resumo estatístico",
+    "card": {
+      "arquivo": "projeto.py",
+      "funcao": "Experimento reprodutível com amostra e resumo estatístico",
+      "ordem": 100,
+      "linguagem": "python",
+      "dependencias": [],
+      "abas": [
+        {
+          "titulo": "Construção do projeto",
+          "snippets": [
+            {
+              "explicacao": "Estruture as entradas e os dados do projeto.",
+              "codigo": "from random import Random\nfrom statistics import mean"
+            },
+            {
+              "explicacao": "Implemente o comportamento principal.",
+              "codigo": "def experimento(semente=42, tamanho=100):\n    if tamanho <= 0:\n        raise ValueError('A amostra precisa ser positiva')\n    sorteio = Random(semente)\n    amostra = [sorteio.randint(1, 6) for _ in range(tamanho)]\n    contagem = {face: amostra.count(face) for face in range(1, 7)}\n    return {'media': mean(amostra), 'frequencias': contagem}"
+            },
+            {
+              "explicacao": "Conecte e execute o fluxo completo.",
+              "codigo": "def main():\n    return experimento()"
+            }
+          ]
+        }
+      ],
+      "teste": "assert experimento(42, 20) == experimento(42, 20)\nresultado = experimento(12, 80)\nassert sum(resultado['frequencias'].values()) == 80\nassert 1 <= resultado['media'] <= 6"
+    },
+    "arquivos": {
+      "notebook": true
+    }
+  }
+}

@@ -77,8 +77,9 @@ function buildSandboxHTML(code: string, lang: Language): string {
     window.parent.postMessage({ type: 'stderr', text: \`\${msg} (line \${line})\` }, '*');
     return true;
   };
+  (async () => {
   try {
-    const __result = new Function(${JSON.stringify(jsCode).replace(/</g, "\\u003c")})();
+    const __result = await new Function(${JSON.stringify(jsCode).replace(/</g, "\\u003c")})();
     if (__result !== undefined) {
       window.parent.postMessage({ type: 'result', text: JSON.stringify(__result, null, 2) }, '*');
     }
@@ -87,6 +88,7 @@ function buildSandboxHTML(code: string, lang: Language): string {
     window.parent.postMessage({ type: 'stderr', text: e.message }, '*');
     window.parent.postMessage({ type: 'done' }, '*');
   }
+  })();
 <\/script>
 </body>
 </html>`;
@@ -125,6 +127,7 @@ export function useCodeRunner() {
     code: string,
     lang: Language,
     files?: { path: string; content: string }[],
+    pythonPackages?: string[],
   ): Promise<RunOutput[]> => {
     if (isRunning) return [];
     setIsRunning(true);
@@ -146,6 +149,7 @@ export function useCodeRunner() {
           return collected;
         }
         const py = pyRef.current;
+        if (pythonPackages?.length) await py.loadPackage(pythonPackages);
         // Mount the other workspace .py files into Pyodide's FS so imports resolve.
         if (files?.length) {
           for (const f of files) {

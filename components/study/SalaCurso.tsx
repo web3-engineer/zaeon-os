@@ -14,6 +14,7 @@ import CardArquivo from "@/components/study/CardArquivo";
 import { comBaseDoGrafo, mesclarEnriquecimento } from "@/lib/forja/arvoreDoGrafo";
 import type { CursoRepo } from "@/lib/forja/tipos";
 import type { LicaoCurada } from "@/lib/forja/licaoCurada";
+import { montarArquivo } from "@/lib/forja/tutorialArquivo";
 import type { CardDeArquivo } from "@/lib/forja/tutorialArquivo";
 
 const H = { "content-type": "application/json" };
@@ -31,11 +32,14 @@ export default function SalaCurso({ cursoId, titulo, onFechar }: { cursoId: stri
     setPratica(id);
   }, []);
   const abrirLicao = useCallback((id: string) => abrir(`licao:${id}`), [abrir]);
+  const [pacotes, setPacotes] = useState<string[]>([]);
+  const [preparar, setPreparar] = useState<string | null>(null);
+  const [aprovados, setAprovados] = useState<Record<string, boolean>>({});
   const [cards, setCards] = useState<CardDeArquivo[]>([]);
 
   useEffect(() => {
     let vivo = true;
-    setCurso(null); setLicoes({}); setErro(false); setPratica(null); setVisitadas([]); setCards([]);
+    setCurso(null); setLicoes({}); setErro(false); setPratica(null); setVisitadas([]); setCards([]); setPreparar(null); setPacotes([]); setAprovados({});
     (async () => {
       try {
         const r = await fetch("/api/studio/forja", { method: "POST", headers: H, body: JSON.stringify({ topic: cursoId }) });
@@ -45,6 +49,8 @@ export default function SalaCurso({ cursoId, titulo, onFechar }: { cursoId: stri
         const c = j.meta as MetaCurso;
         setCurso(c);                        // base curada já ensina (não espera o motor)
         setLicoes(c.licoesPorNo ?? {});     // lições reais (estudo/prova/sandbox) por nó
+        if (Array.isArray(j.pacotes)) setPacotes(j.pacotes);
+        if (typeof j.prepararTeste === "string") setPreparar(j.prepararTeste);
         if (Array.isArray(j.cards)) setCards(j.cards as CardDeArquivo[]); // tutorial de arquivo (F2/demo)
         // Camadas: a base curada (c.arvore) manda. O motor (graphify/understand), quando a box responde,
         // ENRIQUECE por cima — some ramos do código real à base, sem apagá-la. Sem base curada, o
@@ -107,7 +113,20 @@ export default function SalaCurso({ cursoId, titulo, onFechar }: { cursoId: stri
           {opcoes.filter((opcao) => visitadas.includes(opcao.id)).map((opcao) => (
             <div key={opcao.id} hidden={pratica !== opcao.id}>
               {"card" in opcao && opcao.card
-                ? <CardArquivo card={opcao.card} cursoId={cursoId} />
+                ? <CardArquivo
+                    card={opcao.card}
+                    cursoId={preparar === null || arquivos.every((a) => aprovados[a.arquivo]) ? cursoId : undefined}
+                    bloqueado={opcao.card.dependencias?.some((path) => !aprovados[path])}
+                    pacotes={pacotes}
+                    prepararTeste={opcao.card.linguagem === "javascript" ? [
+                      preparar,
+                      ...(opcao.card.dependencias ?? []).map((path) => {
+                        const dep = arquivos.find((a) => a.arquivo === path);
+                        return dep && aprovados[path] ? montarArquivo(dep) : "";
+                      }),
+                    ].filter(Boolean).join("\n") : undefined}
+                    aoTestar={(passou) => setAprovados((atuais) => ({ ...atuais, [opcao.titulo]: passou }))}
+                  />
                 : "sandbox" in opcao && opcao.sandbox && <PraticaDaLicao sandbox={opcao.sandbox} titulo={opcao.titulo} />}
             </div>
           ))}
