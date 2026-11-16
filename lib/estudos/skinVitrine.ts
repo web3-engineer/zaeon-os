@@ -1,9 +1,9 @@
-export const SKINS_VITRINE = ["tecnologia", "dossie", "caderno", "portfolio", "dados", "historia", "geografia", "agronomia"] as const;
+export const SKINS_VITRINE = ["tecnologia", "dossie", "caderno", "portfolio", "dados", "historia", "geografia", "agronomia", "estudo"] as const;
 export type SkinVitrine = (typeof SKINS_VITRINE)[number];
 
 export const NOME_SKIN: Record<SkinVitrine, string> = {
   tecnologia: "Tecnologia", dossie: "Dossiê", caderno: "Caderno", portfolio: "Portfólio",
-  dados: "Dados", historia: "História", geografia: "Geografia", agronomia: "Agronomia",
+  dados: "Dados", historia: "História", geografia: "Geografia", agronomia: "Agronomia", estudo: "Estudo",
 };
 
 export const skinValida = (valor: unknown): valor is SkinVitrine =>
@@ -24,6 +24,7 @@ export function skinDaVitrine(item: DadosSkin): SkinVitrine {
   if (/\b(geografia|cartografia|bacias|relevo|hidrografia|geologia)\b/.test(tema)) return "geografia";
   if (tipo && ["pesquisa", "artigo", "anatomia", "molecule", "prancha"].includes(tipo)) return "dossie";
   if ((tipo && ["dados", "diagram", "mindmap", "timeline"].includes(tipo)) || /\b(dataset|dados|observacoes climaticas)\b/.test(tema)) return "dados";
-  if (tipo && ["curso", "skill", "aula", "caderno", "guide", "faq", "flashcards"].includes(tipo)) return "caderno";
+  if (tipo && ["estudo", "guide", "faq", "flashcards"].includes(tipo)) return "estudo";
+  if (tipo && ["curso", "skill", "aula", "caderno"].includes(tipo)) return "caderno";
   return "portfolio";
 }

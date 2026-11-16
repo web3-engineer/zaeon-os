@@ -22,8 +22,8 @@ const exemplos = [
   { id: "direito", skin: "historia", tipo: "curso", modelo: "livro" },
   { id: "literatura", skin: "caderno", tipo: "curso", modelo: "livro" },
   { id: "musica", skin: "portfolio", tipo: "curso", modelo: "ondas" },
-  { id: "educacao", skin: "caderno", tipo: "curso", modelo: "livro" },
-  { id: "comunicacao", skin: "dossie", tipo: "curso", modelo: "livro" },
+  { id: "educacao", skin: "estudo", tipo: "curso", modelo: "livro" },
+  { id: "comunicacao", skin: "estudo", tipo: "curso", modelo: "livro" },
   { id: "veterinaria", skin: "agronomia", tipo: "curso", modelo: "planta" },
 ] as const satisfies readonly Pick<ItemVitrine, "id" | "skin" | "tipo" | "modelo" | "imagem">[];
 

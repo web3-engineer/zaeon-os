@@ -1,12 +1,12 @@
 /* As capas compartilham proporção, área de arte e controles da carta da vitrine. */
-.vt-card[data-skin]:not([data-skin="tecnologia"]) {
+.vt-card:where([data-skin]:not([data-skin="tecnologia"])) {
   --capa: #e1d2b6;
   --papel: #f5ead6;
   --tinta: #382918;
   --acabamento: #987d55;
   --raio: 6px;
 }
-.vt-card[data-skin]:not([data-skin="tecnologia"]) .vt-frame {
+.vt-card:where([data-skin]:not([data-skin="tecnologia"])) .vt-frame {
   animation: none;
   clip-path: none;
   border-radius: var(--raio);
@@ -14,27 +14,27 @@
   background: var(--acabamento);
   box-shadow: 0 12px 30px #0005;
 }
-.vt-card[data-skin]:not([data-skin="tecnologia"]) .vt-panel {
+.vt-card:where([data-skin]:not([data-skin="tecnologia"])) .vt-panel {
   inset: 1px;
   clip-path: none;
   border-radius: inherit;
   background: var(--capa);
   color: var(--tinta);
 }
-.vt-card[data-skin]:not([data-skin="tecnologia"]) :is(.vt-crt,.vt-spine,.vt-br,.vt-meter) { display: none; }
+.vt-card:where([data-skin]:not([data-skin="tecnologia"])) :is(.vt-crt,.vt-spine,.vt-br,.vt-meter) { display: none; }
 .vt-card:where([data-skin]:not([data-skin="tecnologia"])) .vt-art::after { display:none; }
-.vt-card[data-skin]:not([data-skin="tecnologia"]) .vt-art {
+.vt-card:where([data-skin]:not([data-skin="tecnologia"])) .vt-art {
   margin: 11px 11px 0;
   background: var(--papel);
   border: 1px solid color-mix(in srgb, var(--acabamento), transparent 50%);
   box-shadow: none;
 }
-.vt-card[data-skin]:not([data-skin="tecnologia"]) .vt-plate { padding: 10px 11px; }
-.vt-card[data-skin]:not([data-skin="tecnologia"]) :is(.vt-title,.vt-type,.vt-price) { color: var(--tinta); text-shadow: none; }
-.vt-card[data-skin]:not([data-skin="tecnologia"]) .vt-type { letter-spacing: .08em; }
-.vt-card[data-skin]:not([data-skin="tecnologia"]) .vt-title { font-size: clamp(15px, 1.25vw, 20px); }
-.vt-card[data-skin]:not([data-skin="tecnologia"]) .vt-foto { filter: none; }
-.vt-card[data-skin]:not([data-skin="tecnologia"]) .vt-art:has(.vt-foto)::before { content: none; }
+.vt-card:where([data-skin]:not([data-skin="tecnologia"])) .vt-plate { padding: 10px 11px; }
+.vt-card:where([data-skin]:not([data-skin="tecnologia"])) :is(.vt-title,.vt-type,.vt-price) { color: var(--tinta); text-shadow: none; }
+.vt-card:where([data-skin]:not([data-skin="tecnologia"])) .vt-type { letter-spacing: .08em; }
+.vt-card:where([data-skin]:not([data-skin="tecnologia"])) .vt-title { font-size: clamp(15px, 1.25vw, 20px); }
+.vt-card:where([data-skin]:not([data-skin="tecnologia"])) .vt-foto { filter: none; }
+.vt-card:where([data-skin]:not([data-skin="tecnologia"])) .vt-art:has(.vt-foto)::before { content: none; }
 .vt-card[data-skin="dossie"] { --capa:#d9c59f; --papel:#f2e8d4; --tinta:#3c2e20; --acabamento:#a48b60; --raio:6px; }
 .vt-card[data-skin="dossie"] .vt-aba { background: #d9c59f; color: #3c2e20; box-shadow: none; }
 .vt-card[data-skin="dossie"] .vt-art { transform: rotate(-3deg) scale(.94); box-shadow: 0 3px 7px #36251764; transition: transform .25s ease; }
@@ -61,3 +61,27 @@
 .vt-skin-terreno i:nth-child(2) { clip-path:polygon(0 0,68% 0,50% 50%,0 66%); background:repeating-linear-gradient(65deg,#9c6e45 0 7px,#ba985c 7px 13px); }
 .vt-skin-terreno i:nth-child(3) { clip-path:polygon(64% 40%,100% 38%,100% 100%,45% 100%); background:repeating-linear-gradient(20deg,#576f35 0 7px,#b2a961 7px 12px); }
 @media(prefers-reduced-motion:reduce) { .vt-card[data-skin="dossie"] .vt-art { transition:none; } }
+
+/* O material define também a silhueta e a posição do título. */
+.vt-card[data-skin="dossie"] .vt-frame { top: 9%; }
+.vt-card[data-skin="dossie"]:not(.vt-pasta)::before {
+  content: ""; position: absolute; top: 2%; left: 0; width: 44%; height: 13%;
+  background: var(--capa); border-radius: 9px 9px 0 0;
+}
+.vt-card[data-skin="caderno"] .vt-panel { border-left-width: 9px; }
+.vt-card[data-skin="caderno"] .vt-plate { order: -1; padding-top: 16px; }
+.vt-card[data-skin="caderno"] .vt-art { margin-bottom: 10px; }
+.vt-card[data-skin="portfolio"] .vt-art { margin: 0; border: 0; }
+.vt-card[data-skin="portfolio"] .vt-plate { border-top: 1px solid var(--acabamento); }
+.vt-card[data-skin="dados"] .vt-frame { border-radius: 20px; }
+.vt-card[data-skin="dados"] .vt-panel { inset: 5px; }
+.vt-card[data-skin="dados"] .vt-art { margin: 0; border: 0; }
+.vt-card[data-skin="historia"] .vt-frame { inset: 3% 3% 2% 0; transform: rotate(-3deg); }
+.vt-card[data-skin="geografia"] .vt-art { margin: 0; border: 0; }
+.vt-card[data-skin="geografia"] .vt-plate { border-top: 3px double var(--acabamento); }
+.vt-card[data-skin="agronomia"] .vt-panel { border-left: 12px solid #64553b; }
+.vt-card[data-skin="agronomia"] .vt-plate { border-top: 2px dashed #89734e; }
+.vt-card[data-skin="estudo"] { --capa:#fff2bb; --papel:#fff9dc; --tinta:#34301d; --acabamento:#af9958; --raio:3px; }
+.vt-card[data-skin="estudo"] .vt-frame { inset: 7% 1% 8%; box-shadow: 4px 5px #c3b171, 7px 9px #8e7d44, 0 12px 30px #0005; }
+.vt-card[data-skin="estudo"] .vt-art { background: repeating-linear-gradient(0deg, transparent 0 14px, #b9a66866 14px 15px), var(--papel); }
+.vt-card[data-skin="estudo"] .vt-plate { order: -1; padding-top: 15px; }
