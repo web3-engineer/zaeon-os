@@ -261,7 +261,9 @@ export default function StudyRoomContent({ flushTop = false, unified = false, ab
     }, [activeTab, room]);
     // a sidebar destaca a aba em que a sala está, e pede outra pelos subitens de "Sala de Estudos"
     useEffect(() => {
-        if (activeTab === "meus-estudos" || activeTab === "feed" || activeTab === "community") anunciarAbaEstudos(activeTab);
+        // (#824: as outras — Literatura, um curso — também avisam, como `outra`: a sidebar não destaca nenhum subitem e o
+        // menu principal sabe que a vitrine fechou)
+        anunciarAbaEstudos(activeTab === "meus-estudos" || activeTab === "feed" || activeTab === "community" ? activeTab : "outra");
     }, [activeTab]);
     useEffect(() => {
         const ir = (e: Event) => { const a = (e as CustomEvent<AbaEstudos>).detail; consumirAbaEstudos(); if (a) setActiveTab(a); };
