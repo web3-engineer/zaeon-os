@@ -6,6 +6,7 @@
  * cria o StudioArtifact (running) → Gemini JSON → normaliza (1 retry se inválido)
  * → salva meta + status done. Nunca renderiza lixo: inválido vira status "error".
  */
+import { skinDaVitrine } from "@/lib/estudos/skinVitrine";
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { guard } from "@/src/lib/ratelimit";
@@ -60,7 +61,7 @@ export async function runTextGeneration(kind: TextKind, req: Request): Promise<R
   // saia da sala. Retorna na hora; o cliente faz polling em /api/studio/[id]. Antes isto
   // era awaited: sair da sala no meio abortava o handler e o artefato ficava preso.
   const art = await prisma.studioArtifact.create({
-    data: { ownerId: userId, sourceIds: ctx.sourceIds, kind, status: "queued", title: spec.title(tituloBase) },
+    data: { ownerId: userId, sourceIds: ctx.sourceIds, kind, skin: skinDaVitrine({ kind, titulo: spec.title(tituloBase) }), status: "queued", title: spec.title(tituloBase) },
   });
 
   void generateTextArtifact(art.id, system, user, spec);

@@ -7,6 +7,7 @@
  * raridade, ordem e ocultar editáveis. A aba PESQUISAS (PesquisasVitrine) é a fila de moderação e a publicação das
  * pastas de pesquisa. A aba NOVOS CARDS é o CRUD dos cards cadastrados no banco.
  */
+import { NOME_SKIN, SKINS_VITRINE } from "@/lib/estudos/skinVitrine";
 import { useCallback, useEffect, useState } from "react";
 import { TIPOS, EXECUCOES, MODELOS, RARIDADES } from "@/lib/estudos/vitrineAdmin";
 import { NOME_TIPO } from "@/lib/estudos/vitrine";
@@ -15,7 +16,7 @@ import PesquisasVitrine from "./PesquisasVitrine";
 import CuradoriaVitrine from "./CuradoriaVitrine";
 
 type Row = {
-    id: string; slug: string; titulo: string; subtitulo: string; tipo: string; execucao: string; modelo: string;
+    id: string; skin?: string | null; slug: string; titulo: string; subtitulo: string; tipo: string; execucao: string; modelo: string;
     autor: string; raridade: string; profundidade: number; preco: number; fracoesTotal: number; fracoesVendidas: number;
     supervisionado: boolean; linksOk: boolean; codigoPrivado: boolean; entrega: string[]; tags: string[]; ironia: boolean;
     ativo: boolean; ordem: number;
@@ -24,11 +25,13 @@ type Row = {
 const GLYPH: Record<string, string> = { console: "🎮", chip: "🧠", planta: "🌱", predio: "🏛️", drone: "🚁", foguete: "🚀", molecula: "🧬", engrenagem: "⚙️", livro: "📖", graos: "☕", ondas: "📡", robo: "🤖" };
 
 type Form = {
+    skin: string;
     slug: string; titulo: string; subtitulo: string; autor: string; tipo: string; execucao: string; modelo: string;
     raridade: string; profundidade: number; preco: number; fracoesTotal: number; fracoesVendidas: number; entrega: string;
     tags: string; supervisionado: boolean; linksOk: boolean; codigoPrivado: boolean; ironia: boolean; ativo: boolean; ordem: number;
 };
 const FORM0: Form = {
+    skin: "",
     slug: "", titulo: "", subtitulo: "", autor: "", tipo: "curso", execucao: "dyom", modelo: "livro", raridade: "comum",
     profundidade: 50, preco: 0, fracoesTotal: 1, fracoesVendidas: 0, entrega: "", tags: "", supervisionado: false,
     linksOk: true, codigoPrivado: false, ironia: false, ativo: true, ordem: 0,
@@ -64,7 +67,7 @@ export default function VitrineModule({ glassPanel }: { glassPanel: string }) {
         setEditId(it.id); setMsg(null);
         setForm({
             slug: it.slug, titulo: it.titulo, subtitulo: it.subtitulo ?? "", autor: it.autor ?? "", tipo: it.tipo,
-            execucao: it.execucao, modelo: it.modelo, raridade: it.raridade, profundidade: it.profundidade, preco: it.preco,
+            execucao: it.execucao, modelo: it.modelo, skin: it.skin ?? "", raridade: it.raridade, profundidade: it.profundidade, preco: it.preco,
             fracoesTotal: it.fracoesTotal, fracoesVendidas: it.fracoesVendidas, entrega: (it.entrega ?? []).join("\n"),
             tags: (it.tags ?? []).join(", "), supervisionado: it.supervisionado, linksOk: it.linksOk,
             codigoPrivado: it.codigoPrivado, ironia: it.ironia, ativo: it.ativo, ordem: it.ordem,
@@ -128,6 +131,7 @@ export default function VitrineModule({ glassPanel }: { glassPanel: string }) {
                     <div className="grid grid-cols-2 gap-3">
                         <div><label className={lbl}>Tipo</label><select className={inp} value={form.tipo} onChange={(e) => set("tipo", e.target.value)}>{TIPOS.map((t) => <option key={t} value={t}>{NOME_TIPO[t]}</option>)}</select></div>
                         <div><label className={lbl}>Raridade</label><select className={inp} value={form.raridade} onChange={(e) => set("raridade", e.target.value)}>{RARIDADES.map((r) => <option key={r} value={r}>{NOME_RARIDADE[r]}</option>)}</select></div>
+                        <div><label className={lbl} htmlFor="vitrine-skin">Skin</label><select id="vitrine-skin" className={inp} value={form.skin} onChange={(e) => set("skin", e.target.value)}><option value="">Automática</option>{SKINS_VITRINE.map((skin) => <option key={skin} value={skin}>{NOME_SKIN[skin]}</option>)}</select></div>
                         <div><label className={lbl}>Ícone</label><select className={inp} value={form.modelo} onChange={(e) => set("modelo", e.target.value)}>{MODELOS.map((m) => <option key={m} value={m}>{GLYPH[m]} {m}</option>)}</select></div>
                         <div><label className={lbl}>Execução</label><select className={inp} value={form.execucao} onChange={(e) => set("execucao", e.target.value)}>{EXECUCOES.map((x) => <option key={x} value={x}>{x === "dyom" ? "Faça você mesmo" : "Um agente faz"}</option>)}</select></div>
                         <div><label className={lbl}>Preço (SOL)</label><input type="number" min={0} step="0.01" className={inp} value={form.preco} onChange={(e) => set("preco", Number(e.target.value))} /></div>

@@ -452,6 +452,77 @@
         "success_message": "Credenciales actualizadas"
     },
     "landing": {
+        "knowledge_cards": {
+            "label": "Conocimiento en el mercado",
+            "coracao": {
+                "title": "Atlas del corazón",
+                "summary": "Anatomía, cavidades y circulación."
+            },
+            "recife": {
+                "title": "Recife a través del tiempo",
+                "summary": "El puerto y la ciudad en mapas y documentos históricos."
+            },
+            "bacias": {
+                "title": "Atlas de cuencas hidrográficas",
+                "summary": "Cómo el relieve da forma a ríos y ciudades."
+            },
+            "safra": {
+                "title": "Diario de una cosecha de café",
+                "summary": "Suelo, lluvia y cosecha en un cuaderno de campo."
+            },
+            "astronomia": {
+                "title": "Astronomía observacional",
+                "summary": "De la primera observación a la interpretación de datos."
+            },
+            "clima": {
+                "title": "Observaciones climáticas",
+                "summary": "Lluvia, temperatura y ciclos estacionales."
+            },
+            "habitat": {
+                "title": "Hábitat submarino",
+                "summary": "Diseño de un espacio de trabajo bajo el mar."
+            },
+            "ecologia": {
+                "title": "Ecología de dunas costeras",
+                "summary": ""
+            },
+            "matematica": {
+                "title": "Probabilidad y juegos",
+                "summary": ""
+            },
+            "arquitetura": {
+                "title": "Arquitectura bioclimática",
+                "summary": ""
+            },
+            "economia": {
+                "title": "Economía laboral",
+                "summary": ""
+            },
+            "direito": {
+                "title": "Derecho constitucional",
+                "summary": ""
+            },
+            "literatura": {
+                "title": "Literatura de cordel",
+                "summary": ""
+            },
+            "musica": {
+                "title": "Armonía e improvisación",
+                "summary": ""
+            },
+            "educacao": {
+                "title": "Alfabetización científica",
+                "summary": ""
+            },
+            "comunicacao": {
+                "title": "Periodismo de campo",
+                "summary": ""
+            },
+            "veterinaria": {
+                "title": "Medicina veterinaria preventiva",
+                "summary": ""
+            }
+        },
         "timeline": {
             "base": "Base científica",
             "conversa": "Conversación con IA",

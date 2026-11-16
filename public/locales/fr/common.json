@@ -452,6 +452,77 @@
         "success_message": "Informations d'identification mises à jour"
     },
     "landing": {
+        "knowledge_cards": {
+            "label": "Savoirs sur la Marketplace",
+            "coracao": {
+                "title": "Atlas du cœur",
+                "summary": "Anatomie, cavités et circulation."
+            },
+            "recife": {
+                "title": "Recife au fil du temps",
+                "summary": "Le port et la ville dans les cartes et archives historiques."
+            },
+            "bacias": {
+                "title": "Atlas des bassins versants",
+                "summary": "Comment le relief façonne les cours d’eau et les villes."
+            },
+            "safra": {
+                "title": "Journal d’une récolte de café",
+                "summary": "Sols, pluies et récolte dans un carnet de terrain."
+            },
+            "astronomia": {
+                "title": "Astronomie observationnelle",
+                "summary": "De la première observation à l’interprétation des données."
+            },
+            "clima": {
+                "title": "Observations climatiques",
+                "summary": "Pluies, températures et cycles saisonniers."
+            },
+            "habitat": {
+                "title": "Habitat sous-marin",
+                "summary": "Conception d’un espace de travail sous la mer."
+            },
+            "ecologia": {
+                "title": "Écologie des dunes côtières",
+                "summary": ""
+            },
+            "matematica": {
+                "title": "Probabilités et jeux",
+                "summary": ""
+            },
+            "arquitetura": {
+                "title": "Architecture bioclimatique",
+                "summary": ""
+            },
+            "economia": {
+                "title": "Économie du travail",
+                "summary": ""
+            },
+            "direito": {
+                "title": "Droit constitutionnel",
+                "summary": ""
+            },
+            "literatura": {
+                "title": "Littérature de cordel",
+                "summary": ""
+            },
+            "musica": {
+                "title": "Harmonie et improvisation",
+                "summary": ""
+            },
+            "educacao": {
+                "title": "Culture scientifique",
+                "summary": ""
+            },
+            "comunicacao": {
+                "title": "Journalisme de terrain",
+                "summary": ""
+            },
+            "veterinaria": {
+                "title": "Médecine vétérinaire préventive",
+                "summary": ""
+            }
+        },
         "timeline": {
             "base": "Base scientifique",
             "conversa": "Discussion avec les IA",

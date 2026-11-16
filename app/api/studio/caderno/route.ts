@@ -6,6 +6,7 @@
  * POST { topic?|cadernoId? } → { id, status:"done", title, meta } na hora. O caderno do aluno é
  * reusado (curado é determinístico — não duplica artefato a cada abertura).
  */
+import { skinDaVitrine } from "@/lib/estudos/skinVitrine";
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { guard } from "@/src/lib/ratelimit";
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
     orderBy: { createdAt: "desc" },
   });
   const art = existente ?? (await prisma.studioArtifact.create({
-    data: { ownerId: userId, sourceIds: [chave], kind: "caderno", status: "done", title: caderno.titulo, mime: "application/json", meta: caderno as unknown as object },
+    data: { ownerId: userId, sourceIds: [chave], kind: "caderno", skin: skinDaVitrine({ kind: "caderno", titulo: caderno.titulo }), status: "done", title: caderno.titulo, mime: "application/json", meta: caderno as unknown as object },
   }));
 
   return NextResponse.json({ id: art.id, status: "done", title: caderno.titulo, meta: caderno });

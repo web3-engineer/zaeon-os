@@ -8,6 +8,7 @@
  *
  * POST { slug | topic } → { id, status:"done", title, meta } na hora. Reusa o artefato do aluno.
  */
+import { skinDaVitrine } from "@/lib/estudos/skinVitrine";
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { guard } from "@/src/lib/ratelimit";
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
     orderBy: { createdAt: "desc" },
   });
   const art = existente ?? (await prisma.studioArtifact.create({
-    data: { ownerId: userId, sourceIds: [chave], kind: "device", status: "done", title: card.titulo, mime: "application/json", meta: meta as unknown as object },
+    data: { ownerId: userId, sourceIds: [chave], kind: "device", skin: skinDaVitrine({ kind: "device" }), status: "done", title: card.titulo, mime: "application/json", meta: meta as unknown as object },
   }));
 
   // devolve o meta FRESCO (corpo/espelho podem ter mudado entre deploys), reusando só a linha do aluno.

@@ -1,0 +1,87 @@
+/* As capas compartilham proporção, área de arte e controles da carta da vitrine. */
+.vt-card:where([data-skin]:not([data-skin="tecnologia"])) {
+  --capa: #e1d2b6;
+  --papel: #f5ead6;
+  --tinta: #382918;
+  --acabamento: #987d55;
+  --raio: 6px;
+}
+.vt-card:where([data-skin]:not([data-skin="tecnologia"])) .vt-frame {
+  animation: none;
+  clip-path: none;
+  border-radius: var(--raio);
+  padding: 0;
+  background: var(--acabamento);
+  box-shadow: 0 12px 30px #0005;
+}
+.vt-card:where([data-skin]:not([data-skin="tecnologia"])) .vt-panel {
+  inset: 1px;
+  clip-path: none;
+  border-radius: inherit;
+  background: var(--capa);
+  color: var(--tinta);
+}
+.vt-card:where([data-skin]:not([data-skin="tecnologia"])) :is(.vt-crt,.vt-spine,.vt-br,.vt-meter) { display: none; }
+.vt-card:where([data-skin]:not([data-skin="tecnologia"])) .vt-art::after { display:none; }
+.vt-card:where([data-skin]:not([data-skin="tecnologia"])) .vt-art {
+  margin: 11px 11px 0;
+  background: var(--papel);
+  border: 1px solid color-mix(in srgb, var(--acabamento), transparent 50%);
+  box-shadow: none;
+}
+.vt-card:where([data-skin]:not([data-skin="tecnologia"])) .vt-plate { padding: 10px 11px; }
+.vt-card:where([data-skin]:not([data-skin="tecnologia"])) :is(.vt-title,.vt-type,.vt-price) { color: var(--tinta); text-shadow: none; }
+.vt-card:where([data-skin]:not([data-skin="tecnologia"])) .vt-type { letter-spacing: .08em; }
+.vt-card:where([data-skin]:not([data-skin="tecnologia"])) .vt-title { font-size: clamp(15px, 1.25vw, 20px); }
+.vt-card:where([data-skin]:not([data-skin="tecnologia"])) .vt-foto { filter: none; }
+.vt-card:where([data-skin]:not([data-skin="tecnologia"])) .vt-art:has(.vt-foto)::before { content: none; }
+.vt-card[data-skin="dossie"] { --capa:#d9c59f; --papel:#f2e8d4; --tinta:#3c2e20; --acabamento:#a48b60; --raio:6px; }
+.vt-card[data-skin="dossie"] .vt-aba { background: #d9c59f; color: #3c2e20; box-shadow: none; }
+.vt-card[data-skin="dossie"] .vt-art { transform: rotate(-3deg) scale(.94); box-shadow: 0 3px 7px #36251764; transition: transform .25s ease; }
+.vt-card[data-skin="dossie"]:hover .vt-art { transform: rotate(-6deg) scale(.94); }
+.vt-card[data-skin="dossie"] .vt-foto { object-fit: contain; }
+.vt-card[data-skin="caderno"] { --capa:#252039; --papel:#342d50; --tinta:#f2eaff; --acabamento:#aa9bc6; --raio:4px 12px 12px 4px; }
+.vt-card[data-skin="caderno"] .vt-panel { border-left: 6px solid #645283; }
+.vt-card[data-skin="caderno"] .vt-frame { box-shadow: 4px 3px #cec6db, 7px 6px #8d839f, 0 12px 30px #0006; }
+.vt-card[data-skin="caderno"] .vt-title { font-family: Georgia, serif; }
+.vt-card[data-skin="portfolio"] { --capa:#e8e3d6; --papel:#d9d6cc; --tinta:#252526; --acabamento:#a6a195; --raio:2px; }
+.vt-card[data-skin="dados"] { --capa:#d6e4ec; --papel:#e9f1f6; --tinta:#17384e; --acabamento:#8aa8b9; --raio:8px; }
+.vt-card[data-skin="historia"] { --capa:#701f30; --papel:#f5ddb2; --tinta:#ffe6bb; --acabamento:#a96871; --raio:4px 10px 10px 4px; }
+.vt-card[data-skin="historia"] .vt-art { transform: rotate(-3deg) scale(.93); box-shadow: 4px 3px #d5b984; background: repeating-linear-gradient(0deg,transparent 0 12px,#6f4a2a24 12px 13px), var(--papel); }
+.vt-card[data-skin="historia"] .vt-title { font-family: Georgia, serif; }
+.vt-card[data-skin="geografia"] { --capa:#184148; --papel:#294f52; --tinta:#eaf6d7; --acabamento:#90a885; --raio:5px; }
+.vt-card[data-skin="geografia"] .vt-art::after { display:block; opacity:1; background:repeating-linear-gradient(90deg,transparent 0 24%,#c4efc550 24% 25%),repeating-linear-gradient(0deg,transparent 0 24%,#c4efc550 24% 25%); }
+.vt-card[data-skin="agronomia"] { --capa:#d2ad77; --papel:#365042; --tinta:#2f301c; --acabamento:#9d7a4f; --raio:4px 11px 11px 4px; }
+.vt-card:is([data-skin="caderno"],[data-skin="historia"],[data-skin="geografia"]) .vt-aba { background:var(--capa); color:var(--tinta); box-shadow:none; }
+
+.vt-skin-chart { position:absolute; inset:17% 12% 19%; display:flex; align-items:end; gap:3%; border-bottom:1px solid #3c6d86; background:repeating-linear-gradient(0deg,#2b628630 0 1px,transparent 1px 25%); }
+.vt-skin-chart i { flex:1; background:linear-gradient(#397981,#173d5b); border-radius:2px 2px 0 0; }
+.vt-skin-terreno { position:absolute; inset:0; overflow:hidden; }
+.vt-skin-terreno i { position:absolute; inset:-35%; transform:rotate(-25deg); background:repeating-linear-gradient(90deg,#42623b 0 8px,#849554 8px 15px,#677041 15px 18px); }
+.vt-skin-terreno i:nth-child(2) { clip-path:polygon(0 0,68% 0,50% 50%,0 66%); background:repeating-linear-gradient(65deg,#9c6e45 0 7px,#ba985c 7px 13px); }
+.vt-skin-terreno i:nth-child(3) { clip-path:polygon(64% 40%,100% 38%,100% 100%,45% 100%); background:repeating-linear-gradient(20deg,#576f35 0 7px,#b2a961 7px 12px); }
+@media(prefers-reduced-motion:reduce) { .vt-card[data-skin="dossie"] .vt-art { transition:none; } }
+
+/* O material define também a silhueta e a posição do título. */
+.vt-card[data-skin="dossie"] .vt-frame { top: 9%; }
+.vt-card[data-skin="dossie"]:not(.vt-pasta)::before {
+  content: ""; position: absolute; top: 2%; left: 0; width: 44%; height: 13%;
+  background: var(--capa); border-radius: 9px 9px 0 0;
+}
+.vt-card[data-skin="caderno"] .vt-panel { border-left-width: 9px; }
+.vt-card[data-skin="caderno"] .vt-plate { order: -1; padding-top: 16px; }
+.vt-card[data-skin="caderno"] .vt-art { margin-bottom: 10px; }
+.vt-card[data-skin="portfolio"] .vt-art { margin: 0; border: 0; }
+.vt-card[data-skin="portfolio"] .vt-plate { border-top: 1px solid var(--acabamento); }
+.vt-card[data-skin="dados"] .vt-frame { border-radius: 20px; }
+.vt-card[data-skin="dados"] .vt-panel { inset: 5px; }
+.vt-card[data-skin="dados"] .vt-art { margin: 0; border: 0; }
+.vt-card[data-skin="historia"] .vt-frame { inset: 3% 3% 2% 0; transform: rotate(-3deg); }
+.vt-card[data-skin="geografia"] .vt-art { margin: 0; border: 0; }
+.vt-card[data-skin="geografia"] .vt-plate { border-top: 3px double var(--acabamento); }
+.vt-card[data-skin="agronomia"] .vt-panel { border-left: 12px solid #64553b; }
+.vt-card[data-skin="agronomia"] .vt-plate { border-top: 2px dashed #89734e; }
+.vt-card[data-skin="estudo"] { --capa:#fff2bb; --papel:#fff9dc; --tinta:#34301d; --acabamento:#af9958; --raio:3px; }
+.vt-card[data-skin="estudo"] .vt-frame { inset: 7% 1% 8%; box-shadow: 4px 5px #c3b171, 7px 9px #8e7d44, 0 12px 30px #0005; }
+.vt-card[data-skin="estudo"] .vt-art { background: repeating-linear-gradient(0deg, transparent 0 14px, #b9a66866 14px 15px), var(--papel); }
+.vt-card[data-skin="estudo"] .vt-plate { order: -1; padding-top: 15px; }

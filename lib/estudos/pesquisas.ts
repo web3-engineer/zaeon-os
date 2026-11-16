@@ -14,6 +14,7 @@
  * que a vitrine renderiza (sem o conteúdo das partes, que vem sob demanda quando a pasta abre).
  */
 import type { ItemVitrine } from "./vitrine";
+import { skinDaVitrine, skinValida } from "./skinVitrine";
 import type { Raridade } from "./blueprint";
 
 // ───────────────────────────── as partes (os papéis da pasta) ─────────────────────────────
@@ -136,6 +137,12 @@ export function normalizarPesquisa(b: any, { parcial = false }: { parcial?: bool
   if (b?.validadores !== undefined) { const n = Number(b.validadores); if (!Number.isInteger(n) || n < 0) return { erro: "validadores: inteiro ≥ 0." }; data.validadores = n; }
   if (b?.ordem !== undefined) { const n = Number(b.ordem); if (Number.isFinite(n)) data.ordem = Math.trunc(n); }
   if (b?.status !== undefined) { if (!STATUS.includes(b.status)) return { erro: "status inválido." }; data.status = b.status; }
+  if (b?.skin !== undefined) {
+    if (!skinValida(b.skin)) return { erro: "Skin inválida." };
+    data.skin = b.skin;
+  } else if (!parcial) {
+    data.skin = skinDaVitrine({ tipo: "pesquisa", ...data });
+  }
   if (b?.motivo !== undefined) data.motivo = str(b.motivo, 400) || null;
   // apoio (financiamento em SOL)
   if (b?.apoioAtivo !== undefined) data.apoioAtivo = !!b.apoioAtivo;
@@ -171,6 +178,7 @@ export function partesDoTrabalho(w: { title?: string | null; content?: string | 
 
 /** a linha do banco como as rotas a leem */
 export type PesquisaRow = {
+  skin?: string | null;
   slug: string; titulo: string; resumo: string; nicho: string; tags: string[]; raridade: string; autor: string;
   validadores: number; partes: unknown; status?: string;
   apoioAtivo?: boolean | null; metaSol?: number | null; arrecadadoSol?: number | null; apoiadores?: number | null;
@@ -192,6 +200,7 @@ export function pesquisaParaUI(r: PesquisaRow): ItemVitrine {
   const nome = r.conta?.name?.trim() || r.autor || "Zaeon";
   const raridade = (RARIDADES as string[]).includes(r.raridade) ? (r.raridade as Raridade) : "comum";
   return {
+    skin: skinDaVitrine({ tipo: "pesquisa", ...r }),
     id: `pesquisa-${r.slug}`, titulo: r.titulo,
     subtitulo: r.resumo.split(/\n\s*\n/)[0]?.slice(0, 220) || `${partes.length} ${partes.length === 1 ? "parte" : "partes"} nesta pasta`,
     tipo: "pesquisa", execucao: "dyom", modelo: "pasta", autor: nome, raridade,
