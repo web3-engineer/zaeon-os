@@ -17,6 +17,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
 import { guard } from "@/src/lib/ratelimit";
 import { resolverEsqueleto } from "@/lib/forja/esqueletoResolver";
+import { projetoCuradoDoCurso } from "@/lib/forja/projetosCurados";
 import { cardsCacheados } from "@/lib/forja/cardsLocal";
 import { tutoriaisDoCurso } from "@/lib/forja/tutoriais";
 import { arquivosDoProjeto, nomeRepoDoCurso, qaDoProjeto } from "@/lib/forja/projetoDoCurso";
@@ -40,7 +41,8 @@ export async function POST(req: Request) {
   if (!esq) return NextResponse.json({ error: "curso_inexistente" }, { status: 404 });
 
   // Cards do curso (fonte dos arquivos) — montados no servidor, nunca vindos do cliente.
-  const gerados = await cardsCacheados(esq.repo).catch(() => []);
+  const projeto = projetoCuradoDoCurso(esq.id);
+  const gerados = projeto ? [] : await cardsCacheados(esq.repo).catch(() => []);
   const cards = gerados.length ? gerados : tutoriaisDoCurso(esq.id);
   if (!cards.length) return NextResponse.json({ error: "curso_sem_pratica" }, { status: 400 });
 
@@ -62,10 +64,10 @@ export async function POST(req: Request) {
 
   // F4 — residual: os arquivos que o aluno não digita, puxados do source (só os marcados pelos cards).
   // Best-effort; vira `extras`. Hoje (sem F2) normalmente é vazio.
-  const extras = await residualDoProjeto(octokit, esq.repo, cards).catch(() => []);
+  const extras = projeto?.residual ?? await residualDoProjeto(octokit, esq.repo, cards).catch(() => []);
 
   // Monta os arquivos do projeto do aluno a partir dos cards (PURO, server-side).
-  const arquivos = arquivosDoProjeto(cards, { titulo: esq.titulo, repo: esq.repo, extras });
+  const arquivos = arquivosDoProjeto(cards, { titulo: esq.titulo, repo: esq.repo, extras, executar: projeto?.executar });
   if (!arquivos.length) return NextResponse.json({ error: "projeto_vazio" }, { status: 400 });
 
   // F5 (portão QA server-side): não publica um projeto estruturalmente incompleto, mesmo que o cliente peça.

@@ -9,7 +9,7 @@ import { montarArquivo, type CardDeArquivo } from "./tutorialArquivo";
 export type ArquivoProjeto = { path: string; content: string };
 
 /** README do projeto do aluno — o cartão de visitas do repo. PURA. */
-export function readmeDoProjeto(titulo: string, repo: string, arquivos: string[]): string {
+export function readmeDoProjeto(titulo: string, repo: string, arquivos: string[], executar?: string): string {
   const lista = arquivos.map((a) => `- \`${a}\``).join("\n");
   return [
     `# ${titulo}`,
@@ -18,11 +18,12 @@ export function readmeDoProjeto(titulo: string, repo: string, arquivos: string[]
     "",
     `Baseado no repositório de referência **${repo}**.`,
     "",
+    ...(executar ? ["## Como executar", executar, ""] : []),
     "## Arquivos",
     lista || "- (em construção)",
     "",
     "---",
-    "_Feito com a Zaeon — o curso é o repositório real, digitado pelo aluno._",
+    "_Feito com a Zaeon._",
   ].join("\n");
 }
 
@@ -32,7 +33,7 @@ export function readmeDoProjeto(titulo: string, repo: string, arquivos: string[]
  */
 export function arquivosDoProjeto(
   cards: CardDeArquivo[],
-  opts: { titulo: string; repo: string; extras?: ArquivoProjeto[] },
+  opts: { titulo: string; repo: string; extras?: ArquivoProjeto[]; executar?: string },
 ): ArquivoProjeto[] {
   const porPath = new Map<string, string>();
   for (const card of cards) {
@@ -42,7 +43,7 @@ export function arquivosDoProjeto(
   for (const e of opts.extras ?? []) porPath.set(e.path, e.content);
 
   const arquivos: ArquivoProjeto[] = [...porPath.entries()].map(([path, content]) => ({ path, content }));
-  arquivos.unshift({ path: "README.md", content: readmeDoProjeto(opts.titulo, opts.repo, [...porPath.keys()]) });
+  arquivos.unshift({ path: "README.md", content: readmeDoProjeto(opts.titulo, opts.repo, [...porPath.keys()], opts.executar) });
   return arquivos;
 }
 

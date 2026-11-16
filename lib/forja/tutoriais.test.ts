@@ -8,11 +8,12 @@ describe("tutoriais — os cards bundlados são reais e harmônicos", () => {
 
   it("algoritmos-classicos entrega os três algoritmos que a skill promete", () => {
     const cards = tutoriaisDoCurso("algoritmos-classicos");
-    expect(cards).toHaveLength(3);
+    expect(cards).toHaveLength(4);
     expect(cards.map((c) => c.arquivo)).toEqual([
       "searches/binary_search.py",
       "sorts/insertion_sort.py",
       "maths/greatest_common_divisor.py",
+      "projeto.py",
     ]);
   });
 
