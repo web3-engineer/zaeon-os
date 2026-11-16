@@ -1,5 +1,6 @@
 "use client";
 
+import DesafiosDaNave from "./DesafiosDaNave";
 import TelaCarregando from "./TelaCarregando";
 import TabletLab from "./TabletLab";
 import BarrasHud, { juntarEstadoIA } from "./BarrasHud";
@@ -157,6 +158,7 @@ export default function CenaCyber(p: CenaCyberProps) {
   const [guia, setGuia] = useState<EstadoGuia | null>(null), [falasDroid, setFalasDroid] = useState<MensagemChat[]>([]);
   const [dialogo, setDialogo] = useState<Dialogo | null>(null);   // a caixa de diálogo RPG do tutorial
   /** a pergunta da Zaeon esperando resposta (o painel) */
+  const [desafiosDaNave, setDesafiosDaNave] = useState(false);
   const [pergunta, setPergunta] = useState<(PerguntaZaeon & { n: number; total: number }) | null>(null);
   /** EXPULSO pelo Droid (desrespeitou a Zaeon): a tela vermelha e a saída */
   const [expulso, setExpulso] = useState(false);
@@ -325,6 +327,7 @@ export default function CenaCyber(p: CenaCyberProps) {
       onRelicario: (abrir) => { if (abrir) { if (document.pointerLockElement) document.exitPointerLock(); setEncaixeAtivo(true); setEncaixeErro(null); setInventarioAberto(true); } else { setEncaixeAtivo(false); setInventarioAberto(false); } },
       onMotosLiberadas: () => { void fetch("/api/cyber/motos", { method: "POST" }).catch(() => undefined); avisar("As motos são suas ✦"); },
       onInventario: (p) => { if (p) { setDestaqueInv(p); if (document.pointerLockElement) document.exitPointerLock(); setInventarioAberto(true); } else setInventarioAberto(false); },
+      onDesafiosDaNave: setDesafiosDaNave,
       onPergunta: setPergunta, onPerfil: (perfil) => cb.current.salvarPerfil?.(perfil),
       onFalaAgente: (f) => setFalasDroid((xs) => [...xs.slice(-20), { id: `agente-${Date.now()}-${xs.length}`, userId: `agente:${f.id}`, name: f.nome, color: f.cor, texto: f.texto, ts: Date.now() }]),
       onEmbarcar: () => { void pedir("nave", () => engine.current?.embarcar()); },
@@ -584,6 +587,7 @@ export default function CenaCyber(p: CenaCyberProps) {
           <button type="button" onClick={() => engine.current?.guiaPular()} className="min-h-[28px] rounded-full border border-white/15 px-3 text-amber-50/75 hover:text-white">Pular</button>
         </div>
       )}
+      {!menu && desafiosDaNave && <DesafiosDaNave key={p.eu.id} userId={p.eu.id} fechar={() => setDesafiosDaNave(false)} />}
       {!menu && pergunta && <RespostaZaeon pergunta={pergunta} touch={touch} onResponder={responderZaeon} acimaDaCaixa={!!dialogo} />}
       {expulso && (
         <div role="alert" className="absolute inset-0 z-[70] flex flex-col items-center justify-center gap-3 bg-[#2a0404]/85 px-8 text-center text-red-50 backdrop-blur-sm">

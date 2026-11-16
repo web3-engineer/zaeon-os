@@ -1943,3 +1943,12 @@ model PesquisaVitrine {
   @@index([contaId])
   @@index([workId])
 }
+
+model DesafioDaNave {
+  userId    String   @id @map("_id") @db.ObjectId
+  texto     String
+  passos    String[]
+  feito     Boolean  @default(false)
+  revisao   Int      @default(1)
+  updatedAt DateTime @updatedAt
+}

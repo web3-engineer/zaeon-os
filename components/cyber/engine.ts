@@ -242,6 +242,7 @@ export type CyberOpts = {
   /** o tutorial das motos acabou: o servidor grava a liberação */
   onMotosLiberadas?: () => void;
   /** a Zaeon (holograma na capela) fez uma PERGUNTA: o React mostra o painel de resposta (null = fechou) */
+  onDesafiosDaNave?: (abrir: boolean) => void;
   onPergunta?: (p: (PerguntaZaeon & { n: number; total: number }) | null) => void;
   /** a conversa com a Zaeon acabou: o perfil (o React salva no servidor — User.cyberPerfil) */
   onPerfil?: (p: PerfilZaeon) => void;
@@ -4309,6 +4310,17 @@ export class CyberEngine {
     if ((this.perto || this.noTopo) && !this.guia) return estudar;   // (no tutorial as salas ficam fechadas até o fim)
     const m = this.motoAoAlcance();
     if (this.naCadeira) return this.naCadeira.fase === "sentado" && !this.cenaLogin ? { id: "levantar-cadeira", rotulo: "Levantar", fazer: () => this.levantarDaCadeira() } : null;
+    if (this.naMinha === "dentro" && this.minha && this.o.onDesafiosDaNave && !this.elevMini) {
+      const local = paraLocalMini(this.eu.pos);
+      if (Math.hypot(local.x, local.z - 0.3) < 3) return {
+        id: "desafios-da-nave", rotulo: "Conversar com a Zaeon", fazer: () => {
+          this.keys = {};
+          this.joy = { x: 0, y: 0, on: false };
+          this.soltarMouse();
+          this.o.onDesafiosDaNave?.(true);
+        },
+      };
+    }
     if (this.naMinha === "fora" && !this.jet.noAr && this.moto === null) { const ic = cadeiraPerto(paraLocalMini(this.eu.pos)); if (ic >= 0) return { id: `cadeira-${ic}`, rotulo: "Sentar na cadeira", fazer: () => this.sentarNaCadeira(ic) }; }
     if (this.naMinha === "fora" && !this.jet.noAr) { const i = vagaDaDocaPerto(paraLocalMini(this.eu.pos)); if (i >= 0) return { id: `moto-doca-${i}`, rotulo: "Montar na moto", fazer: () => this.montarDaDoca(i) }; }   // (as motos da DOCA no teto da sua nave)
     if (m && !this.podeMoto()) return { id: "moto-travada", rotulo: "Moto travada", fazer: () => this.o.onAviso?.(AVISO_MOTO_TRAVADA) };
@@ -4499,6 +4511,7 @@ export class CyberEngine {
   }
   private mudarNivel(n: IdNivel) {
     const antes = this.nivel;
+    if (n !== "minha-nave") this.o.onDesafiosDaNave?.(false);
     this.nivel = n; definirNivel(n);
     this.cidade?.mostrarNivel(n);
     // CARREGA UM NÍVEL DE CADA VEZ: a sala de onde saí é DESMONTADA (libera a memória) e a sala onde cheguei é MONTADA
