@@ -1159,7 +1159,7 @@ export class CyberEngine {
     if (!this.eu) {
       const lay = this.layouts.get(this.o.eu.id), sp = spawnDaBase(lay);
       this.eu = this.novoAtor(this.o.eu, sp.x, sp.z);
-      if (lay?.nivel) this.entrarNivel(lay.nivel);   // nasce lá em cima, na frente da própria base (Zaeon)
+      if (lay?.nivel && !this.o.submersa) this.entrarNivel(lay.nivel);   // nasce lá em cima, na frente da própria base (Zaeon)
       if (this.menu) { const s = this.assento(); this.eu.pos.set(s.x, 0, s.z); this.eu.facing = this.rotAssento(); this.eu.sit = 1; this.sitT = 1; }
       else this.eu.facing = lay?.nivel ? this.rotAssento() + Math.PI : Math.atan2(PRACA.x - sp.x, PRACA.z - sp.z);
       this.camT.set(this.eu.pos.x, 1.2 + this.yDoNivel(lay?.nivel), this.eu.pos.z);
@@ -1401,8 +1401,12 @@ export class CyberEngine {
     this.som.ativar();   // o whoosh de entrada sai em atualizarSom, quando o buffer chegar
     this.R.domElement.style.touchAction = "none";
     // saiu da vista/menu: o NOVATO nasce na praça (ou no tubo, no modo tutorial); o dono, a bordo da nave
-    const nasceu = this.o.nascer && (this.o.nascerNa === "tubo" ? (this.o.retomar ? this.retomarTutorial(this.o.retomar) : this.nascerNoTubo()) : this.nascerNaPraca());
-    if (!nasceu && !this.spawnNaCabana() && !this.spawnPertoDoCarro() && !this.spawnNaNave()) this.irParaMinhaNave(true);   // (o dono, pra testar o fluxo das pistas: nasce ao lado dos carros — pedido dele)
+    if (this.o.submersa) {
+      this.irParaMinhaNave();
+    } else {
+      const nasceu = this.o.nascer && (this.o.nascerNa === "tubo" ? (this.o.retomar ? this.retomarTutorial(this.o.retomar) : this.nascerNoTubo()) : this.nascerNaPraca());
+      if (!nasceu && !this.spawnNaCabana() && !this.spawnPertoDoCarro() && !this.spawnNaNave()) this.irParaMinhaNave(true);
+    }
     this.o.onSessao?.(go);
   }
   setJoystick(x: number, y: number) { this.joy.x = x; this.joy.y = y; this.joy.on = Math.hypot(x, y) > 0.15; }

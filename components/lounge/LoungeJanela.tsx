@@ -7,7 +7,6 @@ import { useSession } from "next-auth/react";
 import CyberCta from "@/components/main/CyberCta";
 import { EVENTO_ABRIR_LOGIN } from "@/components/sub/hero-content";
 const NaveHorizonte = dynamic(() => import("./NaveHorizonte"), { ssr: false });
-const CosmicLounge = dynamic(() => import("@/components/cyber/CosmicLounge"), { ssr: false, loading: () => <div className="h-full w-full bg-[#03030a]" /> });
 
 /**
  * Landing: só a VISTA do cyberespaço (o avatar meditando no menu, sem textos). A entrada é o CyberCta (botão com a
@@ -38,7 +37,7 @@ export default function LoungeJanela({ className = "", destaque = false }: { cla
         : `relative mt-10 self-start w-full max-w-3xl ${className} overflow-hidden rounded-2xl border border-cyan-500/25 bg-[#03030a] shadow-[0_0_60px_-20px_rgba(34,211,238,0.45)] aspect-[16/10] min-h-[260px]`}
     >
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,#344b78,transparent_65%)]">
-        {perto && (destaque ? <NaveHorizonte /> : <CosmicLounge modo="janela" />)}
+        {perto && <NaveHorizonte />}
       </div>
       <div className={destaque ? "absolute bottom-4 left-1/2 z-40 w-[min(92%,300px)] -translate-x-1/2" : "absolute left-1/2 top-3 z-40 -translate-x-1/2 w-[min(92%,300px)]"}>
         <CyberCta logado={status === "authenticated"} onLogin={() => window.dispatchEvent(new CustomEvent(EVENTO_ABRIR_LOGIN, { detail: { jogo: true } }))} className="dark !w-full !min-w-0 !bg-[#d6f7ff] !text-slate-900 shadow-lg" />

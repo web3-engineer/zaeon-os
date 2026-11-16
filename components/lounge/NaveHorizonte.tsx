@@ -31,8 +31,8 @@ export default function NaveHorizonte() {
       const t = movimento.matches ? 0 : agora / 1000;
       const dt = anterior ? Math.min((agora - anterior) / 1000, .05) : 0;
       anterior = agora;
-      camera.position.set(.55 + Math.sin(t * .28) * .25, 2.22, -3);
-      camera.lookAt(-3.8, 2.05, 2.1);
+      camera.position.set(.65 + Math.sin(t * .24) * .18, 2.65, -3.4);
+      camera.lookAt(-5.6, 1.05, .85);
       nave.atualizar(dt, t);
       mar.atualizar(t);
       renderer.render(cena, camera);
@@ -42,7 +42,7 @@ export default function NaveHorizonte() {
       cancelAnimationFrame(quadro);
       anterior = 0;
       camera.aspect = Math.max(1, canvas.clientWidth) / Math.max(1, canvas.clientHeight);
-      camera.fov = camera.aspect < 1.35 ? 68 : 58;
+      camera.fov = camera.aspect < 1.35 ? 70 : 63;
       camera.updateProjectionMatrix();
       renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
       renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
