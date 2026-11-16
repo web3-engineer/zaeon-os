@@ -20,6 +20,7 @@ const COR_PROV: Record<Prov, string> = {
 
 export default function ReaBlueprintView({ id, onFechar }: { id: string; onFechar?: () => void }) {
   const [doc, setDoc] = useState<DocReaBlueprint | null>(null);
+  const [expirou, setExpirou] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
@@ -29,13 +30,14 @@ export default function ReaBlueprintView({ id, onFechar }: { id: string; onFecha
       const j = await r.json(); setDoc(j.view?.doc ?? null); setErro(null);
     } catch { setErro("Sem conexão."); }
   }, [id]);
-  useEffect(() => { void carregar(); }, [carregar]);
+  useEffect(() => { setExpirou(false); void carregar(); }, [carregar]);
   // enquanto está montando (turnos 0 e sem mecanismo), repesca a cada 4 s
   useEffect(() => {
-    if (!doc || doc.turnos > 0 || doc.comoFunciona) return;
+    if (doc?.turnos !== 0 || doc.comoFunciona) return;
     const t = setInterval(carregar, 4000);
-    return () => clearInterval(t);
-  }, [doc, carregar]);
+    const limite = setTimeout(() => { clearInterval(t); setExpirou(true); }, 120_000);
+    return () => { clearInterval(t); clearTimeout(limite); };
+  }, [doc?.turnos, doc?.comoFunciona, carregar]);
 
   const montando = doc && doc.turnos === 0 && !doc.comoFunciona && !doc.achados.length;
 
@@ -96,7 +98,7 @@ export default function ReaBlueprintView({ id, onFechar }: { id: string; onFecha
           {montando ? (
             <div className="rea-aurora gerando mt-6">
               <div className="flex items-center gap-2 rounded-[12.5px] bg-[#0b0718]/90 px-4 py-3 text-[13px] text-fuchsia-100/90">
-                <Loader2 className="animate-spin text-fuchsia-300" size={15} /> Engenharia reversa rodando — varrendo o alvo e montando o blueprint…
+                {expirou ? "A análise ainda não entregou um blueprint. Use Atualizar para conferir novamente." : <><Loader2 className="animate-spin text-fuchsia-300" size={15} /> Engenharia reversa rodando…</>}
               </div>
             </div>
           ) : (

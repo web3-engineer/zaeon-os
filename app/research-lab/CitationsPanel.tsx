@@ -83,7 +83,7 @@ export default function CitationsPanel() {
             <button
               onClick={() => handleDelete(cit)}
               title="Excluir citação (some também do trabalho)"
-              className="absolute -bottom-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[11px] text-white opacity-0 group-hover:opacity-100 transition-opacity z-10"
+              className="absolute -bottom-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[11px] text-white opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity z-10"
               style={{ background: "rgba(239,68,68,0.92)", border: "1px solid rgba(255,255,255,0.3)" }}
             >
               ×

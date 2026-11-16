@@ -76,6 +76,7 @@
             "rodando": "rodando…",
             "carregandoPython": "carregando Python…",
             "rodarTestes": "rodar testes ▸",
+            "runtimeIndisponivel": "Execução indisponível no navegador para esta linguagem.",
             "pythonErro": "Python não carregou:",
             "passou": "✓ passou — o código que você digitou roda!",
             "naoPassou": "✗ ainda não passou",
@@ -476,6 +477,77 @@
         "success_message": "Credenciais atualizadas"
     },
     "landing": {
+        "knowledge_cards": {
+            "label": "Conhecimento na vitrine",
+            "coracao": {
+                "title": "Atlas do coração",
+                "summary": "Anatomia, câmaras e circulação."
+            },
+            "recife": {
+                "title": "Recife em camadas",
+                "summary": "O porto e a cidade em mapas e documentos históricos."
+            },
+            "bacias": {
+                "title": "Atlas de bacias hidrográficas",
+                "summary": "Como o relevo organiza rios e cidades."
+            },
+            "safra": {
+                "title": "Diário de uma safra de café",
+                "summary": "Solo, chuva e colheita no caderno de campo."
+            },
+            "astronomia": {
+                "title": "Astronomia observacional",
+                "summary": "Da primeira observação à leitura dos dados."
+            },
+            "clima": {
+                "title": "Observações climáticas",
+                "summary": "Chuva, temperatura e ciclos sazonais."
+            },
+            "habitat": {
+                "title": "Habitat submerso",
+                "summary": "Projeto de um espaço de trabalho sob a água."
+            },
+            "ecologia": {
+                "title": "Ecologia das restingas",
+                "summary": ""
+            },
+            "matematica": {
+                "title": "Probabilidade e jogos",
+                "summary": ""
+            },
+            "arquitetura": {
+                "title": "Arquitetura bioclimática",
+                "summary": ""
+            },
+            "economia": {
+                "title": "Economia do trabalho",
+                "summary": ""
+            },
+            "direito": {
+                "title": "Direito constitucional",
+                "summary": ""
+            },
+            "literatura": {
+                "title": "Literatura de cordel",
+                "summary": ""
+            },
+            "musica": {
+                "title": "Harmonia e improvisação",
+                "summary": ""
+            },
+            "educacao": {
+                "title": "Alfabetização científica",
+                "summary": ""
+            },
+            "comunicacao": {
+                "title": "Jornalismo de campo",
+                "summary": ""
+            },
+            "veterinaria": {
+                "title": "Medicina veterinária preventiva",
+                "summary": ""
+            }
+        },
         "timeline": {
             "base": "Base científica",
             "conversa": "Conversa com as IAs",
@@ -608,6 +680,7 @@
             "laboratorio": "Laboratório",
             "mentores": "Mentores",
             "assistentes": "Assistentes",
+            "marketplace": "Marketplace",
             "funcionamento": "Como funciona",
             "duvidas": "Dúvidas frequentes",
             "noticias": "Notícias",

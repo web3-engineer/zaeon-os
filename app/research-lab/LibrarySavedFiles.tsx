@@ -56,7 +56,7 @@ export default function LibrarySavedFiles({ onPlay, processingId }: {
               ) : (
                 <button onClick={() => startEdit(f)} title="Clique para renomear" className="flex items-start gap-1 text-left w-full">
                   <span className="text-[12.5px] font-semibold text-black dark:text-white/90 leading-snug line-clamp-2">{f.title}</span>
-                  <Pencil size={10} className="shrink-0 mt-1 text-slate-300 dark:text-white/25 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <Pencil size={10} className="shrink-0 mt-1 text-slate-300 dark:text-white/25 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity" />
                 </button>
               )}
 

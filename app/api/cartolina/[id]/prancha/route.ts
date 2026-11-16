@@ -4,6 +4,7 @@
  * card. Não desenhável / desenho ruim → imagem (Gemini image) guardada como StudioArtifact e ligada
  * ao card. Atrás de CARTOLINA_MEMORIA + CADERNO_ENABLED. Só quem ESCREVE no board.
  */
+import { skinDaVitrine } from "@/lib/estudos/skinVitrine";
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { entrar, falha } from "@/lib/cartolina/route-auth";
@@ -36,7 +37,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const { imagenAvailable, generateImage } = await import("@/lib/studio/imagen");
     if (!imagenAvailable()) return NextResponse.json({ error: "Não deu pra desenhar e a geração de imagem está indisponível." }, { status: 503 });
     const art = await prisma.studioArtifact.create({
-      data: { ownerId: a.userId, sourceIds: [], kind: "image", status: "running", title: `Prancha — ${tema.slice(0, 60)}`, meta: { prompt: r.promptImagem } as any },
+      data: { ownerId: a.userId, sourceIds: [], kind: "image", skin: skinDaVitrine({ kind: "image" }), status: "running", title: `Prancha — ${tema.slice(0, 60)}`, meta: { prompt: r.promptImagem } as any },
     });
     try {
       const img = await generateImage(r.promptImagem);

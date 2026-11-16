@@ -12,6 +12,7 @@
  * o porquê (resumo: o atlas não tem pipeline de captura, e o visualizador do cliente desenha a partir
  * do estado, então o PNG seria custo sem ganho).
  */
+import { skinDaVitrine } from "@/lib/estudos/skinVitrine";
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { guard } from "@/src/lib/ratelimit";
@@ -73,7 +74,7 @@ export async function POST(req: Request) {
     data: {
       ownerId: userId,
       sourceIds: [],
-      kind: "anatomia",
+      kind: "anatomia", skin: skinDaVitrine({ kind: "anatomia" }),
       status: "done",
       // Não há arquivo: o artefato É o estado. `application/json` é o que ele é.
       mime: "application/json",

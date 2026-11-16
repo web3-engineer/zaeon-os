@@ -3,6 +3,7 @@
  * que a UI consome (lib/estudos/vitrine). `paraUI` achata frações/selos; `normalizar` valida/normaliza o body do admin.
  */
 import type { ItemVitrine, TipoProduto, Execucao, Modelo3D } from "./vitrine";
+import { skinDaVitrine, skinValida } from "./skinVitrine";
 import type { Raridade } from "./blueprint";
 
 export const TIPOS: TipoProduto[] = ["curso", "codigo", "artigo", "negocio", "rwa", "agente", "skill"];
@@ -12,6 +13,7 @@ export const RARIDADES: Raridade[] = ["comum", "rara", "epica", "lendaria"];
 
 /** o formato da linha no banco (os campos que a UI precisa) — o row do Prisma tem estes + id/datas */
 export type VitrineRow = {
+    skin?: string | null;
     slug: string; titulo: string; subtitulo: string; tipo: string; execucao: string; modelo: string; autor: string;
     raridade: string; profundidade: number; preco: number; fracoesTotal: number; fracoesVendidas: number;
     supervisionado: boolean; linksOk: boolean; codigoPrivado: boolean; entrega: string[]; tags: string[]; ironia: boolean;
@@ -20,6 +22,7 @@ export type VitrineRow = {
 /** linha do banco → o ItemVitrine que a vitrine renderiza */
 export function paraUI(r: VitrineRow): ItemVitrine {
     return {
+        skin: skinDaVitrine(r),
         id: r.slug, titulo: r.titulo, subtitulo: r.subtitulo,
         tipo: r.tipo as TipoProduto, execucao: r.execucao as Execucao, modelo: r.modelo as Modelo3D,
         autor: r.autor, raridade: r.raridade as Raridade, profundidade: r.profundidade, preco: r.preco,
@@ -57,6 +60,12 @@ export function normalizar(b: any, { parcial = false }: { parcial?: boolean } = 
     for (const k of ["supervisionado", "linksOk", "codigoPrivado", "ironia", "ativo"]) if (typeof b?.[k] === "boolean") data[k] = b[k];
     if (b?.entrega !== undefined) data.entrega = lista(b.entrega);
     if (b?.tags !== undefined) data.tags = lista(b.tags);
+    if (b?.skin !== undefined && b.skin !== "") {
+        if (!skinValida(b.skin)) return { erro: "Skin inválida." };
+        data.skin = b.skin;
+    } else if (!parcial || b?.skin === "") {
+        data.skin = parcial ? null : skinDaVitrine({ tipo: "curso", modelo: "livro", ...data });
+    }
     if (b?.ordem !== undefined) { const n = Number(b.ordem); if (Number.isFinite(n)) data.ordem = Math.trunc(n); }
     return { data };
 }

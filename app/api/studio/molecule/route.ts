@@ -6,6 +6,7 @@
  * Num produto de educação essa fronteira é o produto: estrutura inventada é ficção com
  * cara de ciência.
  */
+import { skinDaVitrine } from "@/lib/estudos/skinVitrine";
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { guard } from "@/src/lib/ratelimit";
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
     data: {
       ownerId: userId,
       sourceIds: [],
-      kind: "molecule",
+      kind: "molecule", skin: skinDaVitrine({ kind: "molecule" }),
       status: "done",
       mime: "chemical/x-mdl-sdfile",
       title,

@@ -76,6 +76,7 @@
             "rodando": "running…",
             "carregandoPython": "loading Python…",
             "rodarTestes": "run tests ▸",
+            "runtimeIndisponivel": "Browser execution is unavailable for this language.",
             "pythonErro": "Python didn't load:",
             "passou": "✓ passed — the code you typed runs!",
             "naoPassou": "✗ not passing yet",
@@ -476,6 +477,77 @@
         "success_message": "Credentials Updated"
     },
     "landing": {
+        "knowledge_cards": {
+            "label": "Knowledge in the Marketplace",
+            "coracao": {
+                "title": "Atlas of the Heart",
+                "summary": "Anatomy, chambers and circulation."
+            },
+            "recife": {
+                "title": "Recife Through the Ages",
+                "summary": "The port and city in historical maps and documents."
+            },
+            "bacias": {
+                "title": "Watershed Atlas",
+                "summary": "How terrain shapes rivers and cities."
+            },
+            "safra": {
+                "title": "A Coffee Harvest Journal",
+                "summary": "Soil, rainfall and harvest in a field notebook."
+            },
+            "astronomia": {
+                "title": "Observational Astronomy",
+                "summary": "From the first observation to interpreting the data."
+            },
+            "clima": {
+                "title": "Climate Observations",
+                "summary": "Rainfall, temperature and seasonal cycles."
+            },
+            "habitat": {
+                "title": "Underwater Habitat",
+                "summary": "Design for a workspace beneath the sea."
+            },
+            "ecologia": {
+                "title": "Coastal Dune Ecology",
+                "summary": ""
+            },
+            "matematica": {
+                "title": "Probability and Games",
+                "summary": ""
+            },
+            "arquitetura": {
+                "title": "Bioclimatic Architecture",
+                "summary": ""
+            },
+            "economia": {
+                "title": "Labor Economics",
+                "summary": ""
+            },
+            "direito": {
+                "title": "Constitutional Law",
+                "summary": ""
+            },
+            "literatura": {
+                "title": "Brazilian Cordel Literature",
+                "summary": ""
+            },
+            "musica": {
+                "title": "Harmony and Improvisation",
+                "summary": ""
+            },
+            "educacao": {
+                "title": "Scientific Literacy",
+                "summary": ""
+            },
+            "comunicacao": {
+                "title": "Field Journalism",
+                "summary": ""
+            },
+            "veterinaria": {
+                "title": "Preventive Veterinary Medicine",
+                "summary": ""
+            }
+        },
         "timeline": {
             "base": "Scientific base",
             "conversa": "Chat with AI",
@@ -608,6 +680,7 @@
             "laboratorio": "Lab",
             "mentores": "Mentors",
             "assistentes": "Assistants",
+            "marketplace": "Marketplace",
             "funcionamento": "How it works",
             "duvidas": "FAQ",
             "noticias": "News",

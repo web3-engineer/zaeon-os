@@ -249,7 +249,9 @@ export default function StudyRoomContent({ flushTop = false, unified = false, ab
             // a 1ª vez do TABLET (lib/ui/loungeHub `LAB_TABLET_PRIMEIRA`): abre no CHAT, não na última aba salva
             if (new URLSearchParams(window.location.search).get("estudo") === "chat") { setActiveTab("meus-estudos"); tabRestored.current = true; return; }
             const saved = localStorage.getItem(`zaeon:lastTab:${room}`);
-            if (saved && (saved === "meus-estudos" || allTabs.some((t) => t.id === saved))) setActiveTab(saved);
+            // #832: a vitrine ("community") não volta sozinha — quem saiu por ela reabria o app no Marketplace, e não na
+            // conversa. Ela só abre quando pedida (/marketplace, o item do menu, a gaveta).
+            if (saved && saved !== "community" && (saved === "meus-estudos" || allTabs.some((t) => t.id === saved))) setActiveTab(saved);
             const pedida = consumirAbaEstudos();   // a sidebar pediu uma aba antes da sala montar
             if (pedida) setActiveTab(pedida);
         } catch { /* ignore */ }
@@ -261,7 +263,9 @@ export default function StudyRoomContent({ flushTop = false, unified = false, ab
     }, [activeTab, room]);
     // a sidebar destaca a aba em que a sala está, e pede outra pelos subitens de "Sala de Estudos"
     useEffect(() => {
-        if (activeTab === "meus-estudos" || activeTab === "feed" || activeTab === "community") anunciarAbaEstudos(activeTab);
+        // (#824: as outras — Literatura, um curso — também avisam, como `outra`: a sidebar não destaca nenhum subitem e o
+        // menu principal sabe que a vitrine fechou)
+        anunciarAbaEstudos(activeTab === "meus-estudos" || activeTab === "feed" || activeTab === "community" ? activeTab : "outra");
     }, [activeTab]);
     useEffect(() => {
         const ir = (e: Event) => { const a = (e as CustomEvent<AbaEstudos>).detail; consumirAbaEstudos(); if (a) setActiveTab(a); };

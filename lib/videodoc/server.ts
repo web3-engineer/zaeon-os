@@ -12,6 +12,7 @@
  *   reaproveita o vídeo de qualquer pessoa; o resto é só da pessoa. Quem vê: o dono, todo mundo se é público, ou quem
  *   tem papel num blueprint listado em `meta.blueprints`.
  */
+import { skinDaVitrine } from "@/lib/estudos/skinVitrine";
 import type { Documento } from "@/lib/blueprint/tipos";
 import { chaveDocumento, documentoPublico, temFonteDeTexto } from "./documentos";
 import { depsReais, gerarVideoDoc, type MetaVideoDoc } from "./gerar-server";
@@ -118,7 +119,7 @@ export async function garantirVideo(i: { userId: string; documento: Documento; b
     if (hoje >= MAX_POR_DIA) return { motivo: "limite_do_dia" };
     const blueprints = [...new Set([...(((ja?.meta ?? {}) as Partial<MetaVideoDoc>).blueprints ?? []), ...(i.blueprintId ? [i.blueprintId] : [])])];
     const meta: MetaVideoDoc = { chave, publico, blueprints, documento: { titulo: i.documento.titulo, tipo: i.documento.tipo, ...(i.documento.url ? { url: i.documento.url } : {}) } };
-    const art = await db.studioArtifact.create({ data: { ownerId: i.userId, kind: KIND_VIDEO_DOC, status: "queued", title: i.documento.titulo.slice(0, 200), sourceIds: [chave], meta } });
+    const art = await db.studioArtifact.create({ data: { ownerId: i.userId, kind: KIND_VIDEO_DOC, skin: skinDaVitrine({ kind: KIND_VIDEO_DOC, titulo: i.documento.titulo }), status: "queued", title: i.documento.titulo.slice(0, 200), sourceIds: [chave], meta } });
     const doc = i.documento, userId = i.userId;
     const gerar = i.gerar ?? (async (artId: string, titulo: string, texto: string, m: MetaVideoDoc, uid: string) => gerarVideoDoc(artId, { titulo, texto, meta: m }, await depsReais(uid)));
     // em segundo plano: o texto (pode demorar — PDF) e a geração, dentro da fila

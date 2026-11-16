@@ -76,6 +76,7 @@
             "rodando": "실행 중…",
             "carregandoPython": "Python 로딩 중…",
             "rodarTestes": "테스트 실행 ▸",
+            "runtimeIndisponivel": "이 언어는 브라우저에서 실행할 수 없습니다.",
             "pythonErro": "Python이 로드되지 않았습니다:",
             "passou": "✓ 통과 — 입력한 코드가 실행됩니다!",
             "naoPassou": "✗ 아직 통과하지 못함",
@@ -476,6 +477,77 @@
         "success_message": "자격 증명이 업데이트되었습니다."
     },
     "landing": {
+        "knowledge_cards": {
+            "label": "마켓플레이스의 지식",
+            "coracao": {
+                "title": "심장 해부 아틀라스",
+                "summary": "심장의 구조, 심장방, 혈액 순환."
+            },
+            "recife": {
+                "title": "레시피의 역사",
+                "summary": "옛 지도와 기록으로 보는 도시와 항구."
+            },
+            "bacias": {
+                "title": "하천 유역 아틀라스",
+                "summary": "지형이 강과 도시에 미치는 영향."
+            },
+            "safra": {
+                "title": "커피 수확 일지",
+                "summary": "토양, 강수량, 수확을 기록한 현장 노트."
+            },
+            "astronomia": {
+                "title": "관측 천문학",
+                "summary": "첫 관측부터 데이터 해석까지."
+            },
+            "clima": {
+                "title": "기후 관측",
+                "summary": "강수량, 기온, 계절 주기."
+            },
+            "habitat": {
+                "title": "해저 작업 공간",
+                "summary": "바닷속 작업 공간 설계."
+            },
+            "ecologia": {
+                "title": "해안 사구 생태학",
+                "summary": ""
+            },
+            "matematica": {
+                "title": "확률과 게임",
+                "summary": ""
+            },
+            "arquitetura": {
+                "title": "기후를 고려한 건축",
+                "summary": ""
+            },
+            "economia": {
+                "title": "노동경제학",
+                "summary": ""
+            },
+            "direito": {
+                "title": "헌법",
+                "summary": ""
+            },
+            "literatura": {
+                "title": "브라질 코르델 문학",
+                "summary": ""
+            },
+            "musica": {
+                "title": "화성과 즉흥 연주",
+                "summary": ""
+            },
+            "educacao": {
+                "title": "과학 문해력",
+                "summary": ""
+            },
+            "comunicacao": {
+                "title": "현장 저널리즘",
+                "summary": ""
+            },
+            "veterinaria": {
+                "title": "예방 수의학",
+                "summary": ""
+            }
+        },
         "timeline": {
             "base": "과학적 기반",
             "conversa": "AI와 대화",
@@ -608,6 +680,7 @@
             "laboratorio": "연구실",
             "mentores": "멘토",
             "assistentes": "어시스턴트",
+            "marketplace": "마켓플레이스",
             "funcionamento": "이용 방법",
             "duvidas": "자주 묻는 질문",
             "noticias": "뉴스",

@@ -1,6 +1,6 @@
 "use client";
 
-import { mentoresTab, lojaLabel } from "@/lib/mentores/rota";
+import { EVT_MARKETPLACE, HREF_DO_ITEM, ROTA_MARKETPLACE, estaNoMarketplace, itemAtivo, pedirSairDoMarketplace, type ItemMenu } from "@/lib/ui/marketplaceRota";
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -132,8 +132,19 @@ export const Navbar = () => {
   const handlePrevTrack = () => trocarFaixa((currentTrackIndex - 1 + TRACKS.length) % TRACKS.length);
 
   const getTrackName = () => TRACKS[currentTrackIndex].split('/').pop()?.replace('.mp3', '') || 'Track';
-  const getLinkClassName = (path: string) => {
-    const active = pathname.startsWith(path);
+  // #824: dentro do laboratório, o Marketplace é uma aba (não muda a página) — ele avisa, e o menu acende o item certo
+  const [noMarketplace, setNoMarketplace] = useState(false);
+  useEffect(() => {
+    setNoMarketplace(estaNoMarketplace());
+    const f = (e: Event) => setNoMarketplace((e as CustomEvent<boolean>).detail);
+    window.addEventListener(EVT_MARKETPLACE, f);
+    return () => window.removeEventListener(EVT_MARKETPLACE, f);
+  }, []);
+  const ativo = itemAtivo(pathname, noMarketplace);
+  // "Laboratório" com a vitrine aberta: o link vai pra MESMA página — o laboratório precisa do pedido pra sair dela
+  const irAoLaboratorio = () => { if (ativo === "marketplace" && pathname.startsWith("/research-lab")) pedirSairDoMarketplace(); };
+  const getLinkClassName = (item: ItemMenu) => {
+    const active = ativo === item;
     return `transition-all uppercase tracking-[0.2em] text-[10px] font-black ${active ? "text-cyan-500 scale-110" : "text-foreground/50 hover:text-cyan-400"}`;
   };
 
@@ -167,22 +178,22 @@ export const Navbar = () => {
 
           <nav className="hidden lg:flex items-center gap-7">
             {/* ordem do dono: Documentação › Sobre nós ("Como funciona" saiu da navbar a pedido do dono; a seção #como-funciona continua na landing) */}
-            <Link href="/docs" className={getLinkClassName("/docs")}>Documentação</Link>
-            <Link href="/about" className={getLinkClassName("/about")}>Sobre nós</Link>
+            <Link href="/docs" className={getLinkClassName("docs")}>Documentação</Link>
+            <Link href="/about" className={getLinkClassName("about")}>Sobre nós</Link>
             {/* acesso direto ao laboratório, pra quem não quiser usar o cyberespaço */}
-            <Link href="/research-lab" className={getLinkClassName("/research-lab")}>Laboratório</Link>
-            {/* "Assistentes" = a antiga Loja de Plugins (o /plugin-store continua no ar pros links antigos) */}
-            <Link href={mentoresTab() ? "/mentores" : "/assistentes"} className={getLinkClassName(pathname.startsWith("/plugin-store") ? "/plugin-store" : mentoresTab() ? "/mentores" : "/assistentes")}>{lojaLabel()}</Link>
-            <Link href="/news" className={getLinkClassName("/news")}>Notícias</Link>
+            <Link href="/research-lab" onClick={irAoLaboratorio} className={getLinkClassName("laboratorio")}>Laboratório</Link>
+            {/* #824: o Marketplace no lugar de "Assistentes" (/assistentes, /plugin-store e /mentores seguem no ar) */}
+            <Link href={ROTA_MARKETPLACE} className={getLinkClassName("marketplace")}>Marketplace</Link>
+            <Link href="/news" className={getLinkClassName("news")}>Notícias</Link>
           </nav>
 
           <div className="flex items-center gap-1.5">
             {/* #713: no celular os links do topo somem; ficam neste menu */}
-            <MenuLinks itens={[
+            <MenuLinks atual={ativo ? HREF_DO_ITEM[ativo] : null} itens={[
               { href: "/docs", rotulo: "Documentação" },
               { href: "/about", rotulo: "Sobre nós" },
-              { href: "/research-lab", rotulo: "Laboratório" },
-              { href: mentoresTab() ? "/mentores" : "/assistentes", rotulo: lojaLabel() },
+              { href: "/research-lab", rotulo: "Laboratório", aoClicar: irAoLaboratorio },
+              { href: ROTA_MARKETPLACE, rotulo: "Marketplace" },
               { href: "/news", rotulo: "Notícias" },
             ]} />
             <ThemeToggle />
@@ -195,7 +206,7 @@ export const Navbar = () => {
   );
 };
 /** #713: os links do topo no celular (abaixo de lg a barra não tem espaço pra eles) */
-function MenuLinks({ itens }: { itens: { href: string; rotulo: string }[] }) {
+function MenuLinks({ itens, atual }: { itens: { href: string; rotulo: string; aoClicar?: () => void }[]; atual: string | null }) {
   const [aberto, setAberto] = useState(false);
   const raiz = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
@@ -217,7 +228,7 @@ function MenuLinks({ itens }: { itens: { href: string; rotulo: string }[] }) {
         <nav id="menu-links-site" aria-label="Páginas do site"
           className="absolute right-0 top-12 w-56 overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-[#0b1020]/95 backdrop-blur-xl shadow-2xl py-1">
           {itens.map((i) => (
-            <Link key={i.href} href={i.href} onClick={() => setAberto(false)} aria-current={pathname === i.href ? "page" : undefined}
+            <Link key={i.href} href={i.href} onClick={() => { i.aoClicar?.(); setAberto(false); }} aria-current={atual === i.href ? "page" : undefined}
               className="flex min-h-[44px] items-center px-4 text-[14px] font-semibold text-slate-700 dark:text-white/85 hover:bg-slate-900/5 dark:hover:bg-white/10 aria-[current=page]:text-cyan-600 dark:aria-[current=page]:text-cyan-300">
               {i.rotulo}
             </Link>

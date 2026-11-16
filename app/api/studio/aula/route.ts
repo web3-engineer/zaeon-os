@@ -8,6 +8,7 @@
  * /api/studio/[id]. Áudio em .studio/<id>-<beat>.mp3, servido por /api/studio/[id]/aula/[beat].
  * Cache: mesmo tema + mesma sala (sem PDF), do mesmo aluno, por 7 dias — aula é cara de gerar.
  */
+import { skinDaVitrine } from "@/lib/estudos/skinVitrine";
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
@@ -56,7 +57,7 @@ export async function POST(req: Request) {
     data: {
       ownerId: userId,
       sourceIds: typeof body.spaceId === "string" && body.spaceId ? [body.spaceId] : [],
-      kind: "aula",
+      kind: "aula", skin: skinDaVitrine({ kind: "aula", titulo: titulo }),
       status: "queued",
       title: `Aula — ${titulo.slice(0, 80)}`,
       meta: { chave, topic, sala, ...(pdf ? { pdfNome: pdf.nome ?? "PDF" } : {}) } as any,

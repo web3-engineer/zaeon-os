@@ -93,7 +93,7 @@ html:not(.dark) .ci-line { background: #cbd5e1; }
   position: absolute;
   top: 50%;
   left: 50%;
-  width: min(48%, 230px);
+  width: min(38%, 176px);
   opacity: var(--carta-op, 0);
   transform: translate(calc(-50% + var(--carta-recuo, 0px)), -50%) scale(var(--carta-escala, .62));
   filter: blur(var(--forja-blur, 0px));
@@ -188,3 +188,56 @@ html:not(.dark) .ci-line { background: #cbd5e1; }
 @media (prefers-reduced-motion: reduce) {
   .ci-placa .ci-fig { transform: none; transition: none; }
 }
+
+.ci-carrossel {
+  --ci-carrossel-carta: min(38%, 176px);
+  opacity: var(--carrossel-op, 1);
+  position: absolute;
+  top: 50%;
+  inset-inline: 0;
+  z-index: 8;
+  transform: translateY(-50%);
+}
+.ci-carrossel-faixa {
+  position: relative;
+  display: flex;
+  gap: clamp(12px, 2vw, 24px);
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+  margin: 0;
+  padding: 16px calc((100% - var(--ci-carrossel-carta)) / 2);
+  list-style: none;
+}
+.ci-carrossel-faixa::-webkit-scrollbar { display: none; }
+.ci-carrossel-faixa > li {
+  min-width: 0;
+  flex: 0 0 min(38cqw, 176px);
+
+}
+.ci-carrossel { container-type: inline-size; }
+.ci-carrossel-item {
+  --ci-entrada: 70px;
+  animation: ci-revelar-card 1.55s cubic-bezier(.22,1,.36,1) both;
+}
+.ci-carrossel-item[data-lado="esquerda"] { --ci-entrada: -70px; }
+.ci-carrossel-item:nth-child(2), .ci-carrossel-item:nth-child(6) { animation-delay: .12s; }
+.ci-carrossel-item:nth-child(1), .ci-carrossel-item:nth-child(n+7) { animation-delay: .24s; }
+@keyframes ci-revelar-card {
+  from { opacity: 0; transform: translateX(var(--ci-entrada)) scale(.97); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) { .ci-carrossel-item { animation: none; } }
+
+.ci-carrossel-card .vt-title {
+  display: block;
+  min-height: 0;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  font-size: clamp(12px, 3.1cqw, 16px);
+  line-height: 1.2;
+  text-wrap: pretty;
+}
+.ci-carrossel-card .vt-plate { flex-shrink: 0; }
+.ci-carrossel-card .vt-art { min-height: 0; }
+.ci-carrossel-card .vt-desc { max-height: 100%; overflow: auto; }

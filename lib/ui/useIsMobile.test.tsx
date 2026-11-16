@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
-import { useIsMobile, QUERY_MOBILE } from "@/lib/ui/useIsMobile";
+import { useIsMobile, QUERY_MOBILE, QUERY_CELULAR, QUERY_CELULAR_DEITADO } from "@/lib/ui/useIsMobile";
 
 function mockMM(matches: boolean) {
   const ouvintes = new Set<() => void>();
@@ -35,6 +35,13 @@ describe("useIsMobile", () => {
     expect(result.current).toBe(true);
     unmount();
     expect(ouvintes.size).toBe(0);
+  });
+  it("#832: o celular deitado (baixo e de toque) também conta como celular no laboratório", () => {
+    expect(QUERY_CELULAR_DEITADO).toBe("(max-height: 500px) and (pointer: coarse)");
+    expect(QUERY_CELULAR).toBe(`${QUERY_MOBILE}, ${QUERY_CELULAR_DEITADO}`);
+    const { mm } = mockMM(true);
+    expect(renderHook(() => useIsMobile(QUERY_CELULAR)).result.current).toBe(true);
+    expect(mm).toHaveBeenCalledWith(QUERY_CELULAR);
   });
   it("navegador sem matchMedia: fica false sem quebrar", () => {
     Object.defineProperty(window, "matchMedia", { configurable: true, value: undefined });

@@ -1,6 +1,5 @@
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
-import { mentoresTab } from "@/lib/mentores/rota";
 
 /**
  * Footer clássico da Zaeon (inspirado no da ChipFlow): blurb da marca + colunas de
@@ -18,7 +17,7 @@ const COLS: FooterCol[] = [
       { label: "jogar", href: "/#cyberespaco" },
       { label: "modelos", href: "/#modelos" },
       { label: "laboratorio", href: "/research-lab" },
-      { label: mentoresTab() ? "mentores" : "assistentes", href: mentoresTab() ? "/mentores" : "/assistentes" },
+      { label: "marketplace", href: "/marketplace" },   // #824 (no lugar de "assistentes")
     ],
   },
   {

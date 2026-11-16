@@ -492,7 +492,7 @@ export default function CenaCyber(p: CenaCyberProps) {
               <div className="mb-1.5 flex max-h-[96px] flex-col gap-0.5 overflow-y-auto px-1 text-[12.5px] text-violet-100" aria-live="polite">
                 {[...(instancia ? [] : p.chat ?? []), ...falasDroid].sort((a, b) => a.ts - b.ts).slice(-8).map((m) => <div key={m.id}><b style={{ color: m.color }}>{m.name}{m.userId.startsWith("agente:") ? " ✦" : ""}:</b> {m.texto}</div>)}
               </div>
-              <input ref={chatRef} value={txt} onChange={(e) => setTxt(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") enviar(); }} maxLength={400} placeholder={pergunta ? "Responder à Zaeon…  (Enter)" : "Falar…  (Enter)"} aria-label="Falar na sala" className="w-full rounded-xl border border-violet-300/30 bg-[#0a081e]/70 px-3 py-2 text-[13px] text-white outline-none focus:border-cyan-300" />
+              <input ref={chatRef} value={txt} onChange={(e) => setTxt(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") enviar(); }} maxLength={400} placeholder={pergunta ? "Responder à Zaeon…  (Enter)" : "Falar…  (Enter)"} aria-label="Falar na sala" className="w-full rounded-xl border border-violet-300/30 bg-[#0a081e]/70 px-3 py-2 text-[16px] [@media(hover:hover)_and_(pointer:fine)]:text-[13px] text-white outline-none focus:border-cyan-300" />
             </div>
           )}
 

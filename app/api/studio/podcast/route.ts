@@ -4,6 +4,7 @@
  * em /api/studio/[id] e toca /api/studio/[id]/file quando status="done".
  * Cache por (sourceIds + kind=podcast): reusa o último pronto (a menos de force).
  */
+import { skinDaVitrine } from "@/lib/estudos/skinVitrine";
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { guard } from "@/src/lib/ratelimit";
@@ -53,7 +54,7 @@ export async function POST(req: Request) {
     data: {
       ownerId: userId,
       sourceIds: ctx.sourceIds,
-      kind: "podcast",
+      kind: "podcast", skin: skinDaVitrine({ kind: "podcast", titulo: ctx.text ? ctx.title : topic }),
       status: "queued",
       title: `Podcast — ${ctx.text ? ctx.title : topic}`,
       meta: { options, ...(doTopico ? { doTopico: true, topic } : {}) } as any,

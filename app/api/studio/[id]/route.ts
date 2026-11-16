@@ -6,6 +6,7 @@
  * Acesso só do dono (ownerId). Conteúdo textual/JSON vem em `meta`; binário é
  * servido por /api/studio/[id]/file.
  */
+import { skinDaVitrine } from "@/lib/estudos/skinVitrine";
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { studioUid } from "@/lib/studio/auth";
@@ -18,7 +19,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const art = await prisma.studioArtifact.findUnique({ where: { id: params.id } });
   if (!art || art.ownerId !== userId) return NextResponse.json({ error: "Não encontrado" }, { status: 404 });
-  return NextResponse.json(art);
+  return NextResponse.json({ ...art, skin: skinDaVitrine({ kind: art.kind, titulo: art.title, skin: art.skin }) });
 }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {

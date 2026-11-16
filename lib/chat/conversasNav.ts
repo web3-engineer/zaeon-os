@@ -37,17 +37,20 @@ export function consumirPedido(sala: SalaChat): PedidoConversa | null {
  * (evento pra sala montada + bilhete pra sala que ainda vai montar). `meus-estudos` = a conversa.
  */
 export type AbaEstudos = "meus-estudos" | "feed" | "community";
+/** o que a sala ANUNCIA: uma das abas da sidebar, ou `outra` (Literatura, um curso…) — #824: sem isso, sair da vitrine
+ *  pra Literatura deixava o laboratório achando que a vitrine seguia aberta */
+export type AbaEstudosAnunciada = AbaEstudos | "outra";
 export const EVT_ESTUDOS_ABA = "zaeon:estudos:aba";
 export const EVT_ESTUDOS_IR = "zaeon:estudos:ir";
 const CHAVE_ABA = "zaeon.estudos.aba.pedido";
-let abaAtual: AbaEstudos = "meus-estudos";
+let abaAtual: AbaEstudosAnunciada = "meus-estudos";
 
 /** A sala diz em que aba está (e a sidebar, que monta antes ou depois, lê com `abaEstudosAtual`). */
-export function anunciarAbaEstudos(aba: AbaEstudos): void {
+export function anunciarAbaEstudos(aba: AbaEstudosAnunciada): void {
   abaAtual = aba;
-  window.dispatchEvent(new CustomEvent<AbaEstudos>(EVT_ESTUDOS_ABA, { detail: aba }));
+  window.dispatchEvent(new CustomEvent<AbaEstudosAnunciada>(EVT_ESTUDOS_ABA, { detail: aba }));
 }
-export const abaEstudosAtual = (): AbaEstudos => abaAtual;
+export const abaEstudosAtual = (): AbaEstudosAnunciada => abaAtual;
 
 export function irPraAbaEstudos(aba: AbaEstudos): void {
   try { localStorage.setItem(CHAVE_ABA, aba); } catch { /* ignore */ }

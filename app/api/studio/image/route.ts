@@ -6,6 +6,7 @@
  * Persiste o StudioArtifact (kind=image, arquivo em .studio/<id>.png) e devolve
  * também `dataUrl` pra render instantâneo (balão do chat / preview no Studio).
  */
+import { skinDaVitrine } from "@/lib/estudos/skinVitrine";
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { guard } from "@/src/lib/ratelimit";
@@ -73,7 +74,7 @@ export async function POST(req: Request) {
   if (!prompt) return NextResponse.json({ error: "Forneça um prompt ou um estudo com conteúdo." }, { status: 400 });
 
   const art = await prisma.studioArtifact.create({
-    data: { ownerId: userId, sourceIds: usedSourceIds, kind: "image", status: "running", title, meta: { prompt } as any },
+    data: { ownerId: userId, sourceIds: usedSourceIds, kind: "image", skin: skinDaVitrine({ kind: "image", titulo: title }), status: "running", title, meta: { prompt } as any },
   });
 
   try {

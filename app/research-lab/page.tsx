@@ -16,7 +16,8 @@ import { Mic, MicOff, Code2, Building2, Loader2 } from "lucide-react";
 import { ConversasSlotContext } from "@/components/chat/ConversasSlot";
 import ConversasDaSala from "@/components/chat/ConversasDaSala";
 import { useSidebarHover, focoDeTeclado } from "@/components/lab/useSidebarHover";
-import { useIsMobile } from "@/lib/ui/useIsMobile";
+import { useIsMobile, QUERY_CELULAR, QUERY_CELULAR_DEITADO } from "@/lib/ui/useIsMobile";
+import { useFecharNoVoltar } from "@/lib/ui/useFecharNoVoltar";
 import { EVT_PESQUISA_SALVA, contarPalavras } from "@/lib/onboarding/tutorialLab";
 import RostoDaAba from "@/components/agents/avatar/RostoDaAba";
 import SeletorDeAgente from "@/components/agents/SeletorDeAgente";
@@ -25,7 +26,8 @@ import { agenteChat, agentesDisponiveis, agenteValido, type AgenteChatId, agente
 import { avisarPersona } from "@/lib/research/zaeonEventos";
 import { usePluginsChat } from "@/lib/plugins/chatPlugins";
 import { usePresenca } from "@/components/agents/avatar/hooks";
-import { EVT_ESTUDOS_ABA, abaEstudosAtual, irPraAbaEstudos, type AbaEstudos } from "@/lib/chat/conversasNav";
+import { EVT_ESTUDOS_ABA, abaEstudosAtual, irPraAbaEstudos, type AbaEstudos, type AbaEstudosAnunciada } from "@/lib/chat/conversasNav";
+import { useMarketplaceNoLab } from "@/lib/ui/useMarketplaceNoLab";
 
 // Ramo da árvore sob o nome da sala na sidebar: o da sala aberta cresce e rola; o da outra é curto.
 // Larguras da sidebar: fechada = trilho de ícones; aberta = o conteúdo inteiro (que tem largura fixa).
@@ -853,8 +855,12 @@ export default function HomeworkPage({
   }, [isSidebarOpen, digitandoNoChat]);
   // CELULAR (≤767px): não existe hover — um toque abria a sidebar por cima de tudo e ela nunca fechava. Lá a sidebar
   // vira GAVETA (☰ na barra de baixo, fecha ao escolher) e a barra de baixo leva às salas; o conteúdo usa a largura toda.
-  const celular = useIsMobile();
+  // #832: deitado (baixo e de toque) também é celular — o layout de computador não deixava nenhuma linha de conversa
+  const celular = useIsMobile(QUERY_CELULAR);
+  const deitado = useIsMobile(QUERY_CELULAR_DEITADO);
   const [gaveta, setGaveta] = useState(false);
+  // #832: o ◀ do Android fecha a gaveta (antes voltava para a página anterior com ela aberta)
+  useFecharNoVoltar(celular && gaveta, () => setGaveta(false));
   // #713: celular — escolher um destino na gaveta fecha a gaveta (menus/campos dentro dela, não). Ouvinte do DOM porque a
   // lista de conversas é um portal: o clique de dentro dele não chegava a um onClickCapture do React.
   useEffect(() => {
@@ -869,14 +875,17 @@ export default function HomeworkPage({
     return () => el.removeEventListener("click", fechar, true);
   });
   // a aba em que a Sala de Estudos está (a conversa, Meus Estudos ou Estudos) — os subitens dela moram na sidebar
-  const [abaEstudos, setAbaEstudos] = useState<AbaEstudos>("meus-estudos");
+  const [abaEstudos, setAbaEstudos] = useState<AbaEstudosAnunciada>("meus-estudos");
   useEffect(() => {
     setAbaEstudos(abaEstudosAtual());
-    const f = (e: Event) => setAbaEstudos((e as CustomEvent<AbaEstudos>).detail);
+    const f = (e: Event) => setAbaEstudos((e as CustomEvent<AbaEstudosAnunciada>).detail);
     window.addEventListener(EVT_ESTUDOS_ABA, f);
     return () => window.removeEventListener(EVT_ESTUDOS_ABA, f);
   }, []);
   const irEstudos = (aba: AbaEstudos) => { setActiveTab("sala-de-estudos"); irPraAbaEstudos(aba); };
+  // #824: o menu principal entra por /marketplace (→ ?aba=marketplace) e o item "Marketplace" acende enquanto a vitrine
+  // está aberta — endereço, voltar do navegador e o "Laboratório" do menu ficam de acordo (lib/ui/useMarketplaceNoLab)
+  useMarketplaceNoLab(activeTab === "sala-de-estudos" && abaEstudos === "community", irEstudos);
   // O AGENTE da aba de conversa (o rosto na sidebar). Clicar no rosto abre o seletor; cada agente tem a sua tela:
   // Aura = o chat da Sala de Estudos, Octa Code = a IDE dele (só depois de adicionado no Marketplace).
   const agentesPlugados = usePluginsChat();
@@ -2729,7 +2738,7 @@ export default function HomeworkPage({
     <div
       className={`relative transition-all duration-500 overflow-hidden flex font-sans w-full bg-slate-100 dark:bg-[#030014]
             ${isEmbedded ? "h-full" : "h-screen h-[100dvh]"}
-            ${!isEmbedded ? (isFocusMode ? "pt-4" : "pt-[68px] md:pt-[100px]") : ""}
+            ${!isEmbedded ? (isFocusMode ? "pt-4" : celular ? "pt-[68px]" : "pt-[68px] md:pt-[100px]") : ""}
         `}
     >
       {/* NOTIFICAÇÃO FLUTUANTE (TOAST) */}
@@ -2987,8 +2996,10 @@ export default function HomeworkPage({
               { id: "perfil", rotulo: t("labSidebar.profile"), icone: <UserCircleIcon className="w-5 h-5" />, ativo: !gaveta && activeTab === "profile", onClick: () => { setGaveta(false); setPerfilVisitado(null); setActiveTab("profile"); } },
             ].map((b) => (
               <button key={b.id} type="button" onClick={b.onClick} aria-current={b.ativo ? "page" : undefined}
-                className={`flex min-h-[60px] flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-bold tracking-tight transition-colors ${b.ativo ? "text-blue-600 dark:text-cyan-300" : "text-slate-500 dark:text-white/55"}`}>
-                {b.icone}<span className="max-w-[72px] truncate">{b.rotulo}</span>
+                aria-label={b.rotulo}
+                className={`flex ${deitado ? "min-h-[44px]" : "min-h-[60px]"} flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-bold tracking-tight transition-colors ${b.ativo ? "text-blue-600 dark:text-cyan-300" : "text-slate-500 dark:text-white/55"}`}>
+                {/* #832: deitado, a barra fica baixa (só os ícones) — cada pixel de altura é da conversa */}
+                {b.icone}{!deitado && <span className="max-w-[72px] truncate">{b.rotulo}</span>}
               </button>
             ))}
           </nav>
@@ -3006,7 +3017,7 @@ export default function HomeworkPage({
         </div>
       )}
       <main
-        style={barraCelular ? { ...recuoSidebar, paddingBottom: "calc(66px + env(safe-area-inset-bottom))" } : recuoSidebar}
+        style={barraCelular ? { ...recuoSidebar, paddingBottom: `calc(${deitado ? 48 : 66}px + env(safe-area-inset-bottom))` } : recuoSidebar}
         className={`flex-1 flex flex-col h-full overflow-hidden ${barraCelular
           // celular: largura toda e o pé livre pra barra de baixo (60px + a área segura do iPhone)
           ? `px-1.5 pt-1 gap-3 ${activeTab === "sala-de-estudos" || activeTab === "pesquisa" || activeTab === "escritorio" ? "" : "px-3"}`

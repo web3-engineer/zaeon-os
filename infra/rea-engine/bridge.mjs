@@ -14,7 +14,7 @@ import { mkdtemp, mkdir, writeFile, readFile, rm, stat } from "node:fs/promises"
 import { randomBytes } from "node:crypto";
 import { androidArgs } from "./android-request.mjs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 
 const PORT = Number(process.env.REA_BRIDGE_PORT || 8799);
 const TOKEN = process.env.REA_BRIDGE_TOKEN || "";
@@ -131,8 +131,21 @@ const server = createServer(async (req, res) => {
         await writeFile(caminho, bytes);
         alvo = [caminho];
       }
+      // O analisador JavaScript recebe uma aplicação (diretório ou ASAR).
+      // Um arquivo avulso vira uma aplicação de um arquivo, isolada por requisição.
+      if (command === "analyze-javascript-application" && alvo[0] && /\.(?:cjs|mjs|js)$/i.test(alvo[0])) {
+        const { copyFile } = await import("node:fs/promises");
+        const appDir = join(dir, "application");
+        await mkdir(appDir);
+        await copyFile(alvo[0], join(appDir, basename(alvo[0])));
+        alvo = [appDir];
+      }
       const args = [command, ...alvo, ...extra, ...(corpo.json !== false ? ["--json"] : [])];
-      const r = await rodarRea(args, dir);
+      if (res.destroyed) return;
+      const abort = new AbortController();
+      res.once("close", () => { if (!res.writableEnded) abort.abort(); });
+      const r = await rodarRea(args, dir, abort.signal);
+      if (res.destroyed) return;
       let evidence; if (corpo.json !== false) { try { evidence = JSON.parse(r.stdout); } catch { /* não-JSON */ } }
       return responder(200, { ok: r.code === 0, code: r.code, stdout: evidence ? undefined : r.stdout.slice(0, 2_000_000), stderr: r.stderr, evidence });
     } finally { await rm(dir, { recursive: true, force: true }).catch(() => {}); }
