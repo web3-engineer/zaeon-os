@@ -58,6 +58,28 @@ describe("useFecharNoVoltar (#832)", () => {
     expect(fecharBaixo).toHaveBeenCalledTimes(1);
   });
 
+  it("desmontou ABERTO (troca de tela): não volta — a navegação não é desfeita", () => {
+    const { unmount } = renderHook(() => useFecharNoVoltar(true, () => {}));
+    act(() => { vi.runAllTimers(); });
+    unmount();
+    expect(back).not.toHaveBeenCalled();
+  });
+
+  it("o de baixo fecha com outro por cima: a entrada dele é pulada quando o voltar cair nela", () => {
+    const fecharCima = vi.fn();
+    const baixo = renderHook(({ a }) => useFecharNoVoltar(a, () => {}), { initialProps: { a: true } });
+    act(() => { vi.runAllTimers(); });
+    const doBaixo = window.history.state;
+    renderHook(() => useFecharNoVoltar(true, fecharCima));
+    act(() => { vi.runAllTimers(); });
+    baixo.rerender({ a: false });
+    expect(back).not.toHaveBeenCalled();          // a de cima ainda está aberta
+    act(() => voltarPara(doBaixo));               // o ◀ fecha a de cima e cai na entrada morta
+    expect(fecharCima).toHaveBeenCalledTimes(1);
+    act(() => { vi.runAllTimers(); });
+    expect(back).toHaveBeenCalledTimes(1);        // e a morta é pulada
+  });
+
   it("fechado antes do tick (StrictMode) não deixa entrada nem volta", () => {
     const push = vi.spyOn(window.history, "pushState");
     const { unmount } = renderHook(() => useFecharNoVoltar(true, () => {}));

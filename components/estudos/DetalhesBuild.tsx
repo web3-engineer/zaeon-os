@@ -60,7 +60,8 @@ export default function DetalhesBuild({ item, cor, origem, carta, onFechar }: {
     };
 
     // #832: o ◀ do Android fecha o detalhe (antes ele saía do Marketplace inteiro)
-    useFecharNoVoltar(true, fechar);
+    // (`aberto` vira false no fechar: a entrada do histórico sai antes de o painel desmontar)
+    useFecharNoVoltar(aberto, fechar);
 
     useEffect(() => {
         const raf = requestAnimationFrame(() => setAberto(true));

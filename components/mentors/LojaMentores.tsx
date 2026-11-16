@@ -185,7 +185,7 @@ export default function LojaMentores({ initialCategory }: { initialCategory?: st
                         <input
                             type="text"
                             placeholder="Buscar assistentes..."
-                            className="w-full pl-14 pr-6 py-4 rounded-[22px] bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 outline-none focus:ring-2 ring-cyan-500 transition-all text-[16px] sm:text-sm shadow-inner dark:shadow-none"
+                            className="w-full pl-14 pr-6 py-4 rounded-[22px] bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 outline-none focus:ring-2 ring-cyan-500 transition-all text-[16px] [@media(hover:hover)_and_(pointer:fine)]:text-sm shadow-inner dark:shadow-none"
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>

@@ -271,7 +271,7 @@ export default function Cartolina3D({ salaId, onSair }: { salaId: string; onSair
         </div>
         <input
           value={chatTxt} onChange={(e) => setChatTxt(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void enviar(); }}
-          placeholder="Falar na sala… (Enter)" className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-[16px] sm:text-[13px] outline-none focus:border-cyan-400/60"
+          placeholder="Falar na sala… (Enter)" className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-[16px] [@media(hover:hover)_and_(pointer:fine)]:text-[13px] outline-none focus:border-cyan-400/60"
         />
       </div>
     </div>

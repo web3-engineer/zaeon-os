@@ -52,6 +52,8 @@ export type CoworkComposerProps = {
   opcoes?: React.ReactNode;
   /** alguma opção fora do normal está ligada (ex.: modo pesquisa): o botão das opções ganha um ponto */
   opcoesAtivas?: boolean;
+  /** #832: a sala está visível — escondida, o ◀ não pode ser "gasto" fechando as opções que ninguém vê */
+  ativo?: boolean;
 };
 
 export default function CoworkComposer({
@@ -70,11 +72,12 @@ export default function CoworkComposer({
   children,
   opcoes,
   opcoesAtivas = false,
+  ativo = true,
 }: CoworkComposerProps) {
   const [verOpcoes, setVerOpcoes] = useState(false);
   // #832: no celular, o ◀ do Android fecha as opções da conversa
   const celular = useIsMobile(QUERY_CELULAR);
-  useFecharNoVoltar(celular && verOpcoes, () => setVerOpcoes(false));
+  useFecharNoVoltar(ativo && celular && verOpcoes, () => setVerOpcoes(false));
   const [camAberta, setCamAberta] = useState(false);
   // Câmera ao vivo ("be my eyes"): o botão só aparece quando o servidor diz que a câmera está ligada
   // (/api/ai/capabilities → `camera`: flag VISAO_CAMERA + credencial Vertex). Default false, falha quieto.

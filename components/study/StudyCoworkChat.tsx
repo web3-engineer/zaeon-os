@@ -520,10 +520,12 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   const [treeOpen, setTreeOpen] = useState(false);
   const [treeExpandida, setTreeExpandida] = useState(false);
   // #832: no celular, o ◀ do Android fecha o painel aberto (Studio, Biblioteca, Árvore, Blueprint) em vez de sair da página
-  useFecharNoVoltar(celular && studioOpen, () => setStudioOpen(false));
-  useFecharNoVoltar(celular && libOpen, () => setLibOpen(false));
-  useFecharNoVoltar(celular && treeOpen, () => setTreeOpen(false));
-  useFecharNoVoltar(celular && !!reaAberto, () => setReaAberto(null));
+  // (só com a sala VISÍVEL: escondida, o ◀ seria gasto fechando um painel que ninguém vê)
+  useFecharNoVoltar(active && celular && studioOpen, () => setStudioOpen(false));
+  useFecharNoVoltar(active && celular && libOpen, () => setLibOpen(false));
+  useFecharNoVoltar(active && celular && treeOpen, () => setTreeOpen(false));
+  useFecharNoVoltar(active && celular && !!reaAberto, () => setReaAberto(null));
+  useFecharNoVoltar(active && celular && !!openStudyId, () => setOpenStudyId(null));
   const [tree, setTree] = useState<SkillTreeData | null>(null);
   const [skillNode, setSkillNode] = useState<{ topicSlug: string; nodeId: string; title: string } | null>(null);
   const [treeRefresh, setTreeRefresh] = useState(0);
@@ -1816,6 +1818,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
           )}
           <div data-tour="composer-estudos" className="ml-4 sm:ml-8 lg:ml-14 mr-0 sm:mr-2">
             <CoworkComposer
+              ativo={active}
               value={input}
               onChange={setInput}
               onSubmit={() => void send()}

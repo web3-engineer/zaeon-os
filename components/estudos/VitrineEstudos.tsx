@@ -198,7 +198,7 @@ export default function VitrineEstudos() {
                             <span aria-hidden className={`transition-transform ${filtrosAbertos ? "rotate-180" : ""}`}>▾</span>
                         </button>
                         <button type="button" onClick={() => setVerConectados((v) => !v)} className={`rounded-full border px-3 py-1.5 font-mono text-[11px] tracking-wide transition ${verConectados ? "border-emerald-300 bg-emerald-300/15 text-emerald-100" : "border-emerald-300/30 text-emerald-200/70 hover:text-emerald-100"}`}>✓ Já conectados{itensConectados.length ? ` (${itensConectados.length})` : ""}</button>
-                        <input value={busca} onChange={(e) => { setBusca(e.target.value); setVerConectados(false); }} placeholder="buscar blueprint…" className="ml-auto min-w-[200px] rounded-full border border-sky-300/25 bg-sky-950/40 px-3 py-1.5 font-mono text-[16px] sm:text-[12px] text-sky-50 outline-none placeholder:text-sky-200/40" />
+                        <input value={busca} onChange={(e) => { setBusca(e.target.value); setVerConectados(false); }} placeholder="buscar blueprint…" className="ml-auto min-w-[200px] rounded-full border border-sky-300/25 bg-sky-950/40 px-3 py-1.5 font-mono text-[16px] [@media(hover:hover)_and_(pointer:fine)]:text-[12px] text-sky-50 outline-none placeholder:text-sky-200/40" />
                     </div>
                     {filtrosAbertos && (
                         <div className="mt-2 flex flex-wrap gap-2">
