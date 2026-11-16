@@ -14,7 +14,8 @@
  * Motor imperativo (SVG + requestAnimationFrame + viewBox) montado num container via ref. Estilo Liquid
  * Glass, cores da casa. Sem base nem grafo, degrada pro esqueleto (raiz + aviso), sem travar.
  */
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import PraticaDaLicao from "@/components/study/PraticaDaLicao";
 import { useTranslation } from "react-i18next";
 import type { ArvoreEntendimento, CursoRepo, NoEntendimento } from "@/lib/forja/tipos";
 import type { LicaoCurada, QuestaoProva } from "@/lib/forja/licaoCurada";
@@ -144,6 +145,30 @@ const CSS = `
 .av-cue{width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:999px;font-size:10.5px;font-weight:700;color:#fff;background:var(--flow);box-shadow:0 6px 16px rgba(37,99,235,.5)}
 .av-board{position:absolute;inset:0;z-index:12;opacity:0;visibility:hidden;transition:opacity .45s ease;display:grid;place-items:center;background:var(--scrim)}
 .av-board.on{opacity:1;visibility:visible}
+.av-root{container-type:inline-size}
+.av-board{overflow:auto;padding:24px}
+.av-pair{width:min(720px,100%);min-width:0}
+.av-lesson{min-width:0}
+.av-lesson>.av-card{width:100%;max-height:calc(100dvh - 9rem)}
+.av-pair.has-code{width:min(1280px,100%);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);align-items:center;gap:64px}
+.av-editor{min-width:0;position:relative;border-radius:30px;border:1px solid var(--panel-br);color:var(--ink);background:var(--panel);backdrop-filter:blur(24px);box-shadow:0 24px 64px rgba(8,20,50,.28)}
+.av-wire-link{position:absolute;pointer-events:none;right:100%;top:50%;transform:translateY(-50%);width:64px;height:64px;overflow:visible;filter:drop-shadow(0 0 5px var(--accent))}
+.av-wire-link .vertical{display:none}
+.av-wire-link path{fill:none;stroke:#3d94eb;stroke-width:2;stroke-linecap:round;opacity:.7}
+.av-wire-link .pulse{stroke:#8af2ff;stroke-dasharray:14 46;opacity:1;animation:av-wire-flow 1.45s linear infinite}
+@keyframes av-wire-flow{to{stroke-dashoffset:-60}}
+@media (prefers-reduced-motion:reduce){.av-wire-link .pulse{animation:none}}
+@container (max-width:760px){
+  .av-board{padding:12px;place-items:start center}
+  .av-pair.has-code{grid-template-columns:minmax(0,1fr);gap:48px}
+  .av-lesson>.av-card{max-height:none}
+  .av-wire-link{right:50%;top:auto;bottom:100%;transform:translateX(50%);height:48px}
+  .av-wire-link .horizontal{display:none}
+  .av-wire-link .vertical{display:inline}
+}
+.av-card{max-height:none}
+  .av-editor::before{right:50%;top:auto;bottom:100%;width:2px;height:24px}
+}
 .av-card{width:min(720px,92%);max-height:88%;overflow:auto;border-radius:30px;padding:28px 30px;background:var(--panel);backdrop-filter:blur(40px) saturate(1.5);border:1px solid var(--panel-br);box-shadow:0 30px 90px rgba(8,20,50,.35),inset 0 1px 0 rgba(255,255,255,.3)}
 .av-card .tag{font-family:ui-monospace,monospace;font-size:11px;color:var(--accent);display:flex;align-items:center;gap:8px}
 .av-passo{font-family:ui-sans-serif,system-ui;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#fff;background:var(--flow);padding:3px 9px;border-radius:999px;box-shadow:0 2px 10px rgba(37,99,235,.45)}
@@ -180,9 +205,11 @@ const CSS = `
 @keyframes avintrotit{0%{transform:scale(.8);opacity:0}18%{transform:scale(1);opacity:1}70%{transform:scale(1);opacity:1}100%{transform:scale(1.06);opacity:0}}
 `;
 
-export default function CursoArvoreView({ curso, licoes, titulo, onFechar, onPraticar }: { curso: CursoRepo; licoes?: Record<string, LicaoCurada>; titulo?: string; onFechar?: () => void; onPraticar?: (id: string) => void }) {
+export default function CursoArvoreView({ curso, licoes, titulo, onFechar, acoes }: { curso: CursoRepo; licoes?: Record<string, LicaoCurada>; titulo?: string; onFechar?: () => void; acoes?: ReactNode }) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement | null>(null);
+  const [licaoAtiva, setLicaoAtiva] = useState<{ id: string; titulo: string } | null>(null);
+  const sandbox = licaoAtiva ? licoes?.[licaoAtiva.id]?.sandbox : undefined;
   const cabecalho = (titulo || curso.arvore.raiz.titulo || "").trim();
   const semMapa = (curso.arvore.raiz.filhos?.length ?? 0) === 0;
 
@@ -191,7 +218,9 @@ export default function CursoArvoreView({ curso, licoes, titulo, onFechar, onPra
     if (!root) return;
     const svg = root.querySelector(".av-svg") as SVGSVGElement;
     const world = root.querySelector(".av-world") as SVGGElement;
-    const boardEl = root.querySelector(".av-board") as HTMLDivElement;
+    const overlay = root.querySelector(".av-board") as HTMLDivElement;
+    const boardEl = root.querySelector(".av-lesson") as HTMLDivElement;
+    let abertura: ReturnType<typeof setTimeout> | undefined;
     const ftit = root.querySelector(".av-tit") as HTMLDivElement;
     const crumbsEl = root.querySelector(".av-crumbs") as HTMLDivElement;
     const hintEl = root.querySelector(".av-hint") as HTMLDivElement;
@@ -297,7 +326,7 @@ export default function CursoArvoreView({ curso, licoes, titulo, onFechar, onPra
     function zoomVB(target: any, dur: number, cb?: () => void) { tween = { a: { ...vb }, b: target, t0: performance.now(), dur, cb }; }
     function loop(now: number) { if (tween) { const k = Math.min(1, (now - tween.t0) / tween.dur), e = 1 - Math.pow(1 - k, 3); vb.x = tween.a.x + (tween.b.x - tween.a.x) * e; vb.y = tween.a.y + (tween.b.y - tween.a.y) * e; vb.w = tween.a.w + (tween.b.w - tween.a.w) * e; vb.h = tween.a.h + (tween.b.h - tween.a.h) * e; setVB(); if (k >= 1) { const cb = tween.cb; tween = null; if (cb) cb(); } } raf = requestAnimationFrame(loop); }
 
-    function abrirBoard(ref2: Nav) { const f = pos.get(ref2) || BASE as any; zoomVB({ x: f.x - 150, y: f.y - 110, w: 300, h: 205 }, 440, () => { svg.classList.add("fade"); setTimeout(() => montarBoard(ref2), 200); }); }
+    function abrirBoard(ref2: Nav) { const f = pos.get(ref2) || BASE as any; zoomVB({ x: f.x - 150, y: f.y - 110, w: 300, h: 205 }, 440, () => { svg.classList.add("fade"); clearTimeout(abertura); abertura = setTimeout(() => montarBoard(ref2), 200); }); }
     function montarBoard(r: Nav) {
       const lic = LICOES[r.id];
       const par = parentOf.get(r), mod = r.mod || (par ? par.titulo : REPO);
@@ -306,15 +335,8 @@ export default function CursoArvoreView({ curso, licoes, titulo, onFechar, onPra
       const prox = idx >= 0 && idx < irmaos.length - 1 ? irmaos[idx + 1] : null;
       const passo = par === TREE && idx >= 0 ? t("forja.arvore.passo", { i: idx + 1, n: irmaos.length }) : "";
       boardEl.innerHTML = montarBoardHtml({ titulo: r.titulo, tipo: r.tipo, mod, repo: REPO, resumo: r.resumo, lic, prox: prox?.titulo, passo, tr: t });
-      if (lic?.sandbox && onPraticar) {
-        const praticar = document.createElement("button");
-        praticar.type = "button";
-        praticar.className = "av-btn av-pill";
-        praticar.textContent = t("forja.sala.praticar");
-        praticar.onclick = () => onPraticar(r.id);
-        boardEl.prepend(praticar);
-      }
-      boardEl.classList.add("on");
+      setLicaoAtiva({ id: r.id, titulo: r.titulo });
+      overlay.classList.add("on");
       boardEl.querySelectorAll(".av-continuar").forEach((b) => b.addEventListener("click", () => {
         if (!prox) return;
         focus = prox; if (temFilho(prox)) expanded.add(prox);
@@ -335,7 +357,7 @@ export default function CursoArvoreView({ curso, licoes, titulo, onFechar, onPra
       boardEl.querySelectorAll(".av-voltar").forEach((b) => b.addEventListener("click", voltar));
       hintEl.innerHTML = lic ? t("forja.arvore.licaoReais") : t("forja.arvore.licaoModulo");
     }
-    function fecharBoard() { boardEl.classList.remove("on"); }
+    function fecharBoard() { overlay.classList.remove("on"); setLicaoAtiva(null); }
     function voltar() { fecharBoard(); svg.classList.remove("fade"); render(); }
 
     // zoom manual + pan
@@ -350,8 +372,8 @@ export default function CursoArvoreView({ curso, licoes, titulo, onFechar, onPra
     if (introEl && introTit) { introTit.textContent = cut(curso.arvore.raiz.titulo || REPO, 42); introEl.classList.remove("play"); void introEl.offsetWidth; introEl.classList.add("play"); }
 
     setVB(); raf = requestAnimationFrame(loop); render();
-    return () => { cancelAnimationFrame(raf); svg.removeEventListener("wheel", onWheel); svg.removeEventListener("pointerdown", onDown); svg.removeEventListener("pointermove", onMove); svg.removeEventListener("pointerup", onUp); svg.removeEventListener("pointercancel", onUp); world.innerHTML = ""; boardEl.innerHTML = ""; boardEl.classList.remove("on"); };
-  }, [curso.arvore, curso.repo, licoes, onPraticar, t]);
+    return () => { clearTimeout(abertura); cancelAnimationFrame(raf); svg.removeEventListener("wheel", onWheel); svg.removeEventListener("pointerdown", onDown); svg.removeEventListener("pointermove", onMove); svg.removeEventListener("pointerup", onUp); svg.removeEventListener("pointercancel", onUp); world.innerHTML = ""; boardEl.innerHTML = ""; overlay.classList.remove("on"); setLicaoAtiva(null); };
+  }, [curso.arvore, curso.repo, licoes, t]);
 
   return (
     <div ref={ref} className="av-root">
@@ -371,7 +393,27 @@ export default function CursoArvoreView({ curso, licoes, titulo, onFechar, onPra
         </defs>
         <g className="av-world" />
       </svg>
-      <div className="av-board" />
+      {!licaoAtiva && acoes}
+      <div className="av-board">
+        <div className={sandbox ? "av-pair has-code" : "av-pair"}>
+          <div className="av-lesson" />
+          {sandbox && licaoAtiva && (
+            <aside className="av-editor">
+              <svg className="av-wire-link" viewBox="0 0 64 64" preserveAspectRatio="none" aria-hidden="true">
+                <g className="horizontal">
+                  <path d="M0 32 C19 7 45 57 64 32" />
+                  <path className="pulse" d="M0 32 C19 7 45 57 64 32" />
+                </g>
+                <g className="vertical">
+                  <path d="M32 0 C6 18 58 46 32 64" />
+                  <path className="pulse" d="M32 0 C6 18 58 46 32 64" />
+                </g>
+              </svg>
+              <PraticaDaLicao key={licaoAtiva.id} sandbox={sandbox} titulo={licaoAtiva.titulo} />
+            </aside>
+          )}
+        </div>
+      </div>
       <div className="av-intro"><div className="av-intro-tit" /></div>
       {semMapa && (
         <div className="av-hint" style={{ bottom: 40 }}>{t("forja.arvore.semMapa")}</div>

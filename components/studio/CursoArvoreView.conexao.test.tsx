@@ -3,10 +3,17 @@
  * A trilha de progressão: a RAIZ (primeiro nó) tem que ligar ao módulo 1, e os módulos em sequência.
  * Antes isto era um leque radial e "o primeiro nó não conectava com o resto". Este teste trava a conexão.
  */
-import { describe, it, expect, afterEach } from "vitest";
-import { render, cleanup } from "@testing-library/react";
+import { describe, it, expect, afterEach, vi } from "vitest";
+import { render, cleanup, fireEvent, waitFor } from "@testing-library/react";
 import CursoArvoreView from "./CursoArvoreView";
 import type { CursoRepo, NoEntendimento } from "@/lib/forja/tipos";
+
+vi.mock("@/app/agentic-modules/codelab/useCodeRunner", () => ({
+  useCodeRunner: () => ({ run: vi.fn(), output: [], isRunning: false, isPyodideReady: true }),
+}));
+vi.mock("@/components/study/EditorDoCard", () => ({
+  default: ({ value }: { value: string }) => <textarea value={value} readOnly />,
+}));
 
 afterEach(cleanup);
 
@@ -28,4 +35,16 @@ describe("CursoArvoreView — a raiz conecta na trilha de módulos", () => {
     const ds = trilhas.map((p) => p.getAttribute("d") || "");
     expect(ds.some((d) => d.startsWith("M 600.0 720.0"))).toBe(true);
   });
+});
+
+
+it("mostra um editor vazio ao lado da lição com sandbox", async () => {
+  const { container } = render(<CursoArvoreView curso={curso} licoes={{
+    "mod:0": { estudo: "Aprenda a buscar.", prova: [], sandbox: { linguagem: "python", inicial: "def busca(): pass", teste: "assert busca()" } },
+  }} />);
+  fireEvent.click(container.querySelectorAll(".av-node")[1]);
+  fireEvent.click(container.querySelector(".av-cue")!);
+  await waitFor(() => expect(container.querySelector(".av-pair.has-code > .av-editor textarea")).toBeTruthy(), { timeout: 2000 });
+  expect(container.querySelector(".av-pair.has-code > .av-lesson h1")?.textContent).toBe("Módulo 1");
+  expect(container.querySelector<HTMLTextAreaElement>(".av-editor textarea")?.value).toBe("");
 });
