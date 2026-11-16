@@ -51,6 +51,7 @@
             "rodando": "rodando…",
             "carregandoPython": "carregando Python…",
             "rodarTestes": "rodar testes ▸",
+            "runtimeIndisponivel": "Execução indisponível no navegador para esta linguagem.",
             "pythonErro": "Python não carregou:",
             "passou": "✓ passou — o código que você digitou roda!",
             "naoPassou": "✗ ainda não passou",

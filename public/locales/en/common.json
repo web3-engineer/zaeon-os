@@ -51,6 +51,7 @@
             "rodando": "running…",
             "carregandoPython": "loading Python…",
             "rodarTestes": "run tests ▸",
+            "runtimeIndisponivel": "Browser execution is unavailable for this language.",
             "pythonErro": "Python didn't load:",
             "passou": "✓ passed — the code you typed runs!",
             "naoPassou": "✗ not passing yet",

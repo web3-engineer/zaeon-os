@@ -51,6 +51,7 @@
             "rodando": "läuft…",
             "carregandoPython": "Python wird geladen…",
             "rodarTestes": "Tests ausführen ▸",
+            "runtimeIndisponivel": "Diese Sprache kann nicht im Browser ausgeführt werden.",
             "pythonErro": "Python wurde nicht geladen:",
             "passou": "✓ bestanden — der Code, den du getippt hast, läuft!",
             "naoPassou": "✗ noch nicht bestanden",

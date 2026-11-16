@@ -180,7 +180,7 @@ const CSS = `
 @keyframes avintrotit{0%{transform:scale(.8);opacity:0}18%{transform:scale(1);opacity:1}70%{transform:scale(1);opacity:1}100%{transform:scale(1.06);opacity:0}}
 `;
 
-export default function CursoArvoreView({ curso, licoes, titulo, onFechar }: { curso: CursoRepo; licoes?: Record<string, LicaoCurada>; titulo?: string; onFechar?: () => void }) {
+export default function CursoArvoreView({ curso, licoes, titulo, onFechar, onPraticar }: { curso: CursoRepo; licoes?: Record<string, LicaoCurada>; titulo?: string; onFechar?: () => void; onPraticar?: (id: string) => void }) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement | null>(null);
   const cabecalho = (titulo || curso.arvore.raiz.titulo || "").trim();
@@ -306,6 +306,14 @@ export default function CursoArvoreView({ curso, licoes, titulo, onFechar }: { c
       const prox = idx >= 0 && idx < irmaos.length - 1 ? irmaos[idx + 1] : null;
       const passo = par === TREE && idx >= 0 ? t("forja.arvore.passo", { i: idx + 1, n: irmaos.length }) : "";
       boardEl.innerHTML = montarBoardHtml({ titulo: r.titulo, tipo: r.tipo, mod, repo: REPO, resumo: r.resumo, lic, prox: prox?.titulo, passo, tr: t });
+      if (lic?.sandbox && onPraticar) {
+        const praticar = document.createElement("button");
+        praticar.type = "button";
+        praticar.className = "av-btn av-pill";
+        praticar.textContent = t("forja.sala.praticar");
+        praticar.onclick = () => onPraticar(r.id);
+        boardEl.prepend(praticar);
+      }
       boardEl.classList.add("on");
       boardEl.querySelectorAll(".av-continuar").forEach((b) => b.addEventListener("click", () => {
         if (!prox) return;
@@ -343,7 +351,7 @@ export default function CursoArvoreView({ curso, licoes, titulo, onFechar }: { c
 
     setVB(); raf = requestAnimationFrame(loop); render();
     return () => { cancelAnimationFrame(raf); svg.removeEventListener("wheel", onWheel); svg.removeEventListener("pointerdown", onDown); svg.removeEventListener("pointermove", onMove); svg.removeEventListener("pointerup", onUp); svg.removeEventListener("pointercancel", onUp); world.innerHTML = ""; boardEl.innerHTML = ""; boardEl.classList.remove("on"); };
-  }, [curso.arvore, curso.repo, licoes, t]);
+  }, [curso.arvore, curso.repo, licoes, onPraticar, t]);
 
   return (
     <div ref={ref} className="av-root">

@@ -48,12 +48,12 @@ async function getPyodide(): Promise<any> {
 }
 
 // ─── JS sandbox template ──────────────────────────────────────────────────────
-function buildSandboxHTML(code: string): string {
+function buildSandboxHTML(code: string, lang: Language): string {
   // TypeScript → strip basic type annotations (simplistic, good enough for sandbox)
-  const jsCode = code
+  const jsCode = lang === "typescript" ? code
     .replace(/:\s*(string|number|boolean|void|any|null|undefined|never)\b/g, '')
     .replace(/<[A-Z][^>]*>/g, '') // remove generic type params
-    .replace(/^(interface|type)\s+\w+[^{]*\{[^}]*\}\s*$/gm, '');
+    .replace(/^(interface|type)\s+\w+[^{]*\{[^}]*\}\s*$/gm, '') : code;
 
   return `<!DOCTYPE html>
 <html>
@@ -78,9 +78,7 @@ function buildSandboxHTML(code: string): string {
     return true;
   };
   try {
-    const __result = (function() {
-      ${jsCode}
-    })();
+    const __result = new Function(${JSON.stringify(jsCode).replace(/</g, "\\u003c")})();
     if (__result !== undefined) {
       window.parent.postMessage({ type: 'result', text: JSON.stringify(__result, null, 2) }, '*');
     }
@@ -108,6 +106,7 @@ export function useCodeRunner() {
     getPyodide()
       .then(py => { pyRef.current = py; setIsPyodideReady(true); })
       .catch(e  => { setPyodideError(e.message ?? 'Pyodide failed to load'); });
+    return () => { iframeRef.current?.remove(); iframeRef.current = null; };
   }, []);
 
   const clearOutput = useCallback(() => setOutput([]), []);
@@ -191,7 +190,7 @@ sys.stderr = _stderr_buf
 
       // ── JS / TS via sandboxed iframe ─────────────────────────────────────
       if (lang === 'javascript' || lang === 'typescript') {
-        const html  = buildSandboxHTML(code);
+        const html  = buildSandboxHTML(code, lang);
         const blob  = new Blob([html], { type: 'text/html' });
         const url   = URL.createObjectURL(blob);
 
@@ -212,6 +211,7 @@ sys.stderr = _stderr_buf
             if (ev.source !== iframe?.contentWindow) return;
             const { type, text } = ev.data ?? {};
             if (type === 'done') {
+              clearTimeout(timeout);
               window.removeEventListener('message', handler);
               cleanup();
               resolve();
@@ -221,7 +221,12 @@ sys.stderr = _stderr_buf
           };
           window.addEventListener('message', handler);
           // Timeout safety
-          setTimeout(() => { window.removeEventListener('message', handler); resolve(); }, 8000);
+          const timeout = setTimeout(() => {
+            window.removeEventListener('message', handler);
+            cleanup();
+            emit('stderr', 'Execution timed out.');
+            resolve();
+          }, 8000);
         });
 
         iframe.src = url;
