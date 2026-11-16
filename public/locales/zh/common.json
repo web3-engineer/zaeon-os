@@ -454,8 +454,6 @@
     "landing": {
         "knowledge_cards": {
             "label": "市场中的知识",
-            "previous": "上一张卡片",
-            "next": "下一张卡片",
             "coracao": {
                 "title": "心脏解剖图谱",
                 "summary": "心脏结构、心腔与血液循环。"

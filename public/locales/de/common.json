@@ -454,8 +454,6 @@
     "landing": {
         "knowledge_cards": {
             "label": "Wissen auf dem Marktplatz",
-            "previous": "Vorherige Karte",
-            "next": "Nächste Karte",
             "coracao": {
                 "title": "Atlas des Herzens",
                 "summary": "Anatomie, Herzkammern und Kreislauf."

@@ -454,8 +454,6 @@
     "landing": {
         "knowledge_cards": {
             "label": "Knowledge in the Marketplace",
-            "previous": "Previous card",
-            "next": "Next card",
             "coracao": {
                 "title": "Atlas of the Heart",
                 "summary": "Anatomy, chambers and circulation."

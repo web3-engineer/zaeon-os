@@ -454,8 +454,6 @@
     "landing": {
         "knowledge_cards": {
             "label": "Savoirs sur la Marketplace",
-            "previous": "Carte précédente",
-            "next": "Carte suivante",
             "coracao": {
                 "title": "Atlas du cœur",
                 "summary": "Anatomie, cavités et circulation."

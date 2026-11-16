@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { ISO_CSS } from "@/lib/anatomy/iso-kit";
 import { CONSTRUCAO_SVG } from "@/lib/landing/construcaoIso";
 import pt from "@/public/locales/pt/common.json";
+import ConhecimentoShowcase from "./ConhecimentoShowcase";
 import CartaVitrine from "@/components/estudos/CartaVitrine";
 import type { ItemVitrine } from "@/lib/estudos/vitrine";
 import "./timeline-ideia.css";
@@ -25,10 +26,11 @@ const MARCOS: readonly { titulo: string; cor: string }[] = [
 ];
 const N = MARCOS.length;
 
-const DUR = 8200, HOLD = 7800, FADE = 800, TOTAL = DUR + HOLD + FADE;
+const DUR = 8200, HOLD = 20800, FADE = 800, TOTAL = DUR + HOLD + FADE;
 
 export default function TimelineIdeia({ className = "" }: { className?: string }) {
   const { t } = useTranslation();
+  const [carrossel, setCarrossel] = useState(false);
   const [ativos, setAtivos] = useState(0);
   const vizRef = useRef<HTMLDivElement>(null);
   const fillRef = useRef<HTMLDivElement>(null);
@@ -40,10 +42,12 @@ export default function TimelineIdeia({ className = "" }: { className?: string }
         part.style.opacity = "1";
       });
       if (fillRef.current) fillRef.current.style.width = "80%";
+      vizRef.current?.setAttribute("data-carta-em-destaque", "");
+      setCarrossel(true);
       setAtivos(N);
       return;
     }
-    let raf = 0, inicio = 0;
+    let raf = 0, inicio = 0, exibindo = false;
     const passo = (now: number) => {
       if (!inicio) inicio = now;
       const e = (now - inicio) % TOTAL;
@@ -66,6 +70,9 @@ export default function TimelineIdeia({ className = "" }: { className?: string }
       const abertura = suavizar(limitar((desdeContato - 3450) / 950));
       const carta = suavizar(limitar((desdeContato - 2600) / 1200));
       const viz = vizRef.current;
+      const pronto = desdeContato >= 4520;
+      viz?.style.setProperty("--carrossel-op", String(op));
+      if (exibindo !== pronto) { exibindo = pronto; setCarrossel(pronto); }
       if (viz) viz.toggleAttribute("data-carta-em-destaque", carta > .22);
       viz?.style.setProperty("--prensa-x", `${-340 * (1 - encaixe) ** 1.35 + 232 * compressao - 575 * abertura}px`);
       viz?.style.setProperty("--prensa-op", String((e >= DUR ? 1 : 0) * op));
@@ -89,7 +96,7 @@ export default function TimelineIdeia({ className = "" }: { className?: string }
       viz?.style.setProperty("--carta-impacto", String(Math.min(1, choque * 3.7)));
       viz?.style.setProperty("--forja-onda", String(choque * 2.4 * op));
       viz?.style.setProperty("--forja-onda-escala", String(.55 + impactoCarta * 1.85));
-      viz?.style.setProperty("--carta-op", String(carta * op));
+      viz?.style.setProperty("--carta-op", String(pronto ? 0 : carta * op));
       viz?.style.setProperty("--carta-escala", String(.72 + .28 * carta));
       const fadeDaCena = op;
       const partes = vizRef.current?.querySelectorAll<SVGGElement>(".ci-part");
@@ -112,6 +119,8 @@ export default function TimelineIdeia({ className = "" }: { className?: string }
       cancelAnimationFrame(raf);
       if (entrada.isIntersecting) {
         inicio = 0;
+        exibindo = false;
+        setCarrossel(false);
         raf = requestAnimationFrame(passo);
       }
     }, { threshold: .15 });
@@ -122,13 +131,18 @@ export default function TimelineIdeia({ className = "" }: { className?: string }
     };
   }, []);
 
+  const cartaForjada = (
+    <CartaVitrine forjada it={{ ...CARTA_CHIP, titulo: t("landing.timeline.propriedade_intelectual", { defaultValue: pt.landing.timeline.propriedade_intelectual }) }} precoNode={null}
+      arteNode={<span className="ci-simbolo-chip"><i /><i /><i /></span>} />
+  );
+
   return (
     <div className={`iso ci-wrap ${className}`}>
       <style>{ISO_CSS}</style>
       <div className="ci-stage">
         {/* o VISUALIZADOR único: a estrutura 3D que cresce peça a peça */}
-        <div ref={vizRef} className="ci-viz" role="img" aria-label={t("landing.timeline.placa")}>
-          <div className="ci-placa"
+        <div ref={vizRef} className="ci-viz">
+          <div className="ci-placa" role="img" aria-label={t("landing.timeline.placa")}
             onPointerMove={(event) => {
               if (event.pointerType !== "mouse" || !(event.target instanceof SVGElement)) return;
               const limites = event.target.ownerSVGElement?.getBoundingClientRect() ?? event.target.getBoundingClientRect();
@@ -151,9 +165,9 @@ export default function TimelineIdeia({ className = "" }: { className?: string }
             ))}
           </svg>
           <div className="ci-carta-forjada" aria-hidden="true">
-            <CartaVitrine forjada it={{ ...CARTA_CHIP, titulo: t("landing.timeline.propriedade_intelectual", { defaultValue: pt.landing.timeline.propriedade_intelectual }) }} precoNode={null}
-              arteNode={<span className="ci-simbolo-chip"><i /><i /><i /></span>} />
+            {cartaForjada}
           </div>
+          {carrossel && <ConhecimentoShowcase principal={cartaForjada} />}
         </div>
 
         {/* a BARRA de progresso com os 5 marcos */}

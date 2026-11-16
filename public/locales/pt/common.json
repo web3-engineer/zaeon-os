@@ -454,8 +454,6 @@
     "landing": {
         "knowledge_cards": {
             "label": "Conhecimento na vitrine",
-            "previous": "Card anterior",
-            "next": "Próximo card",
             "coracao": {
                 "title": "Atlas do coração",
                 "summary": "Anatomia, câmaras e circulação."

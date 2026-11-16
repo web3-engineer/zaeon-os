@@ -1,8 +1,7 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import CartaVitrine from "@/components/estudos/CartaVitrine";
 import type { ItemVitrine } from "@/lib/estudos/vitrine";
@@ -18,20 +17,28 @@ const exemplos = [
   { id: "habitat", skin: "portfolio", tipo: "negocio", modelo: "predio", imagem: "/assets/intro-poster-desktop.jpg" },
 ] as const satisfies readonly Pick<ItemVitrine, "id" | "skin" | "tipo" | "modelo" | "imagem">[];
 
-export default function ConhecimentoShowcase() {
+export default function ConhecimentoShowcase({ principal }: { principal: ReactNode }) {
   const { t } = useTranslation();
   const router = useRouter();
   const faixa = useRef<HTMLUListElement>(null);
-  const mover = (direcao: number) => {
+  useEffect(() => {
     const lista = faixa.current;
-    if (!lista?.firstElementChild) return;
-    const passo = lista.firstElementChild.getBoundingClientRect().width + parseFloat(getComputedStyle(lista).columnGap);
-    lista.scrollBy({ left: direcao * passo, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
-  };
+    if (!lista || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = window.setInterval(() => {
+      if (lista.matches(":hover, :focus-within")) return;
+      const primeiro = lista.firstElementChild;
+      if (!primeiro) return;
+      const passo = primeiro.getBoundingClientRect().width + parseFloat(getComputedStyle(lista).columnGap);
+      if (lista.scrollLeft >= lista.scrollWidth - lista.clientWidth - 2) return;
+      lista.scrollBy({ left: passo, behavior: "smooth" });
+    }, 1900);
+    return () => window.clearInterval(timer);
+  }, []);
 
   return (
-    <section aria-label={t("landing.knowledge_cards.label")} className="relative mt-4 md:mt-7">
-      <ul ref={faixa} className="grid snap-x snap-mandatory auto-cols-[min(58vw,210px)] grid-flow-col gap-4 overflow-x-auto px-1 py-5 md:auto-cols-[220px] md:gap-5">
+    <section aria-label={t("landing.knowledge_cards.label")} className="ci-carrossel">
+      <ul ref={faixa} className="ci-carrossel-faixa">
+        <li className="ci-carrossel-principal">{principal}</li>
         {exemplos.map((exemplo) => {
           const it: ItemVitrine = {
             ...exemplo, titulo: t(`landing.knowledge_cards.${exemplo.id}.title`), subtitulo: t(`landing.knowledge_cards.${exemplo.id}.summary`),
@@ -39,15 +46,11 @@ export default function ConhecimentoShowcase() {
             fracoes: { total: 1, vendidas: 0 }, selos: { supervisionado: false, linksOk: false, codigoPrivado: false },
             entrega: [], tags: [],
           };
-          return <li key={exemplo.id} className="min-w-0 snap-start">
+          return <li key={exemplo.id} className="ci-carrossel-item">
             <CartaVitrine it={it} precoNode={null} className="!block [&_.vt-type]:hidden [&_.vt-pr]:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500" onClick={() => router.push(ROTA_MARKETPLACE)} />
           </li>;
         })}
       </ul>
-      <div className="mt-1 flex justify-end gap-2">
-        <button type="button" aria-label={t("landing.knowledge_cards.previous")} onClick={() => mover(-1)} className="grid size-10 place-items-center rounded-full border border-current/20 text-foreground hover:bg-foreground/10"><ChevronLeft size={18} aria-hidden /></button>
-        <button type="button" aria-label={t("landing.knowledge_cards.next")} onClick={() => mover(1)} className="grid size-10 place-items-center rounded-full border border-current/20 text-foreground hover:bg-foreground/10"><ChevronRight size={18} aria-hidden /></button>
-      </div>
     </section>
   );
 }

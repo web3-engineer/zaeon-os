@@ -454,8 +454,6 @@
     "landing": {
         "knowledge_cards": {
             "label": "Conocimiento en el mercado",
-            "previous": "Tarjeta anterior",
-            "next": "Tarjeta siguiente",
             "coracao": {
                 "title": "Atlas del corazón",
                 "summary": "Anatomía, cavidades y circulación."

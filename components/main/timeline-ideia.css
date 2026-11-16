@@ -188,3 +188,36 @@ html:not(.dark) .ci-line { background: #cbd5e1; }
 @media (prefers-reduced-motion: reduce) {
   .ci-placa .ci-fig { transform: none; transition: none; }
 }
+
+.ci-carrossel {
+  --ci-carrossel-carta: min(48%, 230px);
+  opacity: var(--carrossel-op, 1);
+  position: absolute;
+  top: 50%;
+  inset-inline: 0;
+  z-index: 8;
+  transform: translateY(-50%);
+}
+.ci-carrossel-faixa {
+  display: flex;
+  gap: clamp(12px, 2vw, 24px);
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+  scroll-snap-type: x mandatory;
+  margin: 0;
+  padding: 16px calc((100% - var(--ci-carrossel-carta)) / 2);
+  list-style: none;
+}
+.ci-carrossel-faixa::-webkit-scrollbar { display: none; }
+.ci-carrossel-faixa > li {
+  min-width: 0;
+  flex: 0 0 min(48cqw, 230px);
+  scroll-snap-align: center;
+}
+.ci-carrossel { container-type: inline-size; }
+.ci-carrossel-item { animation: ci-revelar-card 1.15s ease-out both; }
+.ci-carrossel-item:nth-child(3) { animation-delay: .14s; }
+.ci-carrossel-item:nth-child(n+4) { animation-delay: .28s; }
+@keyframes ci-revelar-card { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ci-carrossel-item { animation: none; } }

@@ -454,8 +454,6 @@
     "landing": {
         "knowledge_cards": {
             "label": "마켓플레이스의 지식",
-            "previous": "이전 카드",
-            "next": "다음 카드",
             "coracao": {
                 "title": "심장 해부 아틀라스",
                 "summary": "심장의 구조, 심장방, 혈액 순환."
