@@ -10,7 +10,9 @@
     "close": "Menü schließen",
     "settings": "Einstellungen",
     "general": "Allgemein",
-    "theme": "Design wechseln"
+    "theme": "Design wechseln",
+    "languageTitle": "Sprache: {{name}} – zum Wechseln klicken",
+    "languageAria": "Aktuelle Sprache: {{name}}. Zum Wechseln klicken."
   },
   "labSidebar": {
     "study": "Lernraum",
@@ -53,7 +55,31 @@
     "empty": "Noch keine Unterhaltungen.",
     "cancel": "Abbrechen",
     "confirm": "Unterhaltung löschen?",
-    "confirmTopics": "Unterhaltung und Unterthemen ({{count}}) löschen?"
+    "confirmTopics": "Unterhaltung und Unterthemen ({{count}}) löschen?",
+    "studiesList": "Lernraum-Studien",
+    "searchStudies": "Studien suchen",
+    "noStudies": "Noch keine Studien. Sprich mit Aura: Wenn ein Gespräch zur Studie wird, erscheint es hier.",
+    "loading": "Wird geladen…",
+    "studiesError": "Die Studien konnten nicht geladen werden.",
+    "retry": "Erneut versuchen",
+    "more": "Mehr anzeigen",
+    "moreFailed": "Nicht geladen – erneut versuchen",
+    "confirmStudy": "Studie löschen?",
+    "confirmStudyShared": "Studie löschen? {{count}} Person(en) mit Zugriff verliert/verlieren sie.",
+    "newStudyName": "Neuer Name der Studie",
+    "phase": "Phase {{n}}",
+    "critical": "{{count}} kritisch",
+    "awaitingMentor": "Wartet auf Mentor",
+    "chatWith": "Chatten mit",
+    "moreAgents": "Weitere Agenten wie <b>Octa Code</b> fügst du im Marketplace hinzu.",
+    "agentRole": {
+      "aura": "Lernen, Recherche und Gespräch",
+      "zenita": "Termine, Unterricht und Prüfungen",
+      "nina": "Notizbuch, Zusammenfassungen und Lernplan",
+      "octa": "Code-Agent · IDE",
+      "eiffel": "Bau- und Tragwerksingenieurwesen · CAD",
+      "noether": "Mathematik · Beweise, Analysis und dynamische Geometrie"
+    }
   },
     "forja": {
         "board": {
@@ -773,5 +799,44 @@
             "chat": "Chat starten",
             "conta": "Konto erstellen"
         }
-    }
+    },
+  "configMenu": {
+    "language": "Sprache",
+    "rewatchTutorial": "Tutorial erneut ansehen",
+    "rewatchTutorialHint": "Aura zeigt die Tutorials und Tipps zu Lernraum und Profil noch einmal.",
+    "cyberspace": "Cyberspace",
+    "tutorialMode": "Tutorial-Modus",
+    "tutorialOn": "An: Beim Betreten des Cyberspace ist das Tutorial Pflicht.",
+    "tutorialOff": "Aus: der normale Cyberspace.",
+    "graphics": "Grafik",
+    "graphicsGroup": "Cyberspace-Grafik",
+    "graphicsAuto": "Automatisch",
+    "graphicsLight": "Leicht",
+    "graphicsFull": "Voll",
+    "graphicsAutoHint": "Automatisch: leicht bei integrierter Grafik (Notebook-Intel/AMD).",
+    "graphicsLightHint": "Leicht: weniger in der Ferne und weniger Effekte, 30 fps.",
+    "graphicsFullHint": "Voll: alles auf Maximum (dedizierte Grafikkarte nötig).",
+    "reopenHint": "Gilt beim nächsten Öffnen des Cyberspace.",
+    "sharpness": "Schärfe",
+    "sharpnessGroup": "Cyberspace-Schärfe",
+    "sharpnessHint": "Weniger Treppeneffekt = mehr Arbeit für die GPU. 0,75× entlastet; 1,5× und 2× glätten. Gilt sofort.",
+    "smoothEdges": "Kanten glätten",
+    "smoothEdgesHint": "Kantenglättung. Gilt beim nächsten Öffnen des Cyberspace.",
+    "auto": "Auto",
+    "on": "An",
+    "off": "Aus",
+    "showFps": "FPS anzeigen",
+    "showFpsHint": "Bildzähler und Grafikkartenname in der Ecke – wenn es ruckelt, schick einen Screenshot.",
+    "account": "Konto",
+    "invite": "Einladung öffnen",
+    "ceoMode": "CEO-Modus",
+    "session": "Sitzung",
+    "logout": "Abmelden",
+    "dangerZone": "Gefahrenzone",
+    "deleting": "Wird gelöscht…",
+    "deleteAccount": "Mein Konto löschen",
+    "deleteConfirm": "Konto löschen? Dadurch werden ALLE deine Daten entfernt und die E-Mail für einen Neustart freigegeben. Das lässt sich nicht rückgängig machen.",
+    "deleteFailed": "Das Konto konnte gerade nicht gelöscht werden. Bitte erneut versuchen.",
+    "connectionError": "Verbindungsfehler."
+  }
 }

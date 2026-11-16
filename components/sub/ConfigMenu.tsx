@@ -92,14 +92,14 @@ export default function ConfigMenu() {
 
   const apagarConta = async () => {
     if (apagando) return;
-    if (!window.confirm("Apagar sua conta? Isso remove TODOS os seus dados e libera o e-mail pra começar do zero. Não dá pra desfazer.")) return;
+    if (!window.confirm(t("configMenu.deleteConfirm"))) return;
     setApagando(true);
     try {
       const r = await fetch("/api/account", { method: "DELETE" });
-      if (!r.ok) { setApagando(false); window.alert("Não consegui apagar a conta agora. Tente de novo."); return; }
+      if (!r.ok) { setApagando(false); window.alert(t("configMenu.deleteFailed")); return; }
       limparCopiaDasConversas(session?.user?.email, true);
       await signOut({ callbackUrl: "/" });
-    } catch { setApagando(false); window.alert("Erro de conexão."); }
+    } catch { setApagando(false); window.alert(t("configMenu.connectionError")); }
   };
 
   return (
@@ -134,7 +134,7 @@ export default function ConfigMenu() {
           <Gaveta id="geral" titulo={t("siteNav.general")} icone={<Globe size={16} className="text-cyan-600 dark:text-cyan-300 shrink-0" />} aberta={gaveta === "geral"} alternar={alternarGaveta}>
             <div className={`${item} cursor-default`}>
               <span className="flex flex-col flex-1">
-                <span className={rotulo}>{t("options.language", "Idioma")}</span>
+                <span className={rotulo}>{t("configMenu.language")}</span>
                 <span>{(i18n.language || "pt").toUpperCase()}</span>
               </span>
               <LanguageFlagToggle size={30} />
@@ -145,24 +145,24 @@ export default function ConfigMenu() {
                 <GraduationCap size={16} className="text-cyan-600 dark:text-cyan-300 shrink-0" />
                 <span className="flex flex-col flex-1 min-w-0">
                   <span className={rotulo}>{t("siteNav.lab")}</span>
-                  <span>Rever tutorial</span>
-                  <span className="text-[11px] font-normal text-slate-500 dark:text-white/45 leading-snug">A Aura mostra de novo os tutoriais e as dicas da Sala de Estudos e do Perfil.</span>
+                  <span>{t("configMenu.rewatchTutorial")}</span>
+                  <span className="text-[11px] font-normal text-slate-500 dark:text-white/45 leading-snug">{t("configMenu.rewatchTutorialHint")}</span>
                 </span>
               </button>
             )}
           </Gaveta>
 
           {/* CYBERESPAÇO: modo tutorial, gráficos, nitidez, FPS */}
-          <Gaveta id="cyber" titulo="Cyberespaço" icone={<Monitor size={16} className="text-cyan-600 dark:text-cyan-300 shrink-0" />} aberta={gaveta === "cyber"} alternar={alternarGaveta}>
+          <Gaveta id="cyber" titulo={t("configMenu.cyberspace")} icone={<Monitor size={16} className="text-cyan-600 dark:text-cyan-300 shrink-0" />} aberta={gaveta === "cyber"} alternar={alternarGaveta}>
 
             {/* MODO TUTORIAL do cyberespaço: ligado, toda entrada começa pelo tutorial (vale na próxima entrada) */}
             {logado && (
               <button type="button" role="switch" aria-checked={tutorial} onClick={mudarTutorial} className={item}>
                 <GraduationCap size={16} className="text-cyan-600 dark:text-cyan-300 shrink-0" />
                 <span className="flex flex-col flex-1 min-w-0">
-                  <span className={rotulo}>Cyberespaço</span>
-                  <span>Modo tutorial</span>
-                  <span className="text-[11px] font-normal text-slate-500 dark:text-white/45 leading-snug">{tutorial ? "Ligado: ao entrar no cyberespaço, o tutorial é obrigatório." : "Desligado: o cyberespaço normal."}</span>
+                  <span className={rotulo}>{t("configMenu.cyberspace")}</span>
+                  <span>{t("configMenu.tutorialMode")}</span>
+                  <span className="text-[11px] font-normal text-slate-500 dark:text-white/45 leading-snug">{t(tutorial ? "configMenu.tutorialOn" : "configMenu.tutorialOff")}</span>
                 </span>
                 <span aria-hidden className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${tutorial ? "bg-cyan-500" : "bg-slate-300 dark:bg-white/15"}`}>
                   <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${tutorial ? "translate-x-5" : ""}`} />
@@ -175,47 +175,47 @@ export default function ConfigMenu() {
               <span className="flex items-center gap-3">
                 <Gauge size={16} className="text-cyan-600 dark:text-cyan-300 shrink-0" />
                 <span className="flex flex-col flex-1 min-w-0">
-                  <span className={rotulo}>Cyberespaço</span>
-                  <span>Gráficos</span>
-                  <span className="text-[11px] font-normal text-slate-500 dark:text-white/45 leading-snug">{graficos === "auto" ? "Automático: leve em placa de vídeo integrada (Intel/AMD de notebook)." : graficos === "leve" ? "Leve: menos coisa ao longe e menos efeitos, 30 fps." : "Completo: tudo no máximo (precisa de placa de vídeo)."} Vale ao abrir o cyberespaço de novo.</span>
+                  <span className={rotulo}>{t("configMenu.cyberspace")}</span>
+                  <span>{t("configMenu.graphics")}</span>
+                  <span className="text-[11px] font-normal text-slate-500 dark:text-white/45 leading-snug">{t(graficos === "auto" ? "configMenu.graphicsAutoHint" : graficos === "leve" ? "configMenu.graphicsLightHint" : "configMenu.graphicsFullHint")} {t("configMenu.reopenHint")}</span>
                 </span>
               </span>
-              <span role="radiogroup" aria-label="Gráficos do cyberespaço" className="grid grid-cols-3 gap-1 rounded-xl bg-slate-200/60 p-1 dark:bg-white/[0.06]">
-                {([["auto", "Automático"], ["leve", "Leve"], ["cheio", "Completo"]] as const).map(([v, t]) => (
+              <span role="radiogroup" aria-label={t("configMenu.graphicsGroup")} className="grid grid-cols-3 gap-1 rounded-xl bg-slate-200/60 p-1 dark:bg-white/[0.06]">
+                {([["auto", "configMenu.graphicsAuto"], ["leve", "configMenu.graphicsLight"], ["cheio", "configMenu.graphicsFull"]] as const).map(([v, chave]) => (
                   <button key={v} type="button" role="radio" aria-checked={graficos === v} onClick={() => mudarGraficos(v)}
-                    className={`min-h-[34px] rounded-lg text-xs font-semibold transition-colors ${graficos === v ? "bg-white text-slate-900 shadow dark:bg-cyan-500/25 dark:text-white" : "text-slate-600 hover:text-slate-900 dark:text-white/60 dark:hover:text-white"}`}>{t}</button>
+                    className={`min-h-[34px] rounded-lg text-xs font-semibold transition-colors ${graficos === v ? "bg-white text-slate-900 shadow dark:bg-cyan-500/25 dark:text-white" : "text-slate-600 hover:text-slate-900 dark:text-white/60 dark:hover:text-white"}`}>{t(chave)}</button>
                 ))}
               </span>
             </div>
             {/* o SERRILHADO: a nitidez (pixels por pixel da tela — vale na hora) e suavizar bordas (o antialias — ao abrir de novo) */}
             <div className={`${item} flex-col !items-stretch gap-2 py-2.5`}>
               <span className="flex flex-col min-w-0 pl-7">
-                <span>Nitidez</span>
-                <span className="text-[11px] font-normal text-slate-500 dark:text-white/45 leading-snug">Menos serrilhado = mais trabalho pra placa. 0,75× alivia; 1,5× e 2× deixam liso. Vale na hora.</span>
+                <span>{t("configMenu.sharpness")}</span>
+                <span className="text-[11px] font-normal text-slate-500 dark:text-white/45 leading-snug">{t("configMenu.sharpnessHint")}</span>
               </span>
-              <span role="radiogroup" aria-label="Nitidez do cyberespaço" className="grid grid-cols-5 gap-1 rounded-xl bg-slate-200/60 p-1 dark:bg-white/[0.06]">
-                {([["auto", "Auto"], ["0.75", "0,75×"], ["1", "1×"], ["1.5", "1,5×"], ["2", "2×"]] as const).map(([v, t]) => (
+              <span role="radiogroup" aria-label={t("configMenu.sharpnessGroup")} className="grid grid-cols-5 gap-1 rounded-xl bg-slate-200/60 p-1 dark:bg-white/[0.06]">
+                {([["auto", null], ["0.75", "0,75×"], ["1", "1×"], ["1.5", "1,5×"], ["2", "2×"]] as const).map(([v, rot]) => (
                   <button key={v} type="button" role="radio" aria-checked={nitidez === v} onClick={() => mudarNitidez(v)}
-                    className={`min-h-[34px] rounded-lg text-xs font-semibold transition-colors ${nitidez === v ? "bg-white text-slate-900 shadow dark:bg-cyan-500/25 dark:text-white" : "text-slate-600 hover:text-slate-900 dark:text-white/60 dark:hover:text-white"}`}>{t}</button>
+                    className={`min-h-[34px] rounded-lg text-xs font-semibold transition-colors ${nitidez === v ? "bg-white text-slate-900 shadow dark:bg-cyan-500/25 dark:text-white" : "text-slate-600 hover:text-slate-900 dark:text-white/60 dark:hover:text-white"}`}>{rot ?? t("configMenu.auto")}</button>
                 ))}
               </span>
               <span className="flex flex-col min-w-0 pl-7 pt-1">
-                <span>Suavizar bordas</span>
-                <span className="text-[11px] font-normal text-slate-500 dark:text-white/45 leading-snug">O antisserrilhado das bordas. Vale ao abrir o cyberespaço de novo.</span>
+                <span>{t("configMenu.smoothEdges")}</span>
+                <span className="text-[11px] font-normal text-slate-500 dark:text-white/45 leading-snug">{t("configMenu.smoothEdgesHint")}</span>
               </span>
-              <span role="radiogroup" aria-label="Suavizar bordas" className="grid grid-cols-3 gap-1 rounded-xl bg-slate-200/60 p-1 dark:bg-white/[0.06]">
-                {([["auto", "Auto"], ["sim", "Ligado"], ["nao", "Desligado"]] as const).map(([v, t]) => (
+              <span role="radiogroup" aria-label={t("configMenu.smoothEdges")} className="grid grid-cols-3 gap-1 rounded-xl bg-slate-200/60 p-1 dark:bg-white/[0.06]">
+                {([["auto", "configMenu.auto"], ["sim", "configMenu.on"], ["nao", "configMenu.off"]] as const).map(([v, chave]) => (
                   <button key={v} type="button" role="radio" aria-checked={suavizar === v} onClick={() => mudarSuavizar(v)}
-                    className={`min-h-[34px] rounded-lg text-xs font-semibold transition-colors ${suavizar === v ? "bg-white text-slate-900 shadow dark:bg-cyan-500/25 dark:text-white" : "text-slate-600 hover:text-slate-900 dark:text-white/60 dark:hover:text-white"}`}>{t}</button>
+                    className={`min-h-[34px] rounded-lg text-xs font-semibold transition-colors ${suavizar === v ? "bg-white text-slate-900 shadow dark:bg-cyan-500/25 dark:text-white" : "text-slate-600 hover:text-slate-900 dark:text-white/60 dark:hover:text-white"}`}>{t(chave)}</button>
                 ))}
               </span>
             </div>
             <button type="button" role="switch" aria-checked={mostrarFps} onClick={mudarFps} className={item}>
               <Activity size={16} className="text-cyan-600 dark:text-cyan-300 shrink-0" />
               <span className="flex flex-col flex-1 min-w-0">
-                <span className={rotulo}>Cyberespaço</span>
-                <span>Mostrar FPS</span>
-                <span className="text-[11px] font-normal text-slate-500 dark:text-white/45 leading-snug">O contador de quadros e o nome da placa de vídeo no canto da tela — se estiver lento, manda um print.</span>
+                <span className={rotulo}>{t("configMenu.cyberspace")}</span>
+                <span>{t("configMenu.showFps")}</span>
+                <span className="text-[11px] font-normal text-slate-500 dark:text-white/45 leading-snug">{t("configMenu.showFpsHint")}</span>
               </span>
               <span aria-hidden className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${mostrarFps ? "bg-cyan-500" : "bg-slate-300 dark:bg-white/15"}`}>
                 <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${mostrarFps ? "translate-x-5" : ""}`} />
@@ -225,11 +225,11 @@ export default function ConfigMenu() {
 
           {/* CONTA: convite, Modo CEO, sair, deletar — só logado */}
           {logado && (
-          <Gaveta id="conta" titulo="Conta" icone={<UserRound size={16} className="text-cyan-600 dark:text-cyan-300 shrink-0" />} aberta={gaveta === "conta"} alternar={alternarGaveta}>
+          <Gaveta id="conta" titulo={t("configMenu.account")} icone={<UserRound size={16} className="text-cyan-600 dark:text-cyan-300 shrink-0" />} aberta={gaveta === "conta"} alternar={alternarGaveta}>
             {convite && (
               <button type="button" onClick={() => ir("/convite")} className={item}>
                 <Ticket size={16} className="text-cyan-600 dark:text-cyan-300 shrink-0" />
-                <span className="flex-1 truncate">Acessar convite</span>
+                <span className="flex-1 truncate">{t("configMenu.invite")}</span>
                 <ChevronRightIcon className="h-4 w-4 opacity-30 group-hover:opacity-100" />
               </button>
             )}
@@ -239,23 +239,23 @@ export default function ConfigMenu() {
               <button type="button" onClick={() => ir("/workstation/admin")} className={`${item} hover:!border-amber-400/60`}>
                 <span aria-hidden className="absolute left-1 top-1/2 -translate-y-1/2 h-6 w-[3px] rounded-full bg-amber-400" />
                 <Crown size={16} className="text-amber-500 dark:text-amber-300 shrink-0" />
-                <span className="flex-1 truncate">Modo CEO</span>
+                <span className="flex-1 truncate">{t("configMenu.ceoMode")}</span>
                 <ChevronRightIcon className="h-4 w-4 opacity-30 group-hover:opacity-100" />
               </button>
             )}
 
             <button type="button" onClick={() => { limparCopiaDasConversas(session?.user?.email); void signOut(); }} className={`${item} hover:!bg-red-50 hover:!border-red-300 dark:hover:!bg-red-500/20 dark:hover:!border-red-500/40`}>
               <span className="flex flex-col flex-1">
-                <span className={rotulo}>Sessão</span>
-                <span>{t("menu.logout", "Sair")}</span>
+                <span className={rotulo}>{t("configMenu.session")}</span>
+                <span>{t("configMenu.logout")}</span>
               </span>
               <ArrowRightStartOnRectangleIcon className="h-4 w-4 opacity-40" />
             </button>
             <button type="button" onClick={() => void apagarConta()} disabled={apagando}
               className="flex items-center gap-3 w-full min-h-[48px] px-3 rounded-2xl text-left text-sm font-medium border bg-red-50/60 text-red-600 border-red-200 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-300 dark:border-red-500/30 dark:hover:bg-red-500/20 transition-colors">
               <span className="flex flex-col flex-1">
-                <span className="text-[9px] uppercase font-bold tracking-tighter opacity-60">Zona de risco</span>
-                <span>{apagando ? "Apagando…" : "Deletar minha conta"}</span>
+                <span className="text-[9px] uppercase font-bold tracking-tighter opacity-60">{t("configMenu.dangerZone")}</span>
+                <span>{t(apagando ? "configMenu.deleting" : "configMenu.deleteAccount")}</span>
               </span>
               {apagando ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} className="opacity-70" />}
             </button>

@@ -14,6 +14,7 @@ import "@/src/i18n";
 import { Navbar } from "@/components/main/navbar";
 import { Mic, MicOff, Code2, Building2, Loader2 } from "lucide-react";
 import { ConversasSlotContext } from "@/components/chat/ConversasSlot";
+import { BlueprintsSlotContext } from "@/components/blueprint/BlueprintsSlot";
 import ConversasDaSala from "@/components/chat/ConversasDaSala";
 import { useSidebarHover, focoDeTeclado } from "@/components/lab/useSidebarHover";
 import { useIsMobile, QUERY_CELULAR, QUERY_CELULAR_DEITADO } from "@/lib/ui/useIsMobile";
@@ -830,6 +831,9 @@ export default function HomeworkPage({
   const pesquisaChatRef = useRef<HTMLDivElement>(null);
   const [estudosChatAtivo, setEstudosChatAtivo] = useState(false);
   const [pesquisaChatAtivo, setPesquisaChatAtivo] = useState(false);
+  // os ESTUDOS (blueprints) da Sala de Estudos: a mesma regra das conversas — o ramo só abre com o mouse/foco na área dela
+  const salaEstudosRef = useRef<HTMLDivElement>(null);
+  const [salaEstudosAtiva, setSalaEstudosAtiva] = useState(false);
   const handlersChat = (ref: React.RefObject<HTMLDivElement>, set: (v: boolean) => void) => ({
     onMouseEnter: () => set(true),
     // SÓ o foco de TECLADO (Tab) abre — o foco PROGRAMÁTICO (criar uma nova conversa, a resposta chegando, a lista
@@ -852,6 +856,7 @@ export default function HomeworkPage({
     if (isSidebarOpen || digitandoNoChat()) return;
     setEstudosChatAtivo(false);
     setPesquisaChatAtivo(false);
+    setSalaEstudosAtiva(false);
   }, [isSidebarOpen, digitandoNoChat]);
   // CELULAR (≤767px): não existe hover — um toque abria a sidebar por cima de tudo e ela nunca fechava. Lá a sidebar
   // vira GAVETA (☰ na barra de baixo, fecha ao escolher) e a barra de baixo leva às salas; o conteúdo usa a largura toda.
@@ -921,6 +926,8 @@ export default function HomeworkPage({
   const agenteProcessando = sinalAgente === "pensando" || sinalAgente === "falando";
   // Onde o chat da sala ativa desenha a lista de conversas (portal) — components/chat/ConversasSlot.
   const [slotConversas, setSlotConversas] = useState<HTMLDivElement | null>(null);
+  // Onde a Sala de Estudos desenha a lista dos estudos (portal) — components/blueprint/BlueprintsSlot.
+  const [slotBlueprints, setSlotBlueprints] = useState<HTMLDivElement | null>(null);
   const [isChatLeft, setIsChatLeft] = useState(false);
   const router = useRouter();
   const [isFocusMode, setIsFocusMode] = useState(false);
@@ -2735,6 +2742,7 @@ export default function HomeworkPage({
 
   return (
     <ConversasSlotContext.Provider value={isEmbedded ? null : { el: slotConversas, sala: activeTab === "pesquisa" ? "pesquisa" : activeTab === "sala-de-estudos" ? "estudos" : null }}>
+    <BlueprintsSlotContext.Provider value={isEmbedded ? null : { el: slotBlueprints }}>
     <div
       className={`relative transition-all duration-500 overflow-hidden flex font-sans w-full bg-slate-100 dark:bg-[#030014]
             ${isEmbedded ? "h-full" : "h-screen h-[100dvh]"}
@@ -2861,6 +2869,9 @@ export default function HomeworkPage({
                 : <div className={RAMO}><ConversasDaSala sala="estudos" onEntrar={() => setActiveTab("sala-de-estudos")} /></div>}
             </Ramo>
             </div>
+            {/* Sala de Estudos: os ESTUDOS (blueprints) moram embaixo dela, em gavetas por dia — como as conversas do chat.
+                O board ficou limpo; a Sala desenha a lista aqui por portal (components/blueprint/BlueprintsSlot). */}
+            <div ref={salaEstudosRef} {...handlersChat(salaEstudosRef, setSalaEstudosAtiva)} className="flex flex-col gap-3">
             <button
               data-tour="tab-feed"
               onClick={() => irEstudos("feed")}
@@ -2870,6 +2881,10 @@ export default function HomeworkPage({
               <DocumentTextIcon className="w-5 h-5 shrink-0" />
               <Rotulo v={sidebarAberta}>{t("labSidebar.study")}</Rotulo>
             </button>
+            <Ramo aberto={(celular || salaEstudosAtiva) && sidebarAberta && activeTab === "sala-de-estudos" && abaEstudos === "feed"}>
+              <div ref={setSlotBlueprints} className={RAMO_ATIVO} />
+            </Ramo>
+            </div>
 
             {/* Sala de Pesquisa — no chat único ela é o MODO PESQUISA do chat da Aura (sem item próprio) */}
             {!CHAT_UNICO && (
@@ -4003,6 +4018,7 @@ export default function HomeworkPage({
       {/* e na 1ª vez que abre o Escritório, o tutorial dele (lib/onboarding/tourEscritorio) */}
       <TourEscritorio naAba={activeTab === "escritorio"} noTutorial={tutorialLab} />
     </div>
+    </BlueprintsSlotContext.Provider>
     </ConversasSlotContext.Provider>
   );
 }

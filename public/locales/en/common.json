@@ -10,7 +10,9 @@
     "close": "Close menu",
     "settings": "Settings",
     "general": "General",
-    "theme": "Toggle theme"
+    "theme": "Toggle theme",
+    "languageTitle": "Language: {{name}} — click to change",
+    "languageAria": "Current language: {{name}}. Click to change."
   },
   "labSidebar": {
     "study": "Study Room",
@@ -53,7 +55,31 @@
     "empty": "No conversations yet.",
     "cancel": "Cancel",
     "confirm": "Delete conversation?",
-    "confirmTopics": "Delete conversation and subtopics ({{count}})?"
+    "confirmTopics": "Delete conversation and subtopics ({{count}})?",
+    "studiesList": "Study Room studies",
+    "searchStudies": "Search studies",
+    "noStudies": "No studies yet. Chat with Aura: when a conversation becomes a study, it shows up here.",
+    "loading": "Loading…",
+    "studiesError": "Couldn't load your studies.",
+    "retry": "Try again",
+    "more": "Show more",
+    "moreFailed": "Didn't load — try again",
+    "confirmStudy": "Delete study?",
+    "confirmStudyShared": "Delete study? {{count}} person(s) with access will lose it.",
+    "newStudyName": "New study name",
+    "phase": "Phase {{n}}",
+    "critical": "{{count}} critical",
+    "awaitingMentor": "Awaiting mentor",
+    "chatWith": "Chat with",
+    "moreAgents": "Add more agents, like <b>Octa Code</b>, from the Marketplace.",
+    "agentRole": {
+      "aura": "Studies, research and conversation",
+      "zenita": "Schedule, classes and exams",
+      "nina": "Notebook, summaries and study plan",
+      "octa": "Coding agent · IDE",
+      "eiffel": "Civil and structural engineering · CAD",
+      "noether": "Math · proofs, calculus and dynamic geometry"
+    }
   },
     "forja": {
         "board": {
@@ -773,5 +799,44 @@
             "chat": "Start chat",
             "conta": "Create my account"
         }
-    }
+    },
+  "configMenu": {
+    "language": "Language",
+    "rewatchTutorial": "Replay tutorial",
+    "rewatchTutorialHint": "Aura shows the Study Room and Profile tutorials and tips again.",
+    "cyberspace": "Cyberspace",
+    "tutorialMode": "Tutorial mode",
+    "tutorialOn": "On: entering the cyberspace starts the tutorial.",
+    "tutorialOff": "Off: the regular cyberspace.",
+    "graphics": "Graphics",
+    "graphicsGroup": "Cyberspace graphics",
+    "graphicsAuto": "Automatic",
+    "graphicsLight": "Light",
+    "graphicsFull": "Full",
+    "graphicsAutoHint": "Automatic: light on integrated graphics (laptop Intel/AMD).",
+    "graphicsLightHint": "Light: less in the distance and fewer effects, 30 fps.",
+    "graphicsFullHint": "Full: everything maxed out (needs a dedicated GPU).",
+    "reopenHint": "Applies when you reopen the cyberspace.",
+    "sharpness": "Sharpness",
+    "sharpnessGroup": "Cyberspace sharpness",
+    "sharpnessHint": "Less aliasing = more GPU work. 0.75× eases it; 1.5× and 2× make it smooth. Applies immediately.",
+    "smoothEdges": "Smooth edges",
+    "smoothEdgesHint": "Edge anti-aliasing. Applies when you reopen the cyberspace.",
+    "auto": "Auto",
+    "on": "On",
+    "off": "Off",
+    "showFps": "Show FPS",
+    "showFpsHint": "The frame counter and GPU name in the corner of the screen — if it's slow, send us a screenshot.",
+    "account": "Account",
+    "invite": "Open invite",
+    "ceoMode": "CEO mode",
+    "session": "Session",
+    "logout": "Sign out",
+    "dangerZone": "Danger zone",
+    "deleting": "Deleting…",
+    "deleteAccount": "Delete my account",
+    "deleteConfirm": "Delete your account? This removes ALL your data and frees the email to start over. This can't be undone.",
+    "deleteFailed": "Couldn't delete the account right now. Please try again.",
+    "connectionError": "Connection error."
+  }
 }

@@ -10,7 +10,9 @@
     "close": "Cerrar menú",
     "settings": "Configuración",
     "general": "General",
-    "theme": "Cambiar tema"
+    "theme": "Cambiar tema",
+    "languageTitle": "Idioma: {{name}} — haz clic para cambiar",
+    "languageAria": "Idioma actual: {{name}}. Haz clic para cambiar."
   },
   "labSidebar": {
     "study": "Sala de Estudio",
@@ -53,7 +55,31 @@
     "empty": "Todavía no hay conversaciones.",
     "cancel": "Cancelar",
     "confirm": "¿Eliminar conversación?",
-    "confirmTopics": "¿Eliminar conversación y subtemas ({{count}})?"
+    "confirmTopics": "¿Eliminar conversación y subtemas ({{count}})?",
+    "studiesList": "Estudios de la Sala de Estudio",
+    "searchStudies": "Buscar estudios",
+    "noStudies": "Aún no hay estudios. Conversa con Aura: cuando la conversación se convierta en estudio, aparecerá aquí.",
+    "loading": "Cargando…",
+    "studiesError": "No se pudieron cargar los estudios.",
+    "retry": "Intentar de nuevo",
+    "more": "Ver más",
+    "moreFailed": "No cargó — intentar de nuevo",
+    "confirmStudy": "¿Eliminar estudio?",
+    "confirmStudyShared": "¿Eliminar estudio? {{count}} persona(s) con acceso dejará(n) de verlo.",
+    "newStudyName": "Nuevo nombre del estudio",
+    "phase": "Fase {{n}}",
+    "critical": "{{count}} crítico(s)",
+    "awaitingMentor": "Esperando al mentor",
+    "chatWith": "Conversar con",
+    "moreAgents": "Puedes añadir más agentes, como <b>Octa Code</b>, en el Marketplace.",
+    "agentRole": {
+      "aura": "Estudios, investigación y conversación",
+      "zenita": "Agenda, clases y exámenes",
+      "nina": "Cuaderno, resúmenes y plan de estudio",
+      "octa": "Agente de código · IDE",
+      "eiffel": "Ingeniería civil y estructural · CAD",
+      "noether": "Matemáticas · demostraciones, cálculo y geometría dinámica"
+    }
   },
     "forja": {
         "board": {
@@ -773,5 +799,44 @@
             "chat": "Iniciar chat",
             "conta": "Crear mi cuenta"
         }
-    }
+    },
+  "configMenu": {
+    "language": "Idioma",
+    "rewatchTutorial": "Ver el tutorial de nuevo",
+    "rewatchTutorialHint": "Aura vuelve a mostrar los tutoriales y consejos de la Sala de Estudio y del Perfil.",
+    "cyberspace": "Ciberespacio",
+    "tutorialMode": "Modo tutorial",
+    "tutorialOn": "Activado: al entrar al ciberespacio, el tutorial es obligatorio.",
+    "tutorialOff": "Desactivado: el ciberespacio normal.",
+    "graphics": "Gráficos",
+    "graphicsGroup": "Gráficos del ciberespacio",
+    "graphicsAuto": "Automático",
+    "graphicsLight": "Ligero",
+    "graphicsFull": "Completo",
+    "graphicsAutoHint": "Automático: ligero con gráficos integrados (Intel/AMD de portátil).",
+    "graphicsLightHint": "Ligero: menos cosas a lo lejos y menos efectos, 30 fps.",
+    "graphicsFullHint": "Completo: todo al máximo (requiere tarjeta gráfica).",
+    "reopenHint": "Se aplica al volver a abrir el ciberespacio.",
+    "sharpness": "Nitidez",
+    "sharpnessGroup": "Nitidez del ciberespacio",
+    "sharpnessHint": "Menos dientes de sierra = más trabajo para la tarjeta. 0,75× alivia; 1,5× y 2× lo suavizan. Se aplica al instante.",
+    "smoothEdges": "Suavizar bordes",
+    "smoothEdgesHint": "El antialiasing de los bordes. Se aplica al volver a abrir el ciberespacio.",
+    "auto": "Auto",
+    "on": "Activado",
+    "off": "Desactivado",
+    "showFps": "Mostrar FPS",
+    "showFpsHint": "El contador de fotogramas y el nombre de la tarjeta gráfica en la esquina — si va lento, envíanos una captura.",
+    "account": "Cuenta",
+    "invite": "Abrir invitación",
+    "ceoMode": "Modo CEO",
+    "session": "Sesión",
+    "logout": "Cerrar sesión",
+    "dangerZone": "Zona de riesgo",
+    "deleting": "Eliminando…",
+    "deleteAccount": "Eliminar mi cuenta",
+    "deleteConfirm": "¿Eliminar tu cuenta? Esto borra TODOS tus datos y libera el correo para empezar de cero. No se puede deshacer.",
+    "deleteFailed": "No se pudo eliminar la cuenta ahora. Inténtalo de nuevo.",
+    "connectionError": "Error de conexión."
+  }
 }
