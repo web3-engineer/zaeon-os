@@ -528,6 +528,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   useFecharNoVoltar(active && celular && !!openStudyId, () => setOpenStudyId(null));
   useFecharNoVoltar(active && celular && cerebroAberto, () => setCerebroAberto(false));
   useFecharNoVoltar(active && celular && cartolinaAberta, () => setCartolinaAberta(false));
+  useFecharNoVoltar(active && celular && !!trabalhoAberto, () => setTrabalhoAberto(null));
   const [tree, setTree] = useState<SkillTreeData | null>(null);
   const [skillNode, setSkillNode] = useState<{ topicSlug: string; nodeId: string; title: string } | null>(null);
   const [treeRefresh, setTreeRefresh] = useState(0);
