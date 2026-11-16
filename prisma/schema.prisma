@@ -692,6 +692,7 @@ model VoiceJob {
 // eventos, cards) fica em `meta`. Cache por (sourceIds + kind): o Play reusa.
 model StudioArtifact {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  skin        String?                    // material visual do card
   ownerId    String   @db.ObjectId
   sourceIds  String[] @default([])      // StudyItem/StudySpace de origem
   kind       String                      // podcast | video | mindmap | timeline | guide | faq | flashcards | image | soundtrack | narration
@@ -1862,6 +1863,7 @@ model ConsoleConversa {
 // embutido em lib/estudos/vitrine.ts. Espelha o tipo ItemVitrine (frações e selos achatados em campos).
 model ItemVitrine {
   id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  skin        String?                    // material visual do card
   slug            String   @unique            // o "id" estável usado na UI
   titulo          String
   subtitulo       String   @default("")
@@ -1912,6 +1914,7 @@ model VitrineAjuste {
 // a partir de um trabalho da Sala de Pesquisa (entra "pendente" e espera a aprovação do admin).
 model PesquisaVitrine {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  skin        String?                    // material visual do card
   slug        String   @unique
   titulo      String
   resumo      String   @default("")

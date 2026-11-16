@@ -8,6 +8,7 @@
  */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+import { skinDaVitrine } from "@/lib/estudos/skinVitrine";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
@@ -57,15 +58,15 @@ export async function POST(req: Request) {
     const titulo = String(work.title ?? "").trim().slice(0, LIMITES.titulo) || "Pesquisa sem título";
     const campos = { titulo, resumo: env.resumo, nicho: env.nicho, tags: env.tags, autor: me.name ?? "", partes, status: "pendente", motivo: null };
 
-    const jaExiste = await prisma.pesquisaVitrine.findFirst({ where: { workId: work.id, contaId: me.id }, select: { id: true } });
+    const jaExiste = await prisma.pesquisaVitrine.findFirst({ where: { workId: work.id, contaId: me.id }, select: { id: true, skin: true } });
     if (jaExiste) {
-        const pesquisa = await prisma.pesquisaVitrine.update({ where: { id: jaExiste.id }, data: campos, select: { id: true, slug: true, status: true } });
+        const pesquisa = await prisma.pesquisaVitrine.update({ where: { id: jaExiste.id }, data: { ...campos, skin: jaExiste.skin ?? skinDaVitrine({ tipo: "pesquisa", ...campos }) }, select: { id: true, slug: true, status: true } });
         return json({ pesquisa });
     }
     const pendentes = await prisma.pesquisaVitrine.count({ where: { contaId: me.id, status: "pendente" } });
     if (pendentes >= LIMITES.pendentesPorConta) return json({ erro: `Você já tem ${pendentes} pesquisas esperando aprovação. Espere a fila andar.` }, 429);
     const pesquisa = await prisma.pesquisaVitrine.create({
-        data: { ...campos, slug: await slugLivre(titulo), contaId: me.id, workId: work.id, origem: "usuario" },
+        data: { ...campos, skin: skinDaVitrine({ tipo: "pesquisa", ...campos }), slug: await slugLivre(titulo), contaId: me.id, workId: work.id, origem: "usuario" },
         select: { id: true, slug: true, status: true },
     });
     return json({ pesquisa }, 201);

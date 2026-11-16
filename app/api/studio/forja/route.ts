@@ -6,6 +6,7 @@
  * POST { cursoId?|topic? } → { id, status:"done", title, meta } na hora. Reusa o artefato do aluno
  * (curado é determinístico — não duplica a cada abertura).
  */
+import { skinDaVitrine } from "@/lib/estudos/skinVitrine";
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { guard } from "@/src/lib/ratelimit";
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
     orderBy: { createdAt: "desc" },
   });
   const art = existente ?? (await prisma.studioArtifact.create({
-    data: { ownerId: userId, sourceIds: [chave], kind: "forja", status: "done", title: esq.titulo, mime: "application/json", meta: curso as unknown as object },
+    data: { ownerId: userId, sourceIds: [chave], kind: "forja", skin: skinDaVitrine({ kind: "forja" }), status: "done", title: esq.titulo, mime: "application/json", meta: curso as unknown as object },
   }));
 
   return NextResponse.json({ id: art.id, status: "done", title: esq.titulo, meta: { ...curso, licoesPorNo }, cards });

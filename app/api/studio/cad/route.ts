@@ -22,6 +22,7 @@
  * está, e por isso a rota responde 503 em vez de estourar — o mesmo trilho que o atlas de anatomia
  * usa para "o servidor está sem o dado".
  */
+import { skinDaVitrine } from "@/lib/estudos/skinVitrine";
 import { NextResponse } from "next/server";
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -126,7 +127,7 @@ export async function POST(req: Request) {
       data: {
         ownerId: userId,
         sourceIds: [],
-        kind: "cad",
+        kind: "cad", skin: skinDaVitrine({ kind: "cad" }),
         status: "done",
         mime: "model/step",
         title: tituloDaPeca(tema),

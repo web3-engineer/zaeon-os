@@ -10,6 +10,7 @@
  * ainda NÃO está no ar: nada aqui cobra ninguém (comprar é um "em breve"). Um estudo de verdade entra na vitrine quando
  * o blueprint dele fica VENDÁVEL (lib/estudos/blueprint).
  */
+import type { SkinVitrine } from "./skinVitrine";
 import type { Raridade } from "./blueprint";
 import { AGENTES_ORQUESTRA } from "@/lib/orquestra/catalogo";
 import type { PluginChat } from "@/lib/plugins/chatPlugins";
@@ -29,6 +30,7 @@ export type Execucao = "dyom" | "agente";
 
 export type ItemVitrine = {
   id: string; titulo: string; subtitulo: string;
+  skin?: SkinVitrine;
   tipo: TipoProduto; execucao: Execucao; modelo: Modelo3D;
   autor: string; raridade: Raridade; profundidade: number;
   /** preço de UMA fração, em SOL (Solana) (0 = grátis: open source / comunidade) */
@@ -98,7 +100,7 @@ const MODELO_INICIANTE: Record<string, Modelo3D> = {
   "encurtador-de-url": "engrenagem", "app-de-clima": "ondas", "pomodoro": "engrenagem",
 };
 export const ITENS_FORJA_INICIANTES: readonly ItemVitrine[] = INICIANTES.map((e): ItemVitrine => ({
-  id: `forja:${e.id}`, titulo: e.titulo, subtitulo: e.resumo,
+  id: `forja:${e.id}`, skin: "tecnologia", titulo: e.titulo, subtitulo: e.resumo,
   tipo: "curso", execucao: "dyom", modelo: MODELO_INICIANTE[e.id] ?? "chip",
   autor: e.licenca?.titular ?? "comunidade open source", raridade: "comum", profundidade: 34,
   preco: 0, fracoes: { total: 1, vendidas: 0 },
@@ -120,7 +122,7 @@ const MODELO_TEMA_AVANCADO: Record<TemaAvancado, Modelo3D> = {
   robotica: "robo", sistemas: "engrenagem", ia: "chip", "graficos-jogos": "console", "redes-distribuido": "ondas",
 };
 export const ITENS_FORJA_AVANCADOS: readonly ItemVitrine[] = AVANCADOS.map((e): ItemVitrine => ({
-  id: `forja:${e.id}`, titulo: e.titulo, subtitulo: e.resumo,
+  id: `forja:${e.id}`, skin: "tecnologia", titulo: e.titulo, subtitulo: e.resumo,
   tipo: "curso", execucao: "dyom", modelo: MODELO_TEMA_AVANCADO[TEMA_AVANCADO[e.id]] ?? "chip",
   autor: e.licenca?.titular ?? "comunidade open source", raridade: "rara", profundidade: 72,
   preco: 0, fracoes: { total: 1, vendidas: 0 },

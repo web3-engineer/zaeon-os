@@ -3,6 +3,7 @@
  * Cria o artefato (queued) e gera em background (ffmpeg); o cliente faz polling em
  * /api/studio/[id] e toca /api/studio/[id]/file quando done. Cache por sourceIds.
  */
+import { skinDaVitrine } from "@/lib/estudos/skinVitrine";
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { guard } from "@/src/lib/ratelimit";
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
     data: {
       ownerId: userId,
       sourceIds: ctx.sourceIds,
-      kind: "video",
+      kind: "video", skin: skinDaVitrine({ kind: "video", titulo: ctx.text ? ctx.title : topic }),
       status: "queued",
       title: `Vídeo — ${ctx.text ? ctx.title : topic}`,
       meta: { options, ...(doTopico ? { doTopico: true, topic } : {}) } as any,

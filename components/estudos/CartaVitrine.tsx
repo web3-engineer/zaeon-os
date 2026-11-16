@@ -12,7 +12,9 @@ import { type CSSProperties, type ReactNode } from "react";
 import { COR_RARIDADE, NOME_RARIDADE } from "@/lib/estudos/blueprint";
 import { NOME_TIPO, type ItemVitrine } from "@/lib/estudos/vitrine";
 import { COR_PARTE, NOME_PARTE } from "@/lib/estudos/pesquisas";
+import { skinDaVitrine } from "@/lib/estudos/skinVitrine";
 import "./vitrine-card.css";
+import "./vitrine-skins.css";
 
 /** o DESENHO do tema (emoji/ícone, com variedade) — no lugar do wireframe 3D antigo */
 export const GLYPH: Record<string, string> = {
@@ -57,6 +59,8 @@ export default function CartaVitrine({ it, onClick, badgeGratis = false, precoFr
     className?: string;
 }) {
     const { t } = useTranslation();
+    const skin = forjada ? "tecnologia" : skinDaVitrine(it);
+    const imagem = it.imagem || (skin === "geografia" ? "/assets/cyber/terra-blue-marble.jpg" : skin === "dossie" && /coração|anatomia/i.test(it.titulo) ? "/models/coracao-landing.webp" : undefined);
     const cor = COR_RARIDADE[it.raridade];
     // acessível pelo teclado quando a CARTA é o único alvo clicável (a landing) — na vitrine o clique da carta é só
     // atalho de mouse e quem leva o foco/teclado é o botão plug/comprar (`acaoNode`), então não viramos a carta num botão
@@ -68,6 +72,7 @@ export default function CartaVitrine({ it, onClick, badgeGratis = false, precoFr
     return (
         <article
             className={`vt-card${pasta ? " vt-pasta" : ""}${className ? ` ${className}` : ""}`}
+            data-skin={skin}
             style={{ "--cor": cor, "--glow": `${glowDe(it.raridade)}px`, "--cy": "#38f0ff" } as CSSProperties}
             onClick={onClick ? (e) => onClick(e.currentTarget) : undefined}
             role={interativa ? "button" : undefined}
@@ -91,7 +96,13 @@ export default function CartaVitrine({ it, onClick, badgeGratis = false, precoFr
                     <div className="vt-art">
                         <span className="vt-br tl" /><span className="vt-br tr" /><span className="vt-br bl" /><span className="vt-br brr" />
                         {badgeGratis && <span className="vt-free">{t("landing.vitrine.gratis", { defaultValue: "" }).toUpperCase()}</span>}
-                        {it.imagem ? <ImagemCarta src={it.imagem} /> : <div className="vt-glyph"><b>{arteNode ?? GLYPH[it.modelo] ?? "✦"}</b></div>}
+                        {imagem ? <ImagemCarta src={imagem} /> : skin === "dados" ? (
+                          <div className="vt-skin-chart" aria-hidden="true">
+                            {[22, 34, 26, 54, 47, 65, 57, 83, 72, 93, 83, 100].map((altura, i) => <i key={i} style={{ height: `${altura}%` }} />)}
+                          </div>
+                        ) : skin === "agronomia" ? (
+                          <div className="vt-skin-terreno" aria-hidden="true"><i /><i /><i /></div>
+                        ) : <div className="vt-glyph"><b>{arteNode ?? GLYPH[it.modelo] ?? "✦"}</b></div>}
                         {pasta && (
                             <div className="vt-pasta-lista" aria-hidden="true">
                                 {pasta.partes.slice(0, 6).map((p, i) => <span key={i} style={{ "--pcor": COR_PARTE[p.tipo] } as CSSProperties}>{NOME_PARTE[p.tipo].toUpperCase()}</span>)}
