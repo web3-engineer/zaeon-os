@@ -356,13 +356,6 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
-  useEffect(() => {
-    if (!active) return;
-    const rascunho = sessionStorage.getItem("zaeon:entrada:rascunho");
-    if (!rascunho) return;
-    sessionStorage.removeItem("zaeon:entrada:rascunho");
-    setInput((atual) => atual || rascunho);
-  }, [active]);
   // #618: o tour do laboratório leva o contorno pro ➤ quando o campo tem texto
   useAvisoTextoDoChat(input);
   const [sending, setSending] = useState(false);
@@ -795,6 +788,15 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     marcarAtiva(armazem, nova.id);
     setMessages([]);
   }, [guardarAtual]);
+
+  useEffect(() => {
+    if (!active || !abaAtiva || !armazem) return;
+    const rascunho = sessionStorage.getItem("zaeon:entrada:rascunho");
+    if (!rascunho) return;
+    sessionStorage.removeItem("zaeon:entrada:rascunho");
+    novaAba();
+    setInput(rascunho);
+  }, [active, abaAtiva, armazem, novaAba]);
 
   const fecharAba = useCallback((id: string) => {
     const { threads: lista, proxima } = fecharThread(armazem, threadsRef.current, id);

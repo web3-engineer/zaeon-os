@@ -8,7 +8,6 @@ import { useRouter } from "next/navigation";
 
 // Componentes Internos
 import MenuNavigation from "@/components/sub/MenuNavigation";
-import { LAB_ROTA } from "@/lib/ui/loungeHub";
 import { precarregarCyber } from "@/lib/cyber/precarga";
 import styles from "./hero-aquario.module.css";
 import LiquidGlassButton from "@/components/ui/LiquidGlassButton";
@@ -76,7 +75,7 @@ function LogoModelo({ slug, name, org }: { slug: string; name: string; org?: str
 // H1: a promessa — "Aprenda a fazer" + "qualquer coisa." (em destaque). Somos uma plataforma onde dá pra construir de
 // tudo: hardware, software, artigos, pesquisas. O sub-header diz isso, com a palavra que gira (ideias/estudos/…).
 /** pra onde "Iniciar chat" leva quem já está logado: o chat da Aura (Sala de Estudos) */
-const CHAT_ROTA = "/research-lab?tab=sala-de-estudos";
+const CHAT_ROTA = "/research-lab?tab=sala-de-estudos&estudo=chat";
 /** o GAME: o cyberespaço — a rota já abre a sessão em jogo (sem menu). Sem conta, o botão abre o login, que volta direto pra cá. */
 const GAME_ROTA = "/lounge-cosmico";
 
@@ -175,8 +174,9 @@ export default function HeroPage() {
         {!showChatbox && (
           <form className={`mt-8 w-full max-w-xl ${styles.compositor}`} onSubmit={(event) => {
             event.preventDefault();
-            if (mensagem.trim()) sessionStorage.setItem("zaeon:entrada:rascunho", mensagem.trim());
-            else sessionStorage.removeItem("zaeon:entrada:rascunho");
+            const texto = mensagem.trim();
+            if (!texto || status === "loading") return;
+            sessionStorage.setItem("zaeon:entrada:rascunho", texto);
             if (logado) router.push(CHAT_ROTA);
             else { setDestinoLogin("lab"); setShowChatbox(true); }
           }}>
@@ -187,7 +187,7 @@ export default function HeroPage() {
               aria-label={t("landing.hero_principal.pergunta")}
               maxLength={4000}
             />
-            <button type="submit" aria-label={t("landing.hero_principal.chat")}>↑</button>
+            <button type="submit" disabled={!mensagem.trim() || status === "loading"} aria-label={t("landing.hero_principal.chat")}>↑</button>
           </form>
         )}
         {!showChatbox && (
@@ -235,7 +235,7 @@ export default function HeroPage() {
                 card de "Convide" à direita, o que deixava o conjunto assimétrico). O
                 convite não sumiu: mora dentro de OPÇÕES do próprio menu. */}
             <div className="w-full max-w-[500px]">
-              <MenuNavigation destino={destinoLogin === "jogo" ? GAME_ROTA : LAB_ROTA} />
+              <MenuNavigation destino={destinoLogin === "jogo" ? GAME_ROTA : CHAT_ROTA} />
             </div>
           </motion.div>
         )}

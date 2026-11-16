@@ -65,6 +65,7 @@ import { criarCascoNave, type CascoHandle } from "./CascoNave";
 import { NAVES, chegadaDaNave, nivelDaNave, noPortalDaNave, pisoNaNave, regiaoDoNivel, resolverNaNave, paraLocal as paraLocalCw, paraMundo as paraMundoCw } from "@/lib/cyber/navesRegiao";
 import { ANDAR2, NAVE_COWORK, noCasco } from "@/lib/cyber/naveCoworking";
 import { criarNaveMini, type NaveMiniHandle } from "./NaveMini";
+import { criarMarDaNave } from "./MarDaNave";
 import { criarEspacoAberto, type EspacoHandle } from "./EspacoAberto";
 import { CADEIRA_LOGIN, assentoDaCadeira, cadeiraPerto, levantaDaCadeira, CHEGADA_TETO, DURACAO_ELEVADOR, ESCADA_ROLANTE, ESPACO, passoDaRolante, MINHA_NAVE, NAVE_NA_ILHA, TETO_MINI, VAGAS_DOCA, ZONA_DEPOIS_DA_NAVE, vagaDaDocaPerto, buracoAberto, caminhoDoElevador, chaoNoEspaco, paraLocalMini, paraMundoMini, pistasDoEspaco, resolverNaMini, resolverNoTeto, tetoNaMini, pousaNoConves } from "@/lib/cyber/minhaNave";
 import { criarFiosCosmicos, type FiosCosmicosHandle } from "./FiosCosmicos";
@@ -213,6 +214,8 @@ export type CyberOpts = {
   skinNave?: SkinMini;
   /** o novato que nasceu na praça cruzou o portal pra Zaeon pela 1ª vez: já nasceu (não é mais novato) */
   onNasceu?: () => void;
+  submersa?: boolean;
+  onEmergir?: () => void;
   nascer?: boolean;
   /** o passo do tour mudou (null = acabou/pulou) */
   onGuia?: (g: EstadoGuia | null) => void;
@@ -239,6 +242,7 @@ export type CyberOpts = {
   /** o tutorial das motos acabou: o servidor grava a liberação */
   onMotosLiberadas?: () => void;
   /** a Zaeon (holograma na capela) fez uma PERGUNTA: o React mostra o painel de resposta (null = fechou) */
+  onDesafiosDaNave?: (abrir: boolean) => void;
   onPergunta?: (p: (PerguntaZaeon & { n: number; total: number }) | null) => void;
   /** a conversa com a Zaeon acabou: o perfil (o React salva no servidor — User.cyberPerfil) */
   onPerfil?: (p: PerfilZaeon) => void;
@@ -426,7 +430,7 @@ export class CyberEngine {
   private emNaveCw: RegiaoReal | null = null; private pisoNaveCw = 0; private portalNaveArmado = true;
   /** a SUA NAVE (lib/cyber/minhaNave): montada (a nave mini + o espaço aberto), onde se está (dentro / no teto e nas pontes),
    *  o ELEVADOR da cúpula em curso e os gatilhos armados (o elevador, a descida, o portal da popa, os buracos negros) */
-  private minha: { g: THREE.Group; nave: NaveMiniHandle; espaco: EspacoHandle; skin: SkinMini; fios: FiosCosmicosHandle; fg: THREE.Group } | null = null; private avisoAnjos = -1e9;
+  private minha: { g: THREE.Group; nave: NaveMiniHandle; skin: SkinMini; mar?: ReturnType<typeof criarMarDaNave>; espaco?: EspacoHandle; fios?: FiosCosmicosHandle; fg?: THREE.Group } | null = null; private avisoAnjos = -1e9;
   /** a moto da DOCA (a vaga) com que se saiu, e a CUTSCENE do login (o personagem olhando o buraco negro pela janela) */
   private motoDaDoca = -1; private cenaLogin: { t: number; t0: number; barras: HTMLDivElement[] } | null = null;
   /** sentado numa CADEIRA DE SOL do teto (relaxado, olhando o buraco negro): a cadeira, a fase e há quanto tempo */
@@ -1159,7 +1163,8 @@ export class CyberEngine {
       if (this.menu) { const s = this.assento(); this.eu.pos.set(s.x, 0, s.z); this.eu.facing = this.rotAssento(); this.eu.sit = 1; this.sitT = 1; }
       else this.eu.facing = lay?.nivel ? this.rotAssento() + Math.PI : Math.atan2(PRACA.x - sp.x, PRACA.z - sp.z);
       this.camT.set(this.eu.pos.x, 1.2 + this.yDoNivel(lay?.nivel), this.eu.pos.z);
-      if (!this.menu && !(this.o.nascer && (this.o.retomar ? this.retomarTutorial(this.o.retomar) : this.nascerNoTubo())) && !this.spawnNaNave()) this.irParaMinhaNave(true);   // quem chega nasce no tubo; o dono, a bordo da nave-QG; o resto, na SUA NAVE (nov/2026)
+      if (!this.menu && this.o.submersa) this.irParaMinhaNave();
+      else if (!this.menu && !(this.o.nascer && (this.o.retomar ? this.retomarTutorial(this.o.retomar) : this.nascerNoTubo())) && !this.spawnNaNave()) this.irParaMinhaNave(true);   // quem chega nasce no tubo; o dono, a bordo da nave-QG; o resto, na SUA NAVE (nov/2026)
       if (!this.menu) this.carregarInventario();   // a arma equipada (lib/cyber/inventario) já vai pra mão
     }
   }
@@ -1918,6 +1923,7 @@ export class CyberEngine {
   /** ESPAÇO / VOAR: no chão, a DECOLAGEM com impulso — agacha um instante (parado mais; andando/correndo quase nada, o
    *  embalo segue) e só então lança (`decolarJa`), com um empuxo forte pra cima e a velocidade que tinha no chão */
   comandoJet(on: boolean) {
+    if (this.o.submersa && this.naMinha) return;
     // um TOQUE curto no pulo (decolou e soltou logo): a BOLHA DE GRAVIDADE ZERO (out/2026, o dono: "algo divertido")
     if (!on && this.jet.tecla && this.tDecolou && this.agora - this.tDecolou < JET.zeroG.toque && !this.zeroG) this.zeroGQuer = true;
     this.jet.tecla = on;
@@ -2197,7 +2203,7 @@ export class CyberEngine {
     const c = paraMundoMini(NAVE_MINI.chegada);
     this.eu.pos.set(c.x, 0, c.z); this.eu.facing = NAVE_MINI.chegada.rumo; this.camAz = NAVE_MINI.chegada.rumo + Math.PI; this.eu.alt = MINHA_NAVE.y; this.camT.set(c.x, MINHA_NAVE.y + 1.2, c.z);
     if (NIVEIS_SEPARADOS) { this.mudarNivel("minha-nave"); this.posNivel = { x: c.x, z: c.z, alt: MINHA_NAVE.y, ok: true }; } else this.montarMinha();
-    if (cutscene) { this.irParaEspaco(); this.sentarNaCadeira(CADEIRA_LOGIN); this.comecarCenaLogin(); }   // (o LOGIN: no rooftop, na cadeira de sol, relaxado, vendo o buraco negro)
+    if (cutscene && !this.o.submersa) { this.irParaEspaco(); this.sentarNaCadeira(CADEIRA_LOGIN); this.comecarCenaLogin(); }   // (o LOGIN: no rooftop, na cadeira de sol, relaxado, vendo o buraco negro)
   }
   /** senta numa cadeira de sol do teto: o quadril no assento, de frente pro buraco negro do horizonte */
   private sentarNaCadeira(i: number) {
@@ -2265,7 +2271,7 @@ export class CyberEngine {
     const w = paraMundoMini(v);
     this.moto = MOTO_DO_BURACO; this.motoDe = undefined; this.motoEst = { ...motoParada(w.x, MINHA_NAVE.y + TETO_MINI.y + 0.4, w.z, v.rumo), tanque: 1 };   // (sai da doca de tanque cheio)
     this.motoPousado = true; this.autoPouso = false; this.altoEm = null; this.yNav = 0; this.plat = null; this.ilhota = null; this.jet.noAr = false;
-    this.camAz = v.rumo + Math.PI; this.camSegueEm = 0; this.motoDaDoca = i; this.minha?.espaco.mostrarMoto(i, false);
+    this.camAz = v.rumo + Math.PI; this.camSegueEm = 0; this.motoDaDoca = i; this.minha?.espaco?.mostrarMoto(i, false);
     this.som.tocar("moto-partida", this.eu.av.group.position, { dist: DISTANCIA.eu });
   }
   /** o teto da sua nave é sólido pra quem voa (a moto pousa nele): três pilares cobrindo a superelipse do teto */
@@ -2284,7 +2290,16 @@ export class CyberEngine {
   private montarMinha() {
     if (this.minha) return;
     const g = new THREE.Group(); g.position.set(MINHA_NAVE.x, MINHA_NAVE.y, MINHA_NAVE.z);
-    const skin = this.skinNave, nave = criarNaveMini({ low: this.o.low, skin }), espaco = criarEspacoAberto({ low: this.o.low, skin, starTex: this.cena.starTex });
+    const skin = this.skinNave;
+    const nave = criarNaveMini({ low: this.o.low, skin, submersa: this.o.submersa });
+    if (this.o.submersa) {
+      const mar = criarMarDaNave(this.o.low);
+      g.add(nave.group, mar.group);
+      this.cena.scene.add(g);
+      this.minha = { g, nave, mar, skin };
+      return;
+    }
+    const espaco = criarEspacoAberto({ low: this.o.low, skin, starTex: this.cena.starTex });
     g.add(nave.group, espaco.group); this.cena.scene.add(g);
     // os BURACOS NEGROS do espaço aberto (as pistas de luz, o horizonte, a tempestade) — o MESMO desenho dos do hub, no referencial da ilha
     const fg = new THREE.Group(); fg.position.set(CIDADE.centro.x, CIDADE.pisoY, CIDADE.centro.z);
@@ -2292,7 +2307,7 @@ export class CyberEngine {
     fg.add(fios.group); this.cena.scene.add(fg);
     this.minha = { g, nave, espaco, skin, fios, fg };
   }
-  private desmontarMinha() { const m = this.minha; if (!m) return; this.minha = null; m.g.removeFromParent(); m.nave.dispose(); m.espaco.dispose(); m.fg.removeFromParent(); m.fios.dispose(); }
+  private desmontarMinha() { const m = this.minha; if (!m) return; this.minha = null; m.g.removeFromParent(); m.nave.dispose(); m.mar?.dispose(); m.espaco?.dispose(); m.fg?.removeFromParent(); m.fios?.dispose(); }
   /** o ELEVADOR DE LUZ: leva pelo caminho (sobe atravessando a cúpula até o teto, ou desce do teto até o anel lá dentro) */
   private passoElevadorMini(dt: number) {
     const e = this.elevMini; if (!e) return;
@@ -2316,7 +2331,7 @@ export class CyberEngine {
     if (this.naCadeira) { this.passoNaCadeira(dt); return; }   // (na cadeira de sol: parado, ou levantando)
     const embalo = { x: (eu.pos.x - prev.x) / Math.max(dt, 1e-3), z: (eu.pos.z - prev.z) / Math.max(dt, 1e-3) };
     // a ESCADA ROLANTE: anda-se nela (a esteira só ajuda, devagar, pra cima); o andar (dentro/no teto) segue a altura
-    { const fora = this.naMinha === "fora", l0 = paraLocalMini(eu.pos), l = this.naRolante ? { x: l0.x, z: l0.z + ESCADA_ROLANTE.esteira * dt } : l0;
+    if (!this.o.submersa) { const fora = this.naMinha === "fora", l0 = paraLocalMini(eu.pos), l = this.naRolante ? { x: l0.x, z: l0.z + ESCADA_ROLANTE.esteira * dt } : l0;
       const r = passoDaRolante(l, this.naRolante, fora), estava = this.naRolante;
       if (r.naEscada || estava) {
         this.naRolante = r.naEscada; const w = paraMundoMini(r.p); eu.pos.x = w.x; eu.pos.z = w.z; this.pisoMini = r.y;
@@ -2330,7 +2345,7 @@ export class CyberEngine {
     if (this.naMinha === "dentro") {
       const w = empurrarParaFora(paraMundoMini(resolverNaMini(paraLocalMini(eu.pos), this.skinNave)), this.colisoresDeAtores()); eu.pos.x = w.x; eu.pos.z = w.z;
       const l = paraLocalMini(w);
-      if (Math.hypot(l.x - NAVE_MINI.portal.x, l.z - NAVE_MINI.portal.z) < NAVE_MINI.portal.r) { if (this.gatMini.portal) { this.gatMini.portal = false; this.abrirDireto("cowork"); } } else this.gatMini.portal = true;
+      if (Math.hypot(l.x - NAVE_MINI.portal.x, l.z - NAVE_MINI.portal.z) < NAVE_MINI.portal.r) { if (this.gatMini.portal) { this.gatMini.portal = false; if (this.o.submersa) this.o.onEmergir?.(); else this.abrirDireto("cowork"); } } else this.gatMini.portal = true;
       return;
     }
     const w = empurrarParaFora(paraMundoMini(resolverNoTeto(paraLocalMini(eu.pos))), this.colisoresDeAtores()); eu.pos.x = w.x; eu.pos.z = w.z;
@@ -4295,6 +4310,17 @@ export class CyberEngine {
     if ((this.perto || this.noTopo) && !this.guia) return estudar;   // (no tutorial as salas ficam fechadas até o fim)
     const m = this.motoAoAlcance();
     if (this.naCadeira) return this.naCadeira.fase === "sentado" && !this.cenaLogin ? { id: "levantar-cadeira", rotulo: "Levantar", fazer: () => this.levantarDaCadeira() } : null;
+    if (this.naMinha === "dentro" && this.minha && this.o.onDesafiosDaNave && !this.elevMini) {
+      const local = paraLocalMini(this.eu.pos);
+      if (Math.hypot(local.x, local.z - 0.3) < 3) return {
+        id: "desafios-da-nave", rotulo: "Conversar com a Zaeon", fazer: () => {
+          this.keys = {};
+          this.joy = { x: 0, y: 0, on: false };
+          this.soltarMouse();
+          this.o.onDesafiosDaNave?.(true);
+        },
+      };
+    }
     if (this.naMinha === "fora" && !this.jet.noAr && this.moto === null) { const ic = cadeiraPerto(paraLocalMini(this.eu.pos)); if (ic >= 0) return { id: `cadeira-${ic}`, rotulo: "Sentar na cadeira", fazer: () => this.sentarNaCadeira(ic) }; }
     if (this.naMinha === "fora" && !this.jet.noAr) { const i = vagaDaDocaPerto(paraLocalMini(this.eu.pos)); if (i >= 0) return { id: `moto-doca-${i}`, rotulo: "Montar na moto", fazer: () => this.montarDaDoca(i) }; }   // (as motos da DOCA no teto da sua nave)
     if (m && !this.podeMoto()) return { id: "moto-travada", rotulo: "Moto travada", fazer: () => this.o.onAviso?.(AVISO_MOTO_TRAVADA) };
@@ -4485,6 +4511,7 @@ export class CyberEngine {
   }
   private mudarNivel(n: IdNivel) {
     const antes = this.nivel;
+    if (n !== "minha-nave") this.o.onDesafiosDaNave?.(false);
     this.nivel = n; definirNivel(n);
     this.cidade?.mostrarNivel(n);
     // CARREGA UM NÍVEL DE CADA VEZ: a sala de onde saí é DESMONTADA (libera a memória) e a sala onde cheguei é MONTADA
@@ -5288,7 +5315,9 @@ export class CyberEngine {
     }
     if (this.praca && this.regiaoPerto(this.praca.group, "praca")) this.praca.atualizar(dt, t);
     if (this.naveCw) { this.naveCw.nave.atualizar(dt, t); this.naveCw.casco.atualizar(dt, t); }
-    if (this.minha) { this.minha.nave.atualizar(dt, t); this.minha.espaco.atualizar(dt, t, this.cam); this.minha.fios.vista(this.cam.far); if (this.moto === null && this.motoDaDoca >= 0) { this.minha.espaco.mostrarMoto(this.motoDaDoca, true); this.motoDaDoca = -1; } const fg = this.minha.fg.position; this.minha.fios.atualizar(dt, t, { x: this.eu.pos.x - fg.x, y: this.eu.alt - fg.y, z: this.eu.pos.z - fg.z }); }
+    this.minha?.nave.atualizar(dt, t);
+    this.minha?.mar?.atualizar(t);
+    if (this.minha?.espaco && this.minha.fios && this.minha.fg) { this.minha.espaco.atualizar(dt, t, this.cam); this.minha.fios.vista(this.cam.far); if (this.moto === null && this.motoDaDoca >= 0) { this.minha.espaco.mostrarMoto(this.motoDaDoca, true); this.motoDaDoca = -1; } const fg = this.minha.fg.position; this.minha.fios.atualizar(dt, t, { x: this.eu.pos.x - fg.x, y: this.eu.alt - fg.y, z: this.eu.pos.z - fg.z }); }
     if (this.elevMini) this.passoElevadorMini(dt);
     if (this.somLounge) { this.somLounge.atualizar(dt); this.cidade?.somTocando(this.somLounge.tocando, this.somLounge.nivel); }
     this.atualizarShowLounge(dt); this.atualizarShowNave(dt, t);
@@ -5367,7 +5396,7 @@ export class CyberEngine {
     matrizesDaCena(this.cena.scene);   // o que está invisível no topo da cena não recalcula matrizes (components/cyber/matrizes)
     // transparentes de dupla face numa passada só (components/cyber/umaPassada) — de tempos em tempos pega os materiais novos
     if (now - this.passadaEm > 2000) { this.passadaEm = now; umaPassadaNosTransparentes(this.cena.scene); }
-    const desenhar = () => { this.R.clear(); this.cena.desenharFundo(this.R, this.qa.atual.nebulosa); this.R.clearDepth(); this.R.render(this.cena.scene, this.cam); this.desenharBalada(t); };
+    const desenhar = () => { this.R.clear(); if (!this.minha?.mar) this.cena.desenharFundo(this.R, this.qa.atual.nebulosa); this.R.clearDepth(); this.R.render(this.cena.scene, this.cam); this.desenharBalada(t); };
     // moto rápida (components/cyber/VelocidadeTela): as LINHAS de velocidade estilo anime + vinheta ligam SEMPRE (são
     // baratas); o BLUR radial só quando a qualidade deixa (fora do modo low e dos degraus baixos — é uma tela inteira a mais)
     const onda = this.ondaT >= 0 && this.ondaT < 1 ? this.ondaT : -1;

@@ -55,7 +55,8 @@ function Janela({ onSessaoIniciada }: { onSessaoIniciada?: () => void }) {
 
 function Tela() {
   const { data } = useSession();
-  const { salaId, erro, tentarDeNovo } = useResolverSala(true, "Minha sala de estudos", true);   // o MUNDO: todos no mesmo servidor
+  const [submersa] = useState(() => typeof window === "undefined" || new URLSearchParams(window.location.search).get("mundo") !== "1");
+  const { salaId, erro, tentarDeNovo } = useResolverSala(true, "Minha sala de estudos", !submersa, submersa);   // o MUNDO: todos no mesmo servidor
   const [solo, setSolo] = useState(false);
   // ordem canônica dos membros (define a base de cada um) — ref, pq o hook a consulta dentro dos eventos do Pusher
   const ordemRef = useRef<string[]>([]);
@@ -128,8 +129,9 @@ function Tela() {
   // o que a pessoa contou pra Zaeon na capela: o servidor guarda (User.cyberPerfil)
   const salvarPerfil = useCallback((perfil: Record<string, string>) => { if (salaId) void fetch(`/api/lounge3d/${salaId}/perfil`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ perfil }) }).catch(() => {}); }, [salaId]);
 
-  if (solo) return <CenaCyber modo="tela" eu={euSolo} membros={[euSolo]} aviso="Modo solo — você não aparece para os outros." />;
+  if (solo) return <CenaCyber submersa={submersa} modo="tela" eu={euSolo} membros={[euSolo]} aviso="Modo solo — você não aparece para os outros." />;
   if (erro === "login") return <Carregando>Entre na sua conta para jogar.</Carregando>;
+  if (erro === "cheia") return <Carregando>Esta nave comporta até quatro pessoas.</Carregando>;
   if (erro || sala.estado === "erro" || sala.estado === "off") {
     return <Carregando><span>Não deu para abrir a sala.{" "}<button type="button" onClick={tentarDeNovo} className="underline">Tentar de novo</button>{" · "}<button type="button" onClick={() => setSolo(true)} className="underline">Entrar sozinho</button></span></Carregando>;
   }
@@ -140,7 +142,7 @@ function Tela() {
   const aviso = avisoRealtime(sala.realtime, sala.motivoRealtime);
   return (
     <CenaCyber
-      modo="tela" eu={euSala} membros={membros.length ? membros : [euSala]}
+      modo="tela" submersa={submersa} eu={euSala} membros={membros.length ? membros : [euSala]}
       remotos={sala.remotos} enviarPos={sala.enviarPos} chat={sala.chat} enviarChat={sala.enviarChat}
       tokenConvite={sala.sala?.token ?? null} online={sala.online.length || 1} aviso={aviso}
       souFundador={euSala.fundador === true} pilotoDaNave={euSala.nave === true} pedirAcesso={pedirAcesso}

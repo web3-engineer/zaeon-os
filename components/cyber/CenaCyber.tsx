@@ -1,5 +1,6 @@
 "use client";
 
+import DesafiosDaNave from "./DesafiosDaNave";
 import TelaCarregando from "./TelaCarregando";
 import TabletLab from "./TabletLab";
 import BarrasHud, { juntarEstadoIA } from "./BarrasHud";
@@ -49,6 +50,7 @@ import { REGIAO_PADRAO, regiaoDoFuso, type Regiao } from "@/lib/cyber/regiaoUsua
 export type CenaCyberProps = {
   /** "janela": prévia na landing (começa no menu, sem rede). "tela": cyberespaço inteiro (já em play, com a sala). */
   modo: "janela" | "tela";
+  submersa?: boolean;
   eu: PessoaCyber;
   membros: PessoaCyber[];
   remotos?: { current: Map<string, Presenca> };
@@ -156,6 +158,7 @@ export default function CenaCyber(p: CenaCyberProps) {
   const [guia, setGuia] = useState<EstadoGuia | null>(null), [falasDroid, setFalasDroid] = useState<MensagemChat[]>([]);
   const [dialogo, setDialogo] = useState<Dialogo | null>(null);   // a caixa de diálogo RPG do tutorial
   /** a pergunta da Zaeon esperando resposta (o painel) */
+  const [desafiosDaNave, setDesafiosDaNave] = useState(false);
   const [pergunta, setPergunta] = useState<(PerguntaZaeon & { n: number; total: number }) | null>(null);
   /** EXPULSO pelo Droid (desrespeitou a Zaeon): a tela vermelha e a saída */
   const [expulso, setExpulso] = useState(false);
@@ -303,6 +306,8 @@ export default function CenaCyber(p: CenaCyberProps) {
       onBuracoDono: (para) => { void pedir("dj", () => setTunel({ tipo: "dono", para })); },
       onTunelDireto: (d) => { engine.current?.soltarMouse(); setTunel({ tipo: "direto", para: d.para, nome: d.nome }); },   // (os níveis: o fio cósmico / o buraco negro da sala — sem menu)
       onAviso: avisar,
+      submersa: cb.current.submersa,
+      onEmergir: () => window.location.assign("/lounge-cosmico?mundo=1"),
       nascer, nascerNa, retomar, motosLiberadas: !!p.motosLiberadas, examinerLiberado: !!p.examinerLiberado,
       skinNave: (() => { try { const q = new URLSearchParams(location.search).get("skin") ?? localStorage.getItem("zaeon.skinNave"); return ehSkinMini(q) ? q : SKIN_MINI_PADRAO; } catch { return SKIN_MINI_PADRAO; } })(),   // (a skin da SUA nave: ?skin=agradavel pra testar; a escolha do usuário fica no aparelho)
       regiao: p.regiao ?? (() => { try { const f = regiaoDoFuso(Intl.DateTimeFormat().resolvedOptions().timeZone); return f && f !== "exterior" ? f : null; } catch { return null; } })() ?? REGIAO_PADRAO,
@@ -322,6 +327,7 @@ export default function CenaCyber(p: CenaCyberProps) {
       onRelicario: (abrir) => { if (abrir) { if (document.pointerLockElement) document.exitPointerLock(); setEncaixeAtivo(true); setEncaixeErro(null); setInventarioAberto(true); } else { setEncaixeAtivo(false); setInventarioAberto(false); } },
       onMotosLiberadas: () => { void fetch("/api/cyber/motos", { method: "POST" }).catch(() => undefined); avisar("As motos são suas ✦"); },
       onInventario: (p) => { if (p) { setDestaqueInv(p); if (document.pointerLockElement) document.exitPointerLock(); setInventarioAberto(true); } else setInventarioAberto(false); },
+      onDesafiosDaNave: setDesafiosDaNave,
       onPergunta: setPergunta, onPerfil: (perfil) => cb.current.salvarPerfil?.(perfil),
       onFalaAgente: (f) => setFalasDroid((xs) => [...xs.slice(-20), { id: `agente-${Date.now()}-${xs.length}`, userId: `agente:${f.id}`, name: f.nome, color: f.cor, texto: f.texto, ts: Date.now() }]),
       onEmbarcar: () => { void pedir("nave", () => engine.current?.embarcar()); },
@@ -413,7 +419,7 @@ export default function CenaCyber(p: CenaCyberProps) {
   };
   const convidar = async () => {
     if (!p.tokenConvite) return;
-    const url = `${location.origin}/lounge-cosmico?sala=${p.tokenConvite}`;
+    const url = `${location.origin}/lounge-cosmico?${p.submersa ? "" : "mundo=1&"}sala=${p.tokenConvite}`;
     try { await navigator.clipboard.writeText(url); } catch { window.prompt("Copie o link de convite:", url); }
     setCopiado(true); setTimeout(() => setCopiado(false), 2200);
   };
@@ -581,6 +587,7 @@ export default function CenaCyber(p: CenaCyberProps) {
           <button type="button" onClick={() => engine.current?.guiaPular()} className="min-h-[28px] rounded-full border border-white/15 px-3 text-amber-50/75 hover:text-white">Pular</button>
         </div>
       )}
+      {!menu && desafiosDaNave && <DesafiosDaNave key={p.eu.id} userId={p.eu.id} fechar={() => setDesafiosDaNave(false)} />}
       {!menu && pergunta && <RespostaZaeon pergunta={pergunta} touch={touch} onResponder={responderZaeon} acimaDaCaixa={!!dialogo} />}
       {expulso && (
         <div role="alert" className="absolute inset-0 z-[70] flex flex-col items-center justify-center gap-3 bg-[#2a0404]/85 px-8 text-center text-red-50 backdrop-blur-sm">

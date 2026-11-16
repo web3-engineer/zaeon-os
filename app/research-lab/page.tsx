@@ -131,7 +131,7 @@ const DESTAQUE = "bg-gradient-to-r from-violet-500/15 to-cyan-500/15 border-cyan
 const AGENTE_CHAT = { id: "aura", nome: "Aura" } as const;
 /** O nome do item: some no trilho (a pill recorta, e a opacidade evita a lasquinha de texto na borda). */
 function Rotulo({ v, children }: { v: boolean; children: React.ReactNode }) {
-  return <span className={`text-[10px] font-black uppercase whitespace-nowrap transition-opacity duration-200 ${v ? "opacity-100" : "opacity-0"}`}>{children}</span>;
+  return <span className={`min-w-0 truncate text-[13px] font-bold tracking-tight transition-opacity duration-200 ${v ? "opacity-100" : "opacity-0"}`}>{children}</span>;
 }
 import { startTour, getTour, nextTour, TOUR_STEPS } from "@/lib/onboarding/tour";
 import { capabilities } from "@/lib/runtime/mode";
@@ -2788,7 +2788,7 @@ export default function HomeworkPage({
           initial={false}
           animate={{ width: sidebarAberta ? SIDEBAR_ABERTA : SIDEBAR_FECHADA, x: celular && !gaveta ? -(SIDEBAR_ABERTA + 24) : 0 }}
           transition={{ type: "tween", duration: 0.22, ease: [0.22, 0.61, 0.36, 1] }}
-          className={`fixed ${celular ? "left-2" : isChatLeft ? "right-4" : "left-4"} z-[590] py-6 rounded-[24px] border backdrop-blur-2xl overflow-hidden transition-colors
+          className={`fixed ${celular ? "left-2" : isChatLeft ? "right-4" : "left-4"} z-[590] [font-family:var(--font-tech),sans-serif] py-6 rounded-[24px] border backdrop-blur-2xl overflow-hidden transition-colors
             bg-gradient-to-b from-sky-100/90 to-blue-200/80 border-blue-300/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]
             dark:from-transparent dark:to-transparent dark:bg-[rgba(22,22,34,0.55)] dark:border-white/10 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.6)]
             ${celular ? "dark:bg-[rgba(14,14,24,0.96)] bg-sky-50" : ""}
@@ -2986,7 +2986,7 @@ export default function HomeworkPage({
         </motion.nav>
         {/* celular: a BARRA DE BAIXO — ☰ abre a gaveta (conversas, Marketplace, layout…); o resto leva direto às salas */}
         {barraCelular && (
-          <nav aria-label={t("labSidebar.navigation")} className="fixed inset-x-0 bottom-0 z-[591] flex items-stretch justify-around border-t border-slate-200 bg-white/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#0b0b16]/95"
+          <nav aria-label={t("labSidebar.navigation")} className="fixed inset-x-0 bottom-0 z-[591] [font-family:var(--font-tech),sans-serif] flex items-stretch justify-around border-t border-slate-200 bg-white/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#0b0b16]/95"
             style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
             {[
               { id: "menu", rotulo: t("labSidebar.menu"), icone: <span className="text-[20px] leading-none">☰</span>, ativo: gaveta, onClick: () => setGaveta((v) => !v) },
@@ -2997,7 +2997,7 @@ export default function HomeworkPage({
             ].map((b) => (
               <button key={b.id} type="button" onClick={b.onClick} aria-current={b.ativo ? "page" : undefined}
                 aria-label={b.rotulo}
-                className={`flex ${deitado ? "min-h-[44px]" : "min-h-[60px]"} flex-1 flex-col items-center justify-center gap-0.5 text-[10.5px] font-semibold transition-colors ${b.ativo ? "text-blue-600 dark:text-cyan-300" : "text-slate-500 dark:text-white/55"}`}>
+                className={`flex ${deitado ? "min-h-[44px]" : "min-h-[60px]"} flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-bold tracking-tight transition-colors ${b.ativo ? "text-blue-600 dark:text-cyan-300" : "text-slate-500 dark:text-white/55"}`}>
                 {/* #832: deitado, a barra fica baixa (só os ícones) — cada pixel de altura é da conversa */}
                 {b.icone}{!deitado && <span className="max-w-[72px] truncate">{b.rotulo}</span>}
               </button>
