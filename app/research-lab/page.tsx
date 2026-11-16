@@ -2805,7 +2805,7 @@ export default function HomeworkPage({
             <button
               data-tour="estudos"
               onClick={() => abrirAgente()}
-              title={trocandoPara ? `Trocando para ${agenteChat(trocandoPara).nome}…` : agente.tela === "chat" && agenteProcessando ? `${agente.nome} está respondendo…` : `Conversar com ${agente.nome}`}
+              title={trocandoPara ? t("labSidebar.switching", { name: agenteChat(trocandoPara).nome }) : agente.tela === "chat" && agenteProcessando ? t("labSidebar.replying", { name: agente.nome }) : t("labSidebar.talk", { name: agente.nome })}
               className={`${navItem(agente.tela === "ide" ? activeTab === "octa" : activeTab === "sala-de-estudos" && abaEstudos === "meus-estudos", "blue")} ${pill(sidebarAberta)} !p-[7px]`}
             >
               {/* o ROSTO: clicar nele abre o seletor de agente (o resto da pill abre a conversa do agente atual) */}
@@ -2814,14 +2814,14 @@ export default function HomeworkPage({
                 tabIndex={0}
                 aria-haspopup="menu"
                 aria-expanded={!!seletorAgente}
-                aria-label={`Trocar de agente (agora: ${agente.nome})`}
-                title="Trocar de agente"
+                aria-label={t("labSidebar.change", { name: agente.nome })}
+                title={t("labSidebar.agent")}
                 onClick={(e) => { e.stopPropagation(); setSeletorAgente(seletorAgente ? null : e.currentTarget.getBoundingClientRect()); }}
                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setSeletorAgente(e.currentTarget.getBoundingClientRect()); } }}
                 className={`relative grid place-items-center shrink-0 w-[22px] h-[22px] rounded-full cursor-pointer hover:ring-2 hover:ring-cyan-300/70 ${agente.tela === "chat" && agenteProcessando && !trocandoPara ? "ring-2 ring-cyan-300/80 shadow-[0_0_14px_rgba(34,211,238,0.85)] motion-safe:animate-pulse" : ""}`}
               >
                 {trocandoPara ? (
-                  <Loader2 className="w-[18px] h-[18px] animate-spin text-cyan-500 dark:text-cyan-300" aria-label="Trocando de agente" />
+                  <Loader2 className="w-[18px] h-[18px] animate-spin text-cyan-500 dark:text-cyan-300" aria-hidden />
                 ) : agente.id === "octa" ? (
                   <OctaIcon size={22} className="text-cyan-700 dark:text-cyan-200" />
                 ) : agente.id !== "aura" ? (
@@ -2864,11 +2864,11 @@ export default function HomeworkPage({
             <button
               data-tour="tab-feed"
               onClick={() => irEstudos("feed")}
-              title="Sala de Estudos"
+              title={t("labSidebar.study")}
               className={`${navItem(activeTab === "sala-de-estudos" && abaEstudos === "feed", "blue")} ${pill(sidebarAberta)}`}
             >
               <DocumentTextIcon className="w-5 h-5 shrink-0" />
-              <Rotulo v={sidebarAberta}>Sala de Estudos</Rotulo>
+              <Rotulo v={sidebarAberta}>{t("labSidebar.study")}</Rotulo>
             </button>
 
             {/* Sala de Pesquisa — no chat único ela é o MODO PESQUISA do chat da Aura (sem item próprio) */}
@@ -2877,11 +2877,11 @@ export default function HomeworkPage({
               <button
                 data-tour="pesquisa"
                 onClick={() => setActiveTab("pesquisa")}
-                title="Sala de Pesquisa"
+                title={t("labSidebar.research")}
                 className={`${navItem(activeTab === "pesquisa", "purple")} ${pill(sidebarAberta)}`}
               >
                 <AcademicCapIcon className="w-5 h-5 shrink-0" />
-                <Rotulo v={sidebarAberta}>Sala de Pesquisa</Rotulo>
+                <Rotulo v={sidebarAberta}>{t("labSidebar.research")}</Rotulo>
               </button>
               {UNIFIED && (
                 <Ramo aberto={(celular || pesquisaChatAtivo) && sidebarAberta && activeTab === "pesquisa"}>
@@ -2898,22 +2898,22 @@ export default function HomeworkPage({
             {PROJETOS && (
             <button
               onClick={() => setActiveTab("projetos")}
-              title="Projetos"
+              title={t("labSidebar.projects")}
               className={`${navItem(activeTab === "projetos", "cyan")} ${pill(sidebarAberta)}`}
             >
               <Code2 className="w-5 h-5 shrink-0" />
-              <Rotulo v={sidebarAberta}>Projetos</Rotulo>
+              <Rotulo v={sidebarAberta}>{t("labSidebar.projects")}</Rotulo>
             </button>
             )}
 
             {/* Escritório: os agentes da Zaeon como um lugar */}
             <button
               onClick={() => setActiveTab("escritorio")}
-              title="Escritório"
+              title={t("labSidebar.office")}
               className={`${navItem(activeTab === "escritorio", "cyan")} ${pill(sidebarAberta)}`}
             >
               <Building2 className="w-5 h-5 shrink-0" />
-              <Rotulo v={sidebarAberta}>Escritório</Rotulo>
+              <Rotulo v={sidebarAberta}>{t("labSidebar.office")}</Rotulo>
             </button>
 
             <div className="h-[1px] bg-slate-300 dark:bg-white/10 my-1" />
@@ -2922,22 +2922,22 @@ export default function HomeworkPage({
             <button
               data-tour="tab-community"
               onClick={() => irEstudos("community")}
-              title="Marketplace"
+              title={t("siteNav.market")}
               className={`${activeTab === "sala-de-estudos" && abaEstudos === "community" ? `${NAV_BASE} ${NAV_ACTIVE_PILL} !ring-cyan-400/50` : `${NAV_BASE} ${DESTAQUE}`} ${pill(sidebarAberta)}`}
             >
               <ShoppingBagIcon className="w-5 h-5 shrink-0" />
-              <Rotulo v={sidebarAberta}>Marketplace</Rotulo>
+              <Rotulo v={sidebarAberta}>{t("siteNav.market")}</Rotulo>
             </button>
 
             {/* Perfil */}
             <button
               data-tour="profile-tab"
               onClick={() => { setPerfilVisitado(null); setActiveTab("profile"); }}
-              title="Perfil"
+              title={t("labSidebar.profile")}
               className={`${navItem(activeTab === "profile", "violet")} ${pill(sidebarAberta)}`}
             >
               <UserCircleIcon className="w-5 h-5 shrink-0" />
-              <Rotulo v={sidebarAberta}>Perfil</Rotulo>
+              <Rotulo v={sidebarAberta}>{t("labSidebar.profile")}</Rotulo>
             </button>
           </div>
 
@@ -2947,16 +2947,16 @@ export default function HomeworkPage({
             <button
               data-tour="layout-toggle"
               onClick={() => setIsChatLeft(!isChatLeft)}
-              title="Layout"
+              title={t("labSidebar.layout")}
               className={`flex items-center gap-3 p-2 rounded-xl border border-transparent hover:bg-slate-100 dark:hover:bg-white/10 text-black dark:text-white group ${pill(sidebarAberta)}`}
             >
               <ArrowsRightLeftIcon className="w-5 h-5 shrink-0 group-hover:text-cyan-500" />
-              <Rotulo v={sidebarAberta}>Layout</Rotulo>
+              <Rotulo v={sidebarAberta}>{t("labSidebar.layout")}</Rotulo>
             </button>
             <button
               data-tour="focus-mode"
               onClick={toggleFocusMode}
-              title="Foco"
+              title={t("labSidebar.focus")}
               className={`flex items-center gap-3 p-2 rounded-xl border ${isFocusMode ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30" : "border-transparent text-black dark:text-white hover:bg-slate-100 dark:hover:bg-white/5"} ${pill(sidebarAberta)}`}
             >
               {isFocusMode ? (
@@ -2964,7 +2964,7 @@ export default function HomeworkPage({
               ) : (
                 <PowerIcon className="w-5 h-5 shrink-0" />
               )}
-              <Rotulo v={sidebarAberta}>Foco</Rotulo>
+              <Rotulo v={sidebarAberta}>{t("labSidebar.focus")}</Rotulo>
             </button>
             {/* Voltar: de volta ao cyberespaço (o lounge só é carregado enquanto se está nele). */}
             <button
@@ -2974,26 +2974,26 @@ export default function HomeworkPage({
                 if (noTablet.current || (window.parent !== window && pedeTablet(window.location.search))) { window.parent.postMessage({ type: MSG_FECHAR_TABLET }, window.location.origin); return; }
                 musica().destravar(); router.push(LOUNGE_ROTA);
               }}
-              aria-label="Voltar ao cyberespaço"
-              title="Voltar ao cyberespaço"
+              aria-label={t("labSidebar.return")}
+              title={t("labSidebar.return")}
               className={`flex items-center gap-3 p-2 rounded-xl border border-transparent text-black dark:text-white hover:bg-slate-100 dark:hover:bg-white/5 group ${pill(sidebarAberta)}`}
             >
               <ArrowUturnLeftIcon className="w-5 h-5 shrink-0 group-hover:text-cyan-500" />
-              <Rotulo v={sidebarAberta}>Voltar</Rotulo>
+              <Rotulo v={sidebarAberta}>{t("labSidebar.back")}</Rotulo>
             </button>
           </div>
           </div>
         </motion.nav>
         {/* celular: a BARRA DE BAIXO — ☰ abre a gaveta (conversas, Marketplace, layout…); o resto leva direto às salas */}
         {barraCelular && (
-          <nav aria-label="Navegação" className="fixed inset-x-0 bottom-0 z-[591] flex items-stretch justify-around border-t border-slate-200 bg-white/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#0b0b16]/95"
+          <nav aria-label={t("labSidebar.navigation")} className="fixed inset-x-0 bottom-0 z-[591] flex items-stretch justify-around border-t border-slate-200 bg-white/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#0b0b16]/95"
             style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
             {[
-              { id: "menu", rotulo: "Menu", icone: <span className="text-[20px] leading-none">☰</span>, ativo: gaveta, onClick: () => setGaveta((v) => !v) },
+              { id: "menu", rotulo: t("labSidebar.menu"), icone: <span className="text-[20px] leading-none">☰</span>, ativo: gaveta, onClick: () => setGaveta((v) => !v) },
               { id: "aura", rotulo: agente.nome, icone: <span className="text-[18px] leading-none text-cyan-500 dark:text-cyan-300">⟁</span>, ativo: !gaveta && (agente.tela === "ide" ? activeTab === "octa" : activeTab === "sala-de-estudos" && abaEstudos === "meus-estudos"), onClick: () => { setGaveta(false); abrirAgente(); } },
-              { id: "estudos", rotulo: "Estudos", icone: <DocumentTextIcon className="w-5 h-5" />, ativo: !gaveta && activeTab === "sala-de-estudos" && abaEstudos === "feed", onClick: () => { setGaveta(false); irEstudos("feed"); } },
-              { id: "escritorio", rotulo: "Escritório", icone: <Building2 className="w-5 h-5" />, ativo: !gaveta && activeTab === "escritorio", onClick: () => { setGaveta(false); setActiveTab("escritorio"); } },
-              { id: "perfil", rotulo: "Perfil", icone: <UserCircleIcon className="w-5 h-5" />, ativo: !gaveta && activeTab === "profile", onClick: () => { setGaveta(false); setPerfilVisitado(null); setActiveTab("profile"); } },
+              { id: "estudos", rotulo: t("labSidebar.studies"), icone: <DocumentTextIcon className="w-5 h-5" />, ativo: !gaveta && activeTab === "sala-de-estudos" && abaEstudos === "feed", onClick: () => { setGaveta(false); irEstudos("feed"); } },
+              { id: "escritorio", rotulo: t("labSidebar.office"), icone: <Building2 className="w-5 h-5" />, ativo: !gaveta && activeTab === "escritorio", onClick: () => { setGaveta(false); setActiveTab("escritorio"); } },
+              { id: "perfil", rotulo: t("labSidebar.profile"), icone: <UserCircleIcon className="w-5 h-5" />, ativo: !gaveta && activeTab === "profile", onClick: () => { setGaveta(false); setPerfilVisitado(null); setActiveTab("profile"); } },
             ].map((b) => (
               <button key={b.id} type="button" onClick={b.onClick} aria-current={b.ativo ? "page" : undefined}
                 aria-label={b.rotulo}
@@ -3012,7 +3012,7 @@ export default function HomeworkPage({
         <div role="status" className="fixed inset-0 z-[580] grid place-items-center bg-white/40 dark:bg-black/40 backdrop-blur-sm pointer-events-none">
           <div className="flex items-center gap-3 px-5 py-3 rounded-2xl border bg-white/90 border-blue-200 text-slate-800 dark:bg-[rgba(22,22,34,0.9)] dark:border-white/10 dark:text-white shadow-xl">
             <Loader2 className="w-5 h-5 animate-spin text-cyan-500" />
-            <span className="text-[13px] font-bold">Trocando para {agenteChat(trocandoPara).nome}…</span>
+            <span className="text-[13px] font-bold">{t("labSidebar.switching", { name: agenteChat(trocandoPara).nome })}</span>
           </div>
         </div>
       )}

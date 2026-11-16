@@ -140,9 +140,17 @@ export const Navbar = () => {
     window.addEventListener(EVT_MARKETPLACE, f);
     return () => window.removeEventListener(EVT_MARKETPLACE, f);
   }, []);
+  const { t } = useTranslation();
   const ativo = itemAtivo(pathname, noMarketplace);
   // "Laboratório" com a vitrine aberta: o link vai pra MESMA página — o laboratório precisa do pedido pra sair dela
   const irAoLaboratorio = () => { if (ativo === "marketplace" && pathname.startsWith("/research-lab")) pedirSairDoMarketplace(); };
+  const itens: { id: ItemMenu; href: string; rotulo: string; aoClicar?: () => void }[] = [
+    { id: "docs", href: "/docs", rotulo: t("siteNav.docs") },
+    { id: "about", href: "/about", rotulo: t("siteNav.about") },
+    { id: "laboratorio", href: "/research-lab", rotulo: t("siteNav.lab"), aoClicar: irAoLaboratorio },
+    { id: "marketplace", href: ROTA_MARKETPLACE, rotulo: t("siteNav.market") },
+    { id: "news", href: "/news", rotulo: t("siteNav.news") },
+  ];
   const getLinkClassName = (item: ItemMenu) => {
     const active = ativo === item;
     return `transition-all uppercase tracking-[0.2em] text-[10px] font-black ${active ? "text-cyan-500 scale-110" : "text-foreground/50 hover:text-cyan-400"}`;
@@ -173,29 +181,17 @@ export const Navbar = () => {
         <div className="w-full zaeon-borda flex items-center justify-between">
 
           <Link href="/" className="transition-opacity hover:opacity-80">
-            <Image src={logoPng} alt="logo" width={220} height={100} priority className="h-9 w-auto invert dark:invert-0" />
+            <Image src={logoPng} alt="Zaeon" width={220} height={100} priority className="h-9 w-auto invert dark:invert-0" />
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-7">
-            {/* ordem do dono: Documentação › Sobre nós ("Como funciona" saiu da navbar a pedido do dono; a seção #como-funciona continua na landing) */}
-            <Link href="/docs" className={getLinkClassName("docs")}>Documentação</Link>
-            <Link href="/about" className={getLinkClassName("about")}>Sobre nós</Link>
-            {/* acesso direto ao laboratório, pra quem não quiser usar o cyberespaço */}
-            <Link href="/research-lab" onClick={irAoLaboratorio} className={getLinkClassName("laboratorio")}>Laboratório</Link>
-            {/* #824: o Marketplace no lugar de "Assistentes" (/assistentes, /plugin-store e /mentores seguem no ar) */}
-            <Link href={ROTA_MARKETPLACE} className={getLinkClassName("marketplace")}>Marketplace</Link>
-            <Link href="/news" className={getLinkClassName("news")}>Notícias</Link>
+          <nav aria-label={t("siteNav.site")} className="hidden lg:flex items-center gap-7">
+            {itens.map(({ id, href, rotulo, aoClicar }) => (
+              <Link key={id} href={href} onClick={aoClicar} className={getLinkClassName(id)} aria-current={ativo === id ? "page" : undefined}>{rotulo}</Link>
+            ))}
           </nav>
 
           <div className="flex items-center gap-1.5">
-            {/* #713: no celular os links do topo somem; ficam neste menu */}
-            <MenuLinks atual={ativo ? HREF_DO_ITEM[ativo] : null} itens={[
-              { href: "/docs", rotulo: "Documentação" },
-              { href: "/about", rotulo: "Sobre nós" },
-              { href: "/research-lab", rotulo: "Laboratório", aoClicar: irAoLaboratorio },
-              { href: ROTA_MARKETPLACE, rotulo: "Marketplace" },
-              { href: "/news", rotulo: "Notícias" },
-            ]} />
+            <MenuLinks atual={ativo ? HREF_DO_ITEM[ativo] : null} itens={itens} />
             <ThemeToggle />
             {/* engrenagem: voz, idioma, convite, Modo CEO (founder), sair — as opções do menu principal */}
             <ConfigMenu />
@@ -209,6 +205,7 @@ export const Navbar = () => {
 function MenuLinks({ itens, atual }: { itens: { href: string; rotulo: string; aoClicar?: () => void }[]; atual: string | null }) {
   const [aberto, setAberto] = useState(false);
   const raiz = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
   const pathname = usePathname();
   useEffect(() => { setAberto(false); }, [pathname]);
   useEffect(() => {
@@ -220,12 +217,12 @@ function MenuLinks({ itens, atual }: { itens: { href: string; rotulo: string; ao
   }, [aberto]);
   return (
     <div ref={raiz} className="relative lg:hidden">
-      <button type="button" onClick={() => setAberto((v) => !v)} aria-expanded={aberto} aria-controls="menu-links-site" aria-label={aberto ? "Fechar o menu" : "Abrir o menu"}
+      <button type="button" onClick={() => setAberto((v) => !v)} aria-expanded={aberto} aria-controls="menu-links-site" aria-label={t(aberto ? "siteNav.close" : "siteNav.open")}
         className="w-11 h-11 rounded-full flex items-center justify-center text-[20px] leading-none text-slate-700 dark:text-white/85 hover:bg-slate-900/5 dark:hover:bg-white/10">
         ☰
       </button>
       {aberto && (
-        <nav id="menu-links-site" aria-label="Páginas do site"
+        <nav id="menu-links-site" aria-label={t("siteNav.site")}
           className="absolute right-0 top-12 w-56 overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-[#0b1020]/95 backdrop-blur-xl shadow-2xl py-1">
           {itens.map((i) => (
             <Link key={i.href} href={i.href} onClick={() => { i.aoClicar?.(); setAberto(false); }} aria-current={atual === i.href ? "page" : undefined}
