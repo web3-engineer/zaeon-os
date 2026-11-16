@@ -9,6 +9,13 @@ import { criarThread, criarSubThread, type Thread } from "@/lib/chat/threads";
 import { CHAVE_ESCALA } from "@/lib/ui/chatFontScale";
 import { CHAVE_FEEDBACK } from "@/lib/chat/feedback";
 
+beforeEach(async () => {
+  const { default: i18n } = await import("i18next");
+  const { default: pt } = await import("@/public/locales/pt/common.json");
+  const { initReactI18next } = await import("react-i18next");
+  await i18n.use(initReactI18next).init({ lng: "pt", resources: { pt: { translation: pt } } });
+});
+
 beforeEach(() => {
   localStorage.clear();
   // jsdom não tem matchMedia: tela larga → barra aberta.
@@ -46,7 +53,7 @@ describe("ConversasSidebar", () => {
     const { threads } = arvore();
     render(<ConversasSidebar sala="t" threads={threads} ativa={null} {...handlers()} />);
     expect(screen.queryByRole("button", { name: "Adenosina" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Mostrar sub-temas" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mostrar subtemas" }));
     expect(screen.getByRole("button", { name: "Adenosina" })).toBeTruthy();
   });
 
@@ -54,14 +61,14 @@ describe("ConversasSidebar", () => {
     const { threads, mae } = arvore();
     const h = handlers();
     render(<ConversasSidebar sala="t" threads={threads} ativa={mae.id} {...h} />);
-    fireEvent.click(screen.getByRole("button", { name: "Renomear Cafeína" }));
+    fireEvent.click(screen.getByRole("button", { name: "Renomear · Cafeína" }));
     const campo = screen.getByLabelText("Novo nome da conversa");
     fireEvent.change(campo, { target: { value: "Cafeína e sono" } });
     fireEvent.keyDown(campo, { key: "Enter" });
     expect(h.aoRenomear).toHaveBeenCalledWith(mae.id, "Cafeína e sono");
-    fireEvent.click(screen.getByRole("button", { name: "Excluir Cafeína" }));
+    fireEvent.click(screen.getByRole("button", { name: "Excluir · Cafeína" }));
     expect(h.aoFechar).not.toHaveBeenCalled();
-    expect(screen.getByText(/\+1 sub-tema/)).toBeTruthy();
+    expect(screen.getByText(/subtemas \(1\)/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Excluir" }));
     expect(h.aoFechar).toHaveBeenCalledWith(mae.id);
   });
@@ -70,7 +77,7 @@ describe("ConversasSidebar", () => {
     const { threads, mae } = arvore();
     const h = handlers();
     const { unmount } = render(<ConversasSidebar sala="t" threads={threads} ativa={mae.id} {...h} />);
-    fireEvent.click(screen.getByRole("button", { name: "Novo sub-tema em Cafeína" }));
+    fireEvent.click(screen.getByRole("button", { name: "Novo subtema · Cafeína" }));
     expect(h.aoCriarSub).toHaveBeenCalledWith(mae.id);
     fireEvent.click(screen.getByRole("button", { name: "Recolher conversas" }));
     expect(screen.getByRole("button", { name: "Mostrar conversas" })).toBeTruthy();

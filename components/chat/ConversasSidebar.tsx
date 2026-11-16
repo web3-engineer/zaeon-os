@@ -241,6 +241,7 @@ export default function ConversasSidebar({
               <h3 className="m-0">
                 <button
                   type="button"
+                  data-gaveta-fica
                   onClick={() => alternarGrupo(grupo)}
                   aria-expanded={aberto}
                   className="w-full flex items-center gap-1 px-2 pt-2 pb-0.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-white/45 hover:text-slate-700 dark:hover:text-white/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500 rounded"

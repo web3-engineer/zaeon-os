@@ -14,6 +14,13 @@ import ConversasSidebar from "@/components/chat/ConversasSidebar";
 const REGRA_DA_GAVETA = "[aria-haspopup], [role=menu], [data-gaveta-fica]";
 const fechaAGaveta = (tocado: HTMLElement) => !!tocado.closest("button, a") && !tocado.closest(REGRA_DA_GAVETA);
 
+beforeEach(async () => {
+  const { default: i18n } = await import("i18next");
+  const { default: pt } = await import("@/public/locales/pt/common.json");
+  const { initReactI18next } = await import("react-i18next");
+  await i18n.use(initReactI18next).init({ lng: "pt", resources: { pt: { translation: pt } } });
+});
+
 beforeEach(() => {
   localStorage.clear();
   window.matchMedia = ((q: string) => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {} })) as any;
