@@ -36,6 +36,8 @@ export type CardDeArquivo = {
   abas: AbaDoCard[];
   /** teste ponta-a-ponta do arquivo (estilo LearnPack): roda sobre o arquivo montado. */
   teste?: string;
+  /** Arquivos que precisam estar concluídos para rodar o teste deste arquivo. */
+  dependencias?: string[];
   /** true = o aluno NÃO digita este arquivo; o Octa monta no background (residual). */
   residual?: boolean;
 };

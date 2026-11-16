@@ -1,0 +1,23 @@
+{
+  "arquivo": "interface.js",
+  "funcao": "Conecta a função de cálculo a um formulário. Converte os valores digitados e apresenta resultados e erros na interface.",
+  "ordem": 1,
+  "linguagem": "javascript",
+  "dependencias": ["calculadora.js"],
+  "abas": [
+    {
+      "titulo": "Montar e conectar o formulário",
+      "snippets": [
+        {
+          "explicacao": "Crie o formulário com dois operandos, um seletor de operação e um resultado acessível.",
+          "codigo": "const app = document.querySelector('#app');\napp.innerHTML = `<form><label>Primeiro número <input name=\"a\" type=\"number\" step=\"any\" required></label><label>Operação <select name=\"operador\"><option>+</option><option>-</option><option>*</option><option>/</option></select></label><label>Segundo número <input name=\"b\" type=\"number\" step=\"any\" required></label><button>Calcular</button><output aria-live=\"polite\"></output></form>`;"
+        },
+        {
+          "explicacao": "No envio, converta os operandos para número, use a função do primeiro arquivo e mostre o resultado ou erro.",
+          "codigo": "const formulario = app.querySelector('form');\nconst resultado = app.querySelector('output');\nformulario.addEventListener('submit', (evento) => {\n  evento.preventDefault();\n  const campos = new FormData(formulario);\n  try {\n    resultado.textContent = calcular(Number(campos.get('a')), campos.get('operador'), Number(campos.get('b')));\n  } catch (erro) {\n    resultado.textContent = erro.message;\n  }\n});"
+        }
+      ]
+    }
+  ],
+  "teste": "formulario.elements.a.value = '12';\nformulario.elements.b.value = '3';\nformulario.elements.operador.value = '/';\nformulario.dispatchEvent(new Event('submit', { cancelable: true }));\nif (resultado.textContent !== '4') throw new Error('O formulário deveria exibir 4');\nformulario.elements.b.value = '0';\nformulario.dispatchEvent(new Event('submit', { cancelable: true }));\nif (resultado.textContent !== 'divisão por zero') throw new Error('A interface deveria exibir o erro de divisão');"
+}

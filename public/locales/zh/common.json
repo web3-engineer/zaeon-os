@@ -107,6 +107,9 @@
             "rodando": "运行中…",
             "carregandoPython": "正在加载 Python…",
             "rodarTestes": "运行测试 ▸",
+            "baixarTeste": "下载测试",
+            "testeLocal": "RDKit 在本地 Python 环境中运行。先运行 `{{instalar}}`，再运行 `{{rodar}}`。",
+            "concluaDependencias": "请先完成：{{arquivos}}。",
             "runtimeIndisponivel": "此语言无法在浏览器中运行。",
             "pythonErro": "Python 未加载：",
             "passou": "✓ 通过 — 你输入的代码可以运行！",
@@ -560,6 +563,14 @@
             },
             "literatura": {
                 "title": "巴西科尔德尔文学",
+                "summary": ""
+            },
+            "artes": {
+                "title": "观察绘画",
+                "summary": ""
+            },
+            "marketing": {
+                "title": "市场调研与定位",
                 "summary": ""
             },
             "musica": {

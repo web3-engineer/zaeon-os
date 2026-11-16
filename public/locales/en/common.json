@@ -107,6 +107,9 @@
             "rodando": "running…",
             "carregandoPython": "loading Python…",
             "rodarTestes": "run tests ▸",
+            "baixarTeste": "Download test",
+            "testeLocal": "RDKit runs in local Python. Run `{{instalar}}` and then `{{rodar}}`.",
+            "concluaDependencias": "Complete first: {{arquivos}}.",
             "runtimeIndisponivel": "Browser execution is unavailable for this language.",
             "pythonErro": "Python didn't load:",
             "passou": "✓ passed — the code you typed runs!",
@@ -560,6 +563,14 @@
             },
             "literatura": {
                 "title": "Brazilian Cordel Literature",
+                "summary": ""
+            },
+            "artes": {
+                "title": "Observational Drawing",
+                "summary": ""
+            },
+            "marketing": {
+                "title": "Market Research and Positioning",
                 "summary": ""
             },
             "musica": {

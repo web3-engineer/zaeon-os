@@ -14,6 +14,7 @@ import { studioUid } from "@/lib/studio/auth";
 import { montarCursoEsqueleto } from "@/lib/forja/cursoRepo";
 import { resolverEsqueleto } from "@/lib/forja/esqueletoResolver";
 import { conteudoCuradoDoCurso } from "@/lib/forja/conteudoCurado";
+import { projetoCuradoDoCurso } from "@/lib/forja/projetosCurados";
 import { cardsCacheados } from "@/lib/forja/cardsLocal";
 import { tutoriaisDoCurso } from "@/lib/forja/tutoriais";
 
@@ -41,8 +42,10 @@ export async function POST(req: Request) {
 
   // F2 — tutorial de arquivo: os cards GERADOS do repo real (cache da box) vêm primeiro; sem eles, os
   // cards de demonstração curados por curso. Vazio = o curso ainda não tem a prática "digite o código".
-  const gerados = await cardsCacheados(esq.repo).catch(() => []);
+  const projeto = projetoCuradoDoCurso(esq.id);
+  const gerados = projeto ? [] : await cardsCacheados(esq.repo).catch(() => []);
   const cards = gerados.length ? gerados : tutoriaisDoCurso(esq.id);
+  const prepararTeste = projeto?.prepararTeste;
 
   const chave = `forja:${esq.id}`;
   const existente = await prisma.studioArtifact.findFirst({
@@ -53,5 +56,5 @@ export async function POST(req: Request) {
     data: { ownerId: userId, sourceIds: [chave], kind: "forja", skin: skinDaVitrine({ kind: "forja" }), status: "done", title: esq.titulo, mime: "application/json", meta: curso as unknown as object },
   }));
 
-  return NextResponse.json({ id: art.id, status: "done", title: esq.titulo, meta: { ...curso, licoesPorNo }, cards });
+  return NextResponse.json({ id: art.id, status: "done", title: esq.titulo, meta: { ...curso, licoesPorNo }, cards, prepararTeste, pacotes: projeto?.pacotes });
 }

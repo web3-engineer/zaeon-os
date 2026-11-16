@@ -10,11 +10,11 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import EditorDoCard from "@/components/study/EditorDoCard";
 import { useCodeRunner, type Language } from "@/app/agentic-modules/codelab/useCodeRunner";
-import { snippetsDoCard, validarDigitado, programaDeTeste, type CardDeArquivo, type Snippet } from "@/lib/forja/tutorialArquivo";
+import { snippetsDoCard, validarDigitado, programaDeTeste, montarArquivo, type CardDeArquivo, type Snippet } from "@/lib/forja/tutorialArquivo";
 
 const LANG: Record<string, Language> = { python: "python", javascript: "javascript", typescript: "typescript", html: "html" };
 
-export default function CardArquivo({ card, cursoId, onFechar }: { card: CardDeArquivo; cursoId?: string; onFechar?: () => void }) {
+export default function CardArquivo({ card, cursoId, onFechar, prepararTeste = "", bloqueado = false, pacotes, aoTestar }: { card: CardDeArquivo; cursoId?: string; onFechar?: () => void; prepararTeste?: string; bloqueado?: boolean; pacotes?: string[]; aoTestar?: (passou: boolean) => void }) {
   const { t } = useTranslation();
   const flat = useMemo(() => {
     const arr: { s: Snippet; aba: number; local: number }[] = [];
@@ -36,6 +36,21 @@ export default function CardArquivo({ card, cursoId, onFechar }: { card: CardDeA
   const completo = feitos.every(Boolean) && total > 0;
   const lang = LANG[card.linguagem] ?? "other";
   const precisaPy = lang === "python";
+  const testeLocal = precisaPy && pacotes?.includes("rdkit");
+  const baixarTeste = () => {
+    const arquivo = montarArquivo(card) + [
+      "", "", "if __name__ == '__main__':", "    import sys",
+      "    if sys.argv[1:] == ['--testar']:",
+      ...(card.teste ?? "").split("\n").map((linha) => "        " + linha),
+      "        print('OK')", "    else:", "        print(main())", "",
+    ].join("\n");
+    const url = URL.createObjectURL(new Blob([arquivo], { type: "text/x-python" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "teste_projeto.py";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
 
   const conferir = () => {
     if (!atual) return;
@@ -54,9 +69,10 @@ export default function CardArquivo({ card, cursoId, onFechar }: { card: CardDeA
   const rodar = async () => {
     const digitados = flat.map((f) => (feitos[flat.indexOf(f)] ? f.s.codigo : ""));
     const programa = programaDeTeste(card, digitados);
-    const out = await run(programa, lang);
+    const out = await run([prepararTeste, programa].filter(Boolean).join("\n"), lang, undefined, pacotes);
     const falhou = out.some((o) => o.type === "stderr" && o.text.trim());
     const saida = out.filter((o) => o.type === "stdout" || o.type === "stderr").map((o) => o.text).join("\n").trim();
+    aoTestar?.(!falhou);
     setResultado({ passou: !falhou, saida: saida || (falhou ? "erro" : "ok") });
   };
 
@@ -132,11 +148,13 @@ export default function CardArquivo({ card, cursoId, onFechar }: { card: CardDeA
         {msg && <div className={"ca-msg" + (msg.ok ? " ok" : " no")}>{msg.txt}</div>}
         <div className="ca-acoes">
           <button className="ca-btn ghost" onClick={conferir} disabled={completo}>{t("forja.card.conferir")}</button>
-          <button className="ca-btn pill" onClick={rodar} disabled={!completo || isRunning || (precisaPy && !isPyodideReady)}>
+          {testeLocal ? <button className="ca-btn pill" onClick={baixarTeste} disabled={!completo}>{t("forja.card.baixarTeste")}</button> : <button className="ca-btn pill" onClick={rodar} disabled={bloqueado || !completo || isRunning || (precisaPy && !isPyodideReady)}>
             {isRunning ? t("forja.card.rodando") : precisaPy && !isPyodideReady ? t("forja.card.carregandoPython") : t("forja.card.rodarTestes")}
-          </button>
+          </button>}
         </div>
-        {pyodideError && <div className="ca-msg no">{t("forja.card.pythonErro")} {pyodideError}</div>}
+        {testeLocal && <p className="ca-msg">{t("forja.card.testeLocal", { instalar: "python -m pip install rdkit", rodar: "python teste_projeto.py --testar" })}</p>}
+        {bloqueado && <p className="ca-msg">{t("forja.card.concluaDependencias", { arquivos: card.dependencias?.join(", ") })}</p>}
+        {precisaPy && !testeLocal && pyodideError && <div className="ca-msg no">{t("forja.card.pythonErro")} {pyodideError}</div>}
         {resultado && (
           <div className={"ca-res" + (resultado.passou ? " ok" : " no")}>
             <b>{resultado.passou ? t("forja.card.passou") : t("forja.card.naoPassou")}</b>

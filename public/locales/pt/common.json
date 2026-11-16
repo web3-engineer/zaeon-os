@@ -107,6 +107,9 @@
             "rodando": "rodando…",
             "carregandoPython": "carregando Python…",
             "rodarTestes": "rodar testes ▸",
+            "baixarTeste": "Baixar teste",
+            "testeLocal": "O RDKit roda no Python local. Execute `{{instalar}}` e depois `{{rodar}}`.",
+            "concluaDependencias": "Conclua primeiro: {{arquivos}}.",
             "runtimeIndisponivel": "Execução indisponível no navegador para esta linguagem.",
             "pythonErro": "Python não carregou:",
             "passou": "✓ passou — o código que você digitou roda!",
@@ -560,6 +563,14 @@
             },
             "literatura": {
                 "title": "Literatura de cordel",
+                "summary": ""
+            },
+            "artes": {
+                "title": "Desenho de observação",
+                "summary": ""
+            },
+            "marketing": {
+                "title": "Pesquisa de mercado e posicionamento",
                 "summary": ""
             },
             "musica": {

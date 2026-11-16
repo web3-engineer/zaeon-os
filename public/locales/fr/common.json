@@ -107,6 +107,9 @@
             "rodando": "exécution…",
             "carregandoPython": "chargement de Python…",
             "rodarTestes": "lancer les tests ▸",
+            "baixarTeste": "Télécharger le test",
+            "testeLocal": "RDKit fonctionne avec Python en local. Exécutez `{{instalar}}`, puis `{{rodar}}`.",
+            "concluaDependencias": "Terminez d’abord : {{arquivos}}.",
             "runtimeIndisponivel": "Ce langage ne peut pas être exécuté dans le navigateur.",
             "pythonErro": "Python n'a pas chargé :",
             "passou": "✓ réussi — le code que tu as tapé s'exécute !",
@@ -560,6 +563,14 @@
             },
             "literatura": {
                 "title": "Littérature de cordel",
+                "summary": ""
+            },
+            "artes": {
+                "title": "Dessin d’observation",
+                "summary": ""
+            },
+            "marketing": {
+                "title": "Études de marché et positionnement",
                 "summary": ""
             },
             "musica": {
