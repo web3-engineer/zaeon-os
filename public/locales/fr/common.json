@@ -481,6 +481,46 @@
             "habitat": {
                 "title": "Habitat sous-marin",
                 "summary": "Conception d’un espace de travail sous la mer."
+            },
+            "ecologia": {
+                "title": "Écologie des dunes côtières",
+                "summary": ""
+            },
+            "matematica": {
+                "title": "Probabilités et jeux",
+                "summary": ""
+            },
+            "arquitetura": {
+                "title": "Architecture bioclimatique",
+                "summary": ""
+            },
+            "economia": {
+                "title": "Économie du travail",
+                "summary": ""
+            },
+            "direito": {
+                "title": "Droit constitutionnel",
+                "summary": ""
+            },
+            "literatura": {
+                "title": "Littérature de cordel",
+                "summary": ""
+            },
+            "musica": {
+                "title": "Harmonie et improvisation",
+                "summary": ""
+            },
+            "educacao": {
+                "title": "Culture scientifique",
+                "summary": ""
+            },
+            "comunicacao": {
+                "title": "Journalisme de terrain",
+                "summary": ""
+            },
+            "veterinaria": {
+                "title": "Médecine vétérinaire préventive",
+                "summary": ""
             }
         },
         "timeline": {

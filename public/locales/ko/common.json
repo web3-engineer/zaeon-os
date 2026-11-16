@@ -481,6 +481,46 @@
             "habitat": {
                 "title": "해저 작업 공간",
                 "summary": "바닷속 작업 공간 설계."
+            },
+            "ecologia": {
+                "title": "해안 사구 생태학",
+                "summary": ""
+            },
+            "matematica": {
+                "title": "확률과 게임",
+                "summary": ""
+            },
+            "arquitetura": {
+                "title": "기후를 고려한 건축",
+                "summary": ""
+            },
+            "economia": {
+                "title": "노동경제학",
+                "summary": ""
+            },
+            "direito": {
+                "title": "헌법",
+                "summary": ""
+            },
+            "literatura": {
+                "title": "브라질 코르델 문학",
+                "summary": ""
+            },
+            "musica": {
+                "title": "화성과 즉흥 연주",
+                "summary": ""
+            },
+            "educacao": {
+                "title": "과학 문해력",
+                "summary": ""
+            },
+            "comunicacao": {
+                "title": "현장 저널리즘",
+                "summary": ""
+            },
+            "veterinaria": {
+                "title": "예방 수의학",
+                "summary": ""
             }
         },
         "timeline": {

@@ -481,6 +481,46 @@
             "habitat": {
                 "title": "Habitat submerso",
                 "summary": "Projeto de um espaço de trabalho sob a água."
+            },
+            "ecologia": {
+                "title": "Ecologia das restingas",
+                "summary": ""
+            },
+            "matematica": {
+                "title": "Probabilidade e jogos",
+                "summary": ""
+            },
+            "arquitetura": {
+                "title": "Arquitetura bioclimática",
+                "summary": ""
+            },
+            "economia": {
+                "title": "Economia do trabalho",
+                "summary": ""
+            },
+            "direito": {
+                "title": "Direito constitucional",
+                "summary": ""
+            },
+            "literatura": {
+                "title": "Literatura de cordel",
+                "summary": ""
+            },
+            "musica": {
+                "title": "Harmonia e improvisação",
+                "summary": ""
+            },
+            "educacao": {
+                "title": "Alfabetização científica",
+                "summary": ""
+            },
+            "comunicacao": {
+                "title": "Jornalismo de campo",
+                "summary": ""
+            },
+            "veterinaria": {
+                "title": "Medicina veterinária preventiva",
+                "summary": ""
             }
         },
         "timeline": {

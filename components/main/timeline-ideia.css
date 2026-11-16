@@ -93,7 +93,7 @@ html:not(.dark) .ci-line { background: #cbd5e1; }
   position: absolute;
   top: 50%;
   left: 50%;
-  width: min(48%, 230px);
+  width: min(38%, 176px);
   opacity: var(--carta-op, 0);
   transform: translate(calc(-50% + var(--carta-recuo, 0px)), -50%) scale(var(--carta-escala, .62));
   filter: blur(var(--forja-blur, 0px));
@@ -190,7 +190,7 @@ html:not(.dark) .ci-line { background: #cbd5e1; }
 }
 
 .ci-carrossel {
-  --ci-carrossel-carta: min(48%, 230px);
+  --ci-carrossel-carta: min(38%, 176px);
   opacity: var(--carrossel-op, 1);
   position: absolute;
   top: 50%;
@@ -205,7 +205,6 @@ html:not(.dark) .ci-line { background: #cbd5e1; }
   overflow-x: auto;
   overscroll-behavior-inline: contain;
   scrollbar-width: none;
-  scroll-snap-type: x mandatory;
   margin: 0;
   padding: 16px calc((100% - var(--ci-carrossel-carta)) / 2);
   list-style: none;
@@ -213,8 +212,8 @@ html:not(.dark) .ci-line { background: #cbd5e1; }
 .ci-carrossel-faixa::-webkit-scrollbar { display: none; }
 .ci-carrossel-faixa > li {
   min-width: 0;
-  flex: 0 0 min(48cqw, 230px);
-  scroll-snap-align: center;
+  flex: 0 0 min(38cqw, 176px);
+
 }
 .ci-carrossel { container-type: inline-size; }
 .ci-carrossel-item {

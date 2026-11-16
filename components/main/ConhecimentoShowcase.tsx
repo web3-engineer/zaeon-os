@@ -15,6 +15,16 @@ const exemplos = [
   { id: "astronomia", skin: "caderno", tipo: "curso", modelo: "livro", imagem: "/videos/visio-blackhole.jpg" },
   { id: "clima", skin: "dados", tipo: "pesquisa", modelo: "livro" },
   { id: "habitat", skin: "portfolio", tipo: "negocio", modelo: "predio", imagem: "/assets/intro-poster-desktop.jpg" },
+  { id: "ecologia", skin: "dossie", tipo: "pesquisa", modelo: "planta" },
+  { id: "matematica", skin: "dados", tipo: "curso", modelo: "livro" },
+  { id: "arquitetura", skin: "portfolio", tipo: "curso", modelo: "predio" },
+  { id: "economia", skin: "dados", tipo: "curso", modelo: "graos" },
+  { id: "direito", skin: "historia", tipo: "curso", modelo: "livro" },
+  { id: "literatura", skin: "caderno", tipo: "curso", modelo: "livro" },
+  { id: "musica", skin: "portfolio", tipo: "curso", modelo: "ondas" },
+  { id: "educacao", skin: "caderno", tipo: "curso", modelo: "livro" },
+  { id: "comunicacao", skin: "dossie", tipo: "curso", modelo: "livro" },
+  { id: "veterinaria", skin: "agronomia", tipo: "curso", modelo: "planta" },
 ] as const satisfies readonly Pick<ItemVitrine, "id" | "skin" | "tipo" | "modelo" | "imagem">[];
 
 export default function ConhecimentoShowcase({ principal }: { principal: ReactNode }) {
@@ -31,17 +41,36 @@ export default function ConhecimentoShowcase({ principal }: { principal: ReactNo
   useEffect(() => {
     const lista = faixa.current;
     if (!lista || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let quadro = 0;
+    let anterior = 0;
+    let decorrido = 0;
+    let velocidade = 0;
     let direcao = 1;
-    const timer = window.setInterval(() => {
-      if (lista.matches(":hover, :focus-within")) return;
-      const primeiro = lista.firstElementChild;
-      if (!primeiro) return;
-      const passo = primeiro.getBoundingClientRect().width + parseFloat(getComputedStyle(lista).columnGap);
-      if (lista.scrollLeft >= lista.scrollWidth - lista.clientWidth - 2) direcao = -1;
-      else if (lista.scrollLeft <= 2) direcao = 1;
-      lista.scrollBy({ left: direcao * passo, behavior: "smooth" });
-    }, 2550);
-    return () => window.clearInterval(timer);
+    let posicao = lista.scrollLeft;
+    let ultimaRolagem = lista.scrollLeft;
+    const mover = (agora: number) => {
+      const delta = anterior ? Math.min((agora - anterior) / 1000, .05) : 0;
+      anterior = agora;
+      decorrido += delta;
+      const limite = lista.scrollWidth - lista.clientWidth;
+      const pausado = decorrido < 1.7 || lista.matches(":hover, :focus-within");
+      if (pausado || lista.scrollLeft !== ultimaRolagem) {
+        posicao = lista.scrollLeft;
+        velocidade = 0;
+      }
+      if (!pausado && limite > 0) {
+        if (posicao >= limite - 2) direcao = -1;
+        if (posicao <= 2) direcao = 1;
+        const distancia = direcao > 0 ? limite - posicao : posicao;
+        velocidade = Math.min(72, Math.sqrt(150 * distancia), velocidade + delta * 75);
+        posicao = Math.max(0, Math.min(limite, posicao + direcao * velocidade * delta));
+        lista.scrollLeft = posicao;
+      }
+      ultimaRolagem = lista.scrollLeft;
+      quadro = requestAnimationFrame(mover);
+    };
+    quadro = requestAnimationFrame(mover);
+    return () => cancelAnimationFrame(quadro);
   }, []);
 
   const renderCarta = (exemplo: (typeof exemplos)[number], lado: "esquerda" | "direita") => {
@@ -56,12 +85,14 @@ export default function ConhecimentoShowcase({ principal }: { principal: ReactNo
           </li>;
   };
 
+  const meio = Math.floor(exemplos.length / 2);
+
   return (
     <section aria-label={t("landing.knowledge_cards.label")} className="ci-carrossel">
       <ul ref={faixa} className="ci-carrossel-faixa">
-        {exemplos.slice(0, 3).map((exemplo) => renderCarta(exemplo, "esquerda"))}
+        {exemplos.slice(0, meio).map((exemplo) => renderCarta(exemplo, "esquerda"))}
         <li className="ci-carrossel-principal">{principal}</li>
-        {exemplos.slice(3).map((exemplo) => renderCarta(exemplo, "direita"))}
+        {exemplos.slice(meio).map((exemplo) => renderCarta(exemplo, "direita"))}
       </ul>
     </section>
   );

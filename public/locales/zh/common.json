@@ -481,6 +481,46 @@
             "habitat": {
                 "title": "海底栖居空间",
                 "summary": "海底工作空间的设计。"
+            },
+            "ecologia": {
+                "title": "海岸沙丘生态学",
+                "summary": ""
+            },
+            "matematica": {
+                "title": "概率与游戏",
+                "summary": ""
+            },
+            "arquitetura": {
+                "title": "生物气候建筑",
+                "summary": ""
+            },
+            "economia": {
+                "title": "劳动经济学",
+                "summary": ""
+            },
+            "direito": {
+                "title": "宪法",
+                "summary": ""
+            },
+            "literatura": {
+                "title": "巴西科尔德尔文学",
+                "summary": ""
+            },
+            "musica": {
+                "title": "和声与即兴演奏",
+                "summary": ""
+            },
+            "educacao": {
+                "title": "科学素养",
+                "summary": ""
+            },
+            "comunicacao": {
+                "title": "现场新闻报道",
+                "summary": ""
+            },
+            "veterinaria": {
+                "title": "预防兽医学",
+                "summary": ""
             }
         },
         "timeline": {

@@ -481,6 +481,46 @@
             "habitat": {
                 "title": "Hábitat submarino",
                 "summary": "Diseño de un espacio de trabajo bajo el mar."
+            },
+            "ecologia": {
+                "title": "Ecología de dunas costeras",
+                "summary": ""
+            },
+            "matematica": {
+                "title": "Probabilidad y juegos",
+                "summary": ""
+            },
+            "arquitetura": {
+                "title": "Arquitectura bioclimática",
+                "summary": ""
+            },
+            "economia": {
+                "title": "Economía laboral",
+                "summary": ""
+            },
+            "direito": {
+                "title": "Derecho constitucional",
+                "summary": ""
+            },
+            "literatura": {
+                "title": "Literatura de cordel",
+                "summary": ""
+            },
+            "musica": {
+                "title": "Armonía e improvisación",
+                "summary": ""
+            },
+            "educacao": {
+                "title": "Alfabetización científica",
+                "summary": ""
+            },
+            "comunicacao": {
+                "title": "Periodismo de campo",
+                "summary": ""
+            },
+            "veterinaria": {
+                "title": "Medicina veterinaria preventiva",
+                "summary": ""
             }
         },
         "timeline": {

@@ -481,6 +481,46 @@
             "habitat": {
                 "title": "Underwater Habitat",
                 "summary": "Design for a workspace beneath the sea."
+            },
+            "ecologia": {
+                "title": "Coastal Dune Ecology",
+                "summary": ""
+            },
+            "matematica": {
+                "title": "Probability and Games",
+                "summary": ""
+            },
+            "arquitetura": {
+                "title": "Bioclimatic Architecture",
+                "summary": ""
+            },
+            "economia": {
+                "title": "Labor Economics",
+                "summary": ""
+            },
+            "direito": {
+                "title": "Constitutional Law",
+                "summary": ""
+            },
+            "literatura": {
+                "title": "Brazilian Cordel Literature",
+                "summary": ""
+            },
+            "musica": {
+                "title": "Harmony and Improvisation",
+                "summary": ""
+            },
+            "educacao": {
+                "title": "Scientific Literacy",
+                "summary": ""
+            },
+            "comunicacao": {
+                "title": "Field Journalism",
+                "summary": ""
+            },
+            "veterinaria": {
+                "title": "Preventive Veterinary Medicine",
+                "summary": ""
             }
         },
         "timeline": {

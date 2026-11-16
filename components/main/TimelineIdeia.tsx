@@ -26,7 +26,7 @@ const MARCOS: readonly { titulo: string; cor: string }[] = [
 ];
 const N = MARCOS.length;
 
-const DUR = 8200, HOLD = 34000, FADE = 800, TOTAL = DUR + HOLD + FADE;
+const DUR = 8200, HOLD = 76000, FADE = 800, TOTAL = DUR + HOLD + FADE;
 
 export default function TimelineIdeia({ className = "" }: { className?: string }) {
   const { t } = useTranslation();

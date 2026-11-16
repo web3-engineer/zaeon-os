@@ -481,6 +481,46 @@
             "habitat": {
                 "title": "Unterwasserhabitat",
                 "summary": "Entwurf eines Arbeitsplatzes unter dem Meer."
+            },
+            "ecologia": {
+                "title": "Ökologie der Küstendünen",
+                "summary": ""
+            },
+            "matematica": {
+                "title": "Wahrscheinlichkeit und Spiele",
+                "summary": ""
+            },
+            "arquitetura": {
+                "title": "Bioklimatische Architektur",
+                "summary": ""
+            },
+            "economia": {
+                "title": "Arbeitsökonomie",
+                "summary": ""
+            },
+            "direito": {
+                "title": "Verfassungsrecht",
+                "summary": ""
+            },
+            "literatura": {
+                "title": "Brasilianische Cordel-Literatur",
+                "summary": ""
+            },
+            "musica": {
+                "title": "Harmonie und Improvisation",
+                "summary": ""
+            },
+            "educacao": {
+                "title": "Naturwissenschaftliche Grundbildung",
+                "summary": ""
+            },
+            "comunicacao": {
+                "title": "Reportage vor Ort",
+                "summary": ""
+            },
+            "veterinaria": {
+                "title": "Präventive Tiermedizin",
+                "summary": ""
             }
         },
         "timeline": {
