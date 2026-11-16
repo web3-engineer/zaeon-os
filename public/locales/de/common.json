@@ -1,10 +1,22 @@
 {
+  "siteNav": {
+    "docs": "Dokumentation",
+    "about": "Über uns",
+    "lab": "Labor",
+    "market": "Marktplatz",
+    "news": "Neuigkeiten",
+    "site": "Websiteseiten",
+    "open": "Menü öffnen",
+    "close": "Menü schließen",
+    "settings": "Einstellungen",
+    "general": "Allgemein",
+    "theme": "Design wechseln"
+  },
   "labSidebar": {
     "study": "Lernraum",
     "research": "Forschungsraum",
     "projects": "Projekte",
     "office": "Büro",
-    "marketplace": "Marktplatz",
     "profile": "Profil",
     "layout": "Layout",
     "focus": "Fokus",
@@ -22,7 +34,26 @@
     "yesterday": "Gestern",
     "week": "Letzte 7 Tage",
     "month": "Letzte 30 Tage",
-    "older": "Älter"
+    "older": "Älter",
+    "agent": "Agent wechseln",
+    "switching": "Wechsel zu {{name}}…",
+    "replying": "{{name}} antwortet…",
+    "talk": "Mit {{name}} chatten",
+    "change": "Agent wechseln (aktuell: {{name}})",
+    "showChats": "Unterhaltungen anzeigen",
+    "hideChats": "Unterhaltungen einklappen",
+    "showTopics": "Unterthemen anzeigen",
+    "hideTopics": "Unterthemen einklappen",
+    "replyingShort": "Antwortet",
+    "newTopic": "Neues Unterthema",
+    "rename": "Umbenennen",
+    "delete": "Löschen",
+    "newName": "Neuer Name der Unterhaltung",
+    "noResults": "Keine Ergebnisse.",
+    "empty": "Noch keine Unterhaltungen.",
+    "cancel": "Abbrechen",
+    "confirm": "Unterhaltung löschen?",
+    "confirmTopics": "Unterhaltung und Unterthemen ({{count}}) löschen?"
   },
     "forja": {
         "board": {

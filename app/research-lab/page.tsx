@@ -2805,7 +2805,7 @@ export default function HomeworkPage({
             <button
               data-tour="estudos"
               onClick={() => abrirAgente()}
-              title={trocandoPara ? `Trocando para ${agenteChat(trocandoPara).nome}…` : agente.tela === "chat" && agenteProcessando ? `${agente.nome} está respondendo…` : `Conversar com ${agente.nome}`}
+              title={trocandoPara ? t("labSidebar.switching", { name: agenteChat(trocandoPara).nome }) : agente.tela === "chat" && agenteProcessando ? t("labSidebar.replying", { name: agente.nome }) : t("labSidebar.talk", { name: agente.nome })}
               className={`${navItem(agente.tela === "ide" ? activeTab === "octa" : activeTab === "sala-de-estudos" && abaEstudos === "meus-estudos", "blue")} ${pill(sidebarAberta)} !p-[7px]`}
             >
               {/* o ROSTO: clicar nele abre o seletor de agente (o resto da pill abre a conversa do agente atual) */}
@@ -2814,14 +2814,14 @@ export default function HomeworkPage({
                 tabIndex={0}
                 aria-haspopup="menu"
                 aria-expanded={!!seletorAgente}
-                aria-label={`Trocar de agente (agora: ${agente.nome})`}
-                title="Trocar de agente"
+                aria-label={t("labSidebar.change", { name: agente.nome })}
+                title={t("labSidebar.agent")}
                 onClick={(e) => { e.stopPropagation(); setSeletorAgente(seletorAgente ? null : e.currentTarget.getBoundingClientRect()); }}
                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setSeletorAgente(e.currentTarget.getBoundingClientRect()); } }}
                 className={`relative grid place-items-center shrink-0 w-[22px] h-[22px] rounded-full cursor-pointer hover:ring-2 hover:ring-cyan-300/70 ${agente.tela === "chat" && agenteProcessando && !trocandoPara ? "ring-2 ring-cyan-300/80 shadow-[0_0_14px_rgba(34,211,238,0.85)] motion-safe:animate-pulse" : ""}`}
               >
                 {trocandoPara ? (
-                  <Loader2 className="w-[18px] h-[18px] animate-spin text-cyan-500 dark:text-cyan-300" aria-label="Trocando de agente" />
+                  <Loader2 className="w-[18px] h-[18px] animate-spin text-cyan-500 dark:text-cyan-300" aria-hidden />
                 ) : agente.id === "octa" ? (
                   <OctaIcon size={22} className="text-cyan-700 dark:text-cyan-200" />
                 ) : agente.id !== "aura" ? (
@@ -2922,11 +2922,11 @@ export default function HomeworkPage({
             <button
               data-tour="tab-community"
               onClick={() => irEstudos("community")}
-              title={t("labSidebar.marketplace")}
+              title={t("siteNav.market")}
               className={`${activeTab === "sala-de-estudos" && abaEstudos === "community" ? `${NAV_BASE} ${NAV_ACTIVE_PILL} !ring-cyan-400/50` : `${NAV_BASE} ${DESTAQUE}`} ${pill(sidebarAberta)}`}
             >
               <ShoppingBagIcon className="w-5 h-5 shrink-0" />
-              <Rotulo v={sidebarAberta}>{t("labSidebar.marketplace")}</Rotulo>
+              <Rotulo v={sidebarAberta}>{t("siteNav.market")}</Rotulo>
             </button>
 
             {/* Perfil */}
@@ -3012,7 +3012,7 @@ export default function HomeworkPage({
         <div role="status" className="fixed inset-0 z-[580] grid place-items-center bg-white/40 dark:bg-black/40 backdrop-blur-sm pointer-events-none">
           <div className="flex items-center gap-3 px-5 py-3 rounded-2xl border bg-white/90 border-blue-200 text-slate-800 dark:bg-[rgba(22,22,34,0.9)] dark:border-white/10 dark:text-white shadow-xl">
             <Loader2 className="w-5 h-5 animate-spin text-cyan-500" />
-            <span className="text-[13px] font-bold">Trocando para {agenteChat(trocandoPara).nome}…</span>
+            <span className="text-[13px] font-bold">{t("labSidebar.switching", { name: agenteChat(trocandoPara).nome })}</span>
           </div>
         </div>
       )}

@@ -1,10 +1,22 @@
 {
+  "siteNav": {
+    "docs": "Documentação",
+    "about": "Sobre nós",
+    "lab": "Laboratório",
+    "market": "Marketplace",
+    "news": "Notícias",
+    "site": "Páginas do site",
+    "open": "Abrir o menu",
+    "close": "Fechar o menu",
+    "settings": "Configurações",
+    "general": "Geral",
+    "theme": "Alternar tema"
+  },
   "labSidebar": {
     "study": "Sala de Estudos",
     "research": "Sala de Pesquisa",
     "projects": "Projetos",
     "office": "Escritório",
-    "marketplace": "Marketplace",
     "profile": "Perfil",
     "layout": "Layout",
     "focus": "Foco",
@@ -22,7 +34,26 @@
     "yesterday": "Ontem",
     "week": "Últimos 7 dias",
     "month": "Últimos 30 dias",
-    "older": "Mais antigas"
+    "older": "Mais antigas",
+    "agent": "Trocar de agente",
+    "switching": "Trocando para {{name}}…",
+    "replying": "{{name}} está respondendo…",
+    "talk": "Conversar com {{name}}",
+    "change": "Trocar de agente (atual: {{name}})",
+    "showChats": "Mostrar conversas",
+    "hideChats": "Recolher conversas",
+    "showTopics": "Mostrar subtemas",
+    "hideTopics": "Recolher subtemas",
+    "replyingShort": "Respondendo",
+    "newTopic": "Novo subtema",
+    "rename": "Renomear",
+    "delete": "Excluir",
+    "newName": "Novo nome da conversa",
+    "noResults": "Nenhum resultado.",
+    "empty": "Nenhuma conversa ainda.",
+    "cancel": "Cancelar",
+    "confirm": "Excluir conversa?",
+    "confirmTopics": "Excluir conversa e subtemas ({{count}})?"
   },
     "forja": {
         "board": {

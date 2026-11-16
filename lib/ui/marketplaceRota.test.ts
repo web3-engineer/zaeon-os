@@ -70,8 +70,7 @@ describe("#824 · qual item do menu acende", () => {
 describe("#824 · as amarrações", () => {
   const navbar = ler("components/main/navbar.tsx");
   it("o menu do computador e o do celular apontam para /marketplace, sem 'Assistentes'", () => {
-    expect(navbar).toMatch(/<Link href=\{ROTA_MARKETPLACE\} className=\{getLinkClassName\("marketplace"\)\}>Marketplace<\/Link>/);
-    expect(navbar).toMatch(/\{ href: ROTA_MARKETPLACE, rotulo: "Marketplace" \}/);
+    expect(navbar).toContain('{ id: "marketplace", href: ROTA_MARKETPLACE, rotulo: t("siteNav.market") }');
     expect(navbar).not.toMatch(/lojaLabel|"\/assistentes"/);
   });
   it("o rodapé também", () => {
@@ -84,8 +83,7 @@ describe("#824 · as amarrações", () => {
     expect(lab).toMatch(/useMarketplaceNoLab\(activeTab === "sala-de-estudos" && abaEstudos === "community", irEstudos\)/);
   });
   it("o menu (computador e celular) pede pro laboratório sair da vitrine ao clicar em Laboratório; o celular marca pelo item", () => {
-    expect(navbar).toMatch(/<Link href="\/research-lab" onClick=\{irAoLaboratorio\}/);
-    expect(navbar).toMatch(/\{ href: "\/research-lab", rotulo: "Laboratório", aoClicar: irAoLaboratorio \}/);
+    expect(navbar).toContain('{ id: "laboratorio", href: "/research-lab", rotulo: t("siteNav.lab"), aoClicar: irAoLaboratorio }');
     expect(navbar).toMatch(/aria-current=\{atual === i\.href \? "page" : undefined\}/);
   });
   it("a Sala avisa também quando vai pra Literatura ou um curso (a vitrine fechou)", () => {

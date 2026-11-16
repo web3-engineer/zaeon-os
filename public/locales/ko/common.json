@@ -1,10 +1,22 @@
 {
+  "siteNav": {
+    "docs": "문서",
+    "about": "회사 소개",
+    "lab": "연구실",
+    "market": "마켓플레이스",
+    "news": "소식",
+    "site": "사이트 페이지",
+    "open": "메뉴 열기",
+    "close": "메뉴 닫기",
+    "settings": "설정",
+    "general": "일반",
+    "theme": "테마 전환"
+  },
   "labSidebar": {
     "study": "학습실",
     "research": "연구실",
     "projects": "프로젝트",
     "office": "오피스",
-    "marketplace": "마켓플레이스",
     "profile": "프로필",
     "layout": "레이아웃",
     "focus": "집중",
@@ -22,7 +34,26 @@
     "yesterday": "어제",
     "week": "최근 7일",
     "month": "최근 30일",
-    "older": "이전"
+    "older": "이전",
+    "agent": "에이전트 변경",
+    "switching": "{{name}}(으)로 전환 중…",
+    "replying": "{{name}} 응답 중…",
+    "talk": "{{name}}와 대화하기",
+    "change": "에이전트 변경 (현재: {{name}})",
+    "showChats": "대화 보기",
+    "hideChats": "대화 접기",
+    "showTopics": "하위 주제 보기",
+    "hideTopics": "하위 주제 접기",
+    "replyingShort": "응답 중",
+    "newTopic": "새 하위 주제",
+    "rename": "이름 변경",
+    "delete": "삭제",
+    "newName": "새 대화 이름",
+    "noResults": "결과가 없습니다.",
+    "empty": "아직 대화가 없습니다.",
+    "cancel": "취소",
+    "confirm": "대화를 삭제할까요?",
+    "confirmTopics": "대화와 하위 주제 {{count}}개를 삭제할까요?"
   },
     "forja": {
         "board": {

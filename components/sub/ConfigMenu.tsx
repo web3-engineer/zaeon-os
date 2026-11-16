@@ -110,8 +110,8 @@ export default function ConfigMenu() {
         onClick={() => setAberto((v) => !v)}
         aria-haspopup="dialog"
         aria-expanded={aberto}
-        aria-label="Configurações"
-        title="Configurações"
+        aria-label={t("siteNav.settings")}
+        title={t("siteNav.settings")}
         className="relative p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
       >
         <Cog6ToothIcon className={`w-6 h-6 text-slate-700 dark:text-slate-200 transition-transform duration-500 ${aberto ? "rotate-90" : ""}`} />
@@ -120,7 +120,7 @@ export default function ConfigMenu() {
       {aberto && (
         <div
           role="dialog"
-          aria-label="Configurações"
+          aria-label={t("siteNav.settings")}
           // `[&>*]:shrink-0`: numa tela BAIXA (Windows a 100% de zoom) as linhas, em coluna flex com altura
           // máxima, encolhiam até o `min-h` e o conteúdo (o seletor Automático/Leve/Completo) vazava por cima
           // da linha de baixo, que ficava com o clique. Sem encolher, o painel ROLA (overflow-y-auto).
@@ -128,10 +128,10 @@ export default function ConfigMenu() {
             backdrop-blur-2xl backdrop-saturate-[1.6] border border-white/60 dark:border-white/[0.12]
             bg-white/90 dark:bg-[#0b1020]/95 shadow-[0_18px_50px_-20px_rgba(37,99,235,0.45)] dark:shadow-[0_18px_50px_-20px_rgba(0,0,0,0.8)]"
         >
-          <p className="px-2 pt-1 pb-0.5 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-white/45">Configurações</p>
+          <p className="px-2 pt-1 pb-0.5 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-white/45">{t("siteNav.settings")}</p>
 
           {/* GERAL: idioma */}
-          <Gaveta id="geral" titulo="Geral" icone={<Globe size={16} className="text-cyan-600 dark:text-cyan-300 shrink-0" />} aberta={gaveta === "geral"} alternar={alternarGaveta}>
+          <Gaveta id="geral" titulo={t("siteNav.general")} icone={<Globe size={16} className="text-cyan-600 dark:text-cyan-300 shrink-0" />} aberta={gaveta === "geral"} alternar={alternarGaveta}>
             <div className={`${item} cursor-default`}>
               <span className="flex flex-col flex-1">
                 <span className={rotulo}>{t("options.language", "Idioma")}</span>
@@ -144,7 +144,7 @@ export default function ConfigMenu() {
               <button type="button" onClick={() => { reverToursDoLab(); setAberto(false); }} className={item}>
                 <GraduationCap size={16} className="text-cyan-600 dark:text-cyan-300 shrink-0" />
                 <span className="flex flex-col flex-1 min-w-0">
-                  <span className={rotulo}>Laboratório</span>
+                  <span className={rotulo}>{t("siteNav.lab")}</span>
                   <span>Rever tutorial</span>
                   <span className="text-[11px] font-normal text-slate-500 dark:text-white/45 leading-snug">A Aura mostra de novo os tutoriais e as dicas da Sala de Estudos e do Perfil.</span>
                 </span>
