@@ -173,7 +173,7 @@ export default function CenaCyber(p: CenaCyberProps) {
    *  ?nascer=1 ou com o MODO TUTORIAL ligado nas Configurações — ou RETOMA um tutorial pela metade (o progresso salvo
    *  neste navegador: lib/cyber/onboarding `decidirTutorial`) — decidido 1× (ao entrar) */
   const { nascer, retomar } = useMemo(() => {
-    if (!tela || typeof window === "undefined") return { nascer: false, retomar: null };
+    if (!tela || p.submersa || typeof window === "undefined") return { nascer: false, retomar: null };
     let visto = false;
     if (p.novoNoCyber !== undefined) visto = !p.novoNoCyber;
     else try { visto = localStorage.getItem(CHAVE_ONBOARDING) === "1"; } catch { /* storage bloqueado */ }

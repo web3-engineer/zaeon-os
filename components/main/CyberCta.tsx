@@ -3,7 +3,7 @@
 /**
  * CyberCta — o botão do cyberespaço COM a barra de carregamento dentro. A pré-carga (lib/cyber/precarga)
  * começa assim que o botão monta, na página inicial; enquanto baixa, o botão mostra a barra e o que está
- * carregando; quando acaba, fica acessível e vira a entrada:
+ * carregando; a entrada pode ser acionada enquanto os recursos baixam:
  *   logado → entra direto no cyberespaço (e destrava o som, como o "Conectar");
  *   deslogado → abre o login (o cyberespaço é só pra quem está logado — app/lounge-cosmico).
  */
@@ -32,7 +32,6 @@ export default function CyberCta({ logado, onLogin, className = "" }: { logado: 
 
   const entrar = () => {
     precarregarCorposCyber();
-    if (!pronto) return;
     if (!logado) { onLogin(); return; }
     musica().destravar();   // o clique é o gesto que libera o áudio (o cyberespaço já entra com som)
     router.push(LOUNGE_ROTA);
@@ -46,13 +45,11 @@ export default function CyberCta({ logado, onLogin, className = "" }: { logado: 
       onPointerEnter={() => precarregarCorposCyber()}
       onFocus={() => precarregarCorposCyber()}
       onTouchStart={() => precarregarCorposCyber()}
-      aria-disabled={!pronto}
-      aria-busy={!pronto}
       aria-label={t("landing.interface.jogar", { defaultValue: "" })}
       className={`group relative overflow-hidden flex flex-col items-stretch justify-center rounded-full border font-medium uppercase tracking-[0.18em] text-[11px] transition-all bg-transparent w-full sm:w-auto min-w-[250px]
         ${pronto
           ? "border-cyan-400/70 text-cyan-700 dark:text-cyan-200 hover:scale-105 hover:border-cyan-300 shadow-[0_0_24px_rgba(34,211,238,0.25)] cursor-pointer"
-          : "border-cyan-500/30 text-cyan-700/80 dark:text-cyan-300/80 cursor-progress"} ${className}`}
+          : "border-cyan-500/30 text-cyan-700/80 dark:text-cyan-300/80 cursor-pointer"} ${className}`}
     >
       <span className="relative z-10 flex items-center justify-center gap-2 px-8 pt-4 pb-3">
         <span aria-hidden>✦</span>
