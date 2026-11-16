@@ -878,7 +878,7 @@ export default function CoworkingCanal({ agenteInicial = null }: { agenteInicial
               // celular: o placeholder curto cabe numa linha (o longo quebrava e a caixa nascia com 2 linhas)
               placeholder={celular ? (agenteAtivo ? `Mensagem pra ${agenteAtivo.nome}` : "Mensagem") : agenteAtivo ? `Mensagem · ${agenteAtivo.nome} responde · @ troca de agente` : "Mensagem · @agente convoca"}
               aria-label="Mensagem"
-              className={`flex-1 min-h-[44px] max-h-[140px] px-4 py-3 rounded-2xl resize-none text-[14px] leading-5 bg-white/70 dark:bg-white/[0.06] border border-white/70 dark:border-white/10 ${TXT} placeholder:text-slate-400 dark:placeholder:text-white/35 outline-none focus:border-blue-400/70 dark:focus:border-cyan-300/50`}
+              className={`flex-1 min-h-[44px] max-h-[140px] px-4 py-3 rounded-2xl resize-none text-[16px] sm:text-[14px] leading-5 bg-white/70 dark:bg-white/[0.06] border border-white/70 dark:border-white/10 ${TXT} placeholder:text-slate-400 dark:placeholder:text-white/35 outline-none focus:border-blue-400/70 dark:focus:border-cyan-300/50`}
               style={{ height: Math.min(140, 24 + 20 * Math.max(1, texto.split("\n").length)) }}
             />
             {podeParar ? (

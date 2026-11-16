@@ -249,7 +249,9 @@ export default function StudyRoomContent({ flushTop = false, unified = false, ab
             // a 1ª vez do TABLET (lib/ui/loungeHub `LAB_TABLET_PRIMEIRA`): abre no CHAT, não na última aba salva
             if (new URLSearchParams(window.location.search).get("estudo") === "chat") { setActiveTab("meus-estudos"); tabRestored.current = true; return; }
             const saved = localStorage.getItem(`zaeon:lastTab:${room}`);
-            if (saved && (saved === "meus-estudos" || allTabs.some((t) => t.id === saved))) setActiveTab(saved);
+            // #832: a vitrine ("community") não volta sozinha — quem saiu por ela reabria o app no Marketplace, e não na
+            // conversa. Ela só abre quando pedida (/marketplace, o item do menu, a gaveta).
+            if (saved && saved !== "community" && (saved === "meus-estudos" || allTabs.some((t) => t.id === saved))) setActiveTab(saved);
             const pedida = consumirAbaEstudos();   // a sidebar pediu uma aba antes da sala montar
             if (pedida) setActiveTab(pedida);
         } catch { /* ignore */ }

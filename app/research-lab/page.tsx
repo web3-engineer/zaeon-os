@@ -16,7 +16,8 @@ import { Mic, MicOff, Code2, Building2, Loader2 } from "lucide-react";
 import { ConversasSlotContext } from "@/components/chat/ConversasSlot";
 import ConversasDaSala from "@/components/chat/ConversasDaSala";
 import { useSidebarHover, focoDeTeclado } from "@/components/lab/useSidebarHover";
-import { useIsMobile } from "@/lib/ui/useIsMobile";
+import { useIsMobile, QUERY_CELULAR, QUERY_CELULAR_DEITADO } from "@/lib/ui/useIsMobile";
+import { useFecharNoVoltar } from "@/lib/ui/useFecharNoVoltar";
 import { EVT_PESQUISA_SALVA, contarPalavras } from "@/lib/onboarding/tutorialLab";
 import RostoDaAba from "@/components/agents/avatar/RostoDaAba";
 import SeletorDeAgente from "@/components/agents/SeletorDeAgente";
@@ -854,8 +855,12 @@ export default function HomeworkPage({
   }, [isSidebarOpen, digitandoNoChat]);
   // CELULAR (≤767px): não existe hover — um toque abria a sidebar por cima de tudo e ela nunca fechava. Lá a sidebar
   // vira GAVETA (☰ na barra de baixo, fecha ao escolher) e a barra de baixo leva às salas; o conteúdo usa a largura toda.
-  const celular = useIsMobile();
+  // #832: deitado (baixo e de toque) também é celular — o layout de computador não deixava nenhuma linha de conversa
+  const celular = useIsMobile(QUERY_CELULAR);
+  const deitado = useIsMobile(QUERY_CELULAR_DEITADO);
   const [gaveta, setGaveta] = useState(false);
+  // #832: o ◀ do Android fecha a gaveta (antes voltava para a página anterior com ela aberta)
+  useFecharNoVoltar(celular && gaveta, () => setGaveta(false));
   // #713: celular — escolher um destino na gaveta fecha a gaveta (menus/campos dentro dela, não). Ouvinte do DOM porque a
   // lista de conversas é um portal: o clique de dentro dele não chegava a um onClickCapture do React.
   useEffect(() => {
@@ -2733,7 +2738,7 @@ export default function HomeworkPage({
     <div
       className={`relative transition-all duration-500 overflow-hidden flex font-sans w-full bg-slate-100 dark:bg-[#030014]
             ${isEmbedded ? "h-full" : "h-screen h-[100dvh]"}
-            ${!isEmbedded ? (isFocusMode ? "pt-4" : "pt-[68px] md:pt-[100px]") : ""}
+            ${!isEmbedded ? (isFocusMode ? "pt-4" : celular ? "pt-[68px]" : "pt-[68px] md:pt-[100px]") : ""}
         `}
     >
       {/* NOTIFICAÇÃO FLUTUANTE (TOAST) */}
@@ -2991,8 +2996,10 @@ export default function HomeworkPage({
               { id: "perfil", rotulo: "Perfil", icone: <UserCircleIcon className="w-5 h-5" />, ativo: !gaveta && activeTab === "profile", onClick: () => { setGaveta(false); setPerfilVisitado(null); setActiveTab("profile"); } },
             ].map((b) => (
               <button key={b.id} type="button" onClick={b.onClick} aria-current={b.ativo ? "page" : undefined}
-                className={`flex min-h-[60px] flex-1 flex-col items-center justify-center gap-0.5 text-[10.5px] font-semibold transition-colors ${b.ativo ? "text-blue-600 dark:text-cyan-300" : "text-slate-500 dark:text-white/55"}`}>
-                {b.icone}<span className="max-w-[72px] truncate">{b.rotulo}</span>
+                aria-label={b.rotulo}
+                className={`flex ${deitado ? "min-h-[44px]" : "min-h-[60px]"} flex-1 flex-col items-center justify-center gap-0.5 text-[10.5px] font-semibold transition-colors ${b.ativo ? "text-blue-600 dark:text-cyan-300" : "text-slate-500 dark:text-white/55"}`}>
+                {/* #832: deitado, a barra fica baixa (só os ícones) — cada pixel de altura é da conversa */}
+                {b.icone}{!deitado && <span className="max-w-[72px] truncate">{b.rotulo}</span>}
               </button>
             ))}
           </nav>
@@ -3010,7 +3017,7 @@ export default function HomeworkPage({
         </div>
       )}
       <main
-        style={barraCelular ? { ...recuoSidebar, paddingBottom: "calc(66px + env(safe-area-inset-bottom))" } : recuoSidebar}
+        style={barraCelular ? { ...recuoSidebar, paddingBottom: `calc(${deitado ? 48 : 66}px + env(safe-area-inset-bottom))` } : recuoSidebar}
         className={`flex-1 flex flex-col h-full overflow-hidden ${barraCelular
           // celular: largura toda e o pé livre pra barra de baixo (60px + a área segura do iPhone)
           ? `px-1.5 pt-1 gap-3 ${activeTab === "sala-de-estudos" || activeTab === "pesquisa" || activeTab === "escritorio" ? "" : "px-3"}`

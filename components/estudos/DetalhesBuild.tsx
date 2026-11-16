@@ -8,6 +8,8 @@
  * contorno, na cor da raridade. Fecha no ✕, no Esc ou clicando fora.
  */
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { useFecharNoVoltar } from "@/lib/ui/useFecharNoVoltar";
 import type { ItemVitrine } from "@/lib/estudos/vitrine";
 import { descricaoDe, nichoDe, publicadorDe, validadoresDe } from "@/lib/estudos/detalhes";
 import "./vitrine-detalhes.css";
@@ -57,6 +59,9 @@ export default function DetalhesBuild({ item, cor, origem, carta, onFechar }: {
         window.setTimeout(onFechar, FECHAR_MS);
     };
 
+    // #832: o ◀ do Android fecha o detalhe (antes ele saía do Marketplace inteiro)
+    useFecharNoVoltar(true, fechar);
+
     useEffect(() => {
         const raf = requestAnimationFrame(() => setAberto(true));
         const tecla = (e: KeyboardEvent) => { if (e.key === "Escape") fechar(); };
@@ -100,7 +105,10 @@ export default function DetalhesBuild({ item, cor, origem, carta, onFechar }: {
 
     const desenho = tam ? trilhas(tam.W, tam.H) : null;
 
-    return (
+    // #832: no <body> — dentro da vitrine (caixa com transform e overflow escondido) o `position: fixed` se prendia a
+    // ela, e no celular o painel abria 14 px para a esquerda e cortado
+    if (typeof document === "undefined") return null;
+    return createPortal(
         <div className={`vd-raiz${aberto ? " aberto" : ""}`} style={{ "--cor": cor } as CSSProperties}>
             {focoStyle && <div className="vd-foco" style={focoStyle}>{carta}</div>}
             <div className="vd-veu" onClick={fechar} />
@@ -157,5 +165,5 @@ export default function DetalhesBuild({ item, cor, origem, carta, onFechar }: {
                 </div>
             </section>
         </div>
-    );
+    , document.body);
 }

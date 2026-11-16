@@ -183,7 +183,7 @@ const HabitMatrix = ({ weekData, monthName }: { weekData: any[], monthName: stri
                     {habits.map((habit) => (
                         <motion.div key={habit.id} className="flex items-center gap-4 group">
                             <div className="w-36 flex items-center justify-start gap-2 shrink-0">
-                                <button onClick={() => deleteHabit(habit.id)} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 transition-all"><X size={10} /></button>
+                                <button onClick={() => deleteHabit(habit.id)} className="opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 text-slate-300 hover:text-red-500 transition-all"><X size={10} /></button>
                                 <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 truncate">{habit.name}</span>
                             </div>
 
