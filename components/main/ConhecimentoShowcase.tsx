@@ -22,10 +22,10 @@ const exemplos = [
   { id: "matematica", skin: "dados", tipo: "curso", modelo: "livro" },
   { id: "arquitetura", skin: "portfolio", tipo: "curso", modelo: "predio" },
   { id: "economia", skin: "dados", tipo: "curso", modelo: "graos" },
-  { id: "direito", skin: "historia", tipo: "curso", modelo: "livro" },
+  { id: "direito", skin: "historia", tipo: "curso", modelo: "livro", imagem: "/assets/forja-capas-editoriais.jpg" },
   { id: "literatura", skin: "caderno", tipo: "curso", modelo: "livro" },
-  { id: "educacao", skin: "estudo", tipo: "curso", modelo: "livro" },
-  { id: "comunicacao", skin: "estudo", tipo: "curso", modelo: "livro" },
+  { id: "educacao", skin: "estudo", tipo: "curso", modelo: "livro", imagem: "/assets/forja-capas-editoriais.jpg" },
+  { id: "comunicacao", skin: "estudo", tipo: "curso", modelo: "livro", imagem: "/assets/forja-capas-editoriais.jpg" },
   { id: "veterinaria", skin: "agronomia", tipo: "curso", modelo: "planta" },
 ] as const satisfies readonly Pick<ItemVitrine, "id" | "skin" | "tipo" | "modelo" | "imagem">[];
 
@@ -83,7 +83,7 @@ export default function ConhecimentoShowcase({ principal }: { principal: ReactNo
             entrega: [], tags: [],
           };
           return <li key={exemplo.id} className="ci-carrossel-item" data-lado={lado}>
-            <CartaVitrine it={it} precoNode={null} className="ci-carrossel-card !block [&_.vt-type]:hidden [&_.vt-pr]:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500" onClick={() => router.push(ROTA_MARKETPLACE)} />
+            <CartaVitrine it={it} precoNode={null} className={`ci-carrossel-card ci-capa-${exemplo.id} !block [&_.vt-type]:hidden [&_.vt-pr]:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500`} onClick={() => router.push(ROTA_MARKETPLACE)} />
           </li>;
   };
 

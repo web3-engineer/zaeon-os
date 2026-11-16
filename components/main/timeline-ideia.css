@@ -241,3 +241,33 @@ html:not(.dark) .ci-line { background: #cbd5e1; }
 .ci-carrossel-card .vt-plate { flex-shrink: 0; }
 .ci-carrossel-card .vt-art { min-height: 0; }
 .ci-carrossel-card .vt-desc { max-height: 100%; overflow: auto; }
+
+.ci-carrossel-card:is(.ci-capa-comunicacao, .ci-capa-educacao, .ci-capa-direito) .vt-foto {
+  inset: 0 auto 0 var(--ci-capa-offset, 0%);
+  width: 300%;
+  max-width: none;
+  object-fit: fill;
+  transform: none;
+}
+.ci-carrossel-card.ci-capa-comunicacao {
+  --capa: #252321;
+  --papel: #181716;
+  --tinta: #f7eedb;
+  --acabamento: #9a584b;
+}
+.ci-carrossel-card.ci-capa-comunicacao .vt-art { margin: 0; border: 0; }
+.ci-carrossel-card.ci-capa-educacao {
+  --ci-capa-offset: -100%;
+  --capa: #173353;
+  --papel: #152d4c;
+  --tinta: #eff8ff;
+  --acabamento: #7eacc7;
+}
+.ci-carrossel-card.ci-capa-direito {
+  --ci-capa-offset: -200%;
+  --capa: #451d24;
+  --papel: #2d1218;
+  --tinta: #fff0cc;
+  --acabamento: #c29052;
+}
+.ci-carrossel-card.ci-capa-direito .vt-art { transform: none; box-shadow: none; }
