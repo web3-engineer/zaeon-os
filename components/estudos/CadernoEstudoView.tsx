@@ -98,7 +98,7 @@ function Compilado({ caderno, salvo, fixos, fixar }: {
   );
 }
 
-export default function CadernoEstudoView({ caderno }: { caderno: CadernoEstudo }) {
+export default function CadernoEstudoView({ caderno, aoVoltar }: { caderno: CadernoEstudo; aoVoltar?: () => void }) {
   const [indice, setIndice] = useState(0);
   const [salvo, setSalvo] = useState<CadernoSalvo>({});
   const [erro, setErro] = useState("");
@@ -151,9 +151,9 @@ export default function CadernoEstudoView({ caderno }: { caderno: CadernoEstudo 
   }
 
   return (
-    <main className={styles.mesa}>
+    <section className={`${styles.mesa} ${aoVoltar ? styles.embutido : ""}`}>
       <div className={styles.capa}>
-        <Link href={DESTINO_MARKETPLACE}>← Marketplace</Link>
+        {aoVoltar ? <button type="button" onClick={aoVoltar}>← Marketplace</button> : <Link href={DESTINO_MARKETPLACE}>← Marketplace</Link>}
         <h1>{caderno.titulo}</h1>
         <p>{caderno.resumo}</p>
       </div>
@@ -201,6 +201,30 @@ export default function CadernoEstudoView({ caderno }: { caderno: CadernoEstudo 
                 </fieldset>
               );
             }
+            case "fontes": return (
+              <aside className={styles.fontes} key={i}>
+                <h3>{bloco.titulo ?? "Fontes"}</h3>
+                <ul>
+                  {bloco.itens.map((f, j) => (
+                    <li key={j}>
+                      <a href={f.url} target="_blank" rel="noreferrer noopener">{f.titulo}</a>
+                      <span> · {f.tipo}{f.nota ? ` — ${f.nota}` : ""}</span>
+                    </li>
+                  ))}
+                </ul>
+              </aside>
+            );
+            case "mobilizacao": return (
+              <aside className={styles.mobilizacao} key={i}>
+                <strong>Esta etapa precisa de um profissional: {bloco.papel}</strong>
+                <p>{bloco.porque}</p>
+                <p><em>Entrega esperada:</em> {bloco.entregaEsperada}</p>
+                <div className={styles.mobilizacaoAcao}>
+                  <a href="/research-lab?tab=escritorio">Abrir vaga no Escritório →</a>
+                  <span>A Zaeon acompanha até a entrega.</span>
+                </div>
+              </aside>
+            );
           }
         })}
         {!ehCompilado && <div className={styles.anotacoes}>
@@ -223,6 +247,6 @@ export default function CadernoEstudoView({ caderno }: { caderno: CadernoEstudo 
         <span>{indice + 1} / {caderno.paginas.length}</span>
         <button type="button" disabled={indice === caderno.paginas.length - 1} onClick={() => virar(indice + 1)}>Próxima →</button>
       </nav>
-    </main>
+    </section>
   );
 }

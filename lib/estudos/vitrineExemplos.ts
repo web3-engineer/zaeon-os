@@ -69,6 +69,6 @@ export const ESTUDOS_EXEMPLO: readonly ItemVitrine[] = Object.entries(exemplos).
     entrega: [],
     tags: [],
     exemploEstudo: true,
-    ...(id === "ecovila" ? { cadernoEstudoId: id } : {}),
+    cadernoEstudoId: id,
   })),
 );
