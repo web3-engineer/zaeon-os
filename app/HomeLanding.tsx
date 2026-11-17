@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import HeroPage from "@/components/sub/hero-content";
-import Encryption from "@/components/main/encryption";
+import Encryption, { TituloConhecimento } from "@/components/main/encryption";
 import Faq from "@/components/main/Faq";
 import CyberespacoExplica from "@/components/main/CyberespacoExplica";
 import { Footer } from "@/components/main/footer";
@@ -42,7 +42,10 @@ export default function HomeLanding() {
         <div className="relative h-full w-full">
             <div className={`relative flex h-full flex-col ${styles.conteudo}`}>
                 <div className="flex w-full flex-col">
-                    <HeroPage />
+                    <div className={styles.primeiraDobra}>
+                        <HeroPage />
+                        <TituloConhecimento />
+                    </div>
                     <Encryption />
                     <div id="study-rooms" className="w-full">
                         <CyberespacoExplica />

@@ -115,7 +115,7 @@ export default function HeroPage() {
   }, []);
 
   return (
-    <main className={`relative isolate flex min-h-[calc(100svh-5.75rem)] w-full flex-col items-center justify-center overflow-hidden px-5 pb-16 pt-24 text-center font-display md:min-h-svh ${styles.aquario}`}>
+    <main className={`relative isolate flex min-h-[65svh] w-full flex-col items-center justify-center overflow-hidden px-5 pb-16 pt-24 text-center font-display md:min-h-svh ${styles.aquario}`}>
       <div className={styles.oceano} aria-hidden="true">
         <CiclosAquario />
         <MarCardumes />

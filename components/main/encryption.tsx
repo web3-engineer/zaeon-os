@@ -141,13 +141,20 @@ function SubtituloEstudos() {
     );
 }
 
-export default function Encryption() {
+export function TituloConhecimento() {
     const { t } = useTranslation();
     return (
+        <div id="como-funciona" className="zaeon-borda scroll-mt-28 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 md:pb-0 md:pt-16">
+            <TituloSecao className="mx-auto !mt-0 text-balance text-center font-display !text-[clamp(1.4rem,5.1vw,2rem)] md:!text-[3.125rem]" forte={t("landing.knowledge_title", { defaultValue: "" })} />
+        </div>
+    );
+}
+
+export default function Encryption() {
+    return (
         <div className="w-full relative">
-            <section id="como-funciona" className="relative z-[30] w-full overflow-x-clip bg-transparent pb-12 md:py-16 scroll-mt-28">
+            <section className="relative z-[30] w-full overflow-x-clip bg-transparent pb-12 pt-5 md:pb-16 md:pt-0">
                 <div className="zaeon-borda">
-                    <div className="ci-titulo-secao flex min-h-[5.75rem] items-center justify-center md:block md:min-h-0"><TituloSecao className="mx-auto !mt-0 px-2 text-center font-display !text-[clamp(1.45rem,5.1vw,2rem)] md:!mt-4 md:!text-[3.125rem]" forte={t("landing.knowledge_title", { defaultValue: "" })} /></div>
 
                     <SubtituloEstudos />
                 </div>

@@ -29,3 +29,19 @@
 @media (prefers-reduced-motion: reduce) {
   .conteudo, .conteudo :is(h1, h2, form) { animation: none; }
 }
+
+@media (max-width: 767px) {
+  .primeiraDobra {
+    display: flex;
+    flex-direction: column;
+    min-height: 100svh;
+    min-height: 100dvh;
+  }
+  .primeiraDobra > main {
+    flex: 1 0 auto;
+    min-height: 0;
+    padding-top: calc(5rem + env(safe-area-inset-top, 0px));
+    padding-bottom: clamp(1rem, 4dvh, 2.5rem);
+    padding-inline: max(1.25rem, env(safe-area-inset-left, 0px)) max(1.25rem, env(safe-area-inset-right, 0px));
+  }
+}
