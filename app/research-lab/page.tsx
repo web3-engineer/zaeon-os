@@ -864,6 +864,9 @@ export default function HomeworkPage({
   // #832: deitado (baixo e de toque) também é celular — o layout de computador não deixava nenhuma linha de conversa
   const celular = useIsMobile(QUERY_CELULAR);
   const deitado = useIsMobile(QUERY_CELULAR_DEITADO);
+  // #837: com o teclado aberto a barra de baixo some (ela comia 60 px da conversa e da caixa de escrever)
+  // (aqui em cima, junto dos outros ganchos: mais embaixo há um `return` cedo e o gancho viraria condicional)
+  const teclado = useTecladoAberto(celular);
   const [gaveta, setGaveta] = useState(false);
   // #832: o ◀ do Android fecha a gaveta (antes voltava para a página anterior com ela aberta)
   useFecharNoVoltar(celular && gaveta, () => setGaveta(false));
@@ -2739,8 +2742,6 @@ export default function HomeworkPage({
   const sidebarAberta = celular ? true : isSidebarOpen;
   // Aberta, a sidebar passa POR CIMA do conteúdo — a página nunca se reorganiza por causa dela.
   const recuoSidebar: React.CSSProperties = isEmbedded || celular ? {} : { [isChatLeft ? "paddingRight" : "paddingLeft"]: SIDEBAR_FECHADA + 26 };
-  // #837: com o teclado aberto a barra de baixo some (ela comia 60 px da conversa e da caixa de escrever)
-  const teclado = useTecladoAberto(celular);
   const barraCelular = celular && !isEmbedded && !isFocusMode;
   const mostrarBarra = barraCelular && !teclado;
 
