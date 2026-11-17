@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import CartaVitrine from "@/components/estudos/CartaVitrine";
@@ -11,6 +11,8 @@ import "./timeline-ideia.css";
 const exemplos = [
   { id: "codigo", skin: "tecnologia", tipo: "codigo", modelo: "chip" },
   { id: "hardware", skin: "tecnologia", tipo: "codigo", modelo: "chip" },
+  { id: "eletrica", skin: "tecnologia", tipo: "curso", modelo: "chip", imagem: "/assets/landing/estudos/eletrica.webp" },
+  { id: "solar", skin: "tecnologia", tipo: "curso", modelo: "chip", imagem: "/assets/landing/estudos/solar.webp" },
   { id: "hortas", skin: "agronomia", tipo: "curso", modelo: "planta", imagem: "/assets/landing/estudos/hortas.webp" },
   { id: "ecovilas", skin: "geografia", tipo: "curso", modelo: "planta", imagem: "/assets/landing/estudos/ecovilas.webp" },
   { id: "comunidades", skin: "historia", tipo: "curso", modelo: "livro", imagem: "/assets/landing/estudos/comunidades.webp" },
@@ -36,9 +38,22 @@ const exemplos = [
   { id: "veterinaria", skin: "agronomia", tipo: "curso", modelo: "planta" },
 ] as const satisfies readonly Pick<ItemVitrine, "id" | "skin" | "tipo" | "modelo" | "imagem">[];
 
+type Exemplo = (typeof exemplos)[number];
+const nucleos = {
+  computacao: ["codigo", "hardware", "clima", "matematica"],
+  energias: ["eletrica", "solar"],
+  territorio: ["ecovilas", "cisternas", "bacias", "habitat", "arquitetura"],
+  vida: ["hortas", "safra", "ecologia", "coracao", "veterinaria"],
+  sociedade: ["comunidades", "recife", "direito", "economia", "educacao"],
+  cultura: ["literatura", "musica", "artes", "comunicacao", "marketing"],
+  universo: ["astronomia"],
+} satisfies Record<string, readonly Exemplo["id"][]>;
+type Nucleo = keyof typeof nucleos;
+
 export default function ConhecimentoShowcase({ principal }: { principal?: React.ReactNode }) {
   const { t } = useTranslation();
   const router = useRouter();
+  const [nucleo, selecionarNucleo] = useState<Nucleo | "todos">("todos");
   const faixa = useRef<HTMLUListElement>(null);
   useEffect(() => {
     const lista = faixa.current;
@@ -73,7 +88,7 @@ export default function ConhecimentoShowcase({ principal }: { principal?: React.
     };
     quadro = requestAnimationFrame(mover);
     return () => cancelAnimationFrame(quadro);
-  }, []);
+  }, [nucleo]);
 
   const renderCarta = (exemplo: (typeof exemplos)[number], lado: "esquerda" | "direita") => {
           const it: ItemVitrine = {
@@ -98,14 +113,25 @@ export default function ConhecimentoShowcase({ principal }: { principal?: React.
           </li>;
   };
 
+  const cartas = nucleo === "todos" ? exemplos : exemplos.filter(({ id }) =>
+    (nucleos[nucleo] as readonly Exemplo["id"][]).includes(id));
   const meio = 9;
 
   return (
     <section aria-label={t("landing.knowledge_cards.label")} className={principal ? "ci-carrossel" : "ci-carrossel ci-carrossel-autonomo"}>
-      <ul ref={faixa} className="ci-carrossel-faixa">
-        {exemplos.slice(0, meio).map((exemplo) => renderCarta(exemplo, "esquerda"))}
+      {!principal && (
+        <div role="group" aria-label={t("landing.knowledge_nuclei.label")} className="ci-nucleos">
+          {(["todos", ...Object.keys(nucleos)] as ("todos" | Nucleo)[]).map((id) => (
+            <button key={id} type="button" aria-pressed={id === nucleo} onClick={() => selecionarNucleo(id)}>
+              {t(`landing.knowledge_nuclei.${id}`)}
+            </button>
+          ))}
+        </div>
+      )}
+      <ul key={nucleo} ref={faixa} className="ci-carrossel-faixa">
+        {cartas.slice(0, meio).map((exemplo) => renderCarta(exemplo, "esquerda"))}
         {principal && <li className="ci-carrossel-principal">{principal}</li>}
-        {exemplos.slice(meio).map((exemplo) => renderCarta(exemplo, "direita"))}
+        {cartas.slice(meio).map((exemplo) => renderCarta(exemplo, "direita"))}
       </ul>
     </section>
   );

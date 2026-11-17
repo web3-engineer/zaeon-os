@@ -537,7 +537,26 @@
         "success_message": "凭证已更新"
     },
     "landing": {
+        "knowledge_nuclei": {
+            "label": "学习领域",
+            "todos": "全部",
+            "computacao": "计算与数据",
+            "energias": "电气工程与能源",
+            "territorio": "地域与建设",
+            "vida": "生命与农业",
+            "sociedade": "社会与治理",
+            "cultura": "艺术与传播",
+            "universo": "空间科学"
+        },
         "knowledge_cards": {
+            "eletrica": {
+                "title": "电气工程",
+                "summary": "研究负荷、保护和配电。"
+            },
+            "solar": {
+                "title": "太阳能",
+                "summary": "比较发电、储能和投资回收期。"
+            },
             "hortas": {
                 "title": "社区菜园",
                 "summary": "规划种植区、堆肥与灌溉。"

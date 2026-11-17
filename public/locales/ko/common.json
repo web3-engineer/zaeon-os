@@ -537,7 +537,26 @@
         "success_message": "자격 증명이 업데이트되었습니다."
     },
     "landing": {
+        "knowledge_nuclei": {
+            "label": "학습 분야",
+            "todos": "전체",
+            "computacao": "컴퓨팅 및 데이터",
+            "energias": "전기 공학 및 에너지",
+            "territorio": "지역 및 건축",
+            "vida": "생명 및 농업",
+            "sociedade": "사회 및 거버넌스",
+            "cultura": "예술 및 소통",
+            "universo": "우주 과학"
+        },
         "knowledge_cards": {
+            "eletrica": {
+                "title": "전기 공학",
+                "summary": "부하, 보호 및 배전을 공부하세요."
+            },
+            "solar": {
+                "title": "태양 에너지",
+                "summary": "발전량, 저장 및 투자 회수 기간을 비교하세요."
+            },
             "hortas": {
                 "title": "공동체 텃밭",
                 "summary": "재배 구역, 퇴비화, 관개를 계획하세요."

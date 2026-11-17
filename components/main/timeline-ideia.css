@@ -353,3 +353,23 @@ html:not(.dark) .ci-line { background: #cbd5e1; }
   border-top: 1px solid var(--estudo-acabamento);
   padding-inline: 8px;
 }
+
+.ci-nucleos {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: .45rem;
+  padding-inline: 1rem;
+  margin-bottom: .6rem;
+}
+.ci-nucleos button {
+  border: 1px solid #7893a755;
+  border-radius: 999px;
+  padding: .45rem .8rem;
+  font-size: .85rem;
+  font-weight: 600;
+}
+.ci-nucleos button:is(:hover, [aria-pressed="true"]) {
+  background: color-mix(in srgb, var(--background), #22a4bd 17%);
+  border-color: #3aa0b4;
+}

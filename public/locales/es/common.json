@@ -537,7 +537,26 @@
         "success_message": "Credenciales actualizadas"
     },
     "landing": {
+        "knowledge_nuclei": {
+            "label": "Áreas de estudio",
+            "todos": "Todas",
+            "computacao": "Computación y datos",
+            "energias": "Ingeniería eléctrica y energía",
+            "territorio": "Territorio y construcción",
+            "vida": "Vida y agricultura",
+            "sociedade": "Sociedad y gobernanza",
+            "cultura": "Artes y comunicación",
+            "universo": "Ciencias espaciales"
+        },
         "knowledge_cards": {
+            "eletrica": {
+                "title": "Ingeniería eléctrica",
+                "summary": "Estudia cargas, protección y distribución."
+            },
+            "solar": {
+                "title": "Energía solar",
+                "summary": "Compara generación, almacenamiento y retorno."
+            },
             "hortas": {
                 "title": "Huertos comunitarios",
                 "summary": "Planifica bancales, compostaje y riego."

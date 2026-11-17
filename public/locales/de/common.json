@@ -537,7 +537,26 @@
         "success_message": "Anmeldeinformationen aktualisiert"
     },
     "landing": {
+        "knowledge_nuclei": {
+            "label": "Studienbereiche",
+            "todos": "Alle",
+            "computacao": "Informatik und Daten",
+            "energias": "Elektrotechnik und Energie",
+            "territorio": "Raum und Bauwesen",
+            "vida": "Leben und Landwirtschaft",
+            "sociedade": "Gesellschaft und Governance",
+            "cultura": "Kunst und Kommunikation",
+            "universo": "Weltraumwissenschaft"
+        },
         "knowledge_cards": {
+            "eletrica": {
+                "title": "Elektrotechnik",
+                "summary": "Untersuche Lasten, Schutz und Verteilung."
+            },
+            "solar": {
+                "title": "Solarenergie",
+                "summary": "Vergleiche Erzeugung, Speicherung und Amortisation."
+            },
             "hortas": {
                 "title": "Gemeinschaftsgärten",
                 "summary": "Plane Beete, Kompostierung und Bewässerung."
