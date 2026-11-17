@@ -124,7 +124,7 @@ export default function StructuredAnswerView({
         <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/80 dark:via-white/40 to-transparent" />
         <div aria-hidden className="pointer-events-none absolute inset-0 rounded-[26px] bg-gradient-to-b from-white/25 dark:from-white/[0.06] to-transparent" style={{ height: "42%" }} />
 
-        <div className="relative px-5 py-4 text-slate-900 dark:text-white font-tech">
+        <div className="relative px-5 max-md:px-3 py-4 text-slate-900 dark:text-white font-tech">
           {/* núcleo */}
           {nucleo && (
             <div className="z-up text-slate-900 dark:text-white" style={{ animationDelay: delay("nucleo") }}>

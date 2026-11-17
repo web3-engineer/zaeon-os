@@ -8,7 +8,8 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Loader2, Mic, Paperclip, Zap, Compass, Square, SlidersHorizontal, Camera } from "lucide-react";
+import { ArrowUp, Loader2, Mic, Paperclip, Zap, Compass, Square, SlidersHorizontal, Camera, Plus, ImageIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import dynamic from "next/dynamic";
 import useSTT, { TEXTO_AVISO_STT } from "@/lib/voice/useSTT";
 
@@ -18,12 +19,37 @@ import { avisarMicrofone } from "@/lib/research/zaeonEventos";
 import { useAutoFoco } from "@/lib/ui/autofoco";
 import { useIsMobile, QUERY_CELULAR } from "@/lib/ui/useIsMobile";
 import { useFecharNoVoltar } from "@/lib/ui/useFecharNoVoltar";
+import PainelDeBaixo, { ALVO, FOCO } from "@/components/study/PainelDeBaixo";
+import { FUNCTIONS as FUNCOES_STUDIO } from "@/components/study/StudioPalette";
 
 // execMode = automático (Aura vai ponta-a-ponta) × guiado (pausa nos gates HITL,
 // estilo plan-mode do Claude). Fase 0: só a casca — persiste a preferência p/ o
 // harness da Fase 1 ler. Espelha docs/AURA_AGENTIC_LAYER_PLAN.md §11.4.
 export type ExecMode = "auto" | "guiado";
 const EXEC_KEY = "zaeon.execMode";
+
+/** #837: o "automático × guiado" no painel do "Aura ▾" do celular — a mesma preferência (localStorage) da caixa do
+ *  computador, que o harness lê. */
+export function BotaoModoExec() {
+  const { t } = useTranslation();
+  const [modo, setModo] = useState<ExecMode>("auto");
+  useEffect(() => {
+    try { const s = localStorage.getItem(EXEC_KEY); if (s === "auto" || s === "guiado") setModo(s); } catch { /* ignore */ }
+  }, []);
+  const trocar = () => setModo((m) => {
+    const prox: ExecMode = m === "auto" ? "guiado" : "auto";
+    try { localStorage.setItem(EXEC_KEY, prox); } catch { /* ignore */ }
+    return prox;
+  });
+  return (
+    <button type="button" onClick={trocar} aria-pressed={modo === "guiado"}
+      className={`self-start min-h-[44px] pl-3 pr-4 rounded-full inline-flex items-center gap-2 text-[13px] font-tech font-medium
+        ${modo === "guiado" ? "text-violet-700 dark:text-violet-300 bg-violet-500/12" : "text-cyan-700 dark:text-cyan-300 bg-cyan-500/10"}`}>
+      {modo === "auto" ? <Zap size={16} /> : <Compass size={16} />}
+      {modo === "auto" ? t("chatCelular.auto") : t("chatCelular.guided")}
+    </button>
+  );
+}
 
 export type CoworkComposerProps = {
   value: string;
@@ -54,6 +80,10 @@ export type CoworkComposerProps = {
   opcoesAtivas?: boolean;
   /** #832: a sala está visível — escondida, o ◀ não pode ser "gasto" fechando as opções que ninguém vê */
   ativo?: boolean;
+  /** #837: no celular, o "+" traz o Studio — escolher uma função põe o modelo do pedido na caixa */
+  onEscolherStudio?: (template: string) => void;
+  /** #837: os selos do que está ligado (modo pesquisa, Minha base…), em cima do campo */
+  selos?: React.ReactNode;
 };
 
 export default function CoworkComposer({
@@ -73,7 +103,13 @@ export default function CoworkComposer({
   opcoes,
   opcoesAtivas = false,
   ativo = true,
+  onEscolherStudio,
+  selos,
 }: CoworkComposerProps) {
+  const { t } = useTranslation();
+  // #837: o "+" do celular (trazer arquivo/foto/câmera e gerar com o Studio)
+  const [mais, setMais] = useState(false);
+  const fotoRef = useRef<HTMLInputElement>(null);
   const [verOpcoes, setVerOpcoes] = useState(false);
   // #832: no celular, o ◀ do Android fecha as opções da conversa
   const celular = useIsMobile(QUERY_CELULAR);
@@ -182,6 +218,105 @@ export default function CoworkComposer({
       if (value.trim() && !busy) onSubmit();
     }
   };
+
+  // #837: no CELULAR a caixa é uma linha só — "+", o campo, o microfone e o enviar. O resto (anexo, foto, câmera,
+  // Studio) mora no painel do "+"; as opções da conversa e o modo automático, no "Aura ▾" do topo. Antes eram 7 botões
+  // em 2 linhas (~125 px) e a conversa ficava com um terço da tela.
+  if (celular) {
+    const escolherStudio = (tpl: string) => {
+      if (onEscolherStudio) onEscolherStudio(tpl); else onChange(tpl + value.trim());
+      setMais(false);
+      setTimeout(() => ref.current?.focus(), 0);
+    };
+    const itemDoMais = `${ALVO} ${FOCO} flex w-full items-center gap-2.5 rounded-2xl border border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/[0.04] px-3 py-2.5 text-left text-[15px] text-slate-800 dark:text-white/90`;
+    return (
+      <div className="rounded-[24px] p-[1.5px] bg-gradient-to-r from-blue-500/25 via-cyan-400/25 to-violet-500/25">
+        <div className="rounded-[23px] bg-white/85 dark:bg-white/[0.06] backdrop-blur-2xl border border-white/70 dark:border-white/10 px-1.5 py-1.5">
+          {children}
+          {selos}
+          {sttSupported && (micAtivo || avisoMic) && (
+            <div role="status" data-microfone className={`mx-1 mb-1 flex items-center gap-2 rounded-xl px-3 py-1.5 text-[12.5px] font-medium
+              ${micAtivo ? "bg-rose-500/10 text-rose-700 dark:text-rose-200" : "bg-amber-500/10 text-amber-800 dark:text-amber-100"}`}>
+              {preparandoMic ? <span>Preparando o microfone…</span>
+                : listening ? (<><span aria-hidden className="h-2 w-2 shrink-0 rounded-full bg-rose-500 animate-pulse" /><span>{ouviu ? "Ouvindo… quando parar de falar, ele desliga sozinho." : "Ouvindo… pode falar."}</span></>)
+                : avisoMic ? <span>{TEXTO_AVISO_STT[avisoMic]}</span> : null}
+            </div>
+          )}
+          <div className="flex items-end gap-1">
+            <button type="button" onClick={() => setMais(true)} aria-haspopup="dialog" aria-expanded={mais}
+              aria-label={t("chatCelular.more")} title={t("chatCelular.more")}
+              className={`${ALVO} ${FOCO} shrink-0 rounded-full flex items-center justify-center ${mais ? "text-cyan-600 dark:text-cyan-300 bg-cyan-500/10" : "text-slate-600 dark:text-white/70"}`}>
+              <Plus size={22} />
+            </button>
+            <textarea
+              ref={ref}
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              onKeyDown={onKeyDown}
+              rows={1}
+              placeholder={placeholder || t("chatCelular.placeholder")}
+              aria-label={t("chatCelular.message")}
+              enterKeyHint="send"
+              className="flex-1 min-w-0 max-h-[min(164px,25dvh)] resize-none overflow-y-auto bg-transparent outline-none border-0
+                font-tech text-[16px] leading-6 py-2.5 px-1 text-slate-800 dark:text-white/90 placeholder:text-slate-400 dark:placeholder:text-white/35 custom-scrollbar"
+            />
+            {sttSupported && (
+              <button type="button" onClick={() => { void onMic(); }} aria-pressed={micAtivo}
+                aria-label={micAtivo ? t("chatCelular.stopMic") : t("chatCelular.mic")}
+                className={`${ALVO} ${FOCO} shrink-0 rounded-full flex items-center justify-center transition-colors
+                  ${micAtivo ? "text-white bg-rose-500 animate-pulse" : "text-slate-500 dark:text-white/60"}`}>
+                <Mic size={19} />
+              </button>
+            )}
+            {busy && onStop ? (
+              <button type="button" onClick={onStop} aria-label={t("chatCelular.stop")}
+                className={`${ALVO} ${FOCO} shrink-0 rounded-full flex items-center justify-center text-white`}
+                style={{ background: "linear-gradient(135deg,#e11d48,#f43f5e)" }}>
+                <Square size={14} className="fill-current" />
+              </button>
+            ) : (
+              <button type="button" onClick={() => value.trim() && !busy && onSubmit()} disabled={!value.trim() || busy}
+                aria-label={t("chatCelular.send")} data-tour="enviar"
+                className={`${ALVO} ${FOCO} shrink-0 rounded-full flex items-center justify-center text-white disabled:opacity-30`}
+                style={{ background: "linear-gradient(135deg,#2563eb,#06b6d4)" }}>
+                {busy ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={19} />}
+              </button>
+            )}
+          </div>
+        </div>
+        <input ref={fileRef} type="file" multiple className="hidden" onChange={onPickFiles} />
+        <input ref={fotoRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onPickFiles} />
+        <PainelDeBaixo aberto={ativo && mais} onFechar={() => setMais(false)} titulo={t("chatCelular.more")} rotuloFechar={t("chatCelular.close")}>
+          <h3 className="mt-1 mb-1.5 text-[11px] font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/45">{t("chatCelular.bring")}</h3>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" className={itemDoMais} onClick={() => { setMais(false); fileRef.current?.click(); }}>
+              <Paperclip size={18} className="shrink-0 text-cyan-600 dark:text-cyan-300" />{t("chatCelular.file")}
+            </button>
+            <button type="button" className={itemDoMais} onClick={() => { setMais(false); fotoRef.current?.click(); }}>
+              <ImageIcon size={18} className="shrink-0 text-cyan-600 dark:text-cyan-300" />{t("chatCelular.photo")}
+            </button>
+            {cameraDisponivel && (
+              <button type="button" className={itemDoMais} onClick={() => { setMais(false); setCamAberta(true); }}>
+                <Camera size={18} className="shrink-0 text-cyan-600 dark:text-cyan-300" />{t("chatCelular.liveCamera")}
+              </button>
+            )}
+          </div>
+          <h3 className="mt-4 mb-1.5 text-[11px] font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/45">{t("chatCelular.studio")}</h3>
+          <div className="grid grid-cols-2 gap-2">
+            {FUNCOES_STUDIO.map((f) => {
+              const Icone = f.icon;
+              return (
+                <button key={f.kind} type="button" className={itemDoMais} onClick={() => escolherStudio(f.template)}>
+                  <Icone size={18} className="shrink-0 text-violet-600 dark:text-violet-300" />{f.label}
+                </button>
+              );
+            })}
+          </div>
+        </PainelDeBaixo>
+        {camAberta && <CameraAoVivo onFechar={() => setCamAberta(false)} />}
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-[26px] p-[1.5px] bg-gradient-to-r from-blue-500/25 via-cyan-400/25 to-violet-500/25 shadow-[0_18px_50px_-24px_rgba(37,99,235,0.5)]">

@@ -26,6 +26,10 @@ import {
 import { DIRETRIZ_ESTUDOS, DIRETRIZ_PESQUISA } from "@/lib/ai/salaPersona";
 import { useIsMobile, QUERY_CELULAR } from "@/lib/ui/useIsMobile";
 import { useFecharNoVoltar } from "@/lib/ui/useFecharNoVoltar";
+import PainelDeBaixo from "@/components/study/PainelDeBaixo";
+import { FUNCTIONS as FUNCOES_STUDIO } from "@/components/study/StudioPalette";
+import { BotaoModoExec } from "@/components/study/CoworkComposer";
+import { useTranslation } from "react-i18next";
 /** #733: abaixo de 1024 px a biblioteca fica embaixo da conversa; com menos de 720 px de altura, ela começa recolhida */
 export const QUERY_ESTREITA_E_BAIXA = "(max-width: 1023px) and (max-height: 720px)";
 import { cliqueForaDoCerebro } from "@/components/cerebro/cliqueFora";
@@ -448,6 +452,8 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     return () => window.removeEventListener(EVT_ABRIR_DOC, on);
   }, []);
   const [studioOpen, setStudioOpen] = useState(false);
+  // #837: o painel do "Aura ▾" (celular)
+  const [painelAgente, setPainelAgente] = useState(false);
   // estudos em FOCO — por conversa: o foco de uma não pode mandar o artefato de outra pro estudo errado
   const [focoPorAba, setFocoPorAba] = useState<Record<string, string[]>>({});
   const focusIds = useMemo(() => (abaAtiva ? focoPorAba[abaAtiva] ?? [] : []), [focoPorAba, abaAtiva]);
@@ -1457,6 +1463,92 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
       }}
     />
   ) : null;
+  // #713/#837: base, agente, modelo, modo pesquisa e árvore. No computador aparecem em cima da caixa de escrever; no
+  // celular moram no painel do "Aura ▾" do topo (a caixa ficou numa linha só).
+  const opcoesDaConversa = (<>
+              <BarraBase envios={envios} versao={versaoBase} />
+              {/* ⟁ Aura ▾ — seletor: Aura base ou um mentor plugado (quebra linha no celular em vez de vazar pra fora) */}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                <MentorPill value={activeMentor} onChange={(slug) => setActiveMentor(slug)} />
+                {/* MODELO: com quem o aluno fala de verdade (Google ou o servidor da Zaeon) */}
+                <SeletorModelo valor={modeloEscolhido} onChange={escolherModelo} desabilitado={sending} />
+                {/* MODO PESQUISA (chat único): o harness de pesquisa da antiga Sala de Pesquisa, ligado nesta conversa */}
+                {CHAT_UNICO && (
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={modoPesquisa}
+                    onClick={() => ligarModoPesquisa(!modoPesquisa)}
+                    title={modoPesquisa ? "Modo pesquisa ligado: fontes acadêmicas, citações e rigor científico. Clique para desligar." : "Ligar o modo pesquisa: fontes acadêmicas, citações, artigos/TCC no editor"}
+                    className={`inline-flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 max-sm:min-h-[40px] rounded-full text-[11.5px] font-bold font-tech border transition-colors
+                      ${modoPesquisa
+                        ? "bg-gradient-to-r from-violet-600/20 to-fuchsia-500/15 text-violet-800 dark:text-violet-200 border-violet-500/50"
+                        : "text-slate-500 dark:text-white/50 border-slate-200 dark:border-white/10 hover:text-violet-600 hover:border-violet-300"}`}
+                  >
+                    <span aria-hidden className={`relative inline-flex h-3.5 w-6 rounded-full transition-colors ${modoPesquisa ? "bg-violet-600" : "bg-slate-300 dark:bg-white/20"}`}>
+                      <span className={`absolute top-0.5 h-2.5 w-2.5 rounded-full bg-white shadow transition-[left] ${modoPesquisa ? "left-[12px]" : "left-0.5"}`} />
+                    </span>
+                    <FlaskConical size={12} /> Modo pesquisa
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setTreeOpen((v) => !v)}
+                  title="Árvore de habilidades do tópico"
+                  aria-pressed={treeOpen}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 max-sm:min-h-[40px] rounded-full text-[11.5px] font-bold font-tech border transition-colors
+                    ${treeOpen
+                      ? "bg-gradient-to-r from-violet-500/15 to-cyan-400/15 text-violet-700 dark:text-cyan-200 border-violet-400/40"
+                      : "text-slate-500 dark:text-white/50 border-slate-200 dark:border-white/10 hover:text-violet-600 hover:border-violet-300"}`}
+                >
+                  <GitBranch size={12} /> Árvore{tree ? ` ${tree.nodes.filter((n) => n.status === "mastered").length}/${tree.nodes.length}` : ""}
+                </button>
+              </div>
+  </>);
+  // #837: o "Aura ▾" do topo (só no celular) — quem responde, o modelo, a Minha base, o modo pesquisa, o automático e a Árvore
+  const { t: tr } = useTranslation();
+  // (o nome vem do slug do mentor plugado: "prof-marie" → "Prof marie")
+  const nomeDoAgente = activeMentor ? activeMentor.replace(/[-_]+/g, " ").replace(/^./, (c) => c.toUpperCase()) : "Aura";
+  const botaoAgente = celular ? (
+    <button type="button" onClick={() => setPainelAgente(true)} aria-haspopup="dialog" aria-expanded={painelAgente}
+      aria-label={tr("chatCelular.agentPanel", { name: nomeDoAgente })}
+      className="shrink-0 min-h-[44px] px-2.5 rounded-full inline-flex items-center gap-1 text-[13px] font-bold font-tech text-cyan-700 dark:text-cyan-200 hover:bg-cyan-500/10">
+      <span aria-hidden>⟁</span> {nomeDoAgente} <ChevronDown size={14} aria-hidden />
+    </button>
+  ) : null;
+  // #837: os selos do que está ligado, em cima do campo — tocar no × desliga
+  const selos = celular && (modoPesquisa || activeMentor) ? (
+    <div className="mx-1 mb-1 flex flex-wrap gap-1.5">
+      {modoPesquisa && (
+        <button type="button" onClick={() => ligarModoPesquisa(false)} aria-label={tr("chatCelular.researchOff")}
+          className="inline-flex min-h-[32px] items-center gap-1 rounded-full border border-violet-500/40 bg-violet-500/10 px-2.5 text-[12px] font-bold text-violet-800 dark:text-violet-200">
+          <FlaskConical size={12} aria-hidden /> {tr("chatCelular.researchOn")} <X size={12} aria-hidden />
+        </button>
+      )}
+      {activeMentor && (
+        <button type="button" onClick={() => setActiveMentor(null)} aria-label={tr("chatCelular.mentorOff", { name: nomeDoAgente })}
+          className="inline-flex min-h-[32px] items-center gap-1 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2.5 text-[12px] font-bold text-cyan-800 dark:text-cyan-200">
+          {tr("chatCelular.with", { name: nomeDoAgente })} <X size={12} aria-hidden />
+        </button>
+      )}
+    </div>
+  ) : null;
+  // #837: as sugestões do Studio embaixo da última resposta (só no celular) — tocar põe o pedido na caixa, com o assunto
+  const ultimaPergunta = [...messages].reverse().find((m) => m.role === "user" && m.kind === "text")?.text?.trim() ?? "";
+  const sugestoesStudio = (id: string) => celular && id === ultimaResposta && !sending && ultimaPergunta ? (
+    <div className="mt-2 -mx-1 flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]" aria-label={tr("chatCelular.studio")}>
+      {FUNCOES_STUDIO.slice(0, 6).map((f) => {
+        const Icone = f.icon;
+        return (
+          <button key={f.kind} type="button" onClick={() => setInput(f.template + ultimaPergunta)}
+            className="shrink-0 inline-flex min-h-[36px] items-center gap-1.5 rounded-full border border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/[0.04] px-3 text-[12.5px] font-medium font-tech text-slate-700 dark:text-white/80">
+            <Icone size={13} aria-hidden /> {f.label}
+          </button>
+        );
+      })}
+    </div>
+  ) : null;
+
   return (
     <div className="relative h-full flex lg:flex-row flex-col" style={zoom.style}>
       {/* Borda-degradê navy na aresta esquerda (par visual com a sidebar da esquerda) — só no claro. */}
@@ -1604,6 +1696,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
           // #633: o botão do MAPA (o cérebro) mora à DIREITA, do lado do A−/A+ — os controles da conversa juntos;
           // e vem DEPOIS das letras: A− A+ [Ver mapa]
           depois={<>
+            {botaoAgente}
             {abaAtiva && (
               <button type="button" onClick={() => (convite ? setConvite(null) : void compartilhar())} disabled={convidando}
                 title="Convidar alguém para esta conversa" aria-label="Compartilhar conversa"
@@ -1660,9 +1753,10 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
           onDrop={onDropConversation}
-          className={`flex-1 min-h-0 overflow-y-auto custom-scrollbar px-4 sm:px-6 transition-colors ${dragOver ? "bg-cyan-500/[0.04]" : ""}`}
+          className={`flex-1 min-h-0 overflow-y-auto custom-scrollbar px-3 sm:px-6 transition-colors ${dragOver ? "bg-cyan-500/[0.04]" : ""}`}
         >
-          <div className="ml-4 sm:ml-8 lg:ml-14 mr-0 sm:mr-2 py-4 flex flex-col gap-4">
+          {/* #837: no celular sem o recuo da esquerda — a resposta usa a largura toda */}
+          <div className="ml-0 md:ml-8 lg:ml-14 mr-0 sm:mr-2 py-4 flex flex-col gap-4">
             {/* B2: cursor piscando da resposta em streaming */}
             <style>{`@keyframes zCaret { 0%,45% { opacity:1 } 50%,100% { opacity:0 } } .z-caret { display:inline-block; width:2px; height:1em; margin-left:2px; vertical-align:-0.15em; background:currentColor; opacity:.7; animation: zCaret 1s steps(1) infinite; } @media (prefers-reduced-motion: reduce) { .z-caret { animation: none; } }`}</style>
             {messages.length === 0 ? <><SugestoesConversa onEscolher={escolherSugestao} /><DicaSubTema threads={threads} ativa={abaAtiva} /></> : (
@@ -1683,7 +1777,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
                   return (
                     <div key={m.id} data-msg={m.id} className={`group/msg flex flex-col ${isUser ? "items-end" : `items-start ${recuo}`}`}>
                       {pilula}
-                      <div style={{ fontSize: fonteChat(22) }} className={`max-w-[85%] rounded-2xl px-4 py-2.5 font-tech leading-[1.65] whitespace-pre-wrap
+                      <div style={{ fontSize: fonteChat(22) }} className={`${isUser ? "max-w-[85%]" : "max-w-[85%] max-md:max-w-full"} rounded-2xl px-4 max-md:px-3 py-2.5 font-tech leading-[1.65] whitespace-pre-wrap
                         ${isUser
                           ? "bg-slate-100 text-slate-900 border border-slate-200/80 dark:bg-white/[0.09] dark:text-white/90 dark:border-white/10"
                           : "bg-white/80 dark:bg-white/[0.05] text-slate-800 dark:text-white/90 border border-slate-200/70 dark:border-white/10 backdrop-blur-xl"}`}>
@@ -1701,6 +1795,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
                       {isUser
                         ? (m.text ? <AcoesPergunta texto={m.text} ocupado={sending} onEditar={() => setEditando(m.id)} /> : null)
                         : acoesDa(m, i)}
+                      {!isUser && sugestoesStudio(m.id)}
                       {!isUser && m.answer?.livros?.length ? <LivrosCartao livros={m.answer.livros} sala="estudos" /> : null}
                       {/* #745: o artefato que falhou — tenta de novo daqui (o aviso sai e o "desenhando…" volta) */}
                       {!isUser && m.refazer ? (
@@ -1717,7 +1812,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
                         </button>
                       ) : null}
                       {!isUser && (m.studioBlock || m.desenhando) ? (
-                        <div className="w-full max-w-[85%]">
+                        <div className="w-full max-w-[85%] max-md:max-w-full">
                           {m.studioBlock ? <BlocoOuCartao b={m.studioBlock} /> : null}
                           {m.blocosExtra?.map((b) => <BlocoOuCartao key={b.studioKind} b={b} />)}
                           {m.desenhando ? <Desenhando texto={m.desenhando} /> : null}
@@ -1729,7 +1824,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
                 if (m.kind === "study" && m.studyId) {
                   return (
                     <div key={m.id} className="flex justify-start">
-                      <div className="max-w-[85%] w-full">
+                      <div className="max-w-[85%] max-md:max-w-full w-full">
                         <StudyArtifactCard
                           studyId={m.studyId}
                           title={m.studyTitle || spaceTitle(m.studyId)}
@@ -1768,14 +1863,14 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
                   return (
                     <div key={m.id} data-msg={m.id} className={`group/msg flex justify-start ${recuo}`}>
                       {pilula}
-                      <div className="max-w-[85%] w-full">{padrao}</div>
+                      <div className="max-w-[85%] max-md:max-w-full w-full">{padrao}{sugestoesStudio(m.id)}</div>
                     </div>
                   );
                 }
                 if (m.kind === "studio" && m.studioBlock) {
                   return (
                     <div key={m.id} className="flex justify-start">
-                      <div className="max-w-[85%] w-full">
+                      <div className="max-w-[85%] max-md:max-w-full w-full">
                         <BlocoOuCartao b={m.studioBlock} />
                       </div>
                     </div>
@@ -1790,7 +1885,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
         {/* ⟁ Studio como paletador de prompt: clicar injeta o prompt no composer. */}
         {studioOpen && (
           <div className="px-4 sm:px-6 pt-2">
-            <div className="ml-4 sm:ml-8 lg:ml-14 mr-0 sm:mr-2">
+            <div className="ml-0 md:ml-8 lg:ml-14 mr-0 sm:mr-2">
               <StudioPalette
                 onPick={(tpl) => {
                   // O template vem PRIMEIRO ("Gere um podcast sobre ") e o que a
@@ -1805,10 +1900,10 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
 
         {/* composer estilo Claude — mais largo, esticando até perto da biblioteca
             (mantém o recuo à esquerda; sem teto de largura à direita). */}
-        <div ref={composerRef} className="px-4 sm:px-6 pb-4 pt-2 [@media(max-height:500px)_and_(pointer:coarse)]:pb-1 [@media(max-height:500px)_and_(pointer:coarse)]:pt-1">
+        <div ref={composerRef} className="px-3 sm:px-6 pb-3 sm:pb-4 pt-2 [@media(max-height:500px)_and_(pointer:coarse)]:pb-1 [@media(max-height:500px)_and_(pointer:coarse)]:pt-1">
           {/* #733: já existe uma conversa com essa pergunta */}
           {repetida && (
-            <div role="alertdialog" aria-label="Conversa repetida" className="ml-4 sm:ml-8 lg:ml-14 mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-cyan-400/40 bg-cyan-50 dark:bg-cyan-500/10 px-3 py-2 text-[12.5px] text-cyan-900 dark:text-cyan-50">
+            <div role="alertdialog" aria-label="Conversa repetida" className="ml-0 md:ml-8 lg:ml-14 mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-cyan-400/40 bg-cyan-50 dark:bg-cyan-500/10 px-3 py-2 text-[12.5px] text-cyan-900 dark:text-cyan-50">
               <span className="min-w-0 flex-1">Você já tem a conversa <b>“{repetida.titulo}”</b>. Quer continuar nela?</span>
               <button type="button" onClick={() => { const id = repetida.id; setRepetida(null); trocarRef.current(id); }}
                 className="rounded-full bg-cyan-600 px-3 py-1 font-bold text-white hover:bg-cyan-700 [@media(hover:none)]:min-h-[40px]">continuar nela</button>
@@ -1817,11 +1912,11 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
             </div>
           )}
           {(semRede || falhouRede || avisoConversa) && (
-            <p role={avisoConversa ? "status" : "alert"} className="ml-4 sm:ml-8 lg:ml-14 mb-2 rounded-xl border border-amber-400/40 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-[12.5px] text-amber-800 dark:text-amber-100">
+            <p role={avisoConversa ? "status" : "alert"} className="ml-0 md:ml-8 lg:ml-14 mb-2 rounded-xl border border-amber-400/40 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-[12.5px] text-amber-800 dark:text-amber-100">
               {avisoConversa ?? (semRede ? "Sem conexão. Sua mensagem fica na caixa de texto até a internet voltar." : "A internet caiu e a mensagem não foi enviada. Ela voltou para a caixa de texto: envie de novo.")}
             </p>
           )}
-          <div data-tour="composer-estudos" className="ml-4 sm:ml-8 lg:ml-14 mr-0 sm:mr-2">
+          <div data-tour="composer-estudos" className="ml-0 md:ml-8 lg:ml-14 mr-0 sm:mr-2">
             <CoworkComposer
               ativo={active}
               value={input}
@@ -1836,51 +1931,20 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
               placeholder={anexo ? `Pergunte sobre ${anexo.nome}…` : lote.length ? `Pergunte sobre os ${lote.length} arquivos…` : ""}
               opcoesAtivas={modoPesquisa || treeOpen}
               // #713: base, agente, modelo, modo pesquisa e árvore — no celular, recolhidos num botão da caixa
-              opcoes={<>
-              <BarraBase envios={envios} versao={versaoBase} />
-              {/* ⟁ Aura ▾ — seletor: Aura base ou um mentor plugado (quebra linha no celular em vez de vazar pra fora) */}
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-                <MentorPill value={activeMentor} onChange={(slug) => setActiveMentor(slug)} />
-                {/* MODELO: com quem o aluno fala de verdade (Google ou o servidor da Zaeon) */}
-                <SeletorModelo valor={modeloEscolhido} onChange={escolherModelo} desabilitado={sending} />
-                {/* MODO PESQUISA (chat único): o harness de pesquisa da antiga Sala de Pesquisa, ligado nesta conversa */}
-                {CHAT_UNICO && (
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={modoPesquisa}
-                    onClick={() => ligarModoPesquisa(!modoPesquisa)}
-                    title={modoPesquisa ? "Modo pesquisa ligado: fontes acadêmicas, citações e rigor científico. Clique para desligar." : "Ligar o modo pesquisa: fontes acadêmicas, citações, artigos/TCC no editor"}
-                    className={`inline-flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 max-sm:min-h-[40px] rounded-full text-[11.5px] font-bold font-tech border transition-colors
-                      ${modoPesquisa
-                        ? "bg-gradient-to-r from-violet-600/20 to-fuchsia-500/15 text-violet-800 dark:text-violet-200 border-violet-500/50"
-                        : "text-slate-500 dark:text-white/50 border-slate-200 dark:border-white/10 hover:text-violet-600 hover:border-violet-300"}`}
-                  >
-                    <span aria-hidden className={`relative inline-flex h-3.5 w-6 rounded-full transition-colors ${modoPesquisa ? "bg-violet-600" : "bg-slate-300 dark:bg-white/20"}`}>
-                      <span className={`absolute top-0.5 h-2.5 w-2.5 rounded-full bg-white shadow transition-[left] ${modoPesquisa ? "left-[12px]" : "left-0.5"}`} />
-                    </span>
-                    <FlaskConical size={12} /> Modo pesquisa
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setTreeOpen((v) => !v)}
-                  title="Árvore de habilidades do tópico"
-                  aria-pressed={treeOpen}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 max-sm:min-h-[40px] rounded-full text-[11.5px] font-bold font-tech border transition-colors
-                    ${treeOpen
-                      ? "bg-gradient-to-r from-violet-500/15 to-cyan-400/15 text-violet-700 dark:text-cyan-200 border-violet-400/40"
-                      : "text-slate-500 dark:text-white/50 border-slate-200 dark:border-white/10 hover:text-violet-600 hover:border-violet-300"}`}
-                >
-                  <GitBranch size={12} /> Árvore{tree ? ` ${tree.nodes.filter((n) => n.status === "mastered").length}/${tree.nodes.length}` : ""}
-                </button>
-              </div>
-              </>}
+              opcoes={opcoesDaConversa}
+              selos={selos}
+              onEscolherStudio={(tpl) => setInput((v) => tpl + v.trim())}
             >
               {anexo && <ChipAnexo anexo={anexo} onTirar={tirarAnexo} />}
               <ChipsLote lote={lote} onTirar={tirarDoLote} />
               {focusChips}
             </CoworkComposer>
+            {celular && (
+              <PainelDeBaixo aberto={active && painelAgente} onFechar={() => setPainelAgente(false)}
+                titulo={tr("chatCelular.agentTitle")} rotuloFechar={tr("chatCelular.close")}>
+                <div className="flex flex-col gap-3 pb-2 [&_button]:min-h-[44px]">{opcoesDaConversa}<BotaoModoExec /></div>
+              </PainelDeBaixo>
+            )}
           </div>
         </div>
       </div>

@@ -15,7 +15,6 @@ import { Web3Provider } from "@/src/context/Web3Context";
 import { Navbar } from "@/components/main/navbar";
 import { RegistrarSW } from "@/components/pwa/RegistrarSW";
 import { AvisoVersaoNova } from "@/components/sistema/AvisoVersaoNova";
-import { BannerVersaoMobile } from "@/components/mobile/BannerVersaoMobile";
 
 import "../src/i18n";
 import "./globals.css";
@@ -79,6 +78,9 @@ export const viewport: Viewport = {
     initialScale: 1,
     viewportFit: "cover",
     themeColor: "#030014",
+    // #837: o teclado do celular ENCOLHE a página (e não fica por cima dela) — o `100dvh` do laboratório acompanha e a
+    // caixa de escrever sobe junto. Sem isso (padrão do Chrome do Android) o teclado cobria a caixa inteira.
+    interactiveWidget: "resizes-content",
 };
 
 export const metadata: Metadata = {
@@ -130,8 +132,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                             <Navbar />
                             {children}
 
-                            {/* Oferece /m nas salas completas, no celular (NEXT_PUBLIC_MOBILE_UI). */}
-                            <BannerVersaoMobile />
 
                         </Web3Provider>
                     </AuthProvider>

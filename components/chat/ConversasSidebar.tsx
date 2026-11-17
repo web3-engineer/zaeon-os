@@ -15,7 +15,7 @@
 import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ChevronRight, CornerDownRight, GitBranchPlus, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Search, SquarePen, Trash2,
+  ChevronRight, CornerDownRight, GitBranchPlus, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Search, SquarePen, Trash2,
 } from "lucide-react";
 import { arvoreDeThreads, CHAVE_DO_GRUPO, GRUPOS_RECOLHIDOS, gruposDoDia, type GrupoDoDia, type Thread } from "@/lib/chat/threads";
 
@@ -69,6 +69,8 @@ export default function ConversasSidebar({
   const [busca, setBusca] = useState("");
   const [editando, setEditando] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState<string | null>(null);
+  // #837: na tela de toque as ações de uma conversa ficam no "⋯" (sempre à vista, elas espremiam o nome em "faça u…")
+  const [acoesDe, setAcoesDe] = useState<string | null>(null);
   // Mães abertas no acordeão. A mãe da conversa ativa abre sozinha (senão a ativa some).
   const [abertas, setAbertas] = useState<Record<string, boolean>>({});
   const arvore = useMemo(() => arvoreDeThreads(threads), [threads]);
@@ -132,7 +134,7 @@ export default function ConversasSidebar({
     return (
       <div
         key={t.id}
-        className={`group/conv relative flex items-center gap-1 rounded-lg pr-1 transition-colors ${
+        className={`group/conv relative flex flex-wrap items-center gap-1 rounded-lg pr-1 transition-colors ${
           filha ? "ml-3 pl-1" : "pl-1"
         } ${
           atual
@@ -165,11 +167,18 @@ export default function ConversasSidebar({
           className="flex-1 min-w-0 flex items-center gap-1.5 py-1.5 text-left rounded-md outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
         >
           {ocupada === t.id && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shrink-0" aria-label={traduzir("labSidebar.replyingShort")} />}
-          <span className={`flex-1 min-w-0 truncate text-[13px] ${atual ? "font-semibold" : "font-medium"}`}>{t.titulo}</span>
+          {/* #837: no toque, o nome inteiro em até 2 linhas */}
+          <span className={`flex-1 min-w-0 truncate [@media(hover:none)]:whitespace-normal [@media(hover:none)]:line-clamp-2 [@media(hover:none)]:break-words text-[13px] ${atual ? "font-semibold" : "font-medium"}`}>{t.titulo}</span>
         </button>
         {/* Ações no hover (e com foco de teclado); na ativa ficam sempre à mão.
             #733: escondidas, NÃO ocupam espaço (antes ficavam invisíveis, mas tomavam uns 70 px do nome) */}
-        <span className={`shrink-0 items-center ${atual ? "flex" : "hidden group-hover/conv:flex group-focus-within/conv:flex"} [@media(hover:none)]:flex`}>
+        {/* #837: no toque, o "⋯" mostra as ações numa linha embaixo do nome */}
+        <button type="button" onClick={(e) => { e.stopPropagation(); setAcoesDe((a) => (a === t.id ? null : t.id)); }}
+          data-gaveta-fica aria-expanded={acoesDe === t.id} aria-label={`${traduzir("labSidebar.actions")} · ${t.titulo}`}
+          className="hidden [@media(hover:none)]:flex shrink-0 w-9 h-9 items-center justify-center rounded-md text-slate-500 dark:text-white/55">
+          <MoreHorizontal size={16} />
+        </button>
+        <span className={`shrink-0 items-center ${atual ? "flex" : "hidden group-hover/conv:flex group-focus-within/conv:flex"} ${acoesDe === t.id ? "[@media(hover:none)]:flex [@media(hover:none)]:basis-full [@media(hover:none)]:justify-end [@media(hover:none)]:gap-2 [@media(hover:none)]:pb-1" : "[@media(hover:none)]:hidden"}`}>
           {!filha && aoCriarSub && (
             <button type="button" onClick={(e) => { e.stopPropagation(); aoCriarSub(t.id); setAbertas((a) => ({ ...a, [t.id]: true })); }} className={BTN_MINI} aria-label={`${traduzir("labSidebar.newTopic")} · ${t.titulo}`} title={traduzir("labSidebar.newTopic")}>
               <GitBranchPlus size={12} />
@@ -219,7 +228,7 @@ export default function ConversasSidebar({
               onKeyDown={(e) => { if (e.key === "Escape") setBusca(""); }}
               placeholder={traduzir("labSidebar.search")}
               aria-label={traduzir("labSidebar.search")}
-              className="flex-1 min-w-0 bg-transparent text-[12px] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/40 outline-none"
+              className="flex-1 min-w-0 bg-transparent text-[16px] [@media(hover:hover)_and_(pointer:fine)]:text-[12px] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/40 outline-none"
             />
           </label>
         </div>

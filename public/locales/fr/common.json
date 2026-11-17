@@ -15,6 +15,8 @@
     "languageAria": "Langue actuelle : {{name}}. Cliquez pour changer."
   },
   "labSidebar": {
+    "actions": "Actions",
+    "cyberspace": "Cyberespace",
     "study": "Salle d’étude",
     "research": "Salle de recherche",
     "projects": "Projets",
@@ -838,5 +840,28 @@
     "deleteConfirm": "Supprimer votre compte ? Cela efface TOUTES vos données et libère l'e-mail pour repartir de zéro. Action irréversible.",
     "deleteFailed": "Impossible de supprimer le compte pour le moment. Réessayez.",
     "connectionError": "Erreur de connexion."
+  },
+  "chatCelular": {
+    "more": "Plus",
+    "placeholder": "Demandez à Aura",
+    "message": "Message",
+    "mic": "Parler",
+    "stopMic": "Arrêter l'enregistrement",
+    "stop": "Arrêter",
+    "send": "Envoyer",
+    "close": "Fermer",
+    "bring": "Ajouter",
+    "file": "Fichier",
+    "photo": "Photo",
+    "liveCamera": "Caméra en direct",
+    "studio": "Créer avec Studio",
+    "auto": "Automatique",
+    "guided": "Guidé",
+    "agentPanel": "Conversation avec {{name}} : changer d'agent et options",
+    "agentTitle": "Qui répond et options",
+    "researchOn": "Recherche activée",
+    "researchOff": "Désactiver le mode recherche",
+    "mentorOff": "Revenir à Aura (quitter {{name}})",
+    "with": "Avec {{name}}"
   }
 }

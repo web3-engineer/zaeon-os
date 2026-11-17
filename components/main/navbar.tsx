@@ -158,8 +158,6 @@ export const Navbar = () => {
 
 
   if (!mounted) return null;
-  // /m é o app mobile: tem cabeçalho próprio (coluna única, sem navbar do site).
-  if (pathname === "/m" || pathname?.startsWith("/m/")) return null;
   // Lounge Cósmico é tela cheia imersiva: sem chrome global.
   if (ehRotaImersiva(pathname)) return null;
   // ferramentas internas de dev (ex.: estúdio de avatar /dev/avatares) — tela cheia, sem o menu do site

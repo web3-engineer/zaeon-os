@@ -15,6 +15,8 @@
     "languageAria": "Current language: {{name}}. Click to change."
   },
   "labSidebar": {
+    "actions": "Actions",
+    "cyberspace": "Cyberspace",
     "study": "Study Room",
     "research": "Research Room",
     "projects": "Projects",
@@ -838,5 +840,28 @@
     "deleteConfirm": "Delete your account? This removes ALL your data and frees the email to start over. This can't be undone.",
     "deleteFailed": "Couldn't delete the account right now. Please try again.",
     "connectionError": "Connection error."
+  },
+  "chatCelular": {
+    "more": "More",
+    "placeholder": "Ask Aura",
+    "message": "Message",
+    "mic": "Speak",
+    "stopMic": "Stop recording",
+    "stop": "Stop",
+    "send": "Send",
+    "close": "Close",
+    "bring": "Add",
+    "file": "File",
+    "photo": "Photo",
+    "liveCamera": "Live camera",
+    "studio": "Create with Studio",
+    "auto": "Automatic",
+    "guided": "Guided",
+    "agentPanel": "Chatting with {{name}}: switch agent and options",
+    "agentTitle": "Who answers and options",
+    "researchOn": "Research on",
+    "researchOff": "Turn off research mode",
+    "mentorOff": "Back to Aura (leave {{name}})",
+    "with": "With {{name}}"
   }
 }

@@ -15,6 +15,8 @@
     "languageAria": "Idioma actual: {{name}}. Haz clic para cambiar."
   },
   "labSidebar": {
+    "actions": "Acciones",
+    "cyberspace": "Ciberespacio",
     "study": "Sala de Estudio",
     "research": "Sala de Investigación",
     "projects": "Proyectos",
@@ -838,5 +840,28 @@
     "deleteConfirm": "¿Eliminar tu cuenta? Esto borra TODOS tus datos y libera el correo para empezar de cero. No se puede deshacer.",
     "deleteFailed": "No se pudo eliminar la cuenta ahora. Inténtalo de nuevo.",
     "connectionError": "Error de conexión."
+  },
+  "chatCelular": {
+    "more": "Más",
+    "placeholder": "Pregunta a Aura",
+    "message": "Mensaje",
+    "mic": "Hablar",
+    "stopMic": "Detener grabación",
+    "stop": "Detener",
+    "send": "Enviar",
+    "close": "Cerrar",
+    "bring": "Traer",
+    "file": "Archivo",
+    "photo": "Foto",
+    "liveCamera": "Cámara en vivo",
+    "studio": "Crear con Studio",
+    "auto": "Automático",
+    "guided": "Guiado",
+    "agentPanel": "Conversación con {{name}}: cambiar agente y opciones",
+    "agentTitle": "Quién responde y opciones",
+    "researchOn": "Investigación activada",
+    "researchOff": "Desactivar el modo investigación",
+    "mentorOff": "Volver a Aura (salir de {{name}})",
+    "with": "Con {{name}}"
   }
 }
