@@ -385,6 +385,86 @@
         "project_rank": "Project Rank"
     },
     "about": {
+      "planos_copy": {
+        "free": {
+          "price": "Free",
+          "tagline": "Get started",
+          "perks": [
+            "Unlimited Study Room access",
+            "Research Room: one report, paper or capstone",
+            "Voice mode unavailable",
+            "Deep Thinking unavailable"
+          ]
+        },
+        "plus": {
+          "price": "R$20 for students · R$80",
+          "tagline": "Everyday academic work",
+          "perks": [
+            "Unlimited Research Room access",
+            "Advanced Voice Mode",
+            "Deep Thinking once a day",
+            "Unlimited Study Room access"
+          ]
+        },
+        "pro": {
+          "tagline": "For frequent creators",
+          "perks": [
+            "Everything in Plus",
+            "Unlimited Deep Thinking",
+            "Projects tab (Zaeon Code)",
+            "Advanced voice"
+          ]
+        },
+        "max": {
+          "tagline": "The complete toolkit",
+          "perks": [
+            "Everything in Pro",
+            "Aura creates several drafts and delivers the best one",
+            "On-demand scientific generation: molecules, proteins and simulations",
+            "Agents with advanced skills and custom tools",
+            "Priority support"
+          ]
+        }
+      },
+      "equipe_copy": {
+        "pda": "PDA · Team",
+        "perfil": "Profile",
+        "nota": "Note",
+        "chamada": "Meet the team",
+        "foto": "Photo of {{nome}}",
+        "fundador": {
+          "cargo": "Founder · CEO",
+          "bio": "Don created Zaeon to make studying more collaborative and learning easier to demonstrate. He designs the product, Cyberspace and credentials, and tests them as Zaeon’s first student.",
+          "tags": [
+            "Product",
+            "Cyberspace",
+            "Credentials"
+          ]
+        }
+      },
+      "apresentacao": {
+        "titulo": "Turn knowledge into real work.",
+        "resumo": "Zaeon is a place to study with AI, build projects and show what you can do. We help companies find people whose skills stand out in assessments and real work.",
+        "ver_amostra": "See a study preview",
+        "fluxo": "From studying to new opportunities",
+        "tecnica": "Explore Zaeon’s architecture",
+        "estudar": {
+          "titulo": "Study with AI",
+          "descricao": "Explore a subject with AI models, study materials and references that help you go deeper."
+        },
+        "construir": {
+          "titulo": "Build your project",
+          "descricao": "Turn an idea into research, code, a prototype or another piece of work you can share."
+        },
+        "provar": {
+          "titulo": "Show what you can do",
+          "descricao": "Use assessments, completed work and verifiable credentials to demonstrate your skills."
+        },
+        "conectar": {
+          "titulo": "Connect with companies",
+          "descricao": "Zaeon agents help introduce people whose work stands out to companies looking for their skills."
+        }
+      },
         "back": "Back",
         "scroll_down": "scroll to meet us",
         "title_hero": "Build without limits.",
@@ -783,6 +863,7 @@
             "title_highlight": "NO LIMITS"
         },
         "premiacao": {
+            "provedores": "Frontier AI Agents powered by:",
             "titulo": "We are a Brazilian startup that received funding and won an award in the blockchain category.",
             "apoio": "Funded and supported by:",
             "vencedor": "Award-winning product",
@@ -875,6 +956,8 @@
             "lema": "Where humans and superintelligences meet."
         },
         "vitrine": {
+            "abrir_caderno": "Open notebook",
+            "exemplo_estudo": "Study example",
             "anterior": "Previous cards",
             "proximo": "Next cards",
             "agente": "Agent",

@@ -9,11 +9,13 @@
  * Só fade-in (once): o conteúdo fica na página ao rolar de volta.
  */
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Fingerprint, Instagram, Linkedin, Globe, Signal, BatteryMedium } from "lucide-react";
 import { EQUIPE, type MembroEquipe } from "@/lib/about/equipe";
 
 function Foto({ m }: { m: MembroEquipe }) {
+  const { t } = useTranslation();
   const [falhou, setFalhou] = useState(!m.foto);
   const iniciais = m.nome.split(/\s+/).slice(0, 2).map((p) => p[0]).join("").toUpperCase();
   return (
@@ -23,7 +25,7 @@ function Foto({ m }: { m: MembroEquipe }) {
           <span className="text-3xl font-black tracking-tight" style={{ color: m.acento }}>{iniciais}</span>
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={m.foto} alt={`Foto de ${m.nome}`} className="h-full w-full object-cover" onError={() => setFalhou(true)} />
+          <img src={m.foto} alt={t("about.equipe_copy.foto", { nome: m.nome })} className="h-full w-full object-cover" onError={() => setFalhou(true)} />
         )}
       </div>
       <span aria-hidden className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-[#0c0c1a]" style={{ background: m.acento, boxShadow: `0 0 12px ${m.acento}` }} />
@@ -32,20 +34,22 @@ function Foto({ m }: { m: MembroEquipe }) {
 }
 
 function Pda({ m, i }: { m: MembroEquipe; i: number }) {
+  const { t } = useTranslation();
+  const cargo = m.cargo && t(`about.equipe_copy.${m.id}.cargo`, m.cargo);
   return (
     <motion.article
       initial={{ opacity: 0, y: 24, scale: 0.97 }}
       whileInView={{ opacity: 1, y: 0, scale: 1 }}
       viewport={{ once: true, margin: "-60px" }}
       transition={{ type: "spring", stiffness: 120, damping: 20, delay: i * 0.12 }}
-      aria-label={`${m.nome}, ${m.cargo}`}
+      aria-label={cargo ? `${m.nome}, ${cargo}` : m.nome}
       className="relative w-full max-w-[420px] rounded-[1.6rem] border border-white/15 bg-[#0c0c1a]/95 backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] overflow-hidden"
     >
       {/* header do PDA */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
         <div className="flex items-center gap-2">
           <Fingerprint size={14} style={{ color: m.acento }} />
-          <span className="text-[11px] font-black text-white uppercase tracking-widest">PDA · Equipe</span>
+          <span className="text-[11px] font-black text-white uppercase tracking-widest">{t("about.equipe_copy.pda")}</span>
         </div>
         <div className="flex items-center gap-2 text-slate-500">
           <span className="font-mono text-[9px] tracking-widest">{String(i + 1).padStart(2, "0")}/{String(EQUIPE.length).padStart(2, "0")}</span>
@@ -57,24 +61,23 @@ function Pda({ m, i }: { m: MembroEquipe; i: number }) {
       <div className="px-4 pt-4 pb-3 flex items-center gap-4">
         <Foto m={m} />
         <div className="min-w-0">
-          <p className="text-[8px] uppercase tracking-widest text-slate-500 font-bold">Perfil</p>
+          <p className="text-[8px] uppercase tracking-widest text-slate-500 font-bold">{t("about.equipe_copy.perfil")}</p>
           <h3 className="mt-0.5 text-xl md:text-2xl font-black tracking-tight text-white leading-tight">{m.nome}</h3>
-          <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.22em]" style={{ color: m.acento }}>{m.cargo}</p>
+          {cargo && <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.22em]" style={{ color: m.acento }}>{cargo}</p>}
         </div>
       </div>
 
-      <div className="border-t border-white/10 mx-3" />
-
-      {/* bio */}
-      <div className="px-4 pt-3 pb-2">
-        <p className="text-[8px] uppercase tracking-widest text-slate-500 font-bold">Nota</p>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-slate-200">{m.bio}</p>
-      </div>
+      {m.bio && (
+        <div className="mx-3 border-t border-white/10 px-1 pb-2 pt-3">
+          <p className="text-[8px] uppercase tracking-widest text-slate-500 font-bold">{t("about.equipe_copy.nota")}</p>
+          <p className="mt-1.5 text-[13px] leading-relaxed text-slate-200">{t(`about.equipe_copy.${m.id}.bio`, m.bio)}</p>
+        </div>
+      )}
 
       {/* o que faz */}
       <div className="px-4 pb-4 pt-1 flex flex-wrap items-center gap-1.5">
-        {m.tags.map((t) => (
-          <span key={t} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold text-slate-200">{t}</span>
+        {m.tags?.map((tag, indice) => (
+          <span key={tag} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold text-slate-200">{t(`about.equipe_copy.${m.id}.tags.${indice}`, tag)}</span>
         ))}
         {m.redes && (
           <span className="ml-auto flex items-center gap-1.5">
@@ -92,12 +95,13 @@ function Pda({ m, i }: { m: MembroEquipe; i: number }) {
 }
 
 export default function PdaEquipe({ titulo, subtitulo }: { titulo: string; subtitulo?: string }) {
+  const { t } = useTranslation();
   return (
-    <section aria-labelledby="equipe-titulo" className="w-full max-w-5xl flex flex-col items-center text-center relative z-40 pb-[10vh]">
+    <section aria-labelledby="equipe-titulo" className="mx-auto w-full max-w-5xl flex flex-col items-center text-center relative z-40 pb-[10vh]">
       <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }} className="mb-12">
-        <p className="text-[10px] font-black uppercase tracking-[0.5em] text-cyan-500/70 mb-4">Quem faz</p>
-        <h2 id="equipe-titulo" className="text-4xl md:text-6xl font-black text-white tracking-tighter drop-shadow-2xl">{titulo}</h2>
-        {subtitulo && <p className="mt-4 text-white/70 max-w-xl mx-auto">{subtitulo}</p>}
+        <p className="text-[10px] font-black uppercase tracking-[0.5em] text-cyan-500/70 mb-4">{t("about.equipe_copy.chamada")}</p>
+        <h2 id="equipe-titulo" className="text-4xl md:text-6xl font-black text-slate-950 dark:text-white tracking-tighter drop-shadow-2xl">{titulo}</h2>
+        {subtitulo && <p className="mt-4 text-slate-700 dark:text-white/70 max-w-xl mx-auto">{subtitulo}</p>}
       </motion.div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 w-full justify-items-center">
         {EQUIPE.map((m, i) => <Pda key={m.id} m={m} i={i} />)}

@@ -21,7 +21,6 @@
   content: "";
   position: absolute;
   inset: 0;
-  backdrop-filter: blur(2px);
   background: linear-gradient(143deg, #defffd30, transparent 40%, #3c86ad18);
   box-shadow: inset 0 1px #e0ffff38, inset 0 -20px 65px #10254d18;
 }
@@ -320,7 +319,7 @@
   .cardume:nth-child(n+3 of .cardume) { display: none; }
 }
 
-.ciclos, .cena {
+.ciclos {
   position: absolute;
   inset: 0;
 }
@@ -332,54 +331,17 @@
 
 :global(.dark) .ciclos { color: #83edff; }
 
-.cena {
-  display: grid;
-  place-items: center;
-  opacity: 0;
-  animation: revelar-cena 83s linear infinite;
-}
-
-.cena svg { width: 100%; height: 100%; overflow: hidden; }
-
-.flor {
-  transform-origin: 50% 27%;
-  background: repeating-radial-gradient(ellipse at center, transparent 0 11%, #667cde36 13%, transparent 17%);
-}
-.flor svg {
-  width: min(100%, 58rem);
-  filter: drop-shadow(0 0 7px currentColor);
-  animation: nascer-flor 83s ease-in-out infinite;
-}
-
-@keyframes revelar-cena {
-  0%, 14.4577%, 20.4816%, 100% { opacity: 0; }
-  16.8676%, 18.6749% { opacity: .62; }
-}
-
-
-@keyframes nascer-flor {
-  0%, 14.4577% { transform: translateY(-23%) scale(.06); }
-  16.8676% { transform: translateY(-8%) scale(.72); }
-  18.6749% { transform: scale(1.04); }
-  20.4816%, 100% { transform: scale(.8); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .cena, .flor svg { animation: none; }
-
-}
-
 .camadaMarinha {
   position: absolute;
   inset: 0;
-  animation: revelar-mar 83s linear infinite;
+  animation: revelar-mar 83s ease-in-out infinite;
 }
 
 .ciclos { z-index: 1; }
 
 @keyframes revelar-mar {
-  0%, 15.0601%, 100% { opacity: 1; }
-  18.6749%, 95.7835% { opacity: 0; }
+  0%, 14.4577%, 100% { opacity: 1; }
+  22.8916%, 93.3735% { opacity: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -389,7 +351,7 @@
 .dnaOriginal {
   position: absolute;
   inset: 0;
-  animation: mostrar-dna 83s linear infinite;
+  animation: mostrar-dna 83s ease-in-out infinite;
 }
 
 @keyframes mostrar-dna {
@@ -508,7 +470,7 @@
   inset: 0;
   opacity: 0;
   overflow: hidden;
-  animation: revelar-atomos 83s linear infinite;
+  animation: revelar-atomos 83s ease-in-out infinite;
 }
 
 .mapaAtomico {
@@ -518,7 +480,7 @@
   width: clamp(240px, 56vw, 740px);
   aspect-ratio: 1;
   display: grid;
-  grid-template-columns: repeat(11, minmax(0, 1fr));
+  grid-template-columns: repeat(9, minmax(0, 1fr));
   mask-image: radial-gradient(#000 20%, #000a 48%, transparent 71%);
   animation: ampliar-atomos 83s linear infinite;
 }
@@ -554,19 +516,6 @@
   .camadaAtomica, .mapaAtomico { animation: none; }
 }
 
-.mapaAtomico {
-  animation: ampliar-atomos 83s linear infinite, pulsar-atomos 1.55s ease-in-out infinite;
-}
-
-@keyframes pulsar-atomos {
-  0%, 100% { filter: brightness(.82) hue-rotate(-20deg); }
-  50% { filter: brightness(1.17) hue-rotate(35deg); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .mapaAtomico { animation: none; }
-}
-
 .subtextos li { animation: revelar-subtexto 820ms 220ms ease-out both; }
 .subtextos li:nth-child(2) { animation-delay: 300ms; }
 .subtextos li:nth-child(3) { animation-delay: 380ms; }
@@ -586,7 +535,7 @@
   inset: 0;
   overflow: hidden;
   opacity: 0;
-  animation: revelar-anatomia 83s linear infinite;
+  animation: revelar-anatomia 83s ease-in-out infinite;
   background: radial-gradient(ellipse at 50% 27%, #102e45b0, transparent 64%);
 }
 
@@ -622,7 +571,7 @@
   top: 27%;
   width: clamp(145px, 33vw, 370px);
   aspect-ratio: 1;
-  background: url("/models/coracao-landing.webp") center / contain no-repeat;
+  background: url("/models/coracao-landing-fundo.webp") center / contain no-repeat;
   opacity: 0;
   filter: drop-shadow(0 0 9px #ff68858a);
   animation: revelar-coracao 83s ease-in-out infinite, batimento 1.12s ease-in-out infinite;
@@ -657,7 +606,7 @@
   top: 27%;
   width: clamp(150px, 34vw, 385px);
   aspect-ratio: 1;
-  background: url("/models/cerebro-landing.webp") center / contain no-repeat;
+  background: url("/models/cerebro-landing-fundo.webp") center / contain no-repeat;
   opacity: 0;
   filter: drop-shadow(0 0 8px #57caff70);
   animation: aproximar-cerebro 83s ease-in-out infinite;
@@ -710,17 +659,17 @@
 }
 
 .corpoAnatomico .anatomiaFrente {
-  background-image: url("/models/anatomia-landing.webp");
+  background-image: url("/models/anatomia-landing-fundo.webp");
   animation: anatomia-frente 83s linear infinite;
 }
 
 .corpoAnatomico .anatomiaTresQuartos {
-  background-image: url("/models/anatomia-landing-tres-quartos.webp");
+  background-image: url("/models/anatomia-landing-tres-quartos-fundo.webp");
   animation: anatomia-tres-quartos 83s linear infinite;
 }
 
 .corpoAnatomico .anatomiaPerfil {
-  background-image: url("/models/anatomia-landing-perfil.webp");
+  background-image: url("/models/anatomia-landing-perfil-fundo.webp");
   animation: anatomia-perfil 83s linear infinite;
 }
 
@@ -751,7 +700,7 @@
   overflow: hidden;
   opacity: 0;
   background: linear-gradient(#76bced, #b8e2ff 72%, #d8efff);
-  animation: mostrar-natureza 83s linear infinite;
+  animation: mostrar-natureza 83s ease-in-out infinite;
 }
 :global(.dark) .natureza { background: linear-gradient(#153558, #397ab0 72%, #87bddb); }
 
@@ -760,7 +709,6 @@
   position: absolute;
   inset: 0;
   background: linear-gradient(132deg, #efffff32, transparent 37%, #efffff14 75%, transparent);
-  backdrop-filter: blur(.9px);
 }
 
 .arvoreNatureza {
@@ -852,4 +800,13 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .natureza, .natureza * { animation: none; }
+}
+
+.marContinuo { animation: none; }
+
+
+.oceano[data-fundo-pausado] *,
+.oceano[data-fundo-pausado] *::before,
+.oceano[data-fundo-pausado] *::after {
+  animation-play-state: paused;
 }

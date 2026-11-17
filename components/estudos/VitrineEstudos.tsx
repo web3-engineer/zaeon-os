@@ -21,6 +21,8 @@ import { FILTROS, NOME_TIPO, filtrarVitrine, filtrosVisiveis, mesclarCatalogo, p
 import { COR_RARIDADE, NOME_RARIDADE } from "@/lib/estudos/blueprint";
 import { plugar, desplugar, usePluginsChat } from "@/lib/plugins/chatPlugins";
 import { ehAgenteOrquestra } from "@/lib/orquestra/catalogo";
+import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import SolanaMark from "@/components/solana/SolanaMark";
 import CartaVitrine, { GLYPH, ImagemCarta, segmentos } from "./CartaVitrine";
 import DetalhesBuild from "./DetalhesBuild";
@@ -82,6 +84,7 @@ const SHARDS = Array.from({ length: 18 }, (_, i) => {
 });
 
 export default function VitrineEstudos() {
+    const { t } = useTranslation();
     const [filtro, setFiltro] = useState<FiltroVitrine>("todos");
     const [filtrosAbertos, setFiltrosAbertos] = useState(false);
     const [busca, setBusca] = useState("");
@@ -210,6 +213,21 @@ export default function VitrineEstudos() {
 
                     <div className="vt-grid mt-6 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-x-10 gap-y-14">
                         {mostra.map((it) => {
+                            if (it.exemploEstudo) {
+                                return (
+                                    <CartaVitrine
+                                        key={it.id}
+                                        it={it}
+                                        className="[&_.vt-spine]:hidden [&_.vt-type]:hidden"
+                                        precoNode={t("landing.vitrine.exemplo_estudo", { defaultValue: "Estudo de exemplo" })}
+                                        acaoNode={it.cadernoEstudoId && (
+                                            <Link className="vt-abrir-pasta" href={`/estudos/caderno/${encodeURIComponent(it.cadernoEstudoId)}`}>
+                                                {t("landing.vitrine.abrir_caderno", { defaultValue: "Abrir caderno" })}
+                                            </Link>
+                                        )}
+                                    />
+                                );
+                            }
                             if (it.pasta) {
                                 // PESQUISA aberta a APOIO: abre o painel formal (tela cheia) com o botão de apoiar.
                                 if (it.apoio?.ativo) {

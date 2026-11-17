@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useSession } from "next-auth/react";
@@ -11,6 +11,7 @@ import MenuNavigation from "@/components/sub/MenuNavigation";
 import { precarregarCyber } from "@/lib/cyber/precarga";
 import styles from "./hero-aquario.module.css";
 import LiquidGlassButton from "@/components/ui/LiquidGlassButton";
+import MarCardumes from "./MarCardumes";
 import CiclosAquario from "./CiclosAquario";
 
 /** o botão do cyberespaço (lá embaixo, em cima do módulo) pede o login daqui quando a pessoa está deslogada */
@@ -113,34 +114,29 @@ export default function HeroPage() {
     return () => window.removeEventListener(EVENTO_ABRIR_LOGIN, abrir);
   }, []);
 
+  const fundo = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const elemento = fundo.current;
+    if (!elemento || !("IntersectionObserver" in window)) return;
+    let visivel = true;
+    const atualizar = () => elemento.toggleAttribute("data-fundo-pausado", !visivel || document.hidden);
+    const observer = new IntersectionObserver(([entrada]) => {
+      visivel = entrada.isIntersecting;
+      atualizar();
+    });
+    observer.observe(elemento);
+    document.addEventListener("visibilitychange", atualizar);
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", atualizar);
+    };
+  }, []);
+
   return (
     <main className={`relative isolate flex min-h-[65svh] w-full flex-col items-center justify-center overflow-hidden px-5 pb-16 pt-24 text-center font-display md:min-h-svh ${styles.aquario}`}>
-      <div className={styles.oceano} aria-hidden="true">
+      <div ref={fundo} className={styles.oceano} aria-hidden="true">
         <CiclosAquario />
-        <div className={styles.camadaMarinha}>
-          <div className={styles.reflexos} />
-          <div className={styles.fundoMarinho}>
-            {[0, 1, 2].map((grupo) => (
-              <div key={grupo} className={styles.algas}>
-                {[0, 1, 2, 3, 4].map((folha) => <i key={folha} />)}
-              </div>
-            ))}
-          </div>
-          <div className={styles.bolhas}>
-            {[0, 1, 2].map((fluxo) => (
-              <div key={fluxo} className={styles.fluxoBolhas}>
-                {Array.from({ length: 5 }, (_, i) => <span key={i} />)}
-              </div>
-            ))}
-          </div>
-          {[3, 2, 3, 2, 3, 2, 3, 2].map((quantidade, escola) => (
-            <div className={styles.cardume} key={escola}>
-              {Array.from({ length: quantidade }, (_, peixe) => (
-                <span className={styles.peixe} key={peixe} />
-              ))}
-            </div>
-          ))}
-        </div>
+        <MarCardumes />
       </div>
 
       <motion.div

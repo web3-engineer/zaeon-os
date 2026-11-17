@@ -15,9 +15,10 @@ afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 const passar = (ms: number) => act(() => { vi.advanceTimersByTime(ms); });
 
 describe("Vitrine · detalhes do card", () => {
-  it("cada card tem 'detalhes' ao lado do plug", () => {
+  it("cada oferta tem detalhes; exemplos de título ficam sem compra", () => {
     render(<VitrineEstudos />);
-    expect(screen.getAllByRole("button", { name: "detalhes" })).toHaveLength(CATALOGO.length);
+    expect(screen.getAllByRole("button", { name: "detalhes" })).toHaveLength(CATALOGO.filter((item) => !item.exemploEstudo).length);
+    expect(screen.getAllByText("Estudo de exemplo")).toHaveLength(27);
   });
 
   it("'detalhes' abre o painel com quem publicou, nicho, validadores e a descrição — e Esc fecha", () => {

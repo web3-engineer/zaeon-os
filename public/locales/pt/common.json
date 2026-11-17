@@ -385,6 +385,86 @@
         "project_rank": "Classificação do projeto"
     },
     "about": {
+      "planos_copy": {
+        "free": {
+          "price": "Grátis",
+          "tagline": "Para começar",
+          "perks": [
+            "Sala de Estudos ilimitada",
+            "Sala de Pesquisa: 1 trabalho (relatório, artigo ou TCC)",
+            "Sem modo voz",
+            "Sem pensamento profundo"
+          ]
+        },
+        "plus": {
+          "price": "R$20 estudante · R$80",
+          "tagline": "O dia a dia acadêmico",
+          "perks": [
+            "Sala de Pesquisa ilimitada",
+            "Modo Voz Avançado",
+            "Pensamento Profundo 1×/dia",
+            "Sala de Estudos ilimitada"
+          ]
+        },
+        "pro": {
+          "tagline": "Para quem produz muito",
+          "perks": [
+            "Tudo do Plus",
+            "Pensamento Profundo ilimitado",
+            "Aba Projetos (Zaeon Code)",
+            "Voz avançada"
+          ]
+        },
+        "max": {
+          "tagline": "O arsenal completo",
+          "perks": [
+            "Tudo do Pro",
+            "A Aura cria vários rascunhos e entrega o melhor",
+            "Geração científica sob demanda: moléculas, proteínas e simulações",
+            "Agentes com habilidades avançadas e ferramentas personalizadas",
+            "Prioridade no suporte"
+          ]
+        }
+      },
+      "equipe_copy": {
+        "pda": "PDA · Equipe",
+        "perfil": "Perfil",
+        "nota": "Nota",
+        "chamada": "Quem faz",
+        "foto": "Foto de {{nome}}",
+        "fundador": {
+          "cargo": "Fundador · CEO",
+          "bio": "Criou a Zaeon pra que estudar deixasse de ser solitário e aprender virasse algo que se prova. Desenha o produto, o cyberespaço e a camada de credenciais e testa tudo como o primeiro aluno da casa.",
+          "tags": [
+            "Produto",
+            "Cyberespaço",
+            "Credenciais"
+          ]
+        }
+      },
+      "apresentacao": {
+        "titulo": "Conhecimento que vira trabalho real.",
+        "resumo": "A Zaeon é uma plataforma para estudar com IA, desenvolver projetos e demonstrar o que você sabe fazer. Ajudamos empresas a encontrar pessoas cujas habilidades se destacam em avaliações e trabalhos concretos.",
+        "ver_amostra": "Veja uma amostra de estudo",
+        "fluxo": "Do estudo à oportunidade",
+        "tecnica": "Conheça a arquitetura da Zaeon",
+        "estudar": {
+          "titulo": "Estude com IA",
+          "descricao": "Explore um assunto com modelos de IA, materiais de estudo e referências para aprofundar o que você aprende."
+        },
+        "construir": {
+          "titulo": "Construa seu projeto",
+          "descricao": "Transforme uma ideia em pesquisa, código, protótipo ou outro trabalho que você possa mostrar."
+        },
+        "provar": {
+          "titulo": "Demonstre suas habilidades",
+          "descricao": "Use avaliações, entregas e credenciais verificáveis para dar a outras pessoas evidências do que você sabe fazer."
+        },
+        "conectar": {
+          "titulo": "Conecte-se a empresas",
+          "descricao": "Os agentes da Zaeon ajudam a apresentar talentos que se destacam a empresas que buscam essas habilidades."
+        }
+      },
         "back": "Voltar",
         "scroll_down": "role pra conhecer",
         "title_hero": "Construa sem limites.",
@@ -783,6 +863,7 @@
             "title_highlight": "SEM LIMITES"
         },
         "premiacao": {
+            "provedores": "Agentes de IA de ponta movidos por:",
             "titulo": "Somos uma startup brasileira financiada e premiada na categoria blockchain.",
             "apoio": "Financiado e apoiado por:",
             "vencedor": "Produto vencedor",
@@ -875,6 +956,8 @@
             "lema": "Onde humanos e superinteligências se encontram."
         },
         "vitrine": {
+            "abrir_caderno": "Abrir caderno",
+            "exemplo_estudo": "Estudo de exemplo",
             "anterior": "Cards anteriores",
             "proximo": "Próximos cards",
             "agente": "Agente",

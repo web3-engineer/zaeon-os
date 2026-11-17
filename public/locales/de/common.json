@@ -385,6 +385,86 @@
         "project_rank": "Projektrang"
     },
     "about": {
+      "planos_copy": {
+        "free": {
+          "price": "Kostenlos",
+          "tagline": "Für den Einstieg",
+          "perks": [
+            "Unbegrenzter Zugang zum Lernraum",
+            "Forschungsraum: ein Bericht, Fachartikel oder Abschlussprojekt",
+            "Kein Sprachmodus",
+            "Kein vertieftes Denken"
+          ]
+        },
+        "plus": {
+          "price": "R$20 für Studierende · R$80",
+          "tagline": "Für den Studienalltag",
+          "perks": [
+            "Unbegrenzter Zugang zum Forschungsraum",
+            "Erweiterter Sprachmodus",
+            "Vertieftes Denken einmal täglich",
+            "Unbegrenzter Zugang zum Lernraum"
+          ]
+        },
+        "pro": {
+          "tagline": "Für besonders aktive Nutzer",
+          "perks": [
+            "Alle Vorteile von Plus",
+            "Unbegrenztes vertieftes Denken",
+            "Projektbereich (Zaeon Code)",
+            "Erweiterter Sprachmodus"
+          ]
+        },
+        "max": {
+          "tagline": "Das komplette Werkzeugpaket",
+          "perks": [
+            "Alle Vorteile von Pro",
+            "Aura erstellt mehrere Entwürfe und liefert den besten",
+            "Wissenschaftliche Generierung auf Anfrage: Moleküle, Proteine und Simulationen",
+            "Agenten mit erweiterten Fähigkeiten und individuellen Werkzeugen",
+            "Vorrangiger Support"
+          ]
+        }
+      },
+      "equipe_copy": {
+        "pda": "PDA · Team",
+        "perfil": "Profil",
+        "nota": "Notiz",
+        "chamada": "Unser Team",
+        "foto": "Foto von {{nome}}",
+        "fundador": {
+          "cargo": "Gründer · CEO",
+          "bio": "Don gründete Zaeon, um gemeinsames Lernen zu erleichtern und erworbene Fähigkeiten sichtbar zu machen. Er gestaltet das Produkt, den Cyberraum und die Nachweise und testet alles als erster Lernender bei Zaeon.",
+          "tags": [
+            "Produkt",
+            "Cyberraum",
+            "Nachweise"
+          ]
+        }
+      },
+      "apresentacao": {
+        "titulo": "Wissen in konkrete Arbeit verwandeln.",
+        "resumo": "Auf Zaeon lernst du mit KI, entwickelst Projekte und zeigst, was du kannst. Wir helfen Unternehmen, Menschen zu finden, die in Prüfungen und mit konkreten Arbeitsergebnissen überzeugen.",
+        "ver_amostra": "Lernvorschau ansehen",
+        "fluxo": "Vom Lernen zur Chance",
+        "tecnica": "Zaeons Architektur entdecken",
+        "estudar": {
+          "titulo": "Mit KI lernen",
+          "descricao": "Vertiefe ein Thema mit KI-Modellen, Lernmaterialien und Quellen."
+        },
+        "construir": {
+          "titulo": "Dein Projekt umsetzen",
+          "descricao": "Mach aus einer Idee Forschung, Code, einen Prototyp oder ein anderes Ergebnis, das du teilen kannst."
+        },
+        "provar": {
+          "titulo": "Deine Fähigkeiten zeigen",
+          "descricao": "Belege deine Fähigkeiten mit Prüfungen, abgeschlossenen Projekten und verifizierbaren Nachweisen."
+        },
+        "conectar": {
+          "titulo": "Unternehmen kennenlernen",
+          "descricao": "Zaeons Agenten stellen herausragende Talente Unternehmen vor, die ihre Fähigkeiten suchen."
+        }
+      },
         "back": "Zurück",
         "scroll_down": "scrollen, um uns kennenzulernen",
         "title_hero": "Bau ohne Grenzen.",
@@ -783,6 +863,7 @@
             "title_highlight": "OHNE LIMITS"
         },
         "premiacao": {
+            "provedores": "KI-Agenten der Spitzenklasse mit Modellen von:",
             "titulo": "Wir sind ein brasilianisches Start-up, das in der Kategorie Blockchain gefördert und ausgezeichnet wurde.",
             "apoio": "Finanziert und unterstützt von:",
             "vencedor": "Ausgezeichnetes Produkt",
@@ -875,6 +956,8 @@
             "lema": "Wo Menschen und Superintelligenzen zusammenkommen."
         },
         "vitrine": {
+            "abrir_caderno": "Notizbuch öffnen",
+            "exemplo_estudo": "Studienbeispiel",
             "anterior": "Vorherige Karten",
             "proximo": "Nächste Karten",
             "agente": "Agent",

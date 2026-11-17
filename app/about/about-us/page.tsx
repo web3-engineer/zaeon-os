@@ -23,8 +23,7 @@ import {
     CalendarDaysIcon
 } from "@heroicons/react/24/outline";
 
-// IMPORT DO FUNDO ESTELAR/PARTÍCULAS
-import StarsCanvas from "@/components/main/star-background";
+import MarCardumes from "@/components/sub/MarCardumes";
 
 // CAMADA VERIFICÁVEL (Solana): marca oficial, ícones, card de credencial e diagramas
 import SolanaMark from "@/components/solana/SolanaMark";
@@ -169,19 +168,6 @@ const SectionSeparator = () => (
         </div>
     </div>
 );
-
-const BackgroundInterdimensional = () => {
-    return (
-        <div className="absolute inset-0 z-0 overflow-hidden bg-transparent">
-            <motion.div
-                animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.5, 0.3] }}
-                transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] md:w-[800px] md:h-[800px] bg-cyan-500/10 dark:bg-cyan-500/5 rounded-full blur-[100px]"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-white/80 dark:from-[#030014]/90 via-transparent to-transparent z-20 w-full transition-colors duration-500" />
-        </div>
-    );
-};
 
 const DimensionalCodex = ({ pages }: { pages: typeof MANIFESTO_PAGES }) => {
     const [page, setPage] = useState(0);
@@ -603,15 +589,17 @@ const CamadaVerificavelSection = () => {
 
 export default function TechnicalAboutPage() {
     return (
-        <div className="relative w-full font-sans overflow-x-hidden selection:bg-cyan-500 selection:text-white">
+        <div className="relative isolate w-full font-sans overflow-x-hidden selection:bg-cyan-500 selection:text-white">
 
-            <StarsCanvas />
+            <div className="pointer-events-none fixed inset-0 -z-10" aria-hidden="true">
+                <MarCardumes continuo />
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/75 to-background" />
+            </div>
 
             <BackButton />
 
             {/* SEÇÃO 1: MANIFESTO & CODEX */}
             <div className="relative min-h-screen w-full overflow-hidden flex flex-col justify-center z-20 p-6 md:p-12 lg:py-24 transition-colors duration-500">
-                <BackgroundInterdimensional />
                 <div className="relative z-30 w-full flex items-center justify-center">
                     <DimensionalCodex pages={MANIFESTO_PAGES} />
                 </div>
