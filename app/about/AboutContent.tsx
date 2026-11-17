@@ -49,12 +49,12 @@ export default function AboutContent() {
                             <div className="h-full rounded-[1.7rem] bg-[#0b1120]/90 backdrop-blur-2xl border border-white/5 p-6 flex flex-col">
                                 {featured && <span className="self-start mb-2 text-[9px] font-black uppercase tracking-widest text-white px-2 py-0.5 rounded-full" style={{ background: "linear-gradient(135deg,#7c3aed,#06b6d4)" }}>{t("about.plans.popular", "Mais popular")}</span>}
                                 <h3 className="text-xl font-black text-white">{p.name}</h3>
-                                <p className="text-[11px] text-white/50 uppercase tracking-widest mt-0.5">{p.tagline}</p>
-                                <div className="my-4 text-cyan-300 font-black text-lg">{p.price}</div>
+                                <p className="text-[11px] text-white/50 uppercase tracking-widest mt-0.5">{t(`about.planos_copy.${p.id}.tagline`, p.tagline)}</p>
+                                <div className="my-4 text-cyan-300 font-black text-lg">{p.id === "free" ? t("about.planos_copy.free.price", p.price) : p.id === "plus" ? t("about.planos_copy.plus.price", p.price) : p.price}</div>
                                 <ul className="flex flex-col gap-2 flex-1">
-                                    {p.perks.map((perk) => (
+                                    {p.perks.map((perk, indice) => (
                                         <li key={perk} className="flex items-start gap-2 text-[12px] text-white/75 leading-snug">
-                                            <span className="text-cyan-400 mt-0.5">✦</span> {perk}
+                                            <span className="text-cyan-400 mt-0.5">✦</span> {t(`about.planos_copy.${p.id}.perks.${indice}`, perk)}
                                         </li>
                                     ))}
                                 </ul>

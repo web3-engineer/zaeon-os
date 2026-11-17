@@ -384,6 +384,63 @@
         "project_rank": "Rang du projet"
     },
     "about": {
+      "planos_copy": {
+        "free": {
+          "price": "Gratuit",
+          "tagline": "Pour commencer",
+          "perks": [
+            "Salle d’étude illimitée",
+            "Salle de recherche : un rapport, un article ou un mémoire",
+            "Mode vocal indisponible",
+            "Réflexion approfondie indisponible"
+          ]
+        },
+        "plus": {
+          "price": "R$20 pour les étudiants · R$80",
+          "tagline": "Le quotidien universitaire",
+          "perks": [
+            "Salle de recherche illimitée",
+            "Mode vocal avancé",
+            "Réflexion approfondie une fois par jour",
+            "Salle d’étude illimitée"
+          ]
+        },
+        "pro": {
+          "tagline": "Pour les créateurs actifs",
+          "perks": [
+            "Tout ce qui est inclus dans Plus",
+            "Réflexion approfondie illimitée",
+            "Onglet Projets (Zaeon Code)",
+            "Voix avancée"
+          ]
+        },
+        "max": {
+          "tagline": "La boîte à outils complète",
+          "perks": [
+            "Tout ce qui est inclus dans Pro",
+            "Aura produit plusieurs brouillons et livre le meilleur",
+            "Génération scientifique à la demande : molécules, protéines et simulations",
+            "Agents avancés et outils personnalisés",
+            "Assistance prioritaire"
+          ]
+        }
+      },
+      "equipe_copy": {
+        "pda": "PDA · Équipe",
+        "perfil": "Profil",
+        "nota": "Note",
+        "chamada": "Découvrez l’équipe",
+        "foto": "Photo de {{nome}}",
+        "fundador": {
+          "cargo": "Fondateur · PDG",
+          "bio": "Don a créé Zaeon pour rendre les études plus collaboratives et permettre à chacun de démontrer ses acquis. Il conçoit le produit, le cyberespace et les justificatifs, puis les teste comme premier étudiant de Zaeon.",
+          "tags": [
+            "Produit",
+            "Cyberespace",
+            "Justificatifs"
+          ]
+        }
+      },
       "apresentacao": {
         "titulo": "Transformez vos connaissances en réalisations concrètes.",
         "resumo": "Zaeon permet d’étudier avec l’IA, de construire des projets et de montrer vos compétences. Nous aidons les entreprises à trouver des talents qui se distinguent par leurs évaluations et leurs réalisations.",

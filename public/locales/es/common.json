@@ -384,6 +384,63 @@
         "project_rank": "Rango del proyecto"
     },
     "about": {
+      "planos_copy": {
+        "free": {
+          "price": "Gratis",
+          "tagline": "Para empezar",
+          "perks": [
+            "Sala de Estudio ilimitada",
+            "Sala de Investigación: un informe, artículo o trabajo final",
+            "Sin modo de voz",
+            "Sin pensamiento profundo"
+          ]
+        },
+        "plus": {
+          "price": "R$20 estudiantes · R$80",
+          "tagline": "El día a día académico",
+          "perks": [
+            "Sala de Investigación ilimitada",
+            "Modo de voz avanzado",
+            "Pensamiento profundo una vez al día",
+            "Sala de Estudio ilimitada"
+          ]
+        },
+        "pro": {
+          "tagline": "Para quienes crean con frecuencia",
+          "perks": [
+            "Todo lo de Plus",
+            "Pensamiento profundo ilimitado",
+            "Pestaña Proyectos (Zaeon Code)",
+            "Voz avanzada"
+          ]
+        },
+        "max": {
+          "tagline": "El conjunto completo",
+          "perks": [
+            "Todo lo de Pro",
+            "Aura genera varios borradores y entrega el mejor",
+            "Generación científica bajo demanda: moléculas, proteínas y simulaciones",
+            "Agentes con habilidades avanzadas y herramientas personalizadas",
+            "Soporte prioritario"
+          ]
+        }
+      },
+      "equipe_copy": {
+        "pda": "PDA · Equipo",
+        "perfil": "Perfil",
+        "nota": "Nota",
+        "chamada": "Conoce al equipo",
+        "foto": "Foto de {{nome}}",
+        "fundador": {
+          "cargo": "Fundador · CEO",
+          "bio": "Don creó Zaeon para que estudiar fuera más colaborativo y el aprendizaje se pudiera demostrar. Diseña el producto, el ciberespacio y las credenciales, y lo prueba todo como el primer estudiante de Zaeon.",
+          "tags": [
+            "Producto",
+            "Ciberespacio",
+            "Credenciales"
+          ]
+        }
+      },
       "apresentacao": {
         "titulo": "Convierte el conocimiento en trabajo real.",
         "resumo": "Zaeon es una plataforma para estudiar con IA, desarrollar proyectos y demostrar lo que sabes hacer. Ayudamos a las empresas a encontrar personas que destacan en evaluaciones y trabajos concretos.",

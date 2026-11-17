@@ -384,6 +384,63 @@
         "project_rank": "Projektrang"
     },
     "about": {
+      "planos_copy": {
+        "free": {
+          "price": "Kostenlos",
+          "tagline": "Für den Einstieg",
+          "perks": [
+            "Unbegrenzter Zugang zum Lernraum",
+            "Forschungsraum: ein Bericht, Fachartikel oder Abschlussprojekt",
+            "Kein Sprachmodus",
+            "Kein vertieftes Denken"
+          ]
+        },
+        "plus": {
+          "price": "R$20 für Studierende · R$80",
+          "tagline": "Für den Studienalltag",
+          "perks": [
+            "Unbegrenzter Zugang zum Forschungsraum",
+            "Erweiterter Sprachmodus",
+            "Vertieftes Denken einmal täglich",
+            "Unbegrenzter Zugang zum Lernraum"
+          ]
+        },
+        "pro": {
+          "tagline": "Für besonders aktive Nutzer",
+          "perks": [
+            "Alle Vorteile von Plus",
+            "Unbegrenztes vertieftes Denken",
+            "Projektbereich (Zaeon Code)",
+            "Erweiterter Sprachmodus"
+          ]
+        },
+        "max": {
+          "tagline": "Das komplette Werkzeugpaket",
+          "perks": [
+            "Alle Vorteile von Pro",
+            "Aura erstellt mehrere Entwürfe und liefert den besten",
+            "Wissenschaftliche Generierung auf Anfrage: Moleküle, Proteine und Simulationen",
+            "Agenten mit erweiterten Fähigkeiten und individuellen Werkzeugen",
+            "Vorrangiger Support"
+          ]
+        }
+      },
+      "equipe_copy": {
+        "pda": "PDA · Team",
+        "perfil": "Profil",
+        "nota": "Notiz",
+        "chamada": "Unser Team",
+        "foto": "Foto von {{nome}}",
+        "fundador": {
+          "cargo": "Gründer · CEO",
+          "bio": "Don gründete Zaeon, um gemeinsames Lernen zu erleichtern und erworbene Fähigkeiten sichtbar zu machen. Er gestaltet das Produkt, den Cyberraum und die Nachweise und testet alles als erster Lernender bei Zaeon.",
+          "tags": [
+            "Produkt",
+            "Cyberraum",
+            "Nachweise"
+          ]
+        }
+      },
       "apresentacao": {
         "titulo": "Wissen in konkrete Arbeit verwandeln.",
         "resumo": "Auf Zaeon lernst du mit KI, entwickelst Projekte und zeigst, was du kannst. Wir helfen Unternehmen, Menschen zu finden, die in Prüfungen und mit konkreten Arbeitsergebnissen überzeugen.",

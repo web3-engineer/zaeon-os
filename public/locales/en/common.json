@@ -384,6 +384,63 @@
         "project_rank": "Project Rank"
     },
     "about": {
+      "planos_copy": {
+        "free": {
+          "price": "Free",
+          "tagline": "Get started",
+          "perks": [
+            "Unlimited Study Room access",
+            "Research Room: one report, paper or capstone",
+            "Voice mode unavailable",
+            "Deep Thinking unavailable"
+          ]
+        },
+        "plus": {
+          "price": "R$20 for students · R$80",
+          "tagline": "Everyday academic work",
+          "perks": [
+            "Unlimited Research Room access",
+            "Advanced Voice Mode",
+            "Deep Thinking once a day",
+            "Unlimited Study Room access"
+          ]
+        },
+        "pro": {
+          "tagline": "For frequent creators",
+          "perks": [
+            "Everything in Plus",
+            "Unlimited Deep Thinking",
+            "Projects tab (Zaeon Code)",
+            "Advanced voice"
+          ]
+        },
+        "max": {
+          "tagline": "The complete toolkit",
+          "perks": [
+            "Everything in Pro",
+            "Aura creates several drafts and delivers the best one",
+            "On-demand scientific generation: molecules, proteins and simulations",
+            "Agents with advanced skills and custom tools",
+            "Priority support"
+          ]
+        }
+      },
+      "equipe_copy": {
+        "pda": "PDA · Team",
+        "perfil": "Profile",
+        "nota": "Note",
+        "chamada": "Meet the team",
+        "foto": "Photo of {{nome}}",
+        "fundador": {
+          "cargo": "Founder · CEO",
+          "bio": "Don created Zaeon to make studying more collaborative and learning easier to demonstrate. He designs the product, Cyberspace and credentials, and tests them as Zaeon’s first student.",
+          "tags": [
+            "Product",
+            "Cyberspace",
+            "Credentials"
+          ]
+        }
+      },
       "apresentacao": {
         "titulo": "Turn knowledge into real work.",
         "resumo": "Zaeon is a place to study with AI, build projects and show what you can do. We help companies find people whose skills stand out in assessments and real work.",

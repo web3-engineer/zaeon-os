@@ -384,6 +384,63 @@
         "project_rank": "Classificação do projeto"
     },
     "about": {
+      "planos_copy": {
+        "free": {
+          "price": "Grátis",
+          "tagline": "Para começar",
+          "perks": [
+            "Sala de Estudos ilimitada",
+            "Sala de Pesquisa: 1 trabalho (relatório, artigo ou TCC)",
+            "Sem modo voz",
+            "Sem pensamento profundo"
+          ]
+        },
+        "plus": {
+          "price": "R$20 estudante · R$80",
+          "tagline": "O dia a dia acadêmico",
+          "perks": [
+            "Sala de Pesquisa ilimitada",
+            "Modo Voz Avançado",
+            "Pensamento Profundo 1×/dia",
+            "Sala de Estudos ilimitada"
+          ]
+        },
+        "pro": {
+          "tagline": "Para quem produz muito",
+          "perks": [
+            "Tudo do Plus",
+            "Pensamento Profundo ilimitado",
+            "Aba Projetos (Zaeon Code)",
+            "Voz avançada"
+          ]
+        },
+        "max": {
+          "tagline": "O arsenal completo",
+          "perks": [
+            "Tudo do Pro",
+            "A Aura cria vários rascunhos e entrega o melhor",
+            "Geração científica sob demanda: moléculas, proteínas e simulações",
+            "Agentes com habilidades avançadas e ferramentas personalizadas",
+            "Prioridade no suporte"
+          ]
+        }
+      },
+      "equipe_copy": {
+        "pda": "PDA · Equipe",
+        "perfil": "Perfil",
+        "nota": "Nota",
+        "chamada": "Quem faz",
+        "foto": "Foto de {{nome}}",
+        "fundador": {
+          "cargo": "Fundador · CEO",
+          "bio": "Criou a Zaeon pra que estudar deixasse de ser solitário e aprender virasse algo que se prova. Desenha o produto, o cyberespaço e a camada de credenciais e testa tudo como o primeiro aluno da casa.",
+          "tags": [
+            "Produto",
+            "Cyberespaço",
+            "Credenciais"
+          ]
+        }
+      },
       "apresentacao": {
         "titulo": "Conhecimento que vira trabalho real.",
         "resumo": "A Zaeon é uma plataforma para estudar com IA, desenvolver projetos e demonstrar o que você sabe fazer. Ajudamos empresas a encontrar pessoas cujas habilidades se destacam em avaliações e trabalhos concretos.",
