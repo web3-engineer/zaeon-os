@@ -7,6 +7,8 @@ import NextImage from "next/image";
 import { useTranslation } from "react-i18next";
 import SolanaPrivacidade from "./SolanaPrivacidade";
 import ProjetoVencedor from "./ProjetoVencedor";
+import EstudoAnatomiaLanding from "./EstudoAnatomiaLanding";
+import particulas from "@/components/sub/hero-aquario.module.css";
 import ConhecimentoShowcase from "./ConhecimentoShowcase";
 import { TituloSecao } from "@/components/layout/secao";
 import MolecularText from "@/components/ui/MolecularText";
@@ -111,6 +113,34 @@ const HireAgentsSection = () => {
 // CARROSSEL VERTICAL DE MARCAS IA (Infinite Ticker)
 
 // --- COMPONENTE PRINCIPAL (PÁGINA) ---
+function SubtituloEstudos() {
+    const { t } = useTranslation();
+    const [termo, setTermo] = useState(0);
+    useEffect(() => {
+        const movimento = window.matchMedia("(prefers-reduced-motion: reduce)");
+        if (movimento.matches) return;
+        const timer = window.setInterval(() => setTermo((atual) => (atual + 1) % 3), 2100);
+        return () => window.clearInterval(timer);
+    }, []);
+    const palavra = "ZAETERMO";
+    const [antes, depois] = t("landing.study_beyond_prompts", { palavra }).split(palavra);
+    return (
+        <p className="mx-auto mt-4 max-w-xl text-center font-display text-xl font-semibold text-slate-900 dark:text-white md:text-2xl">
+            <span className="sr-only">{t("landing.study_beyond_prompts", { palavra: t("landing.study_terms.work") })}</span>
+            <span aria-hidden="true">
+                {antes}
+                <span className={`inline-block text-cyan-700 dark:text-cyan-300 ${particulas.palavraParticulas}`}>
+                    <span key={termo} className={particulas.termoParticulas}>{t(`landing.study_terms.${["work", "study", "life"][termo]}`)}</span>
+                    <span key={`particulas-${termo}`} className={particulas.particulasPalavra}>
+                        {Array.from({ length: 12 }, (_, i) => <i key={i} style={{ left: `${4 + i * 8}%`, top: `${24 + (i * 19) % 52}%`, animationDelay: `${i * 14}ms` }} />)}
+                    </span>
+                </span>
+                {depois}
+            </span>
+        </p>
+    );
+}
+
 export default function Encryption() {
     const { t } = useTranslation();
     const [mounted, setMounted] = useState(false);
@@ -128,12 +158,11 @@ export default function Encryption() {
                 <div className="zaeon-borda">
                     <div className="ci-titulo-secao"><TituloSecao className="mx-auto text-center font-display" forte={t("landing.knowledge_title", { defaultValue: "" })} /></div>
 
-                    <p className="mx-auto mt-4 max-w-xl text-center font-display text-xl font-semibold text-slate-900 dark:text-white md:text-2xl">
-                        {t("landing.study_beyond_prompts")}
-                    </p>
+                    <SubtituloEstudos />
                 </div>
                 <ConhecimentoShowcase />
             </section>
+            <EstudoAnatomiaLanding />
 
             {/* ========================================================= */}
             {/* SECÇÃO: CONTRATAÇÃO DE AGENTES (3D Cover Flow) E MARCAS   */}

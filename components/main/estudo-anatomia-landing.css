@@ -1,0 +1,58 @@
+.estudo-anatomia {
+  position: relative;
+  isolation: isolate;
+  width: min(100%, 31rem);
+  aspect-ratio: 680 / 950;
+  margin-inline: auto;
+  border-radius: 1.5rem;
+  border: 1px solid #7195b75c;
+  background: radial-gradient(ellipse at 50% 36%, #1d3d57, #0b1727 68%);
+  overflow: hidden;
+}
+.estudo-anatomia-modelo, .estudo-anatomia-modelo img, .estudo-anatomia-linhas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.estudo-anatomia-modelo img:last-child { opacity: 0; }
+.estudo-anatomia-linhas {
+  color: #b6f4fc;
+  stroke-width: 2;
+}
+.estudo-anatomia-rotulo {
+  position: absolute;
+  padding: .35rem .52rem;
+  border: 1px solid #92d8ea6b;
+  border-radius: .35rem;
+  background: #102538;
+  color: #e3faff;
+  font-size: clamp(.73rem, 1.5vw, .95rem);
+  line-height: 1.25;
+  transform: translateY(-50%);
+}
+.estudo-anatomia-cerebro { top: 15.47%; left: 4%; }
+.estudo-anatomia-coracao { top: 23.58%; right: 4%; }
+@media (prefers-reduced-motion: no-preference) {
+  .estudo-anatomia-modelo { animation: atlas-formar 4.4s ease-out both; }
+  .estudo-anatomia-modelo img:last-child { animation: atlas-girar 22s 4s ease-in-out infinite; }
+  .estudo-anatomia-modelo img:first-child { animation: atlas-frente 22s 4s ease-in-out infinite; }
+  .estudo-anatomia-linhas path { stroke-dasharray: 1; animation: atlas-conectar 1.5s 3s ease-out both; }
+  .estudo-anatomia-linhas circle, .estudo-anatomia-rotulo { animation: atlas-identificar .8s 3.5s ease-out both; }
+  .estudo-anatomia[data-visivel="false"] * { animation-play-state: paused; }
+}
+@keyframes atlas-formar {
+  from { clip-path: inset(0 0 100%); opacity: .35; }
+  to { clip-path: inset(0); opacity: 1; }
+}
+@keyframes atlas-girar {
+  0%, 100% { opacity: 0; }
+  42%, 58% { opacity: 1; }
+}
+@keyframes atlas-conectar { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes atlas-identificar { from { opacity: 0; } to { opacity: 1; } }
+
+@keyframes atlas-frente {
+  0%, 100% { opacity: 1; }
+  42%, 58% { opacity: 0; }
+}

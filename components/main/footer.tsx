@@ -15,16 +15,17 @@ const COLS: FooterCol[] = [
     title: "plataforma",
     links: [
       { label: "jogar", href: "/#cyberespaco" },
-      { label: "modelos", href: "/#modelos" },
+      { label: "funcionamento", href: "/#como-funciona" },
+      { label: "amostra_estudo", href: "/#amostra-estudo" },
       { label: "laboratorio", href: "/research-lab" },
-      { label: "marketplace", href: "/marketplace" },   // #824 (no lugar de "assistentes")
+      { label: "marketplace", href: "/marketplace" },
     ],
   },
   {
     title: "recursos",
     links: [
-      { label: "funcionamento", href: "/#modelos" },
-      { label: "mentores", href: "/#modelos" },
+      { label: "privacidade_landing", href: "/#privacidade" },
+      { label: "apoio", href: "/#modelos" },
       { label: "duvidas", href: "/#faq" },
       { label: "noticias", href: "/news" },
     ],

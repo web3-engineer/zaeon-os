@@ -706,7 +706,18 @@
         "hero_tagline": "More than conversations with chatbots and open tabs — here you build <hl>ideas that become finished products</hl>.",
         "knowledge_title": "Turn your idea into reality.",
         "privacidade_titulo": "Privacy, Safety, and Anonymity",
-        "study_beyond_prompts": "Take your study to another level, beyond prompts.",
+        "study_beyond_prompts": "Take your {{palavra}} to another level beyond prompts.",
+        "study_terms": {
+            "work": "work",
+            "study": "study",
+            "life": "life"
+        },
+        "anatomia_amostra": {
+            "titulo": "Human anatomy in motion",
+            "descricao": "Explore how the nervous and circulatory systems are arranged in the human body.",
+            "cerebro": "Brain",
+            "coracao": "Heart"
+        },
         "privacidade_fluxo": {
             "conta": "Private workspace",
             "conta_detalhe": "Talk with your AI model without share your work to their providers. we keep it safe and yours.",
@@ -807,6 +818,9 @@
             }
         },
         "interface": {
+            "amostra_estudo": "Study preview",
+            "privacidade_landing": "Privacy on Zaeon",
+            "apoio": "Funding and support",
             "mes": "One month free",
             "cartao": "No card required",
             "limites": "No limits",

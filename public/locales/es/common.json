@@ -706,7 +706,18 @@
         "hero_tagline": "Más que conversaciones con chats y pestañas abiertas: aquí construyes <hl>ideas que se convierten en productos finales</hl>.",
         "knowledge_title": "Convierte tu idea en realidad.",
         "privacidade_titulo": "Privacidad, seguridad y anonimato",
-        "study_beyond_prompts": "Lleva tus estudios a otro nivel, más allá de los prompts.",
+        "study_beyond_prompts": "Lleva {{palavra}} a otro nivel, más allá de los prompts.",
+        "study_terms": {
+            "work": "tu trabajo",
+            "study": "tus estudios",
+            "life": "tu vida"
+        },
+        "anatomia_amostra": {
+            "titulo": "Anatomía humana en movimiento",
+            "descricao": "Explora la organización de los sistemas nervioso y circulatorio en el cuerpo humano.",
+            "cerebro": "Cerebro",
+            "coracao": "Corazón"
+        },
         "privacidade_fluxo": {
             "conta": "Espacio privado",
             "conta_detalhe": "Conversa con modelos de IA y conserva la titularidad de tu trabajo. Mantén fuera de la conversación los archivos que quieras conservar en privado.",
@@ -807,6 +818,9 @@
             }
         },
         "interface": {
+            "amostra_estudo": "Vista previa de estudio",
+            "privacidade_landing": "Privacidad en Zaeon",
+            "apoio": "Financiación y apoyo",
             "mes": "Un mes gratis",
             "cartao": "Sin tarjeta",
             "limites": "Sin límites",

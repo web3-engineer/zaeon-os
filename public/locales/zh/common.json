@@ -706,7 +706,18 @@
         "hero_tagline": "不只是和聊天机器人对话、开着一堆标签页——在这里，你打造<hl>能成为最终产品的想法</hl>。",
         "knowledge_title": "把你的想法变成现实。",
         "privacidade_titulo": "隐私、安全与匿名",
-        "study_beyond_prompts": "超越提示词，让学习更进一步。",
+        "study_beyond_prompts": "超越提示词，让你的{{palavra}}更进一步。",
+        "study_terms": {
+            "work": "工作",
+            "study": "学习",
+            "life": "生活"
+        },
+        "anatomia_amostra": {
+            "titulo": "动态人体解剖",
+            "descricao": "探索人体神经系统和循环系统的分布。",
+            "cerebro": "大脑",
+            "coracao": "心脏"
+        },
         "privacidade_fluxo": {
             "conta": "私密工作空间",
             "conta_detalhe": "与 AI 模型对话，同时保留作品的所有权。请勿在对话中添加想要保密的文件。",
@@ -807,6 +818,9 @@
             }
         },
         "interface": {
+            "amostra_estudo": "学习预览",
+            "privacidade_landing": "Zaeon 隐私保护",
+            "apoio": "融资与支持",
             "mes": "首月免费",
             "cartao": "无需绑卡",
             "limites": "不限次数",
