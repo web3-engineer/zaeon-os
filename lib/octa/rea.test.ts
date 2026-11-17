@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { chamarRea, comandoRea, reaBridgeConfigurado, resumirRea, uploadRea } from "./rea";
+import { chamarRea, comandoRea, prazoDoComando, PRAZO_WEB_MS, reaBridgeConfigurado, resumirRea, uploadRea } from "./rea";
 import { ferramentasGateway } from "./agente";
 
 const env = { OCTA_REA: "1", REA_BRIDGE_URL: "http://100.113.137.74:8799/", REA_BRIDGE_TOKEN: "tk" };
@@ -89,5 +89,13 @@ describe("octa · REA bridge (fatia 2)", () => {
     const body = JSON.parse((an.mock.calls[0] as any)[1].body);
     expect(body.handle).toBe("a".repeat(32));
     expect(body.artifactBase64).toBeUndefined();
+  });
+});
+
+describe("prazo por comando", () => {
+  it("a análise web (navegador no motor + bundle de vários MB) espera mais que a estática", () => {
+    expect(prazoDoComando("analyze-web-bundle")).toBe(PRAZO_WEB_MS);
+    expect(PRAZO_WEB_MS).toBeGreaterThan(17 * 60_000);   // > o prazo da ponte (14 min de análise + 3 de navegador)
+    expect(prazoDoComando("inspect-artifact")).toBe(12 * 60_000);
   });
 });

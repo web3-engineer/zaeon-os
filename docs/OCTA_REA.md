@@ -21,7 +21,7 @@ O REA (e, portanto, o Octa com a skill) **não** ajuda a: burlar DRM/verificaç�
 
 ## Fatia 2 — a ponte no Octa
 `lib/octa/rea.ts` (cliente) + tool `octa_rea` em `lib/octa/agente.ts`. Só aparece com os **dois** portões: `OCTA_REA=1` **e** `REA_BRIDGE_URL`+`REA_BRIDGE_TOKEN`. Mesmo deny-por-família do bridge (defesa em profundidade); o guard do Octa fica por cima. A tool lê um arquivo do projeto como artefato (texto) e devolve a Evidence do REA.
-- Envs no `.env` da VPS: `OCTA_REA=1`, `REA_BRIDGE_URL=http://100.113.137.74:8799`, `REA_BRIDGE_TOKEN=…` (o mesmo da Contabo).
+- Envs no `.env` da VPS: `OCTA_REA=1`, `REA_BRIDGE_URL=http://100.113.137.74:8799` (motor MAX), `REA_BRIDGE_URL_USERS=http://100.113.137.74:8798` (motor dos usuários; opcional — sem ele todos usam o MAX), `REA_BRIDGE_TOKEN=…` (o mesmo da Contabo, serve os dois motores).
 
 ## Upload de binário (feito)
 - Botão 🔬 na IDE do Octa (atrás de `NEXT_PUBLIC_OCTA_REA=1`) → `POST /api/octa/rea/upload` → o binário vai DIRETO pro motor na Contabo (nunca fica na Zaeon nem no Mongo), que devolve um **handle** (`/upload` da ponte, cache transitório, TTL 2 h). O agente analisa com `octa_rea` passando o handle. Provado em prod: `analyze --provider ghidra` pelo handle = ok, decompilação nativa com Ghidra 12.1.4.
@@ -86,6 +86,98 @@ No Octa (com `OCTA_REA=1` + `REA_BRIDGE_URL/TOKEN`), peça uma análise de um al
 
 ### 5. Rollback
 Os `.bak` do passo 2 preservam os arquivos 6.5.0. Se o 6.9 der problema: `cp Dockerfile.bak Dockerfile; cp compose.yml.bak compose.yml; cp bridge.mjs.bak bridge.mjs`, depois `build` + `rm -f zaeon_rea_engine` + `up -d` de novo (escopado). A imagem 6.9 nova não apaga a anterior; a antiga fica como `<none>` até um `prune` **escopado** (`docker image prune` sem `-a`, nunca o global). Nunca `prune -a`/`down` sem `-p`.
+
+## Análise WEB (`analyze-web-bundle <url>`) — o navegador do motor
+
+O comando do REA não recebe URL: exige um Chromium com CDP no loopback (`<endpoint> <targetId>`). O app manda só a URL
+(`lib/rea-blueprint/alvoReal.ts`), e a ponte resolve isso em `infra/rea-engine/web-bundle.mjs`:
+
+1. valida a URL (http/https, sem credenciais, porta 80/443, host que não é interno);
+2. abre um **proxy de saída** no loopback que resolve o DNS ele mesmo e só conecta em **IP público** nas portas 80/443 —
+   barra RFC1918, loopback, link-local/metadata (169.254), **CGNAT 100.64/10 (a tailnet)**, ULA (fd7a:… da tailnet) e
+   resposta de DNS mista (rebinding);
+3. sobe um Chromium headless por pedido (`--proxy-server` + `--proxy-bypass-list=<-loopback>`, WebRTC sem UDP fora do
+   proxy, CDP só no 127.0.0.1), carrega a página e espera ela assentar;
+4. roda `rea analyze-web-bundle` com `--fetch-source-maps`; o fetch dos source maps do PRÓPRIO REA também vai pelo proxy
+   (`NODE_USE_ENV_PROXY=1` + `HTTPS_PROXY`);
+5. mata o navegador e apaga o perfil. **Um pedido web por vez** (429 `web_busy`): o motor divide os núcleos 0–3 com a ChipFlow.
+
+Corpo: `{ command: "analyze-web-bundle", args: [url], view?: "endpoints" | "inferences" | "summary" }` → `{ ok, evidence,
+pagina, bloqueados }` (`bloqueados` = o que o proxy barrou). Qualquer `args` apontando pro loopback do motor é recusado.
+
+Orçamento (env do container): `REA_WEB_SCRIPT_MS` (420000), `REA_WEB_TOTAL_MS` (840000), `REA_WEB_HEAP_MB` (3072). Um SPA
+Vite costuma ser UM bundle de vários MB — o analisador semântico do REA leva minutos nele.
+
+**Respostas longas:** o `fetch` do Node (undici) corta em 5 min se os cabeçalhos não chegam (`headersTimeout`), mesmo com
+`AbortSignal` maior. A ponte manda os cabeçalhos na hora e um espaço a cada 25 s até o JSON final (`/rea`, `/android`,
+web) — erro depois disso vai no corpo (`{ ok: false, erro }`, status 200). O app espera 18 min na análise web
+(`prazoDoComando` em `lib/octa/rea.ts`).
+
+**Processos do REA:** o `rea` solta o worker de análise numa sessão própria (vira filho do PID 1); matar só o grupo do
+`rea` deixava o worker rodando por 10+ min nos núcleos da ChipFlow. Cada job leva `REA_JOB=<id>` no ambiente e a ponte
+varre o `/proc` por ele ao cancelar/estourar/terminar. O compose usa `init: true` (tini como PID 1) pra recolher os
+zumbis do Chromium. Prazo por pedido no `/rea` estático: `prazoMin` (1–30; padrão `REA_CMD_TIMEOUT_MS` = 10 min).
+
+Provar (na Contabo): `node scripts/rea-smoke.mjs --url https://zaeon.com.br/` com `OCTA_REA=1 REA_BRIDGE_URL REA_BRIDGE_TOKEN`
+no ambiente. Medido em 17/11/2026: zaeon.com.br 226 s, 42/42 scripts, 42 endpoints.
+
+## Dois motores, roteados por plano (capacidade reservada)
+
+Dois motores REA na MESMA máquina grande da Contabo, roteados por plano (lib/rea/tier.ts):
+- **MAX/dono** → `zaeon_rea_engine` (porta 8799, `REA_BRIDGE_URL`): núcleos 0-3, peso de CPU padrão, pool cheio.
+- **Usuários (free/plus)** → `zaeon_rea_engine_users` (porta 8798, `REA_BRIDGE_URL_USERS`): MESMOS núcleos 0-3,
+  `cpu_shares: 256` (cede ao primário e ao adaptador da ChipFlow sob disputa), `REA_MAX_SESSOES=1`, prazos curtos, 4 GB.
+
+Os dois motores de propósito nos MESMOS núcleos 0-3: não cresce a pegada do REA, então a folga da ChipFlow (que flutua
+por 0-17, com os modelos ociosos em 4-17) fica intacta. Mesma imagem e mesmo token; quem separa os tiers é a URL que o
+app escolhe + os limites de cada motor.
+
+`reaTierDoUsuario(userId)` (memo 60 s, falha fechado em "users" — um erro nunca joga carga grátis no motor MAX) decide o
+tier. TODO o tráfego REA de uma conta vai ao mesmo motor (upload, octa_rea, octa_rea_sessao, blueprint do chat de
+Estudos) — senão um handle enviado a um motor não existiria no outro. **Sem `REA_BRIDGE_URL_USERS`, todos caem no
+primário** (comportamento de antes): é seguro mergear antes de ligar o 2º motor.
+
+**Ligar o 2º motor:** na Contabo, `docker compose -p rea-engine -f compose.yml up -d rea-engine-users` (não recria o
+primário). No `.env` da VPS do app: `REA_BRIDGE_URL_USERS=http://100.113.137.74:8798`. Deploy do app para ler a var.
+
+## Sessões do REA (modo rea.tools) + domínios declarados
+
+O REA rende quando o agente faz PERGUNTAS PEQUENAS numa sessão que lembra o alvo — não numa chamada de CLI "analise
+tudo", que num bundle de vários MB estoura memória/prazo (provado: Contabo E um M1, ~29 min, provider_timeout). Então o
+motor roda um `rea mcp` VIVO por sessão (infra/rea-engine/sessoes.mjs), como o REA local.
+
+**Ponte:** `POST /sessao {dono, dominios?}` → `{sessao, ferramentas}`; `POST /sessao/ferramenta {sessao, nome, argumentos,
+salvar?}` (resposta longa); `POST /sessao/fechar`. `dono` = sha256 da conta (o motor nunca vê o id). No app:
+`abrirSessaoRea/chamarSessaoRea/fecharSessaoRea` (lib/octa/rea.ts) e a tool `octa_rea_sessao`.
+
+**Três níveis de ferramenta (infra/rea-engine/politica.mjs, conferidos contra o catálogo real nos testes):**
+- *estática* (livre): open_binary, search_strings, analyze_javascript_application, recover_javascript_sources,
+  inspect_analysis_view… Caminhos presos na pasta da sessão; artefato enviado = `handle://<32hex>`.
+- *web* (só com domínio declarado): inspect_web_page, observe_web_session, capture_browser_scenario, analyze_web_bundle…
+  O navegador é SEMPRE o da sessão (atrás do proxy de saída); `cdp_endpoint`, `allowed_origins` e a URL ficam dentro dos
+  domínios.
+- *negada* (nenhum termo libera): adb, frida, gdb/rizin, cutter, jeb, build-computer, processos/UI nativos, Electron/Node
+  locais — mexem no HOST, não no alvo.
+
+**Pseudo-ferramentas da ponte:** `zaeon_abrir_pagina {url}` (abre no navegador da sessão, devolve target_id),
+`zaeon_buscar {caminho, padrao}` e `zaeon_ler {caminho, inicio, tamanho}` (grep/ler no código recuperado),
+`zaeon_arquivos`, `zaeon_ajuda {nome}`.
+
+**Wakaru** (Apache-2.0, 1.14.0, pinado por sha256 no Dockerfile): `recover_javascript_sources` quebra um bundle
+monolítico em módulos legíveis. `REA_MCP_MAX_RESPONSE_BYTES=64MiB` na sessão (a captura de uma página grande passa dos
+10 MiB padrão do stdio).
+
+### Domínio declarado sob o Termo de Uso
+As ferramentas web agem sobre um site real, então a pessoa DECLARA o domínio e aceita o **Termo de Uso** (lib/rea/termo.ts):
+é titular (ou tem autorização por escrito), a finalidade, e o aceite grava a PROVA (conta, domínio, finalidade, versão +
+sha256 do texto exibido, data, IP, navegador) no modelo `ReaDominio`. Rotas `/api/rea/dominios` (GET/POST/DELETE); UI em
+Sala de Estudos → Engenharia reversa → Domínios (components/rea/DominiosRea.tsx). `dominiosLiberados(userId)` (só aceite
+vigente: hash = termo atual, não revogado) é o que o Octa manda ao abrir a sessão — o modelo NÃO escolhe domínio.
+Revogar marca `revogadoEm` (a prova fica). Mudou o texto → suba `TERMO_VERSAO`; aceites antigos deixam de liberar até o
+novo aceite. **⚠️ texto da engenharia; revisão jurídica recomendada.**
+
+Limites por env: `REA_MAX_SESSOES` (2), `REA_SESSAO_OCIOSA_MS` (20 min), `REA_SESSAO_VIDA_MS` (2 h),
+`REA_SESSAO_FERRAMENTA_MS` (20 min). Uma sessão fecha no prazo/ociosidade e varre os processos (REA_JOB).
 
 ## Claude no catálogo (créditos Anthropic pelo gateway)
 O Claude (Opus/Sonnet) entra no catálogo ÚNICO de modelos (`lib/chat/modelos`), compartilhado por chat (Aura), Octa e REA. Roteado pelo MESMO gateway LiteLLM — sem SDK nem chave no app; a `ANTHROPIC_API_KEY` mora na Contabo (gateway). **O REA não tem modelo próprio:** ele herda o modelo selecionado na superfície (octa/aura/zaeon). Se o aluno escolher Claude, o blueprint e a análise de binário usam Claude; senão, o modelo de sempre.

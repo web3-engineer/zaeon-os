@@ -9,6 +9,8 @@ import { Microscope, Loader2, ChevronLeft } from "lucide-react";
 import type { ResumoRea } from "@/lib/rea-blueprint/tipos";
 
 const ReaBlueprintView = dynamic(() => import("@/components/rea/ReaBlueprintView"), { ssr: false });
+// os domínios declarados sob o Termo de Uso — liberam as ferramentas web nas sessões do REA (lib/rea/termo.ts)
+const DominiosRea = dynamic(() => import("@/components/rea/DominiosRea"), { ssr: false });
 
 export default function SalaRea() {
   const [lista, setLista] = useState<ResumoRea[] | null>(null);
@@ -33,6 +35,7 @@ export default function SalaRea() {
         <Microscope size={18} className="text-emerald-400" />
         <h2 className="text-[15px] font-bold text-slate-100">Engenharia reversa</h2>
       </div>
+      <DominiosRea />
       {lista === null ? <div className="flex items-center gap-2 text-slate-400"><Loader2 className="animate-spin" size={16} /> carregando…</div>
         : lista.length === 0 ? (
           <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 text-[13px] text-slate-400">

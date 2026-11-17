@@ -1952,3 +1952,24 @@ model DesafioDaNave {
   revisao   Int      @default(1)
   updatedAt DateTime @updatedAt
 }
+
+// REA · domínio declarado sob o Termo de Uso (lib/rea/termo.ts). O registro É a prova do aceite: quem (userId), o quê
+// (dominio + finalidade), qual texto (termoVersao + termoHash = SHA-256 do texto exibido), quando, de onde (ip, userAgent).
+// Ativo = sem revogadoEm e termoHash igual ao do termo vigente. Nunca apagar: revogar marca revogadoEm (a prova fica).
+model ReaDominio {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String
+  email       String?
+  dominio     String
+  finalidade  String    // estudo | reconstrucao | seguranca | interoperabilidade
+  titular     Boolean   // marcou "sou titular ou tenho autorização expressa e por escrito do titular"
+  termoVersao String
+  termoHash   String
+  ip          String?
+  userAgent   String?
+  aceitoEm    DateTime  @default(now())
+  revogadoEm  DateTime?
+  @@index([userId])
+  @@index([dominio])
+  @@map("rea_dominios")
+}

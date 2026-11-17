@@ -6,13 +6,23 @@
  *
  *   POST /rea  { token, command, args?: string[], artifactBase64?, artifactName?, json?: true }
  *     → { ok, code, stdout, stderr, evidence? }   (evidence = stdout parseado quando --json)
- *   GET  /health → { ok, rea, ghidra }
+ *   POST /rea  { token, command: "analyze-web-bundle", args: [url], view?: "endpoints"|"inferences"|"summary" }
+ *     → o caminho WEB (web-bundle.mjs): um Chromium isolado por pedido, saída só por um proxy que barra IP interno.
+ *   POST /sessao            { token, dono: sha256hex, dominios?: string[] } → { ok, sessao, dominios, ferramentas }
+ *   POST /sessao/ferramenta { token, dono, sessao, nome, argumentos, salvar? } → { ok, resultado | erro }  (resposta longa;
+ *                           `salvar: "x.json"` grava o resultado bruto na pasta da sessão e devolve só o resumo)
+ *   POST /sessao/fechar     { token, dono, sessao }                          → { ok }
+ *     → SESSÕES do REA (sessoes.mjs): um `rea mcp` vivo por sessão, como o REA local. `dominios` = os que a pessoa
+ *       declarou sob o Termo de Uso no app (lib/rea/termo.ts); sem eles, as ferramentas web não aparecem.
+ *   GET  /health → { ok, rea, ghidra, chromium, sessoes }
  */
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
 import { mkdtemp, mkdir, writeFile, readFile, rm, stat } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import { androidArgs } from "./android-request.mjs";
+import { analisarSite, CHROMIUM, PRAZO_WEB_MS } from "./web-bundle.mjs";
+import { criarGerente } from "./sessoes.mjs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 
@@ -22,6 +32,7 @@ const MAX_BYTES = Number(process.env.REA_MAX_ARTIFACT_BYTES || 256 * 1024 * 1024
 const TIMEOUT_MS = Number(process.env.REA_CMD_TIMEOUT_MS || 10 * 60_000);
 const CACHE_DIR = process.env.REA_CACHE_DIR || "/work/cache";
 let androidActive = false;
+let webActive = false;   // um navegador por vez: o motor divide os núcleos 0–3 com a ChipFlow
 const CACHE_TTL_MS = Number(process.env.REA_CACHE_TTL_MS || 2 * 3600_000);
 const handleOk = (h) => /^[0-9a-f]{32}$/.test(String(h || ""));
 const nomeSeguro = (n) => (String(n || "artifact").replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 120) || "artifact");
@@ -51,26 +62,80 @@ const lerCorpo = (req) => new Promise((ok, erro) => {
   req.on("error", erro);
 });
 
-function rodarRea(args, cwd, signal) {
+/**
+ * Mata TUDO de um job: o grupo do `rea` E os workers que ele solta em sessão própria (javascriptAnalysisWorkerProcess
+ * etc. viram filhos do PID 1 — matar só o grupo deixava o worker queimando CPU por mais 10+ min, nos núcleos da
+ * ChipFlow). Cada job leva REA_JOB=<id> no ambiente, herdado pelos workers; aqui a gente varre o /proc por ele.
+ */
+async function matarJob(jobId, pgid) {
+  try { if (pgid) process.kill(-pgid, "SIGKILL"); } catch { /* já saiu */ }
+  const { readdir } = await import("node:fs/promises");
+  for (const pid of await readdir("/proc").catch(() => [])) {
+    if (!/^\d+$/.test(pid) || Number(pid) === process.pid) continue;
+    const env = await readFile(`/proc/${pid}/environ`, "utf8").catch(() => "");
+    if (env.split("\0").includes(`REA_JOB=${jobId}`)) { try { process.kill(Number(pid), "SIGKILL"); } catch { /* corrida: saiu */ } }
+  }
+}
+
+function rodarRea(args, cwd, signal, envExtra = {}, prazoMs = TIMEOUT_MS) {
   return new Promise((ok) => {
-    const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => ['PATH','HOME','JAVA_HOME','TMPDIR','GHIDRA_INSTALL_DIR','REA_JADX_MCP_JAR','REA_JADX_HEAP_MIB','REA_JADX_ACTIVE_PROCESSOR_COUNT'].includes(k)));
+    const jobId = randomBytes(8).toString("hex");
+    const env = { ...Object.fromEntries(Object.entries(process.env).filter(([k]) => ['PATH','HOME','JAVA_HOME','TMPDIR','GHIDRA_INSTALL_DIR','REA_JADX_MCP_JAR','REA_JADX_HEAP_MIB','REA_JADX_ACTIVE_PROCESSOR_COUNT','REA_WAKARU_COMMAND'].includes(k))), ...envExtra, REA_JOB: jobId };
     const p = spawn("rea", args, { cwd, env, detached: process.platform !== "win32" });
-    const kill = () => { try { process.platform === "win32" ? p.kill("SIGKILL") : process.kill(-p.pid,"SIGKILL"); } catch {} };
+    const kill = () => { void matarJob(jobId, p.pid); };
     signal?.addEventListener("abort",kill,{once:true}); if(signal?.aborted)kill();
-    let out = "", err = ""; const to = setTimeout(kill, TIMEOUT_MS);
+    let out = "", err = ""; const to = setTimeout(kill, prazoMs);
     p.stdout.on("data", (d) => { out += d; if (out.length > 32 * 1024 * 1024) kill(); });
     p.stderr.on("data", (d) => { err = (err + d).slice(0,20000); });
-    p.on("close", (code) => { clearTimeout(to); signal?.removeEventListener("abort",kill); ok({ code: code ?? -1, stdout: out, stderr: err }); });
+    p.on("close", (code) => { clearTimeout(to); signal?.removeEventListener("abort",kill); void matarJob(jobId); ok({ code: code ?? -1, stdout: out, stderr: err }); });
     p.on("error", (e) => { clearTimeout(to); signal?.removeEventListener("abort",kill); ok({ code: -1, stdout: "", stderr: String(e?.message ?? e) }); });
   });
 }
 
+/**
+ * Resposta LONGA: o fetch do Node (undici) desiste se os cabeçalhos não chegam em 5 min (headersTimeout) e se o corpo
+ * fica parado 5 min (bodyTimeout) — mesmo com AbortSignal maior. Análise nativa (Ghidra) e web passam disso. Então,
+ * validado o pedido, os cabeçalhos saem NA HORA (200) e um espaço em branco sai a cada 25 s; o JSON final vem no fim
+ * (espaço antes de JSON é JSON válido). Erro depois disso vai como { ok: false, erro } no corpo, com 200.
+ */
+const BATIMENTO_MS = 25_000;
+function respostaLonga(res) {
+  res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
+  res.write(" ");
+  const t = setInterval(() => { if (!res.writableEnded && !res.destroyed) res.write(" \n"); }, BATIMENTO_MS);
+  return (obj) => { clearInterval(t); if (!res.writableEnded && !res.destroyed) res.end(JSON.stringify(obj)); };
+}
+
 const server = createServer(async (req, res) => {
-  const responder = (status, obj) => { res.writeHead(status, { "content-type": "application/json" }); res.end(JSON.stringify(obj)); };
+  let longa = null;   // depois que a resposta longa começou, o status já foi: tudo vai no corpo
+  const responder = (status, obj) => { if (longa) return longa(status >= 400 && obj?.ok !== false ? { ok: false, ...obj } : obj); res.writeHead(status, { "content-type": "application/json" }); res.end(JSON.stringify(obj)); };
   try {
     if (req.method === "GET" && req.url === "/health") {
       const r = await rodarRea(["--version"], "/work");
-      return responder(200, { ok: r.code === 0, rea: r.stdout.trim(), ghidra: !!process.env.GHIDRA_INSTALL_DIR });
+      return responder(200, { ok: r.code === 0, rea: r.stdout.trim(), ghidra: !!process.env.GHIDRA_INSTALL_DIR, chromium: TEM_CHROMIUM, sessoes: gerente.ativas() });
+    }
+    if (req.method === "POST" && req.url?.startsWith("/sessao")) {
+      const corpo = JSON.parse((await lerCorpo(req)).toString("utf8") || "{}");
+      if (!TOKEN || corpo.token !== TOKEN) return responder(401, { ok: false, erro: "token" });
+      const dono = String(corpo.dono || "");
+      try {
+        if (req.url === "/sessao") {
+          if (corpo.dominios?.length && !TEM_CHROMIUM) return responder(503, { ok: false, erro: "motor sem navegador (Chromium)" });
+          return responder(200, { ok: true, ...(await gerente.criar({ dono, dominios: Array.isArray(corpo.dominios) ? corpo.dominios.map(String) : [] })) });
+        }
+        if (req.url === "/sessao/fechar") return responder(200, { ok: await gerente.fechar(String(corpo.sessao || ""), dono) });
+        if (req.url === "/sessao/ferramenta") {
+          longa = respostaLonga(res);
+          const abort = new AbortController();
+          res.once("close", () => { if (!res.writableEnded) abort.abort(); });
+          const r = await gerente.chamar({ sessao: String(corpo.sessao || ""), dono, nome: String(corpo.nome || ""), argumentos: corpo.argumentos, salvar: corpo.salvar, signal: abort.signal });
+          return responder(200, r);
+        }
+        return responder(404, { ok: false, erro: "rota de sessão desconhecida" });
+      } catch (e) {
+        const m = String(e?.message ?? e);
+        return responder(/cheias/.test(m) ? 429 : /^(dono|dominio|caminho|handle|url|ferramenta|sessao|allowed|start_url|capture)/.test(m) ? 400 : 500, { ok: false, erro: m.slice(0, 400) });
+      }
     }
     if (req.method === "POST" && req.url === "/upload") {
       const corpo = JSON.parse((await lerCorpo(req)).toString("utf8") || "{}");
@@ -98,6 +163,7 @@ const server = createServer(async (req, res) => {
       let args;try{args=androidArgs(body,meta);}catch(e){return responder(400,{ok:false,erro:e.message});}
       if(androidActive)return responder(429,{ok:false,erro:"android_busy"});
       androidActive=true;
+      longa=respostaLonga(res);
       const abort=new AbortController();res.on("close",()=>{if(!res.writableEnded)abort.abort();});
       let work;
       try{
@@ -113,6 +179,26 @@ const server = createServer(async (req, res) => {
     const command = String(corpo.command || "");
     if (!permitido(command)) return responder(400, { ok: false, erro: CATALOGO.has(command) ? `comando com efeito colateral desligado nesta ponte: ${command}` : `comando não é do REA: ${command}` });
     const extra = Array.isArray(corpo.args) ? corpo.args.map(String).filter((a) => a.length < 4096) : [];
+    // nenhum comando aponta pro loopback do motor (o CDP do navegador de outro pedido, a própria ponte…)
+    if (extra.some((a) => /^(?:https?|wss?):\/\/(?:127\.|localhost|\[::1\]|0\.0\.0\.0)/i.test(a))) return responder(400, { ok: false, erro: "alvo no loopback do motor não é permitido" });
+    // o caminho WEB: o REA quer `<endpoint CDP> <targetId>`, o app manda a URL — o navegador nasce aqui (web-bundle.mjs)
+    if (command === "analyze-web-bundle") {
+      if (!TEM_CHROMIUM) return responder(503, { ok: false, erro: "motor sem navegador (Chromium) — reconstrua a imagem" });
+      if (extra.length !== 1) return responder(400, { ok: false, erro: "analyze-web-bundle: mande só a URL em args[0]" });
+      if (webActive) return responder(429, { ok: false, erro: "web_busy: já há uma análise web rodando, tente em alguns minutos" });
+      webActive = true;
+      longa = respostaLonga(res);
+      const abort = new AbortController();
+      res.once("close", () => { if (!res.writableEnded) abort.abort(); });
+      try {
+        const r = await analisarSite(extra[0], { rodarRea: (a, c, sg, env) => rodarRea(a, c, sg, env, PRAZO_WEB_MS), signal: abort.signal, visao: String(corpo.view || "endpoints") });
+        if (res.destroyed) return;
+        return responder(200, r);
+      } catch (e) {
+        const m = String(e?.message ?? e);
+        return responder(/^url_/.test(m) ? 400 : 500, { ok: false, erro: m.slice(0, 300) });
+      } finally { webActive = false; }
+    }
     const dir = await mkdtemp(join(tmpdir(), "rea-"));
     try {
       let alvo = [];
@@ -142,9 +228,12 @@ const server = createServer(async (req, res) => {
       }
       const args = [command, ...alvo, ...extra, ...(corpo.json !== false ? ["--json"] : [])];
       if (res.destroyed) return;
+      longa = respostaLonga(res);
       const abort = new AbortController();
       res.once("close", () => { if (!res.writableEnded) abort.abort(); });
-      const r = await rodarRea(args, dir, abort.signal);
+      // prazo por pedido (bundle/binário grande): 1–30 min; padrão REA_CMD_TIMEOUT_MS
+      const prazo = Number(corpo.prazoMin) >= 1 && Number(corpo.prazoMin) <= 30 ? Number(corpo.prazoMin) * 60_000 : TIMEOUT_MS;
+      const r = await rodarRea(args, dir, abort.signal, {}, prazo);
       if (res.destroyed) return;
       let evidence; if (corpo.json !== false) { try { evidence = JSON.parse(r.stdout); } catch { /* não-JSON */ } }
       return responder(200, { ok: r.code === 0, code: r.code, stdout: evidence ? undefined : r.stdout.slice(0, 2_000_000), stderr: r.stderr, evidence });
@@ -163,4 +252,7 @@ async function limparCacheVelho() {
 }
 setInterval(limparCacheVelho, 30 * 60_000).unref();
 await carregarCatalogo();
-server.listen(PORT, process.env.REA_BRIDGE_HOST || "0.0.0.0", () => console.log(`[rea-bridge] ouvindo :${PORT} (token ${TOKEN ? "ON" : "AUSENTE!"}, ghidra ${process.env.GHIDRA_INSTALL_DIR ? "ON" : "off"}, ${CATALOGO.size} comandos no catálogo)`));
+const ENV_REA = Object.fromEntries(Object.entries(process.env).filter(([k]) => ['PATH','HOME','JAVA_HOME','TMPDIR','GHIDRA_INSTALL_DIR','REA_JADX_MCP_JAR','REA_JADX_HEAP_MIB','REA_JADX_ACTIVE_PROCESSOR_COUNT','REA_WAKARU_COMMAND'].includes(k)));
+const gerente = criarGerente({ cacheDir: CACHE_DIR, matarJob, envBase: ENV_REA });
+const TEM_CHROMIUM = await new Promise((ok) => { const p = spawn(CHROMIUM, ["--version"]); p.on("close", (c) => ok(c === 0)); p.on("error", () => ok(false)); });
+server.listen(PORT, process.env.REA_BRIDGE_HOST || "0.0.0.0", () => console.log(`[rea-bridge] ouvindo :${PORT} (token ${TOKEN ? "ON" : "AUSENTE!"}, ghidra ${process.env.GHIDRA_INSTALL_DIR ? "ON" : "off"}, ${CATALOGO.size} comandos no catálogo, chromium ${TEM_CHROMIUM ? "ON" : "off"})`));

@@ -472,7 +472,12 @@ export async function runChatTurn(
               if (rea.reaBridgeConfigurado()) {
                 const alvo = (await import("@/lib/rea-blueprint/alvoReal")).detectarAlvoReal(prompt);
                 if (alvo) {
-                  const r = await (await import("@/lib/rea-blueprint/executor")).executarReaReal(alvo, { chamarRea: rea.chamarRea, uploadRea: rea.uploadRea });
+                  // mesmo tier da conta (dono/Max = motor primário; resto = motor dos usuários)
+                  const tierRea = await (await import("@/lib/rea/tier")).reaTierDoUsuario(userId);
+                  const r = await (await import("@/lib/rea-blueprint/executor")).executarReaReal(alvo, {
+                    chamarRea: (o, e) => rea.chamarRea(o, e, fetch, tierRea),
+                    uploadRea: (o, e) => rea.uploadRea(o, e, fetch, tierRea),
+                  });
                   if (r.ok) { evidencia = r.evidencia; ferramentas = r.ferramentas; }
                 }
               }

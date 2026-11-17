@@ -38,10 +38,29 @@ ENV GHIDRA_INSTALL_DIR=/opt/ghidra
 # REA, pinado na MESMA versão da skill vendorizada no app (vendor/skills/reverse-engineer-anything)
 RUN npm i -g rea-agents@${REA_VERSION} && rea --version
 
+# Navegador do caminho WEB (`analyze-web-bundle <url>` — infra/rea-engine/web-bundle.mjs): o REA só analisa uma página
+# por CDP no loopback. Camada própria, depois do REA, pra não invalidar o cache do JDK/Ghidra. Toda saída dele passa
+# pelo proxy de saída da ponte (barra IP interno/tailnet); o CDP fica só no 127.0.0.1 do container.
+RUN apt-get update && apt-get install -y --no-install-recommends chromium fonts-liberation fonts-noto-color-emoji \
+    && rm -rf /var/lib/apt/lists/* && chromium --version
+ENV REA_CHROMIUM=chromium
+
+# Wakaru (Apache-2.0) — o REA usa pra quebrar um bundle monolítico (ex.: SPA Vite de 6 MB) em módulos legíveis
+# (recover_javascript_sources). "caller-supplied": o REA não instala; 1.14.0 é a versão que o REA verificou. Pinado por
+# sha256 (o digest do release no GitHub), como o JADX.
+RUN mkdir -p /opt/wakaru && wget -q https://github.com/pionxzh/wakaru/releases/download/v1.14.0/wakaru-linux-x64.tar.gz -O /tmp/wakaru.tgz \
+    && echo 'db0e620034723195ab426e94d00d55dbd8fd0106a928ada2563f1103196d09fa  /tmp/wakaru.tgz' | sha256sum -c - \
+    && tar -xzf /tmp/wakaru.tgz -C /opt/wakaru && rm /tmp/wakaru.tgz \
+    && W=$(find /opt/wakaru -type f -name 'wakaru*' -perm -u+x | head -1) && test -n "$W" && ln -sf "$W" /usr/local/bin/wakaru && wakaru --version
+ENV REA_WAKARU_COMMAND=/usr/local/bin/wakaru
+
 # a ponte fina (HTTP → CLI do REA), roda como usuário sem privilégio
 RUN useradd -m -u 10001 rea && mkdir -p /work && chown rea:rea /work
 COPY bridge.mjs /app/bridge.mjs
 COPY android-request.mjs /app/android-request.mjs
+COPY web-bundle.mjs /app/web-bundle.mjs
+COPY politica.mjs /app/politica.mjs
+COPY sessoes.mjs /app/sessoes.mjs
 USER rea
 WORKDIR /work
 ENV REA_BRIDGE_PORT=8799

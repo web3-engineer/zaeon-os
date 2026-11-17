@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
 import { reaBridgeConfigurado, uploadRea } from "@/lib/octa/rea";
+import { reaTierDoUsuario } from "@/lib/rea/tier";
 
 const MAX = 256 * 1024 * 1024; // 256 MB
 
@@ -21,7 +22,9 @@ export async function POST(req: Request) {
   if (!(file instanceof File)) return NextResponse.json({ error: "envie um arquivo no campo 'file'" }, { status: 400 });
   if (file.size < 1 || file.size > MAX) return NextResponse.json({ error: "arquivo vazio ou maior que 256 MB" }, { status: 413 });
   const buf = Buffer.from(await file.arrayBuffer());
-  const r = await uploadRea({ nome: file.name || "artifact", conteudo: buf });
+  // o handle vive no motor do tier da conta — o upload e a análise (octa_rea / octa_rea_sessao) usam o MESMO
+  const tier = await reaTierDoUsuario(String((session.user as { id?: string }).id ?? session.user.email));
+  const r = await uploadRea({ nome: file.name || "artifact", conteudo: buf }, process.env, fetch, tier);
   if (!r.ok) return NextResponse.json({ error: r.erro ?? "upload falhou" }, { status: 502 });
   return NextResponse.json({ handle: r.handle, name: r.name, bytes: r.bytes });
 }
