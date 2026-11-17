@@ -540,6 +540,82 @@
     },
     "landing": {
         "knowledge_cards": {
+            "neuro": {
+                "title": "Neuroanatomia",
+                "summary": "Compare as estruturas do cérebro e suas funções."
+            },
+            "respiracao": {
+                "title": "Fisiologia respiratória",
+                "summary": "Estude a ventilação e as trocas gasosas."
+            },
+            "farmacologia": {
+                "title": "Farmacologia",
+                "summary": "Estude como os fármacos interagem com o organismo."
+            },
+            "civil": {
+                "title": "Engenharia civil",
+                "summary": "Leia uma planta em CAD e estude cotas, layout e eixos estruturais."
+            },
+            "mecanica": {
+                "title": "Engenharia mecânica",
+                "summary": "Compare turbinas e avalie a eficiência mecânica."
+            },
+            "quimica": {
+                "title": "Engenharia química",
+                "summary": "Acompanhe fluxos de massa e energia numa planta piloto."
+            },
+            "ambiental": {
+                "title": "Engenharia ambiental",
+                "summary": "Compare processos de tratamento de água."
+            },
+            "geologia": {
+                "title": "Geologia",
+                "summary": "Leia camadas de rocha e reconstrua sua história."
+            },
+            "microbiologia": {
+                "title": "Microbiologia",
+                "summary": "Observe como microrganismos crescem e interagem."
+            },
+            "materiais": {
+                "title": "Ciência dos materiais",
+                "summary": "Compare o efeito da microestrutura nas propriedades dos materiais."
+            },
+            "oceanografia": {
+                "title": "Oceanografia",
+                "summary": "Interprete dados de boias sobre ondas e correntes."
+            },
+            "eletrica": {
+                "title": "Engenharia elétrica",
+                "summary": "Estude cargas, proteção e distribuição."
+            },
+            "solar": {
+                "title": "Energia solar",
+                "summary": "Compare geração, armazenamento e retorno."
+            },
+            "hortas": {
+                "title": "Hortas comunitárias",
+                "summary": "Planeje canteiros, compostagem e irrigação."
+            },
+            "ecovilas": {
+                "title": "Ecovilas",
+                "summary": "Estude moradia, alimentação e energia compartilhadas."
+            },
+            "comunidades": {
+                "title": "Comunidades descentralizadas",
+                "summary": "Crie regras coletivas, sistemas de votação e prestação de contas."
+            },
+            "cisternas": {
+                "title": "Captação de água da chuva",
+                "summary": "Dimensione uma cisterna e planeje o uso da água captada."
+            },
+            "codigo": {
+                "title": "Código",
+                "summary": "Construa e teste software funcional."
+            },
+            "hardware": {
+                "title": "Hardware",
+                "summary": "Projete circuitos e teste componentes físicos."
+            },
             "label": "Conhecimento na vitrine",
             "coracao": {
                 "title": "Atlas do coração",
@@ -632,7 +708,34 @@
         "hero_tagline": "Mais do que conversas com chats e abas abertas, aqui você constrói <hl>ideias que viram produtos finais</hl>.",
         "knowledge_title": "Transforme sua ideia em realidade.",
         "privacidade_titulo": "Privacidade, segurança e anonimato",
-        "privacidade_texto": "Trabalhe por conta própria ou compartilhe suas habilidades com o mundo. Ninguém precisa saber quem você é ou o que faz.",
+        "study_beyond_prompts": "Leve {{palavra}} a outro nível, além dos prompts.",
+        "study_terms": {
+            "work": "seu trabalho",
+            "study": "seus estudos",
+            "life": "sua vida"
+        },
+        "anatomia_amostra": {
+            "bronquios": "Brônquios",
+            "estomago": "Estômago",
+            "rins": "Rins",
+            "prova": "Você tem que provar o que sabe.",
+            "pulmoes": "Pulmões",
+            "saber": "No mundo de hoje, saber não é suficiente.",
+            "provar": "Aprofunde suas habilidades e aumente suas chances de ser notado.",
+            "proximo": "Nós forjamos talentos de alto nível e mostramos os melhores para empresas.",
+            "titulo": "Anatomia humana em movimento",
+            "descricao": "Explore como os sistemas nervoso e circulatório se organizam no corpo humano.",
+            "cerebro": "Cérebro",
+            "coracao": "Coração"
+        },
+        "privacidade_fluxo": {
+            "conta": "Sempre privado",
+            "conta_detalhe": "Converse com modelos de IA num espaço privado. Você decide o que compartilhar.",
+            "vitrine": "Credenciais verificáveis",
+            "vitrine_detalhe": "Mostre o que você sabe fazer. Vincule seu trabalho a credenciais verificáveis e use o ranking para entender como suas habilidades se destacam na sua área.",
+            "proposta": "Acordos com empresas, sem burocracia",
+            "proposta_detalhe": "Combine os marcos do projeto com empresas e mantenha as conversas privadas, tudo dentro da Zaeon."
+        },
         "flow": {
             "ideas": "ideias",
             "projects": "projetos",
@@ -699,9 +802,13 @@
             "diagrama": "Uma prova pública protege a identidade da pessoa."
         },
         "faq": {
+            "7": {
+                "q": "Como a Zaeon conecta talentos a empresas?",
+                "a": "O que conta é o que cada pessoa demonstra em provas e projetos concluídos. Nossos agentes ajudam a apresentar quem se destaca a empresas que buscam essas habilidades."
+            },
             "1": {
                 "q": "O que é a Zaeon hoje?",
-                "a": "Um espaço online para trabalhar em equipe, estudar e transformar conhecimento em projetos."
+                "a": "Um espaço online para trabalhar com sua equipe, estudar e transformar conhecimento em projetos. Também ajudamos empresas a encontrar talentos excepcionais com base em avaliações rigorosas e trabalhos concretos."
             },
             "2": {
                 "q": "O coworking é gratuito?",
@@ -725,6 +832,9 @@
             }
         },
         "interface": {
+            "amostra_estudo": "Amostra de estudo",
+            "privacidade_landing": "Privacidade na Zaeon",
+            "apoio": "Financiamento e apoio",
             "mes": "Um mês grátis",
             "cartao": "Sem cartão",
             "limites": "Sem limites",

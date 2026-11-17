@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslation } from "react-i18next";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Rotulo, TituloSecao } from "@/components/layout/secao";
 
@@ -14,14 +14,17 @@ import { Rotulo, TituloSecao } from "@/components/layout/secao";
 
 type QA = { q: string; a: string };
 
-const ITENS = [1, 2, 3, 4, 5, 6] as const;
+const ITENS = [1, 7, 5, 2, 3, 4, 6] as const;
 
 function Item({ item }: { item: QA }) {
+  const respostaId = useId();
   const [open, setOpen] = useState(false);
   return (
     <div className="border-b border-blue-200/60 dark:border-white/10 last:border-b-0">
       <button
+        type="button"
         aria-expanded={open}
+        aria-controls={respostaId}
         onClick={() => setOpen((v) => !v)}
         className={`w-full flex items-center justify-between gap-4 px-5 py-5 text-left text-[15px] font-semibold transition-colors
           ${open ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-white/80 hover:text-slate-900 dark:hover:text-white"}`}
@@ -33,7 +36,7 @@ function Item({ item }: { item: QA }) {
           className={`flex-shrink-0 text-cyan-600 dark:text-cyan-400 transition-transform duration-300 ${open ? "rotate-180" : ""}`}
         />
       </button>
-      <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+      <div id={respostaId} aria-hidden={!open} className={`grid transition-[grid-template-rows] duration-300 ease-out ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
         <div className="overflow-hidden">
           <p className="px-5 pb-5 pt-0 text-sm leading-relaxed text-slate-800 dark:text-white/90">
             {item.a}

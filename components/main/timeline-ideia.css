@@ -1,16 +1,16 @@
 /* TimelineIdeia — um VISUALIZADOR único e grande (estrutura 3D isométrica do kit anatomy) que se CONSTRÓI e cresce peça
    a peça conforme a barra de progresso avança. Embaixo, a barra com os 5 marcos. Sem descrições. */
 
-.ci-wrap { position: relative; width: 100%; overflow-x: auto; scrollbar-width: none; }
+.ci-wrap { position: relative; width: 100%; }
 .ci-wrap::-webkit-scrollbar { display: none; }
 
 .ci-stage { position: relative; min-width: 0; display: flex; flex-direction: column; align-items: center; }
 
 /* o visualizador único — uma PLACA DE CIRCUITOS em VIDRO PRETO (pôster quadrado) que se COMPLETA conforme a barra
    avança, com a cor varrendo o gradiente da timeline */
-.ci-viz { width: 100%; display: flex; justify-content: center; }
+.ci-viz { width: 100%; container-type: inline-size; display: flex; justify-content: center; }
 .ci-viz .ci-fig { width: 535px; max-width: 100%; height: auto; overflow: hidden;
-  filter: drop-shadow(0 14px 22px #0005); }
+  filter: drop-shadow(0 4px 5px #02091466) drop-shadow(0 19px 19px #02091455); }
 
 /* cada peça (trilha/pad/chip) nasce conforme o progresso a alcança — a opacidade/transform vêm INLINE do laço da
    TimelineIdeia (sem transição do CSS, que brigava com o valor por quadro). As micro-animações abaixo ficam em
@@ -30,7 +30,7 @@
 @media (prefers-reduced-motion: reduce) { .cs-run, .cs-luz, .cs-luz2, .cs-dot { animation: none; } }
 
 /* a barra de progresso */
-.ci-bar { position: relative; width: 100%; margin-top: 10px; }
+.ci-bar { position: relative; width: 100%; margin-top: clamp(2rem, 5vw, 4.5rem); }
 .ci-line, .ci-fill { position: absolute; top: 12px; left: 10%; height: 2px; border-radius: 2px; }
 .ci-line { right: 10%; background: rgba(127, 232, 255, 0.14); }
 .ci-fill { width: 0; background: linear-gradient(90deg, #f5c542, #2bd47a, #2d6ae8, #8b5cf6, #22d3ee); box-shadow: 0 0 6px rgba(127, 232, 255, 0.5); }
@@ -171,11 +171,10 @@ html:not(.dark) .ci-line { background: #cbd5e1; }
   transform: translate(-50%, -50%) scale(var(--forja-onda-escala, .55));
 }
 
-.ci-titulo-secao, .ci-bar {
+.ci-bar {
   transition: opacity .55s ease;
 }
 
-#como-funciona:has(.ci-viz[data-carta-em-destaque]) .ci-titulo-secao,
 .ci-viz[data-carta-em-destaque] + .ci-bar {
   opacity: 0;
 }
@@ -190,13 +189,14 @@ html:not(.dark) .ci-line { background: #cbd5e1; }
 }
 
 .ci-carrossel {
-  --ci-carrossel-carta: min(38%, 176px);
+  --ci-carrossel-carta: min(38cqw, 176px);
   opacity: var(--carrossel-op, 1);
   position: absolute;
   top: 50%;
-  inset-inline: 0;
+  left: 50%;
+  width: 100vw;
   z-index: 8;
-  transform: translateY(-50%);
+  transform: translate(-50%, -50%);
 }
 .ci-carrossel-faixa {
   position: relative;
@@ -212,15 +212,14 @@ html:not(.dark) .ci-line { background: #cbd5e1; }
 .ci-carrossel-faixa::-webkit-scrollbar { display: none; }
 .ci-carrossel-faixa > li {
   min-width: 0;
-  flex: 0 0 min(38cqw, 176px);
+  flex: 0 0 var(--ci-carrossel-carta);
 
 }
-.ci-carrossel { container-type: inline-size; }
 .ci-carrossel-item {
-  --ci-entrada: 70px;
+  --ci-entrada: 50vw;
   animation: ci-revelar-card 1.55s cubic-bezier(.22,1,.36,1) both;
 }
-.ci-carrossel-item[data-lado="esquerda"] { --ci-entrada: -70px; }
+.ci-carrossel-item[data-lado="esquerda"] { --ci-entrada: -50vw; }
 .ci-carrossel-item:nth-child(2), .ci-carrossel-item:nth-child(6) { animation-delay: .12s; }
 .ci-carrossel-item:nth-child(1), .ci-carrossel-item:nth-child(n+7) { animation-delay: .24s; }
 @keyframes ci-revelar-card {
@@ -228,6 +227,20 @@ html:not(.dark) .ci-line { background: #cbd5e1; }
   to { opacity: 1; transform: translateX(0) scale(1); }
 }
 @media (prefers-reduced-motion: reduce) { .ci-carrossel-item { animation: none; } }
+
+.ci-carrossel-autonomo {
+  --ci-carrossel-carta: clamp(130px, 32vw, 176px);
+  position: relative;
+  left: auto;
+  top: auto;
+  width: 100%;
+  margin-top: clamp(1.5rem, 4vw, 3rem);
+  transform: none;
+}
+.ci-carrossel-autonomo .ci-carrossel-faixa {
+  padding-inline: clamp(1rem, 4vw, 3rem);
+}
+.ci-carrossel-autonomo .ci-carrossel-item { animation: none; }
 
 .ci-carrossel-card .vt-title {
   display: block;
@@ -294,3 +307,86 @@ html:not(.dark) .ci-line { background: #cbd5e1; }
 .ci-carrossel-card.ci-capa-direito .vt-panel { border-left: 6px solid #6f3e35; }
 .ci-carrossel-card.ci-capa-direito .vt-art { transform: none; box-shadow: none; }
 .ci-carrossel-card.ci-capa-direito .vt-title { font-weight: 700; }
+
+.ci-placa-hardware { width: clamp(46px, 8vw, 82px); height: auto; }
+
+.ci-carrossel-card .vt-spine { display: none; }
+.ci-carrossel-card.ci-capa-hardware {
+  filter: drop-shadow(0 7px 6px #040a1870);
+}
+.ci-carrossel-card.ci-capa-hardware .vt-frame {
+  background: linear-gradient(140deg, #e2e9ed, #74828d 22%, #282f36 55%, #acb6bd 85%, #404953);
+  animation: none;
+}
+.ci-carrossel-card.ci-capa-hardware .vt-panel {
+  background: repeating-linear-gradient(0deg, #ffffff12 0 1px, transparent 1px 3px),
+    linear-gradient(142deg, #69747e, #343e48 38%, #1b232b 72%, #4d5961);
+}
+.ci-carrossel-card.ci-capa-hardware .vt-art {
+  margin-inline: 10px;
+  border: 1px solid #bac6cc55;
+  background: radial-gradient(ellipse at 25% 0%, #414d59, #151c23 75%);
+  box-shadow: inset 0 4px 9px #080d13;
+}
+.ci-carrossel-card.ci-capa-hardware .vt-plate {
+  padding-inline: 8px;
+  text-align: center;
+}
+.ci-carrossel-card.ci-capa-hardware .vt-title {
+  overflow-wrap: normal;
+  font-size: clamp(.8rem, 2vw, 1rem);
+  letter-spacing: .02em;
+}
+
+.ci-carrossel-card.ci-capa-hortas { --estudo-acabamento: #99c187; --estudo-fundo: #243b2a; }
+.ci-carrossel-card.ci-capa-ecovilas { --estudo-acabamento: #d7a17e; --estudo-fundo: #483329; }
+.ci-carrossel-card.ci-capa-comunidades { --estudo-acabamento: #adadd4; --estudo-fundo: #2b2e46; }
+.ci-carrossel-card.ci-capa-cisternas { --estudo-acabamento: #8ebdc6; --estudo-fundo: #203d48; }
+
+.ci-carrossel-card:is(.ci-capa-hortas, .ci-capa-ecovilas, .ci-capa-comunidades, .ci-capa-cisternas) .vt-art {
+  margin: 7px 7px 0;
+  border: 1px solid color-mix(in srgb, var(--estudo-acabamento), transparent 48%);
+  transform: none;
+}
+.ci-carrossel-card:is(.ci-capa-hortas, .ci-capa-ecovilas, .ci-capa-comunidades, .ci-capa-cisternas) .vt-plate {
+  background: linear-gradient(150deg, var(--estudo-fundo), #10191e);
+  border-top: 1px solid var(--estudo-acabamento);
+  padding-inline: 8px;
+}
+
+/* These covers use dark title plaques, including the warm agronomy skin. */
+.ci-carrossel-card:is(.ci-capa-hortas, .ci-capa-ecovilas, .ci-capa-comunidades, .ci-capa-cisternas) .vt-title {
+  color: #f5f8fa;
+}
+.ci-carrossel-card.ci-capa-microbiologia .vt-foto { object-fit: cover; }
+
+.ci-carrossel-card.ci-engenharia .vt-frame,
+.ci-carrossel-card.ci-engenharia .vt-panel {
+  border-radius: 0;
+  clip-path: polygon(0 13px, 13px 0, 100% 0, 100% calc(100% - 13px), calc(100% - 13px) 100%, 0 100%);
+}
+.ci-carrossel-card.ci-engenharia .vt-frame {
+  animation: none;
+  background: linear-gradient(145deg, #b2e0ee, #506477 36%, #182735 64%, #7daab8);
+}
+.ci-carrossel-card.ci-engenharia .vt-panel {
+  inset: 2px;
+  background: repeating-linear-gradient(0deg, #eefaff09 0 1px, transparent 1px 3px), linear-gradient(145deg, #344c60, #101c29 70%);
+}
+.ci-carrossel-card.ci-engenharia .vt-art {
+  margin: 10px 8px 0;
+  transform: none;
+  border: 1px solid #91b9ca80;
+  box-shadow: inset 0 2px 7px #081321;
+}
+.ci-carrossel-card.ci-engenharia .vt-plate {
+  order: initial;
+  padding: 9px 9px 12px;
+  border: 0;
+  border-top: 1px solid #87aabc75;
+  background: linear-gradient(90deg, #142331, #253d4d 65%, #142331);
+}
+.ci-carrossel-card.ci-engenharia .vt-title { color: #eff7fd; }
+.ci-carrossel-card.ci-capa-civil .vt-foto { object-fit: contain; }
+.ci-carrossel-card.ci-capa-civil .vt-art { background: #0a213c; }
+.ci-carrossel-card:is(.ci-capa-respiracao, .ci-capa-farmacologia) .vt-foto { object-fit: cover; }

@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { descricaoZaeon } from "@/config";
 
 /**
  * Manifesto do PWA.
@@ -28,8 +29,7 @@ export default function manifest(): MetadataRoute.Manifest {
         id: "/",
         name: "Zaeon",
         short_name: "Zaeon",
-        description:
-            "Todas as IAs num só lugar — dentro de um sistema feito pra você produzir ciência.",
+        description: descricaoZaeon,
         start_url: "/",
         scope: "/",
         display: "standalone",
@@ -40,16 +40,16 @@ export default function manifest(): MetadataRoute.Manifest {
         dir: "ltr",
         categories: ["education", "productivity", "science"],
         icons: [
-            { src: "/icons/icon-192.png?v=3", sizes: "192x192", type: "image/png", purpose: "any" },
-            { src: "/icons/icon-512.png?v=3", sizes: "512x512", type: "image/png", purpose: "any" },
+            { src: "/icons/icon-192.png?v=4", sizes: "192x192", type: "image/png", purpose: "any" },
+            { src: "/icons/icon-512.png?v=4", sizes: "512x512", type: "image/png", purpose: "any" },
             {
-                src: "/icons/maskable-192.png?v=3",
+                src: "/icons/maskable-192.png?v=4",
                 sizes: "192x192",
                 type: "image/png",
                 purpose: "maskable",
             },
             {
-                src: "/icons/maskable-512.png?v=3",
+                src: "/icons/maskable-512.png?v=4",
                 sizes: "512x512",
                 type: "image/png",
                 purpose: "maskable",

@@ -675,36 +675,31 @@
   .cerebroAnatomico { animation: none; }
 }
 
-.palavraMatrix { position: relative; }
-.termoMatrix { display: inline-block; animation: decodificar-palavra 410ms both; }
-.codigoMatrix {
+.palavraParticulas { position: relative; width: fit-content; margin-inline: auto; }
+.termoParticulas { display: inline-block; animation: formar-palavra 2.1s ease-in-out both; }
+.particulasPalavra { position: absolute; inset: 0; pointer-events: none; }
+.particulasPalavra i {
   position: absolute;
-  inset-inline: 0;
-  pointer-events: none;
-  font-family: ui-monospace, monospace;
-  font-size: .76em;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: juntar-particulas .62s ease-out both;
 }
-.codigoMatrix span {
-  position: absolute;
-  inset-inline: 0;
-  opacity: 0;
-  animation: vestigio-matrix 110ms steps(2, end) both;
+.particulasPalavra i:nth-child(even) { --deriva: -12px; }
+@keyframes juntar-particulas {
+  0% { opacity: 0; transform: translate(var(--deriva, 12px), 11px); }
+  35% { opacity: .65; }
+  100% { opacity: 0; transform: translate(0, 0) scale(.2); }
 }
-.codigoMatrix span:nth-child(2) { animation-delay: 85ms; }
-.codigoMatrix span:nth-child(3) { animation-delay: 170ms; }
-@keyframes decodificar-palavra {
-  0%, 52% { opacity: 0; }
-  61% { opacity: .72; transform: translateX(-3px); clip-path: inset(0 0 25%); }
-  74% { opacity: .85; transform: translateX(2px); clip-path: inset(22% 0 0); }
-  100% { opacity: 1; transform: none; clip-path: inset(0); }
-}
-@keyframes vestigio-matrix {
-  0% { opacity: .65; transform: translateX(-5px); }
-  55% { opacity: .85; transform: translateX(3px); }
-  100% { opacity: 0; transform: translateX(1px); }
+@keyframes formar-palavra {
+  0% { opacity: 0; filter: blur(4px); }
+  28%, 87% { opacity: 1; filter: blur(0); }
+  100% { opacity: .25; filter: blur(3px); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .termoMatrix, .codigoMatrix span { animation: none; }
+  .termoParticulas { animation: none; }
+  .particulasPalavra { display: none; }
 }
 
 .corpoAnatomico i {
@@ -772,7 +767,7 @@
   position: absolute;
   width: min(69vh, 82vw, 570px);
   scale: 1 1.2;
-  transform-origin: 50% 93%;
+  transform-origin: 63% 30%;
   height: auto;
   bottom: 3%;
   left: 50%;
@@ -853,7 +848,7 @@
 }
 @keyframes mergulhar-na-copa {
   0%, 33.8855% { transform: translateX(-50%); }
-  39.7590%, 100% { transform: translate(-50%, 30%) scale(3.6); }
+  39.7590%, 100% { transform: translate(-61%, 31%) scale(4.5); }
 }
 @media (prefers-reduced-motion: reduce) {
   .natureza, .natureza * { animation: none; }

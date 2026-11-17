@@ -540,6 +540,82 @@
     },
     "landing": {
         "knowledge_cards": {
+            "neuro": {
+                "title": "神经解剖学",
+                "summary": "比较大脑结构及其功能。"
+            },
+            "respiracao": {
+                "title": "呼吸生理学",
+                "summary": "研究通气和气体交换。"
+            },
+            "farmacologia": {
+                "title": "药理学",
+                "summary": "研究药物与人体的相互作用。"
+            },
+            "civil": {
+                "title": "土木工程",
+                "summary": "阅读 CAD 平面图，研究尺寸、布局与结构轴线。"
+            },
+            "mecanica": {
+                "title": "机械工程",
+                "summary": "比较涡轮机并测量机械效率。"
+            },
+            "quimica": {
+                "title": "化学工程",
+                "summary": "跟踪中试装置中的物质和能量流。"
+            },
+            "ambiental": {
+                "title": "环境工程",
+                "summary": "比较水处理工艺。"
+            },
+            "geologia": {
+                "title": "地质学",
+                "summary": "解读岩层并重建其形成历史。"
+            },
+            "microbiologia": {
+                "title": "微生物学",
+                "summary": "观察微生物如何生长和相互作用。"
+            },
+            "materiais": {
+                "title": "材料科学",
+                "summary": "比较微观结构对材料性能的影响。"
+            },
+            "oceanografia": {
+                "title": "海洋学",
+                "summary": "解读浮标测得的波浪和海流数据。"
+            },
+            "eletrica": {
+                "title": "电气工程",
+                "summary": "研究负荷、保护和配电。"
+            },
+            "solar": {
+                "title": "太阳能",
+                "summary": "比较发电、储能和投资回收期。"
+            },
+            "hortas": {
+                "title": "社区菜园",
+                "summary": "规划种植区、堆肥与灌溉。"
+            },
+            "ecovilas": {
+                "title": "生态村",
+                "summary": "研究共享住房、食物和能源。"
+            },
+            "comunidades": {
+                "title": "去中心化社区",
+                "summary": "设计共同规则、投票和问责机制。"
+            },
+            "cisternas": {
+                "title": "雨水收集",
+                "summary": "计算蓄水池容量并规划雨水用途。"
+            },
+            "codigo": {
+                "title": "代码",
+                "summary": "构建并测试可运行的软件。"
+            },
+            "hardware": {
+                "title": "硬件",
+                "summary": "设计电路并测试实体元件。"
+            },
             "label": "市场中的知识",
             "coracao": {
                 "title": "心脏解剖图谱",
@@ -632,7 +708,34 @@
         "hero_tagline": "不只是和聊天机器人对话、开着一堆标签页——在这里，你打造<hl>能成为最终产品的想法</hl>。",
         "knowledge_title": "把你的想法变成现实。",
         "privacidade_titulo": "隐私、安全与匿名",
-        "privacidade_texto": "独自创作，或与世界分享你的技能。没有人需要知道你是谁，也无须知道你在做什么。",
+        "study_beyond_prompts": "超越提示词，让你的{{palavra}}更进一步。",
+        "study_terms": {
+            "work": "工作",
+            "study": "学习",
+            "life": "生活"
+        },
+        "anatomia_amostra": {
+            "bronquios": "支气管",
+            "estomago": "胃",
+            "rins": "肾脏",
+            "prova": "你必须证明你所掌握的知识。",
+            "pulmoes": "肺",
+            "saber": "在今天的世界，知道还不够。",
+            "provar": "深化你的技能，增加被发现的机会。",
+            "proximo": "我们培养顶尖人才，并将其中最优秀的人介绍给企业。",
+            "titulo": "动态人体解剖",
+            "descricao": "探索人体神经系统和循环系统的分布。",
+            "cerebro": "大脑",
+            "coracao": "心脏"
+        },
+        "privacidade_fluxo": {
+            "conta": "始终私密",
+            "conta_detalhe": "在私密工作空间中与 AI 模型对话。由你决定分享什么。",
+            "vitrine": "可验证凭证",
+            "vitrine_detalhe": "展示你的能力。将作品与可验证凭证关联，并通过排名了解你的技能在所属领域中的表现。",
+            "proposta": "无需繁琐文书的企业合作",
+            "proposta_detalhe": "直接在 Zaeon 上与企业约定项目里程碑，并保持沟通私密。"
+        },
         "flow": {
             "ideas": "想法",
             "projects": "项目",
@@ -699,9 +802,13 @@
             "diagrama": "公开证明保护个人身份。"
         },
         "faq": {
+            "7": {
+                "q": "Zaeon 如何连接人才与企业？",
+                "a": "我们关注每个人在考核和已完成项目中展现的能力。我们的智能助手会将表现出色的人才介绍给需要这些技能的企业。"
+            },
             "1": {
                 "q": "现在的 Zaeon 是什么？",
-                "a": "一个可以与团队协作、学习并将知识变成项目的在线空间。"
+                "a": "一个可以与团队协作、学习并将知识转化为项目的在线空间。我们也通过严格评估和实际成果，帮助企业发现优秀人才。"
             },
             "2": {
                 "q": "协作空间免费吗？",
@@ -725,6 +832,9 @@
             }
         },
         "interface": {
+            "amostra_estudo": "学习预览",
+            "privacidade_landing": "Zaeon 隐私保护",
+            "apoio": "融资与支持",
             "mes": "首月免费",
             "cartao": "无需绑卡",
             "limites": "不限次数",
