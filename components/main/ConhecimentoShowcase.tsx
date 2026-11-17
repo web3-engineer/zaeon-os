@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import CartaVitrine from "@/components/estudos/CartaVitrine";
@@ -38,22 +38,9 @@ const exemplos = [
   { id: "veterinaria", skin: "agronomia", tipo: "curso", modelo: "planta" },
 ] as const satisfies readonly Pick<ItemVitrine, "id" | "skin" | "tipo" | "modelo" | "imagem">[];
 
-type Exemplo = (typeof exemplos)[number];
-const nucleos = {
-  computacao: ["codigo", "hardware", "clima", "matematica"],
-  energias: ["eletrica", "solar"],
-  territorio: ["ecovilas", "cisternas", "bacias", "habitat", "arquitetura"],
-  vida: ["hortas", "safra", "ecologia", "coracao", "veterinaria"],
-  sociedade: ["comunidades", "recife", "direito", "economia", "educacao"],
-  cultura: ["literatura", "musica", "artes", "comunicacao", "marketing"],
-  universo: ["astronomia"],
-} satisfies Record<string, readonly Exemplo["id"][]>;
-type Nucleo = keyof typeof nucleos;
-
 export default function ConhecimentoShowcase({ principal }: { principal?: React.ReactNode }) {
   const { t } = useTranslation();
   const router = useRouter();
-  const [nucleo, selecionarNucleo] = useState<Nucleo | "todos">("todos");
   const faixa = useRef<HTMLUListElement>(null);
   useEffect(() => {
     const lista = faixa.current;
@@ -88,7 +75,7 @@ export default function ConhecimentoShowcase({ principal }: { principal?: React.
     };
     quadro = requestAnimationFrame(mover);
     return () => cancelAnimationFrame(quadro);
-  }, [nucleo]);
+  }, []);
 
   const renderCarta = (exemplo: (typeof exemplos)[number], lado: "esquerda" | "direita") => {
           const it: ItemVitrine = {
@@ -113,25 +100,14 @@ export default function ConhecimentoShowcase({ principal }: { principal?: React.
           </li>;
   };
 
-  const cartas = nucleo === "todos" ? exemplos : exemplos.filter(({ id }) =>
-    (nucleos[nucleo] as readonly Exemplo["id"][]).includes(id));
   const meio = 9;
 
   return (
     <section aria-label={t("landing.knowledge_cards.label")} className={principal ? "ci-carrossel" : "ci-carrossel ci-carrossel-autonomo"}>
-      {!principal && (
-        <div role="group" aria-label={t("landing.knowledge_nuclei.label")} className="ci-nucleos">
-          {(["todos", ...Object.keys(nucleos)] as ("todos" | Nucleo)[]).map((id) => (
-            <button key={id} type="button" aria-pressed={id === nucleo} onClick={() => selecionarNucleo(id)}>
-              {t(`landing.knowledge_nuclei.${id}`)}
-            </button>
-          ))}
-        </div>
-      )}
-      <ul key={nucleo} ref={faixa} className="ci-carrossel-faixa">
-        {cartas.slice(0, meio).map((exemplo) => renderCarta(exemplo, "esquerda"))}
+      <ul ref={faixa} className="ci-carrossel-faixa">
+        {exemplos.slice(0, meio).map((exemplo) => renderCarta(exemplo, "esquerda"))}
         {principal && <li className="ci-carrossel-principal">{principal}</li>}
-        {cartas.slice(meio).map((exemplo) => renderCarta(exemplo, "direita"))}
+        {exemplos.slice(meio).map((exemplo) => renderCarta(exemplo, "direita"))}
       </ul>
     </section>
   );

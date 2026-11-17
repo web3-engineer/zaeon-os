@@ -537,17 +537,6 @@
         "success_message": "자격 증명이 업데이트되었습니다."
     },
     "landing": {
-        "knowledge_nuclei": {
-            "label": "학습 분야",
-            "todos": "전체",
-            "computacao": "컴퓨팅 및 데이터",
-            "energias": "전기 공학 및 에너지",
-            "territorio": "지역 및 건축",
-            "vida": "생명 및 농업",
-            "sociedade": "사회 및 거버넌스",
-            "cultura": "예술 및 소통",
-            "universo": "우주 과학"
-        },
         "knowledge_cards": {
             "eletrica": {
                 "title": "전기 공학",

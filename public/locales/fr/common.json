@@ -537,17 +537,6 @@
         "success_message": "Informations d'identification mises à jour"
     },
     "landing": {
-        "knowledge_nuclei": {
-            "label": "Domaines d’étude",
-            "todos": "Tous",
-            "computacao": "Informatique et données",
-            "energias": "Génie électrique et énergie",
-            "territorio": "Territoire et construction",
-            "vida": "Vie et agriculture",
-            "sociedade": "Société et gouvernance",
-            "cultura": "Arts et communication",
-            "universo": "Sciences spatiales"
-        },
         "knowledge_cards": {
             "eletrica": {
                 "title": "Génie électrique",

@@ -537,17 +537,6 @@
         "success_message": "Credenciais atualizadas"
     },
     "landing": {
-        "knowledge_nuclei": {
-            "label": "Núcleos de estudos",
-            "todos": "Todos",
-            "computacao": "Computação e dados",
-            "energias": "Engenharia elétrica e energia",
-            "territorio": "Território e construção",
-            "vida": "Vida e agricultura",
-            "sociedade": "Sociedade e governança",
-            "cultura": "Artes e comunicação",
-            "universo": "Ciências do espaço"
-        },
         "knowledge_cards": {
             "eletrica": {
                 "title": "Engenharia elétrica",

@@ -537,17 +537,6 @@
         "success_message": "Credentials Updated"
     },
     "landing": {
-        "knowledge_nuclei": {
-            "label": "Study areas",
-            "todos": "All",
-            "computacao": "Computing & data",
-            "energias": "Electrical & energy engineering",
-            "territorio": "Built environment",
-            "vida": "Life & agriculture",
-            "sociedade": "Society & governance",
-            "cultura": "Arts & communication",
-            "universo": "Space science"
-        },
         "knowledge_cards": {
             "eletrica": {
                 "title": "Electrical engineering",
