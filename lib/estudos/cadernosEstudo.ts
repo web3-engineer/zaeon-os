@@ -1,4 +1,5 @@
 import type { Desenho } from "@/lib/harness/caderno/compile";
+import { CADERNOS_EXTRA } from "./cadernos";
 
 /** a natureza de uma fonte real (o caderno nunca afirma sem lastro) */
 export type FonteTipo = "artigo" | "norma" | "video" | "dataset" | "livro" | "site";
@@ -166,8 +167,13 @@ const ecovila: CadernoEstudo = {
   ],
 };
 
-const cadernos: readonly CadernoEstudo[] = [ecovila];
+const cadernos: readonly CadernoEstudo[] = [ecovila, ...CADERNOS_EXTRA];
 
 export function cadernoEstudo(id: string) {
   return cadernos.find((caderno) => caderno.id === id);
 }
+
+/** o card da vitrine tem caderno de campo? (liga cadernoEstudoId em vitrineExemplos) */
+export const temCaderno = (id: string): boolean => cadernos.some((c) => c.id === id);
+/** os ids com caderno — pros testes e pra UI */
+export const idsComCaderno = (): string[] => cadernos.map((c) => c.id);

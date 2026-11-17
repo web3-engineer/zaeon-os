@@ -1,3 +1,4 @@
+import { temCaderno } from "./cadernosEstudo";
 import type { SkinVitrine } from "./skinVitrine";
 import type { ItemVitrine, Modelo3D } from "./vitrine";
 
@@ -69,6 +70,6 @@ export const ESTUDOS_EXEMPLO: readonly ItemVitrine[] = Object.entries(exemplos).
     entrega: [],
     tags: [],
     exemploEstudo: true,
-    ...(id === "ecovila" ? { cadernoEstudoId: id } : {}),
+    ...(temCaderno(id) ? { cadernoEstudoId: id } : {}),
   })),
 );
