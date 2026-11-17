@@ -9,11 +9,24 @@
  * - o laboratório AVISA o menu (`avisarMarketplace`) e deixa o endereço igual à aba (`comMarketplace`, sem empilhar
  *   histórico) — recarregar cai no mesmo lugar.
  *
+ * - #845: o "voltar" de um painel fechando (o Menu do celular, depois de tocar em "Marketplace") não é a pessoa
+ *   voltando: a aba fica, e o endereço acompanha a aba. E trocar o endereço em cima da marca de um painel tira a marca
+ *   (`estadoSemPainel`), senão o painel, ao fechar, desfazia a ida pro Marketplace.
+ *
  * `noMarketplace` = a Sala de Estudos está aberta na aba da vitrine; `irEstudos` = trocar a aba da Sala.
  */
 import { useEffect, useRef } from "react";
 import type { AbaEstudos } from "@/lib/chat/conversasNav";
 import { EVT_SAIR_MARKETPLACE, avisarMarketplace, comMarketplace, pedeMarketplace } from "./marketplaceRota";
+import { estadoSemPainel, voltaDePainel } from "./useFecharNoVoltar";
+
+/** deixa o endereço igual à aba, sem empilhar histórico (e sem a marca de painel, se houver) */
+function alinharEndereco(noMarketplace: boolean) {
+  const q = comMarketplace(window.location.search, noMarketplace);
+  if (q !== window.location.search) {
+    window.history.replaceState(estadoSemPainel(window.history.state), "", `${window.location.pathname}${q}${window.location.hash}`);
+  }
+}
 
 export function useMarketplaceNoLab(noMarketplace: boolean, irEstudos: (aba: AbaEstudos) => void): void {
   const estado = useRef(noMarketplace);
@@ -25,6 +38,8 @@ export function useMarketplaceNoLab(noMarketplace: boolean, irEstudos: (aba: Aba
 
   useEffect(() => {
     const doEndereco = () => {
+      // um painel fechou (não foi a pessoa voltando): a aba manda e o endereço acompanha
+      if (voltaDePainel()) { alinharEndereco(estado.current || pendente.current); return; }
       const pede = pedeMarketplace(window.location.search);
       if (pede && !estado.current) { pendente.current = true; ir.current("community"); }
       else if (!pede && estado.current) ir.current("meus-estudos");
@@ -44,9 +59,6 @@ export function useMarketplaceNoLab(noMarketplace: boolean, irEstudos: (aba: Aba
     if (noMarketplace) pendente.current = false;
     avisarMarketplace(noMarketplace || pendente.current);
     if (!noMarketplace && pendente.current) return;
-    const q = comMarketplace(window.location.search, noMarketplace);
-    if (q !== window.location.search) {
-      window.history.replaceState(window.history.state, "", `${window.location.pathname}${q}${window.location.hash}`);
-    }
+    alinharEndereco(noMarketplace);
   }, [noMarketplace]);
 }

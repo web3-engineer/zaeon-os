@@ -97,6 +97,15 @@ export function escrevendoEmOutro(alvo: HTMLElement | null | undefined): boolean
   return ((a as HTMLInputElement | HTMLTextAreaElement).value ?? "").trim().length > 0;
 }
 
+/**
+ * #845 · aparelho de toque (celular, tablet)? Lá o autofoco ABRE O TECLADO sozinho — cobre metade da tela quando a
+ * pessoa só queria ler — e, quando o Android devolve o foco sem abrir o teclado (ao voltar pro app), o laboratório
+ * achava que o teclado estava aberto e escondia a barra de baixo. No toque, o teclado abre quando a pessoa toca na caixa.
+ */
+export function telaDeToque(): boolean {
+  try { return window.matchMedia("(hover: none) and (pointer: coarse)").matches; } catch { return false; }
+}
+
 /** Quanto tempo vale a pena esperar a superfície pintar antes de desistir em silêncio. */
 export const PRAZO_MS = 2_000;
 
@@ -112,7 +121,7 @@ export function useAutoFoco(
   prazoMs: number = PRAZO_MS,
 ): void {
   useEffect(() => {
-    if (!ativo || typeof window === "undefined") return;
+    if (!ativo || typeof window === "undefined" || telaDeToque()) return;
     let quadro = 0;
     let limite = performance.now() + prazoMs;
 
