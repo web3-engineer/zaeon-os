@@ -538,6 +538,38 @@
     },
     "landing": {
         "knowledge_cards": {
+            "civil": {
+                "title": "Engenharia civil",
+                "summary": "Inspecione pontes e acompanhe a distribuição das cargas."
+            },
+            "mecanica": {
+                "title": "Engenharia mecânica",
+                "summary": "Compare turbinas e avalie a eficiência mecânica."
+            },
+            "quimica": {
+                "title": "Engenharia química",
+                "summary": "Acompanhe fluxos de massa e energia numa planta piloto."
+            },
+            "ambiental": {
+                "title": "Engenharia ambiental",
+                "summary": "Compare processos de tratamento de água."
+            },
+            "geologia": {
+                "title": "Geologia",
+                "summary": "Leia camadas de rocha e reconstrua sua história."
+            },
+            "microbiologia": {
+                "title": "Microbiologia",
+                "summary": "Observe como microrganismos crescem e interagem."
+            },
+            "materiais": {
+                "title": "Ciência dos materiais",
+                "summary": "Compare o efeito da microestrutura nas propriedades dos materiais."
+            },
+            "oceanografia": {
+                "title": "Oceanografia",
+                "summary": "Interprete dados de boias sobre ondas e correntes."
+            },
             "eletrica": {
                 "title": "Engenharia elétrica",
                 "summary": "Estude cargas, proteção e distribuição."

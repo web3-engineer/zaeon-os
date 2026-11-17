@@ -538,6 +538,38 @@
     },
     "landing": {
         "knowledge_cards": {
+            "civil": {
+                "title": "Génie civil",
+                "summary": "Inspectez des ponts et suivez la répartition des charges."
+            },
+            "mecanica": {
+                "title": "Génie mécanique",
+                "summary": "Comparez des turbines et mesurez leur rendement mécanique."
+            },
+            "quimica": {
+                "title": "Génie chimique",
+                "summary": "Suivez les flux de matière et d’énergie dans une installation pilote."
+            },
+            "ambiental": {
+                "title": "Génie environnemental",
+                "summary": "Comparez les procédés de traitement de l’eau."
+            },
+            "geologia": {
+                "title": "Géologie",
+                "summary": "Lisez les strates rocheuses et retracez leur histoire."
+            },
+            "microbiologia": {
+                "title": "Microbiologie",
+                "summary": "Observez la croissance et les interactions des microbes."
+            },
+            "materiais": {
+                "title": "Science des matériaux",
+                "summary": "Comparez l’effet de la microstructure sur les propriétés des matériaux."
+            },
+            "oceanografia": {
+                "title": "Océanographie",
+                "summary": "Interprétez les mesures de vagues et de courants d’une bouée."
+            },
             "eletrica": {
                 "title": "Génie électrique",
                 "summary": "Étudiez les charges, la protection et la distribution."

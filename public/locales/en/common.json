@@ -538,6 +538,38 @@
     },
     "landing": {
         "knowledge_cards": {
+            "civil": {
+                "title": "Civil engineering",
+                "summary": "Inspect bridges and trace how loads move through them."
+            },
+            "mecanica": {
+                "title": "Mechanical engineering",
+                "summary": "Compare turbines and measure mechanical efficiency."
+            },
+            "quimica": {
+                "title": "Chemical engineering",
+                "summary": "Track mass and energy through a pilot plant."
+            },
+            "ambiental": {
+                "title": "Environmental engineering",
+                "summary": "Compare water treatment processes."
+            },
+            "geologia": {
+                "title": "Geology",
+                "summary": "Read rock layers and reconstruct their history."
+            },
+            "microbiologia": {
+                "title": "Microbiology",
+                "summary": "Observe how microbes grow and interact."
+            },
+            "materiais": {
+                "title": "Materials science",
+                "summary": "Compare how microstructure changes material properties."
+            },
+            "oceanografia": {
+                "title": "Oceanography",
+                "summary": "Interpret buoy data on waves and currents."
+            },
             "eletrica": {
                 "title": "Electrical engineering",
                 "summary": "Study loads, protection and distribution."

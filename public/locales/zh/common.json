@@ -538,6 +538,38 @@
     },
     "landing": {
         "knowledge_cards": {
+            "civil": {
+                "title": "土木工程",
+                "summary": "检查桥梁，追踪荷载的传递路径。"
+            },
+            "mecanica": {
+                "title": "机械工程",
+                "summary": "比较涡轮机并测量机械效率。"
+            },
+            "quimica": {
+                "title": "化学工程",
+                "summary": "跟踪中试装置中的物质和能量流。"
+            },
+            "ambiental": {
+                "title": "环境工程",
+                "summary": "比较水处理工艺。"
+            },
+            "geologia": {
+                "title": "地质学",
+                "summary": "解读岩层并重建其形成历史。"
+            },
+            "microbiologia": {
+                "title": "微生物学",
+                "summary": "观察微生物如何生长和相互作用。"
+            },
+            "materiais": {
+                "title": "材料科学",
+                "summary": "比较微观结构对材料性能的影响。"
+            },
+            "oceanografia": {
+                "title": "海洋学",
+                "summary": "解读浮标测得的波浪和海流数据。"
+            },
             "eletrica": {
                 "title": "电气工程",
                 "summary": "研究负荷、保护和配电。"

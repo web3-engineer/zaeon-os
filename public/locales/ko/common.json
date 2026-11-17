@@ -538,6 +538,38 @@
     },
     "landing": {
         "knowledge_cards": {
+            "civil": {
+                "title": "토목공학",
+                "summary": "교량을 점검하고 하중이 전달되는 경로를 살펴보세요."
+            },
+            "mecanica": {
+                "title": "기계공학",
+                "summary": "터빈을 비교하고 기계적 효율을 측정하세요."
+            },
+            "quimica": {
+                "title": "화학공학",
+                "summary": "파일럿 설비에서 물질과 에너지의 흐름을 추적하세요."
+            },
+            "ambiental": {
+                "title": "환경공학",
+                "summary": "수처리 공정을 비교하세요."
+            },
+            "geologia": {
+                "title": "지질학",
+                "summary": "암석층을 읽고 형성의 역사를 재구성하세요."
+            },
+            "microbiologia": {
+                "title": "미생물학",
+                "summary": "미생물이 자라고 상호작용하는 방식을 관찰하세요."
+            },
+            "materiais": {
+                "title": "재료과학",
+                "summary": "미세구조가 재료 특성에 미치는 영향을 비교하세요."
+            },
+            "oceanografia": {
+                "title": "해양학",
+                "summary": "부표의 파도와 해류 데이터를 해석하세요."
+            },
             "eletrica": {
                 "title": "전기 공학",
                 "summary": "부하, 보호 및 배전을 공부하세요."

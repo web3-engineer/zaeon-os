@@ -353,3 +353,9 @@ html:not(.dark) .ci-line { background: #cbd5e1; }
   border-top: 1px solid var(--estudo-acabamento);
   padding-inline: 8px;
 }
+
+/* These covers use dark title plaques, including the warm agronomy skin. */
+.ci-carrossel-card:is(.ci-capa-hortas, .ci-capa-ecovilas, .ci-capa-comunidades, .ci-capa-cisternas) .vt-title {
+  color: #f5f8fa;
+}
+.ci-carrossel-card.ci-capa-microbiologia .vt-foto { object-fit: cover; }

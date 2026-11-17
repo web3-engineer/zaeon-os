@@ -538,6 +538,38 @@
     },
     "landing": {
         "knowledge_cards": {
+            "civil": {
+                "title": "Ingeniería civil",
+                "summary": "Inspecciona puentes y analiza cómo se distribuyen las cargas."
+            },
+            "mecanica": {
+                "title": "Ingeniería mecánica",
+                "summary": "Compara turbinas y mide su eficiencia mecánica."
+            },
+            "quimica": {
+                "title": "Ingeniería química",
+                "summary": "Sigue los flujos de masa y energía en una planta piloto."
+            },
+            "ambiental": {
+                "title": "Ingeniería ambiental",
+                "summary": "Compara procesos de tratamiento de agua."
+            },
+            "geologia": {
+                "title": "Geología",
+                "summary": "Lee los estratos rocosos y reconstruye su historia."
+            },
+            "microbiologia": {
+                "title": "Microbiología",
+                "summary": "Observa cómo crecen e interactúan los microbios."
+            },
+            "materiais": {
+                "title": "Ciencia de materiales",
+                "summary": "Compara cómo la microestructura cambia las propiedades de los materiales."
+            },
+            "oceanografia": {
+                "title": "Oceanografía",
+                "summary": "Interpreta datos de boyas sobre olas y corrientes."
+            },
             "eletrica": {
                 "title": "Ingeniería eléctrica",
                 "summary": "Estudia cargas, protección y distribución."

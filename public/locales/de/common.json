@@ -538,6 +538,38 @@
     },
     "landing": {
         "knowledge_cards": {
+            "civil": {
+                "title": "Bauingenieurwesen",
+                "summary": "Untersuche Brücken und verfolge ihre Lastverteilung."
+            },
+            "mecanica": {
+                "title": "Maschinenbau",
+                "summary": "Vergleiche Turbinen und miss ihren Wirkungsgrad."
+            },
+            "quimica": {
+                "title": "Chemieingenieurwesen",
+                "summary": "Verfolge Stoff- und Energieströme in einer Pilotanlage."
+            },
+            "ambiental": {
+                "title": "Umweltingenieurwesen",
+                "summary": "Vergleiche Verfahren der Wasseraufbereitung."
+            },
+            "geologia": {
+                "title": "Geologie",
+                "summary": "Lies Gesteinsschichten und rekonstruiere ihre Geschichte."
+            },
+            "microbiologia": {
+                "title": "Mikrobiologie",
+                "summary": "Beobachte Wachstum und Wechselwirkungen von Mikroben."
+            },
+            "materiais": {
+                "title": "Materialwissenschaft",
+                "summary": "Vergleiche den Einfluss der Mikrostruktur auf Materialeigenschaften."
+            },
+            "oceanografia": {
+                "title": "Ozeanografie",
+                "summary": "Interpretiere Bojendaten zu Wellen und Strömungen."
+            },
             "eletrica": {
                 "title": "Elektrotechnik",
                 "summary": "Untersuche Lasten, Schutz und Verteilung."
