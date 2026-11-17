@@ -538,6 +538,30 @@
     },
     "landing": {
         "knowledge_cards": {
+            "hortas": {
+                "title": "社区菜园",
+                "summary": "规划种植区、堆肥与灌溉。"
+            },
+            "ecovilas": {
+                "title": "生态村",
+                "summary": "研究共享住房、食物和能源。"
+            },
+            "comunidades": {
+                "title": "去中心化社区",
+                "summary": "设计共同规则、投票和问责机制。"
+            },
+            "cisternas": {
+                "title": "雨水收集",
+                "summary": "计算蓄水池容量并规划雨水用途。"
+            },
+            "codigo": {
+                "title": "代码",
+                "summary": "构建并测试可运行的软件。"
+            },
+            "hardware": {
+                "title": "硬件",
+                "summary": "设计电路并测试实体元件。"
+            },
             "label": "市场中的知识",
             "coracao": {
                 "title": "心脏解剖图谱",
@@ -630,7 +654,15 @@
         "hero_tagline": "不只是和聊天机器人对话、开着一堆标签页——在这里，你打造<hl>能成为最终产品的想法</hl>。",
         "knowledge_title": "把你的想法变成现实。",
         "privacidade_titulo": "隐私、安全与匿名",
-        "privacidade_texto": "独自创作，或与世界分享你的技能。没有人需要知道你是谁，也无须知道你在做什么。",
+        "study_beyond_prompts": "超越提示词，让学习更进一步。",
+        "privacidade_fluxo": {
+            "conta": "私密工作空间",
+            "conta_detalhe": "与 AI 模型对话，同时保留作品的所有权。请勿在对话中添加想要保密的文件。",
+            "vitrine": "公开展台",
+            "vitrine_detalhe": "证明你所掌握的知识，并选择展示哪些内容。凭证和隐私保护均基于 Solana。",
+            "proposta": "私下报价",
+            "proposta_detalhe": "按明确的市场规则，买家可以在不公开身份的情况下提出报价。"
+        },
         "flow": {
             "ideas": "想法",
             "projects": "项目",

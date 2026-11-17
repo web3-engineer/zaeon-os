@@ -538,6 +538,30 @@
     },
     "landing": {
         "knowledge_cards": {
+            "hortas": {
+                "title": "Community gardens",
+                "summary": "Plan beds, composting and irrigation."
+            },
+            "ecovilas": {
+                "title": "Ecovillages",
+                "summary": "Study shared housing, food and energy."
+            },
+            "comunidades": {
+                "title": "Decentralized communities",
+                "summary": "Design shared rules, voting and accountability."
+            },
+            "cisternas": {
+                "title": "Rainwater harvesting",
+                "summary": "Size a cistern and plan how to use collected water."
+            },
+            "codigo": {
+                "title": "Code",
+                "summary": "Build and test working software."
+            },
+            "hardware": {
+                "title": "Hardware",
+                "summary": "Design circuits and test physical components."
+            },
             "label": "Knowledge in the Marketplace",
             "coracao": {
                 "title": "Atlas of the Heart",
@@ -630,7 +654,15 @@
         "hero_tagline": "More than conversations with chatbots and open tabs — here you build <hl>ideas that become finished products</hl>.",
         "knowledge_title": "Turn your idea into reality.",
         "privacidade_titulo": "Privacy, Safety, and Anonymity",
-        "privacidade_texto": "Work on your own or share your skills with the world. No one needs to know who you are or what you do.",
+        "study_beyond_prompts": "Take your study to another level, beyond prompts.",
+        "privacidade_fluxo": {
+            "conta": "Private workspace",
+            "conta_detalhe": "Talk with your AI model without share your work to their providers. we keep it safe and yours.",
+            "vitrine": "Public showcase",
+            "vitrine_detalhe": "Prove what you know and choose what to show. The credentials are built in Solana, and so the privacy.",
+            "proposta": "Private offer",
+            "proposta_detalhe": "Under marketplace rules, interested buyers could make offers without revealing their identity publicly."
+        },
         "flow": {
             "ideas": "ideas",
             "projects": "projects",

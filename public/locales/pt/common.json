@@ -538,6 +538,30 @@
     },
     "landing": {
         "knowledge_cards": {
+            "hortas": {
+                "title": "Hortas comunitárias",
+                "summary": "Planeje canteiros, compostagem e irrigação."
+            },
+            "ecovilas": {
+                "title": "Ecovilas",
+                "summary": "Estude moradia, alimentação e energia compartilhadas."
+            },
+            "comunidades": {
+                "title": "Comunidades descentralizadas",
+                "summary": "Crie regras coletivas, sistemas de votação e prestação de contas."
+            },
+            "cisternas": {
+                "title": "Captação de água da chuva",
+                "summary": "Dimensione uma cisterna e planeje o uso da água captada."
+            },
+            "codigo": {
+                "title": "Código",
+                "summary": "Construa e teste software funcional."
+            },
+            "hardware": {
+                "title": "Hardware",
+                "summary": "Projete circuitos e teste componentes físicos."
+            },
             "label": "Conhecimento na vitrine",
             "coracao": {
                 "title": "Atlas do coração",
@@ -630,7 +654,15 @@
         "hero_tagline": "Mais do que conversas com chats e abas abertas, aqui você constrói <hl>ideias que viram produtos finais</hl>.",
         "knowledge_title": "Transforme sua ideia em realidade.",
         "privacidade_titulo": "Privacidade, segurança e anonimato",
-        "privacidade_texto": "Trabalhe por conta própria ou compartilhe suas habilidades com o mundo. Ninguém precisa saber quem você é ou o que faz.",
+        "study_beyond_prompts": "Leve seus estudos a outro nível, além dos prompts.",
+        "privacidade_fluxo": {
+            "conta": "Espaço privado",
+            "conta_detalhe": "Converse com modelos de IA sem abrir mão do que é seu. Mantenha fora da conversa os arquivos que quiser preservar em privado.",
+            "vitrine": "Vitrine pública",
+            "vitrine_detalhe": "Prove o que você sabe e escolha o que mostrar. As credenciais e a privacidade são construídas na Solana.",
+            "proposta": "Proposta privada",
+            "proposta_detalhe": "Com regras claras no marketplace, interessados poderão fazer propostas sem revelar publicamente sua identidade."
+        },
         "flow": {
             "ideas": "ideias",
             "projects": "projetos",

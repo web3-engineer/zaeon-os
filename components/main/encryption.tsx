@@ -5,10 +5,9 @@ import { motion } from "framer-motion";
 import React, { useState, useEffect } from "react";
 import NextImage from "next/image";
 import { useTranslation } from "react-i18next";
-import ContadorProjetos from "./ContadorProjetos";
 import SolanaPrivacidade from "./SolanaPrivacidade";
 import ProjetoVencedor from "./ProjetoVencedor";
-import TimelineIdeia from "./TimelineIdeia";
+import ConhecimentoShowcase from "./ConhecimentoShowcase";
 import { TituloSecao } from "@/components/layout/secao";
 import MolecularText from "@/components/ui/MolecularText";
 
@@ -125,15 +124,15 @@ export default function Encryption() {
 
     return (
         <div className="w-full relative">
-            <section id="como-funciona" className="relative z-[30] w-full bg-transparent py-12 md:py-16 scroll-mt-28">
+            <section id="como-funciona" className="relative z-[30] w-full overflow-x-clip bg-transparent py-12 md:py-16 scroll-mt-28">
                 <div className="zaeon-borda">
                     <div className="ci-titulo-secao"><TituloSecao className="mx-auto text-center font-display" forte={t("landing.knowledge_title", { defaultValue: "" })} /></div>
 
-                    {/* SUBHEADER: a TIMELINE da evolução de uma ideia (o visualizador 3D que se constrói conforme a barra
-                        de progresso avança) + o contador grande de projetos da comunidade. */}
-                    <TimelineIdeia className="mt-8 md:mt-10" />
-                    <ContadorProjetos className="mt-8 md:mt-12" />
+                    <p className="mx-auto mt-4 max-w-xl text-center font-display text-xl font-semibold text-slate-900 dark:text-white md:text-2xl">
+                        {t("landing.study_beyond_prompts")}
+                    </p>
                 </div>
+                <ConhecimentoShowcase />
             </section>
 
             {/* ========================================================= */}

@@ -538,6 +538,30 @@
     },
     "landing": {
         "knowledge_cards": {
+            "hortas": {
+                "title": "Jardins partagés",
+                "summary": "Planifiez les parcelles, le compostage et l’arrosage."
+            },
+            "ecovilas": {
+                "title": "Écovillages",
+                "summary": "Étudiez le logement, l’alimentation et l’énergie partagés."
+            },
+            "comunidades": {
+                "title": "Communautés décentralisées",
+                "summary": "Concevez des règles collectives, des votes et des mécanismes de contrôle."
+            },
+            "cisternas": {
+                "title": "Récupération d’eau de pluie",
+                "summary": "Dimensionnez une citerne et planifiez l’usage de l’eau collectée."
+            },
+            "codigo": {
+                "title": "Code",
+                "summary": "Créez et testez des logiciels fonctionnels."
+            },
+            "hardware": {
+                "title": "Hardware",
+                "summary": "Concevez des circuits et testez des composants physiques."
+            },
             "label": "Savoirs sur la Marketplace",
             "coracao": {
                 "title": "Atlas du cœur",
@@ -630,7 +654,15 @@
         "hero_tagline": "Bien plus que des conversations avec des chatbots et des onglets ouverts : ici, vous construisez <hl>des idées qui deviennent des produits finis</hl>.",
         "knowledge_title": "Transformez votre idée en réalité.",
         "privacidade_titulo": "Confidentialité, sécurité et anonymat",
-        "privacidade_texto": "Travaillez de votre côté ou partagez vos compétences avec le monde. Personne n’a besoin de savoir qui vous êtes ni ce que vous faites.",
+        "study_beyond_prompts": "Faites passer vos études à un autre niveau, au-delà des prompts.",
+        "privacidade_fluxo": {
+            "conta": "Espace privé",
+            "conta_detalhe": "Discutez avec des modèles d’IA tout en gardant la propriété de votre travail. Gardez les fichiers privés en dehors de la conversation.",
+            "vitrine": "Vitrine publique",
+            "vitrine_detalhe": "Prouvez vos connaissances et choisissez quoi montrer. Les identifiants et la confidentialité reposent sur Solana.",
+            "proposta": "Offre privée",
+            "proposta_detalhe": "Selon les règles de la place de marché, les acheteurs pourraient faire une offre sans révéler publiquement leur identité."
+        },
         "flow": {
             "ideas": "idées",
             "projects": "projets",

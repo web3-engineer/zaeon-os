@@ -538,6 +538,30 @@
     },
     "landing": {
         "knowledge_cards": {
+            "hortas": {
+                "title": "Gemeinschaftsgärten",
+                "summary": "Plane Beete, Kompostierung und Bewässerung."
+            },
+            "ecovilas": {
+                "title": "Ökodörfer",
+                "summary": "Untersuche gemeinschaftliches Wohnen, Ernährung und Energie."
+            },
+            "comunidades": {
+                "title": "Dezentrale Gemeinschaften",
+                "summary": "Entwirf gemeinsame Regeln, Abstimmungen und Rechenschaftsverfahren."
+            },
+            "cisternas": {
+                "title": "Regenwassernutzung",
+                "summary": "Dimensioniere eine Zisterne und plane die Wassernutzung."
+            },
+            "codigo": {
+                "title": "Code",
+                "summary": "Entwickle und teste funktionsfähige Software."
+            },
+            "hardware": {
+                "title": "Hardware",
+                "summary": "Entwirf Schaltungen und teste physische Bauteile."
+            },
             "label": "Wissen auf dem Marktplatz",
             "coracao": {
                 "title": "Atlas des Herzens",
@@ -630,7 +654,15 @@
         "hero_tagline": "Mehr als Gespräche mit Chatbots und offenen Tabs – hier bauen Sie <hl>Ideen, die zu fertigen Produkten werden</hl>.",
         "knowledge_title": "Verwandeln Sie Ihre Idee in Realität.",
         "privacidade_titulo": "Privatsphäre, Sicherheit und Anonymität",
-        "privacidade_texto": "Arbeite für dich oder teile deine Fähigkeiten mit der Welt. Niemand muss wissen, wer du bist oder was du machst.",
+        "study_beyond_prompts": "Bring dein Lernen auf die nächste Stufe, über Prompts hinaus.",
+        "privacidade_fluxo": {
+            "conta": "Privater Arbeitsbereich",
+            "conta_detalhe": "Sprich mit KI-Modellen und behalte die Rechte an deiner Arbeit. Lasse private Dateien außerhalb des Chats.",
+            "vitrine": "Öffentliche Vitrine",
+            "vitrine_detalhe": "Zeige, was du kannst, und entscheide, was du offenlegst. Nachweise und Privatsphäre basieren auf Solana.",
+            "proposta": "Privates Angebot",
+            "proposta_detalhe": "Nach den Marktplatzregeln könnten Interessierte ein Angebot abgeben, ohne ihre Identität öffentlich preiszugeben."
+        },
         "flow": {
             "ideas": "Ideen",
             "projects": "Projekte",

@@ -114,7 +114,7 @@ export default function HeroPage() {
   }, []);
 
   return (
-    <main className={`relative isolate flex min-h-[65svh] w-full flex-col items-center justify-center overflow-hidden px-5 py-16 text-center font-display md:min-h-[calc(100svh-110px)] ${styles.aquario}`}>
+    <main className={`relative isolate flex min-h-[65svh] w-full flex-col items-center justify-center overflow-hidden px-5 pb-16 pt-24 text-center font-display md:min-h-svh ${styles.aquario}`}>
       <div className={styles.oceano} aria-hidden="true">
         <CiclosAquario />
         <div className={styles.camadaMarinha}>
@@ -162,11 +162,11 @@ export default function HeroPage() {
               <span className="sr-only">{t("landing.hero_principal.linha")} {t("landing.hero_principal.termo_0")}</span>
               <span aria-hidden="true">
                 {t("landing.hero_principal.linha")}
-                <span className={`block text-cyan-600 dark:text-[#67d8f2] ${styles.palavraMatrix}`} key={palavra}>
-                  <span className={styles.codigoMatrix} aria-hidden="true">
-                    <span>10▓01┇</span><span>カ0▒1ナ</span><span>░11⟁0</span>
+                <span className={`block text-cyan-600 dark:text-[#67d8f2] ${styles.palavraParticulas}`}>
+                  <span key={palavra} className={styles.termoParticulas}>{t(`landing.hero_principal.termo_${palavra}`)}</span>
+                  <span key={`particulas-${palavra}`} className={styles.particulasPalavra}>
+                    {Array.from({ length: 12 }, (_, i) => <i key={i} style={{ left: `${4 + i * 8}%`, top: `${24 + (i * 19) % 52}%`, animationDelay: `${i * 14}ms` }} />)}
                   </span>
-                  <span className={styles.termoMatrix}>{t(`landing.hero_principal.termo_${palavra}`)}</span>
                 </span>
               </span>
             </h1>
@@ -243,58 +243,6 @@ export default function HeroPage() {
         )}
       </AnimatePresence>
 
-      {/* CSS do Glitch Holográfico Elegante (assinatura da casa) */}
-      <style jsx global>{`
-        .cyber-glitch {
-          position: relative;
-        }
-
-        .cyber-glitch::before,
-        .cyber-glitch::after {
-          content: attr(data-text);
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: transparent;
-          pointer-events: none;
-        }
-
-        .cyber-glitch::before {
-          left: 1px;
-          text-shadow: -1px 0 rgba(6, 182, 212, 0.8);
-          clip-path: polygon(0 0, 100% 0, 100% 10%, 0 10%);
-          animation: glitch-elegant-1 3.5s infinite linear alternate-reverse;
-        }
-
-        .cyber-glitch::after {
-          left: -1px;
-          text-shadow: 1px 0 rgba(255, 255, 255, 0.3);
-          clip-path: polygon(0 80%, 100% 80%, 100% 100%, 0 100%);
-          animation: glitch-elegant-2 4s infinite linear alternate-reverse;
-        }
-
-        @keyframes glitch-elegant-1 {
-          0% { clip-path: polygon(0 15%, 100% 15%, 100% 25%, 0 25%); transform: translate(0); }
-          10% { clip-path: polygon(0 45%, 100% 45%, 100% 50%, 0 50%); transform: translate(-1px, 1px); }
-          20% { clip-path: polygon(0 85%, 100% 85%, 100% 90%, 0 90%); transform: translate(1px, -1px); }
-          30% { clip-path: polygon(0 10%, 100% 10%, 100% 20%, 0 20%); transform: translate(0); }
-          40% { clip-path: polygon(0 60%, 100% 60%, 100% 70%, 0 70%); transform: translate(-1px, 0); }
-          50% { clip-path: polygon(0 30%, 100% 30%, 100% 40%, 0 40%); transform: translate(0); }
-          60%, 100% { clip-path: polygon(0 0, 0 0, 0 0, 0 0); transform: translate(0); }
-        }
-
-        @keyframes glitch-elegant-2 {
-          0%, 40% { clip-path: polygon(0 0, 0 0, 0 0, 0 0); transform: translate(0); }
-          50% { clip-path: polygon(0 20%, 100% 20%, 100% 30%, 0 30%); transform: translate(1px, 0); }
-          60% { clip-path: polygon(0 75%, 100% 75%, 100% 80%, 0 80%); transform: translate(-1px, 1px); }
-          70% { clip-path: polygon(0 40%, 100% 40%, 100% 55%, 0 55%); transform: translate(0); }
-          80% { clip-path: polygon(0 80%, 100% 80%, 100% 90%, 0 90%); transform: translate(1px, -1px); }
-          90% { clip-path: polygon(0 5%, 100% 5%, 100% 15%, 0 15%); transform: translate(-1px, 0); }
-          100% { clip-path: polygon(0 60%, 100% 60%, 100% 65%, 0 65%); transform: translate(0); }
-        }
-      `}</style>
     </main>
   );
 }

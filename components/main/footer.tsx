@@ -52,17 +52,7 @@ export const Footer = () => {
   return (
     <footer className="w-full border-t border-slate-200 dark:border-white/10 bg-white/40 dark:bg-black/30 backdrop-blur-md text-slate-600 dark:text-gray-400">
       <div className="zaeon-borda py-14">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-10">
-          {/* Coluna da marca */}
-          <div className="col-span-2 md:col-span-1">
-            <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-white text-lg tracking-tight mb-3">
-              <span>Zaeon</span>
-            </div>
-            <p className="text-sm text-slate-500 dark:text-gray-500 leading-relaxed max-w-[220px]">
-              {t("landing.interface.resumo", { defaultValue: "" })}
-            </p>
-          </div>
-
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
           {/* Colunas de links */}
           {COLS.map((col) => (
             <div key={col.title}>

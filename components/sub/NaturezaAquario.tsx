@@ -40,19 +40,27 @@ export default function NaturezaAquario() {
     <div className={styles.natureza} aria-hidden="true">
       {[0, 1, 2, 3, 4].map((i) => <div key={i} className={styles.trajetoriaBorboleta}><Borboleta /></div>)}
       <svg className={styles.arvoreNatureza} viewBox="0 0 480 400">
+        <defs>
+          <linearGradient id="natureza-casca" x2="100%" y2="20%">
+            <stop stopColor="#49392f" />
+            <stop offset=".38" stopColor="#867055" />
+            <stop offset=".62" stopColor="#6d5440" />
+            <stop offset="1" stopColor="#453629" />
+          </linearGradient>
+        </defs>
         <ellipse className={styles.semente} cx="240" cy="369" rx="7" ry="4" fill="#ad854f" transform="rotate(-21 240 369)" />
         <g className={styles.broto}>
           <path d="M240 372Q226 339 242 309" stroke="#7db87c" strokeWidth="5" fill="none" />
           <path d="M234 339Q210 305 199 324Q202 345 234 339M240 321Q251 295 270 305Q265 329 240 321" fill="#83c684" />
         </g>
         <g className={styles.arvoreAdulta}>
-          <path d="M215 372Q235 351 231 273Q228 219 229 161L248 156Q244 240 251 284Q254 345 269 372Z" fill="#725e4b" />
+          <path d="M190 374Q219 366 224 341C234 302 222 264 229 229Q235 195 225 159L245 153Q251 187 245 222C238 265 250 296 253 333Q257 361 280 374L255 368L245 376L231 367L215 375L218 368Z" fill="url(#natureza-casca)" />
           <path d="M239 270Q225 231 193 191L157 157M239 243Q272 204 311 179L328 144M238 214Q251 161 256 112M228 244Q202 218 171 214L127 190"
             fill="none" stroke="#725e4b" strokeWidth="10" strokeLinecap="round" />
           <path d="M239 350Q238 312 242 278M224 369Q208 365 193 376M254 363Q275 365 288 374" stroke="#b8996e" strokeOpacity=".55" strokeWidth="3" fill="none" />
           <path d="M208 344Q214 273 182 231L151 205M247 302Q275 249 312 235L345 204M235 222Q212 194 210 151M269 217Q281 182 310 158M189 228L125 210M251 355L287 376M225 358L176 374"
             fill="none" stroke="#6a5039" strokeWidth="4" strokeLinecap="round" />
-          <path d="M236 350Q226 309 235 261M247 344Q243 310 245 288M236 249L233 192"
+          <path d="M231 363C242 328 225 295 235 259Q242 241 237 221M247 351Q240 326 246 304M236 249L233 192M225 354Q229 332 227 311"
             fill="none" stroke="#c3a578" strokeOpacity=".48" strokeWidth="2" />
           <g>
             {folhas.map(({ x, y, tamanho, cor }, i) => (

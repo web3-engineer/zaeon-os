@@ -41,7 +41,7 @@ export default function Home() {
     return (
         <div className="relative h-full w-full">
             <div className={`relative flex h-full flex-col ${styles.conteudo}`}>
-                <div className="flex w-full flex-col pt-[110px]">
+                <div className="flex w-full flex-col">
                     <HeroPage />
                     <Encryption />
                     <div id="study-rooms" className="w-full">

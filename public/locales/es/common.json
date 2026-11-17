@@ -538,6 +538,30 @@
     },
     "landing": {
         "knowledge_cards": {
+            "hortas": {
+                "title": "Huertos comunitarios",
+                "summary": "Planifica bancales, compostaje y riego."
+            },
+            "ecovilas": {
+                "title": "Ecoaldeas",
+                "summary": "Estudia la vivienda, la alimentación y la energía compartidas."
+            },
+            "comunidades": {
+                "title": "Comunidades descentralizadas",
+                "summary": "Diseña reglas colectivas, votaciones y rendición de cuentas."
+            },
+            "cisternas": {
+                "title": "Captación de agua de lluvia",
+                "summary": "Dimensiona una cisterna y planifica el uso del agua recogida."
+            },
+            "codigo": {
+                "title": "Código",
+                "summary": "Crea y prueba software funcional."
+            },
+            "hardware": {
+                "title": "Hardware",
+                "summary": "Diseña circuitos y prueba componentes físicos."
+            },
             "label": "Conocimiento en el mercado",
             "coracao": {
                 "title": "Atlas del corazón",
@@ -630,7 +654,15 @@
         "hero_tagline": "Más que conversaciones con chats y pestañas abiertas: aquí construyes <hl>ideas que se convierten en productos finales</hl>.",
         "knowledge_title": "Convierte tu idea en realidad.",
         "privacidade_titulo": "Privacidad, seguridad y anonimato",
-        "privacidade_texto": "Trabaja por tu cuenta o comparte tus habilidades con el mundo. Nadie necesita saber quién eres ni qué haces.",
+        "study_beyond_prompts": "Lleva tus estudios a otro nivel, más allá de los prompts.",
+        "privacidade_fluxo": {
+            "conta": "Espacio privado",
+            "conta_detalhe": "Conversa con modelos de IA y conserva la titularidad de tu trabajo. Mantén fuera de la conversación los archivos que quieras conservar en privado.",
+            "vitrine": "Vitrina pública",
+            "vitrine_detalhe": "Demuestra lo que sabes y elige qué mostrar. Las credenciales y la privacidad se construyen en Solana.",
+            "proposta": "Oferta privada",
+            "proposta_detalhe": "Con reglas claras, los interesados podrían presentar ofertas sin revelar públicamente su identidad."
+        },
         "flow": {
             "ideas": "ideas",
             "projects": "proyectos",

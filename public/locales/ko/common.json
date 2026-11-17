@@ -538,6 +538,30 @@
     },
     "landing": {
         "knowledge_cards": {
+            "hortas": {
+                "title": "공동체 텃밭",
+                "summary": "재배 구역, 퇴비화, 관개를 계획하세요."
+            },
+            "ecovilas": {
+                "title": "생태 마을",
+                "summary": "공동 주거, 식량, 에너지를 살펴보세요."
+            },
+            "comunidades": {
+                "title": "탈중앙화 커뮤니티",
+                "summary": "공동 규칙, 투표, 책임 체계를 설계하세요."
+            },
+            "cisternas": {
+                "title": "빗물 활용",
+                "summary": "저수조의 크기와 모은 물의 활용 방법을 계획하세요."
+            },
+            "codigo": {
+                "title": "코드",
+                "summary": "동작하는 소프트웨어를 만들고 테스트하세요."
+            },
+            "hardware": {
+                "title": "하드웨어",
+                "summary": "회로를 설계하고 실제 부품을 테스트하세요."
+            },
             "label": "마켓플레이스의 지식",
             "coracao": {
                 "title": "심장 해부 아틀라스",
@@ -630,7 +654,15 @@
         "hero_tagline": "챗봇과의 대화, 열려 있는 탭 그 이상 — 여기서 당신은 <hl>완성된 제품이 되는 아이디어</hl>를 만듭니다.",
         "knowledge_title": "당신의 아이디어를 현실로 만드세요.",
         "privacidade_titulo": "개인정보 보호, 안전, 익명성",
-        "privacidade_texto": "혼자 작업하거나 세상과 전문성을 나누세요. 당신이 누구인지, 무엇을 하는지 아무도 알 필요가 없습니다.",
+        "study_beyond_prompts": "프롬프트를 넘어 학습의 수준을 높이세요.",
+        "privacidade_fluxo": {
+            "conta": "비공개 작업 공간",
+            "conta_detalhe": "AI 모델과 대화하면서 작업물의 소유권을 유지하세요. 비공개 파일은 대화에 첨부하지 마세요.",
+            "vitrine": "공개 전시",
+            "vitrine_detalhe": "아는 것을 증명하고 무엇을 보여줄지 선택하세요. 자격 증명과 개인정보 보호는 솔라나를 기반으로 합니다.",
+            "proposta": "비공개 제안",
+            "proposta_detalhe": "마켓플레이스 규칙에 따라 구매 희망자는 신원을 공개하지 않고 제안할 수 있습니다."
+        },
         "flow": {
             "ideas": "아이디어",
             "projects": "프로젝트",
