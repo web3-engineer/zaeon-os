@@ -713,18 +713,26 @@
             "life": "dein Leben"
         },
         "anatomia_amostra": {
+            "bronquios": "Bronchien",
+            "estomago": "Magen",
+            "rins": "Nieren",
+            "prova": "Du musst zeigen, was du weißt.",
+            "pulmoes": "Lunge",
+            "saber": "In der heutigen Welt reicht Wissen allein nicht aus.",
+            "provar": "Ich suche immer nach Talenten, die ich mit Unternehmen vernetzen kann.",
+            "proximo": "Du könntest das nächste Talent sein.",
             "titulo": "Menschliche Anatomie in Bewegung",
             "descricao": "Erkunde den Aufbau des Nerven- und Kreislaufsystems im menschlichen Körper.",
             "cerebro": "Gehirn",
             "coracao": "Herz"
         },
         "privacidade_fluxo": {
-            "conta": "Privater Arbeitsbereich",
-            "conta_detalhe": "Sprich mit KI-Modellen und behalte die Rechte an deiner Arbeit. Lasse private Dateien außerhalb des Chats.",
-            "vitrine": "Öffentliche Vitrine",
-            "vitrine_detalhe": "Zeige, was du kannst, und entscheide, was du offenlegst. Nachweise und Privatsphäre basieren auf Solana.",
-            "proposta": "Privates Angebot",
-            "proposta_detalhe": "Nach den Marktplatzregeln könnten Interessierte ein Angebot abgeben, ohne ihre Identität öffentlich preiszugeben."
+            "conta": "Immer privat",
+            "conta_detalhe": "Unterhalte dich mit KI-Modellen in einem privaten Arbeitsbereich. Du entscheidest, was du teilst.",
+            "vitrine": "Verifizierbare Nachweise",
+            "vitrine_detalhe": "Zeige, was du kannst. Verknüpfe deine Arbeit mit verifizierbaren Nachweisen und sieh in der Rangliste, wie sich deine Fähigkeiten in deinem Fachgebiet abheben.",
+            "proposta": "Geschäftsvereinbarungen ohne Papierkram",
+            "proposta_detalhe": "Vereinbare Projektmeilensteine mit Unternehmen und kommuniziere privat auf Zaeon."
         },
         "flow": {
             "ideas": "Ideen",

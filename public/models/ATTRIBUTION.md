@@ -52,3 +52,5 @@ The landing heart close-up (`coracao-landing.webp`) uses the cardiac vertices of
 The landing brain close-up (`cerebro-landing.webp`) uses selected cerebral and cerebellar vertices from the same BodyParts3D dataset, projected at an oblique angle and recolored by Zaeon.
 
 The three-quarter and profile views of the landing anatomy are point projections of the same skeletal, arterial and cardiac vertices.
+
+The landing anatomy study point cloud (anatomia-landing-pontos.bin) is a subsampled, quantized adaptation of BodyParts3D 4.0 skeletal, arterial, cardiac, nervous and respiratory geometry, plus the stomach and kidneys, under CC BY 4.0. It is rendered from changing angles by Zaeon.

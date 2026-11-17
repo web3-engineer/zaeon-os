@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
-import { ArrowRightIcon, DocumentTextIcon, LockClosedIcon, EnvelopeIcon, ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
+import { ArrowRightIcon, CheckBadgeIcon, DocumentTextIcon, LockClosedIcon, EnvelopeIcon, ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 import SolanaMark from "@/components/solana/SolanaMark";
-import { TituloSecao } from "@/components/layout/secao";
 import "./solana-pipeline.css";
 import "./privacidade-vitrine.css";
 
@@ -13,6 +12,7 @@ function FluxoPrivacidade() {
   return (
     <ol className="pv-fluxo">
       <li>
+        <span className="pv-onda" aria-hidden="true" />
         <div className="pv-cena pv-cofre" aria-hidden="true">
           <div className="pv-chat"><ChatBubbleLeftRightIcon /><i /><i /></div>
           <div className="pv-documentos"><DocumentTextIcon /><LockClosedIcon className="pv-cadeado" /></div>
@@ -21,15 +21,17 @@ function FluxoPrivacidade() {
         <p>{t("landing.privacidade_fluxo.conta_detalhe")}</p>
       </li>
       <li>
+        <span className="pv-onda" aria-hidden="true" />
         <ArrowRightIcon className="pv-seta" aria-hidden="true" />
         <div className="pv-cena pv-vitrine" aria-hidden="true">
-          <div className="pv-artefato"><DocumentTextIcon /><i /><i /><span className="pv-scan" /></div>
+          <div className="pv-artefato"><CheckBadgeIcon /><i /><i /><span className="pv-scan" /></div>
           <span className="pv-selo"><SolanaMark size={19} /></span>
         </div>
         <h3>{t("landing.privacidade_fluxo.vitrine")}</h3>
         <p>{t("landing.privacidade_fluxo.vitrine_detalhe")}</p>
       </li>
       <li>
+        <span className="pv-onda" aria-hidden="true" />
         <ArrowRightIcon className="pv-seta" aria-hidden="true" />
         <div className="pv-cena pv-proposta" aria-hidden="true">
           <div className="pv-envelope"><EnvelopeIcon /><span className="pv-termos"><i /><i /></span><LockClosedIcon className="pv-cadeado" /></div>
@@ -44,10 +46,7 @@ function FluxoPrivacidade() {
 export default function SolanaPrivacidade() {
   const { t } = useTranslation();
   return (
-    <section id="privacidade" aria-labelledby="privacidade-titulo" className="zaeon-borda relative z-40 w-full scroll-mt-28 py-12 md:py-16">
-      <div id="privacidade-titulo">
-        <TituloSecao className="mx-auto text-center font-display" forte={t("landing.privacidade_titulo")} />
-      </div>
+    <section id="privacidade" aria-label={t("landing.privacidade_titulo")} className="zaeon-borda relative z-40 w-full scroll-mt-28 py-12 md:py-16">
       <FluxoPrivacidade />
       {/* o selo da Solana logo após o módulo */}
       <div className="mx-auto mt-6 flex w-fit items-center gap-3 rounded-full border border-white/15 bg-black/80 px-4 py-2 shadow-[0_0_30px_rgba(220,31,255,0.15)]">

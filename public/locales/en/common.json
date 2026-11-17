@@ -713,18 +713,26 @@
             "life": "life"
         },
         "anatomia_amostra": {
+            "bronquios": "Bronchi",
+            "estomago": "Stomach",
+            "rins": "Kidneys",
+            "prova": "You have to prove that you know.",
+            "pulmoes": "Lungs",
+            "saber": "In today’s world, knowing isn’t enough.",
+            "provar": "I’m always looking for talented people to connect with companies.",
+            "proximo": "You could be next.",
             "titulo": "Human anatomy in motion",
             "descricao": "Explore how the nervous and circulatory systems are arranged in the human body.",
             "cerebro": "Brain",
             "coracao": "Heart"
         },
         "privacidade_fluxo": {
-            "conta": "Private workspace",
-            "conta_detalhe": "Talk with your AI model without share your work to their providers. we keep it safe and yours.",
-            "vitrine": "Public showcase",
-            "vitrine_detalhe": "Prove what you know and choose what to show. The credentials are built in Solana, and so the privacy.",
-            "proposta": "Private offer",
-            "proposta_detalhe": "Under marketplace rules, interested buyers could make offers without revealing their identity publicly."
+            "conta": "Always Private",
+            "conta_detalhe": "Chat with AI models in a private workspace. You decide what to share.",
+            "vitrine": "Verifiable credentials",
+            "vitrine_detalhe": "Show what you can do. Link your work to verifiable credentials and use the ranking to see how your skills stand out in your field.",
+            "proposta": "Business deals, without the paperwork",
+            "proposta_detalhe": "Agree on project milestones with companies and keep your conversations private, all on Zaeon."
         },
         "flow": {
             "ideas": "ideas",

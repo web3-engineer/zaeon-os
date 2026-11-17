@@ -713,18 +713,26 @@
             "life": "sua vida"
         },
         "anatomia_amostra": {
+            "bronquios": "Brônquios",
+            "estomago": "Estômago",
+            "rins": "Rins",
+            "prova": "Você tem que provar o que sabe.",
+            "pulmoes": "Pulmões",
+            "saber": "No mundo de hoje, saber não é suficiente.",
+            "provar": "Estou sempre em busca de talentos para conectar a empresas.",
+            "proximo": "Você pode ser o próximo talento.",
             "titulo": "Anatomia humana em movimento",
             "descricao": "Explore como os sistemas nervoso e circulatório se organizam no corpo humano.",
             "cerebro": "Cérebro",
             "coracao": "Coração"
         },
         "privacidade_fluxo": {
-            "conta": "Espaço privado",
-            "conta_detalhe": "Converse com modelos de IA sem abrir mão do que é seu. Mantenha fora da conversa os arquivos que quiser preservar em privado.",
-            "vitrine": "Vitrine pública",
-            "vitrine_detalhe": "Prove o que você sabe e escolha o que mostrar. As credenciais e a privacidade são construídas na Solana.",
-            "proposta": "Proposta privada",
-            "proposta_detalhe": "Com regras claras no marketplace, interessados poderão fazer propostas sem revelar publicamente sua identidade."
+            "conta": "Sempre privado",
+            "conta_detalhe": "Converse com modelos de IA num espaço privado. Você decide o que compartilhar.",
+            "vitrine": "Credenciais verificáveis",
+            "vitrine_detalhe": "Mostre o que você sabe fazer. Vincule seu trabalho a credenciais verificáveis e use o ranking para entender como suas habilidades se destacam na sua área.",
+            "proposta": "Acordos com empresas, sem burocracia",
+            "proposta_detalhe": "Combine os marcos do projeto com empresas e mantenha as conversas privadas, tudo dentro da Zaeon."
         },
         "flow": {
             "ideas": "ideias",

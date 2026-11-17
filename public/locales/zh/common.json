@@ -713,18 +713,26 @@
             "life": "生活"
         },
         "anatomia_amostra": {
+            "bronquios": "支气管",
+            "estomago": "胃",
+            "rins": "肾脏",
+            "prova": "你必须证明你所掌握的知识。",
+            "pulmoes": "肺",
+            "saber": "在今天的世界，知道还不够。",
+            "provar": "我一直在寻找可以与企业对接的人才。",
+            "proximo": "下一个可能就是你。",
             "titulo": "动态人体解剖",
             "descricao": "探索人体神经系统和循环系统的分布。",
             "cerebro": "大脑",
             "coracao": "心脏"
         },
         "privacidade_fluxo": {
-            "conta": "私密工作空间",
-            "conta_detalhe": "与 AI 模型对话，同时保留作品的所有权。请勿在对话中添加想要保密的文件。",
-            "vitrine": "公开展台",
-            "vitrine_detalhe": "证明你所掌握的知识，并选择展示哪些内容。凭证和隐私保护均基于 Solana。",
-            "proposta": "私下报价",
-            "proposta_detalhe": "按明确的市场规则，买家可以在不公开身份的情况下提出报价。"
+            "conta": "始终私密",
+            "conta_detalhe": "在私密工作空间中与 AI 模型对话。由你决定分享什么。",
+            "vitrine": "可验证凭证",
+            "vitrine_detalhe": "展示你的能力。将作品与可验证凭证关联，并通过排名了解你的技能在所属领域中的表现。",
+            "proposta": "无需繁琐文书的企业合作",
+            "proposta_detalhe": "直接在 Zaeon 上与企业约定项目里程碑，并保持沟通私密。"
         },
         "flow": {
             "ideas": "想法",

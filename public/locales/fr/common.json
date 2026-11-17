@@ -713,18 +713,26 @@
             "life": "votre vie"
         },
         "anatomia_amostra": {
+            "bronquios": "Bronches",
+            "estomago": "Estomac",
+            "rins": "Reins",
+            "prova": "Il faut prouver ce que vous savez.",
+            "pulmoes": "Poumons",
+            "saber": "Dans le monde d’aujourd’hui, savoir ne suffit pas.",
+            "provar": "Je cherche toujours des talents à mettre en relation avec des entreprises.",
+            "proximo": "Vous pourriez être le prochain talent.",
             "titulo": "Anatomie humaine en mouvement",
             "descricao": "Explorez l’organisation des systèmes nerveux et circulatoire dans le corps humain.",
             "cerebro": "Cerveau",
             "coracao": "Cœur"
         },
         "privacidade_fluxo": {
-            "conta": "Espace privé",
-            "conta_detalhe": "Discutez avec des modèles d’IA tout en gardant la propriété de votre travail. Gardez les fichiers privés en dehors de la conversation.",
-            "vitrine": "Vitrine publique",
-            "vitrine_detalhe": "Prouvez vos connaissances et choisissez quoi montrer. Les identifiants et la confidentialité reposent sur Solana.",
-            "proposta": "Offre privée",
-            "proposta_detalhe": "Selon les règles de la place de marché, les acheteurs pourraient faire une offre sans révéler publiquement leur identité."
+            "conta": "Toujours privé",
+            "conta_detalhe": "Échangez avec des modèles d’IA dans un espace privé. Vous choisissez quoi partager.",
+            "vitrine": "Justificatifs vérifiables",
+            "vitrine_detalhe": "Montrez ce que vous savez faire. Associez vos réalisations à des justificatifs vérifiables et situez vos compétences dans le classement de votre domaine.",
+            "proposta": "Des accords sans paperasse",
+            "proposta_detalhe": "Convenez des jalons avec les entreprises et échangez en privé sur Zaeon."
         },
         "flow": {
             "ideas": "idées",
