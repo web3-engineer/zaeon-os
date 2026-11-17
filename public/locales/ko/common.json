@@ -15,6 +15,7 @@
     "languageAria": "현재 언어: {{name}}. 클릭하여 변경하세요."
   },
   "labSidebar": {
+    "offline": "연결 없음: 인터넷이 다시 연결되면 대화가 표시됩니다.",
     "actions": "작업",
     "cyberspace": "사이버스페이스",
     "study": "학습실",

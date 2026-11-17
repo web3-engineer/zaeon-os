@@ -23,6 +23,13 @@ import { descricaoZaeon } from "@/config";
  *   80% do lado — um icone sem essa folga aparece com as beiradas decepadas.
  * - `id` fixo: sem ele o navegador usa a `start_url` como identidade, e mudar a
  *   start_url um dia faria o aparelho tratar como se fosse outro app.
+ * - #841: `start_url` abre direto na CONVERSA. Quem instala o app já usa a Zaeon;
+ *   antes o ícone caía na apresentação (pesada) e pedia mais toques até o chat. Sem
+ *   conta, o laboratório manda pro login, que volta pra cá. `?estudo=chat` é o mesmo
+ *   pedido do tablet (StudyRoomContent) e `origem=app` marca de onde veio.
+ * - `shortcuts`: segurar o ícone mostra Aura, Estudos e Escritório.
+ * - `screenshots` (a instalação como numa loja) ficam para depois: precisam de
+ *   prints de verdade do app novo (#837), tirados numa conta sem dados pessoais.
  */
 export default function manifest(): MetadataRoute.Manifest {
     return {
@@ -30,7 +37,7 @@ export default function manifest(): MetadataRoute.Manifest {
         name: "Zaeon",
         short_name: "Zaeon",
         description: descricaoZaeon,
-        start_url: "/",
+        start_url: "/research-lab?tab=sala-de-estudos&estudo=chat&origem=app",
         scope: "/",
         display: "standalone",
         orientation: "any",
@@ -53,6 +60,29 @@ export default function manifest(): MetadataRoute.Manifest {
                 sizes: "512x512",
                 type: "image/png",
                 purpose: "maskable",
+            },
+        ],
+        shortcuts: [
+            {
+                name: "Aura",
+                short_name: "Aura",
+                description: "Conversar com a Aura",
+                url: "/research-lab?tab=sala-de-estudos&estudo=chat&origem=atalho",
+                icons: [{ src: "/icons/icon-192.png?v=3", sizes: "192x192", type: "image/png" }],
+            },
+            {
+                name: "Estudos",
+                short_name: "Estudos",
+                description: "Abrir os seus estudos",
+                url: "/research-lab?tab=sala-de-estudos&estudo=feed&origem=atalho",
+                icons: [{ src: "/icons/icon-192.png?v=3", sizes: "192x192", type: "image/png" }],
+            },
+            {
+                name: "Escritório",
+                short_name: "Escritório",
+                description: "Coworking com a turma e os agentes",
+                url: "/research-lab?tab=escritorio&origem=atalho",
+                icons: [{ src: "/icons/icon-192.png?v=3", sizes: "192x192", type: "image/png" }],
             },
         ],
     };

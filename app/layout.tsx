@@ -14,6 +14,7 @@ import { Web3Provider } from "@/src/context/Web3Context";
 // --- COMPONENTES GLOBAIS ---
 import { Navbar } from "@/components/main/navbar";
 import { RegistrarSW } from "@/components/pwa/RegistrarSW";
+import { CorDaBarra } from "@/components/pwa/CorDaBarra";
 import { AvisoVersaoNova } from "@/components/sistema/AvisoVersaoNova";
 
 import "../src/i18n";
@@ -71,7 +72,9 @@ const sora = localFont({
  *
  * `themeColor` e um valor so, escuro, e nao um par por `prefers-color-scheme`:
  * a Zaeon abre no escuro por padrao, entao um par pintaria a barra do navegador
- * de branco para quem esta no claro do SO -- que e o descasamento pior.
+ * de branco para quem esta no claro do SO -- que e o descasamento pior. *
+ * #841: depois de montar, o <CorDaBarra /> troca essa cor pela do TEMA DA ZAEON
+ * (claro ou escuro, o botao do app) -- antes a barra ficava escura no modo claro.
  */
 export const viewport: Viewport = {
     width: "device-width",
@@ -127,6 +130,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                     defaultTheme="dark"
                     disableTransitionOnChange
                 >
+                    {/* #841: a barra de status segue o tema escolhido na Zaeon */}
+                    <CorDaBarra />
                     <AuthProvider>
                         <Web3Provider>
                             <Navbar />

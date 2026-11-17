@@ -15,6 +15,7 @@
     "languageAria": "Idioma actual: {{name}}. Haz clic para cambiar."
   },
   "labSidebar": {
+    "offline": "Sin conexión: tus conversaciones aparecen cuando vuelva internet.",
     "actions": "Acciones",
     "cyberspace": "Ciberespacio",
     "study": "Sala de Estudio",

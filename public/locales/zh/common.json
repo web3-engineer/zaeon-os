@@ -15,6 +15,7 @@
     "languageAria": "当前语言：{{name}}。点击切换。"
   },
   "labSidebar": {
+    "offline": "无网络连接：网络恢复后会显示你的对话。",
     "actions": "操作",
     "cyberspace": "赛博空间",
     "study": "学习室",
