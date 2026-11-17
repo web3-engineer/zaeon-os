@@ -862,6 +862,7 @@
             "title_highlight": "没有限制"
         },
         "premiacao": {
+            "provedores": "前沿 AI 智能体由以下模型提供支持：",
             "titulo": "我们是一家获得资助并在区块链类别获奖的巴西初创公司。",
             "apoio": "资助与支持：",
             "vencedor": "获奖产品",

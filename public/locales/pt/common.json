@@ -862,6 +862,7 @@
             "title_highlight": "SEM LIMITES"
         },
         "premiacao": {
+            "provedores": "Agentes de IA de ponta movidos por:",
             "titulo": "Somos uma startup brasileira financiada e premiada na categoria blockchain.",
             "apoio": "Financiado e apoiado por:",
             "vencedor": "Produto vencedor",

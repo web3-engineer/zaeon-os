@@ -862,6 +862,7 @@
             "title_highlight": "NO LIMITS"
         },
         "premiacao": {
+            "provedores": "Frontier AI Agents powered by:",
             "titulo": "We are a Brazilian startup that received funding and won an award in the blockchain category.",
             "apoio": "Funded and supported by:",
             "vencedor": "Award-winning product",

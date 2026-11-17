@@ -1,7 +1,6 @@
 "use client";
 
-import TextoRevelado from "@/components/ui/TextoRevelado";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import React, { useState, useEffect } from "react";
 import NextImage from "next/image";
 import { useTranslation } from "react-i18next";
@@ -10,8 +9,7 @@ import ProjetoVencedor from "./ProjetoVencedor";
 import EstudoAnatomiaLanding from "./EstudoAnatomiaLanding";
 import particulas from "@/components/sub/hero-aquario.module.css";
 import ConhecimentoShowcase from "./ConhecimentoShowcase";
-import { TituloSecao } from "@/components/layout/secao";
-import MolecularText from "@/components/ui/MolecularText";
+import { Rotulo, TituloSecao } from "@/components/layout/secao";
 
 // --- TICKER DE PATROCINADORES ---
 const SponsorsTicker = ({ opacity }: { opacity: any }) => {
@@ -29,9 +27,9 @@ const SponsorsTicker = ({ opacity }: { opacity: any }) => {
     return (
         <motion.div style={{ opacity }} className="w-full py-8 overflow-hidden relative z-50">
             <div className="w-full flex justify-center mb-8">
-                <h3 className="text-center text-[11px] font-black tracking-[0.35em] text-white uppercase">
-                    <TextoRevelado texto={t("landing.premiacao.apoio", { defaultValue: "" })} />
-                </h3>
+                <Rotulo className="text-center">
+                    {t("landing.premiacao.apoio", { defaultValue: "" })}
+                </Rotulo>
             </div>
             <div className="relative">
                 <div className="flex whitespace-nowrap">
@@ -71,32 +69,51 @@ const SponsorCard = ({ item }: { item: { name: string; src: string; url: string 
 };
 
 
-// =========================================================================
-// NOVO: SECÇÃO DE CONTRATAÇÃO DE AGENTES (Stack 3D e Highlight)
-// ══════════════════════════════════════════════════════════════════════════
-// MENTORES — os 13 reais da sala de Plugins, num carrossel
-//
-// O que estava aqui era uma pilha 3D de quatro AGENTES INVENTADOS ("Dr. Marcus
-// Vance, Advogado Societário", "Elena Rostova, Secretária Executiva"), com
-// crachá, empresa e matrícula. Ficção apresentada como catálogo numa página
-// que vende ciência: quem clicasse procurando o Dr. Vance não ia achar nada.
-//
-// Os agentes de verdade existem e são os 13 MENTORES da camada agêntica --
-// Osler (Medicina), Turing (Eng. da Computação), Noether (Matemática) e os
-// outros dez -- que já vivem na sala de Plugins. Esta seção agora mostra eles.
-// ══════════════════════════════════════════════════════════════════════════
+const provedores = [
+    { nome: "OpenAI", arquivo: "openai" },
+    { nome: "Google Gemini", arquivo: "google" },
+    { nome: "Anthropic", arquivo: "anthropic" },
+    { nome: "DeepSeek", arquivo: "deepseek" },
+    { nome: "Meta", arquivo: "meta" },
+    { nome: "Mistral AI", arquivo: "mistral" },
+];
+
+function ProvedoresTicker() {
+    const movimentoReduzido = useReducedMotion();
+    return (
+        <div className={movimentoReduzido ? "overflow-x-auto" : "overflow-hidden"}>
+            <motion.div
+                animate={movimentoReduzido ? { x: 0 } : { x: ["0%", "-50%"] }}
+                transition={movimentoReduzido ? { duration: 0 } : { ease: "linear", duration: 29, repeat: Infinity }}
+                className="flex w-max"
+            >
+                {(movimentoReduzido ? [0] : [0, 1]).map((copia) => (
+                    <ul key={copia} aria-hidden={copia === 1 || undefined} className="flex flex-none gap-4 pr-4 md:gap-6 md:pr-6">
+                        {provedores.map(({ nome, arquivo }) => (
+                            <li key={arquivo} className="grid h-[78px] w-[132px] flex-none place-items-center rounded-[1.5rem] border border-white/10 bg-[#0a0a0f] transition-colors hover:border-cyan-400/45 md:h-[100px] md:w-[188px]">
+                                <NextImage
+                                    src={`/assets/models/${arquivo}.svg`}
+                                    alt={copia === 0 ? nome : ""}
+                                    width={48}
+                                    height={48}
+                                    unoptimized
+                                    className={`h-10 w-12 object-contain ${arquivo === "openai" ? "invert" : ""}`}
+                                />
+                            </li>
+                        ))}
+                    </ul>
+                ))}
+            </motion.div>
+        </div>
+    );
+}
+
 const HireAgentsSection = () => {
     const { t } = useTranslation();
     return (
         <div id="mentores" className="w-full zaeon-borda mt-8 mb-10 md:mb-14 z-40 relative bg-transparent scroll-mt-28">
-            <motion.div
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6 }}
-            >
-                <TituloSecao className="mx-auto text-center font-display" forte={<>{t("landing.premiacao.titulo", { defaultValue: "" })}{" "} <span aria-hidden="true">🇧🇷</span></>} />
-            </motion.div>
+            <Rotulo className="mb-6 text-center">{t("landing.premiacao.provedores")}</Rotulo>
+            <ProvedoresTicker />
 
             {/* o card do PRODUTO VENCEDOR (Centelha, categoria blockchain) */}
             <ProjetoVencedor className="mt-8 md:mt-10" />
