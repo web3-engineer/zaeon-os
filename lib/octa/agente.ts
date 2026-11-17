@@ -35,7 +35,7 @@ import { ehCaminhoSensivel, noPiiLigado, CONTEUDO_PROTEGIDO } from "@/lib/octa/n
 import type { PermissaoOcta } from "@/lib/octa/projetos";
 import type { ErroPublicar, ResultadoPublicar } from "@/lib/octa/publicar";
 import type { ErroCaptura, OpcoesCaptura, ResultadoCaptura } from "@/lib/octa/captura";
-import { chamarRea, comandoRea, REA_EXEMPLOS, reaBridgeConfigurado, resumirRea } from "@/lib/octa/rea";
+import { abrirSessaoRea, chamarRea, chamarSessaoRea, comandoRea, fecharSessaoRea, REA_EXEMPLOS, reaBridgeConfigurado, resumirRea, resumirSessao } from "@/lib/octa/rea";
 
 export type Workspace = Record<string, string>;
 /** Publica o projeto do aluno (a rota fecha userId/email/projetoId aqui dentro; a tool só vê o resultado). */
@@ -165,6 +165,44 @@ export const FERRAMENTAS_REA: ToolDef[] = [
       }
       const r = await chamarRea({ command: comando, args, artifact, handle: handle || undefined });
       return r.ok ? ok(resumirRea(r)) : err(resumirRea(r), "rea_error");
+    },
+  },
+  {
+    // o MODO SESSÃO (como o REA local / rea.tools): um `rea mcp` vivo no motor, perguntas pequenas em sequência.
+    // As ferramentas WEB (abrir página, observar, capturar cenário) só vêm nos domínios que o ALUNO declarou sob o Termo
+    // de Uso (lib/rea/termo.ts) — lidos do banco pela conta dele, nunca do argumento.
+    name: "octa_rea_sessao", runtime: "ts", risk: "read", minPlan: "free",
+    schema: schema("octa_rea_sessao",
+      "Sessão do REA (engenharia reversa) — o modo certo pra alvo grande (bundle de vários MB, app inteiro). acao=abrir → { sessao, dominios, ferramentas }; acao=ferramenta → chama UMA ferramenta (nome + argumentos JSON); acao=fechar no fim. Fluxo web (só domínios declarados pelo aluno): zaeon_abrir_pagina {url} → inspect_web_page {target_id, include_script_sources:true} com salvar:\"captura.json\" → export_web_scripts {capture_path:\"captura.json\", output_directory:\"scripts\"} → recover_javascript_sources {path, output_directory:\"recuperado\"} → zaeon_buscar {caminho, padrao} / zaeon_ler {caminho, inicio, tamanho}. Artefato enviado: path \"handle://<32hex>\". zaeon_ajuda {nome} dá o schema de qualquer ferramenta. Caminhos são relativos à pasta da sessão.",
+      { acao: "abrir | ferramenta | fechar", sessao: "id da sessão (ferramenta/fechar)", nome: "nome da ferramenta (acao=ferramenta)", argumentos: "objeto JSON com os argumentos da ferramenta (acao=ferramenta)", salvar: "opcional: arquivo .json na pasta da sessão pra gravar o resultado bruto (devolve só o resumo)" },
+      ["acao"]),
+    async run(a, ctx) {
+      const userId = (ctx as CtxOcta).userId;
+      if (!userId) return err("Sessão do REA exige o aluno identificado.", "permission_denied");
+      const acao = String(a?.acao ?? "").trim();
+      if (acao === "abrir") {
+        const { dominiosLiberados } = await import("@/lib/rea/dominios");
+        const dominios = await dominiosLiberados(userId).catch(() => [] as string[]);
+        const r = await abrirSessaoRea(userId, dominios);
+        if (!r.ok) return err(`REA: ${r.erro}`, "rea_error");
+        const por = (n: string) => r.ferramentas.filter((f) => f.nivel === n).map((f) => f.nome).join(", ");
+        return ok(JSON.stringify({
+          sessao: r.sessao, dominios: r.dominios,
+          aviso_web: r.dominios.length ? undefined : "Sem domínio declarado: as ferramentas web estão fora. O aluno declara o domínio (e aceita o Termo de Uso) em Sala de Estudos → Engenharia reversa → Domínios.",
+          ponte: r.ferramentas.filter((f) => f.nivel === "ponte").map((f) => `${f.nome}: ${f.descricao}`),
+          web: por("web") || undefined, estaticas: por("estatica"),
+        }));
+      }
+      const sessao = String(a?.sessao ?? "").trim();
+      if (!/^[0-9a-f]{32}$/.test(sessao)) return err("informe a sessao (acao=abrir devolve o id)", "bad_args");
+      if (acao === "fechar") { await fecharSessaoRea(userId, sessao); return ok("sessão fechada"); }
+      if (acao !== "ferramenta") return err("acao: abrir | ferramenta | fechar", "bad_args");
+      const nome = String(a?.nome ?? "").trim();
+      let argumentos: unknown = a?.argumentos ?? {};
+      if (typeof argumentos === "string") { try { argumentos = argumentos.trim() ? JSON.parse(argumentos) : {}; } catch { return err("argumentos: JSON inválido", "bad_args"); } }
+      const salvar = typeof a?.salvar === "string" && a.salvar.trim() ? a.salvar.trim() : undefined;
+      const r = await chamarSessaoRea(userId, { sessao, nome, argumentos, salvar });
+      return r.ok ? ok(resumirSessao(r)) : err(resumirSessao(r), "rea_error");
     },
   },
 ];

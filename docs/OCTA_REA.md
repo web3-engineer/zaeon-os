@@ -121,6 +121,45 @@ zumbis do Chromium. Prazo por pedido no `/rea` estático: `prazoMin` (1–30; pa
 Provar (na Contabo): `node scripts/rea-smoke.mjs --url https://zaeon.com.br/` com `OCTA_REA=1 REA_BRIDGE_URL REA_BRIDGE_TOKEN`
 no ambiente. Medido em 17/11/2026: zaeon.com.br 226 s, 42/42 scripts, 42 endpoints.
 
+## Sessões do REA (modo rea.tools) + domínios declarados
+
+O REA rende quando o agente faz PERGUNTAS PEQUENAS numa sessão que lembra o alvo — não numa chamada de CLI "analise
+tudo", que num bundle de vários MB estoura memória/prazo (provado: Contabo E um M1, ~29 min, provider_timeout). Então o
+motor roda um `rea mcp` VIVO por sessão (infra/rea-engine/sessoes.mjs), como o REA local.
+
+**Ponte:** `POST /sessao {dono, dominios?}` → `{sessao, ferramentas}`; `POST /sessao/ferramenta {sessao, nome, argumentos,
+salvar?}` (resposta longa); `POST /sessao/fechar`. `dono` = sha256 da conta (o motor nunca vê o id). No app:
+`abrirSessaoRea/chamarSessaoRea/fecharSessaoRea` (lib/octa/rea.ts) e a tool `octa_rea_sessao`.
+
+**Três níveis de ferramenta (infra/rea-engine/politica.mjs, conferidos contra o catálogo real nos testes):**
+- *estática* (livre): open_binary, search_strings, analyze_javascript_application, recover_javascript_sources,
+  inspect_analysis_view… Caminhos presos na pasta da sessão; artefato enviado = `handle://<32hex>`.
+- *web* (só com domínio declarado): inspect_web_page, observe_web_session, capture_browser_scenario, analyze_web_bundle…
+  O navegador é SEMPRE o da sessão (atrás do proxy de saída); `cdp_endpoint`, `allowed_origins` e a URL ficam dentro dos
+  domínios.
+- *negada* (nenhum termo libera): adb, frida, gdb/rizin, cutter, jeb, build-computer, processos/UI nativos, Electron/Node
+  locais — mexem no HOST, não no alvo.
+
+**Pseudo-ferramentas da ponte:** `zaeon_abrir_pagina {url}` (abre no navegador da sessão, devolve target_id),
+`zaeon_buscar {caminho, padrao}` e `zaeon_ler {caminho, inicio, tamanho}` (grep/ler no código recuperado),
+`zaeon_arquivos`, `zaeon_ajuda {nome}`.
+
+**Wakaru** (Apache-2.0, 1.14.0, pinado por sha256 no Dockerfile): `recover_javascript_sources` quebra um bundle
+monolítico em módulos legíveis. `REA_MCP_MAX_RESPONSE_BYTES=64MiB` na sessão (a captura de uma página grande passa dos
+10 MiB padrão do stdio).
+
+### Domínio declarado sob o Termo de Uso
+As ferramentas web agem sobre um site real, então a pessoa DECLARA o domínio e aceita o **Termo de Uso** (lib/rea/termo.ts):
+é titular (ou tem autorização por escrito), a finalidade, e o aceite grava a PROVA (conta, domínio, finalidade, versão +
+sha256 do texto exibido, data, IP, navegador) no modelo `ReaDominio`. Rotas `/api/rea/dominios` (GET/POST/DELETE); UI em
+Sala de Estudos → Engenharia reversa → Domínios (components/rea/DominiosRea.tsx). `dominiosLiberados(userId)` (só aceite
+vigente: hash = termo atual, não revogado) é o que o Octa manda ao abrir a sessão — o modelo NÃO escolhe domínio.
+Revogar marca `revogadoEm` (a prova fica). Mudou o texto → suba `TERMO_VERSAO`; aceites antigos deixam de liberar até o
+novo aceite. **⚠️ texto da engenharia; revisão jurídica recomendada.**
+
+Limites por env: `REA_MAX_SESSOES` (2), `REA_SESSAO_OCIOSA_MS` (20 min), `REA_SESSAO_VIDA_MS` (2 h),
+`REA_SESSAO_FERRAMENTA_MS` (20 min). Uma sessão fecha no prazo/ociosidade e varre os processos (REA_JOB).
+
 ## Claude no catálogo (créditos Anthropic pelo gateway)
 O Claude (Opus/Sonnet) entra no catálogo ÚNICO de modelos (`lib/chat/modelos`), compartilhado por chat (Aura), Octa e REA. Roteado pelo MESMO gateway LiteLLM — sem SDK nem chave no app; a `ANTHROPIC_API_KEY` mora na Contabo (gateway). **O REA não tem modelo próprio:** ele herda o modelo selecionado na superfície (octa/aura/zaeon). Se o aluno escolher Claude, o blueprint e a análise de binário usam Claude; senão, o modelo de sempre.
 

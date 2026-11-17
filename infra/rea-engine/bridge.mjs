@@ -8,7 +8,13 @@
  *     → { ok, code, stdout, stderr, evidence? }   (evidence = stdout parseado quando --json)
  *   POST /rea  { token, command: "analyze-web-bundle", args: [url], view?: "endpoints"|"inferences"|"summary" }
  *     → o caminho WEB (web-bundle.mjs): um Chromium isolado por pedido, saída só por um proxy que barra IP interno.
- *   GET  /health → { ok, rea, ghidra, chromium }
+ *   POST /sessao            { token, dono: sha256hex, dominios?: string[] } → { ok, sessao, dominios, ferramentas }
+ *   POST /sessao/ferramenta { token, dono, sessao, nome, argumentos, salvar? } → { ok, resultado | erro }  (resposta longa;
+ *                           `salvar: "x.json"` grava o resultado bruto na pasta da sessão e devolve só o resumo)
+ *   POST /sessao/fechar     { token, dono, sessao }                          → { ok }
+ *     → SESSÕES do REA (sessoes.mjs): um `rea mcp` vivo por sessão, como o REA local. `dominios` = os que a pessoa
+ *       declarou sob o Termo de Uso no app (lib/rea/termo.ts); sem eles, as ferramentas web não aparecem.
+ *   GET  /health → { ok, rea, ghidra, chromium, sessoes }
  */
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
@@ -16,6 +22,7 @@ import { mkdtemp, mkdir, writeFile, readFile, rm, stat } from "node:fs/promises"
 import { randomBytes } from "node:crypto";
 import { androidArgs } from "./android-request.mjs";
 import { analisarSite, CHROMIUM, PRAZO_WEB_MS } from "./web-bundle.mjs";
+import { criarGerente } from "./sessoes.mjs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 
@@ -73,7 +80,7 @@ async function matarJob(jobId, pgid) {
 function rodarRea(args, cwd, signal, envExtra = {}, prazoMs = TIMEOUT_MS) {
   return new Promise((ok) => {
     const jobId = randomBytes(8).toString("hex");
-    const env = { ...Object.fromEntries(Object.entries(process.env).filter(([k]) => ['PATH','HOME','JAVA_HOME','TMPDIR','GHIDRA_INSTALL_DIR','REA_JADX_MCP_JAR','REA_JADX_HEAP_MIB','REA_JADX_ACTIVE_PROCESSOR_COUNT'].includes(k))), ...envExtra, REA_JOB: jobId };
+    const env = { ...Object.fromEntries(Object.entries(process.env).filter(([k]) => ['PATH','HOME','JAVA_HOME','TMPDIR','GHIDRA_INSTALL_DIR','REA_JADX_MCP_JAR','REA_JADX_HEAP_MIB','REA_JADX_ACTIVE_PROCESSOR_COUNT','REA_WAKARU_COMMAND'].includes(k))), ...envExtra, REA_JOB: jobId };
     const p = spawn("rea", args, { cwd, env, detached: process.platform !== "win32" });
     const kill = () => { void matarJob(jobId, p.pid); };
     signal?.addEventListener("abort",kill,{once:true}); if(signal?.aborted)kill();
@@ -105,7 +112,30 @@ const server = createServer(async (req, res) => {
   try {
     if (req.method === "GET" && req.url === "/health") {
       const r = await rodarRea(["--version"], "/work");
-      return responder(200, { ok: r.code === 0, rea: r.stdout.trim(), ghidra: !!process.env.GHIDRA_INSTALL_DIR, chromium: TEM_CHROMIUM });
+      return responder(200, { ok: r.code === 0, rea: r.stdout.trim(), ghidra: !!process.env.GHIDRA_INSTALL_DIR, chromium: TEM_CHROMIUM, sessoes: gerente.ativas() });
+    }
+    if (req.method === "POST" && req.url?.startsWith("/sessao")) {
+      const corpo = JSON.parse((await lerCorpo(req)).toString("utf8") || "{}");
+      if (!TOKEN || corpo.token !== TOKEN) return responder(401, { ok: false, erro: "token" });
+      const dono = String(corpo.dono || "");
+      try {
+        if (req.url === "/sessao") {
+          if (corpo.dominios?.length && !TEM_CHROMIUM) return responder(503, { ok: false, erro: "motor sem navegador (Chromium)" });
+          return responder(200, { ok: true, ...(await gerente.criar({ dono, dominios: Array.isArray(corpo.dominios) ? corpo.dominios.map(String) : [] })) });
+        }
+        if (req.url === "/sessao/fechar") return responder(200, { ok: await gerente.fechar(String(corpo.sessao || ""), dono) });
+        if (req.url === "/sessao/ferramenta") {
+          longa = respostaLonga(res);
+          const abort = new AbortController();
+          res.once("close", () => { if (!res.writableEnded) abort.abort(); });
+          const r = await gerente.chamar({ sessao: String(corpo.sessao || ""), dono, nome: String(corpo.nome || ""), argumentos: corpo.argumentos, salvar: corpo.salvar, signal: abort.signal });
+          return responder(200, r);
+        }
+        return responder(404, { ok: false, erro: "rota de sessão desconhecida" });
+      } catch (e) {
+        const m = String(e?.message ?? e);
+        return responder(/cheias/.test(m) ? 429 : /^(dono|dominio|caminho|handle|url|ferramenta|sessao|allowed|start_url|capture)/.test(m) ? 400 : 500, { ok: false, erro: m.slice(0, 400) });
+      }
     }
     if (req.method === "POST" && req.url === "/upload") {
       const corpo = JSON.parse((await lerCorpo(req)).toString("utf8") || "{}");
@@ -222,5 +252,7 @@ async function limparCacheVelho() {
 }
 setInterval(limparCacheVelho, 30 * 60_000).unref();
 await carregarCatalogo();
+const ENV_REA = Object.fromEntries(Object.entries(process.env).filter(([k]) => ['PATH','HOME','JAVA_HOME','TMPDIR','GHIDRA_INSTALL_DIR','REA_JADX_MCP_JAR','REA_JADX_HEAP_MIB','REA_JADX_ACTIVE_PROCESSOR_COUNT','REA_WAKARU_COMMAND'].includes(k)));
+const gerente = criarGerente({ cacheDir: CACHE_DIR, matarJob, envBase: ENV_REA });
 const TEM_CHROMIUM = await new Promise((ok) => { const p = spawn(CHROMIUM, ["--version"]); p.on("close", (c) => ok(c === 0)); p.on("error", () => ok(false)); });
 server.listen(PORT, process.env.REA_BRIDGE_HOST || "0.0.0.0", () => console.log(`[rea-bridge] ouvindo :${PORT} (token ${TOKEN ? "ON" : "AUSENTE!"}, ghidra ${process.env.GHIDRA_INSTALL_DIR ? "ON" : "off"}, ${CATALOGO.size} comandos no catálogo, chromium ${TEM_CHROMIUM ? "ON" : "off"})`));

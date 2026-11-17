@@ -4,6 +4,7 @@
  * REA_BRIDGE_URL + REA_BRIDGE_TOKEN (o motor ligado). Sem os dois, a tool nem aparece.
  * O REA já recusa DRM/anti-cheat/auth/pirataria (DISCLAIMER do REA); o guard do Octa fica por cima.
  */
+import { createHash } from "node:crypto";
 import { reaLigado } from "@/lib/octa/skills";
 
 export type ReaEnv = Record<string, string | undefined>;
@@ -78,4 +79,45 @@ export async function uploadRea(o: { nome: string; conteudo: Buffer }, env: ReaE
     const j = (await r.json().catch(() => ({}))) as UploadRea;
     return r.ok ? j : { ok: false, erro: (j as any)?.erro ?? `upload HTTP ${r.status}` };
   } catch (e) { return { ok: false, erro: `motor do REA fora do ar: ${String((e as Error)?.message ?? e).slice(0, 140)}` }; }
+}
+
+// ───────────────────────────── SESSÕES do REA (o `rea mcp` vivo no motor — infra/rea-engine/sessoes.mjs) ─────────────
+// O modo que funciona em alvo grande (como o REA local / rea.tools): abrir uma sessão e fazer perguntas pequenas
+// (recover_javascript_sources → zaeon_buscar/zaeon_ler → analyze_javascript_application de um módulo…). As ferramentas
+// WEB só aparecem com `dominios` — os que a pessoa declarou sob o Termo de Uso (lib/rea/dominios.ts).
+
+/** o dono da sessão no motor: um hash da conta (o motor nunca vê o id/e-mail) */
+export const donoDaSessaoRea = (userId: string) => createHash("sha256").update(`zaeon-rea-sessao:${userId}`).digest("hex");
+
+export type FerramentaSessao = { nome: string; nivel: "ponte" | "estatica" | "web"; descricao: string };
+export type AberturaSessao = { ok: true; sessao: string; dominios: string[]; ferramentas: FerramentaSessao[] } | { ok: false; erro: string };
+export type ChamadaSessao = { ok: boolean; resultado?: unknown; erro?: string; bloqueados_pelo_proxy?: unknown[] };
+
+async function postarSessao<T>(caminho: string, corpo: Record<string, unknown>, prazoMs: number, env: ReaEnv, f: typeof fetch): Promise<T | { ok: false; erro: string }> {
+  if (!reaBridgeConfigurado(env)) return { ok: false, erro: "motor do REA não configurado (OCTA_REA + REA_BRIDGE_URL/TOKEN)" };
+  const base = env.REA_BRIDGE_URL!.trim().replace(/\/+$/, "");
+  try {
+    const r = await f(`${base}${caminho}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: env.REA_BRIDGE_TOKEN!.trim(), ...corpo }), signal: AbortSignal.timeout(prazoMs) });
+    const j = (await r.json().catch(() => ({}))) as T & { erro?: string };
+    if (!r.ok) return { ok: false, erro: j?.erro ?? `motor HTTP ${r.status}` };
+    return j;
+  } catch (e) { return { ok: false, erro: `motor do REA fora do ar: ${String((e as Error)?.message ?? e).slice(0, 140)}` }; }
+}
+
+export const abrirSessaoRea = (userId: string, dominios: string[], env: ReaEnv = process.env, f: typeof fetch = fetch) =>
+  postarSessao<AberturaSessao>("/sessao", { dono: donoDaSessaoRea(userId), dominios }, 90_000, env, f) as Promise<AberturaSessao>;
+
+/** uma ferramenta na sessão. Prazo acima do da ponte (20 min) — a ponte manda batimento, o fetch não corta em 5 min */
+export const chamarSessaoRea = (userId: string, o: { sessao: string; nome: string; argumentos?: unknown; salvar?: string }, env: ReaEnv = process.env, f: typeof fetch = fetch) =>
+  postarSessao<ChamadaSessao>("/sessao/ferramenta", { dono: donoDaSessaoRea(userId), ...o }, 22 * 60_000, env, f) as Promise<ChamadaSessao>;
+
+export const fecharSessaoRea = (userId: string, sessao: string, env: ReaEnv = process.env, f: typeof fetch = fetch) =>
+  postarSessao<{ ok: boolean }>("/sessao/fechar", { dono: donoDaSessaoRea(userId), sessao }, 30_000, env, f);
+
+/** o resultado de uma ferramenta pro laço do agente: curto; se for grande, ensina a salvar e buscar */
+export function resumirSessao(r: ChamadaSessao, limite = 12_000): string {
+  if (!r.ok && r.erro) return `REA falhou: ${r.erro}`;
+  const txt = typeof r.resultado === "string" ? r.resultado : JSON.stringify(r.resultado ?? null);
+  const bloq = Array.isArray(r.bloqueados_pelo_proxy) && r.bloqueados_pelo_proxy.length ? `\n(o filtro de saída barrou: ${JSON.stringify(r.bloqueados_pelo_proxy).slice(0, 400)})` : "";
+  return (txt.length > limite ? txt.slice(0, limite) + `\n… (resultado de ${txt.length} chars, cortado; chame de novo com salvar:"x.json" e use zaeon_buscar/zaeon_ler)` : txt) + (r.ok ? "" : "\n(a ferramenta marcou erro)") + bloq;
 }

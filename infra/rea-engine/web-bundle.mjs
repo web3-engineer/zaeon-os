@@ -143,7 +143,7 @@ export function argsChromium({ perfil, portaProxy }) {
   ];
 }
 
-async function portaCdp(perfil, prazoMs) {
+export async function portaCdp(perfil, prazoMs) {
   const fim = Date.now() + prazoMs;
   while (Date.now() < fim) {
     const txt = await readFile(join(perfil, "DevToolsActivePort"), "utf8").catch(() => "");
@@ -155,7 +155,7 @@ async function portaCdp(perfil, prazoMs) {
 }
 
 /** espera a aba sair do about:blank e a página ficar quieta (sem trocar de URL) por um tempo. */
-async function esperarPagina(endpoint, id, { prazoMs = 30_000, quietoMs = 6_000 } = {}) {
+export async function esperarPagina(endpoint, id, { prazoMs = 30_000, quietoMs = 6_000 } = {}) {
   const fim = Date.now() + prazoMs;
   let ultima = "", desde = Date.now();
   while (Date.now() < fim) {
