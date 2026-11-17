@@ -21,7 +21,7 @@ O REA (e, portanto, o Octa com a skill) **não** ajuda a: burlar DRM/verificaç�
 
 ## Fatia 2 — a ponte no Octa
 `lib/octa/rea.ts` (cliente) + tool `octa_rea` em `lib/octa/agente.ts`. Só aparece com os **dois** portões: `OCTA_REA=1` **e** `REA_BRIDGE_URL`+`REA_BRIDGE_TOKEN`. Mesmo deny-por-família do bridge (defesa em profundidade); o guard do Octa fica por cima. A tool lê um arquivo do projeto como artefato (texto) e devolve a Evidence do REA.
-- Envs no `.env` da VPS: `OCTA_REA=1`, `REA_BRIDGE_URL=http://100.113.137.74:8799`, `REA_BRIDGE_TOKEN=…` (o mesmo da Contabo).
+- Envs no `.env` da VPS: `OCTA_REA=1`, `REA_BRIDGE_URL=http://100.113.137.74:8799` (motor MAX), `REA_BRIDGE_URL_USERS=http://100.113.137.74:8798` (motor dos usuários; opcional — sem ele todos usam o MAX), `REA_BRIDGE_TOKEN=…` (o mesmo da Contabo, serve os dois motores).
 
 ## Upload de binário (feito)
 - Botão 🔬 na IDE do Octa (atrás de `NEXT_PUBLIC_OCTA_REA=1`) → `POST /api/octa/rea/upload` → o binário vai DIRETO pro motor na Contabo (nunca fica na Zaeon nem no Mongo), que devolve um **handle** (`/upload` da ponte, cache transitório, TTL 2 h). O agente analisa com `octa_rea` passando o handle. Provado em prod: `analyze --provider ghidra` pelo handle = ok, decompilação nativa com Ghidra 12.1.4.
@@ -120,6 +120,25 @@ zumbis do Chromium. Prazo por pedido no `/rea` estático: `prazoMin` (1–30; pa
 
 Provar (na Contabo): `node scripts/rea-smoke.mjs --url https://zaeon.com.br/` com `OCTA_REA=1 REA_BRIDGE_URL REA_BRIDGE_TOKEN`
 no ambiente. Medido em 17/11/2026: zaeon.com.br 226 s, 42/42 scripts, 42 endpoints.
+
+## Dois motores, roteados por plano (capacidade reservada)
+
+Dois motores REA na MESMA máquina grande da Contabo, roteados por plano (lib/rea/tier.ts):
+- **MAX/dono** → `zaeon_rea_engine` (porta 8799, `REA_BRIDGE_URL`): núcleos 0-3, peso de CPU padrão, pool cheio.
+- **Usuários (free/plus)** → `zaeon_rea_engine_users` (porta 8798, `REA_BRIDGE_URL_USERS`): MESMOS núcleos 0-3,
+  `cpu_shares: 256` (cede ao primário e ao adaptador da ChipFlow sob disputa), `REA_MAX_SESSOES=1`, prazos curtos, 4 GB.
+
+Os dois motores de propósito nos MESMOS núcleos 0-3: não cresce a pegada do REA, então a folga da ChipFlow (que flutua
+por 0-17, com os modelos ociosos em 4-17) fica intacta. Mesma imagem e mesmo token; quem separa os tiers é a URL que o
+app escolhe + os limites de cada motor.
+
+`reaTierDoUsuario(userId)` (memo 60 s, falha fechado em "users" — um erro nunca joga carga grátis no motor MAX) decide o
+tier. TODO o tráfego REA de uma conta vai ao mesmo motor (upload, octa_rea, octa_rea_sessao, blueprint do chat de
+Estudos) — senão um handle enviado a um motor não existiria no outro. **Sem `REA_BRIDGE_URL_USERS`, todos caem no
+primário** (comportamento de antes): é seguro mergear antes de ligar o 2º motor.
+
+**Ligar o 2º motor:** na Contabo, `docker compose -p rea-engine -f compose.yml up -d rea-engine-users` (não recria o
+primário). No `.env` da VPS do app: `REA_BRIDGE_URL_USERS=http://100.113.137.74:8798`. Deploy do app para ler a var.
 
 ## Sessões do REA (modo rea.tools) + domínios declarados
 

@@ -11,6 +11,16 @@ export type ReaEnv = Record<string, string | undefined>;
 export const reaBridgeConfigurado = (env: ReaEnv = process.env) =>
   reaLigado(env) && !!env.REA_BRIDGE_URL?.trim() && !!env.REA_BRIDGE_TOKEN?.trim();
 
+/** DOIS motores na mesma máquina grande (infra/rea-engine): "max" (dono/plano Max → primário, REA_BRIDGE_URL) e
+ *  "users" (o resto → secundário, REA_BRIDGE_URL_USERS). Sem a URL dos usuários, todos caem no primário (comportamento
+ *  de antes). O token é o mesmo; quem separa os tiers é esta escolha de URL + os limites de cada motor. */
+export type ReaTier = "max" | "users";
+export function reaBridgeBase(env: ReaEnv = process.env, tier: ReaTier = "max"): string {
+  const primario = (env.REA_BRIDGE_URL ?? "").trim().replace(/\/+$/, "");
+  const usuarios = (env.REA_BRIDGE_URL_USERS ?? "").trim().replace(/\/+$/, "");
+  return tier === "users" && usuarios ? usuarios : primario;
+}
+
 /** as FAMÍLIAS com efeito colateral — rodar/observar/tracejar, device (adb), debug, mudar o host. O motor (a ponte
  *  em infra/rea-engine) é a autoridade; aqui é só um filtro local pra o agente ganhar um erro claro sem ir à rede.
  *  O resto da superfície do REA (análise estática/leitura) passa 1:1. */
@@ -34,10 +44,11 @@ export async function chamarRea(
   o: { command: string; args?: string[]; artifact?: { nome: string; conteudo: string | Buffer }; handle?: string },
   env: ReaEnv = process.env,
   f: typeof fetch = fetch,
+  tier: ReaTier = "max",
 ): Promise<RespostaRea> {
   if (!reaBridgeConfigurado(env)) return { ok: false, erro: "motor do REA não configurado (OCTA_REA + REA_BRIDGE_URL/TOKEN)" };
   if (!comandoRea(o.command)) return { ok: false, erro: `comando com efeito colateral ou inválido (desligado nesta fatia): ${o.command}` };
-  const base = env.REA_BRIDGE_URL!.trim().replace(/\/+$/, "");
+  const base = reaBridgeBase(env, tier);
   const corpo: Record<string, unknown> = { token: env.REA_BRIDGE_TOKEN!.trim(), command: o.command, args: o.args ?? [], json: true };
   if (o.handle && /^[0-9a-f]{32}$/.test(o.handle)) corpo.handle = o.handle;
   else if (o.artifact) {
@@ -67,9 +78,9 @@ export function resumirRea(r: RespostaRea): string {
 
 export type UploadRea = { ok: boolean; handle?: string; name?: string; bytes?: number; erro?: string };
 /** manda um BINÁRIO (ou qualquer artefato) pro motor e recebe um handle (o binário fica só na Contabo, transitório). */
-export async function uploadRea(o: { nome: string; conteudo: Buffer }, env: ReaEnv = process.env, f: typeof fetch = fetch): Promise<UploadRea> {
+export async function uploadRea(o: { nome: string; conteudo: Buffer }, env: ReaEnv = process.env, f: typeof fetch = fetch, tier: ReaTier = "max"): Promise<UploadRea> {
   if (!reaBridgeConfigurado(env)) return { ok: false, erro: "motor do REA não configurado" };
-  const base = env.REA_BRIDGE_URL!.trim().replace(/\/+$/, "");
+  const base = reaBridgeBase(env, tier);
   try {
     const r = await f(`${base}/upload`, {
       method: "POST", headers: { "content-type": "application/json" },
@@ -93,9 +104,9 @@ export type FerramentaSessao = { nome: string; nivel: "ponte" | "estatica" | "we
 export type AberturaSessao = { ok: true; sessao: string; dominios: string[]; ferramentas: FerramentaSessao[] } | { ok: false; erro: string };
 export type ChamadaSessao = { ok: boolean; resultado?: unknown; erro?: string; bloqueados_pelo_proxy?: unknown[] };
 
-async function postarSessao<T>(caminho: string, corpo: Record<string, unknown>, prazoMs: number, env: ReaEnv, f: typeof fetch): Promise<T | { ok: false; erro: string }> {
+async function postarSessao<T>(caminho: string, corpo: Record<string, unknown>, prazoMs: number, env: ReaEnv, f: typeof fetch, tier: ReaTier): Promise<T | { ok: false; erro: string }> {
   if (!reaBridgeConfigurado(env)) return { ok: false, erro: "motor do REA não configurado (OCTA_REA + REA_BRIDGE_URL/TOKEN)" };
-  const base = env.REA_BRIDGE_URL!.trim().replace(/\/+$/, "");
+  const base = reaBridgeBase(env, tier);
   try {
     const r = await f(`${base}${caminho}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: env.REA_BRIDGE_TOKEN!.trim(), ...corpo }), signal: AbortSignal.timeout(prazoMs) });
     const j = (await r.json().catch(() => ({}))) as T & { erro?: string };
@@ -104,15 +115,15 @@ async function postarSessao<T>(caminho: string, corpo: Record<string, unknown>, 
   } catch (e) { return { ok: false, erro: `motor do REA fora do ar: ${String((e as Error)?.message ?? e).slice(0, 140)}` }; }
 }
 
-export const abrirSessaoRea = (userId: string, dominios: string[], env: ReaEnv = process.env, f: typeof fetch = fetch) =>
-  postarSessao<AberturaSessao>("/sessao", { dono: donoDaSessaoRea(userId), dominios }, 90_000, env, f) as Promise<AberturaSessao>;
+export const abrirSessaoRea = (userId: string, dominios: string[], env: ReaEnv = process.env, f: typeof fetch = fetch, tier: ReaTier = "max") =>
+  postarSessao<AberturaSessao>("/sessao", { dono: donoDaSessaoRea(userId), dominios }, 90_000, env, f, tier) as Promise<AberturaSessao>;
 
 /** uma ferramenta na sessão. Prazo acima do da ponte (20 min) — a ponte manda batimento, o fetch não corta em 5 min */
-export const chamarSessaoRea = (userId: string, o: { sessao: string; nome: string; argumentos?: unknown; salvar?: string }, env: ReaEnv = process.env, f: typeof fetch = fetch) =>
-  postarSessao<ChamadaSessao>("/sessao/ferramenta", { dono: donoDaSessaoRea(userId), ...o }, 22 * 60_000, env, f) as Promise<ChamadaSessao>;
+export const chamarSessaoRea = (userId: string, o: { sessao: string; nome: string; argumentos?: unknown; salvar?: string }, env: ReaEnv = process.env, f: typeof fetch = fetch, tier: ReaTier = "max") =>
+  postarSessao<ChamadaSessao>("/sessao/ferramenta", { dono: donoDaSessaoRea(userId), ...o }, 22 * 60_000, env, f, tier) as Promise<ChamadaSessao>;
 
-export const fecharSessaoRea = (userId: string, sessao: string, env: ReaEnv = process.env, f: typeof fetch = fetch) =>
-  postarSessao<{ ok: boolean }>("/sessao/fechar", { dono: donoDaSessaoRea(userId), sessao }, 30_000, env, f);
+export const fecharSessaoRea = (userId: string, sessao: string, env: ReaEnv = process.env, f: typeof fetch = fetch, tier: ReaTier = "max") =>
+  postarSessao<{ ok: boolean }>("/sessao/fechar", { dono: donoDaSessaoRea(userId), sessao }, 30_000, env, f, tier);
 
 /** o resultado de uma ferramenta pro laço do agente: curto; se for grande, ensina a salvar e buscar */
 export function resumirSessao(r: ChamadaSessao, limite = 12_000): string {

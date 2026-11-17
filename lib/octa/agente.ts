@@ -163,7 +163,8 @@ export const FERRAMENTAS_REA: ToolDef[] = [
           artifact = { nome: path.split("/").pop() || "artifact", conteudo: ws(ctx)[path] };
         }
       }
-      const r = await chamarRea({ command: comando, args, artifact, handle: handle || undefined });
+      const tier = await (await import("@/lib/rea/tier")).reaTierDoUsuario((ctx as CtxOcta).userId);
+      const r = await chamarRea({ command: comando, args, artifact, handle: handle || undefined }, process.env, fetch, tier);
       return r.ok ? ok(resumirRea(r)) : err(resumirRea(r), "rea_error");
     },
   },
@@ -180,10 +181,11 @@ export const FERRAMENTAS_REA: ToolDef[] = [
       const userId = (ctx as CtxOcta).userId;
       if (!userId) return err("Sessão do REA exige o aluno identificado.", "permission_denied");
       const acao = String(a?.acao ?? "").trim();
+      const tier = await (await import("@/lib/rea/tier")).reaTierDoUsuario(userId);
       if (acao === "abrir") {
         const { dominiosLiberados } = await import("@/lib/rea/dominios");
         const dominios = await dominiosLiberados(userId).catch(() => [] as string[]);
-        const r = await abrirSessaoRea(userId, dominios);
+        const r = await abrirSessaoRea(userId, dominios, process.env, fetch, tier);
         if (!r.ok) return err(`REA: ${r.erro}`, "rea_error");
         const por = (n: string) => r.ferramentas.filter((f) => f.nivel === n).map((f) => f.nome).join(", ");
         return ok(JSON.stringify({
@@ -195,13 +197,13 @@ export const FERRAMENTAS_REA: ToolDef[] = [
       }
       const sessao = String(a?.sessao ?? "").trim();
       if (!/^[0-9a-f]{32}$/.test(sessao)) return err("informe a sessao (acao=abrir devolve o id)", "bad_args");
-      if (acao === "fechar") { await fecharSessaoRea(userId, sessao); return ok("sessão fechada"); }
+      if (acao === "fechar") { await fecharSessaoRea(userId, sessao, process.env, fetch, tier); return ok("sessão fechada"); }
       if (acao !== "ferramenta") return err("acao: abrir | ferramenta | fechar", "bad_args");
       const nome = String(a?.nome ?? "").trim();
       let argumentos: unknown = a?.argumentos ?? {};
       if (typeof argumentos === "string") { try { argumentos = argumentos.trim() ? JSON.parse(argumentos) : {}; } catch { return err("argumentos: JSON inválido", "bad_args"); } }
       const salvar = typeof a?.salvar === "string" && a.salvar.trim() ? a.salvar.trim() : undefined;
-      const r = await chamarSessaoRea(userId, { sessao, nome, argumentos, salvar });
+      const r = await chamarSessaoRea(userId, { sessao, nome, argumentos, salvar }, process.env, fetch, tier);
       return r.ok ? ok(resumirSessao(r)) : err(resumirSessao(r), "rea_error");
     },
   },

@@ -17,3 +17,30 @@ services:
     deploy:
       resources:
         limits: { memory: 8g }
+
+  # SEGUNDO motor — o pool dos USUÁRIOS (free/plus). Roteado por plano em lib/rea/tier.ts (REA_BRIDGE_URL_USERS no app).
+  # DE PROPÓSITO nos MESMOS núcleos 0-3 do primário: NÃO cresce a pegada do REA, então a folga da ChipFlow (que flutua
+  # por 0-17, com os modelos ociosos em 4-17) fica intacta. cpu_shares baixo = sob disputa cede ao primário (1024) e ao
+  # adaptador. Pool pequeno (1 sessão, prazos curtos) e 4 GB. Mesma imagem e mesmo token do primário.
+  rea-engine-users:
+    image: zaeon-rea-engine:local
+    container_name: zaeon_rea_engine_users
+    init: true
+    cpuset: "0-3"
+    cpu_shares: 256
+    environment:
+      REA_BRIDGE_TOKEN: ${REA_BRIDGE_TOKEN:?defina no .env}
+      REA_BRIDGE_PORT: "8799"
+      REA_MAX_SESSOES: "1"
+      REA_SESSAO_OCIOSA_MS: "600000"
+      REA_SESSAO_VIDA_MS: "3600000"
+      REA_WEB_SCRIPT_MS: "240000"
+      REA_WEB_TOTAL_MS: "480000"
+    ports:
+      - "100.113.137.74:8798:8799"
+    tmpfs:
+      - /tmp:size=2g
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { memory: 4g }

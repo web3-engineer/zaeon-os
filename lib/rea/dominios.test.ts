@@ -76,13 +76,15 @@ describe("octa_rea_sessao", () => {
   it("abre a sessão mandando os domínios DO BANCO (nunca do argumento) e o dono como hash da conta", async () => {
     vi.resetModules();
     vi.doMock("@/lib/rea/dominios", () => ({ dominiosLiberados: async (u: string) => (u === "u1" ? ["leonasolutions.io"] : []) }));
-    const env = { OCTA_REA: "1", REA_BRIDGE_URL: "http://motor", REA_BRIDGE_TOKEN: "t" };
+    vi.doMock("@/lib/rea/tier", () => ({ reaTierDoUsuario: async (u: string) => (u === "u1" ? "max" : "users") }));
+    const env = { OCTA_REA: "1", REA_BRIDGE_URL: "http://motor-max", REA_BRIDGE_URL_USERS: "http://motor-users", REA_BRIDGE_TOKEN: "t" };
     Object.assign(process.env, env);
     const f = vi.fn(async (_url: string, init: any) => new Response(JSON.stringify({ ok: true, sessao: "a".repeat(32), dominios: JSON.parse(init.body).dominios, ferramentas: [{ nome: "zaeon_abrir_pagina", nivel: "ponte", descricao: "x" }, { nome: "inspect_web_page", nivel: "web", descricao: "y" }] }), { status: 200 }));
     vi.stubGlobal("fetch", f);
     const { FERRAMENTAS_REA } = await import("@/lib/octa/agente");
     const t = FERRAMENTAS_REA.find((x) => x.name === "octa_rea_sessao")!;
     const r: any = await t.run({ acao: "abrir", dominios: ["evil.com"] }, { userId: "u1" } as any);
+    expect(f.mock.calls[0][0]).toBe("http://motor-max/sessao");   // u1 = max → motor primário
     const corpo = JSON.parse(f.mock.calls[0][1].body);
     expect(corpo.dominios).toEqual(["leonasolutions.io"]);
     expect(corpo.dono).toMatch(/^[0-9a-f]{64}$/);
@@ -90,7 +92,11 @@ describe("octa_rea_sessao", () => {
     expect(JSON.stringify(r)).toContain("inspect_web_page");
     const semId: any = await t.run({ acao: "abrir" }, {} as any);
     expect(JSON.stringify(semId)).toMatch(/identificado/);
-    vi.unstubAllGlobals(); vi.doUnmock("@/lib/rea/dominios");
+    // conta comum (u2) → motor dos usuários
+    f.mockClear();
+    await t.run({ acao: "abrir" }, { userId: "u2" } as any);
+    expect(f.mock.calls[0][0]).toBe("http://motor-users/sessao");
+    vi.unstubAllGlobals(); vi.doUnmock("@/lib/rea/dominios"); vi.doUnmock("@/lib/rea/tier");
     for (const k of Object.keys(env)) delete (process.env as any)[k];
   });
 });
