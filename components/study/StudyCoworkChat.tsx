@@ -1536,7 +1536,9 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   // #837: as sugestões do Studio embaixo da última resposta (só no celular) — tocar põe o pedido na caixa, com o assunto
   const ultimaPergunta = [...messages].reverse().find((m) => m.role === "user" && m.kind === "text")?.text?.trim() ?? "";
   const sugestoesStudio = (id: string) => celular && id === ultimaResposta && !sending && ultimaPergunta ? (
-    <div className="mt-2 -mx-1 flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]" aria-label={tr("chatCelular.studio")}>
+    // #845: `self-stretch min-w-0` — a mensagem é `items-start`, então a faixa crescia até a soma dos botões (~520 px) e
+    // empurrava a CONVERSA INTEIRA pro lado; agora ela tem a largura da mensagem e rola só dentro dela
+    <div className="mt-2 -mx-1 flex min-w-0 gap-1.5 self-stretch overflow-x-auto pb-1 [scrollbar-width:none]" aria-label={tr("chatCelular.studio")}>
       {FUNCOES_STUDIO.slice(0, 6).map((f) => {
         const Icone = f.icon;
         return (

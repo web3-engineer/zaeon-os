@@ -25,6 +25,7 @@
     "profile": "프로필",
     "layout": "레이아웃",
     "focus": "집중",
+    "exitFocus": "집중 모드 끄기",
     "back": "뒤로",
     "return": "사이버 공간으로 돌아가기",
     "navigation": "탐색",

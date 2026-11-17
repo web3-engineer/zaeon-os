@@ -1833,6 +1833,14 @@ export default function HomeworkPage({
       window.dispatchEvent(event);
     }
   };
+  // #845: no celular o Foco esconde a barra de baixo e o ☰ — o único caminho até o botão "Foco". Sem isto ficava
+  // preso: agora o ◀ do Android desliga o Foco, e um botão "Sair do foco" fica à vista (lá embaixo).
+  const sairDoFoco = () => {
+    setIsFocusMode(false);
+    window.dispatchEvent(new CustomEvent("zaeon-focus-mode", { detail: false }));
+  };
+  const focoNoCelular = celular && isFocusMode && !isEmbedded;
+  useFecharNoVoltar(focoNoCelular, sairDoFoco);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -3030,6 +3038,15 @@ export default function HomeworkPage({
         </>
       )}
 
+      {/* #845: celular em modo Foco — a saída à vista (o ◀ também sai) */}
+      {focoNoCelular && (
+        <button type="button" onClick={sairDoFoco}
+          className="fixed right-3 z-[592] inline-flex min-h-[44px] items-center gap-2 rounded-full border border-cyan-500/40 bg-white/95 px-4 text-[13px] font-bold text-slate-800 shadow-lg backdrop-blur-xl dark:bg-[#0b0b16]/95 dark:text-white"
+          style={{ bottom: "calc(12px + env(safe-area-inset-bottom))" }}>
+          <EyeIcon className="h-4 w-4 text-cyan-500 dark:text-cyan-300" aria-hidden />
+          {t("labSidebar.exitFocus")}
+        </button>
+      )}
       {/* LOADING da troca de agente: cobre a área até a tela do novo agente estar pronta */}
       {trocandoPara && (
         <div role="status" className="fixed inset-0 z-[580] grid place-items-center bg-white/40 dark:bg-black/40 backdrop-blur-sm pointer-events-none">

@@ -11,6 +11,10 @@
  * - Uma entrada que não dá pra tirar na hora (o painel fechou com outro por cima dele, ou o componente desmontou numa
  *   troca de tela, que não pode virar um "voltar") fica MORTA: quando o histórico cair nela, ela é pulada.
  * - A entrada é posta no tick seguinte: o efeito duplo do StrictMode (dev) cancela antes e não deixa entrada órfã.
+ * - #845: o `popstate` que nasce de um painel fechando (o `history.back()` daqui) é avisado por `voltaDePainel()` —
+ *   quem segue o endereço (o Marketplace do laboratório) não o confunde com o voltar da pessoa. E quem troca o
+ *   endereço em cima da marca de um painel tira a marca junto (`estadoSemPainel`): a pessoa navegou, e a entrada
+ *   vira uma entrada normal em vez de ser desfeita quando o painel fecha.
  */
 import { useEffect, useRef } from "react";
 
@@ -21,12 +25,36 @@ function marcaAtual(): string | undefined {
   return typeof s?.[CHAVE] === "string" ? (s[CHAVE] as string) : undefined;
 }
 
+/** `history.back()` pedidos por painéis e ainda não chegados no `popstate` */
+let voltasDePainel = 0;
+function voltarPorPainel() {
+  voltasDePainel++;
+  // se o voltar não acontecer (não havia pra onde), não fica preso marcando o próximo voltar da pessoa
+  window.setTimeout(() => { voltasDePainel = Math.max(0, voltasDePainel - 1); }, 1000);
+  window.history.back();
+}
+/** o `popstate` em curso foi um painel fechando (não a pessoa voltando)? Vale para todos os ouvintes do evento. */
+export function voltaDePainel(): boolean {
+  return voltasDePainel > 0;
+}
+/** o `state` do histórico sem a marca de painel — para quem troca o endereço por cima (`replaceState`) */
+export function estadoSemPainel(s: unknown): unknown {
+  if (!s || typeof s !== "object" || !(CHAVE in (s as object))) return s;
+  const { [CHAVE]: _marca, ...resto } = s as Record<string, unknown>;
+  return Object.keys(resto).length ? resto : null;
+}
+
 /** as marcas no histórico, da mais antiga à mais nova (as mortas também, até serem puladas) — quem está embaixo da
  *  entrada atual continua aberto */
 const pilha: string[] = [];
 /** entradas de painéis que já fecharam mas ficaram no histórico: pular quando o voltar/avançar cair nelas */
 const mortas = new Set<string>();
 let pulandoMortas = false;
+function aoPopstate() {
+  // o voltar de um painel chegou: some no tick seguinte (os outros ouvintes deste popstate ainda o veem)
+  if (voltasDePainel > 0) window.setTimeout(() => { voltasDePainel = Math.max(0, voltasDePainel - 1); }, 0);
+  pularMortas();
+}
 function pularMortas() {
   const m = marcaAtual();
   if (!m || !mortas.has(m)) return;
@@ -36,7 +64,7 @@ function pularMortas() {
     mortas.delete(m);
     const i = pilha.indexOf(m);
     if (i >= 0) pilha.splice(i, 1);
-    window.history.back();
+    voltarPorPainel();
   }, 0);
 }
 
@@ -50,7 +78,7 @@ export function useFecharNoVoltar(aberto: boolean, fechar: () => void): void {
   useEffect(() => {
     if (typeof window === "undefined" || pulandoMortas) return;
     pulandoMortas = true;
-    window.addEventListener("popstate", pularMortas);
+    window.addEventListener("popstate", aoPopstate);
   }, []);
 
   useEffect(() => {
@@ -85,7 +113,7 @@ export function useFecharNoVoltar(aberto: boolean, fechar: () => void): void {
       // tela — voltar ali desfaria a navegação), ela fica marcada pra ser pulada.
       if (!abertoAgora.current && marcaAtual() === minha) {
         pilha.splice(pilha.indexOf(minha), 1);
-        window.history.back();
+        voltarPorPainel();
       } else mortas.add(minha);   // fica na pilha (a ordem importa) até ser pulada
     };
   }, [aberto]);
