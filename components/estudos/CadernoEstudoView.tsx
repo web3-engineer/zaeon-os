@@ -201,6 +201,30 @@ export default function CadernoEstudoView({ caderno }: { caderno: CadernoEstudo 
                 </fieldset>
               );
             }
+            case "fontes": return (
+              <aside className={styles.fontes} key={i}>
+                <h3>{bloco.titulo ?? "Fontes"}</h3>
+                <ul>
+                  {bloco.itens.map((f, j) => (
+                    <li key={j}>
+                      <a href={f.url} target="_blank" rel="noreferrer noopener">{f.titulo}</a>
+                      <span> · {f.tipo}{f.nota ? ` — ${f.nota}` : ""}</span>
+                    </li>
+                  ))}
+                </ul>
+              </aside>
+            );
+            case "mobilizacao": return (
+              <aside className={styles.mobilizacao} key={i}>
+                <strong>Esta etapa precisa de um profissional: {bloco.papel}</strong>
+                <p>{bloco.porque}</p>
+                <p><em>Entrega esperada:</em> {bloco.entregaEsperada}</p>
+                <div className={styles.mobilizacaoAcao}>
+                  <a href="/research-lab?tab=escritorio">Abrir vaga no Escritório →</a>
+                  <span>A Zaeon acompanha até a entrega.</span>
+                </div>
+              </aside>
+            );
           }
         })}
         {!ehCompilado && <div className={styles.anotacoes}>
