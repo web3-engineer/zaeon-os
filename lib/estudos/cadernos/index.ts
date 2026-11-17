@@ -1,11 +1,10 @@
 /**
  * lib/estudos/cadernos/index.ts — o registro dos cadernos de campo gerados (um arquivo por caderno nesta pasta).
- * O Workflow dos 27 adiciona aqui uma linha de import + a entrada no array. cadernosEstudo.ts agrega isto + a ecovila.
+ * cadernosEstudo.ts agrega isto. Reconstruído pelo main agent após cada lote do Workflow.
  */
 import type { CadernoEstudo } from "../cadernosEstudo";
+import { caderno as ecovila } from "./ecovila";
+import { caderno as cardiovascular } from "./cardiovascular";
+import { caderno as cooperativas } from "./cooperativas";
 
-// <<CADERNOS_IMPORTS>> (o montador adiciona imports aqui)
-
-export const CADERNOS_EXTRA: readonly CadernoEstudo[] = [
-  // <<CADERNOS_ENTRIES>> (o montador adiciona entradas aqui)
-];
+export const CADERNOS_EXTRA: readonly CadernoEstudo[] = [ecovila, cardiovascular, cooperativas];
