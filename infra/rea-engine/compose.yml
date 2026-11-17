@@ -4,6 +4,7 @@ services:
     build: { context: ., args: { REA_VERSION: "6.9.0" } }
     image: zaeon-rea-engine:local
     container_name: zaeon_rea_engine
+    init: true   # tini como PID 1: recolhe os zumbis do Chromium/workers (a ponte em PID 1 não recolhia)
     cpuset: "0-3"
     environment:
       REA_BRIDGE_TOKEN: ${REA_BRIDGE_TOKEN:?defina no .env}

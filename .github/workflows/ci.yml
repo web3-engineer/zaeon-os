@@ -142,7 +142,7 @@ jobs:
           done
           docker exec rea-proof-mongo mongosh --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"localhost:27017"}]})'
           DATABASE_URL='mongodb://127.0.0.1:27017/rea_test?directConnection=true' npx prisma db push --skip-generate
-          node --test infra/rea-engine/android-capabilities.test.mjs infra/rea-engine/android-request.test.mjs
+          node --test infra/rea-engine/android-capabilities.test.mjs infra/rea-engine/android-request.test.mjs infra/rea-engine/web-bundle.test.mjs
 
       # Ponte da Forja (repo -> grafo): a LÓGICA PURA de seguranca (allowlist de engines, host-check do
       # clone, filtro de args) roda em qualquer lugar, sem binario nem Mongo. Teste que nao roda no CI nao

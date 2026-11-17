@@ -23,6 +23,10 @@ export const comandoRea = (c: string): boolean => ehNomeRea(c) && !DENY_REA_EXAT
 export type RespostaRea = { ok: boolean; code?: number; evidence?: unknown; stdout?: string; stderr?: string; erro?: string };
 
 const PRAZO_MS = 12 * 60_000;   // análise nativa (Ghidra) pode demorar
+// a análise WEB abre um navegador no motor e analisa bundles de vários MB (infra/rea-engine/web-bundle.mjs: até 14 min
+// de análise + navegador); o prazo do app fica acima do prazo da ponte pra não desistir de uma resposta que vem
+export const PRAZO_WEB_MS = 18 * 60_000;
+export const prazoDoComando = (command: string) => (command === "analyze-web-bundle" ? PRAZO_WEB_MS : PRAZO_MS);
 
 /** chama o motor do REA com um artefato opcional (texto do workspace) + args. IO. */
 export async function chamarRea(
@@ -41,7 +45,7 @@ export async function chamarRea(
     corpo.artifactName = o.artifact.nome;
   }
   try {
-    const r = await f(`${base}/rea`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(corpo), signal: AbortSignal.timeout(PRAZO_MS) });
+    const r = await f(`${base}/rea`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(corpo), signal: AbortSignal.timeout(prazoDoComando(o.command)) });
     const j = (await r.json().catch(() => ({}))) as RespostaRea;
     if (!r.ok) return { ok: false, code: r.status, erro: (j as any)?.erro ?? `bridge HTTP ${r.status}` };
     return j;

@@ -87,6 +87,40 @@ No Octa (com `OCTA_REA=1` + `REA_BRIDGE_URL/TOKEN`), peça uma análise de um al
 ### 5. Rollback
 Os `.bak` do passo 2 preservam os arquivos 6.5.0. Se o 6.9 der problema: `cp Dockerfile.bak Dockerfile; cp compose.yml.bak compose.yml; cp bridge.mjs.bak bridge.mjs`, depois `build` + `rm -f zaeon_rea_engine` + `up -d` de novo (escopado). A imagem 6.9 nova não apaga a anterior; a antiga fica como `<none>` até um `prune` **escopado** (`docker image prune` sem `-a`, nunca o global). Nunca `prune -a`/`down` sem `-p`.
 
+## Análise WEB (`analyze-web-bundle <url>`) — o navegador do motor
+
+O comando do REA não recebe URL: exige um Chromium com CDP no loopback (`<endpoint> <targetId>`). O app manda só a URL
+(`lib/rea-blueprint/alvoReal.ts`), e a ponte resolve isso em `infra/rea-engine/web-bundle.mjs`:
+
+1. valida a URL (http/https, sem credenciais, porta 80/443, host que não é interno);
+2. abre um **proxy de saída** no loopback que resolve o DNS ele mesmo e só conecta em **IP público** nas portas 80/443 —
+   barra RFC1918, loopback, link-local/metadata (169.254), **CGNAT 100.64/10 (a tailnet)**, ULA (fd7a:… da tailnet) e
+   resposta de DNS mista (rebinding);
+3. sobe um Chromium headless por pedido (`--proxy-server` + `--proxy-bypass-list=<-loopback>`, WebRTC sem UDP fora do
+   proxy, CDP só no 127.0.0.1), carrega a página e espera ela assentar;
+4. roda `rea analyze-web-bundle` com `--fetch-source-maps`; o fetch dos source maps do PRÓPRIO REA também vai pelo proxy
+   (`NODE_USE_ENV_PROXY=1` + `HTTPS_PROXY`);
+5. mata o navegador e apaga o perfil. **Um pedido web por vez** (429 `web_busy`): o motor divide os núcleos 0–3 com a ChipFlow.
+
+Corpo: `{ command: "analyze-web-bundle", args: [url], view?: "endpoints" | "inferences" | "summary" }` → `{ ok, evidence,
+pagina, bloqueados }` (`bloqueados` = o que o proxy barrou). Qualquer `args` apontando pro loopback do motor é recusado.
+
+Orçamento (env do container): `REA_WEB_SCRIPT_MS` (420000), `REA_WEB_TOTAL_MS` (840000), `REA_WEB_HEAP_MB` (3072). Um SPA
+Vite costuma ser UM bundle de vários MB — o analisador semântico do REA leva minutos nele.
+
+**Respostas longas:** o `fetch` do Node (undici) corta em 5 min se os cabeçalhos não chegam (`headersTimeout`), mesmo com
+`AbortSignal` maior. A ponte manda os cabeçalhos na hora e um espaço a cada 25 s até o JSON final (`/rea`, `/android`,
+web) — erro depois disso vai no corpo (`{ ok: false, erro }`, status 200). O app espera 18 min na análise web
+(`prazoDoComando` em `lib/octa/rea.ts`).
+
+**Processos do REA:** o `rea` solta o worker de análise numa sessão própria (vira filho do PID 1); matar só o grupo do
+`rea` deixava o worker rodando por 10+ min nos núcleos da ChipFlow. Cada job leva `REA_JOB=<id>` no ambiente e a ponte
+varre o `/proc` por ele ao cancelar/estourar/terminar. O compose usa `init: true` (tini como PID 1) pra recolher os
+zumbis do Chromium. Prazo por pedido no `/rea` estático: `prazoMin` (1–30; padrão `REA_CMD_TIMEOUT_MS` = 10 min).
+
+Provar (na Contabo): `node scripts/rea-smoke.mjs --url https://zaeon.com.br/` com `OCTA_REA=1 REA_BRIDGE_URL REA_BRIDGE_TOKEN`
+no ambiente. Medido em 17/11/2026: zaeon.com.br 226 s, 42/42 scripts, 42 endpoints.
+
 ## Claude no catálogo (créditos Anthropic pelo gateway)
 O Claude (Opus/Sonnet) entra no catálogo ÚNICO de modelos (`lib/chat/modelos`), compartilhado por chat (Aura), Octa e REA. Roteado pelo MESMO gateway LiteLLM — sem SDK nem chave no app; a `ANTHROPIC_API_KEY` mora na Contabo (gateway). **O REA não tem modelo próprio:** ele herda o modelo selecionado na superfície (octa/aura/zaeon). Se o aluno escolher Claude, o blueprint e a análise de binário usam Claude; senão, o modelo de sempre.
 
