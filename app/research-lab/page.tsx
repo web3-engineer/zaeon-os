@@ -19,6 +19,7 @@ import ConversasDaSala from "@/components/chat/ConversasDaSala";
 import { useSidebarHover, focoDeTeclado } from "@/components/lab/useSidebarHover";
 import { useIsMobile, QUERY_CELULAR, QUERY_CELULAR_DEITADO } from "@/lib/ui/useIsMobile";
 import { useFecharNoVoltar } from "@/lib/ui/useFecharNoVoltar";
+import { useTecladoAberto } from "@/lib/ui/useTecladoAberto";
 import { EVT_PESQUISA_SALVA, contarPalavras } from "@/lib/onboarding/tutorialLab";
 import RostoDaAba from "@/components/agents/avatar/RostoDaAba";
 import SeletorDeAgente from "@/components/agents/SeletorDeAgente";
@@ -863,6 +864,9 @@ export default function HomeworkPage({
   // #832: deitado (baixo e de toque) também é celular — o layout de computador não deixava nenhuma linha de conversa
   const celular = useIsMobile(QUERY_CELULAR);
   const deitado = useIsMobile(QUERY_CELULAR_DEITADO);
+  // #837: com o teclado aberto a barra de baixo some (ela comia 60 px da conversa e da caixa de escrever)
+  // (aqui em cima, junto dos outros ganchos: mais embaixo há um `return` cedo e o gancho viraria condicional)
+  const teclado = useTecladoAberto(celular);
   const [gaveta, setGaveta] = useState(false);
   // #832: o ◀ do Android fecha a gaveta (antes voltava para a página anterior com ela aberta)
   useFecharNoVoltar(celular && gaveta, () => setGaveta(false));
@@ -2739,6 +2743,7 @@ export default function HomeworkPage({
   // Aberta, a sidebar passa POR CIMA do conteúdo — a página nunca se reorganiza por causa dela.
   const recuoSidebar: React.CSSProperties = isEmbedded || celular ? {} : { [isChatLeft ? "paddingRight" : "paddingLeft"]: SIDEBAR_FECHADA + 26 };
   const barraCelular = celular && !isEmbedded && !isFocusMode;
+  const mostrarBarra = barraCelular && !teclado;
 
   return (
     <ConversasSlotContext.Provider value={isEmbedded ? null : { el: slotConversas, sala: activeTab === "pesquisa" ? "pesquisa" : activeTab === "sala-de-estudos" ? "estudos" : null }}>
@@ -2938,7 +2943,9 @@ export default function HomeworkPage({
               data-tour="tab-community"
               onClick={() => irEstudos("community")}
               title={t("siteNav.market")}
-              className={`${activeTab === "sala-de-estudos" && abaEstudos === "community" ? `${NAV_BASE} ${NAV_ACTIVE_PILL} !ring-cyan-400/50` : `${NAV_BASE} ${DESTAQUE}`} ${pill(sidebarAberta)}`}
+              // #837: no celular o destaque permanente parecia "aceso" junto com a aba aberta (Perfil e Marketplace ao mesmo
+              // tempo) — lá ele só acende quando a vitrine está aberta; no computador segue destacado (pedido do dono)
+              className={`${activeTab === "sala-de-estudos" && abaEstudos === "community" ? `${NAV_BASE} ${NAV_ACTIVE_PILL} !ring-cyan-400/50` : celular ? navItem(false, "blue") : `${NAV_BASE} ${DESTAQUE}`} ${pill(sidebarAberta)}`}
             >
               <ShoppingBagIcon className="w-5 h-5 shrink-0" />
               <Rotulo v={sidebarAberta}>{t("siteNav.market")}</Rotulo>
@@ -2994,13 +3001,14 @@ export default function HomeworkPage({
               className={`flex items-center gap-3 p-2 rounded-xl border border-transparent text-black dark:text-white hover:bg-slate-100 dark:hover:bg-white/5 group ${pill(sidebarAberta)}`}
             >
               <ArrowUturnLeftIcon className="w-5 h-5 shrink-0 group-hover:text-cyan-500" />
-              <Rotulo v={sidebarAberta}>{t("labSidebar.back")}</Rotulo>
+              {/* #837: no celular, "Voltar" sozinho confundia com o ◀ do aparelho — lá ele diz pra onde vai */}
+              <Rotulo v={sidebarAberta}>{celular ? t("labSidebar.cyberspace") : t("labSidebar.back")}</Rotulo>
             </button>
           </div>
           </div>
         </motion.nav>
         {/* celular: a BARRA DE BAIXO — ☰ abre a gaveta (conversas, Marketplace, layout…); o resto leva direto às salas */}
-        {barraCelular && (
+        {mostrarBarra && (
           <nav aria-label={t("labSidebar.navigation")} className="fixed inset-x-0 bottom-0 z-[591] [font-family:var(--font-tech),sans-serif] flex items-stretch justify-around border-t border-slate-200 bg-white/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#0b0b16]/95"
             style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
             {[
@@ -3032,7 +3040,7 @@ export default function HomeworkPage({
         </div>
       )}
       <main
-        style={barraCelular ? { ...recuoSidebar, paddingBottom: `calc(${deitado ? 48 : 66}px + env(safe-area-inset-bottom))` } : recuoSidebar}
+        style={barraCelular ? { ...recuoSidebar, paddingBottom: mostrarBarra ? `calc(${deitado ? 48 : 66}px + env(safe-area-inset-bottom))` : "env(safe-area-inset-bottom)" } : recuoSidebar}
         className={`flex-1 flex flex-col h-full overflow-hidden ${barraCelular
           // celular: largura toda e o pé livre pra barra de baixo (60px + a área segura do iPhone)
           ? `px-1.5 pt-1 gap-3 ${activeTab === "sala-de-estudos" || activeTab === "pesquisa" || activeTab === "escritorio" ? "" : "px-3"}`

@@ -15,6 +15,8 @@
     "languageAria": "현재 언어: {{name}}. 클릭하여 변경하세요."
   },
   "labSidebar": {
+    "actions": "작업",
+    "cyberspace": "사이버스페이스",
     "study": "학습실",
     "research": "연구실",
     "projects": "프로젝트",
@@ -838,5 +840,28 @@
     "deleteConfirm": "계정을 삭제할까요? 모든 데이터가 삭제되고 이메일을 다시 사용할 수 있게 됩니다. 되돌릴 수 없습니다.",
     "deleteFailed": "지금은 계정을 삭제할 수 없습니다. 다시 시도해 주세요.",
     "connectionError": "연결 오류."
+  },
+  "chatCelular": {
+    "more": "더 보기",
+    "placeholder": "Aura에게 질문하세요",
+    "message": "메시지",
+    "mic": "말하기",
+    "stopMic": "녹음 중지",
+    "stop": "중지",
+    "send": "보내기",
+    "close": "닫기",
+    "bring": "가져오기",
+    "file": "파일",
+    "photo": "사진",
+    "liveCamera": "실시간 카메라",
+    "studio": "Studio로 만들기",
+    "auto": "자동",
+    "guided": "안내",
+    "agentPanel": "{{name}}와 대화 중: 에이전트 변경 및 옵션",
+    "agentTitle": "답하는 에이전트와 옵션",
+    "researchOn": "연구 모드 켜짐",
+    "researchOff": "연구 모드 끄기",
+    "mentorOff": "Aura로 돌아가기 ({{name}} 나가기)",
+    "with": "{{name}}와 함께"
   }
 }

@@ -7,7 +7,7 @@
  */
 import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronRight, Pencil, Search, Trash2 } from "lucide-react";
+import { ChevronRight, MoreHorizontal, Pencil, Search, Trash2 } from "lucide-react";
 import type { ResumoBlueprint } from "@/lib/blueprint/server";
 import { filtrarBlueprints } from "@/lib/blueprint/busca";
 import { agruparPorDia, CHAVE_DO_GRUPO, GRUPOS_RECOLHIDOS, type GrupoDoDia } from "@/lib/chat/threads";
@@ -35,6 +35,8 @@ export default function BlueprintsSidebar({
   const [busca, setBusca] = useState("");
   const [editando, setEditando] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState<string | null>(null);
+  // #837: no toque, as ações do estudo aberto ficam no "⋯"
+  const [acoesAbertas, setAcoesAbertas] = useState(false);
   const [vendoMais, setVendoMais] = useState(false), [falhaMais, setFalhaMais] = useState(false);
   const [gruposAbertos, setGruposAbertos] = useState<Partial<Record<GrupoDoDia, boolean>>>({});
   const alternarGrupo = (g: GrupoDoDia) => setGruposAbertos((s) => ({ ...s, [g]: !(s[g] ?? !GRUPOS_RECOLHIDOS.has(g)) }));
@@ -78,7 +80,7 @@ export default function BlueprintsSidebar({
     const estado = b.aguardandoMentor ? traduzir("labSidebar.awaitingMentor")
       : `${traduzir("labSidebar.phase", { n: b.fase })}${b.criticosAbertos ? ` · ${traduzir("labSidebar.critical", { count: b.criticosAbertos })}` : ""}`;
     return (
-      <div key={b.id} className={`group/estudo relative flex items-center gap-1 rounded-lg pl-1 pr-1 transition-colors ${
+      <div key={b.id} className={`group/estudo relative flex flex-wrap items-center gap-1 rounded-lg pl-1 pr-1 transition-colors ${
         atual ? "bg-slate-900/[0.07] dark:bg-white/[0.10] text-slate-900 dark:text-white" : "text-slate-700 dark:text-white/75 hover:bg-slate-900/[0.04] dark:hover:bg-white/[0.05]"}`}>
         <button
           type="button"
@@ -91,12 +93,20 @@ export default function BlueprintsSidebar({
         >
           <span className="flex items-center gap-1.5 min-w-0">
             {b.criticosAbertos > 0 && !b.aguardandoMentor && <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" aria-hidden />}
-            <span className={`flex-1 min-w-0 truncate text-[13px] ${atual ? "font-semibold" : "font-medium"}`}>{b.titulo}</span>
+            {/* #837: no toque, o nome inteiro em até 2 linhas (como nas conversas) */}
+            <span className={`flex-1 min-w-0 truncate [@media(hover:none)]:whitespace-normal [@media(hover:none)]:line-clamp-2 [@media(hover:none)]:break-words text-[13px] ${atual ? "font-semibold" : "font-medium"}`}>{b.titulo}</span>
           </span>
           <Fases b={b} tour={tour} rotulo={estado} />
         </button>
         {mexe && (
-          <span className="shrink-0 flex items-center">
+          <button type="button" onClick={(e) => { e.stopPropagation(); setAcoesAbertas((v) => !v); }}
+            data-gaveta-fica aria-expanded={acoesAbertas} aria-label={`${traduzir("labSidebar.actions")} · ${b.titulo}`}
+            className="hidden [@media(hover:none)]:flex shrink-0 w-9 h-9 items-center justify-center rounded-md text-slate-500 dark:text-white/55">
+            <MoreHorizontal size={16} />
+          </button>
+        )}
+        {mexe && (
+          <span className={`shrink-0 flex items-center ${acoesAbertas ? "[@media(hover:none)]:basis-full [@media(hover:none)]:justify-end [@media(hover:none)]:gap-2 [@media(hover:none)]:pb-1" : "[@media(hover:none)]:hidden"}`}>
             <button type="button" onClick={(e) => { e.stopPropagation(); setEditando(b.id); }} className={BTN_MINI} data-gaveta-fica aria-label={`${traduzir("labSidebar.rename")} · ${b.titulo}`} title={traduzir("labSidebar.rename")}>
               <Pencil size={12} />
             </button>
@@ -122,7 +132,7 @@ export default function BlueprintsSidebar({
               placeholder={traduzir("labSidebar.searchStudies")}
               aria-label={traduzir("labSidebar.searchStudies")}
               maxLength={80}
-              className="flex-1 min-w-0 bg-transparent text-[12px] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/40 outline-none"
+              className="flex-1 min-w-0 bg-transparent text-[16px] [@media(hover:hover)_and_(pointer:fine)]:text-[12px] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/40 outline-none"
             />
           </label>
         </div>

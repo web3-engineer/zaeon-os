@@ -15,6 +15,8 @@
     "languageAria": "当前语言：{{name}}。点击切换。"
   },
   "labSidebar": {
+    "actions": "操作",
+    "cyberspace": "赛博空间",
     "study": "学习室",
     "research": "研究室",
     "projects": "项目",
@@ -838,5 +840,28 @@
     "deleteConfirm": "删除账户？这会删除你的全部数据，并释放该邮箱以便重新开始。此操作无法撤销。",
     "deleteFailed": "暂时无法删除账户，请重试。",
     "connectionError": "连接错误。"
+  },
+  "chatCelular": {
+    "more": "更多",
+    "placeholder": "向 Aura 提问",
+    "message": "消息",
+    "mic": "说话",
+    "stopMic": "停止录音",
+    "stop": "停止",
+    "send": "发送",
+    "close": "关闭",
+    "bring": "添加",
+    "file": "文件",
+    "photo": "照片",
+    "liveCamera": "实时摄像头",
+    "studio": "用 Studio 生成",
+    "auto": "自动",
+    "guided": "引导",
+    "agentPanel": "正在与 {{name}} 对话：切换智能体和选项",
+    "agentTitle": "谁来回答和选项",
+    "researchOn": "研究模式已开启",
+    "researchOff": "关闭研究模式",
+    "mentorOff": "回到 Aura（离开 {{name}}）",
+    "with": "与 {{name}}"
   }
 }
