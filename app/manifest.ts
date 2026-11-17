@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { descricaoZaeon } from "@/config";
 
 /**
  * Manifesto do PWA.
@@ -28,8 +29,7 @@ export default function manifest(): MetadataRoute.Manifest {
         id: "/",
         name: "Zaeon",
         short_name: "Zaeon",
-        description:
-            "Todas as IAs num só lugar — dentro de um sistema feito pra você produzir ciência.",
+        description: descricaoZaeon,
         start_url: "/",
         scope: "/",
         display: "standalone",

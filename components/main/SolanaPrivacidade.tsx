@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { ArrowRightIcon, CheckBadgeIcon, DocumentTextIcon, LockClosedIcon, EnvelopeIcon, ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 import SolanaMark from "@/components/solana/SolanaMark";
@@ -68,10 +67,6 @@ export default function SolanaPrivacidade() {
           <span className="sol-ranking-flor" aria-hidden="true" />
         </div>
       </article>
-      <div className="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-2 text-[11px] font-black uppercase tracking-widest">
-        <Link href="/about/about-us" className="text-cyan-700 dark:text-cyan-300 hover:text-cyan-500 underline underline-offset-4 decoration-cyan-500/40">{t("landing.solana.verificacao", { defaultValue: "" })}</Link>
-        <Link href="/docs#privacidade" className="text-slate-700 dark:text-white/70 hover:text-cyan-500 underline underline-offset-4 decoration-white/20">{t("landing.solana.blockchain", { defaultValue: "" })}</Link>
-      </div>
     </section>
   );
 }

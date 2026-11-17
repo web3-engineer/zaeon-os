@@ -125,7 +125,7 @@ function SubtituloEstudos() {
     const palavra = "ZAETERMO";
     const [antes, depois] = t("landing.study_beyond_prompts", { palavra }).split(palavra);
     return (
-        <p className="mx-auto mt-4 max-w-xl text-center font-display text-xl font-semibold text-slate-900 dark:text-white md:text-2xl">
+        <p className="mx-auto mt-4 max-w-3xl text-balance text-center font-display text-xl font-semibold text-slate-900 dark:text-white md:text-2xl">
             <span className="sr-only">{t("landing.study_beyond_prompts", { palavra: t("landing.study_terms.work") })}</span>
             <span aria-hidden="true">
                 {antes}

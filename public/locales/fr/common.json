@@ -719,8 +719,8 @@
             "prova": "Il faut prouver ce que vous savez.",
             "pulmoes": "Poumons",
             "saber": "Dans le monde d’aujourd’hui, savoir ne suffit pas.",
-            "provar": "Je cherche toujours des talents à mettre en relation avec des entreprises.",
-            "proximo": "Vous pourriez être le prochain talent.",
+            "provar": "Approfondissez vos compétences et augmentez vos chances de vous faire remarquer.",
+            "proximo": "Nous formons des talents de haut niveau et présentons les meilleurs aux entreprises.",
             "titulo": "Anatomie humaine en mouvement",
             "descricao": "Explorez l’organisation des systèmes nerveux et circulatoire dans le corps humain.",
             "cerebro": "Cerveau",
@@ -800,9 +800,13 @@
             "diagrama": "Une preuve publique protège l’identité de la personne."
         },
         "faq": {
+            "7": {
+                "q": "Comment Zaeon met-elle les talents en relation avec les entreprises ?",
+                "a": "Nous examinons les compétences démontrées lors d’évaluations et dans des projets terminés. Nos agents présentent les talents qui se distinguent aux entreprises qui recherchent ces compétences."
+            },
             "1": {
                 "q": "Qu’est-ce que Zaeon aujourd’hui ?",
-                "a": "Un espace en ligne pour travailler en équipe, étudier et transformer vos connaissances en projets."
+                "a": "Un espace en ligne pour travailler en équipe, étudier et transformer les connaissances en projets. Nous aidons aussi les entreprises à trouver des talents exceptionnels grâce à des évaluations rigoureuses et à des réalisations concrètes."
             },
             "2": {
                 "q": "Le coworking est-il gratuit ?",

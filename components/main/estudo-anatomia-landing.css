@@ -52,18 +52,20 @@
   margin: 0;
   color: var(--foreground);
   font-size: clamp(1.15rem, 4vw, 2.3rem);
-  font-family: var(--font-outfit), sans-serif;
-  font-weight: 600;
-  letter-spacing: -.022em;
-  line-height: 1.1;
+  font-family: var(--font-display), sans-serif;
+  font-weight: 350;
+  letter-spacing: .012em;
+  line-height: 1.23;
   text-wrap: balance;
 }
 .estudo-anatomia-secao[data-animado="true"] h2 { opacity: var(--atlas-frase-titulo, 1); }
 
-.estudo-anatomia-secao[data-animado="true"] .estudo-anatomia-frases p { opacity: var(--atlas-frase-final, 0); }
+
+
 .estudo-anatomia-frases strong {
   display: block;
   margin-top: .35em;
+  font-weight: 450;
   color: #08768c;
 }
 .dark .estudo-anatomia-frases strong { color: #70def2; }
@@ -121,14 +123,16 @@
 }
 @media (min-width: 960px) {
   .estudo-anatomia-secao[data-animado="true"] .estudo-anatomia-palco {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.55fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, .65fr) minmax(0, 1.4fr) minmax(0, 1.15fr);
   }
-  .estudo-anatomia-secao[data-animado="true"] :is(h2, .estudo-anatomia) { grid-column: 2; }
+  .estudo-anatomia-secao[data-animado="true"] h2 { grid-column: 1 / -1; }
+  .estudo-anatomia-secao[data-animado="true"] .estudo-anatomia { grid-column: 2; }
   .estudo-anatomia-secao[data-animado="true"] .estudo-anatomia-frases p {
     grid-area: 2 / 3;
     align-self: center;
     justify-self: start;
     text-align: start;
+    font-size: clamp(1.35rem, 2.45vw, 2rem);
   }
 }
 
@@ -169,45 +173,13 @@
 .estudo-anatomia-anotacoes > :nth-child(13) { --nota: var(--atlas-nota-13); top: 48%; right: 14%; }
 .estudo-anatomia-anotacoes > :nth-child(14) { --nota: var(--atlas-nota-14); bottom: 17%; left: 45%; }
 
-.estudo-anatomia-beija-flor {
-  display: none;
-  position: absolute;
-  z-index: 1;
-  left: 50%;
-  top: 45%;
-  width: 58%;
-  aspect-ratio: 1;
-  pointer-events: none;
-  transform: translate(-50%, -50%);
+
+.estudo-anatomia-frase-chip.estudo-anatomia-convite {
+  opacity: var(--atlas-frase-final, 0);
+  transform: translateY(var(--atlas-entrada-final, 0px));
 }
-.estudo-anatomia-secao[data-bird="true"] .estudo-anatomia-beija-flor {
-  display: block;
-  animation: estudo-voo 1.55s cubic-bezier(.17,.68,.2,1) both;
-}
-.estudo-anatomia-beija-flor i {
-  position: absolute;
-  inset: 0;
-  background: url("/assets/zaeon-hummingbird.png") center / contain no-repeat;
-}
-.estudo-beija-flor-corpo {
-  clip-path: polygon(0 0,100% 0,100% 100%,0 100%,0 51%,30% 51%,53% 52%,58% 44%,46% 19%,5% 6%,0 51%);
-}
-.estudo-anatomia-beija-flor :is(.estudo-asa-proxima, .estudo-asa-distante) {
-  clip-path: polygon(5% 6%,46% 19%,58% 44%,53% 52%,30% 51%,12% 35%);
-  transform-origin: 53% 46%;
-  animation: estudo-asa .13s ease-in-out infinite;
-}
-.estudo-asa-distante { --asa-angulo: 42deg; filter: brightness(.76); }
-@keyframes estudo-voo {
-  from { transform: translate(-230%, 14%) rotate(-12deg) scale(.65); }
-  76% { transform: translate(-45%, -53%) rotate(2deg); }
-  to { transform: translate(-50%, -50%); }
-}
-@keyframes estudo-asa {
-  0%, 100% { transform: rotate(var(--asa-angulo, 0deg)); }
-  50% { transform: rotate(calc(var(--asa-angulo, 0deg) - 13deg)) scaleY(.74); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .estudo-anatomia-secao[data-bird="true"] .estudo-anatomia-beija-flor,
-  .estudo-anatomia-beija-flor i { animation: none; }
+
+.estudo-anatomia-frase-chip.estudo-anatomia-crescer {
+  opacity: var(--atlas-frase-crescer, 0);
+  transform: translateY(var(--atlas-entrada-crescer, 0px));
 }

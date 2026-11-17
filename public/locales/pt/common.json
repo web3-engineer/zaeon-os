@@ -719,8 +719,8 @@
             "prova": "Você tem que provar o que sabe.",
             "pulmoes": "Pulmões",
             "saber": "No mundo de hoje, saber não é suficiente.",
-            "provar": "Estou sempre em busca de talentos para conectar a empresas.",
-            "proximo": "Você pode ser o próximo talento.",
+            "provar": "Aprofunde suas habilidades e aumente suas chances de ser notado.",
+            "proximo": "Nós forjamos talentos de alto nível e mostramos os melhores para empresas.",
             "titulo": "Anatomia humana em movimento",
             "descricao": "Explore como os sistemas nervoso e circulatório se organizam no corpo humano.",
             "cerebro": "Cérebro",
@@ -800,9 +800,13 @@
             "diagrama": "Uma prova pública protege a identidade da pessoa."
         },
         "faq": {
+            "7": {
+                "q": "Como a Zaeon conecta talentos a empresas?",
+                "a": "O que conta é o que cada pessoa demonstra em provas e projetos concluídos. Nossos agentes ajudam a apresentar quem se destaca a empresas que buscam essas habilidades."
+            },
             "1": {
                 "q": "O que é a Zaeon hoje?",
-                "a": "Um espaço online para trabalhar em equipe, estudar e transformar conhecimento em projetos."
+                "a": "Um espaço online para trabalhar com sua equipe, estudar e transformar conhecimento em projetos. Também ajudamos empresas a encontrar talentos excepcionais com base em avaliações rigorosas e trabalhos concretos."
             },
             "2": {
                 "q": "O coworking é gratuito?",

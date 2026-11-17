@@ -60,7 +60,6 @@ export default function EstudoAnatomiaLanding() {
     const renderizar = (agora: number) => {
       inicio ??= agora;
       const tempo = Math.min(DURACAO_ANATOMIA, ((agora - inicio) / 1000) * 1.15);
-      if (tempo >= 14.15) mensagens.dataset.bird = "true";
       if (agora - ultimoQuadro >= 1000 / 31 || tempo === DURACAO_ANATOMIA) {
         desenharAnatomia(ctx, pontos, tempo, rotulos, linhas, marcadores, mensagens);
         ultimoQuadro = agora;
@@ -74,7 +73,6 @@ export default function EstudoAnatomiaLanding() {
     return () => {
       cancelAnimationFrame(quadro);
       mensagens.dataset.emCena = "false";
-      delete mensagens.dataset.bird;
     };
   }, [visivel, pontos]);
 
@@ -99,17 +97,12 @@ export default function EstudoAnatomiaLanding() {
         </div>
         <div className="estudo-anatomia-frases">
           <h2 id="estudo-anatomia-titulo">{t("landing.anatomia_amostra.saber")}</h2>
-          <p className="estudo-anatomia-convite">
-            <span>{t("landing.anatomia_amostra.provar")} <strong>{t("landing.anatomia_amostra.proximo")}</strong></span>
-          </p>
+
         </div>
         <div className="estudo-anatomia">
           <p className="estudo-anatomia-frase-chip">{t("landing.anatomia_amostra.prova")}</p>
-          <span className="estudo-anatomia-beija-flor" aria-hidden="true">
-            <i className="estudo-asa-distante" />
-            <i className="estudo-beija-flor-corpo" />
-            <i className="estudo-asa-proxima" />
-          </span>
+          <p className="estudo-anatomia-frase-chip estudo-anatomia-crescer">{t("landing.anatomia_amostra.provar")}</p>
+          <p className="estudo-anatomia-frase-chip estudo-anatomia-convite">{t("landing.anatomia_amostra.proximo")}</p>
           <canvas ref={canvas} className="estudo-anatomia-modelo" width={680} height={950} aria-hidden="true" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img className="estudo-anatomia-fallback" src="/models/anatomia-landing.webp" width={680} height={950} loading="lazy" decoding="async" alt="" />

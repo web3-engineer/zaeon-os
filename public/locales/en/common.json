@@ -719,8 +719,8 @@
             "prova": "You have to prove that you know.",
             "pulmoes": "Lungs",
             "saber": "In today’s world, knowing isn’t enough.",
-            "provar": "I’m always looking for talented people to connect with companies.",
-            "proximo": "You could be next.",
+            "provar": "Deepen your skills and increase your chances of getting noticed.",
+            "proximo": "We develop top talent and introduce the best to companies.",
             "titulo": "Human anatomy in motion",
             "descricao": "Explore how the nervous and circulatory systems are arranged in the human body.",
             "cerebro": "Brain",
@@ -800,9 +800,13 @@
             "diagrama": "A public proof protects the person’s identity."
         },
         "faq": {
+            "7": {
+                "q": "How does Zaeon connect talent with companies?",
+                "a": "We look at what people can prove through assessments and completed projects. Our agents help introduce people whose work stands out to companies looking for those skills."
+            },
             "1": {
                 "q": "What is Zaeon today?",
-                "a": "An online space to work with your team, study, and turn knowledge into projects."
+                "a": "An online space to work with your team, study, and turn knowledge into projects. We also help companies find exceptional talent through rigorous assessments and real work."
             },
             "2": {
                 "q": "Is coworking free?",
