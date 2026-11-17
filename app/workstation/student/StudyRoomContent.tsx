@@ -248,6 +248,8 @@ export default function StudyRoomContent({ flushTop = false, unified = false, ab
         try {
             // a 1ª vez do TABLET (lib/ui/loungeHub `LAB_TABLET_PRIMEIRA`): abre no CHAT, não na última aba salva
             if (new URLSearchParams(window.location.search).get("estudo") === "chat") { setActiveTab("meus-estudos"); tabRestored.current = true; return; }
+            // #841: o atalho "Estudos" do ícone do app (manifest `shortcuts`) abre direto nos Estudos
+            if (new URLSearchParams(window.location.search).get("estudo") === "feed") { setActiveTab("feed"); tabRestored.current = true; return; }
             const saved = localStorage.getItem(`zaeon:lastTab:${room}`);
             // #832: a vitrine ("community") não volta sozinha — quem saiu por ela reabria o app no Marketplace, e não na
             // conversa. Ela só abre quando pedida (/marketplace, o item do menu, a gaveta).

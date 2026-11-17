@@ -69,6 +69,14 @@ export default function ConversasSidebar({
   const [busca, setBusca] = useState("");
   const [editando, setEditando] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState<string | null>(null);
+  // #841: sem internet a lista fica vazia (vem do servidor) — avisar, senão parece que as conversas sumiram
+  const [semRede, setSemRede] = useState(false);
+  useEffect(() => {
+    const sync = () => setSemRede(typeof navigator !== "undefined" && navigator.onLine === false);
+    sync();
+    window.addEventListener("online", sync); window.addEventListener("offline", sync);
+    return () => { window.removeEventListener("online", sync); window.removeEventListener("offline", sync); };
+  }, []);
   // #837: na tela de toque as ações de uma conversa ficam no "⋯" (sempre à vista, elas espremiam o nome em "faça u…")
   const [acoesDe, setAcoesDe] = useState<string | null>(null);
   // Mães abertas no acordeão. A mãe da conversa ativa abre sozinha (senão a ativa some).
@@ -234,6 +242,9 @@ export default function ConversasSidebar({
         </div>
       )}
       <div className={`flex-1 min-h-0 overflow-y-auto custom-scrollbar ${embutida ? "px-0" : "px-2"} pb-2 flex flex-col gap-0.5`}>
+        {semRede && (
+          <p role="status" className="mx-1 my-1 rounded-lg border border-amber-400/40 bg-amber-500/10 px-2.5 py-2 text-[12px] text-amber-800 dark:text-amber-100">{traduzir("labSidebar.offline")}</p>
+        )}
         {nos.length === 0 && (
           <p className="px-2 py-3 text-[12px] text-slate-500 dark:text-white/45">{traduzir(termo ? "labSidebar.noResults" : "labSidebar.empty")}</p>
         )}

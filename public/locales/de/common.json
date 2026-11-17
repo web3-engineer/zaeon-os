@@ -15,6 +15,7 @@
     "languageAria": "Aktuelle Sprache: {{name}}. Zum Wechseln klicken."
   },
   "labSidebar": {
+    "offline": "Keine Verbindung: Deine Unterhaltungen erscheinen, sobald das Internet zurück ist.",
     "actions": "Aktionen",
     "cyberspace": "Cyberspace",
     "study": "Lernraum",

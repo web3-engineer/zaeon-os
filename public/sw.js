@@ -2,9 +2,12 @@
  * Service worker da Zaeon — escrito à mão de propósito (sem Serwist/Workbox).
  *
  * O que ele faz, e SÓ isso:
- *   - navegação ............ network-first; sem rede, devolve a /offline
+ *   - navegação ............ network-first; sem rede, devolve a /offline;
+ *                            servidor mudo por 6 s → aviso "demorando" (#841)
  *   - /_next/static/* ...... cache-first (nome com hash = imutável)
  *   - /icons /assets /sponsors ... stale-while-revalidate
+ *   - fotos dos agentes (/agents, /avatars: só imagem) ... idem (#841: sem
+ *     internet, a foto da Aura aparecia quebrada no Menu)
  *   - todo o resto ......... não toca (API, _next/data, RSC, POST, outra origem)
  *
  * O que ele NÃO faz, e por quê:
@@ -85,7 +88,7 @@ self.addEventListener("fetch", (e) => {
         e.respondWith(cacheFirst(req));
         return;
     }
-    if (/^\/(icons|assets|sponsors)\//.test(url.pathname)) {
+    if (/^\/(icons|assets|sponsors)\//.test(url.pathname) || /^\/(agents|avatars)\/.+\.(png|webp|jpe?g|svg)$/i.test(url.pathname)) {
         e.respondWith(staleWhileRevalidate(req, e));
     }
     // qualquer outra coisa: o navegador segue sozinho, sem o SW no meio
@@ -93,13 +96,61 @@ self.addEventListener("fetch", (e) => {
 
 // Navegação: a rede sempre vence. O cache só entra quando a rede FALHA —
 // um 500 do servidor continua sendo mostrado como 500, não como "offline".
+//
+// #841: com o servidor lento (já vimos 7 a 11 s esperando o primeiro byte), a tela
+// ficava parada sem dizer nada. Se em ESPERA_MS não chegar resposta, mostra o aviso
+// "demorando" — uma página leve, sem rede, que tenta de novo sozinha e tem o botão.
+// A navegação não é cancelada: o servidor continua respondendo, e a próxima
+// tentativa costuma encontrá-lo pronto.
+const ESPERA_MS = 6000;
 async function navegar(req) {
+    const daRede = fetch(req);
+    let relogio;
+    const demorou = new Promise((resolve) => { relogio = setTimeout(() => resolve(DEMOROU), ESPERA_MS); });
     try {
-        return await fetch(req);
+        const resp = await Promise.race([daRede, demorou]);
+        if (resp !== DEMOROU) return resp;
+        daRede.catch(() => {});   // chega depois: sem erro solto no console
+        return paginaDemorando(req);
     } catch {
         const offline = await caches.match(OFFLINE, { cacheName: CACHE_PAGINAS });
         return offline || Response.error();
+    } finally {
+        clearTimeout(relogio);
     }
+}
+const DEMOROU = Symbol("demorou");
+
+// Os textos seguem a língua do aparelho (o SW não tem o i18n do app).
+const TEXTOS_DEMORANDO = {
+    pt: ["A Zaeon está demorando para responder", "Seu pedido continua: tentamos de novo sozinhos em alguns segundos.", "Tentar de novo"],
+    en: ["Zaeon is taking a while to respond", "Your request is still going: we'll try again on our own in a few seconds.", "Try again"],
+    es: ["Zaeon está tardando en responder", "Tu pedido sigue en curso: lo intentamos de nuevo solos en unos segundos.", "Intentar de nuevo"],
+    fr: ["Zaeon met du temps à répondre", "Votre demande continue : nous réessayons tout seuls dans quelques secondes.", "Réessayer"],
+    de: ["Zaeon braucht etwas länger", "Deine Anfrage läuft weiter: Wir versuchen es in ein paar Sekunden von selbst erneut.", "Erneut versuchen"],
+    ko: ["Zaeon의 응답이 늦어지고 있어요", "요청은 계속 진행 중이에요. 몇 초 뒤에 자동으로 다시 시도합니다.", "다시 시도"],
+    zh: ["Zaeon 响应较慢", "你的请求仍在进行，几秒后会自动重试。", "重试"],
+};
+
+function paginaDemorando(req) {
+    const lng = ((req.headers.get("accept-language") || "pt").split(",")[0] || "pt").slice(0, 2).toLowerCase();
+    const [titulo, texto, botao] = TEXTOS_DEMORANDO[lng] || TEXTOS_DEMORANDO.pt;
+    const html = `<!doctype html><html lang="${lng}"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#030014"><title>Zaeon</title>
+<style>
+html,body{margin:0;height:100%;background:#030014;color:#e8f3ff;font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{min-height:100%;display:grid;place-items:center;padding:24px;box-sizing:border-box;text-align:center}
+.anel{width:44px;height:44px;margin:0 auto 20px;border-radius:50%;border:3px solid rgba(56,240,255,.25);border-top-color:#38f0ff;animation:g 1s linear infinite}
+@keyframes g{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.anel{animation:none}}
+h1{font-size:20px;margin:0 0 8px}p{margin:0 0 24px;color:#9fb2d4;max-width:340px}
+button{min-height:44px;padding:0 22px;border-radius:999px;border:1px solid rgba(56,240,255,.5);background:rgba(56,240,255,.12);color:#e8f3ff;font:inherit;font-weight:600;cursor:pointer}
+</style></head><body><main><div><div class="anel" aria-hidden="true"></div>
+<h1 role="status">${titulo}</h1><p>${texto}</p>
+<button type="button" onclick="location.reload()">${botao}</button></div></main>
+<script>setTimeout(function(){location.reload()},8000)</script></body></html>`;
+    return new Response(html, { status: 503, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
 }
 
 async function cacheFirst(req) {
