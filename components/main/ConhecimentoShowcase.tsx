@@ -1,18 +1,37 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import CartaVitrine from "@/components/estudos/CartaVitrine";
 import type { ItemVitrine } from "@/lib/estudos/vitrine";
 import { ROTA_MARKETPLACE } from "@/lib/ui/marketplaceRota";
+import "./timeline-ideia.css";
 
 const exemplos = [
+  { id: "codigo", skin: "tecnologia", tipo: "codigo", modelo: "chip" },
+  { id: "hardware", skin: "tecnologia", tipo: "codigo", modelo: "chip" },
+  { id: "mecanica", skin: "tecnologia", tipo: "curso", modelo: "livro", imagem: "/assets/landing/estudos/mecanica.webp" },
+  { id: "eletrica", skin: "tecnologia", tipo: "curso", modelo: "chip", imagem: "/assets/landing/estudos/eletrica.webp" },
+  { id: "solar", skin: "tecnologia", tipo: "curso", modelo: "chip", imagem: "/assets/landing/estudos/solar.webp" },
+  { id: "civil", skin: "portfolio", tipo: "curso", modelo: "livro", imagem: "/assets/landing/estudos/civil-cad.webp" },
+  { id: "hortas", skin: "agronomia", tipo: "curso", modelo: "planta", imagem: "/assets/landing/estudos/hortas.webp" },
+  { id: "ecovilas", skin: "geografia", tipo: "curso", modelo: "planta", imagem: "/assets/landing/estudos/ecovilas.webp" },
+  { id: "comunidades", skin: "historia", tipo: "curso", modelo: "livro", imagem: "/assets/landing/estudos/comunidades.webp" },
+  { id: "cisternas", skin: "caderno", tipo: "curso", modelo: "livro", imagem: "/assets/landing/estudos/cisternas.webp" },
+  { id: "ambiental", skin: "geografia", tipo: "curso", modelo: "livro", imagem: "/assets/landing/estudos/ambiental.webp" },
   { id: "coracao", skin: "dossie", tipo: "pesquisa", modelo: "pasta", imagem: "/models/coracao-landing.webp" },
+  { id: "neuro", skin: "dossie", tipo: "curso", modelo: "livro", imagem: "/models/cerebro-landing.webp" },
+  { id: "respiracao", skin: "dossie", tipo: "curso", modelo: "livro", imagem: "/assets/landing/estudos/respiracao.webp" },
+  { id: "farmacologia", skin: "dossie", tipo: "curso", modelo: "livro", imagem: "/assets/landing/estudos/farmacologia.webp" },
+  { id: "microbiologia", skin: "dossie", tipo: "curso", modelo: "livro", imagem: "/assets/landing/estudos/microbiologia.webp" },
   { id: "recife", skin: "historia", tipo: "curso", modelo: "predio" },
   { id: "bacias", skin: "geografia", tipo: "curso", modelo: "livro" },
+  { id: "geologia", skin: "historia", tipo: "curso", modelo: "livro", imagem: "/assets/landing/estudos/geologia.webp" },
   { id: "safra", skin: "agronomia", tipo: "curso", modelo: "graos" },
+  { id: "quimica", skin: "caderno", tipo: "curso", modelo: "livro", imagem: "/assets/landing/estudos/quimica.webp" },
   { id: "clima", skin: "dados", tipo: "pesquisa", modelo: "livro" },
+  { id: "oceanografia", skin: "geografia", tipo: "curso", modelo: "livro", imagem: "/assets/landing/estudos/oceanografia.webp" },
   { id: "literatura", skin: "caderno", tipo: "curso", modelo: "livro" },
   { id: "ecologia", skin: "dossie", tipo: "pesquisa", modelo: "planta" },
   { id: "direito", skin: "historia", tipo: "curso", modelo: "livro", imagem: "/assets/forja-capas-editoriais.jpg" },
@@ -24,22 +43,18 @@ const exemplos = [
   { id: "astronomia", skin: "caderno", tipo: "curso", modelo: "livro", imagem: "/videos/visio-blackhole.jpg" },
   { id: "habitat", skin: "portfolio", tipo: "negocio", modelo: "predio", imagem: "/assets/intro-poster-desktop.jpg" },
   { id: "matematica", skin: "dados", tipo: "curso", modelo: "livro" },
+  { id: "materiais", skin: "dados", tipo: "curso", modelo: "livro", imagem: "/assets/landing/estudos/materiais.webp" },
   { id: "arquitetura", skin: "portfolio", tipo: "curso", modelo: "predio" },
   { id: "economia", skin: "dados", tipo: "curso", modelo: "graos" },
   { id: "veterinaria", skin: "agronomia", tipo: "curso", modelo: "planta" },
 ] as const satisfies readonly Pick<ItemVitrine, "id" | "skin" | "tipo" | "modelo" | "imagem">[];
 
-export default function ConhecimentoShowcase({ principal }: { principal: ReactNode }) {
+const engenharias = new Set<string>(["civil", "mecanica", "eletrica", "solar", "quimica", "ambiental", "materiais"]);
+
+export default function ConhecimentoShowcase({ principal }: { principal?: React.ReactNode }) {
   const { t } = useTranslation();
   const router = useRouter();
   const faixa = useRef<HTMLUListElement>(null);
-  useLayoutEffect(() => {
-    const lista = faixa.current;
-    const centro = lista?.querySelector<HTMLElement>(".ci-carrossel-principal");
-    if (!lista || !centro) return;
-    lista.scrollLeft = centro.offsetLeft + (centro.offsetWidth - lista.clientWidth) / 2;
-  }, []);
-
   useEffect(() => {
     const lista = faixa.current;
     if (!lista || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -82,18 +97,29 @@ export default function ConhecimentoShowcase({ principal }: { principal: ReactNo
             fracoes: { total: 1, vendidas: 0 }, selos: { supervisionado: false, linksOk: false, codigoPrivado: false },
             entrega: [], tags: [],
           };
+          const arte = exemplo.id === "codigo"
+            ? <span className="ci-simbolo-chip" aria-hidden="true"><i /><i /><i /></span>
+            : exemplo.id === "hardware" ? (
+              <svg className="ci-placa-hardware" viewBox="0 0 96 74" aria-hidden="true">
+                <rect x="3" y="3" width="90" height="68" rx="8" fill="#123c39" stroke="#65b4a0" strokeWidth="2" />
+                <path d="M10 19h13l12 12h8m-33 23h12l13-13h8m47-22H75L63 31h-9m36 23H75L62 41h-8M48 11v14m0 24v14" stroke="#d6b472" strokeWidth="2" fill="none" />
+                <rect x="34" y="23" width="28" height="28" rx="4" fill="#16202c" stroke="#a7bcc8" strokeWidth="2" />
+                <rect x="40" y="29" width="16" height="16" rx="2" fill="#344958" />
+                <path d="M18 60h8m44-47h8M14 12h5m59 50h5" stroke="#a2efc3" strokeWidth="3" strokeLinecap="round" />
+              </svg>
+            ) : undefined;
           return <li key={exemplo.id} className="ci-carrossel-item" data-lado={lado}>
-            <CartaVitrine it={it} precoNode={null} className={`ci-carrossel-card ci-capa-${exemplo.id} !block [&_.vt-type]:hidden [&_.vt-pr]:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500`} onClick={() => router.push(ROTA_MARKETPLACE)} />
+            <CartaVitrine it={it} arteNode={arte} precoNode={null} className={`ci-carrossel-card ci-capa-${exemplo.id}${engenharias.has(exemplo.id) ? " ci-engenharia" : ""} !block [&_.vt-type]:hidden [&_.vt-pr]:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500`} onClick={() => router.push(ROTA_MARKETPLACE)} />
           </li>;
   };
 
   const meio = 9;
 
   return (
-    <section aria-label={t("landing.knowledge_cards.label")} className="ci-carrossel">
+    <section aria-label={t("landing.knowledge_cards.label")} className={principal ? "ci-carrossel" : "ci-carrossel ci-carrossel-autonomo"}>
       <ul ref={faixa} className="ci-carrossel-faixa">
         {exemplos.slice(0, meio).map((exemplo) => renderCarta(exemplo, "esquerda"))}
-        <li className="ci-carrossel-principal">{principal}</li>
+        {principal && <li className="ci-carrossel-principal">{principal}</li>}
         {exemplos.slice(meio).map((exemplo) => renderCarta(exemplo, "direita"))}
       </ul>
     </section>

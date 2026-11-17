@@ -541,6 +541,82 @@
     },
     "landing": {
         "knowledge_cards": {
+            "neuro": {
+                "title": "Neuroanatomy",
+                "summary": "Compare brain structures and their functions."
+            },
+            "respiracao": {
+                "title": "Respiratory physiology",
+                "summary": "Study ventilation and gas exchange."
+            },
+            "farmacologia": {
+                "title": "Pharmacology",
+                "summary": "Study how drugs interact with the body."
+            },
+            "civil": {
+                "title": "Civil engineering",
+                "summary": "Read a CAD floor plan and study dimensions, layout and structural axes."
+            },
+            "mecanica": {
+                "title": "Mechanical engineering",
+                "summary": "Compare turbines and measure mechanical efficiency."
+            },
+            "quimica": {
+                "title": "Chemical engineering",
+                "summary": "Track mass and energy through a pilot plant."
+            },
+            "ambiental": {
+                "title": "Environmental engineering",
+                "summary": "Compare water treatment processes."
+            },
+            "geologia": {
+                "title": "Geology",
+                "summary": "Read rock layers and reconstruct their history."
+            },
+            "microbiologia": {
+                "title": "Microbiology",
+                "summary": "Observe how microbes grow and interact."
+            },
+            "materiais": {
+                "title": "Materials science",
+                "summary": "Compare how microstructure changes material properties."
+            },
+            "oceanografia": {
+                "title": "Oceanography",
+                "summary": "Interpret buoy data on waves and currents."
+            },
+            "eletrica": {
+                "title": "Electrical engineering",
+                "summary": "Study loads, protection and distribution."
+            },
+            "solar": {
+                "title": "Solar energy",
+                "summary": "Compare generation, storage and payback."
+            },
+            "hortas": {
+                "title": "Community gardens",
+                "summary": "Plan beds, composting and irrigation."
+            },
+            "ecovilas": {
+                "title": "Ecovillages",
+                "summary": "Study shared housing, food and energy."
+            },
+            "comunidades": {
+                "title": "Decentralized communities",
+                "summary": "Design shared rules, voting and accountability."
+            },
+            "cisternas": {
+                "title": "Rainwater harvesting",
+                "summary": "Size a cistern and plan how to use collected water."
+            },
+            "codigo": {
+                "title": "Code",
+                "summary": "Build and test working software."
+            },
+            "hardware": {
+                "title": "Hardware",
+                "summary": "Design circuits and test physical components."
+            },
             "label": "Knowledge in the Marketplace",
             "coracao": {
                 "title": "Atlas of the Heart",
@@ -633,7 +709,34 @@
         "hero_tagline": "More than conversations with chatbots and open tabs — here you build <hl>ideas that become finished products</hl>.",
         "knowledge_title": "Turn your idea into reality.",
         "privacidade_titulo": "Privacy, Safety, and Anonymity",
-        "privacidade_texto": "Work on your own or share your skills with the world. No one needs to know who you are or what you do.",
+        "study_beyond_prompts": "Take your {{palavra}} to another level beyond prompts.",
+        "study_terms": {
+            "work": "work",
+            "study": "study",
+            "life": "life"
+        },
+        "anatomia_amostra": {
+            "bronquios": "Bronchi",
+            "estomago": "Stomach",
+            "rins": "Kidneys",
+            "prova": "You have to prove that you know.",
+            "pulmoes": "Lungs",
+            "saber": "In today’s world, knowing isn’t enough.",
+            "provar": "Deepen your skills and increase your chances of getting noticed.",
+            "proximo": "We develop top talent and introduce the best to companies.",
+            "titulo": "Human anatomy in motion",
+            "descricao": "Explore how the nervous and circulatory systems are arranged in the human body.",
+            "cerebro": "Brain",
+            "coracao": "Heart"
+        },
+        "privacidade_fluxo": {
+            "conta": "Always Private",
+            "conta_detalhe": "Chat with AI models in a private workspace. You decide what to share.",
+            "vitrine": "Verifiable credentials",
+            "vitrine_detalhe": "Show what you can do. Link your work to verifiable credentials and use the ranking to see how your skills stand out in your field.",
+            "proposta": "Business deals, without the paperwork",
+            "proposta_detalhe": "Agree on project milestones with companies and keep your conversations private, all on Zaeon."
+        },
         "flow": {
             "ideas": "ideas",
             "projects": "projects",
@@ -700,9 +803,13 @@
             "diagrama": "A public proof protects the person’s identity."
         },
         "faq": {
+            "7": {
+                "q": "How does Zaeon connect talent with companies?",
+                "a": "We look at what people can prove through assessments and completed projects. Our agents help introduce people whose work stands out to companies looking for those skills."
+            },
             "1": {
                 "q": "What is Zaeon today?",
-                "a": "An online space to work with your team, study, and turn knowledge into projects."
+                "a": "An online space to work with your team, study, and turn knowledge into projects. We also help companies find exceptional talent through rigorous assessments and real work."
             },
             "2": {
                 "q": "Is coworking free?",
@@ -726,6 +833,9 @@
             }
         },
         "interface": {
+            "amostra_estudo": "Study preview",
+            "privacidade_landing": "Privacy on Zaeon",
+            "apoio": "Funding and support",
             "mes": "One month free",
             "cartao": "No card required",
             "limites": "No limits",

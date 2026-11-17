@@ -113,7 +113,7 @@ add(0.94, (() => {
     <path d="M414 409H585L593 417V580L580 593H419L407 581V417Z" fill="url(#cs-metal)" stroke="#a3afbc" stroke-width="1.4"/>
     <path d="M414 409H585L593 417V580L580 593H419L407 581V417Z" fill="url(#cs-escovado)"/>
     <path d="M414 412H584L590 418M410 419V579" fill="none" stroke="#eff5f6" opacity=".73"/>
-    <rect x="428" y="436" width="144" height="128" rx="5" fill="#101823" stroke="#65717d"/>
+    <rect x="428" y="436" width="144" height="131" rx="6" fill="#0a111a" stroke="#65717d"/>
     <rect x="431" y="439" width="138" height="122" rx="4" fill="url(#cs-janela)" stroke="#b9d5e2" stroke-opacity=".62"/>
   `;
   for (let i = 0; i < 10; i++) {
@@ -126,6 +126,10 @@ add(0.94, (() => {
     const yy = by + k * gap;
     s += `<path d="M${bx + sk},${yy} l${bw},0 l${-sk},${bh} l${-bw},0 z" fill="url(#cs-solana)"/>`;
   }
+  s += `<rect x="431" y="439" width="138" height="122" rx="4" fill="url(#cs-reflexo-chip)"/>
+    <path d="M436 441H564M433 445V553" fill="none" stroke="#dceefa" stroke-width="1.5" opacity=".48"/>
+    <path d="M435 563H565" stroke="#6d94ae" stroke-width="2" opacity=".48"/>`;
+
   s += `<path d="M433 442h106l-63 116h-43Z" fill="#daf4ff" opacity=".08"/>`;
   return s + `</g>`;
 })(), 5);
@@ -233,6 +237,13 @@ const defs = `
       <stop stop-color="#375369"/>
       <stop offset=".48" stop-color="#102131"/>
       <stop offset="1" stop-color="#263f60"/>
+    </linearGradient>
+    <linearGradient id="cs-reflexo-chip" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop stop-color="#e7f7ff" stop-opacity=".32"/>
+      <stop offset=".36" stop-color="#a8d9fa" stop-opacity=".08"/>
+      <stop offset=".52" stop-color="#e5f6ff" stop-opacity=".16"/>
+      <stop offset=".68" stop-color="#8ab5d2" stop-opacity="0"/>
+      <stop offset="1" stop-color="#b9dcef" stop-opacity=".12"/>
     </linearGradient>
     <linearGradient id="cs-glass" x1="0" y1="0" x2="0.3" y2="1">
       <stop offset="0%" stop-color="${VIDRO1}"/>

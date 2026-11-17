@@ -5,10 +5,11 @@ import { motion } from "framer-motion";
 import React, { useState, useEffect } from "react";
 import NextImage from "next/image";
 import { useTranslation } from "react-i18next";
-import ContadorProjetos from "./ContadorProjetos";
 import SolanaPrivacidade from "./SolanaPrivacidade";
 import ProjetoVencedor from "./ProjetoVencedor";
-import TimelineIdeia from "./TimelineIdeia";
+import EstudoAnatomiaLanding from "./EstudoAnatomiaLanding";
+import particulas from "@/components/sub/hero-aquario.module.css";
+import ConhecimentoShowcase from "./ConhecimentoShowcase";
 import { TituloSecao } from "@/components/layout/secao";
 import MolecularText from "@/components/ui/MolecularText";
 
@@ -112,6 +113,34 @@ const HireAgentsSection = () => {
 // CARROSSEL VERTICAL DE MARCAS IA (Infinite Ticker)
 
 // --- COMPONENTE PRINCIPAL (PÁGINA) ---
+function SubtituloEstudos() {
+    const { t } = useTranslation();
+    const [termo, setTermo] = useState(0);
+    useEffect(() => {
+        const movimento = window.matchMedia("(prefers-reduced-motion: reduce)");
+        if (movimento.matches) return;
+        const timer = window.setInterval(() => setTermo((atual) => (atual + 1) % 3), 2100);
+        return () => window.clearInterval(timer);
+    }, []);
+    const palavra = "ZAETERMO";
+    const [antes, depois] = t("landing.study_beyond_prompts", { palavra }).split(palavra);
+    return (
+        <p className="mx-auto mt-4 max-w-3xl text-balance text-center font-display text-xl font-semibold text-slate-900 dark:text-white md:text-2xl">
+            <span className="sr-only">{t("landing.study_beyond_prompts", { palavra: t("landing.study_terms.work") })}</span>
+            <span aria-hidden="true">
+                {antes}
+                <span className={`inline-block text-cyan-700 dark:text-cyan-300 ${particulas.palavraParticulas}`}>
+                    <span key={termo} className={particulas.termoParticulas}>{t(`landing.study_terms.${["work", "study", "life"][termo]}`)}</span>
+                    <span key={`particulas-${termo}`} className={particulas.particulasPalavra}>
+                        {Array.from({ length: 12 }, (_, i) => <i key={i} style={{ left: `${4 + i * 8}%`, top: `${24 + (i * 19) % 52}%`, animationDelay: `${i * 14}ms` }} />)}
+                    </span>
+                </span>
+                {depois}
+            </span>
+        </p>
+    );
+}
+
 export default function Encryption() {
     const { t } = useTranslation();
     const [mounted, setMounted] = useState(false);
@@ -125,16 +154,15 @@ export default function Encryption() {
 
     return (
         <div className="w-full relative">
-            <section id="como-funciona" className="relative z-[30] w-full bg-transparent py-12 md:py-16 scroll-mt-28">
+            <section id="como-funciona" className="relative z-[30] w-full overflow-x-clip bg-transparent py-12 md:py-16 scroll-mt-28">
                 <div className="zaeon-borda">
                     <div className="ci-titulo-secao"><TituloSecao className="mx-auto text-center font-display" forte={t("landing.knowledge_title", { defaultValue: "" })} /></div>
 
-                    {/* SUBHEADER: a TIMELINE da evolução de uma ideia (o visualizador 3D que se constrói conforme a barra
-                        de progresso avança) + o contador grande de projetos da comunidade. */}
-                    <TimelineIdeia className="mt-8 md:mt-10" />
-                    <ContadorProjetos className="mt-8 md:mt-12" />
+                    <SubtituloEstudos />
                 </div>
+                <ConhecimentoShowcase />
             </section>
+            <EstudoAnatomiaLanding />
 
             {/* ========================================================= */}
             {/* SECÇÃO: CONTRATAÇÃO DE AGENTES (3D Cover Flow) E MARCAS   */}
