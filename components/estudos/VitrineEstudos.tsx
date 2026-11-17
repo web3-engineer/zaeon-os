@@ -21,7 +21,8 @@ import { FILTROS, NOME_TIPO, filtrarVitrine, filtrosVisiveis, mesclarCatalogo, p
 import { COR_RARIDADE, NOME_RARIDADE } from "@/lib/estudos/blueprint";
 import { plugar, desplugar, usePluginsChat } from "@/lib/plugins/chatPlugins";
 import { ehAgenteOrquestra } from "@/lib/orquestra/catalogo";
-import Link from "next/link";
+import dynamic from "next/dynamic";
+import type { CadernoEstudo } from "@/lib/estudos/cadernosEstudo";
 import { useTranslation } from "react-i18next";
 import SolanaMark from "@/components/solana/SolanaMark";
 import CartaVitrine, { GLYPH, ImagemCarta, segmentos } from "./CartaVitrine";
@@ -83,8 +84,27 @@ const SHARDS = Array.from({ length: 18 }, (_, i) => {
     return { left: 8 + ((i * 29) % 80), top: 8 + ((i * 41) % 80), dx, dy, rot, d: (i % 5) * 40 };
 });
 
+const CadernoEstudoView = dynamic(() => import("./CadernoEstudoView"));
+
 export default function VitrineEstudos() {
     const { t } = useTranslation();
+    const [cadernoId, setCadernoId] = useState<string | null>(null);
+    const [caderno, setCaderno] = useState<CadernoEstudo | null>(null);
+    const [erroCaderno, setErroCaderno] = useState(false);
+    useEffect(() => {
+        if (!cadernoId) return;
+        const controle = new AbortController();
+        setErroCaderno(false);
+        setCaderno(null);
+        fetch(`/api/estudos/caderno/${encodeURIComponent(cadernoId)}`, { signal: controle.signal })
+            .then((resposta) => {
+                if (!resposta.ok) throw new Error("Caderno indisponível");
+                return resposta.json();
+            })
+            .then((dados: CadernoEstudo) => { if (!controle.signal.aborted) setCaderno(dados); })
+            .catch(() => { if (!controle.signal.aborted) setErroCaderno(true); });
+        return () => controle.abort();
+    }, [cadernoId]);
     const [filtro, setFiltro] = useState<FiltroVitrine>("todos");
     const [filtrosAbertos, setFiltrosAbertos] = useState(false);
     const [busca, setBusca] = useState("");
@@ -190,6 +210,20 @@ export default function VitrineEstudos() {
     // as abas que só existem quando o banco tem item (Pesquisas) ficam escondidas até a primeira chegar
     const abas = useMemo(() => filtrosVisiveis(catalogo), [catalogo]);
 
+    if (cadernoId) {
+        const voltar = () => { setCadernoId(null); setCaderno(null); setErroCaderno(false); };
+        return (
+            <div className="h-full min-h-0 overflow-y-auto">
+                {caderno ? <CadernoEstudoView key={caderno.id} caderno={caderno} aoVoltar={voltar} /> : (
+                    <div className="p-6">
+                        <button type="button" onClick={voltar}>← Marketplace</button>
+                        <p role="status">{erroCaderno ? "Não foi possível abrir o caderno." : "Carregando caderno…"}</p>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
     return (
         <div className="relative h-full w-full overflow-hidden" style={{ background: "radial-gradient(ellipse at 50% 0%, #0f3460 0%, #071a33 55%, #030c1a 100%)" }}>
             <div className="absolute inset-0 overflow-y-auto">
@@ -220,10 +254,11 @@ export default function VitrineEstudos() {
                                         it={it}
                                         className="[&_.vt-spine]:hidden [&_.vt-type]:hidden"
                                         precoNode={t("landing.vitrine.exemplo_estudo", { defaultValue: "Estudo de exemplo" })}
+                                        onClick={it.cadernoEstudoId ? () => setCadernoId(it.cadernoEstudoId!) : undefined}
                                         acaoNode={it.cadernoEstudoId && (
-                                            <Link className="vt-abrir-pasta" href={`/estudos/caderno/${encodeURIComponent(it.cadernoEstudoId)}`}>
+                                            <button type="button" className="vt-abrir-pasta" onClick={(event) => { event.stopPropagation(); setCadernoId(it.cadernoEstudoId!); }}>
                                                 {t("landing.vitrine.abrir_caderno", { defaultValue: "Abrir caderno" })}
-                                            </Link>
+                                            </button>
                                         )}
                                     />
                                 );
