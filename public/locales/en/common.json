@@ -955,6 +955,8 @@
             "lema": "Where humans and superintelligences meet."
         },
         "vitrine": {
+            "abrir_caderno": "Open notebook",
+            "exemplo_estudo": "Study example",
             "anterior": "Previous cards",
             "proximo": "Next cards",
             "agente": "Agent",

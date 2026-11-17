@@ -955,6 +955,8 @@
             "lema": "사람과 초지능이 만나는 곳."
         },
         "vitrine": {
+            "abrir_caderno": "노트 열기",
+            "exemplo_estudo": "학습 예시",
             "anterior": "이전 카드",
             "proximo": "다음 카드",
             "agente": "에이전트",

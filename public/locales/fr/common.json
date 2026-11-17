@@ -955,6 +955,8 @@
             "lema": "Là où humains et superintelligences se rencontrent."
         },
         "vitrine": {
+            "abrir_caderno": "Ouvrir le carnet",
+            "exemplo_estudo": "Exemple d’étude",
             "anterior": "Cartes précédentes",
             "proximo": "Cartes suivantes",
             "agente": "Agent",

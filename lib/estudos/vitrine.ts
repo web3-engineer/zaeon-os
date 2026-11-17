@@ -11,6 +11,7 @@
  * o blueprint dele fica VENDÁVEL (lib/estudos/blueprint).
  */
 import type { SkinVitrine } from "./skinVitrine";
+import { ESTUDOS_EXEMPLO } from "./vitrineExemplos";
 import type { Raridade } from "./blueprint";
 import { AGENTES_ORQUESTRA } from "@/lib/orquestra/catalogo";
 import type { PluginChat } from "@/lib/plugins/chatPlugins";
@@ -31,6 +32,8 @@ export type Execucao = "dyom" | "agente";
 export type ItemVitrine = {
   id: string; titulo: string; subtitulo: string;
   skin?: SkinVitrine;
+  exemploEstudo?: true;
+  cadernoEstudoId?: string;
   tipo: TipoProduto; execucao: Execucao; modelo: Modelo3D;
   autor: string; raridade: Raridade; profundidade: number;
   /** preço de UMA fração, em SOL (Solana) (0 = grátis: open source / comunidade) */
@@ -169,6 +172,7 @@ export const CATALOGO: readonly ItemVitrine[] = [
   ...ITENS_FORJA_INICIANTES,
   // a trilha avançada da Forja (card #793) — grátis, marcada "avançado" (ver ITENS_FORJA_AVANCADOS)
   ...ITENS_FORJA_AVANCADOS,
+  ...ESTUDOS_EXEMPLO,
 ];
 
 export type FiltroVitrine = "todos" | "gratis" | "dyom" | "agente" | "rwa" | "skill" | "pesquisa" | "ironia";
@@ -184,7 +188,7 @@ export const filtrosVisiveis = (itens: readonly ItemVitrine[]) =>
 export function filtrarVitrine(itens: readonly ItemVitrine[], f: FiltroVitrine, busca = ""): ItemVitrine[] {
   const q = busca.trim().toLowerCase();
   return itens.filter((i) =>
-    (f === "todos" || (f === "gratis" && i.preco === 0) || (f === "dyom" && i.execucao === "dyom") || (f === "agente" && i.execucao === "agente") || (f === "rwa" && i.tipo === "rwa") || (f === "skill" && i.tipo === "skill") || (f === "pesquisa" && i.tipo === "pesquisa") || (f === "ironia" && !!i.ironia))
+    (f === "todos" || (f === "gratis" && i.preco === 0 && !i.exemploEstudo) || (f === "dyom" && i.execucao === "dyom") || (f === "agente" && i.execucao === "agente") || (f === "rwa" && i.tipo === "rwa") || (f === "skill" && i.tipo === "skill") || (f === "pesquisa" && i.tipo === "pesquisa") || (f === "ironia" && !!i.ironia))
     && (!q || `${i.titulo} ${i.subtitulo} ${i.autor} ${i.tags.join(" ")}`.toLowerCase().includes(q)));
 }
 /** o quanto das frações já foi vendido (0..1) — e o preço "cheio" (todas as frações) */

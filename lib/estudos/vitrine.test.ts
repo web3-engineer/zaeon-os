@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CATALOGO, FILTROS, FILTROS_DO_BANCO, MOEDA, filtrarVitrine, filtrosVisiveis, precoTexto, valorTotal, vendido } from "./vitrine";
+import { SKINS_VITRINE } from "./skinVitrine";
 import { RARIDADES } from "./blueprint";
 import { itensDasSkillsDoDisco } from "./vitrineSkills";
 
@@ -8,7 +9,7 @@ describe("a VITRINE de estudos (catálogo simulado)", () => {
     expect(new Set(CATALOGO.map((i) => i.id)).size).toBe(CATALOGO.length);
     for (const i of CATALOGO) {
       expect(i.fracoes.vendidas).toBeLessThanOrEqual(i.fracoes.total); expect(RARIDADES).toContain(i.raridade);
-      expect(i.profundidade).toBeGreaterThanOrEqual(0); expect(i.profundidade).toBeLessThanOrEqual(100); expect(i.entrega.length).toBeGreaterThan(0);
+      expect(i.profundidade).toBeGreaterThanOrEqual(0); expect(i.profundidade).toBeLessThanOrEqual(100); if (!i.exemploEstudo) expect(i.entrega.length).toBeGreaterThan(0);
       if (i.preco === 0) expect(i.fracoes.total).toBe(1);
     }
     // NENHUMA ABA VAZIA. A régua é o conjunto que a UI mostra de verdade, não só o catálogo
@@ -23,6 +24,13 @@ describe("a VITRINE de estudos (catálogo simulado)", () => {
       expect(filtrarVitrine(comoAUIMostra, f.id).length, `aba "${f.nome}" vazia`).toBeGreaterThan(0);
     }
     expect(CATALOGO.some((i) => i.id === "ps5-rev")).toBe(true);
+  });
+  it("tem três estudos de exemplo por skin e preserva os filtros de ofertas", () => {
+    const exemplos = CATALOGO.filter((item) => item.exemploEstudo);
+    for (const skin of SKINS_VITRINE) expect(exemplos.filter((item) => item.skin === skin)).toHaveLength(3);
+    expect(filtrarVitrine(exemplos, "todos")).toHaveLength(27);
+    expect(filtrarVitrine(exemplos, "gratis")).toEqual([]);
+    expect(filtrarVitrine(exemplos, "pesquisa")).toEqual([]);
   });
   it("a aba Pesquisas só aparece quando há pesquisa publicada", () => {
     expect(filtrosVisiveis(CATALOGO).some((f) => f.id === "pesquisa")).toBe(false);

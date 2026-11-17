@@ -955,6 +955,8 @@
             "lema": "Donde se encuentran humanos y superinteligencias."
         },
         "vitrine": {
+            "abrir_caderno": "Abrir cuaderno",
+            "exemplo_estudo": "Ejemplo de estudio",
             "anterior": "Cartas anteriores",
             "proximo": "Siguientes cartas",
             "agente": "Agente",

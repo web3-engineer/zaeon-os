@@ -955,6 +955,8 @@
             "lema": "Onde humanos e superinteligências se encontram."
         },
         "vitrine": {
+            "abrir_caderno": "Abrir caderno",
+            "exemplo_estudo": "Estudo de exemplo",
             "anterior": "Cards anteriores",
             "proximo": "Próximos cards",
             "agente": "Agente",
