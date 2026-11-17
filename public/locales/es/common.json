@@ -384,6 +384,29 @@
         "project_rank": "Rango del proyecto"
     },
     "about": {
+      "apresentacao": {
+        "titulo": "Convierte el conocimiento en trabajo real.",
+        "resumo": "Zaeon es una plataforma para estudiar con IA, desarrollar proyectos y demostrar lo que sabes hacer. Ayudamos a las empresas a encontrar personas que destacan en evaluaciones y trabajos concretos.",
+        "ver_amostra": "Ver una muestra de estudio",
+        "fluxo": "Del estudio a la oportunidad",
+        "tecnica": "Conoce la arquitectura de Zaeon",
+        "estudar": {
+          "titulo": "Estudia con IA",
+          "descricao": "Profundiza en un tema con modelos de IA, materiales de estudio y referencias."
+        },
+        "construir": {
+          "titulo": "Desarrolla tu proyecto",
+          "descricao": "Convierte una idea en investigación, código, un prototipo u otro trabajo que puedas compartir."
+        },
+        "provar": {
+          "titulo": "Demuestra tus habilidades",
+          "descricao": "Usa evaluaciones, trabajos terminados y credenciales verificables para demostrar tus habilidades."
+        },
+        "conectar": {
+          "titulo": "Conecta con empresas",
+          "descricao": "Los agentes de Zaeon presentan talentos destacados a empresas que buscan esas habilidades."
+        }
+      },
         "back": "Volver",
         "scroll_down": "desliza para conocernos",
         "title_hero": "Construye sin límites.",

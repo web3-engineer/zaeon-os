@@ -853,3 +853,5 @@
 @media (prefers-reduced-motion: reduce) {
   .natureza, .natureza * { animation: none; }
 }
+
+.marContinuo { animation: none; }

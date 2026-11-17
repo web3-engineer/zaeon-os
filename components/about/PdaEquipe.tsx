@@ -38,7 +38,7 @@ function Pda({ m, i }: { m: MembroEquipe; i: number }) {
       whileInView={{ opacity: 1, y: 0, scale: 1 }}
       viewport={{ once: true, margin: "-60px" }}
       transition={{ type: "spring", stiffness: 120, damping: 20, delay: i * 0.12 }}
-      aria-label={`${m.nome}, ${m.cargo}`}
+      aria-label={m.cargo ? `${m.nome}, ${m.cargo}` : m.nome}
       className="relative w-full max-w-[420px] rounded-[1.6rem] border border-white/15 bg-[#0c0c1a]/95 backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] overflow-hidden"
     >
       {/* header do PDA */}
@@ -59,21 +59,20 @@ function Pda({ m, i }: { m: MembroEquipe; i: number }) {
         <div className="min-w-0">
           <p className="text-[8px] uppercase tracking-widest text-slate-500 font-bold">Perfil</p>
           <h3 className="mt-0.5 text-xl md:text-2xl font-black tracking-tight text-white leading-tight">{m.nome}</h3>
-          <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.22em]" style={{ color: m.acento }}>{m.cargo}</p>
+          {m.cargo && <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.22em]" style={{ color: m.acento }}>{m.cargo}</p>}
         </div>
       </div>
 
-      <div className="border-t border-white/10 mx-3" />
-
-      {/* bio */}
-      <div className="px-4 pt-3 pb-2">
-        <p className="text-[8px] uppercase tracking-widest text-slate-500 font-bold">Nota</p>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-slate-200">{m.bio}</p>
-      </div>
+      {m.bio && (
+        <div className="mx-3 border-t border-white/10 px-1 pb-2 pt-3">
+          <p className="text-[8px] uppercase tracking-widest text-slate-500 font-bold">Nota</p>
+          <p className="mt-1.5 text-[13px] leading-relaxed text-slate-200">{m.bio}</p>
+        </div>
+      )}
 
       {/* o que faz */}
       <div className="px-4 pb-4 pt-1 flex flex-wrap items-center gap-1.5">
-        {m.tags.map((t) => (
+        {m.tags?.map((t) => (
           <span key={t} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold text-slate-200">{t}</span>
         ))}
         {m.redes && (
@@ -93,11 +92,11 @@ function Pda({ m, i }: { m: MembroEquipe; i: number }) {
 
 export default function PdaEquipe({ titulo, subtitulo }: { titulo: string; subtitulo?: string }) {
   return (
-    <section aria-labelledby="equipe-titulo" className="w-full max-w-5xl flex flex-col items-center text-center relative z-40 pb-[10vh]">
+    <section aria-labelledby="equipe-titulo" className="mx-auto w-full max-w-5xl flex flex-col items-center text-center relative z-40 pb-[10vh]">
       <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }} className="mb-12">
         <p className="text-[10px] font-black uppercase tracking-[0.5em] text-cyan-500/70 mb-4">Quem faz</p>
-        <h2 id="equipe-titulo" className="text-4xl md:text-6xl font-black text-white tracking-tighter drop-shadow-2xl">{titulo}</h2>
-        {subtitulo && <p className="mt-4 text-white/70 max-w-xl mx-auto">{subtitulo}</p>}
+        <h2 id="equipe-titulo" className="text-4xl md:text-6xl font-black text-slate-950 dark:text-white tracking-tighter drop-shadow-2xl">{titulo}</h2>
+        {subtitulo && <p className="mt-4 text-slate-700 dark:text-white/70 max-w-xl mx-auto">{subtitulo}</p>}
       </motion.div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 w-full justify-items-center">
         {EQUIPE.map((m, i) => <Pda key={m.id} m={m} i={i} />)}

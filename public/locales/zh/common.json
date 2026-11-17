@@ -384,6 +384,29 @@
         "project_rank": "项目排名"
     },
     "about": {
+      "apresentacao": {
+        "titulo": "把知识变成实际成果。",
+        "resumo": "Zaeon 是一个用 AI 学习、构建项目并展示能力的平台。我们帮助企业发现通过评估和实际成果展现出色技能的人才。",
+        "ver_amostra": "查看学习示例",
+        "fluxo": "从学习到新的机会",
+        "tecnica": "了解 Zaeon 的架构",
+        "estudar": {
+          "titulo": "用 AI 学习",
+          "descricao": "借助 AI 模型、学习资料和参考文献深入探索主题。"
+        },
+        "construir": {
+          "titulo": "构建你的项目",
+          "descricao": "把想法变成研究、代码、原型或其他可以分享的成果。"
+        },
+        "provar": {
+          "titulo": "展示你的技能",
+          "descricao": "通过评估、已完成的项目和可验证凭证证明你的能力。"
+        },
+        "conectar": {
+          "titulo": "与企业建立联系",
+          "descricao": "Zaeon 的智能助手将表现出色的人才介绍给需要这些技能的企业。"
+        }
+      },
         "back": "返回",
         "scroll_down": "向下滚动了解我们",
         "title_hero": "无限创造。",

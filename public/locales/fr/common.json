@@ -384,6 +384,29 @@
         "project_rank": "Rang du projet"
     },
     "about": {
+      "apresentacao": {
+        "titulo": "Transformez vos connaissances en réalisations concrètes.",
+        "resumo": "Zaeon permet d’étudier avec l’IA, de construire des projets et de montrer vos compétences. Nous aidons les entreprises à trouver des talents qui se distinguent par leurs évaluations et leurs réalisations.",
+        "ver_amostra": "Voir un exemple d’étude",
+        "fluxo": "De l’apprentissage aux opportunités",
+        "tecnica": "Découvrir l’architecture de Zaeon",
+        "estudar": {
+          "titulo": "Étudiez avec l’IA",
+          "descricao": "Approfondissez un sujet avec des modèles d’IA, des ressources et des références."
+        },
+        "construir": {
+          "titulo": "Construisez votre projet",
+          "descricao": "Transformez une idée en recherche, en code, en prototype ou en réalisation à partager."
+        },
+        "provar": {
+          "titulo": "Démontrez vos compétences",
+          "descricao": "Appuyez-vous sur des évaluations, des projets réalisés et des justificatifs vérifiables."
+        },
+        "conectar": {
+          "titulo": "Rencontrez des entreprises",
+          "descricao": "Les agents de Zaeon mettent les talents qui se distinguent en relation avec les entreprises qui recherchent leurs compétences."
+        }
+      },
         "back": "Retour",
         "scroll_down": "défilez pour nous découvrir",
         "title_hero": "Construisez sans limites.",

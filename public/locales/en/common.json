@@ -384,6 +384,29 @@
         "project_rank": "Project Rank"
     },
     "about": {
+      "apresentacao": {
+        "titulo": "Turn knowledge into real work.",
+        "resumo": "Zaeon is a place to study with AI, build projects and show what you can do. We help companies find people whose skills stand out in assessments and real work.",
+        "ver_amostra": "See a study preview",
+        "fluxo": "From studying to new opportunities",
+        "tecnica": "Explore Zaeon’s architecture",
+        "estudar": {
+          "titulo": "Study with AI",
+          "descricao": "Explore a subject with AI models, study materials and references that help you go deeper."
+        },
+        "construir": {
+          "titulo": "Build your project",
+          "descricao": "Turn an idea into research, code, a prototype or another piece of work you can share."
+        },
+        "provar": {
+          "titulo": "Show what you can do",
+          "descricao": "Use assessments, completed work and verifiable credentials to demonstrate your skills."
+        },
+        "conectar": {
+          "titulo": "Connect with companies",
+          "descricao": "Zaeon agents help introduce people whose work stands out to companies looking for their skills."
+        }
+      },
         "back": "Back",
         "scroll_down": "scroll to meet us",
         "title_hero": "Build without limits.",

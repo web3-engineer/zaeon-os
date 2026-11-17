@@ -143,20 +143,11 @@ function SubtituloEstudos() {
 
 export default function Encryption() {
     const { t } = useTranslation();
-    const [mounted, setMounted] = useState(false);
-
-    useEffect(() => {
-        const timer = setTimeout(() => setMounted(true), 500);
-        return () => clearTimeout(timer);
-    }, []);
-
-    if (!mounted) return <div className="min-h-screen bg-transparent" />;
-
     return (
         <div className="w-full relative">
-            <section id="como-funciona" className="relative z-[30] w-full overflow-x-clip bg-transparent py-12 md:py-16 scroll-mt-28">
+            <section id="como-funciona" className="relative z-[30] w-full overflow-x-clip bg-transparent pb-12 md:py-16 scroll-mt-28">
                 <div className="zaeon-borda">
-                    <div className="ci-titulo-secao"><TituloSecao className="mx-auto text-center font-display" forte={t("landing.knowledge_title", { defaultValue: "" })} /></div>
+                    <div className="ci-titulo-secao flex min-h-[5.75rem] items-center justify-center md:block md:min-h-0"><TituloSecao className="mx-auto !mt-0 px-2 text-center font-display !text-[clamp(1.45rem,5.1vw,2rem)] md:!mt-4 md:!text-[3.125rem]" forte={t("landing.knowledge_title", { defaultValue: "" })} /></div>
 
                     <SubtituloEstudos />
                 </div>
