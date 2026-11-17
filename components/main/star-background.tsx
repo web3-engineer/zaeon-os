@@ -182,6 +182,14 @@ const StarBackground: React.FC<{ central?: boolean }> = ({ central = false }) =>
 
         const draw = (agora: number) => {
             animationId = requestAnimationFrame(draw);
+            if (central) {
+                const tempo = animacaoDaCena?.currentTime;
+                const cicloFundo = (typeof tempo === "number" ? tempo : agora - inicio) % 83000;
+                if (document.hidden || canvas.closest("[data-fundo-pausado]") || cicloFundo < 53500 || cicloFundo > 74500) {
+                    ultimo = 0;
+                    return;
+                }
+            }
             const dtMs = ultimo ? agora - ultimo : 0;
             // Teto de FPS no aparelho fraco: pula o quadro se ainda não deu o intervalo.
             if (ultimo && dtMs < perfil.intervaloMinMs - 1) return;

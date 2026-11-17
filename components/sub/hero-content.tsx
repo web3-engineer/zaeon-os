@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useSession } from "next-auth/react";
@@ -114,9 +114,27 @@ export default function HeroPage() {
     return () => window.removeEventListener(EVENTO_ABRIR_LOGIN, abrir);
   }, []);
 
+  const fundo = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const elemento = fundo.current;
+    if (!elemento || !("IntersectionObserver" in window)) return;
+    let visivel = true;
+    const atualizar = () => elemento.toggleAttribute("data-fundo-pausado", !visivel || document.hidden);
+    const observer = new IntersectionObserver(([entrada]) => {
+      visivel = entrada.isIntersecting;
+      atualizar();
+    });
+    observer.observe(elemento);
+    document.addEventListener("visibilitychange", atualizar);
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", atualizar);
+    };
+  }, []);
+
   return (
     <main className={`relative isolate flex min-h-[65svh] w-full flex-col items-center justify-center overflow-hidden px-5 pb-16 pt-24 text-center font-display md:min-h-svh ${styles.aquario}`}>
-      <div className={styles.oceano} aria-hidden="true">
+      <div ref={fundo} className={styles.oceano} aria-hidden="true">
         <CiclosAquario />
         <MarCardumes />
       </div>
