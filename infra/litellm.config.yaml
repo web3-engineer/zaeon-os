@@ -54,6 +54,24 @@ model_list:
       timeout: 120
     model_info: { id: openai-codex }
 
+  # ── Claude NOMEADO pro CHAT da Aura (lib/chat/modelos: grupos claude-opus/claude-sonnet) ──
+  # O chat distingue Opus (raciocínio máximo) e Sonnet; o Octa usa `zaeon-claude` acima. Mesma
+  # ANTHROPIC_API_KEY da org. SEM estes dois nomes, o chat mandava `model: claude-sonnet` e o
+  # gateway respondia 400 (modelo não existe) → o turno caía no Google. (A Contabo já tinha estes
+  # blocos, mas só pro REA; o chat usa ESTE gateway, do VPS.)
+  - model_name: claude-opus
+    litellm_params:
+      model: anthropic/claude-opus-5-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+      timeout: 120
+    model_info: { id: anthropic-opus }
+  - model_name: claude-sonnet
+    litellm_params:
+      model: anthropic/claude-sonnet-5-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+      timeout: 120
+    model_info: { id: anthropic-sonnet-chat }
+
   # ── POOL GRÁTIS (Fatia 7) ──────────────────────────────────────────────────────────────
   # Primário: Gemini Flash-Lite no AI Studio — key de conta Google DEDICADA, nunca a do negócio
   # (a do negócio guarda o crédito GenAI, o Vertex dos chats e o OAuth do login). O free tier
