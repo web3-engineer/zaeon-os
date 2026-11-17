@@ -538,9 +538,21 @@
     },
     "landing": {
         "knowledge_cards": {
+            "neuro": {
+                "title": "神经解剖学",
+                "summary": "比较大脑结构及其功能。"
+            },
+            "respiracao": {
+                "title": "呼吸生理学",
+                "summary": "研究通气和气体交换。"
+            },
+            "farmacologia": {
+                "title": "药理学",
+                "summary": "研究药物与人体的相互作用。"
+            },
             "civil": {
                 "title": "土木工程",
-                "summary": "检查桥梁，追踪荷载的传递路径。"
+                "summary": "阅读 CAD 平面图，研究尺寸、布局与结构轴线。"
             },
             "mecanica": {
                 "title": "机械工程",

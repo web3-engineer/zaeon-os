@@ -538,9 +538,21 @@
     },
     "landing": {
         "knowledge_cards": {
+            "neuro": {
+                "title": "Neuroanatomie",
+                "summary": "Comparez les structures cérébrales et leurs fonctions."
+            },
+            "respiracao": {
+                "title": "Physiologie respiratoire",
+                "summary": "Étudiez la ventilation et les échanges gazeux."
+            },
+            "farmacologia": {
+                "title": "Pharmacologie",
+                "summary": "Étudiez les interactions des médicaments avec l’organisme."
+            },
             "civil": {
                 "title": "Génie civil",
-                "summary": "Inspectez des ponts et suivez la répartition des charges."
+                "summary": "Lisez un plan CAO et étudiez les cotes, l’agencement et les axes structurels."
             },
             "mecanica": {
                 "title": "Génie mécanique",

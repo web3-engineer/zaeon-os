@@ -538,9 +538,21 @@
     },
     "landing": {
         "knowledge_cards": {
+            "neuro": {
+                "title": "Neuroanatomy",
+                "summary": "Compare brain structures and their functions."
+            },
+            "respiracao": {
+                "title": "Respiratory physiology",
+                "summary": "Study ventilation and gas exchange."
+            },
+            "farmacologia": {
+                "title": "Pharmacology",
+                "summary": "Study how drugs interact with the body."
+            },
             "civil": {
                 "title": "Civil engineering",
-                "summary": "Inspect bridges and trace how loads move through them."
+                "summary": "Read a CAD floor plan and study dimensions, layout and structural axes."
             },
             "mecanica": {
                 "title": "Mechanical engineering",

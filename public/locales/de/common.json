@@ -538,9 +538,21 @@
     },
     "landing": {
         "knowledge_cards": {
+            "neuro": {
+                "title": "Neuroanatomie",
+                "summary": "Vergleiche Hirnstrukturen und ihre Funktionen."
+            },
+            "respiracao": {
+                "title": "Atmungsphysiologie",
+                "summary": "Untersuche Ventilation und Gasaustausch."
+            },
+            "farmacologia": {
+                "title": "Pharmakologie",
+                "summary": "Untersuche die Wechselwirkung von Arzneistoffen mit dem Körper."
+            },
             "civil": {
                 "title": "Bauingenieurwesen",
-                "summary": "Untersuche Brücken und verfolge ihre Lastverteilung."
+                "summary": "Lies einen CAD-Grundriss und untersuche Maße, Raumaufteilung und Tragwerksachsen."
             },
             "mecanica": {
                 "title": "Maschinenbau",

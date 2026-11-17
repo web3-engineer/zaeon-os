@@ -14,13 +14,16 @@ const exemplos = [
   { id: "mecanica", skin: "tecnologia", tipo: "curso", modelo: "livro", imagem: "/assets/landing/estudos/mecanica.webp" },
   { id: "eletrica", skin: "tecnologia", tipo: "curso", modelo: "chip", imagem: "/assets/landing/estudos/eletrica.webp" },
   { id: "solar", skin: "tecnologia", tipo: "curso", modelo: "chip", imagem: "/assets/landing/estudos/solar.webp" },
-  { id: "civil", skin: "portfolio", tipo: "curso", modelo: "livro", imagem: "/assets/landing/estudos/civil.webp" },
+  { id: "civil", skin: "portfolio", tipo: "curso", modelo: "livro", imagem: "/assets/landing/estudos/civil-cad.webp" },
   { id: "hortas", skin: "agronomia", tipo: "curso", modelo: "planta", imagem: "/assets/landing/estudos/hortas.webp" },
   { id: "ecovilas", skin: "geografia", tipo: "curso", modelo: "planta", imagem: "/assets/landing/estudos/ecovilas.webp" },
   { id: "comunidades", skin: "historia", tipo: "curso", modelo: "livro", imagem: "/assets/landing/estudos/comunidades.webp" },
   { id: "cisternas", skin: "caderno", tipo: "curso", modelo: "livro", imagem: "/assets/landing/estudos/cisternas.webp" },
   { id: "ambiental", skin: "geografia", tipo: "curso", modelo: "livro", imagem: "/assets/landing/estudos/ambiental.webp" },
   { id: "coracao", skin: "dossie", tipo: "pesquisa", modelo: "pasta", imagem: "/models/coracao-landing.webp" },
+  { id: "neuro", skin: "dossie", tipo: "curso", modelo: "livro", imagem: "/models/cerebro-landing.webp" },
+  { id: "respiracao", skin: "dossie", tipo: "curso", modelo: "livro", imagem: "/assets/landing/estudos/respiracao.webp" },
+  { id: "farmacologia", skin: "dossie", tipo: "curso", modelo: "livro", imagem: "/assets/landing/estudos/farmacologia.webp" },
   { id: "microbiologia", skin: "dossie", tipo: "curso", modelo: "livro", imagem: "/assets/landing/estudos/microbiologia.webp" },
   { id: "recife", skin: "historia", tipo: "curso", modelo: "predio" },
   { id: "bacias", skin: "geografia", tipo: "curso", modelo: "livro" },
@@ -45,6 +48,8 @@ const exemplos = [
   { id: "economia", skin: "dados", tipo: "curso", modelo: "graos" },
   { id: "veterinaria", skin: "agronomia", tipo: "curso", modelo: "planta" },
 ] as const satisfies readonly Pick<ItemVitrine, "id" | "skin" | "tipo" | "modelo" | "imagem">[];
+
+const engenharias = new Set<string>(["civil", "mecanica", "eletrica", "solar", "quimica", "ambiental", "materiais"]);
 
 export default function ConhecimentoShowcase({ principal }: { principal?: React.ReactNode }) {
   const { t } = useTranslation();
@@ -104,7 +109,7 @@ export default function ConhecimentoShowcase({ principal }: { principal?: React.
               </svg>
             ) : undefined;
           return <li key={exemplo.id} className="ci-carrossel-item" data-lado={lado}>
-            <CartaVitrine it={it} arteNode={arte} precoNode={null} className={`ci-carrossel-card ci-capa-${exemplo.id} !block [&_.vt-type]:hidden [&_.vt-pr]:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500`} onClick={() => router.push(ROTA_MARKETPLACE)} />
+            <CartaVitrine it={it} arteNode={arte} precoNode={null} className={`ci-carrossel-card ci-capa-${exemplo.id}${engenharias.has(exemplo.id) ? " ci-engenharia" : ""} !block [&_.vt-type]:hidden [&_.vt-pr]:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500`} onClick={() => router.push(ROTA_MARKETPLACE)} />
           </li>;
   };
 

@@ -538,9 +538,21 @@
     },
     "landing": {
         "knowledge_cards": {
+            "neuro": {
+                "title": "신경해부학",
+                "summary": "뇌 구조와 기능을 비교하세요."
+            },
+            "respiracao": {
+                "title": "호흡 생리학",
+                "summary": "환기와 가스 교환을 공부하세요."
+            },
+            "farmacologia": {
+                "title": "약리학",
+                "summary": "약물이 몸과 어떻게 상호작용하는지 공부하세요."
+            },
             "civil": {
                 "title": "토목공학",
-                "summary": "교량을 점검하고 하중이 전달되는 경로를 살펴보세요."
+                "summary": "CAD 평면도를 읽고 치수, 배치, 구조 축을 살펴보세요."
             },
             "mecanica": {
                 "title": "기계공학",

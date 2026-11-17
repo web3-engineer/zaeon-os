@@ -538,9 +538,21 @@
     },
     "landing": {
         "knowledge_cards": {
+            "neuro": {
+                "title": "Neuroanatomia",
+                "summary": "Compare as estruturas do cérebro e suas funções."
+            },
+            "respiracao": {
+                "title": "Fisiologia respiratória",
+                "summary": "Estude a ventilação e as trocas gasosas."
+            },
+            "farmacologia": {
+                "title": "Farmacologia",
+                "summary": "Estude como os fármacos interagem com o organismo."
+            },
             "civil": {
                 "title": "Engenharia civil",
-                "summary": "Inspecione pontes e acompanhe a distribuição das cargas."
+                "summary": "Leia uma planta em CAD e estude cotas, layout e eixos estruturais."
             },
             "mecanica": {
                 "title": "Engenharia mecânica",

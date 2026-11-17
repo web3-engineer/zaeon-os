@@ -359,3 +359,34 @@ html:not(.dark) .ci-line { background: #cbd5e1; }
   color: #f5f8fa;
 }
 .ci-carrossel-card.ci-capa-microbiologia .vt-foto { object-fit: cover; }
+
+.ci-carrossel-card.ci-engenharia .vt-frame,
+.ci-carrossel-card.ci-engenharia .vt-panel {
+  border-radius: 0;
+  clip-path: polygon(0 13px, 13px 0, 100% 0, 100% calc(100% - 13px), calc(100% - 13px) 100%, 0 100%);
+}
+.ci-carrossel-card.ci-engenharia .vt-frame {
+  animation: none;
+  background: linear-gradient(145deg, #b2e0ee, #506477 36%, #182735 64%, #7daab8);
+}
+.ci-carrossel-card.ci-engenharia .vt-panel {
+  inset: 2px;
+  background: repeating-linear-gradient(0deg, #eefaff09 0 1px, transparent 1px 3px), linear-gradient(145deg, #344c60, #101c29 70%);
+}
+.ci-carrossel-card.ci-engenharia .vt-art {
+  margin: 10px 8px 0;
+  transform: none;
+  border: 1px solid #91b9ca80;
+  box-shadow: inset 0 2px 7px #081321;
+}
+.ci-carrossel-card.ci-engenharia .vt-plate {
+  order: initial;
+  padding: 9px 9px 12px;
+  border: 0;
+  border-top: 1px solid #87aabc75;
+  background: linear-gradient(90deg, #142331, #253d4d 65%, #142331);
+}
+.ci-carrossel-card.ci-engenharia .vt-title { color: #eff7fd; }
+.ci-carrossel-card.ci-capa-civil .vt-foto { object-fit: contain; }
+.ci-carrossel-card.ci-capa-civil .vt-art { background: #0a213c; }
+.ci-carrossel-card:is(.ci-capa-respiracao, .ci-capa-farmacologia) .vt-foto { object-fit: cover; }

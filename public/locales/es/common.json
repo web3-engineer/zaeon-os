@@ -538,9 +538,21 @@
     },
     "landing": {
         "knowledge_cards": {
+            "neuro": {
+                "title": "Neuroanatomía",
+                "summary": "Compara las estructuras cerebrales y sus funciones."
+            },
+            "respiracao": {
+                "title": "Fisiología respiratoria",
+                "summary": "Estudia la ventilación y el intercambio de gases."
+            },
+            "farmacologia": {
+                "title": "Farmacología",
+                "summary": "Estudia cómo los fármacos interactúan con el organismo."
+            },
             "civil": {
                 "title": "Ingeniería civil",
-                "summary": "Inspecciona puentes y analiza cómo se distribuyen las cargas."
+                "summary": "Lee un plano CAD y estudia cotas, distribución y ejes estructurales."
             },
             "mecanica": {
                 "title": "Ingeniería mecánica",
