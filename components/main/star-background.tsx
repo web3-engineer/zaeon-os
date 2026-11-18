@@ -76,12 +76,13 @@ const StarBackground: React.FC<{ central?: boolean }> = ({ central = false }) =>
             memoriaGb: (navigator as Navigator & { deviceMemory?: number }).deviceMemory,
             largura: window.innerWidth,
         });
-        const total = perfil.particulas;
+        const total = central ? 0 : perfil.particulas;
         let ativas = total;
 
         let width = 0, height = 0;
         let particles: Particle[] = [];
         let animationId = 0;
+        let esperaCena = 0;
         let time = 0;
         let dnaShift = 0;   // quanto o DNA já subiu (a grade dos degraus anda junto com as fitas)
         const DEGRAU = 22, FREQ_DNA = 0.0085;
@@ -181,15 +182,16 @@ const StarBackground: React.FC<{ central?: boolean }> = ({ central = false }) =>
         };
 
         const draw = (agora: number) => {
-            animationId = requestAnimationFrame(draw);
             if (central) {
                 const tempo = animacaoDaCena?.currentTime;
                 const cicloFundo = (typeof tempo === "number" ? tempo : agora - inicio) % 83000;
                 if (document.hidden || canvas.closest("[data-fundo-pausado]") || cicloFundo < 53500 || cicloFundo > 74500) {
                     ultimo = 0;
+                    esperaCena = window.setTimeout(() => { animationId = requestAnimationFrame(draw); }, 250);
                     return;
                 }
             }
+            animationId = requestAnimationFrame(draw);
             const dtMs = ultimo ? agora - ultimo : 0;
             // Teto de FPS no aparelho fraco: pula o quadro se ainda não deu o intervalo.
             if (ultimo && dtMs < perfil.intervaloMinMs - 1) return;
@@ -337,7 +339,9 @@ const StarBackground: React.FC<{ central?: boolean }> = ({ central = false }) =>
                 ctx.fillStyle = fase === 2 ? "#f0abfc" : "#a5f3fc"; ctx.globalAlpha = alpha * (esc ? 0.55 : 0.4); ctx.fill(nos);
                 ctx.globalAlpha = 1;
             }
-            desenharLote((central ? (ciclo < 18000 ? 1 - transicao : 0) : alphaDaFase(relogio)), (p, i) => (p.dnaStrand !== 0 && fase >= 2 && fase <= 4 ? Math.max(p.size, 1.1) : p.size) * escalas[i], fase === 2 ? VIVAS : COLORS);
+            if (!central) desenharLote(alphaDaFase(relogio),
+                (p, i) => (p.dnaStrand !== 0 && fase >= 2 && fase <= 4 ? Math.max(p.size, 1.1) : p.size) * escalas[i],
+                fase === 2 ? VIVAS : COLORS);
             if (central) {
                 ctx.restore();
                 const isolamento = ciclo < 18000 ? suave((ciclo - 11200) / 2600) : 0;
@@ -352,31 +356,7 @@ const StarBackground: React.FC<{ central?: boolean }> = ({ central = false }) =>
                     ctx.fillRect(0, 0, width, height);
                     ctx.restore();
                 }
-                if (ciclo < 17500 && faisca > 0) {
-                    const x = width * .5, y = height * .27;
-                    const pulso = .5 + .5 * Math.sin(agora / 390);
-                    const raio = (28 + 25 * pulso) * faisca;
-                    const halo = ctx.createRadialGradient(x, y, 0, x, y, raio);
-                    halo.addColorStop(0, "#f1ffff");
-                    halo.addColorStop(.14, "#b8f6ff");
-                    halo.addColorStop(.42, "#40bdfa85");
-                    halo.addColorStop(1, "#347df500");
-                    ctx.save();
-                    ctx.globalAlpha = faisca * (1 - suave((ciclo - 14400) / 3100)) * (.48 + .18 * pulso);
-                    ctx.fillStyle = halo;
-                    ctx.fillRect(x - raio, y - raio, raio * 2, raio * 2);
-                    ctx.strokeStyle = "#87dbff";
-                    ctx.lineWidth = .8;
-                    for (let i = 0; i < 5; i++) {
-                        const angulo = i * Math.PI * 2 / 5 + agora / 3200;
-                        const alcance = raio * (.38 + .28 * Math.sin(agora / 450 + i));
-                        ctx.beginPath();
-                        ctx.moveTo(x, y);
-                        ctx.lineTo(x + Math.cos(angulo) * alcance, y + Math.sin(angulo) * alcance);
-                        ctx.stroke();
-                    }
-                    ctx.restore();
-                }
+
             }
         };
 
@@ -394,6 +374,7 @@ const StarBackground: React.FC<{ central?: boolean }> = ({ central = false }) =>
         };
         const iniciar = () => {
             cancelAnimationFrame(animationId);
+            window.clearTimeout(esperaCena);
             ultimo = 0;
             if (mq?.matches) drawStatic();
             else animationId = requestAnimationFrame(draw);
@@ -422,6 +403,7 @@ const StarBackground: React.FC<{ central?: boolean }> = ({ central = false }) =>
         mq?.addEventListener?.("change", iniciar);
         return () => {
             cancelAnimationFrame(animationId);
+            window.clearTimeout(esperaCena);
             window.clearTimeout(espera);
             window.removeEventListener("resize", onResize);
             mq?.removeEventListener?.("change", iniciar);

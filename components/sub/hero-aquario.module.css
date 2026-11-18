@@ -11,6 +11,7 @@
 }
 
 .oceano {
+  contain: layout paint;
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -152,19 +153,17 @@
 .reflexos::after {
   content: "";
   position: absolute;
-  inset: -25%;
+  inset: -12%;
   transform-origin: 50% 0;
 }
 
 .reflexos::before {
   background: repeating-linear-gradient(114deg, transparent 0 8%, #c0f8ff35 11%, transparent 17%);
-  filter: blur(15px);
   animation: corrente-de-luz 23s ease-in-out infinite alternate;
 }
 
 .reflexos::after {
   background: repeating-radial-gradient(ellipse at 54% -8%, transparent 0 7%, #e3ffff35 9%, transparent 12%);
-  filter: blur(6px);
   animation: luz-refratada 17s ease-in-out infinite alternate;
 }
 
@@ -400,8 +399,6 @@
   background:
     radial-gradient(ellipse at 80% 36%, #3a28674a, transparent 55%),
     radial-gradient(ellipse at 17% 85%, #234e6e45, transparent 53%),
-    radial-gradient(circle at 16px 32px, #d4eaffc9 0 1px, transparent 1.6px) 0 0 / 113px 137px,
-    radial-gradient(circle at 48px 19px, #eff6ff95 0 .7px, transparent 1.4px) 0 0 / 163px 101px,
     #03040a;
 
 }
@@ -809,4 +806,57 @@
 .oceano[data-fundo-pausado] *::before,
 .oceano[data-fundo-pausado] *::after {
   animation-play-state: paused;
+}
+
+/* Gradientes já suavizam a luz sem rasterizar filtros em camadas maiores que a tela. */
+@media (max-width: 767px) {
+  .cardume:nth-child(n+5 of .cardume),
+  .algas:nth-child(3),
+  .fluxoBolhas:nth-child(3),
+  .reflexos::after {
+    display: none;
+  }
+  .reflexos::before {
+    background: repeating-linear-gradient(114deg, transparent 0 8%, #c0f8ff18 11%, transparent 17%);
+  }
+}
+
+@media (max-width: 480px) {
+  .cardume:nth-child(n+4 of .cardume) { display: none; }
+  .bolhas span:nth-child(n+4) { display: none; }
+}
+
+/* O relógio do mar continua, mas seus detalhes param nas cenas em que estão invisíveis. */
+.camadaMarinha {
+  --mar-em-movimento: running;
+  animation: revelar-mar 83s ease-in-out infinite, atividade-mar 83s step-end infinite;
+}
+.camadaMarinha :is(.cardume, .peixe, .reflexos, .algas i, .bolhas span),
+.camadaMarinha .peixe::before,
+.camadaMarinha .reflexos::before,
+.camadaMarinha .reflexos::after {
+  animation-play-state: var(--mar-em-movimento);
+}
+@keyframes atividade-mar {
+  0%, 93.3735%, 100% { --mar-em-movimento: running; }
+  22.8916% { --mar-em-movimento: paused; }
+}
+.marContinuo { animation: none; --mar-em-movimento: running; }
+@media (prefers-reduced-motion: reduce) {
+  .camadaMarinha { animation: none; }
+}
+.oceano[data-fundo-pausado] *,
+.oceano[data-fundo-pausado] *::before,
+.oceano[data-fundo-pausado] *::after {
+  animation-play-state: paused;
+}
+
+.atomoLeve {
+  position: absolute;
+  inset: 15% 0;
+  width: 100%;
+  height: 70%;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  opacity: .45;
 }

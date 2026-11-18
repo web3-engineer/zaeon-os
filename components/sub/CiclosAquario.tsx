@@ -23,9 +23,12 @@ export default function CiclosAquario() {
         <div className={styles.cerebroAnatomico} />
       </div>
       <div className={styles.camadaAtomica}>
-        <div className={styles.mapaAtomico}>
-          {Array.from({ length: 81 }, (_, i) => <i key={i} />)}
-        </div>
+        <svg className={styles.atomoLeve} viewBox="-120 -120 240 240" fill="none">
+          <circle r="12" />
+          <ellipse rx="100" ry="35" />
+          <ellipse rx="100" ry="35" transform="rotate(60)" />
+          <ellipse rx="100" ry="35" transform="rotate(120)" />
+        </svg>
       </div>
     </div>
   );
