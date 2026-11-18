@@ -311,7 +311,7 @@ export default function LoungeNewsFeed() {
                                             </h4>
                                             <p className="text-xs text-slate-500">Este conteúdo possui uma página dedicada de leitura.</p>
                                         </div>
-                                        <Link href={`/study-rooms/lounge/main-lounge/news/articles/page?id=${selectedNews.id}`}>
+                                        <Link href={`/study-rooms/lounge/main-lounge/news/articles?id=${selectedNews.id}`}>
                                             <button className="flex items-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black uppercase tracking-widest rounded-full transition-colors shadow-lg shadow-amber-500/30">
                                                 Acessar Report <ArrowTopRightOnSquareIcon className="w-4 h-4" />
                                             </button>
