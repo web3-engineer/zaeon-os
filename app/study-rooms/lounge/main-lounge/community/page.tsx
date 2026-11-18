@@ -27,14 +27,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { HeartIcon as HeartSolid } from "@heroicons/react/24/solid";
 import CollabModule from "@/components/lounge/CollabModule";
-
-const ROOM_MAPPING: Record<string, string[]> = {
-    cyber: ["Ciência da Computação", "Engenharia de Software", "Sistemas de Informação", "Análise e Desenvolvimento de Sistemas", "Engenharia da Computação", "Redes de Computadores", "Segurança da Informação / Cibersegurança", "Banco de Dados", "Inteligência Artificial", "Ciência de Dados", "Computação em Nuvem", "Internet das Coisas", "Robótica", "Jogos Digitais", "Design Digital / UX / UI", "Computer Science", "Software Engineering"],
-    med: ["Medicina", "Enfermagem", "Odontologia", "Farmácia", "Fisioterapia", "Nutrição", "Psicologia", "Fonoaudiologia", "Terapia Ocupacional", "Biomedicina", "Educação Física"],
-    bio: ["Ciências Biológicas", "Biologia", "Biotecnologia", "Bioquímica", "Bioinformática", "Ecologia"],
-    quantic: ["Matemática", "Matemática Aplicada", "Estatística", "Física", "Astronomia", "Astrofísica", "Geofísica", "Meteorologia"],
-    humanities: ["História", "Geografia", "Filosofia", "Sociologia", "Antropologia", "Ciência Política", "Relações Internacionais", "Letras", "Linguística", "Pedagogia", "Artes", "Música", "Teatro", "Dança", "Cinema e Audiovisual", "Arquivologia", "Biblioteconomia", "Museologia", "Serviço Social", "Comunicação Social", "Jornalismo", "Publicidade e Propaganda", "Editoração", "Produção Cultural", "Direito", "Teologia"]
-};
+import { temaOuLounge } from "@/lib/rooms/temas";
 
 // 🔥 TIPOS ATUALIZADOS COM USERID E USERIMAGE 🔥
 interface Comment {
@@ -200,13 +193,7 @@ export default function LoungeEarth() {
     const currentUserId = (session?.user as any)?.id || ""; 
     const currentUserImage = session?.user?.image || ""; 
 
-    const getUserHomeRoom = () => {
-        const courseStr = String(userCourse).toLowerCase().trim();
-        for (const [room, courses] of Object.entries(ROOM_MAPPING)) {
-            if (courses.some(c => c.toLowerCase().trim() === courseStr)) return room;
-        }
-        return "lounge";
-    };
+    const getUserHomeRoom = () => temaOuLounge(String(userCourse));
 
     const userHomeRoom = getUserHomeRoom();
 

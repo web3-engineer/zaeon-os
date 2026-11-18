@@ -7,6 +7,7 @@ import { esquecerTourSala } from "@/lib/onboarding/tourSala";
 import { esquecerTourEscritorio } from "@/lib/onboarding/tourEscritorio";
 import { novaGeracaoDosTours } from "@/lib/onboarding/geracaoTour";
 import { esquecerDicas } from "@/lib/onboarding/dicas";
+import { esquecerOnboardingTema } from "@/lib/onboarding/porTema";
 import { pedirConversa } from "@/lib/chat/conversasNav";
 import { limparVistosDaConta } from "@/lib/onboarding/vistosConta";
 
@@ -17,6 +18,7 @@ export function reverToursDoLab(): void {
   novaGeracaoDosTours();
   esquecerTourSala();
   esquecerTourEscritorio();
+  esquecerOnboardingTema();   // o onboarding por tema (lib/onboarding/porTema) também
   esquecerDicas();   // #618: as dicas rápidas (Perfil) também
   limparVistosDaConta();   // #629: a conta esquece também (senão ela marcava tudo como visto no próximo carregamento)
   // #626: o tour da sala começa pedindo um estudo — numa conversa que JÁ é estudo (com mapa e tudo) isso não faz

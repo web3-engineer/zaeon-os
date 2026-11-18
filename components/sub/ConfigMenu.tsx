@@ -14,11 +14,14 @@ import { useSession, signOut } from "next-auth/react";
 import { limparCopiaDasConversas } from "@/lib/chat/conversasServidor";
 import { useTranslation } from "react-i18next";
 import { Cog6ToothIcon, ChevronDownIcon, ChevronRightIcon, ArrowRightStartOnRectangleIcon } from "@heroicons/react/24/outline";
-import { Activity, Gauge, Crown, Trash2, Loader2, Ticket, GraduationCap, Globe, Monitor, UserRound } from "lucide-react";
+import { Activity, Gauge, Crown, Trash2, Loader2, Ticket, GraduationCap, Globe, Monitor, UserRound, Palette } from "lucide-react";
 import LanguageFlagToggle from "@/components/ui/LanguageFlagToggle";
 import { isSuperAdmin } from "@/lib/auth/roles";
 import { CHAVE_PROGRESSO, PREF_TUTORIAL, tutorialLigado } from "@/lib/cyber/onboarding";
 import { reverToursDoLab } from "@/lib/onboarding/reverTours";
+import { SKINS, SKINS_ID, SKIN_PADRAO, type SkinId } from "@/lib/skins/paletas";
+import { CHAVE_SKIN, EVT_SKIN, escolherSkin, lerSkinLocal } from "@/lib/skins/preferencia";
+import { temaOuLounge } from "@/lib/rooms/temas";
 import { EVENTO_GRAFICOS, PREF_GRAFICOS, PREF_MOSTRAR_FPS, PREF_NITIDEZ, PREF_SUAVIZAR, lerNitidez, lerPreferencia, lerSuavizar, type PreferenciaGraficos, type PreferenciaNitidez, type PreferenciaSuavizar } from "@/lib/cyber/dispositivo";
 
 const item = "group relative flex items-center gap-3 w-full min-h-[48px] px-3 rounded-2xl text-left text-sm font-medium text-slate-800 dark:text-white border border-slate-200/80 dark:border-white/[0.06] bg-white/50 dark:bg-white/[0.03] hover:bg-white/80 dark:hover:bg-white/[0.08] hover:border-cyan-400/50 dark:hover:border-cyan-400/30 transition-colors";
@@ -54,6 +57,7 @@ export default function ConfigMenu() {
   const [graficos, setGraficos] = useState<PreferenciaGraficos>("auto");
   const [nitidez, setNitidez] = useState<PreferenciaNitidez>("auto"); const [suavizar, setSuavizar] = useState<PreferenciaSuavizar>("auto");
   const [mostrarFps, setMostrarFps] = useState(false);
+  const [skin, setSkin] = useState<SkinId>(SKIN_PADRAO);
   const raiz = useRef<HTMLDivElement>(null);
   const botao = useRef<HTMLButtonElement>(null);
 
@@ -64,15 +68,25 @@ export default function ConfigMenu() {
     if (!aberto) return;
     try { setConvite(localStorage.getItem("zaeon.inviteAccessed") === "1"); } catch { /* sem storage */ }
     setTutorial(tutorialLigado((k) => localStorage.getItem(k)));
+    setSkin(lerSkinLocal());
     try { setGraficos(lerPreferencia(localStorage.getItem(PREF_GRAFICOS))); setMostrarFps(localStorage.getItem(PREF_MOSTRAR_FPS) === "1"); setNitidez(lerNitidez(localStorage.getItem(PREF_NITIDEZ))); setSuavizar(lerSuavizar(localStorage.getItem(PREF_SUAVIZAR))); } catch { /* sem storage */ }
     const fora = (e: PointerEvent) => { if (!raiz.current?.contains(e.target as Node)) setAberto(false); };
     const esc = (e: KeyboardEvent) => { if (e.key === "Escape") { setAberto(false); botao.current?.focus(); } };
+    // a skin pode mudar com o menu aberto (a conta respondeu, ou outra aba trocou): o rádio acompanha
+    const aoMudarSkin = () => setSkin(lerSkinLocal());
+    const aoGuardarSkin = (e: StorageEvent) => { if (e.key === CHAVE_SKIN || e.key === null) setSkin(lerSkinLocal()); };
+    window.addEventListener(EVT_SKIN, aoMudarSkin);
+    window.addEventListener("storage", aoGuardarSkin);
     document.addEventListener("pointerdown", fora);
     document.addEventListener("keydown", esc);
-    return () => { document.removeEventListener("pointerdown", fora); document.removeEventListener("keydown", esc); };
+    return () => { document.removeEventListener("pointerdown", fora); document.removeEventListener("keydown", esc); window.removeEventListener(EVT_SKIN, aoMudarSkin); window.removeEventListener("storage", aoGuardarSkin); };
   }, [aberto]);
 
   const ir = (href: string) => { setAberto(false); router.push(href); };
+  // SKIN do laboratório (lib/skins): só as cores; vale na hora se o laboratório estiver aberto, e fica na conta
+  const mudarSkin = (id: SkinId) => setSkin(escolherSkin(id));
+  // a sala da pessoa: a do curso dela, ou o Lounge (quem não cai em nenhuma área); deslogado não tem sala
+  const minhaSala = logado ? temaOuLounge((session?.user as { course?: string } | undefined)?.course) : null;
   // uma gaveta aberta por vez: abrir uma fecha a outra; clicar na aberta fecha
   const alternarGaveta = (g: NomeGaveta) => setGaveta((atual) => (atual === g ? null : g));
   // MODO TUTORIAL: ligar ou desligar sempre APAGA o progresso salvo (lib/cyber/onboarding) — desligar e ligar de novo
@@ -126,7 +140,7 @@ export default function ConfigMenu() {
           // da linha de baixo, que ficava com o clique. Sem encolher, o painel ROLA (overflow-y-auto).
           className="absolute right-0 top-full mt-2 w-[min(92vw,330px)] max-h-[min(78vh,620px)] overflow-y-auto custom-scrollbar p-3 flex flex-col gap-2 rounded-[24px] [&>*]:shrink-0
             backdrop-blur-2xl backdrop-saturate-[1.6] border border-white/60 dark:border-white/[0.12]
-            bg-white/90 dark:bg-[#0b1020]/95 shadow-[0_18px_50px_-20px_rgba(37,99,235,0.45)] dark:shadow-[0_18px_50px_-20px_rgba(0,0,0,0.8)]"
+            bg-white/90 dark:bg-skpopover/95 shadow-[0_18px_50px_-20px_rgba(37,99,235,0.45)] dark:shadow-[0_18px_50px_-20px_rgba(0,0,0,0.8)]"
         >
           <p className="px-2 pt-1 pb-0.5 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-white/45">{t("siteNav.settings")}</p>
 
@@ -150,6 +164,28 @@ export default function ConfigMenu() {
                 </span>
               </button>
             )}
+            {/* SKIN do laboratório: o visual original é o padrão; as outras seis são as cores de cada sala (lib/skins) */}
+            <div className={`${item} flex-col !items-stretch gap-2 py-2.5`}>
+              <span className="flex items-center gap-3 min-w-0">
+                <Palette size={16} className="text-cyan-600 dark:text-cyan-300 shrink-0" />
+                <span className="flex flex-col flex-1 min-w-0">
+                  <span className={rotulo}>{t("siteNav.lab")}</span>
+                  <span>{t("configMenu.labSkin")}</span>
+                  <span className="text-[11px] font-normal text-slate-500 dark:text-white/45 leading-snug">{t("configMenu.labSkinHint")}</span>
+                </span>
+              </span>
+              <span role="radiogroup" aria-label={t("configMenu.labSkin")} className="grid grid-cols-2 gap-1 rounded-xl bg-slate-200/60 p-1 dark:bg-white/[0.06]">
+                {SKINS_ID.map((id) => (
+                  <button key={id} type="button" role="radio" aria-checked={skin === id} onClick={() => mudarSkin(id)}
+                    className={`min-h-[34px] px-2 rounded-lg text-xs font-semibold text-left flex items-center gap-1.5 transition-colors ${skin === id ? "bg-white text-slate-900 shadow dark:bg-white/15 dark:text-white" : "text-slate-600 hover:text-slate-900 dark:text-white/60 dark:hover:text-white"}`}>
+                    {/* a cor da bolinha é FIXA (hex), não uma classe: senão ela mudaria junto com a skin escolhida */}
+                    <span aria-hidden className="h-3 w-3 shrink-0 rounded-full ring-1 ring-black/10 dark:ring-white/20" style={{ background: SKINS[id].amostra }} />
+                    <span className="truncate">{id === SKIN_PADRAO ? t("configMenu.labSkinOriginal") : SKINS[id].nome}</span>
+                    {id === minhaSala && <span className="ml-auto shrink-0 text-[9px] font-bold uppercase tracking-tight text-slate-500 dark:text-white/50">{t("configMenu.labSkinYours")}</span>}
+                  </button>
+                ))}
+              </span>
+            </div>
           </Gaveta>
 
           {/* CYBERESPAÇO: modo tutorial, gráficos, nitidez, FPS */}
