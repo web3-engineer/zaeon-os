@@ -40,8 +40,13 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
   // outro canal). Cada carga aborta a anterior e confere o número antes de gravar.
   const cargaAtual = useRef(0);
   const abortar = useRef<AbortController | null>(null);
+  // O canal que está NA TELA agora. Um salvar/apagar do canal A que termina depois de o usuário ir pro B
+  // não pode recarregar (nem mostrar erro de) A por cima de B.
+  const canalNaTela = useRef(canalId);
+  canalNaTela.current = canalId;
 
   const carregar = useCallback(async () => {
+    if (canalId !== canalNaTela.current) return;
     const minha = ++cargaAtual.current;
     abortar.current?.abort();
     const ctl = new AbortController();
@@ -64,42 +69,64 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
     }
   }, [canalId]);
 
-  useEffect(() => { if (aberta) void carregar(); }, [aberta, carregar, versao]);
-  // trocou de canal ou fechou: some o dado do canal anterior e cancela o que estava a caminho
+  // trocou de canal: some o dado do canal anterior (declarado ANTES da carga, pra limpar e só então carregar)
   useEffect(() => {
     setAncora(null);
     setBlocos([]);
     setGente(new Map());
     setErro(null);
-    return () => { cargaAtual.current++; abortar.current?.abort(); };
   }, [canalId]);
+  // A carga e o cancelamento dela moram no MESMO efeito: ao trocar de canal, fechar ou chegar versão nova,
+  // o cleanup invalida a carga anterior (e solta o "carregando" dela) e só então a nova começa.
+  useEffect(() => {
+    if (!aberta) return;
+    void carregar();
+    return () => { cargaAtual.current++; abortar.current?.abort(); setCarregando(false); };
+  }, [aberta, carregar, versao]);
   useEffect(() => { setAncora(null); }, [aberta]);
 
-  // foco: ao abrir vai pra bandeja (o fundo fica inerte); ao fechar volta pra quem abriu (o 🗓)
+  // foco: ao abrir vai pra bandeja (o fundo fica inerte); ao fechar volta pra quem abriu (o 🗓).
+  // A volta espera um tique: nesse instante o fundo ainda está inerte e recusaria o foco.
   useEffect(() => {
     if (!aberta) return;
     const anterior = document.activeElement as HTMLElement | null;
     dialogoRef.current?.focus();
-    return () => { if (anterior && anterior.isConnected) anterior.focus(); };
+    return () => { setTimeout(() => { if (anterior && anterior.isConnected) anterior.focus(); }, 0); };
   }, [aberta]);
 
-  // Esc: um nível por vez (1º cancela a seleção em andamento, 2º fecha) e não vaza pra outros ouvintes
+  // Esc: um nível por vez (1º cancela a seleção em andamento, 2º fecha) e não vaza pra outros ouvintes.
+  // Tecla SEGURADA (repeat) não conta: senão um Esc longo cancelava a seleção e já fechava a agenda.
   useEffect(() => {
     if (!aberta) return;
     const esc = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.defaultPrevented) return;
       e.preventDefault();
+      if (e.repeat) return;
       if (ancora) setAncora(null); else onFechar();
     };
     window.addEventListener("keydown", esc);
     return () => window.removeEventListener("keydown", esc);
   }, [aberta, ancora, onFechar]);
 
+  // Tab preso na bandeja: o resto do painel está inerte, mas a página em volta (sidebar do lab) não.
+  const prenderTab = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "Tab") return;
+    const raiz = dialogoRef.current;
+    if (!raiz) return;
+    const focaveis = [...raiz.querySelectorAll<HTMLElement>("button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex='-1'])")];
+    if (focaveis.length === 0) { e.preventDefault(); raiz.focus(); return; }
+    const primeiro = focaveis[0]!, ultimo = focaveis[focaveis.length - 1]!;
+    const ativo = document.activeElement;
+    if (e.shiftKey && (ativo === primeiro || ativo === raiz)) { e.preventDefault(); ultimo.focus(); }
+    else if (!e.shiftKey && (ativo === ultimo || !raiz.contains(ativo))) { e.preventDefault(); primeiro.focus(); }
+  };
+
   const salvar = useCallback(async (b: { dia: Dia; inicio: number; fim: number }) => {
     setSalvando(true);
     try {
       const r = await fetch(`/api/canal/${canalId}/agenda`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) });
       const j = await r.json().catch(() => ({}));
+      if (canalId !== canalNaTela.current) return;   // já estou em outro canal: nada daqui vale pra ele
       if (!r.ok) { setErro(j?.error || `Não deu pra salvar (${r.status})`); return; }
       await carregar();
     } finally {
@@ -113,6 +140,7 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
     try {
       const r = await fetch(`/api/canal/${canalId}/agenda?bloco=${encodeURIComponent(b.id)}`, { method: "DELETE" });
       const j = await r.json().catch(() => ({}));
+      if (canalId !== canalNaTela.current) return;
       if (!r.ok) { setErro(j?.error || `Não deu pra apagar (${r.status})`); return; }
       await carregar();
     } finally {
@@ -137,7 +165,7 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
   if (!aberta) return null;
 
   return (
-    <div ref={dialogoRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Agenda do escritório" className={`absolute inset-y-0 left-0 z-40 outline-none w-full sm:w-[min(720px,94%)] flex flex-col rounded-[28px] overflow-hidden ${VIDRO_POPOVER_SOLIDO}`}>
+    <div ref={dialogoRef} tabIndex={-1} role="dialog" aria-modal="true" onKeyDown={prenderTab} aria-label="Agenda do escritório" className={`absolute inset-y-0 left-0 z-40 outline-none w-full sm:w-[min(720px,94%)] flex flex-col rounded-[28px] overflow-hidden ${VIDRO_POPOVER_SOLIDO}`}>
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/50 dark:border-white/[0.08]">
         <span className={`text-[13px] font-bold ${TXT}`}>Agenda da semana</span>
         <span className={`text-[11px] ${TXT_MUDO} hidden sm:inline`}>repete toda semana · todos do canal veem</span>

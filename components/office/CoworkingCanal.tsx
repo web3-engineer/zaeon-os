@@ -170,12 +170,14 @@ export default function CoworkingCanal({ agenteInicial = null }: { agenteInicial
   const fimRef = useRef<HTMLDivElement>(null);
   const listaRef = useRef<HTMLDivElement>(null); // #427: a lista de mensagens (pra descer até o balão de quem digita)
   const compositorRef = useRef<HTMLDivElement>(null);
-  // Com a agenda aberta o fundo (lista + caixa) fica INERTE: sem foco, sem clique, sem leitor de tela. E
+  const barraRef = useRef<HTMLDivElement>(null);
+  // Com a agenda aberta o fundo TODO (barra + lista + caixa) fica INERTE: sem foco, sem clique, sem leitor de
+  // tela. A agenda fecha pelo × dela ou pelo Esc (o 🗓 fica debaixo dela de qualquer jeito). E
   // nada pode puxar o foco pra caixa por baixo da agenda (enviar/anexar terminando, tocar num agente).
   const agendaAbertaRef = useRef(false);
   agendaAbertaRef.current = agendaAberta;
   useEffect(() => {
-    for (const el of [listaRef.current, compositorRef.current]) {
+    for (const el of [barraRef.current, listaRef.current, compositorRef.current]) {
       if (el) (el as HTMLElement & { inert: boolean }).inert = agendaAberta;
     }
   }, [agendaAberta, det]);
@@ -721,7 +723,7 @@ export default function CoworkingCanal({ agenteInicial = null }: { agenteInicial
         {/* agenda semanal do canal: bandeja por cima da conversa (#396) */}
         <AgendaBandeja canalId={ativoId} aberta={agendaAberta} onFechar={() => setAgendaAberta(false)} versao={agendaVersao} />
         {/* barra: agenda · canal · presença · cartolina · config */}
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-white/50 dark:border-white/[0.08]">
+        <div ref={barraRef} className="flex items-center gap-2 px-3 py-2 border-b border-white/50 dark:border-white/[0.08]">
           {/* à esquerda do seletor: abre a agenda da semana */}
           <button type="button" onClick={() => { setAgendaAberta((v) => !v); setMenu(null); }} aria-label="Agenda da semana" aria-expanded={agendaAberta}
             title="Agenda da semana" className={`${TOQUE} rounded-2xl text-[15px] ${VIDRO_CHIP} ${TXT}`}>🗓</button>
