@@ -221,7 +221,7 @@ function MenuLinks({ itens, atual }: { itens: { href: string; rotulo: string; ao
       </button>
       {aberto && (
         <nav id="menu-links-site" aria-label={t("siteNav.site")}
-          className="absolute right-0 top-12 w-56 overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-[#0b1020]/95 backdrop-blur-xl shadow-2xl py-1">
+          className="absolute right-0 top-12 w-56 overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-skpopover/95 backdrop-blur-xl shadow-2xl py-1">
           {itens.map((i) => (
             <Link key={i.href} href={i.href} onClick={() => { i.aoClicar?.(); setAberto(false); }} aria-current={atual === i.href ? "page" : undefined}
               className="flex min-h-[44px] items-center px-4 text-[14px] font-semibold text-slate-700 dark:text-white/85 hover:bg-slate-900/5 dark:hover:bg-white/10 aria-[current=page]:text-cyan-600 dark:aria-[current=page]:text-cyan-300">

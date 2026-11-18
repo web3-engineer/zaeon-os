@@ -1,4 +1,8 @@
 import type { Config } from 'tailwindcss'
+import plugin from 'tailwindcss/plugin'
+// As SKINS do laboratório (lib/skins): cyan/sky/blue e três fundos escuros leem variáveis CSS; o valor padrão
+// é a cor de sempre, e `[data-skin="…"]` (posto no <html> só dentro do laboratório) troca o matiz.
+import { coresDoTailwind, cssBaseDasSkins } from './lib/skins/variaveis'
 
 const config: Config = {
   darkMode: 'class',
@@ -20,9 +24,10 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        ...coresDoTailwind(),
       },
     },
   },
-  plugins: [],
+  plugins: [plugin(({ addBase }) => addBase(cssBaseDasSkins()))],
 }
 export default config

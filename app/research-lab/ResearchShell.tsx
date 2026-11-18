@@ -224,7 +224,7 @@ export default function ResearchShell({
         minHeight: mobile ? "78vh" : unifiedView ? 0 : 600,
         maxHeight: "none",
         borderRadius: 22,
-        background: "rgba(22,22,34,0.55)",
+        background: "rgb(var(--sk-vidro) / 0.55)",
         border: "1px solid rgba(255,255,255,0.12)",
         backdropFilter: "blur(40px) saturate(180%)",
         WebkitBackdropFilter: "blur(40px) saturate(180%)",

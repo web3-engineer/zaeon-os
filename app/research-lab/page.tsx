@@ -94,6 +94,7 @@ const EscritorioRoom = dynamic(
 const TutorialLab = dynamic(() => import("@/components/onboard/TutorialLab"), { ssr: false });
 const TourSala = dynamic(() => import("@/components/onboard/TourSala"), { ssr: false });
 const TourEscritorio = dynamic(() => import("@/components/onboard/TourEscritorio"), { ssr: false });
+const SkinDoLab = dynamic(() => import("@/components/skins/SkinDoLab"), { ssr: false });
 const OnboardingTema = dynamic(() => import("@/components/onboard/OnboardingTema"), { ssr: false });
 const CoworkingCanal = dynamic(
   () => import("@/components/office/CoworkingCanal"),
@@ -1659,6 +1660,9 @@ export default function HomeworkPage({
   const noTablet = useRef(false);
   // o laboratório no tablet do TUTORIAL do novato (`?tutorial=1`): roda o tour da 1ª missão
   const [tutorialLab, setTutorialLab] = useState(false);
+  // a raiz do laboratório: embutido na workstation, a skin de cores fica só aqui dentro (components/skins/SkinDoLab).
+  // Fica AQUI, com os outros hooks — antes do retorno antecipado do carregamento.
+  const raizDoLab = useRef<HTMLDivElement>(null);
   useEffect(() => {
     noTablet.current = window.parent !== window && (pedeTablet(window.location.search) || (() => { try { return window.parent.location.pathname.startsWith(LOUNGE_ROTA); } catch { return false; } })());
     if (noTablet.current && pedeTutorial(window.location.search)) setTutorialLab(true);
@@ -2741,7 +2745,7 @@ export default function HomeworkPage({
 
   if (!mounted || status === "loading") {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-[#030014]">
+      <div className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-skfundo">
         <IosLoader />
       </div>
     );
@@ -2759,7 +2763,8 @@ export default function HomeworkPage({
     <ConversasSlotContext.Provider value={isEmbedded ? null : { el: slotConversas, sala: activeTab === "pesquisa" ? "pesquisa" : activeTab === "sala-de-estudos" ? "estudos" : null }}>
     <BlueprintsSlotContext.Provider value={isEmbedded ? null : { el: slotBlueprints }}>
     <div
-      className={`relative transition-all duration-500 overflow-hidden flex font-sans w-full bg-slate-100 dark:bg-[#030014]
+      ref={raizDoLab}
+      className={`relative transition-all duration-500 overflow-hidden flex font-sans w-full bg-slate-100 dark:bg-skfundo
             ${isEmbedded ? "h-full" : "h-screen h-[100dvh]"}
             ${!isEmbedded ? (isFocusMode ? "pt-4" : celular ? "pt-[68px]" : "pt-[68px] md:pt-[100px]") : ""}
         `}
@@ -2813,8 +2818,8 @@ export default function HomeworkPage({
           transition={{ type: "tween", duration: 0.22, ease: [0.22, 0.61, 0.36, 1] }}
           className={`fixed ${celular ? "left-2" : isChatLeft ? "right-4" : "left-4"} z-[590] [font-family:var(--font-tech),sans-serif] py-6 rounded-[24px] border backdrop-blur-2xl overflow-hidden transition-colors
             bg-gradient-to-b from-sky-100/90 to-blue-200/80 border-blue-300/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]
-            dark:from-transparent dark:to-transparent dark:bg-[rgba(22,22,34,0.55)] dark:border-white/10 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.6)]
-            ${celular ? "dark:bg-[rgba(14,14,24,0.96)] bg-sky-50" : ""}
+            dark:from-transparent dark:to-transparent dark:border-white/10 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.6)]
+            ${celular ? "dark:bg-skgaveta/[0.96] bg-sky-50" : "dark:bg-skvidro/55"}
             ${isFocusMode ? "top-4 h-[calc(100vh-32px)]" : celular ? "top-[68px] h-[calc(100dvh-68px-76px)]" : "top-[100px] h-[calc(100vh-140px)]"}`}
         >
           {/* Conteúdo com LARGURA FIXA: a sidebar só recorta (54 ↔ 264 px) — nada se reorganiza no meio da animação.
@@ -3063,7 +3068,7 @@ export default function HomeworkPage({
       {/* LOADING da troca de agente: cobre a área até a tela do novo agente estar pronta */}
       {trocandoPara && (
         <div role="status" className="fixed inset-0 z-[580] grid place-items-center bg-white/40 dark:bg-black/40 backdrop-blur-sm pointer-events-none">
-          <div className="flex items-center gap-3 px-5 py-3 rounded-2xl border bg-white/90 border-blue-200 text-slate-800 dark:bg-[rgba(22,22,34,0.9)] dark:border-white/10 dark:text-white shadow-xl">
+          <div className="flex items-center gap-3 px-5 py-3 rounded-2xl border bg-white/90 border-blue-200 text-slate-800 dark:bg-skvidro/90 dark:border-white/10 dark:text-white shadow-xl">
             <Loader2 className="w-5 h-5 animate-spin text-cyan-500" />
             <span className="text-[13px] font-bold">{t("labSidebar.switching", { name: agenteChat(trocandoPara).nome })}</span>
           </div>
@@ -4057,6 +4062,8 @@ export default function HomeworkPage({
       <TourEscritorio naAba={activeTab === "escritorio"} noTutorial={tutorialLab} />
       {/* o ENCAIXE do onboarding novo, por tema (lib/onboarding/porTema): não aparece sem a flag ou sem passos */}
       <OnboardingTema noTutorial={tutorialLab} />
+      {/* a SKIN de cores do laboratório (lib/skins): vale só aqui dentro; o original é o padrão */}
+      <SkinDoLab escopo={isEmbedded ? raizDoLab : undefined} />
     </div>
     </BlueprintsSlotContext.Provider>
     </ConversasSlotContext.Provider>
