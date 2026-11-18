@@ -219,7 +219,8 @@ export default function VitrineEstudos() {
                                         key={it.id}
                                         it={it}
                                         className="[&_.vt-spine]:hidden [&_.vt-type]:hidden"
-                                        precoNode={t("landing.vitrine.exemplo_estudo", { defaultValue: "Estudo de exemplo" })}
+                                        // sem rótulo no lugar do preço: o "Estudo de exemplo" saiu de TODOS os cards (pedido do dono, nov/2026)
+                                        precoNode={null}
                                         acaoNode={it.cadernoEstudoId && (
                                             <Link className="vt-abrir-pasta" href={`/estudos/caderno/${encodeURIComponent(it.cadernoEstudoId)}`}>
                                                 {t("landing.vitrine.abrir_caderno", { defaultValue: "Abrir caderno" })}
