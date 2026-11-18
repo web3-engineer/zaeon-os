@@ -3,7 +3,6 @@ import styles from "./hero-aquario.module.css";
 export default function MarCardumes({ continuo = false }: { continuo?: boolean }) {
   return (
     <div className={`${styles.camadaMarinha} ${continuo ? styles.marContinuo : ""}`}>
-      <div className={styles.reflexos} />
       {!continuo && <>
       <div className={styles.fundoMarinho}>
         {[0, 1, 2].map((grupo) => (
