@@ -40,7 +40,7 @@ import { Square } from "lucide-react";
 import { deveAvisarDigitando, podarDigitando, quemDigita, estaNoFim, vigiaReconexao, TTL_DIGITANDO_MS, type Digitando } from "@/lib/canal/presenca";
 import { LinhaSistema, AvisoDigitando } from "./Presenca";
 import AgendaBandeja from "./AgendaBandeja";
-import { VIDRO_PAINEL, VIDRO_BOLHA, VIDRO_BOLHA_MINHA, VIDRO_INPUT, VIDRO_POPOVER, VIDRO_CHIP, TXT, TXT_2, TXT_MUDO, TOQUE } from "@/lib/canal/vidro";
+import { VIDRO_PAINEL, VIDRO_BOLHA, VIDRO_BOLHA_MINHA, VIDRO_INPUT, VIDRO_POPOVER_SOLIDO, VIDRO_CHIP, TXT, TXT_2, TXT_MUDO, TOQUE } from "@/lib/canal/vidro";
 import { useNotificacoesSO } from "./useNotificacoesSO";
 import { enviarLote, type EstadoEnvio } from "@/lib/chat/enviarBase";
 import { mensagemComAnexos, separarArquivos } from "@/lib/canal/anexos";
@@ -107,7 +107,7 @@ export default function CoworkingCanal({ agenteInicial = null }: { agenteInicial
     } else if (r.some((x) => x?.status === "erro")) {
       setErro("Um dos arquivos não subiu (grande demais ou a base está fora do ar). Os outros seguem.");
     }
-    inputRef.current?.focus();
+    if (!agendaAbertaRef.current) inputRef.current?.focus();
   }, []);
   const [menu, setMenu] = useState<"canais" | "convidar" | "sino" | `pessoa:${string}` | null>(null); // #425: "pessoa:<id>" = menu da foto
   // #396 (D): abas do seletor (dividem o espaço, não misturam) + convites da aba Privado
@@ -169,6 +169,18 @@ export default function CoworkingCanal({ agenteInicial = null }: { agenteInicial
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fimRef = useRef<HTMLDivElement>(null);
   const listaRef = useRef<HTMLDivElement>(null); // #427: a lista de mensagens (pra descer até o balão de quem digita)
+  const compositorRef = useRef<HTMLDivElement>(null);
+  const barraRef = useRef<HTMLDivElement>(null);
+  // Com a agenda aberta o fundo TODO (barra + lista + caixa) fica INERTE: sem foco, sem clique, sem leitor de
+  // tela. A agenda fecha pelo × dela ou pelo Esc (o 🗓 fica debaixo dela de qualquer jeito). E
+  // nada pode puxar o foco pra caixa por baixo da agenda (enviar/anexar terminando, tocar num agente).
+  const agendaAbertaRef = useRef(false);
+  agendaAbertaRef.current = agendaAberta;
+  useEffect(() => {
+    for (const el of [barraRef.current, listaRef.current, compositorRef.current]) {
+      if (el) (el as HTMLElement & { inert: boolean }).inert = agendaAberta;
+    }
+  }, [agendaAberta, det]);
   const ativoRef = useRef<string | null>(null);
   const meuIdRef = useRef<string | null>(null);
   const meusAgentes = useRef<Set<string>>(new Set());
@@ -444,7 +456,7 @@ export default function CoworkingCanal({ agenteInicial = null }: { agenteInicial
   // ─── "falar com agente": prefixa @agente e foca (NUNCA redireciona) ───
   const prefixarAgente = useCallback((key: string) => {
     setTexto((t) => (t.includes(`@${key}`) ? t : `@${key} ${t}`.replace(/\s+$/, " ")));
-    setTimeout(() => inputRef.current?.focus(), 0);
+    setTimeout(() => { if (!agendaAbertaRef.current) inputRef.current?.focus(); }, 0);
   }, []);
   useEffect(() => {
     let k = agenteInicial;
@@ -523,7 +535,7 @@ export default function CoworkingCanal({ agenteInicial = null }: { agenteInicial
       setErro(mensagemDeErro(e, "sua mensagem não foi enviada"));   // #657: não o "NetworkError…" cru
     } finally {
       setEnviando(false);
-      inputRef.current?.focus();
+      if (!agendaAbertaRef.current) inputRef.current?.focus();
     }
   }, [texto, anexos, subindo, ativoId, enviando, pedirPermissao]);
 
@@ -711,7 +723,7 @@ export default function CoworkingCanal({ agenteInicial = null }: { agenteInicial
         {/* agenda semanal do canal: bandeja por cima da conversa (#396) */}
         <AgendaBandeja canalId={ativoId} aberta={agendaAberta} onFechar={() => setAgendaAberta(false)} versao={agendaVersao} />
         {/* barra: agenda · canal · presença · cartolina · config */}
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-white/50 dark:border-white/[0.08]">
+        <div ref={barraRef} className="flex items-center gap-2 px-3 py-2 border-b border-white/50 dark:border-white/[0.08]">
           {/* à esquerda do seletor: abre a agenda da semana */}
           <button type="button" onClick={() => { setAgendaAberta((v) => !v); setMenu(null); }} aria-label="Agenda da semana" aria-expanded={agendaAberta}
             title="Agenda da semana" className={`${TOQUE} rounded-2xl text-[15px] ${VIDRO_CHIP} ${TXT}`}>🗓</button>
@@ -722,7 +734,7 @@ export default function CoworkingCanal({ agenteInicial = null }: { agenteInicial
               {totalNaoLidas - (naoLidas[ativoId] ?? 0) > 0 && <Badge n={totalNaoLidas - (naoLidas[ativoId] ?? 0)} />}
             </button>
             {menu === "canais" && (
-              <div className={`absolute left-0 top-full mt-1.5 z-30 w-[min(92vw,340px)] p-1.5 rounded-2xl ${VIDRO_POPOVER}`}>
+              <div className={`absolute left-0 top-full mt-1.5 z-30 w-[min(92vw,340px)] p-1.5 rounded-2xl ${VIDRO_POPOVER_SOLIDO}`}>
                 {/* as três abas dividem o mesmo espaço; cada uma mostra só os canais dela */}
                 <div className="flex gap-1 p-1" role="tablist" aria-label="Tipo de escritório">
                   {ABAS.map((a) => (
@@ -831,13 +843,14 @@ export default function CoworkingCanal({ agenteInicial = null }: { agenteInicial
 
         {/* input (fixo, safe-area) */}
         <div
+          ref={compositorRef}
           className={`relative px-2 sm:px-3 pt-2 pb-[max(8px,env(safe-area-inset-bottom))] ${VIDRO_INPUT} ${arrastandoArquivo ? "ring-2 ring-blue-400/60 dark:ring-cyan-300/50" : ""}`}
           onDragOver={(e) => { if (e.dataTransfer.types.includes("Files")) { e.preventDefault(); setArrastandoArquivo(true); } }}
           onDragLeave={() => setArrastandoArquivo(false)}
           onDrop={(e) => { if (!e.dataTransfer.files?.length) return; e.preventDefault(); setArrastandoArquivo(false); void anexar([...e.dataTransfer.files]); }}
         >
           {aberta && sugestoes.length > 0 && (
-            <div role="listbox" className={`absolute left-3 bottom-full mb-1.5 z-30 w-[min(92vw,300px)] p-1.5 rounded-2xl ${VIDRO_POPOVER}`}>
+            <div role="listbox" className={`absolute left-3 bottom-full mb-1.5 z-30 w-[min(92vw,300px)] p-1.5 rounded-2xl ${VIDRO_POPOVER_SOLIDO}`}>
               {sugestoes.map((a, i) => (
                 <button key={a.agentKey} type="button" role="option" aria-selected={i === sugIdx} onMouseDown={(e) => { e.preventDefault(); completar(a); }}
                   className={`w-full ${TOQUE} flex items-center gap-2.5 px-3 rounded-xl text-left ${i === sugIdx ? `bg-blue-500/15 dark:bg-blue-400/15 ${TXT}` : `${TXT_2} hover:bg-slate-500/10 dark:hover:bg-white/10`}`}>

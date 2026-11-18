@@ -20,6 +20,13 @@ export const VIDRO_INPUT = `${VIDRO_BASE} bg-white/75 dark:bg-[#0b1020]/70 shado
 /** Popover (autocomplete, menus). */
 export const VIDRO_POPOVER = `${VIDRO_BASE} bg-white/90 dark:bg-[#0b1020]/95 shadow-[0_18px_50px_-20px_rgba(37,99,235,0.45)] dark:shadow-[0_18px_50px_-20px_rgba(0,0,0,0.8)]`;
 
+/**
+ * Camada que CAI POR CIMA do conteúdo (agenda, menus, autocomplete). Quase opaca de propósito: o painel
+ * pai já tem backdrop-filter, o que vira a "raiz do backdrop" — o blur do filho só enxerga o que está
+ * dentro do pai, e a 90% de opacidade as letras do chat ainda apareciam por baixo da agenda.
+ */
+export const VIDRO_POPOVER_SOLIDO = `${VIDRO_BASE} bg-white/[0.98] dark:bg-[#0b1020]/[0.98] shadow-[0_18px_50px_-20px_rgba(37,99,235,0.45)] dark:shadow-[0_18px_50px_-20px_rgba(0,0,0,0.8)]`;
+
 /** Pill/chip (agente convocável, presença). */
 export const VIDRO_CHIP = `${VIDRO_BASE} bg-white/60 hover:bg-white/85 dark:bg-white/[0.05] dark:hover:bg-white/[0.1]`;
 

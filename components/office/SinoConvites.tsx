@@ -10,7 +10,7 @@
 import { Bell } from "lucide-react";
 import AgentAvatar from "@/components/agents/AgentAvatar";
 import { podeLimpar, tempoRelativo, type ItemSino } from "@/lib/canal/sino";
-import { VIDRO_CHIP, VIDRO_POPOVER, TXT, TXT_2, TXT_MUDO, TOQUE } from "@/lib/canal/vidro";
+import { VIDRO_CHIP, VIDRO_POPOVER_SOLIDO, TXT, TXT_2, TXT_MUDO, TOQUE } from "@/lib/canal/vidro";
 
 const ROTULO: Record<ItemSino["status"], string> = { pendente: "pendente", aceito: "aceito", recusado: "recusado" };
 const COR: Record<ItemSino["status"], string> = {
@@ -51,7 +51,7 @@ export default function SinoConvites({ itens, contador, aberto, onAlternar, ocup
       </button>
 
       {aberto && (
-        <div role="dialog" aria-label="Notificações" className={`absolute left-0 top-full mt-1.5 z-30 w-[min(92vw,340px)] p-2 rounded-2xl ${VIDRO_POPOVER}`}>
+        <div role="dialog" aria-label="Notificações" className={`absolute left-0 top-full mt-1.5 z-30 w-[min(92vw,340px)] p-2 rounded-2xl ${VIDRO_POPOVER_SOLIDO}`}>
           <div className="flex items-center justify-between gap-2 px-2 pt-1 pb-2">
             <p className={`text-[10.5px] font-bold uppercase tracking-wider ${TXT_MUDO}`}>Convites</p>
             {onLimpar && podeLimpar(itens) && (
