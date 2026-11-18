@@ -29,6 +29,7 @@ describe("skins do laboratório", () => {
     expect(v["--sk-fundo"]).toBe(FUNDOS_ORIGINAIS.fundo.join(" "));
     expect(v["--sk-vidro"]).toBe("22 22 34");
     expect(v["--sk-popover"]).toBe("11 16 32");
+    expect(v["--sk-gaveta"]).toBe("14 14 24");
   });
 
   it("cada skin de sala muda o destaque e tinge os fundos escuros, sem clareá-los demais", () => {
@@ -38,6 +39,12 @@ describe("skins do laboratório", () => {
       const v = variaveisDaSkin(id);
       expect(Object.keys(v).sort()).toEqual(Object.keys(original).sort());
       expect(v["--sk-sky-100"], id).not.toBe(original["--sk-sky-100"]);
+      expect(v["--sk-blue-500"], id).not.toBe(original["--sk-blue-500"]);
+      // o DESTAQUE (cyan) muda em toda skin, fora a Cyber, que é ciano de propósito (ela muda o sky e o blue)
+      if (id === "cyber") expect(v["--sk-cyan-500"]).toBe(original["--sk-cyan-500"]);
+      else for (const tom of TONS) expect(v[`--sk-cyan-${tom}`], `${id} cyan-${tom}`).not.toBe(original[`--sk-cyan-${tom}`]);
+      // e o valor é o da paleta que a skin declarou
+      for (const fam of FAMILIAS) expect(v[`--sk-${fam}-500`], `${id}.${fam}`).toBe(hexParaRgb(pal[SKINS[id].troca[fam]]!["500"]!).join(" "));
       expect(v["--sk-fundo"], id).not.toBe(original["--sk-fundo"]);
       for (const n of v["--sk-fundo"]!.split(" ").map(Number)) expect(n, `${id} fundo`).toBeLessThan(60);
       for (const valor of Object.values(v)) expect(valor).toMatch(/^\d{1,3} \d{1,3} \d{1,3}$/);
@@ -55,10 +62,16 @@ describe("skins do laboratório", () => {
   it("o CSS base tem :root e um bloco por skin; o Tailwind lê as variáveis com alfa", () => {
     const css = cssBaseDasSkins();
     expect(Object.keys(css)).toEqual([":root", ...SKINS_ID.filter((s) => s !== "original").map((s) => `[data-skin="${s}"]`)]);
+    // cada bloco carrega os valores DAQUELA skin (não os do original repetidos)
+    expect(css[":root"]).toEqual(variaveisDaSkin("original"));
+    for (const id of SKINS_ID) if (id !== "original") {
+      expect(css[`[data-skin="${id}"]`], id).toEqual(variaveisDaSkin(id));
+      expect(css[`[data-skin="${id}"]`], id).not.toEqual(css[":root"]);
+    }
     const cores = coresDoTailwind() as Record<string, Record<string, string> & string>;
     expect(cores.cyan!["500"]).toBe("rgb(var(--sk-cyan-500) / <alpha-value>)");
     expect(cores.skfundo).toBe("rgb(var(--sk-fundo) / <alpha-value>)");
-    expect(Object.keys(cores).sort()).toEqual(["blue", "cyan", "skfundo", "skpopover", "skvidro", "sky"]);
+    expect(Object.keys(cores).sort()).toEqual(["blue", "cyan", "skfundo", "skgaveta", "skpopover", "skvidro", "sky"]);
   });
 
   it("lixo vira o padrão", () => {

@@ -20,8 +20,8 @@ import { isSuperAdmin } from "@/lib/auth/roles";
 import { CHAVE_PROGRESSO, PREF_TUTORIAL, tutorialLigado } from "@/lib/cyber/onboarding";
 import { reverToursDoLab } from "@/lib/onboarding/reverTours";
 import { SKINS, SKINS_ID, SKIN_PADRAO, type SkinId } from "@/lib/skins/paletas";
-import { escolherSkin, lerSkinLocal } from "@/lib/skins/preferencia";
-import { temaDoCurso } from "@/lib/rooms/temas";
+import { CHAVE_SKIN, EVT_SKIN, escolherSkin, lerSkinLocal } from "@/lib/skins/preferencia";
+import { temaOuLounge } from "@/lib/rooms/temas";
 import { EVENTO_GRAFICOS, PREF_GRAFICOS, PREF_MOSTRAR_FPS, PREF_NITIDEZ, PREF_SUAVIZAR, lerNitidez, lerPreferencia, lerSuavizar, type PreferenciaGraficos, type PreferenciaNitidez, type PreferenciaSuavizar } from "@/lib/cyber/dispositivo";
 
 const item = "group relative flex items-center gap-3 w-full min-h-[48px] px-3 rounded-2xl text-left text-sm font-medium text-slate-800 dark:text-white border border-slate-200/80 dark:border-white/[0.06] bg-white/50 dark:bg-white/[0.03] hover:bg-white/80 dark:hover:bg-white/[0.08] hover:border-cyan-400/50 dark:hover:border-cyan-400/30 transition-colors";
@@ -72,15 +72,21 @@ export default function ConfigMenu() {
     try { setGraficos(lerPreferencia(localStorage.getItem(PREF_GRAFICOS))); setMostrarFps(localStorage.getItem(PREF_MOSTRAR_FPS) === "1"); setNitidez(lerNitidez(localStorage.getItem(PREF_NITIDEZ))); setSuavizar(lerSuavizar(localStorage.getItem(PREF_SUAVIZAR))); } catch { /* sem storage */ }
     const fora = (e: PointerEvent) => { if (!raiz.current?.contains(e.target as Node)) setAberto(false); };
     const esc = (e: KeyboardEvent) => { if (e.key === "Escape") { setAberto(false); botao.current?.focus(); } };
+    // a skin pode mudar com o menu aberto (a conta respondeu, ou outra aba trocou): o rádio acompanha
+    const aoMudarSkin = () => setSkin(lerSkinLocal());
+    const aoGuardarSkin = (e: StorageEvent) => { if (e.key === CHAVE_SKIN || e.key === null) setSkin(lerSkinLocal()); };
+    window.addEventListener(EVT_SKIN, aoMudarSkin);
+    window.addEventListener("storage", aoGuardarSkin);
     document.addEventListener("pointerdown", fora);
     document.addEventListener("keydown", esc);
-    return () => { document.removeEventListener("pointerdown", fora); document.removeEventListener("keydown", esc); };
+    return () => { document.removeEventListener("pointerdown", fora); document.removeEventListener("keydown", esc); window.removeEventListener(EVT_SKIN, aoMudarSkin); window.removeEventListener("storage", aoGuardarSkin); };
   }, [aberto]);
 
   const ir = (href: string) => { setAberto(false); router.push(href); };
   // SKIN do laboratório (lib/skins): só as cores; vale na hora se o laboratório estiver aberto, e fica na conta
   const mudarSkin = (id: SkinId) => setSkin(escolherSkin(id));
-  const minhaSala = temaDoCurso((session?.user as { course?: string } | undefined)?.course);
+  // a sala da pessoa: a do curso dela, ou o Lounge (quem não cai em nenhuma área); deslogado não tem sala
+  const minhaSala = logado ? temaOuLounge((session?.user as { course?: string } | undefined)?.course) : null;
   // uma gaveta aberta por vez: abrir uma fecha a outra; clicar na aberta fecha
   const alternarGaveta = (g: NomeGaveta) => setGaveta((atual) => (atual === g ? null : g));
   // MODO TUTORIAL: ligar ou desligar sempre APAGA o progresso salvo (lib/cyber/onboarding) — desligar e ligar de novo

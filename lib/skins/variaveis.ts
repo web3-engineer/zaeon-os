@@ -6,7 +6,7 @@ import colors from "tailwindcss/colors";
 import { FAMILIAS, SKINS, SKINS_ID, TONS, type SkinId } from "./paletas";
 
 /** os fundos escuros escritos à mão no shell do laboratório, no visual original */
-export const FUNDOS_ORIGINAIS = { fundo: [3, 0, 20], vidro: [22, 22, 34], popover: [11, 16, 32] } as const;
+export const FUNDOS_ORIGINAIS = { fundo: [3, 0, 20], vidro: [22, 22, 34], popover: [11, 16, 32], gaveta: [14, 14, 24] } as const;
 /** quanto do tom 950 da skin entra nos fundos escuros */
 export const TOM_NO_FUNDO = 0.35;
 
