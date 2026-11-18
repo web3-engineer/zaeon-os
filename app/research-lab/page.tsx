@@ -94,6 +94,7 @@ const EscritorioRoom = dynamic(
 const TutorialLab = dynamic(() => import("@/components/onboard/TutorialLab"), { ssr: false });
 const TourSala = dynamic(() => import("@/components/onboard/TourSala"), { ssr: false });
 const TourEscritorio = dynamic(() => import("@/components/onboard/TourEscritorio"), { ssr: false });
+const OnboardingTema = dynamic(() => import("@/components/onboard/OnboardingTema"), { ssr: false });
 const CoworkingCanal = dynamic(
   () => import("@/components/office/CoworkingCanal"),
   { ssr: false },
@@ -4054,6 +4055,8 @@ export default function HomeworkPage({
       <TourSala noTutorial={tutorialLab} />
       {/* e na 1ª vez que abre o Escritório, o tutorial dele (lib/onboarding/tourEscritorio) */}
       <TourEscritorio naAba={activeTab === "escritorio"} noTutorial={tutorialLab} />
+      {/* o ENCAIXE do onboarding novo, por tema (lib/onboarding/porTema): não aparece sem a flag ou sem passos */}
+      <OnboardingTema noTutorial={tutorialLab} />
     </div>
     </BlueprintsSlotContext.Provider>
     </ConversasSlotContext.Provider>
