@@ -186,7 +186,9 @@ export default function ConversasSidebar({
           className="hidden [@media(hover:none)]:flex shrink-0 w-9 h-9 items-center justify-center rounded-md text-slate-500 dark:text-white/55">
           <MoreHorizontal size={16} />
         </button>
-        <span className={`shrink-0 items-center ${atual ? "flex" : "hidden group-hover/conv:flex group-focus-within/conv:flex"} ${acoesDe === t.id ? "[@media(hover:none)]:flex [@media(hover:none)]:basis-full [@media(hover:none)]:justify-end [@media(hover:none)]:gap-2 [@media(hover:none)]:pb-1" : "[@media(hover:none)]:hidden"}`}>
+        {/* #845: o mostrar-no-hover/foco só vale com mouse — no toque, o `group-focus-within` (mais específico) vencia o
+            esconder e, depois de tocar numa ação, os 3 ícones voltavam a espremer o nome. No toque, só o ⋯ abre. */}
+        <span className={`shrink-0 items-center hidden ${atual ? "[@media(hover:hover)]:flex" : "[@media(hover:hover)]:group-hover/conv:flex [@media(hover:hover)]:group-focus-within/conv:flex"} ${acoesDe === t.id ? "[@media(hover:none)]:flex [@media(hover:none)]:basis-full [@media(hover:none)]:justify-end [@media(hover:none)]:gap-2 [@media(hover:none)]:pb-1" : ""}`}>
           {!filha && aoCriarSub && (
             <button type="button" onClick={(e) => { e.stopPropagation(); aoCriarSub(t.id); setAbertas((a) => ({ ...a, [t.id]: true })); }} className={BTN_MINI} aria-label={`${traduzir("labSidebar.newTopic")} · ${t.titulo}`} title={traduzir("labSidebar.newTopic")}>
               <GitBranchPlus size={12} />

@@ -32,7 +32,8 @@ const PROVEDOR: Record<ModeloChat["provedor"], { rotulo: string; pilula: string;
 };
 const corDo = (m: ModeloChat) => PROVEDOR[m.provedor].pilula;
 
-export function SeletorModelo({ valor, onChange, desabilitado }: { valor: ModeloChat; onChange: (id: string) => void; desabilitado?: boolean }) {
+/** `emLista` (#845): no painel do celular a lista abre embaixo do botão, dentro do painel — a janelinha saía pela direita */
+export function SeletorModelo({ valor, onChange, desabilitado, emLista = false }: { valor: ModeloChat; onChange: (id: string) => void; desabilitado?: boolean; emLista?: boolean }) {
   const [aberto, setAberto] = useState(false);
   const raiz = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -45,7 +46,7 @@ export function SeletorModelo({ valor, onChange, desabilitado }: { valor: Modelo
   }, [aberto]);
 
   return (
-    <div ref={raiz} className="relative">
+    <div ref={raiz} className={emLista ? "relative w-full" : "relative"}>
       <button
         type="button"
         disabled={desabilitado}
@@ -63,7 +64,7 @@ export function SeletorModelo({ valor, onChange, desabilitado }: { valor: Modelo
         <ul
           role="listbox"
           aria-label="Escolher o modelo"
-          className="absolute bottom-full mb-2 left-0 z-[80] w-[17.5rem] rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-[#0b0d14]/95 backdrop-blur-xl shadow-xl p-1.5"
+          className={`${emLista ? "static mt-1.5 w-full" : "absolute bottom-full mb-2 left-0 z-[80] w-[17.5rem]"} rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-[#0b0d14]/95 backdrop-blur-xl shadow-xl p-1.5`}
         >
           {MODELOS_CHAT.map((m, i) => {
             const sel = m.id === valor.id;

@@ -41,8 +41,10 @@ describe("#733 · ConversasSidebar por dia", () => {
     const threads = [t("a", "A", 0), t("b", "B", 0)];
     renderPt(<ConversasSidebar sala="t" threads={threads} ativa="a" {...h()} />);
     const acoes = (nome: string) => screen.getByRole("button", { name: `Excluir · ${nome}` }).parentElement!;
-    expect(acoes("A").className).toMatch(/(^|\s)flex(\s|$)/);
+    // #845: a aberta mostra as ações com mouse; no toque, só o ⋯ abre (o foco não as mostra mais)
+    expect(acoes("A").className).toMatch(/\[@media\(hover:hover\)\]:flex(\s|$)/);
     expect(acoes("B").className).toMatch(/(^|\s)hidden(\s|$)/);
+    expect(acoes("B").className).not.toMatch(/(^|\s)group-focus-within\/conv:flex/);
     expect(acoes("B").className).toContain("group-hover/conv:flex");
   });
 });

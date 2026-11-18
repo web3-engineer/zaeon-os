@@ -12,7 +12,7 @@ import "@/src/i18n";
 
 // --- IMPORTS ---
 import { Navbar } from "@/components/main/navbar";
-import { Mic, MicOff, Code2, Building2, Loader2 } from "lucide-react";
+import { Mic, MicOff, Code2, Building2, Loader2, Library } from "lucide-react";
 import { ConversasSlotContext } from "@/components/chat/ConversasSlot";
 import { BlueprintsSlotContext } from "@/components/blueprint/BlueprintsSlot";
 import ConversasDaSala from "@/components/chat/ConversasDaSala";
@@ -28,7 +28,7 @@ import { agenteChat, agentesDisponiveis, agenteValido, type AgenteChatId, agente
 import { avisarPersona } from "@/lib/research/zaeonEventos";
 import { usePluginsChat } from "@/lib/plugins/chatPlugins";
 import { usePresenca } from "@/components/agents/avatar/hooks";
-import { EVT_ESTUDOS_ABA, abaEstudosAtual, irPraAbaEstudos, type AbaEstudos, type AbaEstudosAnunciada } from "@/lib/chat/conversasNav";
+import { EVT_ESTUDOS_ABA, abaEstudosAtual, abrirBiblioteca, irPraAbaEstudos, type AbaEstudos, type AbaEstudosAnunciada } from "@/lib/chat/conversasNav";
 import { useMarketplaceNoLab } from "@/lib/ui/useMarketplaceNoLab";
 
 // Ramo da árvore sob o nome da sala na sidebar: o da sala aberta cresce e rola; o da outra é curto.
@@ -183,6 +183,7 @@ import {
   NewspaperIcon,
   AcademicCapIcon,
   ArrowUturnLeftIcon,
+  Bars3Icon,
 } from "@heroicons/react/24/outline";
 import { useRouter } from "next/navigation";
 import { musica } from "@/lib/audio/musica";
@@ -2892,12 +2893,22 @@ export default function HomeworkPage({
               className={`${navItem(activeTab === "sala-de-estudos" && abaEstudos === "feed", "blue")} ${pill(sidebarAberta)}`}
             >
               <DocumentTextIcon className="w-5 h-5 shrink-0" />
-              <Rotulo v={sidebarAberta}>{t("labSidebar.study")}</Rotulo>
+              {/* #845: no celular, o mesmo nome da barra de baixo ("Estudos") */}
+              <Rotulo v={sidebarAberta}>{celular ? t("labSidebar.studies") : t("labSidebar.study")}</Rotulo>
             </button>
             <Ramo aberto={(celular || salaEstudosAtiva) && sidebarAberta && activeTab === "sala-de-estudos" && abaEstudos === "feed"}>
               <div ref={setSlotBlueprints} className={RAMO_ATIVO} />
             </Ramo>
             </div>
+            {/* #845: no celular a Biblioteca (documentos, citações, pasta) abre daqui — a faixa saiu da conversa */}
+            {celular && (
+              <button type="button" onClick={() => { irEstudos("meus-estudos"); abrirBiblioteca(); }}
+                title={t("labSidebar.library")}
+                className={`${navItem(false, "blue")} ${pill(sidebarAberta)}`}>
+                <Library className="w-5 h-5 shrink-0" />
+                <Rotulo v={sidebarAberta}>{t("labSidebar.library")}</Rotulo>
+              </button>
+            )}
 
             {/* Sala de Pesquisa — no chat único ela é o MODO PESQUISA do chat da Aura (sem item próprio) */}
             {!CHAT_UNICO && (
@@ -2944,7 +2955,8 @@ export default function HomeworkPage({
               <Rotulo v={sidebarAberta}>{t("labSidebar.office")}</Rotulo>
             </button>
 
-            <div className="h-[1px] bg-slate-300 dark:bg-white/10 my-1" />
+            {/* #845: no celular o traço + os vãos viravam um buraco entre Escritório e Marketplace */}
+            {!celular && <div className="h-[1px] bg-slate-300 dark:bg-white/10 my-1" />}
 
             {/* Marketplace — área especial: fora da lista das salas, logo acima do Perfil (pedido do dono). */}
             <button
@@ -3020,7 +3032,7 @@ export default function HomeworkPage({
           <nav aria-label={t("labSidebar.navigation")} className="fixed inset-x-0 bottom-0 z-[591] [font-family:var(--font-tech),sans-serif] flex items-stretch justify-around border-t border-slate-200 bg-white/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#0b0b16]/95"
             style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
             {[
-              { id: "menu", rotulo: t("labSidebar.menu"), icone: <span className="text-[20px] leading-none">☰</span>, ativo: gaveta, onClick: () => setGaveta((v) => !v) },
+              { id: "menu", rotulo: t("labSidebar.menu"), icone: <Bars3Icon className="w-5 h-5" />, ativo: gaveta, onClick: () => setGaveta((v) => !v) },
               { id: "aura", rotulo: agente.nome, icone: <span className="text-[18px] leading-none text-cyan-500 dark:text-cyan-300">⟁</span>, ativo: !gaveta && (agente.tela === "ide" ? activeTab === "octa" : activeTab === "sala-de-estudos" && abaEstudos === "meus-estudos"), onClick: () => { setGaveta(false); abrirAgente(); } },
               { id: "estudos", rotulo: t("labSidebar.studies"), icone: <DocumentTextIcon className="w-5 h-5" />, ativo: !gaveta && activeTab === "sala-de-estudos" && abaEstudos === "feed", onClick: () => { setGaveta(false); irEstudos("feed"); } },
               { id: "escritorio", rotulo: t("labSidebar.office"), icone: <Building2 className="w-5 h-5" />, ativo: !gaveta && activeTab === "escritorio", onClick: () => { setGaveta(false); setActiveTab("escritorio"); } },
