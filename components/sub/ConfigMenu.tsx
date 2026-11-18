@@ -126,7 +126,7 @@ export default function ConfigMenu() {
           // da linha de baixo, que ficava com o clique. Sem encolher, o painel ROLA (overflow-y-auto).
           className="absolute right-0 top-full mt-2 w-[min(92vw,330px)] max-h-[min(78vh,620px)] overflow-y-auto custom-scrollbar p-3 flex flex-col gap-2 rounded-[24px] [&>*]:shrink-0
             backdrop-blur-2xl backdrop-saturate-[1.6] border border-white/60 dark:border-white/[0.12]
-            bg-white/90 dark:bg-[#0b1020]/95 shadow-[0_18px_50px_-20px_rgba(37,99,235,0.45)] dark:shadow-[0_18px_50px_-20px_rgba(0,0,0,0.8)]"
+            bg-white/90 dark:bg-skpopover/95 shadow-[0_18px_50px_-20px_rgba(37,99,235,0.45)] dark:shadow-[0_18px_50px_-20px_rgba(0,0,0,0.8)]"
         >
           <p className="px-2 pt-1 pb-0.5 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-white/45">{t("siteNav.settings")}</p>
 
