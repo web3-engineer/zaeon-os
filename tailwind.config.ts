@@ -6,6 +6,8 @@ const config: Config = {
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     './app/**/*.{js,ts,jsx,tsx,mdx}',
+    // lib/ também guarda classes (lib/canal/vidro.ts, lib/rooms/temas.ts): sem isto o Tailwind não as gera
+    './lib/**/*.{ts,tsx}',
   ],
   theme: {
     extend: {
