@@ -8,7 +8,7 @@
  */
 import { useState } from "react";
 import { MessageCircle, UserRound, UserMinus, UserPlus } from "lucide-react";
-import { VIDRO_POPOVER, TXT, TXT_MUDO } from "@/lib/canal/vidro";
+import { VIDRO_POPOVER_SOLIDO, TXT, TXT_MUDO } from "@/lib/canal/vidro";
 
 const ITEM = "w-full min-h-[40px] px-2.5 rounded-xl flex items-center gap-2 text-left text-[12.5px] font-semibold";
 
@@ -35,7 +35,7 @@ export default function MenuPessoa({ pessoa, onVerPerfil, conversa, podeRemover,
   };
 
   return (
-    <div role="dialog" aria-label={`Menu de ${pessoa.nome}`} className={`absolute right-0 top-full mt-1.5 z-30 w-[min(92vw,250px)] p-2 rounded-2xl ${VIDRO_POPOVER}`}>
+    <div role="dialog" aria-label={`Menu de ${pessoa.nome}`} className={`absolute right-0 top-full mt-1.5 z-30 w-[min(92vw,250px)] p-2 rounded-2xl ${VIDRO_POPOVER_SOLIDO}`}>
       <div className="flex flex-col gap-0.5">
         <p className={`px-2.5 pt-1 pb-1.5 text-[12px] font-bold truncate ${TXT}`}>{pessoa.nome}</p>
         <button type="button" onClick={onVerPerfil} className={`${ITEM} ${TXT} hover:bg-slate-500/10 dark:hover:bg-white/10`}>

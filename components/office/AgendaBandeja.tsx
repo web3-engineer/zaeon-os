@@ -8,13 +8,13 @@
  * mundo do canal vê. Repete toda semana. Toque na sua foto pra apagar o seu horário.
  * Regras (puras, testadas) em lib/canal/agenda.ts; dados em /api/canal/[id]/agenda.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AgentAvatar from "@/components/agents/AgentAvatar";
 import {
   DIAS_ORDEM, DIA_CURTO, HORAS, corDaPessoa, ocupantes, proximoClique, textoBloco,
   type Ancora, type Bloco, type Dia,
 } from "@/lib/canal/agenda";
-import { VIDRO_POPOVER, VIDRO_CHIP, TXT, TXT_2, TXT_MUDO, TOQUE } from "@/lib/canal/vidro";
+import { VIDRO_POPOVER_SOLIDO, VIDRO_CHIP, TXT, TXT_2, TXT_MUDO, TOQUE } from "@/lib/canal/vidro";
 
 type Pessoa = { id: string; nome: string; avatar: string | null };
 type BlocoComId = Bloco & { id: string };
@@ -34,28 +34,63 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
+  const dialogoRef = useRef<HTMLDivElement>(null);
+  // Só a ÚLTIMA carga vale: o evento "agenda" do Pusher, o salvar e o trocar de canal disparam cargas em
+  // sequência, e uma resposta velha chegando depois da nova sobrescrevia a agenda com dado antigo (ou de
+  // outro canal). Cada carga aborta a anterior e confere o número antes de gravar.
+  const cargaAtual = useRef(0);
+  const abortar = useRef<AbortController | null>(null);
+
   const carregar = useCallback(async () => {
+    const minha = ++cargaAtual.current;
+    abortar.current?.abort();
+    const ctl = new AbortController();
+    abortar.current = ctl;
     setCarregando(true);
     try {
-      const r = await fetch(`/api/canal/${canalId}/agenda`, { cache: "no-store" });
+      const r = await fetch(`/api/canal/${canalId}/agenda`, { cache: "no-store", signal: ctl.signal });
       const j = await r.json().catch(() => ({}));
+      if (minha !== cargaAtual.current) return;
       if (!r.ok) { setErro(j?.error || `Não deu pra abrir a agenda (${r.status})`); return; }
       setBlocos(j.blocos ?? []);
       setGente(new Map((j.pessoas ?? []).map((p: Pessoa) => [p.id, p])));
       setEu(j.eu ?? null);
       setErro(null);
     } catch (e) {
+      if ((e as Error)?.name === "AbortError" || minha !== cargaAtual.current) return;
       setErro(String((e as Error)?.message ?? e));
     } finally {
-      setCarregando(false);
+      if (minha === cargaAtual.current) setCarregando(false);
     }
   }, [canalId]);
 
   useEffect(() => { if (aberta) void carregar(); }, [aberta, carregar, versao]);
-  useEffect(() => { setAncora(null); }, [canalId, aberta]);
+  // trocou de canal ou fechou: some o dado do canal anterior e cancela o que estava a caminho
+  useEffect(() => {
+    setAncora(null);
+    setBlocos([]);
+    setGente(new Map());
+    setErro(null);
+    return () => { cargaAtual.current++; abortar.current?.abort(); };
+  }, [canalId]);
+  useEffect(() => { setAncora(null); }, [aberta]);
+
+  // foco: ao abrir vai pra bandeja (o fundo fica inerte); ao fechar volta pra quem abriu (o 🗓)
   useEffect(() => {
     if (!aberta) return;
-    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") { if (ancora) setAncora(null); else onFechar(); } };
+    const anterior = document.activeElement as HTMLElement | null;
+    dialogoRef.current?.focus();
+    return () => { if (anterior && anterior.isConnected) anterior.focus(); };
+  }, [aberta]);
+
+  // Esc: um nível por vez (1º cancela a seleção em andamento, 2º fecha) e não vaza pra outros ouvintes
+  useEffect(() => {
+    if (!aberta) return;
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      e.preventDefault();
+      if (ancora) setAncora(null); else onFechar();
+    };
     window.addEventListener("keydown", esc);
     return () => window.removeEventListener("keydown", esc);
   }, [aberta, ancora, onFechar]);
@@ -102,7 +137,7 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
   if (!aberta) return null;
 
   return (
-    <div role="dialog" aria-label="Agenda do escritório" className={`absolute inset-y-0 left-0 z-40 w-full sm:w-[min(720px,94%)] flex flex-col rounded-[28px] overflow-hidden ${VIDRO_POPOVER}`}>
+    <div ref={dialogoRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Agenda do escritório" className={`absolute inset-y-0 left-0 z-40 outline-none w-full sm:w-[min(720px,94%)] flex flex-col rounded-[28px] overflow-hidden ${VIDRO_POPOVER_SOLIDO}`}>
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/50 dark:border-white/[0.08]">
         <span className={`text-[13px] font-bold ${TXT}`}>Agenda da semana</span>
         <span className={`text-[11px] ${TXT_MUDO} hidden sm:inline`}>repete toda semana · todos do canal veem</span>
