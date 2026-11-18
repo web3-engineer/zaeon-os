@@ -18,7 +18,9 @@ describe("Vitrine · detalhes do card", () => {
   it("cada oferta tem detalhes; exemplos de título ficam sem compra", () => {
     render(<VitrineEstudos />);
     expect(screen.getAllByRole("button", { name: "detalhes" })).toHaveLength(CATALOGO.filter((item) => !item.exemploEstudo).length);
-    expect(screen.getAllByText("Estudo de exemplo")).toHaveLength(27);
+    // o rótulo "Estudo de exemplo" saiu de todos os cards (os 27 exemplos seguem sem botão de compra)
+    expect(screen.queryAllByText(/estudo de exemplo|study example/i)).toHaveLength(0);
+    expect(CATALOGO.filter((item) => item.exemploEstudo)).toHaveLength(27);
   });
 
   it("'detalhes' abre o painel com quem publicou, nicho, validadores e a descrição — e Esc fecha", () => {
