@@ -94,6 +94,7 @@ const EscritorioRoom = dynamic(
 const TutorialLab = dynamic(() => import("@/components/onboard/TutorialLab"), { ssr: false });
 const TourSala = dynamic(() => import("@/components/onboard/TourSala"), { ssr: false });
 const TourEscritorio = dynamic(() => import("@/components/onboard/TourEscritorio"), { ssr: false });
+const SkinDoLab = dynamic(() => import("@/components/skins/SkinDoLab"), { ssr: false });
 const OnboardingTema = dynamic(() => import("@/components/onboard/OnboardingTema"), { ssr: false });
 const CoworkingCanal = dynamic(
   () => import("@/components/office/CoworkingCanal"),
@@ -4057,6 +4058,8 @@ export default function HomeworkPage({
       <TourEscritorio naAba={activeTab === "escritorio"} noTutorial={tutorialLab} />
       {/* o ENCAIXE do onboarding novo, por tema (lib/onboarding/porTema): não aparece sem a flag ou sem passos */}
       <OnboardingTema noTutorial={tutorialLab} />
+      {/* a SKIN de cores do laboratório (lib/skins): vale só aqui dentro; o original é o padrão */}
+      <SkinDoLab />
     </div>
     </BlueprintsSlotContext.Provider>
     </ConversasSlotContext.Provider>
