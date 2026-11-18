@@ -56,7 +56,7 @@ import { EVT_TEMA, temaDoTexto, temaNoTutorial } from "@/lib/onboarding/tutorial
 import { EVT_PERGUNTA_CHAT, EVT_PREENCHER_CHAT, avisarDesenho, avisarEstadoPercurso, avisarTurnoFim } from "@/lib/onboarding/tourSala";
 import { useAvisoTextoDoChat } from "@/components/onboard/useAvisoTextoDoChat";
 import { useConversasSlot } from "@/components/chat/ConversasSlot";
-import { consumirPedido, EVT_ESTUDOS_CHAT, EVT_PEDIDO_CONVERSA, type PedidoConversa } from "@/lib/chat/conversasNav";
+import { consumirPedido, consumirPedidoBiblioteca, EVT_ABRIR_BIBLIOTECA, EVT_ESTUDOS_CHAT, EVT_PEDIDO_CONVERSA, type PedidoConversa } from "@/lib/chat/conversasNav";
 
 const irProChat = () => window.dispatchEvent(new Event(EVT_ESTUDOS_CHAT));
 import { createPortal } from "react-dom";
@@ -398,6 +398,14 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   // altura — notebook com zoom de 150% — a conversa ficava com 0 px)
   const estreitaEBaixa = useIsMobile(QUERY_ESTREITA_E_BAIXA);
   useEffect(() => { if (celular || estreitaEBaixa) setLibOpen(false); }, [celular, estreitaEBaixa]);
+  // #845: no celular a biblioteca abre pelo Menu (item "Biblioteca"), não por uma faixa na conversa
+  useEffect(() => {
+    if (!active) return;
+    if (consumirPedidoBiblioteca()) setLibOpen(true);
+    const abrir = () => { consumirPedidoBiblioteca(); setLibOpen(true); };
+    window.addEventListener(EVT_ABRIR_BIBLIOTECA, abrir);
+    return () => window.removeEventListener(EVT_ABRIR_BIBLIOTECA, abrir);
+  }, [active]);
   // Editar a própria pergunta e reenviar (estilo ChatGPT) + o A−/A+ do texto.
   const [editando, setEditando] = useState<string | null>(null);
   const zoom = useChatFontScale();
@@ -495,6 +503,18 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   const [quickThinking, setQuickThinking] = useState(false);
   // Mentor ativo (SLUG, ex.: "farmacia") — null = Aura base. Vai como `mentor` a cada envio.
   const [activeMentor, setActiveMentor] = useState<string | null>(null);
+  // #845: o NOME do mentor ("Osler"), que vem com a lista de mentores plugados — o slug ("medicina") é código interno
+  const [nomeMentor, setNomeMentor] = useState<string | null>(null);
+  // no celular a lista de mentores (MentorPill) só monta com o painel aberto: busca o nome quando o mentor muda
+  useEffect(() => {
+    if (!activeMentor) { setNomeMentor(null); return; }
+    let vivo = true;
+    fetch("/api/mentors/plugged").then((r) => (r.ok ? r.json() : null)).then((d) => {
+      const m = Array.isArray(d?.mentors) ? d.mentors.find((x: { slug?: string }) => x?.slug === activeMentor) : null;
+      if (vivo && typeof m?.name === "string") setNomeMentor(m.name);
+    }).catch(() => { /* fica o nome do curso */ });
+    return () => { vivo = false; };
+  }, [activeMentor]);
 
   /**
    * Avisa o Escritório (components/office) qual agente está ocupado. É o único estado
@@ -1465,15 +1485,9 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   ) : null;
   // #713/#837: base, agente, modelo, modo pesquisa e árvore. No computador aparecem em cima da caixa de escrever; no
   // celular moram no painel do "Aura ▾" do topo (a caixa ficou numa linha só).
-  const opcoesDaConversa = (<>
-              <BarraBase envios={envios} versao={versaoBase} />
-              {/* ⟁ Aura ▾ — seletor: Aura base ou um mentor plugado (quebra linha no celular em vez de vazar pra fora) */}
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-                <MentorPill value={activeMentor} onChange={(slug) => setActiveMentor(slug)} />
-                {/* MODELO: com quem o aluno fala de verdade (Google ou o servidor da Zaeon) */}
-                <SeletorModelo valor={modeloEscolhido} onChange={escolherModelo} desabilitado={sending} />
-                {/* MODO PESQUISA (chat único): o harness de pesquisa da antiga Sala de Pesquisa, ligado nesta conversa */}
-                {CHAT_UNICO && (
+  const { t: tr } = useTranslation();
+  // #845: os botões do modo pesquisa e da Árvore, usados no computador (em cima da caixa) e no painel do celular
+  const botaoPesquisa = CHAT_UNICO ? (
                   <button
                     type="button"
                     role="switch"
@@ -1490,7 +1504,8 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
                     </span>
                     <FlaskConical size={12} /> Modo pesquisa
                   </button>
-                )}
+  ) : null;
+  const botaoArvore = (
                 <button
                   type="button"
                   onClick={() => setTreeOpen((v) => !v)}
@@ -1503,12 +1518,40 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
                 >
                   <GitBranch size={12} /> Árvore{tree ? ` ${tree.nodes.filter((n) => n.status === "mastered").length}/${tree.nodes.length}` : ""}
                 </button>
+  );
+  const linhaPainel = (titulo: string, conteudo: React.ReactNode) => (
+    <section className="flex flex-col items-start gap-1.5 border-b border-slate-200/70 pb-3 last:border-0 dark:border-white/10">
+      <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-white/45">{titulo}</h3>
+      {conteudo}
+    </section>
+  );
+  // #845: no painel do celular, uma linha por opção, com título; mentor e modelo abrem NA lista (sem janelinha cortada)
+  const opcoesDaConversa = celular ? (
+    <div className="flex flex-col gap-3">
+      {linhaPainel(tr("chatCelular.rowWho"), <MentorPill emLista value={activeMentor} onChange={(slug, m) => { setActiveMentor(slug); setNomeMentor(m?.name ?? null); }} />)}
+      {linhaPainel(tr("chatCelular.rowModel"), <SeletorModelo emLista valor={modeloEscolhido} onChange={escolherModelo} desabilitado={sending} />)}
+      {linhaPainel(tr("chatCelular.rowBase"), <BarraBase envios={envios} versao={versaoBase} />)}
+      {botaoPesquisa && linhaPainel(tr("chatCelular.rowResearch"), botaoPesquisa)}
+      {linhaPainel(tr("chatCelular.rowTree"), botaoArvore)}
+      {linhaPainel(tr("chatCelular.rowWork"), <BotaoModoExec />)}
+    </div>
+  ) : (<>
+              <BarraBase envios={envios} versao={versaoBase} />
+              {/* ⟁ Aura ▾ — seletor: Aura base ou um mentor plugado (quebra linha no celular em vez de vazar pra fora) */}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                <MentorPill value={activeMentor} onChange={(slug, m) => { setActiveMentor(slug); setNomeMentor(m?.name ?? null); }} />
+                {/* MODELO: com quem o aluno fala de verdade (Google ou o servidor da Zaeon) */}
+                <SeletorModelo valor={modeloEscolhido} onChange={escolherModelo} desabilitado={sending} />
+                {/* MODO PESQUISA (chat único): o harness de pesquisa da antiga Sala de Pesquisa, ligado nesta conversa */}
+                {botaoPesquisa}
+                {botaoArvore}
               </div>
   </>);
   // #837: o "Aura ▾" do topo (só no celular) — quem responde, o modelo, a Minha base, o modo pesquisa, o automático e a Árvore
-  const { t: tr } = useTranslation();
   // (o nome vem do slug do mentor plugado: "prof-marie" → "Prof marie")
-  const nomeDoAgente = activeMentor ? activeMentor.replace(/[-_]+/g, " ").replace(/^./, (c) => c.toUpperCase()) : "Aura";
+  const nomeDoAgente = activeMentor
+    ? (nomeMentor || activeMentor.replace(/[-_]+/g, " ").replace(/^./, (c) => c.toUpperCase()))
+    : "Aura";
   const botaoAgente = celular ? (
     <button type="button" onClick={() => setPainelAgente(true)} aria-haspopup="dialog" aria-expanded={painelAgente}
       aria-label={tr("chatCelular.agentPanel", { name: nomeDoAgente })}
@@ -1758,7 +1801,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
           className={`flex-1 min-h-0 overflow-y-auto custom-scrollbar px-3 sm:px-6 transition-colors ${dragOver ? "bg-cyan-500/[0.04]" : ""}`}
         >
           {/* #837: no celular sem o recuo da esquerda — a resposta usa a largura toda */}
-          <div className="ml-0 md:ml-8 lg:ml-14 mr-0 sm:mr-2 py-4 flex flex-col gap-4">
+          <div className="ml-0 md:ml-8 lg:ml-14 [@media(max-height:500px)_and_(pointer:coarse)]:ml-0 mr-0 sm:mr-2 py-4 flex flex-col gap-4">
             {/* B2: cursor piscando da resposta em streaming */}
             <style>{`@keyframes zCaret { 0%,45% { opacity:1 } 50%,100% { opacity:0 } } .z-caret { display:inline-block; width:2px; height:1em; margin-left:2px; vertical-align:-0.15em; background:currentColor; opacity:.7; animation: zCaret 1s steps(1) infinite; } @media (prefers-reduced-motion: reduce) { .z-caret { animation: none; } }`}</style>
             {messages.length === 0 ? <><SugestoesConversa onEscolher={escolherSugestao} /><DicaSubTema threads={threads} ativa={abaAtiva} /></> : (
@@ -1779,7 +1822,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
                   return (
                     <div key={m.id} data-msg={m.id} className={`group/msg flex flex-col ${isUser ? "items-end" : `items-start ${recuo}`}`}>
                       {pilula}
-                      <div style={{ fontSize: fonteChat(22) }} className={`${isUser ? "max-w-[85%]" : "max-w-[85%] max-md:max-w-full"} rounded-2xl px-4 max-md:px-3 py-2.5 font-tech leading-[1.65] whitespace-pre-wrap
+                      <div style={{ fontSize: fonteChat(22) }} className={`${isUser ? "max-w-[85%]" : "max-w-[85%] max-md:max-w-full [@media(max-height:500px)_and_(pointer:coarse)]:max-w-full"} rounded-2xl px-4 max-md:px-3 py-2.5 font-tech leading-[1.65] whitespace-pre-wrap
                         ${isUser
                           ? "bg-slate-100 text-slate-900 border border-slate-200/80 dark:bg-white/[0.09] dark:text-white/90 dark:border-white/10"
                           : "bg-white/80 dark:bg-white/[0.05] text-slate-800 dark:text-white/90 border border-slate-200/70 dark:border-white/10 backdrop-blur-xl"}`}>
@@ -1797,7 +1840,6 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
                       {isUser
                         ? (m.text ? <AcoesPergunta texto={m.text} ocupado={sending} onEditar={() => setEditando(m.id)} /> : null)
                         : acoesDa(m, i)}
-                      {!isUser && sugestoesStudio(m.id)}
                       {!isUser && m.answer?.livros?.length ? <LivrosCartao livros={m.answer.livros} sala="estudos" /> : null}
                       {/* #745: o artefato que falhou — tenta de novo daqui (o aviso sai e o "desenhando…" volta) */}
                       {!isUser && m.refazer ? (
@@ -1814,19 +1856,21 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
                         </button>
                       ) : null}
                       {!isUser && (m.studioBlock || m.desenhando) ? (
-                        <div className="w-full max-w-[85%] max-md:max-w-full">
+                        <div className="w-full max-w-[85%] max-md:max-w-full [@media(max-height:500px)_and_(pointer:coarse)]:max-w-full">
                           {m.studioBlock ? <BlocoOuCartao b={m.studioBlock} /> : null}
                           {m.blocosExtra?.map((b) => <BlocoOuCartao key={b.studioKind} b={b} />)}
                           {m.desenhando ? <Desenhando texto={m.desenhando} /> : null}
                         </div>
                       ) : null}
+                      {/* #845: os atalhos do Studio depois do que a resposta trouxe (diagrama, livros…), não no meio */}
+                      {!isUser && sugestoesStudio(m.id)}
                     </div>
                   );
                 }
                 if (m.kind === "study" && m.studyId) {
                   return (
                     <div key={m.id} className="flex justify-start">
-                      <div className="max-w-[85%] max-md:max-w-full w-full">
+                      <div className="max-w-[85%] max-md:max-w-full [@media(max-height:500px)_and_(pointer:coarse)]:max-w-full w-full">
                         <StudyArtifactCard
                           studyId={m.studyId}
                           title={m.studyTitle || spaceTitle(m.studyId)}
@@ -1865,14 +1909,14 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
                   return (
                     <div key={m.id} data-msg={m.id} className={`group/msg flex justify-start ${recuo}`}>
                       {pilula}
-                      <div className="max-w-[85%] max-md:max-w-full w-full">{padrao}{sugestoesStudio(m.id)}</div>
+                      <div className="max-w-[85%] max-md:max-w-full [@media(max-height:500px)_and_(pointer:coarse)]:max-w-full w-full">{padrao}{sugestoesStudio(m.id)}</div>
                     </div>
                   );
                 }
                 if (m.kind === "studio" && m.studioBlock) {
                   return (
                     <div key={m.id} className="flex justify-start">
-                      <div className="max-w-[85%] max-md:max-w-full w-full">
+                      <div className="max-w-[85%] max-md:max-w-full [@media(max-height:500px)_and_(pointer:coarse)]:max-w-full w-full">
                         <BlocoOuCartao b={m.studioBlock} />
                       </div>
                     </div>
@@ -1887,7 +1931,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
         {/* ⟁ Studio como paletador de prompt: clicar injeta o prompt no composer. */}
         {studioOpen && (
           <div className="px-4 sm:px-6 pt-2">
-            <div className="ml-0 md:ml-8 lg:ml-14 mr-0 sm:mr-2">
+            <div className="ml-0 md:ml-8 lg:ml-14 [@media(max-height:500px)_and_(pointer:coarse)]:ml-0 mr-0 sm:mr-2">
               <StudioPalette
                 onPick={(tpl) => {
                   // O template vem PRIMEIRO ("Gere um podcast sobre ") e o que a
@@ -1905,7 +1949,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
         <div ref={composerRef} className="px-3 sm:px-6 pb-3 sm:pb-4 pt-2 [@media(max-height:500px)_and_(pointer:coarse)]:pb-1 [@media(max-height:500px)_and_(pointer:coarse)]:pt-1">
           {/* #733: já existe uma conversa com essa pergunta */}
           {repetida && (
-            <div role="alertdialog" aria-label="Conversa repetida" className="ml-0 md:ml-8 lg:ml-14 mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-cyan-400/40 bg-cyan-50 dark:bg-cyan-500/10 px-3 py-2 text-[12.5px] text-cyan-900 dark:text-cyan-50">
+            <div role="alertdialog" aria-label="Conversa repetida" className="ml-0 md:ml-8 lg:ml-14 [@media(max-height:500px)_and_(pointer:coarse)]:ml-0 mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-cyan-400/40 bg-cyan-50 dark:bg-cyan-500/10 px-3 py-2 text-[12.5px] text-cyan-900 dark:text-cyan-50">
               <span className="min-w-0 flex-1">Você já tem a conversa <b>“{repetida.titulo}”</b>. Quer continuar nela?</span>
               <button type="button" onClick={() => { const id = repetida.id; setRepetida(null); trocarRef.current(id); }}
                 className="rounded-full bg-cyan-600 px-3 py-1 font-bold text-white hover:bg-cyan-700 [@media(hover:none)]:min-h-[40px]">continuar nela</button>
@@ -1914,11 +1958,11 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
             </div>
           )}
           {(semRede || falhouRede || avisoConversa) && (
-            <p role={avisoConversa ? "status" : "alert"} className="ml-0 md:ml-8 lg:ml-14 mb-2 rounded-xl border border-amber-400/40 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-[12.5px] text-amber-800 dark:text-amber-100">
+            <p role={avisoConversa ? "status" : "alert"} className="ml-0 md:ml-8 lg:ml-14 [@media(max-height:500px)_and_(pointer:coarse)]:ml-0 mb-2 rounded-xl border border-amber-400/40 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-[12.5px] text-amber-800 dark:text-amber-100">
               {avisoConversa ?? (semRede ? "Sem conexão. Sua mensagem fica na caixa de texto até a internet voltar." : "A internet caiu e a mensagem não foi enviada. Ela voltou para a caixa de texto: envie de novo.")}
             </p>
           )}
-          <div data-tour="composer-estudos" className="ml-0 md:ml-8 lg:ml-14 mr-0 sm:mr-2">
+          <div data-tour="composer-estudos" className="ml-0 md:ml-8 lg:ml-14 [@media(max-height:500px)_and_(pointer:coarse)]:ml-0 mr-0 sm:mr-2">
             <CoworkComposer
               ativo={active}
               value={input}
@@ -1944,7 +1988,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
             {celular && (
               <PainelDeBaixo aberto={active && painelAgente} onFechar={() => setPainelAgente(false)}
                 titulo={tr("chatCelular.agentTitle")} rotuloFechar={tr("chatCelular.close")}>
-                <div className="flex flex-col gap-3 pb-2 [&_button]:min-h-[44px]">{opcoesDaConversa}<BotaoModoExec /></div>
+                <div className="pb-2 [&_button]:min-h-[44px]">{opcoesDaConversa}</div>
               </PainelDeBaixo>
             )}
           </div>
@@ -1982,7 +2026,8 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
             <PanelRightClose size={13} />
           </button>
         </div>
-      ) : (
+      ) : !celular && (
+        // #845: no celular a faixa ficava entre a caixa e o teclado — lá a biblioteca abre pelo Menu
         <button onClick={() => setLibOpen(true)} title="Mostrar biblioteca"
           className="shrink-0 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-white/10 flex lg:flex-col items-center justify-center gap-2 px-3 py-2 lg:py-3 text-slate-400 hover:text-cyan-500 hover:bg-cyan-500/5">
           <PanelRightOpen size={16} />

@@ -16,9 +16,13 @@ type Plugged = { id: string; slug: string; name: string; course: string; emoji?:
 export default function MentorPill({
   value,
   onChange,
+  emLista = false,
 }: {
   value: string | null;                                              // slug ativo ou null (Aura)
   onChange: (slug: string | null, mentor?: Plugged | null) => void;
+  /** #845: dentro do painel do celular, as opções abrem NA LISTA (embaixo do botão), não numa janelinha por cima —
+   *  a janelinha era cortada pela borda do painel */
+  emLista?: boolean;
 }) {
   const [mentors, setMentors] = useState<Plugged[]>([]);
   const [open, setOpen] = useState(false);
@@ -67,7 +71,7 @@ export default function MentorPill({
   const label = current ? `${current.name} · ${current.course}` : "Aura";
 
   return (
-    <div ref={wrapRef} className="relative inline-flex items-center px-1 pb-1.5">
+    <div ref={wrapRef} className={emLista ? "relative flex w-full flex-col items-start" : "relative inline-flex items-center px-1 pb-1.5"}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -88,7 +92,7 @@ export default function MentorPill({
       {open && (
         <div
           role="listbox"
-          className="absolute left-1 bottom-full mb-1.5 z-30 min-w-[260px] p-1.5 rounded-2xl border border-white/60 dark:border-white/10 bg-white/90 dark:bg-[#0b1020]/95 backdrop-blur-2xl shadow-[0_18px_50px_-20px_rgba(37,99,235,0.45)]"
+          className={`${emLista ? "static mt-1.5 w-full" : "absolute left-1 bottom-full mb-1.5 z-30 min-w-[260px]"} p-1.5 rounded-2xl border border-white/60 dark:border-white/10 bg-white/90 dark:bg-[#0b1020]/95 backdrop-blur-2xl shadow-[0_18px_50px_-20px_rgba(37,99,235,0.45)]`}
         >
           <Option active={value === null} onClick={() => select(null)} emoji="⟁" title="Aura" sub="base · todas as áreas" />
           {mentors.map((m) => (

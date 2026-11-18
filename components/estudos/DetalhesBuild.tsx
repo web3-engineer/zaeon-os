@@ -16,10 +16,13 @@ import "./vitrine-detalhes.css";
 
 const FECHAR_MS = 450;
 
-/** as trilhas do circuito para uma tela W×H (o contorno segue o mesmo recorte da casca) */
-function trilhas(W: number, H: number) {
+/** as trilhas do circuito para uma tela W×H (o contorno segue o mesmo recorte da casca). `solto` (#845, computador):
+ *  o painel não encosta no pé da tela, então a moldura fecha embaixo — sem isso parecia cortado */
+export function trilhas(W: number, H: number, solto = false) {
     const m = 1;
-    const contorno = `M ${m} ${H} L ${m} 34 L 34 ${m} L ${W - 140} ${m} L ${W - 120} 14 L ${W - 34} 14 L ${W - m} 48 L ${W - m} ${H}`;
+    const contorno = solto
+        ? `M ${m} ${H - m} L ${m} 34 L 34 ${m} L ${W - 140} ${m} L ${W - 120} 14 L ${W - 34} 14 L ${W - m} 48 L ${W - m} ${H - m} Z`
+        : `M ${m} ${H} L ${m} 34 L 34 ${m} L ${W - 140} ${m} L ${W - 120} 14 L ${W - 34} 14 L ${W - m} 48 L ${W - m} ${H}`;
     const ramos = [
         `M 12 ${H * 0.26} L 12 64 L 22 54`,
         `M ${W - 12} ${H * 0.3} L ${W - 12} 92 L ${W - 46} 58`,
@@ -30,6 +33,9 @@ function trilhas(W: number, H: number) {
     const pads: Array<[number, number]> = [[22, 54], [W - 46, 58], [26, H * 0.8], [W - 70, H * 0.86], [W * 0.6, 20], [W - 140, m], [34, m]];
     return { tracos: [contorno, ...ramos], correntes: [contorno, ramos[1], ramos[3]], pads };
 }
+
+/** computador (mouse e tela larga): o painel não sobe do pé da tela — fica no meio, com a moldura inteira */
+export const SOLTO = "(min-width: 768px) and (hover: hover) and (pointer: fine)";
 
 export default function DetalhesBuild({ item, cor, origem, carta, onFechar }: {
     item: ItemVitrine;
@@ -42,7 +48,7 @@ export default function DetalhesBuild({ item, cor, origem, carta, onFechar }: {
     onFechar: () => void;
 }) {
     const [aberto, setAberto] = useState(false);
-    const [tam, setTam] = useState<{ W: number; H: number } | null>(null);
+    const [tam, setTam] = useState<{ W: number; H: number; solto: boolean } | null>(null);
     const [validNum, setValidNum] = useState(0);
     const sumarioRef = useRef<HTMLElement>(null);
     const svgRef = useRef<SVGSVGElement>(null);
@@ -73,7 +79,8 @@ export default function DetalhesBuild({ item, cor, origem, carta, onFechar }: {
 
     // o circuito no tamanho REAL da tela (e de novo se a janela mudar)
     useLayoutEffect(() => {
-        const medir = () => { const s = sumarioRef.current; if (s) setTam({ W: s.clientWidth, H: s.clientHeight }); };
+        // #845: no computador o painel fica no meio da tela (vitrine-detalhes.css) e a moldura fecha embaixo
+        const medir = () => { const s = sumarioRef.current; if (s) setTam({ W: s.clientWidth, H: s.clientHeight, solto: typeof window.matchMedia === "function" && window.matchMedia(SOLTO).matches }); };
         medir();
         window.addEventListener("resize", medir);
         return () => window.removeEventListener("resize", medir);
@@ -104,7 +111,7 @@ export default function DetalhesBuild({ item, cor, origem, carta, onFechar }: {
             : { left: origem.left, top: origem.top, width: origem.width, height: origem.height }
         : undefined;
 
-    const desenho = tam ? trilhas(tam.W, tam.H) : null;
+    const desenho = tam ? trilhas(tam.W, tam.H, tam.solto) : null;
 
     // #832: no <body> — dentro da vitrine (caixa com transform e overflow escondido) o `position: fixed` se prendia a
     // ela, e no celular o painel abria 14 px para a esquerda e cortado

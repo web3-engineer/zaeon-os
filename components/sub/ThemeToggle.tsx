@@ -21,6 +21,7 @@ export default function ThemeToggle() {
 
     return (
         <button
+            data-fica-cerebro
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             className="relative p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-300 group focus:outline-none"
             aria-label={t("siteNav.theme")}

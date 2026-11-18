@@ -92,7 +92,7 @@ export default function CerebroPanel({ st, onFechar, onGerar, onAbrirMensagem }:
             <button
               onClick={() => { setAviso(null); setErroCaixa(null); setCaixa(proximo); }}
               disabled={aplicando === proximo.id || proximo.estado === "aplicado"}
-              className="rounded-xl border border-amber-300/50 bg-amber-500/15 px-3 py-1.5 text-left text-[12px] font-bold text-amber-100 hover:bg-amber-500/25 disabled:opacity-50"
+              className={`rounded-xl border border-amber-300/50 bg-amber-500/15 px-3 py-1.5 text-left text-[12px] font-bold hover:bg-amber-500/25 disabled:opacity-50 ${mobile ? "text-amber-800 dark:text-amber-100" : "text-amber-100"}`}
               title={proximo.estado === "aplicado" ? "Aguardando validação" : `Marcar "${proximo.label}" como aplicado`}
             >
               {proximo.estado === "aplicado" ? "⏳ aguardando validação" : `✓ Apliquei: ${proximo.label}`}
@@ -128,7 +128,8 @@ export default function CerebroPanel({ st, onFechar, onGerar, onAbrirMensagem }:
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }}
-      className="absolute inset-0 z-50 flex flex-col bg-[#060a1a] text-[#dbe8ff]" role="dialog" aria-modal="true" aria-label="Mapa de conhecimento" data-tour="percurso-view" data-cerebro-painel
+      // #845: no celular (lista, sem o cérebro 3D) o mapa segue o tema claro; no computador o canvas pede o fundo escuro
+      className={`absolute inset-0 z-50 flex flex-col ${mobile ? "bg-slate-50 text-slate-800 dark:bg-[#060a1a] dark:text-[#dbe8ff]" : "bg-[#060a1a] text-[#dbe8ff]"}`} role="dialog" aria-modal="true" aria-label="Mapa de conhecimento" data-tour="percurso-view" data-cerebro-painel
       onMouseDown={(e) => e.stopPropagation()}
     >
       {/* SEM barra, título nem "x" no topo: o botão CIRCULAR que gera/retraça e "mapas anteriores" flutuam por cima
@@ -138,7 +139,7 @@ export default function CerebroPanel({ st, onFechar, onGerar, onAbrirMensagem }:
         <button
           type="button"
           onClick={onFechar}
-          className="inline-flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-1.5 text-[11px] font-bold text-[#dbe8ff] hover:border-white/30 hover:text-white"
+          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold ${mobile ? "border-slate-300 text-slate-700 dark:border-white/15 dark:text-[#dbe8ff]" : "border-white/15 text-[#dbe8ff] hover:border-white/30 hover:text-white"}`}
         >
           <X size={13} /> Voltar à conversa
         </button>
@@ -147,7 +148,7 @@ export default function CerebroPanel({ st, onFechar, onGerar, onAbrirMensagem }:
           disabled={st.estado === "gerando"}
           aria-label={mapa?.backbone.length ? "Refazer o percurso" : ROTULO[st.estado === "oculta" ? "vazia" : st.estado] || "Gerar o percurso"}
           title={mapa?.backbone.length ? "Refazer o percurso" : "Gerar o percurso"}
-          className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full border border-cyan-300/40 bg-cyan-500/15 text-cyan-100 hover:bg-cyan-500/25 disabled:opacity-70"
+          className={`relative grid h-9 w-9 shrink-0 place-items-center rounded-full border border-cyan-300/40 bg-cyan-500/15 hover:bg-cyan-500/25 disabled:opacity-70 ${mobile ? "text-cyan-700 dark:text-cyan-100" : "text-cyan-100"}`}
         >
           {st.estado === "gerando" ? <span className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-cyan-300" aria-hidden /> : null}
           {mapa?.backbone.length ? <RefreshCw size={15} /> : <Sparkles size={15} />}
@@ -155,12 +156,12 @@ export default function CerebroPanel({ st, onFechar, onGerar, onAbrirMensagem }:
         <button
           onClick={() => setAnteriores((v) => !v)}
           aria-pressed={anteriores}
-          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold transition-colors ${anteriores ? "border-cyan-400/60 bg-cyan-500/15 text-cyan-100" : "border-white/15 text-[#9fb6e0] hover:text-white"}`}
+          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold transition-colors ${anteriores ? `border-cyan-400/60 bg-cyan-500/15 ${mobile ? "text-cyan-700 dark:text-cyan-100" : "text-cyan-100"}` : mobile ? "border-slate-300 text-slate-600 dark:border-white/15 dark:text-[#9fb6e0]" : "border-white/15 text-[#9fb6e0] hover:text-white"}`}
         >
           <History size={13} /> Mapas anteriores
         </button>
         {/* #661: em que etapa a pessoa está */}
-        {andamento && <span data-andamento className="rounded-full bg-white/[0.06] px-2.5 py-1 text-[11px] font-bold text-[#9fe0ff]">{andamento}</span>}
+        {andamento && <span data-andamento className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${mobile ? "bg-cyan-500/10 text-cyan-800 dark:bg-white/[0.06] dark:text-[#9fe0ff]" : "bg-white/[0.06] text-[#9fe0ff]"}`}>{andamento}</span>}
       </div>
       {mobile && acao}
       {/* #661: refazer pede confirmação, porque as etapas podem mudar */}
@@ -254,11 +255,11 @@ function Lista({ regioes, aoRegiao }: { regioes: RegiaoVisual[]; aoRegiao: (r: R
       <ol className="flex flex-col gap-1.5">
         {regioes.map((r, i) => (
           <li key={r.id}>
-            <button data-ficha onClick={() => aoRegiao(r)} className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-left">
+            <button data-ficha onClick={() => aoRegiao(r)} className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left dark:border-white/10 dark:bg-white/[0.04]">
               <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: COR[r.estado], boxShadow: `0 0 8px ${COR[r.estado]}` }} aria-hidden />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[13px] font-semibold">{i + 1}. {r.label}</span>
-                <span className="block text-[11px] text-[#9fb6e0]">{r.estado.replace("_", " ")}{r.gavetas ? ` · ${r.gavetas} gaveta${r.gavetas > 1 ? "s" : ""}` : ""}{r.gate ? " · chancela" : ""}{r.aqui ? " · você está aqui" : ""}</span>
+                <span className="block text-[11px] text-slate-500 dark:text-[#9fb6e0]">{r.estado.replace("_", " ")}{r.gavetas ? ` · ${r.gavetas} gaveta${r.gavetas > 1 ? "s" : ""}` : ""}{r.gate ? " · chancela" : ""}{r.aqui ? " · você está aqui" : ""}</span>
               </span>
             </button>
           </li>

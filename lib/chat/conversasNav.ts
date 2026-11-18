@@ -57,6 +57,23 @@ export function irPraAbaEstudos(aba: AbaEstudos): void {
   window.dispatchEvent(new CustomEvent<AbaEstudos>(EVT_ESTUDOS_IR, { detail: aba }));
 }
 
+/**
+ * #845: no celular a faixa "Biblioteca" saiu da conversa (ficava entre a caixa e o teclado) e virou um item do Menu.
+ * O pedido fica guardado até a conversa atender — ela pode ainda nem estar montada quando o Menu é tocado.
+ */
+export const EVT_ABRIR_BIBLIOTECA = "zaeon:estudos:biblioteca";
+let bibliotecaPedida = false;
+export function abrirBiblioteca(): void {
+  bibliotecaPedida = true;
+  window.dispatchEvent(new Event(EVT_ABRIR_BIBLIOTECA));
+}
+/** a conversa atende: `true` se havia pedido (e apaga) */
+export function consumirPedidoBiblioteca(): boolean {
+  const havia = bibliotecaPedida;
+  bibliotecaPedida = false;
+  return havia;
+}
+
 /** A sala atendeu o pedido (ou o leu ao montar): apaga o bilhete. */
 export function consumirAbaEstudos(): AbaEstudos | null {
   try {

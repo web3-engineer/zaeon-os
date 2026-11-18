@@ -17,7 +17,7 @@ import useSTT, { TEXTO_AVISO_STT } from "@/lib/voice/useSTT";
 const CameraAoVivo = dynamic(() => import("@/components/chat/CameraAoVivo"), { ssr: false });
 import { avisarMicrofone } from "@/lib/research/zaeonEventos";
 import { useAutoFoco } from "@/lib/ui/autofoco";
-import { useIsMobile, QUERY_CELULAR } from "@/lib/ui/useIsMobile";
+import { useIsMobile, QUERY_CELULAR, QUERY_CELULAR_DEITADO } from "@/lib/ui/useIsMobile";
 import { useFecharNoVoltar } from "@/lib/ui/useFecharNoVoltar";
 import PainelDeBaixo, { ALVO, FOCO } from "@/components/study/PainelDeBaixo";
 import { FUNCTIONS as FUNCOES_STUDIO } from "@/components/study/StudioPalette";
@@ -113,6 +113,8 @@ export default function CoworkComposer({
   const [verOpcoes, setVerOpcoes] = useState(false);
   // #832: no celular, o ◀ do Android fecha as opções da conversa
   const celular = useIsMobile(QUERY_CELULAR);
+  // #845: deitado, o selo vai na mesma linha do campo (uma linha a menos — cada pixel de altura é da conversa)
+  const deitado = useIsMobile(QUERY_CELULAR_DEITADO);
   useFecharNoVoltar(ativo && celular && verOpcoes, () => setVerOpcoes(false));
   const [camAberta, setCamAberta] = useState(false);
   // Câmera ao vivo ("be my eyes"): o botão só aparece quando o servidor diz que a câmera está ligada
@@ -233,7 +235,7 @@ export default function CoworkComposer({
       <div className="rounded-[24px] p-[1.5px] bg-gradient-to-r from-blue-500/25 via-cyan-400/25 to-violet-500/25">
         <div className="rounded-[23px] bg-white/85 dark:bg-white/[0.06] backdrop-blur-2xl border border-white/70 dark:border-white/10 px-1.5 py-1.5">
           {children}
-          {selos}
+          {!deitado && selos}
           {sttSupported && (micAtivo || avisoMic) && (
             <div role="status" data-microfone className={`mx-1 mb-1 flex items-center gap-2 rounded-xl px-3 py-1.5 text-[12.5px] font-medium
               ${micAtivo ? "bg-rose-500/10 text-rose-700 dark:text-rose-200" : "bg-amber-500/10 text-amber-800 dark:text-amber-100"}`}>
@@ -248,6 +250,7 @@ export default function CoworkComposer({
               className={`${ALVO} ${FOCO} shrink-0 rounded-full flex items-center justify-center ${mais ? "text-cyan-600 dark:text-cyan-300 bg-cyan-500/10" : "text-slate-600 dark:text-white/70"}`}>
               <Plus size={22} />
             </button>
+            {deitado && selos ? <div className="shrink-0 self-center max-w-[40%] overflow-hidden [&>*]:!m-0">{selos}</div> : null}
             <textarea
               ref={ref}
               value={value}

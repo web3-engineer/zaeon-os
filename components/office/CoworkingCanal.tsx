@@ -717,7 +717,7 @@ export default function CoworkingCanal({ agenteInicial = null }: { agenteInicial
             title="Agenda da semana" className={`${TOQUE} rounded-2xl text-[15px] ${VIDRO_CHIP} ${TXT}`}>🗓</button>
           <div className="relative">
             <button type="button" onClick={() => { const abrir = menu !== "canais"; setMenu(abrir ? "canais" : null); if (abrir) void carregarConvites(); }} className={`${TOQUE} px-3 rounded-2xl text-[13px] font-bold ${TXT} ${VIDRO_CHIP} flex items-center gap-2`} aria-haspopup="listbox" aria-expanded={menu === "canais"}>
-              <span className="max-w-[40vw] sm:max-w-[260px] truncate">{canal.titulo}</span>
+              <span className="max-w-[30vw] sm:max-w-[260px] truncate">{canal.titulo}</span>
               <span aria-hidden className={`text-[10px] ${TXT_MUDO}`}>▾</span>
               {totalNaoLidas - (naoLidas[ativoId] ?? 0) > 0 && <Badge n={totalNaoLidas - (naoLidas[ativoId] ?? 0)} />}
             </button>
@@ -777,7 +777,9 @@ export default function CoworkingCanal({ agenteInicial = null }: { agenteInicial
             {menu === "convidar" && <ConvidarForm onEnviar={enviarConvite} variante="linha" onFechar={() => setMenu(null)} paraConversa={conversaDoConvite?.titulo ?? null} />}
           </div>
 
-          <div data-tour="escritorio-pessoas" className="ml-auto shrink-0 flex items-center gap-1.5">
+          {/* #845: no celular o lado direito (rostos, "N on", cartolina) passava da borda e cortava o "+" — agora ele encolhe
+              e rola de lado dentro dele; o seletor e o "+" ficam inteiros */}
+          <div data-tour="escritorio-pessoas" className="ml-auto min-w-0 flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none]">
             {/* pessoas do canal (dono, membros e você), com espaço entre as fotos (#423). Os agentes ficam embaixo. */}
             <PessoasTopo visiveis={topo.visiveis} extras={topo.extras} onlineIds={topo.onlineIds} total={topo.total}
               aberta={pessoaAberta} onAlternar={(id) => setMenu(pessoaAberta === id ? null : `pessoa:${id}`)}
