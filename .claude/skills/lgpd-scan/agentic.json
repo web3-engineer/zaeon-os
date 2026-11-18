@@ -1,0 +1,5 @@
+{
+  "tarefa": "Faça a varredura LGPD deste trecho. Responda APENAS o array JSON de achados, no formato do procedimento.\n\n```python\ndef cadastrar(req):\n    user = req.json\n    logger.info(f\"novo cadastro: cpf={user['cpf']} email={user['email']}\")\n    db.save(user)              # grava tudo, sem checar o que é necessário\n    requests.post('https://marketing.exemplo.com/leads', json=user)  # manda o cadastro inteiro pra terceiro\n    return {'ok': True}\n```",
+  "contrato": { "tipo": "json", "chaves": ["trecho", "problema", "base_legal", "severidade"] },
+  "modelos": ["claude", "codex", "octa"]
+}

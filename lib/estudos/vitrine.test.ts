@@ -1,25 +1,49 @@
 import { describe, expect, it } from "vitest";
-import { CATALOGO, FILTROS, MOEDA, filtrarVitrine, precoTexto, valorTotal, vendido } from "./vitrine";
+import { CATALOGO, FILTROS, FILTROS_DO_BANCO, MOEDA, filtrarVitrine, filtrosVisiveis, precoTexto, valorTotal, vendido } from "./vitrine";
+import { SKINS_VITRINE } from "./skinVitrine";
 import { RARIDADES } from "./blueprint";
+import { itensDasSkillsDoDisco } from "./vitrineSkills";
 
 describe("a VITRINE de estudos (catálogo simulado)", () => {
   it("o catálogo: ids únicos, frações coerentes, raridade válida, grátis = 1 fração; tem DYOM, agente, RWA, grátis e ironia", () => {
     expect(new Set(CATALOGO.map((i) => i.id)).size).toBe(CATALOGO.length);
     for (const i of CATALOGO) {
       expect(i.fracoes.vendidas).toBeLessThanOrEqual(i.fracoes.total); expect(RARIDADES).toContain(i.raridade);
-      expect(i.profundidade).toBeGreaterThanOrEqual(0); expect(i.profundidade).toBeLessThanOrEqual(100); expect(i.entrega.length).toBeGreaterThan(0);
+      expect(i.profundidade).toBeGreaterThanOrEqual(0); expect(i.profundidade).toBeLessThanOrEqual(100); if (!i.exemploEstudo) expect(i.entrega.length).toBeGreaterThan(0);
       if (i.preco === 0) expect(i.fracoes.total).toBe(1);
     }
-    for (const f of FILTROS) expect(filtrarVitrine(CATALOGO, f.id).length).toBeGreaterThan(0);
+    // NENHUMA ABA VAZIA. A régua é o conjunto que a UI mostra de verdade, não só o catálogo
+    // embutido: as SKILLS não moram aqui de propósito — o catálogo delas é o diretório
+    // `.claude/skills`, e `/api/estudos/vitrine` as junta a estes itens (lib/estudos/vitrineSkills).
+    // Checar só `CATALOGO` daria aba "Skills" vazia como se fosse invariante quebrada, quando o
+    // que mudou foi de onde o item vem.
+    // As PESQUISAS só existem no banco (lib/estudos/pesquisas) — nada delas é embutido, de propósito: a aba
+    // "Pesquisas" fica escondida até a primeira ser publicada (filtrosVisiveis), então não entra nesta régua.
+    const comoAUIMostra = [...CATALOGO, ...itensDasSkillsDoDisco()];
+    for (const f of FILTROS.filter((x) => !FILTROS_DO_BANCO.includes(x.id))) {
+      expect(filtrarVitrine(comoAUIMostra, f.id).length, `aba "${f.nome}" vazia`).toBeGreaterThan(0);
+    }
     expect(CATALOGO.some((i) => i.id === "ps5-rev")).toBe(true);
+  });
+  it("tem três estudos de exemplo por skin e preserva os filtros de ofertas", () => {
+    const exemplos = CATALOGO.filter((item) => item.exemploEstudo);
+    for (const skin of SKINS_VITRINE) expect(exemplos.filter((item) => item.skin === skin)).toHaveLength(3);
+    expect(filtrarVitrine(exemplos, "todos")).toHaveLength(27);
+    expect(filtrarVitrine(exemplos, "gratis")).toEqual([]);
+    expect(filtrarVitrine(exemplos, "pesquisa")).toEqual([]);
+  });
+  it("a aba Pesquisas só aparece quando há pesquisa publicada", () => {
+    expect(filtrosVisiveis(CATALOGO).some((f) => f.id === "pesquisa")).toBe(false);
+    const pasta = { ...CATALOGO[0], id: "pesquisa-x", tipo: "pesquisa" as const };
+    expect(filtrosVisiveis([...CATALOGO, pasta]).some((f) => f.id === "pesquisa")).toBe(true);
   });
   it("filtra por tipo e busca no texto", () => {
     expect(filtrarVitrine(CATALOGO, "gratis").every((i) => i.preco === 0)).toBe(true);
     expect(filtrarVitrine(CATALOGO, "todos", "PS5").map((i) => i.id)).toEqual(["ps5-rev"]);
     expect(filtrarVitrine(CATALOGO, "rwa", "café").map((i) => i.id)).toEqual(["cafe-cariri"]);
   });
-  it("preço em ZAEON stable — e a moeda ainda NÃO está no ar (nada cobra ninguém)", () => {
-    expect(precoTexto(0)).toBe("Grátis"); expect(precoTexto(48)).toBe("48 ZAEON"); expect(MOEDA.ativa).toBe(false);
+  it("preço em SOL (Solana) — e a compra ainda NÃO está no ar (nada cobra ninguém)", () => {
+    expect(precoTexto(0)).toBe("Grátis"); expect(precoTexto(48)).toBe("48 SOL"); expect(MOEDA.ativa).toBe(false);
     const ps5 = CATALOGO.find((i) => i.id === "ps5-rev")!; expect(vendido(ps5)).toBeCloseTo(0.812, 6); expect(valorTotal(ps5)).toBe(48000);
   });
 });

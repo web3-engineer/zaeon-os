@@ -36,6 +36,12 @@ export default function LoungeCosmicoPage() {
   useEffect(() => {
     if (status === "unauthenticated") { router.replace("/"); return; }
     if (status !== "authenticated") return;
+    // A nave particular usa o perfil atual ou o avatar padrão. A configuração
+    // de personagem fica na entrada do mundo compartilhado.
+    if (new URLSearchParams(window.location.search).get("mundo") !== "1") {
+      setFase("pronto");
+      return;
+    }
     let vivo = true;
     fetch("/api/user/nome")
       .then((r) => (r.ok ? r.json() : null))

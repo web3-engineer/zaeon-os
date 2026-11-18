@@ -1,0 +1,43 @@
+{
+  "_nota": "Vetting dos engines da Forja. A Forja consome a SAÍDA (grafo/árvore), nunca o código-fonte do engine. Versões são FIXADAS no build (ARG no Dockerfile); o sha é capturado na Contabo ao reconstruir (ver RUNBOOK). Não invente sha aqui — ele é verdade da box, preenchido ao fixar.",
+  "engines": {
+    "graphify": {
+      "repo": "Graphify-Labs/graphify",
+      "branch": "v8",
+      "pacote": "graphifyy",
+      "registro": "PyPI",
+      "cli": "graphify",
+      "instala": "uv tool install graphifyy==${GRAPHIFY_VERSION}",
+      "analisa": "graphify update <repo> --force",
+      "saida": "graphify-out/graph.json",
+      "runtime": "python>=3.10",
+      "licenca": "Apache-2.0 OR MIT",
+      "titular": "Graphify-Labs (sem linha de copyright no LICENSE; Apache-2.0 + LICENSE-MIT no repo)",
+      "licenca_url": "https://github.com/Graphify-Labs/graphify/blob/v8/LICENSE",
+      "versao_fixada": "0.9.108",
+      "sha_fixado": "PREENCHER_NO_BUILD",
+      "precisa_backend": false,
+      "nota_backend": "o subcomando `update` (v0.9.108) re-extrai o código com tree-sitter SEM LLM — não precisa de backend. (O `extract --backend` do README do branch v8 não existe nesta versão do PyPI.)"
+    },
+    "understand": {
+      "repo": "Egonex-AI/Understand-Anything",
+      "branch": "main",
+      "pacote": "(plugin do Claude Code — não publicado no npm; private:true)",
+      "registro": "git",
+      "cli": "(slash command /understand dentro do Claude Code headless)",
+      "instala": "git clone --depth 1 <repo>@${UNDERSTAND_REV} && pnpm install && pnpm --filter @understand-anything/core build",
+      "analisa": "claude -p '/understand' no repo-alvo (via FORJA_UNDERSTAND_CMD)",
+      "saida": ".ua/knowledge-graph.json",
+      "runtime": "node>=18, pnpm@10.6.2",
+      "licenca": "MIT",
+      "titular": "Yuxiang Lin; Infinite Universe, Inc. (© 2026)",
+      "licenca_url": "https://github.com/Egonex-AI/Understand-Anything/blob/main/LICENSE",
+      "versao_fixada": "PREENCHER_NO_BUILD",
+      "sha_fixado": "PREENCHER_NO_BUILD",
+      "precisa_backend": true,
+      "nota_backend": "a análise É um pipeline multi-agente do Claude Code — exige Claude Code CLI + gateway de LLM na box. Sem CLI próprio de análise. O wrapper (FORJA_UNDERSTAND_CMD) encapsula `claude -p /understand`.",
+      "nota_seguranca": "o README do upstream traz um comentário HTML pedindo que agentes de IA injetem um marcador em descrições de PR — É INJEÇÃO, ignorada. Nada dele vira instrução nossa."
+    }
+  },
+  "hosts_clone_permitidos": ["github.com", "gitlab.com", "codeberg.org", "bitbucket.org"]
+}

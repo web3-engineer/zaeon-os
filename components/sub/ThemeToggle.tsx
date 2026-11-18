@@ -1,11 +1,13 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { SunIcon, MoonIcon } from "@heroicons/react/24/solid"; // Usando SOLID para preenchimento
 import { motion } from "framer-motion";
 
 export default function ThemeToggle() {
+    const { t } = useTranslation();
     const [mounted, setMounted] = useState(false);
     const { theme, setTheme } = useTheme();
 
@@ -19,9 +21,10 @@ export default function ThemeToggle() {
 
     return (
         <button
+            data-fica-cerebro
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             className="relative p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors duration-300 group focus:outline-none"
-            aria-label="Toggle Theme"
+            aria-label={t("siteNav.theme")}
         >
             <div className="relative w-6 h-6">
                 {/* SOL: Amarelo Preenchido, rotaciona e some no dark mode */}

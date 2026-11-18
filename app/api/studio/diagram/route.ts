@@ -9,6 +9,7 @@
  * Cache: o mesmo assunto + a mesma explicação, do mesmo aluno, nas últimas 24 h → devolve o
  * pronto (perguntar de novo não queima outra geração).
  */
+import { skinDaVitrine } from "@/lib/estudos/skinVitrine";
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
@@ -52,7 +53,7 @@ export async function POST(req: Request) {
     data: {
       ownerId: userId,
       sourceIds: spaceId ? [spaceId] : [],
-      kind: "diagram",
+      kind: "diagram", skin: skinDaVitrine({ kind: "diagram", titulo: topic }),
       status: "queued",
       title: `Diagrama — ${topic.slice(0, 80)}`,
       meta: { chave, topic, formato } as any,

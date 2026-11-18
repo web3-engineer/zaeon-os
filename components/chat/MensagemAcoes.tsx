@@ -18,7 +18,8 @@ import { useTTS } from "@/lib/voice/useTTS";
 const VISIBILIDADE =
   "transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/msg:opacity-100 focus-within:!opacity-100";
 const BTN =
-  "w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 dark:text-white/55 hover:text-slate-900 dark:hover:text-white hover:bg-slate-900/5 dark:hover:bg-white/10 transition-colors disabled:opacity-30 disabled:pointer-events-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500";
+  // #845: no toque, 40×40 (copiar, ouvir, refazer… eram 28 px — difícil de acertar com o dedo)
+  "w-7 h-7 [@media(hover:none)]:w-10 [@media(hover:none)]:h-10 rounded-lg flex items-center justify-center text-slate-500 dark:text-white/55 hover:text-slate-900 dark:hover:text-white hover:bg-slate-900/5 dark:hover:bg-white/10 transition-colors disabled:opacity-30 disabled:pointer-events-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500";
 
 async function copiarTexto(texto: string): Promise<boolean> {
   try {

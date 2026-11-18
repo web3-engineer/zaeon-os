@@ -1,0 +1,129 @@
+{
+  "modulos": [
+    {
+      "titulo": "O mapa mínimo numa página",
+      "estudo": "Um mapa interativo na web, com o Leaflet, nasce de três ingredientes. Primeiro, um `div` com um id e — isto é o que todo mundo esquece — uma ALTURA: `<div id=\"mapa\" style=\"height: 420px\"></div>`. Mapa que aparece em branco é, nove vezes em dez, `height` faltando: sem altura, o container tem 0px e não há onde desenhar.\n\nSegundo, você cria o mapa e aponta o centro e o zoom: `const mapa = L.map('mapa').setView([-15.78, -47.93], 4)`. O par é `[latitude, longitude]` e o `4` é o nível de zoom (quanto maior, mais perto).\n\nTerceiro, o mapa precisa de uma camada de fundo — os \"tiles\", aqueles quadradinhos de imagem. O mais comum é o OpenStreetMap: `L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors' }).addTo(mapa)`.\n\nE repare no `attribution`: ele não é enfeite. Os dados do OpenStreetMap são licença ODbL, que EXIGE o crédito visível no mapa. Tirar a atribuição é descumprir a licença. A regra que fica: altura no div, `[lat, lng]` no setView, e crédito sempre visível.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Seu mapa Leaflet aparece totalmente em branco. Qual a causa mais provável?",
+            "options": [
+              { "text": "O div do mapa está sem altura (height) definida", "isCorrect": true, "explanation": "Sem altura, o container tem 0px e os tiles não têm onde desenhar." },
+              { "text": "Falta a tag <canvas> na página", "isCorrect": false, "explanation": "Leaflet não exige um canvas manual; ele monta tudo dentro do div." },
+              { "text": "O zoom está alto demais", "isCorrect": false, "explanation": "Zoom não deixa o mapa em branco; a falta de altura, sim." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Por que a atribuição do OpenStreetMap precisa ficar visível no mapa?",
+            "options": [
+              { "text": "A licença dos dados (ODbL) exige o crédito — é obrigação legal, não enfeite", "isCorrect": true, "explanation": "Usar os tiles do OSM sem crédito descumpre a licença." },
+              { "text": "É só uma recomendação de estilo, pode tirar", "isCorrect": false, "explanation": "Não é opcional; a licença dos dados obriga." },
+              { "text": "Porque o Leaflet não funciona sem ela", "isCorrect": false, "explanation": "Tecnicamente funciona — mas aí você está em desacordo com a licença." }
+            ],
+            "marks": 2
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Qual método centraliza o mapa numa latitude/longitude com um nível de zoom? Escreva a chamada (use `mapa`).",
+          "accepted": ["mapa.setView([lat, lng], zoom)", "setView", "mapa.setView", "L.map('mapa').setView([-15.78, -47.93], 4)"],
+          "marks": 3
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "// O mapa mínimo: centro em Brasília, zoom 4, camada do OpenStreetMap.\nconst mapa = L.map('mapa').setView([-15.78, -47.93], 4);\nL.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {\n  attribution: '© OpenStreetMap contributors'\n}).addTo(mapa);",
+        "teste": "// numa página com <div id='mapa' style='height:420px'> o mapa aparece com os tiles do OSM"
+      }
+    },
+    {
+      "titulo": "Marcadores e a troca lat/lng que afunda o ponto",
+      "estudo": "Um marcador é um alfinete no mapa: `L.marker([-23.55, -46.63]).addTo(mapa).bindPopup('São Paulo')`. O `bindPopup` é o balãozinho que abre no clique. Simples — até o ponto cair no meio do oceano.\n\nE quando ele cai no oceano, a causa é quase sempre a MESMA, e é a pegadinha mais importante do Leaflet: o **Leaflet usa `[latitude, longitude]`**, mas o formato **GeoJSON usa `[longitude, latitude]`** — a ordem INVERTIDA. São Paulo é latitude -23.55, longitude -46.63. No Leaflet você escreve `[-23.55, -46.63]`. Mas se você pega uma coordenada de um arquivo GeoJSON, ela vem como `[-46.63, -23.55]` — e se você passar direto pro `L.marker`, o Leaflet lê -46.63 como latitude e manda o ponto pro oceano Atlântico.\n\nA regra que fica: ao trazer coordenada de um GeoJSON para uma função do Leaflet (marker, setView), INVERTA o par. Quando você usa `L.geoJSON` (próximo módulo), o Leaflet já faz essa inversão por você — o perigo é só quando você mexe nas coordenadas na mão.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Um ponto que deveria estar em São Paulo aparece no meio do oceano. Qual o erro mais provável?",
+            "options": [
+              { "text": "Latitude e longitude trocadas — Leaflet usa [lat, lng], GeoJSON usa [lng, lat]", "isCorrect": true, "explanation": "A ordem invertida entre os dois formatos é o erro clássico." },
+              { "text": "O marcador não foi adicionado ao mapa", "isCorrect": false, "explanation": "Aí o ponto não apareceria; estar no lugar errado é troca de coordenadas." },
+              { "text": "O zoom está baixo demais", "isCorrect": false, "explanation": "Zoom muda o enquadramento, não a posição do ponto." }
+            ],
+            "marks": 3
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "Qual método do marcador abre um balão de texto ao clicar nele?",
+            "accepted": ["bindPopup", ".bindPopup", "bindPopup()", "marker.bindPopup"],
+            "marks": 2
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Uma coordenada veio de um GeoJSON como [-46.63, -23.55]. Como você a escreve para o L.marker do Leaflet?",
+          "accepted": ["[-23.55, -46.63]", "L.marker([-23.55, -46.63])", "inverter para [-23.55, -46.63]", "[lat, lng] = [-23.55, -46.63]"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "// Leaflet: [latitude, longitude]. Um alfinete em São Paulo com um popup.\nL.marker([-23.55, -46.63]).addTo(mapa).bindPopup('São Paulo');",
+        "teste": "// o alfinete cai em São Paulo (não no oceano) — a ordem [lat, lng] está certa"
+      }
+    },
+    {
+      "titulo": "GeoJSON e o mapa colorido por dado",
+      "estudo": "Marcadores mostram pontos; para mostrar REGIÕES (bairros, estados, áreas), o formato é o GeoJSON — um JSON que descreve as formas geográficas. Você carrega e desenha assim: `fetch('bairros.geojson').then(r => r.json()).then(g => L.geoJSON(g).addTo(mapa))`. O `L.geoJSON` já entende o par `[lng, lat]` do formato e inverte sozinho.\n\nO passo seguinte é o mapa COROPLÉTICO — colorir cada região pelo valor de um dado (população, renda, casos). Você passa um `style`: `L.geoJSON(g, { style: f => ({ fillColor: cor(f.properties.valor), weight: 1, fillOpacity: 0.7 }) })`. A função `cor` traduz o valor numa cor, tipicamente com 4 a 6 classes (faixas de valor), para o olho distinguir sem precisar de tom contínuo.\n\nE a regra de ouro do coroplético: **cor sem legenda não é informação, é enfeite.** Se o mapa pinta bairros de tons de azul mas não diz que azul-escuro = mais população, ninguém consegue ler. Toda escala de cor precisa de uma legenda visível explicando as faixas.\n\nA regra que fica: `L.geoJSON` para formas, `style` com poucas classes para colorir, e SEMPRE a legenda ao lado.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Num mapa coroplético (regiões coloridas por um dado), o que não pode faltar?",
+            "options": [
+              { "text": "Uma legenda explicando o que cada cor/faixa representa", "isCorrect": true, "explanation": "Cor sem legenda não comunica — o leitor não sabe o que o tom significa." },
+              { "text": "Um marcador em cada região", "isCorrect": false, "explanation": "Coroplético colore a área; marcadores são outra técnica." },
+              { "text": "Zoom máximo travado", "isCorrect": false, "explanation": "Irrelevante para a leitura das cores." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Qual função desenha formas de um arquivo GeoJSON no mapa (já tratando a ordem lng/lat)?",
+            "options": [
+              { "text": "L.geoJSON(dados).addTo(mapa)", "isCorrect": true, "explanation": "Ela lê o GeoJSON e desenha as feições, invertendo o par por você." },
+              { "text": "L.marker(dados).addTo(mapa)", "isCorrect": false, "explanation": "marker é para um ponto único, não para formas de um GeoJSON." },
+              { "text": "L.tileLayer(dados).addTo(mapa)", "isCorrect": false, "explanation": "tileLayer é a camada de fundo (os tiles), não os dados GeoJSON." }
+            ],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Em uma frase: por que usar poucas classes de cor (4 a 6) em vez de um gradiente contínuo num coroplético?",
+          "accepted": ["o olho distingue poucas faixas melhor que tons contínuos", "fica mais fácil de ler", "classes discretas são legíveis", "o leitor consegue mapear cor para faixa", "tom contínuo é difícil de distinguir"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "// Carrega um GeoJSON e colore cada feição pelo valor de um dado.\nfetch('bairros.geojson')\n  .then(r => r.json())\n  .then(g => L.geoJSON(g, {\n    style: f => ({ fillColor: cor(f.properties.valor), weight: 1, fillOpacity: 0.7 })\n  }).addTo(mapa));\n// 'cor' deve mapear o valor em 4-6 classes; some uma legenda explicando as faixas.",
+        "teste": "// cada feição recebe uma cor por faixa; a leitura só funciona com a legenda ao lado"
+      }
+    }
+  ]
+}

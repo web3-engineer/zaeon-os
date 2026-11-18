@@ -1,4 +1,161 @@
 {
+  "siteNav": {
+    "docs": "문서",
+    "about": "회사 소개",
+    "lab": "연구실",
+    "market": "마켓플레이스",
+    "news": "소식",
+    "site": "사이트 페이지",
+    "open": "메뉴 열기",
+    "close": "메뉴 닫기",
+    "settings": "설정",
+    "general": "일반",
+    "theme": "테마 전환",
+    "languageTitle": "언어: {{name}} — 클릭하여 변경",
+    "languageAria": "현재 언어: {{name}}. 클릭하여 변경하세요."
+  },
+  "labSidebar": {
+    "offline": "연결 없음: 인터넷이 다시 연결되면 대화가 표시됩니다.",
+    "actions": "작업",
+    "cyberspace": "사이버스페이스",
+    "study": "학습실",
+    "research": "연구실",
+    "projects": "프로젝트",
+    "office": "오피스",
+    "profile": "프로필",
+    "layout": "레이아웃",
+    "focus": "집중",
+    "exitFocus": "집중 모드 끄기",
+    "back": "뒤로",
+    "return": "사이버 공간으로 돌아가기",
+    "navigation": "탐색",
+    "menu": "메뉴",
+    "studies": "학습",
+    "library": "라이브러리",
+    "new": "새로 만들기",
+    "conversations": "대화",
+    "search": "대화 검색",
+    "newChat": "새 대화",
+    "newResearch": "새 연구",
+    "today": "오늘",
+    "yesterday": "어제",
+    "week": "최근 7일",
+    "month": "최근 30일",
+    "older": "이전",
+    "agent": "에이전트 변경",
+    "switching": "{{name}}(으)로 전환 중…",
+    "replying": "{{name}} 응답 중…",
+    "talk": "{{name}}와 대화하기",
+    "change": "에이전트 변경 (현재: {{name}})",
+    "showChats": "대화 보기",
+    "hideChats": "대화 접기",
+    "showTopics": "하위 주제 보기",
+    "hideTopics": "하위 주제 접기",
+    "replyingShort": "응답 중",
+    "newTopic": "새 하위 주제",
+    "rename": "이름 변경",
+    "delete": "삭제",
+    "newName": "새 대화 이름",
+    "noResults": "결과가 없습니다.",
+    "empty": "아직 대화가 없습니다.",
+    "cancel": "취소",
+    "confirm": "대화를 삭제할까요?",
+    "confirmTopics": "대화와 하위 주제 {{count}}개를 삭제할까요?",
+    "studiesList": "스터디룸 학습",
+    "searchStudies": "학습 검색",
+    "noStudies": "아직 학습이 없습니다. Aura와 대화하세요. 대화가 학습이 되면 여기에 나타납니다.",
+    "loading": "불러오는 중…",
+    "studiesError": "학습을 불러오지 못했습니다.",
+    "retry": "다시 시도",
+    "more": "더 보기",
+    "moreFailed": "불러오지 못함 — 다시 시도",
+    "confirmStudy": "학습을 삭제할까요?",
+    "confirmStudyShared": "학습을 삭제할까요? 접근 권한이 있는 {{count}}명도 더 이상 볼 수 없습니다.",
+    "newStudyName": "새 학습 이름",
+    "phase": "{{n}}단계",
+    "critical": "핵심 과제 {{count}}개",
+    "awaitingMentor": "멘토 대기 중",
+    "chatWith": "대화 상대",
+    "moreAgents": "<b>Octa Code</b> 같은 에이전트는 마켓플레이스에서 추가할 수 있습니다.",
+    "agentRole": {
+      "aura": "학습, 연구, 대화",
+      "zenita": "일정, 수업, 시험",
+      "nina": "노트, 요약, 학습 계획",
+      "octa": "코딩 에이전트 · IDE",
+      "eiffel": "토목·구조 공학 · CAD",
+      "noether": "수학 · 증명, 미적분, 동적 기하"
+    }
+  },
+    "forja": {
+        "board": {
+            "verResposta": "정답 보기",
+            "respostaPlaceholder": "답을 입력하세요…",
+            "tagConceito": "개념",
+            "tagModulo": "모듈",
+            "tagRepo": "저장소",
+            "licaoFallback": "{{titulo}} — 엔진이 저장소를 분석하면 레슨이 나타납니다.",
+            "noCodigoComplete": "코드에서 — 직접 완성하세요",
+            "exercicio": "연습",
+            "noCodigo": "코드에서",
+            "teste": "테스트",
+            "desafio": "도전",
+            "continuar": "계속: {{prox}} ▸",
+            "concluir": "완료 ✓",
+            "aprendizado": "학습",
+            "voltarArvore": "‹ 트리로 돌아가기",
+            "aceitaExemplo": "예를 들어 이렇게 허용됩니다:"
+        },
+        "arvore": {
+            "hintRaiz": "개념을 클릭해 <b>열기</b> · 스크롤로 <b>확대</b>, 드래그로 이동",
+            "hintAbriu": "<b>{{titulo}}</b> 열림 · <b>다시 클릭해 학습</b>",
+            "hintAbrir": "<b>{{titulo}}</b>을(를) 클릭해 레슨 열기",
+            "dentroAbrir": "{{n}}개 포함 · 열기",
+            "abrirLicao": "레슨 열기",
+            "cueAprender": "클릭 → 학습 ▸",
+            "licaoReais": "<b>레슨</b>: 실제 학습 + 코드 + 테스트",
+            "licaoModulo": "이 모듈의 <b>레슨</b>",
+            "fechar": "← 뒤로",
+            "semMapa": "엔진이 저장소를 분석하면 트리에 가지가 생깁니다",
+            "passo": "{{i}}/{{n}} 단계"
+        },
+        "sala": {
+            "erro": "지금 이 코스를 불러올 수 없었습니다.",
+            "voltar": "← 뒤로",
+            "montando": "코스를 준비하는 중…",
+            "praticar": "연습: 코드를 입력하세요 ▸"
+        },
+        "card": {
+            "certo": "✓ 정답! 다음 조각.",
+            "completo": "✓ 파일 완성 — 테스트를 실행하세요!",
+            "naoBate": "아직 일치하지 않습니다 — 옆의 조각과 비교하세요 (붙여넣지 말고 입력하세요).",
+            "conecteGithub": "게시하려면 GitHub를 연결하세요.",
+            "naoPronto": "프로젝트가 아직 준비되지 않았습니다: {{motivos}}",
+            "falhaPublicar": "지금 게시할 수 없었습니다.",
+            "voltar": "← 뒤로",
+            "digite": "입력:",
+            "editorPlaceholder": "여기에 조각을 입력하세요 (붙여넣기 비활성화됨)",
+            "conferir": "조각 확인",
+            "rodando": "실행 중…",
+            "carregandoPython": "Python 로딩 중…",
+            "rodarTestes": "테스트 실행 ▸",
+            "baixarTeste": "테스트 다운로드",
+            "testeLocal": "RDKit은 로컬 Python에서 실행됩니다. `{{instalar}}`을 실행한 후 `{{rodar}}`을 실행하세요.",
+            "concluaDependencias": "먼저 완료하세요: {{arquivos}}.",
+            "runtimeIndisponivel": "이 언어는 브라우저에서 실행할 수 없습니다.",
+            "pythonErro": "Python이 로드되지 않았습니다:",
+            "passou": "✓ 통과 — 입력한 코드가 실행됩니다!",
+            "naoPassou": "✗ 아직 통과하지 못함",
+            "noGithub": "✓ 당신의 GitHub에!",
+            "abrirRepo": "저장소 열기 ↗",
+            "subindo": "업로드 중…",
+            "subirGithub": "내 GitHub에 푸시 ▸",
+            "conectar": "연결 ↗",
+            "duvidaPlaceholder": "이 조각에 대해 질문하기…",
+            "perguntar": "질문",
+            "voce": "당신:",
+            "tutorProxima": "· 튜터가 다음 단계에서 답합니다"
+        }
+    },
     "navbar": {
         "about": "회사 소개",
         "homework": "연구실",
@@ -230,44 +387,161 @@
         "project_rank": "프로젝트 순위"
     },
     "about": {
-        "back": "뒤쪽에",
-        "scroll_down": "아래로 내려 우리를 만나보세요",
-        "title_secondary": "당신의 진화를 쟁취하세요",
-        "title_main": "결과물이 되는 지식.",
+      "planos_copy": {
+        "free": {
+          "price": "무료",
+          "tagline": "시작하기",
+          "perks": [
+            "학습실 무제한",
+            "연구실: 보고서, 논문 또는 졸업 프로젝트 한 건",
+            "음성 모드 미지원",
+            "심층 사고 미지원"
+          ]
+        },
+        "plus": {
+          "price": "학생 R$20 · 일반 R$80",
+          "tagline": "일상적인 학업용",
+          "perks": [
+            "연구실 무제한",
+            "고급 음성 모드",
+            "하루 한 번 심층 사고",
+            "학습실 무제한"
+          ]
+        },
+        "pro": {
+          "tagline": "프로젝트를 자주 만드는 분을 위해",
+          "perks": [
+            "Plus의 모든 기능",
+            "무제한 심층 사고",
+            "프로젝트 탭 (Zaeon Code)",
+            "고급 음성"
+          ]
+        },
+        "max": {
+          "tagline": "전체 도구 모음",
+          "perks": [
+            "Pro의 모든 기능",
+            "Aura가 초안을 여러 개 만들고 가장 좋은 것을 제공합니다",
+            "요청형 과학 생성: 분자, 단백질, 시뮬레이션",
+            "고급 역량과 맞춤 도구를 갖춘 에이전트",
+            "우선 지원"
+          ]
+        }
+      },
+      "equipe_copy": {
+        "pda": "PDA · 팀",
+        "perfil": "프로필",
+        "nota": "소개",
+        "chamada": "팀 소개",
+        "foto": "{{nome}} 사진",
+        "fundador": {
+          "cargo": "창립자 · CEO",
+          "bio": "Don은 더 협력적으로 공부하고 배운 것을 증명할 수 있도록 Zaeon을 만들었습니다. 제품, 사이버스페이스, 자격 증명을 설계하고 Zaeon의 첫 학생으로서 직접 테스트합니다.",
+          "tags": [
+            "제품",
+            "사이버스페이스",
+            "자격 증명"
+          ]
+        }
+      },
+      "apresentacao": {
+        "titulo": "지식을 실제 성과로 바꾸세요.",
+        "resumo": "Zaeon은 AI로 공부하고 프로젝트를 만들며 자신의 능력을 보여 주는 플랫폼입니다. 기업이 평가와 실제 작업에서 뛰어난 역량을 보인 인재를 찾도록 돕습니다.",
+        "ver_amostra": "학습 미리 보기",
+        "fluxo": "학습에서 새로운 기회까지",
+        "tecnica": "Zaeon 아키텍처 알아보기",
+        "estudar": {
+          "titulo": "AI와 함께 공부하세요",
+          "descricao": "AI 모델과 학습 자료, 참고 문헌으로 주제를 깊이 탐구하세요."
+        },
+        "construir": {
+          "titulo": "프로젝트를 만드세요",
+          "descricao": "아이디어를 연구, 코드, 프로토타입 또는 공유할 수 있는 작업물로 발전시키세요."
+        },
+        "provar": {
+          "titulo": "역량을 입증하세요",
+          "descricao": "평가, 완료한 작업, 검증 가능한 증명으로 역량을 보여 주세요."
+        },
+        "conectar": {
+          "titulo": "기업과 연결되세요",
+          "descricao": "Zaeon 에이전트가 뛰어난 인재를 그 역량이 필요한 기업에 소개합니다."
+        }
+      },
+        "back": "뒤로",
+        "scroll_down": "스크롤해서 알아보기",
+        "title_hero": "한계 없이 만드세요.",
+        "title_secondary": "아이디어에서 현실 세계까지",
+        "title_main": "당신의 가치는 당신이 만든 것입니다.",
         "genesis": {
-            "title": "공부하고, 쓰고, 모든 것을 배우세요.",
-            "p1": "Zaeon은 당신의 공부 공간입니다. 최고의 AI 에이전트가 함께 읽고, 당신의 속도로 설명하며, 진짜 과제와 논문을 쓰도록 돕습니다 — 초안부터 최종본까지, 검증된 출처와 바로 쓸 수 있는 서식으로.",
-            "p2": "어떤 주제든, 어떤 수준이든. 질문을 들고 들어와 숙달을 들고 나갑니다.",
-            "p2_highlight": ""
+            "title": "무엇이든 만들 수 있는 곳.",
+            "p1": "Zaeon은 아이디어가 진짜가 되는 곳입니다. 로켓, 앱, 연구, 사업 — 아이디어 하나만 가지고 오세요. AI 에이전트 오케스트라가 함께 만듭니다: 그 뒤의 과학을 읽고, 설계하고, 계산하고, 코드를 쓰고, 테스트합니다.",
+            "p2": "수십 개의 탭도, 기록 속에 사라지는 대화도 없습니다. 여기서는 모든 대화가 만들기가 됩니다."
         },
         "mission": {
-            "title": "진짜 제품. 진짜 세상. 진짜 사람.",
-            "p1": "여기서 공부는 노트에서 끝나지 않습니다. 아이디어는 프로젝트가 되고 프로젝트는 제품이 됩니다 — 진짜 사람이 만들고, 교수와 기관이 검증하며, 당신의 것인 자격 증명으로 기록됩니다. Zaeon은 당신이 배운 것이 세상으로 나가는 곳입니다.",
-            "p2": ""
+            "title": "당신이 만든 것은 당신의 것입니다.",
+            "p1": "모든 빌드는 과학적 기반, 결정, 그리고 Blueprint를 당신의 이름으로 보관합니다. 쇼케이스에 공개할지, 비공개로 둘지, 팀에게만 열지 직접 선택하세요 — 그리고 검증하고, 테스트하고, 현실 세계로 가져갈 사람들과 연결되세요."
         },
         "architecture": {
-            "title": "작동 방식",
-            "subtitle": "과학적 질문을 검증 가능한 해결책까지 이끄는 자율 에이전트.",
-            "card_title": "연구실에서 세상으로",
-            "card_desc": "엄밀한 연구가 기술, 의학, 공공재가 됩니다. 공개적이고 감사 가능합니다.",
+            "title": "아이디어가 실체가 되는 과정",
+            "subtitle": "홈 화면에서 불이 켜지는 보드와 같은 단계: 각 단계가 당신의 빌드를 현실 세계에 더 가깝게 만듭니다.",
+            "card_title": "주제에 제한이 없습니다",
+            "card_desc": "공학, 과학, 소프트웨어, 비즈니스, 예술 — 생각할 수 있다면 여기서 만들 수 있습니다.",
             "flow": {
-                "step1": "조사",
-                "step2": "종합",
-                "step3": "가설",
-                "step4": "해결책",
-                "step5": "검증",
-                "step6": "전달",
-                "step7": "영향"
+                "step1": "아이디어",
+                "step2": "과학적 기반",
+                "step3": "AI와의 대화",
+                "step4": "BLUEPRINT",
+                "step5": "프로토타입과 테스트",
+                "step6": "현실 세계로"
             }
         },
-        "cta": {
-            "tour_title": "아키텍처를 안에서 보고 싶으신가요?",
-            "button_go": "가다 !"
+        "layers": {
+            "kicker": "플랫폼 안에서",
+            "title_a": "세 개의 레이어.",
+            "title_b": "하나의 공간.",
+            "footer": "당신이 만들고, 당신이 통제하고, 공유할 것은 당신이 정합니다.",
+            "n1": {
+                "title": "나만의 오케스트라 구성",
+                "desc": "하우스 에이전트와 전문 엔진, 각자 한 가지에 뛰어납니다. 아이디어에 필요한 것을 쇼케이스에서 바로 연결하면 함께 일합니다.",
+                "tags": [
+                    "하우스 에이전트",
+                    "엔진",
+                    "쇼케이스 연결"
+                ]
+            },
+            "n2": {
+                "title": "한계 없이 만들기",
+                "desc": "연구, 계산, 코드, 설계, 테스트를 한곳에서. 오케스트라가 일을 나누고, 당신이 방향을 정하며, 빌드는 세션마다 성장합니다.",
+                "tags": [
+                    "Blueprint",
+                    "프로토타입",
+                    "코드",
+                    "연구"
+                ]
+            },
+            "n3": {
+                "title": "세상에 보여주기",
+                "desc": "프로필과 함께 쇼케이스에 공개하세요. 다른 사람들이 검증하고, 대화하고, 당신이 만든 것을 연결합니다 — 크레딧은 계속 당신의 것입니다.",
+                "tags": [
+                    "쇼케이스",
+                    "검증자",
+                    "프로필",
+                    "저작권"
+                ]
+            }
         },
-        "title_hero": "당신이 태어난 그 모습이 되세요.",
+        "plans": {
+            "title": "요금제",
+            "subtitle": "무료로 시작 · 빌드가 필요할 때 성장",
+            "popular": "가장 인기"
+        },
+        "cta": {
+            "tour_title": "아키텍처를 안에서 보고 싶나요?",
+            "button_go": "가자 !"
+        },
         "team": {
-            "title": "팀을 만나보세요",
-            "subtitle": "두 사람, 하나의 집념: 배움이 진짜로 보답하게 만드는 것."
+            "title": "팀 소개",
+            "subtitle": "두 사람, 하나의 집념: 무엇이든 만들 수 있는 곳."
         }
     },
     "tech_room": {
@@ -348,11 +622,203 @@
         "success_message": "자격 증명이 업데이트되었습니다."
     },
     "landing": {
+        "knowledge_cards": {
+            "neuro": {
+                "title": "신경해부학",
+                "summary": "뇌 구조와 기능을 비교하세요."
+            },
+            "respiracao": {
+                "title": "호흡 생리학",
+                "summary": "환기와 가스 교환을 공부하세요."
+            },
+            "farmacologia": {
+                "title": "약리학",
+                "summary": "약물이 몸과 어떻게 상호작용하는지 공부하세요."
+            },
+            "civil": {
+                "title": "토목공학",
+                "summary": "CAD 평면도를 읽고 치수, 배치, 구조 축을 살펴보세요."
+            },
+            "mecanica": {
+                "title": "기계공학",
+                "summary": "터빈을 비교하고 기계적 효율을 측정하세요."
+            },
+            "quimica": {
+                "title": "화학공학",
+                "summary": "파일럿 설비에서 물질과 에너지의 흐름을 추적하세요."
+            },
+            "ambiental": {
+                "title": "환경공학",
+                "summary": "수처리 공정을 비교하세요."
+            },
+            "geologia": {
+                "title": "지질학",
+                "summary": "암석층을 읽고 형성의 역사를 재구성하세요."
+            },
+            "microbiologia": {
+                "title": "미생물학",
+                "summary": "미생물이 자라고 상호작용하는 방식을 관찰하세요."
+            },
+            "materiais": {
+                "title": "재료과학",
+                "summary": "미세구조가 재료 특성에 미치는 영향을 비교하세요."
+            },
+            "oceanografia": {
+                "title": "해양학",
+                "summary": "부표의 파도와 해류 데이터를 해석하세요."
+            },
+            "eletrica": {
+                "title": "전기 공학",
+                "summary": "부하, 보호 및 배전을 공부하세요."
+            },
+            "solar": {
+                "title": "태양 에너지",
+                "summary": "발전량, 저장 및 투자 회수 기간을 비교하세요."
+            },
+            "hortas": {
+                "title": "공동체 텃밭",
+                "summary": "재배 구역, 퇴비화, 관개를 계획하세요."
+            },
+            "ecovilas": {
+                "title": "생태 마을",
+                "summary": "공동 주거, 식량, 에너지를 살펴보세요."
+            },
+            "comunidades": {
+                "title": "탈중앙화 커뮤니티",
+                "summary": "공동 규칙, 투표, 책임 체계를 설계하세요."
+            },
+            "cisternas": {
+                "title": "빗물 활용",
+                "summary": "저수조의 크기와 모은 물의 활용 방법을 계획하세요."
+            },
+            "codigo": {
+                "title": "코드",
+                "summary": "동작하는 소프트웨어를 만들고 테스트하세요."
+            },
+            "hardware": {
+                "title": "하드웨어",
+                "summary": "회로를 설계하고 실제 부품을 테스트하세요."
+            },
+            "label": "마켓플레이스의 지식",
+            "coracao": {
+                "title": "심장 해부 아틀라스",
+                "summary": "심장의 구조, 심장방, 혈액 순환."
+            },
+            "recife": {
+                "title": "레시피의 역사",
+                "summary": "옛 지도와 기록으로 보는 도시와 항구."
+            },
+            "bacias": {
+                "title": "하천 유역 아틀라스",
+                "summary": "지형이 강과 도시에 미치는 영향."
+            },
+            "safra": {
+                "title": "커피 수확 일지",
+                "summary": "토양, 강수량, 수확을 기록한 현장 노트."
+            },
+            "astronomia": {
+                "title": "관측 천문학",
+                "summary": "첫 관측부터 데이터 해석까지."
+            },
+            "clima": {
+                "title": "기후 관측",
+                "summary": "강수량, 기온, 계절 주기."
+            },
+            "habitat": {
+                "title": "해저 작업 공간",
+                "summary": "바닷속 작업 공간 설계."
+            },
+            "ecologia": {
+                "title": "해안 사구 생태학",
+                "summary": ""
+            },
+            "matematica": {
+                "title": "확률과 게임",
+                "summary": ""
+            },
+            "arquitetura": {
+                "title": "기후를 고려한 건축",
+                "summary": ""
+            },
+            "economia": {
+                "title": "노동경제학",
+                "summary": ""
+            },
+            "direito": {
+                "title": "헌법",
+                "summary": ""
+            },
+            "literatura": {
+                "title": "브라질 코르델 문학",
+                "summary": ""
+            },
+            "artes": {
+                "title": "관찰 드로잉",
+                "summary": ""
+            },
+            "marketing": {
+                "title": "시장 조사와 포지셔닝",
+                "summary": ""
+            },
+            "musica": {
+                "title": "화성과 즉흥 연주",
+                "summary": ""
+            },
+            "educacao": {
+                "title": "과학 문해력",
+                "summary": ""
+            },
+            "comunicacao": {
+                "title": "현장 저널리즘",
+                "summary": ""
+            },
+            "veterinaria": {
+                "title": "예방 수의학",
+                "summary": ""
+            }
+        },
+        "timeline": {
+            "base": "과학적 기반",
+            "conversa": "AI와 대화",
+            "blueprint": "설계도",
+            "prototipo": "시제품 및 테스트",
+            "mundo": "현실 세계로",
+            "propriedade_intelectual": "지식재산",
+            "papel": "과학 논문",
+            "realidade": "현실 세계에서",
+            "placa": "회로 기판 조립"
+        },
         "hero_tagline": "챗봇과의 대화, 열려 있는 탭 그 이상 — 여기서 당신은 <hl>완성된 제품이 되는 아이디어</hl>를 만듭니다.",
         "knowledge_title": "당신의 아이디어를 현실로 만드세요.",
-        "privacidade_titulo": "프라이버시를 지키며 아이디어를 만드세요.",
-        "privacidade_texto": "검증 가능한 자격 증명으로 최고 수준의 과학자들과 지식을 나누세요.",
-        "privacidade_fecho": "당신이 누구인지, 무엇을 하는지 아무도 알 필요가 없습니다.",
+        "privacidade_titulo": "개인정보 보호, 안전, 익명성",
+        "study_beyond_prompts": "프롬프트를 넘어 {{palavra}}의 수준을 높이세요.",
+        "study_terms": {
+            "work": "업무",
+            "study": "학습",
+            "life": "삶"
+        },
+        "anatomia_amostra": {
+            "bronquios": "기관지",
+            "estomago": "위",
+            "rins": "신장",
+            "prova": "무엇을 아는지 증명해야 합니다.",
+            "pulmoes": "폐",
+            "saber": "오늘날에는 아는 것만으로는 충분하지 않습니다.",
+            "provar": "역량을 키우고 주목받을 기회를 높이세요.",
+            "proximo": "최고 수준의 인재를 육성하고 뛰어난 인재를 기업에 소개합니다.",
+            "titulo": "움직이는 인체 해부학",
+            "descricao": "인체의 신경계와 순환계가 어떻게 배치되는지 살펴보세요.",
+            "cerebro": "뇌",
+            "coracao": "심장"
+        },
+        "privacidade_fluxo": {
+            "conta": "항상 비공개",
+            "conta_detalhe": "비공개 작업 공간에서 AI 모델과 대화하세요. 무엇을 공유할지는 직접 결정합니다.",
+            "vitrine": "검증 가능한 자격 증명",
+            "vitrine_detalhe": "할 수 있는 일을 보여 주세요. 작업물을 검증 가능한 자격 증명과 연결하고 순위에서 분야 내 역량을 확인하세요.",
+            "proposta": "번거로운 서류 없는 기업 협업",
+            "proposta_detalhe": "Zaeon에서 기업과 프로젝트 마일스톤을 정하고 비공개로 소통하세요."
+        },
         "flow": {
             "ideas": "아이디어",
             "projects": "프로젝트",
@@ -364,20 +830,244 @@
             "summary": "아이디어는 프로젝트가 되고, 학습은 연구가 되며, 기업은 비즈니스가 됩니다."
         },
         "blueprints": {
-            "title": "여기서는 당신이 만드는 것이 곧 당신의 가치입니다.",
+            "title": "실제 사람들이 만든 진짜 지식.",
             "image_alt": "블루프린트 미리보기: {{title}}",
             "tags": "태그",
             "cta_view": "게임에서 보기",
             "cta_create": "직접 만들기",
             "example_badge": "예시",
             "examples": {
-                "foguete": { "title": "관측 로켓", "desc": "동체, 노즈콘, 핀, 노즐 — 추진 논문을 바탕으로 설계했습니다." },
-                "motor": { "title": "제트 엔진", "desc": "팬, 압축기, 배기 콘과 축, 주요 치수." },
-                "pcb": { "title": "PCB 기판", "desc": "프로세서, 메모리, 배선, 커넥터 — 바로 제작할 수 있습니다." },
-                "fonte": { "title": "전원 공급 장치", "desc": "케이스, 팬, 방열판, 전원 소켓." },
-                "bateria": { "title": "배터리", "desc": "단자, 충전 표시기, 치수를 갖춘 원통형 셀." },
-                "solar": { "title": "태양광 패널", "desc": "현지 일조량에 맞춰 계산한 셀 격자, 기울기, 거치대." }
+                "foguete": {
+                    "title": "관측 로켓",
+                    "desc": "동체, 노즈콘, 핀, 노즐 — 추진 논문을 바탕으로 설계했습니다."
+                },
+                "motor": {
+                    "title": "제트 엔진",
+                    "desc": "팬, 압축기, 배기 콘과 축, 주요 치수."
+                },
+                "pcb": {
+                    "title": "PCB 기판",
+                    "desc": "프로세서, 메모리, 배선, 커넥터 — 바로 제작할 수 있습니다."
+                },
+                "fonte": {
+                    "title": "전원 공급 장치",
+                    "desc": "케이스, 팬, 방열판, 전원 소켓."
+                },
+                "bateria": {
+                    "title": "배터리",
+                    "desc": "단자, 충전 표시기, 치수를 갖춘 원통형 셀."
+                },
+                "solar": {
+                    "title": "태양광 패널",
+                    "desc": "현지 일조량에 맞춰 계산한 셀 격자, 기울기, 거치대."
+                }
+            },
+            "title_highlight": "한계 없이"
+        },
+        "premiacao": {
+            "provedores": "최첨단 AI 에이전트를 구동하는 모델 제공사:",
+            "titulo": "우리는 블록체인 부문에서 자금을 지원받고 수상한 브라질 스타트업입니다.",
+            "apoio": "자금 지원 및 후원:",
+            "vencedor": "수상 제품",
+            "projeto": "세아라의 스마트 활용을 위한 <hl>블록체인</hl> 기술",
+            "programa": "센텔랴 프로그램(제2회).",
+            "oficial": "공식 지원",
+            "ministerio": "브라질 정부 과학기술혁신부"
+        },
+        "solana": {
+            "talento": "우리 에이전트는 뛰어난 인재에게 특별한 관심을 기울입니다. 운영 비용을 줄이는 팀부터 사이버 보안 전문가까지, 작업의 전문성이 높을수록 더 많은 기업에 도달합니다. 잠재 고객에게 먼저 전화를 거는 일은 우리 에이전트가 맡습니다.",
+            "ranking": "순위 상승",
+            "esteira": "카드가 솔라나를 지나 SOL로, 그다음 USDC로 바뀝니다.",
+            "pessoa": "비공개 · 사용자",
+            "prova": "공개 · 증명",
+            "credenciais": "검증 가능한 자격 증명",
+            "verificacao": "검증 작동 방식",
+            "blockchain": "블록체인에 기록되는 정보",
+            "diagrama": "공개 증명이 사용자의 신원을 보호합니다."
+        },
+        "faq": {
+            "7": {
+                "q": "Zaeon은 인재와 기업을 어떻게 연결하나요?",
+                "a": "평가와 완료된 프로젝트로 입증한 능력을 살펴봅니다. 에이전트가 뛰어난 성과를 보여 준 인재를 해당 역량이 필요한 기업에 소개합니다."
+            },
+            "1": {
+                "q": "지금의 Zaeon은 무엇인가요?",
+                "a": "팀과 일하고 공부하며 지식을 프로젝트로 만드는 온라인 공간입니다. 엄격한 평가와 실제 작업물을 바탕으로 기업이 뛰어난 인재를 찾도록 돕습니다."
+            },
+            "2": {
+                "q": "코워킹은 무료인가요?",
+                "a": "네. 계정이 있으면 누구나 무료로 참여할 수 있습니다."
+            },
+            "3": {
+                "q": "팀과 어떤 프로젝트든 진행할 수 있나요?",
+                "a": "네. 팀원을 초대해 원하는 프로젝트를 함께 진행하세요."
+            },
+            "4": {
+                "q": "공부만 할 수도 있나요?",
+                "a": "네. 혼자 공부하거나 다른 사람과 함께 공부할 수 있습니다."
+            },
+            "5": {
+                "q": "마켓플레이스에는 무엇이 있나요?",
+                "a": "강좌, 도구, 에이전트 카드를 살펴보고 계정에 연결할 수 있습니다."
+            },
+            "6": {
+                "q": "어떻게 시작하나요?",
+                "a": "계정을 만들고 온라인 접속을 선택하세요."
             }
+        },
+        "interface": {
+            "amostra_estudo": "학습 미리 보기",
+            "privacidade_landing": "Zaeon의 개인정보 보호",
+            "apoio": "자금 및 지원",
+            "mes": "한 달 무료",
+            "cartao": "카드 등록 불필요",
+            "limites": "제한 없음",
+            "revisao": "전문가 검토",
+            "projetos": "커뮤니티에서 만든 프로젝트",
+            "faq_rotulo": "자주 묻는 질문",
+            "faq_titulo": "일반적인 질문.",
+            "faq_subtitulo": "명확한 답변.",
+            "cyber_titulo": "무료 온라인 코워킹",
+            "cyber_intro": "팀과 원하는 프로젝트를 진행하거나 공부할 공간을 찾아보세요. 코워킹은 누구에게나 무료입니다.",
+            "cyber_moeda": "팀과 함께 작업하기",
+            "cyber_moeda_texto": "팀원을 초대해 원하는 프로젝트를 함께 진행하세요.",
+            "cyber_pessoas": "함께 공부하기",
+            "cyber_pessoas_texto": "자신의 속도로 공부하거나 다른 사람들과 함께 공부하세요.",
+            "cyber_agentes": "실시간 협업",
+            "cyber_agentes_texto": "온라인 사용자와 대화하고 같은 공간에서 작업하세요.",
+            "plataforma": "플랫폼",
+            "recursos": "리소스",
+            "empresa": "회사",
+            "legal": "법적 정보",
+            "jogar": "온라인 접속",
+            "modelos": "AI 모델",
+            "laboratorio": "연구실",
+            "mentores": "멘토",
+            "assistentes": "어시스턴트",
+            "marketplace": "마켓플레이스",
+            "funcionamento": "이용 방법",
+            "duvidas": "자주 묻는 질문",
+            "noticias": "뉴스",
+            "sobre": "회사 소개",
+            "documentacao": "문서",
+            "contato": "문의",
+            "termos": "이용약관",
+            "privacidade": "개인정보 보호",
+            "resumo": "주요 AI를 한곳에서 이용하고 학습과 연구를 위한 과학 기능을 활용하세요.",
+            "direitos": "모든 권리 보유.",
+            "lema": "사람과 초지능이 만나는 곳."
+        },
+        "vitrine": {
+            "abrir_caderno": "노트 열기",
+            "exemplo_estudo": "학습 예시",
+            "anterior": "이전 카드",
+            "proximo": "다음 카드",
+            "agente": "에이전트",
+            "gratis": "무료",
+            "raridade": {
+                "comum": "일반",
+                "rara": "희귀",
+                "epica": "영웅",
+                "lendaria": "전설"
+            },
+            "tipo": {
+                "curso": "강좌",
+                "codigo": "코드",
+                "artigo": "학술 작업",
+                "negocio": "비즈니스",
+                "rwa": "실물 자산 (RWA)",
+                "agente": "AI 에이전트가 제작"
+            }
+        },
+        "hero_principal": {
+            "pergunta": "Zaeon에게 물어보세요…",
+            "linha": "지식을 다루는 곳",
+            "termo_0": "창조하기",
+            "termo_1": "연구하기",
+            "termo_2": "배우기",
+            "termo_3": "전달하기",
+            "termo_4": "증명하기",
+            "termo_5": "찾아보기",
+            "termo_6": "거래하기",
+            "termo_7": "의뢰하기",
+            "termo_8": "판매하기",
+            "termo_9": "탐구하기",
+            "termo_10": "확장하기",
+            "termo_11": "공유하기",
+            "chat": "채팅 시작",
+            "conta": "계정 만들기"
         }
-    }
+    },
+  "configMenu": {
+    "language": "언어",
+    "rewatchTutorial": "튜토리얼 다시 보기",
+    "rewatchTutorialHint": "Aura가 스터디룸과 프로필의 튜토리얼과 팁을 다시 보여줍니다.",
+    "labSkin": "실험실 스킨",
+    "labSkinHint": "실험실의 색상만 바뀝니다. 기본값은 원래 모습입니다.",
+    "labSkinYours": "내 방",
+    "labSkinOriginal": "기본",
+    "cyberspace": "사이버스페이스",
+    "tutorialMode": "튜토리얼 모드",
+    "tutorialOn": "켜짐: 사이버스페이스에 들어가면 튜토리얼이 필수입니다.",
+    "tutorialOff": "꺼짐: 일반 사이버스페이스.",
+    "graphics": "그래픽",
+    "graphicsGroup": "사이버스페이스 그래픽",
+    "graphicsAuto": "자동",
+    "graphicsLight": "가볍게",
+    "graphicsFull": "전체",
+    "graphicsAutoHint": "자동: 내장 그래픽(노트북 Intel/AMD)에서는 가볍게.",
+    "graphicsLightHint": "가볍게: 먼 거리 표시와 효과를 줄이고 30fps.",
+    "graphicsFullHint": "전체: 모든 설정 최대(그래픽 카드 필요).",
+    "reopenHint": "사이버스페이스를 다시 열 때 적용됩니다.",
+    "sharpness": "선명도",
+    "sharpnessGroup": "사이버스페이스 선명도",
+    "sharpnessHint": "계단 현상이 줄수록 GPU 부담이 커집니다. 0.75×는 가볍게, 1.5×와 2×는 매끄럽게. 즉시 적용됩니다.",
+    "smoothEdges": "가장자리 부드럽게",
+    "smoothEdgesHint": "가장자리 안티앨리어싱. 사이버스페이스를 다시 열 때 적용됩니다.",
+    "auto": "자동",
+    "on": "켜짐",
+    "off": "꺼짐",
+    "showFps": "FPS 표시",
+    "showFpsHint": "화면 모서리에 프레임 수와 그래픽 카드 이름을 표시합니다 — 느리면 스크린샷을 보내 주세요.",
+    "account": "계정",
+    "invite": "초대 열기",
+    "ceoMode": "CEO 모드",
+    "session": "세션",
+    "logout": "로그아웃",
+    "dangerZone": "위험 구역",
+    "deleting": "삭제 중…",
+    "deleteAccount": "내 계정 삭제",
+    "deleteConfirm": "계정을 삭제할까요? 모든 데이터가 삭제되고 이메일을 다시 사용할 수 있게 됩니다. 되돌릴 수 없습니다.",
+    "deleteFailed": "지금은 계정을 삭제할 수 없습니다. 다시 시도해 주세요.",
+    "connectionError": "연결 오류."
+  },
+  "chatCelular": {
+    "more": "더 보기",
+    "placeholder": "Aura에게 질문하세요",
+    "message": "메시지",
+    "mic": "말하기",
+    "stopMic": "녹음 중지",
+    "stop": "중지",
+    "send": "보내기",
+    "close": "닫기",
+    "bring": "가져오기",
+    "file": "파일",
+    "photo": "사진",
+    "liveCamera": "실시간 카메라",
+    "studio": "Studio로 만들기",
+    "auto": "자동",
+    "guided": "안내",
+    "agentPanel": "{{name}}와 대화 중: 에이전트 변경 및 옵션",
+    "agentTitle": "답하는 에이전트와 옵션",
+    "rowWho": "답변하는 사람",
+    "rowModel": "모델",
+    "rowBase": "내 자료",
+    "rowResearch": "연구 모드",
+    "rowTree": "스킬 트리",
+    "rowWork": "작업 방식",
+    "researchOn": "연구 모드 켜짐",
+    "researchOff": "연구 모드 끄기",
+    "mentorOff": "Aura로 돌아가기 ({{name}} 나가기)",
+    "with": "{{name}}와 함께"
+  }
 }

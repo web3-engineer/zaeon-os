@@ -16,6 +16,7 @@
  * `escritorio` (#645): "fila" (os turnos dos agentes rodam no worker — que o deploy também precisa atualizar) ou
  * "inline" (rodam aqui no web). Só o modo, nenhum segredo.
  */
+import { nivelDoVideo } from "@/lib/agent/toolsVideo";
 import { NextResponse } from "next/server";
 import { estadoGateway, provedorAtual } from "@/lib/llm/saude";
 import { estadoLeitor } from "@/lib/leitor/saude";
@@ -29,7 +30,12 @@ import { sinteseLigada } from "@/lib/agent/sintese-flag";
 import { escritaPorSecaoLigada } from "@/lib/documento/escritor";
 import { graficoLigado } from "@/lib/agent/graficosDoTurno";
 import { getTool } from "@/lib/agent/runtime";
+import { visaoNoHarnessLigado } from "@/lib/agent/toolsVisao";
+import { reciboDeFlags } from "@/lib/flags/recibo";
+import { visaoDisponivel } from "@/lib/ai/descreverImagem";
+import { cameraAoVivoLigada } from "@/lib/ai/camera";
 import { GEMINI_MODEL_FLASH, GEMINI_MODEL_PRO } from "@/lib/ai/model";
+import { provedoresConfigurados } from "@/lib/search/web";
 import { proNasPesadasLigado } from "@/lib/ai/proNasPesadas";
 import { pusherFaltando } from "@/lib/collab/realtime";
 import { reciboConsole } from "@/lib/orquestra/console";
@@ -193,9 +199,17 @@ export async function GET() {
      * convidaria a ler como "um domínio chamado asterisco".
      */
     dominios: {
-      leitor: parseAllow(process.env.LEITOR_ALLOW),
+      leitor: allowEhAberta(parseAllow(process.env.LEITOR_ALLOW)) ? "aberto" : parseAllow(process.env.LEITOR_ALLOW),
       agente: allowEhAberta(allowDoAgente()) ? "aberto" : allowDoAgente(),
     },
+    /**
+     * A BUSCA WEB — o ponto cego do recibo até aqui. `web_search` é a ÚNICA tool registrada SEM
+     * condição (runtime.ts) cujo backend pode estar ausente: sem provedor, ela devolve
+     * `web_unavailable` em toda chamada e o cardápio promete "busco na internet" sem buscar. O recibo
+     * passa a dizer QUAIS provedores estão configurados — só os NOMES (searxng/tavily/brave); nenhuma
+     * key, nenhuma URL. Lista vazia = a casa não busca na web (responde pelo conhecimento do modelo).
+     */
+    busca: { web: provedoresConfigurados() },
     // F5: o estado dos conectores MCP (memoizado do boot; nunca conecta aqui)
     mcp: resumoMcp(),
     capacidades: {
@@ -215,7 +229,25 @@ export async function GET() {
       // as duas tools do Leitor: registradas = o cardápio PODE prometer "abro páginas"/"baixo
       // arquivo". É aqui que se vê a diferença entre a flag ligada e a capacidade existindo.
       abrirUrl: !!getTool("abrir_url"),
+      // vídeo do YouTube pelo link: "completo" = com descrição (há YOUTUBE_API_KEY); "basico" = só título e canal
+      descreverVideo: getTool("descrever_video") ? nivelDoVideo() : "off",
       baixarParaBase: !!getTool("baixar_para_base"),
+      // F-visão ("be my eyes"): a flag VISAO_HARNESS liga o roteamento de imagem pro harness; a
+      // credencial Vertex é o que faz a visão responder. "sem_credencial" = flag on mas Vertex ausente
+      // (a tool se registra mas falharia) — é o estado que o recibo tem de deixar visível, não esconder.
+      visao: !visaoNoHarnessLigado() ? "off" : (visaoDisponivel() ? "on" : "sem_credencial"),
+      // câmera ao vivo (/api/ai/camera): a flag VISAO_CAMERA + a mesma credencial Vertex da visão.
+      camera: !cameraAoVivoLigada() ? "off" : (visaoDisponivel() ? "on" : "sem_credencial"),
+    },
+    // TODAS AS FLAGS DE RECURSO, por nome (lib/flags/recibo): o que está ligado e o que está
+    // desligado NESTE servidor. Antes, "tem update subindo com flag off?" só se respondia lendo o
+    // deploy.yml, o compose e o `.env` do VPS. Só nomes e estado — nenhum valor, nenhum segredo.
+    // `memoria` separa a flag da conexão: "sem_banco" = MEMORY_L3 ligada mas sem DATABASE_URL.
+    flags: {
+      ...reciboDeFlags(),
+      memoria: process.env.MEMORY_L3 !== "1" ? "off" : (process.env.DATABASE_URL ? "on" : "sem_banco"),
+      cache: process.env.CACHE_RESPOSTAS === "1" ? "on" : "off",
+      orquestraAutomatica: process.env.ORQ_AUTOMATICO === "1" ? "on" : "off",
     },
     pool: poolConfigurado(),
     // a mesma regra de lib/canal/queue `filaLigada` (sem importar a fila: o health fica leve)

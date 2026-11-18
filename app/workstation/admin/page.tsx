@@ -15,7 +15,8 @@ import {
     CpuChipIcon,
     BookOpenIcon,
     Squares2X2Icon,
-    GlobeAltIcon
+    GlobeAltIcon,
+    BuildingStorefrontIcon
 } from "@heroicons/react/24/outline";
 
 
@@ -30,6 +31,7 @@ import FrotaModule from "./modules/FrotaModule";
 import BaseConhecimentoModule from "./modules/BaseConhecimentoModule";
 import BlueprintsModule from "./modules/BlueprintsModule";
 import CanaisModule from "./modules/CanaisModule";
+import VitrineModule from "./modules/VitrineModule";
 import { agentsAdmin } from "@/lib/canal/flags";
 import { adminLabelPlugins } from "@/lib/mentores/rota";
 
@@ -70,7 +72,7 @@ const SidebarItem = ({ icon: Icon, label, active, onClick, isOpen }: any) => (
 
 export default function AdminControlRoom() {
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState<"profiles" | "voice" | "invites" | "reports" | "plugins" | "payments" | "agents" | "canais" | "frota" | "rag" | "blueprints">("profiles");
+    const [activeTab, setActiveTab] = useState<"profiles" | "voice" | "invites" | "reports" | "plugins" | "payments" | "agents" | "canais" | "frota" | "rag" | "blueprints" | "vitrine">("profiles");
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
 
@@ -174,6 +176,14 @@ export default function AdminControlRoom() {
                         onClick={() => setActiveTab('blueprints')}
                         isOpen={isSidebarOpen}
                     />
+                    {/* os cards da VITRINE (Marketplace de Estudos) — cadastro via admin */}
+                    <SidebarItem
+                        icon={BuildingStorefrontIcon}
+                        label="Vitrine"
+                        active={activeTab === 'vitrine'}
+                        onClick={() => setActiveTab('vitrine')}
+                        isOpen={isSidebarOpen}
+                    />
                     <SidebarItem
                         icon={DocumentChartBarIcon}
                         label="Reports"
@@ -221,6 +231,7 @@ export default function AdminControlRoom() {
                         {activeTab === 'frota' && <FrotaModule glassPanel={glassPanel} />}
                         {activeTab === 'rag' && <BaseConhecimentoModule glassPanel={glassPanel} />}
                         {activeTab === 'blueprints' && <BlueprintsModule glassPanel={glassPanel} />}
+                        {activeTab === 'vitrine' && <VitrineModule glassPanel={glassPanel} />}
 
                         {activeTab === 'payments' && (
                             <div className="flex-1 flex items-center justify-center opacity-30">

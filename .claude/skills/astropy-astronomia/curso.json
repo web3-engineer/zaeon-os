@@ -1,0 +1,125 @@
+{
+  "modulos": [
+    {
+      "titulo": "Unidades que não deixam você errar",
+      "estudo": "A primeira coisa que o Astropy te dá não é um cálculo — é um guarda-costas contra o erro mais bobo e mais caro da física: somar coisas que não se somam. No Astropy, um número anda SEMPRE grudado na sua unidade: `d = 4.24 * u.lyr` é uma distância em anos-luz, não um `4.24` solto.\n\nCom a unidade grudada, duas coisas acontecem. Primeiro, a conversão é trivial e segura: `d.to(u.pc)` transforma anos-luz em parsecs (4.24 anos-luz ≈ 1.3 parsec) sem você decorar o fator. Segundo, e mais importante: o Astropy RECUSA operações sem sentido. Tentou somar metros com segundos? Ele levanta um erro na hora, em vez de deixar um número errado seguir viagem. É o professor de análise dimensional que nunca cansa.\n\nIsso muda o jeito de trabalhar: você para de rastrear unidades na cabeça (e de errar fatores de 1000 entre km e m, ou de 3600 entre hora e segundo) e deixa a biblioteca ser a rede de segurança. Um cálculo astronômico tem muitos passos; um fator errado no meio contamina tudo. A unidade grudada é o que impede isso.\n\nA regra que fica: no Astropy, número sem unidade é bug esperando acontecer. Grude a unidade sempre, e deixe a conversão e a checagem com a biblioteca.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "O que o Astropy faz se você tentar somar uma grandeza em metros com uma em segundos?",
+            "options": [
+              { "text": "Levanta um erro na hora — recusa operar grandezas incompatíveis", "isCorrect": true, "explanation": "É a proteção de análise dimensional: o erro aparece imediatamente, não lá na frente." },
+              { "text": "Converte segundos em metros automaticamente", "isCorrect": false, "explanation": "Não existe conversão entre tempo e distância; por isso ele recusa." },
+              { "text": "Soma os números e ignora as unidades", "isCorrect": false, "explanation": "É exatamente o que ele EVITA — somar número solto é a fonte do erro." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "Você tem `d = 4.24 * u.lyr`. Qual chamada converte essa distância para parsecs?",
+            "accepted": ["d.to(u.pc)", "d.to(u.parsec)", ".to(u.pc)", "d.to('pc')"],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Em uma frase: por que grudar a unidade no número evita o erro clássico de fator de 1000 entre km e m?",
+          "accepted": ["a biblioteca cuida da conversão", "você não rastreia unidade na cabeça", "o Astropy converte e confere por você", "a unidade grudada impede somar escalas diferentes", "não precisa decorar fatores"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "python",
+        "inicial": "from astropy import units as u\n\n# Distância de Proxima Centauri em anos-luz; converta para parsecs.\nd = 4.24 * u.lyr\nprint(d.to(u.pc))   # ~1.30 pc",
+        "teste": "# d.to(u.pc) devolve ~1.30 pc; somar d com um tempo levantaria erro de unidade"
+      }
+    },
+    {
+      "titulo": "Onde está o astro agora: coordenadas e tempo",
+      "estudo": "\"Sirius está visível hoje às 23h daqui de casa?\" Para o computador responder, você monta três coisas: a posição do astro no céu, o seu lugar na Terra, e o instante — em UTC.\n\nA posição vem como `SkyCoord(ra=\"06h45m08.9s\", dec=\"-16d42m58s\")` (ascensão reta e declinação, as \"coordenadas fixas\" do astro no céu). O seu lugar é `EarthLocation(lat=-23.55*u.deg, lon=-46.63*u.deg, height=760*u.m)`. E o instante é um `Time` — mas atenção ao detalhe que mais estraga conta de astronomia: **o tempo é UTC**. A hora de Brasília está 3 horas atrás do UTC, então você converte antes. Errar o fuso desloca o céu em 15 graus por hora (a Terra gira 360° em 24h = 15°/h) — um erro de 1 hora joga o astro longe de onde ele está.\n\nCom os três, você transforma a posição fixa do astro para o referencial do seu horizonte: `sirius.transform_to(AltAz(obstime=agora, location=local))`. O que importa dali é a `.alt`, a ALTURA acima do horizonte. Altura maior que 0 significa acima do horizonte (em tese visível); mas para observar DE VERDADE, peça altura acima de uns 20°, porque perto do horizonte a atmosfera e os obstáculos atrapalham.\n\nA regra que fica: posição + lugar + tempo EM UTC → altura no horizonte. E o fuso é o detalhe que, errado, move o céu inteiro.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Por que converter a hora local para UTC antes de calcular a posição de um astro?",
+            "options": [
+              { "text": "O Astropy trabalha em UTC; errar o fuso desloca o céu em 15° por hora", "isCorrect": true, "explanation": "A Terra gira 15°/h, então 1 hora de erro de fuso joga o astro bem longe." },
+              { "text": "Porque UTC é mais preciso que o horário de verão", "isCorrect": false, "explanation": "Não é sobre precisão do relógio; é o referencial de tempo que o cálculo usa." },
+              { "text": "Para o resultado sair em inglês", "isCorrect": false, "explanation": "Fuso não tem a ver com idioma." }
+            ],
+            "marks": 3
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Você calculou a altura (alt) de uma estrela e deu 5°. O que isso diz sobre observá-la?",
+            "options": [
+              { "text": "Está logo acima do horizonte — difícil de observar; o ideal é acima de ~20°", "isCorrect": true, "explanation": "Perto do horizonte, atmosfera e obstáculos atrapalham muito." },
+              { "text": "Está abaixo do horizonte, invisível", "isCorrect": false, "explanation": "5° é positivo, logo está acima — só que baixo demais para boa observação." },
+              { "text": "Está no zênite, bem no alto", "isCorrect": false, "explanation": "O zênite é 90°; 5° é quase no chão." }
+            ],
+            "marks": 2
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Quantos graus o céu se desloca por hora, e por quê?",
+          "accepted": ["15 graus por hora", "15°/h porque a Terra gira 360° em 24h", "15 graus, rotação da Terra", "360/24 = 15 graus por hora"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "python",
+        "inicial": "from astropy import units as u\nfrom astropy.coordinates import SkyCoord, EarthLocation, AltAz\nfrom astropy.time import Time\n\nsirius = SkyCoord(ra=\"06h45m08.9s\", dec=\"-16d42m58s\")\nlocal = EarthLocation(lat=-23.55*u.deg, lon=-46.63*u.deg, height=760*u.m)\nagora = Time(\"2026-07-01 23:00:00\") - (-3*u.hour)   # Brasília -> UTC\naltura = sirius.transform_to(AltAz(obstime=agora, location=local)).alt\nprint(altura)",
+        "teste": "# altura > 0 indica acima do horizonte; a conversão de fuso é o passo crítico"
+      }
+    },
+    {
+      "titulo": "FITS: a imagem é dados MAIS cabeçalho",
+      "estudo": "A foto astronômica não é um JPEG. O formato da área é o FITS, e ele carrega duas coisas juntas: os DADOS (a matriz de números — o brilho medido em cada pixel) e o CABEÇALHO (header), um monte de pares chave-valor que descrevem a imagem: qual instrumento, quanto tempo de exposição, quando foi tirada, e — crucial — a calibração de coordenadas (WCS), que diz qual ponto do céu cada pixel corresponde.\n\nVocê abre assim: `with fits.open(\"imagem.fits\") as hdul: hdul.info(); dados = hdul[0].data; cab = hdul[0].header`. O `hdul.info()` lista o que tem dentro; `.data` é a matriz; `.header` é o cabeçalho.\n\nE a regra de ouro: **leia o cabeçalho ANTES de olhar os dados.** Sem o cabeçalho, a matriz de números não quer dizer nada — você não sabe a escala, a orientação, nem para onde a imagem aponta. Dois astrônomos com a mesma matriz e cabeçalhos diferentes estão olhando partes diferentes do céu. O cabeçalho é o que transforma \"uma tabela de números\" em \"uma região do céu com significado\".\n\nA regra que fica: FITS = dados + cabeçalho, e o cabeçalho vem primeiro. É ele que diz o que os números significam.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Um arquivo FITS guarda o quê?",
+            "options": [
+              { "text": "Os dados (a matriz de pixels) E um cabeçalho que descreve instrumento, exposição e coordenadas (WCS)", "isCorrect": true, "explanation": "É a dupla: sem o cabeçalho, a matriz não tem significado." },
+              { "text": "Só a imagem comprimida, como um JPEG", "isCorrect": false, "explanation": "FITS não é um formato de foto comum; carrega metadados essenciais." },
+              { "text": "Apenas o cabeçalho de texto", "isCorrect": false, "explanation": "Tem o cabeçalho E os dados numéricos." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "Depois de `with fits.open(\"img.fits\") as hdul:`, qual atributo te dá a matriz de pixels da primeira extensão?",
+            "accepted": ["hdul[0].data", ".data", "hdul[0].data", "data"],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Em uma frase: por que ler o cabeçalho antes dos dados de um FITS?",
+          "accepted": ["sem ele a matriz não tem significado", "o cabeçalho diz escala, orientação e para onde aponta", "os números só fazem sentido com os metadados", "é o cabeçalho que dá significado aos dados", "sem WCS não se sabe que parte do céu é"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "python",
+        "inicial": "from astropy.io import fits\n\nwith fits.open(\"imagem.fits\") as hdul:\n    hdul.info()              # o que tem dentro\n    cab = hdul[0].header     # LEIA o cabeçalho primeiro\n    dados = hdul[0].data     # a matriz de pixels só faz sentido com o cabeçalho",
+        "teste": "# o cabeçalho (WCS, instrumento, exposição) é o que dá significado à matriz de dados"
+      }
+    }
+  ]
+}

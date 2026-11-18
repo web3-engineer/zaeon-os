@@ -12,11 +12,14 @@ import "@/src/i18n";
 
 // --- IMPORTS ---
 import { Navbar } from "@/components/main/navbar";
-import { Mic, MicOff, Code2, Building2, Loader2 } from "lucide-react";
+import { Mic, MicOff, Code2, Building2, Loader2, Library } from "lucide-react";
 import { ConversasSlotContext } from "@/components/chat/ConversasSlot";
+import { BlueprintsSlotContext } from "@/components/blueprint/BlueprintsSlot";
 import ConversasDaSala from "@/components/chat/ConversasDaSala";
-import { useSidebarHover } from "@/components/lab/useSidebarHover";
-import { useIsMobile } from "@/lib/ui/useIsMobile";
+import { useSidebarHover, focoDeTeclado } from "@/components/lab/useSidebarHover";
+import { useIsMobile, QUERY_CELULAR, QUERY_CELULAR_DEITADO } from "@/lib/ui/useIsMobile";
+import { useFecharNoVoltar } from "@/lib/ui/useFecharNoVoltar";
+import { useTecladoAberto } from "@/lib/ui/useTecladoAberto";
 import { EVT_PESQUISA_SALVA, contarPalavras } from "@/lib/onboarding/tutorialLab";
 import RostoDaAba from "@/components/agents/avatar/RostoDaAba";
 import SeletorDeAgente from "@/components/agents/SeletorDeAgente";
@@ -25,7 +28,8 @@ import { agenteChat, agentesDisponiveis, agenteValido, type AgenteChatId, agente
 import { avisarPersona } from "@/lib/research/zaeonEventos";
 import { usePluginsChat } from "@/lib/plugins/chatPlugins";
 import { usePresenca } from "@/components/agents/avatar/hooks";
-import { EVT_ESTUDOS_ABA, abaEstudosAtual, irPraAbaEstudos, type AbaEstudos } from "@/lib/chat/conversasNav";
+import { EVT_ESTUDOS_ABA, abaEstudosAtual, abrirBiblioteca, irPraAbaEstudos, type AbaEstudos, type AbaEstudosAnunciada } from "@/lib/chat/conversasNav";
+import { useMarketplaceNoLab } from "@/lib/ui/useMarketplaceNoLab";
 
 // Ramo da árvore sob o nome da sala na sidebar: o da sala aberta cresce e rola; o da outra é curto.
 // Larguras da sidebar: fechada = trilho de ícones; aberta = o conteúdo inteiro (que tem largura fixa).
@@ -90,6 +94,8 @@ const EscritorioRoom = dynamic(
 const TutorialLab = dynamic(() => import("@/components/onboard/TutorialLab"), { ssr: false });
 const TourSala = dynamic(() => import("@/components/onboard/TourSala"), { ssr: false });
 const TourEscritorio = dynamic(() => import("@/components/onboard/TourEscritorio"), { ssr: false });
+const SkinDoLab = dynamic(() => import("@/components/skins/SkinDoLab"), { ssr: false });
+const OnboardingTema = dynamic(() => import("@/components/onboard/OnboardingTema"), { ssr: false });
 const CoworkingCanal = dynamic(
   () => import("@/components/office/CoworkingCanal"),
   { ssr: false },
@@ -129,7 +135,7 @@ const DESTAQUE = "bg-gradient-to-r from-violet-500/15 to-cyan-500/15 border-cyan
 const AGENTE_CHAT = { id: "aura", nome: "Aura" } as const;
 /** O nome do item: some no trilho (a pill recorta, e a opacidade evita a lasquinha de texto na borda). */
 function Rotulo({ v, children }: { v: boolean; children: React.ReactNode }) {
-  return <span className={`text-[10px] font-black uppercase whitespace-nowrap transition-opacity duration-200 ${v ? "opacity-100" : "opacity-0"}`}>{children}</span>;
+  return <span className={`min-w-0 truncate text-[13px] font-bold tracking-tight transition-opacity duration-200 ${v ? "opacity-100" : "opacity-0"}`}>{children}</span>;
 }
 import { startTour, getTour, nextTour, TOUR_STEPS } from "@/lib/onboarding/tour";
 import { capabilities } from "@/lib/runtime/mode";
@@ -179,6 +185,7 @@ import {
   NewspaperIcon,
   AcademicCapIcon,
   ArrowUturnLeftIcon,
+  Bars3Icon,
 } from "@heroicons/react/24/outline";
 import { useRouter } from "next/navigation";
 import { musica } from "@/lib/audio/musica";
@@ -186,6 +193,7 @@ import { LOUNGE_ROTA, MSG_FECHAR_TABLET, MSG_IA, pedeFoco, pedeTablet, pedeTutor
 import { instalarMonitorIA } from "@/lib/ui/monitorIA";
 import { onEnterSubmit } from "@/lib/ui/enterSubmit";
 import { escritorioCowork } from "@/lib/canal/flags";
+import PublicarPesquisa from "@/components/estudos/PublicarPesquisa";
 import { unifiedResearchRoom, resolveLabTab, isSubTab, projetosOn, type LabTab, type ResearchSubTab } from "@/lib/research/unifiedRoom";
 import { EVT_ANEXAR, pdfDaBiblioteca } from "@/components/chat/useAnexoChat";
 import { chatUnicoOn, pedidoDoLink, pedirAoChat } from "@/lib/chat/chatUnico";
@@ -201,6 +209,7 @@ const CHAT_UNICO = chatUnicoOn();
 import NewsPanel from "@/components/research/NewsPanel";
 import ProfilePanel from "@/components/research/ProfilePanel";
 import { EVT_VER_PERFIL, idDoEvento } from "@/lib/perfil/eventos";
+import { EVT_ABRIR_PROJETO } from "@/lib/octa/ideNav";
 import EditableProfile from "@/components/research/EditableProfile";
 import MiniTourToast from "@/components/research/MiniTourToast";
 import SavedCitationsSection from "./SavedCitationsSection";
@@ -819,10 +828,51 @@ export default function HomeworkPage({
   // Sidebar POR HOVER: passar o mouse em cima abre; tirar o mouse a devolve pro canto (o trilho de ícones). Ela passa
   // POR CIMA do módulo do chat. A lógica (e o porquê de ela ficar presa aberta antes) mora em components/lab/useSidebarHover.
   const { aberta: isSidebarOpen, navRef, handlers: hoverSidebar } = useSidebarHover<HTMLElement>();
+  // as CONVERSAS do chat só expandem com o mouse/foco NA ÁREA DO CHAT (o agente + a lista); hover/foco nas outras pills
+  // abre o trilho mas não as conversas. As guardas de relatedTarget cobrem o PORTAL da lista (o cursor entrando nela não
+  // conta como sair) e o FOCO de teclado (chegar na pill do agente por Tab também abre). No celular a gaveta mostra tudo.
+  const estudosChatRef = useRef<HTMLDivElement>(null);
+  const pesquisaChatRef = useRef<HTMLDivElement>(null);
+  const [estudosChatAtivo, setEstudosChatAtivo] = useState(false);
+  const [pesquisaChatAtivo, setPesquisaChatAtivo] = useState(false);
+  // os ESTUDOS (blueprints) da Sala de Estudos: a mesma regra das conversas — o ramo só abre com o mouse/foco na área dela
+  const salaEstudosRef = useRef<HTMLDivElement>(null);
+  const [salaEstudosAtiva, setSalaEstudosAtiva] = useState(false);
+  const handlersChat = (ref: React.RefObject<HTMLDivElement>, set: (v: boolean) => void) => ({
+    onMouseEnter: () => set(true),
+    // SÓ o foco de TECLADO (Tab) abre — o foco PROGRAMÁTICO (criar uma nova conversa, a resposta chegando, a lista
+    // re-renderizando) não; senão a sidebar "voltava ao comportamento antigo" (conversas presas abertas) depois de uma ação.
+    onFocusCapture: () => { if (focoDeTeclado()) set(true); },
+    onMouseLeave: (e: React.MouseEvent) => { if (!ref.current?.contains(e.relatedTarget as Node | null)) set(false); },
+    onBlurCapture: (e: React.FocusEvent) => { if (!ref.current?.contains(e.relatedTarget as Node | null)) set(false); },
+  });
+  // #755: a seção de conversas NÃO pode ficar presa aberta. Regra: ao SAIR da sidebar ela se retrai — só segue aberta se
+  // houver input ativo NO CHAT (a pessoa digitando no compositor, fora da barra). Como o useSidebarHover fecha a barra de
+  // forma confiável quando o mouse sai (tem rede de segurança por pointermove), zeramos o estado junto: acaba o "stuck open"
+  // de voltar pra barra e achar a seção ainda aberta. Clicar noutra pill também sai do wrapper → o onMouseLeave já fecha.
+  const digitandoNoChat = useCallback(() => {
+    const el = typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
+    if (!el) return false;
+    const campo = /^(INPUT|TEXTAREA)$/.test(el.tagName) || el.isContentEditable;
+    return campo && !navRef.current?.contains(el);
+  }, [navRef]);
+  useEffect(() => {
+    if (isSidebarOpen || digitandoNoChat()) return;
+    setEstudosChatAtivo(false);
+    setPesquisaChatAtivo(false);
+    setSalaEstudosAtiva(false);
+  }, [isSidebarOpen, digitandoNoChat]);
   // CELULAR (≤767px): não existe hover — um toque abria a sidebar por cima de tudo e ela nunca fechava. Lá a sidebar
   // vira GAVETA (☰ na barra de baixo, fecha ao escolher) e a barra de baixo leva às salas; o conteúdo usa a largura toda.
-  const celular = useIsMobile();
+  // #832: deitado (baixo e de toque) também é celular — o layout de computador não deixava nenhuma linha de conversa
+  const celular = useIsMobile(QUERY_CELULAR);
+  const deitado = useIsMobile(QUERY_CELULAR_DEITADO);
+  // #837: com o teclado aberto a barra de baixo some (ela comia 60 px da conversa e da caixa de escrever)
+  // (aqui em cima, junto dos outros ganchos: mais embaixo há um `return` cedo e o gancho viraria condicional)
+  const teclado = useTecladoAberto(celular);
   const [gaveta, setGaveta] = useState(false);
+  // #832: o ◀ do Android fecha a gaveta (antes voltava para a página anterior com ela aberta)
+  useFecharNoVoltar(celular && gaveta, () => setGaveta(false));
   // #713: celular — escolher um destino na gaveta fecha a gaveta (menus/campos dentro dela, não). Ouvinte do DOM porque a
   // lista de conversas é um portal: o clique de dentro dele não chegava a um onClickCapture do React.
   useEffect(() => {
@@ -837,14 +887,17 @@ export default function HomeworkPage({
     return () => el.removeEventListener("click", fechar, true);
   });
   // a aba em que a Sala de Estudos está (a conversa, Meus Estudos ou Estudos) — os subitens dela moram na sidebar
-  const [abaEstudos, setAbaEstudos] = useState<AbaEstudos>("meus-estudos");
+  const [abaEstudos, setAbaEstudos] = useState<AbaEstudosAnunciada>("meus-estudos");
   useEffect(() => {
     setAbaEstudos(abaEstudosAtual());
-    const f = (e: Event) => setAbaEstudos((e as CustomEvent<AbaEstudos>).detail);
+    const f = (e: Event) => setAbaEstudos((e as CustomEvent<AbaEstudosAnunciada>).detail);
     window.addEventListener(EVT_ESTUDOS_ABA, f);
     return () => window.removeEventListener(EVT_ESTUDOS_ABA, f);
   }, []);
   const irEstudos = (aba: AbaEstudos) => { setActiveTab("sala-de-estudos"); irPraAbaEstudos(aba); };
+  // #824: o menu principal entra por /marketplace (→ ?aba=marketplace) e o item "Marketplace" acende enquanto a vitrine
+  // está aberta — endereço, voltar do navegador e o "Laboratório" do menu ficam de acordo (lib/ui/useMarketplaceNoLab)
+  useMarketplaceNoLab(activeTab === "sala-de-estudos" && abaEstudos === "community", irEstudos);
   // O AGENTE da aba de conversa (o rosto na sidebar). Clicar no rosto abre o seletor; cada agente tem a sua tela:
   // Aura = o chat da Sala de Estudos, Octa Code = a IDE dele (só depois de adicionado no Marketplace).
   const agentesPlugados = usePluginsChat();
@@ -880,6 +933,8 @@ export default function HomeworkPage({
   const agenteProcessando = sinalAgente === "pensando" || sinalAgente === "falando";
   // Onde o chat da sala ativa desenha a lista de conversas (portal) — components/chat/ConversasSlot.
   const [slotConversas, setSlotConversas] = useState<HTMLDivElement | null>(null);
+  // Onde a Sala de Estudos desenha a lista dos estudos (portal) — components/blueprint/BlueprintsSlot.
+  const [slotBlueprints, setSlotBlueprints] = useState<HTMLDivElement | null>(null);
   const [isChatLeft, setIsChatLeft] = useState(false);
   const router = useRouter();
   const [isFocusMode, setIsFocusMode] = useState(false);
@@ -1050,6 +1105,21 @@ export default function HomeworkPage({
       .catch(() => {});
   }, []);
   useEffect(() => { loadWorks(); }, [loadWorks]);
+  // PUBLICAR NA VITRINE (lib/estudos/pesquisas): o status de cada trabalho já mandado (workId → status) e a janelinha
+  const [publicacoes, setPublicacoes] = useState<Record<string, { status: string; motivo?: string | null }>>({});
+  const [publicando, setPublicando] = useState<{ id: string; title: string } | null>(null);
+  const loadPublicacoes = useCallback(() => {
+    fetch("/api/estudos/vitrine/pesquisas?minhas=1", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!Array.isArray(d?.minhas)) return;
+        const m: Record<string, { status: string; motivo?: string | null }> = {};
+        for (const p of d.minhas as { workId?: string | null; status: string; motivo?: string | null }[]) if (p.workId) m[p.workId] = { status: p.status, motivo: p.motivo };
+        setPublicacoes(m);
+      })
+      .catch(() => {});
+  }, []);
+  useEffect(() => { loadPublicacoes(); }, [loadPublicacoes]);
   const [citationContent, setCitationContent] = useState<string | null>(null);
   const [activeCitationText, setActiveCitationText] = useState<string | null>(
     null,
@@ -1590,6 +1660,9 @@ export default function HomeworkPage({
   const noTablet = useRef(false);
   // o laboratório no tablet do TUTORIAL do novato (`?tutorial=1`): roda o tour da 1ª missão
   const [tutorialLab, setTutorialLab] = useState(false);
+  // a raiz do laboratório: embutido na workstation, a skin de cores fica só aqui dentro (components/skins/SkinDoLab).
+  // Fica AQUI, com os outros hooks — antes do retorno antecipado do carregamento.
+  const raizDoLab = useRef<HTMLDivElement>(null);
   useEffect(() => {
     noTablet.current = window.parent !== window && (pedeTablet(window.location.search) || (() => { try { return window.parent.location.pathname.startsWith(LOUNGE_ROTA); } catch { return false; } })());
     if (noTablet.current && pedeTutorial(window.location.search)) setTutorialLab(true);
@@ -1679,6 +1752,14 @@ export default function HomeworkPage({
     window.addEventListener("zaeon:set-tab", onSetTab);
     return () => window.removeEventListener("zaeon:set-tab", onSetTab);
   }, []);
+  // Ponte REA → Octa: o cartão do Blueprint dispara EVT_ABRIR_PROJETO com o projetoId; aqui só trocamos
+  // para a aba da IDE (que não aceita setActiveTab). Quem abre o projeto CERTO é a própria OctaIDE, que
+  // escuta o mesmo evento (e, se ainda vai montar, lê o handoff pendente no boot).
+  useEffect(() => {
+    const onAbrirOcta = () => setActiveTabRaw("octa");
+    window.addEventListener(EVT_ABRIR_PROJETO, onAbrirOcta);
+    return () => window.removeEventListener(EVT_ABRIR_PROJETO, onAbrirOcta);
+  }, []);
   // #427: "Ver perfil" no escritório → aba Perfil com o perfil daquela pessoa (só leitura, sem cérebros)
   useEffect(() => {
     const onVerPerfil = (e: Event) => { const id = idDoEvento(e); if (!id) return; setPerfilVisitado(id); setActiveTab("profile"); };
@@ -1758,6 +1839,14 @@ export default function HomeworkPage({
       window.dispatchEvent(event);
     }
   };
+  // #845: no celular o Foco esconde a barra de baixo e o ☰ — o único caminho até o botão "Foco". Sem isto ficava
+  // preso: agora o ◀ do Android desliga o Foco, e um botão "Sair do foco" fica à vista (lá embaixo).
+  const sairDoFoco = () => {
+    setIsFocusMode(false);
+    window.dispatchEvent(new CustomEvent("zaeon-focus-mode", { detail: false }));
+  };
+  const focoNoCelular = celular && isFocusMode && !isEmbedded;
+  useFecharNoVoltar(focoNoCelular, sairDoFoco);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -2656,7 +2745,7 @@ export default function HomeworkPage({
 
   if (!mounted || status === "loading") {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-[#030014]">
+      <div className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-skfundo">
         <IosLoader />
       </div>
     );
@@ -2668,13 +2757,16 @@ export default function HomeworkPage({
   // Aberta, a sidebar passa POR CIMA do conteúdo — a página nunca se reorganiza por causa dela.
   const recuoSidebar: React.CSSProperties = isEmbedded || celular ? {} : { [isChatLeft ? "paddingRight" : "paddingLeft"]: SIDEBAR_FECHADA + 26 };
   const barraCelular = celular && !isEmbedded && !isFocusMode;
+  const mostrarBarra = barraCelular && !teclado;
 
   return (
     <ConversasSlotContext.Provider value={isEmbedded ? null : { el: slotConversas, sala: activeTab === "pesquisa" ? "pesquisa" : activeTab === "sala-de-estudos" ? "estudos" : null }}>
+    <BlueprintsSlotContext.Provider value={isEmbedded ? null : { el: slotBlueprints }}>
     <div
-      className={`relative transition-all duration-500 overflow-hidden flex font-sans w-full bg-slate-100 dark:bg-[#030014]
+      ref={raizDoLab}
+      className={`relative transition-all duration-500 overflow-hidden flex font-sans w-full bg-slate-100 dark:bg-skfundo
             ${isEmbedded ? "h-full" : "h-screen h-[100dvh]"}
-            ${!isEmbedded ? (isFocusMode ? "pt-4" : "pt-[68px] md:pt-[100px]") : ""}
+            ${!isEmbedded ? (isFocusMode ? "pt-4" : celular ? "pt-[68px]" : "pt-[68px] md:pt-[100px]") : ""}
         `}
     >
       {/* NOTIFICAÇÃO FLUTUANTE (TOAST) */}
@@ -2724,10 +2816,10 @@ export default function HomeworkPage({
           initial={false}
           animate={{ width: sidebarAberta ? SIDEBAR_ABERTA : SIDEBAR_FECHADA, x: celular && !gaveta ? -(SIDEBAR_ABERTA + 24) : 0 }}
           transition={{ type: "tween", duration: 0.22, ease: [0.22, 0.61, 0.36, 1] }}
-          className={`fixed ${celular ? "left-2" : isChatLeft ? "right-4" : "left-4"} z-[590] py-6 rounded-[24px] border backdrop-blur-2xl overflow-hidden transition-colors
+          className={`fixed ${celular ? "left-2" : isChatLeft ? "right-4" : "left-4"} z-[590] [font-family:var(--font-tech),sans-serif] py-6 rounded-[24px] border backdrop-blur-2xl overflow-hidden transition-colors
             bg-gradient-to-b from-sky-100/90 to-blue-200/80 border-blue-300/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]
-            dark:from-transparent dark:to-transparent dark:bg-[rgba(22,22,34,0.55)] dark:border-white/10 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.6)]
-            ${celular ? "dark:bg-[rgba(14,14,24,0.96)] bg-sky-50" : ""}
+            dark:from-transparent dark:to-transparent dark:border-white/10 dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.6)]
+            ${celular ? "dark:bg-skgaveta/[0.96] bg-sky-50" : "dark:bg-skvidro/55"}
             ${isFocusMode ? "top-4 h-[calc(100vh-32px)]" : celular ? "top-[68px] h-[calc(100dvh-68px-76px)]" : "top-[100px] h-[calc(100vh-140px)]"}`}
         >
           {/* Conteúdo com LARGURA FIXA: a sidebar só recorta (54 ↔ 264 px) — nada se reorganiza no meio da animação.
@@ -2737,10 +2829,11 @@ export default function HomeworkPage({
             {/* O CHAT tem a aba dele: a FOTO e o NOME do agente (o nome brilha enquanto a resposta é processada), com as
                 conversas embaixo. Depois a "Sala de Estudos" (o board). O "Marketplace" (a vitrine, destacado) mora no pé da
                 lista, acima do Perfil. Sem pills no topo da sala — tudo aqui. */}
+            <div ref={estudosChatRef} {...handlersChat(estudosChatRef, setEstudosChatAtivo)} className="flex flex-col gap-3">
             <button
               data-tour="estudos"
               onClick={() => abrirAgente()}
-              title={trocandoPara ? `Trocando para ${agenteChat(trocandoPara).nome}…` : agente.tela === "chat" && agenteProcessando ? `${agente.nome} está respondendo…` : `Conversar com ${agente.nome}`}
+              title={trocandoPara ? t("labSidebar.switching", { name: agenteChat(trocandoPara).nome }) : agente.tela === "chat" && agenteProcessando ? t("labSidebar.replying", { name: agente.nome }) : t("labSidebar.talk", { name: agente.nome })}
               className={`${navItem(agente.tela === "ide" ? activeTab === "octa" : activeTab === "sala-de-estudos" && abaEstudos === "meus-estudos", "blue")} ${pill(sidebarAberta)} !p-[7px]`}
             >
               {/* o ROSTO: clicar nele abre o seletor de agente (o resto da pill abre a conversa do agente atual) */}
@@ -2749,14 +2842,14 @@ export default function HomeworkPage({
                 tabIndex={0}
                 aria-haspopup="menu"
                 aria-expanded={!!seletorAgente}
-                aria-label={`Trocar de agente (agora: ${agente.nome})`}
-                title="Trocar de agente"
+                aria-label={t("labSidebar.change", { name: agente.nome })}
+                title={t("labSidebar.agent")}
                 onClick={(e) => { e.stopPropagation(); setSeletorAgente(seletorAgente ? null : e.currentTarget.getBoundingClientRect()); }}
                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); setSeletorAgente(e.currentTarget.getBoundingClientRect()); } }}
                 className={`relative grid place-items-center shrink-0 w-[22px] h-[22px] rounded-full cursor-pointer hover:ring-2 hover:ring-cyan-300/70 ${agente.tela === "chat" && agenteProcessando && !trocandoPara ? "ring-2 ring-cyan-300/80 shadow-[0_0_14px_rgba(34,211,238,0.85)] motion-safe:animate-pulse" : ""}`}
               >
                 {trocandoPara ? (
-                  <Loader2 className="w-[18px] h-[18px] animate-spin text-cyan-500 dark:text-cyan-300" aria-label="Trocando de agente" />
+                  <Loader2 className="w-[18px] h-[18px] animate-spin text-cyan-500 dark:text-cyan-300" aria-hidden />
                 ) : agente.id === "octa" ? (
                   <OctaIcon size={22} className="text-cyan-700 dark:text-cyan-200" />
                 ) : agente.id !== "aura" ? (
@@ -2790,37 +2883,59 @@ export default function HomeworkPage({
               />
             )}
             {/* Só o módulo ATUAL abre os submódulos (conversas); os outros ficam fechadinhos. */}
-            <Ramo aberto={sidebarAberta && activeTab === "sala-de-estudos" && agente.tela === "chat"}>
+            <Ramo aberto={(celular || estudosChatAtivo) && sidebarAberta && activeTab === "sala-de-estudos" && agente.tela === "chat"}>
               {activeTab === "sala-de-estudos"
                 ? <div ref={setSlotConversas} className={RAMO_ATIVO} />
                 : <div className={RAMO}><ConversasDaSala sala="estudos" onEntrar={() => setActiveTab("sala-de-estudos")} /></div>}
             </Ramo>
+            </div>
+            {/* Sala de Estudos: os ESTUDOS (blueprints) moram embaixo dela, em gavetas por dia — como as conversas do chat.
+                O board ficou limpo; a Sala desenha a lista aqui por portal (components/blueprint/BlueprintsSlot). */}
+            <div ref={salaEstudosRef} {...handlersChat(salaEstudosRef, setSalaEstudosAtiva)} className="flex flex-col gap-3">
             <button
               data-tour="tab-feed"
               onClick={() => irEstudos("feed")}
-              title="Sala de Estudos"
+              title={t("labSidebar.study")}
               className={`${navItem(activeTab === "sala-de-estudos" && abaEstudos === "feed", "blue")} ${pill(sidebarAberta)}`}
             >
               <DocumentTextIcon className="w-5 h-5 shrink-0" />
-              <Rotulo v={sidebarAberta}>Sala de Estudos</Rotulo>
+              {/* #845: no celular, o mesmo nome da barra de baixo ("Estudos") */}
+              <Rotulo v={sidebarAberta}>{celular ? t("labSidebar.studies") : t("labSidebar.study")}</Rotulo>
             </button>
+            <Ramo aberto={(celular || salaEstudosAtiva) && sidebarAberta && activeTab === "sala-de-estudos" && abaEstudos === "feed"}>
+              <div ref={setSlotBlueprints} className={RAMO_ATIVO} />
+            </Ramo>
+            </div>
+            {/* #845: no celular a Biblioteca (documentos, citações, pasta) abre daqui — a faixa saiu da conversa */}
+            {celular && (
+              <button type="button" onClick={() => { irEstudos("meus-estudos"); abrirBiblioteca(); }}
+                title={t("labSidebar.library")}
+                className={`${navItem(false, "blue")} ${pill(sidebarAberta)}`}>
+                <Library className="w-5 h-5 shrink-0" />
+                <Rotulo v={sidebarAberta}>{t("labSidebar.library")}</Rotulo>
+              </button>
+            )}
 
             {/* Sala de Pesquisa — no chat único ela é o MODO PESQUISA do chat da Aura (sem item próprio) */}
-            {!CHAT_UNICO && <button
-              data-tour="pesquisa"
-              onClick={() => setActiveTab("pesquisa")}
-              title="Sala de Pesquisa"
-              className={`${navItem(activeTab === "pesquisa", "purple")} ${pill(sidebarAberta)}`}
-            >
-              <AcademicCapIcon className="w-5 h-5 shrink-0" />
-              <Rotulo v={sidebarAberta}>Sala de Pesquisa</Rotulo>
-            </button>}
-            {UNIFIED && !CHAT_UNICO && (
-              <Ramo aberto={sidebarAberta && activeTab === "pesquisa"}>
-                {activeTab === "pesquisa"
-                  ? <div ref={setSlotConversas} className={RAMO_ATIVO} />
-                  : <div className={RAMO}><ConversasDaSala sala="pesquisa" onEntrar={() => setActiveTab("pesquisa")} /></div>}
-              </Ramo>
+            {!CHAT_UNICO && (
+            <div ref={pesquisaChatRef} {...handlersChat(pesquisaChatRef, setPesquisaChatAtivo)} className="flex flex-col gap-3">
+              <button
+                data-tour="pesquisa"
+                onClick={() => setActiveTab("pesquisa")}
+                title={t("labSidebar.research")}
+                className={`${navItem(activeTab === "pesquisa", "purple")} ${pill(sidebarAberta)}`}
+              >
+                <AcademicCapIcon className="w-5 h-5 shrink-0" />
+                <Rotulo v={sidebarAberta}>{t("labSidebar.research")}</Rotulo>
+              </button>
+              {UNIFIED && (
+                <Ramo aberto={(celular || pesquisaChatAtivo) && sidebarAberta && activeTab === "pesquisa"}>
+                  {activeTab === "pesquisa"
+                    ? <div ref={setSlotConversas} className={RAMO_ATIVO} />
+                    : <div className={RAMO}><ConversasDaSala sala="pesquisa" onEntrar={() => setActiveTab("pesquisa")} /></div>}
+                </Ramo>
+              )}
+            </div>
             )}
 
             {/* Projetos — Zaeon Code (IDE agêntica; auto-protegida por plano/curso). ESCONDIDA até
@@ -2828,46 +2943,49 @@ export default function HomeworkPage({
             {PROJETOS && (
             <button
               onClick={() => setActiveTab("projetos")}
-              title="Projetos"
+              title={t("labSidebar.projects")}
               className={`${navItem(activeTab === "projetos", "cyan")} ${pill(sidebarAberta)}`}
             >
               <Code2 className="w-5 h-5 shrink-0" />
-              <Rotulo v={sidebarAberta}>Projetos</Rotulo>
+              <Rotulo v={sidebarAberta}>{t("labSidebar.projects")}</Rotulo>
             </button>
             )}
 
             {/* Escritório: os agentes da Zaeon como um lugar */}
             <button
               onClick={() => setActiveTab("escritorio")}
-              title="Escritório"
+              title={t("labSidebar.office")}
               className={`${navItem(activeTab === "escritorio", "cyan")} ${pill(sidebarAberta)}`}
             >
               <Building2 className="w-5 h-5 shrink-0" />
-              <Rotulo v={sidebarAberta}>Escritório</Rotulo>
+              <Rotulo v={sidebarAberta}>{t("labSidebar.office")}</Rotulo>
             </button>
 
-            <div className="h-[1px] bg-slate-300 dark:bg-white/10 my-1" />
+            {/* #845: no celular o traço + os vãos viravam um buraco entre Escritório e Marketplace */}
+            {!celular && <div className="h-[1px] bg-slate-300 dark:bg-white/10 my-1" />}
 
             {/* Marketplace — área especial: fora da lista das salas, logo acima do Perfil (pedido do dono). */}
             <button
               data-tour="tab-community"
               onClick={() => irEstudos("community")}
-              title="Marketplace"
-              className={`${activeTab === "sala-de-estudos" && abaEstudos === "community" ? `${NAV_BASE} ${NAV_ACTIVE_PILL} !ring-cyan-400/50` : `${NAV_BASE} ${DESTAQUE}`} ${pill(sidebarAberta)}`}
+              title={t("siteNav.market")}
+              // #837: no celular o destaque permanente parecia "aceso" junto com a aba aberta (Perfil e Marketplace ao mesmo
+              // tempo) — lá ele só acende quando a vitrine está aberta; no computador segue destacado (pedido do dono)
+              className={`${activeTab === "sala-de-estudos" && abaEstudos === "community" ? `${NAV_BASE} ${NAV_ACTIVE_PILL} !ring-cyan-400/50` : celular ? navItem(false, "blue") : `${NAV_BASE} ${DESTAQUE}`} ${pill(sidebarAberta)}`}
             >
               <ShoppingBagIcon className="w-5 h-5 shrink-0" />
-              <Rotulo v={sidebarAberta}>Marketplace</Rotulo>
+              <Rotulo v={sidebarAberta}>{t("siteNav.market")}</Rotulo>
             </button>
 
             {/* Perfil */}
             <button
               data-tour="profile-tab"
               onClick={() => { setPerfilVisitado(null); setActiveTab("profile"); }}
-              title="Perfil"
+              title={t("labSidebar.profile")}
               className={`${navItem(activeTab === "profile", "violet")} ${pill(sidebarAberta)}`}
             >
               <UserCircleIcon className="w-5 h-5 shrink-0" />
-              <Rotulo v={sidebarAberta}>Perfil</Rotulo>
+              <Rotulo v={sidebarAberta}>{t("labSidebar.profile")}</Rotulo>
             </button>
           </div>
 
@@ -2877,16 +2995,16 @@ export default function HomeworkPage({
             <button
               data-tour="layout-toggle"
               onClick={() => setIsChatLeft(!isChatLeft)}
-              title="Layout"
+              title={t("labSidebar.layout")}
               className={`flex items-center gap-3 p-2 rounded-xl border border-transparent hover:bg-slate-100 dark:hover:bg-white/10 text-black dark:text-white group ${pill(sidebarAberta)}`}
             >
               <ArrowsRightLeftIcon className="w-5 h-5 shrink-0 group-hover:text-cyan-500" />
-              <Rotulo v={sidebarAberta}>Layout</Rotulo>
+              <Rotulo v={sidebarAberta}>{t("labSidebar.layout")}</Rotulo>
             </button>
             <button
               data-tour="focus-mode"
               onClick={toggleFocusMode}
-              title="Foco"
+              title={t("labSidebar.focus")}
               className={`flex items-center gap-3 p-2 rounded-xl border ${isFocusMode ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30" : "border-transparent text-black dark:text-white hover:bg-slate-100 dark:hover:bg-white/5"} ${pill(sidebarAberta)}`}
             >
               {isFocusMode ? (
@@ -2894,7 +3012,7 @@ export default function HomeworkPage({
               ) : (
                 <PowerIcon className="w-5 h-5 shrink-0" />
               )}
-              <Rotulo v={sidebarAberta}>Foco</Rotulo>
+              <Rotulo v={sidebarAberta}>{t("labSidebar.focus")}</Rotulo>
             </button>
             {/* Voltar: de volta ao cyberespaço (o lounge só é carregado enquanto se está nele). */}
             <button
@@ -2904,30 +3022,33 @@ export default function HomeworkPage({
                 if (noTablet.current || (window.parent !== window && pedeTablet(window.location.search))) { window.parent.postMessage({ type: MSG_FECHAR_TABLET }, window.location.origin); return; }
                 musica().destravar(); router.push(LOUNGE_ROTA);
               }}
-              aria-label="Voltar ao cyberespaço"
-              title="Voltar ao cyberespaço"
+              aria-label={t("labSidebar.return")}
+              title={t("labSidebar.return")}
               className={`flex items-center gap-3 p-2 rounded-xl border border-transparent text-black dark:text-white hover:bg-slate-100 dark:hover:bg-white/5 group ${pill(sidebarAberta)}`}
             >
               <ArrowUturnLeftIcon className="w-5 h-5 shrink-0 group-hover:text-cyan-500" />
-              <Rotulo v={sidebarAberta}>Voltar</Rotulo>
+              {/* #837: no celular, "Voltar" sozinho confundia com o ◀ do aparelho — lá ele diz pra onde vai */}
+              <Rotulo v={sidebarAberta}>{celular ? t("labSidebar.cyberspace") : t("labSidebar.back")}</Rotulo>
             </button>
           </div>
           </div>
         </motion.nav>
         {/* celular: a BARRA DE BAIXO — ☰ abre a gaveta (conversas, Marketplace, layout…); o resto leva direto às salas */}
-        {barraCelular && (
-          <nav aria-label="Navegação" className="fixed inset-x-0 bottom-0 z-[591] flex items-stretch justify-around border-t border-slate-200 bg-white/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#0b0b16]/95"
+        {mostrarBarra && (
+          <nav aria-label={t("labSidebar.navigation")} className="fixed inset-x-0 bottom-0 z-[591] [font-family:var(--font-tech),sans-serif] flex items-stretch justify-around border-t border-slate-200 bg-white/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#0b0b16]/95"
             style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
             {[
-              { id: "menu", rotulo: "Menu", icone: <span className="text-[20px] leading-none">☰</span>, ativo: gaveta, onClick: () => setGaveta((v) => !v) },
+              { id: "menu", rotulo: t("labSidebar.menu"), icone: <Bars3Icon className="w-5 h-5" />, ativo: gaveta, onClick: () => setGaveta((v) => !v) },
               { id: "aura", rotulo: agente.nome, icone: <span className="text-[18px] leading-none text-cyan-500 dark:text-cyan-300">⟁</span>, ativo: !gaveta && (agente.tela === "ide" ? activeTab === "octa" : activeTab === "sala-de-estudos" && abaEstudos === "meus-estudos"), onClick: () => { setGaveta(false); abrirAgente(); } },
-              { id: "estudos", rotulo: "Estudos", icone: <DocumentTextIcon className="w-5 h-5" />, ativo: !gaveta && activeTab === "sala-de-estudos" && abaEstudos === "feed", onClick: () => { setGaveta(false); irEstudos("feed"); } },
-              { id: "escritorio", rotulo: "Escritório", icone: <Building2 className="w-5 h-5" />, ativo: !gaveta && activeTab === "escritorio", onClick: () => { setGaveta(false); setActiveTab("escritorio"); } },
-              { id: "perfil", rotulo: "Perfil", icone: <UserCircleIcon className="w-5 h-5" />, ativo: !gaveta && activeTab === "profile", onClick: () => { setGaveta(false); setPerfilVisitado(null); setActiveTab("profile"); } },
+              { id: "estudos", rotulo: t("labSidebar.studies"), icone: <DocumentTextIcon className="w-5 h-5" />, ativo: !gaveta && activeTab === "sala-de-estudos" && abaEstudos === "feed", onClick: () => { setGaveta(false); irEstudos("feed"); } },
+              { id: "escritorio", rotulo: t("labSidebar.office"), icone: <Building2 className="w-5 h-5" />, ativo: !gaveta && activeTab === "escritorio", onClick: () => { setGaveta(false); setActiveTab("escritorio"); } },
+              { id: "perfil", rotulo: t("labSidebar.profile"), icone: <UserCircleIcon className="w-5 h-5" />, ativo: !gaveta && activeTab === "profile", onClick: () => { setGaveta(false); setPerfilVisitado(null); setActiveTab("profile"); } },
             ].map((b) => (
               <button key={b.id} type="button" onClick={b.onClick} aria-current={b.ativo ? "page" : undefined}
-                className={`flex min-h-[60px] flex-1 flex-col items-center justify-center gap-0.5 text-[10.5px] font-semibold transition-colors ${b.ativo ? "text-blue-600 dark:text-cyan-300" : "text-slate-500 dark:text-white/55"}`}>
-                {b.icone}<span className="max-w-[72px] truncate">{b.rotulo}</span>
+                aria-label={b.rotulo}
+                className={`flex ${deitado ? "min-h-[44px]" : "min-h-[60px]"} flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-bold tracking-tight transition-colors ${b.ativo ? "text-blue-600 dark:text-cyan-300" : "text-slate-500 dark:text-white/55"}`}>
+                {/* #832: deitado, a barra fica baixa (só os ícones) — cada pixel de altura é da conversa */}
+                {b.icone}{!deitado && <span className="max-w-[72px] truncate">{b.rotulo}</span>}
               </button>
             ))}
           </nav>
@@ -2935,17 +3056,26 @@ export default function HomeworkPage({
         </>
       )}
 
+      {/* #845: celular em modo Foco — a saída à vista (o ◀ também sai) */}
+      {focoNoCelular && (
+        <button type="button" onClick={sairDoFoco}
+          className="fixed right-3 z-[592] inline-flex min-h-[44px] items-center gap-2 rounded-full border border-cyan-500/40 bg-white/95 px-4 text-[13px] font-bold text-slate-800 shadow-lg backdrop-blur-xl dark:bg-[#0b0b16]/95 dark:text-white"
+          style={{ bottom: "calc(12px + env(safe-area-inset-bottom))" }}>
+          <EyeIcon className="h-4 w-4 text-cyan-500 dark:text-cyan-300" aria-hidden />
+          {t("labSidebar.exitFocus")}
+        </button>
+      )}
       {/* LOADING da troca de agente: cobre a área até a tela do novo agente estar pronta */}
       {trocandoPara && (
         <div role="status" className="fixed inset-0 z-[580] grid place-items-center bg-white/40 dark:bg-black/40 backdrop-blur-sm pointer-events-none">
-          <div className="flex items-center gap-3 px-5 py-3 rounded-2xl border bg-white/90 border-blue-200 text-slate-800 dark:bg-[rgba(22,22,34,0.9)] dark:border-white/10 dark:text-white shadow-xl">
+          <div className="flex items-center gap-3 px-5 py-3 rounded-2xl border bg-white/90 border-blue-200 text-slate-800 dark:bg-skvidro/90 dark:border-white/10 dark:text-white shadow-xl">
             <Loader2 className="w-5 h-5 animate-spin text-cyan-500" />
-            <span className="text-[13px] font-bold">Trocando para {agenteChat(trocandoPara).nome}…</span>
+            <span className="text-[13px] font-bold">{t("labSidebar.switching", { name: agenteChat(trocandoPara).nome })}</span>
           </div>
         </div>
       )}
       <main
-        style={barraCelular ? { ...recuoSidebar, paddingBottom: "calc(66px + env(safe-area-inset-bottom))" } : recuoSidebar}
+        style={barraCelular ? { ...recuoSidebar, paddingBottom: mostrarBarra ? `calc(${deitado ? 48 : 66}px + env(safe-area-inset-bottom))` : "env(safe-area-inset-bottom)" } : recuoSidebar}
         className={`flex-1 flex flex-col h-full overflow-hidden ${barraCelular
           // celular: largura toda e o pé livre pra barra de baixo (60px + a área segura do iPhone)
           ? `px-1.5 pt-1 gap-3 ${activeTab === "sala-de-estudos" || activeTab === "pesquisa" || activeTab === "escritorio" ? "" : "px-3"}`
@@ -2983,6 +3113,14 @@ export default function HomeworkPage({
                 multiple
                 onChange={(e) => handleFiles(e.target.files)}
               />
+              {publicando && (
+                <PublicarPesquisa
+                  work={publicando}
+                  jaEnviado={publicacoes[publicando.id]}
+                  onFechar={() => setPublicando(null)}
+                  onEnviado={loadPublicacoes}
+                />
+              )}
               <ResearchShell
                 tccWorkId={tccWorkId}
                 flipped={isChatLeft}
@@ -3012,6 +3150,8 @@ export default function HomeworkPage({
                 sessions={sessions}
                 onNewWork={handleNewWork}
                 onDeleteWork={handleDeleteWork}
+                onPublishWork={(id) => setPublicando({ id, title: sessions.find((x) => x.id === id)?.title ?? "Pesquisa sem título" })}
+                publicacoes={publicacoes}
                 onOpenSession={handleOpenWork}
                 researchWindowContent={
                   <div
@@ -3920,7 +4060,12 @@ export default function HomeworkPage({
       <TourSala noTutorial={tutorialLab} />
       {/* e na 1ª vez que abre o Escritório, o tutorial dele (lib/onboarding/tourEscritorio) */}
       <TourEscritorio naAba={activeTab === "escritorio"} noTutorial={tutorialLab} />
+      {/* o ENCAIXE do onboarding novo, por tema (lib/onboarding/porTema): não aparece sem a flag ou sem passos */}
+      <OnboardingTema noTutorial={tutorialLab} />
+      {/* a SKIN de cores do laboratório (lib/skins): vale só aqui dentro; o original é o padrão */}
+      <SkinDoLab escopo={isEmbedded ? raizDoLab : undefined} />
     </div>
+    </BlueprintsSlotContext.Provider>
     </ConversasSlotContext.Provider>
   );
 }

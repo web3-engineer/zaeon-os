@@ -150,7 +150,7 @@ function modeloPainel(id: ModeloId, env: Env) {
 
 export function ferramentasDoPainel(env: Env): Array<{ nome: string; descricao: string; risco: string }> {
   const daCasa = listTools()
-    .filter((d) => d.risk === "read" && !FORA_DO_MENU.includes(d.name) && d.name !== "examiner")
+    .filter((d) => d.risk === "read" && !FORA_DO_MENU.includes(d.name))
     .map((d) => ({ nome: d.name, descricao: String(d.schema?.description ?? "").slice(0, 300), risco: d.risk }));
   return env.RAG_PG_URL?.trim()
     ? [...daCasa, { nome: "base_conhecimento", descricao: "Base da Zaeon: turma, pessoal e bases por área (SciELO, Wikipédia, medicina, ENEM).", risco: "read" }]

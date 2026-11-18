@@ -729,7 +729,7 @@ export default function CoworkingCanal({ agenteInicial = null }: { agenteInicial
             title="Agenda da semana" className={`${TOQUE} rounded-2xl text-[15px] ${VIDRO_CHIP} ${TXT}`}>🗓</button>
           <div className="relative">
             <button type="button" onClick={() => { const abrir = menu !== "canais"; setMenu(abrir ? "canais" : null); if (abrir) void carregarConvites(); }} className={`${TOQUE} px-3 rounded-2xl text-[13px] font-bold ${TXT} ${VIDRO_CHIP} flex items-center gap-2`} aria-haspopup="listbox" aria-expanded={menu === "canais"}>
-              <span className="max-w-[40vw] sm:max-w-[260px] truncate">{canal.titulo}</span>
+              <span className="max-w-[30vw] sm:max-w-[260px] truncate">{canal.titulo}</span>
               <span aria-hidden className={`text-[10px] ${TXT_MUDO}`}>▾</span>
               {totalNaoLidas - (naoLidas[ativoId] ?? 0) > 0 && <Badge n={totalNaoLidas - (naoLidas[ativoId] ?? 0)} />}
             </button>
@@ -789,7 +789,9 @@ export default function CoworkingCanal({ agenteInicial = null }: { agenteInicial
             {menu === "convidar" && <ConvidarForm onEnviar={enviarConvite} variante="linha" onFechar={() => setMenu(null)} paraConversa={conversaDoConvite?.titulo ?? null} />}
           </div>
 
-          <div data-tour="escritorio-pessoas" className="ml-auto shrink-0 flex items-center gap-1.5">
+          {/* #845: no celular o lado direito (rostos, "N on", cartolina) passava da borda e cortava o "+" — agora ele encolhe
+              e rola de lado dentro dele; o seletor e o "+" ficam inteiros */}
+          <div data-tour="escritorio-pessoas" className="ml-auto min-w-0 flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none]">
             {/* pessoas do canal (dono, membros e você), com espaço entre as fotos (#423). Os agentes ficam embaixo. */}
             <PessoasTopo visiveis={topo.visiveis} extras={topo.extras} onlineIds={topo.onlineIds} total={topo.total}
               aberta={pessoaAberta} onAlternar={(id) => setMenu(pessoaAberta === id ? null : `pessoa:${id}`)}
@@ -891,7 +893,7 @@ export default function CoworkingCanal({ agenteInicial = null }: { agenteInicial
               // celular: o placeholder curto cabe numa linha (o longo quebrava e a caixa nascia com 2 linhas)
               placeholder={celular ? (agenteAtivo ? `Mensagem pra ${agenteAtivo.nome}` : "Mensagem") : agenteAtivo ? `Mensagem · ${agenteAtivo.nome} responde · @ troca de agente` : "Mensagem · @agente convoca"}
               aria-label="Mensagem"
-              className={`flex-1 min-h-[44px] max-h-[140px] px-4 py-3 rounded-2xl resize-none text-[14px] leading-5 bg-white/70 dark:bg-white/[0.06] border border-white/70 dark:border-white/10 ${TXT} placeholder:text-slate-400 dark:placeholder:text-white/35 outline-none focus:border-blue-400/70 dark:focus:border-cyan-300/50`}
+              className={`flex-1 min-h-[44px] max-h-[140px] px-4 py-3 rounded-2xl resize-none text-[16px] [@media(hover:hover)_and_(pointer:fine)]:text-[14px] leading-5 bg-white/70 dark:bg-white/[0.06] border border-white/70 dark:border-white/10 ${TXT} placeholder:text-slate-400 dark:placeholder:text-white/35 outline-none focus:border-blue-400/70 dark:focus:border-cyan-300/50`}
               style={{ height: Math.min(140, 24 + 20 * Math.max(1, texto.split("\n").length)) }}
             />
             {podeParar ? (

@@ -100,3 +100,12 @@ export function temMatematica(texto: string): boolean {
 export function temBlocoDeCodigo(texto: string): boolean {
   return segmentarBlocos(String(texto ?? "")).some((b) => b.tipo === "codigo");
 }
+
+/**
+ * #756 · vírgula DECIMAL dentro da fórmula. No LaTeX a vírgula é pontuação e ganha um espaço depois: "$41,8\%$" saía
+ * "41, 8%" na tela. Entre dois dígitos ela vira `{,}` (vírgula sem espaço, o jeito padrão do LaTeX em português).
+ * Só dígito-vírgula-dígito: "(1, 2)" com espaço continua par ordenado.
+ */
+export function virgulaDecimal(latex: string): string {
+  return String(latex ?? "").replace(/(\d),(?=\d)/g, "$1{,}");
+}

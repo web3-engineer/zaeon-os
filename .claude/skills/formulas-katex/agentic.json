@@ -1,0 +1,16 @@
+{
+  "tarefa": "Resolva passo a passo a equação 2x² − 8x + 6 = 0. Responda APENAS o array JSON de passos, no formato do procedimento.",
+  "contrato": {
+    "tipo": "json",
+    "chaves": [
+      "passo",
+      "latex",
+      "explicacao"
+    ]
+  },
+  "modelos": [
+    "claude",
+    "codex",
+    "octa"
+  ]
+}

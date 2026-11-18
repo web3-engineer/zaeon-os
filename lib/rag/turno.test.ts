@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, it, expect, vi } from "vitest";
 import {
-  baseParaTurno, relevantes, turmasDaPessoa, _zerarDisjuntor, CORTE_SIMILARIDADE_PADRAO, corteEfetivo, MAX_PERGUNTA,
+  baseParaTurno, citaveis, relevantes, turmasDaPessoa, _zerarDisjuntor, CORTE_SIMILARIDADE_PADRAO, corteEfetivo, MAX_PERGUNTA,
   type PrismaTurmas, type TurnoRagDeps,
 } from "./turno";
 import type { BuscaDeps, TrechoAchado } from "./busca";
@@ -89,6 +89,50 @@ describe("relevantes (puro)", () => {
 
   it("corte padrão é 0.62", () => {
     expect(CORTE_SIMILARIDADE_PADRAO).toBe(0.62);
+  });
+});
+
+describe("citaveis (puro) — o corte da BIBLIOGRAFIA", () => {
+  /**
+   * O caso que motivou isto, medido em produção (2026-11-10): "crie um artigo sobre anfetamina"
+   * saiu citando (MENDOZA, 2014) e (SÁ, 2014), dois trabalhos sobre MEDICALIZAÇÃO ESCOLAR, num
+   * texto de farmacologia. Um artigo que menciona "TDAH" uma vez casa por TEXTO, passa por
+   * `relevantes`, entra no bloco de fontes com a citação pronta, e o modelo cita — a referência
+   * fica errada sem ninguém ter mentido.
+   */
+  const entrada = () => [
+    trecho({ trechoId: "relacionado", similaridade: 0.7 }),
+    trecho({ trechoId: "no-corte", similaridade: CORTE_SIMILARIDADE_PADRAO }),
+    trecho({ trechoId: "fraco", similaridade: 0.5 }),
+    trecho({ trechoId: "so-mencao", similaridade: 0.1, porTexto: true }),
+    trecho({ trechoId: "so-texto", similaridade: null, porTexto: true }),
+  ];
+
+  it("MENÇÃO POR TEXTO não é citação: só passa quem clareia a barra de similaridade", () => {
+    expect(citaveis(entrada(), CORTE_SIMILARIDADE_PADRAO).map((t) => t.trechoId))
+      .toEqual(["relacionado", "no-corte"]);
+  });
+
+  it("e é MAIS ESTREITO que `relevantes` — é essa diferença que conserta a bibliografia", () => {
+    // o mesmo trecho pode ser bom CONTEXTO ("sua base menciona isto") e má REFERÊNCIA
+    const ctx = relevantes(entrada(), CORTE_SIMILARIDADE_PADRAO).map((t) => t.trechoId);
+    const bib = citaveis(entrada(), CORTE_SIMILARIDADE_PADRAO).map((t) => t.trechoId);
+    expect(ctx).toContain("so-mencao");
+    expect(bib).not.toContain("so-mencao");
+    expect(bib.every((id) => ctx.includes(id)), "citável tem de ser subconjunto do relevante").toBe(true);
+  });
+
+  it("embedding degradado (similaridade null) não cita NADA — volta ao estado de antes dos datasets", () => {
+    // quando o prazo do embed estoura, `similaridade` vem null em tudo. A degradação cai no estado
+    // bom conhecido (só literatura), não em ruído lexical.
+    const degradado = entrada().map((t) => ({ ...t, similaridade: null, porTexto: true }));
+    expect(citaveis(degradado, CORTE_SIMILARIDADE_PADRAO)).toEqual([]);
+    expect(relevantes(degradado, CORTE_SIMILARIDADE_PADRAO).length, "mas o CONTEXTO continua").toBe(5);
+  });
+
+  it("respeita o corte dado, não um número próprio", () => {
+    expect(citaveis(entrada(), 0.4).map((t) => t.trechoId)).toEqual(["relacionado", "no-corte", "fraco"]);
+    expect(citaveis(entrada(), 0.99)).toEqual([]);
   });
 });
 

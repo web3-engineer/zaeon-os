@@ -1,0 +1,48 @@
+{
+  "arquivo": "jogo-da-velha.js",
+  "funcao": "A regra que decide o jogo: dada a lista das 9 casas do tabuleiro, descobre se alguém venceu. É o coração do jogo da velha — a lógica que os botões só consultam.",
+  "ordem": 0,
+  "linguagem": "javascript",
+  "abas": [
+    {
+      "titulo": "As oito linhas de vitória",
+      "snippets": [
+        { "explicacao": "A função recebe o tabuleiro: um array de 9 posições (0 a 8), cada uma com \"X\", \"O\" ou null (vazia).", "codigo": "function vencedor(tabuleiro) {" },
+        { "explicacao": "As 8 combinações que vencem: 3 linhas, 3 colunas e 2 diagonais — escritas como índices das casas.", "codigo": "  const linhas = [\n    [0, 1, 2], [3, 4, 5], [6, 7, 8],\n    [0, 3, 6], [1, 4, 7], [2, 5, 8],\n    [0, 4, 8], [2, 4, 6],\n  ];" }
+      ],
+      "quiz": [
+        {
+          "tipo": "escolha",
+          "enunciado": "Por que representar o tabuleiro como um array de 9 posições (e não uma grade 3×3)?",
+          "opcoes": [
+            { "texto": "Simplifica: cada linha de vitória vira só três índices pra comparar", "correta": true, "explicacao": "Um array plano deixa as combinações vencedoras curtas e diretas." },
+            { "texto": "Porque JavaScript não tem arrays de duas dimensões", "correta": false, "explicacao": "Tem (arrays de arrays); o array plano é só uma escolha mais simples aqui." }
+          ],
+          "pontos": 2
+        }
+      ]
+    },
+    {
+      "titulo": "Procurar o vencedor",
+      "snippets": [
+        { "explicacao": "Para cada combinação, pegue as três casas a, b, c.", "codigo": "  for (const [a, b, c] of linhas) {" },
+        { "explicacao": "Se a primeira casa não está vazia E as três são iguais, temos um vencedor: devolve quem é (\"X\" ou \"O\").", "codigo": "    if (tabuleiro[a] && tabuleiro[a] === tabuleiro[b] && tabuleiro[a] === tabuleiro[c]) {\n      return tabuleiro[a];\n    }" },
+        { "explicacao": "Fecha o laço.", "codigo": "  }" },
+        { "explicacao": "Nenhuma linha fechou: ainda não há vencedor (jogo em andamento ou deu velha). Devolve null.", "codigo": "  return null;" },
+        { "explicacao": "Fecha a função.", "codigo": "}" }
+      ],
+      "quiz": [
+        {
+          "tipo": "escolha",
+          "enunciado": "Por que checar `tabuleiro[a]` (não-vazio) antes de comparar as três casas?",
+          "opcoes": [
+            { "texto": "Sem isso, três casas vazias (null === null === null) seriam lidas como vitória", "correta": true, "explicacao": "O guard impede que uma linha vazia conte como vencedora." },
+            { "texto": "Para o código rodar mais rápido", "correta": false, "explicacao": "É correção, não velocidade: evita um falso vencedor em casas vazias." }
+          ],
+          "pontos": 3
+        }
+      ]
+    }
+  ],
+  "teste": "if (vencedor([\"X\",\"X\",\"X\",null,null,null,null,null,null]) !== \"X\") throw new Error(\"linha X\");\nif (vencedor([\"O\",null,null,\"O\",null,null,\"O\",null,null]) !== \"O\") throw new Error(\"coluna O\");\nif (vencedor([\"X\",null,null,null,\"X\",null,null,null,\"X\"]) !== \"X\") throw new Error(\"diagonal X\");\nif (vencedor([null,null,null,null,null,null,null,null,null]) !== null) throw new Error(\"vazio = sem vencedor\");\nif (vencedor([\"X\",\"O\",\"X\",\"O\",\"X\",\"O\",\"O\",\"X\",\"O\"]) !== null) throw new Error(\"velha = sem vencedor\");"
+}

@@ -155,7 +155,7 @@ export default function TrilhoCarrossel({
         onWheel={() => { esperaAteRef.current = Date.now() + 5000; }}
         onFocusCapture={() => { pausadoRef.current = true; }}
         onBlurCapture={() => { pausadoRef.current = false; }}
-        className="flex gap-4 overflow-x-auto pb-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex gap-4 overflow-x-auto pt-8 pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {/* lista DUPLICADA: alimenta o laço sem costura do glide */}
         {Array.from({ length: n * 2 }, (_, k) => (

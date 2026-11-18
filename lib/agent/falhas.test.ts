@@ -24,7 +24,7 @@ describe("falhasVisiveis · a falha vira objeto da resposta (G2)", () => {
     expect(falhasVisiveis([
       { tool: "memory_search", code: "network" },
       { tool: "literature_search", code: "tool_timeout" },
-      { tool: "examiner", code: "skill_error" },
+      { tool: "studio_generate", code: "skill_error" },
     ])).toEqual([]);
     expect(TOOLS_COM_CORRECAO).toEqual(["abrir_url", "baixar_para_base", "ler_anexo"]);
   });

@@ -8,7 +8,11 @@
  */
 import type { AgentContext } from "@/lib/agent/context";
 import { pedeAula } from "@/lib/agent/aprender";
-import { pedeGraficoMatematico } from "@/lib/agent/matematica";
+import { pedeGraficoMatematico, pedeGraficoDeDados } from "@/lib/agent/matematica";
+import { pedeImagem } from "@/lib/agent/pedeImagem";
+
+/** gráfico de função/geometria OU de dados (#749): sai no texto como ```grafico, nunca como imagem gerada */
+const pedeGraficoNoTexto = (s: string) => pedeGraficoMatematico(s) || pedeGraficoDeDados(s);
 import { pedeLivro } from "@/lib/livros/busca";
 import {
   INTENTS,
@@ -40,6 +44,9 @@ const norm = (s: string) =>
 /** verbos de geração ("gere/cria/escreva um…") — palavra inteira p/ não casar substring. */
 const GEN_VERB_RE =
   /(^|\s)(gere|gerar|gera|crie|criar|cria|faca|fazer|faz|monte|montar|produza|produzir|escreva|escrever|redija|redigir|elabore|elaborar|desenvolva|desenvolver|quero (?:um|uma)|preciso de (?:um|uma)|write|draft)(\s|$)/;
+
+/** #756 · pedido de imagem → artefato. #764: mora em lib/agent/pedeImagem (o harness e o turno também usam) */
+export { pedeImagem };
 
 /** "agora outro sobre Y" / "mais um sobre Z" — com trabalho já escrito na conversa, é pedido de OUTRO trabalho. */
 const OUTRO_TRABALHO_RE = /(^|\s)(outr[oa]|mais uma?|uma? nov[oa]|another one|one more)(\s+\w+)?\s+(sobre|acerca|a respeito|on|about)\s+\S/;
@@ -126,7 +133,9 @@ export function classifyHeuristic(objective: string, ctx: CtxRoteador): RouterRe
   // 0.4) achar um LIVRO (PDF/link/onde ler) — antes de "fontes": "me manda o pdf do livro X" não é bibliografia
   if (pedeLivro(objective)) return decide("buscar_livro");
   // 0.5) gráfico de FUNÇÃO / figura de geometria — sai no texto como ```grafico, NÃO como imagem gerada
-  if (pedeGraficoMatematico(objective)) return decide("explicar_conceito");
+  if (pedeGraficoNoTexto(objective)) return decide("explicar_conceito");
+  // 0.6) #756 · pedido de IMAGEM/ilustração → artefato (o pickStudioKind escolhe "image")
+  if (pedeImagem(objective)) return decide("gerar_artefato");
   // 1) trabalho acadêmico completo — "escreva um artigo sobre X"
   if (genVerb && has(t, WORK_NOUNS)) return decide("criar_trabalho", workKindFrom(t) ?? "artigo");
   // 1.1) mais um trabalho na mesma conversa — "agora outro sobre Y" (o tipo é o do último, se o texto não diz)
@@ -157,7 +166,7 @@ const SYSTEM = [
   "- conversa: saudação / small talk, sem tarefa.",
   "- duvida_rapida: pergunta objetiva e curta.",
   "- explicar_conceito: pedir explicação / entendimento de um tema — inclui 'quero aprender/entender X', 'como funciona X' e 'faz engenharia reversa de X'.",
-  "- gerar_artefato: pedir artefato de estudo (mapa mental, diagrama, esquema, fluxograma, flashcards, resumo, timeline, podcast, vídeo, quiz) — e também pedir uma AULA ('me dá uma aula sobre X', 'explica a fundo'),",
+  "- gerar_artefato: pedir artefato de estudo (mapa mental, diagrama, esquema, fluxograma, flashcards, resumo, timeline, podcast, vídeo, quiz, IMAGEM/ilustração/figura — 'faça uma imagem de X' é artefato, não explicação) — e também pedir uma AULA ('me dá uma aula sobre X', 'explica a fundo'),",
   "- criar_trabalho: pedir trabalho acadêmico completo (artigo, TCC, monografia, relatório, redação) — inclusive MAIS UM quando a conversa já tem trabalho ('agora outro sobre Y', 'mais um sobre Z').",
   "- pesquisar_fontes: pedir fontes / referências / bibliografia / papers.",
   "- revisar: pedir revisão / crítica / correção de algo do usuário.",
@@ -172,7 +181,7 @@ function resultadoDe(cand: IntentId, text: string, ctx: CtxRoteador, kindDoModel
   const nt = norm(text);
   // "agora outro sobre Y" com trabalho na conversa manda mais que o palpite (que lê como conversa).
   const outro = pedeOutroTrabalho(nt, ctx);
-  const intent: IntentId = pedeAula(nt) ? "gerar_artefato" : pedeLivro(text) ? "buscar_livro" : pedeGraficoMatematico(text) ? "explicar_conceito" : outro ? "criar_trabalho" : cand;
+  const intent: IntentId = pedeAula(nt) ? "gerar_artefato" : pedeLivro(text) ? "buscar_livro" : pedeGraficoNoTexto(text) ? "explicar_conceito" : pedeImagem(text) ? "gerar_artefato" : outro ? "criar_trabalho" : cand;
   const kind =
     intent === "criar_trabalho"
       ? normalizeKind(typeof kindDoModelo === "string" ? kindDoModelo : undefined) ?? workKindFrom(nt) ?? (outro ? ctx.trabalhos?.kind : undefined) ?? "artigo"

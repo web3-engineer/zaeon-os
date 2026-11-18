@@ -1,4 +1,161 @@
 {
+  "siteNav": {
+    "docs": "Documentation",
+    "about": "About us",
+    "lab": "Lab",
+    "market": "Marketplace",
+    "news": "News",
+    "site": "Site pages",
+    "open": "Open menu",
+    "close": "Close menu",
+    "settings": "Settings",
+    "general": "General",
+    "theme": "Toggle theme",
+    "languageTitle": "Language: {{name}} — click to change",
+    "languageAria": "Current language: {{name}}. Click to change."
+  },
+  "labSidebar": {
+    "offline": "No connection: your conversations will show up when the internet is back.",
+    "actions": "Actions",
+    "cyberspace": "Cyberspace",
+    "study": "Study Room",
+    "research": "Research Room",
+    "projects": "Projects",
+    "office": "Office",
+    "profile": "Profile",
+    "layout": "Layout",
+    "focus": "Focus",
+    "exitFocus": "Exit focus",
+    "back": "Back",
+    "return": "Back to Cyberspace",
+    "navigation": "Navigation",
+    "menu": "Menu",
+    "studies": "Studies",
+    "library": "Library",
+    "new": "New",
+    "conversations": "Conversations",
+    "search": "Search conversations",
+    "newChat": "New conversation",
+    "newResearch": "New research",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "week": "Last 7 days",
+    "month": "Last 30 days",
+    "older": "Older",
+    "agent": "Switch agent",
+    "switching": "Switching to {{name}}…",
+    "replying": "{{name}} is responding…",
+    "talk": "Chat with {{name}}",
+    "change": "Switch agent (current: {{name}})",
+    "showChats": "Show conversations",
+    "hideChats": "Collapse conversations",
+    "showTopics": "Show subtopics",
+    "hideTopics": "Collapse subtopics",
+    "replyingShort": "Responding",
+    "newTopic": "New subtopic",
+    "rename": "Rename",
+    "delete": "Delete",
+    "newName": "New conversation name",
+    "noResults": "No results.",
+    "empty": "No conversations yet.",
+    "cancel": "Cancel",
+    "confirm": "Delete conversation?",
+    "confirmTopics": "Delete conversation and subtopics ({{count}})?",
+    "studiesList": "Study Room studies",
+    "searchStudies": "Search studies",
+    "noStudies": "No studies yet. Chat with Aura: when a conversation becomes a study, it shows up here.",
+    "loading": "Loading…",
+    "studiesError": "Couldn't load your studies.",
+    "retry": "Try again",
+    "more": "Show more",
+    "moreFailed": "Didn't load — try again",
+    "confirmStudy": "Delete study?",
+    "confirmStudyShared": "Delete study? {{count}} person(s) with access will lose it.",
+    "newStudyName": "New study name",
+    "phase": "Phase {{n}}",
+    "critical": "{{count}} critical",
+    "awaitingMentor": "Awaiting mentor",
+    "chatWith": "Chat with",
+    "moreAgents": "Add more agents, like <b>Octa Code</b>, from the Marketplace.",
+    "agentRole": {
+      "aura": "Studies, research and conversation",
+      "zenita": "Schedule, classes and exams",
+      "nina": "Notebook, summaries and study plan",
+      "octa": "Coding agent · IDE",
+      "eiffel": "Civil and structural engineering · CAD",
+      "noether": "Math · proofs, calculus and dynamic geometry"
+    }
+  },
+    "forja": {
+        "board": {
+            "verResposta": "show answer",
+            "respostaPlaceholder": "type your answer…",
+            "tagConceito": "concept",
+            "tagModulo": "module",
+            "tagRepo": "repository",
+            "licaoFallback": "{{titulo}} — the lesson arrives once the engine analyzes the repository.",
+            "noCodigoComplete": "In code — complete it yourself",
+            "exercicio": "exercise",
+            "noCodigo": "In code",
+            "teste": "Test",
+            "desafio": "Challenge",
+            "continuar": "continue: {{prox}} ▸",
+            "concluir": "finish ✓",
+            "aprendizado": "Learning",
+            "voltarArvore": "‹ back to the tree",
+            "aceitaExemplo": "Accepted, for example:"
+        },
+        "arvore": {
+            "hintRaiz": "click a concept to <b>open</b> · scroll to <b>zoom</b>, drag to navigate",
+            "hintAbriu": "<b>{{titulo}}</b> opened · click it <b>again to learn</b>",
+            "hintAbrir": "click <b>{{titulo}}</b> to open the lesson",
+            "dentroAbrir": "{{n}} inside · open",
+            "abrirLicao": "open the lesson",
+            "cueAprender": "click → learn ▸",
+            "licaoReais": "the <b>lesson</b>: real study + code + test",
+            "licaoModulo": "this module's <b>lesson</b>",
+            "fechar": "← back",
+            "semMapa": "the tree grows branches once the engine analyzes the repository",
+            "passo": "step {{i}}/{{n}}"
+        },
+        "sala": {
+            "erro": "I couldn't build this course right now.",
+            "voltar": "← back",
+            "montando": "Building the course…",
+            "praticar": "practice: type the code ▸"
+        },
+        "card": {
+            "certo": "✓ correct! next piece.",
+            "completo": "✓ file complete — run the tests!",
+            "naoBate": "doesn't match yet — compare with the piece on the side (and type, don't paste).",
+            "conecteGithub": "Connect your GitHub to publish.",
+            "naoPronto": "Project isn't ready yet: {{motivos}}",
+            "falhaPublicar": "I couldn't publish right now.",
+            "voltar": "← back",
+            "digite": "Type:",
+            "editorPlaceholder": "type the piece here (pasting is disabled)",
+            "conferir": "check piece",
+            "rodando": "running…",
+            "carregandoPython": "loading Python…",
+            "rodarTestes": "run tests ▸",
+            "baixarTeste": "Download test",
+            "testeLocal": "RDKit runs in local Python. Run `{{instalar}}` and then `{{rodar}}`.",
+            "concluaDependencias": "Complete first: {{arquivos}}.",
+            "runtimeIndisponivel": "Browser execution is unavailable for this language.",
+            "pythonErro": "Python didn't load:",
+            "passou": "✓ passed — the code you typed runs!",
+            "naoPassou": "✗ not passing yet",
+            "noGithub": "✓ on your GitHub!",
+            "abrirRepo": "open repository ↗",
+            "subindo": "uploading…",
+            "subirGithub": "push to my GitHub ▸",
+            "conectar": "connect ↗",
+            "duvidaPlaceholder": "ask a question about this piece…",
+            "perguntar": "ask",
+            "voce": "you:",
+            "tutorProxima": "· the tutor answers in the next phase"
+        }
+    },
     "navbar": {
         "about": "About Us",
         "homework": "Research Lab",
@@ -230,44 +387,161 @@
         "project_rank": "Project Rank"
     },
     "about": {
+      "planos_copy": {
+        "free": {
+          "price": "Free",
+          "tagline": "Get started",
+          "perks": [
+            "Unlimited Study Room access",
+            "Research Room: one report, paper or capstone",
+            "Voice mode unavailable",
+            "Deep Thinking unavailable"
+          ]
+        },
+        "plus": {
+          "price": "R$20 for students · R$80",
+          "tagline": "Everyday academic work",
+          "perks": [
+            "Unlimited Research Room access",
+            "Advanced Voice Mode",
+            "Deep Thinking once a day",
+            "Unlimited Study Room access"
+          ]
+        },
+        "pro": {
+          "tagline": "For frequent creators",
+          "perks": [
+            "Everything in Plus",
+            "Unlimited Deep Thinking",
+            "Projects tab (Zaeon Code)",
+            "Advanced voice"
+          ]
+        },
+        "max": {
+          "tagline": "The complete toolkit",
+          "perks": [
+            "Everything in Pro",
+            "Aura creates several drafts and delivers the best one",
+            "On-demand scientific generation: molecules, proteins and simulations",
+            "Agents with advanced skills and custom tools",
+            "Priority support"
+          ]
+        }
+      },
+      "equipe_copy": {
+        "pda": "PDA · Team",
+        "perfil": "Profile",
+        "nota": "Note",
+        "chamada": "Meet the team",
+        "foto": "Photo of {{nome}}",
+        "fundador": {
+          "cargo": "Founder · CEO",
+          "bio": "Don created Zaeon to make studying more collaborative and learning easier to demonstrate. He designs the product, Cyberspace and credentials, and tests them as Zaeon’s first student.",
+          "tags": [
+            "Product",
+            "Cyberspace",
+            "Credentials"
+          ]
+        }
+      },
+      "apresentacao": {
+        "titulo": "Turn knowledge into real work.",
+        "resumo": "Zaeon is a place to study with AI, build projects and show what you can do. We help companies find people whose skills stand out in assessments and real work.",
+        "ver_amostra": "See a study preview",
+        "fluxo": "From studying to new opportunities",
+        "tecnica": "Explore Zaeon’s architecture",
+        "estudar": {
+          "titulo": "Study with AI",
+          "descricao": "Explore a subject with AI models, study materials and references that help you go deeper."
+        },
+        "construir": {
+          "titulo": "Build your project",
+          "descricao": "Turn an idea into research, code, a prototype or another piece of work you can share."
+        },
+        "provar": {
+          "titulo": "Show what you can do",
+          "descricao": "Use assessments, completed work and verifiable credentials to demonstrate your skills."
+        },
+        "conectar": {
+          "titulo": "Connect with companies",
+          "descricao": "Zaeon agents help introduce people whose work stands out to companies looking for their skills."
+        }
+      },
         "back": "Back",
-        "scroll_down": "scroll down to meet us",
-        "title_secondary": "earn your evolution",
-        "title_main": "Knowledge that becomes delivery.",
+        "scroll_down": "scroll to meet us",
+        "title_hero": "Build without limits.",
+        "title_secondary": "from idea to the real world",
+        "title_main": "You are worth what you build.",
         "genesis": {
-            "title": "Study. Write. Learn about everything.",
-            "p1": "Zaeon is your study space: a room where the best AI agents read with you, explain at your pace and help you write real papers — from first draft to final version, with verified sources and ready formatting.",
-            "p2": "Any subject, any level. You come in with a question and leave with mastery.",
-            "p2_highlight": ""
+            "title": "A place to build anything.",
+            "p1": "Zaeon is where ideas become real things. You arrive with an idea — a rocket, an app, a study, a business — and an orchestra of AI agents builds it with you: it reads the science behind it, draws, calculates, writes the code and tests.",
+            "p2": "No dozens of tabs, no conversations lost in the history. Here every conversation becomes a build."
         },
         "mission": {
-            "title": "Real products. Real world. Real people.",
-            "p1": "Here, studying doesn't stop at the notebook. Ideas become projects and projects become products — built by real people, validated by teachers and institutions, and recorded as credentials that are yours. Zaeon is where what you learn goes out into the world.",
-            "p2": ""
+            "title": "What you build is yours.",
+            "p1": "Every build keeps its scientific base, its decisions and its blueprint, under your authorship. You choose: publish it on the showcase, keep it private or open it only to your team — and connect with the people who validate, test and take it to the real world."
         },
         "architecture": {
-            "title": "How it works",
-            "subtitle": "Autonomous agents that take a scientific question all the way to a verifiable solution.",
-            "card_title": "FROM THE LAB TO THE WORLD",
-            "card_desc": "Rigorous research that becomes technology, medicine and public goods — open and auditable.",
+            "title": "How an idea becomes a thing",
+            "subtitle": "The same milestones as the board that lights up on the home page: each step brings your build closer to the real world.",
+            "card_title": "NO SUBJECT IS OFF LIMITS",
+            "card_desc": "Engineering, science, software, business, art — if you can think it, you can build it here.",
             "flow": {
-                "step1": "RESEARCH",
-                "step2": "SYNTHESIZE",
-                "step3": "HYPOTHESIS",
-                "step4": "SOLUTION",
-                "step5": "VALIDATION",
-                "step6": "DELIVERY",
-                "step7": "IMPACT"
+                "step1": "IDEA",
+                "step2": "SCIENTIFIC BASE",
+                "step3": "TALKING WITH AIs",
+                "step4": "BLUEPRINT",
+                "step5": "PROTOTYPE & TESTS",
+                "step6": "IN THE REAL WORLD"
             }
+        },
+        "layers": {
+            "kicker": "On the platform",
+            "title_a": "Three layers.",
+            "title_b": "One place.",
+            "footer": "You build. You control. You decide what you share.",
+            "n1": {
+                "title": "Assemble your orchestra",
+                "desc": "House agents and specialized engines, each great at one thing. Plug the ones your idea needs straight from the showcase and they work together.",
+                "tags": [
+                    "House agents",
+                    "Engines",
+                    "Showcase plug"
+                ]
+            },
+            "n2": {
+                "title": "Build without limits",
+                "desc": "Research, math, code, drawings and tests in one place. The orchestra splits the work, you set the direction and the build grows every session.",
+                "tags": [
+                    "Blueprints",
+                    "Prototypes",
+                    "Code",
+                    "Research"
+                ]
+            },
+            "n3": {
+                "title": "Show it to the world",
+                "desc": "Publish on the showcase with your profile. Other people validate it, talk to you and plug what you made — the credit stays yours.",
+                "tags": [
+                    "Showcase",
+                    "Validators",
+                    "Profile",
+                    "Authorship"
+                ]
+            }
+        },
+        "plans": {
+            "title": "Plans",
+            "subtitle": "Start free · grow when your build asks for it",
+            "popular": "Most popular"
         },
         "cta": {
             "tour_title": "Want to see the architecture inside?",
             "button_go": "GO !"
         },
-        "title_hero": "Be who you were born to be.",
         "team": {
             "title": "Meet the team",
-            "subtitle": "Two people, one obsession: making learning actually pay off."
+            "subtitle": "Two people, one obsession: a place where you can build anything."
         }
     },
     "tech_room": {
@@ -348,11 +622,203 @@
         "success_message": "Credentials Updated"
     },
     "landing": {
+        "knowledge_cards": {
+            "neuro": {
+                "title": "Neuroanatomy",
+                "summary": "Compare brain structures and their functions."
+            },
+            "respiracao": {
+                "title": "Respiratory physiology",
+                "summary": "Study ventilation and gas exchange."
+            },
+            "farmacologia": {
+                "title": "Pharmacology",
+                "summary": "Study how drugs interact with the body."
+            },
+            "civil": {
+                "title": "Civil engineering",
+                "summary": "Read a CAD floor plan and study dimensions, layout and structural axes."
+            },
+            "mecanica": {
+                "title": "Mechanical engineering",
+                "summary": "Compare turbines and measure mechanical efficiency."
+            },
+            "quimica": {
+                "title": "Chemical engineering",
+                "summary": "Track mass and energy through a pilot plant."
+            },
+            "ambiental": {
+                "title": "Environmental engineering",
+                "summary": "Compare water treatment processes."
+            },
+            "geologia": {
+                "title": "Geology",
+                "summary": "Read rock layers and reconstruct their history."
+            },
+            "microbiologia": {
+                "title": "Microbiology",
+                "summary": "Observe how microbes grow and interact."
+            },
+            "materiais": {
+                "title": "Materials science",
+                "summary": "Compare how microstructure changes material properties."
+            },
+            "oceanografia": {
+                "title": "Oceanography",
+                "summary": "Interpret buoy data on waves and currents."
+            },
+            "eletrica": {
+                "title": "Electrical engineering",
+                "summary": "Study loads, protection and distribution."
+            },
+            "solar": {
+                "title": "Solar energy",
+                "summary": "Compare generation, storage and payback."
+            },
+            "hortas": {
+                "title": "Community gardens",
+                "summary": "Plan beds, composting and irrigation."
+            },
+            "ecovilas": {
+                "title": "Ecovillages",
+                "summary": "Study shared housing, food and energy."
+            },
+            "comunidades": {
+                "title": "Decentralized communities",
+                "summary": "Design shared rules, voting and accountability."
+            },
+            "cisternas": {
+                "title": "Rainwater harvesting",
+                "summary": "Size a cistern and plan how to use collected water."
+            },
+            "codigo": {
+                "title": "Code",
+                "summary": "Build and test working software."
+            },
+            "hardware": {
+                "title": "Hardware",
+                "summary": "Design circuits and test physical components."
+            },
+            "label": "Knowledge in the Marketplace",
+            "coracao": {
+                "title": "Atlas of the Heart",
+                "summary": "Anatomy, chambers and circulation."
+            },
+            "recife": {
+                "title": "Recife Through the Ages",
+                "summary": "The port and city in historical maps and documents."
+            },
+            "bacias": {
+                "title": "Watershed Atlas",
+                "summary": "How terrain shapes rivers and cities."
+            },
+            "safra": {
+                "title": "A Coffee Harvest Journal",
+                "summary": "Soil, rainfall and harvest in a field notebook."
+            },
+            "astronomia": {
+                "title": "Observational Astronomy",
+                "summary": "From the first observation to interpreting the data."
+            },
+            "clima": {
+                "title": "Climate Observations",
+                "summary": "Rainfall, temperature and seasonal cycles."
+            },
+            "habitat": {
+                "title": "Underwater Habitat",
+                "summary": "Design for a workspace beneath the sea."
+            },
+            "ecologia": {
+                "title": "Coastal Dune Ecology",
+                "summary": ""
+            },
+            "matematica": {
+                "title": "Probability and Games",
+                "summary": ""
+            },
+            "arquitetura": {
+                "title": "Bioclimatic Architecture",
+                "summary": ""
+            },
+            "economia": {
+                "title": "Labor Economics",
+                "summary": ""
+            },
+            "direito": {
+                "title": "Constitutional Law",
+                "summary": ""
+            },
+            "literatura": {
+                "title": "Brazilian Cordel Literature",
+                "summary": ""
+            },
+            "artes": {
+                "title": "Observational Drawing",
+                "summary": ""
+            },
+            "marketing": {
+                "title": "Market Research and Positioning",
+                "summary": ""
+            },
+            "musica": {
+                "title": "Harmony and Improvisation",
+                "summary": ""
+            },
+            "educacao": {
+                "title": "Scientific Literacy",
+                "summary": ""
+            },
+            "comunicacao": {
+                "title": "Field Journalism",
+                "summary": ""
+            },
+            "veterinaria": {
+                "title": "Preventive Veterinary Medicine",
+                "summary": ""
+            }
+        },
+        "timeline": {
+            "base": "Scientific base",
+            "conversa": "Chat with AI",
+            "blueprint": "Blueprint",
+            "prototipo": "Prototype and testing",
+            "mundo": "In the real world",
+            "propriedade_intelectual": "Intellectual property",
+            "papel": "Scientific paper",
+            "realidade": "In the real world",
+            "placa": "Circuit board assembly"
+        },
         "hero_tagline": "More than conversations with chatbots and open tabs — here you build <hl>ideas that become finished products</hl>.",
         "knowledge_title": "Turn your idea into reality.",
-        "privacidade_titulo": "Build your idea with privacy.",
-        "privacidade_texto": "Share knowledge with high-tier scientists, backed by verifiable credentials.",
-        "privacidade_fecho": "No one needs to know who you are, nor what you do.",
+        "privacidade_titulo": "Privacy, Safety, and Anonymity",
+        "study_beyond_prompts": "Take your {{palavra}} to another level beyond prompts.",
+        "study_terms": {
+            "work": "work",
+            "study": "study",
+            "life": "life"
+        },
+        "anatomia_amostra": {
+            "bronquios": "Bronchi",
+            "estomago": "Stomach",
+            "rins": "Kidneys",
+            "prova": "You have to prove that you know.",
+            "pulmoes": "Lungs",
+            "saber": "In today’s world, knowing isn’t enough.",
+            "provar": "Deepen your skills and increase your chances of getting noticed.",
+            "proximo": "We develop top talent and introduce the best to companies.",
+            "titulo": "Human anatomy in motion",
+            "descricao": "Explore how the nervous and circulatory systems are arranged in the human body.",
+            "cerebro": "Brain",
+            "coracao": "Heart"
+        },
+        "privacidade_fluxo": {
+            "conta": "Always Private",
+            "conta_detalhe": "Chat with AI models in a private workspace. You decide what to share.",
+            "vitrine": "Verifiable credentials",
+            "vitrine_detalhe": "Show what you can do. Link your work to verifiable credentials and use the ranking to see how your skills stand out in your field.",
+            "proposta": "Business deals, without the paperwork",
+            "proposta_detalhe": "Agree on project milestones with companies and keep your conversations private, all on Zaeon."
+        },
         "flow": {
             "ideas": "ideas",
             "projects": "projects",
@@ -364,20 +830,244 @@
             "summary": "Ideas become projects, studies become research and companies become business."
         },
         "blueprints": {
-            "title": "Here, you're worth what you build.",
+            "title": "Real knowledge created by real people.",
             "image_alt": "Preview of the blueprint {{title}}",
             "tags": "Tags",
             "cta_view": "View in the game",
             "cta_create": "Create your own",
             "example_badge": "Example",
             "examples": {
-                "foguete": { "title": "Sounding rocket", "desc": "Body, nose cone, fins and nozzle — sized from propulsion papers." },
-                "motor": { "title": "Jet engine", "desc": "Fan, compressor and exhaust cone, with the shaft and main dimensions." },
-                "pcb": { "title": "PCB", "desc": "Processor, memory, traces and connector — ready for fabrication." },
-                "fonte": { "title": "Power supply", "desc": "Enclosure, fan, cooling fins and power socket." },
-                "bateria": { "title": "Battery", "desc": "Cylindrical cell with terminals, charge indicator and dimensions." },
-                "solar": { "title": "Solar panel", "desc": "Cell grid, tilt and mount, calculated for the local sun." }
+                "foguete": {
+                    "title": "Sounding rocket",
+                    "desc": "Body, nose cone, fins and nozzle — sized from propulsion papers."
+                },
+                "motor": {
+                    "title": "Jet engine",
+                    "desc": "Fan, compressor and exhaust cone, with the shaft and main dimensions."
+                },
+                "pcb": {
+                    "title": "PCB",
+                    "desc": "Processor, memory, traces and connector — ready for fabrication."
+                },
+                "fonte": {
+                    "title": "Power supply",
+                    "desc": "Enclosure, fan, cooling fins and power socket."
+                },
+                "bateria": {
+                    "title": "Battery",
+                    "desc": "Cylindrical cell with terminals, charge indicator and dimensions."
+                },
+                "solar": {
+                    "title": "Solar panel",
+                    "desc": "Cell grid, tilt and mount, calculated for the local sun."
+                }
+            },
+            "title_highlight": "NO LIMITS"
+        },
+        "premiacao": {
+            "provedores": "Frontier AI Agents powered by:",
+            "titulo": "We are a Brazilian startup that received funding and won an award in the blockchain category.",
+            "apoio": "Funded and supported by:",
+            "vencedor": "Award-winning product",
+            "projeto": "<hl>Blockchain</hl> as a Technology for Smart Applications in Ceará",
+            "programa": "Centelha Program (2nd edition).",
+            "oficial": "Official support",
+            "ministerio": "Ministry of Science, Technology and Innovation — Government of Brazil"
+        },
+        "solana": {
+            "talento": "Top-tier talent gets focused attention from our agents. From teams that cut operating costs to cybersecurity specialists, the more professional the work, the wider its reach across companies. Our agents handle the cold calls.",
+            "ranking": "Ranking progression",
+            "esteira": "Cards pass through Solana and turn into SOL, then USDC.",
+            "pessoa": "Private · the person",
+            "prova": "Public · the proof",
+            "credenciais": "Verifiable credentials",
+            "verificacao": "How verification works",
+            "blockchain": "What goes on the blockchain",
+            "diagrama": "A public proof protects the person’s identity."
+        },
+        "faq": {
+            "7": {
+                "q": "How does Zaeon connect talent with companies?",
+                "a": "We look at what people can prove through assessments and completed projects. Our agents help introduce people whose work stands out to companies looking for those skills."
+            },
+            "1": {
+                "q": "What is Zaeon today?",
+                "a": "An online space to work with your team, study, and turn knowledge into projects. We also help companies find exceptional talent through rigorous assessments and real work."
+            },
+            "2": {
+                "q": "Is coworking free?",
+                "a": "Yes. Anyone with an account can join the coworking space for free."
+            },
+            "3": {
+                "q": "Can my team work on any project?",
+                "a": "Yes. Invite your team and use the space to collaborate on your project."
+            },
+            "4": {
+                "q": "Can I use it just to study?",
+                "a": "Yes. Study on your own or alongside other people."
+            },
+            "5": {
+                "q": "What’s in the Marketplace?",
+                "a": "Explore cards for courses, tools, and agents and connect them to your account."
+            },
+            "6": {
+                "q": "How do I get started?",
+                "a": "Create an account and choose Go online to enter the coworking space."
             }
+        },
+        "interface": {
+            "amostra_estudo": "Study preview",
+            "privacidade_landing": "Privacy on Zaeon",
+            "apoio": "Funding and support",
+            "mes": "One month free",
+            "cartao": "No card required",
+            "limites": "No limits",
+            "revisao": "Expert review",
+            "projetos": "Projects built by the community",
+            "faq_rotulo": "FAQ",
+            "faq_titulo": "Common questions.",
+            "faq_subtitulo": "Straight answers.",
+            "cyber_titulo": "Free online coworking",
+            "cyber_intro": "Work on any project with your team or find a place to study. Coworking is free and open to everyone.",
+            "cyber_moeda": "Work with your team",
+            "cyber_moeda_texto": "Invite your teammates and work together on any project.",
+            "cyber_pessoas": "Study together",
+            "cyber_pessoas_texto": "Join to study at your own pace or alongside others.",
+            "cyber_agentes": "Collaborate live",
+            "cyber_agentes_texto": "Talk with people who are online and work in the same space.",
+            "plataforma": "Platform",
+            "recursos": "Resources",
+            "empresa": "Company",
+            "legal": "Legal",
+            "jogar": "Go online",
+            "modelos": "AI models",
+            "laboratorio": "Lab",
+            "mentores": "Mentors",
+            "assistentes": "Assistants",
+            "marketplace": "Marketplace",
+            "funcionamento": "How it works",
+            "duvidas": "FAQ",
+            "noticias": "News",
+            "sobre": "About us",
+            "documentacao": "Documentation",
+            "contato": "Contact",
+            "termos": "Terms of use",
+            "privacidade": "Privacy",
+            "resumo": "Leading AI models in one place, with a scientific layer for study and research.",
+            "direitos": "All rights reserved.",
+            "lema": "Where humans and superintelligences meet."
+        },
+        "vitrine": {
+            "abrir_caderno": "Open notebook",
+            "exemplo_estudo": "Study example",
+            "anterior": "Previous cards",
+            "proximo": "Next cards",
+            "agente": "Agent",
+            "gratis": "Free",
+            "raridade": {
+                "comum": "Common",
+                "rara": "Rare",
+                "epica": "Epic",
+                "lendaria": "Legendary"
+            },
+            "tipo": {
+                "curso": "Course",
+                "codigo": "Code",
+                "artigo": "Academic work",
+                "negocio": "Business",
+                "rwa": "Real-world asset (RWA)",
+                "agente": "Made by an AI agent"
+            }
+        },
+        "hero_principal": {
+            "pergunta": "Ask Zaeon…",
+            "linha": "Where knowledge is",
+            "termo_0": "created",
+            "termo_1": "studied",
+            "termo_2": "learned",
+            "termo_3": "delivered",
+            "termo_4": "proven",
+            "termo_5": "consulted",
+            "termo_6": "traded",
+            "termo_7": "commissioned",
+            "termo_8": "sold",
+            "termo_9": "explored",
+            "termo_10": "expanded",
+            "termo_11": "shared",
+            "chat": "Start chat",
+            "conta": "Create my account"
         }
-    }
+    },
+  "configMenu": {
+    "language": "Language",
+    "rewatchTutorial": "Replay tutorial",
+    "rewatchTutorialHint": "Aura shows the Study Room and Profile tutorials and tips again.",
+    "labSkin": "Lab skin",
+    "labSkinHint": "Changes only the lab's colors. The original look is the default.",
+    "labSkinYours": "your room",
+    "labSkinOriginal": "Original",
+    "cyberspace": "Cyberspace",
+    "tutorialMode": "Tutorial mode",
+    "tutorialOn": "On: entering the cyberspace starts the tutorial.",
+    "tutorialOff": "Off: the regular cyberspace.",
+    "graphics": "Graphics",
+    "graphicsGroup": "Cyberspace graphics",
+    "graphicsAuto": "Automatic",
+    "graphicsLight": "Light",
+    "graphicsFull": "Full",
+    "graphicsAutoHint": "Automatic: light on integrated graphics (laptop Intel/AMD).",
+    "graphicsLightHint": "Light: less in the distance and fewer effects, 30 fps.",
+    "graphicsFullHint": "Full: everything maxed out (needs a dedicated GPU).",
+    "reopenHint": "Applies when you reopen the cyberspace.",
+    "sharpness": "Sharpness",
+    "sharpnessGroup": "Cyberspace sharpness",
+    "sharpnessHint": "Less aliasing = more GPU work. 0.75× eases it; 1.5× and 2× make it smooth. Applies immediately.",
+    "smoothEdges": "Smooth edges",
+    "smoothEdgesHint": "Edge anti-aliasing. Applies when you reopen the cyberspace.",
+    "auto": "Auto",
+    "on": "On",
+    "off": "Off",
+    "showFps": "Show FPS",
+    "showFpsHint": "The frame counter and GPU name in the corner of the screen — if it's slow, send us a screenshot.",
+    "account": "Account",
+    "invite": "Open invite",
+    "ceoMode": "CEO mode",
+    "session": "Session",
+    "logout": "Sign out",
+    "dangerZone": "Danger zone",
+    "deleting": "Deleting…",
+    "deleteAccount": "Delete my account",
+    "deleteConfirm": "Delete your account? This removes ALL your data and frees the email to start over. This can't be undone.",
+    "deleteFailed": "Couldn't delete the account right now. Please try again.",
+    "connectionError": "Connection error."
+  },
+  "chatCelular": {
+    "more": "More",
+    "placeholder": "Ask Aura",
+    "message": "Message",
+    "mic": "Speak",
+    "stopMic": "Stop recording",
+    "stop": "Stop",
+    "send": "Send",
+    "close": "Close",
+    "bring": "Add",
+    "file": "File",
+    "photo": "Photo",
+    "liveCamera": "Live camera",
+    "studio": "Create with Studio",
+    "auto": "Automatic",
+    "guided": "Guided",
+    "agentPanel": "Chatting with {{name}}: switch agent and options",
+    "agentTitle": "Who answers and options",
+    "rowWho": "Who answers",
+    "rowModel": "Model",
+    "rowBase": "My library",
+    "rowResearch": "Research mode",
+    "rowTree": "Skill tree",
+    "rowWork": "How it works",
+    "researchOn": "Research on",
+    "researchOff": "Turn off research mode",
+    "mentorOff": "Back to Aura (leave {{name}})",
+    "with": "With {{name}}"
+  }
 }

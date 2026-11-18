@@ -58,7 +58,7 @@ function Sala2D({ salaId }: { salaId: string }) {
       </div>
       <div className="border-t border-white/10 p-2">
         <div className="max-h-[100px] overflow-y-auto px-1 text-[12px]">{sala.chat.slice(-20).map((m) => <div key={m.id}><b style={{ color: m.color }}>{m.name}:</b> {m.texto}</div>)}</div>
-        <input value={txt} onChange={(e) => setTxt(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && txt.trim()) { void sala.enviarChat(txt.trim()); setTxt(""); } }} placeholder="Falar na sala…" className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-[13px] outline-none" />
+        <input value={txt} onChange={(e) => setTxt(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && txt.trim()) { void sala.enviarChat(txt.trim()); setTxt(""); } }} placeholder="Falar na sala…" className="mt-1 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-[16px] [@media(hover:hover)_and_(pointer:fine)]:text-[13px] outline-none" />
       </div>
     </div>
   );

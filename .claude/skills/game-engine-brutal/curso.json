@@ -1,0 +1,86 @@
+{
+  "modulos": [
+    {
+      "titulo": "O que a engine faz por você — e a matemática de vetor",
+      "estudo": "Uma game engine é, antes de tudo, um monte de código chato que você não quer reescrever: falar com a placa de vídeo, medir tempo, somar vetores, reservar memória. A Unity faz tudo isso e esconde — o que é ótimo até você precisar de algo que ela não previu. O BRUTAL faz o oposto: entrega só o núcleo de baixo nível (interop com APIs nativas, matemática, memória, concorrência, bindings para Vulkan) e deixa VOCÊ montar a sua pilha. 'Você só é tão independente quanto as suas ferramentas.' A primeira peça dessa base é a MATEMÁTICA DE VETOR. Um vetor é uma direção com tamanho — a posição de um personagem, a velocidade de um tiro, a normal de uma parede. Duas operações aparecem em tudo: o COMPRIMENTO de um vetor (quão longe, quão rápido) é a raiz da soma dos quadrados das componentes — Pitágoras em 2D ou 3D — e o PRODUTO ESCALAR (dot) de dois vetores, que é a soma dos produtos componente a componente. O dot mede o quanto dois vetores 'apontam para o mesmo lado': positivo quando o ângulo é agudo, zero quando são perpendiculares, negativo quando são opostos. É com o dot que o jogo decide se o inimigo está na frente ou atrás, se a luz bate na face, se o pulo foi para cima. No sandbox você escreve o comprimento; o BRUTAL implementa o mesmo em C# com SIMD, sem alocar.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "O produto escalar (dot) de dois vetores PERPENDICULARES vale:",
+            "options": [
+              { "text": "zero", "isCorrect": true, "explanation": "Perpendiculares = ângulo de 90° = dot zero. É assim que o jogo detecta 'de lado'." },
+              { "text": "o maior possível", "isCorrect": false, "explanation": "O dot é máximo quando apontam para o MESMO lado, não perpendiculares." },
+              { "text": "sempre 1", "isCorrect": false, "explanation": "1 só se forem unitários e iguais." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "Em uma frase: por que o BRUTAL entrega a matemática de vetor mas NÃO entrega um editor ou um renderer?",
+            "accepted": ["porque é um framework mínimo", "você monta a própria pilha", "ele faz só o baixo nível", "para você ter controle", "é um alicerce, não uma engine completa", "de propósito faz pouco"],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "O comprimento de um vetor (3, 4) é quanto?",
+          "accepted": ["5", "5.0", "raiz de 25", "sqrt(25)"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "python",
+        "inicial": "import math\n\ndef comprimento(v):\n    \"\"\"v é uma tupla (x, y). Devolve o comprimento do vetor (Pitágoras).\"\"\"\n    # seu código aqui\n    return 0.0\n\ndef dot(a, b):\n    \"\"\"produto escalar de dois vetores 2D (ax*bx + ay*by).\"\"\"\n    # seu código aqui\n    return 0.0\n",
+        "teste": "assert abs(comprimento((3, 4)) - 5.0) < 1e-9\nassert abs(comprimento((0, 0)) - 0.0) < 1e-9\nassert abs(dot((1, 0), (0, 1)) - 0.0) < 1e-9   # perpendiculares\nassert dot((1, 0), (1, 0)) > 0                  # mesmo lado\nassert dot((1, 0), (-1, 0)) < 0                 # opostos\nprint('ok')\n"
+      }
+    },
+    {
+      "titulo": "Memória sem coletor — por que o pool existe",
+      "estudo": "Num jogo a 60 quadros por segundo, você tem ~16 milésimos de segundo por quadro para fazer TUDO: física, IA, desenho. Se, no meio do loop, você pede memória nova ao sistema (um 'new'), duas coisas ruins acontecem. Primeiro, pedir memória ao sistema operacional é lento e imprevisível — pode travar o quadro. Segundo, em linguagens com COLETOR DE LIXO (como C#), a memória que você largou é recolhida DEPOIS, por um coletor que para o jogo para fazer a faxina — e um travão de 10 ms no meio de um tiroteio é um frame perdido que o jogador sente. Por isso engines sérias evitam alocar durante o jogo. A solução clássica é o POOL: no começo, você reserva um bloco grande de objetos de uma vez; durante o jogo, 'pegar' um objeto é só marcar um slot livre como ocupado, e 'devolver' é marcá-lo livre de novo — nenhuma alocação nova, nenhum coletor. É exatamente o que o BRUTAL oferece: gerência de memória própria, memória não-gerenciada, 'unsafe' onde faz sentido, para fugir do coletor. No sandbox você escreve um pool simples: uma lista de slots livres, pegar tira um, devolver põe de volta, e pegar com o pool cheio devolve None em vez de alocar.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Por que alocar memória DENTRO do loop do jogo é um problema?",
+            "options": [
+              { "text": "Pode travar o quadro, e o coletor de lixo para o jogo depois para faxinar", "isCorrect": true, "explanation": "As duas coisas: a alocação é lenta, e o GC recolhe depois com uma pausa que o jogador sente." },
+              { "text": "A memória acaba na hora", "isCorrect": false, "explanation": "Não é sobre acabar; é sobre o CUSTO e a PAUSA de alocar/coletar." },
+              { "text": "Não é problema nenhum", "isCorrect": false, "explanation": "É o motivo de engines usarem pools e memória não-gerenciada." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "Em uma frase: o que um 'pool' de memória faz para evitar alocar durante o jogo?",
+            "accepted": ["reserva tudo antes", "reserva um bloco no começo", "reusa objetos já reservados", "pegar e devolver slots sem alocar", "aloca uma vez e reutiliza", "marca slots livres e ocupados"],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-choice",
+        "block": {
+          "text": "Num pool CHEIO, o que 'pegar um objeto' deve fazer?",
+          "options": [
+            { "text": "Devolver nada (None/null) — jamais alocar um novo no meio do jogo", "isCorrect": true, "explanation": "O ponto do pool é não alocar; cheio, ele recusa, e o jogo decide o que fazer." },
+            { "text": "Alocar um objeto novo do sistema", "isCorrect": false, "explanation": "Isso anula o pool — volta a alocação e o coletor." },
+            { "text": "Travar o jogo", "isCorrect": false, "explanation": "Recusar com None é controlado; travar não." }
+          ],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "python",
+        "inicial": "class Pool:\n    \"\"\"Pool de tamanho fixo. Reserva 'n' slots no começo; pegar/devolver\n    nunca aloca. pegar() com o pool cheio devolve None.\"\"\"\n    def __init__(self, n):\n        self.livres = list(range(n))   # ids dos slots livres\n        self.ocupados = set()\n\n    def pegar(self):\n        # seu código aqui\n        return None\n\n    def devolver(self, slot):\n        # seu código aqui\n        pass\n",
+        "teste": "p = Pool(2)\na = p.pegar(); b = p.pegar()\nassert a is not None and b is not None and a != b\nassert p.pegar() is None          # cheio: recusa, nao aloca\np.devolver(a)\nc = p.pegar()\nassert c == a                     # o slot devolvido volta a ser usado\nprint('ok')\n"
+      }
+    }
+  ]
+}

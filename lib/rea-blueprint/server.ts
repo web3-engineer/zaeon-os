@@ -74,7 +74,19 @@ export async function garantirRea(userId: string, scopeId: string, titulo: strin
 }
 
 type GenJson = <T>(system: string, user: string) => Promise<T>;
-const genPadrao = (userId: string, scopeId: string): GenJson => async <T,>(system: string, user: string) => {
+/**
+ * O compositor usa o MODELO DA SUPERFÍCIE (o que o aluno escolheu no chat): se for um modelo de
+ * gateway (Claude/Zaeon local — `grupoGateway` setado), redige por ele; senão, o Gemini de sempre.
+ * O REA não tem modelo próprio — ele herda octa/aura/zaeon. Melhor-esforço: tropeço cai no Gemini.
+ */
+const genPadrao = (userId: string, scopeId: string, grupoGateway?: string | null): GenJson => async <T,>(system: string, user: string) => {
+  if (grupoGateway) {
+    const { gatewayJson, gatewayJsonConfigurado } = await import("@/lib/octa/gatewayJson");
+    if (gatewayJsonConfigurado()) {
+      try { return await gatewayJson<T>(system, user, { model: grupoGateway, temperature: 0.3, timeoutMs: 60_000 }); }
+      catch (e) { console.warn(`[rea-blueprint] ${grupoGateway} na redação falhou, caindo no Gemini:`, (e as Error)?.message?.slice(0, 120)); }
+    }
+  }
   const [{ geminiJson }, { GEMINI_MODEL_FLASH }] = await Promise.all([import("@/lib/scholar/gemini"), import("@/lib/ai/model")]);
   return geminiJson<T>(system, user, { temperature: 0.3, model: GEMINI_MODEL_FLASH, timeoutMs: 60_000, ctx: { agentKey: "zaeon", surface: "estudos", userId, scopeId, phase: "rea-blueprint" } });
 };
@@ -84,6 +96,8 @@ export type EntradaTurnoRea = {
   titulo: string; prompt: string; answerTexto: string; history: { role: string; text: string }[];
   /** evidência REAL do motor do REA, se um artefato foi analisado neste estudo (vira OBSERVAÇÃO no blueprint) */
   evidencia?: string; ferramentas?: string[];
+  /** o `grupo` do modelo escolhido no chat (Claude/Zaeon via gateway); ausente = Gemini. O REA herda a superfície. */
+  grupoGateway?: string | null;
   agora?: number; forcar?: boolean; db?: ReaDb; gen?: GenJson;
 };
 
@@ -105,7 +119,7 @@ export async function reaBlueprintDoTurno(i: EntradaTurnoRea): Promise<"off" | "
     const doc = docDaLinha(linha);
     if (!i.forcar && doc.turnos > 0 && agora - doc.compostoEm < INTERVALO_RECOMPOR_MS) return "aguardando";
     const conversa: Conversa = [...i.history.slice(-10), { role: "user", text: i.prompt }, { role: "assistant", text: i.answerTexto }].filter((m) => m.text?.trim());
-    const gen = i.gen ?? genPadrao(userId, scopeId);
+    const gen = i.gen ?? genPadrao(userId, scopeId, i.grupoGateway);
     const plano = lerPlano(await gen<unknown>(COMPOR_SYSTEM, promptComposicao({ doc, conversa, evidencia: i.evidencia })));
     if (!plano) return "falhou";
     const r = await gravarDoc(id, userId, (atual) => mesclarComposicao(atual, plano, agora, i.ferramentas), db);

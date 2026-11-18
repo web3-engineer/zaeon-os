@@ -33,7 +33,7 @@ function ouvirTeclado() {
   document.addEventListener("keydown", (e) => { if (e.key === "Tab") ultimoTab = Date.now(); }, true);
   document.addEventListener("pointerdown", () => { ultimoTab = -Infinity; }, true);
 }
-const focoDeTeclado = () => Date.now() - ultimoTab < 600;
+export const focoDeTeclado = () => Date.now() - ultimoTab < 600;
 
 export function useSidebarHover<T extends HTMLElement = HTMLElement>() {
   const [aberta, setAberta] = useState(false);

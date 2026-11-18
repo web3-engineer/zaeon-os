@@ -45,7 +45,7 @@ export type EntradaOrquestra = {
   /** as bases por área do RAG que este turno consulta (lib/rag/areas areasDoTurno) — viram a tool `base_conhecimento` */
   areas?: string[];
   /** quem gerou a tarefa (o console separa o chat da arena) */
-  origem?: "chat" | "arena";
+  origem?: "chat" | "arena" | "console";
   /** as opções da trajetória da AURA (ex.: `reflexoes` do protocolo do cargo) — repassadas em todo caminho em que ela responde */
   opcoesTrajetoria?: import("@/lib/agent/trajectory").TrajectoryOpts;
   /** o motor do agente que o aluno plugou na Loja (lib/orquestra/catalogo) — o roteador confere plano e chave */

@@ -1,0 +1,5 @@
+{
+  "tarefa": "Pergunta de pesquisa: \"como começar a estudar engenharia de prompt para agentes de IA?\". Faça a busca com curadoria e responda APENAS o array JSON de resultados, no formato do procedimento.",
+  "contrato": { "tipo": "json", "chaves": ["titulo", "fonte", "porque"] },
+  "modelos": ["claude", "codex", "octa"]
+}

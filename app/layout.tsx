@@ -14,7 +14,8 @@ import { Web3Provider } from "@/src/context/Web3Context";
 // --- COMPONENTES GLOBAIS ---
 import { Navbar } from "@/components/main/navbar";
 import { RegistrarSW } from "@/components/pwa/RegistrarSW";
-import { BannerVersaoMobile } from "@/components/mobile/BannerVersaoMobile";
+import { CorDaBarra } from "@/components/pwa/CorDaBarra";
+import { AvisoVersaoNova } from "@/components/sistema/AvisoVersaoNova";
 
 import "../src/i18n";
 import "./globals.css";
@@ -71,13 +72,18 @@ const sora = localFont({
  *
  * `themeColor` e um valor so, escuro, e nao um par por `prefers-color-scheme`:
  * a Zaeon abre no escuro por padrao, entao um par pintaria a barra do navegador
- * de branco para quem esta no claro do SO -- que e o descasamento pior.
+ * de branco para quem esta no claro do SO -- que e o descasamento pior. *
+ * #841: depois de montar, o <CorDaBarra /> troca essa cor pela do TEMA DA ZAEON
+ * (claro ou escuro, o botao do app) -- antes a barra ficava escura no modo claro.
  */
 export const viewport: Viewport = {
     width: "device-width",
     initialScale: 1,
     viewportFit: "cover",
     themeColor: "#030014",
+    // #837: o teclado do celular ENCOLHE a página (e não fica por cima dela) — o `100dvh` do laboratório acompanha e a
+    // caixa de escrever sobe junto. Sem isso (padrão do Chrome do Android) o teclado cobria a caixa inteira.
+    interactiveWidget: "resizes-content",
 };
 
 export const metadata: Metadata = {
@@ -93,10 +99,10 @@ export const metadata: Metadata = {
     },
     icons: {
         icon: [
-            { url: "/icons/icon-192.png?v=2", sizes: "192x192", type: "image/png" },
-            { url: "/icons/icon-512.png?v=2", sizes: "512x512", type: "image/png" },
+            { url: "/icons/icon-192.png?v=4", sizes: "192x192", type: "image/png" },
+            { url: "/icons/icon-512.png?v=4", sizes: "512x512", type: "image/png" },
         ],
-        apple: [{ url: "/icons/apple-touch-icon.png?v=2", sizes: "180x180", type: "image/png" }],
+        apple: [{ url: "/icons/apple-touch-icon.png?v=4", sizes: "180x180", type: "image/png" }],
     },
 };
 
@@ -116,19 +122,21 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             >
                 {/* Service worker (public/sw.js): só registra em produção. */}
                 <RegistrarSW />
+                {/* #756: deploy novo com a aba aberta — recarrega se faltar pedaço do site, ou avisa "versão nova" */}
+                <AvisoVersaoNova />
 
                 <ThemeProvider
                     attribute="class"
                     defaultTheme="dark"
                     disableTransitionOnChange
                 >
+                    {/* #841: a barra de status segue o tema escolhido na Zaeon */}
+                    <CorDaBarra />
                     <AuthProvider>
                         <Web3Provider>
                             <Navbar />
                             {children}
 
-                            {/* Oferece /m nas salas completas, no celular (NEXT_PUBLIC_MOBILE_UI). */}
-                            <BannerVersaoMobile />
 
                         </Web3Provider>
                     </AuthProvider>

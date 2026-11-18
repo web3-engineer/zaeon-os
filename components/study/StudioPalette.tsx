@@ -13,7 +13,8 @@ import { BookOpen, Network, Clock, Layers, HelpCircle, Image as ImageIcon, Mic, 
 
 type Fn = { kind: string; label: string; icon: React.ComponentType<any>; template: string };
 
-const FUNCTIONS: Fn[] = [
+/** #837: também no "+" da caixa de escrever do celular */
+export const FUNCTIONS: Fn[] = [
   { kind: "guia",       label: "Guia",         icon: BookOpen,   template: "Crie um guia de estudo sobre " },
   { kind: "mapa",       label: "Mapa mental",  icon: Network,    template: "Gere um mapa mental sobre " },
   { kind: "timeline",   label: "Linha do tempo", icon: Clock,    template: "Monte uma linha do tempo sobre " },

@@ -1,0 +1,5 @@
+{
+  "tarefa": "Revise esta especificação com olhos frescos e responda APENAS o array JSON de achados.\n\nESPECIFICAÇÃO:\n\"O app de delivery mostra os restaurantes abertos perto do usuário. O usuário escolhe, monta o pedido e paga. O entregador recebe o pedido e leva. Pronto.\"",
+  "contrato": { "tipo": "json", "chaves": ["suposicao", "risco", "pergunta"] },
+  "modelos": ["claude", "codex", "octa"]
+}

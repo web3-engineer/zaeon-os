@@ -1,0 +1,18 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": { "schema_version": 1, "graphify_version": "0.0.0-fixture" },
+  "nodes": [
+    { "id": "app.py", "label": "app.py", "source_file": "app.py", "norm_label": "app.py" },
+    { "id": "utils.py", "label": "utils.py", "source_file": "utils.py" },
+    { "id": "app.py::main", "label": "main", "source_file": "app.py", "source_location": { "line": 1 }, "community": 0 }
+  ],
+  "links": [
+    { "source": "app.py", "target": "utils.py", "relation": "imports", "confidence": "EXTRACTED" },
+    { "source": "app.py::main", "target": "utils.py", "relation": "calls", "confidence": "EXTRACTED" },
+    { "source": "app.py", "target": "app.py::main", "relation": "defines", "confidence": "EXTRACTED" },
+    { "source": "utils.py", "target": "app.py", "relation": "uses", "confidence": "INFERRED" },
+    { "source": "app.py::main", "target": "app.py", "relation": "calls", "confidence": "EXTRACTED" }
+  ],
+  "hyperedges": []
+}

@@ -12,7 +12,8 @@ export type ParaCena =
   | { tipo: "olhar"; x: number | null; y: number | null }
   | { tipo: "sinais"; lendo: boolean; escrevendo: boolean }
   | { tipo: "reagir" }
-  | { tipo: "gesto" }
+  // #764: `nome` escolhe o gesto (um clipe do pacote, ex. "fidget_hair" — a mão na cabeça); sem nome, um ao acaso
+  | { tipo: "gesto"; nome?: string }
   /** (dev) quanto a cena gasta por quadro */
   | { tipo: "diag" }
   /** (dev) pula o roteiro da geração pra `t` s */

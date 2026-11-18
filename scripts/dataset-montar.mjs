@@ -27,7 +27,7 @@
  * documento — a busca devolve o documento, e um livro afoga o prompt.
  */
 import { execFileSync } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join, relative } from "node:path";
 
@@ -284,7 +284,16 @@ async function fonteMatematica() {
     if (existsSync(destino)) { ok++; continue; }
     try {
       const b = await baixar(u, destino);
-      if (b.subarray(0, 4).toString() !== "%PDF") { log(`  NÃO-PDF: ${u.split("/").pop()}`); continue; }
+      if (b.subarray(0, 4).toString() !== "%PDF") {
+        // `baixar` JÁ gravou o arquivo antes desta checagem, e só pular o contador deixava o lixo no
+        // disco. Três consequências, todas medidas em 2026-11-09 com dois links `blob` do GitHub (que
+        // servem HTML, não o arquivo): o manifesto contava 14 PDFs com 12 reais; a ingestão quebrava
+        // com `leitura_falhou` nos dois; e o `existsSync` do topo deste laço contava o lixo como
+        // sucesso na execução seguinte — o defeito se escondia ao ser repetido. Apagar fecha os três.
+        rmSync(destino, { force: true });
+        log(`  NÃO-PDF, descartado: ${u.split("/").pop()}`);
+        continue;
+      }
       ok++; bytes += b.length;
     } catch (e) { log(`  falhou ${u.split("/").pop()}: ${String(e.message).slice(0, 60)}`); }
   }

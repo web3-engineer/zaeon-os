@@ -15,6 +15,13 @@ const thread = (id: string, titulo: string): Thread => ({ id, titulo, criadaEm: 
 const logar = (email: string | null) => { sessao.atual = email ? { data: { user: { email } }, status: "authenticated" } : { data: null, status: "unauthenticated" }; };
 const A = contaDaSessao("ana@zaeon.com"), B = contaDaSessao("bia@zaeon.com");
 
+// a lista usa os rótulos traduzidos (labSidebar.*, #830) — em pt, como na tela
+beforeEach(async () => {
+  const { default: i18n } = await import("i18next");
+  const { default: pt } = await import("@/public/locales/pt/common.json");
+  const { initReactI18next } = await import("react-i18next");
+  await i18n.use(initReactI18next).init({ lng: "pt", resources: { pt: { translation: pt } } });
+});
 beforeEach(() => { localStorage.clear(); sessao.atual = { data: null, status: "loading" }; });
 afterEach(cleanup);
 

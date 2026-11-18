@@ -85,7 +85,7 @@ export type TemaMini = {
 };
 
 /** o CONVÉS: piso, paredes, janela, escotilhas, costelas, teto com a cúpula, a cabine acesa e o portal */
-export function montarConves(k: KitMini, T: TemaMini, o: { teto?: boolean }) {
+export function montarConves(k: KitMini, T: TemaMini, o: { teto?: boolean; submersa?: boolean }) {
   const { add, mat, luz, textura, anim, descartar, K, H } = k, R = N.roda, C = N.cupula, TOPO = TOPO_MINI;
   const contorno = contornoDoMini(K);
   const forma = () => new THREE.Shape(contorno.map((p) => new THREE.Vector2(p.x, -p.z)));
@@ -99,7 +99,7 @@ export function montarConves(k: KitMini, T: TemaMini, o: { teto?: boolean }) {
     anim.push((_, t) => { (c.material as THREE.MeshBasicMaterial).opacity = 0.5 + 0.2 * Math.sin(t * 1.4); }); }
 
   // ── as PAREDES (com UV: u = metros de arco / 4, v = a altura / H), a JANELA da cabine e os frisos ──
-  const naJanela = (p: { z: number }) => p.z > N.janela;
+  const naJanela = (p: { z: number }) => o.submersa || p.z > N.janela;
   const fita = (pts: P2[], y0: number, y1: number, filtro: (p: P2) => boolean, m: THREE.Material, pai: THREE.Object3D = k.g) => {
     const v: number[] = [], uv: number[] = [], idx: number[] = []; let s = 0;
     for (let i = 0; i < pts.length; i++) { const a = pts[i]!, b = pts[(i + 1) % pts.length]!, L = Math.hypot(b.x - a.x, b.z - a.z); if (!filtro(a) || !filtro(b)) { s += L; continue; }
@@ -110,7 +110,8 @@ export function montarConves(k: KitMini, T: TemaMini, o: { teto?: boolean }) {
   const enc = (s: number) => contorno.map((p) => ({ x: p.x * s, z: p.z * s }));
   fita(contorno, 0, H, (p) => !naJanela(p), T.parede);
   fita(contorno, 0, 1.0, naJanela, T.parede);   // (a cabine: só o parapeito…)
-  fita(contorno, 1.0, H, naJanela, T.vidro);     // (…e o vidro inteiro até o teto)
+  const vidro = o.submersa ? mat(0x92d4d3, .08, { transparent: true, opacity: .17, depthWrite: false, side: THREE.DoubleSide }) : T.vidro;
+  fita(contorno, 1.0, H, naJanela, vidro);     // (…e o vidro inteiro até o teto)
   fita(enc(0.996), 0.95, 1.01, naJanela, luz(T.parapeito, 0.7));
   if (T.lambri) fita(enc(0.997), 0, 1.15, (p) => !naJanela(p), T.lambri);
   fita(enc(0.993), 1.12, 1.2, () => true, T.corrimao);
@@ -121,13 +122,13 @@ export function montarConves(k: KitMini, T: TemaMini, o: { teto?: boolean }) {
   const praDentro = (p: P2) => { const gx = Math.sign(p.x) * Math.abs(p.x / N.a) ** (N.n - 1) / N.a, gz = Math.sign(p.z) * Math.abs(p.z / N.b) ** (N.n - 1) / N.b, l = Math.hypot(gx, gz) || 1; return { x: -gx / l, z: -gz / l }; };
   // ── as ESCOTILHAS: o espaço lá fora num disco, a moldura e o brilho ──
   const [f0, f1, f2, n1, n2] = T.espaco;
-  const espacoTex = textura(512, 512, (x, w) => {
+  const espacoTex = o.submersa ? null : textura(512, 512, (x, w) => {
     const gr = x.createRadialGradient(w * 0.4, w * 0.4, 0, w / 2, w / 2, w * 0.7); gr.addColorStop(0, f0); gr.addColorStop(0.6, f1); gr.addColorStop(1, f2); x.fillStyle = gr; x.fillRect(0, 0, w, w);
     for (let j = 0; j < 6; j++) { const cx = (j * 173) % w, cy = (j * 291) % w, r = 90 + ((j * 61) % 90), n = x.createRadialGradient(cx, cy, 0, cx, cy, r); n.addColorStop(0, j % 2 ? n1 : n2); n.addColorStop(1, "rgba(0,0,0,0)"); x.fillStyle = n; x.fillRect(0, 0, w, w); }
     for (let j = 0; j < 180; j++) { x.fillStyle = `rgba(255,248,240,${0.4 + ((j * 13) % 6) / 10})`; const s = j % 11 ? 1.4 : 3; x.fillRect((j * 211) % w, (j * 97) % w, s, s); }
   });
   const escotilhas: Escotilha[] = [];
-  { const vidroEsc = new THREE.MeshBasicMaterial({ map: espacoTex }); descartar.push(vidroEsc);
+  if (espacoTex) { const vidroEsc = new THREE.MeshBasicMaterial({ map: espacoTex }); descartar.push(vidroEsc);
     const disco = new THREE.CircleGeometry(0.62, 40), moldura = new THREE.TorusGeometry(0.66, 0.08, 8, 40), anel = new THREE.RingGeometry(0.62, 0.7, 40); descartar.push(disco, moldura, anel);
     const pts = contornoDoMini(200), brilho = luz(T.brilhoEscotilha, 0.45); let ultimo = -1e9, s = 0;
     for (let i = 0; i < pts.length; i++) { const a = pts[i]!, b = pts[(i + 1) % pts.length]!; s += Math.hypot(b.x - a.x, b.z - a.z);
@@ -143,12 +144,12 @@ export function montarConves(k: KitMini, T: TemaMini, o: { teto?: boolean }) {
     const im = new THREE.InstancedMesh(costela, T.costela, 48), imL = T.costelaLuz !== null ? new THREE.InstancedMesh(filete, luz(T.costelaLuz, 0.85), 48) : null;
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(); let n = 0, s = 0, ultimo = -1e9;
     for (let i = 0; i < pts.length && n < 48; i++) { const a = pts[i]!, b = pts[(i + 1) % pts.length]!; s += Math.hypot(b.x - a.x, b.z - a.z); if (s - ultimo < 2.6) continue; ultimo = s;
-      const nn = praDentro(a); q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(nn.x, nn.z)); m4.compose(new THREE.Vector3(a.x + nn.x * 0.1, H / 2, a.z + nn.z * 0.1), q, new THREE.Vector3(1, naJanela(a) ? 0 : 1, 1)); im.setMatrixAt(n, m4); imL?.setMatrixAt(n, m4); n++; }
+      const nn = praDentro(a); q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(nn.x, nn.z)); m4.compose(new THREE.Vector3(a.x + nn.x * 0.1, H / 2, a.z + nn.z * 0.1), q, new THREE.Vector3(1, naJanela(a) && !o.submersa ? 0 : 1, 1)); im.setMatrixAt(n, m4); imL?.setMatrixAt(n, m4); n++; }
     im.count = n; add(im); descartar.push(costela, filete); if (imL) { imL.count = n; add(imL); } }
 
   // ── o TETO (com o furo da cúpula em cima da roda), as vigas curvas, a CÚPULA de vidro e o poço de luz ──
   const teto = new THREE.Group(); add(teto); teto.visible = o.teto ?? true;
-  { const sh = forma(), furo = new THREE.Path(); furo.absellipse(R.x, -R.z, C.a, C.b, 0, Math.PI * 2, true, 0); sh.holes.push(furo); sh.holes.push(vaoDaEscotilha());
+  { const sh = forma(), furo = new THREE.Path(); furo.absellipse(R.x, -R.z, C.a, C.b, 0, Math.PI * 2, true, 0); sh.holes.push(furo); if (!o.submersa) sh.holes.push(vaoDaEscotilha());
     const geo = new THREE.ShapeGeometry(sh, 48), uv = geo.attributes.uv as THREE.BufferAttribute, pos = geo.attributes.position as THREE.BufferAttribute; descartar.push(geo);
     for (let i = 0; i < pos.count; i++) uv.setXY(i, (pos.getX(i) + N.a) / (2 * N.a), (N.b + pos.getY(i)) / (2 * N.b));
     const placa = add(new THREE.Mesh(geo, T.tetoPlaca), teto); placa.rotation.x = -Math.PI / 2; placa.position.y = H;
@@ -167,7 +168,7 @@ export function montarConves(k: KitMini, T: TemaMini, o: { teto?: boolean }) {
     const poco = new THREE.CylinderGeometry(1, 1, TOPO - H, 64, 1, true); poco.scale(C.a, 1, C.b); poco.translate(R.x, (H + TOPO) / 2, R.z); descartar.push(poco); add(new THREE.Mesh(poco, T.poco), teto); }
 
   // ── a CABINE: as luzinhas no caixilho da janela e o holograma da rota em cima do painel ──
-  { const pts = contornoDoMini(160).filter(naJanela).sort((a, b) => a.x - b.x).map((p) => new THREE.Vector3(p.x * 0.995, H - 0.05, p.z * 0.995));
+  if (!o.submersa) { const pts = contornoDoMini(160).filter(naJanela).sort((a, b) => a.x - b.x).map((p) => new THREE.Vector3(p.x * 0.995, H - 0.05, p.z * 0.995));
     const lamp = new THREE.SphereGeometry(0.045, 6, 4), n = k.low ? 20 : 36, im = new THREE.InstancedMesh(lamp, luz(T.luzinhas, 0.9), n), m4 = new THREE.Matrix4(); descartar.push(lamp);
     const curva = new THREE.CatmullRomCurve3(pts); for (let j = 0; j < n; j++) { const p = curva.getPoint(j / (n - 1)); p.y -= Math.sin(((j % 6) / 6) * Math.PI) * 0.22; m4.makeTranslation(p.x, p.y, p.z); im.setMatrixAt(j, m4); } add(im);
     const hg = add(new THREE.Group()); hg.position.set(0, 1.35, 14.1);
@@ -177,8 +178,14 @@ export function montarConves(k: KitMini, T: TemaMini, o: { teto?: boolean }) {
     anim.push((dt, t) => { planeta.rotation.y += dt * 0.5; lua.position.set(Math.cos(t * 0.8) * 0.42, 0, Math.sin(t * 0.8) * 0.42); }); }
 
   // ── a POPA: o portal (o buraco negro pra Cidade Zaeon) ──
-  const bn = criarBuracoPortal(k.g, { x: N.portal.x, y: 0.02, z: N.portal.z, anelR: N.portal.r, h: 2.6, r: 0.8, low: k.low, cor: T.portal });
-  anim.push((dt, t) => bn.atualizar(dt, t)); descartar.push(bn);
+  if (o.submersa) {
+    const entrada = add(new THREE.Mesh(new THREE.RingGeometry(N.portal.r * .78, N.portal.r, 48), mat(0x6caaa6, .25, { side: THREE.DoubleSide })));
+    entrada.rotation.x = -Math.PI / 2;
+    entrada.position.set(N.portal.x, .025, N.portal.z);
+  } else {
+    const bn = criarBuracoPortal(k.g, { x: N.portal.x, y: 0.02, z: N.portal.z, anelR: N.portal.r, h: 2.6, r: 0.8, low: k.low, cor: T.portal });
+    anim.push((dt, t) => bn.atualizar(dt, t)); descartar.push(bn);
+  }
 
   return { teto, escotilhas, naJanela, praDentro, fita, contorno };
 }

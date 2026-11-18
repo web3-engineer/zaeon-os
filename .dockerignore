@@ -16,6 +16,9 @@ abnt-service/venv
 **/.mypy_cache
 .DS_Store
 *.md
+# EXCEÇÃO: as skills da casa SÃO lidas em runtime (lib/agent/skills-dir.ts). Sem esta linha
+# elas funcionariam em dev e em CI e estariam MORTAS na imagem — fixado por skills-dir.test.ts.
+!.claude/skills/**
 .vercel
 coverage
 # realtime (Colyseus) tem imagem própria; o web só importa server/colyseus/src/token.ts

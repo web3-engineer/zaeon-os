@@ -10,7 +10,7 @@
  */
 import { prisma } from "@/src/lib/prisma";
 import { SUPER_ADMINS, SUPER_ADMIN_ROLE } from "@/lib/auth/roles";
-import { KIND_SALA } from "./tipos";
+import { COWORK_SUBMERSO, KIND_SALA } from "./tipos";
 
 const ehObjectId = (v: unknown): v is string => typeof v === "string" && /^[0-9a-f]{24}$/i.test(v);
 
@@ -24,7 +24,7 @@ export async function salaDoMundo(): Promise<{ id: string; members: string[] } |
   const emails = SUPER_ADMINS.map((e) => e.toLowerCase()).filter(Boolean);
   const donos = await prisma.user.findMany({ where: { OR: [...(emails.length ? [{ email: { in: emails } }] : []), { role: SUPER_ADMIN_ROLE }] }, select: { id: true } }).catch(() => []);
   if (!donos.length) return null;
-  const salas = await prisma.collabDoc.findMany({ where: { kind: KIND_SALA, ownerId: { in: donos.map((u) => u.id) } }, orderBy: { updatedAt: "desc" }, select: { id: true, members: true }, take: 50 }).catch(() => []);
+  const salas = await prisma.collabDoc.findMany({ where: { kind: KIND_SALA, OR: [{ sourceType: { isSet: false } }, { sourceType: null }, { sourceType: { not: COWORK_SUBMERSO } }], ownerId: { in: donos.map((u) => u.id) } }, orderBy: { updatedAt: "desc" }, select: { id: true, members: true }, take: 50 }).catch(() => []);
   // sort estável: com o mesmo nº de membros, fica a ordem do banco (a mais recente primeiro)
   const d = [...salas].sort((a, b) => b.members.length - a.members.length)[0];
   return d ? { id: d.id, members: d.members } : null;

@@ -70,7 +70,14 @@ service-account*.json
 !.env.example
 
 # Cowork/Claude local cache
-.claude/
+# `.claude/*` e NÃO `.claude/`: com a barra o git nem desce no diretório, e aí nenhuma linha
+# `!` consegue resgatar o que está dentro. Com o asterisco ele desce, ignora o conteúdo, e a
+# exceção abaixo funciona.
+.claude/*
+# EXCEÇÃO: as skills da casa SÃO código do produto — lidas em runtime por lib/agent/skills-dir.ts
+# e servidas como card na vitrine. Sem esta linha a skill nem entra no repositório, e o resto do
+# recurso vira teatro. Fixada por lib/agent/skills-dir.test.ts.
+!.claude/skills/
 vertex-smoke.js
 friend-sa.json
 .env.local.bak-*

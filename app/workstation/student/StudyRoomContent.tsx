@@ -18,67 +18,11 @@ import { blueprintUiOn } from "@/lib/blueprint/tipos";
 import { reaBlueprintUiOn } from "@/lib/rea-blueprint/tipos";
 import { EVT_ESTUDOS_VISTA } from "@/lib/onboarding/tutorialLab";
 import { EVT_ESTUDOS_CHAT, EVT_PEDIDO_CONVERSA, EVT_ESTUDOS_IR, anunciarAbaEstudos, consumirAbaEstudos, type AbaEstudos } from "@/lib/chat/conversasNav";
+import { EVT_ABRIR_CURSO, type CursoAberto } from "@/lib/forja/abrirCurso";
 import { OmegaScholarProvider } from "./omega/OmegaScholarContext";
 import OmegaScholarWorkspace from "./omega/OmegaScholarWorkspace";
 import StudyRoomSuggestionDock from "./omega/StudyRoomSuggestionDock";
-
-// ─── ROOM MAPPING ────────────────────────────────────────────────────────────
-const ROOM_MAPPING: Record<string, string[]> = {
-    cyber: [
-        "Ciência da Computação", "Engenharia de Software", "Sistemas de Informação",
-        "Análise e Desenvolvimento de Sistemas", "Engenharia da Computação",
-        "Redes de Computadores", "Segurança da Informação / Cibersegurança",
-        "Banco de Dados", "Inteligência Artificial", "Ciência de Dados",
-        "Computação em Nuvem", "Internet das Coisas", "Robótica",
-        "Jogos Digitais", "Design Digital / UX / UI",
-        "Computer Science", "Software Engineering",
-    ],
-    med: [
-        "Medicina", "Enfermagem", "Odontologia", "Farmácia", "Fisioterapia",
-        "Nutrição", "Psicologia", "Fonoaudiologia", "Terapia Ocupacional",
-        "Biomedicina", "Educação Física",
-    ],
-    bio: [
-        "Ciências Biológicas", "Biologia", "Biotecnologia",
-        "Bioquímica", "Bioinformática", "Ecologia",
-    ],
-    quantic: [
-        "Matemática", "Matemática Aplicada", "Estatística", "Física",
-        "Astronomia", "Astrofísica", "Geofísica", "Meteorologia",
-    ],
-    humanities: [
-        "História", "Geografia", "Filosofia", "Sociologia", "Antropologia",
-        "Ciência Política", "Relações Internacionais", "Letras", "Linguística",
-        "Pedagogia", "Artes", "Música", "Teatro", "Dança", "Cinema e Audiovisual",
-        "Arquivologia", "Biblioteconomia", "Museologia", "Serviço Social",
-        "Comunicação Social", "Jornalismo", "Publicidade e Propaganda",
-        "Editoração", "Produção Cultural", "Direito", "Teologia",
-    ],
-};
-
-function getRoomForCourse(course?: string): string {
-    if (!course) return "lounge";
-    for (const [room, courses] of Object.entries(ROOM_MAPPING)) {
-        if (courses.some(c => c.toLowerCase() === course.toLowerCase())) return room;
-    }
-    return "lounge";
-}
-
-// ─── ROOM METADATA ───────────────────────────────────────────────────────────
-const ROOM_META: Record<string, {
-    name: string;
-    color: string;
-    accent: string;      // for the indicator bar color
-    gradient: string;
-    glow: string;
-}> = {
-    cyber:      { name: "Cyber Room",    color: "text-cyan-600 dark:text-cyan-400",       accent: "bg-cyan-400/40 dark:bg-cyan-400/30",       gradient: "from-cyan-500/15 to-blue-500/5",      glow: "bg-cyan-400/10" },
-    med:        { name: "MedLab",        color: "text-rose-600 dark:text-rose-400",        accent: "bg-rose-400/40 dark:bg-rose-400/30",        gradient: "from-rose-500/15 to-pink-500/5",       glow: "bg-rose-400/10" },
-    bio:        { name: "Bio Room",      color: "text-emerald-600 dark:text-emerald-400",  accent: "bg-emerald-400/40 dark:bg-emerald-400/30",  gradient: "from-emerald-500/15 to-green-500/5",   glow: "bg-emerald-400/10" },
-    quantic:    { name: "Quantic Room",  color: "text-blue-600 dark:text-blue-400",        accent: "bg-blue-400/40 dark:bg-blue-400/30",        gradient: "from-blue-500/15 to-indigo-500/5",     glow: "bg-blue-400/10" },
-    humanities: { name: "Grand Archive", color: "text-amber-600 dark:text-amber-400",      accent: "bg-amber-400/40 dark:bg-amber-400/30",      gradient: "from-amber-500/15 to-orange-500/5",    glow: "bg-amber-400/10" },
-    lounge:     { name: "Lounge",        color: "text-violet-600 dark:text-violet-400",    accent: "bg-violet-400/40 dark:bg-violet-400/30",    gradient: "from-violet-500/15 to-purple-500/5",   glow: "bg-violet-400/10" },
-};
+import { temaOuLounge, VISUAL_TEMA } from "@/lib/rooms/temas";
 
 // ─── TAB DEFINITIONS ─────────────────────────────────────────────────────────
 // Submódulos da Sala de Estudos: só Estudos / Aulas (mesmo conjunto para todas as
@@ -196,6 +140,7 @@ const VitrineEstudos = dynamic(() => import("@/components/estudos/VitrineEstudos
 // nascidos no chat; o board livre e o caderno antigo só abrem pelos links que já existem (?board=, ?space=)
 const SalaBlueprint = dynamic(() => import("@/components/blueprint/SalaBlueprint"), { ssr: false });
 const SalaRea = dynamic(() => import("@/components/rea/SalaRea"), { ssr: false });
+const SalaCurso = dynamic(() => import("@/components/study/SalaCurso"), { ssr: false });
 const MeusAlunosPanel = dynamic(() => import("@/app/workstation/student/MeusAlunosPanel"), { ssr: false });
 
 /**
@@ -211,8 +156,8 @@ export default function StudyRoomContent({ flushTop = false, unified = false, ab
     const { data: session } = useSession();
 
     const course = (session?.user as any)?.course as string | undefined;
-    const room   = getRoomForCourse(course);
-    const meta   = ROOM_META[room] ?? ROOM_META["lounge"];
+    const room   = temaOuLounge(course);
+    const meta   = VISUAL_TEMA[room];
     const tabs   = ROOM_TABS[room] ?? [];
     const isTeacher =
         (session?.user as any)?.role === "teacher" ||
@@ -230,6 +175,8 @@ export default function StudyRoomContent({ flushTop = false, unified = false, ab
         { id: "feed", label: "Sala de Estudos", icon: BookOpen },
         ...(reaBlueprintUiOn() ? [{ id: "rea", label: "Engenharia reversa", icon: Microscope }] : []),
         { id: "community", label: "Marketplace", icon: Users },
+        // a busca na LITERATURA (o Omega) saiu do toggle da vitrine e virou aba própria
+        { id: "literatura", label: "Literatura", icon: FlaskConical },
     ], []);
 
     // Padrão = a aba "Aura" (chats/co-working). Só cai numa aba de estudo/pesquisa se
@@ -244,8 +191,12 @@ export default function StudyRoomContent({ flushTop = false, unified = false, ab
         try {
             // a 1ª vez do TABLET (lib/ui/loungeHub `LAB_TABLET_PRIMEIRA`): abre no CHAT, não na última aba salva
             if (new URLSearchParams(window.location.search).get("estudo") === "chat") { setActiveTab("meus-estudos"); tabRestored.current = true; return; }
+            // #841: o atalho "Estudos" do ícone do app (manifest `shortcuts`) abre direto nos Estudos
+            if (new URLSearchParams(window.location.search).get("estudo") === "feed") { setActiveTab("feed"); tabRestored.current = true; return; }
             const saved = localStorage.getItem(`zaeon:lastTab:${room}`);
-            if (saved && (saved === "meus-estudos" || allTabs.some((t) => t.id === saved))) setActiveTab(saved);
+            // #832: a vitrine ("community") não volta sozinha — quem saiu por ela reabria o app no Marketplace, e não na
+            // conversa. Ela só abre quando pedida (/marketplace, o item do menu, a gaveta).
+            if (saved && saved !== "community" && (saved === "meus-estudos" || allTabs.some((t) => t.id === saved))) setActiveTab(saved);
             const pedida = consumirAbaEstudos();   // a sidebar pediu uma aba antes da sala montar
             if (pedida) setActiveTab(pedida);
         } catch { /* ignore */ }
@@ -257,7 +208,9 @@ export default function StudyRoomContent({ flushTop = false, unified = false, ab
     }, [activeTab, room]);
     // a sidebar destaca a aba em que a sala está, e pede outra pelos subitens de "Sala de Estudos"
     useEffect(() => {
-        if (activeTab === "meus-estudos" || activeTab === "feed" || activeTab === "community") anunciarAbaEstudos(activeTab);
+        // (#824: as outras — Literatura, um curso — também avisam, como `outra`: a sidebar não destaca nenhum subitem e o
+        // menu principal sabe que a vitrine fechou)
+        anunciarAbaEstudos(activeTab === "meus-estudos" || activeTab === "feed" || activeTab === "community" ? activeTab : "outra");
     }, [activeTab]);
     useEffect(() => {
         const ir = (e: Event) => { const a = (e as CustomEvent<AbaEstudos>).detail; consumirAbaEstudos(); if (a) setActiveTab(a); };
@@ -265,14 +218,25 @@ export default function StudyRoomContent({ flushTop = false, unified = false, ab
         return () => window.removeEventListener(EVT_ESTUDOS_IR, ir);
     }, []);
 
+    // CURSO DE CÓDIGO: abre na ÁREA PRÓPRIA (aba "curso", tela cheia) — não no chat, não no feed.
+    // forja:* e skill:* de código disparam abrirCurso (lib/forja/abrirCurso) e caem aqui.
+    const [cursoAtivo, setCursoAtivo] = useState<CursoAberto | null>(null);
+    useEffect(() => {
+        const onCurso = (e: Event) => {
+            const d = (e as CustomEvent<CursoAberto>).detail;
+            if (d?.cursoId) { setCursoAtivo(d); setActiveTab("curso"); }
+        };
+        window.addEventListener(EVT_ABRIR_CURSO, onCurso);
+        return () => window.removeEventListener(EVT_ABRIR_CURSO, onCurso);
+    }, []);
+
     // o BOARD de Meus Estudos aberto por um link de convite (?board=<id>&convite=<token>) e o caderno antigo por cima
     const [boardDoLink, setBoardDoLink] = useState<{ id: string | null; convite: string | null }>({ id: null, convite: null });
     const [cadernoAberto, setCadernoAberto] = useState(false);
     const [pranchaAntiga, setPranchaAntiga] = useState(false);
-    const [estudosVista, setEstudosVista] = useState<"vitrine" | "pesquisar">("vitrine");
-    // o tutorial do tablet abre o Marketplace direto na pesquisa (a tela roxa)
+    // o tutorial do tablet abre direto na pesquisa — a literatura é ABA PRÓPRIA agora (vitrine = Marketplace)
     useEffect(() => {
-        const f = (e: Event) => { const v = (e as CustomEvent<"vitrine" | "pesquisar">).detail; if (v === "vitrine" || v === "pesquisar") setEstudosVista(v); };
+        const f = (e: Event) => { const v = (e as CustomEvent<"vitrine" | "pesquisar">).detail; if (v === "pesquisar") setActiveTab("literatura"); else if (v === "vitrine") setActiveTab("community"); };
         window.addEventListener(EVT_ESTUDOS_VISTA, f);
         return () => window.removeEventListener(EVT_ESTUDOS_VISTA, f);
     }, []);
@@ -438,7 +402,7 @@ export default function StudyRoomContent({ flushTop = false, unified = false, ab
                     <div className="h-[1px] mt-1 mx-3 bg-black/[0.04] dark:bg-white/[0.06] relative">
                         {ready && (
                             <motion.div
-                                className={`absolute top-0 h-[2px] rounded-full ${meta.accent}`}
+                                className={`absolute top-0 h-[2px] rounded-full ${meta.acento}`}
                                 animate={{ left: indicator.left - 12, width: indicator.width }}
                                 // -12 accounts for px-3 (12px) padding on the tab row
                                 transition={{ type: "spring", stiffness: 520, damping: 38, mass: 0.4 }}
@@ -469,7 +433,10 @@ export default function StudyRoomContent({ flushTop = false, unified = false, ab
                         <div className={activeTab === "meus-estudos" ? "h-full" : "hidden"}>
                             <StudyCoworkChat active={activeTab === "meus-estudos"} />
                         </div>
-                        {activeTab === "rea" && reaBlueprintUiOn() ? (
+                        {activeTab === "curso" && cursoAtivo ? (
+                            // ÁREA PRÓPRIA do curso de código (board graphify + base de conhecimento), tela cheia
+                            <div className="relative h-full"><SalaCurso cursoId={cursoAtivo.cursoId} titulo={cursoAtivo.titulo} onFechar={() => setActiveTab("community")} /></div>
+                        ) : activeTab === "rea" && reaBlueprintUiOn() ? (
                             <div className="relative h-full"><SalaRea /></div>
                         ) : activeTab === "feed" ? (
                             // a Sala de Estudos = os BLUEPRINTS. A prancha antiga e o caderno antigo saíram do menu (pedido do
@@ -489,14 +456,10 @@ export default function StudyRoomContent({ flushTop = false, unified = false, ab
                             </div>
                             )
                         ) : activeTab === "meus-estudos" ? null : activeTab === "community" ? (
-                            <div className="relative h-full">
-                                {estudosVista === "vitrine" ? <VitrineEstudos /> : <OmegaScholarWorkspace />}
-                                <div className="absolute right-3 top-3 z-30 flex overflow-hidden rounded-full border border-sky-300/30 bg-[#05162a]/85 font-mono text-[10.5px] backdrop-blur">
-                                    {(["vitrine", "pesquisar"] as const).map((v) => (
-                                        <button key={v} type="button" onClick={() => setEstudosVista(v)} className={`px-3 py-1 ${estudosVista === v ? "bg-sky-300/20 text-white" : "text-sky-100/70 hover:text-white"}`}>{v === "vitrine" ? "vitrine" : "pesquisar na literatura"}</button>
-                                    ))}
-                                </div>
-                            </div>
+                            <div className="relative h-full"><VitrineEstudos /></div>
+                        ) : activeTab === "literatura" ? (
+                            // a busca na LITERATURA (o Omega) — aba própria da Sala de Estudos
+                            <div className="relative h-full"><OmegaScholarWorkspace /></div>
                         ) : activeTab === "students" ? (
                             <MeusAlunosPanel />
                         ) : activeTab === "classes" && isTeacher ? (

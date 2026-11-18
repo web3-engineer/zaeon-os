@@ -1,0 +1,48 @@
+{
+  "arquivo": "quiz.js",
+  "funcao": "O juiz do quiz: dada a lista de perguntas (cada uma com sua resposta certa) e as respostas do jogador, conta quantas ele acertou. É a lógica de pontuação, separada das telas.",
+  "ordem": 0,
+  "linguagem": "javascript",
+  "abas": [
+    {
+      "titulo": "Contar os acertos",
+      "snippets": [
+        { "explicacao": "Recebe as perguntas (cada uma com `.correta`) e as respostas do jogador, na mesma ordem.", "codigo": "function pontuar(perguntas, respostas) {" },
+        { "explicacao": "Começa o placar zerado.", "codigo": "  let acertos = 0;" },
+        { "explicacao": "Percorre cada pergunta pelo índice.", "codigo": "  for (let i = 0; i < perguntas.length; i++) {" },
+        { "explicacao": "Se a resposta do jogador bate com a correta daquela pergunta, soma um acerto.", "codigo": "    if (respostas[i] === perguntas[i].correta) acertos++;" },
+        { "explicacao": "Fecha o laço.", "codigo": "  }" }
+      ],
+      "quiz": [
+        {
+          "tipo": "escolha",
+          "enunciado": "Por que percorrer pelo índice `i` e comparar `respostas[i]` com `perguntas[i].correta`?",
+          "opcoes": [
+            { "texto": "Assim cada resposta é checada contra a pergunta na MESMA posição", "correta": true, "explicacao": "O índice alinha resposta e pergunta; sem isso, compararia itens trocados." },
+            { "texto": "Porque `for` é mais rápido que `forEach`", "correta": false, "explicacao": "A questão é o alinhamento por posição, não velocidade." }
+          ],
+          "pontos": 2
+        }
+      ]
+    },
+    {
+      "titulo": "Devolver o placar",
+      "snippets": [
+        { "explicacao": "Devolve um objeto com os acertos e o total — quem chamou decide como mostrar (\"2 de 3\").", "codigo": "  return { acertos, total: perguntas.length };" },
+        { "explicacao": "Fecha a função.", "codigo": "}" }
+      ],
+      "quiz": [
+        {
+          "tipo": "escolha",
+          "enunciado": "Por que devolver `{ acertos, total }` em vez de só o número de acertos?",
+          "opcoes": [
+            { "texto": "Com o total junto, a tela mostra \"2 de 3\" sem precisar recalcular", "correta": true, "explicacao": "O objeto carrega o contexto do placar; a interface só exibe." },
+            { "texto": "Porque funções não podem devolver números", "correta": false, "explicacao": "Podem; devolver o objeto é só mais informativo aqui." }
+          ],
+          "pontos": 2
+        }
+      ]
+    }
+  ],
+  "teste": "const perg = [{ correta: \"a\" }, { correta: \"b\" }, { correta: \"c\" }];\nlet r = pontuar(perg, [\"a\", \"x\", \"c\"]);\nif (r.acertos !== 2 || r.total !== 3) throw new Error(\"esperava 2/3\");\nif (pontuar(perg, [\"a\", \"b\", \"c\"]).acertos !== 3) throw new Error(\"esperava 3\");\nif (pontuar(perg, [null, null, null]).acertos !== 0) throw new Error(\"esperava 0\");"
+}

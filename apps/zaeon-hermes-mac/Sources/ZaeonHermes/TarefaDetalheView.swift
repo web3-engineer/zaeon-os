@@ -283,7 +283,7 @@ private struct AbaTexto: View {
     }
 }
 
-private struct BlocoView: View {
+struct BlocoView: View {
     let bloco: BlocoTexto
     let conhecidas: Set<String>
     let selecionada: String?

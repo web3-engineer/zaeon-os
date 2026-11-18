@@ -1,0 +1,120 @@
+{
+  "modulos": [
+    {
+      "titulo": "Inicializar e o loop de animação",
+      "estudo": "Rolagem suave (smooth scroll) é quando a página desliza com inércia em vez de pular seco a cada giro da roda do mouse. O Lenis é uma biblioteca leve que faz isso. Instala com `npm i lenis` (ou via CDN) e se inicializa com `const lenis = new Lenis()`.\n\nMas tem um detalhe que faz todo iniciante travar: o Lenis não anima sozinho. Ele precisa ser \"tickado\" a cada quadro da tela, via `requestAnimationFrame`. O padrão é:\n\n```js\nconst lenis = new Lenis();\nfunction raf(time) {\n  lenis.raf(time);\n  requestAnimationFrame(raf);\n}\nrequestAnimationFrame(raf);\n```\n\nO que esse loop faz: a cada quadro (~60 vezes por segundo), ele chama `lenis.raf(time)`, que interpola a posição da rolagem um passo em direção ao alvo. É essa interpolação, quadro a quadro, que cria a suavidade. Sem o loop, você inicializa o Lenis e... nada acontece — a rolagem continua seca, porque ninguém está avançando a animação.\n\nA regra que fica: `new Lenis()` sozinho não basta; a suavidade mora no loop de `requestAnimationFrame` que tica o Lenis a cada quadro.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Você fez `new Lenis()` mas a rolagem continua seca, sem suavidade. O que faltou?",
+            "options": [
+              { "text": "O loop de requestAnimationFrame chamando lenis.raf(time) a cada quadro", "isCorrect": true, "explanation": "O Lenis precisa ser tickado por quadro; sem isso, a animação não avança." },
+              { "text": "Importar o CSS do Lenis", "isCorrect": false, "explanation": "O essencial que falta é o loop de animação, não um CSS." },
+              { "text": "Chamar new Lenis() duas vezes", "isCorrect": false, "explanation": "Criar dois Lenis piora as coisas; o que falta é o raf loop." }
+            ],
+            "marks": 3
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "Qual API do navegador você usa para rodar a animação do Lenis a cada quadro?",
+            "accepted": ["requestAnimationFrame", "requestAnimationFrame()", "raf", "window.requestAnimationFrame"],
+            "marks": 2
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Em uma frase: o que `lenis.raf(time)` faz a cada vez que é chamado?",
+          "accepted": ["interpola a rolagem um passo em direção ao alvo", "avança a animação da rolagem", "move a posição um passo", "atualiza a suavização da rolagem", "dá um passo da interpolação"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "import Lenis from 'lenis';\n\nconst lenis = new Lenis();\n\n// O loop que dá vida à suavidade: tica o Lenis a cada quadro.\nfunction raf(time) {\n  lenis.raf(time);\n  requestAnimationFrame(raf);\n}\nrequestAnimationFrame(raf);",
+        "teste": "// com o loop rodando, a rolagem da página fica suave (interpolada)"
+      }
+    },
+    {
+      "titulo": "Âncoras e o ciclo de vida no React",
+      "estudo": "Dois pontos onde a rolagem suave briga com o resto da página se você não cuidar.\n\nPrimeiro, as **âncoras**. Um link `<a href=\"#secao\">` normalmente dá um PULO nativo até a seção — e esse pulo nativo ignora o Lenis, criando um conflito (a página salta e depois a suavidade tenta corrigir). A solução é interceptar esses cliques e usar `lenis.scrollTo('#secao')` em vez do pulo: aí a ida até a âncora também fica suave e sob controle do Lenis.\n\nSegundo, o **ciclo de vida no React**. Você inicializa o Lenis dentro de um `useEffect`, guarda a instância, e — isto é crucial — a DESTRÓI no cleanup (`return () => lenis.destroy()`). Por quê? Sem o cleanup, cada hot-reload durante o desenvolvimento (ou cada remontagem do componente) cria um Lenis NOVO sem matar o antigo. Em minutos você tem vários Lenis rodando juntos, cada um tentando controlar a rolagem — e a página fica tremida, lenta, imprevisível.\n\nA regra que fica: âncora chama `scrollTo` do Lenis, não o pulo nativo; e no React, todo Lenis criado num `useEffect` tem de ser destruído no cleanup.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Links de âncora (#secao) estão dando um pulo seco que briga com a rolagem suave. Qual a correção?",
+            "options": [
+              { "text": "Interceptar o clique e usar lenis.scrollTo('#secao') em vez do pulo nativo", "isCorrect": true, "explanation": "Assim a ida à âncora também passa pelo Lenis e fica suave." },
+              { "text": "Remover todos os links de âncora da página", "isCorrect": false, "explanation": "Desnecessário; basta roteá-los pelo Lenis." },
+              { "text": "Aumentar a duração da animação global", "isCorrect": false, "explanation": "Não resolve o conflito com o pulo nativo." }
+            ],
+            "marks": 3
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Em React, por que destruir o Lenis no cleanup do useEffect?",
+            "options": [
+              { "text": "Senão cada hot-reload/remontagem empilha um novo Lenis, e vários rodando juntos travam a rolagem", "isCorrect": true, "explanation": "O cleanup evita múltiplas instâncias competindo pela rolagem." },
+              { "text": "Para liberar a conexão de internet", "isCorrect": false, "explanation": "Lenis não usa rede; é sobre instâncias duplicadas." },
+              { "text": "Porque o React exige destruir toda variável", "isCorrect": false, "explanation": "Não é regra geral; é específico de recursos como o Lenis que persistem." }
+            ],
+            "marks": 2
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Qual método do Lenis você chama no cleanup do useEffect para evitar instâncias empilhadas?",
+          "accepted": ["lenis.destroy()", "destroy", "destroy()", ".destroy()"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "import { useEffect } from 'react';\nimport Lenis from 'lenis';\n\nfunction useSmoothScroll() {\n  useEffect(() => {\n    const lenis = new Lenis();\n    function raf(t) { lenis.raf(t); requestAnimationFrame(raf); }\n    requestAnimationFrame(raf);\n    return () => lenis.destroy();   // cleanup: evita Lenis empilhados no hot-reload\n  }, []);\n}",
+        "teste": "// o cleanup garante um único Lenis vivo por vez"
+      }
+    },
+    {
+      "titulo": "Acessibilidade: o que quase todo mundo esquece",
+      "estudo": "Rolagem suave é bonita, mas pode ser um problema de acessibilidade — e esse é o ponto que a maioria dos tutoriais pula. Movimento extra na tela enjoa algumas pessoas (sensibilidade a movimento, vertigem) e atrapalha quem navega por teclado ou leitor de tela.\n\nO sistema operacional deixa a pessoa pedir menos movimento, e o navegador expõe isso como a media query `prefers-reduced-motion`. A regra de ouro: **quando o usuário pede menos movimento, DESLIGUE o Lenis** e deixe a rolagem nativa. Em código: `if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { /* não inicialize o Lenis */ }`.\n\nUma animação que ignora `prefers-reduced-motion` não é um charme — é um DEFEITO de acessibilidade, que pode literalmente passar mal alguém. Respeitar a preferência é parte de fazer o recurso direito, não um extra opcional.\n\nE dois limites honestos: o Lenis acompanha a rolagem, não a sequestra — busca com Ctrl+F e o foco por teclado continuam funcionando. E é web: não serve para app nativo.\n\nA regra que fica: antes de inicializar o Lenis, pergunte ao sistema se a pessoa quer menos movimento; se quer, rolagem nativa, sem suavização.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "O que você deve fazer quando `prefers-reduced-motion: reduce` está ativo?",
+            "options": [
+              { "text": "Não inicializar o Lenis — deixar a rolagem nativa, sem suavização", "isCorrect": true, "explanation": "A pessoa pediu menos movimento; respeitar isso é acessibilidade." },
+              { "text": "Deixar o Lenis, mas com animação mais rápida", "isCorrect": false, "explanation": "Ainda é movimento extra; o pedido é por menos, não por mais rápido." },
+              { "text": "Ignorar — é só preferência estética", "isCorrect": false, "explanation": "Não é estética; ignorar é um defeito de acessibilidade real." }
+            ],
+            "marks": 3
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "Qual media query do navegador diz que o usuário quer menos movimento?",
+            "accepted": ["prefers-reduced-motion", "prefers-reduced-motion: reduce", "(prefers-reduced-motion: reduce)"],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Em uma frase: por que ignorar prefers-reduced-motion é um defeito, e não um detalhe?",
+          "accepted": ["pode passar mal alguém com sensibilidade a movimento", "exclui quem tem vertigem ou usa teclado", "é uma barreira de acessibilidade", "atrapalha pessoas de verdade", "pode causar enjoo/vertigem"],
+          "marks": 4
+        }
+      }
+    }
+  ]
+}

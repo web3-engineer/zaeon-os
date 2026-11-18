@@ -8,15 +8,48 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, Loader2, Mic, Paperclip, Zap, Compass, Square, SlidersHorizontal } from "lucide-react";
+import { ArrowUp, Loader2, Mic, Paperclip, Zap, Compass, Square, SlidersHorizontal, Camera, Plus, ImageIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import dynamic from "next/dynamic";
 import useSTT, { TEXTO_AVISO_STT } from "@/lib/voice/useSTT";
+
+// Carregado sob demanda (usa APIs de mídia do navegador): não entra no bundle de quem nunca abre a câmera.
+const CameraAoVivo = dynamic(() => import("@/components/chat/CameraAoVivo"), { ssr: false });
+import { avisarMicrofone } from "@/lib/research/zaeonEventos";
 import { useAutoFoco } from "@/lib/ui/autofoco";
+import { useIsMobile, QUERY_CELULAR, QUERY_CELULAR_DEITADO } from "@/lib/ui/useIsMobile";
+import { useFecharNoVoltar } from "@/lib/ui/useFecharNoVoltar";
+import PainelDeBaixo, { ALVO, FOCO } from "@/components/study/PainelDeBaixo";
+import { FUNCTIONS as FUNCOES_STUDIO } from "@/components/study/StudioPalette";
 
 // execMode = automático (Aura vai ponta-a-ponta) × guiado (pausa nos gates HITL,
 // estilo plan-mode do Claude). Fase 0: só a casca — persiste a preferência p/ o
 // harness da Fase 1 ler. Espelha docs/AURA_AGENTIC_LAYER_PLAN.md §11.4.
 export type ExecMode = "auto" | "guiado";
 const EXEC_KEY = "zaeon.execMode";
+
+/** #837: o "automático × guiado" no painel do "Aura ▾" do celular — a mesma preferência (localStorage) da caixa do
+ *  computador, que o harness lê. */
+export function BotaoModoExec() {
+  const { t } = useTranslation();
+  const [modo, setModo] = useState<ExecMode>("auto");
+  useEffect(() => {
+    try { const s = localStorage.getItem(EXEC_KEY); if (s === "auto" || s === "guiado") setModo(s); } catch { /* ignore */ }
+  }, []);
+  const trocar = () => setModo((m) => {
+    const prox: ExecMode = m === "auto" ? "guiado" : "auto";
+    try { localStorage.setItem(EXEC_KEY, prox); } catch { /* ignore */ }
+    return prox;
+  });
+  return (
+    <button type="button" onClick={trocar} aria-pressed={modo === "guiado"}
+      className={`self-start min-h-[44px] pl-3 pr-4 rounded-full inline-flex items-center gap-2 text-[13px] font-tech font-medium
+        ${modo === "guiado" ? "text-violet-700 dark:text-violet-300 bg-violet-500/12" : "text-cyan-700 dark:text-cyan-300 bg-cyan-500/10"}`}>
+      {modo === "auto" ? <Zap size={16} /> : <Compass size={16} />}
+      {modo === "auto" ? t("chatCelular.auto") : t("chatCelular.guided")}
+    </button>
+  );
+}
 
 export type CoworkComposerProps = {
   value: string;
@@ -45,6 +78,12 @@ export type CoworkComposerProps = {
   opcoes?: React.ReactNode;
   /** alguma opção fora do normal está ligada (ex.: modo pesquisa): o botão das opções ganha um ponto */
   opcoesAtivas?: boolean;
+  /** #832: a sala está visível — escondida, o ◀ não pode ser "gasto" fechando as opções que ninguém vê */
+  ativo?: boolean;
+  /** #837: no celular, o "+" traz o Studio — escolher uma função põe o modelo do pedido na caixa */
+  onEscolherStudio?: (template: string) => void;
+  /** #837: os selos do que está ligado (modo pesquisa, Minha base…), em cima do campo */
+  selos?: React.ReactNode;
 };
 
 export default function CoworkComposer({
@@ -63,8 +102,32 @@ export default function CoworkComposer({
   children,
   opcoes,
   opcoesAtivas = false,
+  ativo = true,
+  onEscolherStudio,
+  selos,
 }: CoworkComposerProps) {
+  const { t } = useTranslation();
+  // #837: o "+" do celular (trazer arquivo/foto/câmera e gerar com o Studio)
+  const [mais, setMais] = useState(false);
+  const fotoRef = useRef<HTMLInputElement>(null);
   const [verOpcoes, setVerOpcoes] = useState(false);
+  // #832: no celular, o ◀ do Android fecha as opções da conversa
+  const celular = useIsMobile(QUERY_CELULAR);
+  // #845: deitado, o selo vai na mesma linha do campo (uma linha a menos — cada pixel de altura é da conversa)
+  const deitado = useIsMobile(QUERY_CELULAR_DEITADO);
+  useFecharNoVoltar(ativo && celular && verOpcoes, () => setVerOpcoes(false));
+  const [camAberta, setCamAberta] = useState(false);
+  // Câmera ao vivo ("be my eyes"): o botão só aparece quando o servidor diz que a câmera está ligada
+  // (/api/ai/capabilities → `camera`: flag VISAO_CAMERA + credencial Vertex). Default false, falha quieto.
+  const [cameraDisponivel, setCameraDisponivel] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    fetch("/api/ai/capabilities")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (vivo && j && typeof j.camera === "boolean") setCameraDisponivel(j.camera); })
+      .catch(() => { /* sem capabilities = sem botão de câmera, e tudo bem */ });
+    return () => { vivo = false; };
+  }, []);
   const ref = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -106,15 +169,40 @@ export default function CoworkComposer({
   // Ditado por voz (áudio → texto). Guarda o texto que já existia ao começar a gravar
   // e vai concatenando a transcrição em cima dele.
   const baseRef = useRef("");
-  const { toggle: toggleMic, listening, supported: sttSupported, ouviu, aviso: avisoMic, limparAviso: limparAvisoMic } = useSTT({
+  // #749: contínuo + desliga sozinho depois de 2,5 s de pausa (no modo de uma frase, o Edge às vezes devolvia vazio)
+  const { start: ligarMic, stop: desligarMic, listening, supported: sttSupported, ouviu, aviso: avisoMic, limparAviso: limparAvisoMic } = useSTT({
+    pausaMs: 2500,
     onResult: (t) => onChange((baseRef.current ? baseRef.current + " " : "") + t),
   });
   // #733: o aviso de por que o microfone desligou some sozinho depois de uns segundos
   useEffect(() => { if (!avisoMic) return; const t = setTimeout(limparAvisoMic, 6000); return () => clearTimeout(t); }, [avisoMic, limparAvisoMic]);
-  const onMic = () => {
-    if (!listening) baseRef.current = value.trim();
-    toggleMic();
+  // #756: com a avatar 3D desenhando, o microfone não trazia texto. Ao tocar no 🎤: "Preparando o microfone…", a avatar
+  // faz a pose de pensativa e congela (lib/research/zaeonEventos), e SÓ ENTÃO o microfone liga. Desligou (por qualquer
+  // motivo): ela descongela.
+  const [preparandoMic, setPreparandoMic] = useState(false);
+  const pedidoMic = useRef(0);
+  const micAberto = useRef(false);
+  const onMic = async () => {
+    if (listening || preparandoMic) {
+      pedidoMic.current++; setPreparandoMic(false); desligarMic();
+      if (micAberto.current) { micAberto.current = false; void avisarMicrofone(false); }
+      return;
+    }
+    baseRef.current = value.trim();
+    const meu = ++pedidoMic.current;
+    setPreparandoMic(true); limparAvisoMic();
+    micAberto.current = true;
+    await avisarMicrofone(true);
+    if (pedidoMic.current !== meu) return;   // tocou de novo enquanto preparava: cancelou
+    setPreparandoMic(false);
+    ligarMic();
   };
+  useEffect(() => {
+    if (listening || preparandoMic || !micAberto.current) return;
+    micAberto.current = false; void avisarMicrofone(false);
+  }, [listening, preparandoMic]);
+  useEffect(() => () => { if (micAberto.current) void avisarMicrofone(false); }, []);
+  const micAtivo = listening || preparandoMic;
 
   // Cresce com o conteúdo até o teto (rola internamente depois disso) — igual ao Claude.
   // O teto é o max-height do CSS do textarea: 220px, mas nunca mais que 25% da tela — com 220px fixos,
@@ -133,6 +221,106 @@ export default function CoworkComposer({
     }
   };
 
+  // #837: no CELULAR a caixa é uma linha só — "+", o campo, o microfone e o enviar. O resto (anexo, foto, câmera,
+  // Studio) mora no painel do "+"; as opções da conversa e o modo automático, no "Aura ▾" do topo. Antes eram 7 botões
+  // em 2 linhas (~125 px) e a conversa ficava com um terço da tela.
+  if (celular) {
+    const escolherStudio = (tpl: string) => {
+      if (onEscolherStudio) onEscolherStudio(tpl); else onChange(tpl + value.trim());
+      setMais(false);
+      setTimeout(() => ref.current?.focus(), 0);
+    };
+    const itemDoMais = `${ALVO} ${FOCO} flex w-full items-center gap-2.5 rounded-2xl border border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/[0.04] px-3 py-2.5 text-left text-[15px] text-slate-800 dark:text-white/90`;
+    return (
+      <div className="rounded-[24px] p-[1.5px] bg-gradient-to-r from-blue-500/25 via-cyan-400/25 to-violet-500/25">
+        <div className="rounded-[23px] bg-white/85 dark:bg-white/[0.06] backdrop-blur-2xl border border-white/70 dark:border-white/10 px-1.5 py-1.5">
+          {children}
+          {!deitado && selos}
+          {sttSupported && (micAtivo || avisoMic) && (
+            <div role="status" data-microfone className={`mx-1 mb-1 flex items-center gap-2 rounded-xl px-3 py-1.5 text-[12.5px] font-medium
+              ${micAtivo ? "bg-rose-500/10 text-rose-700 dark:text-rose-200" : "bg-amber-500/10 text-amber-800 dark:text-amber-100"}`}>
+              {preparandoMic ? <span>Preparando o microfone…</span>
+                : listening ? (<><span aria-hidden className="h-2 w-2 shrink-0 rounded-full bg-rose-500 animate-pulse" /><span>{ouviu ? "Ouvindo… quando parar de falar, ele desliga sozinho." : "Ouvindo… pode falar."}</span></>)
+                : avisoMic ? <span>{TEXTO_AVISO_STT[avisoMic]}</span> : null}
+            </div>
+          )}
+          <div className="flex items-end gap-1">
+            <button type="button" onClick={() => setMais(true)} aria-haspopup="dialog" aria-expanded={mais}
+              aria-label={t("chatCelular.more")} title={t("chatCelular.more")}
+              className={`${ALVO} ${FOCO} shrink-0 rounded-full flex items-center justify-center ${mais ? "text-cyan-600 dark:text-cyan-300 bg-cyan-500/10" : "text-slate-600 dark:text-white/70"}`}>
+              <Plus size={22} />
+            </button>
+            {deitado && selos ? <div className="shrink-0 self-center max-w-[40%] overflow-hidden [&>*]:!m-0">{selos}</div> : null}
+            <textarea
+              ref={ref}
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              onKeyDown={onKeyDown}
+              rows={1}
+              placeholder={placeholder || t("chatCelular.placeholder")}
+              aria-label={t("chatCelular.message")}
+              enterKeyHint="send"
+              className="flex-1 min-w-0 max-h-[min(164px,25dvh)] resize-none overflow-y-auto bg-transparent outline-none border-0
+                font-tech text-[16px] leading-6 py-2.5 px-1 text-slate-800 dark:text-white/90 placeholder:text-slate-400 dark:placeholder:text-white/35 custom-scrollbar"
+            />
+            {sttSupported && (
+              <button type="button" onClick={() => { void onMic(); }} aria-pressed={micAtivo}
+                aria-label={micAtivo ? t("chatCelular.stopMic") : t("chatCelular.mic")}
+                className={`${ALVO} ${FOCO} shrink-0 rounded-full flex items-center justify-center transition-colors
+                  ${micAtivo ? "text-white bg-rose-500 animate-pulse" : "text-slate-500 dark:text-white/60"}`}>
+                <Mic size={19} />
+              </button>
+            )}
+            {busy && onStop ? (
+              <button type="button" onClick={onStop} aria-label={t("chatCelular.stop")}
+                className={`${ALVO} ${FOCO} shrink-0 rounded-full flex items-center justify-center text-white`}
+                style={{ background: "linear-gradient(135deg,#e11d48,#f43f5e)" }}>
+                <Square size={14} className="fill-current" />
+              </button>
+            ) : (
+              <button type="button" onClick={() => value.trim() && !busy && onSubmit()} disabled={!value.trim() || busy}
+                aria-label={t("chatCelular.send")} data-tour="enviar"
+                className={`${ALVO} ${FOCO} shrink-0 rounded-full flex items-center justify-center text-white disabled:opacity-30`}
+                style={{ background: "linear-gradient(135deg,#2563eb,#06b6d4)" }}>
+                {busy ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={19} />}
+              </button>
+            )}
+          </div>
+        </div>
+        <input ref={fileRef} type="file" multiple className="hidden" onChange={onPickFiles} />
+        <input ref={fotoRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onPickFiles} />
+        <PainelDeBaixo aberto={ativo && mais} onFechar={() => setMais(false)} titulo={t("chatCelular.more")} rotuloFechar={t("chatCelular.close")}>
+          <h3 className="mt-1 mb-1.5 text-[11px] font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/45">{t("chatCelular.bring")}</h3>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" className={itemDoMais} onClick={() => { setMais(false); fileRef.current?.click(); }}>
+              <Paperclip size={18} className="shrink-0 text-cyan-600 dark:text-cyan-300" />{t("chatCelular.file")}
+            </button>
+            <button type="button" className={itemDoMais} onClick={() => { setMais(false); fotoRef.current?.click(); }}>
+              <ImageIcon size={18} className="shrink-0 text-cyan-600 dark:text-cyan-300" />{t("chatCelular.photo")}
+            </button>
+            {cameraDisponivel && (
+              <button type="button" className={itemDoMais} onClick={() => { setMais(false); setCamAberta(true); }}>
+                <Camera size={18} className="shrink-0 text-cyan-600 dark:text-cyan-300" />{t("chatCelular.liveCamera")}
+              </button>
+            )}
+          </div>
+          <h3 className="mt-4 mb-1.5 text-[11px] font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/45">{t("chatCelular.studio")}</h3>
+          <div className="grid grid-cols-2 gap-2">
+            {FUNCOES_STUDIO.map((f) => {
+              const Icone = f.icon;
+              return (
+                <button key={f.kind} type="button" className={itemDoMais} onClick={() => escolherStudio(f.template)}>
+                  <Icone size={18} className="shrink-0 text-violet-600 dark:text-violet-300" />{f.label}
+                </button>
+              );
+            })}
+          </div>
+        </PainelDeBaixo>
+        {camAberta && <CameraAoVivo onFechar={() => setCamAberta(false)} />}
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-[26px] p-[1.5px] bg-gradient-to-r from-blue-500/25 via-cyan-400/25 to-violet-500/25 shadow-[0_18px_50px_-24px_rgba(37,99,235,0.5)]">
       {/* keyframe do ⟁ ocioso: "respira" quando não há conversa ativa */}
@@ -144,10 +332,13 @@ export default function CoworkComposer({
         {opcoes && <div id="opcoes-da-conversa" className={verOpcoes ? "" : `hidden sm:block [@media(max-height:640px)]:!hidden`}>{opcoes}</div>}
         {children}
         {/* #733: o microfone diz o que está fazendo — antes só o botão piscava, e a pessoa falava sem saber se ele ouvia */}
-        {sttSupported && (listening || avisoMic) && (
+        {sttSupported && (micAtivo || avisoMic) && (
           <div role="status" data-microfone className={`mx-1 mb-1 flex items-center gap-2 rounded-xl px-3 py-1.5 text-[12.5px] font-medium
-            ${listening ? "bg-rose-500/10 text-rose-700 dark:text-rose-200" : "bg-amber-500/10 text-amber-800 dark:text-amber-100"}`}>
-            {listening ? (<>
+            ${micAtivo ? "bg-rose-500/10 text-rose-700 dark:text-rose-200" : "bg-amber-500/10 text-amber-800 dark:text-amber-100"}`}>
+            {preparandoMic ? (<>
+              <span aria-hidden className="h-2 w-2 shrink-0 rounded-full border border-rose-400 border-t-transparent animate-spin" />
+              <span>Preparando o microfone…</span>
+            </>) : listening ? (<>
               <span aria-hidden className="h-2 w-2 shrink-0 rounded-full bg-rose-500 animate-pulse" />
               <span>{ouviu ? "Ouvindo… quando parar de falar, ele desliga sozinho." : "Ouvindo… pode falar. O texto aparece aqui embaixo."}</span>
             </>) : avisoMic ? <span>{TEXTO_AVISO_STT[avisoMic]}</span> : null}
@@ -257,18 +448,32 @@ export default function CoworkComposer({
           {sttSupported && (
             <button
               type="button"
-              onClick={onMic}
-              title={listening ? "Parar gravação" : "Falar (áudio → texto)"}
-              aria-pressed={listening}
-              aria-label={listening ? "Parar gravação" : "Falar"}
+              onClick={() => { void onMic(); }}
+              title={micAtivo ? "Parar gravação" : "Falar (áudio → texto)"}
+              aria-pressed={micAtivo}
+              aria-label={micAtivo ? "Parar gravação" : "Falar"}
               className={`shrink-0 self-end mb-0.5 w-11 h-11 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-colors
-                ${listening
+                ${micAtivo
                   ? "text-white bg-rose-500 animate-pulse shadow-[0_0_16px_rgba(244,63,94,0.5)]"
                   : "text-slate-400 dark:text-white/50 hover:bg-slate-500/10 hover:text-slate-600 dark:hover:text-white/80"}`}
             >
               <Mic size={17} />
             </button>
           )}
+
+          {/* Câmera ao vivo — "be my eyes" (flag VISAO_CAMERA + credencial Vertex; vem de capabilities) */}
+          {cameraDisponivel && (
+            <button
+              type="button"
+              onClick={() => setCamAberta(true)}
+              title="Câmera ao vivo — descrever o que a câmera vê"
+              aria-label="Abrir câmera ao vivo"
+              className="shrink-0 self-end mb-0.5 w-11 h-11 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-slate-400 dark:text-white/50 hover:bg-slate-500/10 hover:text-slate-600 dark:hover:text-white/80 transition-colors"
+            >
+              <Camera size={17} />
+            </button>
+          )}
+          {camAberta && <CameraAoVivo onFechar={() => setCamAberta(false)} />}
 
           {/* Enviar OU Parar (gap N §7): quando ocupado e há onStop, vira botão de parar. */}
           {busy && onStop ? (

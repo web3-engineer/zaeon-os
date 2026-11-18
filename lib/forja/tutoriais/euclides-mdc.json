@@ -1,0 +1,37 @@
+{
+  "arquivo": "maths/greatest_common_divisor.py",
+  "funcao": "O algoritmo de Euclides: o maior divisor comum (MDC) de dois números. A sacada de 2300 anos — o MDC de a e b é o mesmo que o MDC de b e o resto de a por b — resolve em pouquíssimos passos, O(log) no menor dos dois.",
+  "ordem": 2,
+  "linguagem": "python",
+  "abas": [
+    {
+      "titulo": "A redução de Euclides",
+      "snippets": [
+        { "explicacao": "A assinatura: recebe os dois números inteiros.", "codigo": "def mdc(a, b):" },
+        { "explicacao": "Repita enquanto o segundo não zerar — cada passo troca o par por (b, resto de a por b), que tem o MESMO MDC e é menor.", "codigo": "    while b != 0:\n        a, b = b, a % b" },
+        { "explicacao": "Quando b chega a zero, o MDC é o a que sobrou. Devolve.", "codigo": "    return a" }
+      ],
+      "quiz": [
+        {
+          "tipo": "escolha",
+          "enunciado": "Por que trocar (a, b) por (b, a % b) não muda o MDC?",
+          "opcoes": [
+            { "texto": "Todo divisor comum de a e b também divide o resto a % b — e vice-versa", "correta": true, "explicacao": "É o teorema por trás de Euclides: o conjunto de divisores comuns se preserva." },
+            { "texto": "Porque a % b é sempre igual ao MDC", "correta": false, "explicacao": "Não; o resto só carrega o MDC adiante até b zerar." }
+          ],
+          "pontos": 3
+        },
+        {
+          "tipo": "escolha",
+          "enunciado": "O que `mdc(0, 7)` devolve?",
+          "opcoes": [
+            { "texto": "7 — com a=0, o primeiro passo troca pra (7, 0) e o laço já para", "correta": true, "explicacao": "a, b = 0,7 → b=7≠0 → (7, 0%... ) na verdade (7, 0); para e devolve 7." },
+            { "texto": "0 — porque um dos números é zero", "correta": false, "explicacao": "O MDC de 0 e n é n: n divide os dois." }
+          ],
+          "pontos": 2
+        }
+      ]
+    }
+  ],
+  "teste": "assert mdc(48, 18) == 6\nassert mdc(17, 5) == 1\nassert mdc(100, 10) == 10\nassert mdc(0, 7) == 7\nprint('ok')"
+}

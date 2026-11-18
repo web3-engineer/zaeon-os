@@ -46,6 +46,69 @@ describe("octa · escolha do modelo", () => {
   });
 });
 
+describe("octa · modelo premium (Claude/Codex da conta de API da org)", () => {
+  it("claude: primário = zaeon-claude, reserva = Google forte, sem teto, lê imagem", () => {
+    const e = escolhaModeloOcta(PROD, undefined, { grupo: "zaeon-claude", multimodal: true });
+    expect(e).toMatchObject({ local: "zaeon-claude", reserva: "vertex_ai/gemini-2.5-pro", maxPromptTok: Number.MAX_SAFE_INTEGER, orcamentoMs: Number.MAX_SAFE_INTEGER, localSemImagem: false });
+  });
+
+  it("codex: não lê imagem → localSemImagem liga", () => {
+    expect(escolhaModeloOcta(PROD, undefined, { grupo: "zaeon-codex", multimodal: false })).toMatchObject({ local: "zaeon-codex", localSemImagem: true });
+  });
+
+  it("premium responde → a reserva nem é chamada; rótulo amigável", async () => {
+    const { g, chamados } = gateway({ "zaeon-claude": async () => ({ ...resp("claude"), modeloId: "anthropic-sonnet" }) });
+    const c = criarChamadorOcta(g, escolhaModeloOcta(PROD, undefined, { grupo: "zaeon-claude", multimodal: true }));
+    expect((await c(msgs)).content).toBe("claude");
+    expect(chamados).toEqual(["zaeon-claude"]);
+    expect(nomeDoModelo("zaeon-claude")).toBe("claude");
+    expect(nomeDoModelo("zaeon-codex")).toBe("codex");
+  });
+
+  it("premium cai → termina no Gemini forte, e o servidoPor mostra o motivo", async () => {
+    const { g, chamados } = gateway({
+      "zaeon-claude": async () => { throw new Error("anthropic 529"); },
+      "vertex_ai/gemini-2.5-pro": async () => resp("gemini"),
+    });
+    const c = criarChamadorOcta(g, escolhaModeloOcta(PROD, undefined, { grupo: "zaeon-claude", multimodal: true }));
+    expect((await c(msgs)).content).toBe("gemini");
+    expect(chamados).toEqual(["zaeon-claude", "vertex_ai/gemini-2.5-pro"]);
+    expect(c.servidos.at(-1)?.motivo).toMatch(/anthropic 529/);
+  });
+
+  it("codex: a captura (imagem) vira texto ANTES de ir pro primário", async () => {
+    let viuImagem = false;
+    const g: ChamarGateway = async (modelo, m) => {
+      if (modelo === "zaeon-codex") viuImagem = m.some((x) => x.role === "user" && Array.isArray(x.content) && x.content.some((p: any) => p.type === "image_url"));
+      return resp("codex");
+    };
+    const comImg: MsgModelo[] = [{ role: "user", content: [{ type: "text", text: "olha" }, { type: "image_url", image_url: { url: "data:image/jpeg;base64,/9j/AAA" } }] }];
+    await criarChamadorOcta(g, escolhaModeloOcta(PROD, undefined, { grupo: "zaeon-codex", multimodal: false }))(comImg);
+    expect(viuImagem).toBe(false);
+  });
+});
+
+describe("octa · modelo LOCAL escolhido (qwen3-coder, plano plus+)", () => {
+  it("força o coder como primário, reserva Google padrão, COM os tetos de CPU; coder não lê imagem → localSemImagem", () => {
+    const e = escolhaModeloOcta(PROD, undefined, { grupo: "zaeon-local-coder", multimodal: false, tipo: "local" });
+    expect(e).toMatchObject({
+      local: "zaeon-local-coder", reserva: "vertex_ai/gemini-3.5-flash",
+      timeoutMs: 120_000, orcamentoMs: 240_000, maxPromptTok: 3000, localSemImagem: true,
+    });
+  });
+  it("vale mesmo com OCTA_MODELO_LOCAL desligado — a escolha do aluno não depende do flag global do dono", () => {
+    const e = escolhaModeloOcta({ ...PROD, OCTA_MODELO_LOCAL: "0" }, undefined, { grupo: "zaeon-local-coder", multimodal: false, tipo: "local" });
+    expect(e.local).toBe("zaeon-local-coder");
+  });
+  it("coder responde → a reserva nem é chamada", async () => {
+    const { g, chamados } = gateway({ "zaeon-local-coder": async () => resp("ok do coder") });
+    const c = criarChamadorOcta(g, escolhaModeloOcta(PROD, undefined, { grupo: "zaeon-local-coder", multimodal: false, tipo: "local" }));
+    const r = await c(msgs);
+    expect(r.content).toBe("ok do coder");
+    expect(chamados).toEqual(["zaeon-local-coder"]);
+  });
+});
+
 describe("octa · chamador com reserva", () => {
   it("flag desligada: só o Google, nunca toca o local", async () => {
     const { g, chamados } = gateway({ "vertex_ai/gemini-2.5-pro": async () => resp("ok") });

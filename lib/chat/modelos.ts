@@ -8,7 +8,7 @@
  * O caminho enxuto (lib/agent/turnoLocal) segue no runChatTurn: volta a valer se um modelo "zaeon" entrar aqui.
  * Testado em 2026-10-22: no `global` do projeto respondem 3.5-flash, 3.5-flash-lite e 2.5-pro (3.x-pro = 404).
  */
-export type ProvedorModelo = "google" | "zaeon";
+export type ProvedorModelo = "google" | "zaeon" | "anthropic";
 
 export type ModeloChat = {
   id: string;
@@ -28,7 +28,16 @@ export const MODELOS_CHAT: readonly ModeloChat[] = [
   { id: "gemini-3.5-flash", nome: "Gemini 3.5 Flash", simbolo: "✦", provedor: "google", descricao: "Padrão · equilibrado", vertex: "gemini-3.5-flash" },
   { id: "gemini-3.5-flash-lite", nome: "Gemini 3.5 Flash-Lite", simbolo: "✦", provedor: "google", descricao: "Mais rápido · respostas mais simples", vertex: "gemini-3.5-flash-lite" },
   { id: "gemini-2.5-pro", nome: "Gemini 2.5 Pro", simbolo: "✦", provedor: "google", descricao: "Raciocínio mais forte · um pouco mais lento", vertex: "gemini-2.5-pro" },
+  // Claude (Anthropic), roteado pelo gateway LiteLLM (grupo = model_name do litellm-config). Os créditos
+  // são do dono; os nomes de grupo têm de bater com infra/zaeon-models/litellm-config.yaml. Caminho de
+  // gateway (como o "zaeon" local): resposta forte e direta, sem as tools do harness (ver runChatTurn).
+  { id: "claude-opus", nome: "Claude Opus", simbolo: "◆", provedor: "anthropic", descricao: "Raciocínio máximo · mais caro", grupo: "claude-opus" },
+  { id: "claude-sonnet", nome: "Claude Sonnet", simbolo: "◆", provedor: "anthropic", descricao: "Forte e equilibrado", grupo: "claude-sonnet" },
 ];
+
+/** Roteia pelo gateway LiteLLM (grupo) em vez do Vertex? Vale pro Zaeon local e pro Claude. */
+export const viaGateway = (m: ModeloChat | null | undefined): m is ModeloChat & { grupo: string } =>
+  !!m?.grupo && (m.provedor === "zaeon" || m.provedor === "anthropic");
 
 export const MODELO_PADRAO = MODELOS_CHAT[0].id;
 

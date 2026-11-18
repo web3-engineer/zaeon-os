@@ -12,16 +12,20 @@
  * Esquerda = CONVERSAS (o fio do diálogo). Documentos (TCC, pesquisa, PDFs) ficam no topo —
  * trocar de conversa aqui nunca troca o documento aberto lá.
  */
+import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ChevronRight, CornerDownRight, GitBranchPlus, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Search, SquarePen, Trash2,
+  ChevronRight, CornerDownRight, GitBranchPlus, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Search, SquarePen, Trash2,
 } from "lucide-react";
-import { arvoreDeThreads, gruposDoDia, quandoCriada, type Thread } from "@/lib/chat/threads";
+import { arvoreDeThreads, CHAVE_DO_GRUPO, GRUPOS_RECOLHIDOS, gruposDoDia, type GrupoDoDia, type Thread } from "@/lib/chat/threads";
 
 const chaveRecolhida = (sala: string) => `zaeon.chat.sidebar.${sala}.recolhida`;
 
+// #754: conversas de mais de 7 dias nascem RECOLHIDAS (clicar no título abre/fecha) — GRUPOS_RECOLHIDOS (lib/chat/threads).
+// Hoje/Ontem/Últimos 7 dias ficam sempre à vista — só o que é antigo some pra não poluir.
+
 export default function ConversasSidebar({
-  sala, threads, ativa, ocupada, aoTrocar, aoCriar, aoFechar, aoRenomear, aoCriarSub, className = "", embutida = false, rotuloNova = "Nova conversa",
+  sala, threads, ativa, ocupada, aoTrocar, aoCriar, aoFechar, aoRenomear, aoCriarSub, className = "", embutida = false, rotuloNova,
 }: {
   /** "estudos" | "pesquisa" — cada sala lembra se a barra está recolhida. */
   sala: string;
@@ -60,9 +64,21 @@ export default function ConversasSidebar({
     });
   };
 
+  const { t: traduzir, i18n } = useTranslation();
+  const nova = rotuloNova ?? traduzir(sala === "pesquisa" ? "labSidebar.newResearch" : "labSidebar.newChat");
   const [busca, setBusca] = useState("");
   const [editando, setEditando] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState<string | null>(null);
+  // #841: sem internet a lista fica vazia (vem do servidor) — avisar, senão parece que as conversas sumiram
+  const [semRede, setSemRede] = useState(false);
+  useEffect(() => {
+    const sync = () => setSemRede(typeof navigator !== "undefined" && navigator.onLine === false);
+    sync();
+    window.addEventListener("online", sync); window.addEventListener("offline", sync);
+    return () => { window.removeEventListener("online", sync); window.removeEventListener("offline", sync); };
+  }, []);
+  // #837: na tela de toque as ações de uma conversa ficam no "⋯" (sempre à vista, elas espremiam o nome em "faça u…")
+  const [acoesDe, setAcoesDe] = useState<string | null>(null);
   // Mães abertas no acordeão. A mãe da conversa ativa abre sozinha (senão a ativa some).
   const [abertas, setAbertas] = useState<Record<string, boolean>>({});
   const arvore = useMemo(() => arvoreDeThreads(threads), [threads]);
@@ -70,6 +86,11 @@ export default function ConversasSidebar({
     const mae = threads.find((t) => t.id === ativa)?.parentId;
     if (mae) setAbertas((a) => (a[mae] ? a : { ...a, [mae]: true }));
   }, [ativa, threads]);
+
+  // #754: estado por grupo de dia. Default: antigos (>7 dias) recolhidos. Buscando ou com a conversa ativa dentro, abre.
+  const [gruposAbertos, setGruposAbertos] = useState<Record<string, boolean>>({});
+  const alternarGrupo = (g: GrupoDoDia) =>
+    setGruposAbertos((s) => ({ ...s, [g]: !(s[g] ?? !GRUPOS_RECOLHIDOS.has(g)) }));
 
   const termo = busca.trim().toLowerCase();
   const nos = useMemo(() => {
@@ -82,11 +103,11 @@ export default function ConversasSidebar({
 
   if (recolhida && !embutida) {
     return (
-      <nav aria-label="Conversas" className={`shrink-0 w-11 flex flex-col items-center gap-1 py-2 border-r border-slate-200 dark:border-white/10 ${className}`}>
-        <button type="button" onClick={alternar} className={BTN_ICONE} aria-label="Mostrar conversas" title="Mostrar conversas">
+      <nav aria-label={traduzir("labSidebar.conversations")} className={`shrink-0 w-11 flex flex-col items-center gap-1 py-2 border-r border-slate-200 dark:border-white/10 ${className}`}>
+        <button type="button" onClick={alternar} className={BTN_ICONE} aria-label={traduzir("labSidebar.showChats")} title={traduzir("labSidebar.showChats")}>
           <PanelLeftOpen size={16} />
         </button>
-        <button type="button" onClick={aoCriar} className={BTN_ICONE} aria-label="Nova conversa" title="Nova conversa">
+        <button type="button" onClick={aoCriar} className={BTN_ICONE} aria-label={nova} title={nova}>
           <SquarePen size={16} />
         </button>
       </nav>
@@ -111,17 +132,17 @@ export default function ConversasSidebar({
       return (
         <div key={t.id} data-gaveta-fica className={`flex items-center gap-1 rounded-lg px-2 py-1.5 bg-rose-500/10 ${filha ? "ml-5" : ""}`}>
           <span className="flex-1 min-w-0 text-[12px] font-semibold text-rose-700 dark:text-rose-200 truncate">
-            Excluir{nFilhas ? ` (+${nFilhas} sub-tema${nFilhas > 1 ? "s" : ""})` : ""}?
+            {traduzir(nFilhas ? "labSidebar.confirmTopics" : "labSidebar.confirm", { count: nFilhas })}
           </span>
-          <button type="button" autoFocus onClick={() => { setConfirmando(null); aoFechar(t.id); }} className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-600 text-white">Excluir</button>
-          <button type="button" onClick={() => setConfirmando(null)} className="px-2 py-0.5 rounded-md text-[11px] font-bold text-slate-600 dark:text-white/70 hover:bg-slate-900/5 dark:hover:bg-white/10">Não</button>
+          <button type="button" autoFocus onClick={() => { setConfirmando(null); aoFechar(t.id); }} className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-600 text-white">{traduzir("labSidebar.delete")}</button>
+          <button type="button" onClick={() => setConfirmando(null)} className="px-2 py-0.5 rounded-md text-[11px] font-bold text-slate-600 dark:text-white/70 hover:bg-slate-900/5 dark:hover:bg-white/10">{traduzir("labSidebar.cancel")}</button>
         </div>
       );
     }
     return (
       <div
         key={t.id}
-        className={`group/conv relative flex items-center gap-1 rounded-lg pr-1 transition-colors ${
+        className={`group/conv relative flex flex-wrap items-center gap-1 rounded-lg pr-1 transition-colors ${
           filha ? "ml-3 pl-1" : "pl-1"
         } ${
           atual
@@ -135,7 +156,7 @@ export default function ConversasSidebar({
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); setAbertas((a) => ({ ...a, [t.id]: !a[t.id] })); }}
-            data-gaveta-fica aria-label={abertas[t.id] ? "Recolher sub-temas" : "Mostrar sub-temas"}
+            data-gaveta-fica aria-label={traduzir(abertas[t.id] ? "labSidebar.hideTopics" : "labSidebar.showTopics")}
             aria-expanded={!!abertas[t.id]}
             className="shrink-0 w-4 h-4 flex items-center justify-center rounded text-slate-500 dark:text-white/50 hover:text-slate-900 dark:hover:text-white"
           >
@@ -150,24 +171,33 @@ export default function ConversasSidebar({
           onKeyDown={(e) => { if (e.key === "F2") { e.preventDefault(); setEditando(t.id); } }}
           aria-current={atual ? "true" : undefined}
           // #733: a data saiu do lado do nome (ela roubava o espaço); fica no título do grupo e, exata, ao passar o mouse
-          title={`${t.titulo} · ${quandoCriada(t.criadaEm)}`}
+          title={`${t.titulo} · ${new Date(t.criadaEm).toLocaleString(i18n.resolvedLanguage, { dateStyle: "short", timeStyle: "short" })}`}
           className="flex-1 min-w-0 flex items-center gap-1.5 py-1.5 text-left rounded-md outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
         >
-          {ocupada === t.id && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shrink-0" aria-label="respondendo" />}
-          <span className={`flex-1 min-w-0 truncate text-[13px] ${atual ? "font-semibold" : "font-medium"}`}>{t.titulo}</span>
+          {ocupada === t.id && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shrink-0" aria-label={traduzir("labSidebar.replyingShort")} />}
+          {/* #837: no toque, o nome inteiro em até 2 linhas */}
+          <span className={`flex-1 min-w-0 truncate [@media(hover:none)]:whitespace-normal [@media(hover:none)]:line-clamp-2 [@media(hover:none)]:break-words text-[13px] ${atual ? "font-semibold" : "font-medium"}`}>{t.titulo}</span>
         </button>
         {/* Ações no hover (e com foco de teclado); na ativa ficam sempre à mão.
             #733: escondidas, NÃO ocupam espaço (antes ficavam invisíveis, mas tomavam uns 70 px do nome) */}
-        <span className={`shrink-0 items-center ${atual ? "flex" : "hidden group-hover/conv:flex group-focus-within/conv:flex"} [@media(hover:none)]:flex`}>
+        {/* #837: no toque, o "⋯" mostra as ações numa linha embaixo do nome */}
+        <button type="button" onClick={(e) => { e.stopPropagation(); setAcoesDe((a) => (a === t.id ? null : t.id)); }}
+          data-gaveta-fica aria-expanded={acoesDe === t.id} aria-label={`${traduzir("labSidebar.actions")} · ${t.titulo}`}
+          className="hidden [@media(hover:none)]:flex shrink-0 w-9 h-9 items-center justify-center rounded-md text-slate-500 dark:text-white/55">
+          <MoreHorizontal size={16} />
+        </button>
+        {/* #845: o mostrar-no-hover/foco só vale com mouse — no toque, o `group-focus-within` (mais específico) vencia o
+            esconder e, depois de tocar numa ação, os 3 ícones voltavam a espremer o nome. No toque, só o ⋯ abre. */}
+        <span className={`shrink-0 items-center hidden ${atual ? "[@media(hover:hover)]:flex" : "[@media(hover:hover)]:group-hover/conv:flex [@media(hover:hover)]:group-focus-within/conv:flex"} ${acoesDe === t.id ? "[@media(hover:none)]:flex [@media(hover:none)]:basis-full [@media(hover:none)]:justify-end [@media(hover:none)]:gap-2 [@media(hover:none)]:pb-1" : ""}`}>
           {!filha && aoCriarSub && (
-            <button type="button" onClick={(e) => { e.stopPropagation(); aoCriarSub(t.id); setAbertas((a) => ({ ...a, [t.id]: true })); }} className={BTN_MINI} aria-label={`Novo sub-tema em ${t.titulo}`} title="Novo sub-tema">
+            <button type="button" onClick={(e) => { e.stopPropagation(); aoCriarSub(t.id); setAbertas((a) => ({ ...a, [t.id]: true })); }} className={BTN_MINI} aria-label={`${traduzir("labSidebar.newTopic")} · ${t.titulo}`} title={traduzir("labSidebar.newTopic")}>
               <GitBranchPlus size={12} />
             </button>
           )}
-          <button type="button" onClick={(e) => { e.stopPropagation(); setEditando(t.id); }} className={BTN_MINI} data-gaveta-fica aria-label={`Renomear ${t.titulo}`} title="Renomear">
+          <button type="button" onClick={(e) => { e.stopPropagation(); setEditando(t.id); }} className={BTN_MINI} data-gaveta-fica aria-label={`${traduzir("labSidebar.rename")} · ${t.titulo}`} title={traduzir("labSidebar.rename")}>
             <Pencil size={12} />
           </button>
-          <button type="button" onClick={(e) => { e.stopPropagation(); setConfirmando(t.id); }} className={`${BTN_MINI} hover:!text-rose-600 dark:hover:!text-rose-300`} data-gaveta-fica aria-label={`Excluir ${t.titulo}`} title="Excluir">
+          <button type="button" onClick={(e) => { e.stopPropagation(); setConfirmando(t.id); }} className={`${BTN_MINI} hover:!text-rose-600 dark:hover:!text-rose-300`} data-gaveta-fica aria-label={`${traduzir("labSidebar.delete")} · ${t.titulo}`} title={traduzir("labSidebar.delete")}>
             <Trash2 size={12} />
           </button>
         </span>
@@ -176,11 +206,11 @@ export default function ConversasSidebar({
   };
 
   return (
-    <nav aria-label="Conversas" className={`${embutida ? "flex-1 w-full" : "shrink-0 w-[248px] max-w-[70vw] border-r border-slate-200 dark:border-white/10"} flex flex-col min-h-0 ${className}`}>
+    <nav aria-label={traduzir("labSidebar.conversations")} className={`${embutida ? "flex-1 w-full" : "shrink-0 w-[248px] max-w-[70vw] border-r border-slate-200 dark:border-white/10"} flex flex-col min-h-0 ${className}`}>
       {!embutida && (
         <div className="flex items-center gap-1 px-2.5 pt-2.5 pb-1">
-          <span className="flex-1 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 dark:text-white/50">Conversas</span>
-          <button type="button" onClick={alternar} className={BTN_ICONE} data-gaveta-fica aria-label="Recolher conversas" title="Recolher conversas">
+          <span className="flex-1 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 dark:text-white/50">{traduzir("labSidebar.conversations")}</span>
+          <button type="button" onClick={alternar} className={BTN_ICONE} data-gaveta-fica aria-label={traduzir("labSidebar.hideChats")} title={traduzir("labSidebar.hideChats")}>
             <PanelLeftClose size={15} />
           </button>
         </div>
@@ -189,13 +219,13 @@ export default function ConversasSidebar({
         <button
           type="button"
           onClick={aoCriar}
-          title={rotuloNova}
-          aria-label={rotuloNova}
+          title={nova}
+          aria-label={nova}
           className={`w-full flex items-center gap-2 rounded-lg font-semibold transition-colors ${embutida
             ? "px-2 py-1.5 text-[12px] text-slate-700 dark:text-white/75 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06]"
             : "px-2.5 py-2 text-[13px] text-slate-800 dark:text-white/90 border border-slate-200 dark:border-white/10 hover:border-cyan-400/60 hover:text-cyan-700 dark:hover:text-cyan-200"}`}
         >
-          {embutida ? <><Plus size={14} /> Nova</> : <><SquarePen size={14} /> {rotuloNova}</>}
+          {embutida ? <><Plus size={14} /> {traduzir("labSidebar.new")}</> : <><SquarePen size={14} /> {nova}</>}
         </button>
       </div>
       {threads.length > 4 && (
@@ -206,29 +236,50 @@ export default function ConversasSidebar({
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Escape") setBusca(""); }}
-              placeholder="Buscar conversas"
-              aria-label="Buscar conversas"
-              className="flex-1 min-w-0 bg-transparent text-[12px] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/40 outline-none"
+              placeholder={traduzir("labSidebar.search")}
+              aria-label={traduzir("labSidebar.search")}
+              className="flex-1 min-w-0 bg-transparent text-[16px] [@media(hover:hover)_and_(pointer:fine)]:text-[12px] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/40 outline-none"
             />
           </label>
         </div>
       )}
       <div className={`flex-1 min-h-0 overflow-y-auto custom-scrollbar ${embutida ? "px-0" : "px-2"} pb-2 flex flex-col gap-0.5`}>
+        {semRede && (
+          <p role="status" className="mx-1 my-1 rounded-lg border border-amber-400/40 bg-amber-500/10 px-2.5 py-2 text-[12px] text-amber-800 dark:text-amber-100">{traduzir("labSidebar.offline")}</p>
+        )}
         {nos.length === 0 && (
-          <p className="px-2 py-3 text-[12px] text-slate-500 dark:text-white/45">{termo ? "Nada com esse nome." : "Nenhuma conversa ainda."}</p>
+          <p className="px-2 py-3 text-[12px] text-slate-500 dark:text-white/45">{traduzir(termo ? "labSidebar.noResults" : "labSidebar.empty")}</p>
         )}
         {/* #733: separada por dia (Hoje, Ontem, Últimos 7 dias…), a mais nova em cima */}
-        {gruposDoDia(nos).map(({ grupo, nos: doGrupo }) => (
-          <section key={grupo} aria-label={grupo} className="flex flex-col gap-0.5">
-            <h3 className="px-2 pt-2 pb-0.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-white/45">{grupo}</h3>
-            {doGrupo.map(({ thread, filhas }) => (
-              <div key={thread.id} className="flex flex-col gap-0.5">
-                {linha(thread, false, filhas.length > 0)}
-                {filhas.length > 0 && (abertas[thread.id] || !!termo) && filhas.map((f) => linha(f, true))}
-              </div>
-            ))}
-          </section>
-        ))}
+        {/* #754: títulos viram botões — grupos de mais de 7 dias nascem recolhidos */}
+        {gruposDoDia(nos).map(({ grupo, nos: doGrupo }) => {
+          const temAtiva = !!ativa && doGrupo.some(({ thread, filhas }) => thread.id === ativa || filhas.some((f) => f.id === ativa));
+          const nomeGrupo = traduzir(CHAVE_DO_GRUPO[grupo]);
+          const aberto = !!termo || temAtiva || (gruposAbertos[grupo] ?? !GRUPOS_RECOLHIDOS.has(grupo));
+          return (
+            <section key={grupo} aria-label={nomeGrupo} className="flex flex-col gap-0.5">
+              {/* h3 mantém o papel de cabeçalho (acessibilidade/#733); o botão dentro é o controle de abrir/fechar */}
+              <h3 className="m-0">
+                <button
+                  type="button"
+                  data-gaveta-fica
+                  onClick={() => alternarGrupo(grupo)}
+                  aria-expanded={aberto}
+                  className="w-full flex items-center gap-1 px-2 pt-2 pb-0.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-white/45 hover:text-slate-700 dark:hover:text-white/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500 rounded"
+                >
+                  <ChevronRight size={11} aria-hidden className={`transition-transform ${aberto ? "rotate-90" : ""}`} />
+                  {nomeGrupo}
+                </button>
+              </h3>
+              {aberto && doGrupo.map(({ thread, filhas }) => (
+                <div key={thread.id} className="flex flex-col gap-0.5">
+                  {linha(thread, false, filhas.length > 0)}
+                  {filhas.length > 0 && (abertas[thread.id] || !!termo) && filhas.map((f) => linha(f, true))}
+                </div>
+              ))}
+            </section>
+          );
+        })}
       </div>
     </nav>
   );
@@ -248,6 +299,7 @@ function EditorTitulo({ inicial, recuo, onSalvar, onCancelar }: {
 }) {
   const [v, setV] = useState(inicial);
   const ref = useRef<HTMLInputElement>(null);
+  const { t: traduzir } = useTranslation();
   const feito = useRef(false);
   useEffect(() => { ref.current?.select(); }, []);
   const salvar = () => { if (feito.current) return; feito.current = true; onSalvar(v.trim()); };
@@ -261,7 +313,7 @@ function EditorTitulo({ inicial, recuo, onSalvar, onCancelar }: {
         else if (e.key === "Escape") { e.preventDefault(); feito.current = true; onCancelar(); }
       }}
       onBlur={salvar}
-      aria-label="Novo nome da conversa"
+      aria-label={traduzir("labSidebar.newName")}
       maxLength={80}
       className={`rounded-lg px-2 py-1.5 text-[13px] font-medium bg-white dark:bg-white/10 text-slate-900 dark:text-white border border-cyan-400/60 outline-none ${recuo ? "ml-5" : ""}`}
     />

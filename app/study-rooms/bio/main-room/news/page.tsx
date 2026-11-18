@@ -289,7 +289,7 @@ export default function LoungeNewsFeed() {
     return (
         <div className="w-full max-w-4xl mx-auto h-full flex flex-col gap-8 p-6">
             {featuredReport && (
-                <Link href={`/study-rooms/lounge/main-lounge/news/articles/page?id=${featuredReport.id}`}>
+                <Link href={`/study-rooms/lounge/main-lounge/news/articles?id=${featuredReport.id}`}>
                     <div className="w-full rounded-[30px] bg-[#0f172a] border border-cyan-500/30 shadow-2xl overflow-hidden relative group cursor-pointer hover:border-cyan-400 transition-colors">
                         <div className="absolute inset-0 z-0">
                             <NextImage src={featuredReport.imageUrl} alt="Cover" fill className="object-cover opacity-30 group-hover:opacity-40 transition-opacity duration-500" />

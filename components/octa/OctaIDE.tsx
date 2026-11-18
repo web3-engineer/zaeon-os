@@ -27,15 +27,19 @@ import {
 } from "@/lib/octa/ideWorkspace";
 import { textoErroPublicar, type EventoTurno } from "@/lib/octa/passos";
 import { useArmazemDaConta } from "@/lib/chat/contaNoNavegador";
+import { EVT_ABRIR_PROJETO, consumirAberturaPendente } from "@/lib/octa/ideNav";
 import type { Armazem } from "@/lib/chat/threads";
 import type { PermissaoOcta } from "@/lib/octa/projetos";
 import PreviaSvg from "./PreviaSvg";
 import CorrigirComOcta from "./CorrigirComOcta";
 import GaleriaDesign from "./GaleriaDesign";
 import { PassosTurno, CartaoAprovacao } from "./PassosTurno";
+import VozOcta from "./VozOcta";
+import { narracaoDoTurno } from "@/lib/octa/narracao";
 import { useTurnoOcta, type EstadoTurno, type StatusTurno } from "./useTurnoOcta";
 import { tipoProjeto } from "@/lib/octa/tipoProjeto";
 import ReaProofPanel from "./ReaProofPanel";
+import { useModeloOcta, SeletorModeloOcta } from "@/components/octa/SeletorModeloOcta";
 
 const Monaco = dynamic(() => import("@monaco-editor/react").then((m) => m.default), {
   ssr: false,
@@ -179,6 +183,8 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
   const reaFileRef = useRef<HTMLInputElement>(null);
   const REA_ON = process.env.NEXT_PUBLIC_OCTA_REA === "1";
   const [modo, setModo] = useState<"review" | "change">("review");
+  // modelo do agente de código geral (rascunho): Gemini padrão, local grátis (Qwen3-Coder) ou premium (Claude/Codex)
+  const { modelo: modeloOcta, opcoes: opcoesModelo, escolher: escolherModelo, temEscolha } = useModeloOcta();
   const [escopo, setEscopo] = useState<"ativo" | "projeto">("ativo");
   const [enviando, setEnviando] = useState(false);
   const [decidindo, setDecidindo] = useState(false);
@@ -362,6 +368,34 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
     } finally { setCriando(false); }
   };
 
+  // Ponte REA → Octa: abre UM projeto por id (o que o cartão do Blueprint acabou de criar). Se ele ainda
+  // não está na lista (foi criado agora, depois do boot), busca o projeto e o insere. Sem isto, "abrir no
+  // Octa" caía no último/primeiro projeto da lista — o bug grave que o dono relatou.
+  const abrirPorId = async (id: string) => {
+    if (!id || typeof id !== "string") return;
+    if (projetoRef.current?.id === id) return; // já está aberto
+    let alvo = (projetos ?? []).find((p) => p.id === id) ?? null;
+    if (!alvo) {
+      const r = await fetch(`/api/octa/projetos/${id}`).catch(() => null);
+      const j = r?.ok ? await r.json().catch(() => null) : null;
+      if (!j?.projeto) { setAvisoAgente("Não achei esse projeto do REA — ele pode ainda estar sendo criado."); return; }
+      alvo = meta(j.projeto);
+      setProjetos((l) => (l && !l.some((p) => p.id === alvo!.id) ? [alvo!, ...l] : (l ?? [alvo!])));
+    }
+    await abrirProjeto(alvo);
+  };
+  // a última versão de abrirPorId, pra o listener (montado uma vez) sempre chamar a atual
+  const abrirPorIdRef = useRef(abrirPorId);
+  abrirPorIdRef.current = abrirPorId;
+  useEffect(() => {
+    const onAbrir = (e: Event) => {
+      const id = (e as CustomEvent)?.detail?.projetoId;
+      if (typeof id === "string" && id) void abrirPorIdRef.current(id);
+    };
+    window.addEventListener(EVT_ABRIR_PROJETO, onAbrir);
+    return () => window.removeEventListener(EVT_ABRIR_PROJETO, onAbrir);
+  }, []);
+
   const apagarProjeto = async (p: ProjetoMeta) => {
     if (!window.confirm(`Apagar o projeto "${p.nome}"? Os arquivos dele somem daqui (o repositório no GitHub, se houver, fica).`)) return;
     const r = await fetch(`/api/octa/projetos/${p.id}`, { method: "DELETE" }).catch(() => null);
@@ -385,6 +419,16 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
       if (!Array.isArray(j?.projetos)) { setServidorOk(false); setProjetos([]); await abrirRascunho(); return; }
       const lista: ProjetoMeta[] = j.projetos.map(meta);
       setProjetos(lista);
+      // ANTES de tudo: um "abrir no Octa" pendente (o cartão do REA) manda — abre ESSE projeto, não o último.
+      const pendente = consumirAberturaPendente();
+      if (pendente) {
+        const naLista = lista.find((p) => p.id === pendente);
+        if (naLista) { await abrirProjeto(naLista); return; }
+        // criado agora (ainda não na lista): busca e abre
+        const rp = await fetch(`/api/octa/projetos/${pendente}`).catch(() => null);
+        const jp = rp?.ok ? await rp.json().catch(() => null) : null;
+        if (jp?.projeto) { const m = meta(jp.projeto); setProjetos((l) => (l && !l.some((p) => p.id === m.id) ? [m, ...l] : (l ?? [m]))); await abrirProjeto(m); return; }
+      }
       const ultimo = lerLS(CHAVE_ULTIMO);
       if (ultimo === "rascunho") { await abrirRascunho(); return; }
       const alvo = lista.find((p) => p.id === ultimo) ?? lista[0];
@@ -561,7 +605,7 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
     try {
       const r = await fetch("/api/octa/agente", {
         method: "POST", signal: ac.signal, headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pedido, historico, workspace: ide.arquivos, modo: modoPedido, liberados, arquivoAtivo: ativo }),
+        body: JSON.stringify({ pedido, historico, workspace: ide.arquivos, modo: modoPedido, liberados, arquivoAtivo: ativo, modelo: modeloOcta }),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) {
@@ -735,8 +779,8 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
         <BoasVindas nome={nomeNovo} setNome={setNomeNovo} criando={criando} onCriar={(n) => void criarProjeto(n)} onRascunho={() => void abrirRascunho()} erro={avisoAgente} />
       ) : ide && (
         <div className="flex-1 min-h-0 flex">
-          {/* explorador */}
-          <aside className="w-52 shrink-0 flex flex-col min-h-0" style={{ background: Z.painel, borderRight: `1px solid ${Z.borda}` }}>
+          {/* explorador — agora faz parte da doca da DIREITA (order-2), entre a conversa e os artefatos */}
+          <aside className="order-2 w-52 shrink-0 flex flex-col min-h-0" style={{ background: Z.painel, borderLeft: `1px solid ${Z.borda}`, borderRight: `1px solid ${Z.borda}` }}>
             <div className="h-8 flex items-center px-3 text-[11px] uppercase tracking-wider" style={{ color: Z.apagado }}>
               Arquivos
               <button type="button" onClick={novoArquivo} disabled={travado} title="Novo arquivo" className="ml-auto p-1 rounded hover:bg-white/10 disabled:opacity-30"><Plus className="w-3.5 h-3.5" /></button>
@@ -748,8 +792,9 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
             </div>
           </aside>
 
-          {/* centro: código · prévia · estilos */}
-          <section className="flex-1 min-w-0 flex flex-col">
+          {/* DIREITA: os artefatos — código · prévia · estilos (a "aba de artefatos" ao lado da conversa).
+              Largura = a MESMA do painel de documentos da Sala de Estudos (min(620px,100%)), a pedido do dono. */}
+          <section className="order-3 w-[min(620px,100%)] min-w-0 shrink-0 flex flex-col">
             {projeto && vista === "estilos" ? (
               <div className="flex-1 min-h-0">
                 <GaleriaDesign projetoId={projeto.id} designId={estiloAtual} antesDeEscolher={salvarAgora} bloqueado={travado}
@@ -859,14 +904,14 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
             )}
           </section>
 
-          {/* JANELA DO AGENTE — tudo que é agêntico passa por aqui */}
-          <aside className="w-[360px] shrink-0 flex flex-col min-h-0" style={{ background: Z.painel, borderLeft: `1px solid ${Z.borda}` }}>
+          {/* A CONVERSA — agora é o CENTRO largo (chat normal), e os artefatos ficam à direita */}
+          <aside className="order-1 flex-1 min-w-0 flex flex-col min-h-0" style={{ background: Z.painel, borderRight: `1px solid ${Z.borda}` }}>
             <div className="h-8 shrink-0 flex items-center gap-2 px-3 text-[11px] uppercase tracking-wider" style={{ color: Z.apagado, borderBottom: `1px solid ${Z.borda}` }}>
               <OctaIcon size={14} /> Agente
               {turnoVivo && <span className="normal-case tracking-normal flex items-center gap-1" style={{ color: Z.acento }}><span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: Z.acento }} /> trabalhando</span>}
               {msgs.length > 0 && !turno && <button type="button" onClick={() => setMsgs([])} className="ml-auto normal-case tracking-normal hover:underline">limpar</button>}
             </div>
-            <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
+            <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3 [&>*]:max-w-3xl [&>*]:w-full [&>*]:mx-auto">
               {!msgs.length && !turno && (
                 <div className="text-[12.5px] leading-relaxed" style={{ color: Z.fraco }}>
                   {projeto ? (
@@ -919,6 +964,11 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
               {/* o turno AO VIVO */}
               {turno && (
                 <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px]" style={{ color: Z.apagado }}>Octa</span>
+                    {/* a voz da Octa: narra o que o turno fez quando ele termina (só com a voz ligada) */}
+                    <VozOcta texto={turnoVivo ? "" : narracaoDoTurno(turno.eventos, turno.status)} />
+                  </div>
                   <PassosTurno eventos={turno.eventos} vivo={turnoVivo && !turno.pendente} />
                   {turno.pendente && (
                     <CartaoAprovacao tool={turno.pendente.tool} path={turno.pendente.path} ocupado={decidindo || turno.status !== "aguardando_aprovacao"} onDecidir={(a) => void decidir(a)} />
@@ -936,7 +986,7 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
               {avisoAgente && <div className="text-[11.5px]" style={{ color: Z.aviso }}>{avisoAgente}</div>}
               <div ref={fimChat} />
             </div>
-            <div className="shrink-0 p-3 space-y-2" style={{ borderTop: `1px solid ${Z.borda}` }}>
+            <div className="shrink-0 p-3 space-y-2 [&>*]:max-w-3xl [&>*]:w-full [&>*]:mx-auto" style={{ borderTop: `1px solid ${Z.borda}` }}>
               <div className="flex flex-wrap gap-1.5">
                 {projeto
                   ? ATALHOS_LANDING.map((a) => (
@@ -966,6 +1016,7 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
                         </button>
                       ))}
                     </div>
+                    {temEscolha && <SeletorModeloOcta modelo={modeloOcta} opcoes={opcoesModelo} onChange={escolherModelo} desabilitado={enviando} />}
                     {modo === "change" && (
                       <select value={escopo} onChange={(e) => setEscopo(e.target.value as "ativo" | "projeto")} className="rounded-md px-1.5 py-1 bg-transparent" style={{ border: `1px solid ${Z.borda}`, color: Z.fraco }}
                         title="O que o Octa pode editar neste pedido">

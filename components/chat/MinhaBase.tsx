@@ -5,6 +5,7 @@
  *    "📚 Minha base (N)", que abre a lista dos documentos da pessoa com status e remover (pede confirmação).
  * Sem sessão (401) ou base fora do ar: o botão some — a bandeja só aparece enquanto há envio.
  */
+import { BookOpen } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import type { EnvioBase } from "@/components/chat/useAnexoChat";
 import { motivoDoErro, type ErroEnvio } from "@/lib/rag/minhaBase";
@@ -70,7 +71,7 @@ export function BarraBase({ envios, versao }: { envios: EnvioBase[]; versao: num
           <button type="button" onClick={() => setAberta((v) => !v)} aria-expanded={aberta}
             className={`${PILULA} ${aberta ? "bg-violet-500/15 border-violet-400/50 text-violet-700 dark:text-violet-200" : "bg-transparent border-slate-300 dark:border-white/15 text-slate-600 dark:text-white/70 hover:border-violet-400/50"}`}
             title="Os PDFs que você guardou: a Aura responde com base neles e cita a página">
-            <span aria-hidden>📚</span> Minha base{docs!.length ? ` (${docs!.length})` : ""}
+            <BookOpen size={13} aria-hidden /> Minha base{docs!.length ? ` (${docs!.length})` : ""}
           </button>
         )}
         {envios.map((e) => <ChipEnvio key={e.chave} e={e} />)}

@@ -7,25 +7,33 @@
 import { useEffect, useRef, useState } from "react";
 import { CHAVE_MODELO, MODELOS_CHAT, MODELO_PADRAO, modeloDoId, type ModeloChat } from "@/lib/chat/modelos";
 
-/** A escolha do aparelho (localStorage), com o padrão quando não há ou o id saiu do catálogo. */
-export function useModeloEscolhido(): [ModeloChat, (id: string) => void] {
+/**
+ * A escolha do aparelho (localStorage), com o padrão quando não há ou o id saiu do catálogo.
+ * `chave` permite escolhas independentes por superfície (o chat e o Octa não compartilham o modelo).
+ */
+export function useModeloEscolhido(chave: string = CHAVE_MODELO): [ModeloChat, (id: string) => void] {
   const [id, setId] = useState<string>(MODELO_PADRAO);
   useEffect(() => {
-    try { const salvo = localStorage.getItem(CHAVE_MODELO); if (modeloDoId(salvo)) setId(salvo!); } catch { /* sem storage: padrão */ }
-  }, []);
+    try { const salvo = localStorage.getItem(chave); if (modeloDoId(salvo)) setId(salvo!); } catch { /* sem storage: padrão */ }
+  }, [chave]);
   const escolher = (novo: string) => {
     if (!modeloDoId(novo)) return;
     setId(novo);
-    try { localStorage.setItem(CHAVE_MODELO, novo); } catch { /* só não lembra */ }
+    try { localStorage.setItem(chave, novo); } catch { /* só não lembra */ }
   };
   return [modeloDoId(id) ?? MODELOS_CHAT[0], escolher];
 }
 
-const corDo = (m: ModeloChat) => (m.provedor === "zaeon"
-  ? "text-emerald-700 dark:text-emerald-300 border-emerald-500/45 bg-emerald-500/10"
-  : "text-sky-700 dark:text-sky-300 border-sky-500/40 bg-sky-500/10");
+/** Rótulo e cores por provedor — o catálogo mistura Google, Zaeon (local) e Claude (Anthropic). */
+const PROVEDOR: Record<ModeloChat["provedor"], { rotulo: string; pilula: string; simbolo: string }> = {
+  google: { rotulo: "Google", pilula: "text-sky-700 dark:text-sky-300 border-sky-500/40 bg-sky-500/10", simbolo: "text-sky-600 dark:text-sky-300" },
+  zaeon: { rotulo: "Zaeon", pilula: "text-emerald-700 dark:text-emerald-300 border-emerald-500/45 bg-emerald-500/10", simbolo: "text-emerald-600 dark:text-emerald-300" },
+  anthropic: { rotulo: "Claude", pilula: "text-violet-700 dark:text-violet-300 border-violet-500/45 bg-violet-500/10", simbolo: "text-violet-600 dark:text-violet-300" },
+};
+const corDo = (m: ModeloChat) => PROVEDOR[m.provedor].pilula;
 
-export function SeletorModelo({ valor, onChange, desabilitado }: { valor: ModeloChat; onChange: (id: string) => void; desabilitado?: boolean }) {
+/** `emLista` (#845): no painel do celular a lista abre embaixo do botão, dentro do painel — a janelinha saía pela direita */
+export function SeletorModelo({ valor, onChange, desabilitado, emLista = false }: { valor: ModeloChat; onChange: (id: string) => void; desabilitado?: boolean; emLista?: boolean }) {
   const [aberto, setAberto] = useState(false);
   const raiz = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -38,7 +46,7 @@ export function SeletorModelo({ valor, onChange, desabilitado }: { valor: Modelo
   }, [aberto]);
 
   return (
-    <div ref={raiz} className="relative">
+    <div ref={raiz} className={emLista ? "relative w-full" : "relative"}>
       <button
         type="button"
         disabled={desabilitado}
@@ -56,7 +64,7 @@ export function SeletorModelo({ valor, onChange, desabilitado }: { valor: Modelo
         <ul
           role="listbox"
           aria-label="Escolher o modelo"
-          className="absolute bottom-full mb-2 left-0 z-[80] w-[17.5rem] rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-[#0b0d14]/95 backdrop-blur-xl shadow-xl p-1.5"
+          className={`${emLista ? "static mt-1.5 w-full" : "absolute bottom-full mb-2 left-0 z-[80] w-[17.5rem]"} rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-[#0b0d14]/95 backdrop-blur-xl shadow-xl p-1.5`}
         >
           {MODELOS_CHAT.map((m, i) => {
             const sel = m.id === valor.id;
@@ -68,11 +76,11 @@ export function SeletorModelo({ valor, onChange, desabilitado }: { valor: Modelo
                   onClick={() => { onChange(m.id); setAberto(false); }}
                   className={`w-full text-left flex items-start gap-2 px-2.5 py-2 rounded-xl transition-colors ${sel ? "bg-slate-100 dark:bg-white/10" : "hover:bg-slate-50 dark:hover:bg-white/5"}`}
                 >
-                  <span aria-hidden className={`mt-0.5 text-[13px] ${m.provedor === "zaeon" ? "text-emerald-600 dark:text-emerald-300" : "text-sky-600 dark:text-sky-300"}`}>{m.simbolo}</span>
+                  <span aria-hidden className={`mt-0.5 text-[13px] ${PROVEDOR[m.provedor].simbolo}`}>{m.simbolo}</span>
                   <span className="flex-1 min-w-0">
                     <span className="block text-[12.5px] font-semibold text-slate-900 dark:text-white">
                       {m.nome}
-                      <span className="ml-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-400 dark:text-white/40">{m.provedor === "zaeon" ? "Zaeon" : "Google"}</span>
+                      <span className="ml-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-400 dark:text-white/40">{PROVEDOR[m.provedor].rotulo}</span>
                     </span>
                     <span className="block text-[11px] text-slate-500 dark:text-white/50">{m.descricao}</span>
                   </span>

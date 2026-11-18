@@ -25,9 +25,8 @@ export type ToolVisivel = { name: string; description: string; params: ParamVisi
  *  - `studio_generate`/`research_generate` não reúnem evidência: elas PEDEM um artefato ao cliente, e
  *    quem decide se um artefato nasce é o código com o dado na mão (`resolveHarnessOutput`). Deixá-las
  *    no menu devolveria ao modelo a decisão de produto que a gente tirou dele de propósito.
- *  - `examiner` é stub (`not_implemented`): oferecer é prometer.
  */
-export const FORA_DO_MENU: readonly string[] = ["studio_generate", "research_generate", "examiner"];
+export const FORA_DO_MENU: readonly string[] = ["studio_generate", "research_generate"];
 
 /** ToolDef (schema do Gemini) → a forma enxuta que vai pro prompt. */
 export function toolVisivel(def: { name: string; schema?: { description?: string; parameters?: any } }): ToolVisivel {

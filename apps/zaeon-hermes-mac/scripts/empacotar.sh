@@ -61,8 +61,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleExecutable</key><string>$NOME</string>
   <key>CFBundleIdentifier</key><string>$BUNDLE_ID</string>
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-  <key>CFBundleName</key><string>Zaeon Hermes</string>
-  <key>CFBundleDisplayName</key><string>Zaeon Hermes</string>
+  <key>CFBundleName</key><string>Zaeon</string>
+  <key>CFBundleDisplayName</key><string>Zaeon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>$VERSAO</string>
   <key>CFBundleVersion</key><string>$BUILD_NUM</string>

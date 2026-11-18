@@ -36,6 +36,16 @@ export const SUPER_ADMINS: string[] = [
   ...ENV_SUPERS,
 ];
 
+/**
+ * O DONO DA VITRINE — a conta a que pertencem TODO item pago e TODO curso (regra do dono,
+ * nov/2026). É o fundador principal, e vem de `SUPER_ADMINS[0]` DE PROPÓSITO: fonte única. O
+ * e-mail do fundador não é redigitado aqui — se um dia a conta principal mudar, muda num lugar só,
+ * e o `roles.test.ts` já guarda essa lista contra uma segunda cópia. A regra é verificada no
+ * portão das skills (`lib/agent/skills-dir.test.ts`): card pago ou de curso com outro dono não
+ * sobe para produção.
+ */
+export const DONO_VITRINE: string = SUPER_ADMINS[0];
+
 /** Valor canônico do papel de super admin no campo `User.role`. */
 export const SUPER_ADMIN_ROLE = "super_admin";
 

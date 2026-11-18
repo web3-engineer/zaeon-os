@@ -46,6 +46,7 @@ export const CAPACIDADES: readonly Capacidade[] = [
   { tool: "studio_generate", faz: "montar artefato de estudo (mapa mental, diagrama, aula, flashcards, linha do tempo)" },
   { tool: "research_generate", faz: "escrever o trabalho acadêmico no documento da conversa" },
   { tool: "abrir_url", faz: "abrir um endereço da web e ler o conteúdo da página" },
+  { tool: "descrever_video", faz: "consultar um vídeo do YouTube pelo link e trazer título, canal e descrição (sem assistir nem ler a legenda)" },
   { tool: "baixar_para_base", faz: "baixar um arquivo e guardar na base de conhecimento da pessoa" },
   { tool: "ler_anexo", faz: "ler um arquivo que a pessoa anexou à conversa" },
   { tool: "listar_anexos", faz: "ver quais arquivos a pessoa anexou a esta conversa" },

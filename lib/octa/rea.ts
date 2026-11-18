@@ -4,35 +4,51 @@
  * REA_BRIDGE_URL + REA_BRIDGE_TOKEN (o motor ligado). Sem os dois, a tool nem aparece.
  * O REA já recusa DRM/anti-cheat/auth/pirataria (DISCLAIMER do REA); o guard do Octa fica por cima.
  */
+import { createHash } from "node:crypto";
 import { reaLigado } from "@/lib/octa/skills";
 
 export type ReaEnv = Record<string, string | undefined>;
 export const reaBridgeConfigurado = (env: ReaEnv = process.env) =>
   reaLigado(env) && !!env.REA_BRIDGE_URL?.trim() && !!env.REA_BRIDGE_TOKEN?.trim();
 
+/** DOIS motores na mesma máquina grande (infra/rea-engine): "max" (dono/plano Max → primário, REA_BRIDGE_URL) e
+ *  "users" (o resto → secundário, REA_BRIDGE_URL_USERS). Sem a URL dos usuários, todos caem no primário (comportamento
+ *  de antes). O token é o mesmo; quem separa os tiers é esta escolha de URL + os limites de cada motor. */
+export type ReaTier = "max" | "users";
+export function reaBridgeBase(env: ReaEnv = process.env, tier: ReaTier = "max"): string {
+  const primario = (env.REA_BRIDGE_URL ?? "").trim().replace(/\/+$/, "");
+  const usuarios = (env.REA_BRIDGE_URL_USERS ?? "").trim().replace(/\/+$/, "");
+  return tier === "users" && usuarios ? usuarios : primario;
+}
+
 /** as FAMÍLIAS com efeito colateral — rodar/observar/tracejar, device (adb), debug, mudar o host. O motor (a ponte
  *  em infra/rea-engine) é a autoridade; aqui é só um filtro local pra o agente ganhar um erro claro sem ir à rede.
  *  O resto da superfície do REA (análise estática/leitura) passa 1:1. */
-export const DENY_REA_PREFIXOS = ["capture-", "observe-", "trace", "debug-", "start-adb", "stop-adb", "push-", "pull-", "read-adb", "resolve-adb", "inspect-adb", "uninstall", "collect-adb", "import-", "open-jeb", "execute-", "cutter-", "annotate-", "decompile-jeb", "inspect-jeb", "discover-webmcp", "reconcile-javascript-runtime"];
+export const DENY_REA_PREFIXOS = ["frida", "spawn", "attach", "launch", "instrument", "interact", "run-", "extract-", "environment-", "agent-env", "list-adb", "install-adb", "list-frida", "list-javascript-runtime", "capture-", "observe-", "trace", "debug-", "start-adb", "stop-adb", "push-", "pull-", "read-adb", "resolve-adb", "inspect-adb", "uninstall", "collect-adb", "import-", "open-jeb", "execute-", "cutter-", "annotate-", "decompile-jeb", "inspect-jeb", "discover-webmcp", "reconcile-javascript-runtime"];
 export const DENY_REA_EXATOS = new Set(["setup", "update", "completions", "evidence-import"]);
 /** exemplos pro prompt (não é a lista toda — a superfície estática do REA inteira está liberada) */
-export const REA_EXEMPLOS = ["analyze", "analyze-javascript-application", "analyze-web-bundle", "inspect", "decompile", "function", "search", "xrefs", "read-bytes", "inspect-macho", "inspect-go-binary", "inspect-managed-members", "inspect-sqlite" as string, "inspect-android-package", "inspect-firmware-regions", "inspect-evm-interface", "inspect-packet-capture", "compare", "capabilities", "providers"];
+export const REA_EXEMPLOS = ["analyze", "analyze-javascript-application", "analyze-web-bundle", "inspect", "decompile", "function", "search", "xrefs", "read-bytes", "inspect-macho", "inspect-go-binary", "inspect-managed-members", "inspect-sqlite" as string, "inspect-android-package", "inspect-firmware-regions", "inspect-evm-interface", "inspect-rust-binary", "inspect-model-artifact", "inspect-wasm-artifact", "inspect-packet-capture", "compare", "capabilities", "providers"];
 const ehNomeRea = (c: string) => /^[a-z][a-z0-9-]{1,50}$/.test(c);
 export const comandoRea = (c: string): boolean => ehNomeRea(c) && !DENY_REA_EXATOS.has(c) && !DENY_REA_PREFIXOS.some((p) => c.startsWith(p));
 
 export type RespostaRea = { ok: boolean; code?: number; evidence?: unknown; stdout?: string; stderr?: string; erro?: string };
 
 const PRAZO_MS = 12 * 60_000;   // análise nativa (Ghidra) pode demorar
+// a análise WEB abre um navegador no motor e analisa bundles de vários MB (infra/rea-engine/web-bundle.mjs: até 14 min
+// de análise + navegador); o prazo do app fica acima do prazo da ponte pra não desistir de uma resposta que vem
+export const PRAZO_WEB_MS = 18 * 60_000;
+export const prazoDoComando = (command: string) => (command === "analyze-web-bundle" ? PRAZO_WEB_MS : PRAZO_MS);
 
 /** chama o motor do REA com um artefato opcional (texto do workspace) + args. IO. */
 export async function chamarRea(
   o: { command: string; args?: string[]; artifact?: { nome: string; conteudo: string | Buffer }; handle?: string },
   env: ReaEnv = process.env,
   f: typeof fetch = fetch,
+  tier: ReaTier = "max",
 ): Promise<RespostaRea> {
   if (!reaBridgeConfigurado(env)) return { ok: false, erro: "motor do REA não configurado (OCTA_REA + REA_BRIDGE_URL/TOKEN)" };
   if (!comandoRea(o.command)) return { ok: false, erro: `comando com efeito colateral ou inválido (desligado nesta fatia): ${o.command}` };
-  const base = env.REA_BRIDGE_URL!.trim().replace(/\/+$/, "");
+  const base = reaBridgeBase(env, tier);
   const corpo: Record<string, unknown> = { token: env.REA_BRIDGE_TOKEN!.trim(), command: o.command, args: o.args ?? [], json: true };
   if (o.handle && /^[0-9a-f]{32}$/.test(o.handle)) corpo.handle = o.handle;
   else if (o.artifact) {
@@ -41,7 +57,7 @@ export async function chamarRea(
     corpo.artifactName = o.artifact.nome;
   }
   try {
-    const r = await f(`${base}/rea`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(corpo), signal: AbortSignal.timeout(PRAZO_MS) });
+    const r = await f(`${base}/rea`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(corpo), signal: AbortSignal.timeout(prazoDoComando(o.command)) });
     const j = (await r.json().catch(() => ({}))) as RespostaRea;
     if (!r.ok) return { ok: false, code: r.status, erro: (j as any)?.erro ?? `bridge HTTP ${r.status}` };
     return j;
@@ -62,9 +78,9 @@ export function resumirRea(r: RespostaRea): string {
 
 export type UploadRea = { ok: boolean; handle?: string; name?: string; bytes?: number; erro?: string };
 /** manda um BINÁRIO (ou qualquer artefato) pro motor e recebe um handle (o binário fica só na Contabo, transitório). */
-export async function uploadRea(o: { nome: string; conteudo: Buffer }, env: ReaEnv = process.env, f: typeof fetch = fetch): Promise<UploadRea> {
+export async function uploadRea(o: { nome: string; conteudo: Buffer }, env: ReaEnv = process.env, f: typeof fetch = fetch, tier: ReaTier = "max"): Promise<UploadRea> {
   if (!reaBridgeConfigurado(env)) return { ok: false, erro: "motor do REA não configurado" };
-  const base = env.REA_BRIDGE_URL!.trim().replace(/\/+$/, "");
+  const base = reaBridgeBase(env, tier);
   try {
     const r = await f(`${base}/upload`, {
       method: "POST", headers: { "content-type": "application/json" },
@@ -74,4 +90,45 @@ export async function uploadRea(o: { nome: string; conteudo: Buffer }, env: ReaE
     const j = (await r.json().catch(() => ({}))) as UploadRea;
     return r.ok ? j : { ok: false, erro: (j as any)?.erro ?? `upload HTTP ${r.status}` };
   } catch (e) { return { ok: false, erro: `motor do REA fora do ar: ${String((e as Error)?.message ?? e).slice(0, 140)}` }; }
+}
+
+// ───────────────────────────── SESSÕES do REA (o `rea mcp` vivo no motor — infra/rea-engine/sessoes.mjs) ─────────────
+// O modo que funciona em alvo grande (como o REA local / rea.tools): abrir uma sessão e fazer perguntas pequenas
+// (recover_javascript_sources → zaeon_buscar/zaeon_ler → analyze_javascript_application de um módulo…). As ferramentas
+// WEB só aparecem com `dominios` — os que a pessoa declarou sob o Termo de Uso (lib/rea/dominios.ts).
+
+/** o dono da sessão no motor: um hash da conta (o motor nunca vê o id/e-mail) */
+export const donoDaSessaoRea = (userId: string) => createHash("sha256").update(`zaeon-rea-sessao:${userId}`).digest("hex");
+
+export type FerramentaSessao = { nome: string; nivel: "ponte" | "estatica" | "web"; descricao: string };
+export type AberturaSessao = { ok: true; sessao: string; dominios: string[]; ferramentas: FerramentaSessao[] } | { ok: false; erro: string };
+export type ChamadaSessao = { ok: boolean; resultado?: unknown; erro?: string; bloqueados_pelo_proxy?: unknown[] };
+
+async function postarSessao<T>(caminho: string, corpo: Record<string, unknown>, prazoMs: number, env: ReaEnv, f: typeof fetch, tier: ReaTier): Promise<T | { ok: false; erro: string }> {
+  if (!reaBridgeConfigurado(env)) return { ok: false, erro: "motor do REA não configurado (OCTA_REA + REA_BRIDGE_URL/TOKEN)" };
+  const base = reaBridgeBase(env, tier);
+  try {
+    const r = await f(`${base}${caminho}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: env.REA_BRIDGE_TOKEN!.trim(), ...corpo }), signal: AbortSignal.timeout(prazoMs) });
+    const j = (await r.json().catch(() => ({}))) as T & { erro?: string };
+    if (!r.ok) return { ok: false, erro: j?.erro ?? `motor HTTP ${r.status}` };
+    return j;
+  } catch (e) { return { ok: false, erro: `motor do REA fora do ar: ${String((e as Error)?.message ?? e).slice(0, 140)}` }; }
+}
+
+export const abrirSessaoRea = (userId: string, dominios: string[], env: ReaEnv = process.env, f: typeof fetch = fetch, tier: ReaTier = "max") =>
+  postarSessao<AberturaSessao>("/sessao", { dono: donoDaSessaoRea(userId), dominios }, 90_000, env, f, tier) as Promise<AberturaSessao>;
+
+/** uma ferramenta na sessão. Prazo acima do da ponte (20 min) — a ponte manda batimento, o fetch não corta em 5 min */
+export const chamarSessaoRea = (userId: string, o: { sessao: string; nome: string; argumentos?: unknown; salvar?: string }, env: ReaEnv = process.env, f: typeof fetch = fetch, tier: ReaTier = "max") =>
+  postarSessao<ChamadaSessao>("/sessao/ferramenta", { dono: donoDaSessaoRea(userId), ...o }, 22 * 60_000, env, f, tier) as Promise<ChamadaSessao>;
+
+export const fecharSessaoRea = (userId: string, sessao: string, env: ReaEnv = process.env, f: typeof fetch = fetch, tier: ReaTier = "max") =>
+  postarSessao<{ ok: boolean }>("/sessao/fechar", { dono: donoDaSessaoRea(userId), sessao }, 30_000, env, f, tier);
+
+/** o resultado de uma ferramenta pro laço do agente: curto; se for grande, ensina a salvar e buscar */
+export function resumirSessao(r: ChamadaSessao, limite = 12_000): string {
+  if (!r.ok && r.erro) return `REA falhou: ${r.erro}`;
+  const txt = typeof r.resultado === "string" ? r.resultado : JSON.stringify(r.resultado ?? null);
+  const bloq = Array.isArray(r.bloqueados_pelo_proxy) && r.bloqueados_pelo_proxy.length ? `\n(o filtro de saída barrou: ${JSON.stringify(r.bloqueados_pelo_proxy).slice(0, 400)})` : "";
+  return (txt.length > limite ? txt.slice(0, limite) + `\n… (resultado de ${txt.length} chars, cortado; chame de novo com salvar:"x.json" e use zaeon_buscar/zaeon_ler)` : txt) + (r.ok ? "" : "\n(a ferramenta marcou erro)") + bloq;
 }

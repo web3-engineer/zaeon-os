@@ -6,6 +6,7 @@
  * Persiste o StudioArtifact (kind=image, arquivo em .studio/<id>.png) e devolve
  * também `dataUrl` pra render instantâneo (balão do chat / preview no Studio).
  */
+import { skinDaVitrine } from "@/lib/estudos/skinVitrine";
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 import { guard } from "@/src/lib/ratelimit";
@@ -14,6 +15,7 @@ import { studioUid } from "@/lib/studio/auth";
 import { loadStudyContext } from "@/lib/studio/content";
 import { generateImageResult, imagenAvailable } from "@/lib/studio/imagen";
 import { writeStudioFile } from "@/lib/studio/storage";
+import { assuntoDaImagem } from "@/lib/studio/tituloImagem";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -49,7 +51,8 @@ export async function POST(req: Request) {
 
   let prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
   let usedSourceIds: string[] = [];
-  let title = prompt ? prompt.slice(0, 60) : "Imagem";
+  // #764: o prompt direto também vira só o assunto ("vulcão em erupção", não "faça uma imagem de um vulcão…")
+  let title = prompt ? `Imagem — ${assuntoDaImagem(prompt)}` : "Imagem";
 
   // Sem prompt direto → tenta criar a partir do estudo.
   if (!prompt && (spaceId || sourceIds?.length)) {
@@ -64,12 +67,14 @@ export async function POST(req: Request) {
   const topic = typeof body.topic === "string" ? body.topic.trim() : "";
   if (!prompt && topic) {
     prompt = await craftPromptFromStudy(`Tópico pedido na conversa: ${topic}`);
-    title = `Imagem — ${topic}`;
+    // #749: o tópico já vem "imagem: …" (rótulo do studio_generate) — o título saía "Imagem — imagem: …"
+    // #764: e repetia o pedido inteiro ("Imagem — faça uma imagem de um vulcão…") — agora só o assunto
+    title = `Imagem — ${assuntoDaImagem(topic)}`;
   }
   if (!prompt) return NextResponse.json({ error: "Forneça um prompt ou um estudo com conteúdo." }, { status: 400 });
 
   const art = await prisma.studioArtifact.create({
-    data: { ownerId: userId, sourceIds: usedSourceIds, kind: "image", status: "running", title, meta: { prompt } as any },
+    data: { ownerId: userId, sourceIds: usedSourceIds, kind: "image", skin: skinDaVitrine({ kind: "image", titulo: title }), status: "running", title, meta: { prompt } as any },
   });
 
   try {

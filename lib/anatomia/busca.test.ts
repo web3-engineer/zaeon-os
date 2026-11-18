@@ -12,7 +12,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { SISTEMAS, SISTEMAS_POR_ID, VISIVEIS_PADRAO, ehSistema, explicacao, type Atlas } from "@/lib/anatomia/atlas";
 import {
-  MAX_RESULTADOS, SINONIMOS_PT, acharConceito, buscarConceitos, pecasDoConceito,
+  MAX_RESULTADOS, SINONIMOS_PT, ehClasseGenerica, acharConceito, buscarConceitos, pecasDoConceito, termoNaFrase,
   sistemasDoConceito, termoDeBusca,
 } from "@/lib/anatomia/busca";
 
@@ -89,14 +89,24 @@ describe("buscarConceitos — o find_anatomy", () => {
 
 describe("SINÔNIMOS PT→EN — o portão que impede sinônimo que não acha nada", () => {
   it("TODO sinônimo em português casa com pelo menos um conceito do atlas real", () => {
-    const vazios: string[] = [];
+    /**
+     * O portão ficou MAIS forte, não mais frouxo. Antes: "todo sinônimo acha alguma coisa". Agora:
+     * todo sinônimo ou acha uma ESTRUTURA, ou é recusado como CATEGORIA com o motivo anotado. As
+     * doze categorias (osso, músculo, artéria, veia, nervo, tendão e plurais) passaram a devolver
+     * vazio DE PROPÓSITO — entregar a categoria era o defeito. Vazio sem motivo continua proibido.
+     */
+    const semMotivo: string[] = [];
     for (const [pt, en] of Object.entries(SINONIMOS_PT)) {
       const r = buscarConceitos(atlas, pt);
-      if (!r.achados.length) vazios.push(`${pt} → ${en}`);
-      expect(r.termo, `${pt} devia buscar por ${en}`).toBe(en);
-      expect(r.viaSinonimo).toBe(true);
+      if (!r.achados.length && !r.classeRecusada) semMotivo.push(`${pt} → ${en}`);
+      if (r.achados.length) {
+        expect(r.termo, `${pt} devia buscar por ${en}`).toBe(en);
+        expect(r.viaSinonimo).toBe(true);
+      } else {
+        expect(ehClasseGenerica(en), `${pt} → ${en} ficou vazio sem ser categoria`).toBe(true);
+      }
     }
-    expect(vazios, "sinônimos que prometem e não acham nada").toEqual([]);
+    expect(semMotivo, "sinônimos que não acham nada E não dizem por quê").toEqual([]);
   });
 
   it("o acento não importa, e o que não é sinônimo busca o próprio termo", () => {
@@ -104,6 +114,151 @@ describe("SINÔNIMOS PT→EN — o portão que impede sinônimo que não acha na
     expect(termoDeBusca("CORAÇÃO")).toEqual({ termo: "heart", viaSinonimo: true });
     expect(termoDeBusca("figado")).toEqual({ termo: "liver", viaSinonimo: true });
     expect(termoDeBusca("thalamus")).toEqual({ termo: "thalamus", viaSinonimo: false });
+  });
+});
+
+describe("a REVISÃO do #757 — quatro achados do Sourcery, medidos e consertados", () => {
+  /**
+   * O CI estava verde e o código estava errado. Os quatro abaixo foram verificados um a um contra o
+   * atlas real antes de virar conserto; dois dos dez achados da revisão NÃO reproduziram e estão
+   * respondidos na thread, não aqui.
+   */
+  it("1 · estrutura de OUTRO SISTEMA não serve de resposta — 'nervo da face' devolvia a FACE (80 peças)", () => {
+    // o critério sai do dado: `face` é skeletal+sensory+muscular+respiratory+digestive e NUNCA
+    // nervous, então ela não serve de nervo. `femur` é skeletal, e serve de osso.
+    for (const q of ["nervo da face", "nervo do braço", "nervo da mão"]) {
+      const r = buscarConceitos(atlas, q);
+      expect(r.achados, q).toEqual([]);
+      expect(r.classeRecusada, q).toBe("nerve");
+    }
+    expect(buscarConceitos(atlas, "osso do fêmur").achados[0]?.nome).toBe("femur");
+  });
+
+  it("2 · a FERRAMENTA do agente também deixa de receber a categoria", () => {
+    // era aqui que a resposta errada nascia: o agente recebia `nerve` (26 peças, todas da órbita) e
+    // descrevia aquilo como se fosse o nervo da perna. Consertar só o artefato não bastava.
+    for (const q of ["nervo ciático", "veia safena"]) {
+      const r = buscarConceitos(atlas, q);
+      expect(r.total, q).toBe(0);
+      expect(r.achados, q).toEqual([]);
+    }
+  });
+
+  it("3 · qualificador que TAMBÉM é chave do mapa sobrevive, e é traduzido", () => {
+    // filtrar toda chave do mapa descartava `radio` junto com `osso`, e a frase ficava sem nada.
+    for (const [q, esperado] of [
+      ["osso do rádio", "radius"], ["osso do úmero", "humerus"], ["osso da bacia", "pelvis"],
+    ] as const) {
+      expect(buscarConceitos(atlas, q).achados[0]?.nome, q).toBe(esperado);
+    }
+  });
+
+  it("4 · o limite do chamador não escolhe o vaso: artéria femoral é artéria em qualquer limite", () => {
+    for (const limite of [1, 2, 3, 30]) {
+      expect(buscarConceitos(atlas, "artéria femoral", limite).achados[0]?.nome, `limite=${limite}`)
+        .toBe("femoral artery");
+    }
+  });
+
+  it("5 · a varredura tem teto — tópico gigante não vira CPU do servidor", () => {
+    const enorme = `nervo ${"palavra ".repeat(400)}ciatico`;
+    const t0 = Date.now();
+    const r = buscarConceitos(atlas, enorme);
+    expect(Date.now() - t0, "a varredura devia ser limitada").toBeLessThan(3000);
+    expect(r.achados).toEqual([]);
+  });
+});
+
+describe("COGNATAS em frase — o furo que o mapa não alcança", () => {
+  /**
+   * O #743 varre os n-gramas contra o MAPA. Boa parte da anatomia, porém, é cognata — fêmur/femur,
+   * tíbia/tibia — e esses termos nunca entraram no mapa justamente porque sozinhos já funcionam.
+   * Medido antes do conserto: "fêmur" achava os 3 conceitos, "me mostra o fêmur" achava ZERO.
+   */
+  it("a frase chega ao MESMO resultado que o termo nu — não parecido: igual", () => {
+    for (const [frase, nu] of [
+      ["me mostra o fêmur", "fêmur"],
+      ["quero ver a tíbia", "tíbia"],
+      ["o que faz o pâncreas", "pâncreas"],
+      ["explica a aorta pra mim", "aorta"],
+    ] as const) {
+      const a = buscarConceitos(atlas, frase);
+      const b = buscarConceitos(atlas, nu);
+      expect(a.achados, `"${frase}" ≠ "${nu}"`).toEqual(b.achados);
+      expect(a.achados.length, `"${frase}" não achou nada`).toBeGreaterThan(0);
+      expect(a.termo).toBe(b.termo);
+    }
+  });
+
+  it("não inventa estrutura em pergunta que não é de anatomia", () => {
+    const achou: string[] = [];
+    for (const q of [
+      "como faço um bolo de cenoura", "o que é a fotossíntese", "quanto é dois mais dois",
+      "me explica a revolução francesa", "qual a capital da frança", "o que é um polinômio",
+      "como funciona o blockchain", "quero estudar para o enem", "me da um resumo disso",
+      "o que você sabe fazer", "me ajuda com a prova de direito", "me fala sobre o Brasil",
+    ]) {
+      if (buscarConceitos(atlas, q).achados.length) achou.push(q);
+    }
+    expect(achou, "frase sem anatomia virou estrutura").toEqual([]);
+  });
+
+  it("termoNaFrase exige PALAVRA INTEIRA — 'o' não casa com 'colon', 'me' não casa com 'omentum'", () => {
+    // o perigo concreto: a busca principal usa `includes`, e aplicá-lo ao fallback faria a palavra
+    // de função mais curta da frase casar com quase todo nome do atlas.
+    expect(termoNaFrase(atlas, "o me um da no")).toBeNull();
+    expect(termoNaFrase(atlas, "me mostra o femur")).toBe("femur");
+  });
+
+  it("uma palavra só não entra no fallback: a busca já tentou e não achou", () => {
+    expect(termoNaFrase(atlas, "femur")).toBeNull();
+    expect(termoNaFrase(atlas, "")).toBeNull();
+  });
+
+  it("o QUALIFICADOR vence a categoria: 'osso do fêmur' é o fêmur, não o osso genérico", () => {
+    /**
+     * ESTE TESTE AFIRMAVA O CONTRÁRIO, e estava errado. No #752 eu escrevi que "tradução vetada
+     * vence o palpite" e usei justamente este caso como prova — consagrando o defeito num teste.
+     *
+     * Medido em 2026-11-10, a partir de uma conversa real: `bone` leva a "bone organ", 203 peças.
+     * O aluno que pede o fêmur recebia metade do esqueleto. Pior em "artéria femoral", que caía em
+     * `artery`: 562 peças, um quarto do atlas. O dono descreveu assim: "se eu peço uma parte abre o
+     * atlas completo".
+     *
+     * A regra certa é mais estreita do que eu tinha escrito: o mapa vence quando o que ele devolve
+     * é uma ESTRUTURA. Quando devolve uma CLASSE DE TECIDO, o qualificador da frase manda.
+     */
+    const r = buscarConceitos(atlas, "osso do fêmur");
+    expect(r.termo).toBe("femur");
+    expect(r.achados[0]?.nome).toBe("femur");
+    expect(r.achados[0]?.pecas).toBeLessThan(10);
+  });
+
+  it("e o mapa continua vencendo quando devolve ESTRUTURA, não categoria", () => {
+    // o estreitamento acima não pode virar "o mapa não vale mais": pulmão e coração seguem iguais.
+    for (const [q, esperado] of [["como funciona um pulmão", "lung"], ["o coração", "heart"]] as const) {
+      const r = buscarConceitos(atlas, q);
+      expect(r.viaSinonimo, q).toBe(true);
+      expect(r.termo, q).toBe(esperado);
+    }
+  });
+
+  it("os três acertos por acidente que eram ERRADOS: clavícula, mandíbula e língua", () => {
+    // sem o mapa, a subcadeia casava e casava errado — e parecia certo, que é o pior caso.
+    // "clavicula" caía em "clavicular part of deltoid" (músculo), "lingua" em "sublingual gland".
+    for (const [pt, esperado] of [
+      ["clavícula", "clavicle"], ["mandíbula", "mandible"], ["língua", "tongue"],
+    ] as const) {
+      const r = buscarConceitos(atlas, pt, 1);
+      expect(r.termo).toBe(esperado);
+      expect(r.achados[0]?.nome.toLowerCase(), `${pt} devia cair em ${esperado}`).toBe(esperado);
+    }
+  });
+
+  it("'alvéolo' em frase continua recusando — o fallback não inventa o que o atlas não tem", () => {
+    for (const q of ["alvéolo", "como funciona o alvéolo", "me mostra um alvéolo pulmonar"]) {
+      expect(buscarConceitos(atlas, q).achados, q).toEqual([]);
+    }
   });
 });
 
@@ -166,5 +321,59 @@ describe("explicacao — específica quando existe, do sistema quando não, e nu
   it("a pele fica FORA do padrão visível (senão ela esconde o corpo todo)", () => {
     expect(VISIVEIS_PADRAO).not.toContain("integumentary");
     expect(VISIVEIS_PADRAO.length).toBe(14);
+  });
+});
+
+describe("a consulta vem como PERGUNTA, não como termo (medido em produção, 2026-11-09)", () => {
+  const nomes = atlas.concepts.map((c) => (c.name || "").toLowerCase());
+
+  it("o artigo sozinho zerava a busca — 'o pulmão' tem de achar o mesmo que 'pulmão'", () => {
+    expect(termoDeBusca("pulmão")).toEqual({ termo: "lung", viaSinonimo: true });
+    expect(termoDeBusca("o pulmão")).toEqual({ termo: "lung", viaSinonimo: true });
+    expect(buscarConceitos(atlas, "o pulmão").achados.length)
+      .toBe(buscarConceitos(atlas, "pulmão").achados.length);
+  });
+
+  it("a pergunta inteira do aluno chega ao atlas", () => {
+    for (const p of ["como funciona um pulmão", "funcionamento do pulmão", "me explica o pulmão", "quero ver os pulmões"]) {
+      expect(termoDeBusca(p), p).toEqual({ termo: "lung", viaSinonimo: true });
+      const r = buscarConceitos(atlas, p);
+      expect(r.achados.length, p).toBeGreaterThan(0);
+      expect(r.achados.some((a) => a.nome.includes("lung")), p).toBe(true);
+    }
+  });
+
+  it("com dois órgãos na frase, o mais à esquerda ganha (regra declarada, não acidente)", () => {
+    expect(termoDeBusca("o coração e o pulmão").termo).toBe("heart");
+    expect(termoDeBusca("o pulmão e o coração").termo).toBe("lung");
+  });
+
+  it("n-grama de duas palavras resolve antes das palavras soltas", () => {
+    expect(termoDeBusca("sistema respiratório")).toEqual({ termo: "respiratory system", viaSinonimo: true });
+    expect(buscarConceitos(atlas, "como funciona o sistema respiratório").achados.length).toBeGreaterThan(0);
+  });
+
+  it("os dois sinônimos novos existem no atlas REAL (senão prometem e falham)", () => {
+    expect(nomes.filter((n) => n.includes("respiratory system")).length).toBeGreaterThan(0);
+    expect(nomes.filter((n) => n.includes("bronchus")).length).toBeGreaterThan(0);
+    expect(buscarConceitos(atlas, "brônquio").achados.length).toBeGreaterThan(0);
+  });
+
+  it("termo em inglês NÃO é marcado como traduzido (a mentora não pode afirmar que traduziu)", () => {
+    expect(termoDeBusca("lung")).toEqual({ termo: "lung", viaSinonimo: false });
+    expect(termoDeBusca("left lung").viaSinonimo).toBe(false);
+  });
+
+  it("frase sem termo anatômico NÃO inventa alvo — segue como frase e a busca recusa", () => {
+    const r = termoDeBusca("qual a melhor faculdade de medicina");
+    expect(r.viaSinonimo).toBe(false);
+    expect(r.termo).toBe("qual a melhor faculdade de medicina");
+    expect(buscarConceitos(atlas, "qual a melhor faculdade de medicina").achados).toHaveLength(0);
+  });
+
+  it("'alvéolo' continua VAZIO de propósito: o atlas tem zero, e recusar é melhor que mentir", () => {
+    expect(nomes.filter((n) => n.includes("alveol"))).toHaveLength(0);
+    expect(nomes.filter((n) => n.includes("bronchiole"))).toHaveLength(0);
+    expect(buscarConceitos(atlas, "alvéolo").achados).toHaveLength(0);
   });
 });

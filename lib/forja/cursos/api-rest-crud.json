@@ -1,0 +1,133 @@
+{
+  "modulos": [
+    {
+      "titulo": "Recurso e os quatro verbos",
+      "estudo": "Uma API REST organiza o servidor em torno de RECURSOS — as coisas que seu sistema guarda (tarefas, usuários, produtos). E sobre cada recurso você faz quatro operações, o CRUD: Criar, Ler, Atualizar e Apagar. A sacada do REST é mapear essas quatro operações nos MÉTODOS HTTP, de modo que o método já diga a intenção:\n\n- **GET** — ler (não muda nada).\n- **POST** — criar um novo.\n- **PUT** (ou PATCH) — atualizar um existente.\n- **DELETE** — apagar.\n\nE o recurso vira um CAMINHO, no plural: `/tarefas` é a coleção; `/tarefas/42` é a tarefa de id 42. Combinando método + caminho, cada operação tem um endereço claro:\n- `GET /tarefas` → lista todas. `GET /tarefas/42` → lê a 42.\n- `POST /tarefas` → cria uma (os dados vêm no corpo).\n- `PUT /tarefas/42` → atualiza a 42. `DELETE /tarefas/42` → apaga a 42.\n\nIsso é o que torna uma API REST previsível: qualquer pessoa que conhece o padrão adivinha as rotas sem ler manual. O método carrega o verbo; o caminho carrega o substantivo.\n\nA regra que fica: recurso no plural como caminho; GET lê, POST cria, PUT atualiza, DELETE apaga; a coleção é `/x`, o item é `/x/:id`.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Qual método HTTP você usa para CRIAR um novo recurso?",
+            "options": [
+              { "text": "POST", "isCorrect": true, "explanation": "POST na coleção (/tarefas) cria um novo item." },
+              { "text": "GET", "isCorrect": false, "explanation": "GET só lê, não cria." },
+              { "text": "DELETE", "isCorrect": false, "explanation": "DELETE apaga; o oposto de criar." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "O que a rota `GET /tarefas/42` significa?",
+            "options": [
+              { "text": "Ler a tarefa de id 42 (um item específico da coleção)", "isCorrect": true, "explanation": "/tarefas é a coleção; /tarefas/42 é o item 42; GET lê." },
+              { "text": "Apagar a tarefa 42", "isCorrect": false, "explanation": "Apagar seria DELETE /tarefas/42." },
+              { "text": "Criar 42 tarefas", "isCorrect": false, "explanation": "GET não cria; e 42 é o id, não uma quantidade." }
+            ],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Escreva a rota (método + caminho) para apagar a tarefa de id 7.",
+          "accepted": ["DELETE /tarefas/7", "delete /tarefas/7", "DELETE /tarefas/:id com id 7", "DELETE /tarefas/7"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "// As quatro rotas CRUD de um recurso 'tarefas' (ex.: Express)\napp.get('/tarefas', listar);           // ler a coleção\napp.get('/tarefas/:id', lerUma);       // ler um item\napp.post('/tarefas', criar);           // criar\napp.put('/tarefas/:id', atualizar);    // atualizar\napp.delete('/tarefas/:id', apagar);    // apagar",
+        "teste": "// cada verbo HTTP mapeia uma operação do CRUD no recurso"
+      }
+    },
+    {
+      "titulo": "Corpo, status e a resposta certa",
+      "estudo": "Uma rota não só FAZ algo — ela RESPONDE de um jeito que o cliente entende. Duas peças: o corpo (os dados) e o STATUS (um número que resume o que aconteceu).\n\nOs dados que o cliente envia (no POST/PUT) vêm no CORPO do pedido, em JSON. O servidor lê `req.body` e usa. Antes de usar, VALIDE: o campo obrigatório veio? O tipo está certo? Dados inválidos devem ser recusados com clareza, não guardados torto.\n\nO status é a etiqueta da resposta, e usar o certo é o que faz uma API profissional:\n- **200 OK** — deu certo (GET, PUT bem-sucedidos).\n- **201 Created** — criou (resposta certa de um POST).\n- **204 No Content** — deu certo e não há o que devolver (DELETE).\n- **400 Bad Request** — o cliente mandou dados inválidos (validação falhou).\n- **404 Not Found** — o recurso pedido não existe (`GET /tarefas/999` inexistente).\n- **500** — erro NO SERVIDOR (algo quebrou do seu lado).\n\nA família diz muito: 2xx = sucesso, 4xx = culpa do cliente (dados ruins, não existe), 5xx = culpa do servidor. Responder 200 para tudo (até para erro) é o pecado capital — o cliente não tem como saber que falhou.\n\nA regra que fica: leia e valide `req.body`; responda com o status que descreve o resultado (201 criou, 404 não achou, 400 dado ruim); nunca mascare um erro com 200.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Um POST criou o recurso com sucesso. Qual status é o mais correto?",
+            "options": [
+              { "text": "201 Created", "isCorrect": true, "explanation": "201 diz especificamente \"criei um novo recurso\"." },
+              { "text": "200 OK sempre", "isCorrect": false, "explanation": "200 funciona, mas 201 é o específico para criação." },
+              { "text": "404 Not Found", "isCorrect": false, "explanation": "404 é ausência; o oposto de ter criado." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "O cliente manda dados inválidos (faltou um campo obrigatório). Qual família de status?",
+            "options": [
+              { "text": "4xx (ex.: 400 Bad Request) — culpa do cliente", "isCorrect": true, "explanation": "4xx = erro do lado do cliente; 400 para dados inválidos." },
+              { "text": "5xx — culpa do servidor", "isCorrect": false, "explanation": "5xx é quando algo quebra no SEU lado, não por dado ruim do cliente." },
+              { "text": "2xx — sucesso", "isCorrect": false, "explanation": "Não houve sucesso; os dados foram recusados." }
+            ],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Em uma frase: por que responder 200 para TUDO, inclusive erros, é um problema?",
+          "accepted": ["o cliente não sabe que falhou", "esconde o erro do cliente", "impede tratar o erro do outro lado", "200 diz sucesso mesmo quando falhou", "o cliente não distingue sucesso de falha"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "app.post('/tarefas', (req, res) => {\n  const { titulo } = req.body;\n  if (!titulo) return res.status(400).json({ erro: 'titulo é obrigatório' });  // valida\n  const nova = criar(titulo);\n  res.status(201).json(nova);   // 201: criado\n});\napp.get('/tarefas/:id', (req, res) => {\n  const t = achar(req.params.id);\n  if (!t) return res.status(404).json({ erro: 'não existe' });\n  res.json(t);                  // 200 implícito\n});",
+        "teste": "// POST sem titulo responde 400; com titulo, 201; GET de id inexistente, 404"
+      }
+    },
+    {
+      "titulo": "Idempotência e por que PUT ≠ POST",
+      "estudo": "Uma distinção que parece teórica mas tem consequência real no dia a dia: a IDEMPOTÊNCIA. Uma operação é idempotente quando fazê-la UMA vez ou VÁRIAS vezes dá o mesmo resultado final.\n\n- **GET** é idempotente (ler duas vezes não muda nada) e seguro (não altera estado).\n- **DELETE** é idempotente: apagar a tarefa 42 uma vez a remove; apagar de novo... ela já não está lá, o resultado final é o mesmo (some).\n- **PUT** é idempotente: PUT substitui o recurso por um estado definido; mandar o mesmo PUT dez vezes deixa o recurso igual ao primeiro.\n- **POST** NÃO é idempotente: cada POST CRIA um novo. Mandar o mesmo POST três vezes cria TRÊS tarefas.\n\nPor que isso importa na prática? Redes falham. O cliente manda um pedido, não recebe a resposta (timeout), e tenta DE NOVO. Se era um GET, PUT ou DELETE, repetir é seguro — o resultado é o mesmo. Se era um POST, repetir cria duplicatas (o clássico \"comprei duas vezes porque cliquei de novo\"). É por isso que CRIAR é POST e ATUALIZAR é PUT: você pode reenviar um PUT sem medo, mas um POST repetido duplica.\n\nA regra que fica: GET/PUT/DELETE são idempotentes (repetir é seguro); POST não é (repetir cria duplicata). Escolha o método pela semântica E pela segurança de reenvio.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "O que significa uma operação ser idempotente?",
+            "options": [
+              { "text": "Fazê-la uma ou várias vezes leva ao mesmo resultado final", "isCorrect": true, "explanation": "Repetir não muda o estado além do que a primeira já fez." },
+              { "text": "Ela é muito rápida", "isCorrect": false, "explanation": "Nada a ver com velocidade." },
+              { "text": "Ela nunca pode falhar", "isCorrect": false, "explanation": "Pode falhar; idempotência é sobre repetição, não sobre falha." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Por que reenviar um POST (por causa de um timeout) é perigoso, mas um PUT não?",
+            "options": [
+              { "text": "POST cria um novo a cada vez (duplicatas); PUT é idempotente e deixa o recurso no mesmo estado", "isCorrect": true, "explanation": "Repetir POST multiplica; repetir PUT converge ao mesmo estado." },
+              { "text": "PUT é mais rápido que POST", "isCorrect": false, "explanation": "É sobre idempotência, não velocidade." },
+              { "text": "POST não funciona com timeout", "isCorrect": false, "explanation": "Funciona; o risco é a duplicação ao reenviar." }
+            ],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "DELETE da tarefa 42 chamado duas vezes: qual o estado final, e isso o torna idempotente?",
+          "accepted": ["a tarefa some nas duas; é idempotente", "o resultado final é o mesmo (removida), logo idempotente", "some e repetir não muda; idempotente", "a tarefa não está lá; idempotente", "mesmo resultado, é idempotente"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "javascript",
+        "inicial": "// POST cria sempre um novo -> NÃO idempotente (repetir duplica)\napp.post('/tarefas', (req, res) => { res.status(201).json(criar(req.body.titulo)); });\n\n// PUT define o estado do recurso -> idempotente (repetir converge)\napp.put('/tarefas/:id', (req, res) => {\n  const t = substituir(req.params.id, req.body);   // mesmo corpo = mesmo resultado\n  if (!t) return res.status(404).end();\n  res.json(t);\n});",
+        "teste": "// dois POSTs idênticos criam dois itens; dois PUTs idênticos deixam um item no mesmo estado"
+      }
+    }
+  ]
+}

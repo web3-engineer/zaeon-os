@@ -53,9 +53,13 @@ export const TOOLS_BASE: readonly string[] = [
   "baixar_para_base",
   "listar_anexos",
   "ler_anexo",
-  "examiner",
+  "descrever_imagem",
   "studio_generate",
   "research_generate",
+  // as BÁSICAS do dia a dia (lib/agent/toolsBasicas): puras, sempre registradas, toda agente tem.
+  "calcular",
+  "converter",
+  "data_hora",
 ];
 
 /**
@@ -284,6 +288,42 @@ export const CAPACIDADES: Readonly<Record<Exclude<AgenteChatId, import("@/lib/or
         + "centro de massa, e o `check_parameters` testa valores sem gravar. Então o ganho está em "
         + "revisar contra o número medido, não em reamostrar — três rascunhos de uma peça errada "
         + "continuam errados, e o crítico não sabe estática.",
+    },
+  },
+  /**
+   * A NOETHER (decisão do dono, 2026-11-12): a matemática da casa, plugável pela loja. As
+   * habilidades distintivas dela NÃO são tools do registro — são as skills do catálogo
+   * (`.claude/skills`, `zaeon-agente: noether`), que chegam por `activate_skill`, tool de base.
+   * Por isso `habilidades` fica vazia: declarar uma habilidade que nenhuma tool resolve é a mentira
+   * que `RUNTIME_SKILLS` existe pra impedir.
+   */
+  noether: {
+    persona: "noether",
+    habilidades: [],
+    area: "matematica",
+    distincao: "Matemática: conduz a demonstração passo a passo e mostra a figura que se mexe.",
+    // vocabulário de PERGUNTA do campo dela (as listas de lib/rag/areas são de resumo de artigo)
+    termosProprios: [
+      "matematic", "conta", "calcul", "resolv", "equac", "inequac", "expressao", "fator", "simplific",
+      "polinomi", "raiz", "raizes", "bhaskara", "funcao", "funcoes", "grafico", "dominio", "imagem",
+      "deriv", "integra", "limite", "serie", "sequencia", "converg", "diferencial", "gradiente",
+      "algebra", "matriz", "matrizes", "determinante", "vetor", "autovalor", "sistema linear", "espaco vetorial",
+      "geometri", "triangul", "circul", "circunfer", "angulo", "poligon", "area", "perimetro", "volume",
+      "mediatriz", "bissetriz", "mediana", "altura", "pitagoras", "trigonometri", "seno", "cosseno", "tangente",
+      "reta", "plano", "parabola", "elipse", "hiperbole", "conica", "coordenada",
+      "teorema", "lema", "corolario", "demonstr", "prova", "prove", "inducao", "contraexemplo", "axioma", "conjectura",
+      "conjunto", "logica", "numero primo", "primos", "divisib", "mdc", "mmc", "congruencia", "modular", "teoria dos numeros",
+      "combinat", "permutac", "arranjo", "binomi", "probabil", "estatistic", "media", "variancia", "desvio padrao", "distribuic",
+      "logaritm", "exponencial", "potencia", "fracao", "porcentagem", "razao", "proporcao", "progressao",
+      "numero complexo", "complexos", "grupo", "anel", "corpo", "topologi", "analise real",
+      "latex", "katex", "sympy", "passo a passo",
+    ],
+    protocolo: {
+      ensemble: 1,
+      reflexoes: 2,
+      porque: "Matemática tem resposta VERIFICÁVEL: substituir a raiz de volta, derivar a primitiva, "
+        + "testar o caso pequeno. O ganho está em revisar a conta contra essa checagem, não em "
+        + "reamostrar — três rascunhos com o mesmo sinal trocado continuam errados.",
     },
   },
   octa: {

@@ -113,6 +113,12 @@ export default function LiquidGlassButton({
                     0%, 100% { box-shadow: 0 0 14px 0 rgba(34,211,238,.20), 0 10px 34px -10px rgba(0,0,0,.65); }
                     50%      { box-shadow: 0 0 34px 4px rgba(34,211,238,.42), 0 10px 34px -10px rgba(0,0,0,.65); }
                 }
+                /* ONDA no hover: um anel sutil que nasce no cursor e se abre pela superfície, acompanhando o mouse */
+                @property --onda-r { syntax: "<length>"; inherits: false; initial-value: 0px; }
+                @keyframes zaeon-onda { from { --onda-r: 3px; opacity: .6; } to { --onda-r: 60px; opacity: 0; } }
+                .zaeon-onda { opacity: 0; }
+                .group:hover .zaeon-onda { animation: zaeon-onda 1.6s ease-out infinite; }
+                @media (prefers-reduced-motion: reduce) { .group:hover .zaeon-onda { animation: none; } }
             `}</style>
 
             <button
@@ -205,6 +211,17 @@ export default function LiquidGlassButton({
                     style={{
                         background:
                             "radial-gradient(120px circle at var(--mx) var(--my), rgba(255,255,255,.34), rgba(120,220,255,.12) 40%, transparent 68%)",
+                    }}
+                />
+
+                {/* ONDA — um anel que nasce no ponteiro e se abre pela superfície (acompanha o mouse). Sutil, só no hover. */}
+                <span
+                    aria-hidden="true"
+                    className="zaeon-onda pointer-events-none absolute inset-0 rounded-full"
+                    style={{
+                        mixBlendMode: "screen",
+                        background:
+                            "radial-gradient(circle at var(--mx) var(--my), transparent calc(var(--onda-r, 0px) - 7px), rgba(190,240,255,.34) var(--onda-r, 0px), transparent calc(var(--onda-r, 0px) + 7px))",
                     }}
                 />
 

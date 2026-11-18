@@ -1,0 +1,17 @@
+{
+  "tarefa": "Faça o diagrama deste processo: o aluno envia a redação; o sistema verifica se o arquivo é PDF; se não for, pede novo envio; se for, o professor corrige; nota abaixo de 6 vai para reescrita, senão a redação é aprovada. Responda APENAS o objeto JSON, no formato do procedimento.",
+  "contrato": {
+    "tipo": "json",
+    "chaves": [
+      "titulo",
+      "tipo",
+      "mermaid",
+      "leitura"
+    ]
+  },
+  "modelos": [
+    "claude",
+    "codex",
+    "octa"
+  ]
+}

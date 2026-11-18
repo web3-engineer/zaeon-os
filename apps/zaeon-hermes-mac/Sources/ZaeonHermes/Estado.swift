@@ -6,10 +6,15 @@ import Observation
 enum Secao: Hashable {
     case quadro
     case saude
-    case agentes
+    case terminal
+    case novaConversa
+    case conversa(String)
+    case agente(String)
     case motor(String)
     case datasets
     case arena
+    /// a vitrine: publicar pesquisas (pastas) e moderar a fila
+    case pesquisas
     case configuracoes
 }
 
@@ -22,7 +27,7 @@ struct RotaTarefa: Hashable {
 @MainActor
 @Observable
 final class EstadoApp {
-    // MARK: Configuração (URL e token no Keychain). SEM modo DEMO: o console só mostra dado real da Zaeon.
+    // MARK: Configuração (URL e token em ~/Library/Application Support/space.zaeon.hermes/config.json, 0600). SEM modo DEMO: o console só mostra dado real da Zaeon.
 
     var urlServidor: String
     var token: String
@@ -31,6 +36,14 @@ final class EstadoApp {
 
     private(set) var fonte: any FonteHermes
     var painel: Painel?
+    /// os agentes da casa (`GET /agentes`): a lista vive na barra lateral, o detalhe em `AgenteTela`
+    var agentes: RespostaAgentes?
+    var erroAgentes: String?
+    var janelaAgentes: JanelaAgentes = .seteDias
+    /// as conversas salvas (barra lateral) e com quem dá pra conversar
+    var conversas: [ResumoConversa] = []
+    var interlocutores: [Interlocutor] = []
+    var erroConversas: String?
     var erro: String?
     var carregando = false
     var ultimaAtualizacao: Date?
@@ -43,6 +56,7 @@ final class EstadoApp {
 
     let arena = EstadoArena()
     let atualizador = Atualizador()
+    let terminal = EstadoTerminal()
 
     /// Intervalo do auto-refresh do painel.
     static let intervaloPainel: Duration = .seconds(10)
@@ -51,8 +65,8 @@ final class EstadoApp {
     static let urlPadrao = "https://zaeon.com.br"
 
     init() {
-        let url = Keychain.ler(.url).flatMap { $0.isEmpty ? nil : $0 } ?? Self.urlPadrao
-        let token = Keychain.ler(.token) ?? ""
+        let url = Credenciais.ler(.url).flatMap { $0.isEmpty ? nil : $0 } ?? Self.urlPadrao
+        let token = Credenciais.ler(.token) ?? ""
         self.urlServidor = url
         self.token = token
         // o modo DEMO das versões anteriores saiu: limpa a preferência antiga pra ela não voltar
@@ -73,16 +87,21 @@ final class EstadoApp {
         return nil
     }
 
-    /// Salva no Keychain e troca a fonte de dados.
+    /// Salva no arquivo de configuração (só do usuário) e troca a fonte de dados.
     func salvarConfiguracao(url: String, token: String) {
         let urlNormal = APIClient.normalizarURL(url)?.absoluteString ?? url.trimmingCharacters(in: .whitespacesAndNewlines)
         let tokenLimpo = token.trimmingCharacters(in: .whitespacesAndNewlines)
-        Keychain.gravar(urlNormal, em: .url)
-        Keychain.gravar(tokenLimpo, em: .token)
+        Credenciais.gravar(urlNormal, em: .url)
+        Credenciais.gravar(tokenLimpo, em: .token)
         self.urlServidor = urlNormal
         self.token = tokenLimpo
         self.fonte = Self.criarFonte(url: urlNormal, token: tokenLimpo)
         self.painel = nil
+        self.agentes = nil
+        self.erroAgentes = nil
+        self.conversas = []
+        self.interlocutores = []
+        self.terminal.reiniciar()
         self.erro = nil
         self.caminho = []
         arena.limpar()
@@ -120,6 +139,84 @@ final class EstadoApp {
             try? await Task.sleep(for: Self.intervaloPainel)
         }
     }
+
+    /// Intervalo do refresh dos agentes da casa (o ledger agregado é mais pesado que o painel).
+    static let intervaloAgentes: Duration = .seconds(30)
+
+    func atualizarAgentes() async {
+        guard problemaConfiguracao == nil else { return }
+        let f = fonte
+        do {
+            let r = try await f.agentes(dias: janelaAgentes.rawValue)
+            guard (f as AnyObject) === (fonte as AnyObject) else { return }
+            agentes = r
+            erroAgentes = nil
+        } catch {
+            // falha no refresh não apaga a lista que já está na barra lateral
+            erroAgentes = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+    }
+
+    /// Laço dos agentes; a `.task(id:)` da raiz o recomeça quando muda o servidor, a chave ou a janela.
+    func cicloAgentes() async {
+        while !Task.isCancelled {
+            await atualizarAgentes()
+            try? await Task.sleep(for: Self.intervaloAgentes)
+        }
+    }
+
+    // MARK: Conversas
+
+    static let intervaloConversas: Duration = .seconds(15)
+
+    func atualizarConversas() async {
+        guard problemaConfiguracao == nil else { return }
+        let f = fonte
+        do {
+            async let lista = f.conversas()
+            async let quem = f.interlocutores()
+            let (l, q) = try await (lista, quem)
+            guard (f as AnyObject) === (fonte as AnyObject) else { return }
+            conversas = l
+            interlocutores = q
+            erroConversas = nil
+        } catch {
+            erroConversas = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+    }
+
+    func cicloConversas() async {
+        while !Task.isCancelled {
+            await atualizarConversas()
+            try? await Task.sleep(for: Self.intervaloConversas)
+        }
+    }
+
+    /// Abre uma conversa nova com o interlocutor e navega até ela.
+    func novaConversa(com agente: String) async throws {
+        let c = try await fonte.criarConversa(agente: agente)
+        conversas.insert(ResumoConversa(id: c.id, titulo: c.titulo, agente: c.agente, atualizadaEm: c.atualizadaEm), at: 0)
+        secao = .conversa(c.id)
+    }
+
+    /// Abre a conversa sem trocar de tela (o terminal usa) e devolve o id.
+    func novaConversaSemNavegar(com agente: String) async throws -> String {
+        let c = try await fonte.criarConversa(agente: agente)
+        conversas.insert(ResumoConversa(id: c.id, titulo: c.titulo, agente: c.agente, atualizadaEm: c.atualizadaEm), at: 0)
+        return c.id
+    }
+
+    func apagarConversa(_ id: String) async {
+        do {
+            try await fonte.apagarConversa(id: id)
+            conversas.removeAll { $0.id == id }
+            if secao == .conversa(id) { secao = .novaConversa }
+        } catch {
+            erroConversas = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+    }
+
+    func nomeDe(_ agente: String) -> String { Interlocutores.nome(agente, em: interlocutores) }
 
     func motor(_ id: String) -> MotorPainel? { painel?.motor(id) }
 

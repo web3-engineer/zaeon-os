@@ -1,0 +1,48 @@
+{
+  "arquivo": "calculadora.js",
+  "funcao": "O cérebro da calculadora: uma função que recebe dois números e um operador e devolve o resultado — a lógica pura, separada dos botões. É aqui que mora a ordem das operações e o cuidado com a divisão por zero.",
+  "ordem": 0,
+  "linguagem": "javascript",
+  "abas": [
+    {
+      "titulo": "As quatro operações",
+      "snippets": [
+        { "explicacao": "A função recebe o primeiro número, o operador (texto: \"+\", \"-\", \"*\", \"/\") e o segundo número.", "codigo": "function calcular(a, operador, b) {" },
+        { "explicacao": "Soma: se o operador é \"+\", devolve a + b.", "codigo": "  if (operador === \"+\") return a + b;" },
+        { "explicacao": "Subtração: se é \"-\", devolve a - b.", "codigo": "  if (operador === \"-\") return a - b;" },
+        { "explicacao": "Multiplicação: se é \"*\", devolve a * b.", "codigo": "  if (operador === \"*\") return a * b;" }
+      ],
+      "quiz": [
+        {
+          "tipo": "escolha",
+          "enunciado": "Por que separar a função `calcular` dos botões da tela?",
+          "opcoes": [
+            { "texto": "A lógica fica testável e reutilizável, independente da interface", "correta": true, "explicacao": "Você testa calcular() sem clicar em nada — e a mesma lógica serve a qualquer tela." },
+            { "texto": "Porque o navegador exige funções separadas", "correta": false, "explicacao": "Não exige; é uma escolha de organização que facilita teste e manutenção." }
+          ],
+          "pontos": 2
+        }
+      ]
+    },
+    {
+      "titulo": "Divisão com cuidado",
+      "snippets": [
+        { "explicacao": "Divisão: antes de dividir, barre o divisor zero — dividir por zero não é um número, então lançamos um erro claro em vez de devolver Infinity.", "codigo": "  if (operador === \"/\") {\n    if (b === 0) throw new Error(\"divisão por zero\");\n    return a / b;\n  }" },
+        { "explicacao": "Se o operador não é nenhum dos quatro, é entrada inválida: lance um erro em vez de devolver algo errado em silêncio.", "codigo": "  throw new Error(\"operador inválido: \" + operador);" },
+        { "explicacao": "Fecha a função.", "codigo": "}" }
+      ],
+      "quiz": [
+        {
+          "tipo": "escolha",
+          "enunciado": "O que `calcular(1, \"/\", 0)` faz com este código?",
+          "opcoes": [
+            { "texto": "Lança um erro \"divisão por zero\" (em vez de devolver Infinity)", "correta": true, "explicacao": "O guard `if (b === 0) throw` intercepta antes da divisão." },
+            { "texto": "Devolve 0", "correta": false, "explicacao": "Não devolve nada: o throw interrompe a função com um erro." }
+          ],
+          "pontos": 3
+        }
+      ]
+    }
+  ],
+  "teste": "if (calcular(2, \"+\", 3) !== 5) throw new Error(\"esperava 5\");\nif (calcular(10, \"-\", 4) !== 6) throw new Error(\"esperava 6\");\nif (calcular(6, \"*\", 7) !== 42) throw new Error(\"esperava 42\");\nif (calcular(20, \"/\", 5) !== 4) throw new Error(\"esperava 4\");\nlet erro = false; try { calcular(1, \"/\", 0); } catch (e) { erro = true; }\nif (!erro) throw new Error(\"divisão por zero deveria lançar\");"
+}

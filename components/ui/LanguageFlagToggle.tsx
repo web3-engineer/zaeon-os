@@ -26,7 +26,7 @@ export default function LanguageFlagToggle({
   className?: string;
   startAtBrazil?: boolean;
 }) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   // Sempre inicia pelo Brasil quando pedido (tela inicial).
   useEffect(() => {
@@ -46,8 +46,8 @@ export default function LanguageFlagToggle({
     <button
       type="button"
       onClick={cycle}
-      title={`Idioma: ${cur.label} — clique para trocar`}
-      aria-label={`Idioma atual: ${cur.label}. Clique para trocar.`}
+      title={t("siteNav.languageTitle", { name: cur.label })}
+      aria-label={t("siteNav.languageAria", { name: cur.label })}
       style={{ width: size, height: size }}
       className={`rounded-full overflow-hidden border border-black/10 dark:border-white/15 shadow-sm transition-all hover:scale-110 active:scale-95 cursor-pointer ${className}`}
     >

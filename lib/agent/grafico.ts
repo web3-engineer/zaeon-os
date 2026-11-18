@@ -139,8 +139,10 @@ export function svgDoGrafico(g: Grafico): string | null {
   const ROTULO = `fill="currentColor" fill-opacity="0.62" font-size="10.5"`;
   const VALOR = `fill="currentColor" fill-opacity="0.85" font-size="10.5" font-weight="600"`;
   const abre = (w: number, h: number) =>
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" height="auto" ` +
-    `role="img" aria-label="${titulo}" style="max-width:${w}px;font-family:ui-sans-serif,system-ui,sans-serif">` +
+    // #745: a altura vai no STYLE — `height="auto"` não vale como atributo de SVG (o navegador soltava um erro no console a
+    // cada desenho; no chat eram ~200). A proporção continua vindo do viewBox.
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" ` +
+    `role="img" aria-label="${titulo}" style="height:auto;max-width:${w}px;font-family:ui-sans-serif,system-ui,sans-serif">` +
     `<title>${titulo}</title><desc>${desc}</desc>`;
 
   if (g.forma === "faixas") {

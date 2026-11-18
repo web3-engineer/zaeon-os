@@ -11,8 +11,13 @@ import { useEffect, useState } from "react";
  * (SolidCraft via MCP — docs/HANDOFF_EIFFEL_CAD.md). Plugável pela loja como o Octa, porque é
  * agente de ofício: quem não faz projeto não quer um CAD no seletor.
  */
+/**
+ * `noether-matematica`: a Noether, a matemática da casa — demonstração, cálculo e figuras que se
+ * mexem. Plugável pela loja como o Eiffel: é agente de ofício, com as skills de matemática do
+ * catálogo (`.claude/skills`, `zaeon-agente: noether`) no bolso.
+ */
 // + os agentes da ORQUESTRA (lib/orquestra/catalogo), pelo mesmo trilho do Octa e do Eiffel
-export type PluginChat = "octa-code" | "eiffel-cad" | import("@/lib/orquestra/catalogo").AgenteOrquestraId;
+export type PluginChat = "octa-code" | "eiffel-cad" | "noether-matematica" | import("@/lib/orquestra/catalogo").AgenteOrquestraId;
 const CHAVE = "zaeon.chat.plugins";
 const EVENTO = "zaeon:chat:plugins";
 

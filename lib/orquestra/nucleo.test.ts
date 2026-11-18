@@ -136,8 +136,8 @@ describe("caixa de ferramentas · as nossas tools, com chave de evidência", () 
       .toEqual({ type: "object", properties: { q: { type: "string" }, n: { type: "array", items: { type: "number" } } } });
   });
 
-  it("só leitura entra; studio/research/examiner nunca", () => {
-    const caixa = criarCaixa(ctx, { ferramentasDoTurno: () => [def("web_search"), def("write_file", "write"), def("studio_generate"), def("examiner")] });
+  it("só leitura entra; studio/research nunca", () => {
+    const caixa = criarCaixa(ctx, { ferramentasDoTurno: () => [def("web_search"), def("write_file", "write"), def("studio_generate")] });
     expect(caixa.visiveis().map((v) => v.name)).toEqual(["web_search"]);
   });
 

@@ -66,8 +66,23 @@ export async function loadStudyContext(opts: {
 
   let title = "Estudo";
   if (spaceId) {
-    const sp = await prisma.studySpace.findUnique({ where: { id: spaceId }, select: { title: true } });
-    if (sp?.title) title = sp.title;
+    /**
+     * O TÍTULO TAMBÉM PASSA PELO PORTÃO DE ACESSO — e não passava.
+     *
+     * Achado na revisão do #758 (2026-11-10) e confirmado lendo este arquivo: os ITENS já eram
+     * filtrados por `accessibleSpaceIds` logo acima, mas o título era lido direto pelo `spaceId`,
+     * sem checagem nenhuma. Qualquer pessoa autenticada que mandasse o `spaceId` de OUTRA pessoa
+     * recebia o título do estudo dela de volta — e as rotas do Studio (anatomia, molécula, cad)
+     * usam esse título como tema e o devolvem dentro do artefato.
+     *
+     * Não é defeito de uma rota: é desta função, e por isso o conserto é aqui, onde vale para
+     * todos os chamadores de uma vez. Sem acesso, o título continua sendo o genérico "Estudo".
+     */
+    const permitido = await accessibleSpaceIds(ownerId, [spaceId]);
+    if (permitido.has(spaceId)) {
+      const sp = await prisma.studySpace.findUnique({ where: { id: spaceId }, select: { title: true } });
+      if (sp?.title) title = sp.title;
+    }
   }
 
   const text = items.map(itemText).filter(Boolean).join("\n\n").slice(0, MAX_CONTENT);

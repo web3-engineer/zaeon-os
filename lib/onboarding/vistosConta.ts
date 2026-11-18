@@ -10,7 +10,7 @@
  */
 
 /** o que pode ser marcado como visto (a rota recusa qualquer outra coisa) */
-export const ITENS_VISTOS = ["sala", "escritorio", "dica:perfil", "dica:sala-estudos"] as const;
+export const ITENS_VISTOS = ["sala", "escritorio", "dica:perfil", "dica:sala-estudos", "onboarding-tema"] as const;
 export type ItemVisto = (typeof ITENS_VISTOS)[number];
 
 /** a chave de cada item no navegador (a mesma que os tours já usavam) */
@@ -19,6 +19,7 @@ export const CHAVE_LOCAL: Record<ItemVisto, string> = {
   escritorio: "zaeon.tour.escritorio.v1",
   "dica:perfil": "zaeon.dica.perfil.v1",
   "dica:sala-estudos": "zaeon.dica.sala-estudos.v1",
+  "onboarding-tema": "zaeon.onboarding.tema.v1",
 };
 
 /** só itens conhecidos, sem repetir (o que vem do banco ou do corpo da requisição pode ser qualquer coisa) */

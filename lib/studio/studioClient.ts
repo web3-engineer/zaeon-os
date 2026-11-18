@@ -15,7 +15,12 @@ export type BlocoStudio = { studioKind: string; title?: string; data?: any; arti
 
 export type ResultadoStudio =
   | { tipo: "pronto"; bloco: BlocoStudio }
-  | { tipo: "erro"; mensagem?: string; silencioso?: boolean }
+  /**
+   * `alternativas`: quando o servidor recusa por ter entendido a CATEGORIA em vez da peça, ele manda
+   * junto os nomes REAIS que existem no atlas. Sem este campo a recusa chegava só como texto e o
+   * aluno não via o que podia pedir — a sugestão morria aqui no cliente.
+   */
+  | { tipo: "erro"; mensagem?: string; silencioso?: boolean; alternativas?: { id: string; nome: string; pecas: number }[] }
   | { tipo: "cancelado" };
 
 export const KINDS_TEXTO = ["mindmap", "guide", "faq", "flashcards", "timeline"] as const;
@@ -87,6 +92,28 @@ export async function gerarArtefato(kind: string, o: OpcoesStudio & Deps): Promi
       if (data.status === "done") return { tipo: "pronto", bloco: { studioKind: "aula", title: data.title, data: data.meta, artifactId: data.id } };
       return acompanhar(data.id, 3000, 8 * 60_000, false, true, "aula");
     }
+    if (kind === "caderno") {
+      // CADERNO de Jornada (lib/jornadas): esqueleto CURADO e determinístico — a rota devolve pronto na hora.
+      const res = await f("/api/studio/caderno", { method: "POST", headers: H, body: JSON.stringify({ topic: topic || "ritmo" }) });
+      const data = await json(res);
+      if (!res.ok || !data?.id) return { tipo: "erro", mensagem: data?.error };
+      return { tipo: "pronto", bloco: { studioKind: "caderno", title: data.title, data: data.meta, artifactId: data.id } };
+    }
+    if (kind === "forja") {
+      // ESTUDO DE REPOSITÓRIO (lib/forja): esqueleto CURADO e determinístico — a rota devolve pronto na hora.
+      const res = await f("/api/studio/forja", { method: "POST", headers: H, body: JSON.stringify({ topic: topic || "exemplo" }) });
+      const data = await json(res);
+      if (!res.ok || !data?.id) return { tipo: "erro", mensagem: data?.error };
+      return { tipo: "pronto", bloco: { studioKind: "forja", title: data.title, data: data.meta, artifactId: data.id } };
+    }
+    if (kind === "device") {
+      // APP DE DISPOSITIVO (skill família device): o painel de download + instruções da skill. A rota lê o
+      // espelho/sha e o corpo do SKILL.md (server) — determinístico, devolve pronto na hora. `topic` = slug.
+      const res = await f("/api/studio/device", { method: "POST", headers: H, body: JSON.stringify({ slug: topic }) });
+      const data = await json(res);
+      if (!res.ok || !data?.id) return { tipo: "erro", mensagem: data?.error };
+      return { tipo: "pronto", bloco: { studioKind: "device", title: data.title, data: data.meta, artifactId: data.id } };
+    }
     if (kind === "podcast" || kind === "video") {
       const res = await f(`/api/studio/${kind}`, { method: "POST", headers: H, body: JSON.stringify({ spaceId, topic }) });
       const data = await json(res);
@@ -102,11 +129,38 @@ export async function gerarArtefato(kind: string, o: OpcoesStudio & Deps): Promi
         ? { tipo: "pronto", bloco: { studioKind: "molecule", title: data.title, data: data.meta, artifactId: data.id } }
         : { tipo: "erro", mensagem: data?.error };
     }
+    if (kind === "anatomia") {
+      // Nem LLM nem rede: o atlas é local e `cenaDoConceito` é pura. Vai no molde do molecule (e não
+      // no caminho genérico de texto no fim desta função) por UM motivo concreto: o genérico devolve
+      // o bloco SEM `artifactId`, e sem ele o `leve()` do chat não tem como re-buscar um payload que
+      // ele mesmo tirou do histórico. O `estado` é pequeno, mas quem decide isso é o chat, não aqui.
+      const res = await f("/api/studio/anatomia", { method: "POST", headers: H, body: JSON.stringify({ spaceId, topic }) });
+      const data = await json(res);
+      return res.ok && data?.meta?.estado
+        ? { tipo: "pronto", bloco: { studioKind: "anatomia", title: data.title, data: data.meta, artifactId: data.id } }
+        : {
+            tipo: "erro",
+            mensagem: data?.error,
+            ...(Array.isArray(data?.alternativas) && data.alternativas.length ? { alternativas: data.alternativas } : {}),
+          };
+    }
+    // PEÇA CAD (Eiffel). Ramo próprio pelo mesmo motivo do `anatomia`: o caminho genérico lá embaixo
+    // NÃO devolve `artifactId`, e aqui ele é obrigatório — `StudyCoworkChat.leve()` tira o `data` de
+    // `cad` da conversa justamente porque glTF e STEP pesam megabytes, e sem o número o bloco não
+    // teria como voltar. Sem este ramo a peça ou some ao reabrir, ou fica inteira na conversa.
+    if (kind === "cad") {
+      const res = await f("/api/studio/cad", { method: "POST", headers: H, body: JSON.stringify({ spaceId, topic }) });
+      const data = await json(res);
+      return res.ok && data?.id && data?.meta?.png
+        ? { tipo: "pronto", bloco: { studioKind: "cad", title: data.title, data: data.meta, artifactId: data.id } }
+        : { tipo: "erro", mensagem: data?.error };
+    }
     if (kind === "image") {
       const res = await f("/api/studio/image", { method: "POST", headers: H, body: JSON.stringify({ spaceId, topic }) });
       const data = await json(res);
       return res.ok && data?.dataUrl
-        ? { tipo: "pronto", bloco: { studioKind: "image", title: data.title || "Imagem", data: data.meta, dataUrl: data.dataUrl } }
+        // #749: com o número (artifactId), a imagem fica guardada na conversa e volta ao reabrir
+        ? { tipo: "pronto", bloco: { studioKind: "image", title: data.title || "Imagem", data: data.meta, dataUrl: data.dataUrl, ...(data.id ? { artifactId: data.id } : {}) } }
         : { tipo: "erro", mensagem: data?.error };
     }
     // Texto: roda em BACKGROUND no servidor (fire-and-forget) → "queued" e polling até "done".

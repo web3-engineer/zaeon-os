@@ -24,7 +24,7 @@ type DbTrilha = {
 };
 
 export type Inicio = {
-  id: string; origem: "chat" | "arena"; motor: string; nomeMotor: string; formato: string;
+  id: string; origem: "chat" | "arena" | "console"; motor: string; nomeMotor: string; formato: string;
   intent: string; plano: string; objetivo: string; userId: string | null; decisao: Decisao;
 };
 export type Fim = {

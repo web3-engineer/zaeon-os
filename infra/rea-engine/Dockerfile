@@ -1,8 +1,8 @@
 # Motor do REA (engenharia reversa) — roda SÓ na Contabo, exposto só na Tailscale (docs/OCTA_REA.md).
-# node:22 (REA exige 22+) + JDK 21 (Ghidra 11) + Ghidra + binwalk/unblob + rea-agents + a ponte fina.
+# node:22 (REA exige ^22.23.4) + JDK 21 + Ghidra 12.1.4 + binwalk/unblob + rea-agents + a ponte fina.
 FROM node:22-bookworm
 
-ARG REA_VERSION=6.5.0
+ARG REA_VERSION=6.9.0
 ARG GHIDRA_VERSION=12.1.4
 ARG GHIDRA_RELEASE=20260921
 
@@ -19,7 +19,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV JAVA_HOME=/usr/lib/jvm/temurin-21-jdk-amd64
 ENV PATH="$JAVA_HOME/bin:$PATH"
 
-# Android/JADX is a separate provider: Ghidra does not supply it. Audited REA 6.5.0 metadata.
+# Android/JADX is a separate provider: Ghidra does not supply it. rea-agents 6.9.0 audits exactly
+# this jar (dist/android/JadxRelease.js: version 0.7.1, same sha256, revision 5844800) — unchanged
+# from 6.5.0, so no re-pin. "JADX 1.5.6" in the skill is the engine bundled inside this 0.7.1 wrapper.
 RUN mkdir -p /opt/rea-android && wget -q https://github.com/1013503897/jadx-headless-mcp/releases/download/v0.7.1/jadx-headless-mcp-0.7.1-all.jar -O /opt/rea-android/jadx.jar \
     && echo '6e5eacf500b64292bfb73c49797c1958f6ee44646e43e868039ae7feb573ff75  /opt/rea-android/jadx.jar' | sha256sum -c -
 ENV REA_JADX_MCP_JAR=/opt/rea-android/jadx.jar
@@ -36,10 +38,29 @@ ENV GHIDRA_INSTALL_DIR=/opt/ghidra
 # REA, pinado na MESMA versão da skill vendorizada no app (vendor/skills/reverse-engineer-anything)
 RUN npm i -g rea-agents@${REA_VERSION} && rea --version
 
+# Navegador do caminho WEB (`analyze-web-bundle <url>` — infra/rea-engine/web-bundle.mjs): o REA só analisa uma página
+# por CDP no loopback. Camada própria, depois do REA, pra não invalidar o cache do JDK/Ghidra. Toda saída dele passa
+# pelo proxy de saída da ponte (barra IP interno/tailnet); o CDP fica só no 127.0.0.1 do container.
+RUN apt-get update && apt-get install -y --no-install-recommends chromium fonts-liberation fonts-noto-color-emoji \
+    && rm -rf /var/lib/apt/lists/* && chromium --version
+ENV REA_CHROMIUM=chromium
+
+# Wakaru (Apache-2.0) — o REA usa pra quebrar um bundle monolítico (ex.: SPA Vite de 6 MB) em módulos legíveis
+# (recover_javascript_sources). "caller-supplied": o REA não instala; 1.14.0 é a versão que o REA verificou. Pinado por
+# sha256 (o digest do release no GitHub), como o JADX.
+RUN mkdir -p /opt/wakaru && wget -q https://github.com/pionxzh/wakaru/releases/download/v1.14.0/wakaru-linux-x64.tar.gz -O /tmp/wakaru.tgz \
+    && echo 'db0e620034723195ab426e94d00d55dbd8fd0106a928ada2563f1103196d09fa  /tmp/wakaru.tgz' | sha256sum -c - \
+    && tar -xzf /tmp/wakaru.tgz -C /opt/wakaru && rm /tmp/wakaru.tgz \
+    && W=$(find /opt/wakaru -type f -name 'wakaru*' -perm -u+x | head -1) && test -n "$W" && ln -sf "$W" /usr/local/bin/wakaru && wakaru --version
+ENV REA_WAKARU_COMMAND=/usr/local/bin/wakaru
+
 # a ponte fina (HTTP → CLI do REA), roda como usuário sem privilégio
 RUN useradd -m -u 10001 rea && mkdir -p /work && chown rea:rea /work
 COPY bridge.mjs /app/bridge.mjs
 COPY android-request.mjs /app/android-request.mjs
+COPY web-bundle.mjs /app/web-bundle.mjs
+COPY politica.mjs /app/politica.mjs
+COPY sessoes.mjs /app/sessoes.mjs
 USER rea
 WORKDIR /work
 ENV REA_BRIDGE_PORT=8799

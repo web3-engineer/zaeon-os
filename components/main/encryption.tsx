@@ -1,17 +1,15 @@
 "use client";
 
-import TextoRevelado from "@/components/ui/TextoRevelado";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import React, { useState, useEffect } from "react";
 import NextImage from "next/image";
 import { useTranslation } from "react-i18next";
-import ZaeonFlowDiagram from "./ZaeonFlowDiagram";
-import MentoresCarrossel from "./MentoresCarrossel";
 import SolanaPrivacidade from "./SolanaPrivacidade";
-import ChavesApi from "./ChavesApi";
-import BlueprintsShowcase from "./BlueprintsShowcase";
-import { TituloSecao } from "@/components/layout/secao";
-import MolecularText from "@/components/ui/MolecularText";
+import ProjetoVencedor from "./ProjetoVencedor";
+import EstudoAnatomiaLanding from "./EstudoAnatomiaLanding";
+import particulas from "@/components/sub/hero-aquario.module.css";
+import ConhecimentoShowcase from "./ConhecimentoShowcase";
+import { Rotulo, TituloSecao } from "@/components/layout/secao";
 
 // --- TICKER DE PATROCINADORES ---
 const SponsorsTicker = ({ opacity }: { opacity: any }) => {
@@ -29,9 +27,9 @@ const SponsorsTicker = ({ opacity }: { opacity: any }) => {
     return (
         <motion.div style={{ opacity }} className="w-full py-8 overflow-hidden relative z-50">
             <div className="w-full flex justify-center mb-8">
-                <h3 className="text-center text-[11px] font-black tracking-[0.35em] text-white uppercase">
-                    <TextoRevelado texto="Financiado e apoiado por:" />
-                </h3>
+                <Rotulo className="text-center">
+                    {t("landing.premiacao.apoio", { defaultValue: "" })}
+                </Rotulo>
             </div>
             <div className="relative">
                 <div className="flex whitespace-nowrap">
@@ -71,39 +69,59 @@ const SponsorCard = ({ item }: { item: { name: string; src: string; url: string 
 };
 
 
-// =========================================================================
-// NOVO: SECÇÃO DE CONTRATAÇÃO DE AGENTES (Stack 3D e Highlight)
-// ══════════════════════════════════════════════════════════════════════════
-// MENTORES — os 13 reais da sala de Plugins, num carrossel
-//
-// O que estava aqui era uma pilha 3D de quatro AGENTES INVENTADOS ("Dr. Marcus
-// Vance, Advogado Societário", "Elena Rostova, Secretária Executiva"), com
-// crachá, empresa e matrícula. Ficção apresentada como catálogo numa página
-// que vende ciência: quem clicasse procurando o Dr. Vance não ia achar nada.
-//
-// Os agentes de verdade existem e são os 13 MENTORES da camada agêntica --
-// Osler (Medicina), Turing (Eng. da Computação), Noether (Matemática) e os
-// outros dez -- que já vivem na sala de Plugins. Esta seção agora mostra eles.
-// ══════════════════════════════════════════════════════════════════════════
-const HireAgentsSection = () => {
+const provedores = [
+    { nome: "OpenAI", arquivo: "openai" },
+    { nome: "Google Gemini", arquivo: "google" },
+    { nome: "Anthropic", arquivo: "anthropic" },
+    { nome: "DeepSeek", arquivo: "deepseek" },
+    { nome: "Meta", arquivo: "meta" },
+    { nome: "Mistral AI", arquivo: "mistral" },
+];
+
+function ProvedoresTicker() {
+    const movimentoReduzido = useReducedMotion();
     return (
-        <div id="mentores" className="w-full zaeon-borda mt-10 mb-20 z-40 relative bg-transparent scroll-mt-28">
+        <div className={movimentoReduzido ? "overflow-x-auto" : "overflow-hidden"}>
             <motion.div
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6 }}
+                animate={movimentoReduzido ? { x: 0 } : { x: ["0%", "-50%"] }}
+                transition={movimentoReduzido ? { duration: 0 } : { ease: "linear", duration: 29, repeat: Infinity }}
+                className="flex w-max"
             >
-                <TituloSecao className="font-display" forte="Estude com os melhores e mais modernos agentes de IA." />
-
-                {/* carrossel LEVE: só foto, nome e função; quem passa pelo meio da tela ganha a borda destacada */}
-                <div className="mt-10">
-                    <MentoresCarrossel semRotulo leve />
-                </div>
+                {(movimentoReduzido ? [0] : [0, 1]).map((copia) => (
+                    <ul key={copia} aria-hidden={copia === 1 || undefined} className="flex flex-none gap-4 pr-4 md:gap-6 md:pr-6">
+                        {provedores.map(({ nome, arquivo }) => (
+                            <li key={arquivo} className="grid h-[78px] w-[132px] flex-none place-items-center rounded-[1.5rem] border border-white/10 bg-[#0a0a0f] transition-colors hover:border-cyan-400/45 md:h-[100px] md:w-[188px]">
+                                <NextImage
+                                    src={`/assets/models/${arquivo}.svg`}
+                                    alt={copia === 0 ? nome : ""}
+                                    width={48}
+                                    height={48}
+                                    unoptimized
+                                    className={`h-10 w-12 object-contain ${arquivo === "openai" ? "invert" : ""}`}
+                                />
+                            </li>
+                        ))}
+                    </ul>
+                ))}
             </motion.div>
+        </div>
+    );
+}
 
-            {/* "ou traga as chaves de API dos seus" + o briefing das chaves (+ as casas de modelos, #modelos) */}
-            <ChavesApi className="mt-16 md:mt-20" />
+const HireAgentsSection = () => {
+    const { t } = useTranslation();
+    return (
+        <div id="mentores" className="w-full zaeon-borda mt-8 mb-10 md:mb-14 z-40 relative bg-transparent scroll-mt-28">
+            <Rotulo className="mb-6 text-center">{t("landing.premiacao.provedores")}</Rotulo>
+            <ProvedoresTicker />
+
+            {/* o card do PRODUTO VENCEDOR (Centelha, categoria blockchain) */}
+            <ProjetoVencedor className="mt-8 md:mt-10" />
+
+            {/* "Financiado e apoiado por: [sponsors]" — no lugar das casas de modelos; mantém a âncora #modelos do rodapé */}
+            <div id="modelos" className="scroll-mt-24 mt-6">
+                <SponsorsTicker opacity={1} />
+            </div>
         </div>
     );
 };
@@ -112,42 +130,54 @@ const HireAgentsSection = () => {
 // CARROSSEL VERTICAL DE MARCAS IA (Infinite Ticker)
 
 // --- COMPONENTE PRINCIPAL (PÁGINA) ---
-export default function Encryption() {
+function SubtituloEstudos() {
     const { t } = useTranslation();
-    const [mounted, setMounted] = useState(false);
-
+    const [termo, setTermo] = useState(0);
     useEffect(() => {
-        const timer = setTimeout(() => setMounted(true), 500);
-        return () => clearTimeout(timer);
+        const movimento = window.matchMedia("(prefers-reduced-motion: reduce)");
+        if (movimento.matches) return;
+        const timer = window.setInterval(() => setTermo((atual) => (atual + 1) % 3), 2100);
+        return () => window.clearInterval(timer);
     }, []);
+    const palavra = "ZAETERMO";
+    const [antes, depois] = t("landing.study_beyond_prompts", { palavra }).split(palavra);
+    return (
+        <p className="mx-auto mt-4 max-w-3xl text-balance text-center font-display text-xl font-semibold text-slate-900 dark:text-white md:text-2xl">
+            <span className="sr-only">{t("landing.study_beyond_prompts", { palavra: t("landing.study_terms.work") })}</span>
+            <span aria-hidden="true">
+                {antes}
+                <span className={`inline-block text-cyan-700 dark:text-cyan-300 ${particulas.palavraParticulas}`}>
+                    <span key={termo} className={particulas.termoParticulas}>{t(`landing.study_terms.${["work", "study", "life"][termo]}`)}</span>
+                    <span key={`particulas-${termo}`} className={particulas.particulasPalavra}>
+                        {Array.from({ length: 12 }, (_, i) => <i key={i} style={{ left: `${4 + i * 8}%`, top: `${24 + (i * 19) % 52}%`, animationDelay: `${i * 14}ms` }} />)}
+                    </span>
+                </span>
+                {depois}
+            </span>
+        </p>
+    );
+}
 
-    if (!mounted) return <div className="min-h-screen bg-transparent" />;
+export function TituloConhecimento() {
+    const { t } = useTranslation();
+    return (
+        <div id="como-funciona" className="zaeon-borda scroll-mt-28 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 md:pb-0 md:pt-16">
+            <TituloSecao className="mx-auto !mt-0 text-balance text-center font-display !text-[clamp(1.4rem,5.1vw,2rem)] md:!text-[3.125rem]" forte={t("landing.knowledge_title", { defaultValue: "" })} />
+        </div>
+    );
+}
 
+export default function Encryption() {
     return (
         <div className="w-full relative">
-            <section id="como-funciona" className="relative z-[30] w-full bg-transparent pt-12 md:pt-16 pb-12 scroll-mt-28">
+            <section className="relative z-[30] w-full overflow-x-clip bg-transparent pb-12 pt-5 md:pb-16 md:pt-0">
                 <div className="zaeon-borda">
-                    <TituloSecao className="font-display" forte={t("landing.knowledge_title", "Transforme sua ideia em realidade.")} />
 
-                    {/* DIAGRAMA VIVO: entrada -> cerebro Zaeon -> saida.
-                        O painel nao e enfeite: o ParticleSystem da landing corre
-                        atras da pagina inteira e passava por cima do card da
-                        direita. Uma chapa escura com borda de 1px devolve o
-                        diagrama para um fundo calmo sem desligar o fundo. */}
-                    {/* CLARO: vidro AZUL glossy (gradiente + brilho no topo), estilo do botão
-                        "Iniciar", no lugar do branco lavado. ESCURO: segue o navy de sempre. */}
-                    {/* Sem o card grande em volta: só os cards do diagrama, AZULADOS e tingidos pelo fluxo em foco.
-                        `dark` força o estilo escuro dentro (texto claro sobre os cards azulados) nos dois temas. */}
-                    <div className="dark mt-12 md:mt-16">
-                        <ZaeonFlowDiagram />
-                    </div>
+                    <SubtituloEstudos />
                 </div>
-
-                {/* o marquee e de proposito full-bleed: ele corre de borda a borda */}
-                <div className="w-full mt-14 md:mt-20">
-                    <SponsorsTicker opacity={1} />
-                </div>
+                <ConhecimentoShowcase />
             </section>
+            <EstudoAnatomiaLanding />
 
             {/* ========================================================= */}
             {/* SECÇÃO: CONTRATAÇÃO DE AGENTES (3D Cover Flow) E MARCAS   */}
@@ -157,13 +187,9 @@ export default function Encryption() {
                 scroll horizontal na pagina inteira. `clip` em vez de `hidden`
                 porque `hidden` criaria um contexto de rolagem e mataria qualquer
                 `sticky` daqui para dentro. */}
-            {/* a ORDEM (o dono, out/2026): BLUEPRINTS ("Aqui você vale o que você constrói.", em carrossel) → a SOLANA
-                (privacidade + a prova) → os AGENTES → as chaves de API com o card do projeto VENCEDOR (Centelha) */}
-            <BlueprintsShowcase />
-
             <SolanaPrivacidade />
 
-            <div className="relative z-40 w-full overflow-x-clip flex flex-col items-center justify-center bg-transparent pt-10">
+            <div className="relative z-40 w-full overflow-x-clip flex flex-col items-center justify-center bg-transparent">
                 <HireAgentsSection />
             </div>
         </div>

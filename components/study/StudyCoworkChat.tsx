@@ -24,7 +24,12 @@ import {
   PanelRightClose, PanelRightOpen, FileText, X, ChevronDown, GitBranch, GraduationCap, FlaskConical, UserPlus,
 } from "lucide-react";
 import { DIRETRIZ_ESTUDOS, DIRETRIZ_PESQUISA } from "@/lib/ai/salaPersona";
-import { useIsMobile } from "@/lib/ui/useIsMobile";
+import { useIsMobile, QUERY_CELULAR } from "@/lib/ui/useIsMobile";
+import { useFecharNoVoltar } from "@/lib/ui/useFecharNoVoltar";
+import PainelDeBaixo from "@/components/study/PainelDeBaixo";
+import { FUNCTIONS as FUNCOES_STUDIO } from "@/components/study/StudioPalette";
+import { BotaoModoExec } from "@/components/study/CoworkComposer";
+import { useTranslation } from "react-i18next";
 /** #733: abaixo de 1024 px a biblioteca fica embaixo da conversa; com menos de 720 px de altura, ela começa recolhida */
 export const QUERY_ESTREITA_E_BAIXA = "(max-width: 1023px) and (max-height: 720px)";
 import { cliqueForaDoCerebro } from "@/components/cerebro/cliqueFora";
@@ -34,7 +39,6 @@ import LivrosCartao from "@/components/chat/LivrosCartao";
 import { semListaDeLivros } from "@/lib/livros/busca";
 import AuraThinking from "@/components/study/AuraThinking";
 import AgentePilula, { RECUO_ROSTO } from "@/components/agents/avatar/AgentePilula";
-import BoasVindasAgente from "@/components/agents/avatar/BoasVindasAgente";
 import { useFalaAoChegar, useManifesto, usePublicarPresenca } from "@/components/agents/avatar/hooks";
 import { sinalDoChat } from "@/lib/avatars/presenca";
 import StudyArtifactCard from "@/components/study/StudyArtifactCard";
@@ -52,7 +56,7 @@ import { EVT_TEMA, temaDoTexto, temaNoTutorial } from "@/lib/onboarding/tutorial
 import { EVT_PERGUNTA_CHAT, EVT_PREENCHER_CHAT, avisarDesenho, avisarEstadoPercurso, avisarTurnoFim } from "@/lib/onboarding/tourSala";
 import { useAvisoTextoDoChat } from "@/components/onboard/useAvisoTextoDoChat";
 import { useConversasSlot } from "@/components/chat/ConversasSlot";
-import { consumirPedido, EVT_ESTUDOS_CHAT, EVT_PEDIDO_CONVERSA, type PedidoConversa } from "@/lib/chat/conversasNav";
+import { consumirPedido, consumirPedidoBiblioteca, EVT_ABRIR_BIBLIOTECA, EVT_ESTUDOS_CHAT, EVT_PEDIDO_CONVERSA, type PedidoConversa } from "@/lib/chat/conversasNav";
 
 const irProChat = () => window.dispatchEvent(new Event(EVT_ESTUDOS_CHAT));
 import { createPortal } from "react-dom";
@@ -60,9 +64,13 @@ import DicaSubTema from "@/components/chat/DicaSubTema";
 import Desenhando from "@/components/chat/Desenhando";
 import CartaoArtefato from "@/components/chat/CartaoArtefato";
 import DocumentoArtefato from "@/components/studio/DocumentoArtefato";
-import { abrirDocumento, EVT_ABRIR_DOC, KINDS_EM_ABA, ROTULO_DOC, type DocArtefato } from "@/lib/chat/documentos";
+import { abrirDocumento, destinoDoDoc, EVT_ABRIR_DOC, KINDS_EM_ABA, ROTULO_DOC, type DocArtefato } from "@/lib/chat/documentos";
 import { assuntoDe, pedeAula } from "@/lib/agent/aprender";
+import { pedeCaderno } from "@/lib/jornadas/cadernoRitmo";
+import { EVT_ABRIR_CADERNO, consumirCadernoPendente } from "@/lib/jornadas/desbloqueio";
+import { EVT_ABRIR_ESTUDO, consumirEstudoPendente, type EstudoPendente } from "@/lib/estudos/desbloqueioEstudo";
 import ChatZoom, { useChatFontScale } from "@/components/chat/ChatZoom";
+import { zoomNoDiagrama } from "@/components/studio/DiagramView";
 import { AnimatePresence } from "framer-motion";
 import BolinhaCerebro from "@/components/cerebro/BolinhaCerebro";
 import CerebroPanel from "@/components/cerebro/CerebroPanel";
@@ -97,9 +105,11 @@ import { agenteDoChatSalvo } from "@/lib/agents/agenteEscolhido";
 import { EVT_FEEDBACK } from "@/lib/chat/feedback";
 import { SeletorModelo, SeloModelo, useModeloEscolhido } from "@/components/chat/SeletorModelo";
 import { criarEstudo, gerarArtefato } from "@/lib/studio/studioClient";
+import { mensagemDeFalha } from "@/lib/studio/falhaArtefato";
 import type { SkillNodeState } from "@/lib/skilltree/types";
 import type { SkillTreeData } from "@/components/study/SkillTreePanel";
 import { TCC_CROSS_ON, tccApi, type TrabalhoResumo } from "@/lib/tcc/client";
+import { blocoLeve } from "@/lib/chat/blocoLeve";
 import { chatUnicoOn, consumirPedidoChat, EVT_PEDIDO_CHAT, gravarModoPesquisa, modoPesquisaDa, type PedidoChat } from "@/lib/chat/chatUnico";
 
 const MeusEstudosFeed = dynamic(() => import("@/components/study/MeusEstudosFeed"), { ssr: false });
@@ -134,6 +144,10 @@ type Msg = {
   studioBlock?: StudioBlockData;   // em "structured" = artefato embutido na MESMA bolha
   blocosExtra?: StudioBlockData[]; // 2º artefato da mesma resposta (ex.: molécula + diagrama interativo)
   desenhando?: string;             // aviso enquanto um artefato demorado sai (diagrama ~20 s, aula 1–3 min)
+  /** #745 (revisão): a bolha do "tentando de novo" — o artefato da nova tentativa entra NELA (com o "desenhando…") */
+  tentando?: boolean;
+  /** #745: o artefato pedido que falhou — a bolha do aviso ganha o botão "tentar de novo" */
+  refazer?: { kind: string; topic: string; contexto?: string; spaceId?: string };
   answer?: StructuredAnswer;
   fase?: string;             // fase que o harness está narrando agora (só enquanto chega)
   modelo?: string;           // quem respondeu DE VERDADE (nome vindo do servidor) — o selo debaixo da resposta
@@ -147,11 +161,17 @@ type Msg = {
 };
 
 /** Kinds que nascem do assunto/conversa, sem um estudo de origem (não criam estudo vazio). */
-const SEM_ESTUDO = new Set(["diagram", "mindmap", "molecule", "aula"]);
+const SEM_ESTUDO = new Set(["diagram", "mindmap", "molecule", "aula", "caderno", "forja", "device"]);
+/** #749: além do diagrama e da aula (que abrem em aba), o que fica guardado na conversa pelo número — o arquivo mora no servidor */
+// #764: a anatomia também — o cartão 3D sumia ao trocar de conversa ou recarregar (o estado da cena mora no artefato)
+const GUARDA_NO_SERVIDOR = new Set(["image", "anatomia"]);
 const AVISO_ARTEFATO: Record<string, string> = {
   diagram: "Desenhando o diagrama interativo…",
   mindmap: "Desenhando o mapa…",
   aula: "Preparando a aula interativa — plano, roteiro e narração (1 a 3 min)…",
+  caderno: "Abrindo seu caderno da jornada…",
+  forja: "Montando seu estudo do repositório…",
+  device: "Preparando seu painel de download e instruções…",
 };
 
 /**
@@ -160,8 +180,8 @@ const AVISO_ARTEFATO: Record<string, string> = {
  */
 function enxugarArtefatos(m: Msg): Msg {
   if (m.role !== "assistant" || (!m.studioBlock && !m.blocosExtra && !m.desenhando)) return m;
-  // diagrama e aula são só um id (o conteúdo mora no servidor) — sobrevivem ao reload, sem o `data`
-  const leve = (b?: StudioBlockData) => (b && (b.studioKind === "diagram" || b.studioKind === "aula" || b.studioKind === "cad") && b.artifactId ? { ...b, data: null } : undefined);
+  // diagrama, aula, imagem e anatomia são só um número (o conteúdo mora no servidor) — sobrevivem ao reload (lib/chat/blocoLeve)
+  const leve = (b?: StudioBlockData) => blocoLeve(b);
   const extras = (m.blocosExtra ?? []).map(leve).filter(Boolean) as StudioBlockData[];
   return { ...m, studioBlock: leve(m.studioBlock), blocosExtra: extras.length ? extras : undefined, desenhando: undefined };
 }
@@ -373,11 +393,19 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   useEffect(() => { avisarEscrevendo(sending); }, [sending]);
   const [libOpen, setLibOpen] = useState(true);
   // celular: a biblioteca começa RECOLHIDA (empilhada embaixo, ela roubava metade da tela da conversa)
-  const celular = useIsMobile();
+  const celular = useIsMobile(QUERY_CELULAR);
   // #733: também em janela ESTREITA e BAIXA (abaixo de 1024 px a biblioteca desce para baixo da conversa; com pouca
   // altura — notebook com zoom de 150% — a conversa ficava com 0 px)
   const estreitaEBaixa = useIsMobile(QUERY_ESTREITA_E_BAIXA);
   useEffect(() => { if (celular || estreitaEBaixa) setLibOpen(false); }, [celular, estreitaEBaixa]);
+  // #845: no celular a biblioteca abre pelo Menu (item "Biblioteca"), não por uma faixa na conversa
+  useEffect(() => {
+    if (!active) return;
+    if (consumirPedidoBiblioteca()) setLibOpen(true);
+    const abrir = () => { consumirPedidoBiblioteca(); setLibOpen(true); };
+    window.addEventListener(EVT_ABRIR_BIBLIOTECA, abrir);
+    return () => window.removeEventListener(EVT_ABRIR_BIBLIOTECA, abrir);
+  }, [active]);
   // Editar a própria pergunta e reenviar (estilo ChatGPT) + o A−/A+ do texto.
   const [editando, setEditando] = useState<string | null>(null);
   const zoom = useChatFontScale();
@@ -391,6 +419,8 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   // #711: antes do temaDaConversa, que o usa — definido depois, o chat quebrava ("Cannot access before initialization")
   // assim que a conversa tinha um documento ou diagrama
   const docAtivo = abaAtiva ? docAtivoPorAba[abaAtiva] ?? null : null;
+  // #749: o diagrama que ocupa a sala agora (o A−/A+ dá zoom nele, em vez de mudar o texto escondido da conversa)
+  const diagramaNaTela = !cartolinaAberta && !trabalhoAberto && docs.find((d) => d.artifactId === docAtivo)?.studioKind === "diagram" ? docAtivo : null;
   /**
    * O ASSUNTO pra frase do convite ("vem estudar comigo sobre ___"). A conversa não tem título
    * próprio, então vem do que está em jogo: o trabalho/documento ABERTO primeiro, depois o primeiro
@@ -415,19 +445,23 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     const on = (e: Event) => {
       const d = (e as CustomEvent<DocArtefato>).detail;
       if (!d || d.sala !== "estudos") return;
-      // a conversa DE ONDE o documento saiu (a geração leva segundos — a pessoa pode ter trocado de conversa)
-      const aba = d.scopeId ?? abaAtivaRef.current;
+      // destinoDoDoc (lib/chat/documentos): auto-abertura (forja/caderno de um card) entra na aba ATIVA de agora
+      // e foca — nunca num scopeId capturado cedo no mount, que a sincronização de conversas pode ter deixado
+      // para trás (aba fantasma → board invisível). O resto segue a conversa de origem, sem roubar a tela.
+      const { aba, foca } = destinoDoDoc(d, abaAtivaRef.current);
       if (!aba) return;
       setDocsPorAba((p) => {
         const xs = p[aba] ?? [];
         return xs.some((x) => x.artifactId === d.artifactId) ? p : { ...p, [aba]: [...xs, d] };
       });
-      if (d.focar && aba === abaAtivaRef.current) setDocAtivoPorAba((p) => ({ ...p, [aba]: d.artifactId }));
+      if (foca) setDocAtivoPorAba((p) => ({ ...p, [aba]: d.artifactId }));
     };
     window.addEventListener(EVT_ABRIR_DOC, on);
     return () => window.removeEventListener(EVT_ABRIR_DOC, on);
   }, []);
   const [studioOpen, setStudioOpen] = useState(false);
+  // #837: o painel do "Aura ▾" (celular)
+  const [painelAgente, setPainelAgente] = useState(false);
   // estudos em FOCO — por conversa: o foco de uma não pode mandar o artefato de outra pro estudo errado
   const [focoPorAba, setFocoPorAba] = useState<Record<string, string[]>>({});
   const focusIds = useMemo(() => (abaAtiva ? focoPorAba[abaAtiva] ?? [] : []), [focoPorAba, abaAtiva]);
@@ -469,6 +503,18 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   const [quickThinking, setQuickThinking] = useState(false);
   // Mentor ativo (SLUG, ex.: "farmacia") — null = Aura base. Vai como `mentor` a cada envio.
   const [activeMentor, setActiveMentor] = useState<string | null>(null);
+  // #845: o NOME do mentor ("Osler"), que vem com a lista de mentores plugados — o slug ("medicina") é código interno
+  const [nomeMentor, setNomeMentor] = useState<string | null>(null);
+  // no celular a lista de mentores (MentorPill) só monta com o painel aberto: busca o nome quando o mentor muda
+  useEffect(() => {
+    if (!activeMentor) { setNomeMentor(null); return; }
+    let vivo = true;
+    fetch("/api/mentors/plugged").then((r) => (r.ok ? r.json() : null)).then((d) => {
+      const m = Array.isArray(d?.mentors) ? d.mentors.find((x: { slug?: string }) => x?.slug === activeMentor) : null;
+      if (vivo && typeof m?.name === "string") setNomeMentor(m.name);
+    }).catch(() => { /* fica o nome do curso */ });
+    return () => { vivo = false; };
+  }, [activeMentor]);
 
   /**
    * Avisa o Escritório (components/office) qual agente está ocupado. É o único estado
@@ -492,6 +538,16 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   // Árvore de habilidades: drawer opt-in; o tópico nasce do estudo focado (ou digitado no painel).
   const [treeOpen, setTreeOpen] = useState(false);
   const [treeExpandida, setTreeExpandida] = useState(false);
+  // #832: no celular, o ◀ do Android fecha o painel aberto (Studio, Biblioteca, Árvore, Blueprint) em vez de sair da página
+  // (só com a sala VISÍVEL: escondida, o ◀ seria gasto fechando um painel que ninguém vê)
+  useFecharNoVoltar(active && celular && studioOpen, () => setStudioOpen(false));
+  useFecharNoVoltar(active && celular && libOpen, () => setLibOpen(false));
+  useFecharNoVoltar(active && celular && treeOpen, () => setTreeOpen(false));
+  useFecharNoVoltar(active && celular && !!reaAberto, () => setReaAberto(null));
+  useFecharNoVoltar(active && celular && !!openStudyId, () => setOpenStudyId(null));
+  useFecharNoVoltar(active && celular && cerebroAberto, () => setCerebroAberto(false));
+  useFecharNoVoltar(active && celular && cartolinaAberta, () => setCartolinaAberta(false));
+  useFecharNoVoltar(active && celular && !!trabalhoAberto, () => setTrabalhoAberto(null));
   const [tree, setTree] = useState<SkillTreeData | null>(null);
   const [skillNode, setSkillNode] = useState<{ topicSlug: string; nodeId: string; title: string } | null>(null);
   const [treeRefresh, setTreeRefresh] = useState(0);
@@ -572,6 +628,18 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
       const wire = daConversa.length || !deviceNovo || juntas?.length !== 1 ? daConversa : await hydrateTranscript("estudos", null);
       if (wire.length && abaAtivaRef.current === ativa && !msgsRef.current.length) { setMessages(mensagensDaTela(wire)); if (ativa) modoDoServidor(ativa, wire); }
     })();
+  }, []);
+
+  // #756: aberta SEM internet, a lista ficava só com as conversas deste aparelho e só voltava com F5 (a sincronia acima
+  // roda uma vez, na abertura). A internet voltou: junta a lista do servidor de novo. Não troca a conversa aberta.
+  useEffect(() => {
+    let vivo = true;
+    const aoVoltarInternet = async () => {
+      const juntas = await sincronizarConversas("estudos", armazem, ESCOPO_COWORK, () => threadsRef.current, textoParaHistorico as (m: MsgGuardada) => string);
+      if (vivo && juntas) { threadsRef.current = juntas; setThreads(juntas); }
+    };
+    window.addEventListener("online", aoVoltarInternet);
+    return () => { vivo = false; window.removeEventListener("online", aoVoltarInternet); };
   }, []);
 
   // Persiste o thread (só texto + estudos; artefatos pesados do Studio ficam na sessão).
@@ -747,6 +815,15 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     setMessages([]);
   }, [guardarAtual]);
 
+  useEffect(() => {
+    if (!active || !abaAtiva || !armazem) return;
+    const rascunho = sessionStorage.getItem("zaeon:entrada:rascunho");
+    if (!rascunho) return;
+    sessionStorage.removeItem("zaeon:entrada:rascunho");
+    novaAba();
+    setInput(rascunho);
+  }, [active, abaAtiva, armazem, novaAba]);
+
   const fecharAba = useCallback((id: string) => {
     const { threads: lista, proxima } = fecharThread(armazem, threadsRef.current, id);
     void apagarNoServidor("estudos", id, armazem, ESCOPO_COWORK);
@@ -892,11 +969,13 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
    * "Gerando…" achando que trava. Uma bolha curta com o motivo real da API é mais honesta
    * do que silêncio — e é o que permite diagnosticar sem abrir o log do servidor.
    */
-  const avisarFalha = useCallback((motivo?: string) => {
-    const texto = motivo?.trim()
-      ? `Não consegui gerar esse artefato: ${motivo.trim()}`
-      : "Não consegui gerar esse artefato agora. Tenta de novo em instantes.";
-    setMessages((prev) => [...prev, { id: uid(), role: "assistant", kind: "text", text: texto, at: Date.now() }]);
+  // #745: o aluno lê uma frase simples (o motivo técnico, em inglês e repetido, vai para o console) e ganha "tentar de novo"
+  const avisarFalha = useCallback((motivo?: string, refazer?: Msg["refazer"], pdf?: { dataUrl: string; nome?: string }) => {
+    const { texto, tecnico } = mensagemDeFalha(refazer?.kind ?? "", motivo);
+    if (tecnico) console.warn("[artefato] falhou:", refazer?.kind, tecnico);
+    const id = uid();
+    if (pdf) pdfDoRefazer.current.set(id, pdf);
+    setMessages((prev) => [...prev, { id, role: "assistant", kind: "text", text: texto, at: Date.now(), ...(refazer ? { refazer } : {}) }]);
   }, []);
 
   /**
@@ -904,18 +983,25 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
    * explicação). Se falhar, cala — ninguém pediu, então avisar seria ruído. Pedido
    * explícito continua reclamando alto: aí a pessoa está esperando.
    */
-  const runStudioAction = useCallback(async (kind: string, topic: string, attachMsgId?: string, silencioso = false, contexto?: string, pdf?: { dataUrl: string; nome?: string }) => {
+  // #745 (revisão): o PDF de uma aula que falhou fica na memória da tela (grande demais para guardar na mensagem)
+  const pdfDoRefazer = useRef(new Map<string, { dataUrl: string; nome?: string }>());
+  const runStudioAction = useCallback(async (kind: string, topic: string, attachMsgId?: string, silencioso = false, contexto?: string, pdf?: { dataUrl: string; nome?: string }, espacoDeAntes?: string, autoAbrir = false) => {
     // a conversa que pediu: o artefato volta pra ela mesmo se a pessoa trocar de conversa durante a geração
     const scopeId = abaAtivaRef.current ?? undefined;
     // Fonte da geração: o estudo EM FOCO (se a pessoa está trabalhando nele) OU um
     // estudo NOVO criado pelo tópico. Nunca pega um estudo arbitrário da biblioteca
     // (senão "gere um podcast sobre X" sairia sobre o conteúdo errado). Diagrama, mapa,
     // molécula e aula nascem do assunto e da conversa — não criam estudo vazio em "Meus estudos".
-    let spaceId: string | undefined = focusIds[0];
+    let spaceId: string | undefined = espacoDeAntes ?? focusIds[0];
     if (!spaceId && !SEM_ESTUDO.has(kind)) {
       const s = await criarEstudo(topic || "Estudo");
       if (s) { setSpaces((p) => [...p, s as any]); spaceId = s.id; }
-      if (!spaceId) return;
+      // #745 (revisão): não deu para criar o estudo — avisa (com "tentar de novo"), em vez de sumir calado
+      if (!spaceId) {
+        if (attachMsgId) setMessages((prev) => prev.filter((m) => !(m.id === attachMsgId && m.tentando)));
+        if (!silencioso) avisarFalha(undefined, { kind, topic, ...(contexto ? { contexto } : {}) }, pdf);
+        return;
+      }
     }
     if (kind === "aula") topic = assuntoDe(topic.replace(/^aula interativa:\s*/i, ""));
     const aviso = attachMsgId ? AVISO_ARTEFATO[kind] : undefined;
@@ -928,16 +1014,63 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     if (aviso) marcar(undefined);
     avisarDesenho(r.tipo === "pronto" ? "pronto" : "falhou", kind);
     if (r.tipo === "pronto") {
-      window.dispatchEvent(new CustomEvent("zaeon:study:embed", { detail: { ...r.bloco, attachMsgId, scopeId } }));
+      // auto-abertura (card de forja/caderno): a conversa-alvo é a ATIVA de agora (pós-sync), não a capturada no mount.
+      const escopo = autoAbrir ? (abaAtivaRef.current ?? scopeId) : scopeId;
+      window.dispatchEvent(new CustomEvent("zaeon:study:embed", { detail: { ...r.bloco, attachMsgId, scopeId: escopo } }));
       // Documento (diagrama/aula): abre a aba em "Documentos"; pedido explícito já mostra ela.
       if (KINDS_EM_ABA.has(r.bloco.studioKind) && r.bloco.artifactId) {
+        gravarArtefato("estudos", threadsRef.current.find((t) => t.id === escopo), { studioKind: r.bloco.studioKind, artifactId: r.bloco.artifactId, title: r.bloco.title || topic });
+        abrirDocumento({ sala: "estudos", studioKind: r.bloco.studioKind, artifactId: r.bloco.artifactId, titulo: r.bloco.title || topic, data: r.bloco.data, focar: !silencioso, scopeId: escopo, autoAbrir });
+      } else if (GUARDA_NO_SERVIDOR.has(r.bloco.studioKind) && r.bloco.artifactId) {
+        // #749: a imagem sumia ao reabrir a conversa (só o diagrama e a aula ficavam guardados) — guarda o número dela
         gravarArtefato("estudos", threadsRef.current.find((t) => t.id === scopeId), { studioKind: r.bloco.studioKind, artifactId: r.bloco.artifactId, title: r.bloco.title || topic });
-        abrirDocumento({ sala: "estudos", studioKind: r.bloco.studioKind, artifactId: r.bloco.artifactId, titulo: r.bloco.title || topic, data: r.bloco.data, focar: !silencioso, scopeId });
       }
-    } else if (r.tipo === "erro" && !r.silencioso && !silencioso) {
-      avisarFalha(r.mensagem);
+    } else if (r.tipo === "erro") {
+      // a bolha do "tentando de novo" que não deu certo sai — o aviso novo (com o botão) entra no lugar
+      if (attachMsgId) setMessages((prev) => prev.filter((m) => !(m.id === attachMsgId && m.tentando)));
+      if (!r.silencioso && !silencioso) avisarFalha(r.mensagem, { kind, topic, ...(contexto ? { contexto } : {}), ...(spaceId ? { spaceId } : {}) }, pdf);
     }
   }, [focusIds, avisarFalha]);
+  const runStudioActionRef = useRef(runStudioAction); runStudioActionRef.current = runStudioAction;
+
+  // P4 · laço do desbloqueio: o card de música desbloqueado deixa um Caderno PENDENTE (lib/jornadas/
+  // desbloqueio). A Sala de Estudos abre esse caderno sozinha — no mount (quem já comprou) e pelo
+  // evento (quem acabou de comprar, com a sala já aberta). Abre uma vez por id nesta sessão.
+  const cadernoAbertoRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const abrir = (id: string | null) => {
+      const c = id || "ritmo";
+      if (cadernoAbertoRef.current.has(c)) return;
+      cadernoAbertoRef.current.add(c);
+      void runStudioActionRef.current("caderno", c, undefined, false, undefined, undefined, undefined, true);
+    };
+    const pendente = consumirCadernoPendente();
+    if (pendente) abrir(pendente);
+    const onEvt = (e: Event) => { consumirCadernoPendente(); abrir((e as CustomEvent).detail as string); };
+    window.addEventListener(EVT_ABRIR_CADERNO, onEvt);
+    return () => window.removeEventListener(EVT_ABRIR_CADERNO, onEvt);
+  }, []);
+
+  // Cursos de código (Forja e skill:* board) NÃO auto-abrem aqui: quem leva à ÁREA PRÓPRIA do curso é
+  // o botão "abrir" da vitrine (VitrineEstudos → abrirCurso → StudyRoomContent, aba "curso"). Auto-abrir
+  // no meio do ritual de conexão arrancaria o aluno da vitrine/modal. Só o DEVICE abre aqui (doc em aba).
+  const estudoAbertoRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const abrir = (e: EstudoPendente | null) => {
+      if (!e?.slug || estudoAbertoRef.current.has(e.slug)) return;
+      if (e.modulo !== "device") return;          // board é tratado pelo botão "abrir" (área própria do curso)
+      estudoAbertoRef.current.add(e.slug);
+      // O painel device (download + instruções) entra na conversa ATUAL, sem criar aba vazia nem trocar a
+      // vista. Abrir um device NÃO pode "soterrar" o que o aluno está estudando: antes, `novaAba()` salvava a
+      // conversa e trocava pra uma aba vazia — a aula de música "sumia" ao abrir o MuseScore (o dado ficava,
+      // mas a tela trocava). Anexando à conversa corrente, nada some: o painel aparece junto, conectado.
+      void runStudioActionRef.current("device", e.slug, undefined, false, undefined, undefined, undefined, true);
+    };
+    abrir(consumirEstudoPendente());
+    const onEvt = (ev: Event) => { consumirEstudoPendente(); abrir((ev as CustomEvent).detail as EstudoPendente); };
+    window.addEventListener(EVT_ABRIR_ESTUDO, onEvt);
+    return () => window.removeEventListener(EVT_ABRIR_ESTUDO, onEvt);
+  }, []);
 
   // ── envio pro chat da Aura ──────────────────────────────────────────────────
   // `override` = envio direto (clique numa opção/conceito da resposta do harness),
@@ -1116,6 +1249,8 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     // AULA a partir do PDF anexado: com arquivo o turno vai pelo caminho multimodal (fora do harness),
     // então o pedido de aula é atendido aqui — o PDF segue junto pra virar a aula.
     if (lendo && pedeAula(prompt)) void runStudioAction("aula", lendo.nome, asstId, false, undefined, { dataUrl: lendo.dataUrl, nome: lendo.nome });
+    // Jornada de música: "abrir meu caderno de ritmo" → abre o Caderno curado (sem depender do modelo).
+    if (pedeCaderno(prompt)) void runStudioAction("caderno", "ritmo", asstId, false);
     const systemContext = (lendo ? `O aluno anexou o arquivo "${lendo.nome}" (vai junto nesta mensagem): leia o CONTEÚDO dele e responda com base nele. ` : "") + (focusIds.length
       ? `O usuário está no co-working da Sala de Estudos e FOCOU ${focusIds.length} estudo(s): ${focusTitles.join("; ")}. Concentre-se nesse(s) estudo(s) ao responder.`
       : `O usuário está no co-working da Sala de Estudos. Converse com naturalidade, mantendo o fio do assunto entre as mensagens.`)
@@ -1348,6 +1483,117 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
       }}
     />
   ) : null;
+  // #713/#837: base, agente, modelo, modo pesquisa e árvore. No computador aparecem em cima da caixa de escrever; no
+  // celular moram no painel do "Aura ▾" do topo (a caixa ficou numa linha só).
+  const { t: tr } = useTranslation();
+  // #845: os botões do modo pesquisa e da Árvore, usados no computador (em cima da caixa) e no painel do celular
+  const botaoPesquisa = CHAT_UNICO ? (
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={modoPesquisa}
+                    onClick={() => ligarModoPesquisa(!modoPesquisa)}
+                    title={modoPesquisa ? "Modo pesquisa ligado: fontes acadêmicas, citações e rigor científico. Clique para desligar." : "Ligar o modo pesquisa: fontes acadêmicas, citações, artigos/TCC no editor"}
+                    className={`inline-flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 max-sm:min-h-[40px] rounded-full text-[11.5px] font-bold font-tech border transition-colors
+                      ${modoPesquisa
+                        ? "bg-gradient-to-r from-violet-600/20 to-fuchsia-500/15 text-violet-800 dark:text-violet-200 border-violet-500/50"
+                        : "text-slate-500 dark:text-white/50 border-slate-200 dark:border-white/10 hover:text-violet-600 hover:border-violet-300"}`}
+                  >
+                    <span aria-hidden className={`relative inline-flex h-3.5 w-6 rounded-full transition-colors ${modoPesquisa ? "bg-violet-600" : "bg-slate-300 dark:bg-white/20"}`}>
+                      <span className={`absolute top-0.5 h-2.5 w-2.5 rounded-full bg-white shadow transition-[left] ${modoPesquisa ? "left-[12px]" : "left-0.5"}`} />
+                    </span>
+                    <FlaskConical size={12} /> Modo pesquisa
+                  </button>
+  ) : null;
+  const botaoArvore = (
+                <button
+                  type="button"
+                  onClick={() => setTreeOpen((v) => !v)}
+                  title="Árvore de habilidades do tópico"
+                  aria-pressed={treeOpen}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 max-sm:min-h-[40px] rounded-full text-[11.5px] font-bold font-tech border transition-colors
+                    ${treeOpen
+                      ? "bg-gradient-to-r from-violet-500/15 to-cyan-400/15 text-violet-700 dark:text-cyan-200 border-violet-400/40"
+                      : "text-slate-500 dark:text-white/50 border-slate-200 dark:border-white/10 hover:text-violet-600 hover:border-violet-300"}`}
+                >
+                  <GitBranch size={12} /> Árvore{tree ? ` ${tree.nodes.filter((n) => n.status === "mastered").length}/${tree.nodes.length}` : ""}
+                </button>
+  );
+  const linhaPainel = (titulo: string, conteudo: React.ReactNode) => (
+    <section className="flex flex-col items-start gap-1.5 border-b border-slate-200/70 pb-3 last:border-0 dark:border-white/10">
+      <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-white/45">{titulo}</h3>
+      {conteudo}
+    </section>
+  );
+  // #845: no painel do celular, uma linha por opção, com título; mentor e modelo abrem NA lista (sem janelinha cortada)
+  const opcoesDaConversa = celular ? (
+    <div className="flex flex-col gap-3">
+      {linhaPainel(tr("chatCelular.rowWho"), <MentorPill emLista value={activeMentor} onChange={(slug, m) => { setActiveMentor(slug); setNomeMentor(m?.name ?? null); }} />)}
+      {linhaPainel(tr("chatCelular.rowModel"), <SeletorModelo emLista valor={modeloEscolhido} onChange={escolherModelo} desabilitado={sending} />)}
+      {linhaPainel(tr("chatCelular.rowBase"), <BarraBase envios={envios} versao={versaoBase} />)}
+      {botaoPesquisa && linhaPainel(tr("chatCelular.rowResearch"), botaoPesquisa)}
+      {linhaPainel(tr("chatCelular.rowTree"), botaoArvore)}
+      {linhaPainel(tr("chatCelular.rowWork"), <BotaoModoExec />)}
+    </div>
+  ) : (<>
+              <BarraBase envios={envios} versao={versaoBase} />
+              {/* ⟁ Aura ▾ — seletor: Aura base ou um mentor plugado (quebra linha no celular em vez de vazar pra fora) */}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                <MentorPill value={activeMentor} onChange={(slug, m) => { setActiveMentor(slug); setNomeMentor(m?.name ?? null); }} />
+                {/* MODELO: com quem o aluno fala de verdade (Google ou o servidor da Zaeon) */}
+                <SeletorModelo valor={modeloEscolhido} onChange={escolherModelo} desabilitado={sending} />
+                {/* MODO PESQUISA (chat único): o harness de pesquisa da antiga Sala de Pesquisa, ligado nesta conversa */}
+                {botaoPesquisa}
+                {botaoArvore}
+              </div>
+  </>);
+  // #837: o "Aura ▾" do topo (só no celular) — quem responde, o modelo, a Minha base, o modo pesquisa, o automático e a Árvore
+  // (o nome vem do slug do mentor plugado: "prof-marie" → "Prof marie")
+  const nomeDoAgente = activeMentor
+    ? (nomeMentor || activeMentor.replace(/[-_]+/g, " ").replace(/^./, (c) => c.toUpperCase()))
+    : "Aura";
+  const botaoAgente = celular ? (
+    <button type="button" onClick={() => setPainelAgente(true)} aria-haspopup="dialog" aria-expanded={painelAgente}
+      aria-label={tr("chatCelular.agentPanel", { name: nomeDoAgente })}
+      className="shrink-0 min-h-[44px] px-2.5 rounded-full inline-flex items-center gap-1 text-[13px] font-bold font-tech text-cyan-700 dark:text-cyan-200 hover:bg-cyan-500/10">
+      <span aria-hidden>⟁</span> {nomeDoAgente} <ChevronDown size={14} aria-hidden />
+    </button>
+  ) : null;
+  // #837: os selos do que está ligado, em cima do campo — tocar no × desliga
+  const selos = celular && (modoPesquisa || activeMentor) ? (
+    <div className="mx-1 mb-1 flex flex-wrap gap-1.5">
+      {modoPesquisa && (
+        <button type="button" onClick={() => ligarModoPesquisa(false)} aria-label={tr("chatCelular.researchOff")}
+          className="inline-flex min-h-[32px] items-center gap-1 rounded-full border border-violet-500/40 bg-violet-500/10 px-2.5 text-[12px] font-bold text-violet-800 dark:text-violet-200">
+          <FlaskConical size={12} aria-hidden /> {tr("chatCelular.researchOn")} <X size={12} aria-hidden />
+        </button>
+      )}
+      {activeMentor && (
+        <button type="button" onClick={() => setActiveMentor(null)} aria-label={tr("chatCelular.mentorOff", { name: nomeDoAgente })}
+          className="inline-flex min-h-[32px] items-center gap-1 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2.5 text-[12px] font-bold text-cyan-800 dark:text-cyan-200">
+          {tr("chatCelular.with", { name: nomeDoAgente })} <X size={12} aria-hidden />
+        </button>
+      )}
+    </div>
+  ) : null;
+  // #837: as sugestões do Studio embaixo da última resposta (só no celular) — tocar põe o pedido na caixa, com o assunto
+  const ultimaPergunta = [...messages].reverse().find((m) => m.role === "user" && m.kind === "text")?.text?.trim() ?? "";
+  const sugestoesStudio = (id: string) => celular && id === ultimaResposta && !sending && ultimaPergunta ? (
+    // #845: `self-stretch min-w-0` — a mensagem é `items-start`, então a faixa crescia até a soma dos botões (~520 px) e
+    // empurrava a CONVERSA INTEIRA pro lado; agora ela tem a largura da mensagem e rola só dentro dela
+    <div className="mt-2 -mx-1 flex min-w-0 gap-1.5 self-stretch overflow-x-auto pb-1 [scrollbar-width:none]" aria-label={tr("chatCelular.studio")}>
+      {FUNCOES_STUDIO.slice(0, 6).map((f) => {
+        const Icone = f.icon;
+        return (
+          <button key={f.kind} type="button" onClick={() => setInput(f.template + ultimaPergunta)}
+            className="shrink-0 inline-flex min-h-[36px] items-center gap-1.5 rounded-full border border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/[0.04] px-3 text-[12.5px] font-medium font-tech text-slate-700 dark:text-white/80">
+            <Icone size={13} aria-hidden /> {f.label}
+          </button>
+        );
+      })}
+    </div>
+  ) : null;
+
   return (
     <div className="relative h-full flex lg:flex-row flex-col" style={zoom.style}>
       {/* Borda-degradê navy na aresta esquerda (par visual com a sidebar da esquerda) — só no claro. */}
@@ -1447,7 +1693,8 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
             onClick={scrollToEnd}
             title="Ir para o final da conversa"
             aria-label="Ir para o final da conversa"
-            style={{ bottom: alturaComposer + 12 }}
+            // #832: nunca acima da aba "Conversa" — com pouca altura (celular deitado) ele cobria o "Traçar percurso"
+            style={{ bottom: `min(${alturaComposer + 12}px, calc(100% - 96px))` }}
             // #728: no canto direito — no meio ele cobria o texto da resposta (ex.: o título do diagrama)
             className="absolute z-20 right-4 w-9 h-9 rounded-full flex items-center justify-center
               bg-white/90 dark:bg-white/10 border border-slate-200 dark:border-white/15 shadow-lg backdrop-blur-xl
@@ -1494,6 +1741,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
           // #633: o botão do MAPA (o cérebro) mora à DIREITA, do lado do A−/A+ — os controles da conversa juntos;
           // e vem DEPOIS das letras: A− A+ [Ver mapa]
           depois={<>
+            {botaoAgente}
             {abaAtiva && (
               <button type="button" onClick={() => (convite ? setConvite(null) : void compartilhar())} disabled={convidando}
                 title="Convidar alguém para esta conversa" aria-label="Compartilhar conversa"
@@ -1504,7 +1752,9 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
                 <UserPlus size={14} aria-hidden />
               </button>
             )}
-            <ChatZoom escala={zoom.escala} menor={zoom.menor} maior={zoom.maior} />
+            {diagramaNaTela
+              ? <ChatZoom escala={zoom.escala} alvo="diagrama" menor={() => zoomNoDiagrama(diagramaNaTela, -1)} maior={() => zoomNoDiagrama(diagramaNaTela, 1)} />
+              : <ChatZoom escala={zoom.escala} menor={zoom.menor} maior={zoom.maior} />}
             {bolinhaMapa}
           </>}
         />
@@ -1548,12 +1798,13 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
           onDrop={onDropConversation}
-          className={`flex-1 min-h-0 overflow-y-auto custom-scrollbar px-4 sm:px-6 transition-colors ${dragOver ? "bg-cyan-500/[0.04]" : ""}`}
+          className={`flex-1 min-h-0 overflow-y-auto custom-scrollbar px-3 sm:px-6 transition-colors ${dragOver ? "bg-cyan-500/[0.04]" : ""}`}
         >
-          <div className="ml-4 sm:ml-8 lg:ml-14 mr-0 sm:mr-2 py-4 flex flex-col gap-4">
+          {/* #837: no celular sem o recuo da esquerda — a resposta usa a largura toda */}
+          <div className="ml-0 md:ml-8 lg:ml-14 [@media(max-height:500px)_and_(pointer:coarse)]:ml-0 mr-0 sm:mr-2 py-4 flex flex-col gap-4">
             {/* B2: cursor piscando da resposta em streaming */}
             <style>{`@keyframes zCaret { 0%,45% { opacity:1 } 50%,100% { opacity:0 } } .z-caret { display:inline-block; width:2px; height:1em; margin-left:2px; vertical-align:-0.15em; background:currentColor; opacity:.7; animation: zCaret 1s steps(1) infinite; } @media (prefers-reduced-motion: reduce) { .z-caret { animation: none; } }`}</style>
-            {messages.length === 0 ? <><BoasVindasAgente agentId="aura" nome="Aura" sinal={rosto.sinal} boca={rosto.boca} /><SugestoesConversa onEscolher={escolherSugestao} /><DicaSubTema threads={threads} ativa={abaAtiva} /></> : (
+            {messages.length === 0 ? <><SugestoesConversa onEscolher={escolherSugestao} /><DicaSubTema threads={threads} ativa={abaAtiva} /></> : (
               messages.map((m, i) => {
                 // rosto da Aura AO LADO de cada resposta; só a mais recente vive (pensa → fala → sorri)
                 const pilula = m.role === "assistant" && (m.kind === "text" || m.kind === "structured")
@@ -1571,7 +1822,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
                   return (
                     <div key={m.id} data-msg={m.id} className={`group/msg flex flex-col ${isUser ? "items-end" : `items-start ${recuo}`}`}>
                       {pilula}
-                      <div style={{ fontSize: fonteChat(22) }} className={`max-w-[85%] rounded-2xl px-4 py-2.5 font-tech leading-[1.65] whitespace-pre-wrap
+                      <div style={{ fontSize: fonteChat(22) }} className={`${isUser ? "max-w-[85%]" : "max-w-[85%] max-md:max-w-full [@media(max-height:500px)_and_(pointer:coarse)]:max-w-full"} rounded-2xl px-4 max-md:px-3 py-2.5 font-tech leading-[1.65] whitespace-pre-wrap
                         ${isUser
                           ? "bg-slate-100 text-slate-900 border border-slate-200/80 dark:bg-white/[0.09] dark:text-white/90 dark:border-white/10"
                           : "bg-white/80 dark:bg-white/[0.05] text-slate-800 dark:text-white/90 border border-slate-200/70 dark:border-white/10 backdrop-blur-xl"}`}>
@@ -1590,20 +1841,36 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
                         ? (m.text ? <AcoesPergunta texto={m.text} ocupado={sending} onEditar={() => setEditando(m.id)} /> : null)
                         : acoesDa(m, i)}
                       {!isUser && m.answer?.livros?.length ? <LivrosCartao livros={m.answer.livros} sala="estudos" /> : null}
+                      {/* #745: o artefato que falhou — tenta de novo daqui (o aviso sai e o "desenhando…" volta) */}
+                      {!isUser && m.refazer ? (
+                        <button type="button" disabled={sending}
+                          onClick={() => {
+                            const r = m.refazer!, pdf = pdfDoRefazer.current.get(m.id);
+                            pdfDoRefazer.current.delete(m.id);
+                            // a bolha do aviso vira a bolha da nova tentativa: o "desenhando…" aparece nela, e o artefato entra nela
+                            setMessages((prev) => prev.map((x) => (x.id === m.id ? { ...x, text: "Tentando de novo:", refazer: undefined, tentando: true } : x)));
+                            void runStudioActionRef.current(r.kind, r.topic, m.id, false, r.contexto, pdf, r.spaceId);
+                          }}
+                          className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-cyan-500/40 px-3 py-1 text-[12.5px] font-bold text-cyan-700 dark:text-cyan-200 hover:bg-cyan-500/10 disabled:opacity-50 [@media(hover:none)]:min-h-[40px]">
+                          ↻ tentar de novo
+                        </button>
+                      ) : null}
                       {!isUser && (m.studioBlock || m.desenhando) ? (
-                        <div className="w-full max-w-[85%]">
+                        <div className="w-full max-w-[85%] max-md:max-w-full [@media(max-height:500px)_and_(pointer:coarse)]:max-w-full">
                           {m.studioBlock ? <BlocoOuCartao b={m.studioBlock} /> : null}
                           {m.blocosExtra?.map((b) => <BlocoOuCartao key={b.studioKind} b={b} />)}
                           {m.desenhando ? <Desenhando texto={m.desenhando} /> : null}
                         </div>
                       ) : null}
+                      {/* #845: os atalhos do Studio depois do que a resposta trouxe (diagrama, livros…), não no meio */}
+                      {!isUser && sugestoesStudio(m.id)}
                     </div>
                   );
                 }
                 if (m.kind === "study" && m.studyId) {
                   return (
                     <div key={m.id} className="flex justify-start">
-                      <div className="max-w-[85%] w-full">
+                      <div className="max-w-[85%] max-md:max-w-full [@media(max-height:500px)_and_(pointer:coarse)]:max-w-full w-full">
                         <StudyArtifactCard
                           studyId={m.studyId}
                           title={m.studyTitle || spaceTitle(m.studyId)}
@@ -1642,14 +1909,14 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
                   return (
                     <div key={m.id} data-msg={m.id} className={`group/msg flex justify-start ${recuo}`}>
                       {pilula}
-                      <div className="max-w-[85%] w-full">{padrao}</div>
+                      <div className="max-w-[85%] max-md:max-w-full [@media(max-height:500px)_and_(pointer:coarse)]:max-w-full w-full">{padrao}{sugestoesStudio(m.id)}</div>
                     </div>
                   );
                 }
                 if (m.kind === "studio" && m.studioBlock) {
                   return (
                     <div key={m.id} className="flex justify-start">
-                      <div className="max-w-[85%] w-full">
+                      <div className="max-w-[85%] max-md:max-w-full [@media(max-height:500px)_and_(pointer:coarse)]:max-w-full w-full">
                         <BlocoOuCartao b={m.studioBlock} />
                       </div>
                     </div>
@@ -1664,7 +1931,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
         {/* ⟁ Studio como paletador de prompt: clicar injeta o prompt no composer. */}
         {studioOpen && (
           <div className="px-4 sm:px-6 pt-2">
-            <div className="ml-4 sm:ml-8 lg:ml-14 mr-0 sm:mr-2">
+            <div className="ml-0 md:ml-8 lg:ml-14 [@media(max-height:500px)_and_(pointer:coarse)]:ml-0 mr-0 sm:mr-2">
               <StudioPalette
                 onPick={(tpl) => {
                   // O template vem PRIMEIRO ("Gere um podcast sobre ") e o que a
@@ -1679,10 +1946,10 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
 
         {/* composer estilo Claude — mais largo, esticando até perto da biblioteca
             (mantém o recuo à esquerda; sem teto de largura à direita). */}
-        <div ref={composerRef} className="px-4 sm:px-6 pb-4 pt-2">
+        <div ref={composerRef} className="px-3 sm:px-6 pb-3 sm:pb-4 pt-2 [@media(max-height:500px)_and_(pointer:coarse)]:pb-1 [@media(max-height:500px)_and_(pointer:coarse)]:pt-1">
           {/* #733: já existe uma conversa com essa pergunta */}
           {repetida && (
-            <div role="alertdialog" aria-label="Conversa repetida" className="ml-4 sm:ml-8 lg:ml-14 mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-cyan-400/40 bg-cyan-50 dark:bg-cyan-500/10 px-3 py-2 text-[12.5px] text-cyan-900 dark:text-cyan-50">
+            <div role="alertdialog" aria-label="Conversa repetida" className="ml-0 md:ml-8 lg:ml-14 [@media(max-height:500px)_and_(pointer:coarse)]:ml-0 mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-cyan-400/40 bg-cyan-50 dark:bg-cyan-500/10 px-3 py-2 text-[12.5px] text-cyan-900 dark:text-cyan-50">
               <span className="min-w-0 flex-1">Você já tem a conversa <b>“{repetida.titulo}”</b>. Quer continuar nela?</span>
               <button type="button" onClick={() => { const id = repetida.id; setRepetida(null); trocarRef.current(id); }}
                 className="rounded-full bg-cyan-600 px-3 py-1 font-bold text-white hover:bg-cyan-700 [@media(hover:none)]:min-h-[40px]">continuar nela</button>
@@ -1691,12 +1958,13 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
             </div>
           )}
           {(semRede || falhouRede || avisoConversa) && (
-            <p role={avisoConversa ? "status" : "alert"} className="ml-4 sm:ml-8 lg:ml-14 mb-2 rounded-xl border border-amber-400/40 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-[12.5px] text-amber-800 dark:text-amber-100">
+            <p role={avisoConversa ? "status" : "alert"} className="ml-0 md:ml-8 lg:ml-14 [@media(max-height:500px)_and_(pointer:coarse)]:ml-0 mb-2 rounded-xl border border-amber-400/40 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-[12.5px] text-amber-800 dark:text-amber-100">
               {avisoConversa ?? (semRede ? "Sem conexão. Sua mensagem fica na caixa de texto até a internet voltar." : "A internet caiu e a mensagem não foi enviada. Ela voltou para a caixa de texto: envie de novo.")}
             </p>
           )}
-          <div data-tour="composer-estudos" className="ml-4 sm:ml-8 lg:ml-14 mr-0 sm:mr-2">
+          <div data-tour="composer-estudos" className="ml-0 md:ml-8 lg:ml-14 [@media(max-height:500px)_and_(pointer:coarse)]:ml-0 mr-0 sm:mr-2">
             <CoworkComposer
+              ativo={active}
               value={input}
               onChange={setInput}
               onSubmit={() => void send()}
@@ -1709,51 +1977,20 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
               placeholder={anexo ? `Pergunte sobre ${anexo.nome}…` : lote.length ? `Pergunte sobre os ${lote.length} arquivos…` : ""}
               opcoesAtivas={modoPesquisa || treeOpen}
               // #713: base, agente, modelo, modo pesquisa e árvore — no celular, recolhidos num botão da caixa
-              opcoes={<>
-              <BarraBase envios={envios} versao={versaoBase} />
-              {/* ⟁ Aura ▾ — seletor: Aura base ou um mentor plugado (quebra linha no celular em vez de vazar pra fora) */}
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-                <MentorPill value={activeMentor} onChange={(slug) => setActiveMentor(slug)} />
-                {/* MODELO: com quem o aluno fala de verdade (Google ou o servidor da Zaeon) */}
-                <SeletorModelo valor={modeloEscolhido} onChange={escolherModelo} desabilitado={sending} />
-                {/* MODO PESQUISA (chat único): o harness de pesquisa da antiga Sala de Pesquisa, ligado nesta conversa */}
-                {CHAT_UNICO && (
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={modoPesquisa}
-                    onClick={() => ligarModoPesquisa(!modoPesquisa)}
-                    title={modoPesquisa ? "Modo pesquisa ligado: fontes acadêmicas, citações e rigor científico. Clique para desligar." : "Ligar o modo pesquisa: fontes acadêmicas, citações, artigos/TCC no editor"}
-                    className={`inline-flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 max-sm:min-h-[40px] rounded-full text-[11.5px] font-bold font-tech border transition-colors
-                      ${modoPesquisa
-                        ? "bg-gradient-to-r from-violet-600/20 to-fuchsia-500/15 text-violet-800 dark:text-violet-200 border-violet-500/50"
-                        : "text-slate-500 dark:text-white/50 border-slate-200 dark:border-white/10 hover:text-violet-600 hover:border-violet-300"}`}
-                  >
-                    <span aria-hidden className={`relative inline-flex h-3.5 w-6 rounded-full transition-colors ${modoPesquisa ? "bg-violet-600" : "bg-slate-300 dark:bg-white/20"}`}>
-                      <span className={`absolute top-0.5 h-2.5 w-2.5 rounded-full bg-white shadow transition-[left] ${modoPesquisa ? "left-[12px]" : "left-0.5"}`} />
-                    </span>
-                    <FlaskConical size={12} /> Modo pesquisa
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setTreeOpen((v) => !v)}
-                  title="Árvore de habilidades do tópico"
-                  aria-pressed={treeOpen}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 max-sm:min-h-[40px] rounded-full text-[11.5px] font-bold font-tech border transition-colors
-                    ${treeOpen
-                      ? "bg-gradient-to-r from-violet-500/15 to-cyan-400/15 text-violet-700 dark:text-cyan-200 border-violet-400/40"
-                      : "text-slate-500 dark:text-white/50 border-slate-200 dark:border-white/10 hover:text-violet-600 hover:border-violet-300"}`}
-                >
-                  <GitBranch size={12} /> Árvore{tree ? ` ${tree.nodes.filter((n) => n.status === "mastered").length}/${tree.nodes.length}` : ""}
-                </button>
-              </div>
-              </>}
+              opcoes={opcoesDaConversa}
+              selos={selos}
+              onEscolherStudio={(tpl) => setInput((v) => tpl + v.trim())}
             >
               {anexo && <ChipAnexo anexo={anexo} onTirar={tirarAnexo} />}
               <ChipsLote lote={lote} onTirar={tirarDoLote} />
               {focusChips}
             </CoworkComposer>
+            {celular && (
+              <PainelDeBaixo aberto={active && painelAgente} onFechar={() => setPainelAgente(false)}
+                titulo={tr("chatCelular.agentTitle")} rotuloFechar={tr("chatCelular.close")}>
+                <div className="pb-2 [&_button]:min-h-[44px]">{opcoesDaConversa}</div>
+              </PainelDeBaixo>
+            )}
           </div>
         </div>
       </div>
@@ -1789,7 +2026,8 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
             <PanelRightClose size={13} />
           </button>
         </div>
-      ) : (
+      ) : !celular && (
+        // #845: no celular a faixa ficava entre a caixa e o teclado — lá a biblioteca abre pelo Menu
         <button onClick={() => setLibOpen(true)} title="Mostrar biblioteca"
           className="shrink-0 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-white/10 flex lg:flex-col items-center justify-center gap-2 px-3 py-2 lg:py-3 text-slate-400 hover:text-cyan-500 hover:bg-cyan-500/5">
           <PanelRightOpen size={16} />

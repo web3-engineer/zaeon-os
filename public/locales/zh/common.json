@@ -1,4 +1,161 @@
 {
+  "siteNav": {
+    "docs": "文档",
+    "about": "关于我们",
+    "lab": "实验室",
+    "market": "市场",
+    "news": "新闻",
+    "site": "网站页面",
+    "open": "打开菜单",
+    "close": "关闭菜单",
+    "settings": "设置",
+    "general": "常规",
+    "theme": "切换主题",
+    "languageTitle": "语言：{{name}} — 点击切换",
+    "languageAria": "当前语言：{{name}}。点击切换。"
+  },
+  "labSidebar": {
+    "offline": "无网络连接：网络恢复后会显示你的对话。",
+    "actions": "操作",
+    "cyberspace": "赛博空间",
+    "study": "学习室",
+    "research": "研究室",
+    "projects": "项目",
+    "office": "办公室",
+    "profile": "个人资料",
+    "layout": "布局",
+    "focus": "专注",
+    "exitFocus": "退出专注",
+    "back": "返回",
+    "return": "返回网络空间",
+    "navigation": "导航",
+    "menu": "菜单",
+    "studies": "学习",
+    "library": "资料库",
+    "new": "新建",
+    "conversations": "对话",
+    "search": "搜索对话",
+    "newChat": "新建对话",
+    "newResearch": "新建研究",
+    "today": "今天",
+    "yesterday": "昨天",
+    "week": "最近 7 天",
+    "month": "最近 30 天",
+    "older": "更早",
+    "agent": "切换代理",
+    "switching": "正在切换到 {{name}}…",
+    "replying": "{{name}} 正在回复…",
+    "talk": "与 {{name}} 聊天",
+    "change": "切换代理（当前：{{name}}）",
+    "showChats": "显示对话",
+    "hideChats": "收起对话",
+    "showTopics": "显示子主题",
+    "hideTopics": "收起子主题",
+    "replyingShort": "正在回复",
+    "newTopic": "新建子主题",
+    "rename": "重命名",
+    "delete": "删除",
+    "newName": "新对话名称",
+    "noResults": "没有结果。",
+    "empty": "暂无对话。",
+    "cancel": "取消",
+    "confirm": "删除对话？",
+    "confirmTopics": "删除对话和 {{count}} 个子主题？",
+    "studiesList": "自习室的学习",
+    "searchStudies": "搜索学习",
+    "noStudies": "还没有学习。和 Aura 聊聊：对话变成学习后会显示在这里。",
+    "loading": "加载中…",
+    "studiesError": "无法加载学习。",
+    "retry": "重试",
+    "more": "查看更多",
+    "moreFailed": "未加载 — 重试",
+    "confirmStudy": "删除学习？",
+    "confirmStudyShared": "删除学习？有访问权限的 {{count}} 人也将无法再看到。",
+    "newStudyName": "新的学习名称",
+    "phase": "第 {{n}} 阶段",
+    "critical": "{{count}} 个关键项",
+    "awaitingMentor": "等待导师",
+    "chatWith": "对话对象",
+    "moreAgents": "更多智能体（如 <b>Octa Code</b>）可在 Marketplace 中添加。",
+    "agentRole": {
+      "aura": "学习、研究与对话",
+      "zenita": "日程、课程与考试",
+      "nina": "笔记、摘要与学习计划",
+      "octa": "编程智能体 · IDE",
+      "eiffel": "土木与结构工程 · CAD",
+      "noether": "数学 · 证明、微积分与动态几何"
+    }
+  },
+    "forja": {
+        "board": {
+            "verResposta": "查看答案",
+            "respostaPlaceholder": "输入你的答案…",
+            "tagConceito": "概念",
+            "tagModulo": "模块",
+            "tagRepo": "仓库",
+            "licaoFallback": "{{titulo}} — 引擎分析仓库后，课程就会出现。",
+            "noCodigoComplete": "在代码中 — 自己完成",
+            "exercicio": "练习",
+            "noCodigo": "在代码中",
+            "teste": "测试",
+            "desafio": "挑战",
+            "continuar": "继续：{{prox}} ▸",
+            "concluir": "完成 ✓",
+            "aprendizado": "学习",
+            "voltarArvore": "‹ 返回树",
+            "aceitaExemplo": "例如可接受："
+        },
+        "arvore": {
+            "hintRaiz": "点击一个概念来<b>打开</b> · 滚动<b>缩放</b>，拖动导航",
+            "hintAbriu": "<b>{{titulo}}</b> 已打开 · <b>再次点击以学习</b>",
+            "hintAbrir": "点击<b>{{titulo}}</b>打开课程",
+            "dentroAbrir": "包含 {{n}} 个 · 打开",
+            "abrirLicao": "打开课程",
+            "cueAprender": "点击 → 学习 ▸",
+            "licaoReais": "<b>课程</b>：真实的学习 + 代码 + 测试",
+            "licaoModulo": "本模块的<b>课程</b>",
+            "fechar": "← 返回",
+            "semMapa": "引擎分析仓库后，树会长出分支",
+            "passo": "第 {{i}}/{{n}} 步"
+        },
+        "sala": {
+            "erro": "现在无法构建这门课程。",
+            "voltar": "← 返回",
+            "montando": "正在构建课程…",
+            "praticar": "练习：输入代码 ▸"
+        },
+        "card": {
+            "certo": "✓ 正确！下一段。",
+            "completo": "✓ 文件完成 — 运行测试！",
+            "naoBate": "还不匹配 — 和旁边那段对比（要输入，不要粘贴）。",
+            "conecteGithub": "连接你的 GitHub 以发布。",
+            "naoPronto": "项目还没准备好：{{motivos}}",
+            "falhaPublicar": "现在无法发布。",
+            "voltar": "← 返回",
+            "digite": "输入：",
+            "editorPlaceholder": "在此输入这段（粘贴已禁用）",
+            "conferir": "检查这段",
+            "rodando": "运行中…",
+            "carregandoPython": "正在加载 Python…",
+            "rodarTestes": "运行测试 ▸",
+            "baixarTeste": "下载测试",
+            "testeLocal": "RDKit 在本地 Python 环境中运行。先运行 `{{instalar}}`，再运行 `{{rodar}}`。",
+            "concluaDependencias": "请先完成：{{arquivos}}。",
+            "runtimeIndisponivel": "此语言无法在浏览器中运行。",
+            "pythonErro": "Python 未加载：",
+            "passou": "✓ 通过 — 你输入的代码可以运行！",
+            "naoPassou": "✗ 还没通过",
+            "noGithub": "✓ 已在你的 GitHub！",
+            "abrirRepo": "打开仓库 ↗",
+            "subindo": "上传中…",
+            "subirGithub": "推送到我的 GitHub ▸",
+            "conectar": "连接 ↗",
+            "duvidaPlaceholder": "就这段提个问题…",
+            "perguntar": "提问",
+            "voce": "你：",
+            "tutorProxima": "· 导师将在下一阶段回答"
+        }
+    },
     "navbar": {
         "about": "关于我们",
         "homework": "研究实验室",
@@ -230,44 +387,161 @@
         "project_rank": "项目排名"
     },
     "about": {
-        "back": "后退",
+      "planos_copy": {
+        "free": {
+          "price": "免费",
+          "tagline": "即刻入门",
+          "perks": [
+            "无限制使用学习室",
+            "研究室：一份报告、论文或毕业项目",
+            "不含语音模式",
+            "不含深度思考"
+          ]
+        },
+        "plus": {
+          "price": "学生 R$20 · 标准 R$80",
+          "tagline": "适合日常学业",
+          "perks": [
+            "无限制使用研究室",
+            "高级语音模式",
+            "每天一次深度思考",
+            "无限制使用学习室"
+          ]
+        },
+        "pro": {
+          "tagline": "适合高频创作者",
+          "perks": [
+            "包括 Plus 的所有功能",
+            "无限制深度思考",
+            "项目选项卡（Zaeon Code）",
+            "高级语音"
+          ]
+        },
+        "max": {
+          "tagline": "完整工具套装",
+          "perks": [
+            "包括 Pro 的所有功能",
+            "Aura 生成多份草稿并提供最佳版本",
+            "按需生成科学内容：分子、蛋白质和模拟",
+            "具备高级技能和定制工具的智能助手",
+            "优先支持"
+          ]
+        }
+      },
+      "equipe_copy": {
+        "pda": "PDA · 团队",
+        "perfil": "个人资料",
+        "nota": "简介",
+        "chamada": "认识团队",
+        "foto": "{{nome}} 的照片",
+        "fundador": {
+          "cargo": "创始人 · CEO",
+          "bio": "Don 创建 Zaeon，让学习更具协作性，并让学习成果可以得到验证。他设计产品、网络空间和凭证功能，并作为 Zaeon 的第一位学生亲自测试。",
+          "tags": [
+            "产品",
+            "网络空间",
+            "凭证"
+          ]
+        }
+      },
+      "apresentacao": {
+        "titulo": "把知识变成实际成果。",
+        "resumo": "Zaeon 是一个用 AI 学习、构建项目并展示能力的平台。我们帮助企业发现通过评估和实际成果展现出色技能的人才。",
+        "ver_amostra": "查看学习示例",
+        "fluxo": "从学习到新的机会",
+        "tecnica": "了解 Zaeon 的架构",
+        "estudar": {
+          "titulo": "用 AI 学习",
+          "descricao": "借助 AI 模型、学习资料和参考文献深入探索主题。"
+        },
+        "construir": {
+          "titulo": "构建你的项目",
+          "descricao": "把想法变成研究、代码、原型或其他可以分享的成果。"
+        },
+        "provar": {
+          "titulo": "展示你的技能",
+          "descricao": "通过评估、已完成的项目和可验证凭证证明你的能力。"
+        },
+        "conectar": {
+          "titulo": "与企业建立联系",
+          "descricao": "Zaeon 的智能助手将表现出色的人才介绍给需要这些技能的企业。"
+        }
+      },
+        "back": "返回",
         "scroll_down": "向下滚动了解我们",
-        "title_secondary": "赢得你的进化",
-        "title_main": "化为成果的知识。",
+        "title_hero": "无限创造。",
+        "title_secondary": "从想法到真实世界",
+        "title_main": "你的价值在于你创造的东西。",
         "genesis": {
-            "title": "学习。写作。了解一切。",
-            "p1": "Zaeon 是你的学习空间：最好的 AI 智能体与你一起阅读、按你的节奏讲解，并帮你写出真正的作业与论文——从初稿到定稿，来源经过核实，格式即刻可用。",
-            "p2": "任何主题，任何水平。带着疑问进来，带着掌握出去。",
-            "p2_highlight": ""
+            "title": "一个可以创造任何东西的地方。",
+            "p1": "Zaeon 是让想法变成真实事物的地方。带着一个想法来——火箭、应用、研究、生意——一支 AI 智能体乐团会和你一起构建：阅读背后的科学、设计、计算、编写代码并测试。",
+            "p2": "没有几十个标签页，没有消失在历史记录里的对话。在这里，每一次对话都会变成构建。"
         },
         "mission": {
-            "title": "真实的产品。真实的世界。真实的人。",
-            "p1": "在这里，学习不止于笔记本。想法变成项目，项目变成产品——由真实的人构建，由教师与机构验证，并记录为属于你的凭证。Zaeon 是你所学走向世界的地方。",
-            "p2": ""
+            "title": "你创造的，就是你的。",
+            "p1": "每个构建都会保存它的科学基础、决策和 Blueprint，署名属于你。由你选择：发布到展示橱窗、保持私密，或只向你的团队开放——并与验证、测试并把它带到真实世界的人建立联系。"
         },
         "architecture": {
-            "title": "运作方式",
-            "subtitle": "自主智能体将一个科学问题一路推进到可验证的解决方案。",
-            "card_title": "从实验室到世界",
-            "card_desc": "严谨的研究转化为技术、医学和公共产品——开放且可审计。",
+            "title": "想法如何变成现实",
+            "subtitle": "与首页那块逐步点亮的电路板相同的里程碑：每一步都让你的构建离真实世界更近。",
+            "card_title": "主题不设限",
+            "card_desc": "工程、科学、软件、商业、艺术——只要想得到，就能在这里造出来。",
             "flow": {
-                "step1": "研究",
-                "step2": "综合",
-                "step3": "假设",
-                "step4": "方案",
-                "step5": "验证",
-                "step6": "交付",
-                "step7": "影响"
+                "step1": "想法",
+                "step2": "科学基础",
+                "step3": "与 AI 对话",
+                "step4": "BLUEPRINT",
+                "step5": "原型与测试",
+                "step6": "走向真实世界"
             }
+        },
+        "layers": {
+            "kicker": "在平台上",
+            "title_a": "三个层次。",
+            "title_b": "一个空间。",
+            "footer": "你来创造。你来掌控。分享什么由你决定。",
+            "n1": {
+                "title": "组建你的乐团",
+                "desc": "自家智能体和专业引擎，各有所长。直接从展示橱窗接入你的想法需要的那些，它们会协同工作。",
+                "tags": [
+                    "自家智能体",
+                    "引擎",
+                    "橱窗接入"
+                ]
+            },
+            "n2": {
+                "title": "无限创造",
+                "desc": "研究、计算、代码、设计和测试都在同一处。乐团分配工作，你决定方向，构建在每次会话中成长。",
+                "tags": [
+                    "Blueprint",
+                    "原型",
+                    "代码",
+                    "研究"
+                ]
+            },
+            "n3": {
+                "title": "展示给世界",
+                "desc": "带着你的个人主页发布到展示橱窗。其他人会验证、与你交流，并接入你的作品——功劳始终属于你。",
+                "tags": [
+                    "展示橱窗",
+                    "验证者",
+                    "个人主页",
+                    "署名"
+                ]
+            }
+        },
+        "plans": {
+            "title": "方案",
+            "subtitle": "免费开始 · 构建需要时再升级",
+            "popular": "最受欢迎"
         },
         "cta": {
             "tour_title": "想从内部看看架构吗？",
-            "button_go": "去 ！"
+            "button_go": "出发！"
         },
-        "title_hero": "成为你生来就该成为的人。",
         "team": {
             "title": "认识团队",
-            "subtitle": "两个人，一个执念：让学习真正有回报。"
+            "subtitle": "两个人，一个执念：一个可以创造任何东西的地方。"
         }
     },
     "tech_room": {
@@ -348,11 +622,203 @@
         "success_message": "凭证已更新"
     },
     "landing": {
+        "knowledge_cards": {
+            "neuro": {
+                "title": "神经解剖学",
+                "summary": "比较大脑结构及其功能。"
+            },
+            "respiracao": {
+                "title": "呼吸生理学",
+                "summary": "研究通气和气体交换。"
+            },
+            "farmacologia": {
+                "title": "药理学",
+                "summary": "研究药物与人体的相互作用。"
+            },
+            "civil": {
+                "title": "土木工程",
+                "summary": "阅读 CAD 平面图，研究尺寸、布局与结构轴线。"
+            },
+            "mecanica": {
+                "title": "机械工程",
+                "summary": "比较涡轮机并测量机械效率。"
+            },
+            "quimica": {
+                "title": "化学工程",
+                "summary": "跟踪中试装置中的物质和能量流。"
+            },
+            "ambiental": {
+                "title": "环境工程",
+                "summary": "比较水处理工艺。"
+            },
+            "geologia": {
+                "title": "地质学",
+                "summary": "解读岩层并重建其形成历史。"
+            },
+            "microbiologia": {
+                "title": "微生物学",
+                "summary": "观察微生物如何生长和相互作用。"
+            },
+            "materiais": {
+                "title": "材料科学",
+                "summary": "比较微观结构对材料性能的影响。"
+            },
+            "oceanografia": {
+                "title": "海洋学",
+                "summary": "解读浮标测得的波浪和海流数据。"
+            },
+            "eletrica": {
+                "title": "电气工程",
+                "summary": "研究负荷、保护和配电。"
+            },
+            "solar": {
+                "title": "太阳能",
+                "summary": "比较发电、储能和投资回收期。"
+            },
+            "hortas": {
+                "title": "社区菜园",
+                "summary": "规划种植区、堆肥与灌溉。"
+            },
+            "ecovilas": {
+                "title": "生态村",
+                "summary": "研究共享住房、食物和能源。"
+            },
+            "comunidades": {
+                "title": "去中心化社区",
+                "summary": "设计共同规则、投票和问责机制。"
+            },
+            "cisternas": {
+                "title": "雨水收集",
+                "summary": "计算蓄水池容量并规划雨水用途。"
+            },
+            "codigo": {
+                "title": "代码",
+                "summary": "构建并测试可运行的软件。"
+            },
+            "hardware": {
+                "title": "硬件",
+                "summary": "设计电路并测试实体元件。"
+            },
+            "label": "市场中的知识",
+            "coracao": {
+                "title": "心脏解剖图谱",
+                "summary": "心脏结构、心腔与血液循环。"
+            },
+            "recife": {
+                "title": "累西腓的历史",
+                "summary": "从历史地图和档案看港口与城市。"
+            },
+            "bacias": {
+                "title": "流域图谱",
+                "summary": "地形如何塑造河流与城市。"
+            },
+            "safra": {
+                "title": "咖啡收获日记",
+                "summary": "记录土壤、降雨与收获的田间笔记。"
+            },
+            "astronomia": {
+                "title": "观测天文学",
+                "summary": "从第一次观测到解读数据。"
+            },
+            "clima": {
+                "title": "气候观测",
+                "summary": "降雨、气温与季节周期。"
+            },
+            "habitat": {
+                "title": "海底栖居空间",
+                "summary": "海底工作空间的设计。"
+            },
+            "ecologia": {
+                "title": "海岸沙丘生态学",
+                "summary": ""
+            },
+            "matematica": {
+                "title": "概率与游戏",
+                "summary": ""
+            },
+            "arquitetura": {
+                "title": "生物气候建筑",
+                "summary": ""
+            },
+            "economia": {
+                "title": "劳动经济学",
+                "summary": ""
+            },
+            "direito": {
+                "title": "宪法",
+                "summary": ""
+            },
+            "literatura": {
+                "title": "巴西科尔德尔文学",
+                "summary": ""
+            },
+            "artes": {
+                "title": "观察绘画",
+                "summary": ""
+            },
+            "marketing": {
+                "title": "市场调研与定位",
+                "summary": ""
+            },
+            "musica": {
+                "title": "和声与即兴演奏",
+                "summary": ""
+            },
+            "educacao": {
+                "title": "科学素养",
+                "summary": ""
+            },
+            "comunicacao": {
+                "title": "现场新闻报道",
+                "summary": ""
+            },
+            "veterinaria": {
+                "title": "预防兽医学",
+                "summary": ""
+            }
+        },
+        "timeline": {
+            "base": "科学基础",
+            "conversa": "与 AI 交流",
+            "blueprint": "蓝图",
+            "prototipo": "原型与测试",
+            "mundo": "走向现实",
+            "propriedade_intelectual": "知识产权",
+            "papel": "科学论文",
+            "realidade": "走进现实世界",
+            "placa": "电路板组装"
+        },
         "hero_tagline": "不只是和聊天机器人对话、开着一堆标签页——在这里，你打造<hl>能成为最终产品的想法</hl>。",
         "knowledge_title": "把你的想法变成现实。",
-        "privacidade_titulo": "在保护隐私的前提下实现你的想法。",
-        "privacidade_texto": "凭借可验证的凭证，与顶尖科学家分享知识。",
-        "privacidade_fecho": "没有人需要知道你是谁，也不需要知道你在做什么。",
+        "privacidade_titulo": "隐私、安全与匿名",
+        "study_beyond_prompts": "超越提示词，让你的{{palavra}}更进一步。",
+        "study_terms": {
+            "work": "工作",
+            "study": "学习",
+            "life": "生活"
+        },
+        "anatomia_amostra": {
+            "bronquios": "支气管",
+            "estomago": "胃",
+            "rins": "肾脏",
+            "prova": "你必须证明你所掌握的知识。",
+            "pulmoes": "肺",
+            "saber": "在今天的世界，知道还不够。",
+            "provar": "深化你的技能，增加被发现的机会。",
+            "proximo": "我们培养顶尖人才，并将其中最优秀的人介绍给企业。",
+            "titulo": "动态人体解剖",
+            "descricao": "探索人体神经系统和循环系统的分布。",
+            "cerebro": "大脑",
+            "coracao": "心脏"
+        },
+        "privacidade_fluxo": {
+            "conta": "始终私密",
+            "conta_detalhe": "在私密工作空间中与 AI 模型对话。由你决定分享什么。",
+            "vitrine": "可验证凭证",
+            "vitrine_detalhe": "展示你的能力。将作品与可验证凭证关联，并通过排名了解你的技能在所属领域中的表现。",
+            "proposta": "无需繁琐文书的企业合作",
+            "proposta_detalhe": "直接在 Zaeon 上与企业约定项目里程碑，并保持沟通私密。"
+        },
         "flow": {
             "ideas": "想法",
             "projects": "项目",
@@ -364,20 +830,244 @@
             "summary": "想法变成项目，学习变成研究，企业变成商业。"
         },
         "blueprints": {
-            "title": "在这里，你的价值取决于你所创造的。",
+            "title": "真实的人创造真实的知识。",
             "image_alt": "蓝图预览：{{title}}",
             "tags": "标签",
             "cta_view": "在游戏中查看",
             "cta_create": "创建你自己的",
             "example_badge": "示例",
             "examples": {
-                "foguete": { "title": "探空火箭", "desc": "箭体、整流罩、尾翼和喷管——依据推进论文确定尺寸。" },
-                "motor": { "title": "喷气发动机", "desc": "风扇、压气机和尾锥，含转轴与主要尺寸。" },
-                "pcb": { "title": "PCB 电路板", "desc": "处理器、内存、走线和连接器——可直接投产。" },
-                "fonte": { "title": "电源", "desc": "机箱、风扇、散热片和电源插座。" },
-                "bateria": { "title": "电池", "desc": "带电极、电量指示和尺寸的圆柱电芯。" },
-                "solar": { "title": "太阳能板", "desc": "按当地日照计算的电池片网格、倾角和支架。" }
+                "foguete": {
+                    "title": "探空火箭",
+                    "desc": "箭体、整流罩、尾翼和喷管——依据推进论文确定尺寸。"
+                },
+                "motor": {
+                    "title": "喷气发动机",
+                    "desc": "风扇、压气机和尾锥，含转轴与主要尺寸。"
+                },
+                "pcb": {
+                    "title": "PCB 电路板",
+                    "desc": "处理器、内存、走线和连接器——可直接投产。"
+                },
+                "fonte": {
+                    "title": "电源",
+                    "desc": "机箱、风扇、散热片和电源插座。"
+                },
+                "bateria": {
+                    "title": "电池",
+                    "desc": "带电极、电量指示和尺寸的圆柱电芯。"
+                },
+                "solar": {
+                    "title": "太阳能板",
+                    "desc": "按当地日照计算的电池片网格、倾角和支架。"
+                }
+            },
+            "title_highlight": "没有限制"
+        },
+        "premiacao": {
+            "provedores": "前沿 AI 智能体由以下模型提供支持：",
+            "titulo": "我们是一家获得资助并在区块链类别获奖的巴西初创公司。",
+            "apoio": "资助与支持：",
+            "vencedor": "获奖产品",
+            "projeto": "<hl>区块链</hl>技术在塞阿拉州的智能应用",
+            "programa": "Centelha 计划（第二届）。",
+            "oficial": "官方支持",
+            "ministerio": "巴西政府科学、技术与创新部"
+        },
+        "solana": {
+            "talento": "我们的智能体会重点关注顶尖人才。从降低运营成本的团队到网络安全专家，作品越专业，就能触达越多企业。我们的智能体负责打电话开发潜在客户。",
+            "ranking": "排名进度",
+            "esteira": "卡片经过 Solana，先变为 SOL，再变为 USDC。",
+            "pessoa": "私密 · 个人",
+            "prova": "公开 · 证明",
+            "credenciais": "可验证凭证",
+            "verificacao": "验证如何运作",
+            "blockchain": "哪些内容会写入区块链",
+            "diagrama": "公开证明保护个人身份。"
+        },
+        "faq": {
+            "7": {
+                "q": "Zaeon 如何连接人才与企业？",
+                "a": "我们关注每个人在考核和已完成项目中展现的能力。我们的智能助手会将表现出色的人才介绍给需要这些技能的企业。"
+            },
+            "1": {
+                "q": "现在的 Zaeon 是什么？",
+                "a": "一个可以与团队协作、学习并将知识转化为项目的在线空间。我们也通过严格评估和实际成果，帮助企业发现优秀人才。"
+            },
+            "2": {
+                "q": "协作空间免费吗？",
+                "a": "是的，拥有账户即可免费进入。"
+            },
+            "3": {
+                "q": "我的团队可以开展任何项目吗？",
+                "a": "可以。邀请团队成员，在这里一起推进你们的项目。"
+            },
+            "4": {
+                "q": "可以只用来学习吗？",
+                "a": "可以。你可以独立学习，也可以与他人一起学习。"
+            },
+            "5": {
+                "q": "市场里有什么？",
+                "a": "你可以探索课程、工具和智能体卡片，并将它们关联到你的账户。"
+            },
+            "6": {
+                "q": "如何开始？",
+                "a": "创建账户，然后选择上线进入协作空间。"
             }
+        },
+        "interface": {
+            "amostra_estudo": "学习预览",
+            "privacidade_landing": "Zaeon 隐私保护",
+            "apoio": "融资与支持",
+            "mes": "首月免费",
+            "cartao": "无需绑卡",
+            "limites": "不限次数",
+            "revisao": "专家评审",
+            "projetos": "社区创建的项目",
+            "faq_rotulo": "常见问题",
+            "faq_titulo": "常见问题。",
+            "faq_subtitulo": "直接解答。",
+            "cyber_titulo": "免费在线协作",
+            "cyber_intro": "与你的团队开展任何项目，或找个空间学习。协作空间免费向所有人开放。",
+            "cyber_moeda": "与团队一起工作",
+            "cyber_moeda_texto": "邀请队友，共同开展任何项目。",
+            "cyber_pessoas": "一起学习",
+            "cyber_pessoas_texto": "按自己的节奏学习，也可以和他人一起学习。",
+            "cyber_agentes": "实时协作",
+            "cyber_agentes_texto": "与在线用户交流，在同一个空间推进工作。",
+            "plataforma": "平台",
+            "recursos": "资源",
+            "empresa": "公司",
+            "legal": "法律信息",
+            "jogar": "上线",
+            "modelos": "AI 模型",
+            "laboratorio": "实验室",
+            "mentores": "导师",
+            "assistentes": "助手",
+            "marketplace": "市场",
+            "funcionamento": "使用方式",
+            "duvidas": "常见问题",
+            "noticias": "新闻",
+            "sobre": "关于我们",
+            "documentacao": "文档",
+            "contato": "联系我们",
+            "termos": "使用条款",
+            "privacidade": "隐私政策",
+            "resumo": "在一个平台上使用主流 AI，并借助科学工具学习和研究。",
+            "direitos": "保留所有权利。",
+            "lema": "人类与超级智能相遇的地方。"
+        },
+        "vitrine": {
+            "abrir_caderno": "打开笔记本",
+            "exemplo_estudo": "学习示例",
+            "anterior": "上一组卡片",
+            "proximo": "下一组卡片",
+            "agente": "智能体",
+            "gratis": "免费",
+            "raridade": {
+                "comum": "普通",
+                "rara": "稀有",
+                "epica": "史诗",
+                "lendaria": "传说"
+            },
+            "tipo": {
+                "curso": "课程",
+                "codigo": "代码",
+                "artigo": "学术作品",
+                "negocio": "商业项目",
+                "rwa": "现实世界资产（RWA）",
+                "agente": "由 AI 智能体制作"
+            }
+        },
+        "hero_principal": {
+            "pergunta": "问问 Zaeon…",
+            "linha": "让知识在这里",
+            "termo_0": "创造",
+            "termo_1": "研究",
+            "termo_2": "学习",
+            "termo_3": "交付",
+            "termo_4": "验证",
+            "termo_5": "查阅",
+            "termo_6": "交易",
+            "termo_7": "委托",
+            "termo_8": "出售",
+            "termo_9": "探索",
+            "termo_10": "拓展",
+            "termo_11": "分享",
+            "chat": "开始聊天",
+            "conta": "创建账户"
         }
-    }
+    },
+  "configMenu": {
+    "language": "语言",
+    "rewatchTutorial": "重新观看教程",
+    "rewatchTutorialHint": "Aura 会再次展示自习室和个人资料的教程与提示。",
+    "labSkin": "实验室皮肤",
+    "labSkinHint": "只更改实验室的颜色。默认为原始外观。",
+    "labSkinYours": "你的房间",
+    "labSkinOriginal": "原始",
+    "cyberspace": "赛博空间",
+    "tutorialMode": "教程模式",
+    "tutorialOn": "开启：进入赛博空间时必须完成教程。",
+    "tutorialOff": "关闭：普通赛博空间。",
+    "graphics": "图形",
+    "graphicsGroup": "赛博空间图形",
+    "graphicsAuto": "自动",
+    "graphicsLight": "轻量",
+    "graphicsFull": "完整",
+    "graphicsAutoHint": "自动：集成显卡（笔记本 Intel/AMD）上使用轻量模式。",
+    "graphicsLightHint": "轻量：远景更少、特效更少，30 fps。",
+    "graphicsFullHint": "完整：全部最高（需要独立显卡）。",
+    "reopenHint": "重新打开赛博空间时生效。",
+    "sharpness": "清晰度",
+    "sharpnessGroup": "赛博空间清晰度",
+    "sharpnessHint": "锯齿越少，显卡负担越大。0.75× 减轻负担；1.5× 和 2× 更平滑。立即生效。",
+    "smoothEdges": "平滑边缘",
+    "smoothEdgesHint": "边缘抗锯齿。重新打开赛博空间时生效。",
+    "auto": "自动",
+    "on": "开启",
+    "off": "关闭",
+    "showFps": "显示 FPS",
+    "showFpsHint": "在屏幕角落显示帧数和显卡名称 — 如果卡顿，请发截图给我们。",
+    "account": "账户",
+    "invite": "打开邀请",
+    "ceoMode": "CEO 模式",
+    "session": "会话",
+    "logout": "退出登录",
+    "dangerZone": "危险区域",
+    "deleting": "正在删除…",
+    "deleteAccount": "删除我的账户",
+    "deleteConfirm": "删除账户？这会删除你的全部数据，并释放该邮箱以便重新开始。此操作无法撤销。",
+    "deleteFailed": "暂时无法删除账户，请重试。",
+    "connectionError": "连接错误。"
+  },
+  "chatCelular": {
+    "more": "更多",
+    "placeholder": "向 Aura 提问",
+    "message": "消息",
+    "mic": "说话",
+    "stopMic": "停止录音",
+    "stop": "停止",
+    "send": "发送",
+    "close": "关闭",
+    "bring": "添加",
+    "file": "文件",
+    "photo": "照片",
+    "liveCamera": "实时摄像头",
+    "studio": "用 Studio 生成",
+    "auto": "自动",
+    "guided": "引导",
+    "agentPanel": "正在与 {{name}} 对话：切换智能体和选项",
+    "agentTitle": "谁来回答和选项",
+    "rowWho": "谁来回答",
+    "rowModel": "模型",
+    "rowBase": "我的资料",
+    "rowResearch": "研究模式",
+    "rowTree": "技能树",
+    "rowWork": "工作方式",
+    "researchOn": "研究模式已开启",
+    "researchOff": "关闭研究模式",
+    "mentorOff": "回到 Aura（离开 {{name}}）",
+    "with": "与 {{name}}"
+  }
 }

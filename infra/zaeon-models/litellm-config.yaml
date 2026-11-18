@@ -29,6 +29,19 @@ model_list:
       api_base: http://ollama:11434
       num_thread: 8                          # ver nota THREADS no topo
 
+  # ── Claude (Anthropic) — SÓ pro REA, qualidade máxima, pago pelos créditos do dono ──
+  # Opt-in no app: REA_MODELO_AGENTE=claude-opus (raciocínio de RE) e REA_MODELO_REDACAO=claude-sonnet
+  # (writeup do blueprint). A chave mora AQUI (ANTHROPIC_API_KEY no .env do gateway), nunca no app.
+  # Se a API recusar o id, troque pelo nome datado da Anthropic (ex.: claude-opus-4-1-YYYYMMDD).
+  - model_name: claude-opus                  # agente octa_rea (Opus)
+    litellm_params:
+      model: anthropic/claude-opus-5-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+  - model_name: claude-sonnet                # redação do blueprint (Sonnet)
+    litellm_params:
+      model: anthropic/claude-sonnet-5-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+
   # ── Embeddings (TEI / Hugging Face) ─────────────────────────────────────────
   # TEI expõe /v1/embeddings (OpenAI-compatible). mode: embedding avisa o LiteLLM.
   - model_name: qwen3-embed                  # embedder do RAG (Qwen3-Embedding-0.6B)

@@ -19,7 +19,7 @@
  * Sala: os MESMOS motores nas duas; o rigor muda no prompt (Pesquisa com fonte, Estudos objetivo).
  */
 import type { IntentId, StructuredAnswer, StudioRef } from "@/lib/agent/contracts";
-import { pedeGraficoMatematico } from "@/lib/agent/matematica";
+import { pedeGraficoMatematico, pedeGraficoDeDados } from "@/lib/agent/matematica";
 
 const norm = (s: string) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
@@ -68,7 +68,10 @@ export function assuntoDe(objetivo: string): string {
   return (limpo || t).slice(0, 200);
 }
 
-const JA_TEM_DIAGRAMA = (arts: StudioRef[]) => arts.some((a) => a.studioKind === "diagram" || a.studioKind === "mindmap");
+// `anatomia` entra aqui: quando a peça do atlas já viaja com a resposta, ela É a figura do turno. Antes, toda pergunta
+// de "como funciona o coração" ganhava um diagrama automático AO LADO da peça (ou no lugar dela) — o dono viu a agente
+// de medicina "devolvendo diagramas" para quem pediu uma parte do corpo.
+const JA_TEM_DIAGRAMA = (arts: StudioRef[]) => arts.some((a) => a.studioKind === "diagram" || a.studioKind === "mindmap" || a.studioKind === "anatomia");
 
 /**
  * O artefato que a intenção pede (ou null). Chamado no fim do turno, com a resposta pronta:
@@ -85,7 +88,8 @@ export function artefatoDeAprender(
 ): StudioRef | null {
   if (JA_TEM_DIAGRAMA(answer.artifacts ?? [])) return null;
   // gráfico de função / figura de geometria: o desenho é o ```grafico no próprio texto, não um diagrama archify
-  if (pedeGraficoMatematico(objetivo)) return null;
+  // #749: gráfico de DADOS também — "gráfico da população por região" virava um diagrama archify em vez das barras
+  if (pedeGraficoMatematico(objetivo) || pedeGraficoDeDados(objetivo)) return null;
   const quer =
     intent === "explicar_conceito" ||
     (intent === "duvida_rapida" && pedeAprender(objetivo)) ||

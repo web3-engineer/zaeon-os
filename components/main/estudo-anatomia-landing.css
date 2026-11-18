@@ -1,0 +1,185 @@
+.estudo-anatomia {
+  position: relative;
+  isolation: isolate;
+  width: min(100%, 33rem, 51svh);
+  aspect-ratio: 680 / 950;
+  margin: .75rem auto 0;
+  overflow: hidden;
+}
+.estudo-anatomia-modelo, .estudo-anatomia-fallback, .estudo-anatomia-linhas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.estudo-anatomia-modelo[data-pronto="true"] + .estudo-anatomia-fallback { visibility: hidden; }
+.estudo-anatomia-linhas {
+  color: #146e87;
+  stroke-width: 2;
+}
+.estudo-anatomia-rotulo {
+  position: absolute;
+  padding: .35rem .52rem;
+  border: 1px solid #92d8ea6b;
+  border-radius: .35rem;
+  background: #102538;
+  color: #e3faff;
+  font-size: clamp(.73rem, 1.5vw, .95rem);
+  line-height: 1.25;
+  transform: translateY(-50%);
+}
+.estudo-anatomia-rotulo[data-lado="esquerda"] { left: 4%; }
+.estudo-anatomia-rotulo[data-lado="direita"] { right: 4%; }
+.dark .estudo-anatomia-linhas { color: #b6f4fc; }
+
+.estudo-anatomia-secao { padding-block: 2rem; }
+.estudo-anatomia-secao[data-animado="true"] .estudo-anatomia-palco {
+  transition: opacity .55s ease, filter .55s ease;
+}
+.estudo-anatomia-secao[data-em-cena="false"] .estudo-anatomia-palco {
+  opacity: 0;
+  filter: blur(5px);
+}
+.estudo-anatomia-frases {
+  display: grid;
+  gap: .65rem;
+  width: min(100%, 44rem);
+  margin-inline: auto;
+  padding-inline: .5rem;
+  text-align: center;
+}
+.estudo-anatomia-frases :is(h2, p), .estudo-anatomia-frase-chip {
+  margin: 0;
+  color: var(--foreground);
+  font-size: clamp(1.15rem, 4vw, 2.3rem);
+  font-family: var(--font-display), sans-serif;
+  font-weight: 350;
+  letter-spacing: .012em;
+  line-height: 1.23;
+  text-wrap: balance;
+}
+.estudo-anatomia-secao[data-animado="true"] h2 { opacity: var(--atlas-frase-titulo, 1); }
+
+
+
+.estudo-anatomia-frases strong {
+  display: block;
+  margin-top: .35em;
+  font-weight: 450;
+  color: #08768c;
+}
+.dark .estudo-anatomia-frases strong { color: #70def2; }
+
+.estudo-anatomia-partes {
+  position: absolute;
+  inset: 44% 6% auto auto;
+  width: clamp(3.5rem, 18%, 5.9rem);
+  margin: 0;
+  padding: .35rem;
+  border: 1px solid #729ab475;
+  border-radius: .55rem;
+  background: color-mix(in srgb, var(--background), #799db3 12%);
+  text-align: center;
+  opacity: var(--atlas-partes, 1);
+  pointer-events: none;
+}
+.estudo-anatomia-partes img {
+  display: block;
+  width: 100%;
+  height: clamp(2rem, 8vw, 3.5rem);
+  object-fit: contain;
+}
+.estudo-anatomia-partes figcaption { font: 600 clamp(.6rem, 1.7vw, .75rem) ui-monospace, monospace; }
+@media (prefers-reduced-motion: reduce) {
+  .estudo-anatomia-partes { inset-block-start: 24%; }
+}
+
+
+.estudo-anatomia-secao[data-animado="true"] .estudo-anatomia-palco {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(3.25rem, auto) auto minmax(6.5rem, auto);
+  gap: .5rem;
+  max-width: 69rem;
+  margin-inline: auto;
+}
+.estudo-anatomia-secao[data-animado="true"] .estudo-anatomia-frases { display: contents; }
+.estudo-anatomia-secao[data-animado="true"] .estudo-anatomia {
+  grid-area: 2 / 1;
+  margin: 0 auto;
+}
+.estudo-anatomia-secao[data-animado="true"] h2 {
+  grid-area: 1 / 1;
+  align-self: end;
+  text-align: center;
+}
+.estudo-anatomia-secao[data-animado="true"] .estudo-anatomia-frases p {
+  grid-area: 3 / 1;
+  justify-self: end;
+  align-self: end;
+  max-width: min(100%, 23rem);
+  text-align: end;
+  transform: translateY(var(--atlas-entrada-final, 0px));
+}
+@media (min-width: 960px) {
+  .estudo-anatomia-secao[data-animado="true"] .estudo-anatomia-palco {
+    grid-template-columns: minmax(0, .65fr) minmax(0, 1.4fr) minmax(0, 1.15fr);
+  }
+  .estudo-anatomia-secao[data-animado="true"] h2 { grid-column: 1 / -1; }
+  .estudo-anatomia-secao[data-animado="true"] .estudo-anatomia { grid-column: 2; }
+  .estudo-anatomia-secao[data-animado="true"] .estudo-anatomia-frases p {
+    grid-area: 2 / 3;
+    align-self: center;
+    justify-self: start;
+    text-align: start;
+    font-size: clamp(1.35rem, 2.45vw, 2rem);
+  }
+}
+
+.estudo-anatomia-anotacoes { display: none; }
+.estudo-anatomia-secao[data-animado="true"] .estudo-anatomia-palco { position: relative; }
+.estudo-anatomia-secao[data-animado="true"] .estudo-anatomia-anotacoes {
+  display: block;
+  position: absolute;
+  inset: 12% 2% 15%;
+  color: #08768c;
+  pointer-events: none;
+}
+.dark .estudo-anatomia-secao[data-animado="true"] .estudo-anatomia-anotacoes { color: #78cddd; }
+.estudo-anatomia-anotacoes :is(span, svg) { position: absolute; opacity: var(--nota, 0); max-width: 46%; }
+.estudo-anatomia-anotacoes span { font: 600 clamp(.65rem, 1.3vw, .98rem) ui-monospace, monospace; overflow-wrap: anywhere; }
+.estudo-anatomia-anotacoes svg { width: clamp(2.5rem, 12vw, 8rem); fill: none; stroke: currentColor; }
+.estudo-anatomia-anotacoes > :nth-child(1) { --nota: var(--atlas-nota-1); top: 4%; left: 8%; }
+.estudo-anatomia-anotacoes > :nth-child(2) { --nota: var(--atlas-nota-2); top: 16%; right: 13%; }
+.estudo-anatomia-anotacoes > :nth-child(3) { --nota: var(--atlas-nota-3); top: 43%; left: 2%; }
+.estudo-anatomia-anotacoes > :nth-child(4) { --nota: var(--atlas-nota-4); top: 34%; right: 1%; }
+.estudo-anatomia-anotacoes > :nth-child(5) { --nota: var(--atlas-nota-5); bottom: 10%; left: 12%; }
+.estudo-anatomia-anotacoes > :nth-child(6) { --nota: var(--atlas-nota-6); bottom: 4%; right: 15%; }
+.estudo-anatomia-anotacoes > :nth-child(7) { --nota: var(--atlas-nota-7); top: 11%; left: 37%; }
+.estudo-anatomia-anotacoes > :nth-child(8) { --nota: var(--atlas-nota-8); top: 56%; left: 23%; }
+
+.estudo-anatomia-frase-chip {
+  position: absolute;
+  z-index: 2;
+  inset: 62% 1% auto;
+  text-align: center;
+  opacity: var(--atlas-frase-inicial, 0);
+  transform: translateY(var(--atlas-entrada-inicial, 0px));
+}
+.estudo-anatomia-anotacoes > :nth-child(9) { --nota: var(--atlas-nota-9); top: 4%; right: 26%; }
+.estudo-anatomia-anotacoes > :nth-child(10) { --nota: var(--atlas-nota-10); bottom: 28%; right: 3%; }
+.estudo-anatomia-anotacoes > :nth-child(11) { --nota: var(--atlas-nota-11); top: 68%; left: 4%; }
+.estudo-anatomia-anotacoes > :nth-child(12) { --nota: var(--atlas-nota-12); top: 20%; left: 15%; }
+.estudo-anatomia-anotacoes > :nth-child(13) { --nota: var(--atlas-nota-13); top: 48%; right: 14%; }
+.estudo-anatomia-anotacoes > :nth-child(14) { --nota: var(--atlas-nota-14); bottom: 17%; left: 45%; }
+
+
+.estudo-anatomia-frase-chip.estudo-anatomia-convite {
+  opacity: var(--atlas-frase-final, 0);
+  transform: translateY(var(--atlas-entrada-final, 0px));
+}
+
+.estudo-anatomia-frase-chip.estudo-anatomia-crescer {
+  opacity: var(--atlas-frase-crescer, 0);
+  transform: translateY(var(--atlas-entrada-crescer, 0px));
+}

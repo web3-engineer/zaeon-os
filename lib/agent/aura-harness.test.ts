@@ -10,8 +10,10 @@ import {
   ofertaDePlataforma,
   historicoNoOrcamento,
   capacidadeHonestaLigada,
+  MAX_EVIDENCIA,
 } from "./aura-harness";
 import { INTENTS, type StructuredAnswer } from "./contracts";
+import { pisoDaSecao } from "@/lib/documento/aprofundar";
 import type { ToolContext } from "./runtime";
 import { runTrajectoryTraced, type TrajectoryState } from "./trajectory";
 
@@ -39,6 +41,146 @@ const stFor = (over: Partial<TrajectoryState> = {}): TrajectoryState =>
     reasoning: "",
     ...over,
   }) as TrajectoryState;
+
+describe("a base NÃO polui a bibliografia do documento", () => {
+  /**
+   * Medido em produção (2026-11-10): "crie um artigo sobre anfetamina" saiu citando dois trabalhos
+   * sobre MEDICALIZAÇÃO ESCOLAR. Eles casaram por TEXTO (mencionam TDAH), passaram pelo corte de
+   * contexto, entraram no bloco de fontes com a citação pronta — e o modelo, obediente, citou.
+   *
+   * Este teste exercita a LIGAÇÃO: o que chega ao prompt do documento como fonte citável.
+   */
+  const trecho = (o: Record<string, unknown>) => ({
+    trechoId: "t", documentoId: "d", titulo: "T", texto: "x", paginaIni: 1, paginaFim: 1,
+    score: 0.03, similaridade: null, porTexto: false, ...o,
+  }) as any;
+
+  /** só o bloco das FONTES CITÁVEIS do prompt — o de contexto é outro e não muda. */
+  const blocoDeFontesDoPrompt = (p: string): string => {
+    const i = p.indexOf("FONTES DISPONÍVEIS");
+    return i < 0 ? "" : p.slice(i);
+  };
+
+  /** captura o `user` que o rascunho recebeu, que é onde o bloco de fontes vive */
+  const capturar = () => {
+    const vistos: string[] = [];
+    const gen = vi.fn(async (system: string, user?: string): Promise<any> => {
+      vistos.push(String(user ?? ""));
+      if (/subquestions/i.test(system)) return { subquestions: [] };
+      if (/reasoning/i.test(system)) return { reasoning: "R" };
+      return { nucleo: "N", work: { kind: "artigo", sections: [{ title: "INTRODUÇÃO", body: "x" }] } };
+    });
+    return { gen, vistos };
+  };
+
+  it("documento que só MENCIONA o termo não entra como fonte citável", async () => {
+    const { gen, vistos } = capturar();
+    const deps = buildHarnessDeps(ctx, {
+      genJson: gen as any,
+      retryDelayMs: 0,
+      baseConhecimento: {
+        status: "ok",
+        trechos: [
+          trecho({ titulo: "Medicalização escolar e TDAH", similaridade: 0.18, porTexto: true }),
+          trecho({ titulo: "Farmacologia das anfetaminas", similaridade: 0.74 }),
+        ],
+      } as any,
+    });
+    await deps.draft(stFor({ intent: "criar_trabalho", objective: "artigo sobre anfetamina" }));
+    // o bloco de CONTEXTO ("base de conhecimento") continua trazendo tudo, de propósito — a pessoa
+    // sabe o que tem na própria base. O que muda é o bloco das FONTES CITÁVEIS, e é só nele que
+    // esta asserção olha.
+    const bib = blocoDeFontesDoPrompt(vistos.join("\n"));
+    expect(bib, "o relacionado tem de ser citável").toContain("Farmacologia das anfetaminas");
+    expect(bib, "a menção por texto NÃO pode virar referência").not.toContain("Medicalização escolar");
+  });
+
+  it("base inteira só por texto: o documento fica sem fonte da base, como antes dos datasets", async () => {
+    const { gen, vistos } = capturar();
+    const deps = buildHarnessDeps(ctx, {
+      genJson: gen as any,
+      retryDelayMs: 0,
+      baseConhecimento: { status: "ok", trechos: [trecho({ titulo: "Só menciona", porTexto: true })] } as any,
+    });
+    await deps.draft(stFor({ intent: "criar_trabalho", objective: "artigo sobre anfetamina" }));
+    expect(blocoDeFontesDoPrompt(vistos.join("\n")), "sem fonte da base, como antes dos datasets").toBe("");
+  });
+
+  it("nada citável ⇒ `referencias: []`: veredito ESCRITO, não campo ausente", async () => {
+    const { gen } = capturar();
+    const deps = buildHarnessDeps(ctx, {
+      genJson: gen as any,
+      retryDelayMs: 0,
+      baseConhecimento: { status: "ok", trechos: [trecho({ titulo: "Só menciona", porTexto: true })] } as any,
+    });
+    const out = await deps.draft(stFor({ intent: "criar_trabalho", objective: "artigo sobre anfetamina" }));
+    // A outra porta: `lib/tcc/turno` só liga a rede que remonta a bibliografia a partir de
+    // `fontesBase` — o rodapé "Da sua base", onde casar por TEXTO basta — quando este campo está
+    // AUSENTE. Vazio quer dizer "medi aqui e nada é citável", e é só isso que impede a menção por
+    // texto de voltar pela seção REFERÊNCIAS. Ver o par deste teste em lib/tcc/turno.test.ts.
+    expect(out.referencias, "o campo tem de EXISTIR, mesmo vazio").toBeDefined();
+    expect(out.referencias).toEqual([]);
+  });
+});
+
+describe("documento raso: o harness aprofunda as seções antes de entregar", () => {
+  /**
+   * O defeito medido em produção (2026-11-10, "crie um artigo sobre anfetamina"): `work.sections`
+   * sai da MESMA resposta JSON que o núcleo, os conceitos e a evidência, e cada seção fica com um
+   * parágrafo — 57 palavras contra um piso de 180. Estes testes exercitam o TURNO, não só o módulo:
+   * é a ligação que faltava, e é ela que pode ser esquecida numa refatoração.
+   */
+  const rasas = [
+    { title: "INTRODUÇÃO", body: "As anfetaminas estimulam o sistema nervoso central." },
+    { title: "USO CLÍNICO", body: "São prescritas para TDAH." },
+  ];
+  const fundo = "palavra ".repeat(300).trim();
+
+  /** genJson que devolve um rascunho RASO e, na fase de aprofundar, um corpo fundo. */
+  const genComWork = (intent: string) => {
+    const chamadas: string[] = [];
+    const gen = vi.fn(async (system: string, _u?: string, opts?: any): Promise<any> => {
+      chamadas.push(String(opts?.phase ?? ""));
+      if (/subquestions/i.test(system)) return { subquestions: [] };
+      if (/reasoning/i.test(system)) return { reasoning: "R" };
+      if (opts?.phase === "aprofundar") return { corpo: fundo };
+      return { nucleo: "N", work: { kind: "artigo", sections: rasas } };
+    });
+    return { gen, chamadas, intent };
+  };
+
+  it("seção abaixo do piso é REESCRITA, e o documento sai acima do piso", async () => {
+    const { gen, chamadas } = genComWork("criar_trabalho");
+    const deps = buildHarnessDeps(ctx, { genJson: gen as any, retryDelayMs: 0 });
+    const out = await deps.draft(stFor({ intent: "criar_trabalho", objective: "artigo sobre anfetamina" }));
+    expect(chamadas.filter((f) => f === "aprofundar").length, "uma chamada POR seção rasa").toBe(2);
+    // apontado na revisão: 100 para todas aceitava uma INTRODUÇÃO de 101 palavras, cujo piso é 180.
+    // A régua é a do papel de cada seção — a mesma da Sala de Pesquisa.
+    for (const sec of out.work!.sections) {
+      expect(sec.body.split(/\s+/).length, sec.title).toBeGreaterThanOrEqual(pisoDaSecao(sec.title));
+    }
+  });
+
+  it("NÃO aprofunda quando a intenção não é criar_trabalho — não é ela que promete documento", async () => {
+    const { gen, chamadas } = genComWork("explicar_conceito");
+    const deps = buildHarnessDeps(ctx, { genJson: gen as any, retryDelayMs: 0 });
+    await deps.draft(stFor({ intent: "explicar_conceito" }));
+    expect(chamadas).not.toContain("aprofundar");
+  });
+
+  it("documento já profundo não gasta chamada nenhuma", async () => {
+    const chamadas: string[] = [];
+    const gen = vi.fn(async (system: string, _u?: string, opts?: any): Promise<any> => {
+      chamadas.push(String(opts?.phase ?? ""));
+      if (/subquestions/i.test(system)) return { subquestions: [] };
+      if (/reasoning/i.test(system)) return { reasoning: "R" };
+      return { nucleo: "N", work: { kind: "artigo", sections: [{ title: "INTRODUÇÃO", body: fundo }] } };
+    });
+    const deps = buildHarnessDeps(ctx, { genJson: gen as any, retryDelayMs: 0 });
+    await deps.draft(stFor({ intent: "criar_trabalho" }));
+    expect(chamadas).not.toContain("aprofundar");
+  });
+});
 
 describe("aura-harness · A2 retry (só nesta camada)", () => {
   it("retenta 1x em tool_timeout e sucede", async () => {
@@ -340,6 +482,82 @@ describe("molécula que nasce do contexto", () => {
       { nucleo: "glicose e cafeína", substancias: ["cafeína"], artifacts: [{ studioKind: "molecule", title: "glicose" }] } as any, st,
     );
     expect(a.artifacts?.[0].title).toBe("glicose");
+  });
+});
+
+describe("estrutura anatômica que nasce do contexto (espelho do substancias)", () => {
+  const st = { intent: "explicar_conceito", objective: "pulmão" } as any;
+
+  it("as FONTES não se repetem — o caso real de 2026-11-10 trouxe 87, ~70 iguais", () => {
+    /**
+     * Conversa colada pelo dono: a lista "Fontes" saiu com 87 itens numerados, a maioria a MESMA
+     * linha do BodyParts3D — uma por chamada da ferramenta de anatomia. A UI renderiza um <li> por
+     * entrada de `evidencia`, então a repetição ia inteira para a tela.
+     */
+    const fonte = { title: "BodyParts3D 4.0 — The Database Center for Life Science (CC BY 4.0)", url: "https://x.invalido" };
+    const a = normalizeAnswer(
+      { nucleo: "nervos", evidencia: Array.from({ length: 87 }, () => ({ claim: "o atlas tem nervos", source: fonte })) } as any,
+      st,
+    );
+    expect(a.evidencia?.length, "87 repetições viram UMA").toBe(1);
+  });
+
+  it("mas afirmações DIFERENTES na mesma fonte continuam sendo evidências diferentes", () => {
+    const fonte = { title: "BodyParts3D", url: "https://x.invalido" };
+    const a = normalizeAnswer(
+      { nucleo: "n", evidencia: [{ claim: "tem nervo óptico", source: fonte }, { claim: "não tem ciático", source: fonte }] } as any,
+      st,
+    );
+    expect(a.evidencia?.length).toBe(2);
+  });
+
+  it("e há teto: lista longa demais deixa de ser fonte e vira ruído", () => {
+    const a = normalizeAnswer(
+      { nucleo: "n", evidencia: Array.from({ length: 200 }, (_, i) => ({ claim: `afirmação ${i}`, source: { title: `fonte ${i}` } })) } as any,
+      st,
+    );
+    expect(a.evidencia?.length).toBe(MAX_EVIDENCIA);
+  });
+
+  it("estrutura citada NO TEXTO vira artefato de anatomia sem ninguém pedir", () => {
+    const a = normalizeAnswer(
+      { nucleo: "O ar entra pelo pulmão e o oxigênio passa ao sangue.", estruturas: ["pulmão"] } as any, st,
+    );
+    expect(a.artifacts?.[0]).toEqual({ studioKind: "anatomia", title: "pulmão" });
+  });
+
+  it("estrutura que o modelo listou mas não falou NÃO vira artefato", () => {
+    const a = normalizeAnswer({ nucleo: "Uma conversa sobre respiração.", estruturas: ["diafragma"] } as any, st);
+    expect(a.artifacts).toBeUndefined();
+  });
+
+  it("só uma, mesmo com duas citadas — resposta não é galeria", () => {
+    const a = normalizeAnswer(
+      { nucleo: "pulmão e coração", desenvolvimento: "os dois", estruturas: ["pulmão", "coração"] } as any, st,
+    );
+    expect(a.artifacts?.length).toBe(1);
+  });
+
+  it("a MOLÉCULA vence quando as duas aparecem: o ramo dela roda antes, e é deliberado", () => {
+    const a = normalizeAnswer(
+      { nucleo: "o oxigênio chega ao pulmão", desenvolvimento: "e volta", substancias: ["oxigênio"], estruturas: ["pulmão"] } as any, st,
+    );
+    expect(a.artifacts?.length).toBe(1);
+    expect(a.artifacts?.[0]).toEqual({ studioKind: "molecule", title: "oxigênio" });
+  });
+
+  it("pedido explícito do modelo manda mais que a extração", () => {
+    const a = normalizeAnswer(
+      { nucleo: "o pulmão", estruturas: ["pulmão"], artifacts: [{ studioKind: "anatomia", title: "coração" }] } as any, st,
+    );
+    expect(a.artifacts?.[0].title).toBe("coração");
+  });
+
+  it("'anatomia' é kind conhecido — o filtro de artifacts explícitos não o descarta", () => {
+    const a = normalizeAnswer(
+      { nucleo: "x", artifacts: [{ studioKind: "anatomia", title: "fígado" }] } as any, st,
+    );
+    expect(a.artifacts?.[0]).toEqual({ studioKind: "anatomia", title: "fígado" });
   });
 });
 

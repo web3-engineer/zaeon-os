@@ -37,7 +37,6 @@ services:
         NEXT_PUBLIC_BLUEPRINT_PRATICO: ${NEXT_PUBLIC_BLUEPRINT_PRATICO:-0}
         NEXT_PUBLIC_VIDEO_DOC: ${NEXT_PUBLIC_VIDEO_DOC:-0}
         NEXT_PUBLIC_LOUNGE_3D: ${NEXT_PUBLIC_LOUNGE_3D:-0}
-        NEXT_PUBLIC_MOBILE_UI: ${NEXT_PUBLIC_MOBILE_UI:-0}
         NEXT_PUBLIC_PROJETOS: ${NEXT_PUBLIC_PROJETOS:-0}
         NEXT_PUBLIC_MENTORES_TAB: ${NEXT_PUBLIC_MENTORES_TAB:-0}   # PR-A2: /mentores + loja com "Mentores" primeiro
         NEXT_PUBLIC_OCTA_CODE: ${NEXT_PUBLIC_OCTA_CODE:-}          # Octa: /octa/saude + /api/octa/evals/run ("1" liga)
@@ -66,6 +65,7 @@ services:
       VOICE_ENGINE_URL: http://voice-engine:8004   # proxy /api/ai/voice
       ABNT_SERVICE_URL: http://abnt-service:8001    # exportação ABNT
       PDF_LOADER_URL: http://pdf-loader:8005        # leitura estruturada de PDF
+      QUALITY_ENGINE_URL: http://quality-engine:8003 # termômetro acadêmico (/api/quality)
       # Busca NA INTERNET (tool web_search / fallback da pesquisa): SearXNG self-hosted abaixo. Se o
       # container não estiver de pé, a chamada falha rápido e a IA responde pelo conhecimento do modelo.
       # Tavily/Brave: TAVILY_API_KEY / BRAVE_API_KEY no .env (WEB_SEARCH_PROVIDER força qual usar).
@@ -122,6 +122,17 @@ services:
       NEXT_PUBLIC_PUSHER_CLUSTER: ${NEXT_PUBLIC_PUSHER_CLUSTER:-}
       # a fase `reason` no `elaborated` (o código a pula por padrão; "1" liga)
       RACIOCINIO_ELABORADO: ${RACIOCINIO_ELABORADO:-}
+      # ── LIGADOS POR PADRÃO (dono, 2026-11-12: "nada off, quero tudo on") ──────────────────────
+      # Cinco recursos do harness que subiam DESLIGADOS e fora do pipeline: só ligavam editando o
+      # `.env` do VPS à mão, e o /api/health não dizia o estado de nenhum. O default mora AQUI, no
+      # compose, e não no `script:` do deploy.yml (que tem teto de 21.000 bytes). Para desligar um
+      # deles sem deploy de código: `NOME=0` no `.env` do VPS e recriar o container.
+      # No web E no worker, porque com CHAT_BG=1 é o worker que roda o turno do chat.
+      VISAO_HARNESS: ${VISAO_HARNESS:-1}        # descrever_imagem no harness; exige a credencial Vertex
+      MEMORY_L3: ${MEMORY_L3:-1}                # memória semântica (memory_drawers no Atlas); falha no boot = segue sem memória
+      CACHE_RESPOSTAS: ${CACHE_RESPOSTAS:-1}    # pergunta de conceito já respondida volta sem modelo
+      ROTEADOR_KNN: ${ROTEADOR_KNN:-on}         # roteador de intenção por embedding; "sombra" só mede, "off" desliga
+      ORQ_AUTOMATICO: ${ORQ_AUTOMATICO:-1}      # orquestra roteia sozinha o trabalho de Pro/Max (motores externos: custo)
       # F8 · agente de navegador (rota /api/agentic/run + tela /agente, ambas só de fundador).
       # SÓ NO WEB, de propósito: o agente roda onde a ROTA existe, e o `worker` não serve rota
       # nenhuma. Pôr aqui é topologia, não descuido — a mesma razão do CANAL_QUEUE acima. Default
@@ -151,6 +162,19 @@ services:
       # G3 · gráfico na resposta (lib/agent/grafico): SVG desenhado aqui, com número que o turno
       # apurou. Não custa chamada de modelo. `=0` é o kill-switch.
       HARNESS_GRAFICO: ${HARNESS_GRAFICO:-1}
+      # F-visão · "be my eyes". VISAO_HARNESS (roteamento da IMAGEM anexada pro harness: route.ts +
+      # a tool descrever_imagem) já está no bloco "LIGADOS POR PADRÃO" acima, com default 1 — não
+      # repetir aqui, senão o Compose recusa o arquivo (chave duplicada). VISAO_CAMERA liga a CÂMERA
+      # AO VIVO (/api/ai/camera), OFF por padrão. Ambas precisam da credencial Vertex (GOOGLE_*) —
+      # com a flag mas sem credencial, o recibo (/api/health) diz `sem_credencial`, não mente.
+      VISAO_CAMERA: ${VISAO_CAMERA:-}
+      # Octa · modelos premium (Claude/Codex no agente de código geral, lib/octa/modelosPremium).
+      # OCTA_MODELOS_PREMIUM = ids ligados ("claude,codex"); vazio = off. OCTA_PREMIUM_BUDGET_USD =
+      # teto USD/pessoa/janela dos turnos premium (vazio = 2). Só ligam com a chave da conta de API
+      # da ORG no gateway (ANTHROPIC_API_KEY/OPENAI_API_KEY no .env do VPS, mantido À MÃO — o litellm faz
+      # env_file; NÃO no .env.secrets, que o deploy reescreve) e só plano Max vê o picker. Vazio = prod idêntico.
+      OCTA_MODELOS_PREMIUM: ${OCTA_MODELOS_PREMIUM:-}
+      OCTA_PREMIUM_BUDGET_USD: ${OCTA_PREMIUM_BUDGET_USD:-}
       # F5 · conectores MCP por nome do catálogo (lib/agent/mcp MCP_CATALOG). `scholar` por padrão
       # (decisão do dono, 2026-11-03): 9 tools de LEITURA no trilho de fontes/ABNT. O servidor roda
       # como SUBPROCESSO deste container, pelo binário do `node_modules` — pinado em `scholar-mcp:
@@ -263,6 +287,34 @@ services:
       NEXT_PUBLIC_PUSHER_CLUSTER: ${NEXT_PUBLIC_PUSHER_CLUSTER:-}
       # a fase `reason` no `elaborated` (o código a pula por padrão; "1" liga)
       RACIOCINIO_ELABORADO: ${RACIOCINIO_ELABORADO:-}
+      # ── LIGADOS POR PADRÃO (dono, 2026-11-12: "nada off, quero tudo on") ──────────────────────
+      # Cinco recursos do harness que subiam DESLIGADOS e fora do pipeline: só ligavam editando o
+      # `.env` do VPS à mão, e o /api/health não dizia o estado de nenhum. O default mora AQUI, no
+      # compose, e não no `script:` do deploy.yml (que tem teto de 21.000 bytes). Para desligar um
+      # deles sem deploy de código: `NOME=0` no `.env` do VPS e recriar o container.
+      # No web E no worker, porque com CHAT_BG=1 é o worker que roda o turno do chat.
+      VISAO_HARNESS: ${VISAO_HARNESS:-1}        # descrever_imagem no harness; exige a credencial Vertex
+      MEMORY_L3: ${MEMORY_L3:-1}                # memória semântica (memory_drawers no Atlas); falha no boot = segue sem memória
+      CACHE_RESPOSTAS: ${CACHE_RESPOSTAS:-1}    # pergunta de conceito já respondida volta sem modelo
+      ROTEADOR_KNN: ${ROTEADOR_KNN:-on}         # roteador de intenção por embedding; "sombra" só mede, "off" desliga
+      ORQ_AUTOMATICO: ${ORQ_AUTOMATICO:-1}      # orquestra roteia sozinha o trabalho de Pro/Max (motores externos: custo)
+      # ── O QUE O TURNO DO CHAT LÊ, ESPELHADO DO `web` ──
+      # Com CHAT_BG=1 (o default do deploy desde 05/nov) é ESTE container que roda o turno do chat.
+      # Estas chaves existiam só no `web`: o deploy as exporta no shell e o compose só as entrega a
+      # quem as declara. Sem elas, no turno em 2º plano: a busca na web sumia (SEARXNG_URL), o cartão
+      # verde do REA não nascia (REA_BLUEPRINT), o vídeo do documento idem (VIDEO_DOC). O agente de
+      # navegador (AGENTE_*) fica FORA de propósito: lib/agent/agenteCompose.test.ts. Os valores são as MESMAS expressões do `web` — o teste
+      # lib/flags/workerEnv.test.ts recusa divergência e chave nova que só entre no `web`.
+      SEARXNG_URL: http://searxng:8080
+      REA_BLUEPRINT: ${REA_BLUEPRINT:-0}
+      VIDEO_DOC: ${VIDEO_DOC:-0}
+      BLUEPRINT_PRATICO: ${BLUEPRINT_PRATICO:-0}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      MAP_HARNESS: ${MAP_HARNESS:-0}
+      ESTUDO_GATEKEEPER: ${ESTUDO_GATEKEEPER:-0}
+      AURA_ECONOMY: ${AURA_ECONOMY:-0}
+      GATEWAY_URL: ${GATEWAY_URL:-}
+      NEXTAUTH_URL: ${APP_URL:-https://75-119-140-97.sslip.io}
       # Os de CONSUMIR vivem AQUI, onde consumir é o trabalho do container. `SCHOLAR_WORKER` não
       # aparece de propósito: já é "1" fixo acima, e um `${SCHOLAR_WORKER:-}` o sobrescreveria com
       # VAZIO — o worker dedicado pararia de consumir a fila do scholar. Foi o erro que o parser do
@@ -277,6 +329,19 @@ services:
       # G3 · gráfico na resposta (lib/agent/grafico): SVG desenhado aqui, com número que o turno
       # apurou. Não custa chamada de modelo. `=0` é o kill-switch.
       HARNESS_GRAFICO: ${HARNESS_GRAFICO:-1}
+      # F-visão · "be my eyes". VISAO_HARNESS (roteamento da IMAGEM anexada pro harness: route.ts +
+      # a tool descrever_imagem) já está no bloco "LIGADOS POR PADRÃO" acima, com default 1 — não
+      # repetir aqui, senão o Compose recusa o arquivo (chave duplicada). VISAO_CAMERA liga a CÂMERA
+      # AO VIVO (/api/ai/camera), OFF por padrão. Ambas precisam da credencial Vertex (GOOGLE_*) —
+      # com a flag mas sem credencial, o recibo (/api/health) diz `sem_credencial`, não mente.
+      VISAO_CAMERA: ${VISAO_CAMERA:-}
+      # Octa · modelos premium (Claude/Codex no agente de código geral, lib/octa/modelosPremium).
+      # OCTA_MODELOS_PREMIUM = ids ligados ("claude,codex"); vazio = off. OCTA_PREMIUM_BUDGET_USD =
+      # teto USD/pessoa/janela dos turnos premium (vazio = 2). Só ligam com a chave da conta de API
+      # da ORG no gateway (ANTHROPIC_API_KEY/OPENAI_API_KEY no .env do VPS, mantido À MÃO — o litellm faz
+      # env_file; NÃO no .env.secrets, que o deploy reescreve) e só plano Max vê o picker. Vazio = prod idêntico.
+      OCTA_MODELOS_PREMIUM: ${OCTA_MODELOS_PREMIUM:-}
+      OCTA_PREMIUM_BUDGET_USD: ${OCTA_PREMIUM_BUDGET_USD:-}
       # F5 · conectores MCP por nome do catálogo (lib/agent/mcp MCP_CATALOG). `scholar` por padrão
       # (decisão do dono, 2026-11-03): 9 tools de LEITURA no trilho de fontes/ABNT. O servidor roda
       # como SUBPROCESSO deste container, pelo binário do `node_modules` — pinado em `scholar-mcp:
@@ -337,6 +402,26 @@ services:
     deploy:
       resources:
         limits: { memory: 1200m }
+
+  # ── quality-engine (FastAPI, porta 8003). Termômetro Acadêmico: pontua texto por banda. ──
+  #    Consumido por /api/quality (web → http://quality-engine:8003). Só rede interna (expose, sem ports).
+  #    Existia no repo mas nunca estava no compose → nunca subia; o cliente degradava "offline" calado e a
+  #    UI escondia o termômetro. (Achado pela trava de provas reais — ver docs/PROVAS_REAIS.md.)
+  #    NILC_METRIX_URL (opcional, no .env) liga métricas extras; sem ela, só as nativas.
+  quality-engine:
+    build: { context: ./quality-engine, dockerfile: Dockerfile }
+    container_name: zaeon_quality
+    expose: ["8003"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8003/health', timeout=5).status==200 else 1)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    deploy:
+      resources:
+        limits: { memory: 512m }
 
   # ── pdf-loader (FastAPI + opendataloader-pdf, modo FAST). Leitura estruturada de PDF. ──
   #    Sem OCR/Hybrid nesta VPS (RAM). Só rede interna (não publica porta).

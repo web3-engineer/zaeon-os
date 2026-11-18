@@ -1,21 +1,18 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { ChatBubbleLeftRightIcon, PlayIcon, UserPlusIcon } from "@heroicons/react/24/outline";
-import LiquidGlassButton from "@/components/ui/LiquidGlassButton";
 
 // Componentes Internos
 import MenuNavigation from "@/components/sub/MenuNavigation";
-import StarBackground from "@/components/main/star-background";
-import MolecularText from "@/components/ui/MolecularText";
-import { LAB_ROTA, copyEntrada } from "@/lib/ui/loungeHub";
-import GlitchTexto from "@/components/ui/GlitchTexto";
 import { precarregarCyber } from "@/lib/cyber/precarga";
-import ZaeonCard from "@/components/main/ZaeonCard";
+import styles from "./hero-aquario.module.css";
+import LiquidGlassButton from "@/components/ui/LiquidGlassButton";
+import MarCardumes from "./MarCardumes";
+import CiclosAquario from "./CiclosAquario";
 
 /** o botão do cyberespaço (lá embaixo, em cima do módulo) pede o login daqui quando a pessoa está deslogada */
 export const EVENTO_ABRIR_LOGIN = "zaeon:abrir-login";
@@ -76,12 +73,10 @@ function LogoModelo({ slug, name, org }: { slug: string; name: string; org?: str
   );
 }
 
-// H1 (v4): a promessa — "Evolua sua vida." + "com conhecimento." (a palavra em destaque).
-// O sub-header traz os três verbos com o glitch chinês e a palavra que gira (ideias, estudos, trabalhos, pesquisas).
-const FRASE_COMPLETA = "Evolua sua vida com conhecimento.";
-const GIRO = ["ideias", "estudos", "trabalhos", "pesquisas"];
+// H1: a promessa — "Aprenda a fazer" + "qualquer coisa." (em destaque). Somos uma plataforma onde dá pra construir de
+// tudo: hardware, software, artigos, pesquisas. O sub-header diz isso, com a palavra que gira (ideias/estudos/…).
 /** pra onde "Iniciar chat" leva quem já está logado: o chat da Aura (Sala de Estudos) */
-const CHAT_ROTA = "/research-lab?tab=sala-de-estudos";
+const CHAT_ROTA = "/research-lab?tab=sala-de-estudos&estudo=chat";
 /** o GAME: o cyberespaço — a rota já abre a sessão em jogo (sem menu). Sem conta, o botão abre o login, que volta direto pra cá. */
 const GAME_ROTA = "/lounge-cosmico";
 
@@ -90,12 +85,25 @@ export default function HeroPage() {
   const { status } = useSession();
   const router = useRouter();
 
+  const [palavra, setPalavra] = useState(0);
+  useEffect(() => {
+    const movimento = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let timer: number | undefined;
+    const sincronizar = () => {
+      window.clearInterval(timer);
+      if (!movimento.matches) timer = window.setInterval(() => setPalavra((i) => (i + 1) % 12), 2100);
+    };
+    sincronizar();
+    movimento.addEventListener("change", sincronizar);
+    return () => { window.clearInterval(timer); movimento.removeEventListener("change", sincronizar); };
+  }, []);
+  const [mensagem, setMensagem] = useState("");
   const [showChatbox, setShowChatbox] = useState(false);
   /** pra onde o login aberto agora leva: "lab" (criar conta) ou "jogo" (Iniciar jogo / Play game) */
   const [destinoLogin, setDestinoLogin] = useState<"lab" | "jogo">("lab");
 
   const logado = status === "authenticated";
-  const copy = copyEntrada(logado);
+  const beneficios = logado ? [] : ["mes", "cartao", "limites", "revisao"];
 
   // a PRÉ-CARGA do cyberespaço começa na primeira tela (o botão com a barra fica em cima do módulo, lá embaixo)
   useEffect(() => { precarregarCyber(); }, []);
@@ -106,20 +114,31 @@ export default function HeroPage() {
     return () => window.removeEventListener(EVENTO_ABRIR_LOGIN, abrir);
   }, []);
 
-  return (
-    <main className="w-full flex flex-col items-center justify-center text-center relative zaeon-borda min-h-[calc(100svh-110px)] pt-10 md:pt-14 pb-16 md:pb-20 overflow-hidden transition-colors duration-700 font-display">
+  const fundo = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const elemento = fundo.current;
+    if (!elemento || !("IntersectionObserver" in window)) return;
+    let visivel = true;
+    const atualizar = () => elemento.toggleAttribute("data-fundo-pausado", !visivel || document.hidden);
+    const observer = new IntersectionObserver(([entrada]) => {
+      visivel = entrada.isIntersecting;
+      atualizar();
+    });
+    observer.observe(elemento);
+    document.addEventListener("visibilitychange", atualizar);
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", atualizar);
+    };
+  }, []);
 
-      {/* BACKGROUND LIMPO - Apenas o StarBackground visível */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <StarBackground />
+  return (
+    <main className={`relative isolate flex min-h-[65svh] w-full flex-col items-center justify-center overflow-hidden px-5 pb-16 pt-24 text-center font-display md:min-h-svh ${styles.aquario}`}>
+      <div ref={fundo} className={styles.oceano} aria-hidden="true">
+        <CiclosAquario />
+        <MarCardumes />
       </div>
 
-      {/* a ZAEON na moldura do Figma (ZaeonCard → ZaeonVitrine: pensa, pesquisa e gera blueprints em laço) — só no computador */}
-      <ZaeonCard className="absolute bottom-[4%] right-[1%] top-[4%] z-[5] hidden w-[min(30vw,400px)] md:block xl:right-[3%]" />
-
-      {/* ========================================= */}
-      {/* HERO v2 — TODAS AS IAS, FEITO PRA CIÊNCIA */}
-      {/* ========================================= */}
       <motion.div
         animate={{
           scale: showChatbox ? 0.9 : 1,
@@ -127,113 +146,67 @@ export default function HeroPage() {
           opacity: 1,
         }}
         transition={{ type: "spring", stiffness: 90, damping: 20 }}
-        className="flex flex-col items-start text-left max-w-4xl self-start z-10 w-full origin-center md:max-w-[64%] xl:max-w-[62%]"
+        className="relative z-10 flex w-full max-w-4xl flex-col items-center text-center"
       >
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="relative flex flex-col items-start justify-center"
+          className="relative flex flex-col items-center justify-center"
         >
-            {/* Uma linha só, sem quebrar: tamanho FLUÍDO (clamp por vw) cresce com a tela
-                e encolhe no mobile em vez de quebrar a frase. whitespace-nowrap trava a
-                linha inteira (inclusive os espaços entre as palavras). */}
             <h1 className="text-[clamp(2.25rem,5.2vw,4.75rem)] font-[family-name:var(--font-space)] font-semibold tracking-[-0.02em] text-slate-900 dark:text-white leading-[1.08] z-10 relative">
-              <span className="sr-only">{FRASE_COMPLETA}</span>
+              <span className="sr-only">{t("landing.hero_principal.linha")} {t("landing.hero_principal.termo_0")}</span>
               <span aria-hidden="true">
-                <span className="whitespace-nowrap">
-                  <MolecularText text="Evolua" />{" "}
-                  <MolecularText text="sua" delay={0.12} />{" "}
-                  <MolecularText text="vida" delay={0.24} />{" "}
-                  <MolecularText text="com" delay={0.36} />
-                </span>
-                <br />
-                <span className="whitespace-nowrap">
-                  <span className="text-cyan-600 dark:text-[#67d8f2]">
-                    <MolecularText text="conhecimento" delay={0.46} />
+                {t("landing.hero_principal.linha")}
+                <span className={`block text-cyan-600 dark:text-[#67d8f2] ${styles.palavraParticulas}`}>
+                  <span key={palavra} className={styles.termoParticulas}>{t(`landing.hero_principal.termo_${palavra}`)}</span>
+                  <span key={`particulas-${palavra}`} className={styles.particulasPalavra}>
+                    {Array.from({ length: 12 }, (_, i) => <i key={i} style={{ left: `${4 + i * 8}%`, top: `${24 + (i * 19) % 52}%`, animationDelay: `${i * 14}ms` }} />)}
                   </span>
-                  <MolecularText text="." delay={0.56} />
                 </span>
               </span>
             </h1>
 
-          <AnimatePresence>
-            {!showChatbox && (
-              <motion.div
-                initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                animate={{ opacity: 1, height: "auto", marginTop: 24 }}
-                exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                transition={{ duration: 0.4, ease: "easeInOut" }}
-                className="overflow-hidden"
-              >
-                  {/* sub-header: os três verbos com o GLITCH CHINÊS + a palavra que gira (ideias, estudos, trabalhos, pesquisas) */}
-                  <p className="max-w-2xl text-base sm:text-lg text-slate-900 dark:text-white font-light leading-relaxed">
-                    <GlitchTexto
-                      texto="Aprenda, construa, entregue"
-                      palavras={GIRO}
-                      classePalavra="font-normal text-cyan-700 dark:text-cyan-200"
-                      delay={0.5}
-                    />
-                  </p>
-                  {/* a frase do Figma: o que tem aqui dentro, numa linha */}
-                  <p className="mt-3 max-w-[520px] text-base leading-relaxed text-slate-700 dark:text-slate-400">
-                    Todas as principais IAs, pesquisa em bases reais e um mundo 3D para estudar acompanhado.
-                  </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </motion.div>
 
-        {/* CTAs */}
-        <AnimatePresence>
-          {!showChatbox && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, filter: "blur(10px)" }}
-              transition={{ duration: 0.4, delay: 0.2 }}
-              className="mt-9 flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto items-center justify-start"
-            >
-              {/* PRIMÁRIO (vidro TINGIDO): sem conta, "Criar minha conta" (abre o login/cadastro — e a conta nova cai no
-                  LABORATÓRIO); conectado, o chat. SECUNDÁRIO (vidro incolor): "Iniciar jogo" — sem conta, abre o login, e
-                  esse login cai no JOGO (o jogo só abre pra quem escolhe jogar). */}
-              <LiquidGlassButton
-                onClick={() => (logado ? router.push(CHAT_ROTA) : (setDestinoLogin("lab"), setShowChatbox(true)))}
-                tom="destaque"
-                tamanho="md"
-                className="w-full sm:w-auto"
-              >
-                {logado ? <ChatBubbleLeftRightIcon className="w-4 h-4" aria-hidden="true" /> : <UserPlusIcon className="w-4 h-4" aria-hidden="true" />}
-                {logado ? "Iniciar chat" : "Criar minha conta"}
-              </LiquidGlassButton>
-              <LiquidGlassButton
-                onClick={() => (logado ? router.push(GAME_ROTA) : (setDestinoLogin("jogo"), setShowChatbox(true)))}
-                tom="neutro"
-                tamanho="md"
-                className="w-full sm:w-auto"
-              >
-                <PlayIcon className="w-4 h-4" aria-hidden="true" />
-                Iniciar jogo
-              </LiquidGlassButton>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-
-        {/* MURAL DE MODELOS removido do hero — as IAs agora vivem só na seção
-            "Equipados com", abaixo dos cards dos agentes (encryption.tsx). */}
+        {!showChatbox && (
+          <form className={`mt-8 w-full max-w-xl ${styles.compositor}`} onSubmit={(event) => {
+            event.preventDefault();
+            const texto = mensagem.trim();
+            if (!texto || status === "loading") return;
+            sessionStorage.setItem("zaeon:entrada:rascunho", texto);
+            if (logado) router.push(CHAT_ROTA);
+            else { setDestinoLogin("lab"); setShowChatbox(true); }
+          }}>
+            <input
+              value={mensagem}
+              onChange={(event) => setMensagem(event.target.value)}
+              placeholder={t("landing.hero_principal.pergunta")}
+              aria-label={t("landing.hero_principal.pergunta")}
+              maxLength={4000}
+            />
+            <button type="submit" disabled={!mensagem.trim() || status === "loading"} aria-label={t("landing.hero_principal.chat")}>↑</button>
+          </form>
+        )}
+        {!showChatbox && (
+          <LiquidGlassButton className="mt-5" tom="destaque" tamanho="md" seta={false}
+            onClick={() => {
+              if (logado) router.push(GAME_ROTA);
+              else { setDestinoLogin("jogo"); setShowChatbox(true); }
+            }}>Cowork</LiquidGlassButton>
+        )}
 
         {/* Badges de confiança (padrão ChipFlow) */}
-        {!showChatbox && copy.badges.length > 0 && (
-          <ul className="mt-8 flex flex-wrap items-center justify-start gap-x-6 gap-y-3">
-            {copy.badges.map((b) => (
+        {!showChatbox && beneficios.length > 0 && (
+          <ul className={`mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 ${styles.subtextos}`}>
+            {beneficios.map((b) => (
               <li key={b} className="flex items-center gap-2 text-sm text-slate-800 dark:text-white/90">
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/15">
                   <svg viewBox="0 0 20 20" className="h-3 w-3 text-emerald-500" fill="none" stroke="currentColor" strokeWidth={3} aria-hidden="true">
                     <path d="M4 10l4 4 8-9" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </span>
-                {b}
+                {t(`landing.interface.${b}`, { defaultValue: "" })}
               </li>
             ))}
           </ul>
@@ -254,70 +227,18 @@ export default function HeroPage() {
             animate={{ opacity: 1, y: -20, scale: 1 }}
             exit={{ opacity: 0, y: 50, scale: 0.95 }}
             transition={{ type: "spring", stiffness: 100, damping: 20, delay: 0.1 }}
-            className="w-full max-w-[520px] self-start z-20 mt-12 md:mt-16 relative origin-center text-left"
+            className="w-full max-w-[520px] z-20 mt-8 relative origin-center"
           >
             {/* Menu alinhado à ESQUERDA da coluna (antes ficava centralizado junto de um
                 card de "Convide" à direita, o que deixava o conjunto assimétrico). O
                 convite não sumiu: mora dentro de OPÇÕES do próprio menu. */}
             <div className="w-full max-w-[500px]">
-              <MenuNavigation destino={destinoLogin === "jogo" ? GAME_ROTA : LAB_ROTA} />
+              <MenuNavigation destino={destinoLogin === "jogo" ? GAME_ROTA : CHAT_ROTA} />
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* CSS do Glitch Holográfico Elegante (assinatura da casa) */}
-      <style jsx global>{`
-        .cyber-glitch {
-          position: relative;
-        }
-
-        .cyber-glitch::before,
-        .cyber-glitch::after {
-          content: attr(data-text);
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: transparent;
-          pointer-events: none;
-        }
-
-        .cyber-glitch::before {
-          left: 1px;
-          text-shadow: -1px 0 rgba(6, 182, 212, 0.8);
-          clip-path: polygon(0 0, 100% 0, 100% 10%, 0 10%);
-          animation: glitch-elegant-1 3.5s infinite linear alternate-reverse;
-        }
-
-        .cyber-glitch::after {
-          left: -1px;
-          text-shadow: 1px 0 rgba(255, 255, 255, 0.3);
-          clip-path: polygon(0 80%, 100% 80%, 100% 100%, 0 100%);
-          animation: glitch-elegant-2 4s infinite linear alternate-reverse;
-        }
-
-        @keyframes glitch-elegant-1 {
-          0% { clip-path: polygon(0 15%, 100% 15%, 100% 25%, 0 25%); transform: translate(0); }
-          10% { clip-path: polygon(0 45%, 100% 45%, 100% 50%, 0 50%); transform: translate(-1px, 1px); }
-          20% { clip-path: polygon(0 85%, 100% 85%, 100% 90%, 0 90%); transform: translate(1px, -1px); }
-          30% { clip-path: polygon(0 10%, 100% 10%, 100% 20%, 0 20%); transform: translate(0); }
-          40% { clip-path: polygon(0 60%, 100% 60%, 100% 70%, 0 70%); transform: translate(-1px, 0); }
-          50% { clip-path: polygon(0 30%, 100% 30%, 100% 40%, 0 40%); transform: translate(0); }
-          60%, 100% { clip-path: polygon(0 0, 0 0, 0 0, 0 0); transform: translate(0); }
-        }
-
-        @keyframes glitch-elegant-2 {
-          0%, 40% { clip-path: polygon(0 0, 0 0, 0 0, 0 0); transform: translate(0); }
-          50% { clip-path: polygon(0 20%, 100% 20%, 100% 30%, 0 30%); transform: translate(1px, 0); }
-          60% { clip-path: polygon(0 75%, 100% 75%, 100% 80%, 0 80%); transform: translate(-1px, 1px); }
-          70% { clip-path: polygon(0 40%, 100% 40%, 100% 55%, 0 55%); transform: translate(0); }
-          80% { clip-path: polygon(0 80%, 100% 80%, 100% 90%, 0 90%); transform: translate(1px, -1px); }
-          90% { clip-path: polygon(0 5%, 100% 5%, 100% 15%, 0 15%); transform: translate(-1px, 0); }
-          100% { clip-path: polygon(0 60%, 100% 60%, 100% 65%, 0 65%); transform: translate(0); }
-        }
-      `}</style>
     </main>
   );
 }

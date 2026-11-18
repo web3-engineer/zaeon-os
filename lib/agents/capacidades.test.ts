@@ -20,7 +20,7 @@ import {
 } from "@/lib/agents/capacidades";
 import { AGENTES_CHAT } from "@/lib/agents/chatAgentes";
 import { ALL_MENTOR_SKILLS } from "@/lib/agent/mentors";
-import { listTools, registrarAbrirUrl, registrarBaixarParaBase } from "@/lib/agent/runtime";
+import { listTools, registrarAbrirUrl, registrarBaixarParaBase, registrarDescreverImagem } from "@/lib/agent/runtime";
 import { buscarAnatomiaDef, inspecionarAnatomiaDef } from "@/lib/anatomia/tools";
 
 /** Todo nome de tool que o código define, independente de o ambiente do teste registrar ou não. */
@@ -29,6 +29,8 @@ function nomesQueExistem(): Set<string> {
   const env = { LEITOR_PROXY_URL: "http://leitor", LEITOR_ALLOW: "exemplo.com", RAG_PG_URL: "postgres://x" };
   registrarAbrirUrl(env);
   registrarBaixarParaBase(env);
+  // `descrever_imagem` é condicional a credencial Vertex + flag VISAO_HARNESS; forçadas aqui.
+  registrarDescreverImagem({ GOOGLE_PROJECT_ID: "p", GOOGLE_CLIENT_EMAIL: "e", GOOGLE_PRIVATE_KEY: "k", VISAO_HARNESS: "1" });
   const nomes = new Set(listTools().map((t) => t.name));
   // o atlas depende do manifesto EM DISCO; os defs são exportados, então o nome é verificável sem ele
   nomes.add(buscarAnatomiaDef.name);

@@ -8,6 +8,7 @@
  */
 import { useEffect, useState } from "react";
 import "katex/dist/katex.min.css";
+import { virgulaDecimal } from "@/lib/chat/matematica";
 
 type Katex = { renderToString(tex: string, opts: Record<string, unknown>): string };
 let katexMod: Katex | null = null;
@@ -28,7 +29,7 @@ export function htmlDaFormula(katex: Katex, latex: string, display: boolean): st
   const chave = `${display ? "D" : "I"}${latex}`;
   const pronto = cache.get(chave);
   if (pronto) return pronto;
-  const html = katex.renderToString(latex, { displayMode: display, throwOnError: false, trust: false, strict: "ignore", output: "htmlAndMathml", maxSize: 20, maxExpand: 200 });
+  const html = katex.renderToString(virgulaDecimal(latex), { displayMode: display, throwOnError: false, trust: false, strict: "ignore", output: "htmlAndMathml", maxSize: 20, maxExpand: 200 });
   if (cache.size > 500) cache.clear();
   cache.set(chave, html);
   return html;

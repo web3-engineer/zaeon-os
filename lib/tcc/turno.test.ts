@@ -23,6 +23,7 @@ import { EXTRATO_SECAO } from "@/lib/tcc/turno";
 import { cardIdDoTcc, contextoDoTcc, ehPedidoDeTcc, fixarCardTcc, partidaDoPedido, tccContextoParaTurno, tccDoTurno, temaDoPedido, TITULO_PROVISORIO } from "@/lib/tcc/turno";
 import { corposDoEsboco, gerarTccEmBackground, opsDoEsboco } from "@/lib/tcc/gerar";
 import { aplicarOps } from "@/lib/tcc/secoes";
+import { fontesDoTurno } from "@/lib/documento/fontes";
 
 const tcc = (x: any = {}) => ({
   id: "w1", titulo: "Fotossíntese", workType: "TCC", scopeId: "aba1", rev: 0, status: "pronto", papel: "dono", updatedAt: new Date(), content: "",
@@ -525,5 +526,55 @@ describe("bússola do documento · o chat vê o corpo, e a regra sobrevive ao te
     // "você não tem outro documento" a partir de uma lista incompleta.
     const lista = Array.from({ length: 12 }, (_, i) => w({ id: `a${i}`, titulo: `trabalho número ${i} com um título bastante comprido`, secoes: medias }));
     expect(contextoDosTrabalhos(lista as any, "a0")).toContain("não listado");
+  });
+});
+
+describe("a base NÃO entra em REFERÊNCIAS pela porta de trás", () => {
+  /**
+   * Medido em produção (2026-11-10): "crie um artigo sobre anfetamina" saiu citando dois trabalhos
+   * sobre MEDICALIZAÇÃO ESCOLAR. O corte novo vive em `citaveis` (lib/rag/turno) e filtra o que o
+   * harness oferece como fonte citável. Só que havia uma SEGUNDA porta: quando o harness não
+   * escrevia `referencias`, a rede do `referenciasDoChat` remontava a bibliografia a partir de
+   * `fontesBase` — a lista do rodapé "Da sua base", onde casar por TEXTO basta e a similaridade
+   * de cada trecho já não existe.
+   *
+   * Pior: o corte novo FAZ essa rede disparar mais vezes, porque `fontesWork` filtrado pode ficar
+   * vazio justamente quando a base só tinha menção. Daí o veredito vazio — `referencias: []`
+   * significa "medi aqui e nada é citável", e a rede tem de respeitar isso.
+   */
+  const base = { userId: "u1", scopeId: "aba1", surface: "sala-de-estudos", intent: "explicar_conceito" as const, kind: "tcc" as const, prompt: "escreva a introdução" };
+  const comRefs = () => tcc({ secoes: [...tcc().secoes, { id: "referencias", titulo: "REFERÊNCIAS", corpo: "" }] });
+  const poluida = { documentoId: "d1", titulo: "Medicalização escolar e TDAH", paginas: "3" };
+  const corpoCitando = () => `texto de farmacologia citando ${fontesDoTurno([], [poluida])[0].citacao} no meio`;
+
+  beforeEach(() => {
+    // `referenciasDoChat` só existe no caminho CHAT ÚNICO (`multi`): é o `trabalhoDoTurno`.
+    m.listar.mockResolvedValue([comRefs()]);
+    m.findTcc.mockResolvedValue(comRefs());
+    m.aplicar.mockImplementation(async (_id: string, _u: string, fn: any, origem: string) => {
+      const ops = fn(comRefs());
+      const r = aplicarOps(comRefs().secoes, ops);
+      return { ok: true, tcc: comRefs(), efeitos: r.ok && r.efeitos.length ? r.efeitos : [{ secaoId: "introducao" }], origem };
+    });
+  });
+
+  const turno = (answer: any) =>
+    tccDoTurno({ ...base, multi: true, answer: { nucleo: "ok", work: { kind: "tcc", sections: [{ title: "INTRODUÇÃO", body: corpoCitando() }] }, ...answer } as any });
+
+  it("`referencias: []` é veredito do harness: a rede NÃO remonta nada a partir de fontesBase", async () => {
+    await turno({ referencias: [], fontesBase: [poluida] });
+    await new Promise((r) => setTimeout(r, 0));
+    // uma única escrita: a da seção pedida. Nada foi depositado em REFERÊNCIAS.
+    expect(m.aplicar).toHaveBeenCalledTimes(1);
+  });
+
+  it("campo AUSENTE mantém a rede viva — o caminho de quem chega sem medição não foi quebrado", async () => {
+    await turno({ fontesBase: [poluida] });
+    await vi.waitFor(() => expect(m.aplicar).toHaveBeenCalledTimes(2));
+  });
+
+  it("veredito NÃO vazio continua entrando em REFERÊNCIAS", async () => {
+    await turno({ referencias: [{ abnt: "MENDOZA, X. Artigo. 2014.", titulo: "T" }], fontesBase: [poluida] });
+    await vi.waitFor(() => expect(m.aplicar).toHaveBeenCalledTimes(2));
   });
 });

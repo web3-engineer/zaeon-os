@@ -1,0 +1,17 @@
+{
+  "tarefa": "Construa um triângulo ABC com vértices livres e a circunferência circunscrita a ele (que passa pelos três vértices), usando as mediatrizes de dois lados para achar o centro. Responda APENAS o array JSON de elementos, no formato do procedimento.",
+  "contrato": {
+    "tipo": "json",
+    "chaves": [
+      "nome",
+      "tipo",
+      "pais",
+      "papel"
+    ]
+  },
+  "modelos": [
+    "claude",
+    "codex",
+    "octa"
+  ]
+}

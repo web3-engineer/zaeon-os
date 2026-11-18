@@ -1,0 +1,180 @@
+{
+  "modulos": [
+    {
+      "titulo": "Ler e olhar antes de calcular",
+      "estudo": "Antes de qualquer média, uma pergunta: o que eu tenho na mão? Em pandas, os dados entram num DataFrame — uma tabela com linhas e colunas nomeadas. A porta de entrada mais comum é `pd.read_csv(\"dados.csv\")`.\n\nE aqui mora a armadilha número um de quem trabalha com dado brasileiro: o CSV daqui costuma separar colunas com ponto-e-vírgula (`;`) e usar VÍRGULA como separador decimal (`3,14` em vez de `3.14`). Se você ler sem avisar o pandas disso, ele lê a coluna de preços como TEXTO, não como número — e `df[\"preco\"].mean()` quebra ou devolve bobagem. O conserto é dizer o formato na leitura: `pd.read_csv(\"dados.csv\", sep=\";\", decimal=\",\")`.\n\nLido o arquivo, você OLHA antes de calcular. Três comandos, nessa ordem: `df.shape` (quantas linhas e colunas?), `df.dtypes` (cada coluna é número, texto ou data?) e `df.head()` (como são as primeiras linhas de verdade?). É `dtypes` que denuncia o número lido como texto: se a coluna que devia ser `float64` aparece como `object`, você achou o problema antes de ele virar um gráfico errado.\n\nA regra que fica: olhar não é perda de tempo, é o que separa a análise honesta do número inventado.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Você lê um CSV brasileiro (preços como `1.299,90`) com `pd.read_csv` SEM ajustar nada. O que acontece com a coluna de preços?",
+            "options": [
+              { "text": "É lida como texto (dtype object), e a média quebra ou dá resultado sem sentido", "isCorrect": true, "explanation": "Sem `decimal=\",\"` o pandas não reconhece a vírgula como decimal e trata tudo como string." },
+              { "text": "É convertida automaticamente para float, o pandas entende o formato brasileiro", "isCorrect": false, "explanation": "O padrão do pandas é ponto decimal; ele não adivinha o formato local." },
+              { "text": "A leitura falha com erro e nenhum dado é carregado", "isCorrect": false, "explanation": "A leitura funciona — o problema é silencioso: a coluna vira texto sem avisar." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Qual comando denuncia uma coluna numérica que foi lida como texto?",
+            "options": [
+              { "text": "df.dtypes", "isCorrect": true, "explanation": "Mostra o tipo de cada coluna; `object` numa coluna que devia ser número é a bandeira vermelha." },
+              { "text": "df.shape", "isCorrect": false, "explanation": "Só diz quantas linhas e colunas, não o tipo delas." },
+              { "text": "df.mean()", "isCorrect": false, "explanation": "Já é o cálculo — o objetivo é descobrir o problema ANTES de calcular." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "Qual atributo mostra o número de linhas e colunas de um DataFrame? Escreva, usando `df` como nome.",
+            "accepted": ["df.shape", "df.shape", ".shape", "shape"],
+            "marks": 2
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Escreva a chamada `pd.read_csv` que lê `vendas.csv` no padrão brasileiro (`;` entre colunas, vírgula decimal).",
+          "accepted": ["pd.read_csv(\"vendas.csv\", sep=\";\", decimal=\",\")", "pd.read_csv('vendas.csv', sep=';', decimal=',')", "read_csv(\"vendas.csv\", sep=\";\", decimal=\",\")"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "python",
+        "inicial": "import pandas as pd\n\n# Leia o CSV brasileiro e devolva (n_linhas, n_colunas).\n# Dica: sep=';' separa colunas, decimal=',' arruma os números.\ndef dimensoes(caminho):\n    df = pd.read_csv(caminho, sep=\";\", decimal=\",\")\n    return df.shape",
+        "teste": "# o teste real carregaria um CSV de exemplo e conferiria o shape e o dtype numérico da coluna de preço"
+      }
+    },
+    {
+      "titulo": "Faltante não se apaga calado",
+      "estudo": "Todo dado do mundo real tem buraco: uma célula vazia, um campo não preenchido, um sensor que falhou. No pandas isso vira `NaN` (Not a Number). O erro de principiante é apagar os faltantes no susto — ou pior, nem reparar neles.\n\nO primeiro passo é CONTAR: `df.isna().sum()` dá, por coluna, quantos valores faltam. Isso transforma \"tem uns buracos\" em um número por coluna, que você pode reportar.\n\nSó depois de contar você DECIDE, e a decisão depende do porquê da falta:\n- **Remover a linha** (`df.dropna()`) quando a falta é rara e a linha inteira fica sem valor. Cuidado: `dropna()` sem argumento derruba a linha se QUALQUER coluna estiver vazia — às vezes você quer `df.dropna(subset=[\"idade\"])` só na coluna que importa.\n- **Preencher** (`df.fillna(valor)`) quando faz sentido um padrão — zero para uma contagem que não aconteceu, a mediana para uma medida contínua.\n- **Manter** o `NaN` quando a ausência é informação (não respondeu ≠ respondeu zero).\n\nA regra que fica: seja qual for a escolha, DIGA no relatório o que fez e quantas linhas foram afetadas. Uma análise que apaga 400 linhas em silêncio não é análise, é maquiagem.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Qual comando conta, por coluna, quantos valores estão faltando?",
+            "options": [
+              { "text": "df.isna().sum()", "isCorrect": true, "explanation": "`isna()` marca cada célula vazia como True; `sum()` soma por coluna." },
+              { "text": "df.dropna()", "isCorrect": false, "explanation": "Isso já REMOVE as linhas com falta — antes de você ter contado e decidido." },
+              { "text": "df.describe()", "isCorrect": false, "explanation": "Resume estatísticas, mas não é a forma direta de contar faltantes." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Você quer remover linhas só quando a coluna `idade` está vazia, sem derrubar linhas por falta em OUTRAS colunas. O que usar?",
+            "options": [
+              { "text": "df.dropna(subset=[\"idade\"])", "isCorrect": true, "explanation": "`subset` limita a regra de remoção àquela(s) coluna(s)." },
+              { "text": "df.dropna()", "isCorrect": false, "explanation": "Sem `subset`, derruba a linha se qualquer coluna estiver vazia." },
+              { "text": "df.fillna(\"idade\")", "isCorrect": false, "explanation": "Isso preencheria os buracos com o texto \"idade\" — não é o que se quer." }
+            ],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Em uma frase: por que preencher faltantes com zero pode ser um erro grave numa coluna de notas de prova?",
+          "accepted": ["zero não é a mesma coisa que não fez a prova", "zero vira uma nota real e puxa a média pra baixo", "confunde ausência com nota zero", "distorce a média", "não respondeu é diferente de tirou zero"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "python",
+        "inicial": "import pandas as pd\n\n# Devolva um dicionário coluna -> quantos faltantes.\ndef faltantes_por_coluna(df):\n    return df.isna().sum().to_dict()",
+        "teste": "# o teste montaria um DataFrame com NaN conhecidos e conferiria a contagem"
+      }
+    },
+    {
+      "titulo": "Filtrar, agrupar e sempre contar junto",
+      "estudo": "Agora que os dados estão limpos, vêm as perguntas. Duas ferramentas respondem quase tudo: filtrar e agrupar.\n\nFiltrar é escolher linhas por uma condição. `df[df[\"idade\"] >= 18]` devolve só as linhas de maiores de idade. A condição dentro dos colchetes vira uma máscara de True/False, e o pandas fica com as linhas True. Para combinar condições, use `&` (e) e `|` (ou), cada uma entre parênteses: `df[(df[\"idade\"] >= 18) & (df[\"nota\"] >= 7)]`.\n\nAgrupar é resumir por categoria. `df.groupby(\"curso\")[\"nota\"].mean()` dá a nota média POR curso. Mas uma média sozinha mente: a média de um grupo com 3 alunos não se compara com a de um grupo com 3.000. Por isso a regra de ouro: peça `count` junto. `df.groupby(\"curso\")[\"nota\"].agg([\"count\", \"mean\", \"median\"])` devolve, por curso, quantos são, a média e a mediana — e a mediana ao lado da média avisa quando há um valor extremo puxando a conta.\n\nA regra que fica: nenhuma média viaja sozinha. Ela anda sempre com o `count` do grupo.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Por que `agg([\"count\", \"mean\"])` é melhor que só `mean()` ao agrupar?",
+            "options": [
+              { "text": "O count mostra o tamanho do grupo — uma média de 3 linhas não vale o mesmo que de 3.000", "isCorrect": true, "explanation": "Sem o tamanho do grupo, a média engana: grupos minúsculos parecem tão confiáveis quanto grandes." },
+              { "text": "O count deixa o cálculo mais rápido", "isCorrect": false, "explanation": "A questão é honestidade do resultado, não velocidade." },
+              { "text": "mean() sozinho dá erro ao agrupar", "isCorrect": false, "explanation": "Funciona — só esconde o tamanho do grupo." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-written",
+          "block": {
+            "text": "Escreva o filtro que seleciona as linhas em que a coluna `idade` é maior ou igual a 18 (use `df`).",
+            "accepted": ["df[df[\"idade\"] >= 18]", "df[df['idade'] >= 18]", "df[df[\"idade\"]>=18]", "df[df['idade']>=18]"],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Quando você deve olhar a MEDIANA ao lado da média? Responda em uma frase.",
+          "accepted": ["quando há valores extremos", "quando há outliers", "quando a distribuição é torta", "renda, preço, tempo — valores que têm extremos", "quando um valor muito alto ou baixo puxa a média"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "python",
+        "inicial": "import pandas as pd\n\n# Devolva, por curso, a contagem e a média da nota.\ndef resumo_por_curso(df):\n    return df.groupby(\"curso\")[\"nota\"].agg([\"count\", \"mean\"])",
+        "teste": "# o teste conferiria contagem e média por grupo num DataFrame conhecido"
+      }
+    },
+    {
+      "titulo": "Cruzar tabelas sem inflar a conta",
+      "estudo": "Raramente a resposta mora numa tabela só. Você tem as notas numa, os dados da turma noutra, e precisa juntar. Isso é `merge`: `df.merge(turmas, on=\"id_turma\", how=\"left\")` cola as colunas de `turmas` em `df`, casando pela chave `id_turma`.\n\nO `how` diz quem fica: `left` mantém todas as linhas da tabela da esquerda (e traz NaN onde não houver par na direita); `inner` fica só com as linhas que casam nas duas. Comece com `left` quando a esquerda é a sua base e você não quer perder ninguém.\n\nE aqui está a armadilha silenciosa: se a tabela da direita tem a chave REPETIDA, o merge DUPLICA linhas da esquerda — e aí toda soma e toda contagem incham sem ninguém perceber. A defesa é o `validate`: `df.merge(turmas, on=\"id_turma\", how=\"left\", validate=\"m:1\")` afirma \"muitas linhas minhas para UMA da direita\". Se a direita tiver a chave duplicada, o pandas ESTOURA um erro na hora, em vez de deixar o número errado passar.\n\nA regra que fica: todo merge mexe no número de linhas. Confira `df.shape` antes e depois, e use `validate` para a junção te avisar quando a chave não é única.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "O que o argumento `validate=\"m:1\"` num merge garante?",
+            "options": [
+              { "text": "Que a chave é única na tabela da direita — senão o pandas estoura um erro em vez de duplicar linhas", "isCorrect": true, "explanation": "`m:1` = muitos-para-um; protege contra a duplicação silenciosa que infla somas." },
+              { "text": "Que nenhuma linha da esquerda será perdida", "isCorrect": false, "explanation": "Quem controla perda de linha é o `how` (left/inner), não o validate." },
+              { "text": "Que as colunas das duas tabelas têm o mesmo nome", "isCorrect": false, "explanation": "Isso é papel do `on`; validate cuida da cardinalidade da chave." }
+            ],
+            "marks": 3
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Você quer juntar duas tabelas SEM perder nenhuma linha da sua base (a da esquerda). Qual `how`?",
+            "options": [
+              { "text": "how=\"left\"", "isCorrect": true, "explanation": "`left` mantém todas as linhas da esquerda, com NaN onde não há par." },
+              { "text": "how=\"inner\"", "isCorrect": false, "explanation": "`inner` descarta as linhas da esquerda que não casam na direita." },
+              { "text": "how=\"right\"", "isCorrect": false, "explanation": "`right` prioriza a tabela da direita, não a sua base da esquerda." }
+            ],
+            "marks": 2
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Qual par de comandos você roda antes e depois de um merge para flagrar duplicação de linhas?",
+          "accepted": ["df.shape", "shape antes e depois", "comparar df.shape antes e depois", "olhar o shape antes e depois"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "python",
+        "inicial": "import pandas as pd\n\n# Junte alunos e turmas pela chave id_turma, mantendo todos os alunos,\n# e faça o pandas acusar se a chave da direita estiver duplicada.\ndef juntar(alunos, turmas):\n    return alunos.merge(turmas, on=\"id_turma\", how=\"left\", validate=\"m:1\")",
+        "teste": "# o teste passaria turmas com chave única (ok) e depois duplicada (deve levantar erro)"
+      }
+    }
+  ]
+}

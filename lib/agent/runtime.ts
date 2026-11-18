@@ -4,8 +4,8 @@
  * ToolDef / ToolResult / runTool + o middleware permit() (DENY-BY-DEFAULT). Ponto ÚNICO de
  * gating: risco × plano (minPlan) × GPU-por-demanda × execMode. `runTool` NUNCA lança — tool
  * que estoura/nega/expira vira `{ok:false,error,code}`. Registra as tools da Fase 0 como ToolDef
- * (`studio_generate`, `research_generate`, `literature_search` real via lib/scholar) + stubs
- * (`memory_search` free, `examiner`). Tipos ricos: importe de contracts.ts; NÃO reinvente.
+ * (`studio_generate`, `research_generate`, `literature_search` real via lib/scholar) + stub
+ * (`memory_search` free). Tipos ricos: importe de contracts.ts; NÃO reinvente.
  */
 import type { FunctionDeclaration } from "@google-cloud/vertexai";
 import type { AgentContext } from "@/lib/agent/context";
@@ -20,6 +20,10 @@ import {
 } from "@/lib/agent/tools";
 // `toolsWeb` importa SÓ TIPOS daqui de volta (apagados na compilação), então não há ciclo.
 import { abrirUrlDef, baixarParaBaseDef } from "@/lib/agent/toolsWeb";
+import { descreverVideoDef } from "@/lib/agent/toolsVideo";
+import { TOOLS_BASICAS } from "@/lib/agent/toolsBasicas";
+import { descreverImagemDef, visaoNoHarnessLigado } from "@/lib/agent/toolsVisao";
+import { visaoDisponivel } from "@/lib/ai/descreverImagem";
 import { lerAnexoDef, listarAnexosDef } from "@/lib/agent/toolsAnexo";
 
 // ───────────────────────────── contratos do runtime (§11.2) ─────────────────────────────
@@ -385,18 +389,6 @@ export const webSearchDef: ToolDef = {
   },
 };
 
-/** examiner — STUB até o PR05 (o crítico ScholarEval). */
-export const examinerDef: ToolDef = {
-  name: "examiner",
-  runtime: "ts",
-  risk: "read",
-  minPlan: "free",
-  schema: stubSchema("examiner", "Avalia um rascunho (ScholarEval) e devolve um veredito com issues.", false),
-  async run() {
-    return { ok: false, error: "examiner ainda não implementado", code: "not_implemented", provenance: {} };
-  },
-};
-
 // Registra a Fase 0 + stubs no boot do módulo.
 /**
  * book_search — acha um LIVRO e o caminho LEGAL até ele (lib/livros/busca): OpenStax, Project Gutenberg,
@@ -436,7 +428,7 @@ export const bookSearchDef: ToolDef = {
   },
 };
 
-[studioGenerateDef, researchGenerateDef, memorySearchDef, literatureSearchDef, webSearchDef, examinerDef, bookSearchDef].forEach(registerTool);
+[studioGenerateDef, researchGenerateDef, memorySearchDef, literatureSearchDef, webSearchDef, bookSearchDef].forEach(registerTool);
 
 /**
  * `abrir_url` (F1) é CONDICIONAL: só entra no registry quando o Leitor está configurado
@@ -471,6 +463,30 @@ export function registrarBaixarParaBase(env: Record<string, string | undefined> 
 }
 registrarBaixarParaBase();
 
+// Vídeo do YouTube: registrada SEMPRE. O piso (oEmbed: título e canal) não depende de configuração
+// nenhuma — a chave `YOUTUBE_API_KEY` só acrescenta descrição, duração e data. E não passa pelo
+// Leitor: o host é fixo no código, só o ID vem da conversa (ver lib/agent/toolsVideo).
+registerTool(descreverVideoDef);
+
 // Anexo (F3): registradas SEMPRE — quem decide é `disponivelNoTurno`, não o boot. Não há
 // configuração pra depender: ou a conversa tem arquivo, ou não tem.
 [listarAnexosDef, lerAnexoDef].forEach(registerTool);
+
+// Básicas do dia a dia (calcular/converter/data_hora): PURAS — zero rede, zero configuração de
+// servidor de que dependam, então registradas SEM condição, como as demais tools de raciocínio.
+// É o kit que todo assistente sério tem e que o harness não tinha; entram em TOOLS_BASE (capacidades).
+TOOLS_BASICAS.forEach(registerTool);
+
+/**
+ * `descrever_imagem` (be my eyes) é CONDICIONAL a DUAS coisas: a credencial Vertex (sem ela a visão
+ * não chama) E a flag `VISAO_HARNESS`, que liga o roteamento de imagem pro harness no hot-path do
+ * chat. Flag off → a imagem segue no multimodal legado e esta tool nem se registra, então o cardápio
+ * não promete "eu vejo" por um caminho que não existe ainda: prod fica byte-a-byte igual ao de hoje.
+ * `disponivelNoTurno` ainda decide por-turno (só há tool quando há imagem), como o anexo da F3.
+ */
+export function registrarDescreverImagem(env: Record<string, string | undefined> = process.env): boolean {
+  if (!visaoDisponivel(env) || !visaoNoHarnessLigado(env)) return false;
+  registerTool(descreverImagemDef);
+  return true;
+}
+registrarDescreverImagem();

@@ -1,0 +1,133 @@
+{
+  "modulos": [
+    {
+      "titulo": "HTML semântico: a estrutura que dá sentido",
+      "estudo": "Uma página de portfólio é seu cartão de visitas na web, e o primeiro passo é a ESTRUTURA — o HTML. A lição mais importante aqui é usar HTML SEMÂNTICO: tags que dizem o QUE cada parte é, não só como ela parece.\n\nO iniciante enche tudo de `<div>`. O certo é usar as tags que têm significado: `<header>` para o topo (seu nome, navegação), `<main>` para o conteúdo principal, `<section>` para cada bloco (sobre, projetos, contato), `<nav>` para o menu, `<footer>` para o rodapé. Títulos seguem uma hierarquia: um `<h1>` por página (seu nome), `<h2>` para as seções, e assim por diante — nunca pulando níveis por estética.\n\nPor que isso importa, de verdade? Três motivos concretos: leitores de tela (acessibilidade) navegam pela semântica — uma pessoa cega pula de `<section>` em `<section>`, impossível num mar de `<div>`; buscadores (Google) entendem melhor uma página estruturada; e VOCÊ, daqui a seis meses, lê `<header>` e sabe na hora o que é, enquanto `<div class=\"topo-azul\">` não diz nada.\n\nA regra que fica: use a tag que DESCREVE o conteúdo (header, main, section, nav, footer), um h1 por página e hierarquia de títulos sem pular níveis. Estrutura com significado, não div por tudo.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Por que preferir `<header>`, `<main>`, `<section>` em vez de `<div>` para tudo?",
+            "options": [
+              { "text": "Tags semânticas dizem o que cada parte É — ajudam acessibilidade, buscadores e a sua própria leitura", "isCorrect": true, "explanation": "Significado na estrutura serve leitor de tela, SEO e manutenção." },
+              { "text": "<div> é uma tag obsoleta", "isCorrect": false, "explanation": "div ainda existe e serve; só não carrega significado." },
+              { "text": "Tags semânticas deixam a página mais rápida", "isCorrect": false, "explanation": "É sobre significado, não desempenho." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Quantos `<h1>` deve ter uma página de portfólio?",
+            "options": [
+              { "text": "Um — o título principal (seu nome); as seções usam <h2>", "isCorrect": true, "explanation": "Um h1 por página mantém a hierarquia clara para leitores e buscadores." },
+              { "text": "Um por seção", "isCorrect": false, "explanation": "As seções usam h2; h1 é o título da página inteira." },
+              { "text": "Quantos ficarem bonitos", "isCorrect": false, "explanation": "A hierarquia é semântica, não estética." }
+            ],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Cite duas tags semânticas (além de div) e o que cada uma marca.",
+          "accepted": ["header para o topo e footer para o rodapé", "main para o conteúdo e nav para o menu", "section para blocos e header para o topo", "header, main, section, nav, footer", "nav para navegação e footer para rodapé"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "html",
+        "inicial": "<body>\n  <header>\n    <h1>Seu Nome</h1>\n    <nav><a href=\"#projetos\">Projetos</a> <a href=\"#contato\">Contato</a></nav>\n  </header>\n  <main>\n    <section id=\"sobre\"><h2>Sobre</h2><p>...</p></section>\n    <section id=\"projetos\"><h2>Projetos</h2></section>\n  </main>\n  <footer><p>© 2026</p></footer>\n</body>",
+        "teste": "// a estrutura usa header/main/section/footer, um h1 e h2 nas seções"
+      }
+    },
+    {
+      "titulo": "CSS que se adapta: do celular ao desktop",
+      "estudo": "Com a estrutura pronta, o CSS dá a aparência. E a regra de ouro de 2020 em diante: a página precisa funcionar no CELULAR — a maioria das pessoas vai te ver pelo telefone. Isso é design RESPONSIVO.\n\nDuas ferramentas modernas fazem quase todo o trabalho:\n1. **Flexbox e Grid** para layout. Em vez de posições fixas em pixels, você diz \"estes itens se distribuem nesta linha\" (`display: flex`) ou \"esta é uma grade de colunas\" (`display: grid`). Eles se reorganizam sozinhos conforme o espaço.\n2. **Media queries** para ajustar por tamanho de tela: `@media (max-width: 600px) { ... }` aplica regras só em telas estreitas — tipicamente, uma grade de 3 colunas no desktop vira 1 coluna no celular.\n\nO princípio que organiza tudo é \"mobile-first\": escreva o CSS base pensando no celular (simples, uma coluna), e use media queries para ADICIONAR complexidade nas telas grandes. É mais fácil que o contrário (desfazer um layout de desktop no celular costuma dar mais trabalho e mais bug).\n\nE use UNIDADES relativas (`rem`, `%`, `vw`) em vez de pixels fixos onde fizer sentido — assim a página respeita o tamanho de fonte que a pessoa configurou e se adapta melhor.\n\nA regra que fica: layout com flex/grid (que se reorganiza), media queries para ajustar por tela, mobile-first (base simples, telas grandes adicionam), e unidades relativas.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "O que uma media query como `@media (max-width: 600px)` permite?",
+            "options": [
+              { "text": "Aplicar regras de CSS só em telas estreitas — ex.: virar uma grade de 3 colunas em 1 no celular", "isCorrect": true, "explanation": "É como a página se adapta a cada tamanho de tela." },
+              { "text": "Deixar a página mais rápida em telas pequenas", "isCorrect": false, "explanation": "É sobre adaptar o layout, não desempenho." },
+              { "text": "Bloquear o acesso por celular", "isCorrect": false, "explanation": "O oposto: serve justamente para o celular funcionar bem." }
+            ],
+            "marks": 3
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "O que \"mobile-first\" recomenda?",
+            "options": [
+              { "text": "Escrever o CSS base para o celular (simples) e adicionar complexidade para telas grandes com media queries", "isCorrect": true, "explanation": "Mais fácil que fazer um layout de desktop e desfazê-lo no celular." },
+              { "text": "Só fazer a versão de celular e ignorar o desktop", "isCorrect": false, "explanation": "Mobile-first atende os dois; começa pelo celular, cresce para o desktop." },
+              { "text": "Usar apenas pixels fixos", "isCorrect": false, "explanation": "Pixels fixos atrapalham a adaptação; prefira unidades relativas." }
+            ],
+            "marks": 2
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Qual propriedade CSS você usa para distribuir itens numa linha que se reorganiza sozinha?",
+          "accepted": ["display: flex", "flexbox", "display:flex", "flex", "display: grid ou flex"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "css",
+        "inicial": "/* mobile-first: base é uma coluna */\n.projetos { display: grid; grid-template-columns: 1fr; gap: 16px; }\n\n/* telas largas: três colunas */\n@media (min-width: 700px) {\n  .projetos { grid-template-columns: repeat(3, 1fr); }\n}",
+        "teste": "// no celular, uma coluna; a partir de 700px, três colunas"
+      }
+    },
+    {
+      "titulo": "Publicar: o primeiro repo e o GitHub Pages",
+      "estudo": "Uma página que só existe no seu computador não é um portfólio — ninguém pode ver. O passo final, e talvez o mais importante para quem está começando, é PUBLICAR. E o caminho que ensina duas coisas de uma vez (versionamento + hospedagem grátis) é o GitHub Pages.\n\nO fluxo:\n1. **Crie um repositório** no GitHub e coloque sua página nele. Isso te dá seu primeiro repo — e o Git passa a guardar o HISTÓRICO do seu trabalho (cada mudança salva com `git commit`, cada envio com `git push`). Mesmo sozinho, versionar vale a pena: você pode voltar no tempo se quebrar algo.\n2. **Ligue o GitHub Pages** nas configurações do repositório, apontando para a branch principal. Em um minuto, o GitHub serve seu `index.html` num endereço público (`seu-usuario.github.io/repo`), de graça.\n3. **Cada push atualiza o site.** Você edita, faz commit, push — e a versão no ar se atualiza sozinha. É seu primeiro \"deploy\".\n\nUm cuidado: o que vai para um repositório PÚBLICO é visível a todos — nunca suba senha, chave de API ou dado pessoal de terceiros. E capriche no `README`: ele é a porta de entrada de quem acha seu repo.\n\nA regra que fica: publique via repositório + GitHub Pages; versionar guarda seu histórico e permite voltar atrás; cada push atualiza o site; e nunca suba segredo para um repo público.",
+      "prova": [
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "O que o GitHub Pages faz pela sua página de portfólio?",
+            "options": [
+              { "text": "Hospeda o site num endereço público e gratuito a partir do repositório", "isCorrect": true, "explanation": "Serve seu index.html em seu-usuario.github.io/repo sem custo." },
+              { "text": "Escreve o HTML por você", "isCorrect": false, "explanation": "Você faz o site; o Pages apenas o publica." },
+              { "text": "Guarda senhas com segurança", "isCorrect": false, "explanation": "Repo público é visível; nunca suba segredo." }
+            ],
+            "marks": 2
+          }
+        },
+        {
+          "kind": "q-choice",
+          "block": {
+            "text": "Por que versionar com Git vale a pena mesmo trabalhando sozinho?",
+            "options": [
+              { "text": "Guarda o histórico — você pode voltar a uma versão anterior se quebrar algo", "isCorrect": true, "explanation": "Cada commit é um ponto de retorno seguro." },
+              { "text": "Deixa o site mais rápido", "isCorrect": false, "explanation": "Git versiona; não muda a velocidade do site." },
+              { "text": "É obrigatório para abrir o navegador", "isCorrect": false, "explanation": "Não é obrigatório para rodar; é valioso para o histórico." }
+            ],
+            "marks": 3
+          }
+        }
+      ],
+      "desafio": {
+        "kind": "q-written",
+        "block": {
+          "text": "Em uma frase: o que você NUNCA deve subir para um repositório público?",
+          "accepted": ["senha, chave de API ou dado pessoal", "segredos como chaves e senhas", "credenciais", "chave de API ou senha", "dado sensível de terceiros ou segredo"],
+          "marks": 4
+        }
+      },
+      "sandbox": {
+        "tipo": "bash",
+        "inicial": "# Seu primeiro deploy: versionar e publicar\ngit init\ngit add .\ngit commit -m \"meu portfólio\"\ngit push          # envia para o GitHub\n# Depois: Settings > Pages > branch main -> o site sobe em seu-usuario.github.io/repo\n# A cada novo push, o site se atualiza sozinho.",
+        "teste": "// após ligar o Pages, cada push atualiza a versão pública do portfólio"
+      }
+    }
+  ]
+}

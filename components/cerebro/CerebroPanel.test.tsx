@@ -118,3 +118,27 @@ describe("explicações do mapa (#661)", () => {
     expect(LEGENDA.map((l) => l.rotulo)).toEqual(["A conquistar", "Etapa atual", "Aprendida", "Aplicada", "Validada"]);
   });
 });
+
+describe("#756 · o aviso de cima do mapa some sozinho", () => {
+  it("'Aplicado! O percurso avançou.' some em 6 s", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ validacao: null }), { status: 200 }));
+      render(<CerebroPanel st={st} onFechar={() => {}} />);
+      abrirCaixa();
+      fireEvent.change(campo(), { target: { value: "fiz" } });
+      fireEvent.click(screen.getByRole("button", { name: /Enviar/ }));
+      await screen.findByText("Aplicado! O percurso avançou.");
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(screen.queryByText("Aplicado! O percurso avançou.")).not.toBeNull();
+      await vi.advanceTimersByTimeAsync(1_500);
+      expect(screen.queryByText("Aplicado! O percurso avançou.")).toBeNull();
+    } finally { vi.useRealTimers(); }
+  });
+  it("o que pede ação fica mais tempo", async () => {
+    const { tempoDoAviso } = await import("./CerebroPanel");
+    expect(tempoDoAviso("Aplicado! O percurso avançou.")).toBe(6_000);
+    expect(tempoDoAviso("Enviado pra validação do seu professor.")).toBe(6_000);
+    expect(tempoDoAviso("Aplicado! O mapa não atualizou: feche e abra de novo para ver.")).toBe(12_000);
+  });
+});

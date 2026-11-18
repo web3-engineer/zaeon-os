@@ -148,3 +148,33 @@ describe("gerarDiagrama", () => {
     expect(promptSistema(EXEMPLOS, "auto")).not.toContain("MAPA MENTAL");
   });
 });
+
+// #745: no ar, "faça um diagrama do sistema digestório" falhou com 'Node "esofago" exceeds the horizontal bounds of the
+// viewBox'. O archify pede para mexer em width/viewBox, que o prompt proíbe à IA — o conserto tem de ser do código.
+describe("#745 · nó fora da área do desenho", () => {
+  const etapas = ["Boca e glândulas salivares", "Faringe e esôfago musculoso", "Estômago com suco gástrico", "Intestino delgado e absorção", "Intestino grosso e reto final"];
+  const id = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, "_");
+  const bruto = {
+    diagram_type: "dataflow",
+    meta: { title: "Sistema digestório" },
+    stages: etapas.map((e, i) => ({ id: `s${i}`, label: e })),
+    nodes: etapas.map((e, i) => ({ id: id(e), label: e, sublabel: "digestão e transporte do alimento", stage: i, row: 0, type: "process" })),
+    flows: etapas.slice(1).map((e, i) => ({ from: id(etapas[i]!), to: id(e), label: "bolo" })),
+  };
+
+  it("o diagrama de 5 etapas com nomes longos sai (sem chamar o modelo de novo)", async () => {
+    const gerarJson = vi.fn().mockResolvedValue(bruto);
+    const r = await gerarDiagrama({ topic: "sistema digestório" }, { gerarJson: gerarJson as any, maxReparos: 0 });
+    expect(r.ok ? "ok" : r.motivo).toBe("ok");
+    expect(gerarJson).toHaveBeenCalledTimes(1);
+  }, 60_000);
+
+  it("autoReparo aumenta a área quando o archify diz o tamanho, ou quando a peça passa da borda", () => {
+    expect(autoReparo("sequence", { meta: {}, participants: [] }, "Participants exceed viewBox width — set meta.viewBox[0] to at least 1300 or remove a participant.")?.meta.viewBox).toEqual([1324, 760]);
+    expect(autoReparo("lifecycle", { meta: {}, states: [] }, 'State "x" exceeds the horizontal bounds of the diagram — reduce state.width or increase meta.viewBox[0].')?.meta.viewBox).toEqual([1140, 660]);
+    expect(autoReparo("lifecycle", { meta: { viewBox: [980, 660] }, states: [] }, 'State "x" exceeds the vertical lifecycle area — keep y between 64 and 500 (adjust yOffset or increase meta.viewBox[1]).')?.meta.viewBox).toEqual([980, 780]);
+    expect(autoReparo("architecture", { meta: {}, components: [] }, 'Component "x" falls outside the viewBox 900x600 — adjust pos/size or set a larger meta.viewBox.')?.meta.viewBox).toEqual([1060, 720]);
+    // a moldura que passou da borda direita/de baixo: o archify diz o tamanho
+    expect(autoReparo("architecture", { meta: { viewBox: [900, 600] }, components: [] }, 'Boundary "B" extends outside the viewBox (right by 40px) — … increase meta.viewBox to at least [940, 600] for right/bottom overflow')?.meta.viewBox).toEqual([964, 624]);
+  });
+});

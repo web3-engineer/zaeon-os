@@ -1,6 +1,6 @@
 "use client";
 
-import { mentoresTab, lojaLabel } from "@/lib/mentores/rota";
+import { EVT_MARKETPLACE, HREF_DO_ITEM, ROTA_MARKETPLACE, estaNoMarketplace, itemAtivo, pedirSairDoMarketplace, type ItemMenu } from "@/lib/ui/marketplaceRota";
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -132,15 +132,32 @@ export const Navbar = () => {
   const handlePrevTrack = () => trocarFaixa((currentTrackIndex - 1 + TRACKS.length) % TRACKS.length);
 
   const getTrackName = () => TRACKS[currentTrackIndex].split('/').pop()?.replace('.mp3', '') || 'Track';
-  const getLinkClassName = (path: string) => {
-    const active = pathname.startsWith(path);
+  // #824: dentro do laboratório, o Marketplace é uma aba (não muda a página) — ele avisa, e o menu acende o item certo
+  const [noMarketplace, setNoMarketplace] = useState(false);
+  useEffect(() => {
+    setNoMarketplace(estaNoMarketplace());
+    const f = (e: Event) => setNoMarketplace((e as CustomEvent<boolean>).detail);
+    window.addEventListener(EVT_MARKETPLACE, f);
+    return () => window.removeEventListener(EVT_MARKETPLACE, f);
+  }, []);
+  const { t } = useTranslation();
+  const ativo = itemAtivo(pathname, noMarketplace);
+  // "Laboratório" com a vitrine aberta: o link vai pra MESMA página — o laboratório precisa do pedido pra sair dela
+  const irAoLaboratorio = () => { if (ativo === "marketplace" && pathname.startsWith("/research-lab")) pedirSairDoMarketplace(); };
+  const itens: { id: ItemMenu; href: string; rotulo: string; aoClicar?: () => void }[] = [
+    { id: "docs", href: "/docs", rotulo: t("siteNav.docs") },
+    { id: "about", href: "/about", rotulo: t("siteNav.about") },
+    { id: "laboratorio", href: "/research-lab", rotulo: t("siteNav.lab"), aoClicar: irAoLaboratorio },
+    { id: "marketplace", href: ROTA_MARKETPLACE, rotulo: t("siteNav.market") },
+    { id: "news", href: "/news", rotulo: t("siteNav.news") },
+  ];
+  const getLinkClassName = (item: ItemMenu) => {
+    const active = ativo === item;
     return `transition-all uppercase tracking-[0.2em] text-[10px] font-black ${active ? "text-cyan-500 scale-110" : "text-foreground/50 hover:text-cyan-400"}`;
   };
 
 
   if (!mounted) return null;
-  // /m é o app mobile: tem cabeçalho próprio (coluna única, sem navbar do site).
-  if (pathname === "/m" || pathname?.startsWith("/m/")) return null;
   // Lounge Cósmico é tela cheia imersiva: sem chrome global.
   if (ehRotaImersiva(pathname)) return null;
   // ferramentas internas de dev (ex.: estúdio de avatar /dev/avatares) — tela cheia, sem o menu do site
@@ -153,39 +170,26 @@ export const Navbar = () => {
       }`}
     >
       {/* Navbar CHAPADA: barra full-width, hairline embaixo, sem pílula/borda redonda/sombra pesada. */}
-      {/* Apple liquid glass: translúcido, backdrop-blur + saturação, borda fina e um
-          fio de luz especular no topo. Vale nos dois modos (whitish no claro, esfumado
-          no escuro) — o material é o mesmo do 'Iniciar' e do menu principal. */}
-      <div className="pointer-events-auto w-full h-[64px] flex items-center backdrop-blur-md backdrop-saturate-[1.6]
-          bg-white/50 dark:bg-white/[0.06]
-          border-b border-white/60 dark:border-white/[0.12]
-          shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.28)]">
+      {/* A barra usa a COR DO TEMA (var(--background)) com leve transparência + blur — nada de tingir de roxo
+          por cima do fundo da landing (o `backdrop-saturate` fazia o branco translúcido puxar pro lavanda). */}
+      <div className="pointer-events-auto w-full h-[64px] flex items-center backdrop-blur-md
+          bg-background/80
+          border-b border-black/10 dark:border-white/[0.12]
+          shadow-[inset_0_1px_0_0_rgba(255,255,255,0.75)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.14)]">
         <div className="w-full zaeon-borda flex items-center justify-between">
 
           <Link href="/" className="transition-opacity hover:opacity-80">
-            <Image src={logoPng} alt="logo" width={220} height={100} priority className="h-9 w-auto invert dark:invert-0" />
+            <Image src={logoPng} alt="Zaeon" width={220} height={100} priority className="h-9 w-auto invert dark:invert-0" />
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-7">
-            {/* ordem do dono: Documentação › Sobre nós ("Como funciona" saiu da navbar a pedido do dono; a seção #como-funciona continua na landing) */}
-            <Link href="/docs" className={getLinkClassName("/docs")}>Documentação</Link>
-            <Link href="/about" className={getLinkClassName("/about")}>Sobre nós</Link>
-            {/* acesso direto ao laboratório, pra quem não quiser usar o cyberespaço */}
-            <Link href="/research-lab" className={getLinkClassName("/research-lab")}>Laboratório</Link>
-            {/* "Assistentes" = a antiga Loja de Plugins (o /plugin-store continua no ar pros links antigos) */}
-            <Link href={mentoresTab() ? "/mentores" : "/assistentes"} className={getLinkClassName(pathname.startsWith("/plugin-store") ? "/plugin-store" : mentoresTab() ? "/mentores" : "/assistentes")}>{lojaLabel()}</Link>
-            <Link href="/news" className={getLinkClassName("/news")}>Notícias</Link>
+          <nav aria-label={t("siteNav.site")} className="hidden lg:flex items-center gap-7">
+            {itens.map(({ id, href, rotulo, aoClicar }) => (
+              <Link key={id} href={href} onClick={aoClicar} className={getLinkClassName(id)} aria-current={ativo === id ? "page" : undefined}>{rotulo}</Link>
+            ))}
           </nav>
 
           <div className="flex items-center gap-1.5">
-            {/* #713: no celular os links do topo somem; ficam neste menu */}
-            <MenuLinks itens={[
-              { href: "/docs", rotulo: "Documentação" },
-              { href: "/about", rotulo: "Sobre nós" },
-              { href: "/research-lab", rotulo: "Laboratório" },
-              { href: mentoresTab() ? "/mentores" : "/assistentes", rotulo: lojaLabel() },
-              { href: "/news", rotulo: "Notícias" },
-            ]} />
+            <MenuLinks atual={ativo ? HREF_DO_ITEM[ativo] : null} itens={itens} />
             <ThemeToggle />
             {/* engrenagem: voz, idioma, convite, Modo CEO (founder), sair — as opções do menu principal */}
             <ConfigMenu />
@@ -196,9 +200,10 @@ export const Navbar = () => {
   );
 };
 /** #713: os links do topo no celular (abaixo de lg a barra não tem espaço pra eles) */
-function MenuLinks({ itens }: { itens: { href: string; rotulo: string }[] }) {
+function MenuLinks({ itens, atual }: { itens: { href: string; rotulo: string; aoClicar?: () => void }[]; atual: string | null }) {
   const [aberto, setAberto] = useState(false);
   const raiz = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
   const pathname = usePathname();
   useEffect(() => { setAberto(false); }, [pathname]);
   useEffect(() => {
@@ -210,15 +215,15 @@ function MenuLinks({ itens }: { itens: { href: string; rotulo: string }[] }) {
   }, [aberto]);
   return (
     <div ref={raiz} className="relative lg:hidden">
-      <button type="button" onClick={() => setAberto((v) => !v)} aria-expanded={aberto} aria-controls="menu-links-site" aria-label={aberto ? "Fechar o menu" : "Abrir o menu"}
+      <button type="button" onClick={() => setAberto((v) => !v)} aria-expanded={aberto} aria-controls="menu-links-site" aria-label={t(aberto ? "siteNav.close" : "siteNav.open")}
         className="w-11 h-11 rounded-full flex items-center justify-center text-[20px] leading-none text-slate-700 dark:text-white/85 hover:bg-slate-900/5 dark:hover:bg-white/10">
         ☰
       </button>
       {aberto && (
-        <nav id="menu-links-site" aria-label="Páginas do site"
-          className="absolute right-0 top-12 w-56 overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-[#0b1020]/95 backdrop-blur-xl shadow-2xl py-1">
+        <nav id="menu-links-site" aria-label={t("siteNav.site")}
+          className="absolute right-0 top-12 w-56 overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-skpopover/95 backdrop-blur-xl shadow-2xl py-1">
           {itens.map((i) => (
-            <Link key={i.href} href={i.href} onClick={() => setAberto(false)} aria-current={pathname === i.href ? "page" : undefined}
+            <Link key={i.href} href={i.href} onClick={() => { i.aoClicar?.(); setAberto(false); }} aria-current={atual === i.href ? "page" : undefined}
               className="flex min-h-[44px] items-center px-4 text-[14px] font-semibold text-slate-700 dark:text-white/85 hover:bg-slate-900/5 dark:hover:bg-white/10 aria-[current=page]:text-cyan-600 dark:aria-[current=page]:text-cyan-300">
               {i.rotulo}
             </Link>

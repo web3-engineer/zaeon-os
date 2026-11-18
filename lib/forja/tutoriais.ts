@@ -1,0 +1,42 @@
+/**
+ * lib/forja/tutoriais.ts — cards de TUTORIAL DE ARQUIVO prontos (bundlados na imagem), por cursoId. O
+ * curso é o repo real, ensinado arquivo por arquivo; estes cards são o conteúdo FINAL servido quando não
+ * há cache gerado. A harmonia (snippets concatenados = o arquivo real executável) é conferida por teste.
+ * Client-safe: só importa JSON, sem fs.
+ */
+import { cardFinalDoCurso } from "./projetosCurados";
+import type { CardDeArquivo } from "./tutorialArquivo";
+import binarySearch from "./tutoriais/binary-search.json";
+import insertionSort from "./tutoriais/insertion-sort.json";
+import euclidesMdc from "./tutoriais/euclides-mdc.json";
+import calculadoraInterface from "./tutoriais/calculadora-interface.json";
+import calculadora from "./tutoriais/calculadora.json";
+import jogoDaVelha from "./tutoriais/jogo-da-velha.json";
+import quiz from "./tutoriais/quiz.json";
+import markdownParaHtml from "./tutoriais/markdown-para-html.json";
+import listaDeTarefas from "./tutoriais/lista-de-tarefas.json";
+
+// cast via unknown (padrão do understand.sample.json): o JSON tem tipos literais que o import alarga.
+const card = (j: unknown) => j as unknown as CardDeArquivo;
+
+export const TUTORIAIS: Record<string, CardDeArquivo[]> = {
+  // Algoritmos clássicos: os três que a skill promete — busca, ordenação e MDC — cada um um arquivo real.
+  "algoritmos-classicos": [card(binarySearch), card(insertionSort), card(euclidesMdc)],
+  // Calculadora (iniciante): a lógica pura das 4 operações, em JavaScript, digitada e rodada no navegador.
+  "calculadora": [card(calculadora), card(calculadoraInterface)],
+  // Jogo da velha (iniciante): a regra que decide o vencedor — lógica pura em JavaScript.
+  "jogo-da-velha": [card(jogoDaVelha)],
+  // Quiz (iniciante): a pontuação (acertos/total), separada das telas.
+  "quiz": [card(quiz)],
+  // Markdown → HTML (iniciante): o mini conversor (títulos, parágrafos, negrito).
+  "markdown-para-html": [card(markdownParaHtml)],
+  // Lista de tarefas (iniciante): adicionar/marcar/remover de forma imutável.
+  "lista-de-tarefas": [card(listaDeTarefas)],
+};
+
+/** Os cards de tutorial de arquivo de um curso (vazio se ainda não houver). PURA. */
+export function tutoriaisDoCurso(cursoId: string): CardDeArquivo[] {
+  const existentes = TUTORIAIS[cursoId] ?? [];
+  const final = cardFinalDoCurso(cursoId);
+  return final ? [...existentes, final] : existentes;
+}

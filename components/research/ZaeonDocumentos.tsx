@@ -10,11 +10,18 @@
  * Sem OffscreenCanvas com WebGL (navegador antigo), o retrato estático dela — nunca o 3D na thread principal.
  */
 import { useEffect, useRef, useState } from "react";
-import { EVT_ZAEON_ESCREVENDO, gerandoAgora, nomeDaPersona, type PersonaId } from "@/lib/research/zaeonEventos";
+import { EVT_ZAEON_ESCREVENDO, EVT_ZAEON_MICROFONE, gerandoAgora, nomeDaPersona, type DetalheMicrofone, type PersonaId } from "@/lib/research/zaeonEventos";
 import type { DaCena, ParaCena } from "./avatarMensagens";
 import { segurarPrecarga } from "@/lib/cyber/precarga";
 
 const CIANO = "#7fe8ff";
+/**
+ * #764 · a pose do microfone é a MÃO NA CABEÇA: o clipe `fidget_hair` (2,8 s) — a mão direita chega à cabeça em ~1,2 s e
+ * fica lá até ~1,6 s (medido no cotovelo, em public/zaeon/movimento/annie-blender/fidget_hair.json). Congela no meio
+ * disso. Antes (#756) era o "pensar" (`think`) congelado em 1 s: mão no queixo, braço cruzado — não o gesto pedido.
+ */
+export const GESTO_DO_MICROFONE = "fidget_hair";
+export const POSE_PENSATIVA_MS = 1400;
 /** dá pra rodar a cena num worker? (OffscreenCanvas transferível + WebGL nele) */
 function temOffscreen(): boolean {
   if (typeof window === "undefined" || typeof OffscreenCanvas === "undefined" || !("transferControlToOffscreen" in HTMLCanvasElement.prototype)) return false;
@@ -85,12 +92,30 @@ export default function ZaeonDocumentos({ persona, lendo = false, reagir = 0 }: 
     const ro = new ResizeObserver(() => w.postMessage({ tipo: "tamanho", largura: el.clientWidth, altura: el.clientHeight } satisfies ParaCena));
     ro.observe(el);
     let naTela = true;
-    const avisar = () => w.postMessage({ tipo: "visivel", visivel: naTela && !document.hidden } satisfies ParaCena);
+    // #756 · MICROFONE ligado: ela fica congelada na pose de pensativa (não desenha), senão o microfone não traz texto
+    let microfone = false, congelar = 0;
+    const avisar = () => w.postMessage({ tipo: "visivel", visivel: naTela && !document.hidden && !microfone } satisfies ParaCena);
     const io = new IntersectionObserver(([en]) => { naTela = !!en?.isIntersecting; avisar(); }, { threshold: 0.01 }); io.observe(el);
     document.addEventListener("visibilitychange", avisar);
+    const aoMicrofone = (e: Event) => {
+      const d = (e as CustomEvent<DetalheMicrofone>).detail;
+      if (!d || d.ligado === microfone) return;
+      clearTimeout(congelar);
+      if (d.ligado) {
+        // a pose (#764): a mão na cabeça — o gesto `fidget_hair`, congelado em POSE_PENSATIVA_MS
+        w.postMessage({ tipo: "gesto", nome: GESTO_DO_MICROFONE } satisfies ParaCena);
+        if (!naTela || document.hidden) { microfone = true; avisar(); return; }   // ninguém vê: congela já, sem esperar
+        d.esperar.push(new Promise<void>((pronto) => { congelar = window.setTimeout(() => { microfone = true; avisar(); pronto(); }, POSE_PENSATIVA_MS); }));
+      } else {
+        microfone = false; avisar();
+        w.postMessage({ tipo: "sinais", lendo: lendoRef.current, escrevendo: gerandoRef.current } satisfies ParaCena);
+      }
+    };
+    window.addEventListener(EVT_ZAEON_MICROFONE, aoMicrofone);
     if (process.env.NODE_ENV !== "production") (window as unknown as { __avatarWorker?: Worker }).__avatarWorker = w;
     return () => {
       ro.disconnect(); io.disconnect(); document.removeEventListener("visibilitychange", avisar);
+      window.removeEventListener(EVT_ZAEON_MICROFONE, aoMicrofone); clearTimeout(congelar);
       soltar?.(); soltar = null;
       w.postMessage({ tipo: "fim" } satisfies ParaCena); setTimeout(() => w.terminate(), 500); worker.current = null; cv.remove();
     };

@@ -168,7 +168,7 @@ export const INTENTS: Record<IntentId, IntentSpec> = {
   pesquisar_fontes:  { id: "pesquisar_fontes",  mode: "elaborated", tools: ["literature_search", "web_search"],                                                         critic: "leve", required: ["nucleo", "sources"], reviseThreshold: 6, maxRevisions: 1 },
   // achar UM LIVRO e entregar o caminho legal até ele (lib/livros): 1 busca, sem crítico — a lista sai do código, não do modelo
   buscar_livro:      { id: "buscar_livro",      mode: "elaborated", tools: ["book_search"],                                                               critic: "off",  required: ["nucleo"] },
-  revisar:           { id: "revisar",           mode: "research",   tools: ["examiner", "memory_search"],                                                 critic: "full", required: ["nucleo", "evidencia"] },
+  revisar:           { id: "revisar",           mode: "research",   tools: ["memory_search"],                                                             critic: "full", required: ["nucleo", "evidencia"] },
 };
 
 export const INTENT_IDS = Object.keys(INTENTS) as IntentId[];

@@ -14,19 +14,46 @@
  */
 import { useCallback, useRef, useState } from "react";
 
-type Opts = { lang?: string; continuous?: boolean; onResult?: (text: string, final: boolean) => void };
+type Opts = {
+  lang?: string; continuous?: boolean; onResult?: (text: string, final: boolean) => void;
+  /**
+   * #749: ouve no modo CONTÍNUO e desliga sozinho depois desta pausa (ms) sem fala nova. No modo de uma frase só, o
+   * Edge às vezes fechava antes da hora e devolvia vazio; contínuo (como a página de teste do Google, que funcionou)
+   * erra menos — e a pausa continua desligando, como a tela promete.
+   */
+  pausaMs?: number;
+};
+
+/** #756 · ouviu fala e o texto não veio: desliga depois destes prazos (com "Não entendi") */
+export const SEM_TEXTO_DEPOIS_DA_FALA_MS = 5000;
+export const SEM_TEXTO_DESDE_A_FALA_MS = 12000;
 
 /** por que o microfone parou sem a pessoa pedir */
-export type AvisoSTT = "desligou" | "negado" | "sem-som" | "sem-microfone" | "sem-rede" | "falhou";
+export type AvisoSTT = "desligou" | "nao-entendi" | "negado" | "sem-som" | "sem-microfone" | "sem-rede" | "falhou";
 
 export const TEXTO_AVISO_STT: Record<AvisoSTT, string> = {
   desligou: "O microfone desligou depois da pausa. Toque nele para falar de novo.",
+  // #749: o navegador OUVIU fala (speechstart) mas devolveu o texto vazio — antes aparecia "desligou depois da pausa"
+  "nao-entendi": "Não entendi o que você falou. Toque no microfone e tente de novo, falando um pouco mais devagar.",
   negado: "O microfone está bloqueado. Libere o microfone para este site nas configurações do navegador.",
   "sem-som": "Não ouvi nada. Toque no microfone e fale perto dele.",
   "sem-microfone": "O navegador não encontrou um microfone funcionando. Confira se ele está ligado e escolhido no computador.",
   "sem-rede": "Sem internet, o navegador não consegue transformar a fala em texto.",
   falhou: "Não deu para usar o microfone agora. Tente de novo.",
 };
+
+/**
+ * #764 · junta os pedaços da fala com espaço entre eles. O Edge manda cada frase num resultado sem o espaço da frente
+ * e o texto saía grudado: "Faça um diagrama para mim.Por favor.Ok." — agora "… para mim. Por favor. Ok.".
+ */
+export function juntarFala(pedacos: string[]): string {
+  let out = "";
+  for (const p of pedacos) {
+    if (!p) continue;
+    out += out && !/\s$/.test(out) && !/^\s/.test(p) ? ` ${p}` : p;
+  }
+  return out;
+}
 
 /** o erro do navegador (SpeechRecognitionErrorEvent.error) no aviso de quem usa */
 export function avisoDoErro(erro: string | undefined): AvisoSTT | null {
@@ -64,23 +91,51 @@ export function useSTT(opts?: Opts) {
     try { recRef.current?.stop(); } catch { /* ignore */ }
     const rec = new SR();
     rec.lang = optsRef.current?.lang || "pt-BR";
-    rec.continuous = !!optsRef.current?.continuous;
+    const pausaMs = optsRef.current?.pausaMs;
+    rec.continuous = !!optsRef.current?.continuous || !!pausaMs;
     rec.interimResults = true;
     let falhou: AvisoSTT | null = null;
+    // #749: houve fala (o navegador detectou voz) e chegou texto? — "falou e não veio nada" é "não entendi", não "pausa"
+    let falou = false, teveTexto = false;
+    let pausa: ReturnType<typeof setTimeout> | undefined;
+    const armarPausa = () => {
+      if (!pausaMs) return;
+      clearTimeout(pausa);
+      pausa = setTimeout(() => { if (recRef.current === rec) { try { rec.stop(); } catch { /* ignore */ } } }, pausaMs);
+    };
+    // #756: ouviu fala mas o texto NÃO chega (falha do serviço de voz, ou a máquina sem fôlego): antes ficava "Ouvindo…"
+    // para sempre — a pausa só conta depois de chegar texto, e o "não ouvi nada" só vale quando ninguém falou. Agora,
+    // sem texto 5 s depois do fim da fala (ou 12 s depois do começo, se o fim nunca vier), desliga: "Não entendi".
+    let semTexto: ReturnType<typeof setTimeout> | undefined;
+    const armarSemTexto = (ms: number) => {
+      if (!pausaMs || teveTexto) return;
+      clearTimeout(semTexto);
+      semTexto = setTimeout(() => { if (recRef.current === rec && !teveTexto) { try { rec.stop(); } catch { /* ignore */ } } }, ms);
+    };
+    rec.onspeechstart = () => { falou = true; armarSemTexto(SEM_TEXTO_DESDE_A_FALA_MS); };
+    rec.onspeechend = () => armarSemTexto(SEM_TEXTO_DEPOIS_DA_FALA_MS);
+    // no contínuo, ninguém fala nada: desliga em 10 s com "não ouvi nada" (sem depender do navegador mandar `no-speech`)
+    const silencio = pausaMs ? setTimeout(() => {
+      if (recRef.current === rec && !falou && !teveTexto) { falhou = "sem-som"; try { rec.stop(); } catch { /* ignore */ } }
+    }, 10000) : undefined;
     rec.onresult = (e: any) => {
       // #733: junta TODOS os trechos (antes, só a partir de `resultIndex` — no modo contínuo, o que já tinha sido
       // fechado sumia da caixa quando a pessoa continuava falando)
-      let txt = "";
-      for (let i = 0; i < e.results.length; i++) txt += e.results[i][0].transcript;
+      const pedacos: string[] = [];
+      for (let i = 0; i < e.results.length; i++) pedacos.push(String(e.results[i][0].transcript ?? ""));
+      const txt = juntarFala(pedacos);
       const final = !!e.results[e.results.length - 1]?.isFinal;
-      if (txt.trim()) setOuviu(true);
+      if (txt.trim()) { setOuviu(true); teveTexto = true; clearTimeout(semTexto); }
       optsRef.current?.onResult?.(txt.trim(), final);
+      armarPausa();
     };
     rec.onerror = (e: any) => { falhou = avisoDoErro(e?.error); };
     rec.onend = () => {
+      clearTimeout(pausa); clearTimeout(silencio); clearTimeout(semTexto);
       if (recRef.current !== rec) return;   // um mais novo já assumiu
       setListening(false);
-      if (!pediuParar.current) setAviso(falhou ?? "desligou");
+      // #764: desligou pela pausa DEPOIS de trazer texto é o caminho certo — sem aviso (parecia erro)
+      if (!pediuParar.current) setAviso(falhou ?? (teveTexto ? null : falou ? "nao-entendi" : "desligou"));
     };
     recRef.current = rec;
     pediuParar.current = false;

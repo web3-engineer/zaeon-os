@@ -12,8 +12,10 @@ import {
 } from "@/components/studio/StudioArtifactViews";
 import MoleculeView from "@/components/studio/MoleculeView";
 import CadView from "@/components/studio/CadView";
+import AnatomiaView from "@/components/studio/AnatomiaView";
 import DiagramView from "@/components/studio/DiagramView";
 import AulaView from "@/components/aula-interativa/AulaView";
+import CadernoView from "@/components/studio/CadernoView";
 import { artifactToText } from "@/lib/studio/artifact-text";
 import type { TextKind } from "@/lib/studio/transformations";
 import useTTS from "@/lib/voice/useTTS";
@@ -38,7 +40,10 @@ const KIND_META: Record<string, { emoji: string; label: string }> = {
   molecule: { emoji: "⚛️", label: "Molécula" },
   diagram: { emoji: "🧭", label: "Diagrama interativo" },
   aula: { emoji: "🎓", label: "Aula interativa" },
+  caderno: { emoji: "📓", label: "Caderno da Jornada" },
   cad: { emoji: "📐", label: "Peça CAD" },
+  anatomia: { emoji: "🫁", label: "Estrutura anatômica" },
+  forja: { emoji: "🛠️", label: "Repositório" },
 };
 
 const TEXT_KINDS = new Set(["guide", "faq", "flashcards", "mindmap", "timeline"]);
@@ -53,11 +58,16 @@ function renderView(b: StudioBlockData) {
     case "timeline": return <TimelineView data={b.data} />;
     case "podcast": return <PodcastView audioUrl={fileUrl} data={b.data} />;
     case "video": return <VideoView url={fileUrl} />;
-    case "image": return <ImageView dataUrl={b.dataUrl || ""} prompt={b.data?.prompt} />;
+    // #749: reaberta do servidor, a imagem volta só com o número — o arquivo vem de /api/studio/<id>/file
+    case "image": return <ImageView dataUrl={b.dataUrl || fileUrl} prompt={b.data?.prompt} />;
     case "molecule": return b.data?.sdf ? <MoleculeView data={b.data} /> : <div className="text-[12px] text-slate-400">Estrutura indisponível.</div>;
     case "diagram": return b.artifactId ? <DiagramView artifactId={b.artifactId} titulo={b.title} /> : <div className="text-[12px] text-slate-400">Diagrama indisponível.</div>;
     case "aula": return b.artifactId ? <AulaView artifactId={b.artifactId} dados={b.data} /> : <div className="text-[12px] text-slate-400">Aula indisponível.</div>;
+    case "caderno": return <CadernoView data={b.data} artifactId={b.artifactId} />;
     case "cad": return <CadView data={b.data || {}} />;
+    // A placa desenha mesmo sem cena (mostra nome, malhas e fonte); o portão do 3D é que depende de
+    // `estado.selected`, e o próprio AnatomiaView decide isso. Então não há ramo "indisponível" aqui.
+    case "anatomia": return <AnatomiaView data={b.data || {}} artifactId={b.artifactId} />;
     default: return <div className="text-[12px] text-slate-400">Conteúdo indisponível.</div>;
   }
 }
@@ -110,7 +120,7 @@ export default function StudioBlock({
         a.href = block.dataUrl;
         a.download = `${safeName(block.title)}.png`;
         a.click();
-      }
+      } else if (block.artifactId) window.open(`/api/studio/${block.artifactId}/file?download=1`, "_blank");
       return;
     }
     if (k === "molecule") {

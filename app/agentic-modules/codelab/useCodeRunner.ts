@@ -48,12 +48,12 @@ async function getPyodide(): Promise<any> {
 }
 
 // ─── JS sandbox template ──────────────────────────────────────────────────────
-function buildSandboxHTML(code: string): string {
+function buildSandboxHTML(code: string, lang: Language): string {
   // TypeScript → strip basic type annotations (simplistic, good enough for sandbox)
-  const jsCode = code
+  const jsCode = lang === "typescript" ? code
     .replace(/:\s*(string|number|boolean|void|any|null|undefined|never)\b/g, '')
     .replace(/<[A-Z][^>]*>/g, '') // remove generic type params
-    .replace(/^(interface|type)\s+\w+[^{]*\{[^}]*\}\s*$/gm, '');
+    .replace(/^(interface|type)\s+\w+[^{]*\{[^}]*\}\s*$/gm, '') : code;
 
   return `<!DOCTYPE html>
 <html>
@@ -77,10 +77,9 @@ function buildSandboxHTML(code: string): string {
     window.parent.postMessage({ type: 'stderr', text: \`\${msg} (line \${line})\` }, '*');
     return true;
   };
+  (async () => {
   try {
-    const __result = (function() {
-      ${jsCode}
-    })();
+    const __result = await new Function(${JSON.stringify(jsCode).replace(/</g, "\\u003c")})();
     if (__result !== undefined) {
       window.parent.postMessage({ type: 'result', text: JSON.stringify(__result, null, 2) }, '*');
     }
@@ -89,6 +88,7 @@ function buildSandboxHTML(code: string): string {
     window.parent.postMessage({ type: 'stderr', text: e.message }, '*');
     window.parent.postMessage({ type: 'done' }, '*');
   }
+  })();
 <\/script>
 </body>
 </html>`;
@@ -108,6 +108,7 @@ export function useCodeRunner() {
     getPyodide()
       .then(py => { pyRef.current = py; setIsPyodideReady(true); })
       .catch(e  => { setPyodideError(e.message ?? 'Pyodide failed to load'); });
+    return () => { iframeRef.current?.remove(); iframeRef.current = null; };
   }, []);
 
   const clearOutput = useCallback(() => setOutput([]), []);
@@ -126,6 +127,7 @@ export function useCodeRunner() {
     code: string,
     lang: Language,
     files?: { path: string; content: string }[],
+    pythonPackages?: string[],
   ): Promise<RunOutput[]> => {
     if (isRunning) return [];
     setIsRunning(true);
@@ -147,6 +149,7 @@ export function useCodeRunner() {
           return collected;
         }
         const py = pyRef.current;
+        if (pythonPackages?.length) await py.loadPackage(pythonPackages);
         // Mount the other workspace .py files into Pyodide's FS so imports resolve.
         if (files?.length) {
           for (const f of files) {
@@ -191,7 +194,7 @@ sys.stderr = _stderr_buf
 
       // ── JS / TS via sandboxed iframe ─────────────────────────────────────
       if (lang === 'javascript' || lang === 'typescript') {
-        const html  = buildSandboxHTML(code);
+        const html  = buildSandboxHTML(code, lang);
         const blob  = new Blob([html], { type: 'text/html' });
         const url   = URL.createObjectURL(blob);
 
@@ -212,6 +215,7 @@ sys.stderr = _stderr_buf
             if (ev.source !== iframe?.contentWindow) return;
             const { type, text } = ev.data ?? {};
             if (type === 'done') {
+              clearTimeout(timeout);
               window.removeEventListener('message', handler);
               cleanup();
               resolve();
@@ -221,7 +225,12 @@ sys.stderr = _stderr_buf
           };
           window.addEventListener('message', handler);
           // Timeout safety
-          setTimeout(() => { window.removeEventListener('message', handler); resolve(); }, 8000);
+          const timeout = setTimeout(() => {
+            window.removeEventListener('message', handler);
+            cleanup();
+            emit('stderr', 'Execution timed out.');
+            resolve();
+          }, 8000);
         });
 
         iframe.src = url;

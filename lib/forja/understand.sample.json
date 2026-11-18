@@ -1,0 +1,316 @@
+{
+  "version": "2.5.0",
+  "kind": "codebase",
+  "project": {
+    "name": "micrograd",
+    "languages": ["Python"],
+    "frameworks": ["PyTorch (test-only, for gradient checking)"],
+    "description": "A tiny scalar-valued automatic differentiation (autograd) engine plus a minimal PyTorch-like neural network library built on top of it. Each number is wrapped in a Value node that records how it was computed, so the whole computation forms a DAG that can be differentiated by reverse-mode autodiff. Written by Andrej Karpathy as a teaching tool to demystify backpropagation in ~150 lines of real code."
+  },
+  "nodes": [
+    {
+      "id": "file:micrograd/engine.py",
+      "type": "file",
+      "name": "engine.py",
+      "filePath": "micrograd/engine.py",
+      "lineRange": [1, 95],
+      "summary": "The heart of micrograd: a single file defining the Value class, which is a scalar number that also remembers how it was produced. This is what makes automatic differentiation possible: as you do arithmetic, each Value quietly builds a graph of its parents, and that graph is later walked backward to compute gradients. Everything else in the project is built on this one abstraction.",
+      "tags": ["autograd", "core", "engine"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "symbol:micrograd/engine.py#Value",
+      "type": "class",
+      "name": "Value",
+      "filePath": "micrograd/engine.py",
+      "lineRange": [2, 94],
+      "summary": "A wrapper around one scalar that stores both the number (data) and its gradient (grad), plus bookkeeping about which other Values produced it (_prev) and via which operation (_op). By overloading Python's arithmetic operators, ordinary-looking math like a*b + c silently builds a directed acyclic graph of Value nodes. This graph is the 'tape' that reverse-mode autodiff later replays to assign a gradient to every input.",
+      "tags": ["autograd", "core", "data-structure", "DAG"],
+      "complexity": "complex",
+      "languageNotes": "Uses Python operator overloading (dunder methods like __add__, __mul__, __pow__) so that Value objects behave like plain numbers in expressions, while secretly recording the computation graph."
+    },
+    {
+      "id": "symbol:micrograd/engine.py#Value.__init__",
+      "type": "function",
+      "name": "Value.__init__",
+      "filePath": "micrograd/engine.py",
+      "lineRange": [5, 11],
+      "summary": "The constructor that sets up a node: it stores the scalar in self.data, initializes self.grad to 0 (no gradient computed yet), sets a no-op _backward closure, and records the set of child Values (_prev) and the operation name (_op). Those last two fields are what turn a lone number into a node in a differentiable graph.",
+      "tags": ["autograd", "initialization", "graph-construction"],
+      "complexity": "simple",
+      "languageNotes": "_backward is stored as a lambda that defaults to doing nothing; each operation later replaces it with a closure that knows how to propagate that node's local gradient."
+    },
+    {
+      "id": "symbol:micrograd/engine.py#Value.__add__",
+      "type": "function",
+      "name": "Value.__add__",
+      "filePath": "micrograd/engine.py",
+      "lineRange": [13, 22],
+      "summary": "Implements addition. It creates a new output Value holding the sum, records the two operands as its children, and defines a local _backward that pushes the output's gradient equally to both inputs (because d(a+b)/da = 1). This is the simplest illustration of how every operation attaches its own chain-rule rule to the node it creates.",
+      "tags": ["autograd", "operation", "chain-rule"],
+      "complexity": "simple",
+      "languageNotes": "Overloads the + operator via __add__; it also wraps a raw int/float operand in a Value so you can write expressions like x + 2. The += in _backward accumulates gradients, which is essential when a node feeds multiple downstream paths."
+    },
+    {
+      "id": "symbol:micrograd/engine.py#Value.__mul__",
+      "type": "function",
+      "name": "Value.__mul__",
+      "filePath": "micrograd/engine.py",
+      "lineRange": [24, 33],
+      "summary": "Implements multiplication. The output Value stores the product, and its _backward applies the product rule: each input's gradient gets the other input's data times the output's gradient. Together with addition and power, this gives micrograd enough building blocks to express any neuron's weighted sum.",
+      "tags": ["autograd", "operation", "chain-rule", "product-rule"],
+      "complexity": "simple",
+      "languageNotes": "Overloads the * operator via __mul__. Note how the local derivative of a*b with respect to a is b.data, captured by the closure at graph-build time."
+    },
+    {
+      "id": "symbol:micrograd/engine.py#Value.__pow__",
+      "type": "function",
+      "name": "Value.__pow__",
+      "filePath": "micrograd/engine.py",
+      "lineRange": [35, 43],
+      "summary": "Implements raising a Value to a constant integer or float power. Its _backward encodes the power rule, d(x**n)/dx = n*x**(n-1). This single operation is what lets micrograd express division and subtraction indirectly, since x**-1 is reciprocal and division is just multiply-by-reciprocal.",
+      "tags": ["autograd", "operation", "chain-rule", "power-rule"],
+      "complexity": "simple",
+      "languageNotes": "Overloads the ** operator via __pow__, and asserts the exponent is a plain int/float (the graph only differentiates with respect to the base, not the exponent)."
+    },
+    {
+      "id": "symbol:micrograd/engine.py#Value.relu",
+      "type": "function",
+      "name": "Value.relu",
+      "filePath": "micrograd/engine.py",
+      "lineRange": [45, 52],
+      "summary": "The ReLU activation: outputs the input if positive, else 0. Its _backward passes the gradient through only when the output was positive, otherwise it blocks it. This is the single nonlinearity in the whole library, and it is what lets a stack of linear neurons learn non-linear functions.",
+      "tags": ["autograd", "activation", "nonlinearity", "neural-net"],
+      "complexity": "simple",
+      "languageNotes": "The expression (out.data > 0) evaluates to a Python bool that multiplies the gradient as 1 or 0, cleanly gating the backward flow."
+    },
+    {
+      "id": "symbol:micrograd/engine.py#Value.backward",
+      "type": "function",
+      "name": "Value.backward",
+      "filePath": "micrograd/engine.py",
+      "lineRange": [54, 70],
+      "summary": "The payoff method: calling y.backward() computes the gradient of y with respect to every Value that contributed to it. It first builds a topological ordering of the graph via depth-first search, seeds the output's own gradient to 1, then walks the nodes in reverse order calling each node's local _backward. This is textbook reverse-mode automatic differentiation (backpropagation).",
+      "tags": ["autograd", "backpropagation", "topological-sort", "core"],
+      "complexity": "complex",
+      "languageNotes": "Uses a nested recursive helper (build_topo) and a visited set to produce a topological order, so that by the time a node's _backward runs, every node downstream of it has already contributed to its grad."
+    },
+    {
+      "id": "file:micrograd/nn.py",
+      "type": "file",
+      "name": "nn.py",
+      "filePath": "micrograd/nn.py",
+      "lineRange": [1, 61],
+      "summary": "A minimal PyTorch-like neural network library built entirely out of Value objects. It defines a Module base class and three composable building blocks (Neuron, Layer, MLP) that together let you assemble a multi-layer perceptron whose every weight is a differentiable Value. Because it rides on the engine, training just means calling backward() and nudging parameters.",
+      "tags": ["neural-net", "library", "building-blocks"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "symbol:micrograd/nn.py#Module",
+      "type": "class",
+      "name": "Module",
+      "filePath": "micrograd/nn.py",
+      "lineRange": [4, 11],
+      "summary": "A tiny base class mirroring PyTorch's nn.Module. It provides zero_grad(), which resets every parameter's gradient to 0 before a new backward pass, and a parameters() method that subclasses override to list their trainable Values. It gives the neural-net classes a shared, uniform interface.",
+      "tags": ["neural-net", "base-class", "interface"],
+      "complexity": "simple",
+      "languageNotes": "A classic template-method base class: parameters() returns [] here and is overridden downstream, while zero_grad() is written once in terms of it."
+    },
+    {
+      "id": "symbol:micrograd/nn.py#Neuron",
+      "type": "class",
+      "name": "Neuron",
+      "filePath": "micrograd/nn.py",
+      "lineRange": [13, 28],
+      "summary": "A single artificial neuron: it holds a list of weight Values and a bias Value, and when called on an input it computes the weighted sum plus bias, optionally passing it through ReLU. Because the sum is built from Value multiplications and additions, the neuron's output is automatically part of the differentiable graph, so its weights can be trained by backprop.",
+      "tags": ["neural-net", "neuron", "building-block"],
+      "complexity": "moderate",
+      "languageNotes": "Defines __call__ so a Neuron instance can be used like a function, n(x); the weighted sum uses Python's sum(..., start=self.b) to fold the bias in as the initial accumulator."
+    },
+    {
+      "id": "symbol:micrograd/nn.py#Layer",
+      "type": "class",
+      "name": "Layer",
+      "filePath": "micrograd/nn.py",
+      "lineRange": [30, 43],
+      "summary": "A layer is just a list of independent Neurons that all see the same input. Calling the layer runs every neuron and returns their outputs (a single value if there is only one neuron, otherwise a list). It is the horizontal grouping that, when stacked, forms a network.",
+      "tags": ["neural-net", "layer", "building-block"],
+      "complexity": "simple",
+      "languageNotes": "parameters() uses a nested list comprehension to flatten each neuron's parameters into one list, the idiom repeated one level up in MLP."
+    },
+    {
+      "id": "symbol:micrograd/nn.py#MLP",
+      "type": "class",
+      "name": "MLP",
+      "filePath": "micrograd/nn.py",
+      "lineRange": [45, 60],
+      "summary": "A multi-layer perceptron: a sequence of Layers where each layer feeds the next. Given an input-size and a list of layer sizes, it wires up the layers (making all but the last nonlinear with ReLU), and calling it runs the forward pass through the whole stack. This is the top-level model you actually train.",
+      "tags": ["neural-net", "model", "mlp", "composition"],
+      "complexity": "moderate",
+      "languageNotes": "The constructor builds sizes as [nin] + nouts and sets nonlin=i!=len(nouts)-1 so the final output layer is linear; __call__ threads x through the layers in a simple loop."
+    },
+    {
+      "id": "file:test/test_engine.py",
+      "type": "file",
+      "name": "test_engine.py",
+      "filePath": "test/test_engine.py",
+      "lineRange": [1, 68],
+      "summary": "The test suite that validates the engine by running the same computation through micrograd and through PyTorch, then asserting that both the forward values and the backward gradients match. It is the proof that micrograd's hand-written autodiff produces exactly the gradients a mature framework does.",
+      "tags": ["tests", "verification", "pytorch"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "symbol:test/test_engine.py#test_sanity_check",
+      "type": "function",
+      "name": "test_sanity_check",
+      "filePath": "test/test_engine.py",
+      "lineRange": [4, 26],
+      "summary": "A small end-to-end check: it builds a short expression with a ReLU and a backward pass in micrograd, builds the identical expression in PyTorch, and asserts that the resulting data and gradient agree. It is the minimal demonstration that the engine's forward and backward passes are correct.",
+      "tags": ["tests", "verification", "pytorch", "gradient-check"],
+      "complexity": "simple"
+    },
+    {
+      "id": "symbol:test/test_engine.py#test_more_ops",
+      "type": "function",
+      "name": "test_more_ops",
+      "filePath": "test/test_engine.py",
+      "lineRange": [28, 67],
+      "summary": "A more demanding check exercising the full set of operations, including division, negation, subtraction, powers, and in-place accumulation with nodes reused along multiple paths. It compares micrograd's data and gradients against PyTorch within a small tolerance, stress-testing gradient accumulation and the chain rule across a tangled graph.",
+      "tags": ["tests", "verification", "pytorch", "gradient-check"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:setup.py",
+      "type": "file",
+      "name": "setup.py",
+      "filePath": "setup.py",
+      "lineRange": [1, 23],
+      "summary": "The packaging manifest that declares micrograd as an installable Python package: its name, version, author, description, and that it requires Python 3.6+. It is not part of the autograd logic, but it is what lets the library be pip-installed and imported as a package.",
+      "tags": ["packaging", "metadata", "tooling"],
+      "complexity": "simple"
+    }
+  ],
+  "edges": [
+    { "source": "file:micrograd/engine.py", "target": "symbol:micrograd/engine.py#Value", "type": "defines", "direction": "forward", "weight": 1 },
+    { "source": "symbol:micrograd/engine.py#Value", "target": "symbol:micrograd/engine.py#Value.__init__", "type": "contains", "direction": "forward", "weight": 1 },
+    { "source": "symbol:micrograd/engine.py#Value", "target": "symbol:micrograd/engine.py#Value.__add__", "type": "contains", "direction": "forward", "weight": 1 },
+    { "source": "symbol:micrograd/engine.py#Value", "target": "symbol:micrograd/engine.py#Value.__mul__", "type": "contains", "direction": "forward", "weight": 1 },
+    { "source": "symbol:micrograd/engine.py#Value", "target": "symbol:micrograd/engine.py#Value.__pow__", "type": "contains", "direction": "forward", "weight": 1 },
+    { "source": "symbol:micrograd/engine.py#Value", "target": "symbol:micrograd/engine.py#Value.relu", "type": "contains", "direction": "forward", "weight": 1 },
+    { "source": "symbol:micrograd/engine.py#Value", "target": "symbol:micrograd/engine.py#Value.backward", "type": "contains", "direction": "forward", "weight": 1 },
+    { "source": "symbol:micrograd/engine.py#Value.__add__", "target": "symbol:micrograd/engine.py#Value", "type": "uses", "direction": "forward", "weight": 0.8 },
+    { "source": "symbol:micrograd/engine.py#Value.__mul__", "target": "symbol:micrograd/engine.py#Value", "type": "uses", "direction": "forward", "weight": 0.8 },
+    { "source": "symbol:micrograd/engine.py#Value.__pow__", "target": "symbol:micrograd/engine.py#Value", "type": "uses", "direction": "forward", "weight": 0.8 },
+    { "source": "symbol:micrograd/engine.py#Value.relu", "target": "symbol:micrograd/engine.py#Value", "type": "uses", "direction": "forward", "weight": 0.8 },
+    { "source": "symbol:micrograd/engine.py#Value.backward", "target": "symbol:micrograd/engine.py#Value.__init__", "type": "uses", "direction": "forward", "weight": 0.6 },
+    { "source": "file:micrograd/nn.py", "target": "symbol:micrograd/nn.py#Module", "type": "defines", "direction": "forward", "weight": 1 },
+    { "source": "file:micrograd/nn.py", "target": "symbol:micrograd/nn.py#Neuron", "type": "defines", "direction": "forward", "weight": 1 },
+    { "source": "file:micrograd/nn.py", "target": "symbol:micrograd/nn.py#Layer", "type": "defines", "direction": "forward", "weight": 1 },
+    { "source": "file:micrograd/nn.py", "target": "symbol:micrograd/nn.py#MLP", "type": "defines", "direction": "forward", "weight": 1 },
+    { "source": "file:micrograd/nn.py", "target": "symbol:micrograd/engine.py#Value", "type": "imports", "direction": "forward", "weight": 1 },
+    { "source": "symbol:micrograd/nn.py#Neuron", "target": "symbol:micrograd/nn.py#Module", "type": "uses", "direction": "forward", "weight": 0.7 },
+    { "source": "symbol:micrograd/nn.py#Layer", "target": "symbol:micrograd/nn.py#Module", "type": "uses", "direction": "forward", "weight": 0.7 },
+    { "source": "symbol:micrograd/nn.py#MLP", "target": "symbol:micrograd/nn.py#Module", "type": "uses", "direction": "forward", "weight": 0.7 },
+    { "source": "symbol:micrograd/nn.py#Neuron", "target": "symbol:micrograd/engine.py#Value", "type": "uses", "direction": "forward", "weight": 0.9 },
+    { "source": "symbol:micrograd/nn.py#Neuron", "target": "symbol:micrograd/engine.py#Value.relu", "type": "calls", "direction": "forward", "weight": 0.8 },
+    { "source": "symbol:micrograd/nn.py#Layer", "target": "symbol:micrograd/nn.py#Neuron", "type": "uses", "direction": "forward", "weight": 0.9 },
+    { "source": "symbol:micrograd/nn.py#MLP", "target": "symbol:micrograd/nn.py#Layer", "type": "uses", "direction": "forward", "weight": 0.9 },
+    { "source": "file:test/test_engine.py", "target": "symbol:test/test_engine.py#test_sanity_check", "type": "defines", "direction": "forward", "weight": 1 },
+    { "source": "file:test/test_engine.py", "target": "symbol:test/test_engine.py#test_more_ops", "type": "defines", "direction": "forward", "weight": 1 },
+    { "source": "file:test/test_engine.py", "target": "symbol:micrograd/engine.py#Value", "type": "imports", "direction": "forward", "weight": 1 },
+    { "source": "symbol:test/test_engine.py#test_sanity_check", "target": "symbol:micrograd/engine.py#Value.backward", "type": "calls", "direction": "forward", "weight": 0.9 },
+    { "source": "symbol:test/test_engine.py#test_more_ops", "target": "symbol:micrograd/engine.py#Value.backward", "type": "calls", "direction": "forward", "weight": 0.9 },
+    { "source": "file:setup.py", "target": "file:micrograd/nn.py", "type": "uses", "direction": "forward", "weight": 0.3 }
+  ],
+  "layers": [
+    {
+      "id": "layer:autograd-engine",
+      "name": "Autograd engine",
+      "description": "The differentiable scalar (Value) and the operations and backward pass that make reverse-mode automatic differentiation work. This is the foundation everything else stands on.",
+      "nodeIds": [
+        "file:micrograd/engine.py",
+        "symbol:micrograd/engine.py#Value",
+        "symbol:micrograd/engine.py#Value.__init__",
+        "symbol:micrograd/engine.py#Value.__add__",
+        "symbol:micrograd/engine.py#Value.__mul__",
+        "symbol:micrograd/engine.py#Value.__pow__",
+        "symbol:micrograd/engine.py#Value.relu",
+        "symbol:micrograd/engine.py#Value.backward"
+      ]
+    },
+    {
+      "id": "layer:neural-net",
+      "name": "Neural net building blocks",
+      "description": "A small PyTorch-like library (Module, Neuron, Layer, MLP) that composes Value objects into a trainable multi-layer perceptron.",
+      "nodeIds": [
+        "file:micrograd/nn.py",
+        "symbol:micrograd/nn.py#Module",
+        "symbol:micrograd/nn.py#Neuron",
+        "symbol:micrograd/nn.py#Layer",
+        "symbol:micrograd/nn.py#MLP"
+      ]
+    },
+    {
+      "id": "layer:tests-packaging",
+      "name": "Tests and packaging",
+      "description": "Verification against PyTorch that gradients are correct, plus the packaging metadata that makes micrograd installable.",
+      "nodeIds": [
+        "file:test/test_engine.py",
+        "symbol:test/test_engine.py#test_sanity_check",
+        "symbol:test/test_engine.py#test_more_ops",
+        "file:setup.py"
+      ]
+    }
+  ],
+  "tour": [
+    {
+      "order": 1,
+      "title": "The Value node: a number that remembers its past",
+      "description": "Start here. Understand that micrograd's whole trick is wrapping each scalar in a Value that stores not just its data but also a gradient slot and references to the Values it came from. Grasping that arithmetic silently builds a graph is the prerequisite for everything else.",
+      "nodeIds": ["symbol:micrograd/engine.py#Value", "symbol:micrograd/engine.py#Value.__init__"],
+      "languageLesson": "Python operator overloading via dunder methods lets a Value behave like a plain number while recording a computation graph behind the scenes."
+    },
+    {
+      "order": 2,
+      "title": "Operations that attach their own derivative rule",
+      "description": "See how +, *, and ** each create a new output Value, record the operands as children, and store a local _backward closure encoding that operation's derivative (sum rule, product rule, power rule). This is how the graph learns, node by node, how to differentiate itself.",
+      "nodeIds": ["symbol:micrograd/engine.py#Value.__add__", "symbol:micrograd/engine.py#Value.__mul__", "symbol:micrograd/engine.py#Value.__pow__"],
+      "languageLesson": "Each operation captures its inputs in a closure, and gradients are accumulated with += so a node reused in several places sums the contributions from every path."
+    },
+    {
+      "order": 3,
+      "title": "ReLU: the one nonlinearity",
+      "description": "Understand the ReLU activation and why its backward pass gates the gradient (passing it only when the output was positive). This is the single source of non-linearity that later lets stacked neurons learn curved decision boundaries.",
+      "nodeIds": ["symbol:micrograd/engine.py#Value.relu"],
+      "languageLesson": "A boolean (out.data > 0) multiplies cleanly as 0 or 1 in Python, which is how the gradient is switched on or off."
+    },
+    {
+      "order": 4,
+      "title": "backward(): replaying the graph in reverse",
+      "description": "This is the climax of the engine. Learn how backward() topologically sorts the graph with a DFS, seeds the output gradient to 1, and walks nodes in reverse calling each _backward. By the end you should see that backpropagation is just the chain rule applied in the right order.",
+      "nodeIds": ["symbol:micrograd/engine.py#Value.backward"],
+      "languageLesson": "A nested recursive helper plus a visited set produces a topological order, guaranteeing every downstream node has contributed to a node's grad before that node propagates further."
+    },
+    {
+      "order": 5,
+      "title": "A neuron built from Values",
+      "description": "Now move up a level. See that a Neuron is just weights and a bias (all Values) combined with the engine's multiply and add into a weighted sum, optionally passed through ReLU. Because it is built from Values, its output is automatically differentiable and its weights are trainable.",
+      "nodeIds": ["symbol:micrograd/nn.py#Module", "symbol:micrograd/nn.py#Neuron"],
+      "languageLesson": "__call__ makes an instance callable like a function, and sum(..., start=self.b) folds the bias in as the accumulator's initial value."
+    },
+    {
+      "order": 6,
+      "title": "Layers and the MLP: composition",
+      "description": "Assemble neurons into a Layer (neurons sharing an input) and stack Layers into an MLP whose forward pass threads data through each layer in turn. Notice all but the last layer are nonlinear. This is the full network you would actually train.",
+      "nodeIds": ["symbol:micrograd/nn.py#Layer", "symbol:micrograd/nn.py#MLP"],
+      "languageLesson": "Nested list comprehensions flatten every neuron's parameters into a single trainable list, the mechanism that lets zero_grad() and an optimizer touch the whole network."
+    },
+    {
+      "order": 7,
+      "title": "Proving it works: checking against PyTorch",
+      "description": "Finish by seeing how the tests run identical expressions through micrograd and PyTorch and assert the forward values and gradients match. This closes the loop: the hand-written autodiff you just read produces exactly the gradients a real framework does.",
+      "nodeIds": ["symbol:test/test_engine.py#test_sanity_check", "symbol:test/test_engine.py#test_more_ops", "file:setup.py"],
+      "languageLesson": "test_more_ops deliberately reuses nodes and uses in-place += to stress gradient accumulation, the exact case the engine's += in each _backward is designed to handle."
+    }
+  ]
+}

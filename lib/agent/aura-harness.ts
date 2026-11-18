@@ -15,6 +15,7 @@
 import { diretrizDaSala, salaDoModo } from "@/lib/ai/salaPersona";
 import { GEMINI_MODEL_FLASH, GEMINI_MODEL_PRO } from "@/lib/ai/model";
 import { classify } from "@/lib/agent/router";
+import { pedeImagem } from "@/lib/agent/pedeImagem";
 import { previaDoRascunho } from "@/lib/agent/previa";
 import { pensarDa, type NivelPensar } from "@/lib/llm/pensar";
 import { STUDIO_KINDS } from "@/lib/agent/tools";
@@ -22,6 +23,7 @@ import { getTool, runToolByName, toolsDoTurno, type ToolContext, type ApproveFn 
 import { cardapioDeCapacidades, respostaHonesta } from "@/lib/agent/capacidades";
 import { temUrl, urlsDoTexto } from "@/lib/agent/urls";
 import { ehUrlDeArquivo } from "@/lib/agent/toolsWeb";
+import { ehUrlDeVideo } from "@/lib/agent/video";
 import { MAX_ANEXOS_NO_PLANO } from "@/lib/agent/anexos";
 import { anexosDoCtx } from "@/lib/agent/toolsAnexo";
 import { anexosEmJogo, blocoDaSintese, docsDaBaseEmJogo, lerSintese, promptDaSintese, sinteseUtil, type DocEmJogo } from "@/lib/agent/sintese";
@@ -40,13 +42,17 @@ import { blocoDeFontes, fontesCitadas, fontesDoTurno } from "@/lib/documento/fon
 import { normalizeStudioKind } from "@/lib/agent/tools";
 import type { StructuredAnswer, Source, IntentId, Issue } from "@/lib/agent/contracts";
 import { artefatoDeAprender, pedeAula, pedeEngenhariaReversa, DIRETRIZ_ENGENHARIA_REVERSA } from "@/lib/agent/aprender";
-import { DIRETRIZ_MATEMATICA } from "@/lib/agent/matematica";
+import { DIRETRIZ_MATEMATICA, pedeGraficoDeDados } from "@/lib/agent/matematica";
+import { blocoDoCampoGrafico } from "@/lib/chat/graficoDados";
 import { diretrizDeTabela, semTabelaNaoPedida } from "@/lib/agent/tabela";
+import { aprofundarSecoes, secoesRasas } from "@/lib/documento/aprofundar";
+import { citaveis, corteEfetivo } from "@/lib/rag/turno";
 import { diretrizDeTamanho, pedeRespostaCurta, semDesenvolvimentoNaoPedido } from "@/lib/agent/tamanho";
 import { diretrizDeEscopo } from "@/lib/agents/escopo";
 import { diretrizLivros, markdownDosLivros, type LivroAchado } from "@/lib/livros/busca";
 import { anexarFontesBase, blocoDaBase } from "@/lib/rag/citar";
 import { registrarAnatomia } from "@/lib/anatomia/tools";
+import { cardapioDeSkills, registrarSkillsDaCasa } from "@/lib/agent/skills-boot";
 
 /**
  * As tools de ANATOMIA entram aqui, no carregamento deste módulo, e não no boot: o registry é
@@ -55,6 +61,16 @@ import { registrarAnatomia } from "@/lib/anatomia/tools";
  * atlas, então sem o dado elas nem aparecem no cardápio — em vez de aparecerem e falharem.
  */
 registrarAnatomia();
+
+/**
+ * As SKILLS DA CASA (`.claude/skills`), pelo mesmo motivo e no mesmo lugar que as tools de
+ * anatomia: o registry é estado do processo. Registra `activate_skill`, que é como o CORPO de uma
+ * skill chega ao turno — sob demanda, nunca no prompt de todo mundo.
+ *
+ * Até aqui o pilar de skills (`lib/agent/skills.ts`) existia completo e não era consumido por
+ * NINGUÉM fora dos próprios testes. Esta linha é a tomada. Catálogo vazio ⇒ nada muda.
+ */
+registrarSkillsDaCasa();
 
 type GenJson = <T>(system: string, user: string, opts?: { temperature?: number; model?: string; timeoutMs?: number; phase?: string; /** em stream: o JSON acumulado a cada pedaço */ onTexto?: (acumulado: string) => void; /** o pensar desta fase (lib/llm/pensar) */ pensar?: NivelPensar; /** stream: sem o 1º pedaço nesse prazo → reserva */ prazoPrimeiroMs?: number }) => Promise<T>;
 
@@ -251,7 +267,9 @@ export function pickStudioKind(objective: string): string {
   if (/diagrama|esquema|fluxograma|como funciona/.test(t)) return "diagram";
   // "fórmula" NUNCA vira imagem (o chat renderiza LaTeX); gráfico de FUNÇÃO e figura de geometria saem
   // no texto como bloco ```grafico (lib/agent/matematica) — o roteador nem manda esses pra cá.
-  if (/imagem|figura|ilustra|desenh|gr[aá]fico/.test(t)) return "image";
+  // #749: "gráfico" saiu daqui — gráfico de DADOS também é ```grafico (barras com número e fonte); o modelo de imagem
+  // desenhava um mapa com bonequinhos e nenhum número.
+  if (/imagem|figura|ilustra|desenh/.test(t)) return "image";
   return normalizeStudioKind(t); // default "guide"
 }
 
@@ -285,9 +303,13 @@ export function passosDeAnexo(ctx: unknown): Step[] {
 export function passosDeUrl(objetivo: string): Step[] {
   const podeAbrir = !!getTool("abrir_url");
   const podeBaixar = !!getTool("baixar_para_base");
-  if (!podeAbrir && !podeBaixar) return [];
+  const podeVideo = !!getTool("descrever_video");
+  if (!podeAbrir && !podeBaixar && !podeVideo) return [];
   const passos: Step[] = [];
   for (const url of urlsDoTexto(objetivo)) {
+    // vídeo do YouTube NUNCA vai pro Leitor: a página é montada por script e o domínio nem está na
+    // allowlist — era o "não consigo acessar links externos" pra um vídeo de título e canal públicos
+    if (podeVideo && ehUrlDeVideo(url)) { passos.push({ tool: "descrever_video", args: { url } }); continue; }
     const arquivo = ehUrlDeArquivo(url);
     if (arquivo && podeBaixar) passos.push({ tool: "baixar_para_base", args: { url } });
     else if (podeAbrir) passos.push({ tool: "abrir_url", args: { url } });
@@ -378,6 +400,12 @@ export function anexarLivros(a: StructuredAnswer, livros: LivroAchado[]): Struct
   };
 }
 
+/**
+ * O teto de evidências numa resposta. Vinte é mais do que qualquer leitor humano confere; muito
+ * além disso a lista deixa de ser fonte e vira ruído — o caso real tinha 87.
+ */
+export const MAX_EVIDENCIA = 20;
+
 function asArray(v: unknown): any[] { return Array.isArray(v) ? v : v == null ? [] : [v]; }
 
 /**
@@ -419,12 +447,41 @@ export function normalizeAnswer(out: Partial<StructuredAnswer> | null | undefine
   // #728: "em 2 frases" — o parágrafo a mais sai AQUI, antes de tudo que lê o corpo (a molécula derivada do texto não
   // pode vir de um trecho que saiu) e antes do texto de falha (com núcleo vazio, o desenvolvimento É a resposta e fica)
   if (answer.desenvolvimento && !semDesenvolvimentoNaoPedido(answer, st.objective ?? "").desenvolvimento) delete answer.desenvolvimento;
+  // #764 · pediu gráfico e o texto veio sem o desenho: o bloco sai do campo `grafico` (o modelo pulava o ```grafico)
+  if (pedeGraficoDeDados(st.objective ?? "")) {
+    const bloco = blocoDoCampoGrafico((o as { grafico?: unknown }).grafico, `${answer.nucleo}\n${answer.desenvolvimento ?? ""}`);
+    if (bloco) {
+      if (answer.desenvolvimento) answer.desenvolvimento = `${answer.desenvolvimento.trimEnd()}\n\n${bloco}`;
+      else answer.nucleo = `${answer.nucleo.trimEnd()}\n\n${bloco}`;
+    }
+  }
   if (o.conceitos) answer.conceitos = asArray(o.conceitos).map(String).filter(Boolean);
   if (o.proximos_passos) {
     const passos = asArray(o.proximos_passos).map(String).filter(Boolean).filter((p) => !ofertaDePlataforma(p));
     if (passos.length) answer.proximos_passos = passos;
   }
-  if (o.evidencia) answer.evidencia = asArray(o.evidencia).filter((e) => e && e.claim && e.source);
+  /**
+   * EVIDÊNCIA SEM REPETIÇÃO E COM TETO. Medido numa conversa real de 2026-11-10: a lista "Fontes"
+   * veio com 87 itens numerados, ~70 deles a MESMA linha do BodyParts3D — uma por chamada da
+   * ferramenta de anatomia. `collectSources` (lib/agent/trajectory) já deduplicava as fontes do
+   * turno, mas este campo vem do MODELO e não passava por lá; a UI renderiza um <li> por entrada,
+   * então a repetição ia inteira para a tela. Oitenta e sete fontes não informam: escondem.
+   *
+   * A chave é claim+fonte, não só a fonte: duas afirmações diferentes apoiadas no mesmo atlas são
+   * duas evidências legítimas. O que sai é a repetição literal.
+   */
+  if (o.evidencia) {
+    const vistas = new Set<string>();
+    answer.evidencia = asArray(o.evidencia)
+      .filter((e) => e && e.claim && e.source)
+      .filter((e) => {
+        const k = `${String(e.claim).trim().toLowerCase()}|${e.source?.title ?? ""}|${e.source?.url ?? ""}`;
+        if (vistas.has(k)) return false;
+        vistas.add(k);
+        return true;
+      })
+      .slice(0, MAX_EVIDENCIA);
+  }
   if (o.sources) answer.sources = asArray(o.sources).filter((s: Source) => s && s.title);
   if (o.work && typeof o.work === "object") answer.work = o.work;
   // A substância extraída vira molécula SE ela for mesmo assunto: precisa aparecer no
@@ -447,6 +504,22 @@ export function normalizeAnswer(out: Partial<StructuredAnswer> | null | undefine
     const corpo = `${answer.nucleo} ${answer.desenvolvimento ?? ""}`.toLowerCase();
     const central = substancias.find((n) => n.length > 2 && corpo.includes(n.toLowerCase()));
     if (central) answer.artifacts = [{ studioKind: "molecule", title: central }] as StructuredAnswer["artifacts"];
+  }
+
+  // Espelho exato do `substancias` → molécula, e pelo mesmo contrato: ao modelo pedimos EXTRAÇÃO
+  // ("que estruturas do corpo esta resposta menciona?"), e quem decide se o artefato nasce é o
+  // código. Aqui a confirmação não é o PubChem, é o próprio atlas: `/api/studio/anatomia` recusa
+  // 404 quando o BodyParts3D não tem a estrutura, então nome inventado não vira cena.
+  //
+  // `!answer.artifacts` e não `!o.artifacts`: o ramo da molécula roda ANTES e pode ter acabado de
+  // preencher. Uma resposta que fala de oxigênio E de pulmão dá a molécula, porque ela veio
+  // primeiro — escolha deliberada, não ordem acidental, e o teto de 1 artefato é o que impede a
+  // resposta de virar galeria.
+  const estruturas = asArray((o as any).estruturas).map(String).map((x) => x.trim()).filter(Boolean);
+  if (estruturas.length && !o.artifacts && !answer.artifacts) {
+    const corpo = `${answer.nucleo} ${answer.desenvolvimento ?? ""}`.toLowerCase();
+    const central = estruturas.find((n) => n.length > 2 && corpo.includes(n.toLowerCase()));
+    if (central) answer.artifacts = [{ studioKind: "anatomia", title: central }] as StructuredAnswer["artifacts"];
   }
   // `artifacts` explícito (pedido direto) continua mandando — e vinha sendo DESCARTADO
   // aqui, que era por que artefato citado numa explicação nunca nascia.
@@ -588,7 +661,7 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
       // `quick` PULA o plan() inteiro (trajectory.ts:244: draft direto). Com um link colado, o
       // caminho rápido jamais leria a página — "resume isso: <url>" tem 3 palavras e cairia em
       // `duvida_rapida`. Sobe um degrau SÓ quando a tool existe e há endereço público de verdade.
-      if (r.mode === "quick" && (getTool("abrir_url") || getTool("baixar_para_base")) && temUrl(objective)) return { ...r, mode: "elaborated" };
+      if (r.mode === "quick" && temUrl(objective) && passosDeUrl(objective).length > 0) return { ...r, mode: "elaborated" };
       return r;
     },
 
@@ -740,7 +813,20 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
             return cardapioDeCapacidades(defs.map((t) => t.name), new Map(defs.map((t) => [t.name, t.schema?.description])));
           })()]
           : []),
+        // O CARDÁPIO DE SKILLS: uma linha por skill da casa (nome + descrição), e nada mais.
+        // O corpo vem por `activate_skill`, sob demanda — é a divulgação progressiva do spec, e
+        // é o que permite dezenas de skills sem repetir o erro da diretriz incondicional.
+        // Sem skill no diretório devolve "" e o `.filter(Boolean)` abaixo o descarta.
+        cardapioDeSkills(),
         DIRETRIZ_MATEMATICA,
+        // #764: o modelo às vezes pulava o desenho — no pedido de gráfico, o campo `grafico` é obrigatório
+        ...(pedeGraficoDeDados(st.objective)
+          ? ['O usuário PEDIU UM GRÁFICO: inclua OBRIGATORIAMENTE o campo grafico: {"titulo":"…","barras":[{"rotulo":"…","valor":0}],"unidade":"…","fonte":"…"} com os números da resposta (valores numéricos, "fonte" sempre). O desenho sai dele.']
+          : []),
+        // #764: a imagem gerada sai SEM rótulos (o gerador erra letras) — quem estuda precisa saber o que é cada parte
+        ...(pedeImagem(st.objective)
+          ? ["O usuário PEDIU UMA IMAGEM, que sai sem nomes escritos nela: no texto, termine com uma lista curta das partes que aparecem e de como reconhecer cada uma (cor ou posição), ex.: \"- **Átrio direito** (azul, em cima à esquerda)\"."]
+          : []),
         // A TABELA é decidida pelo PEDIDO, nunca pela vontade do modelo (lib/agent/tabela).
         // Calar sobre o assunto era o que produzia "tabela do nada": sem esta linha o modelo não
         // tinha como saber que a grade não era bem-vinda, e a única contenção era a oração vaga
@@ -759,7 +845,7 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         "proximos_passos, quando fizer sentido, são passos de ESTUDO (o que entender, ler, " +
         "praticar ou checar a seguir) — jamais ofertas de recurso da plataforma.",
         "Responda SOMENTE JSON válido.",
-        `Campos obrigatórios: ${req}. Preencha TODOS. Schema: {nucleo, desenvolvimento?, conceitos?[], evidencia?[{claim,source:{title,url?}}], proximos_passos?[], sources?[{title,url?}], work?{kind,sections:[{title,body}]}, artifacts?[{studioKind,title}]${citaBase ? ", citacoes_base?[n]" : ""}}.`,
+        `Campos obrigatórios: ${req}. Preencha TODOS. Schema: {nucleo, desenvolvimento?, conceitos?[], evidencia?[{claim,source:{title,url?}}], proximos_passos?[], sources?[{title,url?}], work?{kind,sections:[{title,body}]}, artifacts?[{studioKind,title}]${citaBase ? ", citacoes_base?[n]" : ""}${pedeGraficoDeDados(st.objective) ? ", grafico{titulo,barras:[{rotulo,valor}],unidade?,fonte}" : ""}}.`,
         // Ao modelo pedimos EXTRAÇÃO, não decisão de produto: "que substâncias esta
         // resposta menciona?" é pergunta factual, que modelo responde bem. Se a molécula
         // aparece na tela, quem decide é o código (normalizeAnswer) — e o PubChem confirma.
@@ -773,6 +859,9 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         'Inclua também substancias: ["<nome>"] com as substâncias químicas concretas de que a resposta FALA ' +
         '(ex.: cafeína, glicose, etanol, ácido acético). Só o nome, sem "molécula de". ' +
         'Não liste se a resposta não falar de nenhuma, e nunca invente uma que você não tenha certeza que existe.',
+        'Inclua também estruturas: ["<nome>"] com as estruturas ANATÔMICAS concretas de que a resposta FALA ' +
+        '(ex.: pulmão, coração, fígado, diafragma, sistema respiratório). Só o nome da estrutura, no ' +
+        'singular, sem "o" nem "do corpo". Não liste se a resposta não falar de nenhuma, e nunca invente.',
         academic + a5,
         ...(st.intent === "buscar_livro" ? [diretrizLivros(livrosAchados)] : []),
       ].filter(Boolean).join("\n");
@@ -783,7 +872,14 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
       const fontesWork = st.intent === "criar_trabalho"
         ? fontesDoTurno(
             st.evidence.map((f) => f.source).filter(Boolean) as { title?: string; year?: number }[],
-            (opts.baseConhecimento?.trechos ?? []).map((t) => ({ titulo: t.titulo, paginas: String(t.paginaIni ?? "") })),
+            /**
+             * SÓ OS CITÁVEIS da base. O que casou apenas por TEXTO continua indo para o prompt como
+             * contexto (nada muda lá, inclusive a numeração [B1]..[Bn], que é posicional), mas não
+             * entra na BIBLIOGRAFIA: menção não é fundamentação. Ver `citaveis` em lib/rag/turno
+             * para a medição que motivou os dois cortes.
+             */
+            citaveis(opts.baseConhecimento?.trechos ?? [], corteEfetivo())
+              .map((t) => ({ titulo: t.titulo, paginas: String(t.paginaIni ?? "") })),
             // D4 · o anexo do turno é fonte citável: é o material que a pessoa escolheu trazer
             anexosDoCtx(ctx).map((a) => ({ nome: a.nome, texto: a.texto })),
           )
@@ -866,18 +962,82 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
         // observações são fato do turno, e `executadas` tira do caminho a tool que deu certo depois.
         const fv = falhasVisiveis(observations, executadas);
         if (fv.length) comBase.falhas = fv;
+        /**
+         * O DOCUMENTO RASO, CONSERTADO ONDE ELE NASCE.
+         *
+         * `work.sections` vem da MESMA resposta JSON que o núcleo, os conceitos, a evidência e as
+         * fontes — todos disputando um orçamento de saída só. Medido em produção (2026-11-10, "crie
+         * um artigo sobre anfetamina"): 57 palavras na primeira seção contra um piso de 180. Um
+         * terço do mínimo que a Sala de Pesquisa exige para a mesma seção.
+         *
+         * O diagnóstico é o da F2 (lib/documento/escritor): texto acadêmico numa resposta só volta
+         * truncado, e o conserto é uma chamada por seção. Só que aquele escritor nunca chegou ao
+         * chat. Aqui o rascunho vale como PLANO — os títulos que o modelo escolheu são bons — e só
+         * as seções abaixo do piso são reescritas, uma de cada vez, com o resto do documento à
+         * vista. Nunca piora: resposta mais curta que a original é descartada.
+         *
+         * Só em `criar_trabalho`: é a intenção que tem orçamento de voltas para pagar isto, e é a
+         * única cujo contrato promete um documento.
+         */
+        if (st.intent === "criar_trabalho" && comBase.work?.sections?.length) {
+          const rasas = secoesRasas(comBase.work.sections);
+          if (rasas.length) {
+            const r = await aprofundarSecoes(
+              {
+                tema: st.objective ?? "",
+                tipo: String(comBase.work.kind ?? "trabalho"),
+                secoes: comBase.work.sections,
+                fontes: fontesWork,
+                // sem a evidência do turno, pedir "mecanismo, história, consequências" é convite a
+                // inventar: o modelo precisa acrescentar e não recebe em que se apoiar
+                evidencia: evidenceBlock(st),
+              },
+              {
+                /**
+                 * O FORMATO vem do módulo (ele instrui o JSON no system). Antes eu mandava um
+                 * "responda JSON" aqui enquanto o system pedia texto puro — duas instruções
+                 * contraditórias, e um modelo obediente ao system devolveria texto que o `genJson`
+                 * não parsearia: reescrita nenhuma, em silêncio.
+                 */
+                escrever: async (sys2, user2) => {
+                  const o2 = await genJson<{ corpo?: string }>(sys2, user2, {
+                    // prazo por chamada compatível com o orçamento da rodada (ORCAMENTO_PADRAO_MS)
+                    temperature: 0.4, model: modelFor("draft"), timeoutMs: 20_000, phase: "aprofundar",
+                  });
+                  return String(o2?.corpo ?? "");
+                },
+              },
+            );
+            if (r.reescritas.length) comBase.work = { ...comBase.work, sections: r.secoes };
+            // O QUE FICOU RASO É DITO, nem que seja no log do servidor: silêncio aqui é a classe de
+            // defeito que esta série inteira persegue. Não vira campo da resposta porque seria uma
+            // superfície nova para o aluno, e a seção curta já aparece no documento.
+            if (r.pendentes.length) {
+              console.warn(`[documento] ${r.pendentes.length} seção(ões) seguem abaixo do piso: `
+                + r.pendentes.map((x) => `${x.titulo || "(sem título)"}=${x.motivo}`).join(", "));
+            }
+          }
+        }
         // D4 · as referências do que o `work` citou saem DAQUI, onde a lista original existe — em
         // vez de o lado do documento remontá-la e torcer pra bater. Anexo só aparece por este
         // caminho: ele não existe no `answer`.
-        if (fontesWork.length && comBase.work?.sections?.length) {
-          const refs = fontesCitadas(comBase.work.sections.map((x) => x.body).join("\n"), fontesWork);
-          if (refs.length) comBase.referencias = refs;
+        //
+        // E o veredito é ESCRITO MESMO QUANDO É VAZIO. `referencias: []` quer dizer "medi aqui e
+        // nada é citável", e `lib/tcc/turno` respeita isso em vez de cair na rede que remonta a
+        // bibliografia a partir de `fontesBase` — lista que nasce do rodapé "Da sua base", onde
+        // menção por texto é legítima e similaridade não existe mais. Sem isto, o conserto desta
+        // PR seria furado justo no caso que ele cria: `fontesWork` filtrado pode ficar vazio, a
+        // rede dispararia, e o trabalho que casou só por texto voltaria pela seção REFERÊNCIAS.
+        if (st.intent === "criar_trabalho" && comBase.work?.sections?.length) {
+          comBase.referencias = fontesCitadas(comBase.work.sections.map((x) => x.body).join("\n"), fontesWork);
         }
         // G3 · gráfico COM RECIBO: a contagem sai do que o turno apurou (papers da busca, trechos
         // por documento da F4). Nenhuma chamada de modelo, e o modelo não digita valor nenhum.
         const gs = graficosDoTurno({
           fontes: st.evidence.map((f) => f.source).filter(Boolean) as { year?: number }[],
           docsDaBase: (ctx as { docsDaBase?: { titulo: string; trechos: unknown[] }[] }).docsDaBase,
+          objetivo: st.objective,
+          intent: st.intent,
         });
         if (gs.length) comBase.graficos = gs;
         return anexarLivros(comBase, livrosAchados);

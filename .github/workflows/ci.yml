@@ -76,6 +76,11 @@ jobs:
       - name: Compose sem chave duplicada
         run: node scripts/compose-check.mjs
 
+      # Mock NÃO é critério de pronto: todo motor próprio precisa de uma PROVA REAL (smoke/sonda/live test)
+      # registrada em config/provas-reais.json. Reprova se um motor próprio subir só com fetch mockado.
+      - name: Provas reais dos motores (sem mock como critério)
+        run: node scripts/provas-reais-check.mjs
+
       # Supply-chain (Pack Octa §1). ANTES do npm ci: pacote novo com install script (ou versão nova) só
       # entra depois de revisado em config/vetting/install-scripts.json; repo REJEITADO não entra nunca.
       - name: Vetting de dependências (lockfile + install scripts + repos rejeitados)
@@ -137,7 +142,13 @@ jobs:
           done
           docker exec rea-proof-mongo mongosh --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"localhost:27017"}]})'
           DATABASE_URL='mongodb://127.0.0.1:27017/rea_test?directConnection=true' npx prisma db push --skip-generate
-          node --test infra/rea-engine/android-capabilities.test.mjs infra/rea-engine/android-request.test.mjs
+          node --test infra/rea-engine/android-capabilities.test.mjs infra/rea-engine/android-request.test.mjs infra/rea-engine/web-bundle.test.mjs infra/rea-engine/politica.test.mjs
+
+      # Ponte da Forja (repo -> grafo): a LÓGICA PURA de seguranca (allowlist de engines, host-check do
+      # clone, filtro de args) roda em qualquer lugar, sem binario nem Mongo. Teste que nao roda no CI nao
+      # e rede: e decoracao. Mantido num passo proprio porque nao depende do REA nem do replica set acima.
+      - name: Forja bridge (pure vetting)
+        run: node --test infra/forja-engine/vetting.test.mjs
 
       - name: Tests (vitest)
         run: npm test
