@@ -22,64 +22,7 @@ import { EVT_ABRIR_CURSO, type CursoAberto } from "@/lib/forja/abrirCurso";
 import { OmegaScholarProvider } from "./omega/OmegaScholarContext";
 import OmegaScholarWorkspace from "./omega/OmegaScholarWorkspace";
 import StudyRoomSuggestionDock from "./omega/StudyRoomSuggestionDock";
-
-// ─── ROOM MAPPING ────────────────────────────────────────────────────────────
-const ROOM_MAPPING: Record<string, string[]> = {
-    cyber: [
-        "Ciência da Computação", "Engenharia de Software", "Sistemas de Informação",
-        "Análise e Desenvolvimento de Sistemas", "Engenharia da Computação",
-        "Redes de Computadores", "Segurança da Informação / Cibersegurança",
-        "Banco de Dados", "Inteligência Artificial", "Ciência de Dados",
-        "Computação em Nuvem", "Internet das Coisas", "Robótica",
-        "Jogos Digitais", "Design Digital / UX / UI",
-        "Computer Science", "Software Engineering",
-    ],
-    med: [
-        "Medicina", "Enfermagem", "Odontologia", "Farmácia", "Fisioterapia",
-        "Nutrição", "Psicologia", "Fonoaudiologia", "Terapia Ocupacional",
-        "Biomedicina", "Educação Física",
-    ],
-    bio: [
-        "Ciências Biológicas", "Biologia", "Biotecnologia",
-        "Bioquímica", "Bioinformática", "Ecologia",
-    ],
-    quantic: [
-        "Matemática", "Matemática Aplicada", "Estatística", "Física",
-        "Astronomia", "Astrofísica", "Geofísica", "Meteorologia",
-    ],
-    humanities: [
-        "História", "Geografia", "Filosofia", "Sociologia", "Antropologia",
-        "Ciência Política", "Relações Internacionais", "Letras", "Linguística",
-        "Pedagogia", "Artes", "Música", "Teatro", "Dança", "Cinema e Audiovisual",
-        "Arquivologia", "Biblioteconomia", "Museologia", "Serviço Social",
-        "Comunicação Social", "Jornalismo", "Publicidade e Propaganda",
-        "Editoração", "Produção Cultural", "Direito", "Teologia",
-    ],
-};
-
-function getRoomForCourse(course?: string): string {
-    if (!course) return "lounge";
-    for (const [room, courses] of Object.entries(ROOM_MAPPING)) {
-        if (courses.some(c => c.toLowerCase() === course.toLowerCase())) return room;
-    }
-    return "lounge";
-}
-
-// ─── ROOM METADATA ───────────────────────────────────────────────────────────
-const ROOM_META: Record<string, {
-    name: string;
-    color: string;
-    accent: string;      // for the indicator bar color
-    gradient: string;
-    glow: string;
-}> = {
-    cyber:      { name: "Cyber Room",    color: "text-cyan-600 dark:text-cyan-400",       accent: "bg-cyan-400/40 dark:bg-cyan-400/30",       gradient: "from-cyan-500/15 to-blue-500/5",      glow: "bg-cyan-400/10" },
-    med:        { name: "MedLab",        color: "text-rose-600 dark:text-rose-400",        accent: "bg-rose-400/40 dark:bg-rose-400/30",        gradient: "from-rose-500/15 to-pink-500/5",       glow: "bg-rose-400/10" },
-    bio:        { name: "Bio Room",      color: "text-emerald-600 dark:text-emerald-400",  accent: "bg-emerald-400/40 dark:bg-emerald-400/30",  gradient: "from-emerald-500/15 to-green-500/5",   glow: "bg-emerald-400/10" },
-    quantic:    { name: "Quantic Room",  color: "text-blue-600 dark:text-blue-400",        accent: "bg-blue-400/40 dark:bg-blue-400/30",        gradient: "from-blue-500/15 to-indigo-500/5",     glow: "bg-blue-400/10" },
-    humanities: { name: "Grand Archive", color: "text-amber-600 dark:text-amber-400",      accent: "bg-amber-400/40 dark:bg-amber-400/30",      gradient: "from-amber-500/15 to-orange-500/5",    glow: "bg-amber-400/10" },
-    lounge:     { name: "Lounge",        color: "text-violet-600 dark:text-violet-400",    accent: "bg-violet-400/40 dark:bg-violet-400/30",    gradient: "from-violet-500/15 to-purple-500/5",   glow: "bg-violet-400/10" },
-};
+import { temaOuLounge, VISUAL_TEMA } from "@/lib/rooms/temas";
 
 // ─── TAB DEFINITIONS ─────────────────────────────────────────────────────────
 // Submódulos da Sala de Estudos: só Estudos / Aulas (mesmo conjunto para todas as
@@ -213,8 +156,8 @@ export default function StudyRoomContent({ flushTop = false, unified = false, ab
     const { data: session } = useSession();
 
     const course = (session?.user as any)?.course as string | undefined;
-    const room   = getRoomForCourse(course);
-    const meta   = ROOM_META[room] ?? ROOM_META["lounge"];
+    const room   = temaOuLounge(course);
+    const meta   = VISUAL_TEMA[room];
     const tabs   = ROOM_TABS[room] ?? [];
     const isTeacher =
         (session?.user as any)?.role === "teacher" ||
@@ -459,7 +402,7 @@ export default function StudyRoomContent({ flushTop = false, unified = false, ab
                     <div className="h-[1px] mt-1 mx-3 bg-black/[0.04] dark:bg-white/[0.06] relative">
                         {ready && (
                             <motion.div
-                                className={`absolute top-0 h-[2px] rounded-full ${meta.accent}`}
+                                className={`absolute top-0 h-[2px] rounded-full ${meta.acento}`}
                                 animate={{ left: indicator.left - 12, width: indicator.width }}
                                 // -12 accounts for px-3 (12px) padding on the tab row
                                 transition={{ type: "spring", stiffness: 520, damping: 38, mass: 0.4 }}

@@ -13,21 +13,15 @@ import {
 } from "@heroicons/react/24/outline";
 
 import NetworkMural from "@/app/workstation/profiles/NetworkMural";
+import { temaDoCurso, VISUAL_TEMA, type TemaDeArea } from "@/lib/rooms/temas";
 
-const ROOM_MAPPING: Record<string, string[]> = {
-    cyber: ["Ciência da Computação", "Engenharia de Software", "Sistemas de Informação", "Análise e Desenvolvimento de Sistemas", "Engenharia da Computação", "Redes de Computadores", "Segurança da Informação / Cibersegurança", "Banco de Dados", "Inteligência Artificial", "Ciência de Dados", "Computação em Nuvem", "Internet das Coisas", "Robótica", "Jogos Digitais", "Design Digital / UX / UI", "Computer Science", "Software Engineering"],
-    med: ["Medicina", "Enfermagem", "Odontologia", "Farmácia", "Fisioterapia", "Nutrição", "Psicologia", "Fonoaudiologia", "Terapia Ocupacional", "Biomedicina", "Educação Física"],
-    bio: ["Ciências Biológicas", "Biologia", "Biotecnologia", "Bioquímica", "Bioinformática", "Ecologia"],
-    quantic: ["Matemática", "Matemática Aplicada", "Estatística", "Física", "Astronomia", "Astrofísica", "Geofísica", "Meteorologia"],
-    humanities: ["História", "Geografia", "Filosofia", "Sociologia", "Antropologia", "Ciência Política", "Relações Internacionais", "Letras", "Linguística", "Pedagogia", "Artes", "Música", "Teatro", "Dança", "Cinema e Audiovisual", "Arquivologia", "Biblioteconomia", "Museologia", "Serviço Social", "Comunicação Social", "Jornalismo", "Publicidade e Propaganda", "Editoração", "Produção Cultural", "Direito", "Teologia"]
+// Temas (nome, cor, rota, cursos): fonte única em lib/rooms/temas.ts. Só o ÍCONE mora aqui.
+const ICONE_TEMA: Record<TemaDeArea, React.ComponentType<{ className?: string }>> = {
+    cyber: CpuChipIcon, med: ChartBarIcon, bio: BeakerIcon, quantic: SparklesIcon, humanities: BookOpenIcon,
 };
-
-const ROOM_DETAILS = {
-    cyber: { id: "cyber", name: "Cyber Room", icon: CpuChipIcon, color: "text-cyan-600 dark:text-cyan-400", bg: "bg-cyan-50 dark:bg-cyan-500/10", border: "border-cyan-300 dark:border-cyan-500/30", route: "/study-rooms/cyber" },
-    med: { id: "med", name: "MedLab", icon: ChartBarIcon, color: "text-rose-600 dark:text-rose-400", bg: "bg-rose-50 dark:bg-rose-500/10", border: "border-rose-300 dark:border-rose-500/30", route: "/study-rooms/med" },
-    bio: { id: "bio", name: "Bio Room", icon: BeakerIcon, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-500/10", border: "border-emerald-300 dark:border-emerald-500/30", route: "/study-rooms/bio" },
-    quantic: { id: "quantic", name: "Quantic Room", icon: SparklesIcon, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-500/10", border: "border-blue-300 dark:border-blue-500/30", route: "/study-rooms/quantic" },
-    humanities: { id: "humanities", name: "Grand Archive", icon: BookOpenIcon, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-500/10", border: "border-amber-300 dark:border-amber-500/30", route: "/study-rooms/humanities" },
+const detalhesDaSala = (id: TemaDeArea) => {
+    const v = VISUAL_TEMA[id];
+    return { id, name: v.nome, icon: ICONE_TEMA[id], color: v.cor, bg: v.bg, border: v.borda, route: v.rota };
 };
 
 const DEFAULT_SKILLS = [
@@ -279,16 +273,13 @@ export default function VisitedWorkStationPage({ params }: { params: { id: strin
     const userGender = visitedUser.gender || "unspecified";
     const userImage = visitedUser.image || "/assets/default-avatar.png";
 
-    const getTargetRoom = () => {
+    const getTargetRoom = (): TemaDeArea | null => {
         if (visitedUser.kycStatus === "rejected") return null;
-        for (const [room, courses] of Object.entries(ROOM_MAPPING)) {
-            if (courses.includes(userCourse)) return room as keyof typeof ROOM_DETAILS;
-        }
-        return null;
+        return temaDoCurso(userCourse);
     };
 
     const targetRoomKey = getTargetRoom();
-    const targetRoom = targetRoomKey ? ROOM_DETAILS[targetRoomKey] : null;
+    const targetRoom = targetRoomKey ? detalhesDaSala(targetRoomKey) : null;
 
     const getTheme = () => {
         const isFemale = userGender.toLowerCase() === "feminino" || userGender.toLowerCase() === "female";
