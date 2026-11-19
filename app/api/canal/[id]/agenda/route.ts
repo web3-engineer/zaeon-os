@@ -62,27 +62,33 @@ export async function POST(req: Request, { params }: Ctx): Promise<NextResponse>
   // janelinha do bloco: os pedaços que a pessoa está editando saem antes (só os DELA, deste canal)
   const substitui: string[] = Array.isArray(body?.substitui) ? body.substitui.filter(ehId).slice(0, MAX_BLOCOS_POR_PESSOA) : [];
 
-  let meus: Linha[] = await prisma.agendaBloco.findMany({ where: { canalId: canal.id, userId: u.id } });
-  if (substitui.length) {
-    const sai = meus.filter((m) => substitui.includes(m.id)).map((m) => m.id);
-    if (sai.length) await prisma.agendaBloco.deleteMany({ where: { id: { in: sai }, userId: u.id, canalId: canal.id } });
-    meus = meus.filter((m) => !sai.includes(m.id));
+  const todosMeus: Linha[] = await prisma.agendaBloco.findMany({ where: { canalId: canal.id, userId: u.id } });
+  // a janelinha ficou velha (o bloco foi apagado/mudado noutra aba): recusa em vez de recriar o que já saiu
+  if (substitui.some((id) => !todosMeus.some((m) => m.id === id))) {
+    return NextResponse.json({ error: "Esse horário mudou. Abra de novo e tente outra vez." }, { status: 409 });
   }
+  const meus = todosMeus.filter((m) => !substitui.includes(m.id));
   // <Bloco>: o bloco novo ainda não tem id (só ganha ao ser criado); os antigos têm.
   const { removidos, blocos: depois } = aplicarBloco<Bloco>(meus.map(paraBloco), { userId: u.id, ...norm });
+  // tudo checado ANTES de apagar qualquer coisa: se recusar, a agenda antiga fica como estava
   if (meus.length - removidos.length >= MAX_BLOCOS_POR_PESSOA) {
     return NextResponse.json({ error: `Máximo de ${MAX_BLOCOS_POR_PESSOA} horários por pessoa neste escritório.` }, { status: 400 });
   }
-  if (removidos.length) await prisma.agendaBloco.deleteMany({ where: { id: { in: removidos.map((r) => r.id!) }, userId: u.id } });
+  const saem = [...substitui, ...removidos.map((r) => r.id!)];
   const novo = depois[depois.length - 1]!;   // a UNIÃO (aplicarBloco junta o que encosta)
-  const criado: Linha = await prisma.agendaBloco.create({
-    data: {
-      canalId: canal.id, userId: u.id, dia: novo.dia, inicio: novo.inicio, fim: novo.fim,
-      ...(novo.de !== undefined && novo.ate !== undefined ? { de: novo.de, ate: novo.ate } : {}),
-    },
-  });
-  await publicarPusher(canal.id, EV_AGENDA, { canalId: canal.id });
-  return NextResponse.json({ bloco: paraBloco(criado), removidos: removidos.map((r) => r.id) }, { status: 201 });
+  // apagar os antigos e criar a união juntos: ou acontece tudo, ou nada
+  const [, criado] = await prisma.$transaction([
+    prisma.agendaBloco.deleteMany({ where: { id: { in: saem }, userId: u.id, canalId: canal.id } }),
+    prisma.agendaBloco.create({
+      data: {
+        canalId: canal.id, userId: u.id, dia: novo.dia, inicio: novo.inicio, fim: novo.fim,
+        ...(novo.de !== undefined && novo.ate !== undefined ? { de: novo.de, ate: novo.ate } : {}),
+      },
+    }),
+  ]);
+  // já gravou: se o aviso em tempo real falhar, a resposta continua sendo sucesso (os outros veem no próximo carregamento)
+  await publicarPusher(canal.id, EV_AGENDA, { canalId: canal.id }).catch(() => {});
+  return NextResponse.json({ bloco: paraBloco(criado as Linha), removidos: saem }, { status: 201 });
 }
 
 export async function DELETE(req: Request, { params }: Ctx): Promise<NextResponse> {

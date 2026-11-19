@@ -16,6 +16,7 @@ vi.mock("@/lib/canal/server", () => ({
   exigirFlag: () => null,
   pessoas: async (ids: string[]) => new Map([...new Set(ids)].map((id) => [id, { id, nome: id === A ? "Ana" : "Bia", avatar: null }])),
   prisma: {
+    $transaction: async (ops: Promise<unknown>[]) => Promise.all(ops),
     canal: { findUnique: async ({ where }: any) => (where.id === state.canal?.id ? state.canal : null) },
     agendaBloco: {
       findMany: async ({ where }: any) => state.blocos.filter((b) => b.canalId === where.canalId && (!where.userId || b.userId === where.userId)),
@@ -115,6 +116,32 @@ describe("agenda · marcar horário", () => {
     await POST(post({ dia: 3, de: 570, ate: 660, substitui: [antigo.id] }), ctx);
     const meus = state.blocos.filter((x) => x.userId === A);
     expect(meus.map((b) => [b.de, b.ate])).toEqual([[570, 660]]);
+  });
+
+  it("#858: a resposta conta como removidos também os blocos da janelinha (substitui)", async () => {
+    await POST(post({ dia: 3, inicio: 8, fim: 15 }), ctx);
+    const antigo = state.blocos.find((x) => x.userId === A)!;
+    const j = await (await POST(post({ dia: 3, de: 570, ate: 660, substitui: [antigo.id] }), ctx)).json();
+    expect(j.removidos).toContain(antigo.id);
+  });
+
+  it("#858: janelinha velha (o bloco já foi apagado noutra aba) → 409 e não recria nada", async () => {
+    const r = await POST(post({ dia: 3, de: 570, ate: 660, substitui: ["f".repeat(24)] }), ctx);
+    expect(r.status).toBe(409);
+    expect(state.blocos).toHaveLength(0);
+  });
+
+  it("#858: passou do limite numa edição → recusa sem apagar o horário antigo", async () => {
+    for (let i = 0; i < MAX_BLOCOS_POR_PESSOA; i++) {
+      const de = 420 + Math.floor(i / 7) * 120, ate = de + 30;   // 30 min com folga: nenhum encosta no outro
+      state.blocos.push({ id: novoId(), canalId: CANAL, userId: A, dia: i % 7, inicio: Math.floor(de / 60), fim: Math.floor((ate - 1) / 60), de, ate });
+    }
+    const alvo = state.blocos[0]!;
+    const antes = state.blocos.length;
+    const r = await POST(post({ dia: 6, de: 1260, ate: 1290 }), ctx);
+    expect(r.status).toBe(400);
+    expect(state.blocos.length).toBe(antes);
+    expect(state.blocos.some((b) => b.id === alvo.id)).toBe(true);
   });
 
   it("GET devolve os blocos de todos e o nome de cada pessoa", async () => {

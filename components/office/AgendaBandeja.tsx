@@ -32,6 +32,14 @@ type Arrasto = { dia: Dia; de: number; ate: number; ativo: boolean };
 
 /** Quanto tempo segurar o dedo pra começar a arrastar (antes disso, o dedo rola a agenda). */
 const SEGURAR_MS = 320;
+/** #858: salvar/apagar com rede travada não pode deixar a agenda presa em "salvando" pra sempre. */
+export const PRAZO_MS = 15_000;
+const MSG_PRAZO = "A conexão demorou demais. Confira a internet e tente de novo.";
+async function comPrazo(url: string, init: RequestInit): Promise<Response> {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), PRAZO_MS);
+  try { return await fetch(url, { ...init, signal: ctl.signal }); } finally { clearTimeout(t); }
+}
 
 export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
   canalId: string;
@@ -53,7 +61,11 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
   const [diaCel, setDiaCel] = useState<Dia>(() => new Date().getDay() as Dia);
   const [editando, setEditando] = useState<Faixa | null>(null);
   const [aviso, setAviso] = useState<{ texto: string; desfazer?: Salvar } | null>(null);
-  const [arrasto, setArrasto] = useState<Arrasto | null>(null);
+  const [arrasto, setArrastoEstado] = useState<Arrasto | null>(null);
+  // #858: o arrasto também mora numa ref — o soltar lê dela e salva FORA do updater do setState
+  // (o Strict Mode repete updaters, e salvar lá dentro mandava o POST duas vezes)
+  const arrastoRef = useRef<Arrasto | null>(null);
+  const setArrasto = useCallback((a: Arrasto | null) => { arrastoRef.current = a; setArrastoEstado(a); }, []);
   const avisoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gradeRef = useRef<HTMLDivElement>(null);
   const rolouPraAgora = useRef(false);
@@ -100,6 +112,9 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
     setGente(new Map());
     setErro(null);
     setEditando(null);
+    // #858: o "Desfazer" do canal anterior recriaria o horário NESTE canal
+    if (avisoTimer.current) clearTimeout(avisoTimer.current);
+    setAviso(null);
   }, [canalId]);
   // A carga e o cancelamento dela moram no MESMO efeito: ao trocar de canal, fechar ou chegar versão nova,
   // o cleanup invalida a carga anterior (e solta o "carregando" dela) e só então a nova começa.
@@ -120,9 +135,10 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
   // #850: ao abrir, rola até a hora de agora (as horas de baixo ficavam escondidas)
   useEffect(() => {
     if (!aberta || carregando || rolouPraAgora.current) return;
-    const linha = gradeRef.current?.querySelector<HTMLElement>(`[data-hora-rotulo="${Math.max(HORAS[0]!, agora.getHours() - 1)}"]`);
+    // #858: a hora lida AGORA (o estado `agora` pode ainda ser o de quando a agenda fechou)
+    const linha = gradeRef.current?.querySelector<HTMLElement>(`[data-hora-rotulo="${Math.max(HORAS[0]!, new Date().getHours() - 1)}"]`);
     if (linha && typeof linha.scrollIntoView === "function") { linha.scrollIntoView({ block: "start" }); rolouPraAgora.current = true; }
-  }, [aberta, carregando, agora]);
+  }, [aberta, carregando]);
 
   // foco: ao abrir vai pra bandeja (o fundo fica inerte); ao fechar volta pra quem abriu (o 🗓).
   // A volta espera um tique: nesse instante o fundo ainda está inerte e recusaria o foco.
@@ -176,14 +192,21 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
   const salvar = useCallback(async (b: Salvar, texto = "Marcado") => {
     setSalvando(true);
     try {
-      const r = await fetch(`/api/canal/${canalId}/agenda`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) });
+      const r = await comPrazo(`/api/canal/${canalId}/agenda`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) });
       const j = await r.json().catch(() => ({}));
       if (canalId !== canalNaTela.current) return;   // já estou em outro canal: nada daqui vale pra ele
-      if (!r.ok) { setErro(j?.error || `Não deu pra salvar (${r.status})`); return; }
+      if (!r.ok) {
+        setErro(j?.error || `Não deu pra salvar (${r.status})`);
+        if (r.status === 409) { setEditando(null); await carregar(); }   // #858: a janelinha estava velha
+        return;
+      }
       setErro(null);
       const m = j?.bloco ? minutosDo(j.bloco) : minutosDo({ inicio: b.inicio ?? 0, fim: b.fim ?? 0, de: b.de, ate: b.ate });
       avisar(`${texto}: ${quando((j?.bloco?.dia ?? b.dia) as Dia, m.de, m.ate)}`);
       await carregar();
+    } catch (e) {
+      if (canalId !== canalNaTela.current) return;
+      setErro((e as Error)?.name === "AbortError" ? MSG_PRAZO : `Não deu pra salvar: ${String((e as Error)?.message ?? e)}`);
     } finally {
       setSalvando(false);
     }
@@ -195,18 +218,25 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
     setSalvando(true);
     try {
       const q = f.ids.map((id) => `bloco=${encodeURIComponent(id)}`).join("&");
-      const r = await fetch(`/api/canal/${canalId}/agenda?${q}`, { method: "DELETE" });
+      const r = await comPrazo(`/api/canal/${canalId}/agenda?${q}`, { method: "DELETE" });
       const j = await r.json().catch(() => ({}));
       if (canalId !== canalNaTela.current) return;
       if (!r.ok) { setErro(j?.error || `Não deu pra apagar (${r.status})`); return; }
       avisar("Horário apagado", { dia: f.dia, de: f.de, ate: f.ate });
       await carregar();
+    } catch (e) {
+      if (canalId !== canalNaTela.current) return;
+      setErro((e as Error)?.name === "AbortError" ? MSG_PRAZO : `Não deu pra apagar: ${String((e as Error)?.message ?? e)}`);
     } finally {
       setSalvando(false);
     }
   }, [canalId, carregar, avisar]);
 
   const fs = useMemo(() => faixas(blocos), [blocos]);
+  // #858: apagaram (noutra aba) o horário que a janelinha está editando → a janelinha fecha
+  useEffect(() => {
+    if (editando && !editando.ids.every((id) => blocos.some((b) => b.id === id))) setEditando(null);
+  }, [blocos, editando]);
   const minhas = useMemo(() => (eu ? fs.filter((f) => f.userId === eu) : []), [fs, eu]);
   // cores sem repetir no canal: eu primeiro, depois na ordem em que as pessoas aparecem
   const cores = useMemo(() => coresDoCanal([...(eu ? [eu] : []), ...fs.map((f) => f.userId)]), [fs, eu]);
@@ -254,32 +284,28 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
       if (!p) return;
       const c = celulaEm(e.clientX, e.clientY);
       if (!c || c.dia !== p.dia) return;
-      setArrasto((a) => {
-        if (a?.ativo) return { ...a, ate: c.hora };
-        if (p.tipo === "mouse" && c.hora !== p.hora) return { dia: p.dia, de: p.hora, ate: c.hora, ativo: true };
-        return a;
-      });
+      const a = arrastoRef.current;
+      if (a?.ativo) { if (a.ate !== c.hora) setArrasto({ ...a, ate: c.hora }); }
+      else if (p.tipo === "mouse" && c.hora !== p.hora) setArrasto({ dia: p.dia, de: p.hora, ate: c.hora, ativo: true });
     };
     const soltar = () => {
       const p = pressao.current;
       pressao.current = null;
       if (p?.timer) clearTimeout(p.timer);
-      setArrasto((a) => {
-        if (a?.ativo) {
-          ignorarClique.current = true;
-          setTimeout(() => { ignorarClique.current = false; }, 0);
-          setAncora(null);
-          if (a.de !== a.ate) void salvar({ dia: a.dia, inicio: Math.min(a.de, a.ate), fim: Math.max(a.de, a.ate) });
-        }
-        return null;
-      });
+      const a = arrastoRef.current;
+      setArrasto(null);
+      if (!a?.ativo) return;
+      ignorarClique.current = true;
+      setTimeout(() => { ignorarClique.current = false; }, 0);
+      setAncora(null);
+      if (a.de !== a.ate) void salvar({ dia: a.dia, inicio: Math.min(a.de, a.ate), fim: Math.max(a.de, a.ate) });
     };
     const cancelar = () => { const p = pressao.current; if (p?.timer) clearTimeout(p.timer); pressao.current = null; setArrasto(null); };
     window.addEventListener("pointermove", mover);
     window.addEventListener("pointerup", soltar);
     window.addEventListener("pointercancel", cancelar);
     return () => { window.removeEventListener("pointermove", mover); window.removeEventListener("pointerup", soltar); window.removeEventListener("pointercancel", cancelar); };
-  }, [salvar]);
+  }, [salvar, setArrasto]);
   // arrastando com o dedo, o dedo não rola a agenda (listener não-passivo: o React registra touchmove como passivo)
   useEffect(() => {
     const el = gradeRef.current;
@@ -334,9 +360,10 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
 
       <div ref={gradeRef} className="flex-1 min-h-0 overflow-auto custom-scrollbar px-2 sm:px-4 py-3 [box-shadow:inset_0_-14px_12px_-12px_rgba(15,23,42,0.18)]">
         <div className={`grid ${celular ? "" : "min-w-[560px]"}`} style={{ gridTemplateColumns: `44px repeat(${dias.length}, minmax(0,1fr))` }}>
-          <div />
-          {dias.map((d) => (
-            <div key={`h-${d}`} className={`pb-1 text-center text-[12px] font-bold rounded-t-md ${celular ? "sr-only" : ""}
+          {/* #858: no celular não tem linha de cabeçalho — o dia já aparece no ‹ › (e "sr-only" tirava a célula da grade, desalinhando as colunas) */}
+          {!celular && <div />}
+          {!celular && dias.map((d) => (
+            <div key={`h-${d}`} className={`pb-1 text-center text-[12px] font-bold rounded-t-md
               ${d === hoje ? "bg-blue-500/10 text-blue-700 dark:bg-cyan-400/10 dark:text-cyan-300" : ancora?.dia === d ? "text-blue-600 dark:text-cyan-300" : TXT_2}`}>
               {DIA_CURTO[d]}{d === hoje ? " · hoje" : ""}
             </div>

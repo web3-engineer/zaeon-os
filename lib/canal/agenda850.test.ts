@@ -80,6 +80,12 @@ describe("#850 · cores", () => {
     const cores = coresDoCanal(ids);
     expect(new Set(cores.values()).size).toBe(6);
   });
+  it("#858: mais gente que a paleta: ninguém repete cor", () => {
+    const ids = Array.from({ length: PALETA.length + 8 }, (_, i) => i.toString(16).padStart(24, "0"));
+    const cores = [...coresDoCanal(ids).values()];
+    expect(new Set(cores).size).toBe(ids.length);
+    expect(cores.every((c) => /^#[0-9a-f]{6}$/.test(c))).toBe(true);   // a agenda soma a transparência em hex
+  });
   it("a paleta não tem cores repetidas", () => {
     expect(new Set(PALETA).size).toBe(PALETA.length);
   });

@@ -199,14 +199,26 @@ export function corDaPessoa(userId: string): string {
   return PALETA[h % PALETA.length]!;
 }
 
-/** #850: as cores de um canal SEM repetir — na ordem de quem aparece (até acabar a paleta). */
+/** #858: acabou a paleta → uma cor nova pelo ângulo de ouro (cada uma bem longe da anterior no círculo).
+ *  Sai em hex (#rrggbb) porque a agenda soma a transparência no fim ("…7a"). */
+export function corExtra(n: number): string {
+  const h = (n * 137.508 + 20) % 360, s = 0.7, l = 0.48;
+  const k = (x: number) => (x + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = (x: number) => Math.round(255 * (l - a * Math.max(-1, Math.min(k(x) - 3, 9 - k(x), 1))));
+  return "#" + [f(0), f(8), f(4)].map((v) => v.toString(16).padStart(2, "0")).join("");
+}
+
+/** #850: as cores de um canal SEM repetir — na ordem de quem aparece (depois da paleta, cores extras). */
 export function coresDoCanal(ids: string[]): Map<string, string> {
   const m = new Map<string, string>();
   const usadas = new Set<string>();
+  let extra = 0;
   for (const id of ids) {
     if (m.has(id)) continue;
     const pref = corDaPessoa(id);
-    const cor = !usadas.has(pref) ? pref : PALETA.find((c) => !usadas.has(c)) ?? pref;
+    let cor = !usadas.has(pref) ? pref : PALETA.find((c) => !usadas.has(c));
+    while (!cor || usadas.has(cor)) cor = corExtra(extra++);
     m.set(id, cor);
     usadas.add(cor);
   }
