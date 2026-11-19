@@ -85,7 +85,7 @@ describe("agenda · marcar horário", () => {
     expect(state.blocos).toHaveLength(0);
   });
 
-  it("redesenhar: o meu bloco antigo que se sobrepõe sai; o da outra pessoa fica", async () => {
+  it("#850: o meu bloco novo JUNTA com o meu antigo que se sobrepõe; o da outra pessoa fica", async () => {
     await POST(post({ dia: 2, inicio: 9, fim: 12 }), ctx);
     state.user = user(B);
     await POST(post({ dia: 2, inicio: 10, fim: 11 }), ctx);
@@ -93,7 +93,28 @@ describe("agenda · marcar horário", () => {
     const r = await POST(post({ dia: 2, inicio: 11, fim: 16 }), ctx);
     const j = await r.json();
     expect(j.removidos).toHaveLength(1);
-    expect(state.blocos.map((b) => [b.userId, b.inicio, b.fim]).sort()).toEqual([[A, 11, 16], [B, 10, 11]].sort());
+    expect(state.blocos.map((b) => [b.userId, b.inicio, b.fim]).sort()).toEqual([[A, 9, 16], [B, 10, 11]].sort());
+  });
+
+  it("#850: marcar com minutos (7h30 às 10h) guarda os minutos e o quadrado", async () => {
+    const r = await POST(post({ dia: 1, de: 450, ate: 600 }), ctx);
+    expect(r.status).toBe(201);
+    const b = state.blocos.find((x) => x.userId === A)!;
+    expect([b.inicio, b.fim, b.de, b.ate]).toEqual([7, 9, 450, 600]);
+  });
+
+  it("#850: minutos fora do passo de 15 ou fora da grade são recusados", async () => {
+    expect((await POST(post({ dia: 1, de: 455, ate: 600 }), ctx)).status).toBe(400);
+    expect((await POST(post({ dia: 1, de: 360, ate: 600 }), ctx)).status).toBe(400);
+    expect((await POST(post({ dia: 1, de: 600, ate: 600 }), ctx)).status).toBe(400);
+  });
+
+  it("#850: a janelinha do bloco (substitui) diminui o horário em vez de juntar", async () => {
+    await POST(post({ dia: 3, inicio: 8, fim: 15 }), ctx);
+    const antigo = state.blocos.find((x) => x.userId === A)!;
+    await POST(post({ dia: 3, de: 570, ate: 660, substitui: [antigo.id] }), ctx);
+    const meus = state.blocos.filter((x) => x.userId === A);
+    expect(meus.map((b) => [b.de, b.ate])).toEqual([[570, 660]]);
   });
 
   it("GET devolve os blocos de todos e o nome de cada pessoa", async () => {

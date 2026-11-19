@@ -8,6 +8,11 @@
  * Marcar: 1º clique escolhe o quadrado inicial; 2º clique NA MESMA COLUNA fecha o intervalo
  * (terça 9 + terça 15 = terça das 9h às 16h: o quadrado das 15h está incluído). A foto da pessoa fica só
  * no quadrado inicial; a cor dela pinta todos até o final. Clique em outra coluna recomeça a seleção.
+ *
+ * #850: MINUTOS opcionais (`de`/`ate`, minutos desde a meia-noite, de 15 em 15): sem eles vale a hora cheia do
+ * quadrado. Horários da mesma pessoa que se ENCOSTAM ou se sobrepõem no mesmo dia viram UM só (juntar). A grade
+ * desenha FAIXAS (os pedaços da pessoa juntos), com a foto só no começo. E como a agenda se repete, nada é
+ * bloqueado: o que já passou NESTA semana só fica apagado e "vale a partir da próxima".
  */
 
 /** 0 = domingo … 6 = sábado (o mesmo de Date.getDay()). */
@@ -23,8 +28,19 @@ export const DIAS_ORDEM: readonly Dia[] = [1, 2, 3, 4, 5, 6, 0];
 export const DIA_CURTO: Record<Dia, string> = { 0: "Dom", 1: "Seg", 2: "Ter", 3: "Qua", 4: "Qui", 5: "Sex", 6: "Sáb" };
 export const DIA_LONGO: Record<Dia, string> = { 0: "domingo", 1: "segunda", 2: "terça", 3: "quarta", 4: "quinta", 5: "sexta", 6: "sábado" };
 
-/** Um horário marcado. `inicio` e `fim` são QUADRADOS (inclusivos): 9..15 = das 9h às 16h. */
-export type Bloco = { id?: string; userId: string; dia: Dia; inicio: number; fim: number };
+/** Um horário marcado. `inicio` e `fim` são QUADRADOS (inclusivos): 9..15 = das 9h às 16h. `de`/`ate` (#850,
+ *  opcionais): os minutos exatos — 450..600 = das 7h30 às 10h (`ate` não incluso). */
+export type Bloco = { id?: string; userId: string; dia: Dia; inicio: number; fim: number; de?: number; ate?: number };
+
+/** #850: minutos de 15 em 15, dentro da grade (7h00 … 23h00). */
+export const PASSO_MIN = 15;
+export const MIN_INICIO = HORA_INICIO * 60;
+export const MIN_FIM = (HORA_FIM + 1) * 60;
+
+/** Os minutos de um bloco (os antigos, sem `de`/`ate`, valem a hora cheia dos quadrados). */
+export function minutosDo(b: Pick<Bloco, "inicio" | "fim" | "de" | "ate">): { de: number; ate: number } {
+  return { de: b.de ?? b.inicio * 60, ate: b.ate ?? (b.fim + 1) * 60 };
+}
 
 const ehDia = (v: unknown): v is Dia => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 6;
 const ehHora = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= HORA_INICIO && (v as number) <= HORA_FIM;
@@ -38,19 +54,119 @@ export function normalizarBloco(dia: unknown, a: unknown, b: unknown): Omit<Bloc
   return { dia: d, inicio: Math.min(x, y), fim: Math.max(x, y) };
 }
 
-const sobrepoe = (p: Pick<Bloco, "dia" | "inicio" | "fim">, q: Pick<Bloco, "dia" | "inicio" | "fim">) =>
-  p.dia === q.dia && p.inicio <= q.fim && q.inicio <= p.fim;
+/** Um bloco a partir de minutos (valida passo e limites). null = inválido. */
+export function blocoDeMinutos(dia: unknown, de: unknown, ate: unknown): Omit<Bloco, "userId" | "id"> | null {
+  const d = typeof dia === "string" ? Number(dia) : dia;
+  const x = typeof de === "string" ? Number(de) : de;
+  const y = typeof ate === "string" ? Number(ate) : ate;
+  if (!ehDia(d) || !Number.isInteger(x) || !Number.isInteger(y)) return null;
+  const a = x as number, z = y as number;
+  if (a % PASSO_MIN || z % PASSO_MIN || a < MIN_INICIO || z > MIN_FIM || a >= z) return null;
+  return { dia: d, inicio: Math.floor(a / 60), fim: Math.ceil(z / 60) - 1, de: a, ate: z };
+}
+
+/** Se sobrepõem OU se encostam (9h–12h e 12h–14h) no mesmo dia. */
+const encosta = (p: Bloco, q: Bloco) => {
+  if (p.dia !== q.dia) return false;
+  const a = minutosDo(p), b = minutosDo(q);
+  return a.de <= b.ate && b.de <= a.ate;
+};
 
 /**
- * Aplica o bloco novo de UMA pessoa: os blocos dela que se sobrepõem no mesmo dia saem (ela está
- * redesenhando o próprio horário). Os de outras pessoas ficam — várias pessoas podem dividir o mesmo horário.
- * Devolve também quais saíram (o servidor apaga esses).
+ * Aplica o bloco novo de UMA pessoa: os blocos dela que se sobrepõem ou ENCOSTAM nele no mesmo dia saem, e o novo
+ * vira a UNIÃO de todos (#850: marcar 9h, depois 10h, depois 11h dá um bloco só, 9h–12h — uma foto, um apagar).
+ * Os de outras pessoas ficam — várias pessoas podem dividir o mesmo horário. Diminuir um horário é pela janelinha
+ * do bloco (que manda `substitui`). Devolve também quais saíram (o servidor apaga esses).
  */
 export function aplicarBloco<T extends Bloco>(blocos: T[], novo: T): { blocos: T[]; removidos: T[] } {
-  const removidos = blocos.filter((b) => b.userId === novo.userId && sobrepoe(b, novo));
+  const removidos: T[] = [];
+  let atual: T = { ...novo };
+  // repete até parar de crescer: juntar dois pode passar a encostar num terceiro
+  for (let mudou = true; mudou;) {
+    mudou = false;
+    for (const b of blocos) {
+      if (b.userId !== novo.userId || removidos.includes(b) || !encosta(b, atual)) continue;
+      removidos.push(b);
+      const m = minutosDo(b), n = minutosDo(atual);
+      const de = Math.min(m.de, n.de), ate = Math.max(m.ate, n.ate);
+      atual = { ...atual, de, ate, inicio: Math.floor(de / 60), fim: Math.ceil(ate / 60) - 1 };
+      mudou = true;
+    }
+  }
+  // sem minutos quebrados, guarda como antes (só a hora cheia)
+  const m = minutosDo(atual);
+  if (m.de % 60 === 0 && m.ate % 60 === 0) { delete atual.de; delete atual.ate; }
   const ficam = blocos.filter((b) => !removidos.includes(b));
-  return { blocos: [...ficam, novo], removidos };
+  return { blocos: [...ficam, atual], removidos };
 }
+
+// ───────────────────────────── faixas (o que a grade desenha) ─────────────────────────────
+
+/** Os pedaços de uma pessoa num dia, juntos (inclusive os antigos, marcados hora por hora). */
+export type Faixa = { userId: string; dia: Dia; de: number; ate: number; ids: string[] };
+
+export function faixas(blocos: Bloco[]): Faixa[] {
+  const ord = [...blocos].sort((a, b) => a.userId.localeCompare(b.userId) || a.dia - b.dia || minutosDo(a).de - minutosDo(b).de);
+  const out: Faixa[] = [];
+  for (const b of ord) {
+    const m = minutosDo(b);
+    const ult = out[out.length - 1];
+    if (ult && ult.userId === b.userId && ult.dia === b.dia && m.de <= ult.ate) {
+      ult.ate = Math.max(ult.ate, m.ate);
+      if (b.id) ult.ids.push(b.id);
+    } else out.push({ userId: b.userId, dia: b.dia, de: m.de, ate: m.ate, ids: b.id ? [b.id] : [] });
+  }
+  return out;
+}
+
+/** O pedaço de cada faixa dentro do quadrado (dia, hora): `topo`/`altura` em % do quadrado; `inicial` = onde vai a foto. */
+export function naCelula(fs: Faixa[], dia: Dia, hora: number): { faixa: Faixa; topo: number; altura: number; inicial: boolean }[] {
+  const a = hora * 60, z = a + 60;
+  return fs
+    .filter((f) => f.dia === dia && f.de < z && f.ate > a)
+    .map((f) => ({
+      faixa: f,
+      topo: ((Math.max(f.de, a) - a) / 60) * 100,
+      altura: ((Math.min(f.ate, z) - Math.max(f.de, a)) / 60) * 100,
+      inicial: Math.floor(f.de / 60) === hora,
+    }));
+}
+
+// ───────────────────────────── hoje, agora e o que já passou ─────────────────────────────
+
+/** Posição do dia na semana da grade (segunda = 0 … domingo = 6). */
+export const posNaSemana = (d: Dia): number => (d + 6) % 7;
+
+/** O quadrado (dia, hora) já passou NESTA semana? (A agenda se repete: passou = vale a partir da próxima.) */
+export function jaPassou(dia: Dia, hora: number, agora: Date): boolean {
+  const hoje = agora.getDay() as Dia;
+  if (posNaSemana(dia) !== posNaSemana(hoje)) return posNaSemana(dia) < posNaSemana(hoje);
+  return (hora + 1) * 60 <= agora.getHours() * 60 + agora.getMinutes();
+}
+
+/** A próxima vez que o horário acontece (hoje ainda vale se não começou). */
+export function proximaVez(dia: Dia, de: number, agora: Date): Date {
+  const d = new Date(agora);
+  d.setHours(0, 0, 0, 0);
+  let dias = (dia - agora.getDay() + 7) % 7;
+  if (dias === 0 && agora.getHours() * 60 + agora.getMinutes() >= de) dias = 7;
+  d.setDate(d.getDate() + dias);
+  return d;
+}
+
+/** "seg, 24/11" */
+export function textoData(d: Date): string {
+  return `${DIA_CURTO[d.getDay() as Dia].toLowerCase()}, ${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/** 450 → "7h30"; 600 → "10h" */
+export function textoHora(min: number): string {
+  const h = Math.floor(min / 60), m = min % 60;
+  return m ? `${h}h${String(m).padStart(2, "0")}` : `${h}h`;
+}
+
+/** Os horários do seletor da janelinha (7h00 … 23h00, de 15 em 15). */
+export const OPCOES_MIN: readonly number[] = Array.from({ length: (MIN_FIM - MIN_INICIO) / PASSO_MIN + 1 }, (_, i) => MIN_INICIO + i * PASSO_MIN);
 
 /** Quem ocupa um quadrado (dia, hora), e se ali é o quadrado INICIAL do bloco (onde vai a foto). */
 export function ocupantes<T extends Bloco>(blocos: T[], dia: Dia, hora: number): { bloco: T; inicial: boolean }[] {
@@ -73,8 +189,9 @@ export function proximoClique(ancora: Ancora, clique: Clique): ResultadoClique {
 
 // ───────────────────────────── cor e texto ─────────────────────────────
 
-/** Paleta das pessoas (legível no claro e no escuro). A cor é fixa por pessoa — sempre a mesma. */
-export const PALETA = ["#38bdf8", "#a78bfa", "#34d399", "#fb923c", "#f472b6", "#facc15", "#60a5fa", "#4ade80", "#f87171", "#2dd4bf"] as const;
+/** Paleta das pessoas (legível no claro e no escuro). #850: cores BEM diferentes entre si — o laranja e o vermelho
+ *  ficavam iguais (marrom) no escuro; agora ficam longe na ordem e o vermelho é rosado. */
+export const PALETA = ["#3b82f6", "#f97316", "#22c55e", "#a855f7", "#ec4899", "#14b8a6", "#eab308", "#6366f1", "#84cc16", "#f43f5e"] as const;
 
 export function corDaPessoa(userId: string): string {
   let h = 0;
@@ -82,7 +199,22 @@ export function corDaPessoa(userId: string): string {
   return PALETA[h % PALETA.length]!;
 }
 
-/** "terça, das 9h às 16h" (o quadrado final conta inteiro). */
-export function textoBloco(b: Pick<Bloco, "dia" | "inicio" | "fim">): string {
-  return `${DIA_LONGO[b.dia]}, das ${b.inicio}h às ${b.fim + 1}h`;
+/** #850: as cores de um canal SEM repetir — na ordem de quem aparece (até acabar a paleta). */
+export function coresDoCanal(ids: string[]): Map<string, string> {
+  const m = new Map<string, string>();
+  const usadas = new Set<string>();
+  for (const id of ids) {
+    if (m.has(id)) continue;
+    const pref = corDaPessoa(id);
+    const cor = !usadas.has(pref) ? pref : PALETA.find((c) => !usadas.has(c)) ?? pref;
+    m.set(id, cor);
+    usadas.add(cor);
+  }
+  return m;
+}
+
+/** "terça, das 9h às 16h" (o quadrado final conta inteiro; com minutos, "das 7h30 às 10h"). */
+export function textoBloco(b: Pick<Bloco, "dia" | "inicio" | "fim" | "de" | "ate">): string {
+  const m = minutosDo(b);
+  return `${DIA_LONGO[b.dia]}, das ${textoHora(m.de)} às ${textoHora(m.ate)}`;
 }

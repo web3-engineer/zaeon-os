@@ -31,7 +31,7 @@ export default function BarraAgentes({ agentes, naConversa, digitando, estado, o
         return (
           <button key={a.agentKey} type="button" onClick={() => onChamar(a.agentKey)} data-agente={a.agentKey} data-na-conversa={presente ? "sim" : "nao"}
             title={descanso ? rotulo(a.nome, "descanso") : `@${a.agentKey}${a.curso ? ` · ${a.curso}` : ""}`}
-            className={`shrink-0 min-h-[36px] pl-1 pr-2.5 rounded-full flex items-center gap-1.5 text-[12px] font-semibold ${VIDRO_CHIP} ${presente ? TXT : TXT_MUDO} ${descanso ? "opacity-60" : ""}`}>
+            className={`shrink-0 min-h-[44px] pl-1 pr-2.5 rounded-full flex items-center gap-1.5 text-[12px] font-semibold ${VIDRO_CHIP} ${presente ? TXT : TXT_MUDO} ${descanso ? "opacity-60" : ""}`}>
             <AgentAvatar src={a.avatarUrl} nome={a.nome} size={26} emoji={a.emoji} agentId={a.agentKey} estado={escrevendo ? "falando" : "idle"} className={escrevendo ? "ring-2 ring-cyan-400/80" : ""} />
             {a.nome}
             {descanso && <span className={`text-[10px] font-medium ${TXT_MUDO}`}>em descanso</span>}

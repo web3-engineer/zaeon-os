@@ -1335,6 +1335,9 @@ model AgendaBloco {
   dia       Int                                // 0 = domingo … 6 = sábado
   inicio    Int                                // quadrado inicial (hora)
   fim       Int                                // quadrado final (hora, inclusivo)
+  // #850: minutos exatos (opcionais; desde a meia-noite, de 15 em 15): 450..600 = 7h30 às 10h. Sem eles vale a hora cheia.
+  de        Int?
+  ate       Int?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

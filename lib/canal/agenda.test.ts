@@ -39,11 +39,11 @@ describe("agenda · normalizarBloco", () => {
 });
 
 describe("agenda · aplicarBloco (redesenhar o próprio horário)", () => {
-  it("bloco novo meu que se sobrepõe a um meu no mesmo dia substitui o antigo", () => {
+  it("#850: bloco novo meu que se sobrepõe a um meu no mesmo dia JUNTA com ele (vira um só)", () => {
     const antigo = bl(A, 2, 9, 12, "x1");
     const r = aplicarBloco([antigo], bl(A, 2, 11, 15));
     expect(r.removidos).toEqual([antigo]);
-    expect(r.blocos.map((b) => [b.inicio, b.fim])).toEqual([[11, 15]]);
+    expect(r.blocos.map((b) => [b.inicio, b.fim])).toEqual([[9, 15]]);
   });
   it("não mexe nos blocos de outra pessoa no mesmo horário (dá pra dividir o horário)", () => {
     const dela = bl(B, 2, 9, 15, "y1");
@@ -57,8 +57,14 @@ describe("agenda · aplicarBloco (redesenhar o próprio horário)", () => {
     expect(r.removidos).toEqual([]);
     expect(r.blocos).toHaveLength(2);
   });
-  it("encostar sem sobrepor (fim 10 e início 11) não remove", () => {
-    const r = aplicarBloco([bl(A, 2, 8, 10, "m")], bl(A, 2, 11, 12));
+  it("#850: encostar (o quadrado 10 termina às 11h e o novo começa às 11h) junta num bloco só", () => {
+    const antigo = bl(A, 2, 8, 10, "m");
+    const r = aplicarBloco([antigo], bl(A, 2, 11, 12));
+    expect(r.removidos).toEqual([antigo]);
+    expect(r.blocos.map((b) => [b.inicio, b.fim])).toEqual([[8, 12]]);
+  });
+  it("#850: com uma hora vazia no meio, não junta", () => {
+    const r = aplicarBloco([bl(A, 2, 8, 9, "m")], bl(A, 2, 11, 12));
     expect(r.removidos).toEqual([]);
   });
   it("outro dia não é afetado", () => {
