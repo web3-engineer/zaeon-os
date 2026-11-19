@@ -6,7 +6,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const A = "a".repeat(24), B = "b".repeat(24), C = "c".repeat(24), CANAL = "d".repeat(24), OUTRO = "e".repeat(24);
-type Linha = { id: string; canalId: string; userId: string; dia: number; inicio: number; fim: number };
+type Linha = { id: string; canalId: string; userId: string; dia: number; inicio: number; fim: number; de?: number | null; ate?: number | null };
 const state: { canal: any; user: any; blocos: Linha[]; publicados: any[]; seq: number } = { canal: null, user: null, blocos: [], publicados: [], seq: 0 };
 const novoId = () => (++state.seq).toString(16).padStart(24, "0");
 
