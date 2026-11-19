@@ -1068,5 +1068,14 @@
     "researchOff": "Turn off research mode",
     "mentorOff": "Back to Aura (leave {{name}})",
     "with": "With {{name}}"
+  },
+  "marketplaceLayout": {
+    "navigation": "Marketplace views",
+    "explore": "Explore",
+    "connected": "Connected",
+    "search": "Search the marketplace",
+    "categories": "Categories",
+    "emptyConnected": "No connected items match this search.",
+    "empty": "No items match this search."
   }
 }

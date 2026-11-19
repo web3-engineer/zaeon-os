@@ -17,7 +17,7 @@
  * pasta e os papéis (as partes da pesquisa) saem em leque pra ler ou baixar (components/estudos/PastaPesquisa).
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { FILTROS, NOME_TIPO, filtrarVitrine, filtrosVisiveis, mesclarCatalogo, precoTexto, type FiltroVitrine, type ItemVitrine } from "@/lib/estudos/vitrine";
+import { NOME_TIPO, filtrarVitrine, filtrosVisiveis, mesclarCatalogo, precoTexto, type FiltroVitrine, type ItemVitrine } from "@/lib/estudos/vitrine";
 import { COR_RARIDADE, NOME_RARIDADE } from "@/lib/estudos/blueprint";
 import { plugar, desplugar, usePluginsChat } from "@/lib/plugins/chatPlugins";
 import { ehAgenteOrquestra } from "@/lib/orquestra/catalogo";
@@ -186,32 +186,42 @@ export default function VitrineEstudos() {
     const catalogo = useMemo(() => aplicarAjustes(mesclarCatalogo(itensDb), ajustes), [itensDb, ajustes]);
     const itens = useMemo(() => filtrarVitrine(catalogo, filtro, busca), [catalogo, filtro, busca]);
     const itensConectados = useMemo(() => catalogo.filter((i) => conectados.includes(i.id) || (i.plugavel && plugados.includes(i.plugavel))), [catalogo, conectados, plugados]);
-    const mostra = verConectados ? itensConectados : itens;
+    const mostra = verConectados ? filtrarVitrine(itensConectados, filtro, busca) : itens;
     // as abas que só existem quando o banco tem item (Pesquisas) ficam escondidas até a primeira chegar
     const abas = useMemo(() => filtrosVisiveis(catalogo), [catalogo]);
 
     return (
-        <div className="relative h-full w-full overflow-hidden" style={{ background: "radial-gradient(ellipse at 50% 0%, #0f3460 0%, #071a33 55%, #030c1a 100%)" }}>
+        <div className="vt-marketplace relative h-full w-full min-w-0 overflow-hidden" style={{ background: "radial-gradient(ellipse at 50% 0%, #0f3460 0%, #071a33 55%, #030c1a 100%)" }}>
             <div className="absolute inset-0 overflow-y-auto">
                 <div className="mx-auto max-w-[1280px] px-4 pb-16 pt-6 md:px-8">
-                    {/* barra enxuta: os FILTROS ficam escondidos atrás de um único botão que expande; só "Já conectados" e a busca ficam à mostra */}
-                    <div className="flex flex-wrap items-center gap-2">
-                        <button type="button" onClick={() => setFiltrosAbertos((v) => !v)} aria-expanded={filtrosAbertos} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[11px] tracking-wide transition ${!verConectados && filtro !== "todos" ? "border-sky-300 bg-sky-300/15 text-white" : "border-sky-300/25 text-sky-100/70 hover:text-white"}`}>
-                            <span>⚙ Filtros{!verConectados && filtro !== "todos" ? ` · ${FILTROS.find((f) => f.id === filtro)?.nome ?? ""}` : ""}</span>
-                            <span aria-hidden className={`transition-transform ${filtrosAbertos ? "rotate-180" : ""}`}>▾</span>
+                    <div className="mb-5 flex border-b border-sky-200/15" role="group" aria-label={t("marketplaceLayout.navigation")}>
+                        {[false, true].map((conectados) => (
+                            <button key={String(conectados)} type="button" aria-pressed={verConectados === conectados}
+                                onClick={() => setVerConectados(conectados)}
+                                className={`min-h-11 border-b-2 px-4 py-2 text-sm font-medium ${verConectados === conectados ? "border-cyan-300 text-white" : "border-transparent text-sky-200/65 hover:text-white"}`}>
+                                {t(conectados ? "marketplaceLayout.connected" : "marketplaceLayout.explore")}
+                                {conectados && itensConectados.length > 0 && <span className="ml-2 text-xs">{itensConectados.length}</span>}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex min-w-0 items-center gap-2">
+                        <input value={busca} onChange={(e) => setBusca(e.target.value)}
+                            aria-label={t("marketplaceLayout.search")} placeholder={t("marketplaceLayout.search")}
+                            className="min-h-11 min-w-0 flex-1 rounded-xl border border-sky-300/25 bg-sky-950/40 px-3 py-2 text-base text-sky-50 outline-none focus:border-cyan-300 placeholder:text-sky-200/50" />
+                        <button type="button" onClick={() => setFiltrosAbertos((v) => !v)} aria-expanded={filtrosAbertos} aria-controls="marketplace-categories"
+                            className={`min-h-11 shrink-0 rounded-xl border px-3 py-2 text-sm ${filtro !== "todos" ? "border-cyan-300 text-white" : "border-sky-300/25 text-sky-100"}`}>
+                            {t("marketplaceLayout.categories")} <span aria-hidden="true">{filtrosAbertos ? "▴" : "▾"}</span>
                         </button>
-                        <button type="button" onClick={() => setVerConectados((v) => !v)} className={`rounded-full border px-3 py-1.5 font-mono text-[11px] tracking-wide transition ${verConectados ? "border-emerald-300 bg-emerald-300/15 text-emerald-100" : "border-emerald-300/30 text-emerald-200/70 hover:text-emerald-100"}`}>✓ Já conectados{itensConectados.length ? ` (${itensConectados.length})` : ""}</button>
-                        <input value={busca} onChange={(e) => { setBusca(e.target.value); setVerConectados(false); }} placeholder="buscar blueprint…" className="ml-auto min-w-[200px] rounded-full border border-sky-300/25 bg-sky-950/40 px-3 py-1.5 font-mono text-[16px] [@media(hover:hover)_and_(pointer:fine)]:text-[12px] text-sky-50 outline-none placeholder:text-sky-200/40" />
                     </div>
                     {filtrosAbertos && (
-                        <div className="mt-2 flex flex-wrap gap-2">
+                        <div id="marketplace-categories" className="mt-3 flex flex-wrap gap-2 border-b border-sky-200/15 pb-4">
                             {abas.map((f) => (
-                                <button key={f.id} type="button" onClick={() => { setFiltro(f.id); setVerConectados(false); }} className={`rounded-full border px-3 py-1.5 font-mono text-[11px] tracking-wide transition ${!verConectados && filtro === f.id ? "border-sky-300 bg-sky-300/15 text-white" : "border-sky-300/25 text-sky-100/70 hover:text-white"}`}>{f.nome}</button>
+                                <button key={f.id} type="button" aria-pressed={filtro === f.id} onClick={() => { setFiltro(f.id); }} className={`rounded-full border px-3 py-1.5 font-mono text-[11px] tracking-wide transition ${!verConectados && filtro === f.id ? "border-sky-300 bg-sky-300/15 text-white" : "border-sky-300/25 text-sky-100/70 hover:text-white"}`}>{f.nome}</button>
                             ))}
                         </div>
                     )}
 
-                    <div className="vt-grid mt-6 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-x-10 gap-y-14">
+                    <div className="vt-grid vt-market-grid">
                         {mostra.map((it) => {
                             if (it.exemploEstudo) {
                                 return (
@@ -282,7 +292,7 @@ export default function VitrineEstudos() {
                             );
                         })}
                     </div>
-                    {!mostra.length && <p className="mt-10 text-center font-mono text-[12px] text-sky-200/60">{verConectados ? "você ainda não conectou nenhum blueprint" : "nenhum blueprint com esse filtro"}</p>}
+                    {!mostra.length && <p className="mt-10 text-center font-mono text-[12px] text-sky-200/60">{verConectados ? t("marketplaceLayout.emptyConnected") : t("marketplaceLayout.empty")}</p>}
                 </div>
             </div>
 

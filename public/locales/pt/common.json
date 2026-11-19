@@ -1068,5 +1068,14 @@
     "researchOff": "Desligar o modo pesquisa",
     "mentorOff": "Voltar para a Aura (sair de {{name}})",
     "with": "Com {{name}}"
+  },
+  "marketplaceLayout": {
+    "navigation": "Vistas do Marketplace",
+    "explore": "Explorar",
+    "connected": "Conectados",
+    "search": "Buscar no Marketplace",
+    "categories": "Categorias",
+    "emptyConnected": "Nenhum item conectado corresponde à busca.",
+    "empty": "Nenhum item corresponde à busca."
   }
 }
