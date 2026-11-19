@@ -1068,5 +1068,14 @@
     "researchOff": "关闭研究模式",
     "mentorOff": "回到 Aura（离开 {{name}}）",
     "with": "与 {{name}}"
+  },
+  "marketplaceLayout": {
+    "navigation": "市场视图",
+    "explore": "探索",
+    "connected": "已连接",
+    "search": "搜索市场",
+    "categories": "分类",
+    "emptyConnected": "没有符合搜索条件的已连接项目。",
+    "empty": "没有符合搜索条件的项目。"
   }
 }

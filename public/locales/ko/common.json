@@ -1068,5 +1068,14 @@
     "researchOff": "연구 모드 끄기",
     "mentorOff": "Aura로 돌아가기 ({{name}} 나가기)",
     "with": "{{name}}와 함께"
+  },
+  "marketplaceLayout": {
+    "navigation": "마켓플레이스 보기",
+    "explore": "둘러보기",
+    "connected": "연결됨",
+    "search": "마켓플레이스 검색",
+    "categories": "카테고리",
+    "emptyConnected": "검색과 일치하는 연결된 항목이 없습니다.",
+    "empty": "검색과 일치하는 항목이 없습니다."
   }
 }

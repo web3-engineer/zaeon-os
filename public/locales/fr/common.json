@@ -1068,5 +1068,14 @@
     "researchOff": "Désactiver le mode recherche",
     "mentorOff": "Revenir à Aura (quitter {{name}})",
     "with": "Avec {{name}}"
+  },
+  "marketplaceLayout": {
+    "navigation": "Vues du Marketplace",
+    "explore": "Explorer",
+    "connected": "Connectés",
+    "search": "Rechercher dans le Marketplace",
+    "categories": "Catégories",
+    "emptyConnected": "Aucun élément connecté ne correspond à la recherche.",
+    "empty": "Aucun élément ne correspond à la recherche."
   }
 }

@@ -133,3 +133,41 @@
 }
 
 .vt-card--forjada .vt-spine { box-shadow: inset 1px 0 #e6fbff66; }
+
+/* Grade de navegação: mantém o tamanho das cartas independente da largura do painel. */
+.vt-marketplace .vt-market-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 220px));
+  justify-content: center;
+  gap: 36px 28px;
+  margin-top: 28px;
+}
+@media (max-width: 639px) {
+  .vt-marketplace .vt-market-grid {
+    grid-template-columns: repeat(2, minmax(0, 180px));
+    gap: 28px 16px;
+    margin-top: 24px;
+  }
+  .vt-marketplace .vt-card { min-width: 0; }
+  .vt-marketplace .vt-grid .vt-card .vt-title { font-size: 12px; line-height: 1.2; min-height: 29px; overflow-wrap: anywhere; }
+  .vt-marketplace .vt-plate { padding: 6px 8px 9px; }
+  .vt-marketplace .vt-art { margin: 6px 7px 0; }
+  .vt-marketplace .vt-spine,
+  .vt-marketplace .vt-serial,
+  .vt-marketplace .vt-meter { display: none; }
+  .vt-marketplace .vt-price { font-size: 12px; gap: 3px; }
+  .vt-marketplace .vt-plug,
+  .vt-marketplace .vt-desplug { padding: 6px 8px; font-size: 10px; letter-spacing: 0; }
+}
+@media (hover: none) {
+  .vt-marketplace .vt-grid .vt-card,
+  .vt-marketplace .vt-grid:has(.vt-card:hover) .vt-card:not(:hover) { filter: none; opacity: 1; }
+  .vt-marketplace .vt-card:hover { transform: none; }
+  .vt-marketplace .vt-desc { display: none; }
+}
+
+@media (max-width: 639px) {
+  .vt-marketplace .vt-pr { flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+  .vt-marketplace .vt-plug,
+  .vt-marketplace .vt-desplug { min-height: 32px; }
+}
