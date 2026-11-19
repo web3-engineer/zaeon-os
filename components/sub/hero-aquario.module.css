@@ -23,7 +23,7 @@
   position: absolute;
   inset: 0;
   background: linear-gradient(143deg, #defffd30, transparent 40%, #3c86ad18);
-  box-shadow: inset 0 1px #e0ffff38, inset 0 -20px 65px #10254d18;
+  box-shadow: inset 0 1px #e0ffff38;
 }
 
 .cardume {
@@ -48,7 +48,6 @@
   height: 15px;
   border-radius: 65% 84% 84% 65%;
   background: linear-gradient(155deg, #e2ffffb0, currentColor 52%, #284a7350);
-  box-shadow: 0 0 16px color-mix(in srgb, currentColor, transparent 50%);
   opacity: .72;
   --porte: 1;
   transform-origin: 72% 50%;
@@ -120,7 +119,6 @@
 /* Correntes de fundo, com cardumes menores e levemente fora de foco. */
 .cardume:nth-child(5 of .cardume) {
   color: #618bc4;
-  filter: blur(1px);
   opacity: .58;
   animation: corrente-funda 49s -24s linear infinite;
 }
@@ -193,7 +191,6 @@
   height: clamp(90px, 22%, 180px);
   color: #1d847d;
   opacity: .54;
-  filter: blur(.65px);
 }
 
 .algas:nth-child(2) { left: 28%; height: clamp(65px, 13%, 110px); color: #287899; opacity: .37; }
@@ -325,7 +322,6 @@
 
 .ciclos {
   color: #127f9d;
-  mask-image: radial-gradient(ellipse, #0005 15%, #000 76%, #0009);
 }
 
 :global(.dark) .ciclos { color: #83edff; }
@@ -385,7 +381,6 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  backdrop-filter: blur(1.5px);
   animation: retirar-vidro 83s linear infinite;
   background: linear-gradient(118deg, transparent 14%, #e7f3ff1c 30%, transparent 47%, #e7f3ff12 79%, transparent 91%);
 }
@@ -542,7 +537,6 @@
   top: 27%;
   height: min(70vh, 38rem);
   aspect-ratio: 17 / 24;
-  filter: drop-shadow(0 0 5px #55d9fb50);
   transform-origin: 50% 27%;
   animation: aproximar-anatomia 83s ease-in-out infinite, dissolver-corpo 83s linear infinite;
 }
@@ -570,7 +564,6 @@
   aspect-ratio: 1;
   background: url("/models/coracao-landing-fundo.webp") center / contain no-repeat;
   opacity: 0;
-  filter: drop-shadow(0 0 9px #ff68858a);
   animation: revelar-coracao 83s ease-in-out infinite, batimento 1.12s ease-in-out infinite;
 }
 
@@ -605,7 +598,6 @@
   aspect-ratio: 1;
   background: url("/models/cerebro-landing-fundo.webp") center / contain no-repeat;
   opacity: 0;
-  filter: drop-shadow(0 0 8px #57caff70);
   animation: aproximar-cerebro 83s ease-in-out infinite;
 }
 

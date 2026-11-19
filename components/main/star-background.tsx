@@ -105,7 +105,7 @@ const StarBackground: React.FC<{ central?: boolean }> = ({ central = false }) =>
         const escalas = new Float32Array(total);
 
         const applyDPR = () => {
-            const dpr = Math.max(1, Math.min(perfil.dprMax, window.devicePixelRatio || 1));
+            const dpr = central ? 1 : Math.max(1, Math.min(perfil.dprMax, window.devicePixelRatio || 1));
             width = canvas.clientWidth;
             height = canvas.clientHeight;
             canvas.width = Math.floor(width * dpr);
@@ -194,7 +194,7 @@ const StarBackground: React.FC<{ central?: boolean }> = ({ central = false }) =>
             animationId = requestAnimationFrame(draw);
             const dtMs = ultimo ? agora - ultimo : 0;
             // Teto de FPS no aparelho fraco: pula o quadro se ainda não deu o intervalo.
-            if (ultimo && dtMs < perfil.intervaloMinMs - 1) return;
+            if (ultimo && dtMs < (central ? Math.max(1000 / 24, perfil.intervaloMinMs) : perfil.intervaloMinMs) - 1) return;
             ultimo = agora;
             const passo = passoNormalizado(dtMs);
             if (passo === 0) return;
@@ -265,7 +265,6 @@ const StarBackground: React.FC<{ central?: boolean }> = ({ central = false }) =>
                 escalas[i] = escala;
             }
 
-            let faisca = 0;
             const transicao = central ? suave((ciclo - 14000) / 2100) : 0;
             if (central) {
                 ctx.save();
@@ -276,7 +275,6 @@ const StarBackground: React.FC<{ central?: boolean }> = ({ central = false }) =>
                     const x = centroDna() + Math.cos(y * FREQ_DNA + time) * raioDna();
                     const foco = suave((ciclo - 7000) / 3800);
                     const zoom = 1 + 19 * suave((ciclo - 7200) / 6800);
-                    faisca = suave((ciclo - 12200) / 1800);
                     const destinoX = width * .5;
                     const destinoY = height * .27;
                     ctx.translate((destinoX - x) * foco + x, (destinoY - y) * foco + y);
