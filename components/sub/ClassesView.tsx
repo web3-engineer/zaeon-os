@@ -1,5 +1,6 @@
 "use client";
 
+import { avisar, tr } from "@/lib/ui/avisos";
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   MapPin, User, Activity, Clock, ChevronUp, ChevronDown, 
@@ -359,7 +360,7 @@ function TelaDaConta({ room, themeColor = 'cyan' }: ClassesViewProps) {
 
     // cria rascunho de aula no dia selecionado, num horario dado
     const addDraftAt = (hour: number) => {
-        if (!session?.user) { alert("Operative access required to edit schedule."); return; }
+        if (!session?.user) { avisar(tr("avisos.precisaEntrar", "Entre na sua conta pra editar a agenda."), { tipo: "info" }); return; }
         const h = Math.min(AG_MAX - 1, Math.max(AG_MIN, Math.round(hour)));
         setSelectedClass({ id: Date.now(), name: "", teacher: "", room: "", days: [selectedDay + 1], hour: h, endHour: Math.min(AG_MAX, h + 2), color: CLASS_COLORS[classes.length % CLASS_COLORS.length], duration: 2, isDraft: true });
         setHasUnsavedChanges(true);
@@ -374,7 +375,7 @@ function TelaDaConta({ room, themeColor = 'cyan' }: ClassesViewProps) {
         const sameHour = Number(cls.hour) === Number(invitedClass.hour);
         if (sameSubject && sameDay && sameHour) {
             fetch('/api/student/confirm-join', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: pendingInvite }) })
-                .then(() => { alert("Aula Validada! Vinculo com professor estabelecido. O Chat Seguro foi liberado."); setInvitedClass(null); router.replace(`/study-rooms/${room}`); })
+                .then(() => { avisar(tr("avisos.aulaValidada", "Aula confirmada! Você está ligado ao professor e o chat da turma foi liberado.")); setInvitedClass(null); router.replace(`/study-rooms/${room}`); })
                 .catch(console.error);
         }
     };
@@ -557,7 +558,7 @@ function TelaDaConta({ room, themeColor = 'cyan' }: ClassesViewProps) {
         e.stopPropagation(); 
         
         if (!session?.user) {
-            alert("Operative access required to edit schedule.");
+            avisar(tr("avisos.precisaEntrar", "Entre na sua conta pra editar a agenda."), { tipo: "info" });
             return;
         }
 
@@ -623,7 +624,7 @@ function TelaDaConta({ room, themeColor = 'cyan' }: ClassesViewProps) {
         e.stopPropagation();
         
         if (!selectedClass.name || !selectedClass.teacher || selectedClass.hour === "" || selectedClass.endHour === "") {
-            alert("Nome, Professor e Horários são obrigatórios.");
+            avisar(tr("avisos.aulaCampos", "Preencha o nome, o professor e os horários."), { tipo: "erro" });
             return;
         }
 
@@ -631,7 +632,7 @@ function TelaDaConta({ room, themeColor = 'cyan' }: ClassesViewProps) {
         const end = Number(selectedClass.endHour);
 
         if (start >= end || start < 6 || end > 23) {
-            alert("Horário inválido. A aula deve terminar depois de começar (entre 6h e 23h).");
+            avisar(tr("avisos.aulaHorario", "Horário inválido: a aula deve terminar depois de começar (entre 6h e 23h)."), { tipo: "erro" });
             return;
         }
 
@@ -666,7 +667,7 @@ function TelaDaConta({ room, themeColor = 'cyan' }: ClassesViewProps) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ token: pendingInvite })
                 }).then(() => {
-                    alert("Aula Validada! Vínculo com professor estabelecido. O Chat Seguro foi liberado.");
+                    avisar(tr("avisos.aulaValidada", "Aula confirmada! Você está ligado ao professor e o chat da turma foi liberado."));
                     setInvitedClass(null);
                     router.replace(`/study-rooms/${room}`);
                 }).catch(console.error);

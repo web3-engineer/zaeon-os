@@ -9,6 +9,7 @@
  * Vidro Apple, claro === escuro (lib/canal/vidro.ts). Notificações fora da tela
  * (lib/canal/notificacoes.ts + useNotificacoesSO). Alvos ≥44px, input com safe-area.
  */
+import { confirmar, tr } from "@/lib/ui/avisos";
 import { useCabeNaTela } from "@/lib/ui/useCabeNaTela";
 import ChatMarkdown from "@/components/study/ChatMarkdown";
 import PusherClient from "pusher-js";
@@ -633,7 +634,7 @@ export default function CoworkingCanal({ agenteInicial = null }: { agenteInicial
   // outro canal; se não sobrar nenhum, recria o primeiro (a sala nunca fica vazia). Regras em lib/canal/seletor.
   const apagarCanal = async (c: Canal) => {
     if (!podeApagar(c) || apagando) return;
-    if (!window.confirm(textoConfirmarApagar(c.titulo))) return;
+    if (!(await confirmar({ titulo: tr("avisos.apagarEscritorio", "Apagar o escritório?"), texto: textoConfirmarApagar(c.titulo), botao: tr("avisos.apagar", "Apagar"), perigo: true }))) return;
     setApagando(c.id);
     try {
       const r = await fetch(`/api/canal/${c.id}`, { method: "DELETE" });
@@ -701,7 +702,7 @@ export default function CoworkingCanal({ agenteInicial = null }: { agenteInicial
     } catch (e) { return { ok: false, msg: mensagemDeErro(e, "o convite não foi enviado") }; }
   };
   const removerPessoa = async (p: { id: string; nome: string }) => {
-    if (!window.confirm(textoConfirmarRemover(p.nome))) return;
+    if (!(await confirmar({ titulo: tr("avisos.removerPessoa", "Remover do escritório?"), texto: textoConfirmarRemover(p.nome), botao: tr("avisos.remover", "Remover"), perigo: true }))) return;
     setMenu(null);
     await patch({ removerMembro: p.id });
   };
@@ -796,7 +797,8 @@ export default function CoworkingCanal({ agenteInicial = null }: { agenteInicial
 
           {/* #845: no celular o lado direito (rostos, "N on", cartolina) passava da borda e cortava o "+" — agora ele encolhe
               e rola de lado dentro dele; o seletor e o "+" ficam inteiros */}
-          <div data-tour="escritorio-pessoas" className="ml-auto min-w-0 flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none]">
+          {/* #850: a folga de 3 px (p-[3px]) deixa o anel de "online" da 1ª foto inteiro — a área rola de lado e cortava o que sai dela */}
+          <div data-tour="escritorio-pessoas" className="ml-auto min-w-0 flex items-center gap-1.5 overflow-x-auto p-[3px] [scrollbar-width:none]">
             {/* pessoas do canal (dono, membros e você), com espaço entre as fotos (#423). Os agentes ficam embaixo. */}
             <PessoasTopo visiveis={topo.visiveis} extras={topo.extras} onlineIds={topo.onlineIds} total={topo.total}
               aberta={pessoaAberta} onAlternar={(id) => setMenu(pessoaAberta === id ? null : `pessoa:${id}`)}

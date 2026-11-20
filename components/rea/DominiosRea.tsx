@@ -5,6 +5,7 @@
  * servidor, que grava a prova com data, IP e navegador (lib/rea/dominios.ts). Com o domínio declarado, as sessões do
  * REA no Octa liberam as ferramentas web naquele domínio e nos subdomínios.
  */
+import { confirmar, tr } from "@/lib/ui/avisos";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Globe, Loader2, ShieldCheck, Trash2, X } from "lucide-react";
 
@@ -27,7 +28,7 @@ export default function DominiosRea() {
   useEffect(() => { void carregar(); }, [carregar]);
 
   const revogar = async (d: string) => {
-    if (!window.confirm(`Revogar a declaração de ${d}? As próximas sessões do REA deixam de liberar esse domínio.`)) return;
+    if (!(await confirmar({ titulo: tr("avisos.revogarDominio", "Revogar a declaração?"), texto: `Revogar a declaração de ${d}? As próximas sessões do REA deixam de liberar esse domínio.`, botao: tr("avisos.revogar", "Revogar"), perigo: true }))) return;
     setErro(null);
     const r = await fetch(`/api/rea/dominios?dominio=${encodeURIComponent(d)}`, { method: "DELETE" }).catch(() => null);
     if (!r?.ok) setErro("Não deu para revogar agora. Tente de novo.");

@@ -14,6 +14,7 @@
  *
  * Poll: 2,5 s enquanto a geração em background está rodando; 6 s depois. Para quando a aba do navegador está escondida.
  */
+import { pedirTexto, tr } from "@/lib/ui/avisos";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -192,7 +193,7 @@ export default function TccPanel({ workId, onFechar, onTitulo }: {
 
   const novaSecao = async () => {
     if (!tcc || !podeEscrever) return;
-    const titulo = window.prompt("Título da nova seção (ex.: REFERENCIAL TEÓRICO)")?.trim();
+    const titulo = (await pedirTexto({ titulo: tr("avisos.novaSecao", "Título da nova seção"), dica: "REFERENCIAL TEÓRICO", botao: tr("avisos.criar", "Criar") }))?.trim();
     if (!titulo) return;
     // antes das REFERÊNCIAS (pós-textual fica no fim), senão depois da última
     const refs = tcc.secoes.findIndex((s) => /^refer/i.test(s.titulo.normalize("NFD").replace(/[̀-ͯ]/g, "")));

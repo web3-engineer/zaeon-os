@@ -1,5 +1,6 @@
 "use client";
 
+import { avisar, confirmar, tr } from "@/lib/ui/avisos";
 import React, { useState, useEffect, useRef } from "react";
 import {
   ChevronRightIcon, ChevronDownIcon, ArrowLeftIcon, ArrowRightStartOnRectangleIcon
@@ -331,7 +332,7 @@ export default function MenuNavigation({ destino = LAB_ROTA }: { destino?: strin
     if (provider === 'google') {
       await signIn('google', { callbackUrl: destino });
     } else if (provider === 'guest') {
-      alert("Acesso Convidado a ser integrado.");
+      avisar(tr("avisos.convidadoEmBreve", "O acesso de convidado ainda não está disponível."), { tipo: "info" });
       setIsSubmitting(false);
     }
   };
@@ -674,14 +675,14 @@ export default function MenuNavigation({ destino = LAB_ROTA }: { destino?: strin
                 <div
                   onClick={async () => {
                     if (deletingAcc) return;
-                    if (!window.confirm("Apagar sua conta? Isso remove TODOS os seus dados e libera o e-mail pra começar do zero. Não dá pra desfazer.")) return;
+                    if (!(await confirmar({ titulo: tr("avisos.apagarConta", "Apagar sua conta?"), texto: "Isso remove TODOS os seus dados e libera o e-mail pra começar do zero. Não dá pra desfazer.", botao: tr("avisos.apagar", "Apagar"), perigo: true }))) return;
                     setDeletingAcc(true);
                     try {
                       const r = await fetch("/api/account", { method: "DELETE" });
-                      if (!r.ok) { setDeletingAcc(false); window.alert("Não consegui apagar a conta agora. Tente de novo."); return; }
+                      if (!r.ok) { setDeletingAcc(false); avisar(tr("avisos.contaNaoApagou", "Não deu pra apagar a conta agora. Tente de novo."), { tipo: "erro" }); return; }
                       limparCopiaDasConversas(session?.user?.email, true);
                       await signOut({ callbackUrl: "/" });
-                    } catch { setDeletingAcc(false); window.alert("Erro de conexão."); }
+                    } catch { setDeletingAcc(false); avisar(tr("avisos.erroConexao", "Erro de conexão. Tente de novo."), { tipo: "erro" }); }
                   }}
                   className="group relative overflow-hidden flex items-center justify-between rounded-2xl px-4 min-h-[52px] w-full transition-all duration-300 cursor-pointer font-medium border bg-red-50/60 text-red-600 border-red-200 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-300 dark:border-red-500/30 dark:hover:bg-red-500/20"
                 >

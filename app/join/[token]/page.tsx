@@ -1,5 +1,6 @@
 "use client";
 
+import { avisar, tr } from "@/lib/ui/avisos";
 import { useEffect, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -39,7 +40,7 @@ export default function JoinClassPage({ params }: { params: { token: string } })
             const roomTarget = classInfo?.room === 'humanity' ? 'humanities' : classInfo?.room;
             router.push(`/study-rooms/${roomTarget || 'cyber'}?pendingInvite=${token}`);
         } catch (err: any) {
-            alert("Falha ao organizar ingresso: " + err.message);
+            avisar(tr("avisos.falhaConvite", "Não deu pra abrir o convite: {{erro}}", { erro: String(err?.message ?? "") }), { tipo: "erro" });
         } finally {
             // delay on hiding just to pretend loading
         }

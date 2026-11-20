@@ -1,5 +1,6 @@
 "use client";
 
+import { avisar, copiarComAviso, tr } from "@/lib/ui/avisos";
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -154,7 +155,7 @@ export default function WorkAreaContent() {
                     headerImage: null
                 });
             } else {
-                alert("Erro ao gerar documento: " + data.error);
+                avisar(tr("avisos.erroDocumento", "Não deu pra gerar o documento: {{erro}}", { erro: String(data?.error ?? "") }), { tipo: "erro" });
             }
         } catch (error) { console.error(error); }
         finally { setIsGeneratingDoc(false); }
@@ -202,7 +203,7 @@ export default function WorkAreaContent() {
             if (res.ok) {
                 setActiveDocument(data.document);
                 fetchMyDocuments(activeDocument.type);
-                alert("Salvo com sucesso!");
+                avisar(tr("avisos.salvo", "Salvo!"));
             }
         } catch (error) { console.error(error); }
         finally { setIsSaving(false); }
@@ -308,7 +309,7 @@ export default function WorkAreaContent() {
                                     <p className="text-sm font-bold text-slate-700 dark:text-slate-300 text-center">Link gerado com sucesso! Envie para seus alunos:</p>
                                     <div className="w-full bg-white dark:bg-black/20 p-4 border border-indigo-200 dark:border-indigo-500/20 rounded-xl overflow-hidden flex items-center justify-between">
                                         <span className="font-mono text-xs text-indigo-900 dark:text-indigo-300 truncate mr-2 select-all">{generatedLink}</span>
-                                        <button onClick={() => { navigator.clipboard.writeText(generatedLink); alert("Copiado!"); }} className="flex-shrink-0 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"><Copy size={12}/> Copiar</button>
+                                        <button onClick={() => { void copiarComAviso(generatedLink, tr("avisos.copiado", "Copiado!"), tr("avisos.naoCopiou", "Não deu pra copiar.")); }} className="flex-shrink-0 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"><Copy size={12}/> Copiar</button>
                                     </div>
                                 </div>
                             )}
@@ -359,7 +360,7 @@ export default function WorkAreaContent() {
                                         </div>
                                     </div>
                                     <button 
-                                        onClick={() => { navigator.clipboard.writeText(linkUrl); alert("Link copiado!"); }}
+                                        onClick={() => { void copiarComAviso(linkUrl, tr("avisos.linkCopiado", "Link copiado!"), tr("avisos.naoCopiou", "Não deu pra copiar.")); }}
                                         className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 rounded-lg text-xs font-bold transition-colors shadow-sm"
                                     >
                                         <Copy size={14} /> Copiar
