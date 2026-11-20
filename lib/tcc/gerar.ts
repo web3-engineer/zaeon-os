@@ -140,7 +140,7 @@ export function planoDaSecao(p: {
     : { rota: "vertex", model: p.flash, timeoutMs: 60_000 };
 }
 
-async function gerarPorSecao(workId: string, userId: string, topic: string, gen: Gen, brief?: Briefing): Promise<void> {
+async function gerarPorSecao(workId: string, userId: string, topic: string, gen: Gen, brief?: Briefing, opts: { manterTitulo?: boolean } = {}): Promise<void> {
   const { getTccForUser } = await import("@/lib/tcc/store");
   const { planoDoDocumento } = await import("@/lib/documento/plano");
   const { ehCorpoAFazer, escreverDocumento, esqueletoEnriquecido, promptDaSecao } =
@@ -156,7 +156,7 @@ async function gerarPorSecao(workId: string, userId: string, topic: string, gen:
   // referências exigidas (o `esbocoUser` sempre teve o parâmetro `refs` — nunca recebia nada).
   const d = await gen(ESBOCO_SYS, esbocoUser(brief?.instrucoes || topic, brief?.referencias ?? [])).catch(() => null);
   const titulo = d?.titulo?.trim() ? d.titulo.trim().slice(0, 200) : undefined;
-  if (titulo) await aplicarNoTcc(workId, userId, [], "estudos", { titulo }).catch(() => undefined);
+  if (titulo && !opts.manterTitulo) await aplicarNoTcc(workId, userId, [], "estudos", { titulo }).catch(() => undefined);
 
   const atual = await getTccForUser(workId, userId);
   if (!atual) throw new Error("documento não encontrado");
@@ -249,8 +249,120 @@ async function gerarPorSecao(workId: string, userId: string, topic: string, gen:
   await marcarStatus(workId, userId, "pronto");
 }
 
+/**
+ * PAPER ORQUESTRA (docs/PAPER_ORQUESTRA.md, flag PAPER_ORQUESTRA): o pipeline de agentes do PaperOrchestra
+ * (google-research, Apache-2.0) como motor de execução DESTE documento. Esboço → buscas dirigidas → Introdução e
+ * Revisão → demais seções → parecer + refinamento, cada seção gravada na aba do aluno assim que fica pronta.
+ *
+ * As peças da casa entram por injeção: o envelope (mesma rota/modelo do `planoDaSecao` — Pro pra quem tem direito,
+ * pool grátis ou Flash pro resto), `retrievePapers`, a base do aluno e o `aplicarNoTcc`. Seção que sobrou vazia
+ * (prazo, modelo truncou) é completada pelo gerador por seção de antes — que só escreve onde está vazio.
+ */
+export async function gerarComPaperOrquestra(workId: string, userId: string, topic: string, brief?: Briefing): Promise<{ completo: boolean }> {
+  const { getTccForUser } = await import("@/lib/tcc/store");
+  const { ehCorpoAFazer } = await import("@/lib/documento/escritor");
+  const { rodarPaperOrquestra } = await import("@/lib/paper-orquestra/pipeline");
+  const { gerar } = await import("@/lib/llm/envelope");
+  const { gatewayLigado } = await import("@/lib/llm/usage");
+  const { MODELO_POOL } = await import("@/lib/llm/pool");
+  const { GEMINI_MODEL_FLASH, GEMINI_MODEL_PRO } = await import("@/lib/ai/model");
+  const { podeProNasPesadas } = await import("@/lib/ai/proNasPesadas");
+  const env = process.env;
+
+  const atual = await getTccForUser(workId, userId);
+  if (!atual) throw new Error("documento não encontrado");
+  const vazia = (c: string) => !c.trim() || ehCorpoAFazer(c);
+  const jaEscritas = new Set(atual.secoes.filter((s) => !vazia(s.corpo)).map((s) => s.titulo));
+
+  const comPro = await podeProNasPesadas(userId);
+  const plano = planoDaSecao({ comPro, gateway: gatewayLigado(), pro: GEMINI_MODEL_PRO, flash: GEMINI_MODEL_FLASH, pool: MODELO_POOL });
+  const modelo = env.PAPER_ORQ_MODELO_ESCRITOR?.trim() || plano.model;
+  const modeloRevisor = env.PAPER_ORQ_MODELO_REVISOR?.trim() || modelo;
+  const rota = env.PAPER_ORQ_MODELO_ESCRITOR?.trim() ? "vertex" as const : plano.rota;
+  const num = (v: string | undefined, padrao: number) => (Number(v) > 0 ? Number(v) : padrao);
+
+  /** o último texto que NÓS gravamos em cada seção: o refinamento só substitui o que ainda é nosso */
+  const nosso = new Map<string, string>();
+  const r = await rodarPaperOrquestra(
+    {
+      tema: topic, pedido: brief?.instrucoes || topic, tipo: String(atual.workType ?? "Artigo"),
+      esqueleto: atual.secoes.map((s) => s.titulo), jaEscritas,
+      referenciasDoPedido: brief?.referencias,
+      prazoMs: num(env.PAPER_ORQ_PRAZO_MS, 15 * 60_000),
+      reflexoes: Number.isFinite(Number(env.PAPER_ORQ_REFLEXOES)) && env.PAPER_ORQ_REFLEXOES?.trim() ? Number(env.PAPER_ORQ_REFLEXOES) : 2,
+      maxBuscas: num(env.PAPER_ORQ_MAX_BUSCAS, 16),
+    },
+    {
+      llm: async (p) => {
+        const res = await gerar({
+          system: p.system, user: p.user, json: p.json, rota,
+          model: p.fase === "revisor" ? modeloRevisor : modelo,
+          temperature: p.temperatura ?? 0.4, pensar: "low",
+          // texto acadêmico inteiro numa resposta: prazo e orçamento de saída de documento, não de chat
+          timeoutMs: p.longo ? Math.min(300_000, plano.timeoutMs * 3) : plano.timeoutMs,
+          ...(p.longo ? { maxOutputTokens: 32_768 } : {}),
+          ctx: { agentKey: "zaeon", surface: "estudos" as const, userId, taskId: workId, phase: `paper-${p.fase}` },
+        });
+        return res.texto;
+      },
+      buscar: async (consulta, area) => {
+        const { retrievePapers } = await import("@/lib/scholar/retrieve");
+        const res = await retrievePapers(consulta, { domain: area, minResults: 6 }).catch(() => null);
+        return (res?.papers ?? []).map((p) => ({ title: p.title, authors: p.authors, year: p.year, url: p.url, doi: p.doi, abstract: p.abstract, venue: p.venue }));
+      },
+      baseDoAluno: async (tema) => {
+        const { baseParaTurno } = await import("@/lib/rag/turno");
+        const b = await baseParaTurno({ userId, pergunta: tema });
+        return b.status === "ok"
+          ? b.trechos.map((t) => ({ titulo: t.titulo, paginas: t.paginaIni === t.paginaFim ? String(t.paginaIni ?? "") : `${t.paginaIni}–${t.paginaFim}`, extrato: t.texto }))
+          : [];
+      },
+      definirTitulo: async (titulo) => { await aplicarNoTcc(workId, userId, [], "estudos", { titulo: titulo.slice(0, 200) }); },
+      salvarSecao: async (titulo, corpo) => {
+        let gravou = false;
+        const res = await aplicarNoTcc(workId, userId, (t) => {
+          const s = t.secoes.find((x) => x.titulo === titulo);
+          if (!s) return [];
+          // o aluno escreveu nesta seção enquanto gerávamos → a dele vence
+          if (!vazia(s.corpo) && s.corpo !== nosso.get(titulo)) return [];
+          gravou = true;
+          return [{ op: "substituir" as const, secaoId: s.id, corpo }];
+        }, "estudos");
+        if (res.ok && gravou) nosso.set(titulo, corpo);
+        return res.ok && gravou;
+      },
+      progresso: (rotulo) => console.info(`[paper-orquestra] ${workId}: ${rotulo}`),
+    },
+  );
+
+  if (r.referencias.length) {
+    await aplicarNoTcc(workId, userId, (t) => {
+      const { secao, novas } = referenciasNovas(t.secoes, r.referencias);
+      if (!secao || !novas.length) return [];
+      return [{ op: "substituir" as const, secaoId: secao.id, corpo: [secao.corpo.trim(), ...novas].filter(Boolean).join("\n") }];
+    }, "estudos").catch((e) => console.warn("[paper-orquestra] referências falharam:", (e as Error)?.message));
+  }
+  console.info(`[paper-orquestra] ${workId} concluído`, JSON.stringify(r.relatorio));
+
+  const depois = await getTccForUser(workId, userId);
+  const { papeisDoEsqueleto } = await import("@/lib/paper-orquestra/texto");
+  const refs = papeisDoEsqueleto(depois?.secoes.map((s) => s.titulo) ?? []).referencias;
+  const completo = !!depois && depois.secoes.every((s) => s.titulo === refs || !vazia(s.corpo));
+  return { completo };
+}
+
 export async function gerarTccEmBackground(workId: string, userId: string, topic: string, gen: Gen = genPadrao, brief?: Briefing): Promise<void> {
   try {
+    const { paperOrquestraLigada } = await import("@/lib/paper-orquestra/pipeline");
+    if (paperOrquestraLigada()) {
+      // falhou ou deixou buraco → o gerador por seção de antes completa SÓ o que está vazio (e marca "pronto")
+      const r = await gerarComPaperOrquestra(workId, userId, topic, brief).catch((e) => {
+        console.warn("[paper-orquestra] falhou — o gerador por seção assume:", (e as Error)?.message ?? e);
+        return { completo: false };
+      });
+      if (r.completo) { await marcarStatus(workId, userId, "pronto"); return; }
+      return await gerarPorSecao(workId, userId, topic, gen, brief, { manterTitulo: true });
+    }
     if (escritaPorSecaoLigada()) return await gerarPorSecao(workId, userId, topic, gen, brief);
     const d = await gen(ESBOCO_SYS, esbocoUser(brief?.instrucoes || topic, brief?.referencias ?? []));
     const titulo = d?.titulo?.trim() ? d.titulo.trim().slice(0, 200) : undefined;

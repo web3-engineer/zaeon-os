@@ -96,6 +96,13 @@ services:
       # F2 do documento (lib/documento/escritor): uma chamada por SEÇÃO em vez de um JSON de 8
       # campos. LIGADA; `DOC_POR_SECAO=0` devolve o caminho antigo (corposDoEsboco) byte a byte.
       DOC_POR_SECAO: ${DOC_POR_SECAO:-1}
+      # PaperOrchestra (docs/PAPER_ORQUESTRA.md): pipeline de agentes como motor do documento. DESLIGADO por padrão.
+      PAPER_ORQUESTRA: ${PAPER_ORQUESTRA:-0}
+      PAPER_ORQ_MODELO_ESCRITOR: ${PAPER_ORQ_MODELO_ESCRITOR:-}
+      PAPER_ORQ_MODELO_REVISOR: ${PAPER_ORQ_MODELO_REVISOR:-}
+      PAPER_ORQ_REFLEXOES: ${PAPER_ORQ_REFLEXOES:-2}
+      PAPER_ORQ_MAX_BUSCAS: ${PAPER_ORQ_MAX_BUSCAS:-16}
+      PAPER_ORQ_PRAZO_MS: ${PAPER_ORQ_PRAZO_MS:-900000}
       # blueprint prático da Sala de Estudos (lib/blueprint) — par do NEXT_PUBLIC_BLUEPRINT_PRATICO; GITHUB_TOKEN opcional
       BLUEPRINT_PRATICO: ${BLUEPRINT_PRATICO:-0}
       # Blueprint REA (lib/rea-blueprint) — par do NEXT_PUBLIC_REA_BLUEPRINT; gateia a composição + /api/rea
@@ -350,6 +357,13 @@ services:
       # geração do documento por SEÇÃO: o worker roda o mesmo runChatTurn → lib/tcc/turno →
       # gerarTccEmBackground, então sem esta linha a Variable valeria só no web (par do #670).
       DOC_POR_SECAO: ${DOC_POR_SECAO:-1}
+      # PaperOrchestra: mesmo trilho (runChatTurn → lib/tcc/turno → gerarTccEmBackground) roda no worker
+      PAPER_ORQUESTRA: ${PAPER_ORQUESTRA:-0}
+      PAPER_ORQ_MODELO_ESCRITOR: ${PAPER_ORQ_MODELO_ESCRITOR:-}
+      PAPER_ORQ_MODELO_REVISOR: ${PAPER_ORQ_MODELO_REVISOR:-}
+      PAPER_ORQ_REFLEXOES: ${PAPER_ORQ_REFLEXOES:-2}
+      PAPER_ORQ_MAX_BUSCAS: ${PAPER_ORQ_MAX_BUSCAS:-16}
+      PAPER_ORQ_PRAZO_MS: ${PAPER_ORQ_PRAZO_MS:-900000}
       # ESPELHO DO TRILHO, pela mesma razão da linha acima — e esta FALTAVA: o worker tinha o
       # DOC_POR_SECAO (escrever as seções) sem o `tccCrossOn` (deixar o trabalho EXISTIR). Com o
       # worker de pé, ele escreveria seções de um documento que não pode nascer. Divergência
