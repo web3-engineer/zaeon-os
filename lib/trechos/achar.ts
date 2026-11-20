@@ -20,9 +20,43 @@
  */
 import type { TrechoEmPapel } from "@/lib/agent/contracts";
 import type { TrechoAchado } from "@/lib/rag/busca";
+import { paginaNoOffset } from "@/lib/agent/anexos";
 import { contemTermo, contexto, faixaDePaginas, fraseComMaisTermos, localizarLiteral, normalizar, termosDaPergunta } from "@/lib/trechos/literal";
 
-export type TrechoDoc = TrechoAchado & { ordem?: number };
+export type TrechoDoc = TrechoAchado & {
+  ordem?: number;
+  /** a página de uma posição DENTRO do texto do trecho (anexo com marcas de página): a folha diz a página da citação */
+  paginaEm?: (posicao: number) => number;
+};
+export type AnexoParaTrechos = { id: string; nome: string; texto: string; marcasDePagina?: Array<[number, number]> };
+
+/** O anexo em pedaços de ~1800 caracteres, partidos em parágrafo, cada um com a página (0 = desconhecida). */
+export function pedacosDoAnexo(a: AnexoParaTrechos, alvo = 1800): TrechoDoc[] {
+  const texto = String(a.texto ?? "");
+  const out: TrechoDoc[] = [];
+  let ini = 0;
+  while (ini < texto.length) {
+    let fim = Math.min(texto.length, ini + alvo);
+    if (fim < texto.length) {
+      const quebra = texto.lastIndexOf("\n\n", fim);
+      const ponto = texto.lastIndexOf(". ", fim);
+      fim = quebra > ini + alvo * 0.5 ? quebra : ponto > ini + alvo * 0.5 ? ponto + 1 : fim;
+    }
+    const pedaco = texto.slice(ini, fim);
+    if (pedaco.trim()) {
+      // a página começa no primeiro caractere de TEXTO do pedaço, não na quebra de linha que o abre
+      const iniTexto = ini + (pedaco.length - pedaco.trimStart().length);
+      const p0 = paginaNoOffset(a.marcasDePagina, iniTexto), p1 = paginaNoOffset(a.marcasDePagina, Math.max(iniTexto, fim - 1));
+      out.push({
+        trechoId: `anexo:${a.id}:${out.length}`, documentoId: `anexo:${a.id}`, titulo: a.nome, texto: pedaco,
+        paginaIni: p0, paginaFim: Math.max(p0, p1), ordem: out.length, score: 0, similaridade: null, porTexto: true,
+        ...(a.marcasDePagina?.length ? { paginaEm: ((base: number) => (i: number) => paginaNoOffset(a.marcasDePagina, base + i))(ini) } : {}),
+      });
+    }
+    ini = fim;
+  }
+  return out;
+}
 
 export type Deps = {
   /** devolve o TEXTO da resposta do modelo (JSON pedido no prompt) */
@@ -31,6 +65,11 @@ export type Deps = {
   buscar: (consulta: string) => Promise<TrechoDoc[]>;
   /** todos os trechos de um documento, em ordem, com a permissão da pessoa */
   lerDocumento?: (documentoId: string) => Promise<TrechoDoc[]>;
+  /**
+   * os ANEXOS deste turno (o arquivo que a pessoa mandou no chat). Não têm vetor nem estão na base: são lidos inteiros,
+   * em pedaços, pelos termos — e vêm primeiro na ordem das folhas (é o material que ela acabou de trazer).
+   */
+  anexos?: readonly AnexoParaTrechos[];
   agora?: () => number;
 };
 
@@ -122,12 +161,24 @@ export async function acharTrechos(pergunta: string, d: Deps, o: Opcoes = {}): P
       const ja = porId.get(t.trechoId);
       porId.set(t.trechoId, ja ? { ...ja, rank: ja.rank + r } : { ...t, rank: r });
     }));
+
+    // 2b · os anexos do turno: lidos inteiros, pelos termos (e, sem nenhum termo batendo, pelas palavras das consultas)
+    for (const a of d.anexos ?? []) {
+      const pedacos = pedacosDoAnexo(a);
+      rel.varridos += pedacos.length;
+      const palavras = termosDaPergunta(consultas.join(" "), 12);
+      const pontos = pedacos.map((t) => ({ t, n: termos.filter((x) => contemTermo(t.texto, x)).length * 2 + palavras.filter((x) => contemTermo(t.texto, x)).length }));
+      const bons = pontos.filter((p) => p.n > 0).sort((x, y) => y.n - x.n).slice(0, rel.exaustivo ? 24 : 10);
+      // anexo pesa mais que a base: é o material que a pessoa acabou de trazer pra ESTA pergunta
+      for (const { t, n } of bons) porId.set(t.trechoId, { ...t, rank: 0.02 + 0.004 * n });
+    }
     if (!porId.size) return fim([]);
 
     // 3 · varredura dos documentos inteiros pelos termos
     if (d.lerDocumento && termos.length && resta() > 8_000) {
       const docs = new Map<string, number>();
-      for (const t of porId.values()) docs.set(t.documentoId, (docs.get(t.documentoId) ?? 0) + t.rank);
+      // anexo já foi lido inteiro acima; a varredura é só dos documentos da base
+      for (const t of porId.values()) if (!t.documentoId.startsWith("anexo:")) docs.set(t.documentoId, (docs.get(t.documentoId) ?? 0) + t.rank);
       const alvo = [...docs].sort((a, b) => b[1] - a[1]).slice(0, o.maxDocsVarredura ?? 6).map(([id]) => id);
       const porDoc = rel.exaustivo ? 40 : 10;
       const lidos = await Promise.all(alvo.map((id) => d.lerDocumento!(id).catch(() => [] as TrechoDoc[])));
@@ -157,7 +208,7 @@ export async function acharTrechos(pergunta: string, d: Deps, o: Opcoes = {}): P
     const respostas = resta() > 5_000
       ? await emLotes(lotes, 3, async (lote) => {
           const user = `PERGUNTA: ${q}\n\nCANDIDATOS:\n\n` + lote.map(([k, t]) =>
-            `[${k}] ${t.titulo}${t.publico ? "" : `, p. ${faixaDePaginas(t.paginaIni, t.paginaFim)}`}\n${t.texto.slice(0, 3200)}`).join("\n\n---\n\n");
+            `[${k}] ${t.titulo}${t.publico || t.paginaIni < 1 ? "" : `, p. ${faixaDePaginas(t.paginaIni, t.paginaFim)}`}\n${t.texto.slice(0, 3200)}`).join("\n\n---\n\n");
           const r = await d.llm({ fase: "juiz", system: PROMPT_JUIZ, user }).then((x) => jsonDe<{ achados?: Achado[] }>(x)).catch(() => null);
           return r ? (Array.isArray(r.achados) ? r.achados : []) : null;
         })
@@ -175,8 +226,10 @@ export async function acharTrechos(pergunta: string, d: Deps, o: Opcoes = {}): P
       const n = normalizar(literal);
       if (brutos.some((b) => b.chaveTrecho === t.trechoId && (normalizar(b.citacao).includes(n) || n.includes(normalizar(b.citacao))))) return true;
       const ctx = contexto(t.texto, lugar.ini, lugar.fim);
+      const pIni = t.paginaEm ? t.paginaEm(lugar.ini) : t.paginaIni;
+      const pFim = t.paginaEm ? Math.max(pIni, t.paginaEm(lugar.fim - 1)) : t.paginaFim;
       brutos.push({
-        documentoId: t.documentoId, titulo: t.titulo, paginas: t.publico ? "" : faixaDePaginas(t.paginaIni, t.paginaFim),
+        documentoId: t.documentoId, titulo: t.titulo, paginas: t.publico || pIni < 1 ? "" : faixaDePaginas(pIni, pFim),
         citacao: literal, ...(ctx.antes ? { antes: ctx.antes } : {}), ...(ctx.depois ? { depois: ctx.depois } : {}),
         ...(motivo ? { motivo: motivo.slice(0, 240) } : {}), relevancia, ...(t.publico ? { publico: true } : {}),
         ordem: t.ordem ?? Number.MAX_SAFE_INTEGER, pos: lugar.ini, chaveTrecho: t.trechoId,
@@ -204,6 +257,7 @@ export async function acharTrechos(pergunta: string, d: Deps, o: Opcoes = {}): P
     const teto = rel.exaustivo ? (o.maxTrechosExaustivo ?? 20) : (o.maxTrechos ?? 10);
     const escolhidos = [...brutos].sort((a, b) => b.relevancia - a.relevancia).slice(0, teto);
     const ordemDoc = new Map<string, number>();
+    for (const b of candidatos) if (b.documentoId.startsWith("anexo:") && !ordemDoc.has(b.documentoId)) ordemDoc.set(b.documentoId, ordemDoc.size);
     for (const b of candidatos) if (!ordemDoc.has(b.documentoId)) ordemDoc.set(b.documentoId, ordemDoc.size);
     escolhidos.sort((a, b) => (ordemDoc.get(a.documentoId)! - ordemDoc.get(b.documentoId)!) || a.ordem - b.ordem || a.pos - b.pos);
     return fim(escolhidos.map(({ ordem: _o, pos: _p, chaveTrecho: _c, ...t }, i) => ({ id: `T${i + 1}`, ...t })));

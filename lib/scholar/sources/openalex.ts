@@ -38,3 +38,28 @@ export async function searchOpenAlex(query: string, limit = 15): Promise<{ paper
     return { papers: parseOpenAlex(await res.json()), status: "ok" };
   } catch { return { papers: [], status: "error" }; }
 }
+
+/**
+ * Resumos por DOI, em lote (OpenAlex `filter=doi:a|b|…`, 50 por pedido). É o "enrichment" do PaperOrchestra: Crossref e
+ * PubMed muitas vezes devolvem o paper SEM resumo, e sem resumo o escritor não sabe o que a fonte diz. Nunca lança.
+ */
+export async function resumosPorDoi(dois: readonly string[], fetchImpl: typeof fetch = fetch): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const limpos = [...new Set(dois.map((d) => String(d ?? "").trim().toLowerCase().replace(/^https?:\/\/(dx\.)?doi\.org\//, "")).filter((d) => /^10\.\d{3,}\//.test(d) && !/[|,]/.test(d)))];
+  const email = process.env.UNPAYWALL_EMAIL ? `&mailto=${encodeURIComponent(process.env.UNPAYWALL_EMAIL)}` : "";
+  for (let i = 0; i < limpos.length; i += 50) {
+    const lote = limpos.slice(i, i + 50);
+    try {
+      const url = `https://api.openalex.org/works?filter=doi:${lote.map(encodeURIComponent).join("|")}&per-page=50&select=doi,abstract_inverted_index${email}`;
+      const res = await fetchImpl(url);
+      if (!res.ok) continue;
+      const json: any = await res.json();
+      for (const w of json?.results ?? []) {
+        const doi = String(w?.doi ?? "").toLowerCase().replace(/^https?:\/\/doi\.org\//, "");
+        const resumo = reconstructAbstract(w?.abstract_inverted_index);
+        if (doi && resumo) out.set(doi, resumo);
+      }
+    } catch { /* lote perdido: os papers seguem sem resumo */ }
+  }
+  return out;
+}

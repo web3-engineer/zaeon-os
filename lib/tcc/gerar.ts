@@ -310,6 +310,7 @@ export async function gerarComPaperOrquestra(workId: string, userId: string, top
         const res = await retrievePapers(consulta, { domain: area, minResults: 6 }).catch(() => null);
         return (res?.papers ?? []).map((p) => ({ title: p.title, authors: p.authors, year: p.year, url: p.url, doi: p.doi, abstract: p.abstract, venue: p.venue }));
       },
+      completarResumos: async (dois) => (await import("@/lib/scholar/sources/openalex")).resumosPorDoi(dois),
       baseDoAluno: async (tema) => {
         // A SKILL DE TRECHOS (lib/trechos): várias consultas + varredura do documento inteiro + juiz, e cada evidência é
         // a passagem LITERAL com página — o artigo cita o que o material do aluno diz, não um bloco de 3000 caracteres.

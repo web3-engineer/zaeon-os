@@ -12,7 +12,7 @@ export function trechosEmPapelLigado(env: Record<string, string | undefined> = p
 }
 
 export async function acharTrechosDaPessoa(
-  e: { userId: string; pergunta: string; areas?: string[]; ledger?: Partial<LedgerCtx> },
+  e: { userId: string; pergunta: string; areas?: string[]; ledger?: Partial<LedgerCtx>; anexos?: import("@/lib/trechos/achar").AnexoParaTrechos[] },
   o: Opcoes = {},
 ): Promise<Resultado> {
   const [{ gerar }, { GEMINI_MODEL_FLASH }, { baseParaTurno, escopoDaPessoa }, { K_AMPLO }, { ragPg }, { trechosDoDocumento }] = await Promise.all([
@@ -32,5 +32,6 @@ export async function acharTrechosDaPessoa(
       return b.status === "ok" ? b.trechos : [];
     },
     lerDocumento: async (documentoId) => trechosDoDocumento(ragPg(), documentoId, await escopo),
+    ...(e.anexos?.length ? { anexos: e.anexos } : {}),
   }, o);
 }

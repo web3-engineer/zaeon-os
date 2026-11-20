@@ -36,6 +36,16 @@ com o trecho LITERAL do documento. A folha cai e se assenta presa por uma fita; 
    Trecho sem âncora vai pra pilha "Trechos do seu material" no fim. Durante a datilografia do núcleo, a folha espera
    o parágrafo dela terminar de ser escrito.
 
+## O anexo do chat
+
+O arquivo que a pessoa manda no chat (fora da base) também entra. Ele não tem vetor, então é lido INTEIRO, em pedaços
+de ~1800 caracteres partidos em parágrafo, e os pedaços com os termos do plano vão pro mesmo juiz e pra mesma prova.
+Na ordem das folhas, o anexo vem primeiro (é o material que a pessoa acabou de trazer pra esta pergunta).
+
+A página: o extrator do PDF devolve a página de cada parágrafo, mas o anexo só guardava o texto corrido. Agora ele
+guarda `marcasDePagina` (onde cada página começa no texto final — `lib/agent/anexos.ts`), e a folha diz a página da
+PRÓPRIA citação, não a faixa do pedaço. Word e texto puro não têm paginação: a folha sai sem página.
+
 ## União com o PaperOrchestra
 
 O gerador de artigo (`gerarComPaperOrquestra`, docs/PAPER_ORQUESTRA.md) busca no material do aluno pela skill: cada
@@ -59,4 +69,3 @@ Flash da casa). Precisa da base RAG de pé (`RAG_PG_URL`).
 - Nada rodou contra modelo real nem contra a base real: os testes usam modelo, busca e documento falsos.
 - O SQL de `trechosDoDocumento` tem teste de banco, mas ele só roda com `RAG_PG_TEST_URL` (pulado nesta máquina).
 - A tela foi conferida na vitrine `/dev/trechos` (claro, escuro, celular), não no chat logado.
-- Anexo do turno (arquivo solto no chat, fora da base) ainda não passa pela skill: ele perde a página na extração.

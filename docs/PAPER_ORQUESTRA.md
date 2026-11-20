@@ -36,11 +36,16 @@ O PaperOrchestra entra como o motor que **escreve** o documento editável que j�
   └─ gerarTccEmBackground ─ PAPER_ORQUESTRA=1 ─ gerarComPaperOrquestra
        0. Materiais   pedido → ideia + dados (+ título do documento)          [novo: no PO são arquivos prontos]
        1. Esboço      OutlineAgent → JSON com plotting_plan / intro_related_work_plan / section_plan
-       2. Literatura  HybridLiteratureAgent → até 16 buscas nas bases (4 em paralelo) → registro [E#]
+       2. Literatura  HybridLiteratureAgent → até 16 buscas nas bases (4 em paralelo)
+                      → ENRICHMENT: resumo ausente buscado pelo DOI (OpenAlex)  [o "S2 enrichment" do PO]
+                      → TRIAGEM por título e resumo (inclusiva, piso de 12)     [novo: o PO escolhe pelo Google]
+                      → registro [E#] + REGISTRO DE BUSCA (bases, consultas, números da triagem, critérios reais)
                       → escreve INTRODUÇÃO + REFERENCIAL TEÓRICO  ─────────── grava no documento
        3. Seções      SectionWritingAgent → o resto numa chamada; o que faltar, uma chamada por seção ── grava
-       4. Refinamento AgentReview + ContentRefinementAgent, até 2 voltas, só fica a versão de nota maior ── regrava
-       ─ REFERÊNCIAS: das chaves [E#] realmente citadas, em ABNT
+      3b. Condensar   o "Page Limit Enforcement" do format_agent: seção > 115% do teto é enxugada ── regrava
+       4. Refinamento AgentReview + ContentRefinementAgent, até 2 voltas; devolve SÓ as seções que mudou;
+                      só fica a versão de nota maior e que cabe no orçamento ── regrava
+       ─ REFERÊNCIAS: das chaves [E#] realmente citadas, em ABNT (NBR 6023/10520)
   └─ sobrou seção vazia ou o pipeline caiu → gerarPorSecao (o de antes) completa só os buracos → "pronto"
 ```
 
@@ -57,8 +62,56 @@ O PaperOrchestra entra como o motor que **escreve** o documento editável que j�
 - **Sem dados do aluno** (o caso comum), o esboço planeja um trabalho de **revisão**: sem resultado próprio, sem
   tabela com número inventado.
 - **Revisor com 1 parecer** (o PO faz ensemble de 3) e as voltas sempre dentro do prazo.
+- **Orçamento de palavras por seção** (`orcamentoDaSecao`), pelo tipo de trabalho — o "page limit" do original.
+- **Metodologia honesta.** Em revisão, a metodologia descreve o REGISTRO DE BUSCA e nada além (sem PRISMA, Scopus ou
+  "dois revisores" que não aconteceram; os critérios são os únicos aplicados). Com dados do aluno, a busca de literatura
+  não é método. Detalhe de coleta que o aluno não deu (plataforma, termo de consentimento, forma de seleção da amostra,
+  teste não informado) vira LIMITAÇÃO declarada — inclusive quando o parecerista pergunta.
+- **ABNT de verdade.** Citação com até 3 sobrenomes ou "et al." (4+), referência "SOBRENOME, I." com veículo; nome no
+  formato PubMed ("Schmidt MJ") e instituição listada como autor são tratados. Estatística simples sai como texto.
 - **O aluno vence.** Seção que ele escreveu antes não entra no pipeline; seção que ele editar DURANTE a geração não
   é sobrescrita pelo refinamento (o `salvarSecao` só troca texto que ainda é o último que gravamos).
+
+## Avaliação: o gerador × documentos escritos à mão (nov/2026)
+
+> Pasta: `docs/avaliacao-paper-orquestra/` · medidor: `lib/paper-orquestra/avaliar.ts` · roteiros: `scripts/paper-orquestra/`
+
+**Método.** Três casos que cobrem os três caminhos do gerador — artigo de REVISÃO (sem dados), artigo COM DADOS (tabela
+colada no pedido) e TCC. Cada caso roda o pipeline de verdade (Vertex `gemini-3.5-flash`, bases acadêmicas reais) com
+`scripts/paper-orquestra/gerar-local.ts`, sem banco. Uma versão de REFERÊNCIA de cada um foi escrita à mão com as MESMAS
+fontes incluídas (`fontes-da-rodada.ts`), o mesmo esqueleto ABNT e a mesma regra de lastro. A partir da 3ª rodada a
+biblioteca foi fixada (`biblioteca/*.json`): as rodadas comparam a ESCRITA com o mesmo material. `comparar.ts` mede
+quantidade (palavras por seção, parágrafos), riqueza (subseções, obras citadas, densidade de citação, referências,
+tabelas, equações), regras (resumo + palavras-chave, voz impessoal, nenhuma chave interna sobrando) e entrega (título,
+nenhuma seção vazia). "Similar" = toda métrica dentro de ±25% (ou diferença absoluta pequena em contagem baixa).
+
+**O que as rodadas acharam e consertaram no gerador** (cada item é código + teste):
+
+| rodada | achado | conserto |
+|---|---|---|
+| 1 | metodologia INVENTADA (PRISMA, Scopus, Web of Science, "dois revisores") | registro de busca real + regra de lastro de método |
+| 1 | revisão respondendo ao parecer com detalhe de coleta inventado (Google Forms, TCLE, bimestre) | método/coleta só dos dados; o resto vira limitação |
+| 1 | 7 de 40 fontes sem resumo, citadas mesmo assim; fontes fora do tema | fonte sem resumo fica fora; TRIAGEM por título e resumo |
+| 1 | citação "(A, 2020), (B, 2021)"; referência sem ABNT | grupo de citação; NBR 10520/6023 (et al., iniciais, veículo) |
+| 1 | refinamento devolvendo o trabalho inteiro e truncando | refinamento devolve só as seções que mudou |
+| 2 | TCC com 1 fonte: 38 de 49 sem resumo (Crossref/PubMed) | ENRICHMENT do resumo pelo DOI (OpenAlex); triagem inclusiva com piso |
+| 3 | nomes do PubMed ("Schmidt MJ") viravam "(M; J; C, …)"; instituição como autor | formato PubMed e instituição tratados |
+| 3 | artigo com dados descrevendo a busca de literatura como método | registro de busca só em revisão |
+| 3–7 | gerador 1,3–1,7× mais longo; metodologia 2–3,6×; poucas subseções | orçamento de palavras por seção; subseções por seção |
+| 6 | 429 do Vertex com 3 documentos em paralelo: seções inteiras perdidas | nova tentativa com espera crescente |
+| 7–13 | instrução não converge sozinha (±20% entre rodadas) | AUDITORIA DE ENTREGA: checagem de código + ajuste por seção, aceito só se aproximar |
+| 15 | a MESMA tabela de dados repetida em 3 seções | tabela só em Resultados (determinístico) |
+| 17 | "cite menos" virava "escreva menos" no ajuste | citação repetida no parágrafo sai em código; parágrafo longo partido em código |
+
+**Resultado.** Similares nos três casos na rodada 14 (depois de corrigir um defeito do próprio medidor), na 16 e em DUAS
+RODADAS SEGUIDAS, 19 e 20 — o critério de parada. Os documentos da pasta são os da rodada 20; `comparacao-*.md` traz a
+tabela métrica por métrica. O TCC bateu em 8 das últimas 10 rodadas. Entre as rodadas 15 e 18 cada documento ainda
+oscilou numa métrica de estilo por vez (densidade de citação, número de parágrafos), corrigidas como acima.
+
+**O que NÃO foi verificado.** A métrica mede forma, não verdade: a fidelidade das afirmações às fontes foi conferida por
+amostragem na leitura, não sistematicamente. A nota do parecerista (o modelo) ficou entre 5 e 6/10 em todas as rodadas.
+As referências foram escritas por quem também ajustou o gerador. Nada disso rodou no documento editável logado, só pelo
+roteiro.
 
 ## Fora deste PR (fases seguintes)
 

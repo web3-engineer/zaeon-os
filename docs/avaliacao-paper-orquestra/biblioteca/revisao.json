@@ -1,0 +1,682 @@
+{
+  "consultas": [
+    "generative AI in K-12 education systematic review",
+    "ChatGPT basic education pedagogical benefits risks",
+    "AI literacy teacher training school guidelines",
+    "generative AI personalized learning K-12",
+    "intelligent tutoring systems LLM education",
+    "academic integrity generative AI schools",
+    "cognitive dependency ChatGPT students",
+    "PRISMA statement for systematic reviews",
+    "Guidance for generative AI in education and research",
+    "Análise de Conteúdo",
+    "ChatGPT in education opportunities and challenges",
+    "AI literacy framework for teachers"
+  ],
+  "papers": [
+    {
+      "title": "Generative AI use in K-12 education: a systematic review",
+      "authors": [
+        "Abdullah Mana Alfarwan"
+      ],
+      "year": 2025,
+      "url": "https://openalex.org/W4414443536",
+      "doi": "10.3389/feduc.2025.1647573",
+      "abstract": "As generative artificial intelligence (GenAI) continues to generate interest and impact all levels of the educational system, including K-12, it is essential to understand how GenAI has been utilized at the K-12 level. This study explored the literature to understand what GenAI has been used for in K-12 and the reported impacts of its use. By investigating two prominent databases, Scopus and Web of Science, and employing snowballing techniques, this study included 30 papers after a rigorous search and applying inclusion and exclusion criteria. The findings indicate that most existing works focused on high school and preservice teachers. Researchers have explored various subject domains or areas of interest where GenAI has been used, with a significant focus on STEM-related subjects. The quasi-experimental approach emerged as the most commonly used design technique for implementing GenAI ideas in the classroom. Psychological variables were the primary measures used to gauge learning outcomes. This study further aggregates recommendations from prior works and suggests areas for future research. This paper contributes to efforts in creating frameworks and building resources needed to realize the full potential of GenAI in shaping the educational landscape, especially within the school system.",
+      "venue": "Frontiers in Education",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "A Systematic Review of Generative AI Use in K-12 Korean Special Education",
+      "authors": [
+        "The Korean Society of Special Education",
+        "Eunji Sohn",
+        "Sunyoung Kim",
+        "Jeongmin Lim",
+        "Hyunwoong Lee"
+      ],
+      "year": 2026,
+      "url": "https://openalex.org/W7220405750",
+      "doi": "10.15861/kjse.2026.61.2.215",
+      "abstract": "This study investigates research trends, educational roles and forms of support, as well as teachers’ perceptions regarding the use of generative artificial intelligence (AI) in K-12 special education in South Korea. Following PRISMA guidelines, a literature search was conducted in KCI, RISS, and DBpia, and 17 studies were selected. The results reveal that related research has increased since 2024, with many studies focusing on middle school students, special classes, and students with intellectual disabilities. Interventions were concentrated in language and communication—including reading, writing, vocabulary, and communication—while text and image modalities were most frequently used. The educational roles of generative AI were primarily focused on learning and assisting, whereas mentoring was relatively limited. In its learning role, generative AI was mainly used to support the language and communication learning of students with disabilities. In its assisting role, it supported the overall process of individualized education—including planning, implementation, and evaluation—through student information analysis, educational goal setting, instructional material development, assessment, and documentation. Teachers perceived generative AI as helpful in reducing their workload and improving the accessibility and participation of students with disabilities. However, they also identified the low accuracy and reliability of AI-generated outputs, privacy and ethical concerns, mindless acceptance by students with disabilities, and teachers’ overreliance on AI as major risks. Future research should be expanded to inclusive education settings and a wider range of disability types and intervention areas, while teacher training and guidelines for safe use should also be further developed.",
+      "venue": "Korean Journal of Special Education",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Empirical Research Status of Generative AI in K-12 Education: A Systematic Literature Review",
+      "authors": [
+        "Yutong Liao",
+        "Jingjing Zhou",
+        "Guangtao Xu"
+      ],
+      "year": 2025,
+      "url": "https://openalex.org/W7133976702",
+      "doi": "10.1109/icetm67477.2025.11413356",
+      "abstract": "To investigate the current state of empirical research on generative artificial intelligence in K-12 education, this study employs a systematic literature review methodology to analyze relevant publications from the Web of Science and CNKI databases from January 2022 to June 2025. After screening, 105 valid documents were obtained (11 in Chinese and 94 in English). The study explores three key issues: disciplinary and educational stage distribution, research themes, and application challenges. Research findings indicate that the primary subjects studied include English (15.69%) and mathematics (14.71%), with a focus on junior high school (33%) and senior high school (32%) levels. Research topics can be categorized into four major areas: technology application and effectiveness evaluation, teaching model innovation and competency development, research on learning behaviors and influencing factors, and Exploring Educational Philosophy and Strategies, while challenges such as technical limitations and insufficient research depth persist. This study provides empirical references for the deep integration of technology and basic education.",
+      "venue": "International Conference on Educational Technology Management (ICETM)",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Generative AI for creative learning in K-12 education: Insights from a systematic scoping review",
+      "authors": [
+        "Seyedahmad Rahimi",
+        "Maryam Babaee",
+        "Salah Esmaeiligoujar",
+        "Chris Dede"
+      ],
+      "year": 2026,
+      "url": "https://openalex.org/W7214007732",
+      "doi": "10.22318/icls2026.109766",
+      "abstract": "The rapid rise of generative AI (GenAI) presents both opportunities and challenges for fostering creativity in K-12 education.This systematic scoping review synthesized 45 studies (2017-2025) to examine how GenAI has been applied in creative learning.Four categories emerged: (1) creativity assessment, (2) human-AI co-creativity, (3) stakeholders' perceptions, and (4) creativity enhancement.Findings show strong potential for GenAI to support idea generation, multimodal expression, and assessment of creative outputs, but highlight concerns about equity, authorship, and theoretical grounding.While most applications focus on text-based creativity, multimodal and culturally inclusive approaches remain underexplored.This review provides a foundation for responsible and equitable integration of GenAI into K-12 classrooms and captures a field in transition, where new forms of creative expression are emerging and educators are rethinking assessment, authorship, and pedagogy.This review provides a foundation for ethically grounded, developmentally appropriate and theory-driven GenAI designs that enhance, rather than automate, human creativity.",
+      "venue": "Proceedings.",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Generative AI and Creativity in K–12 Education: A Systematic Scoping Review of the Literature from 2017 to 2025",
+      "authors": [
+        "Seyedahmad Rahimi",
+        "Salah Esmaeiligoujar",
+        "Maryam Babaee",
+        "Chris Dede"
+      ],
+      "year": 2026,
+      "url": "https://openalex.org/W7212026919",
+      "doi": "10.3102/2274277",
+      "venue": "American Educational Research Association Annual Meeting (AERA)",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "The role of ChatGPT in higher education: Benefits, challenges, and future research directions",
+      "authors": [
+        "Tareq Rasul",
+        "Sumesh Nair",
+        "Diane Robyn Kalendra",
+        "Mulyadi Robin",
+        "Fernando de Oliveira Santini",
+        "Wagner Júnior Ladeira",
+        "Mingwei Sun",
+        "Ingrid Day",
+        "Raouf Ahmad Rather",
+        "Liz Heathcote"
+      ],
+      "year": 2023,
+      "url": "https://openalex.org/W4376139682",
+      "doi": "10.37074/jalt.2023.6.1.29",
+      "abstract": "This paper examines the potential benefits and challenges of using the generative AI model, ChatGPT, in higher education, in the backdrop of the constructivist theory of learning. This perspective-type study presents five benefits of ChatGPT: the potential to facilitate adaptive learning, provide personalised feedback, support research and data analysis, offer automated administrative services, and aid in developing innovative assessments. Additionally, the paper identifies five challenges: academic integrity concerns, reliability issues, inability to evaluate and reinforce graduate skill sets, limitations in assessing learning outcomes, and potential biases and falsified information in information processing. The paper argues that tertiary educators and students must exercise caution when using ChatGPT for academic purposes to ensure its ethical, reliable, and effective use. To achieve this, the paper proposes various propositions, such as prioritising education on the responsible and ethical use of ChatGPT, devising new assessment strategies, addressing bias and falsified information, and including AI literacy as part of graduate skills. By balancing the potential benefits and challenges, ChatGPT can enhance students’ learning experiences in higher education.",
+      "venue": "Journal of Applied Learning & Teaching",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "From concerns to benefits: a comprehensive study of ChatGPT usage in education",
+      "authors": [
+        "Hyeon Jo"
+      ],
+      "year": 2024,
+      "url": "https://openalex.org/W4399272498",
+      "doi": "10.1186/s41239-024-00471-4",
+      "abstract": "Abstract Artificial Intelligence (AI) chatbots are increasingly becoming integral components of the digital learning ecosystem. As AI technologies continue to evolve, it is crucial to understand the factors influencing their adoption and use among students in higher education. This study is undertaken against this backdrop to explore the behavioral determinants associated with the use of the AI Chatbot, ChatGPT, among university students. The investigation delves into the role of ChatGPT’s self-learning capabilities and their influence on students’ knowledge acquisition and application, subsequently affecting the individual impact. It further elucidates the correlation of chatbot personalization with novelty value and benefits, underscoring their importance in shaping students’ behavioral intentions. Notably, individual impact is revealed to have a positive association with perceived benefits and behavioral intention. The study also brings to light potential barriers to AI chatbot adoption, identifying privacy concerns, technophobia, and guilt feelings as significant detractors from behavioral intention. However, despite these impediments, innovativeness emerges as a positive influencer, enhancing behavioral intention and actual behavior. This comprehensive exploration of the multifaceted influences on student behavior in the context of AI chatbot utilization provides a robust foundation for future research. It also offers invaluable insights for AI chatbot developers and educators, aiding them in crafting more effective strategies for AI integration in educational settings.",
+      "venue": "International Journal of Educational Technology in Higher Education",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "ChatGPT for good? On opportunities and challenges of large language models for education",
+      "authors": [
+        "Enkelejda Kasneci",
+        "Kathrin Seßler",
+        "Stefan Küchemann",
+        "Maria Bannert",
+        "Daryna Dementieva",
+        "Frank Fischer",
+        "Urs Gasser",
+        "Georg Groh",
+        "Stephan Günnemann",
+        "Eyke Hüllermeier",
+        "Stephan Krusche",
+        "Gitta Kutyniok",
+        "Tilman Michaeli",
+        "Claudia Nerdel",
+        "Jürgen Pfeffer",
+        "Oleksandra Poquet",
+        "Michael Sailer",
+        "Albrecht Schmidt",
+        "Tina Seidel",
+        "Matthias J. Stadler",
+        "J. Weller",
+        "Jochen Kühn",
+        "Gjergji Kasneci"
+      ],
+      "year": 2023,
+      "url": "https://openalex.org/W4323655724",
+      "doi": "10.1016/j.lindif.2023.102274",
+      "venue": "Learning and Individual Differences",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Generative AI in Higher Education: The ChatGPT Effect",
+      "authors": [
+        "Cecilia Ka Yuk Chan",
+        "Tom Colloton"
+      ],
+      "year": 2024,
+      "url": "https://openalex.org/W4392658848",
+      "doi": "10.4324/9781003459026",
+      "abstract": "Chan and Colloton’s book is one of the first to provide a comprehensive examination of the use and impact of ChatGPT and Generative AI (GenAI) in higher education. Since November 2022, every conversation in higher education has involved ChatGPT and its impact on all aspects of teaching and learning. The book explores the necessity of AI literacy tailored to professional contexts, assess the strengths and weaknesses of incorporating ChatGPT in curriculum design, and delve into the transformation of assessment methods in the GenAI era. The authors introduce the Six Assessment Redesign Pivotal Strategies (SARPS) and an AI Assessment Integration Framework, encouraging a learner-centric assessment model. The necessity for well-crafted AI educational policies is explored, as well as a blueprint for policy formulation in academic institutions. Technical enthusiasts are catered to with a deep dive into the mechanics behind GenAI, from the history of neural networks to the latest advances and applications of GenAI technologies. With an eye on the future of AI in education, this book will appeal to educators, students and scholars interested in the wider societal implications and the transformative role of GenAI in pedagogy and research.",
+      "venue": "Routledge eBooks",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "A Scoping Survey of ChatGPT in Mathematics Education",
+      "authors": [
+        "Birgit Pepin",
+        "Nils Frederik Buchholtz",
+        "Ulises Salinas-Hernández"
+      ],
+      "year": 2025,
+      "url": "https://openalex.org/W4407666534",
+      "doi": "10.1007/s40751-025-00172-1",
+      "abstract": "Abstract This study presents a scoping survey examining the integration of ChatGPT in mathematics education, highlighting its benefits, challenges, and implications for teaching and learning. The survey identifies key themes, including ChatGPT’s ability to assist in understanding mathematical concepts, lesson planning, assessment design, personalized learning, and fostering collaboration. While the tool demonstrates potential in enhancing self-regulated learning, providing real-time feedback, and supporting critical thinking, challenges such as its occasional inaccuracies, ethical concerns, and the risk of over-reliance on AI are also noted. The review emphasizes the importance of human oversight and ethical considerations in leveraging ChatGPT for inclusive and dynamic mathematics education. It concludes that, with thoughtful integration, ChatGPT can serve as a transformative resource, fostering both individualized and collaborative learning experiences while reshaping the learner–tool relationship in educational contexts.",
+      "venue": "Digital Experiences in Mathematics Education",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Exploration of ChatGPT in basic education: Advantages, disadvantages, and its impact on school tasks",
+      "authors": [
+        "Raúl Alberto García Castro",
+        "Nikole Alexandra Mayta Cachicatari",
+        "Willian Máximo Bartesaghi Asté",
+        "Martín Pedro Llapa Medina"
+      ],
+      "year": 2024,
+      "url": "https://openalex.org/W4396858752",
+      "doi": "10.30935/cedtech/14615",
+      "abstract": "The introduction of ChatGPT into basic education is progressing rapidly, generating impacts that, in many cases, are unknown. Its impressive capability profiles it as a tool that will revolutionize teaching and learning processes, creating gaps that need to be understood and evaluated. The research aims to explore the advantages, disadvantages, and its impact on school tasks. It is an exploratory qualitative study; data were collected through semi-structured interviews with 110 participants from five schools in Tacna, Peru. The results reveal that ChatGPT provides information quickly and easily, with a variety of content and pedagogical strategies. Additionally, it serves for evaluation, knowledge consultation, and scheduling school tasks. Eight related disadvantages were identified: Easy access to information may encourage the habit of copying and pasting, fostering academic dependence that would affect the development of skills, such as inquiry, argumentation, analysis, and critical thinking. Also, students may misuse information, cheating on school tasks and affecting their quality and suitability, making them no longer useful for education, including synthesis, essays, monographs, organizers, summaries, and mathematical exercises.",
+      "venue": "Contemporary Educational Technology",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Fostering AI Literacy in Schools: An Analysis of Pre-service Teachers’ Perceptions of AI Literacy in Initial Training",
+      "authors": [
+        "Cristiana Dell’Erba",
+        "Lisa Ruffini",
+        "Roberta Silva"
+      ],
+      "year": 2026,
+      "url": "https://openalex.org/W7215081047",
+      "doi": "10.5334/uproc.296",
+      "abstract": "The integration of Artificial Intelligence (AI) in education prompts the need for an AI literacy program for pre-service teachers, essential for the ethical implementation of these technologies in early education. This study investigates pre-service teachers' perceptions, attitudes, and perceived challenges regarding the integration of AI literacy within kindergarten and primary school settings. Employing a qualitative approach, data were gathered from 51 university students following a training module at the University of Verona. Analysis involved inductive content analysis of open-ended reflections. Respondents identified a lack of basic skills and, indeed, the key role of AI literacy training path for an effective integration of AI in classes. Besides this, they highlighted the need to develop a critical awareness that allows them to promote a responsible and critical use of this tool. Finally, they note that ethical principles and practical actions are core elements of relevant guidelines. In conclusion, the study shows pre-service teachers are developing a human-centred approach to AI. However, transitioning these \"directional hypotheses\" into classroom reality requires institutional support that empowers teachers as active agents of curricular innovation.",
+      "venue": "Ubiquity Proceedings",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Teacher training in the age of AI: impact on AI literacy and teachers’ attitudes",
+      "authors": [
+        "Julia Lademann",
+        "Jannik Henze",
+        "Nadine Honke",
+        "Caroline Wollny",
+        "S. Becker"
+      ],
+      "year": 2026,
+      "url": "https://openalex.org/W7118673836",
+      "doi": "10.3389/feduc.2025.1671306",
+      "abstract": "The rapid integration of artificial intelligence (AI) in education requires teachers to develop AI competencies while preparing students for a society influenced by AI. This study evaluates the impact of an online teacher training program on German in-service teachers’ AI literacy, usage behaviors, and attitudes toward AI. A pre-post design study was conducted with teachers (N = 436 for attitude assessment, among whom N L = 291 teachers for AI literacy) participating in the course. The program combined synchronous and asynchronous learning formats, including webinars, self-paced modules, and practical projects. The participants exhibited notable improvements across all domains: AI literacy scores increased significantly, and all attitude items regarding AI usage and integration demonstrated significant positive changes. Teachers reported increased confidence in AI integration. Structured teacher training programs effectively enhance AI literacy and foster positive attitudes toward AI in education.",
+      "venue": "Frontiers in Education",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Teachers' Digital Literacy and Awareness of Ethical Guidelines in Artificial Intelligence (AI) Use",
+      "authors": [
+        "Renalyn Rosauro"
+      ],
+      "year": 2026,
+      "url": "https://openalex.org/W7170821698",
+      "doi": "10.5281/zenodo.21447618",
+      "abstract": "Abstract Teachers' digital literacy and ethical awareness of artificial intelligence (AI) use are increasingly important as schools adopt digital and AI-supported tools for instruction, assessment, communication, and professional work. This study aimed to determine the level of secondary teachers' digital literacy and awareness of ethical guidelines in AI use in select public secondary schools in the Division of Ozamiz City. A quantitative descriptive-comparative design was employed with 169 teacher-respondents from Ozamiz City National High School, Ozamiz City School of Arts and Trades, and Labo National High School. Data were gathered using a structured questionnaire measuring teachers' demographic profile, digital literacy, and awareness of AI ethical guidelines in terms of data privacy, transparency, accountability, risk awareness, and fairness. Descriptive statistics and one-way analysis of variance were used. Results showed that teachers' digital literacy was very high (M = 4.39, SD = 0.689), with the effective use of computers, laptops, or mobile devices for teaching obtaining the highest mean (M = 4.63) and proper citation of digital sources obtaining the lowest mean (M = 4.18). Teachers' awareness of ethical guidelines in AI use was also very high (M = 4.56, SD = 0.510), with risk awareness highest (M = 4.63) and transparency lowest (M = 4.39). No significant differences were found in digital literacy or AI ethical awareness when teachers were grouped by educational attainment, trainings attended, or length of service. The findings indicate that teachers generally possess strong digital and ethical AI readiness, but targeted professional development is needed in digital citation and transparent disclosure of AI-generated content.",
+      "venue": "Ennoia Advances in Social Science, Technology and Education",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Empowering Teachers with AI Literacy: The Italian Case",
+      "authors": [
+        "perseghin erica",
+        "foresti gian luca"
+      ],
+      "year": 2025,
+      "url": "https://openalex.org/W7112004316",
+      "abstract": "This paper examines the development of Artificial Intelligence (AI) literacy from a teacher-centered perspective in Italy. Despite the growing importance of AI in education, its integration into school curricula remains a major challenge. Key barriers include complex terminology, limited opportunities for hands-on professional development, and the absence of clear national curricular guidelines. The study identifies the main obstacles to developing AI literacy among in-service teachers, explores the tools and strategies currently adopted in professional training, and analyzes the objectives and content of AI-related courses offered through Scuola Futura, the national teacher training platform established under Italy’s National Recovery and Resilience Plan (PNRR), as well as university programs for pre-service teachers. Findings show that most training initiatives focus on introductory and general digital skills rather than advanced or discipline-specific applications. Although recent national measures such as Decreto Ministeriale (D.M.) 66/2023 represent a positive step, sustained efforts are still required to bridge the AI knowledge gap and promote meaningful, pedagogically grounded integration of AI in teaching practice.",
+      "venue": "Institutional Research Information System (University of Udine)",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Developing AI Literacy for Primary and Middle School Teachers in China: Based on a Structural Equation Modeling Analysis",
+      "authors": [
+        "Leilei Zhao",
+        "Xiaofan Wu",
+        "Heng Luo"
+      ],
+      "year": 2022,
+      "url": "https://openalex.org/W4308453112",
+      "doi": "10.3390/su142114549",
+      "abstract": "As smart technology promotes the development of various industries, artificial intelligence (AI) has also become an important driving force for innovation and transformation in education. For teachers, how to skillfully apply AI in teaching and improve their AI literacy has become a necessary goal for their sustainable professional development. This research examines the correlations among the dimensions of AI literacy of teachers in order to promote the effectiveness of class teaching and the adoption of artificial intelligence literacy (AIL). Our findings are based on the analysis of 1013 survey results, where we tested the level of AI literacy of teachers, including Knowing and Understanding AI (KUAI), Applying AI (AAI), Evaluating AI Application (EAIA), and AI Ethics (AIE). We find that AAI had a significant, positive effect on the other three dimensions. Thus, based on the analysis, the government should take action to cultivate teachers’ AI literacy. In order to improve teachers’ AI literacy, the choice of curriculum, content, methods, and practical resources for special training should be diverse and committed to making AI literacy an essential enabler for teachers’ sustainable future development.",
+      "venue": "Sustainability",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Developing Middle School Students' AI Literacy",
+      "authors": [
+        "Irene A. Lee",
+        "Safinah Ali",
+        "Helen Zhang",
+        "Daniella DiPaola",
+        "Cynthia Breazeal"
+      ],
+      "year": 2021,
+      "url": "https://openalex.org/W3135354507",
+      "doi": "10.1145/3408877.3432513",
+      "abstract": "In this experience report, we describe an AI summer workshop designed to prepare middle school students to become informed citizens and critical consumers of AI technology and to develop their foundational knowledge and skills to support future endeavors as AI-empowered workers. The workshop featured the 30-hour \"Developing AI Literacy\" or DAILy curriculum that is grounded in literature on child development, ethics education, and career development. The participants in the workshop were students between the ages of 10 and 14; 87% were from underrepresented groups in STEM and Computing. In this paper we describe the online curriculum, its implementation during synchronous online workshop sessions in summer of 2020, and preliminary findings on student outcomes. We reflect on the successes and lessons we learned in terms of supporting students' engagement and conceptual learning of AI, shifting attitudes toward AI, and fostering conceptions of future selves as AI-enabled workers. We conclude with discussions of the affordances and barriers to bringing AI education to students from underrepresented groups in STEM and Computing.",
+      "venue": "ACM Technical Symposium on Computer Science Education (SIGCSE)",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Integrating Generative AI Into K-12 Curriculums and Pedagogies in India: Opportunities and Challenges",
+      "authors": [
+        "Durgesh M. Sharma",
+        "K. Venkata Ramana",
+        "R. Jothilakshmi",
+        "Rakesh Verma",
+        "B. Uma Maheswari",
+        "Sampath Boopathi"
+      ],
+      "year": 2023,
+      "url": "https://openalex.org/W4390432359",
+      "doi": "10.4018/979-8-3693-0487-7.ch006",
+      "abstract": "Generative artificial intelligence (AI) can revolutionize K-12 education in India by enhancing curriculums and pedagogies. This chapter explores the principles of generative AI, including generative adversarial networks (GANs), variational autoencoders (VAEs), and natural language generation (NLG), and its potential to create content indistinguishable from human-generated materials. Generative AI addresses challenges like resource scarcity, linguistic diversity, and personalized learning experiences, while emphasizing ethical considerations, data privacy, and bridging the digital divide. The future of K-12 education in India will see personalized learning journeys, inclusivity, and empowered educators. A comprehensive policy framework, infrastructure support, and teacher training are needed to realize the full potential of generative AI in shaping the educational landscape.",
+      "venue": "Advances in higher education and professional development book series",
+      "secao": "REFERENCIAL TEÓRICO: Benefícios Pedagógicos e Personalização do Ensino"
+    },
+    {
+      "title": "A generative AI teaching assistant for personalized learning in medical education",
+      "authors": [
+        "Thomas Thesen",
+        "Soo Hwan Park"
+      ],
+      "year": 2025,
+      "url": "https://openalex.org/W4415849485",
+      "doi": "10.1038/s41746-025-02022-1",
+      "abstract": "Medical education faces a scalability crisis, where rising class sizes strain individualized instruction, while students increasingly adopt unvalidated Generative AI (GenAI) tools for individualized learning support. This study investigated how medical students integrate constrained GenAI systems into their self-directed learning practices using Retrieval-Augmented Generation (RAG), which limits large language model responses to instructor-curated materials, thereby reducing hallucinations while maintaining pedagogical utility. We deployed a RAG-based teaching assistant in a medical school basic science course across two consecutive cohorts, examining usage patterns, conversation content, and student feedback to understand adoption and learning behaviors. Students demonstrated strategic, context-dependent usage, with engagement intensifying during high-stakes assessment periods and substantial after-hours utilization. Users primarily sought clarification on foundational concepts and valued the system's continuous availability and source-grounded responses. However, knowledge-base constraints that ensured accuracy also limited broader inquiries, creating tension between reliability and comprehensiveness that shaped how students incorporated the tool into their study routines. These findings provide empirical evidence of how medical students navigate constrained AI tools for self-directed learning, informing institutional strategies for integrating these technologies into pedagogical frameworks.",
+      "venue": "npj Digital Medicine",
+      "secao": "REFERENCIAL TEÓRICO: Benefícios Pedagógicos e Personalização do Ensino"
+    },
+    {
+      "title": "The potential of generative AI for personalized persuasion at scale",
+      "authors": [
+        "Sandra Matz",
+        "Jacob D. Teeny",
+        "Sumer Sumeet Vaid",
+        "H. Peters",
+        "Gabriella M. Harari",
+        "Moran Cerf"
+      ],
+      "year": 2024,
+      "url": "https://openalex.org/W4392153984",
+      "doi": "10.1038/s41598-024-53755-0",
+      "abstract": "Matching the language or content of a message to the psychological profile of its recipient (known as \"personalized persuasion\") is widely considered to be one of the most effective messaging strategies. We demonstrate that the rapid advances in large language models (LLMs), like ChatGPT, could accelerate this influence by making personalized persuasion scalable. Across four studies (consisting of seven sub-studies; total N = 1788), we show that personalized messages crafted by ChatGPT exhibit significantly more influence than non-personalized messages. This was true across different domains of persuasion (e.g., marketing of consumer products, political appeals for climate action), psychological profiles (e.g., personality traits, political ideology, moral foundations), and when only providing the LLM with a single, short prompt naming or describing the targeted psychological dimension. Thus, our findings are among the first to demonstrate the potential for LLMs to automate, and thereby scale, the use of personalized persuasion in ways that enhance its effectiveness and efficiency. We discuss the implications for researchers, practitioners, and the general public.",
+      "venue": "Scientific Reports",
+      "secao": "REFERENCIAL TEÓRICO: Benefícios Pedagógicos e Personalização do Ensino"
+    },
+    {
+      "title": "Generative AI as a Tool for Personalized STEAM K-12 Education",
+      "authors": [
+        "Abdesselam Bougdira",
+        "Ghadah Hassan Al Murshidi"
+      ],
+      "year": 2025,
+      "url": "https://openalex.org/W4408421739",
+      "doi": "10.4018/979-8-3693-7332-3.ch023",
+      "abstract": "This chapter delves into the transformative impact of generative AI on personalized STEAM education. It explores how AI technologies are integrated into STEAM education to deliver personalized learning experiences that cater to individual student needs. The benefits of generative AI are highlighted, including enhanced student engagement, improved learning outcomes, greater accessibility, and the stimulation of creativity and innovation. The chapter also examines the challenges of deploying generative AI in education, such as resource limitations, data privacy concerns, algorithmic biases, and the need for educator training. Future trends are explored, focusing on advancements in AI-driven virtual classrooms, adaptive learning technologies, and ethical considerations. By harnessing generative AI, personalized STEAM education can be scaled to a broader audience, delivering equitable, high-quality learning experiences that prepare students for the complexities of contemporary society.",
+      "venue": "Advances in computational intelligence and robotics book series",
+      "secao": "REFERENCIAL TEÓRICO: Benefícios Pedagógicos e Personalização do Ensino"
+    },
+    {
+      "title": "IMPACT OF AI ON PERSONALIZED LEARNING",
+      "authors": [
+        "KIRTI CHAUDHARY",
+        "JHALAK JAIN"
+      ],
+      "year": 2025,
+      "url": "https://openalex.org/W4410050215",
+      "doi": "10.69758/gimrj/25040401v13p0003",
+      "abstract": "ABSTRACT Artificial Intelligence (AI) is changing the way students learn by making education more personalized and focused on individual needs. This research paper looks at how AI is being used in schools, especially for students from kindergarten to grade 12 (K–12). One key part of this study compares AI tutors and human teachers. While AI tutors can give instant help and adjust lessons based on a student’s progress, human teachers provide emotional support, encouragement, and personal connection that technology cannot fully replace. The paper explores how both are seen by students and teachers, and how effective they are in real classrooms. Another important area discussed is the use of generative AI tools like ChatGPT in daily learning. These tools help students with writing, problem-solving, and answering questions, but they also raise concerns about misuse, over-reliance, and the accuracy of information. The study also explores new technologies like eye-tracking, which can check if students are paying attention during online tests. This helps teachers understand how focused a student is and improve online teaching methods. Lastly, the paper looks at how AI is being used to detect learning disabilities in children early on. AI systems can look at patterns in how students behave or perform and give early warnings, helping parents and teachers give the right support sooner. KEYWORDS: Artificial Intelligence, Tools, Human Teaching, K-12 Education, Student Engagement, Learning Disability",
+      "secao": "REFERENCIAL TEÓRICO: Benefícios Pedagógicos e Personalização do Ensino"
+    },
+    {
+      "title": "Generative AI (GenAI) in the language classroom: A systematic review",
+      "authors": [
+        "Seongyong Lee",
+        "Hohsung Choe",
+        "Di Zou",
+        "Jaeho Jeon"
+      ],
+      "year": 2025,
+      "url": "https://openalex.org/W4410600596",
+      "doi": "10.1080/10494820.2025.2498537",
+      "abstract": "The integration of generative AI (GenAI) into language education has attracted significant attention due to its versatile capabilities. However, previous reviews rarely focused on classroom-based research with language learners, a crucial aspect for understanding GenAI's practical application. Therefore, this systematic review addresses this gap by examining 49 empirical studies published between January 2023 and December 2024, focusing on research design, research focus, and the roles and challenges of GenAI in language learning. Findings show that higher education was the dominant setting and English was the primary target language. Although the studies employed diverse research methods, they largely relied on self-reported data. They mainly investigated learner perceptions, such as attitude, self-efficacy, and motivation, with language acquisition studies focusing primarily on writing skills. GenAI served diverse roles, including feedback provider, learning tutor, cognitive stimulator, interaction facilitator, and conversation partner. However, its integration revealed technological challenges, such as content quality and querying issues, as well as educational challenges, including overreliance, pedagogical limitations, and concerns over academic integrity. The review suggests that future research should diversify its research focus and tools, extend studies into K-12 contexts, employ longitudinal designs, explore behavioral interactions with GenAI, and develop customized GenAI applications for personalized learning.",
+      "venue": "Interactive Learning Environments",
+      "secao": "REFERENCIAL TEÓRICO: Benefícios Pedagógicos e Personalização do Ensino"
+    },
+    {
+      "title": "Research and Implementation of Intelligent Tutoring System for AI Education Domain Based on LLM-Powered Agents",
+      "authors": [
+        "Zizhao Huang",
+        "He Sheng",
+        "Yuanyuan Qiao"
+      ],
+      "year": 2025,
+      "url": "https://openalex.org/W7131234116",
+      "doi": "10.1109/ic-nidc67200.2025.11390477",
+      "abstract": "We present an LLM-powered Intelligent Tutoring System tailored for AI education. The system constructs learner profiles from student data, diagnoses knowledge gaps, and generates adaptive learning paths through knowledge graph reasoning and retrieval-augmented content synthesis. By integrating long-term memory and tool-use capabilities, the unified agent delivers structured and goal-aligned learning plans personalized to individual learners. Evaluated using the LLM-as-a-Judge paradigm across coherence, relevance, personalization, and engagement, our system achieves strong results across diverse user groups. These findings highlight the feasibility of building domain-specific educational agents to support personalized and scalable AI tutoring.",
+      "venue": "IEEE International Conference on Network Infrastructure and Digital Content (IC-NIDC)",
+      "secao": "REFERENCIAL TEÓRICO: Benefícios Pedagógicos e Personalização do Ensino"
+    },
+    {
+      "title": "Enhancing LLM-Based Feedback: Insights from Intelligent Tutoring Systems and the Learning Sciences",
+      "authors": [
+        "John C. Stamper",
+        "Ruiwei Xiao",
+        "Xinying Hou"
+      ],
+      "year": 2024,
+      "url": "https://openalex.org/W4400187437",
+      "doi": "10.1007/978-3-031-64315-6_3",
+      "venue": "Communications in computer and information science",
+      "secao": "REFERENCIAL TEÓRICO: Benefícios Pedagógicos e Personalização do Ensino"
+    },
+    {
+      "title": "LLM Intelligent Agent Tutoring in Higher Education Courses Using a RAG Approach",
+      "authors": [
+        "Horia Alexandru Modran",
+        "Corina Bogdan",
+        "Doru Ursuțiu",
+        "Cornel Samoilă",
+        "Paul Livius Modran"
+      ],
+      "year": 2025,
+      "url": "https://openalex.org/W4408644941",
+      "doi": "10.1007/978-3-031-83520-9_54",
+      "venue": "Lecture notes in networks and systems",
+      "secao": "REFERENCIAL TEÓRICO: Benefícios Pedagógicos e Personalização do Ensino"
+    },
+    {
+      "title": "LPITutor: an LLM based personalized intelligent tutoring system using RAG and prompt engineering",
+      "authors": [
+        "Zhensheng Liu",
+        "Prateek Agrawal",
+        "Saurabh Singhal",
+        "Vishu Madaan",
+        "Mohit Kumar",
+        "Pawan Kumar Verma"
+      ],
+      "year": 2025,
+      "url": "https://openalex.org/W4413252982",
+      "doi": "10.7717/peerj-cs.2991",
+      "abstract": "Development of large language models (LLMs) has transformed the landscape of personalized education through intelligent tutoring systems (ITS) which responds to diverse learning requirements. This article proposed a model named LLM based Personalized Intelligent Tutoring System (LPITutor) that is based on LLM for personalized ITS that leverages retrieval-augmented generation (RAG) and advanced prompt engineering techniques to generate customized responses aligned with students' requirements. The aim of LPITutor is to provide customized learning content that adapts to different levels of learners skills and question complexity. The performance of proposed model was evaluated on accuracy, completeness, clarity, difficulty alignment, coherence, and relevance. The finding of LPITutor indicates that it effectively balances the response accuracy and clarity with significant alignment to the difficulty level of student queries. The proposed work also emphasises the broader implications of artificial intelligence (AI)-driven ITS in education and presents future directions for improving the adaptation and optimization of LPITutor.",
+      "venue": "PeerJ Computer Science",
+      "secao": "REFERENCIAL TEÓRICO: Benefícios Pedagógicos e Personalização do Ensino"
+    },
+    {
+      "title": "LLM-powered Multi-agent Framework for Goal-oriented Learning in Intelligent Tutoring System",
+      "authors": [
+        "Tianfu Wang",
+        "Yi Zhan",
+        "Jianxun Lian",
+        "Zhengyu Hu",
+        "Nicholas Jing Yuan",
+        "Qi Zhang",
+        "Xing Xie",
+        "Hui Xiong"
+      ],
+      "year": 2025,
+      "url": "https://openalex.org/W4410636983",
+      "doi": "10.1145/3701716.3715244",
+      "abstract": "Intelligent Tutoring Systems (ITSs) have revolutionized education by offering personalized learning experiences. However, as goal-oriented learning, which emphasizes efficiently achieving specific objectives, becomes increasingly important in professional contexts, existing ITSs often struggle to deliver this type of targeted learning experience. In this paper, we propose GenMentor, an LLM-powered multi-agent framework designed to deliver goal-oriented, personalized learning within ITS. GenMentor begins by accurately mapping learners' goals to required skills using a fine-tuned LLM trained on a custom goal-to-skill dataset. After identifying the skill gap, it schedules an efficient learning path using an evolving optimization approach, driven by a comprehensive and dynamic profile of learners' multifaceted status. Additionally, GenMentor tailors learning content with an exploration-drafting-integration mechanism to align with individual learner needs. Extensive automated and human evaluations demonstrate GenMentor's effectiveness in learning guidance and content quality. Furthermore, we have deployed it in practice and also implemented it as an application. Practical human study with professional learners further highlights its effectiveness in goal alignment and resource targeting, leading to enhanced personalization. Supplementary resources are available at ttps://github.com/GeminiLight/gen-mentor.",
+      "venue": "International World Wide Web Conference (WWW)",
+      "secao": "REFERENCIAL TEÓRICO: Benefícios Pedagógicos e Personalização do Ensino"
+    },
+    {
+      "title": "Llm-Based Intelligent Tutor System",
+      "authors": [
+        "Aditi Arya",
+        "Shweta Sinha",
+        "Priyanka Makkar"
+      ],
+      "year": 2026,
+      "url": "https://openalex.org/W7203747518",
+      "doi": "10.1109/icndsa68777.2026.11652109",
+      "abstract": "Large Language Models (LLMs) are rapidly developing models that have attracted a lot of attention in the field of artificial intelligence because of their natural language understanding, generation, and contextual reasoning features. Such models have facilitated new opportunities in different fields especially in the educational field. The development of Intelligent Tutoring Systems (ITS) with the help of LLM may become one of the applications (which look like a human tutor who offers a query resolution service and provides contextual explanations and customized instructions according to the individual learner performance and learning requirements). Traditional e-learning systems tend to have a oneway instructional approach whereby the same learning materials are presented to all learners irrespective of their pace of learning, previous experience, and intellectual capacities, which in most cases lead to poor engagement of the learners and limited learning outcomes. On the contrary, ITS based on the LLM would enable learners to engage the system through natural language, thus providing dynamic knowledge delivery and uncertain guidance. These systems are able to divide complex ideas into step-by-step explanations, create appropriate examples, as well as increase or decrease instructional difficulty with learner modelling and adaptive learning. The current paper provides a review of the literature that has been done on Intelligent Tutoring Systems, conversational artificial intelligence, and the use of large language models like GPT and LLaMA in education. Among the essential matters, the review singles out personalized learning, adaptive feedback generation, and assessment of learner progress, as well as such challenges as hallucinated responses, lack of explainability, and ethical issues, such as data privacy and fairness.",
+      "venue": "International Conference on NextGen Data Science and Analytics (ICNDSA)",
+      "secao": "REFERENCIAL TEÓRICO: Benefícios Pedagógicos e Personalização do Ensino"
+    },
+    {
+      "title": "Addressing student use of generative AI in schools and universities through academic integrity reporting",
+      "authors": [
+        "Steven Peterson"
+      ],
+      "year": 2025,
+      "url": "https://openalex.org/W4415982871",
+      "doi": "10.3389/feduc.2025.1610836",
+      "abstract": "The aim of this theoretical article is to explore frameworks contributing to reasonable and applicable definitions of artificial intelligence (AI), human intelligence, and generative artificial intelligence (GenAI), as well as propose a framework for an efficient, transparent, and scalable approach to assess and address inappropriate use of GenAI resources in an academic environment.The integration of artificial intelligence technologies in academic environments has transformed how students engage with learning materials, complete assignments, and demonstrate formative knowledge. The opportunities AI-enhanced resources offer for personalized learning and robust academic experiences are comingled with significant challenges related to appropriate student use. Although automated content generators can enhance productivity and understanding, they also raise complex questions about academic integrity and the role educators must play in shaping its ethical use. AI-powered tools provide students with grammar correction, citation management, language translation, research abstracts, and a wide-range of enhanced learning support when used appropriately (Dwivendi et al., 2021). These tools also assist non-native speaking students with accessibility to learning modalities throughout the world (Karakas, 2023). It is when these tools are used to circumvent academic effort that concerns quickly emerge. Large language models (LLMs) capable of generating human-quality text and creative content have blurred the lines of authorship and academic integrity. Students have unprecedented access to resources capable of completing assignments, writing essays, and solving complex problems with minimal personal effort. This raises strong opinion about the assessment of student learning (Luo, 2024), determination of plagiarism (Bittle et al., 2025), and efficacy of performance outcomes (Weng et al., 2024).Luo's critical policy analysis published in 2024 examined the institutional frameworks guiding the use of GenAI in assessment at twenty world-leading universities. Employing Bacchi's \"What's the problem represented to be\" (WPR) methodology, the research sought to critically analyze how these institutions articulate the challenges posed by GenAI within an evolving academic landscape.The core critique identified a dominant, nearly universal policy paradigm that frames GenAI as a potential threat to academic integrity and the intellectual originality of student submissions. By designating these resources as a form of external assistance separate from the student's contribution, this prevailing policy structure suggests a critical silence regarding the increasingly distributed and collaborative nature of modern, technology-mediated knowledge production (Luo, 2024). This research suggests a redefinition of \"originality\" to effectively accommodate and integrate human-AI collaborative endeavors.The potential effects of these prevailing integrity-focused policies are significant: they risk stigmatizing students utilizing GenAI resources for legitimate purposes and may transform faculty into punitive \"gatekeepers\" whose focus is policing misconduct rather than empowering robust student learning experiences (Luo, 2024). Notwithstanding its theoretical utility, Luo's study exhibits key research gaps. A primary limitation is the absence of empirical data concerning the lived effects of the policies, specifically lacking both student perspectives on their resultant impact and real-world faculty implementation data across varied disciplines. This reliance on a limited, purposed sample of elite universities undermines the generalizability of findings, neglecting distinct policy challenges faced by diverse institutional types, such as community colleges, proprietary and non-profit institutions. Finally, a key absence is the inclusion of alternative policy models, specifically in-depth case studies on institutions that have successfully moved beyond the punitive model to implement progressive, integrated GenAI policies.A systematic literature review was conducted to effectively assess how GenAI technologies influence the demonstration of formative knowledge, balancing both educational benefits and associated risks to academic honesty (Bittle et al., 2025). This comprehensive analysis encompassed 41 studies gathered from key databases, including the IEEE Xplore and JSTOR.Core findings suggest a profound impact of GenAI resources in higher education environments. The opportunities AI-enhanced resources offer for customized learning and robust educational engagement are comingled with significant challenges related to appropriate student use. Large language models capable of generating human-quality assignments and creative content have blurred the lines of authorship, enabling the evasion of conventional plagiarism tools and raising complex questions about academic integrity. This review suggests that immediate actions are required to effectively manage GenAI's influence. This primarily involves enhancing digital literacy among both students and faculty, and developing more robust detection tools that can assess and address AI-generated content. A goal of this review was to guide future efforts in developing evidence-based practices for the responsible integration of these transformative tools.The current body of work lacks diversity in study design and scope, often exhibiting a bias toward studies originating in Western contexts, and potentially missing perspectives from social science (Bittle et al., 2025). is a comprehensive analysis that the of GenAI its potential for academic the lacks empirical data regarding the efficacy of studies that the impact of policies on student knowledge and the of detection tools as GenAI models 2024 review conducted by et how educators are student learning in environments GenAI is a identified learning outcomes that have and the research in this evolving academic This analysis and studies a The findings concerning assessment identified primary is often in the of GenAI educators are and assessment such as and The model involves AI-enhanced resources are a and of the (Weng et al., integration of artificial intelligence technologies has the of and learning are increasingly on and learning including critical and digital to a technology-mediated current research that the of studies this significant in the research identified a critical is a for studies to beyond work and provide empirical concerning the impact of GenAI on student the literature lacks research on the efficacy of assessment and how to effectively integrate assessment into a the outcomes are a in of the assessment and these work to and for these (Weng et al., 2024). beyond to and of intellectual core ethical 2023). such as academic regarding intellectual and on work as the is on critical to for writing in This a assessment citation from from a punitive model to a approach a approach 2023). on and academic in citation and an integrity future social work to ethical in academic and of a of academic a strong of plagiarism et al., 2021). The study also plagiarism detection detection tools are used and for the use of these tools a in within the research community et al., key is the plagiarism is and in their and work et al., 2021). The propose that plagiarism effectively institutions to beyond detection tools and they a focus on educational These must the ethical of originality and in and et al., 2021). This is for knowledge into responsible research from to the is The et review literature to primary for student This systematic review of the on with a from a of significant is the accessibility of by tools content The is of a critical in academic and citation and knowledge in research writing and the of a also policy these are into and often an for in design This is among and the is in research and must integrity et al., of a of to in institutional and risk This often from for faculty may This the study empirical findings into integrity rather than on on citation and ethical from research to assignments and analysis These design the of by and policy developing and for faculty as this and and a for academic must and to and provide a et al., from digital access and of is often as studies suggest from A research ethical to and research at of plagiarism detection citation knowledge, and A key was that the of students have strong of plagiarism and its This suggests a in efforts have data a critical in research and writing 2021). The primary is must from and punitive to that The study that into The for plagiarism was research primary risk is a to and 2021). This the that plagiarism is primarily a is a Although research as the is that institutional policy from a punitive policing model to must integrated into the core an The goal to with the and to and knowledge real-world are key 2021). on academic and This must by risk from language by language support to on text and a distinct the role as the for on citation detection and developing review and formative on to and as a rather than and studies to the efficacy of The key for is a in the of student by ethical that focus on to address the a to knowledge theoretical article a research methodology, institutional policy and a framework to and of in the use of GenAI by students within the of academic integrity in higher The approach is to current research and institutional policies also how these academic environments and academic in a comprehensive review of academic policy and the of technologies in educational the aim is to explore frameworks contributing to reasonable and applicable definitions of artificial intelligence (AI), human intelligence, and generative artificial intelligence (GenAI), as well as propose a framework for an efficient, transparent, and scalable approach to assess and address inappropriate use of GenAI resources in an academic analysis was conducted of academic integrity policies from a of institutions. This analysis to and institutional related to such as of and the integration of artificial intelligence tools in academic this research is of engagement with academic integrity and twenty as a and academic across institutions. This work the and of academic integrity policies, the of plagiarism and in design that and this framework definitions that articulate and the of human intelligence, artificial intelligence, and generative artificial intelligence These definitions are used to critically assess how institutions are to the and ethical challenges by GenAI this approach of literature policy and this article to a of academic integrity with for policy of the studies to the of in the human in by and a model was used to demonstrate how and This the for in research and and and within the of intelligence was as the of is in the of This with to complex by for in The was a of These to for the of of data and for and This was the of learning 2025). learning language models (LLMs) that to problems on and definitions propose such as integration and of and external et al., 2025), to and on of human intelligence et al., knowledge and learning et al., to actions that human et al., that and 2025), and capable of for within et al., the of this article a of artificial intelligence, by research and models and identified by a that and in such a that human intelligence by and to across human et al., et al., et al., et al., et al., intelligence as to to and to of intelligence the framework the of universal and knowledge from of are primary contributing to of human intelligence and in the of of of frames as a of and from the and learning and for intellectual of the of of intelligence are to the and of intelligence as knowledge of of in and The of the with of such as of problem solving and the to knowledge, and to the of this article a of human intelligence, by and of a academic enabling the to from to and and use knowledge to their and that generative artificial intelligence from of artificial intelligence is its more engagement et al., 2025). that on such as data GenAI unprecedented across a of from creative and The of this with the to content and to a in the of technologies et al., 2025). GenAI has an to to and in that more human GenAI and from a data utilizing and proprietary to content at the of a human et al., the of has that separate from of a approach to language on and an generating language model et al., and from to its approach et al., the of this article a of generative artificial intelligence, from the literature and in for a of artificial intelligence to content on from and models and in et al., et al., et al., et al., the and these of intelligence is an when academic and of on a of the literature and key identified the a of of the in a comprehensive review of academic policy and the of technologies in educational the aim is to explore frameworks contributing to reasonable and applicable definitions of artificial intelligence (AI), human intelligence, and generative artificial intelligence (GenAI), as well as propose a framework for an efficient, transparent, and scalable approach to assess and address inappropriate use of GenAI resources in an academic analysis was conducted of academic integrity policies from a of institutions. This analysis to and institutional related to such as of and the integration of artificial intelligence tools in academic this research is of engagement with academic integrity and twenty as a and academic across institutions. This work the and of academic integrity policies, the of plagiarism and in design that and this framework definitions that articulate and the of human intelligence, artificial intelligence, and generative artificial intelligence These definitions are used to critically assess how institutions are to the and ethical challenges by GenAI this approach of literature policy and this article to a of academic integrity with for policy The potential for in learning can when is on and their AI-generated bias can and both theoretical and applicable and 2023). This is also by that article are are essays, of generative text tools on and of the data This is by of that as inappropriate use of and and and of writing as a to as a is text tools also to conventional human and such can a of such as and use of also as well as an of and of throughout the language models (LLMs) have a to and 2024). This often in and the the are in missing has of the and et al., 2024). A is to the of the a a when into the the a the is the a that is from the by the student's and with and with support this of a was into a of intelligence with and was into The by GenAI they in and of the GenAI was to a of the of of a potential of the academic integrity policy is an demonstration of plagiarism academic This is an plagiarism an that the of from the student with in writing this has to the student's and they have the to provide an and the is within the student's work is to the personal than that of the the student has the for for a and the has This to the institutional the of academic and a determination to the appropriate the faculty to provide a a as review of the academic integrity policies of on an universities and proprietary of was conducted to the of the institutional policies regarding the use of GenAI by its to proprietary policies and the institutions The universities and the and institutions from of the and universities and from and their academic policies to and universities a academic policy in with regarding student use of and of the academic integrity policies in their academic specifically related to inappropriate use of The policies in the used the of of the universities specifically that and of the may by This was with the The and policy across institutions was that missing in with GenAI policies that content is AI-generated that to students review content to and of of the student's and represented the that and from must and to policies faculty to and for use in the institutional policies that questions regarding use of GenAI to policy with the appropriate to is to students about AI-powered the ethical data authorship and appropriate use in academic This how to critically AI-generated the of academic integrity in the digital and use tools and as learning rather than for their students to the of and to academic integrity 2025). A to students on the faculty are in to and assess inappropriate integration of automated content suggests that on artificial intelligence and practices students to integrate GenAI tools into their 2025). study this a literacy to students in that this approach content and of study also among with educational et al., is the of the of as of content the they are plagiarism of in and This the as to the use of AI-powered tools in that assessment the determination of a learning a must to the of It is to that the of an as are and to and as such is for of plagiarism within the of both educational and and specifically to the academic is as an to work that from is to provide appropriate to the of the is to appropriate regarding as that the a can a with the that future This is learning a problem and The appropriate are and the is This an for required for an of plagiarism are and of is must the academic is key academic and writing in the and the of the is an ethical in writing is a from a of primarily is as a of core ethical 2023). It beyond This more such as plagiarism involves from a and the of intellectual 2023). The is the to work as educators a for distinct that suggest the student is to the use of external These writing in the of 2023). that for such can academic regarding intellectual the focus on the ethical of originality et al., 2021). for often this ethical et al., a writing is by by a to and 2021). The primary risk is a This from that a of contributing is of and citation a in regarding academic et al., 2025). This often an for in design rather than It is among such as and students may have et al., 2025). contributing to this on knowledge of research and et al., to address writing is punitive the is in research and institutions must integrity et al., 2025). must focus on in and to transform knowledge into responsible research practices et al., academic review concerns of plagiarism and the of their can to the and student use of intelligence and digital must to the of with and of and to a of the academic integrity a of and for students as an is of to and of the learning a student's academic in of an when and have and the student has a of to a and the of in a with the student about and concerns within the and for their on This is the in the absence of this is to the of the is appropriate the to was absence of a These are faculty can guide the student and are academic integrity is appropriate when of are in the student's and this is a on the student the determination can to to an of a student an faculty a of the and as an for determination of plagiarism has This is the role of the academic review is and at the from that the student has has of academic is to for This is for the that with the student from the appropriate institutional use such for on on have on how to address have an to the and the is that these concerns for the appropriate It is that the has to the of the student in a with a for their the student and of to and the is identified and is a to to the academic review as a and for The is to demonstrate the faculty in potential academic integrity the faculty in this as an and of successfully within the and that the student has the to from this with the the that future plagiarism concerns within the is of and as such for to a review for of the efforts have of a student to an at a of plagiarism is by an This to the student in a and A of to this is for institutional academic review and with a to a of for the with the that to the on the of the and to the faculty This that a has identified and is review the of a of student academic performance and academic integrity concerns in review as has in the artificial intelligence increasingly in educational its potential to enhance learning and the of academic integrity must and with The integration of in is a is an and ethical that challenges about authorship, and and universities from a transparent, and approach to and student use of intelligence and digital in their institutions. intelligence is a to enhance personalized educational and of content. The critical to is its use is academic student and the of academic are in the of of offer a comprehensive framework for institutions to address this evolving by policies that are and also By from punitive models to institutions can academic also student education tools to and the for ethical engagement with and that and rather than and for and integration of in education in in must with and the and to students to use tools and to and policies related to GenAI use of a robust and scalable academic integrity institutions from an students to provide more and language and models and data language and models use of to often in absence of critical analysis and 2024). an institutional are that can that are to intelligence and opportunities for student of artificial intelligence such as more learning critical integrate real-world and a robust that an empirical study the efficacy of to enhance student writing and the critical required for of student learning research a to student performance on distinct writing assignments and of implementation The integration of the on successfully transformed how students with the a significant in This key that the of the successfully critical as by higher performance The suggests that when students are with they can effectively and for assignments that methodology, is with significant research challenges and gaps. an the generalizability of the findings to academic environments is the research lacks the data to a the of critical with assessment the study the regarding the address the missing and student a framework for future involves the integration of writing It is when these are used in with that a assessment of the learning and the of critical can beyond a focus on the students to analyze their experiences and learning The key that students in the writing their critical from to the the writing significant in the critical of analysis and Although in a for future design critical and the faculty to raising complex questions about It is when these assignments are used to about complex that concerns quickly regarding the the research must data text analysis to how the writing and enhance and these are across academic articulate a and real-world of aim of a work by and was to explore frameworks contributing to reasonable and applicable models for as well as propose for an efficient, transparent, and scalable approach to with the goal of community impact and social The integration of into academic environments has transformed how students engage with learning materials, complete assignments, and demonstrate formative knowledge by collaborative with The opportunities for robust academic experiences and social challenges are comingled with significant challenges related to its the case studies and such as the and on can enhance and community understanding, they also raise complex questions about its and The literature faculty and students a of enhanced support for into diverse from to It is when these are used to student that concerns quickly about the for the The a core in the of studies capable of community for is a research concerning the complex and and in It was that future work focus on systematic of faculty to this that institutional support for community engagement is with its social integration of into academic and environments has transformed how research is both and of knowledge et al., The opportunities for generating knowledge that is both and are comingled with significant challenges related to and Although its methodology, for a can enhance community also raises complex questions about its and the role must play in shaping a research conducted with a of core and a wide-range of enhanced case studies It is when the of of and community is used critical on that concerns quickly emerge. The article suggests that is a for complex social and to the is by is on how institutional policies can address the the nature of and the of academic a significant in developing and impact capable of the of social across diverse et al., critical and intellectual integration of assessment in academic environments has the potential to transform how students engage with learning materials, complete assignments, and demonstrate formative knowledge et al., as by an empirical study is to explore a framework contributing to an and applicable assessment for as well as propose an approach students are in their questions within a The opportunities this learning for enhanced critical and learning are comingled with significant challenges related to generalizability and implementation the core of questions students to analyze and can enhance performance and also raises questions about the at It is when the research on the that concerns about the of the study suggests a critical is the for an efficient, transparent, and scalable approach to assess the of the questions the of these questions to a with grammar et al., 2023). the nature of the case study the lines of future work across diverse educational to the integration of in academic within an has transformed how students engage with primary complete assignments, and demonstrate formative knowledge. The opportunities offer for learning and robust academic experiences are comingled with significant challenges related to the of learning Although the writing to a case and can enhance knowledge and also raises concerns about the of study data the efficacy of the with student performance and et al., 2021). It is when these are used to learning that concerns quickly about the the The research that writing enhanced student the of the the benefits of significant in the for a and scalable approach to the the learning from the case the from completing a The nature of the content the lines of generalizability to empirical across diverse academic and and of and an empirical study frameworks contributing to an and scalable approach to collaborative learning to enhance both and The integration of technologies in academic specifically for and has transformed how students engage with collaborative and complete complex assignments 2025). The opportunities AI-enhanced resources offer for personalized learning and robust academic experiences significant challenges related to generalizability and core on and data for students with an enhanced learning support It is when these complex on that concerns about ethical and A significant in the for an efficient, transparent, and scalable approach to and how this data is and by the The 2025). Finally, the study complex questions about the and the required for to provide a critical analysis for institutions this integration of assessment and in academic environments has transformed how students engage with learning and demonstrate formative knowledge. Although the assessment its both and a bias when to the as well as challenges related to and analysis conducted by and educators with data on the that the of is students the for and assessment that questions about the to their The research that the of the assessment a strong with student the of the a significant in the for an efficient, transparent, and scalable approach to developing that can the the of the The study complex questions about the the and the generalizability of these beyond this assignments on personal and personal theoretical article by et frameworks contributing to",
+      "venue": "Frontiers in Education",
+      "secao": "REFERENCIAL TEÓRICO: Riscos Éticos, Plágio e Dependência Cognitiva"
+    },
+    {
+      "title": "Renegotiating Academic Integrity in the Age of Generative AI: A Case Study of the “Thinking Partner” Model in High School Learning",
+      "authors": [
+        "Fathor Rohman",
+        "Ahmad Silmul Fuady"
+      ],
+      "year": 2026,
+      "url": "https://openalex.org/W7167830394",
+      "doi": "10.52166/edu-religia.v9i1.12491",
+      "abstract": "The emergence of Generative Artificial Intelligence in secondary education has intensified concerns regarding academic integrity, particularly in argumentative writing practices. This study aims to examine how the Thinking Partner model, which positions AI as a dialogic cognitive partner, can reconstruct academic integrity while enhancing students’ critical reasoning. Employing a qualitative case study design, the research was conducted in one eleventh-grade class at a public senior high school in East Java involving 28 students engaged in structured AI-assisted argumentative tasks. Data were collected from student–AI interaction transcripts, written argumentative outputs, and reflective journals, and analyzed using thematic analysis through iterative coding that combined inductive theme development with deductive alignment to the cognitive partnership framework. The findings indicate a marked shift from output-oriented AI use toward dialogic engagement characterized by questioning, counter-argument testing, and reflective revision. This transformation corresponded with increased argumentative complexity and the development of internalized intellectual ownership. The study concludes that structured and transparent AI integration does not inherently undermine academic integrity; rather, it can reinforce reflective accountability within Islamic Religious Education learning contexts.",
+      "venue": "EDU-RELIGIA Jurnal Keagamaan dan Pembelajarannya",
+      "secao": "REFERENCIAL TEÓRICO: Riscos Éticos, Plágio e Dependência Cognitiva"
+    },
+    {
+      "title": "ChatGPT and the rise of generative AI: Threat to academic integrity?",
+      "authors": [
+        "Damian Eke"
+      ],
+      "year": 2023,
+      "url": "https://openalex.org/W4321368061",
+      "doi": "10.1016/j.jrt.2023.100060",
+      "abstract": "The emergence of OpenAI's ChatGPT has put intense spotlight on Generative AI (Gen-AI) systems and their possible impacts on Academic integrity. This paper provides an overview of the current arguments around ChatGPT and Academic integrity and concludes that although these technologies are capable of revolutionising academia, the way ChatGPT and other generative AI systems are used could surely undermine academic integrity. However, to ensure that the risks to academic integrity are mitigated for greater maximisation, institutional and multi-stakeholder efforts are required.",
+      "venue": "Journal of Responsible Technology",
+      "secao": "REFERENCIAL TEÓRICO: Riscos Éticos, Plágio e Dependência Cognitiva"
+    },
+    {
+      "title": "Generative AI and Academic Integrity in Higher Education: A Systematic Review and Research Agenda",
+      "authors": [
+        "Kyle Bittle",
+        "Omar El-Gayar"
+      ],
+      "year": 2025,
+      "url": "https://openalex.org/W4409269614",
+      "doi": "10.3390/info16040296",
+      "abstract": "This systematic literature review rigorously evaluates the impact of Generative AI (GenAI) on academic integrity within higher education settings. The primary objective is to synthesize how GenAI technologies influence student behavior and academic honesty, assessing the benefits and risks associated with their integration. We defined clear inclusion and exclusion criteria, focusing on studies explicitly discussing GenAI’s role in higher education from January 2021 to December 2024. Databases included ABI/INFORM, ACM Digital Library, IEEE Xplore, and JSTOR, with the last search conducted in May 2024. A total of 41 studies met our precise inclusion criteria. Our synthesis methods involved qualitative analysis to identify common themes and quantify trends where applicable. The results indicate that while GenAI can enhance educational engagement and efficiency, it also poses significant risks of academic dishonesty. We critically assessed the risk of bias in included studies and noted a limitation in the diversity of databases, which might have restricted the breadth of perspectives. Key implications suggest enhancing digital literacy and developing robust detection tools to effectively manage GenAI’s dual impacts. No external funding was received for this review. Future research should expand database sources and include more diverse study designs to overcome current limitations and refine policy recommendations.",
+      "venue": "Information",
+      "secao": "REFERENCIAL TEÓRICO: Riscos Éticos, Plágio e Dependência Cognitiva"
+    },
+    {
+      "title": "The impact of generative AI on academic integrity of authentic assessments within a higher education context",
+      "authors": [
+        "Alexander Kofinas",
+        "Crystal Han‐Huei Tsay",
+        "David Pike"
+      ],
+      "year": 2025,
+      "url": "https://openalex.org/W4409039478",
+      "doi": "10.1111/bjet.13585",
+      "abstract": "Generative AI (hereinafter GenAI) technology, such as ChatGPT, is already influencing the higher education sector. In this work, we focused on the impact of GenAI on the academic integrity of assessments within higher education institutions, as GenAI can be used to circumvent assessment approaches within the sector, compromising their quality. The purpose of our research was threefold: first, to determine the extent to which the use of GenAI can be detected via the marking and moderation process; second, to understand whether the presence of GenAI affects the marking process; and finally, to establish whether authentic assessments can safeguard academic integrity. We used a series of experiments in the context of two UK‐based universities to examine these issues. Our findings indicate that markers, in general, are not able to distinguish assessments that have had GenAI input from assessments that did not, even though the presence of GenAI affects the way markers approach the marking process. Our findings also suggest that the level of authenticity in an assessment has no impact on the ability to safeguard against or detect GenAI usage in assessment creation. In conclusion, we suggest that current approaches to assessments in higher education are susceptible to GenAI manipulation and that the higher education sector cannot rely on authentic assessments alone to control the impact of GenAI on academic integrity. Thus, we recommend giving more critical attention to assessment design and placing more emphasis on assessments that rely on social experiential learning and are performative rather than output‐based and asynchronously written. Practitioner notes What is already known about this topic GenAI has enabled students to complete higher education assessments quickly and with good quality, leading to challenges in academic integrity. GenAI has transformed the requirements and considerations in assessment design in higher education. Authentic assessments are seen as a prominent way to tackle the GenAI challenge. What this paper adds We provide quantitative and qualitative experimental evidence suggesting that GenAI can generate authentic assessments that pass the scrutiny of experienced academics. We demonstrate how the use of authentic assessments alone does not protect the academic integrity of students in higher education. Our qualitative analysis indicates that markers may generate false positive and false negative results if they suspect GenAI tampering in an assessment. Thus, students' learning is not assessed correctly. Implications for practice and/or policy When universities and national organisations design policies regarding GenAI, authentic assessments are not the panacea; the focus must remain on assessment design. Assessments of learning need to shift from assessing output to focusing on process and relevance to the workplace. That would mean a paradigmatic shift from written assessments to synchronous interpersonal assessments. The move away from written assessments has implications that are far reaching for the academy if written assessments cannot be trusted as a reliable indicator for and of learning.",
+      "venue": "British Journal of Educational Technology",
+      "secao": "REFERENCIAL TEÓRICO: Riscos Éticos, Plágio e Dependência Cognitiva"
+    },
+    {
+      "title": "Generative AI and Academic Integrity in Higher Education",
+      "authors": [
+        "Sathy Akter*"
+      ],
+      "year": 2026,
+      "url": "https://openalex.org/W7171488858",
+      "doi": "10.34104/bjah.02607820789",
+      "abstract": "This research report examines the impact of Generative Artificial Intelligence (GenAI) on academic integrity in higher e­ducation on a global scale while specifically analyzing professional education in the USA. In this era marked by the widespread presence of Large Language Models like ChatGPT, DeepSeek and Gemini, the traditional ways of assessment are challenged as never before. This study refers to the literature published in the last five years (2021-2026) to assess the pedagogical, ethical, and technical aspects of the use of AI. The analysis finds that there seems to be an important change in the \"honor code\" approach of the traditional system for a more complex system that has been recognized as \"contract cheating 2.0\" and biases of algorithmic detection. Main findings include the opportunities that GenAI brings to personalized learning and student productivity as well as the need to radically reimagine assessment frameworks. The report presents a comparison of the existing different detection methods and draws attention to the potential incompleteness of detection, including the dangers of false positives and bias against non-native speakers. Last, it provides recommendation for both the USA Law Schools and regulators for a future of \"AI Literacy\" and pedagogical integrity rather than punishment-based surveillance.",
+      "venue": "British Journal of Arts and Humanities",
+      "secao": "REFERENCIAL TEÓRICO: Riscos Éticos, Plágio e Dependência Cognitiva"
+    },
+    {
+      "title": "EFL Students’ Functional and Cognitive Dependency on ChatGPT in EFL Academic Writing",
+      "authors": [
+        "Fitri Awalia Putri",
+        "Suratman Suratman",
+        "Annisah Annisah",
+        "Waliyudin Waliyudin"
+      ],
+      "year": 2026,
+      "url": "https://openalex.org/W7166539356",
+      "doi": "10.22437/ijolte.v10i1.56588",
+      "abstract": "The increasing use of ChatGPT in academic writing has raised concerns about students' dependency on artificial intelligence, particularly in EFL contexts. This study examines students' functional and cognitive dependency on ChatGPT as theoretically distinct constructs and describes dependency patterns across gender. A descriptive quantitative design was employed involving ten fourth-semester English Education students at STKIP Taman Siswa Bima. Data were collected through a questionnaire (functional: α = .830; cognitive: α = .632) and self-reflection responses analysed thematically, with findings triangulated to strengthen credibility. The results revealed higher functional dependency (M = 3.66) than cognitive dependency (M = 3.29). Students primarily relied on ChatGPT for grammar correction, vocabulary improvement, sentence construction, and paraphrasing, while cognitive support was associated with idea generation and argument development. Thematic analysis yielded three themes: reasons for use, perceived benefits, and awareness of over-reliance. Gender differences were minimal. The novelty of this study lies in demonstrating that AI dependency operates across qualitatively different levels of the writing process, extending AI-assisted writing frameworks and contributing to learner autonomy discourse by suggesting that EFL learners can exercise selective AI use as a form of strategic autonomy.",
+      "venue": "INTERNATIONAL JOURNAL OF LANGUAGE TEACHING AND EDUCATION",
+      "secao": "REFERENCIAL TEÓRICO: Riscos Éticos, Plágio e Dependência Cognitiva"
+    },
+    {
+      "title": "From Assistance to Academic Dependency: An Analysis of Students’ Use of ChatGPT in Homework Completion",
+      "authors": [
+        "Senad Orhani"
+      ],
+      "year": 2026,
+      "url": "https://openalex.org/W7162687178",
+      "doi": "10.30564/jiep.v9i1.13212",
+      "abstract": "The rapid expansion of generative artificial intelligence has significantly transformed students' learning practices, particularly in the completion of homework assignments. Since the public release of ChatGPT, concerns have emerged regarding its pedagogical value, potential academic dependency, and implications for academic integrity. This study investigates the extent and forms of ChatGPT use among lower and upper secondary school students, focusing on the boundary between academic assistance and dependency. The study also considers the concept of cognitive offloading, referring to students’ reliance on AI tools to reduce cognitive effort during task completion. A mixed-methods explanatory sequential design was employed, combining quantitative data from 132 students (grades VI–XII) with qualitative interview insights. Statistical analyses included descriptive statistics, ANOVA, regression analysis, exploratory factor analysis (EFA), and mediation analysis (model with bootstrapping). Results indicate that ChatGPT is widely used primarily as a supportive tool rather than a full replacement for independent work. Academic dependency levels were generally low; however, regression and mediation analyses revealed that dependency partially mediates the negative relationship between ChatGPT use and independent learning engagement (44% of the total effect). Effect sizes ranged from small to moderate, suggesting a practical but not dominant influence. Findings suggest that ChatGPT itself is not inherently detrimental; rather, its impact depends on the intensity and manner of use. The study highlights the need for structured pedagogical guidance and clear ethical frameworks to ensure responsible integration of generative AI in secondary education.",
+      "venue": "Journal of International Education and Practice",
+      "secao": "REFERENCIAL TEÓRICO: Riscos Éticos, Plágio e Dependência Cognitiva"
+    },
+    {
+      "title": "EXPLORING JUNIOR HIGH SCHOOL STUDENTS’ TRUST AND DEPENDENCY TOWARD CHATGPT IN LEARNING ENGLISH",
+      "authors": [
+        "Damai Nugroho",
+        "Seful Bahri"
+      ],
+      "year": 2026,
+      "url": "https://openalex.org/W7203955743",
+      "doi": "10.30998/inference.v9i1.3134",
+      "abstract": "This study explores junior high school students’ trust and dependency toward ChatGPT in learning English within an Indonesian EFL context. Using a qualitative design, three students who frequently used ChatGPT were selected through purposive sampling. Data were collected through semi-structured interviews and analyzed using thematic analysis. The findings reveal that students develop conditional trust, recognizing both the usefulness and limitations of ChatGPT. Dependency varies from supportive use to strong reliance, with some students showing reduced confidence without AI assistance. While ChatGPT improves learning efficiency and accessibility, excessive reliance may reduce students’ cognitive engagement and independent problem-solving. The study highlights the importance of guided and critical use of AI tools to support learner autonomy while preventing overdependence.",
+      "venue": "INFERENCE Journal of English Language Teaching",
+      "secao": "REFERENCIAL TEÓRICO: Riscos Éticos, Plágio e Dependência Cognitiva"
+    },
+    {
+      "title": "UNDERSTANDING EFL STUDENTS' DEPENDENCY ON CHATGPT IN ENGLISH LANGUAGE LEARNING: EVIDENCE FROM INDONESIAN HIGHER EDUCATION",
+      "authors": [
+        "Epos Sister Krismon Selan Dakhi",
+        "Muchlas Suseno",
+        "Samsi Setiadi"
+      ],
+      "year": 2025,
+      "url": "https://openalex.org/W4411125850",
+      "doi": "10.57094/ndrumi.v8i1.2872",
+      "abstract": "This study investigates the growing dependency of Indonesian EFL students on ChatGPT in the context of English language learning. Using a qualitative descriptive design, data were gathered from learning journals and semi-structured interviews involving nine undergraduate students across three universities. Thematic analysis revealed that students widely perceived ChatGPT as a valuable tool for enhancing writing, vocabulary, and confidence. However, its frequent use led to behavioral and emotional dependency. Factors contributing to this dependency included ease of access, low linguistic self-efficacy, academic pressure, and perceived AI authority. Notably, dependency correlated with reduced engagement in traditional learning strategies, diminished critical thinking, and limited learner autonomy. While ChatGPT offers substantial educational benefits, its overuse raises concerns about passive learning and cognitive disengagement. The findings highlight the need for pedagogical strategies that foster critical AI literacy and promote balanced use. This study contributes to the growing discourse on ethical and effective AI integration in language education",
+      "venue": "Ndrumi Jurnal Ilmu Pendidikan dan Humaniora",
+      "secao": "REFERENCIAL TEÓRICO: Riscos Éticos, Plágio e Dependência Cognitiva"
+    },
+    {
+      "title": "The cognitive impact of ChatGPT in higher education: A systematic review of critical and creative thinking outcomes",
+      "authors": [
+        "C. G. Li",
+        "Hang Cui",
+        "Linda Serra Hagedorn"
+      ],
+      "year": 2026,
+      "url": "https://openalex.org/W7135232715",
+      "doi": "10.1016/j.caeai.2026.100571",
+      "abstract": "This systematic review examines how ChatGPT influences university students' critical and creative thinking by synthesizing 67 empirical studies (2022-2025) following PRISMA guidelines. We applied a dual-lens framework distinguishing convergent (critical thinking) and divergent (creative thinking) processes. Analysis revealed that, ChatGPT supports cognitive development when embedded within inquiry-oriented and scaffolded instructional designs, especially through processes such as metacognitive regulation, argumentative reasoning, and idea generation, which in turn produce synergistic gains across both critical and creative domains. However, in unstructured contexts, researchers observed asymmetrical patterns favoring creativity over critical thinking and joint declines across domains, both of which often triggered cognitive offloading. These findings highlight that ChatGPT's cognitive effects are contingent on pedagogical framing. We recommend embedding explicit scaffolds—such as reflective prompts, rubric-guided evaluation, and AI-literacy training—to harness ChatGPT's potential as a dialogic partner rather than a convenience tool. Implications for instructional design involve co-activating critical and creative processes through recursive inquiry tasks and multi-source feedback loops. This review informs educators and researchers on designing AI-mediated learning environments that promote higher-order thinking while mitigating risks of dependency and reduced epistemic engagement.",
+      "venue": "Computers and Education Artificial Intelligence",
+      "secao": "REFERENCIAL TEÓRICO: Riscos Éticos, Plágio e Dependência Cognitiva"
+    },
+    {
+      "title": "Exploring undergraduate students' experiences with ChatGPT in thesis writing: a phenomenological study",
+      "authors": [
+        "Rafista Deviyanti",
+        "Rohman Rohman"
+      ],
+      "year": 2026,
+      "url": "https://openalex.org/W7225614159",
+      "doi": "10.23960/aksara.v2.v27i2.24",
+      "abstract": "The emergence of generative artificial intelligence, particularly ChatGPT, has profoundly transformed academic writing practices in higher education. This phenomenological study explores the lived experiences of final-year undergraduate students at the Faculty of Teacher Training and Education (FKIP), Lampung University, in utilizing ChatGPT during their thesis writing process. Employing Van Manen's hermeneutic phenomenological approach, this research involved 15 participants selected through purposive sampling across four departments: English Education, Economics Education, Biology Education, and Mathematics Education. Data were collected through in-depth semi-structured interviews, two-week reflective journals, and document analysis of ChatGPT interactions and thesis drafts. Thematic analysis following Moustakas's phenomenological framework revealed five essential themes: ChatGPT as a cognitive partner in the writing process, enhanced time efficiency and academic productivity, negotiation between technological assistance and originality, ChatGPT as a stimulus for autonomous learning and self-reflection, and limitations in validity, references, and factual accuracy. Findings indicate that students position ChatGPT not merely as a mechanical tool but as an intellectual companion that facilitates idea generation, conceptual clarification, and structural organization while maintaining awareness of ethical boundaries and academic integrity concerns. The study demonstrates that ChatGPT usage represents an epistemological transition toward AI-assisted learner autonomy, where students actively negotiate the roles of technology, supervisors, and themselves in academic learning and writing processes. However, concerns about cognitive dependency, fabricated citations, and the erosion of critical thinking skills persist. This research contributes to developing a conceptual framework for responsible AI integration in academic contexts and provides evidence-based recommendations for institutional policy formulation, curriculum development in AI literacy, and pedagogical strategies for supervisors. The findings suggest that rather than threatening academic integrity, ChatGPT presents an epistemic and moral challenge requiring judicious use, critical digital literacy, and institutional guidance to harness its benefits while preserving the fundamental values of scholarly honesty and intellectual autonomy.",
+      "venue": "AKSARA Jurnal Bahasa dan Sastra",
+      "secao": "REFERENCIAL TEÓRICO: Riscos Éticos, Plágio e Dependência Cognitiva"
+    },
+    {
+      "title": "Compliance of systematic reviews in plastic surgery with the PRISMA statement: A systematic review",
+      "authors": [
+        "S.Y. Lee",
+        "Harkiran Sagoo",
+        "Katharine Whitehurst",
+        "Georgina Wellstead",
+        "Alexander James Fowler",
+        "Riaz Agha",
+        "Dennis Paul Orgill"
+      ],
+      "year": 2016,
+      "url": "https://openalex.org/W2301794674",
+      "doi": "10.1016/j.ijsu.2016.11.039",
+      "venue": "International Journal of Surgery",
+      "secao": "METODOLOGIA - Protocolo de Busca e Seleção de Fontes"
+    },
+    {
+      "title": "Guidance for generative AI in education and research",
+      "authors": [
+        "Fengchun Miao",
+        "W. Holmes"
+      ],
+      "year": 2023,
+      "url": "https://openalex.org/W4395957952",
+      "doi": "10.54675/ewzm9535",
+      "abstract": "Publicly available generative AI (GenAI) tools are rapidly emerging, and the release of iterative versions is outpacing the adaptation of national regulatory frameworks. The absence of national regulations on GenAI in most countries leaves the data privacy of users unprotected and educational institutions largely unprepared to validate the tools. UNESCO’s first global guidance on GenAI in education aims to support countries to implement immediate actions, plan long-term policies and develop human capacity to ensure a human-centred vision of these new technologies. The guidance presents an assessment of potential risks GenAI could pose to core humanistic values that promote human agency, inclusion, equity, gender equality, linguistic and cultural diversities, as well as plural opinions and expressions. It proposes key steps for governmental agencies to regulate the use of GenAI including mandating the protection of data privacy and considering an age limit for their use. It outlines requirements for GenAI providers to enable their ethical and effective use in education. The guidance stresses the need for educational institutions to validate GenAI systems on their ethical and pedagogical appropriateness for education. It calls on the international community to reflect on their long-term implications for knowledge, teaching, learning and assessment. The publication offers concrete recommendations for policy-makers and education institutions on how the uses of GenAI tools can be designed to protect human agency and genuinely benefit students, teachers and researchers.",
+      "venue": "UNESCO eBooks",
+      "secao": "METODOLOGIA - Protocolo de Busca e Seleção de Fontes"
+    },
+    {
+      "title": "Análise de conteúdo",
+      "authors": [
+        "Laurence Bardin"
+      ],
+      "year": 1977,
+      "url": "https://openalex.org/W3156513660",
+      "abstract": "RESUMO: O presente texto foi elaborado a partir de uma experiencia de sistematizacao da tecnica de analise de conteudo, desenvolvida nas disciplinas de metodologia de pesquisa, ministradas para os cursos de graduacao e pos- graduacao em enfermagem, da Faculdade de Enfermagem da Universidade do Estado do Rio de Janeiro. A sua versao original foi elaborada em 2004, e aperfeicoada ao longo dos ultimos quatro anos, a partir das experiencias de aplicacao do modelo de analise pelos alunos dos cursos de graduacao e de pos-graduacao. O objetivo do trabalho e apresentar uma proposta de sistematizacao da tecnica de analise de conteudo tematico-categorial, de forma a contribuir para o ensino da referida tecnica e para uma pratica de pesquisa qualitativa metodologicamente orientada. Sao apresentados os conceitos que embasam a tecnica, seguidos dos procedimentos para a analise de conteudo e dos instrumentos necessa- rios para o suporte do seu desenvolvimento. Palavras-chave: Analise de conteudo; pesquisa qualitativa; metodo; analise de dados . ABSTRACT ABSTRACT ABSTRACT ABSTRACT: :: :: This paper reports on an endeavor to systematize the content analysis technique. It was undertaken in the discipline of Scientific Research Methodology offered on undergraduate and graduate courses in nursing at Rio de Janeiro State University - Brazil. The original version, drafted in 2004, has been refined over the past four years based on undergraduate and postgraduate nursing students' experiences with applying the model of analysis. This study presents a proposal for systematizing theme/category-based content analysis, with a view to contributing to the teaching of this technique and to methodologically-guided qualitative research practice. The concepts underlying the technique are described, followed by the content analysis procedures and the tools necessary to support its development.",
+      "venue": "LA Referencia (Red Federada de Repositorios Institucionales de Publicaciones Científicas)",
+      "secao": "METODOLOGIA - Análise e Categorização dos Dados"
+    },
+    {
+      "title": "The Utilization Of ChatGPT In Education:, Opportunities And Challenges",
+      "authors": [
+        "سلطان حماد الشمري"
+      ],
+      "year": 2024,
+      "url": "https://openalex.org/W4399145134",
+      "doi": "10.36046/2162-000-018-004",
+      "venue": "مجلة الجامعة الإسلامية للعلوم التربوية والاجتماعية",
+      "secao": "RESULTADOS E DISCUSSÃO - Sistematização de Benefícios e Riscos Pedagógicos"
+    },
+    {
+      "title": "Addressing AI and Data Literacy in Teacher Education: A Review of Existing Educational Frameworks",
+      "authors": [
+        "Viktoriya Olari",
+        "Ralf Romeike"
+      ],
+      "year": 2021,
+      "url": "https://openalex.org/W3206366076",
+      "doi": "10.1145/3481312.3481351",
+      "abstract": "Being able to use data and AI technologies responsibly is considered increasingly relevant to all school subjects. Despite this trend, existing AI literacy frameworks used to design educational activities often barely cover data literacy. However, AI cannot be appropriately grasped without data literacy, and working with data requires knowledge of AI on multiple levels. To date, though, no framework has been created that considers AI and data literacy holistically. To address this gap, we examine the relationship between AI and data literacy competencies in existing educational frameworks and propose a preliminary approach that utilizes the data lifecycle to reflect on data literacy competencies relevant to AI. The findings provide a basis for developing a comprehensive approach to the education of K-12 teachers of all subjects in AI and data literacy.",
+      "venue": "Workshop in Primary and Secondary Computing Education",
+      "secao": "RESULTADOS E DISCUSSÃO - O Papel do Professor como Mediador Crítico"
+    }
+  ]
+}

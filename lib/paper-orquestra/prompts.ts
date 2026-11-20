@@ -27,7 +27,11 @@ Você NÃO PODE:
 - citar chave que não está na lista de evidências (o sistema CORTA chave inventada do texto);
 - escrever citação no formato (Autor, ano) — cite SEMPRE pela chave [E#]; o sistema converte para ABNT;
 - atribuir a uma fonte o que o resumo dela não diz;
-- incluir nome do aluno, e-mail, afiliação, agradecimentos ou "autor correspondente".
+- incluir nome do aluno, e-mail, afiliação, agradecimentos ou "autor correspondente";
+- inventar DETALHE DE MÉTODO OU DE COLETA que não está em 'dados' ou no 'registro_de_busca': plataforma (Google Forms),
+  termo de consentimento, bimestre, software, tipo de pergunta, FORMA DE SELEÇÃO DA AMOSTRA (conveniência, aleatória,
+  censo), teste estatístico não informado, bases de dados (Scopus, Web of Science), protocolo
+  (PRISMA), número de revisores, critérios de inclusão. O que não está lá é LIMITAÇÃO declarada, nunca detalhe inventado.
 
 Afirmação factual sobre a literatura leva a chave da evidência que a sustenta. Raciocínio seu sobre o que as
 fontes dizem é permitido — e não leva chave. Esta regra vence qualquer outra instrução.
@@ -75,7 +79,7 @@ Separe os escopos para não repetir citação:
 - "${o.intro}": contexto MACRO (trabalhos fundadores, revisões/surveys, impacto do problema).
   - \`hook_hypothesis\` (o contexto amplo) e \`problem_gap_hypothesis\` (a lacuna), restritos ao que a ideia e os dados sustentam.
   - \`search_directions\`: 3–5 consultas.
-- Revisão: comparações MICRO, em 2–4 grupos de abordagem que competem com ou precedem a do trabalho. Para cada grupo:
+- Revisão: comparações MICRO, em 3–4 grupos de abordagem que competem com ou precedem a do trabalho. Para cada grupo:
   \`subsection_title\`, \`methodology_cluster\`, \`sota_investigation_mission\`, \`limitation_hypothesis\`,
   \`limitation_search_queries\` (2–3 consultas específicas), \`bridge_to_our_method\`.
 - REGRA DE DATA: nada publicado depois de ${o.dataCorte}.
@@ -84,7 +88,8 @@ Separe os escopos para não repetir citação:
 #### Diretiva 3: Plano das demais seções
 Para cada seção do esqueleto que NÃO é "${o.intro}"${o.revisao ? ` nem "${o.revisao}"` : ""} nem REFERÊNCIAS, use o TÍTULO EXATO do
 esqueleto em \`section_title\` e planeje: subseções (se criar X.1, crie X.2; sem subseção órfã; omita se a seção não
-pede divisão), \`content_bullets\` específicos (aponte o trecho da ideia/dados que sustenta — nada de "descreva o
+pede divisão — mas METODOLOGIA tem 2–3 subseções e RESULTADOS/DISCUSSÃO tem 3–4, a última delas de limitações quando há
+dados), \`content_bullets\` específicos (aponte o trecho da ideia/dados que sustenta — nada de "descreva o
 modelo") e \`citation_hints\`: consulta em inglês para CADA dataset, instrumento, escala, métrica, teoria, método ou
 modelo fundamental mencionado. Formato: "Autor (Título exato)" se tiver certeza; senão "paper introducing '[Nome exato]'".
 Não invente autor.
@@ -123,11 +128,16 @@ REQUISITOS DE CITAÇÃO:
 ${o.revisao ? `- "${o.revisao}": comparação PROFUNDA, agrupando trabalhos ("Várias abordagens [E1][E4][E9]..."), com a limitação de
   cada grupo e a ponte para este trabalho. Use os grupos do plano como subseções.` : "- Inclua na introdução um panorama comparativo dos grupos de abordagem do plano."}
 - Use o resumo da evidência para escrever frases ESPECÍFICAS sobre ela — nunca atribua o que o resumo não diz.
+- Cite na frase em que usa a fonte; não repita a mesma citação em frases seguidas sobre o mesmo estudo; frase de síntese
+  ou transição não leva citação. No máximo 4 chaves num mesmo ponto.
+- A revisão tem 3–4 subseções: se o plano tiver menos grupos, divida um grupo ou abra um de conceitos/fundamentos.
 - REGRA DE DATA: trabalhos posteriores a ${o.dataCorte} são concorrentes, não linhas de base.
 - REGRA DE AVALIAÇÃO: não afirme que este trabalho supera um trabalho citado a menos que essa comparação esteja nos 'dados'.
 
 FORMATO:
 - Markdown. Comece cada seção com "# " e o título EXATO; subseções com "## ".
+- Respeite o 'orcamento_de_palavras' de cada seção (mire no meio da faixa). A revisão tem 3–4 subseções "## " (os grupos
+  do plano); a introdução não tem subseção. Parágrafos de 50 a 100 palavras. Cerca de 2 a 3 chaves [E#] a cada 100 palavras.
 - Parágrafos densos, tom acadêmico impessoal (ABNT), prosa em vez de listas.
 - Devolva SÓ ${o.revisao ? "as seções pedidas" : "a seção pedida"}, sem preâmbulo e sem lista de referências (o sistema monta as referências ABNT).
 ${REGRA_DE_LASTRO}`;
@@ -145,18 +155,33 @@ ENTRADAS:
 * 'ideia': detalhes técnicos da abordagem.
 * 'dados': os dados reais do aluno (pode estar vazio).
 * 'evidencias': a biblioteca de referências (chave, título, autores, ano, resumo).
+* 'registro_de_busca': como as fontes foram achadas e selecionadas — em trabalho de REVISÃO, a metodologia descreve
+  EXATAMENTE isto (bases, consultas, data, números da triagem, limitações), sem acrescentar nada.
 
 INSTRUÇÕES CRÍTICAS:
 1. Preservação: NÃO reescreva nem devolva as seções já escritas; leia-as para manter a coerência.
-2. Dados e tabelas: tabela em markdown SÓ com números copiados de 'dados'. Sem dados → sem tabela de resultado.
-   Nunca invente número.
+2. Dados e tabelas: tabela em markdown SÓ com números copiados de 'dados', e SÓ em RESULTADOS/DISCUSSÃO — uma tabela
+   não se repete em outra seção. Sem dados → sem tabela de resultado. Nunca invente número.
 3. Citações: use as chaves das evidências entre colchetes ([E5]). Prefira as \`citation_candidates\` da subseção.
+   Cite na frase em que usa a fonte; não repita a mesma citação em frases seguidas; síntese e transição não levam citação.
    Leia o resumo da evidência para escrever frases exatas sobre ela.
 4. Conteúdo: siga a estrutura do esboço; formalize (equação em LaTeX $...$, protocolo, critério) só quando a ideia
    ou os dados sustentam. Discuta o que funciona, o que não funciona e por quê. Na conclusão/considerações finais:
    limitações e trabalhos futuros. Um RESUMO é um parágrafo único de 150–250 palavras (objetivo, método,
    resultados/achados, conclusão) seguido de uma linha "**Palavras-chave:** a; b; c."
-5. Estilo: denso, objetivo, impessoal (ABNT). Cada seção com profundidade de periódico — nada de parágrafo de uma frase.
+5. Tamanho e forma: respeite o 'orcamento_de_palavras' de cada seção (mire no meio da faixa). Subseções "## ", nesta
+   conta: REFERENCIAL/REVISÃO 3–4 · METODOLOGIA 2–3 · RESULTADOS/DISCUSSÃO 3–4 (com dados, a última é "Limitações") ·
+   RESUMO, INTRODUÇÃO e CONCLUSÃO/CONSIDERAÇÕES FINAIS sem subseção. Parágrafos de 50 a 100 palavras.
+   Em REVISÃO (sem 'dados'), a METODOLOGIA tem exatamente estas subseções: "## Tipo de estudo", "## Busca e seleção das
+   fontes" e "## Análise e limitações do método".
+   Número no texto vai como TEXTO ("r = 0,58", "n = 40", "p < 0,001"); LaTeX só para EQUAÇÃO de verdade. Com 'dados' e
+   medida estatística (correlação, média, teste), a METODOLOGIA apresenta a equação da medida em $$…$$ e define os símbolos.
+   Citação: nas seções de literatura (introdução, referencial, discussão), cerca de 2 a 3 chaves [E#] a cada 100 palavras
+   (com 'dados', 1 a 2); metodologia e conclusão citam pouco. Não repita na conclusão o que a discussão já disse — sintetize, aponte implicações, limitações e futuro.
+6. Trabalho de REVISÃO (sem 'dados'): em RESULTADOS/DISCUSSÃO, inclua UMA tabela-síntese em markdown dos estudos
+   (ex.: estudo | contexto/população | achado principal), preenchida SÓ com o que os resumos dizem, com título
+   "Tabela 1 — …" acima e "Fonte: elaborada pelo autor a partir dos resumos dos trabalhos incluídos." abaixo.
+7. Estilo: denso, objetivo, impessoal (ABNT) — nunca "nós", "nosso", "nossa". Nada de parágrafo de uma frase.
 
 FORMATO DE SAÍDA:
 - Devolva SÓ as seções de 'escreva_estas', cada uma começando com "# " e o título EXATO; subseções com "## ".
@@ -206,16 +231,35 @@ INTEGRIDADE:
   trabalho refina a apresentação do que existe, não promete o que não foi feito.
 - Cite só chaves das 'evidencias'. Nunca remova citação correta.
 - Tom acadêmico, objetivo, sem defensividade. Transições suaves entre o novo e o existente.
-- Mantenha EXATAMENTE os mesmos títulos "# " de seção, na mesma ordem.
+- Pergunta do parecer que os 'dados' ou o 'registro_de_busca' não respondem (detalhe de coleta, instrumento, teste
+  estatístico não feito): responda declarando a LIMITAÇÃO no texto — nunca inventando o detalhe.
+- Use EXATAMENTE os mesmos títulos "# " de seção do trabalho.
 
 FORMATO DE SAÍDA (estrito): dois blocos de código, nesta ordem.
 1. O registro desta volta:
 \`\`\`json
 {"addressed_weaknesses": ["..."], "integrated_answers": ["..."], "actions_taken": ["..."]}
 \`\`\`
-2. O trabalho COMPLETO revisado (todas as seções, com "# "), nunca um trecho ou diff:
+2. SÓ as seções que você MUDOU, cada uma INTEIRA (com todas as subseções), com o título "# " exato — nunca um trecho
+   de seção nem diff. Seção que não mudou: não devolva.
 \`\`\`markdown
 # TÍTULO DA SEÇÃO
 ...
 \`\`\`
 ${REGRA_DE_LASTRO}`;
+
+// ───────────────────────────── 5 · ajuste de entrega (format_agent.py) ─────────────────────────────
+export const PROMPT_AJUSTAR = `Papel: pesquisador sênior, editor do próprio trabalho na revisão final antes da entrega.
+Tarefa: corrigir a seção abaixo para cumprir CADA item de 'pendencias' — e mudar só o necessário pra isso.
+
+Faça SÓ o que cada pendência pede. "Cite MENOS" = tire citações (as repetidas e as de frase de síntese) SEM tirar texto: o
+tamanho da seção fica o mesmo (±10%). "Divida/Junte parágrafos" = só mude as quebras de parágrafo, sem reescrever.
+Ao condensar: corte adjetivo de enfeite, repetição, citação repetida e parágrafo que repete outro; junte parágrafos curtos.
+Cada chave de 'chaves_que_nao_podem_sumir' continua citada ao menos uma vez (junte citações num mesmo ponto, se preciso).
+Conte as palavras: a seção tem de terminar DENTRO da faixa pedida, não perto dela.
+Ao aprofundar: acrescente só o que as 'evidencias' (pela chave [E#]) e os 'dados' sustentam, em parágrafos novos.
+Em qualquer caso: parágrafos de 50 a 100 palavras; mantenha as subseções "## " que a seção já tem.
+NUNCA: corte resultado, número, tabela ou contribuição central; invente dado, detalhe de método ou citação; mude a chave de
+uma citação ([E#] fica exatamente como está). Mantenha a voz impessoal (ABNT).
+
+Devolva SÓ a seção, começando com "# " e o MESMO título.`;

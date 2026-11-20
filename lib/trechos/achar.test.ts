@@ -121,3 +121,35 @@ describe("no harness: marcadores viram âncoras e o texto sai limpo", () => {
     expect(intercalar("P0", "nucleo", a.trechos!, false).map((p) => p.tipo)).toEqual(["md"]); // P0 ainda sendo escrito
   });
 });
+
+describe("anexo do chat na skill", () => {
+  const texto = [
+    "Capítulo 1. A célula é a unidade básica da vida e todas as funções dependem dela.",
+    "Capítulo 2. A fotossíntese ocorre nos cloroplastos e libera oxigênio a partir da água.",
+    "Capítulo 3. A respiração celular acontece nas mitocôndrias e produz ATP.",
+  ].join("\n\n".repeat(1)) + "\n\n" + "Texto de enchimento sobre outros assuntos. ".repeat(60);
+  const marcas: Array<[number, number]> = [[0, 1], [texto.indexOf("Capítulo 2"), 2], [texto.indexOf("Capítulo 3"), 3]];
+
+  it("pedaços do anexo carregam a página (e 0 quando não há paginação)", async () => {
+    const { pedacosDoAnexo } = await import("@/lib/trechos/achar");
+    const p = pedacosDoAnexo({ id: "a1", nome: "apostila.pdf", texto, marcasDePagina: marcas }, 120);
+    expect(p[0]).toMatchObject({ documentoId: "anexo:a1", titulo: "apostila.pdf", paginaIni: 1 });
+    expect(p.find((x) => x.texto.includes("fotossíntese"))!.paginaIni).toBe(2);
+    expect(pedacosDoAnexo({ id: "a2", nome: "x.docx", texto: "a ".repeat(50) })[0]!.paginaIni).toBe(0);
+  });
+
+  it("acha no anexo mesmo SEM base, com a página certa, e nunca tenta varrer o anexo no banco", async () => {
+    const lerDocumento = vi.fn(async () => []);
+    const llm = vi.fn(async (p: { fase: string; user: string }) => {
+      if (p.fase === "plano") return JSON.stringify({ termos: ["fotossint"] });
+      const c = p.user.match(/\[(C\d+)\] apostila\.pdf/)?.[1];
+      return JSON.stringify({ achados: c ? [{ c, citacao: "A fotossíntese ocorre nos cloroplastos e libera oxigênio a partir da água", relevancia: 3 }] : [] });
+    });
+    const r = await acharTrechos("onde o pdf fala de fotossíntese?", {
+      llm, buscar: async () => [], lerDocumento, anexos: [{ id: "a1", nome: "apostila.pdf", texto, marcasDePagina: marcas }],
+    });
+    expect(r.trechos).toHaveLength(1);
+    expect(r.trechos[0]).toMatchObject({ documentoId: "anexo:a1", titulo: "apostila.pdf", paginas: "2", relevancia: 3 });
+    expect(lerDocumento).not.toHaveBeenCalled();
+  });
+});

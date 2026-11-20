@@ -189,7 +189,7 @@ export async function runChatTurn(
       ? (async () => {
           narrar(serializarProgresso({ fase: "gather", rotulo: "Procurando os trechos no seu material" }));
           const areas = (await import("@/lib/rag/areas")).areasDoTurno(cap.area ?? mentor?.slug);
-          const r = await trechosMod.acharTrechosDaPessoa({ userId: userId!, pergunta: objetivo, areas, ledger: { taskId: turnId ?? null } });
+          const r = await trechosMod.acharTrechosDaPessoa({ userId: userId!, pergunta: objetivo, areas, ledger: { taskId: turnId ?? null }, anexos: params.anexos ?? [] });
           console.info("[trechos]", JSON.stringify({ achados: r.trechos.length, ...r.relatorio }));
           if (r.trechos.length) narrar(serializarProgresso({ fase: "gather", rotulo: `${r.trechos.length} ${r.trechos.length === 1 ? "trecho achado" : "trechos achados"} no seu material` }));
           return r.trechos;

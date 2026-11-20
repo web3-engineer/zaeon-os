@@ -1,0 +1,624 @@
+{
+  "consultas": [
+    "academic performance mathematics high school study habits",
+    "smartphone distraction academic achievement secondary education",
+    "study time correlation mathematics learning public school",
+    "study time mathematics achievement public high school",
+    "homework hours math performance socioeconomic factors",
+    "smartphone distraction cognitive load mathematics learning",
+    "media multitasking high school students study habits",
+    "correlational research design in education",
+    "self-reported study habits questionnaire",
+    "Pearson product-moment correlation coefficient",
+    "cognitive load theory and multimedia learning"
+  ],
+  "papers": [
+    {
+      "title": "Attitudes, Study Habits, and Academic Performance of Junior High School Students in Mathematics",
+      "authors": [
+        "Jonathan Olores Etcuban",
+        "Reylan G. Capuno",
+        "Renante Necesario",
+        "Raymond C. Espina",
+        "Gengen G. Padillo",
+        "Ramil P. Manguilimotan"
+      ],
+      "year": 2019,
+      "url": "https://openalex.org/W2944453043",
+      "doi": "10.29333/iejme/5768",
+      "abstract": "Mathematics as a discipline is considered as one of the most difficult subjects among Filipino learners. This study was conducted in a public national high school in the Mandaue City Division, Cebu, Philippines. The respondents were the 177 Grade 9 students enrolled in mathematics. These respondents were selected using probability random sampling. They were asked to answer a standardized survey questionnaire to assess their attitudes and study habits. The tool is consists of three parts. Part 1 gathers the socio-demographic profile of the respondents. Part 2 assesses the attitudes of the respondents towards mathematics, while Part 3 was used to assess the study habits of the respondents. Furthermore, their academic performance in mathematics was measured based on their first quarter grade, which was retrieved from the Registrar’s Office. The study revealed that those respondents had positive attitudes towards mathematics in terms of its value while they had a neutral attitude when it comes to their self-confidence, enjoyment, and motivation in mathematics. Also, the study shows that there was a negligible positive correlation between the attitudes and academic performance of the respondents in terms of their self-confidence, enjoyment, and motivation while there was a weak positive correlation between the value of math and their academic performance in math. It was concluded that students’ attitudes and their study habits are significant factors that affect their performance in mathematics. The researchers strongly recommend the utilization of the enhancement plan in the teaching of mathematics to junior high school students.",
+      "venue": "International Electronic Journal of Mathematics Education",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Study Habits and Academic Performance of Senior High School STEM Students in General Mathematics",
+      "authors": [
+        "Kimberly Galas",
+        "Renith S. Guanzon"
+      ],
+      "year": 2026,
+      "url": "https://openalex.org/W7154844245",
+      "doi": "10.5281/zenodo.19637578",
+      "abstract": "The aim of this research is to explore the level of study habits of senior high school STEM students in relation to their academic performance in General Mathematics for First Semester of the School Year 2025-2026. Quantitative data for this study were collected from 165 SHS STEM student-respondents using a researcher-developed questionnaire that underwent rigorous validity and reliability testing. The questionnaire focused on three areas of study habits namely, motivation, learning techniques, and learning environment. In addition, the respondents were classified according to key profile variables: sex, grade level, intended college courses, and average monthly family income. The ensuing analysis showed that most respondents were female, in Grade 12, wanted to pursue a medical course in college, and fall under higher-income category. Results discussed that they are students who appear to have high motivation, learning techniques, and experience conducive learning environment - with motivation identified as the area with the lowest mean. Eventually, the findings of this study found a significant difference in the STEM students’ level of study habits on learning techniques and learning environment when grouped by average family monthly income. In contrast, no significant differences were found when grouped according to sex, grade level, and intended college courses. Furthermore, a non-significant relationship was found between study habits and academic performance in General Mathematics. Although study habits may be enviable, considerably, motivational factors and supportive systems need enhancement, as they determine the conditions of learning in spite of not showing any significant direct link to academic performance. Finally, teachers, school coordinators, and administrators are recommended to plan interventions in improving students’ motivation and time management.",
+      "venue": "Aloysian Interdisciplinary Journal of Social Sciences, Education, and Allied Fields",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "SOCIAL MEDIA USAGE, STUDY HABITS, AND ACADEMIC PERFORMANCE IN MATHEMATICS AMONG JUNIOR HIGH SCHOOL STUDENTS",
+      "authors": [
+        "Rose Mae H. Armada"
+      ],
+      "year": 2026,
+      "url": "https://openalex.org/W7225412554",
+      "doi": "10.36713/epra31909",
+      "abstract": "This study explored how social media usage, study habits and academic performance in Mathematics are connected among Junior High School students at Immaculate Conception Archdiocesan School Tetuan during the School Year 2026–2027. Using a descriptive‑correlational research design we collected data from 167 selected Grade 7 and Grade 8 Junior High School students by means of a questionnaire and by recording their Mathematics grades. Researcher used statistics such as frequency, percentage, mean and standard deviation together with Pearson correlation to analyze the data. The results revealed that Junior High School students sometimes engaged in media activities frequently spent time on social media and often practiced effective study habits. Their average Mathematics grade was 85.44, which indicates academic performance according to the study’s interpretation. Pearson correlation results showed no relationship between social media usage and Mathematics grades (r = −0.034 p = 0.659) or between study habits and Mathematics grades (r = −0.027 p = 0.726). However social media usage had a statistically significant positive relationship with study habits (r = 0.300, p < 0.001). The findings suggest that social media usage is linked to Junior High School students’ study habits yet it does not exhibit a linear relationship, with Junior High School students’ Mathematics grades. The study may assist educators in encouraging social media usage and in fostering effective study habits.",
+      "venue": "EPRA International Journal of Multidisciplinary Research (IJMR)",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Interpolating Learners' Study Habit in Relation to the Academic Performance in Mathematics 5",
+      "authors": [
+        "Lynholly Bartolabac",
+        "Hannah Louise Canadalla",
+        "Rheden Bastismo",
+        "Ginalyn Burlas",
+        "Mary Ann Dizon",
+        "Ivy Dela Cerna",
+        "Jerome Landero",
+        "MARILYN M. MIRANDA, ED.D., DPA"
+      ],
+      "year": 2026,
+      "url": "https://openalex.org/W7160271882",
+      "doi": "10.5281/zenodo.20032356",
+      "abstract": "This research assessed the study habits in relation to their academic performance of Grade 5 Mathematics learners among the select public elementary schools in the Division City of Naga, Cebu, for School Year 2025-2026. The learners rendered 20-contact hours of Math program, including instruction and activities suited to their specific needs in relation to Interposing study habit approach intended for academic performance on mathematics as learning aid towards strategic education. Self-administered questionnaires are to be delivered online or in paper-and-pencil test format to 100 respondents among the identified schools in the City of Naga, Cebu Division. However, despite high training exposure, this must be examined alongside performance ratings to determine effectiveness. The findings reveal that learners’ study habits, particularly consistency, organization, and self- discipline, are closely linked to their academic performance, though the degree of association varies across competencies. These variations highlight specific areas where learners may struggle due to insufficient study habits, emphasizing the need for targeted interventions that address both behavioral and cognitive aspects of learning. The findings provide a strong basis for developing study-habit strategies aligned with learners' actual needs. Learners are approaching mastery in some competencies, a significant portion still falls under “Lack Mastery,” indicating persistent challenges in comprehension and application. For some challenges, can be managed through minor adjustments, others require immediate and strategic interventions. Based on the conclusions reached in this research, it is highly recommended that Interpolated study habits strategies for all schools in the Division of City of Naga, Cebu be considered to elevate learners in Mathematics.",
+      "venue": "The International Review of Multidisciplinary Research",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Study Habits and Anxiety Levels: Their Effects on the Academic Performance of Students in Mathematics",
+      "authors": [
+        "Kerby Darrel C. Juban",
+        "Romulo G. Doronio"
+      ],
+      "year": 2026,
+      "url": "https://openalex.org/W7165686354",
+      "doi": "10.47772/ijriss.2026.100600270",
+      "abstract": "Students’ academic performance is a key indicator of their development, and addressing factors such as study habits and anxiety levels helps them sustain and achieve higher levels of success, particularly in mathematics. The study of Capuno et al. (2019) revealed that students with good study habits perform well in mathematics, while those with higher anxiety levels tend to perform poorly. Moreover, many high school students exhibit high anxiety alongside poor study habits and low academic performance in mathematics, making this one of the major challenges in mathematics education. In Nigeria, a study conducted by Odiri (2015) on the relationship between study habits and mathematics achievement revealed that, based on data from 500 students across 25 public secondary schools, those with good study habits achieved better in mathematics, while those lacking them tended to perform poorly. Meanwhile, in Colombia, the study by Acevedo et al. (2020) involving 127 secondary students emphasized that mathematical anxiety and academic performance in mathematics are inversely related, meaning that higher anxiety corresponds to lower academic performance. These challenges are also experienced in the Philippines, where Balbacal’s (2023) study on Junior High School students in Batangas revealed that those who consistently review, actively engage with lessons, and practice regularly achieve higher academic success than those with poor or irregular study routines. Meanwhile, in the same city, Reyes and Castillo’s (2015) study involving students who took the departmental examination in algebra and trigonometry found that test anxiety may affect students’ mathematics performance, as they obtained poor performance ratings and moderately experienced test anxiety. At the local level, particularly at Diosdado Macapagal National High School, the researcher personally observes that most Grade 10 students exhibited signs of anxiety in mathematics, such as fear during tests and avoidance of board work or recitations. In addition, poor study habits were evident, including incomplete notes, delayed submission of assignments, and only a few students consulting teachers about the lessons. Lastly, their academic performance was generally below average, with some students failing to meet the required grade and only a small number achieving average or above-average results. Given these considerations, this study is conducted at Compostela National High School, which is selected for its large Grade 10 population to ensure more reliable results. It investigated how study habits and anxiety levels relate to and predict students’ academic performance in mathematics, while addressing the lack of local research on this topic. Although previous studies have examined these variables separately or in different contexts, few explore their combined effects with sex as grouping variable of the independent variable. By addressing this gap, the study aimed to provide a deeper understanding of how these factors interact and to serve as a basis for developing effective teaching strategies and interventions that improve mathematics performance and promote student well-being in Davao de Oro",
+      "venue": "International Journal of Research and Innovation in Social Science",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Impact of Study Habits on the Academic Performance of Students in Regular Class and Special Program in Mathematics",
+      "authors": [
+        "Grace Lyn I. Valdez",
+        "Edrian D. Saraos"
+      ],
+      "year": 2026,
+      "url": "https://openalex.org/W7211999764",
+      "doi": "10.54536/ajet.v5i3.8220",
+      "abstract": "This study aimed to determine the level of study habits of students from the regular class and the Special Program in Mathematics (SPM) in terms of time management, concentration, and preparation for examination, as well as their level of academic performance in mathematics. Moreover, it sought to examine if there was a significant relationship between the study habits and academic performance of students. This study employed descriptive-correlation method and data were collected using an adopted survey questionnaire. Similarly, the students’ grades in mathematics were collected from the teacher’s records. The participants of this study were forty-eight (48) students from Sarrat National High School, where twenty-four (24) students came from each class. The data gathered were analyzed using frequency, percentage, mean, standard deviation, and Pearson r. The findings revealed that the students from both classes have high level of study habits in terms of time management, concentration, and preparation for examination. Furthermore, SPM and regular class have outstanding and satisfactory performance, respectively. In regular class, it showed that time management and concentration were the best predictors of the academic performance of the students; however, examination preparation may not be a factor. Conversely, the study habits in terms of time management, concentration, and preparation for examination were associated with the academic performance of the students from SPM. Overall, the results indicate that study habits are important predictors as part of students’ success in their academic performance in mathematics.",
+      "venue": "American Journal of Education and Technology",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Digital Distraction in OBE Classrooms: Smartphone Addiction and Student Learning Outcomes in Girls’ Secondary Education in Pakistan",
+      "authors": [
+        "Aarif Gohar Salarzai",
+        "Syed Munir Ahmad",
+        "Shahid Iqbal"
+      ],
+      "year": 2025,
+      "url": "https://openalex.org/W7217318939",
+      "abstract": "This research analyzed the trends of social media/smart phone usage among high school girls and their effects on academic activities i.e. distraction, sleep disorders and Student Learning Outcomes (SLOs) in an Outcome-Based Education (OBE) model. Data were gathered using a survey-based, descriptive, case study design in a sample of 100 female students, in Grades 6-10, at Frontier Science Academy, Peshawar, Pakistan. The findings revealed that there are extensive ownership and heavy usage of smartphones with most respondents having over three hours of usage per day. There was a frequent report of smartphone interaction in the late-night and frequent use of social media, as well as signs of emotional dependence and perceived academic disturbance. Statistically significant differences in high and low smartphone users were found in inferential analyses. Students who reported spending over three hours daily on their smartphone showed a lot of perceived academic disruption as compared to lower-use students (t = 5.87, p <.001, Cohen d = 0.83). On the same note, sleep disturbance was significantly higher in frequent late-night users than infrequent users (t = 6.34, p <.001, Cohen d =0.88). There were positive correlations among the intensity of smartphone use and academic disruption (r =.62), sleep disturbance (r =.67) and lower family interaction (r =.59), which revealed that there were strong relationships between smartphone use and academic and wellbeing outcomes. The awareness and intervention component performed better than the preset benchmark of 65 by achieving 75% success, and a significant effect size (r =.61), which was an increase in recognition of the unhealthy digital behaviours. Although the study does not allow making causal conclusions, the results indicate overuse of smartphones and social media as a key impediment to effective engagement of learners and SLO achievement. The paper highlights the necessity to incorporate digital self-management in the OBE-specificized curricula as a tool to assist adolescent girls in meaningful learning. Keywords: Digital Distraction, Smartphone Addiction; Social Media Use; Outcome-Based Education; Student Learning Outcomes; Girls’ Secondary Education; Academic Engagement.",
+      "venue": "Policy Journal of Social Science Review",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Effects of Smartphone Notifications, Distraction, Time Management, Productivity and Academic Achievement in Students",
+      "authors": [
+        "Habib Ur Rehman",
+        "Haiqa Zahid Abbasi",
+        "Inza Ayoub",
+        "Hassan Imran",
+        "Shahid Nadeem",
+        "Tanzeela Batool"
+      ],
+      "year": 2026,
+      "url": "https://openalex.org/W7147713755",
+      "doi": "10.63056/academia.5.3(a).2026.1684",
+      "abstract": "The sudden increase in the use of smartphones by students has had a major effect on their learning behaviors and academic performance. This study examines the impact of smartphone notifications on the distraction levels, time management, productivity and academic achievement of students. The research follows the quantitative research design to systematically investigate the relationship between smartphone notifications and academic outcomes. A survey-based method was employed to gather data from a sample of N=200 undergraduate students selected using a SRS method from various academic departments of a university. Data was collected through a structured questionnaire made up of Likert scale questions related to frequency of smartphone notification, degree to which distracted, time management practices, productivity during a study period and level of perceived academic achievement. The questionnaire was distributed both online and physically in order to ensure a higher response rate. The methodology was statistical analysis of the obtained data by using description and inflection methods. Descriptive statistics were used to summarize the smartphone usage pattern of the students and study behaviors, while correlation and regression analyses were applied to determine the relationship between smartphone notifications and the dependent variables, i.e. distraction, time management efficiency, productivity and academic performance. The results suggest that notifications on students' smartphones are a significant source of distraction that has a negative impact on students' time management and productivity, and subsequently could result in reduced academic achievement. However, the study also suggests that the controlled use of smartphones for academic purposes can be helpful to support learning where properly managed.",
+      "venue": "ACADEMIA International Journal for Social Sciences",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Smartphone Distraction in the Secondary Classroom",
+      "authors": [
+        "Shane Delaney"
+      ],
+      "year": 2022,
+      "url": "https://openalex.org/W4294133008",
+      "doi": "10.26686/wgtn.20781229",
+      "abstract": "Smartphones are a ubiquitous feature of adolescent life, and their capacity to enable social connections ensures that they play a central role in the adolescent experience. In the classroom, the smartphone provides a potential distraction from learning and may be associated with negative academic outcomes. There has been limited research into the everyday use of smartphones in secondary classrooms, particularly regarding how adolescents view and manage the potential for distraction. This study applied interpretative phenomenological analysis to explore the student experience of smartphone-related distraction in the Secondary school classroom and the experience of an educative intervention intended to empower students to take action to reduce distraction. Participants from two senior Secondary classes in New Zealand took part in the study, with data collected using questionnaires and focus group interviews. Data were analysed with respect to student perceptions of smartphone-related distractions and their effects, actions students take to reduce distraction, and their motivation to take action. Distractions associated with smartphones were found to be widespread and frequent, but not perceived to be detrimental to learning, and smartphone use was characterised as habitual. While awareness of smartphone distractions increased following the intervention, students did not take ongoing autonomous action to reduce distraction. The experience of smartphone distraction, and motivation to reduce it, was found to be dependent on aspects of the classroom context such as peers, the teacher and the class itself. Variation in the student experience of smartphone distraction, and of the intervention, is described in this study through the presentation of six narrative student profiles. The narrative student profiles, together with identification of the factors that influence classroom smartphone distraction, provide insights that may aid in the development of effective distraction management strategies and interventions.",
+      "venue": "Open Access Victoria University of Wellington | Te Herenga Waka (Figshare)",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Problematic smartphone use and academic achievement: A systematic review and meta-analysis",
+      "authors": [
+        "Adrián Paterna",
+        "Manuel Alcaraz‐Ibáñez",
+        "José M. Aguilar-Parra",
+        "Carlos Salavera",
+        "Zsolt Demetrovics",
+        "Mark Damian Griffiths"
+      ],
+      "year": 2024,
+      "url": "https://openalex.org/W4395666745",
+      "doi": "10.1556/2006.2024.00014",
+      "abstract": "Background and aims: The present study aimed to synthesize existing quantitative evidence on the relationship between problematic smartphone use (PSU) and academic achievement with a focus on quantifying its magnitude and examining its potential moderators. Methods: Eligible studies were searched for up to February 10, 2023 in six different databases (i.e., MEDLINE, Current Contents Connect, PsycINFO, Web of Science, SciELO, and Dissertations & Theses Global). Studies were considered eligible if they provided information derived from self-report instruments that allowed statistical calculation of the relationship between PSU and academic achievement. Pooled effect sizes (r) were computed using a random-effects model. Meta-regressions were conducted to test the influence of study-level moderators on the relationship of interest. Influence analyses and a three-parameter selection model (3PSM) were conducted to examine the robustness of the results and publication bias, respectively. Results: A total of 33 effect sizes from 29 studies (n = 48,490) were retrieved. Results showed a small effect size (r = -0.110), which tended to be larger in samples consisting of students from elementary and middle schools. Discussion and Conclusions: Findings from the present study contribute to the understanding of a potential determinant of decreased academic achievement by providing evidence that PSU may be one of them.",
+      "venue": "Journal of Behavioral Addictions",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Smartphone Distraction: Italian Validation of the Smartphone Distraction Scale (SDS)",
+      "authors": [
+        "Maria Lidia Mascia",
+        "Mirian Agus",
+        "Łukasz Tomczyk",
+        "Natale Salvatore Bonfiglio",
+        "Diego Bellini",
+        "Maria Pietronilla Penna"
+      ],
+      "year": 2023,
+      "url": "https://openalex.org/W4385483075",
+      "doi": "10.3390/ijerph20156509",
+      "abstract": "This work aimed to validate the use of the Smartphone Distraction Scale (SDS) in Italy. The SDS was devised to assess distraction related to smartphone use in adult populations. A cross-sectional study was conducted among n = 609 adults (females = 76.4%; mean age = 30.26; SD age = 9.90). An assessment of the factorial structure of the Italian version was carried out using exploratory factor analysis (EFA) and confirmatory factor analysis (CFA). The four factors identified by Throuvala and colleagues were confirmed (i.e., attention impulsiveness, online vigilance, multitasking and emotion regulation). Reliability was assessed using Cronbach’s alpha coefficient (0.703–0.889). The scale’s scores showed significant linear correlations with validated instruments, including the Mobile Phone Problematic Use Scale (MPPUS)and the Cognitive Failures Questionnaire (CFQ). A multivariate analysis of variance showed significant differences in the means among participants belonging to different age groups (born before 1995 vs. born after 1996). In summary, the good psychometric properties observed led us to assume that this instrument can be applied and used in Italian studies to assess the cognitive dimension of distraction related to the use of smartphones.",
+      "venue": "International Journal of Environmental Research and Public Health",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Hooked on The Screen: How Mobile Distractions Affect Student Achievement in Secondary Schools",
+      "authors": [
+        "Jameel Ahmed",
+        "Ajaz Shaheen",
+        "Salahuddin Salahuddin",
+        "Samreen Ghulam Nabi"
+      ],
+      "year": 2025,
+      "url": "https://openalex.org/W4410306744",
+      "doi": "10.62345/jads.2025.14.1.126",
+      "abstract": "The purpose of the current study is to ascertain how Secondary High School students view their school performance in connection with their use of smartphones. Many elements of our everyday lives have been impacted by the recent, rapid growth of cell phones, particularly for students. The current study aims to ascertain how cell phone use affects academic performance among male and female students at Uthal Secondary High School in Lasbela. The impacts of mobile phone or internet games among SHS in Uthal were the criteria utilized to gauge the outcome. The study's findings indicated that senior high school students' use of mobile phones hurts their overall academic performance. According to a survey, playing mobile devices or online games has a significant negative impact on student's academic performance, which can result in poor or low grades as well as physical suffering. The majority of respondents agreed that using a cell phone had a detrimental impact on their studies and health. Students should exercise restraint when it comes to playing mobile or the internet even though they might still complete their academics satisfactorily. However, the author contends that the usage of mobile devices in education by young people must be considered by mobile device manufacturers.",
+      "venue": "Journal of Asian Development Studies",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Effectiveness of differentiated learning in mathematics: insights from elementary school students",
+      "authors": [
+        "Akmal Rijal",
+        "Aswarliansyah Aswarliansyah",
+        "Budi Waluyo"
+      ],
+      "year": 2024,
+      "url": "https://openalex.org/W4400605031",
+      "doi": "10.11591/edulearn.v19i1.21806",
+      "abstract": "This study looked at the effectiveness of differentiated learning in enhancing students' mathematical outcomes by incorporating varied content, processes, and products. Employing a mixed-methods experimental design, the research hypothesized that differentiated instruction significantly influences students' performance in mathematics exams. The differentiation strategy involved altering the level of support in group discussions (process), adjusting the material's difficulty (content), and modifying the nature of student tasks (products). The participants comprised sixty-five fifth-grade students from public elementary schools. Data collection utilized interviews, document analysis, observations, and test questions, with the t-test and paired sample t-tests comparing pretest and post-test scores to assess the impact. The findings revealed that differentiation in content, process, and product significantly enhances student mathematical achievements, thereby supporting the initial hypothesis. This suggests that teachers should tailor instruction by varying the structure, support, and autonomy of task completion and product creation. Future research should expand the application of content, process, and product differentiation to a broader sample, including different mathematical materials and extending to high schools, to further validate these results and explore additional educational contexts.",
+      "venue": "Journal of Education and Learning (EduLearn)",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Time and school learning",
+      "authors": [
+        "Shahnaz Latief"
+      ],
+      "year": 2002,
+      "url": "https://openalex.org/W1127296997",
+      "abstract": "This study, conducted at Poor Man's Friend Secondary School (fictitious name), describes the use of Time Tabled School time. In fact, it quantifies the Time spent on Instruction and relates it to Learner Engagement-rates. Cumulatively, these variables impact on Learner Outcomes.",
+      "venue": "Open University of Cape Town (University of Cape Town)",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Primary school learners' attitudes on Mathematics learning in Mathematics",
+      "authors": [
+        "Suzzy Betty Rikhotso"
+      ],
+      "year": 2015,
+      "url": "https://openalex.org/W2156340474",
+      "abstract": "This dissertation presents a study on the primary school learners, attitudes on Mathematics learning in the Groot Letaba Circuit of Mopani District in Limpopo Province. Performance in Mathematics by students has persistently been poor. This study sought to investigate the primary school learners’ attitudes on Mathematics learning. The poor performance of learners in many schools in the Groot Letaba Circuit motivated the researcher to conduct this study. The situation is worsened by the inability of the heads of department and principals to guide and support educators. An exploratory qualitative case study research design was adopted for the study. The target population was 33 respondents, which comprised of five teachers and 28 learners from grade one to seven selected schools in Groot Letaba Circuit. The data for the research was collected by means of semi-structured interviews. \\nThe study revealed that many learners have negative attitudes towards learning Mathematics and that there are many factors which contribute to the negative attitude. Improving on these factors and sensitization of the local community to discard practices which prohibit student’s effective participation in learning Mathematics could improve performance in Mathematics. It is anticipated that the findings of this study will give curriculum developers new insights into emerging issues on performance and influence the Ministry of Education on policy formulation. Learners are also expected to benefit from the findings; because improved Mathematics performance will give them opportunities to pursue science related courses in higher institutions of learning and middle level colleges. The situation is worsened by the inability of the heads of department and principals to guide and support educators. \\nFinally, the researcher gave general recommendations for improving the attitudes of learners towards learning Mathematics.",
+      "venue": "Unisa Institutional Repository (University of South Africa)",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Correlation Study Of Visual, Auditorial and Kinesthetic Learning Styles (VAK) With Mathematics Learning Outcomes For Elementary School Students",
+      "authors": [
+        "Siti Khoirunnisa",
+        "Khairil Iba"
+      ],
+      "year": 2022,
+      "url": "https://openalex.org/W4306918959",
+      "doi": "10.33394/jp.v9i4.5495",
+      "abstract": "This study aims to analyze the correlation between VAK learning styles and mathematics learning outcomes in elementary school students. Quantitative correlation was a research method used with an ex post facto design. Non Probability Sampling is a technique used in sampling. This research instrument used tests, documentation and questionnaires, interviews as complementary techniques. To test the requirements of the analysis using the obtained regression equation and the Linearity Test. Then the regression linearity test was calculated and obtained Fcount = 0.3943 and Ftable = 2.40 so that it can be concluded that the data from the two variables is linear. The correlation between the two variables was he the study's results of 0.7153 while 0.361 with a significant level of = 0.05. Based on these results, > that was 0.7153 > 0.361, this proves that Ho is rejected and H1, meaning that there is a significant correlation between visual, auditory and kinesthetic learning styles with mathematics learning outcomes in students. The interpretation of the coefficient is a high degree of correlation.",
+      "venue": "Jurnal Paedagogy",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "A Survey of Process Skills Mathematics Learning in Elementary School",
+      "authors": [
+        "Yantoro Yantoro",
+        "Dwi Agus Kurniawan",
+        "Rahmat Perdana",
+        "Putri Ayu Rivani"
+      ],
+      "year": 2021,
+      "url": "https://openalex.org/W3216061058",
+      "doi": "10.23887/jpp.v54i3.37180",
+      "abstract": "Learning is an important factor in the world of education. Learning is basically not only learning about concepts, theories and facts, but is more concerned with applications in everyday life. This research was conducted because there are problems with the process skills of students at the elementary school level, especially at the Masrasah Ibtidaiyah school. This study aims to analyze the differences and the relationship between students' process skills towards mathematics lessons with speed and discharge material. This study uses quantitative methods with associative and comparative types. The sampling technique used in this study used simple random sampling. From the results obtained by the T test, there is a significant difference in student process skills between elementary school (elementary school) and MIS (Masrasah Ibtidaiyah) students in learning mathematics with speed and discharge material. From the results of the correlation test, it is known that there is a relationship between the variables of students' process skills in SD and Masrasah Ibtidaiyah in mathematics with speed and discharge. In this case, it is proven by a significant value in accordance with the existing provisions.",
+      "venue": "Jurnal Pendidikan dan Pengajaran",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "An Exploratory Study of Hong Kong Mathematics Education of International Schools and Public Schools",
+      "authors": [
+        "Chi-Wai Yu Xiaoyu Xu"
+      ],
+      "year": 2021,
+      "url": "https://openalex.org/W3194007750",
+      "doi": "10.17762/converter.118",
+      "abstract": "This study explored the difference in the belief on mathematics teaching between teachers of International and public schools; In particular, it considered the beliefs of middle school teachers with regard to mathematics. This study also soldiered the relationship between teachers ‘conceptions and students’ attitude of learning mathematics. It employed the mixed method and design to identify the three different types of questionnaires were designed for 19 teachers, and 107students from five different schools. All statistical analysis were implemented by an open-source package, R. Some characteristic features affecting on teachers’ belief, conceptions, and students’ attitude were observed. Hence, there is a sightly effective relationship between the students’ personality relate with the teachers’ belief.",
+      "venue": "CONVERTER",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "A New Look at Public and Private Schools: Student Background and Mathematics Achievement",
+      "authors": [
+        "Sarah Theule Lubienski",
+        "Christopher Lubienski"
+      ],
+      "year": 2005,
+      "url": "https://openalex.org/W2008488424",
+      "doi": "10.1177/003172170508600914",
+      "abstract": "The claim that schools do a better job of educating their students than public schools -- an argument central to the push for market-style reforms -- is rarely questioned. But do the data back it up? The authors examined fourth- and eighth-grade NAEP mathematics achievement in over 1,000 public and schools to arrive at a surprising answer. A RECENT report of mathematics results from the National Assessment of Educational Progress (NAEP) highlighted this major Public- school students scored lower on average than non-public-school students at both grades 4 and 8.1 Of course, this finding is nothing new. Indeed, it is part of the common wisdom in the United States that school students outscore public school students on standardized tests. Furthermore, studies have suggested that this is true even when researchers account for the fact that the enrollment at public schools differs from the enrollment at schools. This belief is based, in part, on past studies involving the 1980 High School and Beyond dataset that found that schools are more effective than public schools at boosting student achievement, including that of disadvantaged students.2 These studies of test performance, which controlled for some potentially confounding variables such as socioeconomic status (SES), affirmed widespread assumptions about the superiority of schools. These assumptions, in turn, have influenced recent reform efforts promoting various forms of privatization of public schools, including the No Child Left Behind Act, which makes use of a variety of sector sanctions for failing public schools. However, the seminal studies on school effects are becoming dated, with most based on a sample of students who began school over a generation ago. In addition, most of these studies were limited to high school.3 Some used rough measures of SES that may not have been sufficiently sensitive to the differences in populations served by public and schools. Given the current interest in choice and privatization, it is an important time to examine current evidence relating to achievement in public and schools. While undertaking a broader study of mathematics instruction and equity, we became intrigued by an unexpected finding: when controlling for school status and student background variables in our statistical models, we saw that mathematics achievement in public schools actually appeared higher than that in schools.4 We decided to do a special substudy focusing specifically on achievement differences between public and schools. Using a powerful SES variable created for the broader study, we were able to more carefully examine the question of whether the widely assumed private school effect is due more to the population of students served than to institutional effectiveness. The study focused solely on student achievement in mathematics -- a subject generally thought to be less influenced by family background and more influenced by institutional effects than other school subjects such as literacy. The Role of Family Background NAEP has been an important tool for monitoring trends in U.S. student achievement. It is the only nationally representative, ongoing assessment of U.S. academic achievement, measuring student performance at fourth, eighth, and 12th grades in mathematics and other subject areas. Our study used fourth- and eighth-grade data; eliminating 12th- grade data removed the issue of high school dropouts, which could bias our samples. Furthermore, the focus on students in the earlier grades reduces the likelihood that the students in the sample had transferred between public and schools. We analyzed achievement and survey data from the 2000 Main NAEP mathematics assessment,5 which we obtained from a restricted-use CD-ROM. (When the study was conducted in 2004, the 2000 assessment was the most recent for which raw data were available to researchers. …",
+      "venue": "Phi Delta Kappan",
+      "secao": "REFERENCIAL TEÓRICO: Tempo de Estudo e Desempenho em Matemática"
+    },
+    {
+      "title": "A Longitudinal Study of the Social Distribution of Mathematics Achievement for a Cohort of Public High School Students.",
+      "authors": [
+        "Garrett K. Mandeville",
+        "Eugene Kennedy"
+      ],
+      "year": 1993,
+      "url": "https://openalex.org/W240114862",
+      "abstract": "This paper reports the results of a study of changes in the social distribution of mathematics achievement for a cohort of public high school students. Using hierarchical linear modeling (HLM) the study sought to identify school characteristics which were significantly correlated with changes in achievement differences from grade 9 to grade 11 between: (1) white and black students; (2) students from advantaged and disadvantaged socioeconomic backgrounds (SES); and (3) male and female students. The school characteristics considered included indicators of school/community context, school normative climate (effective schools indicators), and school instructional setting. While many of the indicators were found to be related to achievement discrepancies at a given point in time, few yielded significant results for changes in the distribution of achievement. School location (suburban), the stability of the student population, and the percentage of low SES children in the school were significant predictors of change over time. It is suggested that effective-schools indicators which are more focused toward equity issues, and those based on student (rather than teacher) input, may be needed if predictors of change are to be found. (Contains 27 references.) (Author) *********************************************************************** Reproductions supplied by EDRS are the best that can be made from the original document. *********************************************************************** L) THE SOCIAL DISTRIBUTION OF ACHIEVEMENT PAGE 1 A Longitudinal Study of the Social Distribution of Mathematics Achievement for a Cohort of Public High School Students Garrett K. Mandeville University of South Carolina and Eugene Kennedy Louisiana State University Running Head: THE SOCIAL DISTRIBUTION OF ACHIEVEMENT Correspondence: Garrett K. Mandeville, Department of Educational Psychology, 128 Ward law, University of South Carolina, Columbia, SC 29208. Paper presented at the annual convention of the American Educational Research Association, Atlanta, GA, April 1993 PERMISSION TO REPRODUCE THIS MATERIAL HAS BEEN GRANTED BY Garrett K. Mandeville TO THE EDUCATIONAL RESOURCES INFORMATION CENTER (ERIC).2 BEST COPY AVAILABLE Vt. DEPARTMENT OF EDUCATION Office ot Edocaeonal Research and Improvement EDUCATIONAL RESOURCES S ) INFORMATION CENTEER received document has been isproduced as receive from the impede or organization originating d 0 Minor thenges have been made to Improve reproduction Quality Pointy ol view Of opinions slated m dot tr relent do not niCessanty represent It OERI mildew) Or pohcy THE SOCIAL DISTRIBUTION OF ACHIEVEMENT PAGE 2",
+      "secao": "REFERENCIAL TEÓRICO: Tempo de Estudo e Desempenho em Matemática"
+    },
+    {
+      "title": "Mathematics Learners’ Performance and Academic Achievement at a Public High School Institution in Leyte, Philippines",
+      "authors": [
+        "Jomar Cobacha Cabuquin",
+        "Ferdinand Tesado Abocejo"
+      ],
+      "year": 2023,
+      "url": "https://openalex.org/W4403117920",
+      "doi": "10.30998/formatif.v13i2.17235",
+      "abstract": "This study examined the correlation between mathematics performance and academic achievement of junior high school learners in a government-run laboratory high school institution and compared the mathematics performance and academic achievement of male and female learners. Correlational and comparative research designs were employed to analyze the gathered secondary data. Findings revealed a positive and highly significant correlation between the learners' mathematics performance and academic achievement, indicating that high school learners who are adept in mathematics tend to succeed and perform better in their academic courses. Whereas low performance in mathematics correspondingly connotes low achievement in overall academic abilities. No significant difference was found between male and female learners, suggesting that both genders of learners can succeed academically. The study concludes that mathematics performance and academic achievement go hand in hand, while gender does not affect the learners' ability to excel in mathematics. Effectively, secondary learning institutions must provide mathematics learners with learning opportunities during Mathematics classes and classroom activities regardless of gender. Teachers must help learners understand how to solve problems and think critically, expose them to real-world applications, and build their confidence and motivation to excel academically.",
+      "venue": "Formatif Jurnal Ilmiah Pendidikan MIPA",
+      "secao": "REFERENCIAL TEÓRICO: Tempo de Estudo e Desempenho em Matemática"
+    },
+    {
+      "title": "Motivational Beliefs, Study Strategies, and Mathematics Attainment in High- and Low-Achieving Chinese Secondary School Students",
+      "authors": [
+        "Nirmala Rao",
+        "Barbara E. Moely",
+        "John Sachs"
+      ],
+      "year": 2000,
+      "url": "https://openalex.org/W2033611934",
+      "doi": "10.1006/ceps.1999.1003",
+      "venue": "Contemporary Educational Psychology",
+      "secao": "REFERENCIAL TEÓRICO: Tempo de Estudo e Desempenho em Matemática"
+    },
+    {
+      "title": "Parental involvement, homework, and TV time: Direct and indirect effects on high school achievement.",
+      "authors": [
+        "Timothy Z. Keith",
+        "Thomas M. Reimers",
+        "Paul G. Fehrmann",
+        "Sheila M. Pottebaum",
+        "Linda W. Aubey"
+      ],
+      "year": 1986,
+      "url": "https://openalex.org/W2010548016",
+      "doi": "10.1037/0022-0663.78.5.373",
+      "abstract": "The current concern over the state of American education highlights the need to understand the important influences on school learning, especially those influences that are potentially manipulable. Parental involvement in students' academic and social lives, time spent doing homework, and leisure TV viewing are three variables generally considered to influence academic achievement, variables that may also be interrelated. In the present study, the direct and indirect effects of TV time, homework, and parental involvement on high school seniors' achievement were investigated by using the massive High School and Beyond data set. As expected, homework had an important, positive effect on student achievement, and TV time had a smaller, negative effect. Parental involvement had no direct effect on seniors' achievement scores but did positively influence the amount of time that seniors spent on homework. Further analysis suggested the possibilities of low homework demands and of excessive weekday TV viewing. Given the time spent on TV and homework and their influence on achievement, we suggest that these variables be considered in the current push for educational improvement. There is much concern over the current state of American education. This latest round of interest in public schooling, although building for years, seems to have crystallized in the 1983 report of the National Commission on Excellence in Education. The commission's findings, although probably not surprising to those familiar with education, have perhaps never been spelled out so clearly for the general public. According to the report, about 13% of all 17-ycarolds in the United States today can be considered functionally illiterate; the average achievement on most standardized tests is now lower than 29 years ago, when Sputnik was launched; Scholastic Aptitude Test scores declined steadily from 1963 to 1980 (National Commission on Excellence in Education, 1983). Further, recent studies have suggested that American students' achievement is far surpassed by that of their foreign (especially Japanese) counterparts in mathematics and science (Stevenson, 1983; Walberg, 1984). It seems that learning, at least as measured by academic achievement, has suffered in American schools, a situation that seems more alarming considering that education may be America's largest enterprise (Walberg). Thus, the title of the commission's report—A Nation at Risk— seems quite appropriate. Despite current interest, such concerns with the products of schooling are neither new (cf. Silberman, 1970) nor confined to U.S. schools (cf. Marks, Cox, & Pomian-Srzednicki, 1983). Fortunately, the influences on school learning are becoming better understood (cf. Walberg, 1984), and many such",
+      "venue": "Journal of Educational Psychology",
+      "secao": "REFERENCIAL TEÓRICO: Tempo de Estudo e Desempenho em Matemática"
+    },
+    {
+      "title": "School Climate and Public High School Student Achievement",
+      "authors": [
+        "Fortune Shaw"
+      ],
+      "year": 2009,
+      "url": "https://openalex.org/W51222821",
+      "abstract": "The goal of this study was to examine the influence of school ecology, milieu, social system, and culture on public high school student achievement. Utilized data from the ELS:2002 restricted-use dataset, a series of multilevel model analyses were conducted. The results indicate that performance gaps exist between 12th-graders of different ethnicities and socioeconomic backgrounds, but they are merely reflections of the differences that already existed two years prior in 10th-grade. Further, the gap between high and low achieving students becomes narrower from 10th-grade to 12th-grade. The highest mathematics course taken in 12-grade produces a positive estimate of mathematics achievement in 12th-grade, and ethnic minority and lower SES students are less likely to be enrolled in the advanced level courses. Contradicting to the classic view of school influences on achievement, public high schools exhibit relatively little variability in mathematics performance after controlling for student individual characteristics. Among all school climate variables, school average prior mathematics achievement is significantly positively associated with later mathematics achievement. The nonsignificance of contextual effect, however, suggests that the differences across schools do not matter; rather, the differences among students do. Students in schools located in economically disadvantaged communities make more gains in advanced mathematics course-taking than their peers in more affluent schools. The gap between high and low-achieving students grows slightly wider in schools located in more affluent communities, but becomes slightly narrower in fully computerized schools. Contradicting to most existing findings, school size, noisy environment, quality of light, ethnic composition, teacher certification rate, counselor-student ratio, safety concern, student civility, and general positive climate do not show significant influence on achievement. Suggestions about implications and limitations are provided.",
+      "venue": "University Libraries (University of Maryland)",
+      "secao": "REFERENCIAL TEÓRICO: Tempo de Estudo e Desempenho em Matemática"
+    },
+    {
+      "title": "Investigating Factors that Influence Math Homework Expectancy: A Multilevel Approach",
+      "authors": [
+        "Jianzhong Xu",
+        "Chuang Wang",
+        "Jianxia Du"
+      ],
+      "year": 2020,
+      "url": "https://openalex.org/W3049091627",
+      "doi": "10.3390/su12166586",
+      "abstract": "The present study investigated several clusters of variables influencing students’ math homework expectancy based on 3018 students in grade 8 in China. Results revealed that math homework expectancy was positively associated with homework quality at both the individual and class level. At the individual level, math homework expectancy was positively associated with prior math knowledge, parent education, homework interest, homework favorability, parent autonomy support, mastery-approach, and homework value. Meanwhile, math homework expectancy was negatively associated with homework time, parent help quantity, and performance-approach. Finally, compared with females, males tended to have higher math homework expectancy.",
+      "venue": "Sustainability",
+      "secao": "REFERENCIAL TEÓRICO: Tempo de Estudo e Desempenho em Matemática"
+    },
+    {
+      "title": "The Effects of Homework on Mathematics Performance in Elementary Students",
+      "authors": [
+        "Paula Poss",
+        "Joshua Cuevas"
+      ],
+      "year": 2026,
+      "url": "https://openalex.org/W7169860317",
+      "doi": "10.46328/ijses.6642",
+      "abstract": "The purpose of this study was to investigate the effect of various homework types on the math academic success of elementary students. Research questions included: 1) What effect does assigning homework versus no homework have on math academic performance?, 2) Which type of homework (practice, preparation, or extension) is most impactful on math academic performance?, and 3) What are the attitudes and opinions of elementary educators and parents regarding homework policies? The experimental group was a 2nd grade class, which was assigned various homework types over a nine-week period. Data collected from various assessments were compared using ANCOVA, and final results showed that practice and extension homework made the greatest impacts on academic performance. Survey outcomes revealed that educators varied on support of homework but mostly agreed that homework helps students learn. The majority of parents were supportive of homework policies.",
+      "venue": "International Journal of Studies in Education and Science",
+      "secao": "REFERENCIAL TEÓRICO: Tempo de Estudo e Desempenho em Matemática"
+    },
+    {
+      "title": "Socioeconomic, Demographic, Attitudinal and Involvement Factors Associated with Math Achievement in Elementary School.",
+      "authors": [
+        "Jennifer N. White"
+      ],
+      "year": 2001,
+      "url": "https://openalex.org/W138414596",
+      "abstract": "The purpose of this study was to determine the extent to which socioeconomic factors, demographic factors, parent and student attitudes, and parent involvement were associated with math achievement. Students in Grade 5 were selected as the population for this study. Random sampling procedures were used to select the sample. Students in the sample completed a modified version of the Fennema-Sherman Mathematics Attitudes Scales. Normal Curve Equivalent Scores (NCEs) from the math scales on the TerraNova Standardized Achievement Test were obtained for all students from the individual school records. Parents of the students also participated by answering questions pertaining to their attitudes toward math, their level of involvement in the classroom, and questions that pertained to socioeconomic and demographic characteristics. The findings from this study suggested that each of the six scales used from the Fennema-Sherman Mathematics Attitudes Scales were all significantly associated with the math, computation, and composite scores of the TerraNova Standardized Achievement Test. Family annual income, parents' educational level, and parent involvement were also significantly associated with math achievement. Four of the six attitudinal scales; the Mathematics as a Male Domain, Confidence in Learning Mathematics, Parent, and Mathematics Anxiety Scales, were significantly related to parents' educational level, family's annual income, and gender. Socioeconomic and attitudinal factors were the most powerful predictors of math achievment, while gender and parent involvement were not strong predictors.",
+      "venue": "Digital Commons - East Tennessee State University (East Tennessee State University)",
+      "secao": "REFERENCIAL TEÓRICO: Tempo de Estudo e Desempenho em Matemática"
+    },
+    {
+      "title": "Homework-Does It Impact Student Performance?",
+      "authors": [
+        "Democratis J. Pashalidis"
+      ],
+      "year": 2006,
+      "url": "https://openalex.org/W125233983",
+      "abstract": "This study examined the impact of homework on performance in the content areas of mathematics and science. The participants were a fourth grade, inner city classroom in Rochester New York. Data was collected over two semesters. The first semester data served as a baseline for the amount of homework completed and the resulting grade for each of the 19 students. Homework strategies were implemented in the second semester to increase the amount of homework completed by the students. The amount of homework completed in both subject areas increased overall. The overall semester grades increased in mathematics more than in the area of science. Findings suggest that homework completion contributes to higher performance in academics.",
+      "venue": "Fisher Digital Publications (St. John Fisher College)",
+      "secao": "REFERENCIAL TEÓRICO: Tempo de Estudo e Desempenho em Matemática"
+    },
+    {
+      "title": "Students' Achievement and Homework Assignment Strategies",
+      "authors": [
+        "Rubén Fernández-Alonso",
+        "Marcos Álvarez-Díaz",
+        "Javier Suárez‐Álvarez",
+        "José Muñiz"
+      ],
+      "year": 2017,
+      "url": "https://openalex.org/W2593092073",
+      "doi": "10.3389/fpsyg.2017.00286",
+      "abstract": "The optimum time students should spend on homework has been widely researched although the results are far from unanimous. The main objective of this research is to analyze how homework assignment strategies in schools affect students’ academic performance and the differences in students’ time spent on homework. Participants were a representative sample of Spanish adolescents (N = 26,543) with a mean age of 14.4 (± .75), 49.7 % girls. A test battery was used to measure academic performance in four subjects: Spanish, Mathematics, Science, and Citizenship. A questionnaire allowed the measurement of the indicators used for the description of homework and control variables. Two three-level hierarchical-linear models (student, school, autonomous community) were produced for each subject being evaluated. The relationship between academic results and homework time is negative at the individual level but positive at school level. An increase in the amount of homework a school assigns is associated with an increase in the differences in student time spent on homework. An optimum amount of homework is proposed which schools should assign to maximize gains in achievement for students overall.",
+      "venue": "Frontiers in Psychology",
+      "secao": "REFERENCIAL TEÓRICO: Tempo de Estudo e Desempenho em Matemática"
+    },
+    {
+      "title": "A systematic review of factors linked to poor academic performance of disadvantaged students in science and maths in schools",
+      "authors": [
+        "Pallavi Amitava Banerjee"
+      ],
+      "year": 2016,
+      "url": "https://openalex.org/W2347082070",
+      "doi": "10.1080/2331186x.2016.1178441",
+      "abstract": "Socio-economic hardships put children in an underprivileged position. This systematic review was conducted to identify factors linked to underachievement of disadvantaged pupils in school science and maths. What could be done as evidence-based practice to make the lives of these young people better? The protocol from preferred reporting items for systematic reviews and meta-analyses (PRISMA) was followed. Major electronic educational databases were searched. Papers meeting pre-defined selection criteria were identified. Studies included were mainly large-scale evaluations with a clearly defined comparator group and robust research design. All studies used a measure of disadvantage such as lower SES, language barrier, ethnic minority or temporary immigrant status and an outcome measure like attainment in standardised national tests. A majority of papers capable of answering the research question were correlational studies. The review reports findings from 771 studies published from 2005 to 2014 in English language. Thirty-four studies were synthesised. Results suggest major factors linking deprivation to underachievement can be thematically categorised into a lack of positive environment and support. Recommendations from the research reports are discussed.",
+      "venue": "Cogent Education",
+      "secao": "REFERENCIAL TEÓRICO: Tempo de Estudo e Desempenho em Matemática"
+    },
+    {
+      "title": "Exploring the Dimensions of Smartphone Distraction: Development, Validation, Measurement Invariance, and Latent Mean Differences of the Smartphone Distraction Scale (SDS)",
+      "authors": [
+        "Melina A. Throuvala",
+        "Halley Miguel Pontes",
+        "Ioannis Tsaousis",
+        "Mark Damian Griffiths",
+        "Mike Rennoldson",
+        "Daria Joanna Kuss"
+      ],
+      "year": 2021,
+      "url": "https://openalex.org/W3135199720",
+      "doi": "10.3389/fpsyt.2021.642634",
+      "abstract": "Background: Distraction is a functional emotion regulation strategy utilized to relieve emotional distress. Within the attention economy perspective, distraction is increasingly associated with digital technology use, performance impairments and interference with higher-order cognitive processes. Research on smartphone distraction and its association with problematic smartphone use is still scarce and there is no available psychometric assessment tool to assess this cognitive and emotive process parsimoniously. Method: The present study reports the development and evaluation of the psychometric properties of the Smartphone Distraction Scale (SDS) through exploratory and confirmatory factor analysis, construct validity, gender invariance, and latent mean differences. The study was conducted in a sample of British university students ( N = 1,001; M = 21.10 years, SD = 2.77). Results: The 16-item SDS was best conceptualized in a four-factor model solution comprising attention impulsiveness, online vigilance, emotion regulation , and multitasking . Construct validity was established using relevant psychosocial and mental health measures, with SDS scores being moderately associated with deficient self-regulation and problematic social media use. Gender measurement invariance was achieved at the configural, metric, and scalar levels, and latent mean differences indicated that females had significantly higher means than males across all four SDS latent factors. Discussion: The SDS presents with several strengths, including its theoretical grounding, relatively short length, and sound psychometric properties. The SDS enables the assessment of distraction, which appears to be one of the pathways to problematic smartphone use facilitating overuse and overreliance on smartphones for emotion regulation processes. The assessment of distraction in relation to problematic use in vulnerable populations may facilitate interventions that could encourage metacognition and benefit these groups by allowing sustained productivity in an increasingly disrupted work and social environment.",
+      "venue": "Frontiers in Psychiatry",
+      "secao": "REFERENCIAL TEÓRICO: O Smartphone como Elemento de Distração Cognitiva no Estudo"
+    },
+    {
+      "title": "From Smartphones to Smart Students: Learning vs. Distraction Using Smartphones in the Classroom",
+      "authors": [
+        "Zhe Deng",
+        "Zhi Cheng",
+        "Pedro Ferreira",
+        "Paul A. Pavlou"
+      ],
+      "year": 2025,
+      "url": "https://openalex.org/W4412159661",
+      "doi": "10.1287/isre.2022.0078",
+      "abstract": "This study evaluates the impact of classroom smartphone use on student performance through two large-scale randomized controlled trials in China. Students were randomly assigned to one of four experimental conditions: (i) smartphones banned, (ii) smartphones allowed and used at will without guidance, (iii) smartphones allowed with teacher prompts to use them for instruction, and (iv) smartphones banned with teachers prompting the use of paper-based aids. Our findings show that unstructured smartphone use reduced performance compared with banning them, whereas teacher-guided use significantly enhanced learning outcomes. Paper-based aids yielded no measurable performance gain over the ban. We analyzed classroom video recordings to track individual-level time spent in each condition. We found that students spent similar total time learning across conditions, but teacher-directed smartphone use produced disproportionately large marginal learning gains outweighing the losses from distraction. Guided use also helped close gender and performance gaps though it risked widening digital divides by major and region. These results suggest educators should receive support to develop purposeful, app-based smartphone instruction materials; policymakers should avoid blanket bans and instead adopt structured usage policies; and tech developers should design classroom-friendly tools aligned with instructional goals. With thoughtful implementation, smartphones can become engines of equity, positive engagement, and learning within the classroom.",
+      "venue": "Information Systems Research",
+      "secao": "REFERENCIAL TEÓRICO: O Smartphone como Elemento de Distração Cognitiva no Estudo"
+    },
+    {
+      "title": "Detection of Driver Cognitive Distraction Using Machine Learning Methods",
+      "authors": [
+        "Apurva Misra",
+        "Siby Samuel",
+        "Shi Chao Cao",
+        "Khatereh Shariatmadari"
+      ],
+      "year": 2023,
+      "url": "https://openalex.org/W3126635286",
+      "doi": "10.1109/access.2023.3245122",
+      "abstract": "Driver distraction is one of the primary causes of crashes. As a result, there is a great need to continuously observe driver state and provide appropriate interventions to distracted drivers. Cognitive distraction refers to the “look but not see” situations when the drivers’ eyes are focused on the forward roadway, but their mind is not. Typically, cognitive distractions can result from fatigue, conversation with a co-passenger, listening to the radio, or other similarly loading secondary tasks that do not necessarily take a driver’s eyes off the roadway. This makes it one of the hardest distractions to detect as there are no visible clues of driver distraction. In this study, we have identified features from different sources including eye-tracking, physiological, and vehicle kinematics data that are relevant towards the classification of distracted and non-distracted drivers via the analysis of data collected from a driving simulator study involving 40 drivers across multiple driving scenarios. The key classification algorithms implemented include Random Forest, Decision Trees and Support Vector Machines. A reduced feature set including pupil area, pupil vertical and horizontal motion was found to be predictive of driver distraction while maintaining an average accuracy of 90% across various road types. Additionally, the impact of road types on driver behaviour was also identified. The findings of the study has practical application towards the design of driver distraction monitoring systems.",
+      "venue": "IEEE Access",
+      "secao": "REFERENCIAL TEÓRICO: O Smartphone como Elemento de Distração Cognitiva no Estudo"
+    },
+    {
+      "title": "Cognitive Load and Smartphones: How Mere Presence Impacts Mental Performance",
+      "authors": [
+        "Emmanuel Imuede Oyasor"
+      ],
+      "year": 2025,
+      "url": "https://openalex.org/W4414846492",
+      "doi": "10.57239/pjlss-2025-23.2.00208",
+      "abstract": "This study examines the impact of smartphone presence on cognitive performance, specifically evaluating attention (AP score), processing speed (PTO score), and error percentage (E% score) among 275 undergraduate students.Participants were assigned to conditions varying in smartphone proximity: on a desk, in a pocket/bag, in another room, or completely absent.One-tailed ANOVA results revealed that participants without smartphones performed significantly better in attention and processing speed, with large effect sizes (η² = 0.134 and η² = 0.160, respectively).Descriptive statistics indicated that female participants outperformed males across all cognitive measures.The findings support the \"brain drain\" hypothesis, showing that even the mere presence of a smartphone reduces cognitive efficiency.Correlation analysis further confirmed that cognitive performance declines most when smartphones are visible or within reach.The results underscore the need to minimize smartphone presence in academic and professional settings to enhance focus and productivity.Future research should investigate long-term effects and develop interventions to mitigate cognitive depletion linked to smartphones.",
+      "venue": "Pakistan Journal of Life and Social Sciences (PJLSS)",
+      "secao": "REFERENCIAL TEÓRICO: O Smartphone como Elemento de Distração Cognitiva no Estudo"
+    },
+    {
+      "title": "Cognitive Load Implications for Augmented Reality Supported Chemistry Learning",
+      "authors": [
+        "Sebastian Keller",
+        "Stefan Rumann",
+        "Sebastian Habig"
+      ],
+      "year": 2021,
+      "url": "https://openalex.org/W3130957077",
+      "doi": "10.3390/info12030096",
+      "abstract": "This paper presents a study about augmented-reality-based chemistry learning in a university lecture. Organic chemistry is often perceived as particularly difficult by students because spatial information must be processed in order to understand subject specific concepts and key ideas. To understand typical chemistry-related representations in books or literature, sophisticated mental rotation- and other spatial abilities are needed. Providing an augmented reality (AR) based learning support in the learning setting together with text and pictures is consistent with the idea of multiple external representations and the cognitive theory of multimedia learning. Using multiple external representations has proven to be beneficial for learning success, because different types of representations are processed separately in working memory. Nevertheless, the integration of a new learning medium involves the risk to hinder learning, in case of being not suitable for the learning topic or learning purpose. Therefore, this study investigates how the AR-use affects students’ cognitive load during learning in three different topics of organic chemistry. For this purpose also the usability of AR learning support is considered and the possible reduction of the influence of the mental rotation on learning success will be investigated.",
+      "venue": "Information",
+      "secao": "REFERENCIAL TEÓRICO: O Smartphone como Elemento de Distração Cognitiva no Estudo"
+    },
+    {
+      "title": "ANALYSIS OF DIGITAL MULTITASKING HABITS ON SHORT-TERM MEMORY OF GRADE XII STUDENTS OF OUTSTANDING G AT AL-AZHAR SENIOR HIGH SCHOOL MEDAN",
+      "authors": [
+        "Syifa Sahira Purba",
+        "Al Fathir Aruli",
+        "Annisa Nailatul Izzah",
+        "RM. Bimo SWKP",
+        "Rafi Anaya Marwan",
+        "Nurjamiaty"
+      ],
+      "year": 2026,
+      "url": "https://openalex.org/W7222384450",
+      "abstract": "The development of digital technology has changed the way students obtain information and interact with devices during learning activities. One increasingly common habit is digital multitasking, which involves studying while using social media, messaging services, music, videos, or other applications. Repeated attention shifts can increase demands on cognitive resources and potentially impact the ability to retain information in the short term. This study aims to analyze the relationship between digital multitasking habits and short-term memory in grade XII Unggulan G students at Al-Azhar High School, Medan. The study used a quantitative approach with a correlational design. Data were planned to be collected through a digital multitasking habits questionnaire and a short-term memory test. Analysis included descriptive statistics and a Pearson Product Moment correlation test if statistical assumptions were met. This study is expected to provide an empirical overview of the relationship between digital device usage habits and students' cognitive processes and serve as a basis for developing more targeted learning strategies.",
+      "venue": "Bulletin of Engineering Science Technology and Industry",
+      "secao": "REFERENCIAL TEÓRICO: O Smartphone como Elemento de Distração Cognitiva no Estudo"
+    },
+    {
+      "title": "Exploring the influence of excessive social media use on academic performance through media multitasking and attention problems: a three-dimension usage perspective",
+      "authors": [
+        "Weiyi Sun",
+        "Miao Chao"
+      ],
+      "year": 2024,
+      "url": "https://openalex.org/W4399432718",
+      "doi": "10.1007/s10639-024-12811-y",
+      "venue": "Education and Information Technologies",
+      "secao": "REFERENCIAL TEÓRICO: O Smartphone como Elemento de Distração Cognitiva no Estudo"
+    },
+    {
+      "title": "A Cross-Cultural Study on the Impact of Social Media Usage on High School Students’ Learning",
+      "authors": [
+        "Rayhan Roswendi",
+        "Xiang Gong"
+      ],
+      "year": 2025,
+      "url": "https://openalex.org/W4414054393",
+      "doi": "10.1109/isec64801.2025.11147272",
+      "abstract": "This cross-cultural study investigates the impact of social media usage on attention span, working memory, and focus among high school students in China and the United States, framed by Cognitive Load Theory (CLT). The research explores how multitasking and social media engagement influence learning processes by analyzing intrinsic, extraneous, and germane cognitive loads. Data were collected via a questionnaire survey from 153 high school students (105 Chinese, 48 American) in December 2024, with validated scales measuring cognitive load dimensions. Results revealed significant cross-cultural differences: U.S. students reported higher extraneous load, reflecting greater susceptibility to distractions from notifications and rapid content shifts, while Chinese students exhibited lower germane load, indicating challenges in leveraging social media for educational integration. Grade-level variations emerged, with seniors (Grade 12) experiencing elevated intrinsic load due to academic pressures and multitasking demands. Students from both nations acknowledged social media ’ s dual role — distracting through entertainment yet beneficial for resource-sharing and peer collaboration. Self-management strategies, such as device separation and app restrictions, were commonly employed to mitigate disruptions. The findings underscore the complex interplay between social media design, cultural contexts, and cognitive demands, highlighting the need for tailored educational strategies. Recommendations include integrating digital literacy programs, fostering balanced usage habits, and designing platform interventions to reduce extraneous load. This study contributes empirical insights into optimizing social media’s role in education while addressing its cognitive challenges.",
+      "venue": "IEEE Integrated STEM Education Conference (ISEC)",
+      "secao": "REFERENCIAL TEÓRICO: O Smartphone como Elemento de Distração Cognitiva no Estudo"
+    },
+    {
+      "title": "The Influence of Study Attitudes and Study Habits on the Academic Performance of the Students",
+      "authors": [
+        "Jhoselle Tus"
+      ],
+      "year": 2020,
+      "url": "https://openalex.org/W3093274503",
+      "doi": "10.6084/m9.figshare.13093391",
+      "abstract": "Students' academic performance embodies an essential part of the constellation of factors determinant of student success. Also, it plays a very significant role in education, primarily as a concrete tool to assess the student's learning process. Psychologists and researchers have attempted to comprehend how students vary in processing, retaining, and retrieving learning information and have used various personality, attitudinal, cognitive styles, and ability measures. Thus, this study's primary purpose was to determine the students' study attitudes, study habits, and academic performance. Further, this examined the influence of study attitudes and study habits on their academic performance. The study respondents were the senior high school students in a Catholic School in Bulacan, Philippines. The Descriptive-correlation research method was utilized to describe the respondents' profile in terms of their study attitudes, study habits, and academic performance. A total of one hundred thirty (130) senior high school students participated in this study. The null hypothesis at .05 alpha level of significance was tested to determine the influence of study attitudes and study habits on the students' academic performance. The computed multiple regression analysis results revealed that study attitudes and study habits do not significantly affect senior high school students' academic performance.",
+      "venue": "SSRN Electronic Journal",
+      "secao": "REFERENCIAL TEÓRICO: O Smartphone como Elemento de Distração Cognitiva no Estudo"
+    },
+    {
+      "title": "Media multitasking in the classroom and student achievement: a correlational study",
+      "authors": [
+        "Daniel Companion"
+      ],
+      "year": 2010,
+      "url": "https://openalex.org/W2903391556",
+      "doi": "10.25316/ir-141",
+      "abstract": "The present study is a quantitative correlational examination of a hypothesized relationship between student multitasking with electronic devices in a classroom setting and levels of student achievement. The purpose of the study was to determine whether a relationship existed between the incidence of students’ use of cell phones and MP3 players in the classroom setting under various circumstances, and the students’ self-reported grade achievement on a recent formal school report. The directionality of the results indicated that use of electronic devices in the classroom was negatively correlated to student achievement. As student use of electronic devices increased, a corresponding decrease in grade achievement resulted. Some weakness in the study emerged as it unfolded but these weaknesses were dealt with through a thorough examination of the data from differing perspectives. The study is grounded in the foundational psychological research in divided attention and cognitive load theory which indicated that multitasking does in fact diminish one’s ability to perform intellectual tasks effectively. The results of the present study supported these findings.",
+      "venue": "VIUSpace (Vancouver Island University Library)",
+      "secao": "REFERENCIAL TEÓRICO: O Smartphone como Elemento de Distração Cognitiva no Estudo"
+    },
+    {
+      "title": "Does media multitasking always hurt? A positive correlation between multitasking and multisensory integration",
+      "authors": [
+        "Kelvin F. H. Lui",
+        "Alan C.‐N. Wong"
+      ],
+      "year": 2012,
+      "url": "https://openalex.org/W1977966042",
+      "doi": "10.3758/s13423-012-0245-7",
+      "venue": "Psychonomic Bulletin & Review",
+      "secao": "REFERENCIAL TEÓRICO: O Smartphone como Elemento de Distração Cognitiva no Estudo"
+    },
+    {
+      "title": "How to Design and Evaluate Research in Education",
+      "authors": [
+        "Jack R. Fraenkel",
+        "Norman E. Wallen"
+      ],
+      "year": 1990,
+      "url": "https://openalex.org/W1493632016",
+      "abstract": "Part One: Introduction to Research Chapter 1: The Nature of Educational Research Part Two: The Basics of Educational Research Chapter 2: The Research Problem Chapter 3: Ethics and Research Chapter 4: Variables and Hypotheses Chapter 5: Reviewing the Literature Chapter 6: Sampling Chapter 7: Instrumentation Chapter 8: Validity and Reliability Chapter 9: Internal Validity Part Three: Data Analysis Chapter 10: Descriptive Statistics Chapter 11: Inferential Statistics Chapter 12: Statistics in Perspective Part Four: Research Methodologies: I Chapter 13: Experimental Research Chapter 14: Single-Subject Research Chapter 15: Correlational Research Chapter 16: Causal-Comparative Research Chapter 17: Survey Research Part Five: Research Methodologies: II Chapter 18: Content Analysis Research Chapter 19: Qualitative Research: I Chapter 20: Qualitative Research: II Chapter 21: Historical Research Part Six: Preparing Research Proposals and Reports Chapter 22: Writing Research Proposals and Reports Part Seven: Research by Practitioners Chapter 23: Doing Research in Schools Appendix A: Table of Random Numbers Appendix B: Normal Curve Table Appendix C: Chi-Square Distribution Appendix D: Illustration of Statistical Procedures",
+      "venue": "Silpakorn Educational Research Journal",
+      "secao": "METODOLOGIA - Delineamento e Participantes"
+    },
+    {
+      "title": "Self-reported oral status and habits related to oral care in adult Poles: A questionnaire study",
+      "authors": [
+        "Renata Górska",
+        "Bartłomiej Górski"
+      ],
+      "year": 2018,
+      "url": "https://openalex.org/W2895826815",
+      "doi": "10.17219/dmp/91774",
+      "abstract": "BACKGROUND: Bacterial plaque control plays a key role in the prevention of caries and periodontal diseases. Hygiene negligence in this respect may influence the state of gingiva, and - in the long term - the number of lost teeth. The recommended method of mechanical control of dental plaque is tooth brushing twice a day. OBJECTIVES: The aim of the study was to assess the frequency of tooth brushing, the use of various oral hygiene accessories, the number of preserved teeth, and the occurrence of gingival bleeding in adult Poles, based on a questionnaire study. MATERIAL AND METHODS: The prepared questionnaire consisted of a general part, assessing the socioeconomic and general medical status of respondents, as well as of specific questions about behavioral actions related to oral hygiene. The study was conducted in 10 Polish cities in Mobile Medical Units as part of the \"Health First\" campaign in 2017. RESULTS: The study included 713 respondents: 447 females and 264 males at an average age of 51.1 ±17.6 years. During the previous 6 months, 448 females and 265 males had visited the dentist. The average number of teeth among the respondents aged 35-44 years was 27, and for subjects >65 years old -13. There were statistically significant differences in the frequency of tooth brushing depending on sex and place of residence. The respondents used manual soft and medium toothbrushes more often than electric brushes (p < 0.05). Inhabitants of larger cities, compared to rural residents, used dental floss and toothpicks more frequently (p < 0.05). In total, 271 (50%) of the respondents reported gingival bleeding during tooth brushing. There was a statistically significant association of gingival bleeding with genetic load, and with the use of a manual soft toothbrush and mouthwash. CONCLUSIONS: Pro-health behaviors of adult Poles in maintaining optimal oral hygiene are unsatisfactory and need improvement.",
+      "venue": "Dental and Medical Problems",
+      "secao": "METODOLOGIA - Coleta de Dados e Instrumentos"
+    },
+    {
+      "title": "Effective use of Pearson's product–moment correlation coefficient",
+      "authors": [
+        "Marie‐Therese Puth",
+        "Markus Neuhäuser",
+        "Graeme D. Ruxton"
+      ],
+      "year": 2014,
+      "url": "https://openalex.org/W2039696903",
+      "doi": "10.1016/j.anbehav.2014.05.003",
+      "venue": "Animal Behaviour",
+      "secao": "METODOLOGIA - Análise Estatística"
+    },
+    {
+      "title": "Implications of Cognitive Load Theory for Multimedia Learning",
+      "authors": [
+        "John Sweller"
+      ],
+      "year": 2005,
+      "url": "https://openalex.org/W3208413131",
+      "doi": "10.1017/cbo9780511816819.003",
+      "abstract": "Humans have evolved with a working memory that has no logical central executive available when required to organise novel information. Consequently, failing instruction, we must randomly propose organisational combinations and test them for effectiveness. This procedure is only possible with a very limited number of elements and as a consequence, working memory is severely limited when dealing with novel information. In contrast, familiar, organised information previously stored in long-term memory can act as a central executive and eliminate the need for working memory limitations. These structures are central to cognitive load theory. They suggest that instruction should act as substitute for the missing central executive when dealing with novel information and that factor, in turn, determines multimedia instructional principles. Introduction Good instructional design is driven by our knowledge of human cognitive structures and the manner in which those structures are organised into a cognitive architecture. Without knowledge of relevant aspects of human cognitive architecture such as the characteristics of and intricate relations between working memory and long-term memory, the effectiveness of instructional design is likely to be random. Cognitive load theory has been one of the theories used to integrate our knowledge of human cognitive structures and instructional design principles. This chapter is concerned with the elements of that theory and its general implications for multimedia learning, specifically, words presented in spoken or written form along with pictures or diagrams.",
+      "venue": "Cambridge University Press eBooks",
+      "secao": "RESULTADOS E DISCUSSÃO - Análise Correlacional e Impacto da Distração Digital"
+    }
+  ]
+}
