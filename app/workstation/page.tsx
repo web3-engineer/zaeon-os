@@ -1,5 +1,6 @@
 "use client";
 
+import { avisar, tr } from "@/lib/ui/avisos";
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
@@ -328,12 +329,12 @@ export default function WorkStationPage({ isEmbedded = false }: { isEmbedded?: b
         const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
         if (!validImageTypes.includes(file.type)) {
-            alert("Protocolo Rejeitado: Apenas imagens (JPG, PNG, WEBP, GIF) são permitidas nesta fase.");
+            avisar(tr("avisos.fotoTipo", "Só dá pra usar imagens JPG, PNG, WEBP ou GIF."), { tipo: "erro" });
             return;
         }
 
         if (file.size > MAX_FILE_SIZE) {
-            alert("Protocolo Rejeitado: O arquivo excede 5MB. O sistema neural entrará em colapso.");
+            avisar(tr("avisos.fotoGrande", "A imagem passa de 5 MB. Escolha uma menor."), { tipo: "erro" });
             return;
         }
 
@@ -376,11 +377,11 @@ export default function WorkStationPage({ isEmbedded = false }: { isEmbedded?: b
                         await update({ image: compressedBase64 });
                     } else {
                         const err = await res.json();
-                        alert("Falha ao salvar no banco: " + err.error);
+                        avisar(tr("avisos.fotoNaoSalvou", "Não deu pra salvar a foto: {{erro}}", { erro: String(err?.error ?? "") }), { tipo: "erro" });
                     }
                 } catch (error) {
                     console.error("Erro na API:", error);
-                    alert("Erro de conexão ao salvar a imagem.");
+                    avisar(tr("avisos.fotoConexao", "Erro de conexão ao salvar a foto."), { tipo: "erro" });
                 } finally {
                     setIsUploading(false);
                 }

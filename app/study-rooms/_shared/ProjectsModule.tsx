@@ -1,5 +1,6 @@
 "use client";
 
+import { avisar, tr } from "@/lib/ui/avisos";
 import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { useWeb3 } from "src/context/Web3Context";
@@ -258,17 +259,17 @@ export default function ProjectsModule() {
 
             if (response.ok) {
                 localStorage.setItem('zaeon_active_project', JSON.stringify(project));
-                alert(`Project "${project.title}" Initiated! Go to Research Lab to discuss with Agent.`);
+                avisar(tr("avisos.projetoIniciado", "Projeto “{{titulo}}” iniciado! Abra o Laboratório pra conversar com o agente.", { titulo: project.title }));
             } else {
                 // If it still fails, fallback to local storage only so the UI doesn't break
                 console.warn("DB Sync failed, using local storage.");
                 localStorage.setItem('zaeon_active_project', JSON.stringify(project));
-                alert(`Project "${project.title}" Initiated locally (Sync failed).`);
+                avisar(tr("avisos.projetoLocal", "Projeto “{{titulo}}” iniciado só neste aparelho (não deu pra sincronizar).", { titulo: project.title }), { tipo: "info" });
             }
         } catch (e) {
             console.error("Initiation Error:", e);
             localStorage.setItem('zaeon_active_project', JSON.stringify(project));
-            alert("Network Error. Project saved locally.");
+            avisar(tr("avisos.projetoSemRede", "Sem conexão. O projeto ficou salvo neste aparelho."), { tipo: "info" });
         }
     };
 
@@ -278,8 +279,8 @@ export default function ProjectsModule() {
             const treasury = new ethers.Contract(ZAEON_CONFIG.ADDRESSES.TREASURY, ABIS.TREASURY, signer);
             const tx = await treasury.claimResearchFunding(id, ZAEON_CONFIG.INTENT.GENESIS, "0x");
             await tx.wait();
-            alert("Funding Claimed Successfully!");
-        } catch(e) { console.error(e); alert("Claim failed."); }
+            avisar(tr("avisos.fundoResgatado", "Financiamento resgatado!"));
+        } catch(e) { console.error(e); avisar(tr("avisos.fundoFalhou", "Não deu pra resgatar o financiamento."), { tipo: "erro" }); }
     };
 
     return (

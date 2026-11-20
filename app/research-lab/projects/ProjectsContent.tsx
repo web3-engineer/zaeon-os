@@ -18,6 +18,7 @@
  * Vertex) and in-browser execution (Pyodide via useCodeRunner) are real.
  */
 
+import { confirmar, pedirTexto, tr } from "@/lib/ui/avisos";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -465,7 +466,7 @@ export default function ProjectsContent() {
 
   // Cria um novo repositório no GitHub (quando o App tiver permissão) e o seleciona.
   const createRepository = useCallback(async () => {
-    const name = (typeof window !== "undefined" ? window.prompt("Nome do novo repositório:") : "")?.trim();
+    const name = (await pedirTexto({ titulo: tr("avisos.novoRepo", "Nome do novo repositório"), botao: tr("avisos.criar", "Criar") }))?.trim();
     if (!name) return;
     setCreatingRepo(true); setWsError(null);
     const { ok, data } = await ghAction("create_repo", { name, isPrivate: true });
@@ -655,7 +656,7 @@ export default function ProjectsContent() {
   // Delete a file from the repo (working branch only) → updates tree/open.
   const deleteRepoFile = useCallback(async (path: string) => {
     if (!repo || !workingBranch) { setWsError("Crie um branch de trabalho para excluir arquivos."); return; }
-    if (typeof window !== "undefined" && !window.confirm(`Excluir "${path}" do branch ${workingBranch}?`)) return;
+    if (!(await confirmar({ titulo: tr("avisos.excluirArquivo", "Excluir o arquivo?"), texto: `Excluir "${path}" do branch ${workingBranch}?`, botao: tr("avisos.apagar", "Apagar"), perigo: true }))) return;
     setWsError(null);
     const { ok, data } = await ghAction("delete_file", { repo, branch: workingBranch, path, message: `chore: remove ${path}` });
     if (!ok) { setWsError(data?.error || "Falha ao excluir."); return; }
@@ -668,7 +669,7 @@ export default function ProjectsContent() {
   // Rename/move a file (working branch only) → atomic delete+add commit.
   const renameRepoFile = useCallback(async (path: string) => {
     if (!repo || !workingBranch) { setWsError("Crie um branch de trabalho para renomear."); return; }
-    const to = (typeof window !== "undefined" ? window.prompt(`Renomear/mover "${path}" para:`, path) : "")?.trim();
+    const to = (await pedirTexto({ titulo: tr("avisos.renomearArquivo", "Renomear ou mover o arquivo"), texto: path, valor: path }))?.trim();
     if (!to || to === path) return;
     setWsError(null);
     const { ok, data } = await ghAction("rename_file", { repo, branch: workingBranch, path, to, message: `chore: rename ${path} → ${to}` });
@@ -801,8 +802,8 @@ export default function ProjectsContent() {
     else { setOpen({}); setTree([]); setActivePath(""); setChat([]); setProtoQuery(""); setWorkingBranch(null); setPlan([]); setDiagram(null); setShowPreview(false); setPreviewHtml(null); setMemory(""); setTasks([]); }
   }, [projectId, flushCurrent, hydrateFromSnap]);
 
-  const deleteProject = useCallback((id: string) => {
-    if (typeof window !== "undefined" && !window.confirm("Excluir este projeto do navegador? (não afeta o GitHub)")) return;
+  const deleteProject = useCallback(async (id: string) => {
+    if (!(await confirmar({ titulo: tr("avisos.excluirProjeto", "Excluir este projeto?"), texto: "Ele sai deste navegador. Não afeta o GitHub.", botao: tr("avisos.apagar", "Apagar"), perigo: true }))) return;
     try { localStorage.removeItem(projKey(id)); } catch { /* ignore */ }
     const remaining = projects.filter((p) => p.id !== id);
     saveProjIndex(remaining); setProjects(remaining);
@@ -814,8 +815,8 @@ export default function ProjectsContent() {
 
   // ── Memória de projeto (Golem working memory + Bitloops repo memory) ─────────
   // Apaga a memória e o checklist do projeto atual (a "lógica de apagar de memória").
-  const clearMemory = useCallback(() => {
-    if (typeof window !== "undefined" && !window.confirm("Limpar a memória do agente neste projeto? (decisões/stack que ele lembra; não apaga os arquivos)")) return;
+  const clearMemory = useCallback(async () => {
+    if (!(await confirmar({ titulo: tr("avisos.limparMemoria", "Limpar a memória do agente?"), texto: "Ele esquece as decisões e a stack deste projeto. Os arquivos não são apagados.", botao: tr("avisos.limpar", "Limpar"), perigo: true }))) return;
     setMemory(""); setTasks([]);
     setChat((c) => [...c, { role: "agent", text: "🧹 Memória do projeto apagada. Vou recomeçar o contexto do zero no próximo pedido." }]);
   }, []);

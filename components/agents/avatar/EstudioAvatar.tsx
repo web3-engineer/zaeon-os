@@ -13,6 +13,7 @@
  *   Etapa A (Claude Code, dev): endpoint /api/dev/avatares → public/avatars/<id>/
  *   Etapa B (admin):            endpoint /api/admin/agents/<id>/avatar → banco
  */
+import { confirmar, tr } from "@/lib/ui/avisos";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AgentAvatar from "@/components/agents/AgentAvatar";
 import { ESTADOS_SPRITE, type AvatarManifest, type EstadoSprite, type SinalAvatar } from "@/lib/avatars/estados";
@@ -168,7 +169,7 @@ export default function EstudioAvatar({
 
   const regerar = useCallback(async (e: EstadoSprite) => {
     if (e === "idle") {
-      if (Object.values(pecas).some((p) => p.status === "aprovado" || p.status === "pronto") && !window.confirm("Nova base = novo personagem: as outras expressões serão descartadas. Continuar?")) return;
+      if (Object.values(pecas).some((p) => p.status === "aprovado" || p.status === "pronto") && !(await confirmar({ titulo: tr("avisos.novaBase", "Criar uma nova base?"), texto: "Nova base = novo personagem: as outras expressões serão descartadas.", botao: tr("avisos.continuar", "Continuar"), perigo: true }))) return;
       return gerarTudo(true);
     }
     const b = await garantirBase();

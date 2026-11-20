@@ -182,13 +182,13 @@ export default function EditableProfile({ visitante = null, onVoltar }: {
     return (
       <div className="w-full h-full flex flex-col items-center justify-center gap-3 text-center p-6">
         <p role="alert" className="text-[13px] text-slate-600 dark:text-white/70">Não deu pra abrir esse perfil. Só dá pra ver o perfil de quem divide um escritório com você.</p>
-        {onVoltar && <button type="button" onClick={onVoltar} className="inline-flex items-center gap-1.5 text-[12px] font-bold text-cyan-600 dark:text-cyan-300 hover:underline"><ArrowLeft size={13} /> Voltar ao escritório</button>}
+        {onVoltar && <button type="button" onClick={onVoltar} className="inline-flex min-h-[44px] items-center gap-1.5 px-2 text-[12px] font-bold text-cyan-600 dark:text-cyan-300 hover:underline"><ArrowLeft size={13} /> Voltar ao escritório</button>}
       </div>
     );
   }
 
   const card = "border px-4 py-2.5 rounded-2xl backdrop-blur-md shadow-lg bg-white/60 dark:bg-black/30 border-cyan-300/40 dark:border-cyan-400/20";
-  const label = "text-[8px] uppercase font-black tracking-widest text-slate-500 dark:text-white/45";
+  const label = "text-[11px] uppercase font-black tracking-widest text-slate-500 dark:text-white/45";
   const value = "text-[13px] font-bold text-slate-900 dark:text-white";
 
   return (
@@ -198,12 +198,12 @@ export default function EditableProfile({ visitante = null, onVoltar }: {
         <div className={`flex ${somenteLeitura ? "justify-start" : "justify-end"} mb-1`}>
           {somenteLeitura ? (
             onVoltar && (
-              <button type="button" onClick={onVoltar} className="inline-flex items-center gap-1.5 text-[12px] font-bold text-cyan-600 dark:text-cyan-300 hover:underline">
+              <button type="button" onClick={onVoltar} className="inline-flex min-h-[44px] items-center gap-1.5 px-2 text-[12px] font-bold text-cyan-600 dark:text-cyan-300 hover:underline">
                 <ArrowLeft size={13} /> Voltar ao escritório
               </button>
             )
           ) : (
-            <button data-tour="perfil-editar" onClick={() => { setEditing((v) => !v); setMsg(null); }} className="inline-flex items-center gap-1.5 text-[12px] font-bold text-cyan-600 dark:text-cyan-300 hover:underline">
+            <button data-tour="perfil-editar" onClick={() => { setEditing((v) => !v); setMsg(null); }} className="inline-flex min-h-[44px] items-center gap-1.5 px-2 text-[12px] font-bold text-cyan-600 dark:text-cyan-300 hover:underline">
               <Pencil size={13} /> {editing ? "Cancelar" : "Editar"}
             </button>
           )}
@@ -223,7 +223,7 @@ export default function EditableProfile({ visitante = null, onVoltar }: {
                   {!somenteLeitura && (
                     <div className="absolute inset-0 bg-black/55 rounded-full flex flex-col items-center justify-center opacity-0 group-hover/av:opacity-100 [@media(hover:none)]:opacity-100 [@media(hover:none)]:bg-black/30 transition-opacity">
                       {uploading ? <Loader2 className="w-6 h-6 text-white animate-spin" /> : <Camera className="w-7 h-7 text-white" />}
-                      <span className="text-[7px] uppercase font-bold text-white tracking-widest mt-0.5">{uploading ? "salvando" : "trocar"}</span>
+                      <span className="text-[11px] uppercase font-bold text-white tracking-widest mt-0.5">{uploading ? "salvando" : "trocar"}</span>
                     </div>
                   )}
                 </label>
@@ -277,10 +277,10 @@ export default function EditableProfile({ visitante = null, onVoltar }: {
                     <div className={label}>Nível</div>
                     <div className={`${value} flex items-center gap-2`}>
                       {data?.academicLevel || "Graduação"}
-                      {data?.plan && data.plan !== "free" && <span className="px-2 py-0.5 rounded-full text-[9px] bg-cyan-500/15 text-cyan-700 dark:text-cyan-200 uppercase tracking-wider">{data.plan}</span>}
+                      {data?.plan && data.plan !== "free" && <span className="px-2 py-0.5 rounded-full text-[11px] bg-cyan-500/15 text-cyan-700 dark:text-cyan-200 uppercase tracking-wider">{data.plan}</span>}
                     </div>
                   </div>
-                  <span className={`text-[10px] font-bold inline-flex items-center gap-1 ${data?.eduVerified ? "text-emerald-600 dark:text-emerald-300" : "text-amber-600 dark:text-amber-300"}`}>
+                  <span className={`text-[11px] font-bold inline-flex items-center gap-1 ${data?.eduVerified ? "text-emerald-600 dark:text-emerald-300" : "text-amber-600 dark:text-amber-300"}`}>
                     {data?.eduVerified ? <ShieldCheck size={12} /> : <ShieldAlert size={12} />}
                   </span>
                 </div>
@@ -290,15 +290,15 @@ export default function EditableProfile({ visitante = null, onVoltar }: {
 
           {/* DIREITA: árvore de habilidades */}
           <div data-tour="perfil-habilidades" className="rounded-3xl border border-slate-200 dark:border-white/10 bg-white/50 dark:bg-white/[0.03] p-5">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/45 mb-3">Habilidades</p>
+            <p className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-white/45 mb-3">Habilidades</p>
             <div className="flex flex-col gap-2.5 mb-4">
               {SKILLS.filter((s) => s.kind === "pos").map((s) => <SkillBar key={s.name} {...s} />)}
             </div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-rose-400/80 mb-3">A trabalhar</p>
+            <p className="text-[11px] font-black uppercase tracking-widest text-rose-400/80 mb-3">A trabalhar</p>
             <div className="flex flex-col gap-2.5">
               {SKILLS.filter((s) => s.kind === "neg").map((s) => <SkillBar key={s.name} {...s} />)}
             </div>
-            {!somenteLeitura && <p className="text-[10px] text-slate-400 dark:text-white/30 mt-4">Valores chegam conforme você usa a Zaeon.</p>}
+            {!somenteLeitura && <p className="text-[11px] text-slate-400 dark:text-white/30 mt-4">Valores chegam conforme você usa a Zaeon.</p>}
           </div>
 
           {/* DIREITA: o personagem (vitrine 3D) — no celular/tela média vai abaixo das Habilidades, menor */}
@@ -338,7 +338,7 @@ export default function EditableProfile({ visitante = null, onVoltar }: {
         {/* Convidado por */}
         {data?.inviter && (
           <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white/60 dark:bg-white/[0.03] p-4 mt-6">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-white/45 mb-2 flex items-center gap-1.5"><UserCheck size={13} /> {somenteLeitura ? "Convidado(a) por" : "Você foi convidado por"}</p>
+            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-white/45 mb-2 flex items-center gap-1.5"><UserCheck size={13} /> {somenteLeitura ? "Convidado(a) por" : "Você foi convidado por"}</p>
             <div className="flex items-center gap-3">
               <span className="w-11 h-11 rounded-full overflow-hidden bg-cyan-100 dark:bg-cyan-500/15 flex items-center justify-center shrink-0">
                 {data.inviter.image ? <Image src={data.inviter.image} alt="" width={44} height={44} className="w-full h-full object-cover" />

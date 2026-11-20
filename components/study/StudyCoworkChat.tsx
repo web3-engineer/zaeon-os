@@ -18,6 +18,7 @@
  * (function-calling) entram na Fase 2 — aqui deixamos as superfícies prontas.
  */
 
+import { confirmar, tr } from "@/lib/ui/avisos";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import {
@@ -948,7 +949,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
 
   // Apagar um estudo da biblioteca (com confirmação — é destrutivo).
   const deleteStudy = useCallback(async (id: string, title?: string) => {
-    if (!window.confirm(`Apagar o estudo “${title || "sem título"}” e tudo dentro dele? Não dá pra desfazer.`)) return;
+    if (!(await confirmar({ titulo: tr("avisos.apagarEstudo", "Apagar o estudo?"), texto: `Apagar o estudo “${title || "sem título"}” e tudo dentro dele? Não dá pra desfazer.`, botao: tr("avisos.apagar", "Apagar"), perigo: true }))) return;
     try {
       const r = await fetch(`/api/study/spaces?id=${encodeURIComponent(id)}`, { method: "DELETE" });
       if (r.ok) {

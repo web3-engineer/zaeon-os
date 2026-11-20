@@ -1,5 +1,6 @@
 "use client";
 
+import { avisar, confirmar, tr } from "@/lib/ui/avisos";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CameraIcon, ArrowPathIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon, PencilIcon, CheckIcon, Cog6ToothIcon, ArrowsRightLeftIcon, XMarkIcon } from "@heroicons/react/24/outline";
@@ -133,7 +134,7 @@ export default function NetworkMural({ visitedUserId }: { visitedUserId?: string
 
         const validImageTypes = ['image/jpeg', 'image/png', 'image/webp'];
         const validFiles = files.filter(f => validImageTypes.includes(f.type) && f.size <= 8 * 1024 * 1024);
-        if (validFiles.length === 0) return alert("Nenhuma imagem válida suportada.");
+        if (validFiles.length === 0) { avisar(tr("avisos.muralSemImagem", "Nenhuma imagem válida (JPG, PNG ou WEBP, até 8 MB)."), { tipo: "erro" }); return; }
 
         setIsUploading(true);
         const tempPhotos: PersonalPhoto[] = [];
@@ -195,7 +196,7 @@ export default function NetworkMural({ visitedUserId }: { visitedUserId?: string
         e.preventDefault(); e.stopPropagation();
         if (id.startsWith('empty') || isVisitorMode) return;
 
-        if (!window.confirm("Apagar permanentemente esta memória?")) return;
+        if (!(await confirmar({ titulo: tr("avisos.apagarMemoria", "Apagar esta memória?"), texto: tr("avisos.semDesfazer", "Não dá pra desfazer."), botao: tr("avisos.apagar", "Apagar"), perigo: true }))) return;
 
         setPhotos(prev => prev.filter(p => p.id !== id));
         setActive(prev => (prev >= displayItems.length - 1 ? Math.max(0, displayItems.length - 2) : prev));

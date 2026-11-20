@@ -1,5 +1,6 @@
 "use client";
 
+import { avisar, confirmar, tr } from "@/lib/ui/avisos";
 import React, { useRef, useState, useEffect } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Sphere, Html } from "@react-three/drei";
@@ -247,7 +248,7 @@ export default function LoungeEarth() {
                 const savedPost = await res.json();
                 setPosts([savedPost, ...posts]);
             } else {
-                alert("Falha de transmissão.");
+                avisar(tr("avisos.falhaPublicar", "Não deu pra publicar. Tente de novo."), { tipo: "erro" });
             }
         } catch (error) {
             console.error("Falha ao transmitir:", error);
@@ -255,7 +256,7 @@ export default function LoungeEarth() {
     };
 
     const handleDeletePost = async (postId: string) => {
-        if (!confirm("Tem certeza que deseja desintegrar este sinal da rede?")) return;
+        if (!(await confirmar({ titulo: tr("avisos.apagarPost", "Apagar esta publicação?"), texto: tr("avisos.semDesfazer", "Não dá pra desfazer."), botao: tr("avisos.apagar", "Apagar"), perigo: true }))) return;
         try {
             const res = await fetch(`/api/posts?id=${postId}`, { method: 'DELETE' });
             if (res.ok) setPosts(posts.filter(p => p.id !== postId));
@@ -511,14 +512,14 @@ function FeedPost({
     };
 
     const handleDeleteComment = async (commentId: string) => {
-        if (!confirm("Tem certeza que deseja desintegrar este comentário?")) return;
+        if (!(await confirmar({ titulo: tr("avisos.apagarComentario", "Apagar este comentário?"), texto: tr("avisos.semDesfazer", "Não dá pra desfazer."), botao: tr("avisos.apagar", "Apagar"), perigo: true }))) return;
 
         try {
             const res = await fetch(`/api/posts/comment?id=${commentId}`, { method: 'DELETE' });
             if (res.ok) {
                 setComments(comments.filter(c => c.id !== commentId));
             } else {
-                alert("Falha de permissão ao tentar excluir.");
+                avisar(tr("avisos.semPermissao", "Você não tem permissão pra apagar isso."), { tipo: "erro" });
             }
         } catch (error) { console.error("Falha ao excluir comentário", error); }
     };

@@ -1,5 +1,6 @@
 "use client";
 
+import { avisar, tr } from "@/lib/ui/avisos";
 import { ProFeaturePanel } from "@/components/ui/ProFeaturePanel";
 import { CanonicalLaunchPanel } from "@/components/ui/CanonicalLaunchPanel";
 import React, { useState, useEffect, useRef } from 'react';
@@ -205,7 +206,7 @@ export default function ZaeonHumanitiesRoom() {
         } else if (action === 'upload') {
             // Simulador de clique em input file
             console.log("Abre explorador de arquivos do SO");
-            alert("File Explorer Module Triggered.");
+            avisar(tr("avisos.emBreve", "Em breve: enviar arquivos por aqui."), { tipo: "info" });
         }
     };
 

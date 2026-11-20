@@ -8,6 +8,7 @@
  * O seletor de VOZ saiu daqui a pedido do dono: a fala segue na voz padrão do engine (lib/voice/ttsController).
  * Deslogado: Geral e Cyberespaço (sem modo tutorial).
  */
+import { avisar, confirmar, tr } from "@/lib/ui/avisos";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
@@ -106,14 +107,14 @@ export default function ConfigMenu() {
 
   const apagarConta = async () => {
     if (apagando) return;
-    if (!window.confirm(t("configMenu.deleteConfirm"))) return;
+    if (!(await confirmar({ titulo: tr("avisos.apagarConta", "Apagar sua conta?"), texto: t("configMenu.deleteConfirm"), botao: tr("avisos.apagar", "Apagar"), perigo: true }))) return;
     setApagando(true);
     try {
       const r = await fetch("/api/account", { method: "DELETE" });
-      if (!r.ok) { setApagando(false); window.alert(t("configMenu.deleteFailed")); return; }
+      if (!r.ok) { setApagando(false); avisar(t("configMenu.deleteFailed"), { tipo: "erro" }); return; }
       limparCopiaDasConversas(session?.user?.email, true);
       await signOut({ callbackUrl: "/" });
-    } catch { setApagando(false); window.alert(t("configMenu.connectionError")); }
+    } catch { setApagando(false); avisar(t("configMenu.connectionError"), { tipo: "erro" }); }
   };
 
   return (

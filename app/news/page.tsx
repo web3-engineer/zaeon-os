@@ -1,5 +1,6 @@
 "use client";
 
+import { tr } from "@/lib/ui/avisos";
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, useMotionValue, useSpring, useMotionTemplate } from "framer-motion";
 import Link from "next/link";
@@ -51,10 +52,10 @@ function LoupeText({ content }: { content: string }) {
     return (
         <div className="space-y-6 mt-8 border-t border-slate-200 dark:border-white/10 pt-8">
             <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Conteúdo da Matéria</span>
+                <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Conteúdo da Matéria</span>
                 <button
                     onClick={() => setIsLoupeEnabled(!isLoupeEnabled)}
-                    className={`text-[10px] font-bold px-4 py-2 rounded-full border transition-all duration-300 ${isLoupeEnabled ? 'bg-cyan-500 text-white border-cyan-500 shadow-lg shadow-cyan-500/30' : 'text-slate-500 border-slate-300 hover:bg-slate-100 dark:hover:bg-white/5'}`}
+                    className={`min-h-[44px] text-[11px] font-bold px-4 py-2 rounded-full border transition-all duration-300 ${isLoupeEnabled ? 'bg-cyan-500 text-white border-cyan-500 shadow-lg shadow-cyan-500/30' : 'text-slate-500 border-slate-300 hover:bg-slate-100 dark:hover:bg-white/5'}`}
                 >
                     {isLoupeEnabled ? "DESATIVAR FOCO" : "ATIVAR MODO FOCO"}
                 </button>
@@ -145,7 +146,7 @@ export default function LoungeNewsFeed() {
         return (
             <div className="h-[80vh] flex flex-col items-center justify-center space-y-4">
                 <div className="w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
-                <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Sincronizando Banco de Dados</div>
+                <div className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-500">Sincronizando Banco de Dados</div>
             </div>
         );
     }
@@ -177,10 +178,10 @@ export default function LoungeNewsFeed() {
                                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-800 dark:text-slate-200 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                                    <span className="text-[11px] font-black uppercase tracking-widest text-slate-800 dark:text-slate-200 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
                                         Aviso FUNCAP / SUDENE
                                     </span>
-                                    <span className="text-[8px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-0.5">
+                                    <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-0.5">
                                         Acessar Justificativa Oficial
                                     </span>
                                 </div>
@@ -202,8 +203,8 @@ export default function LoungeNewsFeed() {
                                     />
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 mb-1 flex items-center gap-1">
-                                        <RocketLaunchIcon className="w-3 h-3" /> Special Feature
+                                    <span className="text-[11px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 mb-1 flex items-center gap-1">
+                                        <RocketLaunchIcon className="w-3 h-3" /> {tr("noticias.destaque", "Destaque")}
                                     </span>
                                     <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-tight group-hover:text-indigo-500 transition-colors">
                                         Hedera Hackathon Cobertura Exclusiva
@@ -246,8 +247,8 @@ export default function LoungeNewsFeed() {
                                         )}
                                         <div className="flex flex-col justify-center overflow-hidden">
                                             <div className="flex items-center gap-2 mb-1">
-                                                <span className={`text-[9px] font-black uppercase tracking-widest ${item.category === 'report' ? 'text-amber-500' : 'text-cyan-600'}`}>
-                                                    {item.category === 'report' ? 'Report' : 'News'}
+                                                <span className={`text-[11px] font-black uppercase tracking-widest ${item.category === 'report' ? 'text-amber-500' : 'text-cyan-600'}`}>
+                                                    {item.category === 'report' ? tr("noticias.relatorio", "Relatório") : tr("noticias.noticia", "Notícia")}
                                                 </span>
                                             </div>
                                             <h3 className={`text-sm font-bold truncate leading-tight transition-colors ${isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
@@ -286,7 +287,7 @@ export default function LoungeNewsFeed() {
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
 
                                     <div className="absolute bottom-6 left-6 flex items-center gap-3">
-                                        <div className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-bold text-white uppercase tracking-widest flex items-center gap-2">
+                                        <div className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-[11px] font-bold text-white uppercase tracking-widest flex items-center gap-2">
                                             <CalendarDaysIcon className="w-3 h-3" />
                                             {new Date(selectedNews.publishDate).toLocaleDateString()}
                                         </div>

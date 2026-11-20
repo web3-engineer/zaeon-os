@@ -16,6 +16,7 @@ import { Navbar } from "@/components/main/navbar";
 import { RegistrarSW } from "@/components/pwa/RegistrarSW";
 import { CorDaBarra } from "@/components/pwa/CorDaBarra";
 import { AvisoVersaoNova } from "@/components/sistema/AvisoVersaoNova";
+import { Avisos } from "@/components/sistema/Avisos";
 
 import "../src/i18n";
 import "./globals.css";
@@ -136,6 +137,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                         <Web3Provider>
                             <Navbar />
                             {children}
+                            {/* #850: avisos e "tem certeza?" com o visual do app (no lugar de alert/confirm/prompt) */}
+                            <Avisos />
 
 
                         </Web3Provider>

@@ -12,6 +12,7 @@
  *   - RASCUNHO no navegador: o modo antigo (localStorage + /api/octa/agente síncrono, Revisar/Alterar).
  * Tokens/segredos nunca passam por aqui: o GitHub é conectado por OAuth no servidor e as rotas nunca devolvem token.
  */
+import { confirmar, pedirTexto, tr } from "@/lib/ui/avisos";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import {
@@ -397,7 +398,7 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
   }, []);
 
   const apagarProjeto = async (p: ProjetoMeta) => {
-    if (!window.confirm(`Apagar o projeto "${p.nome}"? Os arquivos dele somem daqui (o repositório no GitHub, se houver, fica).`)) return;
+    if (!(await confirmar({ titulo: tr("avisos.apagarProjeto", "Apagar o projeto?"), texto: `Apagar o projeto "${p.nome}"? Os arquivos dele somem daqui (o repositório no GitHub, se houver, fica).`, botao: tr("avisos.apagar", "Apagar"), perigo: true }))) return;
     const r = await fetch(`/api/octa/projetos/${p.id}`, { method: "DELETE" }).catch(() => null);
     if (!r?.ok) return;
     gravarLS(chaveChatProjeto(p.id), null); gravarLS(chaveTurno(p.id), null);
@@ -576,13 +577,13 @@ function IdeDaConta({ armazem }: { armazem: Armazem }) {
   // fora da prévia React os erros dela não valem mais (voltam quando o Sandpack monta de novo)
   useEffect(() => { if (vista !== "previa" || tipo !== "react") setErrosReact([]); }, [vista, tipo]);
 
-  const novoArquivo = () => {
-    const p = caminhoValido(window.prompt("Nome do arquivo (ex.: src/app.ts)") ?? "");
+  const novoArquivo = async () => {
+    const p = caminhoValido((await pedirTexto({ titulo: tr("avisos.nomeArquivo", "Nome do arquivo"), dica: "src/app.ts", botao: tr("avisos.criar", "Criar") })) ?? "");
     if (!p || !ide) return;
     editar((e) => abrir({ ...e, arquivos: { ...e.arquivos, [p]: e.arquivos[p] ?? "" } }, p));
   };
-  const apagarArquivo = (p: string) => {
-    if (!ide || !window.confirm(`Apagar ${p}?`)) return;
+  const apagarArquivo = async (p: string) => {
+    if (!ide || !(await confirmar({ titulo: tr("avisos.apagarArquivo", "Apagar o arquivo?"), texto: p, botao: tr("avisos.apagar", "Apagar"), perigo: true }))) return;
     editar((e) => { const arquivos = { ...e.arquivos }; delete arquivos[p]; return fecharAba({ ...e, arquivos }, p); });
     setVerCodigo((v) => esquecerVerCodigo(v, [p])); // recriado com o mesmo nome, volta a abrir como imagem
   };

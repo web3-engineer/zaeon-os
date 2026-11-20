@@ -6,6 +6,7 @@
  * "conectado" (o ConnectStep da ChipFlow). Cada chip: papel (Zaeon · agente · pessoal), nome/recado/foto do
  * perfil no WhatsApp, ativo no rodízio, teste de envio, desconectar e apagar. Ver docs/WHATSAPP_CHIPS.md.
  */
+import { confirmar, tr } from "@/lib/ui/avisos";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Smartphone, Plus, QrCode, Loader2, Trash2, PowerOff, Send, Image as ImageIcon, X, CheckCircle2 } from "lucide-react";
 
@@ -133,7 +134,7 @@ export default function ChipsCeoCard() {
                 <button onClick={() => acao(`/api/whatsapp/chips/${c.id}`, "PATCH", { ativo: !c.ativo })} className="text-slate-600 dark:text-slate-300">{c.ativo ? "Tirar do rodízio" : "Pôr no rodízio"}</button>
                 {c.estado === "conectado" && <Testar chipId={c.id} onErro={setErro} />}
                 {c.estado === "conectado" && <button onClick={() => acao(`/api/whatsapp/chips/${c.id}/sair`, "POST")} className="flex items-center gap-1 text-amber-600"><PowerOff size={13} /> Desconectar</button>}
-                <button onClick={() => { if (confirm(`Apagar o chip "${c.nome}"? A sessão do WhatsApp é encerrada.`)) void acao(`/api/whatsapp/chips/${c.id}`, "DELETE"); }} className="flex items-center gap-1 text-rose-500"><Trash2 size={13} /> Apagar</button>
+                <button onClick={async () => { if (await confirmar({ titulo: tr("avisos.apagarChip", "Apagar o chip?"), texto: `Apagar o chip "${c.nome}"? A sessão do WhatsApp é encerrada.`, botao: tr("avisos.apagar", "Apagar"), perigo: true })) void acao(`/api/whatsapp/chips/${c.id}`, "DELETE"); }} className="flex items-center gap-1 text-rose-500"><Trash2 size={13} /> Apagar</button>
               </div>
               {editando === c.id && <EditorPerfil chip={c} salvar={(p) => acao(`/api/whatsapp/chips/${c.id}`, "PATCH", p)} />}
             </li>

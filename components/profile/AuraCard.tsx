@@ -8,6 +8,7 @@
  * #427: `visitante` = o perfil de OUTRA pessoa (dados de /api/perfil/[id]): só leitura, sem o envio de título,
  * sem as filas, e SEM os cérebros (nem a seção, nem o contador); validações de estudo só com o número.
  */
+import { pedirTexto, tr } from "@/lib/ui/avisos";
 import { useCallback, useEffect, useState } from "react";
 import { levelFromAura, NIVEIS_ACADEMICOS, ROTULO_NIVEL, seloDoMetodo, type NivelAcademico } from "@/lib/aura/rules";
 import CredencialCard from "@/components/solana/CredencialCard";
@@ -28,7 +29,7 @@ type Fila = { id: string; nivel: string; area: string | null; instituicao: strin
 
 const H = { "Content-Type": "application/json" };
 const card = "rounded-3xl border border-white/60 dark:border-white/[0.12] backdrop-blur-2xl backdrop-saturate-[1.6] bg-white/60 dark:bg-white/[0.05] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.85)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.18)]";
-const label = "text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/45";
+const label = "text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-white/45";
 const txt = "text-slate-900 dark:text-white", txt2 = "text-slate-600 dark:text-white/70", mudo = "text-slate-500 dark:text-white/45";
 const inputCls = `min-h-[40px] px-3 rounded-xl text-[13px] bg-white/70 dark:bg-white/[0.06] border border-slate-200 dark:border-white/10 ${txt} placeholder:text-slate-400 dark:placeholder:text-white/35 outline-none focus:border-cyan-400/70`;
 
@@ -79,7 +80,12 @@ export default function AuraCard({ visitante }: { visitante?: AuraVisitante } = 
   const somenteLeitura = !!visitante;
 
   const decidirCerebro = async (vId: string, status: "aprovada" | "rejeitada") => {
-    const comentario = status === "rejeitada" ? (window.prompt("Motivo (opcional):") ?? "") : "";
+    let comentario = "";
+    if (status === "rejeitada") {
+      const m = await pedirTexto({ titulo: tr("avisos.motivoRejeicao", "Motivo da rejeição (opcional)"), botao: tr("avisos.rejeitar", "Rejeitar"), opcional: true });
+      if (m === null) return;   // cancelou: não rejeita
+      comentario = m;
+    }
     const r = await fetch(`/api/map/validacao/${vId}`, { method: "POST", headers: H, body: JSON.stringify({ status, comentario }) });
     const d = await r.json().catch(() => ({}));
     setMsg(r.ok ? (status === "aprovada" ? `Validado${d.credentialId ? " · atestado a caminho" : ""}.` : "Rejeitado — o aluno volta a estudar o nó.") : d?.error || "Não deu.");
@@ -137,7 +143,7 @@ export default function AuraCard({ visitante }: { visitante?: AuraVisitante } = 
             <circle cx="50" cy="50" r={R} fill="none" strokeWidth="7" strokeLinecap="round" className="stroke-cyan-500 dark:stroke-cyan-300" strokeDasharray={circ} strokeDashoffset={circ * (1 - pct / 100)} />
           </svg>
           <div className="absolute inset-0 grid place-items-center text-center">
-            <div><div className={`text-[9px] font-black uppercase tracking-widest ${mudo}`}>nível</div><div className={`text-2xl font-black leading-none ${txt}`}>{nivel.level}</div></div>
+            <div><div className={`text-[11px] font-black uppercase tracking-widest ${mudo}`}>nível</div><div className={`text-2xl font-black leading-none ${txt}`}>{nivel.level}</div></div>
           </div>
         </div>
         <div className="min-w-0">
@@ -165,7 +171,7 @@ export default function AuraCard({ visitante }: { visitante?: AuraVisitante } = 
               return (
                 <li key={c.id} className="flex items-center justify-between gap-2">
                   <span className={`text-[13px] font-semibold truncate ${txt}`}>{ROTULO_NIVEL[c.nivel as NivelAcademico] ?? c.nivel}{c.area ? ` em ${c.area}` : ""}{c.instituicao ? ` — ${c.instituicao}` : ""}</span>
-                  <span className={`shrink-0 px-2 py-0.5 rounded-full border text-[10px] font-bold ${selo.c}`}>{selo.t}</span>
+                  <span className={`shrink-0 px-2 py-0.5 rounded-full border text-[11px] font-bold ${selo.c}`}>{selo.t}</span>
                 </li>
               );
             })}
@@ -193,7 +199,7 @@ export default function AuraCard({ visitante }: { visitante?: AuraVisitante } = 
         <div className={`${card} p-5`}>
           <div className="flex items-center justify-between mb-3">
             <div className={label}>Parede de atestados</div>
-            <span className={`inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest ${mudo}`}><SolanaMark size={9} title="" /> verificável na Solana</span>
+            <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest ${mudo}`}><SolanaMark size={9} title="" /> verificável na Solana</span>
           </div>
           {d.parede.length === 0 && <p className={`text-[12px] ${mudo}`}>{somenteLeitura ? "Nenhuma credencial verificada ainda." : "Nenhuma credencial verificada ainda. Seus atestados on-chain aparecem aqui conforme você valida habilidades e títulos."}</p>}
           {d.parede.length > 0 && (
@@ -213,7 +219,7 @@ export default function AuraCard({ visitante }: { visitante?: AuraVisitante } = 
             {d.parede.slice(1).map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-2">
                 <span className={`text-[13px] font-semibold truncate ${txt}`}>{p.title}</span>
-                {p.assetId ? <a href={p.explorerUrl ?? explorer(p.assetId, p.network)} target="_blank" rel="noreferrer" className="shrink-0 text-[11px] font-bold text-cyan-700 dark:text-cyan-300 hover:underline">ver on-chain ↗</a> : <span className={`text-[10px] ${mudo}`}>{p.type}</span>}
+                {p.assetId ? <a href={p.explorerUrl ?? explorer(p.assetId, p.network)} target="_blank" rel="noreferrer" className="shrink-0 text-[11px] font-bold text-cyan-700 dark:text-cyan-300 hover:underline">ver on-chain ↗</a> : <span className={`text-[11px] ${mudo}`}>{p.type}</span>}
               </li>
             ))}
           </ul>
@@ -243,7 +249,7 @@ export default function AuraCard({ visitante }: { visitante?: AuraVisitante } = 
                 <div className="flex items-center gap-2">
                   <span className={`text-[13px] font-semibold truncate ${txt}`}>🧠 {c.titulo}</span>
                   <span className={`text-[11px] ${mudo}`}>· {c.tipoTopico} · {c.passos} passos</span>
-                  {c.completo && <span className="ml-auto px-2 py-0.5 rounded-full border border-emerald-400/60 text-[10px] font-bold text-emerald-700 dark:text-emerald-200">completo</span>}
+                  {c.completo && <span className="ml-auto px-2 py-0.5 rounded-full border border-emerald-400/60 text-[11px] font-bold text-emerald-700 dark:text-emerald-200">completo</span>}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="h-1.5 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden" title={`aprendizado ${Math.round(c.aprendizado * 100)}%`}><div className="h-full bg-cyan-500 dark:bg-cyan-300" style={{ width: `${Math.round(c.aprendizado * 100)}%` }} /></div>
@@ -293,8 +299,8 @@ export default function AuraCard({ visitante }: { visitante?: AuraVisitante } = 
               <li key={f.id} className="flex flex-wrap items-center gap-2">
                 <span className={`text-[13px] font-semibold ${txt}`}>{f.aluno.nome || f.aluno.email || f.aluno.id}</span>
                 <span className={`text-[12px] ${txt2}`}>· {ROTULO_NIVEL[f.nivel as NivelAcademico] ?? f.nivel}{f.area ? ` em ${f.area}` : ""}{f.instituicao ? ` — ${f.instituicao}` : ""}</span>
-                {f.docDuplicado && <span className="px-2 py-0.5 rounded-full border border-rose-400/60 text-[10px] font-bold text-rose-700 dark:text-rose-200">⚠ documento repetido em outra conta</span>}
-                {!f.temDoc && <span className={`px-2 py-0.5 rounded-full border text-[10px] font-bold ${SELO.nenhum.c}`}>sem documento</span>}
+                {f.docDuplicado && <span className="px-2 py-0.5 rounded-full border border-rose-400/60 text-[11px] font-bold text-rose-700 dark:text-rose-200">⚠ documento repetido em outra conta</span>}
+                {!f.temDoc && <span className={`px-2 py-0.5 rounded-full border text-[11px] font-bold ${SELO.nenhum.c}`}>sem documento</span>}
                 <span className="ml-auto flex gap-1.5">
                   {f.temDoc && <button type="button" onClick={() => void verDoc(f.id)} disabled={abrindo === f.id} className={`min-h-[36px] px-3 rounded-xl text-[11px] font-bold border border-slate-200 dark:border-white/15 ${txt2}`}>ver documento</button>}
                   <button type="button" onClick={() => void verificar(f.id, "verificado")} disabled={!f.temDoc} className="min-h-[36px] px-3 rounded-xl text-[11px] font-black bg-emerald-500 text-slate-950 disabled:opacity-40">verificar</button>
@@ -310,5 +316,5 @@ export default function AuraCard({ visitante }: { visitante?: AuraVisitante } = 
 }
 
 function Contador({ n, t }: { n: number; t: string }) {
-  return <div><div className="text-2xl font-black tabular-nums text-slate-900 dark:text-white">{n}</div><div className="text-[9.5px] font-bold uppercase tracking-wider text-slate-500 dark:text-white/45 max-w-[90px] leading-tight mx-auto">{t}</div></div>;
+  return <div><div className="text-2xl font-black tabular-nums text-slate-900 dark:text-white">{n}</div><div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-white/45 max-w-[90px] leading-tight mx-auto">{t}</div></div>;
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { pedirTexto, tr } from "@/lib/ui/avisos";
 import DesafiosDaNave from "./DesafiosDaNave";
 import TelaCarregando from "./TelaCarregando";
 import TabletLab from "./TabletLab";
@@ -420,7 +421,7 @@ export default function CenaCyber(p: CenaCyberProps) {
   const convidar = async () => {
     if (!p.tokenConvite) return;
     const url = `${location.origin}/lounge-cosmico?${p.submersa ? "" : "mundo=1&"}sala=${p.tokenConvite}`;
-    try { await navigator.clipboard.writeText(url); } catch { window.prompt("Copie o link de convite:", url); }
+    try { await navigator.clipboard.writeText(url); } catch { await pedirTexto({ titulo: tr("avisos.copieConvite", "Copie o link de convite"), valor: url, botao: tr("avisos.ok", "OK") }); }
     setCopiado(true); setTimeout(() => setCopiado(false), 2200);
   };
 
