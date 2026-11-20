@@ -1143,5 +1143,10 @@
     "destaque": "Destacado",
     "relatorio": "Informe",
     "noticia": "Noticia"
+  },
+  "agenda": {
+    "tentarDeNovo": "Intentar de nuevo",
+    "naoSalvou": "No se pudo guardar el horario.",
+    "naoApagou": "No se pudo eliminar el horario."
   }
 }

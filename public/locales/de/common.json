@@ -1143,5 +1143,10 @@
     "destaque": "Highlight",
     "relatorio": "Bericht",
     "noticia": "Nachricht"
+  },
+  "agenda": {
+    "tentarDeNovo": "Erneut versuchen",
+    "naoSalvou": "Der Zeitraum konnte nicht gespeichert werden.",
+    "naoApagou": "Der Zeitraum konnte nicht gelöscht werden."
   }
 }

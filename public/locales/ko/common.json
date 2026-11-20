@@ -1143,5 +1143,10 @@
     "destaque": "주요 소식",
     "relatorio": "보고서",
     "noticia": "뉴스"
+  },
+  "agenda": {
+    "tentarDeNovo": "다시 시도",
+    "naoSalvou": "시간을 저장하지 못했어요.",
+    "naoApagou": "시간을 삭제하지 못했어요."
   }
 }

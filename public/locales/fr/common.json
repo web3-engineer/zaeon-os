@@ -1143,5 +1143,10 @@
     "destaque": "À la une",
     "relatorio": "Rapport",
     "noticia": "Actualité"
+  },
+  "agenda": {
+    "tentarDeNovo": "Réessayer",
+    "naoSalvou": "Impossible d'enregistrer le créneau.",
+    "naoApagou": "Impossible de supprimer le créneau."
   }
 }

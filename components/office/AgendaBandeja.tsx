@@ -14,21 +14,38 @@
  * - o que já passou NESTA semana fica apagado e avisa que vale a partir da próxima (nada é bloqueado: é uma rotina);
  * - hoje e agora destacados; cores sem repetir; tocar num quadrado ocupado mostra quem está nele;
  * - no celular, um dia por vez (com setas) e quadrados de 44 px.
+ *
+ * #861 (PR 1 — o bloco):
+ * - cada horário é UMA barra, do começo ao fim (desenhada por cima dos quadrados, que continuam sendo o lugar de
+ *   tocar e arrastar); quem se cruza fica lado a lado (lib/canal/agenda `blocosDoDia`);
+ * - a foto (a do perfil da pessoa) entra conforme o tamanho do bloco (`modoDoBloco`): cartão, linha, estreito, mini, curto;
+ * - linhas mais altas (56 px por hora no computador, 64 no celular);
+ * - dias que já passaram com fundo sólido (antes ficavam meio transparentes);
+ * - marcar/apagar sem travar e sem ampulheta: a mudança aparece na hora (brilho + spinner só no bloco); se der
+ *   erro, volta como estava e o aviso oferece "Tentar de novo".
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AgentAvatar from "@/components/agents/AgentAvatar";
 import {
-  DIAS_ORDEM, DIA_CURTO, DIA_LONGO, HORAS, OPCOES_MIN, coresDoCanal, faixas, jaPassou, minutosDo, naCelula, posNaSemana,
-  proximaVez, proximoClique, textoData, textoHora,
-  type Ancora, type Bloco, type Dia, type Faixa,
+  ALTURA_HORA, DIAS_ORDEM, DIA_CURTO, DIA_LONGO, HORAS, MIN_INICIO, OPCOES_MIN, blocosDoDia, coresDoCanal, faixas, jaPassou,
+  minutosDo, modoDoBloco, naCelula, posNaSemana, proximaVez, proximoClique, textoData, textoHora,
+  type Ancora, type Bloco, type BlocoNoDia, type Dia, type Faixa,
 } from "@/lib/canal/agenda";
 import { useIsMobile, QUERY_CELULAR } from "@/lib/ui/useIsMobile";
+import { tr } from "@/lib/ui/avisos";
 import { VIDRO_POPOVER_SOLIDO, VIDRO_CHIP, TXT, TXT_2, TXT_MUDO, TOQUE } from "@/lib/canal/vidro";
 
 type Pessoa = { id: string; nome: string; avatar: string | null };
 type BlocoComId = Bloco & { id: string };
 type Salvar = { dia: Dia; inicio?: number; fim?: number; de?: number; ate?: number; substitui?: string[] };
 type Arrasto = { dia: Dia; de: number; ate: number; ativo: boolean };
+type Aviso = { texto: string; desfazer?: Salvar; erro?: boolean; tentar?: () => void };
+/** #861: o id da barra que está sendo salva (ainda não tem id do servidor). */
+export const ID_PENDENTE = "pendente";
+
+/** #861: os minutos que um pedido de salvar vai ocupar (os quadrados antigos valem a hora cheia). */
+const minutosDoPedido = (b: Salvar) =>
+  b.de !== undefined && b.ate !== undefined ? { de: b.de, ate: b.ate } : { de: (b.inicio ?? 0) * 60, ate: ((b.fim ?? 0) + 1) * 60 };
 
 /** Quanto tempo segurar o dedo pra começar a arrastar (antes disso, o dedo rola a agenda). */
 const SEGURAR_MS = 320;
@@ -60,7 +77,12 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
   const [agora, setAgora] = useState(() => new Date());
   const [diaCel, setDiaCel] = useState<Dia>(() => new Date().getDay() as Dia);
   const [editando, setEditando] = useState<Faixa | null>(null);
-  const [aviso, setAviso] = useState<{ texto: string; desfazer?: Salvar } | null>(null);
+  const [aviso, setAviso] = useState<Aviso | null>(null);
+  // #861: o que já aparece na tela antes do servidor responder (interface otimista)
+  const [pendente, setPendente] = useState<Faixa | null>(null);
+  const [escondidos, setEscondidos] = useState<ReadonlySet<string>>(new Set());
+  // os quadrados só ficam desligados na PRIMEIRA carga do canal (depois, recarregar não trava nada)
+  const [carregouUmaVez, setCarregouUmaVez] = useState(false);
   const [arrasto, setArrastoEstado] = useState<Arrasto | null>(null);
   // #858: o arrasto também mora numa ref — o soltar lê dela e salva FORA do updater do setState
   // (o Strict Mode repete updaters, e salvar lá dentro mandava o POST duas vezes)
@@ -97,6 +119,7 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
       setGente(new Map((j.pessoas ?? []).map((p: Pessoa) => [p.id, p])));
       setEu(j.eu ?? null);
       setErro(null);
+      setCarregouUmaVez(true);
     } catch (e) {
       if ((e as Error)?.name === "AbortError" || minha !== cargaAtual.current) return;
       setErro(String((e as Error)?.message ?? e));
@@ -112,6 +135,9 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
     setGente(new Map());
     setErro(null);
     setEditando(null);
+    setPendente(null);
+    setEscondidos(new Set());
+    setCarregouUmaVez(false);
     // #858: o "Desfazer" do canal anterior recriaria o horário NESTE canal
     if (avisoTimer.current) clearTimeout(avisoTimer.current);
     setAviso(null);
@@ -183,56 +209,85 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
     setAviso({ texto, desfazer });
     avisoTimer.current = setTimeout(() => setAviso(null), desfazer ? 6000 : 4500);
   }, []);
+  /** #861: deu erro — a mudança já voltou na tela; o aviso fica mais tempo e oferece tentar de novo. */
+  const avisarErro = useCallback((texto: string, tentar: () => void) => {
+    if (avisoTimer.current) clearTimeout(avisoTimer.current);
+    setAviso({ texto, erro: true, tentar });
+    avisoTimer.current = setTimeout(() => setAviso(null), 8000);
+  }, []);
   useEffect(() => () => { if (avisoTimer.current) clearTimeout(avisoTimer.current); }, []);
 
   /** "toda segunda, 7h–10h · a próxima é seg, 24/11" */
   const quando = useCallback((dia: Dia, de: number, ate: number) =>
     `toda ${DIA_LONGO[dia]}, ${textoHora(de)}–${textoHora(ate)} · a próxima é ${textoData(proximaVez(dia, de, new Date()))}`, []);
 
-  const salvar = useCallback(async (b: Salvar, texto = "Marcado") => {
+  const TENTAR = tr("agenda.tentarDeNovo", "Tentar de novo");
+
+  // #861: a barra aparece na hora (pendente) e os pedaços que ela substitui somem; o servidor confirma depois.
+  const salvar = useCallback(async (b: Salvar, texto = "Marcado"): Promise<void> => {
+    const m = minutosDoPedido(b);
     setSalvando(true);
+    if (eu) setPendente({ userId: eu, dia: b.dia, de: m.de, ate: m.ate, ids: [ID_PENDENTE] });
+    if (b.substitui?.length) setEscondidos(new Set(b.substitui));
+    const desfazerNaTela = () => { setPendente(null); setEscondidos(new Set()); };
     try {
       const r = await comPrazo(`/api/canal/${canalId}/agenda`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) });
       const j = await r.json().catch(() => ({}));
       if (canalId !== canalNaTela.current) return;   // já estou em outro canal: nada daqui vale pra ele
       if (!r.ok) {
-        setErro(j?.error || `Não deu pra salvar (${r.status})`);
-        if (r.status === 409) { setEditando(null); await carregar(); }   // #858: a janelinha estava velha
+        desfazerNaTela();
+        if (r.status === 409) {   // #858: a janelinha estava velha
+          setErro(j?.error || `Não deu pra salvar (${r.status})`);
+          setEditando(null); await carregar();
+          return;
+        }
+        avisarErro(j?.error || tr("agenda.naoSalvou", "Não deu pra salvar o horário."), () => void salvar(b, texto));
         return;
       }
       setErro(null);
-      const m = j?.bloco ? minutosDo(j.bloco) : minutosDo({ inicio: b.inicio ?? 0, fim: b.fim ?? 0, de: b.de, ate: b.ate });
-      avisar(`${texto}: ${quando((j?.bloco?.dia ?? b.dia) as Dia, m.de, m.ate)}`);
+      const mm = j?.bloco ? minutosDo(j.bloco) : m;
+      avisar(`${texto}: ${quando((j?.bloco?.dia ?? b.dia) as Dia, mm.de, mm.ate)}`);
       await carregar();
+      desfazerNaTela();
     } catch (e) {
       if (canalId !== canalNaTela.current) return;
-      setErro((e as Error)?.name === "AbortError" ? MSG_PRAZO : `Não deu pra salvar: ${String((e as Error)?.message ?? e)}`);
+      desfazerNaTela();
+      avisarErro((e as Error)?.name === "AbortError" ? MSG_PRAZO : tr("agenda.naoSalvou", "Não deu pra salvar o horário."), () => void salvar(b, texto));
     } finally {
       setSalvando(false);
     }
-  }, [canalId, carregar, avisar, quando]);
+  }, [canalId, carregar, avisar, avisarErro, quando, eu]);
 
-  /** #850: apaga a faixa inteira (todos os pedaços), sem perguntar — o aviso traz o "Desfazer". */
-  const apagar = useCallback(async (f: Faixa) => {
+  /** #850: apaga a faixa inteira (todos os pedaços), sem perguntar — o aviso traz o "Desfazer". #861: some na hora. */
+  const apagar = useCallback(async (f: Faixa): Promise<void> => {
     setEditando(null);
     setSalvando(true);
+    setEscondidos(new Set(f.ids));
     try {
       const q = f.ids.map((id) => `bloco=${encodeURIComponent(id)}`).join("&");
       const r = await comPrazo(`/api/canal/${canalId}/agenda?${q}`, { method: "DELETE" });
       const j = await r.json().catch(() => ({}));
       if (canalId !== canalNaTela.current) return;
-      if (!r.ok) { setErro(j?.error || `Não deu pra apagar (${r.status})`); return; }
+      if (!r.ok) {
+        setEscondidos(new Set());
+        avisarErro(j?.error || tr("agenda.naoApagou", "Não deu pra apagar o horário."), () => void apagar(f));
+        return;
+      }
       avisar("Horário apagado", { dia: f.dia, de: f.de, ate: f.ate });
       await carregar();
+      setEscondidos(new Set());
     } catch (e) {
       if (canalId !== canalNaTela.current) return;
-      setErro((e as Error)?.name === "AbortError" ? MSG_PRAZO : `Não deu pra apagar: ${String((e as Error)?.message ?? e)}`);
+      setEscondidos(new Set());
+      avisarErro((e as Error)?.name === "AbortError" ? MSG_PRAZO : tr("agenda.naoApagou", "Não deu pra apagar o horário."), () => void apagar(f));
     } finally {
       setSalvando(false);
     }
-  }, [canalId, carregar, avisar]);
+  }, [canalId, carregar, avisar, avisarErro]);
 
-  const fs = useMemo(() => faixas(blocos), [blocos]);
+  const fs = useMemo(() => faixas(blocos.filter((b) => !escondidos.has(b.id))), [blocos, escondidos]);
+  /** o que se desenha: o que veio do servidor + a barra que está sendo salva. */
+  const fsNaTela = useMemo(() => (pendente ? [...fs, pendente] : fs), [fs, pendente]);
   // #858: apagaram (noutra aba) o horário que a janelinha está editando → a janelinha fecha
   useEffect(() => {
     if (editando && !editando.ids.every((id) => blocos.some((b) => b.id === id))) setEditando(null);
@@ -273,7 +328,7 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
     return { dia: Number(el.dataset.dia) as Dia, hora: Number(el.dataset.hora) };
   };
   const comecarPressao = (e: React.PointerEvent, dia: Dia, hora: number) => {
-    if (salvando || carregando || (e.pointerType === "mouse" && e.button !== 0)) return;
+    if (salvando || !carregouUmaVez || (e.pointerType === "mouse" && e.button !== 0)) return;
     const p = { dia, hora, tipo: e.pointerType, timer: null as ReturnType<typeof setTimeout> | null };
     if (e.pointerType !== "mouse") p.timer = setTimeout(() => setArrasto({ dia, de: hora, ate: hora, ativo: true }), SEGURAR_MS);
     pressao.current = p;
@@ -324,7 +379,9 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
   const hoje = agora.getDay() as Dia;
   const minAgora = agora.getHours() * 60 + agora.getMinutes();
   const dias = celular ? [diaCel] : DIAS_ORDEM;
-  const alturaLinha = celular ? "h-11" : "h-8";
+  const ALT = celular ? ALTURA_HORA.celular : ALTURA_HORA.computador;
+  const alturaGrade = HORAS.length * ALT;
+  const colunasGrade = { gridTemplateColumns: `40px repeat(${dias.length}, minmax(0,1fr))` };
   const passarDia = (passo: number) => setDiaCel((d) => DIAS_ORDEM[(posNaSemana(d) + passo + 7) % 7]!);
 
   return (
@@ -359,67 +416,68 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
       )}
 
       <div ref={gradeRef} className="flex-1 min-h-0 overflow-auto custom-scrollbar px-2 sm:px-4 py-3 [box-shadow:inset_0_-14px_12px_-12px_rgba(15,23,42,0.18)]">
-        <div className={`grid ${celular ? "" : "min-w-[560px]"}`} style={{ gridTemplateColumns: `44px repeat(${dias.length}, minmax(0,1fr))` }}>
-          {/* #858: no celular não tem linha de cabeçalho — o dia já aparece no ‹ › (e "sr-only" tirava a célula da grade, desalinhando as colunas) */}
-          {!celular && <div />}
-          {!celular && dias.map((d) => (
-            <div key={`h-${d}`} className={`pb-1 text-center text-[12px] font-bold rounded-t-md
-              ${d === hoje ? "bg-blue-500/10 text-blue-700 dark:bg-cyan-400/10 dark:text-cyan-300" : ancora?.dia === d ? "text-blue-600 dark:text-cyan-300" : TXT_2}`}>
-              {DIA_CURTO[d]}{d === hoje ? " · hoje" : ""}
-            </div>
-          ))}
-          {HORAS.map((h) => (
-            <Linha key={h} hora={h} altura={alturaLinha}>
-              {dias.map((d) => {
+        {/* #858: no celular não tem linha de cabeçalho — o dia já aparece no ‹ › */}
+        {!celular && (
+          <div className="sticky top-0 z-[3] -mt-3 grid gap-x-1 min-w-[560px] pt-3 pb-1.5 bg-white dark:bg-[#0b1020]" style={colunasGrade}>
+            <div />
+            {dias.map((d) => (
+              <div key={`h-${d}`} className={`py-1 text-center text-[12px] font-bold rounded-lg
+                ${d === hoje ? "bg-blue-500/10 text-blue-700 dark:bg-cyan-400/10 dark:text-cyan-300" : ancora?.dia === d ? "text-blue-600 dark:text-cyan-300" : TXT_2}`}>
+                {DIA_CURTO[d]}{d === hoje ? " · hoje" : ""}
+              </div>
+            ))}
+          </div>
+        )}
+        <div className={`grid gap-x-1 ${celular ? "" : "min-w-[560px]"}`} style={colunasGrade}>
+          {/* as horas: cada rótulo na linha de cima da sua hora */}
+          <div className="relative" style={{ height: alturaGrade }}>
+            {HORAS.map((h, i) => (
+              // scroll-mt: ao rolar até a hora, ela fica logo abaixo do cabeçalho fixo dos dias (e não escondida atrás dele)
+              <div key={h} data-hora-rotulo={h} className={`absolute right-1.5 scroll-mt-12 text-[11px] tabular-nums ${TXT_MUDO}`} style={{ top: i * ALT + 3 }}>{h}h</div>
+            ))}
+          </div>
+          {dias.map((d) => (
+            <div key={d} data-coluna-dia={d} className="relative" style={{ height: alturaGrade }}>
+              {/* os quadrados: o lugar de tocar, arrastar e ler (leitor de tela) quem está em cada hora */}
+              {HORAS.map((h, i) => {
                 const occ = naCelula(fs, d, h);
                 const ehAncora = ancora?.dia === d && ancora.hora === h;
                 const passou = jaPassou(d, h, agora);
-                const ehAgora = d === hoje && h === agora.getHours();
                 const rotulo = occ.length ? `${DIA_CURTO[d]} ${h}h: ${occ.map((o) => nomeDe(o.faixa.userId)).join(", ")}` : `${DIA_CURTO[d]} ${h}h: livre`;
-                const comFoto = occ.filter((o) => o.inicial);
                 return (
-                  <button key={`${d}-${h}`} type="button" data-dia={d} data-hora={h}
+                  <button key={`${d}-${h}`} type="button" data-dia={d} data-hora={h} data-passou={passou || undefined}
                     onPointerDown={(e) => comecarPressao(e, d, h)}
                     onClick={() => { if (!ignorarClique.current) clicar(d, h); }}
                     onContextMenu={(e) => { if (arrasto?.ativo || pressao.current) e.preventDefault(); }}
-                    disabled={salvando || carregando}
+                    disabled={!carregouUmaVez}
                     title={passou ? `${rotulo} · já passou nesta semana` : rotulo} aria-label={rotulo}
-                    className={`relative ${alturaLinha} m-[1px] rounded-md overflow-hidden flex border transition-colors disabled:cursor-wait select-none [-webkit-touch-callout:none]
-                      ${ehAncora || naSelecao(d, h) ? "border-blue-500 ring-2 ring-blue-400/70 dark:border-cyan-300 dark:ring-cyan-300/60" : "border-slate-300/50 dark:border-white/[0.1] hover:border-blue-400/60"}
-                      ${d === hoje ? "bg-blue-500/[0.06] dark:bg-cyan-400/[0.05]" : "bg-white/40 dark:bg-white/[0.02]"}
-                      ${passou ? "opacity-45" : ""}`}>
-                    {occ.map((o) => (
-                      <span key={`${o.faixa.userId}-${o.faixa.de}`} className="relative flex-1 h-full">
-                        <span className="absolute inset-x-0" style={{
-                          top: `${o.topo}%`, height: `${o.altura}%`,
-                          background: `${corDe(o.faixa.userId)}${o.faixa.userId === eu ? "7a" : "5c"}`,
-                          borderLeft: `3px solid ${corDe(o.faixa.userId)}`,
-                        }} />
-                      </span>
-                    ))}
-                    {/* fotos do começo das faixas: no máximo 2; com mais gente, "+N" */}
-                    {comFoto.length > 0 && (
-                      <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                        {comFoto.slice(0, 2).map((o, i) => (
-                          <span key={o.faixa.userId} className={`rounded-full ${i ? "-ml-2" : ""}`} style={{ boxShadow: `0 0 0 2px ${corDe(o.faixa.userId)}` }}>
-                            <AgentAvatar src={gente.get(o.faixa.userId)?.avatar ?? null} nome={nomeDe(o.faixa.userId)} size={celular ? 28 : 24} />
-                          </span>
-                        ))}
-                        {comFoto.length > 2 && <span className="ml-1 rounded-full bg-slate-900/75 px-1.5 text-[11px] font-bold text-white">+{comFoto.length - 2}</span>}
-                      </span>
-                    )}
-                    {/* a linha de AGORA */}
-                    {ehAgora && <span aria-hidden className="pointer-events-none absolute inset-x-0 h-[2px] bg-rose-500" style={{ top: `${((minAgora % 60) / 60) * 100}%` }} />}
-                  </button>
+                    style={{ top: i * ALT, height: ALT }}
+                    className={`absolute inset-x-0 border-b border-x transition-colors select-none [-webkit-touch-callout:none] ${i === 0 ? "rounded-t-xl border-t" : ""} ${i === HORAS.length - 1 ? "rounded-b-xl" : ""}
+                      ${ehAncora || naSelecao(d, h) ? "z-[1] border-blue-500 ring-2 ring-inset ring-blue-400/70 dark:border-cyan-300 dark:ring-cyan-300/60" : "border-slate-200 dark:border-white/[0.07] hover:bg-blue-500/[0.06] dark:hover:bg-cyan-300/[0.05]"}
+                      ${passou ? "bg-slate-100 dark:bg-[#0d1322]" : d === hoje ? "bg-blue-50 dark:bg-[#0f1a2e]" : "bg-white dark:bg-[#111827]"}`} />
                 );
               })}
-            </Linha>
+              {/* as barras: cada horário de uma vez, do começo ao fim (não recebem o toque — ele vai pro quadrado de baixo) */}
+              <div aria-hidden className="pointer-events-none absolute inset-0">
+                {blocosDoDia(fsNaTela, d, ALT).map((b) => (
+                  <BarraDoHorario key={`${b.faixa.userId}-${b.faixa.de}-${b.faixa.ids[0]}`} b={b} cor={corDe(b.faixa.userId)} minha={b.faixa.userId === eu}
+                    nome={nomeDe(b.faixa.userId)} foto={gente.get(b.faixa.userId)?.avatar ?? null} pendente={b.faixa.ids[0] === ID_PENDENTE} />
+                ))}
+                {/* a linha de AGORA (como no Google Agenda): desce sozinha, de minuto em minuto */}
+                {d === hoje && minAgora >= MIN_INICIO && minAgora <= MIN_INICIO + HORAS.length * 60 && (
+                  <div data-agora className="absolute inset-x-0 z-[2]" style={{ top: ((minAgora - MIN_INICIO) / 60) * ALT }}>
+                    <span className="absolute -left-1 -top-[4px] h-[10px] w-[10px] rounded-full bg-rose-500" />
+                    <span className="block h-[2px] bg-rose-500" />
+                  </div>
+                )}
+              </div>
+            </div>
           ))}
         </div>
       </div>
 
       {pessoasNaAgenda.length > 0 && (
-        <div className="flex flex-wrap gap-2 px-4 py-2.5 border-t border-white/50 dark:border-white/[0.08]">
+        <div data-legenda className="flex flex-wrap gap-2 px-4 py-2.5 border-t border-white/50 dark:border-white/[0.08]">
           {pessoasNaAgenda.map((p) => (
             <span key={p.id} className={`inline-flex items-center gap-1.5 text-[12px] ${TXT_2}`}>
               <span className="w-3 h-3 rounded-full" style={{ background: corDe(p.id) }} aria-hidden />
@@ -431,11 +489,17 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
 
       {/* aviso de baixo: o que foi marcado (e quando começa), quem está no quadrado, o "já passou", o Desfazer */}
       {aviso && (
-        <div role="status" className="absolute inset-x-3 bottom-3 z-20 flex items-center gap-2 rounded-2xl bg-slate-900/95 px-3 py-2 text-[12.5px] text-white shadow-xl">
-          <span className="min-w-0 flex-1">{aviso.texto}</span>
+        <div role={aviso.erro ? "alert" : "status"} data-aviso-agenda={aviso.erro ? "erro" : "ok"}
+          className={`absolute inset-x-3 bottom-3 z-20 flex items-center gap-2 rounded-2xl bg-slate-900/95 px-3 py-2 text-[13px] text-white shadow-xl border ${aviso.erro ? "border-rose-400/60" : "border-white/10"}`}>
+          <span aria-hidden className={aviso.erro ? "text-rose-300" : "text-cyan-300"}>{aviso.erro ? "⚠️" : "✓"}</span>
+          <span className={`min-w-0 flex-1 ${aviso.erro ? "text-rose-100" : ""}`}>{aviso.texto}</span>
           {aviso.desfazer && (
             <button type="button" onClick={() => { const d = aviso.desfazer!; setAviso(null); void salvar(d, "Voltou"); }}
-              className="shrink-0 min-h-[40px] rounded-xl px-3 font-bold text-cyan-300 hover:bg-white/10">Desfazer</button>
+              className="shrink-0 min-h-[44px] rounded-xl px-3 font-bold text-cyan-300 hover:bg-white/10">Desfazer</button>
+          )}
+          {aviso.tentar && (
+            <button type="button" onClick={() => { const f = aviso.tentar!; setAviso(null); f(); }}
+              className="shrink-0 min-h-[44px] rounded-xl px-3 font-bold text-cyan-300 hover:bg-white/10">{TENTAR}</button>
           )}
         </div>
       )}
@@ -490,12 +554,74 @@ function JanelaHorario({ faixa, salvando, onFechar, onApagar, onSalvar }: {
 /** 450 → "07:30" (o formato do relógio, no seletor) */
 const fmt = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 
-/** Uma linha da grade: a hora à esquerda e os quadrados dos dias. */
-function Linha({ hora, altura, children }: { hora: number; altura: string; children: React.ReactNode }) {
+/** "Don Martinez" → "Don"; "andressa.silva" → "andressa" (no cartão cabe só o primeiro nome; o completo fica no title). */
+const primeiroNome = (nome: string) => nome.trim().split(/[\s._]+/)[0] || nome;
+
+/** #861: a foto do perfil, redonda (sem oval nem corte), com um anel na cor da pessoa. */
+function Foto({ src, nome, cor, size }: { src: string | null; nome: string; cor: string; size: number }) {
   return (
-    <>
-      <div data-hora-rotulo={hora} className={`${altura} m-[1px] pr-1.5 flex items-center justify-end text-[11px] tabular-nums ${TXT_MUDO}`}>{hora}h</div>
-      {children}
-    </>
+    // self-start + w-fit: dentro de uma coluna flex, o anel esticava na largura toda e virava uma pílula
+    <span className="inline-flex w-fit shrink-0 self-start rounded-full" style={{ boxShadow: `0 0 0 2px ${cor}` }}>
+      <AgentAvatar src={src} nome={nome} size={size} />
+    </span>
+  );
+}
+
+/**
+ * #861: um horário inteiro, como UMA barra (do começo ao fim), com a foto conforme o tamanho (`modoDoBloco`).
+ * Fundo suave na cor da pessoa e uma linha forte na esquerda (como o Apple Calendar). Enquanto salva: brilho e
+ * spinner só nela — o resto da agenda continua livre.
+ */
+function BarraDoHorario({ b, cor, minha, nome, foto, pendente }: {
+  b: BlocoNoDia; cor: string; minha: boolean; nome: string; foto: string | null; pendente: boolean;
+}) {
+  const modo = modoDoBloco(b.altura, b.colunas);
+  const horario = `${textoHora(b.faixa.de)}–${textoHora(b.faixa.ate)}`;
+  const largura = 100 / b.colunas;
+  return (
+    <div data-barra={modo} data-pendente={pendente || undefined} title={`${nome} · ${horario}`}
+      className={`absolute rounded-[10px] border-l-4 ${modo === "curto" || modo === "mini" ? "overflow-visible" : "overflow-hidden"} ${pendente ? "animate-pulse" : ""}`}
+      style={{
+        top: b.topo + 1, height: Math.max(b.altura - 2, 6),
+        left: `calc(${b.coluna * largura}% + 3px)`, width: `calc(${largura}% - 6px)`,
+        background: `${cor}${minha ? "4d" : "38"}`, borderLeftColor: cor,
+      }}>
+      {modo === "cartao" && (
+        // foto em cima e o nome embaixo, com a largura toda (na semana as colunas têm ~90 px: lado a lado cortava "Giu…")
+        <div className="flex min-w-0 flex-col gap-1 p-1.5 leading-tight">
+          <Foto src={foto} nome={nome} cor={cor} size={26} />
+          <div className={`truncate text-[12px] font-bold ${TXT}`}>{primeiroNome(nome)}</div>
+          <div className={`truncate text-[11px] ${TXT_2}`}>{horario}</div>
+        </div>
+      )}
+      {modo === "linha" && (
+        <div className={`flex gap-1.5 px-1.5 ${b.altura >= 44 ? "items-start pt-1.5" : "h-full items-center"}`}>
+          <Foto src={foto} nome={nome} cor={cor} size={20} />
+          {b.altura >= 44 ? (
+            <div className="min-w-0 leading-tight">
+              <div className={`truncate text-[12px] font-bold ${TXT}`}>{primeiroNome(nome)}</div>
+              <div className={`truncate text-[11px] ${TXT_2}`}>{horario}</div>
+            </div>
+          ) : (
+            <span className={`truncate text-[11px] font-semibold ${TXT}`}>{horario}</span>
+          )}
+        </div>
+      )}
+      {modo === "estreito" && (
+        <div className="flex flex-col items-center gap-0.5 pt-1.5">
+          <Foto src={foto} nome={nome} cor={cor} size={22} />
+          <span className={`text-[11px] font-semibold ${TXT}`}>{textoHora(b.faixa.de)}</span>
+        </div>
+      )}
+      {modo === "mini" && (
+        <div className="grid h-full place-items-center"><Foto src={foto} nome={nome} cor={cor} size={20} /></div>
+      )}
+      {modo === "curto" && (
+        <span className="absolute -left-3 top-1/2 -translate-y-1/2"><Foto src={foto} nome={nome} cor={cor} size={20} /></span>
+      )}
+      {pendente && (
+        <span aria-hidden className="absolute right-1.5 top-1.5 h-3 w-3 animate-spin rounded-full border-2 border-slate-400/40 border-t-slate-700 dark:border-white/30 dark:border-t-white" />
+      )}
+    </div>
   );
 }
