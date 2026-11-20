@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 /**
  * AgendaBandeja (#396) na tela: abre e carrega, dois cliques na mesma coluna salvam o intervalo,
- * clique em outra coluna recomeça, Esc cancela, tocar na PRÓPRIA foto apaga (com confirmação) e a
- * foto de outra pessoa não apaga nada. fetch mockado; regras puras já testadas em lib/canal/agenda.
+ * clique em outra coluna recomeça, Esc cancela, tocar no PRÓPRIO horário abre a janelinha (#850: mudar ou apagar,
+ * com "Desfazer" — sem a janelinha do navegador) e o horário de outra pessoa não apaga nada. fetch mockado; regras
+ * puras já testadas em lib/canal/agenda.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, cleanup, within } from "@testing-library/react";
 import AgendaBandeja from "./AgendaBandeja";
 
 vi.mock("next/dynamic", () => ({ default: () => () => null }));
@@ -95,34 +96,58 @@ describe("AgendaBandeja", () => {
     await waitFor(() => expect(screen.getByText(/Toque no horário inicial/)).toBeTruthy());
   });
 
-  it("tocar na PRÓPRIA foto apaga, depois de confirmar", async () => {
+  it("#850: tocar no PRÓPRIO horário abre a janelinha; Apagar apaga sem a janelinha do navegador e oferece Desfazer", async () => {
     blocos = [{ id: "c".repeat(24), userId: EU, dia: 1, inicio: 8, fim: 10 }];
-    const confirmar = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const confirmar = vi.spyOn(window, "confirm");
     abrir();
-    await pronta("Seg 8h: Giulia");
-    fireEvent.click(celula("Seg 8h: Giulia"));
-    expect(confirmar).toHaveBeenCalledWith(expect.stringContaining("segunda, das 8h às 11h"));
+    await pronta("Seg 9h: Giulia");
+    fireEvent.click(celula("Seg 9h: Giulia"));   // qualquer quadrado do horário, não só o da foto
+    const janela = screen.getByRole("dialog", { name: /Seu horário de segunda/ });
+    fireEvent.click(within(janela).getByRole("button", { name: "Apagar" }));
     await waitFor(() => expect(chamadas.some((c) => c.metodo === "DELETE" && c.url.includes("c".repeat(24)))).toBe(true));
+    expect(confirmar).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Horário apagado"));
+    fireEvent.click(screen.getByRole("button", { name: "Desfazer" }));
+    await waitFor(() => expect(chamadas.filter((c) => c.metodo === "POST").at(-1)!.body).toEqual({ dia: 1, de: 480, ate: 660 }));
   });
 
-  it("cancelar a confirmação não apaga", async () => {
+  it("#850: a janelinha muda o começo pra 7h30 (minutos) e substitui o horário antigo", async () => {
     blocos = [{ id: "c".repeat(24), userId: EU, dia: 1, inicio: 8, fim: 10 }];
-    vi.spyOn(window, "confirm").mockReturnValue(false);
     abrir();
     await pronta("Seg 8h: Giulia");
     fireEvent.click(celula("Seg 8h: Giulia"));
+    const janela = screen.getByRole("dialog", { name: /Seu horário de segunda/ });
+    fireEvent.change(within(janela).getByLabelText("Começa"), { target: { value: "450" } });
+    fireEvent.click(within(janela).getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(chamadas.find((c) => c.metodo === "POST")!.body).toEqual({ dia: 1, de: 450, ate: 660, substitui: ["c".repeat(24)] }));
+  });
+
+  it("#850: Cancelar fecha a janelinha sem apagar", async () => {
+    blocos = [{ id: "c".repeat(24), userId: EU, dia: 1, inicio: 8, fim: 10 }];
+    abrir();
+    await pronta("Seg 8h: Giulia");
+    fireEvent.click(celula("Seg 8h: Giulia"));
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByRole("dialog", { name: /Seu horário/ })).toBeNull();
     expect(chamadas.some((c) => c.metodo === "DELETE")).toBe(false);
   });
 
-  it("tocar na foto de OUTRA pessoa não apaga: começa uma seleção (dá pra dividir o horário)", async () => {
+  it("#850: tocar logo embaixo do seu horário estica até ali", async () => {
+    blocos = [{ id: "c".repeat(24), userId: EU, dia: 3, inicio: 8, fim: 10 }];
+    abrir();
+    await pronta("Qua 11h: livre");
+    fireEvent.click(celula("Qua 11h: livre"));
+    await waitFor(() => expect(chamadas.find((c) => c.metodo === "POST")!.body).toEqual({ dia: 3, de: 480, ate: 720 }));
+  });
+
+  it("tocar no horário de OUTRA pessoa não apaga: mostra quem está e começa uma seleção (dá pra dividir o horário)", async () => {
     blocos = [{ id: "f".repeat(24), userId: OUTRA, dia: 1, inicio: 8, fim: 10 }];
-    const confirmar = vi.spyOn(window, "confirm");
     abrir();
     await pronta("Seg 8h: Martinez");
     fireEvent.click(celula("Seg 8h: Martinez"));
-    expect(confirmar).not.toHaveBeenCalled();
     expect(chamadas.some((c) => c.metodo === "DELETE")).toBe(false);
     expect(screen.getByText(/toque no horário FINAL/i)).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toContain("Martinez (8h–11h)");
   });
 
   it("legenda mostra quem tem horário, com '(você)'", async () => {

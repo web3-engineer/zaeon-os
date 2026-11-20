@@ -9,6 +9,7 @@
  * Vidro Apple, claro === escuro (lib/canal/vidro.ts). Notificações fora da tela
  * (lib/canal/notificacoes.ts + useNotificacoesSO). Alvos ≥44px, input com safe-area.
  */
+import { useCabeNaTela } from "@/lib/ui/useCabeNaTela";
 import ChatMarkdown from "@/components/study/ChatMarkdown";
 import PusherClient from "pusher-js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -74,6 +75,8 @@ export default function CoworkingCanal({ agenteInicial = null }: { agenteInicial
   const [estadoAgente, setEstadoAgente] = useState<Record<string, EstadoAgente>>({});
   // #468: até quando vale o último aviso de cada agente — sem aviso novo no prazo, o "está redigindo…" some sozinho
   const agenteAte = useRef<Record<string, number>>({});
+  // #850: a lista de escritórios abria a partir do seletor com 340 px e passava da borda (o 🗑 e o "+" sumiam)
+  const listaCanaisRef = useRef<HTMLDivElement>(null);
   // #645: quem eu parei com o ■ — o "escrevendo" atrasado dele não volta (até o turno acabar ou eu chamar de novo)
   const parados = useRef<Set<string>>(new Set());
   useEffect(() => {
@@ -668,6 +671,8 @@ export default function CoworkingCanal({ agenteInicial = null }: { agenteInicial
     } catch { /* ignore */ }
   };
 
+  useCabeNaTela(listaCanaisRef, menu === "canais");
+
   // ─── render ───
   if (erro === "off") return <Vazio texto="O escritório coworking ainda não está ligado neste ambiente." />;
   // #645: demorou → avisa que pode ser a conexão e, mais um pouco, "Tentar de novo"
@@ -734,7 +739,7 @@ export default function CoworkingCanal({ agenteInicial = null }: { agenteInicial
               {totalNaoLidas - (naoLidas[ativoId] ?? 0) > 0 && <Badge n={totalNaoLidas - (naoLidas[ativoId] ?? 0)} />}
             </button>
             {menu === "canais" && (
-              <div className={`absolute left-0 top-full mt-1.5 z-30 w-[min(92vw,340px)] p-1.5 rounded-2xl ${VIDRO_POPOVER_SOLIDO}`}>
+              <div ref={listaCanaisRef} className={`absolute left-0 top-full mt-1.5 z-30 w-[min(92vw,340px)] p-1.5 rounded-2xl ${VIDRO_POPOVER_SOLIDO}`}>
                 {/* as três abas dividem o mesmo espaço; cada uma mostra só os canais dela */}
                 <div className="flex gap-1 p-1" role="tablist" aria-label="Tipo de escritório">
                   {ABAS.map((a) => (
@@ -820,6 +825,13 @@ export default function CoworkingCanal({ agenteInicial = null }: { agenteInicial
 
         {/* mensagens */}
         <div ref={listaRef} data-testid="lista-mensagens" className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-3 sm:px-5 py-4 flex flex-col gap-3" onClick={() => setMenu(null)}>
+          {/* #850: escritório novo abria vazio, sem dizer o que fazer */}
+          {det.mensagens.length === 0 && (
+            <div data-dica-vazio className={`m-auto max-w-[300px] rounded-2xl px-4 py-3 text-center text-[13px] leading-relaxed ${VIDRO_CHIP} ${TXT_2}`}>
+              <p className={`font-bold ${TXT}`}>Escritório novo ✨</p>
+              <p className="mt-1">Toque num agente aqui embaixo (ou escreva <b>@nome</b>) e mande a primeira mensagem. Pelo <b>+</b> lá em cima dá pra chamar uma pessoa.</p>
+            </div>
+          )}
           {det.mensagens.map((m) => (m.autorTipo === "sistema"
             ? <LinhaSistema key={m.id} texto={m.texto} hora={hora(m.createdAt)} // #423: "fulano entrou no escritório"
                 // #635: "Téo saiu da conversa" (e ele ainda está fora) → "Chamar de volta", sem precisar digitar o @
@@ -950,7 +962,7 @@ function Bolha({ m, minha, aliases }: { m: MensagemWire; minha: boolean; aliases
             return alvo ? <span key={i} className="font-bold text-blue-700 dark:text-cyan-300">{p}</span> : <span key={i}>{p}</span>;
           })}
         </div>
-        <span className={`px-1 mt-0.5 text-[10px] ${TXT_MUDO}`}>{estaEnviando(m.id) ? "enviando…" : hora(m.createdAt)}</span>
+        <span className={`px-1 mt-0.5 text-[11px] ${TXT_MUDO}`}>{estaEnviando(m.id) ? "enviando…" : hora(m.createdAt)}</span>
       </div>
     </div>
   );

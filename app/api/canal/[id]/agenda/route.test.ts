@@ -6,7 +6,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const A = "a".repeat(24), B = "b".repeat(24), C = "c".repeat(24), CANAL = "d".repeat(24), OUTRO = "e".repeat(24);
-type Linha = { id: string; canalId: string; userId: string; dia: number; inicio: number; fim: number };
+type Linha = { id: string; canalId: string; userId: string; dia: number; inicio: number; fim: number; de?: number | null; ate?: number | null };
 const state: { canal: any; user: any; blocos: Linha[]; publicados: any[]; seq: number } = { canal: null, user: null, blocos: [], publicados: [], seq: 0 };
 const novoId = () => (++state.seq).toString(16).padStart(24, "0");
 
@@ -16,6 +16,7 @@ vi.mock("@/lib/canal/server", () => ({
   exigirFlag: () => null,
   pessoas: async (ids: string[]) => new Map([...new Set(ids)].map((id) => [id, { id, nome: id === A ? "Ana" : "Bia", avatar: null }])),
   prisma: {
+    $transaction: async (ops: Promise<unknown>[]) => Promise.all(ops),
     canal: { findUnique: async ({ where }: any) => (where.id === state.canal?.id ? state.canal : null) },
     agendaBloco: {
       findMany: async ({ where }: any) => state.blocos.filter((b) => b.canalId === where.canalId && (!where.userId || b.userId === where.userId)),
@@ -85,7 +86,7 @@ describe("agenda · marcar horário", () => {
     expect(state.blocos).toHaveLength(0);
   });
 
-  it("redesenhar: o meu bloco antigo que se sobrepõe sai; o da outra pessoa fica", async () => {
+  it("#850: o meu bloco novo JUNTA com o meu antigo que se sobrepõe; o da outra pessoa fica", async () => {
     await POST(post({ dia: 2, inicio: 9, fim: 12 }), ctx);
     state.user = user(B);
     await POST(post({ dia: 2, inicio: 10, fim: 11 }), ctx);
@@ -93,7 +94,54 @@ describe("agenda · marcar horário", () => {
     const r = await POST(post({ dia: 2, inicio: 11, fim: 16 }), ctx);
     const j = await r.json();
     expect(j.removidos).toHaveLength(1);
-    expect(state.blocos.map((b) => [b.userId, b.inicio, b.fim]).sort()).toEqual([[A, 11, 16], [B, 10, 11]].sort());
+    expect(state.blocos.map((b) => [b.userId, b.inicio, b.fim]).sort()).toEqual([[A, 9, 16], [B, 10, 11]].sort());
+  });
+
+  it("#850: marcar com minutos (7h30 às 10h) guarda os minutos e o quadrado", async () => {
+    const r = await POST(post({ dia: 1, de: 450, ate: 600 }), ctx);
+    expect(r.status).toBe(201);
+    const b = state.blocos.find((x) => x.userId === A)!;
+    expect([b.inicio, b.fim, b.de, b.ate]).toEqual([7, 9, 450, 600]);
+  });
+
+  it("#850: minutos fora do passo de 15 ou fora da grade são recusados", async () => {
+    expect((await POST(post({ dia: 1, de: 455, ate: 600 }), ctx)).status).toBe(400);
+    expect((await POST(post({ dia: 1, de: 360, ate: 600 }), ctx)).status).toBe(400);
+    expect((await POST(post({ dia: 1, de: 600, ate: 600 }), ctx)).status).toBe(400);
+  });
+
+  it("#850: a janelinha do bloco (substitui) diminui o horário em vez de juntar", async () => {
+    await POST(post({ dia: 3, inicio: 8, fim: 15 }), ctx);
+    const antigo = state.blocos.find((x) => x.userId === A)!;
+    await POST(post({ dia: 3, de: 570, ate: 660, substitui: [antigo.id] }), ctx);
+    const meus = state.blocos.filter((x) => x.userId === A);
+    expect(meus.map((b) => [b.de, b.ate])).toEqual([[570, 660]]);
+  });
+
+  it("#858: a resposta conta como removidos também os blocos da janelinha (substitui)", async () => {
+    await POST(post({ dia: 3, inicio: 8, fim: 15 }), ctx);
+    const antigo = state.blocos.find((x) => x.userId === A)!;
+    const j = await (await POST(post({ dia: 3, de: 570, ate: 660, substitui: [antigo.id] }), ctx)).json();
+    expect(j.removidos).toContain(antigo.id);
+  });
+
+  it("#858: janelinha velha (o bloco já foi apagado noutra aba) → 409 e não recria nada", async () => {
+    const r = await POST(post({ dia: 3, de: 570, ate: 660, substitui: ["f".repeat(24)] }), ctx);
+    expect(r.status).toBe(409);
+    expect(state.blocos).toHaveLength(0);
+  });
+
+  it("#858: passou do limite numa edição → recusa sem apagar o horário antigo", async () => {
+    for (let i = 0; i < MAX_BLOCOS_POR_PESSOA; i++) {
+      const de = 420 + Math.floor(i / 7) * 120, ate = de + 30;   // 30 min com folga: nenhum encosta no outro
+      state.blocos.push({ id: novoId(), canalId: CANAL, userId: A, dia: i % 7, inicio: Math.floor(de / 60), fim: Math.floor((ate - 1) / 60), de, ate });
+    }
+    const alvo = state.blocos[0]!;
+    const antes = state.blocos.length;
+    const r = await POST(post({ dia: 6, de: 1260, ate: 1290 }), ctx);
+    expect(r.status).toBe(400);
+    expect(state.blocos.length).toBe(antes);
+    expect(state.blocos.some((b) => b.id === alvo.id)).toBe(true);
   });
 
   it("GET devolve os blocos de todos e o nome de cada pessoa", async () => {

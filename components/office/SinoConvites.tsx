@@ -7,7 +7,9 @@
  * #425: data/hora em cada aviso ("agora", "há 5 min", "ontem", "16/10") e o "Limpar" (só os já respondidos);
  * clicar num convite ACEITO abre a conversa com a pessoa (e o sino fecha).
  */
+import { useRef } from "react";
 import { Bell } from "lucide-react";
+import { useCabeNaTela } from "@/lib/ui/useCabeNaTela";
 import AgentAvatar from "@/components/agents/AgentAvatar";
 import { podeLimpar, tempoRelativo, type ItemSino } from "@/lib/canal/sino";
 import { VIDRO_CHIP, VIDRO_POPOVER_SOLIDO, TXT, TXT_2, TXT_MUDO, TOQUE } from "@/lib/canal/vidro";
@@ -36,6 +38,9 @@ export default function SinoConvites({ itens, contador, aberto, onAlternar, ocup
   /** "agora" pra calcular o "há 5 min" (padrão: o relógio; os testes fixam). */
   agora?: number;
 }) {
+  // #850: no celular o painel abria a partir do sino e ficava 188 px fora da tela
+  const painelRef = useRef<HTMLDivElement>(null);
+  useCabeNaTela(painelRef, aberto);
   const ref = agora ?? Date.now();
   return (
     <div className="relative shrink-0">
@@ -51,7 +56,7 @@ export default function SinoConvites({ itens, contador, aberto, onAlternar, ocup
       </button>
 
       {aberto && (
-        <div role="dialog" aria-label="Notificações" className={`absolute left-0 top-full mt-1.5 z-30 w-[min(92vw,340px)] p-2 rounded-2xl ${VIDRO_POPOVER_SOLIDO}`}>
+        <div ref={painelRef} role="dialog" aria-label="Notificações" className={`absolute left-0 top-full mt-1.5 z-30 w-[min(92vw,340px)] p-2 rounded-2xl ${VIDRO_POPOVER_SOLIDO}`}>
           <div className="flex items-center justify-between gap-2 px-2 pt-1 pb-2">
             <p className={`text-[10.5px] font-bold uppercase tracking-wider ${TXT_MUDO}`}>Convites</p>
             {onLimpar && podeLimpar(itens) && (
