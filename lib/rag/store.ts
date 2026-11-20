@@ -9,7 +9,8 @@
  */
 import { transacao, type RagDb } from "./pg";
 import type { TrechoCortado } from "./corte";
-import type { EscopoRag } from "./permissao";
+import { podeVer, type EscopoRag } from "./permissao";
+import type { TrechoAchado } from "./busca";
 
 export type { RagDb } from "./pg";
 
@@ -266,4 +267,30 @@ export async function contarEnviadosPessoais(db: RagDb, donoId: string): Promise
     [donoId],
   );
   return Number(r.rows[0].n);
+}
+
+/**
+ * TODOS os trechos de um documento, em ordem, com a MESMA regra de permissão da busca no WHERE (lib/rag/busca
+ * `montarSql`) e o `podeVer` em memória por cima. É a varredura exaustiva da skill de trechos (lib/trechos): a busca
+ * devolve no máximo k trechos; "todas as vezes que o texto fala de X" exige ler o documento inteiro.
+ */
+export async function trechosDoDocumento(
+  db: RagDb, documentoId: string, e: EscopoRag, limite = 400,
+): Promise<Array<TrechoAchado & { ordem: number }>> {
+  const { rows } = await db.query(
+    `SELECT t.id, t.documento_id, d.titulo, t.texto, t.pagina_ini, t.pagina_fim, t.ordem, t.turma_ids, t.dono_ids
+       FROM rag_trechos t JOIN rag_documentos d ON d.id = t.documento_id
+      WHERE t.documento_id = $1 AND (t.turma_ids && $2::text[] OR t.dono_ids @> ARRAY[$3]::text[])
+      ORDER BY t.ordem
+      LIMIT $4::int`,
+    [documentoId, e.turmaIds, e.userId, Math.max(1, Math.min(2000, Math.floor(limite)))],
+  );
+  return (rows as any[])
+    .filter((r) => podeVer({ turmaIds: r.turma_ids ?? [], donoIds: r.dono_ids ?? [] }, e))
+    .map((r) => ({
+      trechoId: String(r.id), documentoId: String(r.documento_id), titulo: String(r.titulo ?? ""), texto: String(r.texto ?? ""),
+      paginaIni: Number(r.pagina_ini) || 1, paginaFim: Number(r.pagina_fim) || Number(r.pagina_ini) || 1, ordem: Number(r.ordem) || 0,
+      score: 0, similaridade: null, porTexto: true,
+      ...(!(r.dono_ids ?? []).length && (r.turma_ids ?? []).length && (r.turma_ids as string[]).every((t) => t.startsWith("area:")) ? { publico: true } : {}),
+    }));
 }

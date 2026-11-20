@@ -311,6 +311,13 @@ export async function gerarComPaperOrquestra(workId: string, userId: string, top
         return (res?.papers ?? []).map((p) => ({ title: p.title, authors: p.authors, year: p.year, url: p.url, doi: p.doi, abstract: p.abstract, venue: p.venue }));
       },
       baseDoAluno: async (tema) => {
+        // A SKILL DE TRECHOS (lib/trechos): várias consultas + varredura do documento inteiro + juiz, e cada evidência é
+        // a passagem LITERAL com página — o artigo cita o que o material do aluno diz, não um bloco de 3000 caracteres.
+        // Sem achado (ou sem base), cai na busca simples de antes.
+        const { acharTrechosDaPessoa } = await import("@/lib/trechos/server");
+        const achados = await acharTrechosDaPessoa({ userId, pergunta: tema, ledger: { taskId: workId } }, { maxTrechos: 12, prazoMs: 40_000 })
+          .then((r) => r.trechos).catch(() => []);
+        if (achados.length) return achados.map((t) => ({ titulo: t.titulo, paginas: t.paginas, extrato: t.citacao }));
         const { baseParaTurno } = await import("@/lib/rag/turno");
         const b = await baseParaTurno({ userId, pergunta: tema });
         return b.status === "ok"

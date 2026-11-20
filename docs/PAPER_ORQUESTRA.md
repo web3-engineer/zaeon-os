@@ -22,7 +22,7 @@ O PaperOrchestra entra como o motor que **escreve** o documento editável que j�
 |---|---|
 | o chat, o `classify` (`criar_trabalho`), o `tccDoTurno` que cria o documento | o PIPELINE de agentes especializados |
 | o esqueleto ABNT do documento (`ESQUELETO_ARTIGO/TCC/RELATORIO` ou o plano do pedido) — é ele o "template" | o esboço (plano de figuras, estratégia de busca macro/micro, plano por seção com `citation_hints`) |
-| as bases acadêmicas (`retrievePapers`: OpenAlex, Crossref, arXiv, PubMed, Semantic Scholar) e a base do aluno (RAG) | as buscas DIRIGIDAS pelo esboço (introdução × revisão × citação obrigatória) |
+| as bases acadêmicas (`retrievePapers`: OpenAlex, Crossref, arXiv, PubMed, Semantic Scholar) e a base do aluno pela skill de trechos (docs/TRECHOS_EM_PAPEL.md: passagem literal com página) | as buscas DIRIGIDAS pelo esboço (introdução × revisão × citação obrigatória) |
 | "referências do pedido substituem a busca" (decisão do dono) | a separação ideia / dados (nenhum número fora do que o aluno deu) |
 | citação autor-data e referência ABNT (`lib/documento/fontes`), `referenciasNovas` | escrita por etapas: Introdução + Revisão primeiro, depois o resto, com o rascunho à vista |
 | `aplicarNoTcc` (histórico por seção, Pusher/poll — o aluno vê cada seção nascer) | parecerista AgentReview (nota 1–10) + refinamento que só aceita versão com nota melhor |

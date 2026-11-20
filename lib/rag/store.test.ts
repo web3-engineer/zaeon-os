@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, it, expect } from "vitest";
 import {
   acrescentarPermissao, apagarDocumento, buscarPorHash, contarBase, contarEnviadosPessoais, criarDocumento, gravarTrechos,
-  listarDocumentos, marcarErro, registrarVetores, removerPermissao, trechosSemVetor,
+  listarDocumentos, marcarErro, registrarVetores, removerPermissao, trechosDoDocumento, trechosSemVetor,
 } from "./store";
 import { bancoDeTeste } from "./pgTeste";
 import type { RagDb } from "./pg";
@@ -408,5 +408,18 @@ describe("store — listar e contar", () => {
     await acrescentarPermissao(db, (await buscarPorHash(db, "h4"))!.id, { donoId: "u1" }); // da turma, e também dele
     expect(await contarEnviadosPessoais(db, "u1")).toBe(2);
     expect(await contarEnviadosPessoais(db, "u9")).toBe(0);
+  });
+});
+
+describe("trechosDoDocumento (varredura da skill de trechos)", () => {
+  it.skipIf(!banco)("lê TODOS os trechos em ordem, com página, e só pra quem pode ver", async () => {
+    const db = banco!.db;
+    const doc = await criarDocumento(db, base("h-varre", { donoId: USER }));
+    await gravarTrechos(db, doc.id, [trecho(2), trecho(0), trecho(1)], { turmaIds: [], donoIds: [USER] });
+    const meus = await trechosDoDocumento(db, doc.id, { userId: USER, turmaIds: [] });
+    expect(meus.map((t) => t.ordem)).toEqual([0, 1, 2]);
+    expect(meus[1]).toMatchObject({ documentoId: doc.id, titulo: "Livro", texto: "texto 1", paginaIni: 1, paginaFim: 1, porTexto: true });
+    expect(await trechosDoDocumento(db, doc.id, { userId: "outra-pessoa", turmaIds: ["t9"] })).toEqual([]);
+    expect(await trechosDoDocumento(db, doc.id, { userId: USER, turmaIds: [] }, 2)).toHaveLength(2);
   });
 });

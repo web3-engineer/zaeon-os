@@ -176,6 +176,25 @@ export async function runChatTurn(
         console.error("[rag/chat] base do turno falhou:", (e as Error)?.message ?? String(e));
         return null;
       });
+    /**
+     * TRECHOS EM PAPEL (lib/trechos, flag TRECHOS_EM_PAPEL): a pessoa quer VER o que o material dela diz ("onde a
+     * apostila fala de X", "ache todos os trechos sobre Y"). A skill roda em PARALELO com o preparo (memória, base,
+     * cartolina): plano → busca larga → varredura do documento inteiro → juiz → citação conferida letra por letra.
+     * Nunca lança; sem trecho, o turno é o de sempre.
+     */
+    const { pedeTrechos } = await import("@/lib/trechos/achar");
+    const trechosMod = await import("@/lib/trechos/server");
+    const querTrechos = !!userId && trechosMod.trechosEmPapelLigado() && pedeTrechos(prompt);
+    const trechosPromise: Promise<import("@/lib/agent/contracts").TrechoEmPapel[]> = querTrechos
+      ? (async () => {
+          narrar(serializarProgresso({ fase: "gather", rotulo: "Procurando os trechos no seu material" }));
+          const areas = (await import("@/lib/rag/areas")).areasDoTurno(cap.area ?? mentor?.slug);
+          const r = await trechosMod.acharTrechosDaPessoa({ userId: userId!, pergunta: objetivo, areas, ledger: { taskId: turnId ?? null } });
+          console.info("[trechos]", JSON.stringify({ achados: r.trechos.length, ...r.relatorio }));
+          if (r.trechos.length) narrar(serializarProgresso({ fase: "gather", rotulo: `${r.trechos.length} ${r.trechos.length === 1 ? "trecho achado" : "trechos achados"} no seu material` }));
+          return r.trechos;
+        })().catch((e) => { console.warn("[trechos] turno seguiu sem trechos:", (e as Error)?.message ?? e); return []; })
+      : Promise.resolve([]);
     const ac: any = params.agentContext && typeof params.agentContext === "object" ? params.agentContext : {};
     const hctx: any = {
       ...ac,
@@ -256,7 +275,7 @@ export async function runChatTurn(
     const escopoCache = cache.escopoDoCache(surfaceLedger(surface ?? hctx.activeTab), mentor?.slug);
     // #764: pedido de IMAGEM nunca consulta o cache — "faça uma imagem do coração humano" tinha virado explicação antes
     // do #756, e o cache seguia servindo essa explicação (com diagrama) em vez de deixar o turno gerar a imagem
-    const usaCache = cache.cacheLigado() && !colada.fonte && (!escolhido || escolhido.id === MODELO_PADRAO) && cache.perguntaCacheavel(prompt) && !pedeImagem(prompt);
+    const usaCache = cache.cacheLigado() && !colada.fonte && (!escolhido || escolhido.id === MODELO_PADRAO) && cache.perguntaCacheavel(prompt) && !pedeImagem(prompt) && !querTrechos;
     const cacheP = usaCache
       ? Promise.all([import("@/lib/rag/pg"), import("@/lib/rag/embed")])
         .then(async ([{ ragPg }, { embedPerguntaCompartilhado }]) => cache.consultarCache(ragPg(), { pergunta: prompt, vetor: await embedPerguntaCompartilhado(objetivo), escopo: escopoCache }))
@@ -320,6 +339,7 @@ export async function runChatTurn(
     // adaptador: é uma leitura de banco, e o adaptador é a camada que não sabe de plano nem de
     // conta. Falha fechado (erro = Flash) e tem memo de 60 s, pra não consultar a cada turno.
     const proPesadas = await podeProNasPesadas(userId);
+    const trechosAchados = await trechosPromise;
     // o contexto do turno numa variável só: o harness da Aura E os motores da orquestra leem o MESMO
     const systemContextDoTurno = [params.systemContext, memBlock, cartolinaBlock, tccBlock, entregaveisBlock, skillBlock, blocoDosAnexos(params.anexos ?? []), colada.fonte ? blocoFonteColada(colada.fonte) : ""].filter(Boolean).join("\n\n") || undefined;
     const deps = buildHarnessDeps(hctx, {
@@ -340,6 +360,7 @@ export async function runChatTurn(
       systemContext: systemContextDoTurno,
       history: params.history,
       baseConhecimento: baseCurta,
+      trechosEmPapel: trechosAchados.length ? trechosAchados : null,
       // C5: cada chamada do turno grava no TokenLedger com quem/onde (mentor em agentKey E mentorSlug, como o registrarUso).
       ledger: ledgerTurno,
       // O CANAL DE PROGRESSO: cada fase do trajectory (plan → reason → draft…) vira um
@@ -375,6 +396,11 @@ export async function runChatTurn(
     const { answer, state } = doCache
       ? { answer: doCache.answer as any, state: { intent: doCache.intent, kind: doCache.kind, artifacts: [], degraded: false } as any }
       : orq!;
+    // as FOLHAS: o código tira os marcadores [[T#]] do texto e ancora cada trecho no parágrafo certo (lib/trechos/bloco).
+    // Vale pra qualquer motor que respondeu (Aura ou orquestra): sem marcador, as folhas vão pro fim da resposta.
+    if (!doCache && trechosAchados.length && answer && typeof answer === "object") {
+      Object.assign(answer, (await import("@/lib/trechos/bloco")).comTrechos(answer as any, trechosAchados));
+    }
     if (!doCache && usaCache && cache.respostaGuardavel(answer as any, state.intent, !!state.degraded)) {
       void Promise.all([import("@/lib/rag/pg"), import("@/lib/rag/embed")])
         .then(async ([{ ragPg }, { embedPerguntaCompartilhado }]) => cache.guardarNoCache(ragPg(), {

@@ -103,6 +103,9 @@ services:
       PAPER_ORQ_REFLEXOES: ${PAPER_ORQ_REFLEXOES:-2}
       PAPER_ORQ_MAX_BUSCAS: ${PAPER_ORQ_MAX_BUSCAS:-16}
       PAPER_ORQ_PRAZO_MS: ${PAPER_ORQ_PRAZO_MS:-900000}
+      # trechos do material em folhas de papel no chat (lib/trechos) — DESLIGADO por padrão
+      TRECHOS_EM_PAPEL: ${TRECHOS_EM_PAPEL:-0}
+      TRECHOS_MODELO: ${TRECHOS_MODELO:-}
       # blueprint prático da Sala de Estudos (lib/blueprint) — par do NEXT_PUBLIC_BLUEPRINT_PRATICO; GITHUB_TOKEN opcional
       BLUEPRINT_PRATICO: ${BLUEPRINT_PRATICO:-0}
       # Blueprint REA (lib/rea-blueprint) — par do NEXT_PUBLIC_REA_BLUEPRINT; gateia a composição + /api/rea
@@ -364,6 +367,9 @@ services:
       PAPER_ORQ_REFLEXOES: ${PAPER_ORQ_REFLEXOES:-2}
       PAPER_ORQ_MAX_BUSCAS: ${PAPER_ORQ_MAX_BUSCAS:-16}
       PAPER_ORQ_PRAZO_MS: ${PAPER_ORQ_PRAZO_MS:-900000}
+      # trechos em papel: a skill roda no turno do chat, que é do worker com CHAT_BG=1
+      TRECHOS_EM_PAPEL: ${TRECHOS_EM_PAPEL:-0}
+      TRECHOS_MODELO: ${TRECHOS_MODELO:-}
       # ESPELHO DO TRILHO, pela mesma razão da linha acima — e esta FALTAVA: o worker tinha o
       # DOC_POR_SECAO (escrever as seções) sem o `tccCrossOn` (deixar o trabalho EXISTIR). Com o
       # worker de pé, ele escreveria seções de um documento que não pode nascer. Divergência

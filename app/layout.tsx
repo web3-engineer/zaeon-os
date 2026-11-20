@@ -60,6 +60,14 @@ const sora = localFont({
     display: "swap",
 });
 
+// Fonte MANUSCRITA dos blocos de papel (trechos dos documentos no chat — components/trechos). Caveat, OFL.
+const caveat = localFont({
+    src: "./_fonts/caveat-latin-var.woff2",
+    variable: "--font-mao",
+    weight: "400 700",
+    display: "swap",
+});
+
 /**
  * `viewportFit: "cover"` e o que faz a pagina ocupar a tela inteira em aparelho
  * com entalhe/ilha; sem ele o iOS deixa duas tarjas da cor de fundo em cima e
@@ -117,6 +125,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                     outfit.variable,
                     interTight.variable,
                     sora.variable,
+                    caveat.variable,
                     "font-sans"
                 )}
             >

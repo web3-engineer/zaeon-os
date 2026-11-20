@@ -91,7 +91,8 @@ export function criarRegistro(teto = 40) {
     const autores = Array.isArray(p.authors) ? p.authors.join(", ") : str(p.authors, 300);
     const base = fontePronta ?? fonteDePaper({ title: p.title, authors: autores, year: p.year, url: p.url, doi: p.doi });
     if (!base) return null;
-    const k = normalizarTitulo(base.titulo ?? base.citacao);
+    // paper: um por título. Documento da base (fonte pronta): um por PASSAGEM — dois trechos da mesma apostila são duas evidências
+    const k = normalizarTitulo(base.titulo ?? base.citacao) + (fontePronta ? `|${normalizarTitulo(base.citacao)}|${normalizarTitulo(String(p.abstract ?? "")).slice(0, 80)}` : "");
     const ja = porTitulo.get(k);
     if (ja) return ja;
     if (itens.length >= teto) return null;

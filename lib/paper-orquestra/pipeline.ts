@@ -131,7 +131,7 @@ export async function rodarPaperOrquestra(e: Entrada, d: Deps): Promise<Resultad
     for (const r of e.referenciasDoPedido) reg.registrar({ title: r }, papeis.intro, fonteDoPedido(r));
   } else {
     if (d.baseDoAluno) {
-      const base = await d.baseDoAluno(e.tema).catch(() => []);
+      const base = await d.baseDoAluno(`${e.tema}\n${ideia.slice(0, 600)}`.trim()).catch(() => []);
       for (const b of base) reg.registrar({ title: b.titulo, abstract: b.extrato }, papeis.intro, fonteDeDocumento(b));
     }
     const tarefas = tarefasDoEsboco(esboco, rotulos, e.maxBuscas ?? 16);

@@ -166,6 +166,20 @@ async function consultar(userId: string, pergunta: string, deps: Partial<TurnoRa
 }
 
 /**
+ * O ESCOPO de leitura da pessoa (turmas dela + bases públicas por área) — o mesmo que `consultar` monta. Exposto pra
+ * varredura exaustiva da skill de trechos (lib/trechos), que lê documentos inteiros com `trechosDoDocumento`.
+ */
+export async function escopoDaPessoa(userId: string, areas: string[] = [], deps: Partial<Pick<TurnoRagDeps, "prisma">> = {}): Promise<EscopoRag> {
+  let turmaIds: string[] = [];
+  try {
+    turmaIds = await turmasDaPessoa(deps.prisma ?? (await prismaReal()), userId);
+  } catch (e) {
+    console.error("[rag/trechos] turmas da pessoa falharam, seguindo só com a base pessoal:", msgDe(e));
+  }
+  return { userId, turmaIds: [...turmaIds, ...areas.filter((a) => a.startsWith(PREFIXO_AREA))] };
+}
+
+/**
  * Base RAG do turno: trechos relevantes (já filtrados por permissão e corte) ou o motivo de não haver. NUNCA lança.
  */
 export async function baseParaTurno(
