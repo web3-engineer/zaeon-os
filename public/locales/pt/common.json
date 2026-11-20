@@ -1143,5 +1143,10 @@
     "destaque": "Destaque",
     "relatorio": "Relatório",
     "noticia": "Notícia"
+  },
+  "agenda": {
+    "tentarDeNovo": "Tentar de novo",
+    "naoSalvou": "Não deu pra salvar o horário.",
+    "naoApagou": "Não deu pra apagar o horário."
   }
 }

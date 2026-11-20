@@ -132,6 +132,66 @@ export function naCelula(fs: Faixa[], dia: Dia, hora: number): { faixa: Faixa; t
     }));
 }
 
+// ───────────────────────────── #861: o bloco desenhado de uma vez ─────────────────────────────
+
+/** Altura de UMA hora na grade (px): alta o bastante pra foto, nome e horário caberem dentro do bloco. */
+export const ALTURA_HORA = { computador: 56, celular: 64 } as const;
+
+/** Um bloco já posicionado no dia: onde começa/termina (px), em que coluna está e quantas colunas o grupo tem. */
+export type BlocoNoDia = { faixa: Faixa; topo: number; altura: number; coluna: number; colunas: number };
+
+/**
+ * #861: os blocos de UM dia, cada um como uma barra só (do começo ao fim), e lado a lado quando se sobrepõem
+ * (como o Google Agenda): um grupo de horários que se cruzam divide a largura em colunas iguais; quem encosta
+ * (um termina quando o outro começa) não se cruza. A coluna fica a mesma o bloco inteiro — ninguém troca de lugar.
+ */
+export function blocosDoDia(fs: Faixa[], dia: Dia, alturaHora: number): BlocoNoDia[] {
+  const doDia = fs.filter((f) => f.dia === dia).sort((a, b) => a.de - b.de || b.ate - a.ate || a.userId.localeCompare(b.userId));
+  const out: BlocoNoDia[] = [];
+  let grupo: { faixa: Faixa; coluna: number }[] = [];
+  let fimDoGrupo = -1;
+  const fechar = () => {
+    const n = grupo.reduce((m, g) => Math.max(m, g.coluna + 1), 0);
+    for (const g of grupo) {
+      out.push({
+        faixa: g.faixa, coluna: g.coluna, colunas: n,
+        topo: ((g.faixa.de - MIN_INICIO) / 60) * alturaHora,
+        altura: ((g.faixa.ate - g.faixa.de) / 60) * alturaHora,
+      });
+    }
+    grupo = [];
+  };
+  for (const f of doDia) {
+    if (grupo.length && f.de >= fimDoGrupo) fechar();
+    // a primeira coluna livre (cujo último bloco já terminou)
+    const fimDaColuna = new Map<number, number>();
+    for (const g of grupo) fimDaColuna.set(g.coluna, Math.max(fimDaColuna.get(g.coluna) ?? 0, g.faixa.ate));
+    let c = 0;
+    while ((fimDaColuna.get(c) ?? -1) > f.de) c++;
+    grupo.push({ faixa: f, coluna: c });
+    fimDoGrupo = Math.max(fimDoGrupo, f.ate);
+  }
+  if (grupo.length) fechar();
+  return out;
+}
+
+/**
+ * #861: como a foto entra no bloco, conforme o tamanho dele:
+ *  - "curto"   (bloco baixo, ~15 min): só a foto, presa na borda esquerda e um pouco pra fora;
+ *  - "linha"   (30 min a ~1h20): foto pequena do lado e o horário (com o nome, se couber a altura);
+ *  - "estreito" (dividindo o horário com outra pessoa): foto no meio e só a hora embaixo;
+ *  - "mini"    (estreito E baixo): só a foto, no meio — pra fora invadiria a coluna do vizinho;
+ *  - "cartao"  (~1h30 ou mais, largura inteira): foto em cima, nome e horário embaixo.
+ */
+export type ModoDoBloco = "curto" | "linha" | "estreito" | "mini" | "cartao";
+export function modoDoBloco(alturaPx: number, colunas: number): ModoDoBloco {
+  if (colunas > 1) return alturaPx < 44 ? "mini" : "estreito";
+  if (alturaPx < 24) return "curto";
+  // o cartão (foto em cima, nome e horário embaixo) precisa de ~80 px: abaixo disso, foto do lado
+  if (alturaPx < 80) return "linha";
+  return "cartao";
+}
+
 // ───────────────────────────── hoje, agora e o que já passou ─────────────────────────────
 
 /** Posição do dia na semana da grade (segunda = 0 … domingo = 6). */

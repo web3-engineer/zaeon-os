@@ -15,11 +15,14 @@ const CANAL = "d".repeat(24), EU = "a".repeat(24), OUTRA = "b".repeat(24);
 let blocos: any[] = [];
 let chamadas: { url: string; metodo: string; body?: any }[] = [];
 let falharGet = false;
+// #861: POST lento / com erro, pra ver a barra "salvando" e o "Tentar de novo"
+let atrasoPost = 0;
+let falharPost = false;
 
 const resp = (status: number, body: unknown) => ({ ok: status < 400, status, json: async () => body });
 
 beforeEach(() => {
-  blocos = []; chamadas = []; falharGet = false;
+  blocos = []; chamadas = []; falharGet = false; atrasoPost = 0; falharPost = false;
   vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
     const metodo = init?.method ?? "GET";
     chamadas.push({ url: String(url), metodo, body: init?.body ? JSON.parse(String(init.body)) : undefined });
@@ -30,6 +33,8 @@ beforeEach(() => {
       return resp(200, { eu: EU, blocos, pessoas: [{ id: EU, nome: "Giulia", avatar: null }, { id: OUTRA, nome: "Martinez", avatar: null }] });
     }
     if (metodo === "POST") {
+      if (atrasoPost) await new Promise((r) => setTimeout(r, atrasoPost));
+      if (falharPost) return resp(500, { error: "Falhou no servidor" });
       const b = JSON.parse(String(init!.body));
       const novo = { id: "c".repeat(24), userId: EU, ...b };
       blocos = [...blocos, novo];
@@ -154,12 +159,50 @@ describe("AgendaBandeja", () => {
     blocos = [{ id: "c".repeat(24), userId: EU, dia: 1, inicio: 8, fim: 8 }, { id: "f".repeat(24), userId: OUTRA, dia: 2, inicio: 9, fim: 9 }];
     abrir();
     await waitFor(() => expect(screen.getByText("Giulia (você)")).toBeTruthy());
-    expect(screen.getByText("Martinez")).toBeTruthy();
+    // #861: o nome também aparece dentro da barra (cartão) — aqui é a legenda
+    const legenda = document.querySelector("[data-legenda]") as HTMLElement;
+    expect(within(legenda).getByText("Martinez")).toBeTruthy();
   });
 
   it("erro ao carregar aparece como alerta", async () => {
     falharGet = true;
     abrir();
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("Forbidden"));
+  });
+  it("#861: um horário de 8h às 11h é UMA barra (cartão com o nome e o horário)", async () => {
+    blocos = [{ id: "c".repeat(24), userId: OUTRA, dia: 2, inicio: 8, fim: 10 }];
+    abrir();
+    await pronta("Ter 9h: Martinez");
+    const barras = document.querySelectorAll('[data-coluna-dia="2"] [data-barra]');
+    expect(barras).toHaveLength(1);
+    expect(barras[0]!.getAttribute("data-barra")).toBe("cartao");
+    expect(barras[0]!.textContent).toContain("8h–11h");
+  });
+
+  it("#861: ao salvar, a barra aparece na hora (salvando) e a agenda não trava", async () => {
+    atrasoPost = 600;
+    abrir();
+    await pronta("Ter 9h: livre");
+    fireEvent.click(celula("Ter 9h: livre"));
+    fireEvent.click(celula("Ter 10h: livre"));
+    await waitFor(() => expect(document.querySelector("[data-pendente]")).toBeTruthy());
+    expect((celula("Qua 9h: livre") as HTMLButtonElement).disabled).toBe(false);   // nada desligado, sem ampulheta
+    await waitFor(() => expect(document.querySelector("[data-pendente]")).toBeNull(), { timeout: 3000 });
+    expect(celula("Ter 9h: Giulia")).toBeTruthy();
+  });
+
+  it("#861: erro ao salvar — a barra volta a sumir e o aviso oferece Tentar de novo", async () => {
+    falharPost = true;
+    abrir();
+    await pronta("Ter 9h: livre");
+    fireEvent.click(celula("Ter 9h: livre"));
+    fireEvent.click(celula("Ter 10h: livre"));
+    const tentar = await screen.findByRole("button", { name: "Tentar de novo" });
+    expect(document.querySelector("[data-pendente]")).toBeNull();
+    expect(screen.getByRole("alert").textContent).toContain("Falhou no servidor");
+    falharPost = false;
+    fireEvent.click(tentar);
+    await waitFor(() => expect(celula("Ter 9h: Giulia")).toBeTruthy(), { timeout: 3000 });
+    expect(chamadas.filter((c) => c.metodo === "POST")).toHaveLength(2);
   });
 });

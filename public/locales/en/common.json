@@ -1143,5 +1143,10 @@
     "destaque": "Featured",
     "relatorio": "Report",
     "noticia": "News"
+  },
+  "agenda": {
+    "tentarDeNovo": "Try again",
+    "naoSalvou": "Couldn't save the time slot.",
+    "naoApagou": "Couldn't delete the time slot."
   }
 }

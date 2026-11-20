@@ -1143,5 +1143,10 @@
     "destaque": "精选",
     "relatorio": "报告",
     "noticia": "新闻"
+  },
+  "agenda": {
+    "tentarDeNovo": "重试",
+    "naoSalvou": "无法保存时段。",
+    "naoApagou": "无法删除时段。"
   }
 }
