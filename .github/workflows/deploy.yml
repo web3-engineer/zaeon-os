@@ -554,10 +554,13 @@ jobs:
             $DC up -d --force-recreate --no-deps web
             # #645: o WORKER (perfil "worker": turnos do Escritório/chat na fila) é a mesma imagem do web, mas não está
             # na lista do deploy — se ele estiver de pé, ficava rodando o código ANTIGO (ex.: a resposta de quem saiu da
-            # conversa continuava entrando). Ligado → reconstrói e recria junto; desligado → não sobe nada novo.
-            if docker ps --format '{{.Names}}' | grep -qx zaeon_worker; then
+            # conversa continuava entrando). Ligado → recria junto; desligado → não sobe nada novo.
+            # Roda a IMAGEM DO WEB (compose): sem 2º build. "created" conta como ligado = deploy cortado no meio.
+            vivo(){ docker ps -a -f status=running -f status=created -f status=restarting --format '{{.Names}}' | grep -qx "$1"; }
+            if vivo zaeon_worker; then
               echo "→ Worker: atualizando junto com o web…"
-              $DC --profile worker up -d --build --force-recreate --no-deps worker
+              $DC --profile worker up -d --force-recreate --no-deps worker
+              docker rmi zaeon-beta-worker:latest >/dev/null 2>&1 || true
             else
               echo "→ Worker: não está rodando (turnos no web)"
             fi
@@ -565,16 +568,20 @@ jobs:
             # um grupo de modelo (ex.: zaeon-local-lfm2, 2026-10-22) não valia até alguém reiniciar à mão. Recria
             # quando o config OU a definição dele no compose (limite de memória, envs) mudam; senão não encosta
             # (recriar derruba o gateway por alguns segundos). A impressão digital fica em .litellm-deploy.sha.
-            if docker ps --format '{{.Names}}' | grep -qx zaeon_litellm; then
-              LITELLM_SHA="$( { cat infra/litellm.config.yaml; $DC config litellm 2>/dev/null; } | sha256sum | cut -d' ' -f1 )"
-              if [ "$(cat .litellm-deploy.sha 2>/dev/null)" != "$LITELLM_SHA" ]; then
-                echo "→ LiteLLM: config/compose mudou — recriando o gateway…"
-                if $DC up -d --force-recreate --no-deps litellm; then
-                  echo "$LITELLM_SHA" > .litellm-deploy.sha
-                  for i in $(seq 1 30); do [ "$(docker inspect -f '{{.State.Health.Status}}' zaeon_litellm 2>/dev/null)" = healthy ] && break; sleep 3; done
-                  echo "  ✓ LiteLLM: $(docker inspect -f '{{.State.Health.Status}}' zaeon_litellm 2>/dev/null)"
+            # Parado em "created" (21/11) também recria; as GATEWAY_KEY_* não entram na impressão (o gateway não as usa).
+            GW_FORA=0
+            if vivo zaeon_litellm; then
+              LITELLM_SHA="$( { cat infra/litellm.config.yaml; $DC config litellm 2>/dev/null | grep -v GATEWAY_KEY_ || true; } | sha256sum | cut -d' ' -f1 )"
+              GW="$(docker inspect -f '{{.State.Status}}' zaeon_litellm)"
+              if [ "$(cat .litellm-deploy.sha 2>/dev/null)" != "$LITELLM_SHA" ] || [ "$GW" != running ]; then
+                echo "→ LiteLLM: config mudou ou parado ($GW) — recriando o gateway…"
+                $DC up -d --force-recreate --no-deps litellm || docker start zaeon_litellm || true
+                saude(){ docker inspect -f '{{.State.Health.Status}}' zaeon_litellm 2>/dev/null; }
+                for i in $(seq 1 40); do [ "$(saude)" = healthy ] && break; sleep 3; done
+                if [ "$(saude)" = healthy ]; then
+                  echo "$LITELLM_SHA" > .litellm-deploy.sha; echo "  ✓ LiteLLM: healthy"
                 else
-                  echo "::warning::não deu pra recriar o LiteLLM — segue com o config antigo"
+                  GW_FORA=1; echo "::error::LiteLLM não ficou healthy ($(saude))"; docker logs --tail 15 zaeon_litellm 2>&1 || true
                 fi
               else
                 echo "→ LiteLLM: config igual, não mexe"
@@ -671,4 +678,6 @@ jobs:
             docker builder prune -af --filter 'until=168h' 2>&1 | tail -2 || true
             echo "→ Disco: $(df -h / | awk 'NR==2{print $4" livres de "$2" ("$5" usado)"}')"
             docker system df 2>/dev/null | awk 'NR==1 || /Build Cache|Images/' || true
+            # gateway fora = deploy vermelho (antes saía verde com o LiteLLM parado). No fim: o resto já rodou.
+            [ "$GW_FORA" = 1 ] && { echo "::error::deploy no ar, mas o GATEWAY (zaeon_litellm) está fora"; exit 1; }
             echo "✓ Deploy concluído — Zaeon no ar."

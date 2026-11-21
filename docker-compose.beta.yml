@@ -19,6 +19,8 @@ name: zaeon-beta
 
 services:
   web:
+    # Nome explícito (= o padrão "<projeto>-web" de hoje): o worker roda ESTA imagem (ver o serviço worker).
+    image: zaeon-beta-web:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -246,9 +248,14 @@ services:
     # Ligar depois: `docker compose -f docker-compose.beta.yml --profile worker up -d worker`
     # + SCHOLAR_BG="1" no serviço web.
     profiles: ["worker"]
-    build:
-      context: .
-      dockerfile: Dockerfile
+    # A IMAGEM DO WEB, não um build próprio (2026-11-21). Antes o worker tinha `build:` SEM os args do web:
+    #  1) as NEXT_PUBLIC_* (embutidas no build, também no código de servidor) saíam vazias — ex.: chatUnicoOn()
+    #     do turno no worker via a flag DESLIGADA com ela ligada no web;
+    #  2) args diferentes = cache diferente: o deploy construía a imagem DUAS vezes (~12 min cada, 2×9 GB),
+    #     estourava o teto de 25 min do ssh-action e matava o script no meio (o LiteLLM ficou "Created").
+    # O `up --build` do web constrói e etiqueta zaeon-beta-web:latest; o worker só recria em cima dela.
+    image: zaeon-beta-web:latest
+    pull_policy: never
     container_name: zaeon_worker
     env_file: [.env, .env.secrets]
     environment:
