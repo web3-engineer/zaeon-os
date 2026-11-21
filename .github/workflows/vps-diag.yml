@@ -122,8 +122,8 @@ jobs:
             if docker ps --format '{{.Names}}' | grep -qx zaeon_worker; then
               echo "→ de pé (o deploy o atualiza junto do web)"
             elif [ "${SUBIR_WORKER}" = "true" ]; then
-              echo "→ subindo (constrói a imagem se preciso; pode levar alguns minutos)…"
-              docker compose --profile worker up -d --build worker 2>&1 | tail -15
+              echo "→ subindo (roda a imagem do web — precisa de um deploy antes)…"
+              docker compose --profile worker up -d worker 2>&1 | tail -15
               sleep 5
             else
               echo "→ NÃO está de pé. Pra subir: rode de novo com subir_worker=true."
