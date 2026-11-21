@@ -33,14 +33,11 @@ export const ehPdf = (mime: string) => mime === "application/pdf";
  * o turno pro caminho legado, porque PDF escaneado só o multimodal lê.
  */
 export async function textoDoPdf(bytes: Uint8Array): Promise<{ texto: string; paginas: number; paragrafos: { page?: number; text?: string }[] }> {
-  const { extractPdfParagraphs, extractPdfStructured } = await import("@/lib/scholar/pdf");
-  const est = await extractPdfStructured(bytes).catch(() => null);
-  const md = est?.markdown?.trim();
-  if (md) return { texto: md, paginas: paginasDe(est?.paragraphs), paragrafos: est?.paragraphs ?? [] };
-  const juntos = est?.paragraphs?.map((p) => p.text).join("\n\n").trim();
-  if (juntos) return { texto: juntos, paginas: paginasDe(est?.paragraphs), paragrafos: est?.paragraphs ?? [] };
-  const paras = await extractPdfParagraphs(bytes).catch(() => [] as { page: number; text: string }[]);
-  return { texto: paras.map((p) => p.text).join("\n\n").trim(), paginas: paginasDe(paras), paragrafos: paras };
+  // a MESMA skill de leitura da base (lib/pdf/ler): pdf-loader → reserva pdf.js por linha/parágrafo → "" se escaneado
+  const { lerPdf } = await import("@/lib/pdf/ler");
+  const r = await lerPdf(bytes);
+  if (!r.ok) return { texto: "", paginas: 0, paragrafos: [] };
+  return { texto: r.markdown.trim(), paginas: r.paginas || paginasDe(r.paragraphs), paragrafos: r.paragraphs };
 }
 
 /** `page` é opcional no `Paragraph` do pdf.js — daí o `?? 0` em vez de confiar no tipo. */

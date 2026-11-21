@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  abntDoPaper, converterCitacoes, numerosSemLatex, orcamentoDaSecao, pendenciasDaSecao, distanciaDaSecao, semTabelaForaDosResultados, semCitacaoRepetida, dividirParagrafosLongos, textoDoRegistro, criarRegistro, injetarCandidatas, lerRefinamento, notasDoParecer, papeisDoEsqueleto,
+  abntDoPaper, converterCitacoes, expandirFaixasDeChaves, numerosSemLatex, orcamentoDaSecao, pendenciasDaSecao, distanciaDaSecao, semTabelaForaDosResultados, semCitacaoRepetida, dividirParagrafosLongos, textoDoRegistro, criarRegistro, injetarCandidatas, lerRefinamento, notasDoParecer, papeisDoEsqueleto,
   referenciasDasChaves, secoesDoMarkdown, tarefasDoEsboco, vereditoDaRevisao, type Esboco,
 } from "@/lib/paper-orquestra/texto";
 
@@ -64,6 +64,20 @@ describe("citação [E#] → ABNT do documento", () => {
     expect(c.texto).toBe("Como mostram estudos (SOUZA, 2021; SILVA, 2020). Outro ponto (SILVA, 2020; SOUZA, 2021). E mais (SILVA, 2020; SOUZA, 2021).");
     expect(c.citadas).toEqual(["E2", "E1"]);
     expect(c.invalidas).toEqual(["E9"]);
+  });
+  it("FAIXA de chaves vira as chaves (achado do E2E: \"Artigos [E1-E7]\" vazava na tabela do TCC)", () => {
+    expect(expandirFaixasDeChaves("| Artigos [E1-E3] | x |")).toBe("| Artigos [E1][E2][E3] | x |");
+    expect(expandirFaixasDeChaves("ver [E1–E2, E5]")).toBe("ver [E1][E2][E5]");
+    expect(expandirFaixasDeChaves("ver [E1 a E2]")).toBe("ver [E1][E2]");
+    expect(expandirFaixasDeChaves("absurda [E1-E90]")).toBe("absurda [E1-E90]");
+    const c = converterCitacoes("| Artigos [E1-E2] | achado |", r.porChave);
+    expect(c.texto).toBe("| Artigos (SILVA, 2020; SOUZA, 2021) | achado |");
+    expect(c.citadas).toEqual(["E1", "E2"]);
+  });
+  it("rede final: chave malformada que sobrou não chega ao documento", () => {
+    const c = converterCitacoes("Fato [E1-E90] e outro [E3 e E4].", r.porChave);
+    expect(c.texto).not.toMatch(/\[E\d/);
+    expect(c.invalidas.length).toBeGreaterThan(0);
   });
   it("só chave inventada: some sem deixar parêntese vazio", () => {
     expect(converterCitacoes("Fato [E40].", r.porChave).texto).toBe("Fato.");
@@ -233,5 +247,18 @@ describe("correções determinísticas", () => {
     const r = dividirParagrafosLongos(longo);
     expect(r.split("\n\n")).toHaveLength(2);
     expect(dividirParagrafosLongos(`## Título\n\n${frase(30)}\n\n| a |\n|---|`)).toBe(`## Título\n\n${frase(30)}\n\n| a |\n|---|`);
+  });
+});
+
+describe("registro de busca descreve a busca que ACONTECEU (E2E nov/2026)", () => {
+  const base = { origem: "busca" as const, consultas: ["reúso de água cinza"], data: "2026-11-20", encontrados: 3, semResumo: 2, excluidosTriagem: 0, incluidos: 1, motivosExclusao: [] };
+  it("só as bases que responderam; as que falharam são ditas como tal; sem 'em inglês' fixo", () => {
+    const t = textoDoRegistro({ ...base, bases: ["Crossref", "arXiv"], basesSemResposta: ["OpenAlex", "Semantic Scholar"] });
+    expect(t).toContain("nas bases Crossref e arXiv");
+    expect(t).toContain("não responderam (limite de uso ou indisponibilidade): OpenAlex, Semantic Scholar");
+    expect(t).not.toMatch(/PubMed|em inglês/);
+  });
+  it("nenhuma base respondeu: diz isso", () => {
+    expect(textoDoRegistro({ ...base, bases: [] })).toContain("nenhuma base acadêmica respondeu");
   });
 });

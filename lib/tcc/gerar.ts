@@ -281,6 +281,9 @@ export async function gerarComPaperOrquestra(workId: string, userId: string, top
   const rota = env.PAPER_ORQ_MODELO_ESCRITOR?.trim() ? "vertex" as const : plano.rota;
   const num = (v: string | undefined, padrao: number) => (Number(v) > 0 ? Number(v) : padrao);
 
+  /** as bases que responderam de verdade (a metodologia descreve a busca que ACONTECEU) */
+  const responderam = new Set<string>(), semResposta = new Set<string>();
+  const NOME_DA_BASE: Record<string, string> = { openalex: "OpenAlex", crossref: "Crossref", arxiv: "arXiv", pubmed: "PubMed", semanticscholar: "Semantic Scholar" };
   /** o último texto que NÓS gravamos em cada seção: o refinamento só substitui o que ainda é nosso */
   const nosso = new Map<string, string>();
   const r = await rodarPaperOrquestra(
@@ -308,8 +311,13 @@ export async function gerarComPaperOrquestra(workId: string, userId: string, top
       buscar: async (consulta, area) => {
         const { retrievePapers } = await import("@/lib/scholar/retrieve");
         const res = await retrievePapers(consulta, { domain: area, minResults: 6 }).catch(() => null);
+        for (const ps of res?.perSource ?? []) {
+          const nome = NOME_DA_BASE[ps.source] ?? ps.source;
+          if (ps.status === "ok") { responderam.add(nome); semResposta.delete(nome); } else if (!responderam.has(nome)) semResposta.add(nome);
+        }
         return (res?.papers ?? []).map((p) => ({ title: p.title, authors: p.authors, year: p.year, url: p.url, doi: p.doi, abstract: p.abstract, venue: p.venue }));
       },
+      basesDaBusca: () => ({ responderam: [...responderam], semResposta: [...semResposta] }),
       completarResumos: async (dois) => (await import("@/lib/scholar/sources/openalex")).resumosPorDoi(dois),
       baseDoAluno: async (tema) => {
         // A SKILL DE TRECHOS (lib/trechos): várias consultas + varredura do documento inteiro + juiz, e cada evidência é

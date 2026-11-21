@@ -202,16 +202,29 @@ describe("pipeline do PaperOrchestra no documento", () => {
     expect(r.registroDeBusca).toMatchObject({ encontrados: 2, resumosCompletados: 1, semResumo: 1, incluidos: 1 });
   });
 
-  it("PISO da triagem: com mais de 12 candidatos, triagem que deixa menos de 12 devolve os mais bem colocados", async () => {
+  it("TRIAGEM sem piso: fonte que a triagem rejeitou NUNCA volta (E2E nov/2026: telescópio Fermi entrou no artigo)", async () => {
     const muitos = Array.from({ length: 20 }, (_, i) => ({ title: `Paper ${i}`, authors: [`Autor N${i}`], year: 2020, abstract: `Resumo do paper ${i} com texto suficiente para entrar na biblioteca.` }));
     const base = llmFalso().llm;
-    const llm = vi.fn(async (p: PedidoLlm) => (p.fase === "triagem" ? JSON.stringify({ incluir: ["P1", "P2"], excluir: [] }) : base(p)));
+    const llm = vi.fn(async (p: PedidoLlm) => (p.fase === "triagem" ? JSON.stringify({ incluir: ["P1", "P2"], excluir: [{ p: "P3", motivo: "outro objeto" }] }) : base(p)));
     let k = 0;
     const buscar = async () => { const lote = muitos.slice(k, k + 6); k += 6; return lote; }; // 6 + 6 + 1 (alvo) = 13 candidatos
-    const { d } = deps({ llm, buscar });
+    const { d, progresso } = deps({ llm, buscar }) as any;
     const r = await rodarPaperOrquestra({ tema: "t", pedido: "p", tipo: "Artigo", esqueleto: ESQ, reflexoes: 0 }, d);
     expect(r.registroDeBusca.encontrados).toBe(13);
-    expect(r.registroDeBusca.incluidos).toBe(12);
+    expect(r.registroDeBusca.incluidos).toBe(2);
+    expect(r.registroDeBusca.excluidosTriagem).toBe(11);
+    void progresso;
+  });
+
+  it("TRIAGEM que não conseguiu julgar (modelo fora) inclui o lote inteiro — a escrita ainda tem a regra de lastro", async () => {
+    const muitos = Array.from({ length: 8 }, (_, i) => ({ title: `Paper ${i}`, authors: [`Autor N${i}`], year: 2020, abstract: `Resumo do paper ${i} com texto suficiente para entrar na biblioteca.` }));
+    const base = llmFalso().llm;
+    const llm = vi.fn(async (p: PedidoLlm) => (p.fase === "triagem" ? "isto não é json" : base(p)));
+    let k = 0;
+    const buscar = async () => { const lote = muitos.slice(k, k + 4); k += 4; return lote; };
+    const { d } = deps({ llm, buscar });
+    const r = await rodarPaperOrquestra({ tema: "t", pedido: "p", tipo: "Artigo", esqueleto: ESQ, reflexoes: 0 }, d);
+    expect(r.registroDeBusca.incluidos).toBe(r.registroDeBusca.encontrados);
   });
 
   it("artigo COM dados: o registro de busca não vai pra metodologia; o orçamento de palavras vai pro escritor", async () => {

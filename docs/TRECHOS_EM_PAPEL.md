@@ -64,8 +64,28 @@ reserva determinística (a frase do trecho com mais termos, relevância "relacio
 `TRECHOS_EM_PAPEL=1` no `.env` da VPS (o compose repassa ao web e ao worker). Opcional: `TRECHOS_MODELO` (padrão o
 Flash da casa). Precisa da base RAG de pé (`RAG_PG_URL`).
 
+## Página exata da citação (nov/2026)
+
+O E2E logado (`tests/e2e_paper`) mostrou que a folha dizia a FAIXA do pedaço indexado ("p. 4–7") em vez da página da
+frase (p. 6): a base só guardava `pagina_ini`/`pagina_fim` por pedaço. Agora o corte (`lib/rag/corte.ts`) grava em
+`rag_trechos.marcas_pagina` onde cada página começa dentro do pedaço, e a skill converte a posição da citação em página
+(`comPaginaExata` em `lib/trechos/server.ts`). O anexo do chat já fazia isso (`marcasDePagina`).
+
+**Migração em produção:** `ALTER TABLE rag_trechos ADD COLUMN IF NOT EXISTS marcas_pagina jsonb;` (já está no
+`rag-schema.sql`; rodar como dono da tabela no Postgres da Contabo). Sem a coluna o código segue funcionando com a
+faixa, como antes. Documentos já indexados continuam com a faixa até serem reenviados.
+
+**Ainda impreciso:** a citação geral da base no chat ("**Da sua base:** … (p. 1–4)", `fontesBase`) segue pela faixa do
+pedaço — só a folha de papel e o documento gerado (que usa os trechos) têm a página exata.
+
+## Verificação ponta a ponta
+
+`tests/e2e_paper/test_20_trechos.py`, contra o app logado, a base real (Postgres+pgvector), o pdf-loader real e o
+Vertex: fato plantado achado literal na página certa; "todas as vezes" com as 3 ocorrências (recall e precisão de
+página); pergunta sobre o que o material não tem não inventa trecho; anexo do 📎 com página. Os trechos são conferidos
+contra o texto do PDF lido por pypdf, não pelo leitor da Zaeon.
+
 ## O que NÃO foi verificado
 
-- Nada rodou contra modelo real nem contra a base real: os testes usam modelo, busca e documento falsos.
-- O SQL de `trechosDoDocumento` tem teste de banco, mas ele só roda com `RAG_PG_TEST_URL` (pulado nesta máquina).
+- (Superado em nov/2026 pela suíte `tests/e2e_paper`, que roda contra modelo e base reais.)
 - A tela foi conferida na vitrine `/dev/trechos` (claro, escuro, celular), não no chat logado.

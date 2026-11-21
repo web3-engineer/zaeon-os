@@ -21,7 +21,7 @@
 import type { TrechoEmPapel } from "@/lib/agent/contracts";
 import type { TrechoAchado } from "@/lib/rag/busca";
 import { paginaNoOffset } from "@/lib/agent/anexos";
-import { contemTermo, contexto, faixaDePaginas, fraseComMaisTermos, localizarLiteral, normalizar, termosDaPergunta } from "@/lib/trechos/literal";
+import { contemTermo, contexto, faixaDePaginas, fraseComMaisTermos, frasesPontuadas, localizarLiteral, normalizar, termosDaPergunta } from "@/lib/trechos/literal";
 
 export type TrechoDoc = TrechoAchado & {
   ordem?: number;
@@ -56,6 +56,22 @@ export function pedacosDoAnexo(a: AnexoParaTrechos, alvo = 1800): TrechoDoc[] {
     ini = fim;
   }
   return out;
+}
+
+/**
+ * O pedaço indexado da base começa pelo CAMINHO ("Título › Capítulo › Seção" + linha em branco — lib/rag/corte), que
+ * serve à busca mas NÃO é texto do documento. Sem tirá-lo, a skill citava o caminho como se fosse trecho literal
+ * ("Artigo Tapiri da aluna › O Sistema Tapiri:" — E2E logado, nov/2026). A posição da página é deslocada junto.
+ */
+export function semCabecalho(t: TrechoDoc): TrechoDoc {
+  const fim = t.texto.indexOf("\n\n");
+  if (fim < 0 || fim > 600) return t;
+  const linha = t.texto.slice(0, fim).trim();
+  const titulo = String(t.titulo ?? "").trim();
+  if (!titulo || !(linha === titulo || linha.startsWith(`${titulo} › `))) return t;
+  const corte = fim + 2;
+  const pagEm = t.paginaEm;
+  return { ...t, texto: t.texto.slice(corte), ...(pagEm ? { paginaEm: (i: number) => pagEm(i + corte) } : {}) };
 }
 
 export type Deps = {
@@ -154,7 +170,7 @@ export async function acharTrechos(pergunta: string, d: Deps, o: Opcoes = {}): P
 
     // 2 · busca ampla (todas as consultas em paralelo)
     const porId = new Map<string, TrechoDoc & { rank: number }>();
-    const listas = await Promise.all(consultas.map((c) => d.buscar(c).catch(() => [] as TrechoDoc[])));
+    const listas = await Promise.all(consultas.map((c) => d.buscar(c).then((ts) => ts.map(semCabecalho)).catch(() => [] as TrechoDoc[])));
     rel.consultas = consultas.length;
     listas.forEach((lista) => lista.forEach((t, i) => {
       const r = 1 / (60 + i); // RRF entre as consultas, como a busca faz entre os ramos
@@ -181,7 +197,7 @@ export async function acharTrechos(pergunta: string, d: Deps, o: Opcoes = {}): P
       for (const t of porId.values()) if (!t.documentoId.startsWith("anexo:")) docs.set(t.documentoId, (docs.get(t.documentoId) ?? 0) + t.rank);
       const alvo = [...docs].sort((a, b) => b[1] - a[1]).slice(0, o.maxDocsVarredura ?? 6).map(([id]) => id);
       const porDoc = rel.exaustivo ? 40 : 10;
-      const lidos = await Promise.all(alvo.map((id) => d.lerDocumento!(id).catch(() => [] as TrechoDoc[])));
+      const lidos = await Promise.all(alvo.map((id) => d.lerDocumento!(id).then((ts) => ts.map(semCabecalho)).catch(() => [] as TrechoDoc[])));
       for (const lista of lidos) {
         rel.varridos += lista.length;
         let n = 0;
@@ -247,9 +263,17 @@ export async function acharTrechos(pergunta: string, d: Deps, o: Opcoes = {}): P
     } else {
       // juiz fora do ar: a frase de cada candidato com mais termos — literal por construção, relevância "relacionado"
       rel.reserva = true;
-      for (const t of candidatos.slice(0, 8)) {
-        const f = fraseComMaisTermos(t.texto, termos);
-        if (f) montar(t, f, undefined, 1);
+      if (rel.exaustivo) {
+        // "TODAS as vezes": TODA frase com a pontuação máxima, de todos os candidatos — uma por pedaço perdia a 2ª
+        // ocorrência no mesmo pedaço (E2E nov/2026: o "biofiltro de juncos" da p. 7 sumiu, no pedaço da p. 5)
+        const porCand = candidatos.slice(0, 24).map((t) => ({ t, fs: frasesPontuadas(t.texto, termos) }));
+        const max = Math.max(0, ...porCand.flatMap((c) => c.fs.map((f) => f.pontos)));
+        if (max > 0) for (const { t, fs } of porCand) for (const f of fs) if (f.pontos === max) montar(t, f.frase, undefined, 1);
+      } else {
+        for (const t of candidatos.slice(0, 8)) {
+          const f = fraseComMaisTermos(t.texto, termos);
+          if (f) montar(t, f, undefined, 1);
+        }
       }
     }
 

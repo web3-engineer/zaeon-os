@@ -127,6 +127,12 @@ export function contemTermo(texto: string, termo: string): boolean {
 }
 
 /** A frase do trecho com mais termos — a citação de reserva quando o juiz (modelo) não respondeu. */
+/** Cada frase do texto com a sua pontuação (quantos termos contém). Base das duas reservas abaixo. */
+export function frasesPontuadas(texto: string, termos: readonly string[]): Array<{ frase: string; pontos: number }> {
+  return String(texto ?? "").split(/(?<=[.!?;:])\s+|\n{2,}/).map((f) => f.trim()).filter((f) => f.length >= 30)
+    .map((frase) => ({ frase: frase.slice(0, 600), pontos: termos.filter((t) => contemTermo(frase, t)).length }));
+}
+
 export function fraseComMaisTermos(texto: string, termos: readonly string[]): string | null {
   const frases = String(texto ?? "").split(/(?<=[.!?;:])\s+|\n{2,}/).map((f) => f.trim()).filter((f) => f.length >= 30);
   let melhor: string | null = null, pontos = 0;

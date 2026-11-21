@@ -72,6 +72,20 @@ describe("a skill: pergunta em linguagem natural → passagens literais conferid
     expect(r.trechos[0]!.citacao).toContain("clorofila absorve a luz");
   });
 
+  it("juiz fora + TODAS as vezes: toda ocorrência entra, inclusive duas no MESMO pedaço (E2E nov/2026: p. 7 sumia)", async () => {
+    const doc = [
+      t("p1", "d1", 0, "O biofiltro de juncos é a segunda etapa do sistema e retém matéria orgânica dissolvida.", 3),
+      { ...t("p2", "d1", 1, "A manutenção do biofiltro de juncos exige poda a cada três meses pelos alunos. Texto do meio sem o termo algum aqui. Na seca o biofiltro de juncos precisa de reserva mínima de água para as raízes.", 5), paginaFim: 7 },
+    ];
+    const { d } = deps({
+      buscar: async () => doc, lerDocumento: async () => doc,
+      llm: vi.fn(async (p: { fase: string }) => { if (p.fase === "plano") return JSON.stringify({ termos: ["biofiltro de juncos"], exaustivo: true }); throw new Error("503"); }),
+    });
+    const r = await acharTrechos("ache todas as vezes que a apostila fala do biofiltro de juncos", d);
+    expect(r.relatorio.reserva).toBe(true);
+    expect(r.trechos.filter((x) => x.citacao.includes("biofiltro de juncos"))).toHaveLength(3);
+  });
+
   it("base vazia ou tudo falhando: lista vazia, nunca exceção", async () => {
     const { d } = deps({ buscar: async () => { throw new Error("pg fora"); } });
     expect((await acharTrechos("onde fala de x?", d)).trechos).toEqual([]);
@@ -151,5 +165,22 @@ describe("anexo do chat na skill", () => {
     expect(r.trechos).toHaveLength(1);
     expect(r.trechos[0]).toMatchObject({ documentoId: "anexo:a1", titulo: "apostila.pdf", paginas: "2", relevancia: 3 });
     expect(lerDocumento).not.toHaveBeenCalled();
+  });
+});
+
+describe("o caminho do pedaço indexado não é texto do documento (E2E nov/2026)", () => {
+  it("semCabecalho tira 'Título › Seção' e desloca a página junto", async () => {
+    const { semCabecalho } = await import("@/lib/trechos/achar");
+    const texto = "Artigo X › O Sistema Tapiri:\n\nFrase da p. 4.\n\nO consumo caiu 62% no primeiro ano.";
+    const pos62 = texto.indexOf("O consumo");
+    const t = semCabecalho({ trechoId: "a", documentoId: "d", titulo: "Artigo X", texto, paginaIni: 4, paginaFim: 6, score: 0, similaridade: null, porTexto: true,
+      paginaEm: (i: number) => (i >= pos62 ? 6 : 4) } as any);
+    expect(t.texto.startsWith("Frase da p. 4.")).toBe(true);
+    expect(t.paginaEm!(t.texto.indexOf("O consumo"))).toBe(6);
+  });
+  it("texto que não começa pelo título (anexo) fica intacto", async () => {
+    const { semCabecalho } = await import("@/lib/trechos/achar");
+    const t = { trechoId: "a", documentoId: "d", titulo: "Outro", texto: "Linha um\n\nLinha dois", paginaIni: 1, paginaFim: 1, score: 0, similaridade: null, porTexto: true } as any;
+    expect(semCabecalho(t)).toBe(t);
   });
 });

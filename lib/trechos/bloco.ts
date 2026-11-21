@@ -20,12 +20,16 @@ export function blocoDosTrechos(trechos: readonly TrechoEmPapel[] | null | undef
     ABRE,
     ...linhas,
     FECHA,
-    "Esses trechos foram achados no material da pessoa para esta pergunta e cada um aparece na tela como uma FOLHA DE " +
-    "PAPEL escrita à mão, no lugar que você indicar. Escreva a resposta em texto corrido que conduz a leitura: explique o " +
-    "que cada trecho mostra e como eles se ligam. Logo DEPOIS do parágrafo que comenta um trecho, ponha o marcador dele " +
-    "SOZINHO numa linha (ex.: [[T2]]). Use cada marcador uma vez, só os desta lista, e não copie o texto do trecho (ele já " +
-    "está na folha). Se a pessoa pediu para achar/mostrar trechos, mostre todos os que servem, agrupando os parecidos. " +
-    "Cite a página no texto quando ajudar (\"na p. 12, o autor…\"). Trecho que não serve para a pergunta: não use.",
+    "REGRA 1 — RESPONDA COM O DADO. A PRIMEIRA frase da resposta já diz o que a pessoa perguntou, com o dado exato do " +
+    "trecho (o número, o nome, a data, o valor) e a página. Ex.: pergunta \"em que página fala da queda do consumo?\" → " +
+    "\"Na p. 6: o consumo de água potável caiu 62% no primeiro ano.\" Nunca troque o dado por \"muito expressivo\", " +
+    "\"significativo\" ou \"o trecho mostra o volume\" — a folha é a PROVA, não a resposta.\n" +
+    "REGRA 2 — AS FOLHAS. Cada trecho aparece na tela como uma FOLHA DE PAPEL escrita à mão, no lugar que você indicar. " +
+    "Escreva em texto corrido que conduz a leitura: explique o que cada trecho mostra e como eles se ligam. Logo DEPOIS " +
+    "do parágrafo que comenta um trecho, ponha o marcador dele SOZINHO numa linha (ex.: [[T2]]). Use cada marcador uma " +
+    "vez, só os desta lista. Não transcreva o trecho inteiro (ele já está na folha) — citar o dado dele na sua frase é " +
+    "obrigatório (regra 1), copiar a passagem toda não. Se a pessoa pediu para achar/mostrar trechos, mostre todos os " +
+    "que servem, agrupando os parecidos. Trecho que não serve para a pergunta: não use.",
   ].join("\n");
 }
 

@@ -39,6 +39,8 @@ export type Deps = {
   llm: Llm;
   /** busca acadêmica (padrão: lib/scholar/retrieve) — nunca deve lançar; vazio é resposta válida */
   buscar: (consulta: string, area?: string) => Promise<PaperBusca[]>;
+  /** as bases que de fato responderam às buscas desta geração (e as que falharam). Sem isto, vale a lista fixa. */
+  basesDaBusca?: () => { responderam: string[]; semResposta: string[] };
   /** resumos por DOI (o enrichment do PO, via OpenAlex) pros candidatos que vieram sem resumo; ausente = sem enrichment */
   completarResumos?: (dois: string[]) => Promise<Map<string, string>>;
   /** a base do PRÓPRIO aluno (RAG); ausente = sem base */
@@ -106,15 +108,21 @@ async function emLotes<T, R>(itens: readonly T[], n: number, f: (x: T) => Promis
 }
 
 export const PROMPT_TRIAGEM = `Você faz a TRIAGEM de uma revisão de literatura: decide, por título e resumo, quais trabalhos SERVEM ao
-trabalho. Inclua o que trata do tema, do problema, do público, do método ou dos conceitos do trabalho — e também o que serve de
-CONTEXTO ou CONTRASTE (outro nível de ensino, o período anterior, outro país): a revisão precisa disso pra comparar.
-Exclua SÓ o que claramente não serve: outra área sem relação (ex.: distração ao dirigir num tema de estudo), outro problema
-que só compartilha uma palavra, ou o que não é trabalho acadêmico. NA DÚVIDA, INCLUA.
+trabalho. O teste é o do orientador: "esta fonte poderia sustentar uma frase DESTE trabalho?".
+INCLUA: o mesmo objeto ou problema (ex.: num trabalho sobre reúso de água cinza em escolas — tratamento e reúso de água
+cinza, saneamento descentralizado, tecnologias sociais de água, educação ambiental sobre água na escola); o contexto
+DIRETO (a mesma região, população ou política — ex.: escassez hídrica no semiárido); o mesmo método; e CONTRASTE útil
+(o mesmo objeto em outro país, nível ou período).
+EXCLUA: o que só compartilha uma palavra genérica com o tema ("rural", "escola", "educação", "água", "clima", "custo") mas
+trata de outro objeto — ex.: rota de ônibus escolar, telescópio espacial, divulgação de astronomia, monção na Ásia,
+recarga de drones, modelo de ecossistema, física de partículas; e o que não é trabalho acadêmico. Na dúvida entre
+"contexto direto" e "tema vizinho por uma palavra", EXCLUA: poucas fontes no tema valem mais que muitas fora dele.
 Responda JSON: {"incluir": ["P1", "P4"], "excluir": [{"p": "P2", "motivo": "frase curta em pt-BR"}]}.`;
 
 /** Triagem em lotes de 30. Modelo fora do ar = inclui tudo (a escrita ainda tem a regra de lastro). */
-async function triar(papers: readonly PaperBusca[], tema: string, llm: Llm): Promise<{ incluir: Set<number>; motivos: string[] }> {
+async function triar(papers: readonly PaperBusca[], tema: string, llm: Llm): Promise<{ incluir: Set<number>; excluidos: Set<number>; motivos: string[] }> {
   const incluir = new Set<number>();
+  const excluidos = new Set<number>();
   const motivos: string[] = [];
   const lotes: number[][] = [];
   for (let i = 0; i < papers.length; i += 30) lotes.push(papers.slice(i, i + 30).map((_, j) => i + j));
@@ -125,9 +133,15 @@ async function triar(papers: readonly PaperBusca[], tema: string, llm: Llm): Pro
     try { r = parseJsonComLatex(raw); } catch { r = null; }
     if (!r || !Array.isArray(r.incluir)) { for (const i of lote) incluir.add(i); return; }
     for (const v of r.incluir) { const n = Number(String(v).replace(/\D/g, "")) - 1; if (lote.includes(n)) incluir.add(n); }
-    for (const x of Array.isArray(r.excluir) ? r.excluir : []) if ((x as any)?.motivo) motivos.push(s((x as any).motivo, 120));
+    for (const x of Array.isArray(r.excluir) ? r.excluir : []) {
+      const n = Number(String((x as any)?.p ?? x).replace(/\D/g, "")) - 1;
+      if (lote.includes(n)) excluidos.add(n);
+      if ((x as any)?.motivo) motivos.push(s((x as any).motivo, 120));
+    }
+    // o que o modelo não mencionou em nenhuma das listas também conta como fora (a triagem é por inclusão)
+    for (const i of lote) if (!incluir.has(i)) excluidos.add(i);
   });
-  return { incluir, motivos };
+  return { incluir, excluidos, motivos };
 }
 
 export async function rodarPaperOrquestra(e: Entrada, d: Deps): Promise<Resultado> {
@@ -221,6 +235,8 @@ export async function rodarPaperOrquestra(e: Entrada, d: Deps): Promise<Resultad
         return (await d.buscar(t.consulta, area).catch(() => [])).slice(0, t.tipo === "alvo" ? 1 : 6);
       });
       log.consultas = tarefas.map((t) => t.consulta);
+      const bases = d.basesDaBusca?.();
+      if (bases) { log.bases = bases.responderam; log.basesSemResposta = bases.semResposta; }
       tarefas.forEach((t, i) => { for (const p of achados[i] ?? []) candidatos.push({ ...p, secao: t.secao }); });
     }
     const vistos = new Set<string>();
@@ -242,9 +258,11 @@ export async function rodarPaperOrquestra(e: Entrada, d: Deps): Promise<Resultad
     // TRIAGEM por título e resumo (o que uma revisão de verdade faz antes de ler): fora do tema não entra no texto
     prog(`Triagem de ${comResumo.length} fontes por título e resumo`);
     const decisao = await triar(comResumo, `${e.tema}\n${ideia.slice(0, 1200)}`, llm);
-    // PISO: triagem que deixa menos de 12 fontes (havendo mais) está estrita demais — volta quem a busca pôs mais alto
-    const PISO = comResumo.length > 12 ? 12 : 0;
-    for (let i = 0; i < comResumo.length && decisao.incluir.size < PISO; i++) decisao.incluir.add(i);
+    // SEM PISO que repõe fonte REJEITADA. Antes, triagem que deixava < 12 fontes era "completada" com as primeiras da
+    // busca — inclusive as que ela tinha rejeitado: com o OpenAlex fora, entraram no artigo um telescópio de raios gama
+    // e a monção indiana (E2E logado, nov/2026). Poucas fontes no tema é melhor que muitas fora dele: o escritor tem a
+    // regra de lastro e escreve com o que há. (Lote que a triagem não conseguiu julgar — modelo fora — entra inteiro.)
+    if (decisao.incluir.size < 6) prog(`Só ${decisao.incluir.size} fontes no tema passaram na triagem`);
     const incluidos = comResumo.filter((_, i) => decisao.incluir.has(i));
     log.excluidosTriagem = comResumo.length - incluidos.length;
     log.motivosExclusao = decisao.motivos.slice(0, 8);

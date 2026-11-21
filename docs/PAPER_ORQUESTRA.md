@@ -111,7 +111,28 @@ oscilou numa métrica de estilo por vez (densidade de citação, número de par�
 **O que NÃO foi verificado.** A métrica mede forma, não verdade: a fidelidade das afirmações às fontes foi conferida por
 amostragem na leitura, não sistematicamente. A nota do parecerista (o modelo) ficou entre 5 e 6/10 em todas as rodadas.
 As referências foram escritas por quem também ajustou o gerador. Nada disso rodou no documento editável logado, só pelo
-roteiro.
+roteiro — a seção seguinte cobre isso.
+
+## Verificação no documento editável LOGADO (nov/2026)
+
+A avaliação acima rodou pelo roteiro. A suíte `tests/e2e_paper` (Python, ver o README dela) roda o caminho real: app de
+pé, sessão NextAuth, Minha base (Postgres+pgvector), pdf-loader, Vertex; a aluna pede o artigo no chat, escreve a
+conclusão NO MEIO da geração, salva o artigo em PDF, sobe pra base e pede um TCC a partir dele. Os oráculos são
+independentes de `lib/` (o PDF lido por pypdf é a verdade; DOIs conferidos no Crossref/doi.org).
+
+O que ela achou no gerador (todos corrigidos, cada um com teste):
+
+| Achado | Onde | Conserto |
+|---|---|---|
+| Material do aluno RENOMEADO no texto ("Apostila Técnica do Sistema Tapiri") | escrita | regra no `REGRA_DE_LASTRO` + oráculo `titulo_inventado` |
+| Faixa de chaves `[E1-E7]` vazando na tabela do TCC | conversão de citação | `expandirFaixasDeChaves` + rede final que corta `[E…]` malformada |
+| Literatura fora do tema (telescópio Fermi, monção indiana) com o OpenAlex fora | triagem | prompt pelo "teste do orientador"; o PISO de 12 que repunha fonte REJEITADA saiu |
+| OpenAlex sem chave: orçamento diário COMPARTILHADO por IP, esgotado → 429 o dia todo | `lib/scholar` | `OPENALEX_API_KEY` (env) + 429 sem retentativa → `rate_limited` → pausa |
+| Crossref sem resumo (o parser nem lia o campo) | `lib/scholar` | resumo JATS mapeado |
+| `&amp;` cru em título do arXiv | `lib/scholar` | entidades XML decodificadas |
+
+**Pendência do dono:** criar a chave gratuita do OpenAlex e pôr `OPENALEX_API_KEY` no `.env` da VPS (web e worker).
+Sem ela, num dia de uso alto a busca de literatura do documento cai pro Crossref (pouco resumo) e arXiv.
 
 ## Fora deste PR (fases seguintes)
 

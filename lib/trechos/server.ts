@@ -15,10 +15,18 @@ export async function acharTrechosDaPessoa(
   e: { userId: string; pergunta: string; areas?: string[]; ledger?: Partial<LedgerCtx>; anexos?: import("@/lib/trechos/achar").AnexoParaTrechos[] },
   o: Opcoes = {},
 ): Promise<Resultado> {
-  const [{ gerar }, { GEMINI_MODEL_FLASH }, { baseParaTurno, escopoDaPessoa }, { K_AMPLO }, { ragPg }, { trechosDoDocumento }] = await Promise.all([
+  const [{ gerar }, { GEMINI_MODEL_FLASH }, { baseParaTurno, escopoDaPessoa }, { K_AMPLO }, { ragPg }, { trechosDoDocumento, marcasDosTrechos }, { paginaNoOffset }] = await Promise.all([
     import("@/lib/llm/envelope"), import("@/lib/ai/model"), import("@/lib/rag/turno"), import("@/lib/rag/porDocumento"),
-    import("@/lib/rag/pg"), import("@/lib/rag/store"),
+    import("@/lib/rag/pg"), import("@/lib/rag/store"), import("@/lib/agent/anexos"),
   ]);
+  /** A página EXATA de uma posição no trecho (marcas gravadas no corte); sem marcas, a folha fica com a faixa do trecho. */
+  const comPaginaExata = async <T extends { trechoId: string; paginaIni: number }>(ts: T[]): Promise<Array<T & { paginaEm?: (i: number) => number }>> => {
+    const marcas = await marcasDosTrechos(ragPg(), ts.map((t) => t.trechoId)).catch(() => new Map<string, Array<[number, number]>>());
+    return ts.map((t) => {
+      const m = marcas.get(t.trechoId);
+      return m ? { ...t, paginaEm: (i: number) => paginaNoOffset(m, i) || t.paginaIni } : t;
+    });
+  };
   const escopo = escopoDaPessoa(e.userId, e.areas ?? []);
   return acharTrechos(e.pergunta, {
     llm: async (p) => (await gerar({
@@ -29,9 +37,9 @@ export async function acharTrechosDaPessoa(
     })).texto,
     buscar: async (consulta) => {
       const b = await baseParaTurno({ userId: e.userId, pergunta: consulta, areas: e.areas, k: K_AMPLO });
-      return b.status === "ok" ? b.trechos : [];
+      return b.status === "ok" ? comPaginaExata(b.trechos) : [];
     },
-    lerDocumento: async (documentoId) => trechosDoDocumento(ragPg(), documentoId, await escopo),
+    lerDocumento: async (documentoId) => comPaginaExata(await trechosDoDocumento(ragPg(), documentoId, await escopo)),
     ...(e.anexos?.length ? { anexos: e.anexos } : {}),
   }, o);
 }

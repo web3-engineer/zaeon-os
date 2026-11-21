@@ -90,17 +90,9 @@ export function paragraphsFromPages(pages: { page: number; text: string }[]): Pa
 
 // Impure: extract per-page text with pdfjs-dist (Node, no worker), then attribute.
 export async function extractPdfParagraphs(data: Uint8Array): Promise<Paragraph[]> {
-  // legacy build runs in Node without a worker (this build ships as pdf.js, not .mjs)
-  // @ts-ignore - the legacy pdfjs build has no bundled type declarations
-  const pdfjs: any = await import("pdfjs-dist/legacy/build/pdf.js");
-  const doc = await pdfjs.getDocument({ data, useWorkerFetch: false, isEvalSupported: false, disableFontFace: true }).promise;
-  const pages: { page: number; text: string }[] = [];
-  for (let n = 1; n <= doc.numPages; n++) {
-    const page = await doc.getPage(n);
-    const content = await page.getTextContent();
-    // pdfjs returns items per text run; join with spaces, insert breaks on large Y gaps is overkill here
-    const text = content.items.map((it: any) => (it.str ?? "")).join(" ");
-    pages.push({ page: n, text });
-  }
-  return paragraphsFromPages(pages);
+  // a extração por LINHA e PARÁGRAFO da skill de leitura (lib/pdf/ler), com o pdf.js carregado sem o módulo `canvas`
+  // (lib/pdf/pdfjs) — antes este caminho quebrava no Node com "Cannot find module 'canvas'" e juntava a página inteira
+  const { linhasDoPdfjs, paragrafosDasLinhas } = await import("@/lib/pdf/ler");
+  const porPagina = await linhasDoPdfjs(data);
+  return porPagina.flatMap((p) => paragrafosDasLinhas(p.page, p.linhas)).map((p, idx) => ({ ...p, idx }));
 }

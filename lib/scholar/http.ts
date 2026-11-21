@@ -1,6 +1,8 @@
 const DEFAULT_UA = "ZaeonScholar/1.0 (https://zaeon.os; mailto:research@zaeon.os)";
 
 export interface RetryOpts {
+  /** false = 429 volta na hora (a fonte decide: pausa). Cota DIÁRIA estourada não melhora esperando segundos. */
+  repetir429?: boolean;
   retries?: number;        // default 3 (so up to 4 attempts)
   baseDelayMs?: number;    // default 600
   timeoutMs?: number;      // default 12000 (per attempt)
@@ -22,7 +24,7 @@ export async function fetchWithRetry(url: string, init: RequestInit = {}, opts: 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const res = await doFetch(url, { ...init, headers, signal: AbortSignal.timeout(timeoutMs) });
-      if ((res.status === 429 || res.status >= 500) && attempt < retries) {
+      if (((res.status === 429 && opts.repetir429 !== false) || res.status >= 500) && attempt < retries) {
         const retryAfter = Number(res.headers.get("retry-after"));
         const delay = Number.isFinite(retryAfter) && retryAfter > 0
           ? retryAfter * 1000

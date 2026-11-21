@@ -27,6 +27,9 @@ Você NÃO PODE:
 - citar chave que não está na lista de evidências (o sistema CORTA chave inventada do texto);
 - escrever citação no formato (Autor, ano) — cite SEMPRE pela chave [E#]; o sistema converte para ABNT;
 - atribuir a uma fonte o que o resumo dela não diz;
+- RENOMEAR um documento do aluno: ao nomeá-lo no texto, use o título EXATO da lista de evidências (ex.: se a lista diz
+  "Apostila Agua Cinza no Semiarido", não escreva "Apostila Técnica do Sistema X"), e não invente autor, ano ou
+  editora para ele — prefira "o material de apoio" + a chave [E#];
 - incluir nome do aluno, e-mail, afiliação, agradecimentos ou "autor correspondente";
 - inventar DETALHE DE MÉTODO OU DE COLETA que não está em 'dados' ou no 'registro_de_busca': plataforma (Google Forms),
   termo de consentimento, bimestre, software, tipo de pergunta, FORMA DE SELEÇÃO DA AMOSTRA (conveniência, aleatória,

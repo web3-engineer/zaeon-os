@@ -205,11 +205,39 @@ export function injetarCandidatas(e: Esboco, evs: readonly Evid[], rotulos: { in
  * PaperQA2 que a orquestra já usa) e contada. Devolve também as chaves citadas, na ordem de aparição —
  * é daí que a bibliografia sai, sem casar string escrita à mão.
  */
+/**
+ * FAIXA de chaves → chaves soltas: "[E1-E7]" / "[E2–E4, E9]" / "[E1 a E3]" viram "[E1][E2]…". O modelo escreve faixa em
+ * tabela-síntese ("Artigos [E1-E7]") e o conversor não a reconhecia — a chave interna vazava pro documento entregue
+ * (achado no E2E logado, nov/2026). Faixa absurda (> 20 chaves ou invertida) não é expandida: a rede final a corta.
+ */
+export function expandirFaixasDeChaves(texto: string): string {
+  return String(texto ?? "").replace(/\[(E\d+(?:\s*(?:[-–—]|a|até)\s*E?\d+)?(?:\s*[,;]\s*E?\d+(?:\s*(?:[-–—]|a|até)\s*E?\d+)?)*)\]/g, (m, dentro: string) => {
+    if (!/[-–—]|\ba\b|até/.test(dentro)) return m;
+    const chaves: string[] = [];
+    for (const parte of dentro.split(/\s*[,;]\s*/)) {
+      const f = parte.match(/^E?(\d+)\s*(?:[-–—]|a|até)\s*E?(\d+)$/);
+      if (f) {
+        const [a, b] = [Number(f[1]), Number(f[2])];
+        if (b < a || b - a > 20) return m;
+        for (let i = a; i <= b; i++) chaves.push(`E${i}`);
+      } else {
+        const k = parte.match(/^E?(\d+)$/);
+        if (!k) return m;
+        chaves.push(`E${k[1]}`);
+      }
+    }
+    return chaves.map((c) => `[${c}]`).join("");
+  });
+}
+
+/** Rede final: qualquer "[E…]" que ainda sobrou (forma que o conversor não entende) sai do texto entregue. */
+const RE_CHAVE_SOBRANDO = /\s*\[E\d+[^\]\n]{0,40}\]/g;
+
 export function converterCitacoes(texto: string, porChave: (c: string) => Evid | undefined): { texto: string; citadas: string[]; invalidas: string[] } {
   const citadas: string[] = [];
   const invalidas: string[] = [];
   // [E1][E2] · [E1], [E2] · [E1; E2] · [E1] e [E2] → um grupo só, uma citação só
-  const out = String(texto ?? "").replace(/\s*\[E\d+(?:\s*[,;]\s*E?\d+)*\](?:\s*(?:[,;]|\be\b)?\s*\[E\d+(?:\s*[,;]\s*E?\d+)*\])*/g, (grupo) => {
+  const out = expandirFaixasDeChaves(String(texto ?? "")).replace(/\s*\[E\d+(?:\s*[,;]\s*E?\d+)*\](?:\s*(?:[,;]|\be\b)?\s*\[E\d+(?:\s*[,;]\s*E?\d+)*\])*/g, (grupo) => {
     const chaves = [...grupo.matchAll(/E?(\d+)/g)].map((m) => `E${m[1]}`);
     const partes: string[] = [];
     for (const c of chaves) {
@@ -220,7 +248,7 @@ export function converterCitacoes(texto: string, porChave: (c: string) => Evid |
       if (!partes.includes(dentro)) partes.push(dentro);
     }
     return partes.length ? ` (${partes.join("; ")})` : "";
-  });
+  }).replace(RE_CHAVE_SOBRANDO, (m) => { invalidas.push(m.trim()); return ""; });
   return { texto: out.replace(/ +([.,;:])/g, "$1"), citadas, invalidas };
 }
 
@@ -324,6 +352,8 @@ export const BASES_ACADEMICAS = ["OpenAlex", "Crossref", "arXiv", "PubMed", "Sem
 export type RegistroDeBusca = {
   origem: "busca" | "pedido";
   bases: string[];
+  /** bases chamadas que não responderam (429/erro) — a metodologia diz isso em vez de fingir que foram consultadas */
+  basesSemResposta?: string[];
   consultas: string[];
   data: string;
   encontrados: number;
@@ -345,14 +375,19 @@ export function textoDoRegistro(r: RegistroDeBusca): string {
     return `Fontes: as ${r.incluidos} referências indicadas pelo autor no pedido. Nenhuma busca em base de dados foi feita.`;
   }
   return [
-    `Busca automatizada (assistida por IA) realizada em ${r.data} nas bases ${r.bases.slice(0, -1).join(", ")} e ${r.bases[r.bases.length - 1]}.`,
-    `Consultas (${r.consultas.length}, em inglês): ${r.consultas.map((c) => `"${c}"`).join("; ")}.`,
+    // as bases que DE FATO responderam (o pipeline mede); "em inglês" fixo saiu — a consulta pode ser em português
+    // (E2E nov/2026: a metodologia afirmava PubMed e "em inglês" numa busca em português em que o PubMed nem foi chamado)
+    r.bases.length
+      ? `Busca automatizada (assistida por IA) realizada em ${r.data} ${r.bases.length === 1 ? "na base" : "nas bases"} ${r.bases.length > 1 ? `${r.bases.slice(0, -1).join(", ")} e ${r.bases[r.bases.length - 1]}` : r.bases[0]}.`
+      : `Busca automatizada (assistida por IA) tentada em ${r.data}; nenhuma base acadêmica respondeu.`,
+    r.basesSemResposta?.length ? `Bases consultadas que não responderam (limite de uso ou indisponibilidade): ${r.basesSemResposta.join(", ")}.` : "",
+    `Consultas (${r.consultas.length}): ${r.consultas.map((c) => `"${c}"`).join("; ")}.`,
     `Registros únicos recuperados: ${r.encontrados}.${r.resumosCompletados ? ` Resumos completados pelo DOI (OpenAlex): ${r.resumosCompletados}.` : ""} Excluídos por não terem resumo disponível: ${r.semResumo}.`,
     `Triagem por título e resumo quanto à pertinência ao tema (assistida por IA): ${r.excluidosTriagem} excluídos${r.motivosExclusao.length ? ` (exemplos de motivo: ${r.motivosExclusao.join("; ")})` : ""}.`,
     `Incluídos na síntese: ${r.incluidos}${r.daBaseDoAluno ? ` (dos quais ${r.daBaseDoAluno} documentos da base pessoal do autor)` : ""}.`,
     "Critérios de inclusão (os ÚNICOS aplicados): ter resumo disponível e ser pertinente ao tema por título e resumo. Não houve filtro por tipo de publicação, revisão por pares, idioma ou período.",
     "Não houve avaliação de risco de viés, extração por pares nem leitura do texto completo: a síntese se apoia nos resumos.",
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 }
 
 // ───────────────────────────── orçamento de palavras por seção ─────────────────────────────
