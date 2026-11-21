@@ -304,6 +304,26 @@ describe("chat único — VÁRIOS trabalhos na mesma conversa", () => {
     expect(r).toMatchObject({ gerando: true, tipo: "Artigo" });
   });
 
+  it("PAPER_ORQUESTRA ligado: trabalho NOVO nasce do esqueleto e o pipeline de agentes escreve, mesmo com seções da Aura", async () => {
+    process.env.PAPER_ORQUESTRA = "1";
+    try {
+      const gerar = vi.fn();
+      const r = await tccDoTurno({ ...base, gerar, prompt: "escreva um artigo sobre fotossíntese", answer: ans({ work: { kind: "artigo", sections: [{ title: "INTRODUÇÃO", body: "rasa" }] } }) as any });
+      expect(m.criar.mock.calls[0][0]).toMatchObject({ status: "gerando" });
+      expect(m.criar.mock.calls[0][0].secoes.every((s: any) => !s.corpo)).toBe(true); // o texto raso NÃO entra
+      expect(gerar).toHaveBeenCalledWith("novo", "u1", "fotossíntese", expect.anything());
+      expect(r).toMatchObject({ gerando: true });
+      // edição de um trabalho JÁ aberto não muda: o chat continua escrevendo nele direto
+      m.listar.mockResolvedValue([artigo({ id: "a1" })]);
+      m.aplicar.mockResolvedValue({ ok: true, tcc: artigo(), efeitos: [{}] });
+      const ed = await tccDoTurno({ ...base, gerar, intent: "explicar_conceito", abertoId: "a1", prompt: "melhore a metodologia", answer: ans({ work: { kind: "artigo", sections: [{ title: "METODOLOGIA", body: "nova" }] } }) as any });
+      expect(ed).toMatchObject({ workId: "a1", criado: false });
+      expect(gerar).toHaveBeenCalledTimes(1);
+    } finally {
+      delete process.env.PAPER_ORQUESTRA;
+    }
+  });
+
   it("edição vai pro trabalho ABERTO no editor (não pro mais recente)", async () => {
     m.listar.mockResolvedValue([artigo({ id: "a2", titulo: "mitose" }), artigo({ id: "a1" })]);
     m.aplicar.mockImplementation(async (id: string, _u: string, fn: any) => {

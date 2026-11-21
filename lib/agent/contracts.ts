@@ -27,6 +27,28 @@ export function academicModeForSurface(surface?: string | null): AcademicMode {
 export type Source = { title: string; url?: string; authors?: string; year?: number };
 export type WorkKind = "estudo" | "pesquisa" | "artigo" | "tcc" | "relatorio" | "aula";
 
+/** Uma passagem literal do material da pessoa, verificada pelo código (lib/trechos). */
+export type TrechoEmPapel = {
+  /** "T1", "T2"… na ordem do documento */
+  id: string;
+  documentoId: string;
+  titulo: string;
+  /** "4" ou "4–5" (vazio nas referências públicas, que não têm página) */
+  paginas: string;
+  /** o texto EXATO do documento — nunca paráfrase */
+  citacao: string;
+  /** um pedaço do texto logo antes e logo depois (contexto da folha), cortado em palavra */
+  antes?: string;
+  depois?: string;
+  /** por que este trecho responde à pergunta (uma frase) */
+  motivo?: string;
+  /** 3 = responde direto · 2 = sustenta · 1 = relacionado */
+  relevancia: 1 | 2 | 3;
+  publico?: boolean;
+  /** onde a folha entra no texto da resposta: depois do parágrafo `paragrafo` (0-based) do `campo` */
+  ancora?: { campo: "nucleo" | "desenvolvimento"; paragrafo: number };
+};
+
 /** Referência a um artefato do Studio embutido na resposta (cada um com provenance). */
 export type StudioRef = {
   studioKind: string;      // guide | mindmap | timeline | flashcards | faq | image | podcast | video
@@ -112,6 +134,13 @@ export type StructuredAnswer = {
    * campo, o que vale é o que foi medido onde a informação existe.
    */
   referencias?: FonteVerificada[];
+  /**
+   * TRECHOS EM PAPEL (lib/trechos): passagens LITERAIS do material da pessoa que a skill achou e o código VERIFICOU
+   * (a citação existe, letra por letra, no documento). O cliente desenha cada uma como uma folha de papel escrita à mão,
+   * depois do parágrafo `ancora` do campo indicado; sem âncora, a folha vai pro fim. O texto da resposta NÃO carrega
+   * marcador nenhum — voz, memória e cache veem o texto limpo.
+   */
+  trechos?: TrechoEmPapel[];
   /** RAG: documentos da base (turma/pessoal) que a resposta citou — só trechos que a busca devolveu. `paginas` = "4" ou "4–5". */
   fontesBase?: { documentoId: string; titulo: string; paginas: string; publico?: boolean }[];
   /** TCC cross-sala (TCC_CROSS): o turno criou/editou o TCC desta conversa → o cliente abre a aba. */

@@ -187,3 +187,17 @@ describe("cortarEmTrechos — nenhum texto some", () => {
     expect(out).toHaveLength(2);
   });
 });
+
+describe("marcas de página dentro do trecho", () => {
+  it("trecho que cruza páginas sabe onde cada página começa — a frase da p. 6 não vira 'p. 4–7'", async () => {
+    const { paginaNoOffset } = await import("@/lib/agent/anexos");
+    const frases = [[4, "Frase da quatro."], [5, "Frase da cinco."], [6, "O consumo caiu 62% no primeiro ano."], [7, "Frase da sete."]] as const;
+    const [t] = cortarEmTrechos(frases.map(([pg, tx]) => p(tx, pg)), "Apostila");
+    expect([t!.paginaIni, t!.paginaFim]).toEqual([4, 7]);
+    for (const [pg, tx] of frases) expect(paginaNoOffset(t!.marcas, t!.texto.indexOf(tx))).toBe(pg);
+  });
+  it("trecho de uma página só não carrega marcas", () => {
+    const [t] = cortarEmTrechos([p("a", 3), p("b", 3)], "Doc");
+    expect(t!.marcas).toBeUndefined();
+  });
+});

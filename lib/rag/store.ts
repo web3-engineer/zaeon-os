@@ -9,7 +9,8 @@
  */
 import { transacao, type RagDb } from "./pg";
 import type { TrechoCortado } from "./corte";
-import type { EscopoRag } from "./permissao";
+import { podeVer, type EscopoRag } from "./permissao";
+import type { TrechoAchado } from "./busca";
 
 export type { RagDb } from "./pg";
 
@@ -90,6 +91,41 @@ async function travar(tx: RagDb, documentoId: string): Promise<void> {
  * DOCUMENTO no momento da escrita, lida na mesma transação (um `acrescentarPermissao` que rodou antes de existirem
  * trechos não os viu); o `perm` recebido só é mantido por compatibilidade de assinatura e é ignorado.
  */
+/**
+ * A coluna `marcas_pagina` (rag-schema.sql, nov/2026) já existe neste banco? Lida uma vez por conexão. Antes da
+ * migração rodar em produção o código segue funcionando sem ela (páginas pela faixa do trecho, como antes).
+ */
+const temMarcasCache = new WeakMap<object, Promise<boolean>>();
+export function temColunaMarcas(db: RagDb): Promise<boolean> {
+  let p = temMarcasCache.get(db as object);
+  if (!p) {
+    p = db.query(
+      "SELECT 1 FROM information_schema.columns WHERE table_schema = ANY(current_schemas(false)) AND table_name = 'rag_trechos' AND column_name = 'marcas_pagina' LIMIT 1",
+    ).then((r: any) => (r.rows?.length ?? 0) > 0).catch(() => false);
+    temMarcasCache.set(db as object, p);
+  }
+  return p;
+}
+
+/** SÓ PARA TESTES: esquece o que foi lido sobre a coluna (o teste a remove/recria no meio). */
+export function _esquecerColunaMarcas(db: RagDb): void { temMarcasCache.delete(db as object); }
+
+/** As marcas de página dos trechos pedidos (id → [[deslocamento, página]…]). Vazio sem a coluna ou sem marcas. */
+export async function marcasDosTrechos(db: RagDb, ids: readonly string[]): Promise<Map<string, Array<[number, number]>>> {
+  const out = new Map<string, Array<[number, number]>>();
+  const validos = [...new Set(ids)].filter((i) => /^[0-9a-f-]{36}$/i.test(i));
+  if (!validos.length || !(await temColunaMarcas(db))) return out;
+  const { rows } = await db.query(
+    "SELECT id, marcas_pagina FROM rag_trechos WHERE id = ANY($1::uuid[]) AND marcas_pagina IS NOT NULL", [validos],
+  );
+  for (const r of rows as any[]) {
+    const m = Array.isArray(r.marcas_pagina) ? r.marcas_pagina : [];
+    const limpas = m.filter((x: unknown) => Array.isArray(x) && x.length === 2 && x.every((n) => Number.isInteger(n) && n >= 0)) as Array<[number, number]>;
+    if (limpas.length) out.set(String(r.id), limpas);
+  }
+  return out;
+}
+
 export async function gravarTrechos(
   db: RagDb,
   documentoId: string,
@@ -98,7 +134,20 @@ export async function gravarTrechos(
 ): Promise<number> {
   await transacao(db, async (tx) => {
     await travar(tx, documentoId);
-    if (trechos.length > 0) {
+    if (trechos.length > 0 && trechos.some((t) => t.marcas?.length) && (await temColunaMarcas(db))) {
+      await tx.query(
+        `INSERT INTO rag_trechos (documento_id, ordem, texto, caminho, pagina_ini, pagina_fim, marcas_pagina, turma_ids, dono_ids)
+         SELECT d.id, t.ordem, t.texto, t.caminho, t.pagina_ini, t.pagina_fim, NULLIF(t.marcas, 'null')::jsonb, d.turma_ids, d.dono_ids
+           FROM rag_documentos d,
+                unnest($2::int[], $3::text[], $4::text[], $5::int[], $6::int[], $7::text[]) AS t(ordem, texto, caminho, pagina_ini, pagina_fim, marcas)
+          WHERE d.id = $1`,
+        [
+          documentoId,
+          trechos.map((t) => t.ordem), trechos.map((t) => t.texto), trechos.map((t) => t.caminho),
+          trechos.map((t) => t.paginaIni), trechos.map((t) => t.paginaFim), trechos.map((t) => JSON.stringify(t.marcas ?? null)),
+        ],
+      );
+    } else if (trechos.length > 0) {
       await tx.query(
         `INSERT INTO rag_trechos (documento_id, ordem, texto, caminho, pagina_ini, pagina_fim, turma_ids, dono_ids)
          SELECT d.id, t.ordem, t.texto, t.caminho, t.pagina_ini, t.pagina_fim, d.turma_ids, d.dono_ids
@@ -266,4 +315,30 @@ export async function contarEnviadosPessoais(db: RagDb, donoId: string): Promise
     [donoId],
   );
   return Number(r.rows[0].n);
+}
+
+/**
+ * TODOS os trechos de um documento, em ordem, com a MESMA regra de permissão da busca no WHERE (lib/rag/busca
+ * `montarSql`) e o `podeVer` em memória por cima. É a varredura exaustiva da skill de trechos (lib/trechos): a busca
+ * devolve no máximo k trechos; "todas as vezes que o texto fala de X" exige ler o documento inteiro.
+ */
+export async function trechosDoDocumento(
+  db: RagDb, documentoId: string, e: EscopoRag, limite = 400,
+): Promise<Array<TrechoAchado & { ordem: number }>> {
+  const { rows } = await db.query(
+    `SELECT t.id, t.documento_id, d.titulo, t.texto, t.pagina_ini, t.pagina_fim, t.ordem, t.turma_ids, t.dono_ids
+       FROM rag_trechos t JOIN rag_documentos d ON d.id = t.documento_id
+      WHERE t.documento_id = $1 AND (t.turma_ids && $2::text[] OR t.dono_ids @> ARRAY[$3]::text[])
+      ORDER BY t.ordem
+      LIMIT $4::int`,
+    [documentoId, e.turmaIds, e.userId, Math.max(1, Math.min(2000, Math.floor(limite)))],
+  );
+  return (rows as any[])
+    .filter((r) => podeVer({ turmaIds: r.turma_ids ?? [], donoIds: r.dono_ids ?? [] }, e))
+    .map((r) => ({
+      trechoId: String(r.id), documentoId: String(r.documento_id), titulo: String(r.titulo ?? ""), texto: String(r.texto ?? ""),
+      paginaIni: Number(r.pagina_ini) || 1, paginaFim: Number(r.pagina_fim) || Number(r.pagina_ini) || 1, ordem: Number(r.ordem) || 0,
+      score: 0, similaridade: null, porTexto: true,
+      ...(!(r.dono_ids ?? []).length && (r.turma_ids ?? []).length && (r.turma_ids as string[]).every((t) => t.startsWith("area:")) ? { publico: true } : {}),
+    }));
 }

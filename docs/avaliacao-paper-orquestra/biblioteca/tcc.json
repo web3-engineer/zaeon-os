@@ -1,0 +1,821 @@
+{
+  "consultas": [
+    "university students mental health post pandemic prevalence",
+    "anxiety depression college students return to campus",
+    "academic stress psychological distress higher education COVID-19",
+    "prevalence anxiety depression university students longitudinal",
+    "meta-analysis mental health college students post-COVID",
+    "risk protective factors mental health higher education",
+    "academic stress social support college students resilience",
+    "PRISMA statement",
+    "integrative literature review methodology",
+    "thematic analysis",
+    "Patient Health Questionnaire-9 (PHQ-9)",
+    "Generalized Anxiety Disorder 7-item (GAD-7)",
+    "Multidimensional Scale of Perceived Social Support (MSPSS)",
+    "Connor-Davidson Resilience Scale (CD-RISC)",
+    "stepped care models in university mental health"
+  ],
+  "papers": [
+    {
+      "title": "German medical students' learning environment during the fading COVID-19 pandemic.",
+      "authors": [
+        "Leich M",
+        "Guse J",
+        "Bergelt C"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43009949/",
+      "doi": "10.1186/s12909-026-10827-1",
+      "venue": "BMC medical education",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Suicide risk factors in nursing students: Depressive symptoms, academic burnout and academic efficacy after the pandemic.",
+      "authors": [
+        "Ardiles-Irarrázabal RA",
+        "Pérez-Díaz PA",
+        "Pérez-González JC",
+        "Valdivia-Rojas Y",
+        "Valencia-Contrera M"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43007981/",
+      "doi": "10.1371/journal.pmen.0000734",
+      "venue": "PLOS mental health",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Differences in associations between coping styles and depressive symptoms across pandemic-related periods among university students with subthreshold depressive symptoms: a serial cross-sectional study.",
+      "authors": [
+        "Miyake Y",
+        "Yoshino A",
+        "Okamoto Y"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42972304/",
+      "doi": "10.1186/s12888-026-08488-x",
+      "venue": "BMC psychiatry",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Living with uncertainty: associations of personal and environmental uncertainty, resilience, and self-efficacy with anxiety symptoms in young adults.",
+      "authors": [
+        "Zysset A",
+        "Kerry MJ",
+        "Dratva J"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42871219/",
+      "doi": "10.3389/fpubh.2026.1932199",
+      "venue": "Frontiers in public health",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "SADIE: a longitudinal Survey on Anxiety, Depression, Internalising and Externalising symptoms in Italian university students - a study protocol.",
+      "authors": [
+        "Marchi A",
+        "Meda N",
+        "Pardini S",
+        "Slongo I",
+        "Visioli F",
+        "Banescu A",
+        "Caponnetto P",
+        "Casadei F",
+        "Colizzi M",
+        "Costanza P",
+        "Cuomo A",
+        "Dalla Libera G",
+        "De Fazio P",
+        "Fagiolini A",
+        "Farinato A",
+        "Gagliano DC",
+        "Galmonte A",
+        "Gramaglia C",
+        "Guidotti S",
+        "Lenti R",
+        "Manchia M",
+        "Maiello G",
+        "Menchetti M",
+        "Monteleone AM",
+        "Monteleone P",
+        "Pozza A",
+        "Pruneti C",
+        "Rizzaro C",
+        "Roncone R",
+        "Rigotti B",
+        "Zanatta A",
+        "Sambataro F",
+        "Novara C"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42805643/",
+      "doi": "10.1136/bmjopen-2026-116883",
+      "venue": "BMJ open",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Dynamic interactions among anxiety, emotional stability, and mindfulness: a cross-lagged panel network analysis.",
+      "authors": [
+        "Wang Y",
+        "Han J",
+        "Mei Y",
+        "Lin S",
+        "Gong G",
+        "Zheng F",
+        "He S",
+        "Sun J"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42553239/",
+      "doi": "10.3389/fpsyg.2026.1740018",
+      "venue": "Frontiers in psychology",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "The MAPme Project: Implementing a College-Based Study of Substance Use and Mental Wellness.",
+      "authors": [
+        "Barfield-Steward WL",
+        "Xiang Y",
+        "Najera D",
+        "Ober-Oluoch J",
+        "Benca-Bachman C",
+        "Derricott H",
+        "Syed R",
+        "Welsh JW",
+        "Palmer RHC"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42652399/",
+      "doi": "10.3390/ijerph23081084",
+      "venue": "International journal of environmental research and public health",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Adapting new norms: A mixed-method study exploring mental well-being challenges in dental technology education.",
+      "authors": [
+        "Lin GSS",
+        "Tan WW",
+        "Chua KH",
+        "Kim JE",
+        "Gan J",
+        "Halil MHM"
+      ],
+      "year": 2025,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/40132012/",
+      "doi": "10.1371/journal.pone.0320602",
+      "venue": "PloS one",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Mental health in undergraduate students several months into the COVID-19 pandemic compared to before the pandemic.",
+      "authors": [
+        "Jacobs EJ",
+        "Spiker S",
+        "Newsome KB",
+        "Danielson ML",
+        "Bhupalam S",
+        "Leeb RT"
+      ],
+      "year": 2025,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/38015158/",
+      "doi": "10.1080/07448481.2023.2277193",
+      "venue": "Journal of American college health : J of ACH",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Why self-care and mentorship are vital for college students.",
+      "authors": [
+        "Jamieson J"
+      ],
+      "year": 2025,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/37861295/",
+      "doi": "10.1080/07448481.2023.2269420",
+      "venue": "Journal of American college health : J of ACH",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Beliefs, mental health, healthy lifestyle behaviors and coping strategies of college faculty and staff during the COVID-19 pandemic.",
+      "authors": [
+        "Melnyk BM",
+        "Tan A",
+        "Hsieh AP",
+        "Amaya M",
+        "Regan EP",
+        "Stanley L"
+      ],
+      "year": 2023,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/34854805/",
+      "doi": "10.1080/07448481.2021.1991932",
+      "venue": "Journal of American college health : J of ACH",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Depression and anxiety and assciated factors among college students returned to campus during the outbreak of COVID-19",
+      "authors": [
+        "Nan Wu",
+        "Zhang Wanjun",
+        "DU Mengxue",
+        "Minmin Jiang",
+        "Jing Wang",
+        "Zhengmei Fang",
+        "Lijun Zhu",
+        "Yuelong Jin",
+        "Chen Yan",
+        "Yao Ying-shui"
+      ],
+      "year": 2021,
+      "url": "https://openalex.org/W3164008946",
+      "doi": "10.16835/j.cnki.1000-9817.2021.04.028",
+      "abstract": "Objective The purpose of this study was to investigate the state of depression and anxiety\n and assciated factors of back-to-school college students during the outbreak of COVID-19,\n so as to provide theoretical basis for emotional counseling and psychological crisis\n intervention after long-term school closure due to epidemic outbreak.\n Methods Cluster sampling was used to select the first batch of 2 697 back-to-school students\n in a high vocational college. The survey content includes basic information questionnaire,\n Depression Self-rating Scale (SDS) and Anxiety Self-rating Scale (SAS).\n Results The detection rate of depression and anxiety was 31.8% and 10.4% respectively. Multivariate\n Logistic regression analysis showed that the risk of depression in female college\n students was 1.28 times higher than that in male students. The risk of depression\n among college students with family loss experience caused by the outbreak of COVID-19\n was 1.30 times that of those without family loss experience caused by the outbreak\n of COVID-19. Outgoing personality (\n OR = 0.62), neutral (\n OR = 0.55) and mild temper (\n OR = 0.46), moderate frequency of physical exercise per week (1–2 times: OR = 0.73, 3–4 times: OR = 0.65) were protective effects for depression in college students.Low frequency\n of breakfast were the risk effects for depression in college. The risk of anxiety\n among college students who was the only child in the family was 1.61 times higher\n than that who was not the only child in the family. The risk of anxiety among college\n students with family loss experience caused by the outbreak of COVID-19 was 1.45 times\n higher than that college students without family loss experience caused by the outbreak\n of COVID-19. Neutral temper, mild temper and physical exercise 1–2 times a week were\n associated with lower level of anxiety in college students (\n OR = 0.67, 0.56, 0.67). Breakfast skipping (\n OR = 2.03) was associated with higher levvel of anxiety in college students.\n Conlusions During the outbreak of COVID-19, the first batch of back-to-school college students\n presented high level of depression. Colleges are suggested to promptly carry out effective\n emotional relief and psychological intervention for students, especially those whose\n family suffered in COVID-19, the only child in the family, with poor breakfast eating\n habits, as well as breakfast skipping and lack of physical exercise.\n 【摘要】 目的 了解新型冠状病毒肺炎流行期间返校大学生抑郁、焦虑情绪现况及其影响因素, 为后续开展有效的情绪 疏导和心理干预提供依据。\n 方法采用整群抽样的方法对安徽中医药髙等专科学校首批返校的2 697名大学生进行自编 问卷调査, 内容包括基本信息、抑郁自评量表 (Self-rating Depression\n Scale, SDS) 和焦虑自评量表 (Self-rating Anxiety Scale, SAS) 等。\n 结果 首批返校大学生抑郁检出率为31.8%, 焦虑检出率为10.4%。多因素Logistic回归分析显示, 女生产生抑 郁情绪的风险是男生的1.28倍;因疫情致家庭损失的大学生产生抑郁情绪的风险是无家庭损失的1.30倍;外向性格\n (\n OR = 0.62)、中性脾气 (\n OR = 0.55)及温和脾气 (\n OR = 0.46)、每周体育锻炼次数适中 (1~2次:OR = 0.73;3~4次:OR = 0.65)与大 学生产生抑郁情绪呈负相关;早餐次数较少与大学生产生抑郁情绪呈正相关。独生子女大学生产生焦虑情绪风险是非独\n 生子女的1.61倍;因疫情致家庭损失的大学生产生焦虑情绪的风险是无家庭损失的1.45倍;中性脾气 (\n OR = 0.67)及温和 脾气 (\n OR = 0.56)、每周体育锻炼1~2次 (\n OR = 0.67)与大学生产生焦虑情绪呈负相关;从来不吃早餐 (\n OR = 2.03)与大学生 产生焦虑情绪呈正相关。\n 结论新冠肺炎流行期间, 首批返校大学生群体抑郁检出率较髙。学校应针对有因疫情所致损 失经历、独生子女、具有不良早餐习惯、缺乏体育锻炼的学生及时开展有效情绪疏解和心理干预。",
+      "venue": "Chinese Journal of School Health",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Mental health and psychological distress in healthcare-related students post-pandemic: a cross-sectional study.",
+      "authors": [
+        "Guo R",
+        "Yuan Z",
+        "Yan W",
+        "Huang Z",
+        "Rong R",
+        "Liu Y",
+        "ZhouGuo Y",
+        "Abdul M",
+        "Li Y",
+        "Feng G",
+        "Zhang Z",
+        "Zhou Q",
+        "Wang Y"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42548606/",
+      "doi": "10.3389/fpsyg.2026.1801247",
+      "venue": "Frontiers in psychology",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "The Impact of the COVID-19 Pandemic on Medical Faculty's Academic Performance and Well-Being : Short title: COVID-19 Pandemic and Medical Faculty's Academic Performance and Well-Being.",
+      "authors": [
+        "Sharif A"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42499373/",
+      "doi": "10.31661/gmj.v15i.4139",
+      "venue": "Galen medical journal",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Responding to extreme stress: Resilience and psychological distress in undergraduate nursing students in the Western Cape, South Africa.",
+      "authors": [
+        "Chipps J",
+        "Marie Modeste RR",
+        "Cromhout A",
+        "Steenkamp I"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42417004/",
+      "doi": "10.4102/curationis.v49i1.2845",
+      "venue": "Curationis",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Educational equality during COVID-19: A study of socioeconomic disparities in higher education access and outcomes in Guangxi, China.",
+      "authors": [
+        "Luo Q",
+        "Lim G",
+        "Wang Q"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42250505/",
+      "doi": "10.1016/j.actpsy.2026.107213",
+      "venue": "Acta psychologica",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Mental health patterns and associated social determinants among university and college students in sub-Saharan Africa during the COVID-19 pandemic era: a scoping review.",
+      "authors": [
+        "Muturiki M",
+        "Mapukata NO",
+        "Chauke L",
+        "Jewett S"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42100538/",
+      "doi": "10.3389/fpubh.2026.1800724",
+      "venue": "Frontiers in public health",
+      "secao": "INTRODUÇÃO"
+    },
+    {
+      "title": "Dynamic patterns of physical activity behavior, inflammatory trajectories, and risk of mental disorders in college students: a prospective cohort study using repeated longitudinal assessments.",
+      "authors": [
+        "Luan C",
+        "Liu M",
+        "Luan C",
+        "Yi L",
+        "Sun H",
+        "Pan Y",
+        "Nie L",
+        "Lei C"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43040433/",
+      "doi": "10.1186/s40359-026-05264-0",
+      "venue": "BMC psychology",
+      "secao": "REFERENCIAL TEÓRICO: Estudos Epidemiológicos de Prevalência de Transtornos Comuns"
+    },
+    {
+      "title": "The Prevalence of Depressive and Anxiety Symptoms and Their Association With Academic Performance Among Chinese Adolescents.",
+      "authors": [
+        "Wu M",
+        "Waqas A",
+        "Rahman A",
+        "Yan R"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43040198/",
+      "doi": "10.1111/josh.70292",
+      "venue": "The Journal of school health",
+      "secao": "REFERENCIAL TEÓRICO: Estudos Epidemiológicos de Prevalência de Transtornos Comuns"
+    },
+    {
+      "title": "Joint associations of sleep duration and screen time with mental health symptoms among 10,620 Chinese university students: An exploratory cross-sectional dose-response analysis.",
+      "authors": [
+        "Lin H",
+        "Yuan X",
+        "He Z",
+        "Xin J",
+        "Jin H"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43038714/",
+      "doi": "10.1016/j.actpsy.2026.108156",
+      "venue": "Acta psychologica",
+      "secao": "REFERENCIAL TEÓRICO: Estudos Epidemiológicos de Prevalência de Transtornos Comuns"
+    },
+    {
+      "title": "Digital Phenotyping of Voice Biomarkers for Psychological States in College Students: Longitudinal Mobile App Study.",
+      "authors": [
+        "Li Y",
+        "Maddala T",
+        "Behera S",
+        "Henry RD",
+        "Whitney A",
+        "Carlson J",
+        "Jamieson JP"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43024858/",
+      "doi": "10.2196/103398",
+      "venue": "JMIR biomedical engineering",
+      "secao": "REFERENCIAL TEÓRICO: Estudos Epidemiológicos de Prevalência de Transtornos Comuns"
+    },
+    {
+      "title": "Retrospectively Reported Psychological Distress Among Nurses and Nursing Students Following the War Between Iran and Israel: A Cross-Sectional Study.",
+      "authors": [
+        "Farsi Z",
+        "Afaghi E",
+        "Pakdin F",
+        "Taghaei F",
+        "Negarandeh R"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43011436/",
+      "doi": "10.1002/hsr2.73505",
+      "venue": "Health science reports",
+      "secao": "REFERENCIAL TEÓRICO: Estudos Epidemiológicos de Prevalência de Transtornos Comuns"
+    },
+    {
+      "title": "Migration-related factors and mental health among international students in a UK higher education setting: a cross-sectional study.",
+      "authors": [
+        "Ekpenyong MS",
+        "Diba UK"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43009891/",
+      "doi": "10.1186/s12889-026-28749-4",
+      "venue": "BMC public health",
+      "secao": "REFERENCIAL TEÓRICO: Estudos Epidemiológicos de Prevalência de Transtornos Comuns"
+    },
+    {
+      "title": "Cognitive domains affected post-COVID-19; a systematic review and meta-analysis.",
+      "authors": [
+        "Fanshawe JB",
+        "Sargent BF",
+        "Badenoch JB",
+        "Saini A",
+        "Watson CJ",
+        "Pokrovskaya A",
+        "Aniwattanapong D",
+        "Conti I",
+        "Nye C",
+        "Burchill E",
+        "Hussain ZU",
+        "Said K",
+        "Kuhoga E",
+        "Tharmaratnam K",
+        "Pendered S",
+        "Mbwele B",
+        "Taquet M",
+        "Wood GK",
+        "Rogers JP",
+        "Hampshire A",
+        "Carson A",
+        "David AS",
+        "Michael BD",
+        "Nicholson TR",
+        "Paddick SM",
+        "Leek CE"
+      ],
+      "year": 2025,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/38375608/",
+      "doi": "10.1111/ene.16181",
+      "venue": "European journal of neurology",
+      "secao": "REFERENCIAL TEÓRICO: Estudos Epidemiológicos de Prevalência de Transtornos Comuns"
+    },
+    {
+      "title": "Post-secondary Student Mental Health During COVID-19: A Meta-Analysis",
+      "authors": [
+        "Jenney Zhu",
+        "Nicole M. Racine",
+        "Elisabeth Bailin Xie",
+        "Julianna Park",
+        "Julianna Watt",
+        "Rachel Eirich",
+        "Keith Stephen Dobson",
+        "Sheri L. Madigan"
+      ],
+      "year": 2021,
+      "url": "https://openalex.org/W4200227202",
+      "doi": "10.3389/fpsyt.2021.777251",
+      "abstract": "The COVID-19 pandemic has posed notable challenges to post-secondary students, causing concern for their psychological well-being. In the face of school closures, academic disruptions, and constraints on social gatherings, it is crucial to understand the extent to which mental health among post-secondary students has been impacted in order to inform support implementation for this population. The present meta-analysis examines the global prevalence of clinically significant depression and anxiety among post-secondary students during the COVID-19 pandemic. Several moderator analyses were also performed to examine sources of variability in depression and anxiety prevalence rates. A systematic search was conducted across six databases on May 3, 2021, yielding a total of 176 studies (1,732,456 participants) which met inclusion criteria. Random-effects meta-analyses of 126 studies assessing depression symptoms and 144 studies assessing anxiety symptoms were conducted. The pooled prevalence estimates of clinically elevated depressive and anxiety symptoms for post-secondary students during the COVID-19 pandemic was 30.6% (95% CI: 0.274, 0.340) and 28.2% (CI: 0.246, 0.321), respectively. The month of data collection and geographical region were determined to be significant moderators. However, student age, sex, type (i.e., healthcare student vs. non-healthcare student), and level of training (i.e., undergraduate, university or college generally; graduate, medical, post-doctorate, fellow, trainee), were not sources of variability in pooled rates of depression and anxiety symptoms during the pandemic. The current study indicates a call for continued access to mental health services to ensure post-secondary students receive adequate support during and after the COVID-19 pandemic. Systematic Review Registration: PROSPERO website: https://www.crd.york.ac.uk/prospero/ , identifier: CRD42021253547.",
+      "venue": "Frontiers in Psychiatry",
+      "secao": "REFERENCIAL TEÓRICO: Estudos Epidemiológicos de Prevalência de Transtornos Comuns"
+    },
+    {
+      "title": "Impact of the COVID-19 Pandemic on the Mental Health of College Students: A Systematic Review and Meta-Analysis",
+      "authors": [
+        "Yang Li",
+        "Aiwen Wang",
+        "Yalin Wu",
+        "Nana Han",
+        "Huiming Huang"
+      ],
+      "year": 2021,
+      "url": "https://openalex.org/W3181583505",
+      "doi": "10.3389/fpsyg.2021.669119",
+      "abstract": "BACKGROUND: The coronavirus disease (COVID-19) pandemic has been spreading and brought unprecedented psychological pressure on people across the entire globe since December 2019. OBJECTIVES: To synthesize the existing evidence of the prevalence of mental health status during the epidemic and provide the basis for mental health education. MATERIALS AND METHODS: The literature search was conducted in nine databases from December 2019 to October 2020. The risk of bias for each study was assessed, and the random-effects meta-analysis was used to estimate the prevalence of specific mental health problems. The review protocol was registered in PROSPERO with the registration number CRD42020208619. RESULTS: About 27 studies were included in the analysis with a total of 706,415 participants combined, and 14 mental health problems were gathered. Meta-analysis showed that the prevalence of depression was 39% (95% CI: 27-51%) and that of anxiety was 36% (95% CI: 26-46%). Subgroup analysis indicated that the prevalence of depression and anxiety varied among nations and due to the survey date. The prevalence of depression (60%, 95% CI: 46-74%) and anxiety (60%, 95% CI: 46-74%) in non-Chinese college students was higher than those in Chinese college students (26%, 95% CI: 21-30% and 20%, 95% CI: 14-26%). The proportion of depression (54%, 95% CI: 40-67%) and anxiety (37%, 95% CI: 26-48%) was higher after March 1 than before it (21%, 95% CI: 16-25% and 19%, 95% CI: 13-25%). CONCLUSIONS: The meta-analysis results presented that the prevalence of depression (39%) or anxiety (36%) among college students greatly increased during the COVID-19 pandemic. In addition, the mental health of college students is affected by the nations and the survey date. It was necessary to take measures to reduce mental health risks during the pandemic.",
+      "venue": "Frontiers in Psychology",
+      "secao": "REFERENCIAL TEÓRICO: Estudos Epidemiológicos de Prevalência de Transtornos Comuns"
+    },
+    {
+      "title": "Assessing the Psychological Impact of COVID-19 among College Students: An Evidence of 15 Countries",
+      "authors": [
+        "Kavita Batra",
+        "Manoj Sharma",
+        "Ravi Batra",
+        "Tejinder Pal Singh",
+        "Nena Schvaneveldt"
+      ],
+      "year": 2021,
+      "url": "https://openalex.org/W3131774812",
+      "doi": "10.3390/healthcare9020222",
+      "abstract": "Mental health issues among college students is a leading public health concern, which seems to have been exacerbating during the COVID-19 pandemic. While previous estimates related to psychological burden among college students are available, quantitative synthesis of available data still needs to be performed. Therefore, this meta-analysis endeavors to present collective evidence discussing the psychological impact of COVID-19 among college students. Bibliographical library databases, including Embase, Medline, CINAHL, Scopus, and PsycINFO, were systematically searched for relevant studies. Titles, abstracts, and full articles were screened, and two reviewers extracted data. Heterogeneity was assessed by I2 statistic. The random-effects model was utilized to obtain the pooled estimates of psychological indicators among college students. Location, gender, level of severity, and quality scores were used as moderator variables for subgroup analyses. Funnel plot and Egger linear regression test was used to assess publication bias. Twenty-seven studies constituting 90,879 college students met the inclusion criteria. The results indicated 39.4% anxiety (95% CI: 28.6, 51.3; I2 = 99.8%; p-value < 0.0001) and 31.2% depression (95% CI: 19.7, 45.6; I2= 99.8%, p < 0.0001) among college students. The pooled prevalence of stress (26.0%), post-traumatic stress disorder (29.8%), and impaired sleep quality (50.5%) were also reported. College students bear a disproportionate burden of mental health problems worldwide, with females having higher anxiety and depression levels than males. This study‘’s findings underscore the need to develop appropriate public health interventions to address college students’ emotional and psychosocial needs. The policies should be reflective of demographic and socioeconomic differentials.",
+      "venue": "Healthcare",
+      "secao": "REFERENCIAL TEÓRICO: Estudos Epidemiológicos de Prevalência de Transtornos Comuns"
+    },
+    {
+      "title": "COVID-19 Stress and Mental Health of Students in Locked-Down Colleges",
+      "authors": [
+        "Xueyan Li",
+        "Ping Fu",
+        "Changyu Fan",
+        "Miao Zhu",
+        "Min Li"
+      ],
+      "year": 2021,
+      "url": "https://openalex.org/W3125636643",
+      "doi": "10.3390/ijerph18020771",
+      "abstract": "The impact of the COVID-19 pandemic on the mental health of students in locked-down colleges remains obscure. This study aimed to explore influencing factors for the psychological impact of COVID-19 on Wuhan college students, post-traumatic stress symptoms in particular, so as to inform evidence-based strategy development to ameliorate such adverse impacts. An online survey was conducted from 26 to 29 April 2020, and 4355 students enrolled in Wuhan universities and colleges participated. Post-Traumatic Stress Disorder via the Impact of Event-Scale-Revised was assessed. COVID-19 disproportionately affected older male Master's and doctoral students living in Wuhan. The overall prevalence of PTSD was 16.3%. The three-level socio-interpersonal model of PTSD was empirically validated, and college students faced individual level risks such as infection with COVID-19, close relationship level risks such as family support (infection suspicion of family members, the loss of loved ones, and the family income decrease) and online course difficulties (little interaction, disturbing learning environment, and difficulty in adaption), and distant level risks such as excessive collection of personal information, estrangement of family relatives, and harassment and insult from strangers. The findings suggest the severity of the psychological impact of COVID-19. Mental health services reducing PTSD should be provided. Students who have lost loved ones and suffered family financial loss should be given particular care.",
+      "venue": "International Journal of Environmental Research and Public Health",
+      "secao": "REFERENCIAL TEÓRICO: Estudos Epidemiológicos de Prevalência de Transtornos Comuns"
+    },
+    {
+      "title": "Mental Health During the Covid-19 Outbreak in China: a Meta-Analysis",
+      "authors": [
+        "Xin Ren",
+        "Wanli Huang",
+        "Huiping Pan",
+        "Tingting Huang",
+        "Xinwei Wang",
+        "Yongchun Ma"
+      ],
+      "year": 2020,
+      "url": "https://openalex.org/W3041277150",
+      "doi": "10.1007/s11126-020-09796-5",
+      "venue": "Psychiatric Quarterly",
+      "secao": "REFERENCIAL TEÓRICO: Estudos Epidemiológicos de Prevalência de Transtornos Comuns"
+    },
+    {
+      "title": "Cumulative Childhood Trauma Exposure and Depressive and Anxiety Symptoms Among Kenyan Adolescents: A Multilevel School-Based Study.",
+      "authors": [
+        "Appiah KN",
+        "Adu N",
+        "Singh DK",
+        "Nartey EE"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42991980/",
+      "doi": "10.1007/s40653-026-00951-x",
+      "venue": "Journal of child & adolescent trauma",
+      "secao": "REFERENCIAL TEÓRICO: Modelos de Determinantes de Saúde Mental: Riscos e Proteção"
+    },
+    {
+      "title": "Nomogram for predicting the response of modified electroconvulsive therapy in patients with bipolar depressive episodes: a retrospective cohort study.",
+      "authors": [
+        "Wang Y",
+        "Wang Z",
+        "Bai H",
+        "Liu M",
+        "Li W",
+        "Yu S",
+        "Tang X",
+        "Tang X"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42958126/",
+      "doi": "10.1186/s12888-026-08458-3",
+      "venue": "BMC psychiatry",
+      "secao": "REFERENCIAL TEÓRICO: Modelos de Determinantes de Saúde Mental: Riscos e Proteção"
+    },
+    {
+      "title": "Decomposition and comparative analysis of the differences in anxiety symptoms in preschool children with only and non-only children: a cross-sectional study.",
+      "authors": [
+        "Xie Y",
+        "Wang W",
+        "Tuersun Y",
+        "Yin X",
+        "Zhou Q",
+        "Liang Z",
+        "Peng S",
+        "Li X",
+        "Huang J"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42952934/",
+      "doi": "10.3389/fpsyt.2026.1877032",
+      "venue": "Frontiers in psychiatry",
+      "secao": "REFERENCIAL TEÓRICO: Modelos de Determinantes de Saúde Mental: Riscos e Proteção"
+    },
+    {
+      "title": "Associations of Sexual Identity-Based Discrimination With Mental Health Symptoms and Substance Use Among Rural- and Urban-Residing Sexual Minority Young Adults: Differences by Resilience, Locus of Control, and Emotion Regulation.",
+      "authors": [
+        "John ME",
+        "Nhem M",
+        "Das M",
+        "Vogel EA",
+        "Romm KF"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42948911/",
+      "doi": "10.1177/29767342261490454",
+      "venue": "Substance use & addiction journal",
+      "secao": "REFERENCIAL TEÓRICO: Modelos de Determinantes de Saúde Mental: Riscos e Proteção"
+    },
+    {
+      "title": "Parental Phubbing and Problematic Mobile Phone Use Among Chinese Early Adolescents: A Longitudinal Moderated Mediation Model.",
+      "authors": [
+        "Ma S",
+        "Zhang W"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42938665/",
+      "doi": "10.3390/bs16101947",
+      "venue": "Behavioral sciences (Basel, Switzerland)",
+      "secao": "REFERENCIAL TEÓRICO: Modelos de Determinantes de Saúde Mental: Riscos e Proteção"
+    },
+    {
+      "title": "Associations and Additive Interaction of Childhood Trauma and Psychological Resilience With Depression Among Vocational College Students.",
+      "authors": [
+        "Tian J",
+        "Chen X",
+        "Huang D",
+        "Qiu X"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42928692/",
+      "doi": "10.62641/aep.2199",
+      "venue": "Actas espanolas de psiquiatria",
+      "secao": "REFERENCIAL TEÓRICO: Modelos de Determinantes de Saúde Mental: Riscos e Proteção"
+    },
+    {
+      "title": "The Impact of Social Support, Emotional Intelligence, and Academic Stress on Resilience in Risk Society : Focusing on College Students",
+      "authors": [
+        "Byeon Hyeonsu",
+        "Mira Kang"
+      ],
+      "year": 2020,
+      "url": "https://openalex.org/W3116860273",
+      "doi": "10.29398/kjsq.2020.4.4.57",
+      "venue": "Korean Journal of Social Quality",
+      "secao": "REFERENCIAL TEÓRICO: Modelos de Determinantes de Saúde Mental: Riscos e Proteção"
+    },
+    {
+      "title": "Resilience amid Academic Stress: The Moderating Impact of Social Support among Social Work Students",
+      "authors": [
+        "Scott E. Wilks"
+      ],
+      "year": 2008,
+      "url": "https://openalex.org/W2159566602",
+      "doi": "10.18060/51",
+      "abstract": "Purpose: The purpose of this study was to examine the relationship between academic stress and perceived resilience among social work students, and to identify social support as a protective factor of resilience on this relationship. A conceptual model of moderation was used to test the role of social support as protective. Methods: The sample consisted of 314 social work students (BSW=144; MSW=170) from three accredited schools/programs in the southern United States. Voluntary survey data were collected on demographics and constructs of academic stress, family support, friend support, and resilience. Hierarchical regression analysis was conducted to show the composite impact of demographic and model factors on the resilience outcome. Moderation was tested using a traditional regression series as guidelines of moderation with continuous variables. Path analyses illustrated main effects and moderation in the study’s conceptual model. Results: The sample reported moderate levels of academic stress and social support, and a fairly high level of resilience. Academic stress negatively related to social support and resilience. Social support positively influenced resilience. Academic stress accounted for the most variation in resilience scores. Friend support significantly moderated the negative relationship between academic stress and resilience. Conclusion: The current study demonstrated the likelihood that friend support plays a protective role with resilience amid an environment of academic stress. Implications for social work faculty and internship agency practitioners are discussed.",
+      "venue": "Advances in Social Work",
+      "secao": "REFERENCIAL TEÓRICO: Modelos de Determinantes de Saúde Mental: Riscos e Proteção"
+    },
+    {
+      "title": "Social Support, Resilience and Subjective Well-being in College Students",
+      "authors": [
+        "Murat Yıldırım",
+        "Fatma Çelik Tanrıverdi"
+      ],
+      "year": 2020,
+      "url": "https://openalex.org/W3161932309",
+      "doi": "10.47602/jpsp.v5i2.229",
+      "abstract": "Social support has been linked to numerous adaptive psychosocial health outcomes. The Brief Perceived Social Support Questionnaire (BPSSQ) is a newly developed measure of general social support. This study aimed to test the psychometric properties and dimensionality of the BPSSQ in Turkish language and tested the mediating effect of resilience in the relationship between social support and satisfaction with life. Participants included 202 college students (69.3% females), with a mean age of 22.58 years (SD=1.26) who completed online measures of social support, resilience, and satisfaction with life. As expected, the BPSSQ provided a one-factor structure with a satisfactory internal consistency. Social support significantly predicted resilience and satisfaction with life. Resilience also predicted satisfaction with life. Furthermore, the results supported the hypothesis of mediating role of resilience in the relationship between social support and satisfaction with life. These results are important in terms of providing evidence of the underlying mechanism between social support and satisfaction with life. Future intervention efforts aimed at increasing social support and satisfaction with life may benefit from resilience.",
+      "venue": "Journal of Positive School Psychology",
+      "secao": "REFERENCIAL TEÓRICO: Modelos de Determinantes de Saúde Mental: Riscos e Proteção"
+    },
+    {
+      "title": "Effects of Undergraduate Students' Stress, Social Support, and Resilience on College Life Adjustment",
+      "authors": [
+        "Boram Cho",
+        "Jeongmin Lee"
+      ],
+      "year": 2019,
+      "url": "https://openalex.org/W2975500028",
+      "doi": "10.14400/jdc.2019.17.4.001",
+      "abstract": "본 연구는 대학생의 대학생활적응에 미치는 요인을 규명하고자, 스트레스, 사회적지지, 회복탄력성을 예측요인으로 선정하여 대학생활적응에 미치는 영향을 분석하였다. 이를 위해 부산에 위치한 D대학교 1,2학년 145명을 대상으로 설문조사를 실시하였고 SPSS 18.0을 사용하여 기술통계, 상관분석, 중다회귀분석으로 분석한 결과, 주요 연구결과는 다음과 같다. 대학생활적응에 영향을 미치는 요인으로는 스트레스(B= -.351, p< .01), 사회적지지(B= .210, p< .05) 회복탄력성(B= .355, p< .01)이며 30.6%의 설명력을 보였고 회복탄력성의 영향력이 가장 높았다. 스트레스의 하위요인인 대인관계스트레스와 학업스트레스는 부적인 영향을 미쳤다. 또한, 사회적지지 중 친구지지가 통계적으로 유의미한 영향을 미쳤고, 회복탄력성 하위요인으로는 생활만족도와 원인분석력이 통계적으로 유의미한 영향을 미쳤다. 또한, 사회적지지와 대학생활적응의 관계에서 스트레스는 부분매개를 하는 것으로 나타났다. 이를 바탕으로 본 연구에서는 대학생의 대학생활적응을 높이기 위해 스트레스를 낮추고, 회복탄력성을 높이는 전략이 필요하고 이를 위한 프로그램 개발 방안에 대해 제언하였다. The purpose of this study is to investigate the effects of stress, social support, and resilience on the university life as predictors of college life adjustment. For this purpose, the questionnaires were administered to 145 college students in Busan, and correlation analysis, multiple regression analysis, and mediation analysis were conducted using SPSS 18.0. The main results are as follows. First, the significant factors influencing college life adjustment were stress (B = -.351, p <.01), social support(B = -.210, p <.05) resilience (B = .355, p < .01), 30.6% explanatory power, and resilience was the most influential factor. Among the sub-factors of stress, interpersonal stress and academic stress has a negative effect. In addition, friendship support had a statistically significant effect on social support, and resilience subscale was life satisfaction and cause analysis ability. In addition, stress was found to be partly mediated in the relationship between social support and college life adjustment. Based on this study, the strategies for lowering the stress, improving the resilience of the university students in order to improve the college life adaptation were provided.",
+      "venue": "Journal of Digital Convergence",
+      "secao": "REFERENCIAL TEÓRICO: Modelos de Determinantes de Saúde Mental: Riscos e Proteção"
+    },
+    {
+      "title": "Coping with academic stress: Ambiguity and uncertainty tolerance in college students",
+      "authors": [
+        "Urvi Paralkar",
+        "Douglas Knutson"
+      ],
+      "year": 2021,
+      "url": "https://openalex.org/W3196295046",
+      "doi": "10.1080/07448481.2021.1965148",
+      "abstract": "Stress is a barrier to academic success for college students and the unique resilience effects of ambiguity and uncertainty tolerance have yet to be explored. We hypothesized that tolerance of ambiguity and tolerance of uncertainty relate to academic stress differently. We recruited 158 undergraduate participants from a medium-size public university in the Midwestern United States. Participants completed measures of ambiguity tolerance, uncertainty tolerance, and academic stress coping strategies. Three separate regression analyses were conducted to predict approach coping, avoidance coping, and social support coping. Results indicated that intolerance of ambiguity is a stronger predictor of approach and avoidance academic stress coping strategies compared to intolerance of uncertainty. These findings will allow for a better understanding of the dynamics underlying coping with academic stress that will be helpful to consider in vocational as well as mental health counseling for college students.",
+      "venue": "Journal of American College Health",
+      "secao": "REFERENCIAL TEÓRICO: Modelos de Determinantes de Saúde Mental: Riscos e Proteção"
+    },
+    {
+      "title": "A systematic review on the impact of social support on college students’ wellbeing and mental health",
+      "authors": [
+        "Ruihua Li",
+        "Norlizah Che Hassan",
+        "Qiuxia Zhu",
+        "Sha Ouyang",
+        "Dong Jingyi"
+      ],
+      "year": 2025,
+      "url": "https://openalex.org/W4412353583",
+      "doi": "10.1371/journal.pone.0325212",
+      "abstract": "In recent years, growing attention has been directed toward undergraduate students' mental health and overall well-being. The transition to university life, coupled with academic and social demands, has been shown to strain students' psychological functioning considerably. Social support is often cited as a protective factor that can help mitigate these pressures; however, in-depth investigations focusing specifically on this relationship within the college student demographic remain relatively limited. This review examines how social support influences university students' mental health and well-being outcomes. A systematic analysis was carried out, encompassing 51 empirical studies published between 2010 and 2024. These studies were identified through a comprehensive search of six major academic databases: Web of Science (WOS), Scopus, ProQuest, APA PsycINFO, PubMed, and Cochrane. The review highlights the nuanced relationship between social support and student well-being, underscoring the significance of social resources in shaping psychological outcomes during the higher education experience. The review identified both direct and indirect effects of social support. Direct effects include improved psychological and emotional well-being, reduced stress, and better health behaviours. Indirect effects highlight social support's role as a mediator, enhancing resilience, self-esteem, and life satisfaction by providing emotional and informational resources. These results emphasize the importance of nurturing supportive relationships to promote student well-being.",
+      "venue": "PLoS ONE",
+      "secao": "REFERENCIAL TEÓRICO: Modelos de Determinantes de Saúde Mental: Riscos e Proteção"
+    },
+    {
+      "title": "Fall burden among patients with chemotherapy-induced peripheral neuropathy: a systematic review and meta-analysis.",
+      "authors": [
+        "Chen YX",
+        "Xu M",
+        "He WY",
+        "Chen XJ",
+        "Zhang XL"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43052835/",
+      "doi": "10.1186/s12885-026-16826-1",
+      "venue": "BMC cancer",
+      "secao": "METODOLOGIA - METODOLOGIA.1: Protocolo de Busca e Seleção de Estudos"
+    },
+    {
+      "title": "Psychobiotics and the Microbiota-Gut-Brain Axis: Mechanistic Insights, Multi-Omics Advances, and Therapeutic Potential in Mental and Systemic Disorders.",
+      "authors": [
+        "Mohiuddin M"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43058025/",
+      "doi": "10.1111/1750-3841.71650",
+      "venue": "Journal of food science",
+      "secao": "METODOLOGIA - METODOLOGIA.1: Protocolo de Busca e Seleção de Estudos"
+    },
+    {
+      "title": "AI-Based Pain Assessment Trends: Bibliometric Analysis and a Four-Phase Framework for Clinical Translation.",
+      "authors": [
+        "Khalil H",
+        "Obaideen K",
+        "Ahmed FR",
+        "Alshabi M",
+        "Bani Issa W",
+        "Al Tamimi M",
+        "Shajrawi A",
+        "Yousef K",
+        "Kouki S",
+        "Al Yateem N"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43057938/",
+      "doi": "10.1016/j.pmn.2026.10.012",
+      "venue": "Pain management nursing : official journal of the American Society of Pain Management Nurses",
+      "secao": "METODOLOGIA - METODOLOGIA.2: Extração e Análise de Dados da Literatura"
+    },
+    {
+      "title": "Reliability and Validity of the Korean Version of the Patient Health Questionnaire-9 (PHQ-9)",
+      "authors": [
+        "박승진",
+        "최혜라",
+        "최지혜",
+        "김건우",
+        "홍진표"
+      ],
+      "year": 2010,
+      "url": "https://openalex.org/W2324220687",
+      "abstract": "Objective : The reliability and validity of the Korean version of the Patient Health Questionnaire-9 (PHQ- 9) was examined in Korean patients with depressive symptoms. Methods : Eighty six outpatients diagnosed as major depressive disorder or depressive episode of bipolar I disorder according to the...",
+      "secao": "RESULTADOS E DISCUSSÃO - RESULTADOS E DISCUSSÃO.1: Panorama da Prevalência de Ansiedade e Depressão"
+    },
+    {
+      "title": "Current status and characteristics of self-medication with gender-affirming hormones among individuals with gender dysphoria in China.",
+      "authors": [
+        "Cai Y",
+        "Chang X",
+        "Dong Y",
+        "Li R",
+        "Wang Y",
+        "Li X",
+        "Chen Y",
+        "Pan B",
+        "Hong T",
+        "Liu Y"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43053749/",
+      "doi": "10.1080/26895269.2026.2634170",
+      "venue": "International journal of transgender health",
+      "secao": "RESULTADOS E DISCUSSÃO - RESULTADOS E DISCUSSÃO.1: Panorama da Prevalência de Ansiedade e Depressão"
+    },
+    {
+      "title": "Perceived Social Support Among Patients with Permanent Cardiac Pacemakers.",
+      "authors": [
+        "Stavrou E",
+        "Leftheriotis D",
+        "Flevari P",
+        "Polikandrioti M"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43017570/",
+      "doi": "10.19102/icrm.2026.17106",
+      "venue": "The Journal of innovations in cardiac rhythm management",
+      "secao": "RESULTADOS E DISCUSSÃO - RESULTADOS E DISCUSSÃO.2: Mapeamento de Fatores de Risco e Proteção"
+    },
+    {
+      "title": "A retrospective pre-post analysis of a multicomponent psychological support intervention incorporating group psychological training and bibliotherapy among in-service nurses.",
+      "authors": [
+        "Li G",
+        "Liu T",
+        "Yang Z",
+        "Liu X"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43054348/",
+      "doi": "10.3389/fpsyg.2026.1865232",
+      "venue": "Frontiers in psychology",
+      "secao": "RESULTADOS E DISCUSSÃO - RESULTADOS E DISCUSSÃO.2: Mapeamento de Fatores de Risco e Proteção"
+    },
+    {
+      "title": "The impact of structured care versus usual care on service uptake and distress among distressed callers to a cancer telephone support service: outcomes of the START stepped wedge trial.",
+      "authors": [
+        "Fradgley EA",
+        "Lane K",
+        "Taylor J",
+        "Clinton-McHarg T",
+        "Boyes AW",
+        "Yates D",
+        "Bridge P",
+        "Boltong A",
+        "Beattie A",
+        "Barker D",
+        "Carlson MA",
+        "Paul CL"
+      ],
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/43040091/",
+      "doi": "10.1007/s00520-026-11397-0",
+      "venue": "Supportive care in cancer : official journal of the Multinational Association of Supportive Care in Cancer",
+      "secao": "RESULTADOS E DISCUSSÃO - RESULTADOS E DISCUSSÃO.3: Propostas de Intervenções Institucionais"
+    }
+  ]
+}

@@ -51,6 +51,7 @@ import { diretrizDeTamanho, pedeRespostaCurta, semDesenvolvimentoNaoPedido } fro
 import { diretrizDeEscopo } from "@/lib/agents/escopo";
 import { diretrizLivros, markdownDosLivros, type LivroAchado } from "@/lib/livros/busca";
 import { anexarFontesBase, blocoDaBase } from "@/lib/rag/citar";
+import { blocoDosTrechos } from "@/lib/trechos/bloco";
 import { registrarAnatomia } from "@/lib/anatomia/tools";
 import { cardapioDeSkills, registrarSkillsDaCasa } from "@/lib/agent/skills-boot";
 
@@ -100,6 +101,11 @@ export type HarnessOpts = {
   transformarSystem?: (system: string) => string;
   /** RAG: a base (turma/pessoal) deste turno. Viaja à parte — o systemContext é cortado em 4000 caracteres. */
   baseConhecimento?: import("@/lib/rag/turno").BaseDoTurno | null;
+  /**
+   * TRECHOS EM PAPEL (lib/trechos): passagens literais do material da pessoa, já achadas e conferidas pela skill.
+   * Entram no reason/draft com o marcador [[T#]]; quem tira os marcadores e ancora as folhas é o turno (comTrechos).
+   */
+  trechosEmPapel?: import("@/lib/agent/contracts").TrechoEmPapel[] | null;
   /** Modelo Google escolhido pelo aluno (id do Vertex, já validado em lib/chat/modelos): vale pra TODAS as fases. */
   modelo?: string;
   /**
@@ -607,7 +613,7 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
   const executadas = new Set<string>();
   let livrosAchados: LivroAchado[] = [];  // book_search (buscar_livro): vai inteiro pro fim do nucleo
   const preamble = preambleBlock(opts); // systemContext + histórico (paridade com o legado)
-  const bloco = blocoDaBase(opts.baseConhecimento);
+  const bloco = [blocoDaBase(opts.baseConhecimento), blocoDosTrechos(opts.trechosEmPapel)].filter(Boolean).join("\n\n");
   const base = bloco ? `${bloco}\n\n` : ""; // depois do preâmbulo, antes do "Objetivo:" (reason e draft)
   const citaBase = opts.baseConhecimento?.status === "ok";
 

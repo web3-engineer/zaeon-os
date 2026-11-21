@@ -19,6 +19,8 @@
  */
 
 /** Um anexo do turno, já com o texto extraído (atravessa a fila do CHAT_BG como JSON). */
+import { normalizar, normalizarComMapa } from "@/lib/trechos/literal";
+
 export type AnexoDoTurno = {
   /** estável dentro do turno (`a1`, `a2`…): é o que o modelo usa pra pedir um específico */
   id: string;
@@ -26,6 +28,11 @@ export type AnexoDoTurno = {
   tipo: string;
   texto: string;
   paginas?: number;
+  /**
+   * ONDE CADA PÁGINA COMEÇA no `texto`: pares [deslocamento, página], em ordem (só PDF). É o que deixa a skill de
+   * trechos (lib/trechos) dizer "p. 12" de uma passagem do anexo. Ausente = sem paginação conhecida (Word, texto).
+   */
+  marcasDePagina?: Array<[number, number]>;
 };
 
 /**
@@ -164,4 +171,39 @@ const DESLIGADO = /^(0|off|false|nao|não|no)$/i;
  */
 export function anexoNoHarnessLigado(env: Record<string, string | undefined> = process.env): boolean {
   return !DESLIGADO.test(env.HARNESS_ANEXO?.trim() ?? "");
+}
+
+// ───────────────────────────── paginação (pra citar a página de um trecho do anexo) ─────────────────────────────
+
+/**
+ * Os parágrafos do extrator (cada um com a página) → onde cada página começa no texto FINAL do anexo. Procura cada
+ * parágrafo pra frente, pelo começo normalizado (o markdown do extrator muda espaço, acento e marcação), e só grava
+ * quando a página muda. Parágrafo não achado é pulado: melhor uma página a menos que uma página errada.
+ */
+export function marcasDePagina(texto: string, paragrafos: readonly { page?: number; text?: string }[]): Array<[number, number]> {
+  const { n, mapa } = normalizarComMapa(String(texto ?? ""));
+  const out: Array<[number, number]> = [];
+  let cursor = 0;
+  for (const p of paragrafos) {
+    const pag = Number(p?.page ?? 0) || 0;
+    const chave = normalizar(String(p?.text ?? "")).slice(0, 40);
+    if (pag < 1 || chave.length < 12) continue;
+    const i = n.indexOf(chave, cursor);
+    if (i < 0) continue;
+    cursor = i + 1;
+    if (out.length && out[out.length - 1]![1] === pag) continue;
+    if (out.length && out[out.length - 1]![1] > pag) continue; // página voltando = achado no lugar errado
+    out.push([mapa[i]!, pag]);
+  }
+  return out;
+}
+
+/** A página de um deslocamento do texto (0 = desconhecida). */
+export function paginaNoOffset(marcas: readonly [number, number][] | undefined, deslocamento: number): number {
+  let pag = 0;
+  for (const [ini, p] of marcas ?? []) {
+    if (ini > deslocamento) break;
+    pag = p;
+  }
+  return pag;
 }

@@ -26,6 +26,30 @@ import CardVideoChat from "@/components/videodoc/CardVideoChat";
 import { videoDocUiOn } from "@/lib/videodoc/documentos";
 import { reaBlueprintUiOn } from "@/lib/rea-blueprint/tipos";
 import { MOTIVO_CHAT } from "@/lib/videodoc/pedido";
+import { FolhasDePapel } from "@/components/trechos/FolhaDePapel";
+import { folhasSemLugar, intercalar } from "@/lib/trechos/folhas";
+import type { TrechoEmPapel } from "@/lib/agent/contracts";
+
+/**
+ * O texto com as FOLHAS DE PAPEL no meio (lib/trechos): cada trecho do material entra logo depois do parágrafo que o
+ * comenta. Sem trechos, é o `Prose` de sempre.
+ */
+function TextoComFolhas({ text, campo, trechos, completo = true, lead, animar }: {
+  text: string; campo: "nucleo" | "desenvolvimento"; trechos?: TrechoEmPapel[]; completo?: boolean; lead?: boolean; animar?: boolean;
+}) {
+  if (!trechos?.length) return <Prose text={text} lead={lead} />;
+  let n = campo === "nucleo" ? 0 : trechos.filter((t) => t.ancora?.campo === "nucleo").length;
+  return (
+    <>
+      {intercalar(text, campo, trechos, completo).map((p, i) => {
+        if (p.tipo === "md") return <Prose key={i} text={p.md} lead={lead} />;
+        const inicio = n;
+        n += p.trechos.length;
+        return <FolhasDePapel key={i} trechos={p.trechos} inicio={inicio} animar={animar} />;
+      })}
+    </>
+  );
+}
 
 // O texto da resposta passa pelo MESMO formatador do chat (ChatMarkdown): negrito/itálico, títulos, bullets,
 // links e MATEMÁTICA ($…$, $$…$$ em KaTeX, ```grafico). Antes era um formatador próprio só com **negrito** —
@@ -75,18 +99,21 @@ export default function StructuredAnswerView({
   acoes?: React.ReactNode;
 }) {
   const { nucleo, desenvolvimento, conceitos, evidencia, proximos_passos } = answer;
+  // as folhas que não couberam no texto (sem âncora) vão juntas pro fim, antes dos botões
+  const soltas = useMemo(() => folhasSemLugar(answer), [answer]);
   // fade-up escalonado por seção
   const secs = useMemo(() => {
     const arr: string[] = ["nucleo"];
     if (desenvolvimento) arr.push("dev");
     if (conceitos?.length) arr.push("conceitos");
     if (children) arr.push("art");
+    if (soltas.length) arr.push("trechos");
     if (evidencia?.length) arr.push("evid");
     if (answer.graficos?.length) arr.push("graficos");
     if (answer.falhas?.length) arr.push("falhas");
     if (proximos_passos?.length) arr.push("next");
     return arr;
-  }, [desenvolvimento, conceitos, evidencia, proximos_passos, children, answer.falhas, answer.graficos]);
+  }, [desenvolvimento, conceitos, evidencia, proximos_passos, children, answer.falhas, answer.graficos, soltas.length]);
   const delay = (name: string) => `${secs.indexOf(name) * 70}ms`;
   const tw = useTypewriter(nucleo || "", typing);
   const rest = tw.done; // o resto entra (com o fade-up escalonado) quando o núcleo termina
@@ -128,7 +155,7 @@ export default function StructuredAnswerView({
           {/* núcleo */}
           {nucleo && (
             <div className="z-up text-slate-900 dark:text-white" style={{ animationDelay: delay("nucleo") }}>
-              <Prose text={tw.visible} lead />
+              <TextoComFolhas text={tw.visible} campo="nucleo" trechos={answer.trechos} completo={tw.done} lead animar={typing} />
               {!tw.done && <span aria-hidden className="z-caret" />}
             </div>
           )}
@@ -136,7 +163,7 @@ export default function StructuredAnswerView({
           {/* desenvolvimento */}
           {rest && desenvolvimento && (
             <div className="z-up mt-3.5 text-slate-900 dark:text-white" style={{ animationDelay: delay("dev") }}>
-              <Prose text={desenvolvimento} />
+              <TextoComFolhas text={desenvolvimento} campo="desenvolvimento" trechos={answer.trechos} animar={typing} />
             </div>
           )}
 
@@ -153,6 +180,16 @@ export default function StructuredAnswerView({
                   {c}
                 </button>
               ))}
+            </div>
+          ) : null}
+
+          {/* TRECHOS DO MATERIAL sem lugar no texto: a pilha de folhas no fim (lib/trechos) */}
+          {rest && soltas.length ? (
+            <div className="z-up mt-5" style={{ animationDelay: delay("trechos") }}>
+              <p className="folha-mao text-[20px] text-slate-600 dark:text-slate-300">
+                {soltas.length === 1 ? "Trecho do seu material" : `Trechos do seu material (${soltas.length})`}
+              </p>
+              <FolhasDePapel trechos={soltas} animar={typing} inicio={(answer.trechos?.length ?? 0) - soltas.length} />
             </div>
           ) : null}
 

@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, it, expect } from "vitest";
 import {
   acrescentarPermissao, apagarDocumento, buscarPorHash, contarBase, contarEnviadosPessoais, criarDocumento, gravarTrechos,
-  listarDocumentos, marcarErro, registrarVetores, removerPermissao, trechosSemVetor,
+  listarDocumentos, marcarErro, marcasDosTrechos, _esquecerColunaMarcas, registrarVetores, removerPermissao, trechosDoDocumento, trechosSemVetor,
 } from "./store";
 import { bancoDeTeste } from "./pgTeste";
 import type { RagDb } from "./pg";
@@ -408,5 +408,49 @@ describe("store — listar e contar", () => {
     await acrescentarPermissao(db, (await buscarPorHash(db, "h4"))!.id, { donoId: "u1" }); // da turma, e também dele
     expect(await contarEnviadosPessoais(db, "u1")).toBe(2);
     expect(await contarEnviadosPessoais(db, "u9")).toBe(0);
+  });
+});
+
+describe("trechosDoDocumento (varredura da skill de trechos)", () => {
+  it.skipIf(!banco)("lê TODOS os trechos em ordem, com página, e só pra quem pode ver", async () => {
+    const db = banco!.db;
+    const doc = await criarDocumento(db, base("h-varre", { donoId: USER }));
+    await gravarTrechos(db, doc.id, [trecho(2), trecho(0), trecho(1)], { turmaIds: [], donoIds: [USER] });
+    const meus = await trechosDoDocumento(db, doc.id, { userId: USER, turmaIds: [] });
+    expect(meus.map((t) => t.ordem)).toEqual([0, 1, 2]);
+    expect(meus[1]).toMatchObject({ documentoId: doc.id, titulo: "Livro", texto: "texto 1", paginaIni: 1, paginaFim: 1, porTexto: true });
+    expect(await trechosDoDocumento(db, doc.id, { userId: "outra-pessoa", turmaIds: ["t9"] })).toEqual([]);
+    expect(await trechosDoDocumento(db, doc.id, { userId: USER, turmaIds: [] }, 2)).toHaveLength(2);
+  });
+});
+
+describe("store — marcas de página dentro do trecho (nov/2026)", () => {
+  const comMarcas = (ordem: number): TrechoCortado => ({
+    ordem, texto: `Livro\n\nFrase da p. 4.\n\nFrase da p. 6.`, caminho: "Livro", paginaIni: 4, paginaFim: 6, marcas: [[0, 4], [22, 6]],
+  });
+
+  it.skipIf(!banco)("grava e devolve as marcas por id de trecho; trecho sem marcas não aparece", async () => {
+    const db = banco!.db;
+    const doc = await criarDocumento(db, base("h-marcas", { donoId: USER }));
+    await gravarTrechos(db, doc.id, [comMarcas(0), trecho(1)], { turmaIds: [], donoIds: [USER] });
+    const ids = (await trechosDe(db, doc.id)).map((t) => t.id);
+    const m = await marcasDosTrechos(db, ids);
+    expect(m.get(ids[0]!)).toEqual([[0, 4], [22, 6]]);
+    expect(m.has(ids[1]!)).toBe(false);
+  });
+
+  it.skipIf(!banco)("banco SEM a coluna (produção antes da migração): grava sem marcas e lê vazio, sem erro", async () => {
+    const db = banco!.db;
+    await db.query("ALTER TABLE rag_trechos DROP COLUMN marcas_pagina");
+    _esquecerColunaMarcas(db);
+    try {
+      const doc = await criarDocumento(db, base("h-sem-coluna", { donoId: USER }));
+      expect(await gravarTrechos(db, doc.id, [comMarcas(0)], { turmaIds: [], donoIds: [USER] })).toBe(1);
+      const ids = (await trechosDe(db, doc.id)).map((t) => t.id);
+      expect((await marcasDosTrechos(db, ids)).size).toBe(0);
+    } finally {
+      await db.query("ALTER TABLE rag_trechos ADD COLUMN IF NOT EXISTS marcas_pagina jsonb");
+      _esquecerColunaMarcas(db);
+    }
   });
 });

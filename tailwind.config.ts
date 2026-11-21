@@ -20,6 +20,8 @@ const config: Config = {
         mono: ["var(--font-code)", "monospace"],
         tech: ["var(--font-tech)", "var(--font-space)", "sans-serif"],
         display: ["var(--font-display)", "var(--font-space)", "sans-serif"],
+        // letra à mão dos blocos de papel (components/trechos)
+        mao: ["var(--font-mao)", "Caveat", "'Segoe Script'", "cursive"],
       },
       colors: {
         background: "var(--background)",
