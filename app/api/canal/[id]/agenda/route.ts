@@ -14,6 +14,7 @@ import { prisma, sessaoUsuario, exigirFlag, isObjectId, pessoas, type Usuario } 
 import { podeLer, podeEscrever } from "@/lib/canal/gate";
 import { normalizarBloco, blocoDeMinutos, aplicarBloco, type Bloco, type Dia } from "@/lib/canal/agenda";
 import { EV_AGENDA, publicarPusher } from "@/lib/canal/realtime";
+import { ehConviteDeConversa } from "@/lib/canal/convite";
 
 /** Teto de blocos por pessoa por canal (anti-spam; uma semana cheia de manhã+tarde cabe folgado). */
 export const MAX_BLOCOS_POR_PESSOA = 40;
@@ -46,7 +47,25 @@ export async function GET(_req: Request, { params }: Ctx): Promise<NextResponse>
   if (!podeLer(canal, u.id)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const linhas: Linha[] = await prisma.agendaBloco.findMany({ where: { canalId: canal.id }, orderBy: [{ dia: "asc" }, { inicio: "asc" }] });
   const gente = await pessoas(linhas.map((l) => l.userId));
-  return NextResponse.json({ eu: u.id, blocos: linhas.map(paraBloco), pessoas: [...gente.values()] });
+  return NextResponse.json({ eu: u.id, blocos: linhas.map(paraBloco), pessoas: [...gente.values()], contatos: await meusContatos(u.id) });
+}
+
+/**
+ * #861 PR 2: o filtro "Meus contatos" da agenda — quem tem um convite de CONTATO aceito comigo, em qualquer direção
+ * (convite pra uma conversa não conta: lib/canal/convite `ehConviteDeConversa`). Só ids; se falhar, a agenda abre
+ * do mesmo jeito (o filtro só fica vazio).
+ */
+async function meusContatos(eu: string): Promise<string[]> {
+  type C = { deId: string; paraId: string; canalId?: string | null };
+  let cs: C[] = [];
+  try {
+    cs = await prisma.canalConvite.findMany({
+      where: { status: "aceito", OR: [{ deId: eu }, { paraId: eu }] },
+      select: { deId: true, paraId: true, canalId: true },
+      take: 500,
+    });
+  } catch { return []; }
+  return [...new Set(cs.filter((c) => !ehConviteDeConversa(c)).map((c) => (c.deId === eu ? c.paraId : c.deId)))];
 }
 
 export async function POST(req: Request, { params }: Ctx): Promise<NextResponse> {

@@ -1147,6 +1147,15 @@
   "agenda": {
     "tentarDeNovo": "다시 시도",
     "naoSalvou": "시간을 저장하지 못했어요.",
-    "naoApagou": "시간을 삭제하지 못했어요."
+    "naoApagou": "시간을 삭제하지 못했어요.",
+    "filtro": "일정에 표시",
+    "todos": "모두",
+    "soEu": "나만",
+    "meusContatos": "내 연락처",
+    "agora": "지금",
+    "nPessoas": "{{n}}명",
+    "umaPessoa": "1명",
+    "marcarTambem": "나도 참여",
+    "fechar": "닫기"
   }
 }

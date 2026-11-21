@@ -1147,6 +1147,15 @@
   "agenda": {
     "tentarDeNovo": "Tentar de novo",
     "naoSalvou": "Não deu pra salvar o horário.",
-    "naoApagou": "Não deu pra apagar o horário."
+    "naoApagou": "Não deu pra apagar o horário.",
+    "filtro": "Mostrar na agenda",
+    "todos": "Todos",
+    "soEu": "Só eu",
+    "meusContatos": "Meus contatos",
+    "agora": "agora",
+    "nPessoas": "{{n}} pessoas",
+    "umaPessoa": "1 pessoa",
+    "marcarTambem": "Marcar também",
+    "fechar": "Fechar"
   }
 }

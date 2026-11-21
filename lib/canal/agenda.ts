@@ -137,8 +137,15 @@ export function naCelula(fs: Faixa[], dia: Dia, hora: number): { faixa: Faixa; t
 /** Altura de UMA hora na grade (px): alta o bastante pra foto, nome e horário caberem dentro do bloco. */
 export const ALTURA_HORA = { computador: 56, celular: 64 } as const;
 
-/** Um bloco já posicionado no dia: onde começa/termina (px), em que coluna está e quantas colunas o grupo tem. */
-export type BlocoNoDia = { faixa: Faixa; topo: number; altura: number; coluna: number; colunas: number };
+/**
+ * Um bloco já posicionado no dia: onde começa/termina (px), em que coluna está e quantas colunas o grupo tem.
+ * #861 PR 2: `multidao` = o grupo tinha gente demais pra colunas (4 ou mais ao mesmo tempo) e virou UM bloco
+ * com todas as faixas dele (a `faixa` é a união: do primeiro começo ao último fim).
+ */
+export type BlocoNoDia = { faixa: Faixa; topo: number; altura: number; coluna: number; colunas: number; multidao?: Faixa[] };
+
+/** #861 PR 2: a partir de quantas pessoas ao mesmo tempo o grupo vira "N pessoas" (até 3, uma coluna pra cada). */
+export const LIMITE_COLUNAS = 3;
 
 /**
  * #861: os blocos de UM dia, cada um como uma barra só (do começo ao fim), e lado a lado quando se sobrepõem
@@ -152,6 +159,18 @@ export function blocosDoDia(fs: Faixa[], dia: Dia, alturaHora: number): BlocoNoD
   let fimDoGrupo = -1;
   const fechar = () => {
     const n = grupo.reduce((m, g) => Math.max(m, g.coluna + 1), 0);
+    if (n > LIMITE_COLUNAS) {
+      // gente demais pra colunas: o grupo inteiro vira um bloco "N pessoas" (como o When2meet / Morgen)
+      const de = Math.min(...grupo.map((g) => g.faixa.de)), ate = Math.max(...grupo.map((g) => g.faixa.ate));
+      const primeira = grupo[0]!.faixa;
+      out.push({
+        faixa: { userId: primeira.userId, dia: primeira.dia, de, ate, ids: grupo.flatMap((g) => g.faixa.ids) },
+        coluna: 0, colunas: 1, multidao: grupo.map((g) => g.faixa),
+        topo: ((de - MIN_INICIO) / 60) * alturaHora, altura: ((ate - de) / 60) * alturaHora,
+      });
+      grupo = [];
+      return;
+    }
     for (const g of grupo) {
       out.push({
         faixa: g.faixa, coluna: g.coluna, colunas: n,
@@ -190,6 +209,24 @@ export function modoDoBloco(alturaPx: number, colunas: number): ModoDoBloco {
   // o cartão (foto em cima, nome e horário embaixo) precisa de ~80 px: abaixo disso, foto do lado
   if (alturaPx < 80) return "linha";
   return "cartao";
+}
+
+/** #861 PR 2: quantas PESSOAS diferentes há num bloco de multidão (a mesma pessoa pode ter dois pedaços). */
+export const pessoasNoBloco = (b: Pick<BlocoNoDia, "faixa" | "multidao">): string[] =>
+  [...new Set((b.multidao ?? [b.faixa]).map((f) => f.userId))];
+
+/** #861 PR 2: o bloco está acontecendo AGORA (hoje, e a hora atual cai dentro dele)? */
+export const acontecendoAgora = (f: Pick<Faixa, "dia" | "de" | "ate">, agora: Date): boolean => {
+  const m = agora.getHours() * 60 + agora.getMinutes();
+  return f.dia === agora.getDay() && f.de <= m && m < f.ate;
+};
+
+/** #861 PR 2: o filtro de cima da agenda. "contatos" = eu + quem aceitou (ou teve aceito) um convite de contato. */
+export type FiltroAgenda = "todos" | "eu" | "contatos";
+export function filtrarFaixas(fs: Faixa[], filtro: FiltroAgenda, eu: string | null, contatos: ReadonlySet<string>): Faixa[] {
+  if (filtro === "todos") return fs;
+  if (filtro === "eu") return fs.filter((f) => f.userId === eu);
+  return fs.filter((f) => f.userId === eu || contatos.has(f.userId));
 }
 
 // ───────────────────────────── hoje, agora e o que já passou ─────────────────────────────
