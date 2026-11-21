@@ -1147,6 +1147,15 @@
   "agenda": {
     "tentarDeNovo": "Erneut versuchen",
     "naoSalvou": "Der Zeitraum konnte nicht gespeichert werden.",
-    "naoApagou": "Der Zeitraum konnte nicht gelöscht werden."
+    "naoApagou": "Der Zeitraum konnte nicht gelöscht werden.",
+    "filtro": "Im Kalender anzeigen",
+    "todos": "Alle",
+    "soEu": "Nur ich",
+    "meusContatos": "Meine Kontakte",
+    "agora": "jetzt",
+    "nPessoas": "{{n}} Personen",
+    "umaPessoa": "1 Person",
+    "marcarTambem": "Auch eintragen",
+    "fechar": "Schließen"
   }
 }

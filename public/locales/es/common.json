@@ -1147,6 +1147,15 @@
   "agenda": {
     "tentarDeNovo": "Intentar de nuevo",
     "naoSalvou": "No se pudo guardar el horario.",
-    "naoApagou": "No se pudo eliminar el horario."
+    "naoApagou": "No se pudo eliminar el horario.",
+    "filtro": "Mostrar en la agenda",
+    "todos": "Todos",
+    "soEu": "Solo yo",
+    "meusContatos": "Mis contactos",
+    "agora": "ahora",
+    "nPessoas": "{{n}} personas",
+    "umaPessoa": "1 persona",
+    "marcarTambem": "Marcar también",
+    "fechar": "Cerrar"
   }
 }

@@ -3,7 +3,7 @@
  * quando se cruza com outro (a coluna não muda no meio), e como a foto entra conforme o tamanho.
  */
 import { describe, it, expect } from "vitest";
-import { ALTURA_HORA, blocosDoDia, modoDoBloco, MIN_INICIO, type Faixa } from "./agenda";
+import { ALTURA_HORA, acontecendoAgora, blocosDoDia, filtrarFaixas, modoDoBloco, MIN_INICIO, pessoasNoBloco, type Faixa } from "./agenda";
 
 const f = (userId: string, dia: Faixa["dia"], de: number, ate: number): Faixa => ({ userId, dia, de, ate, ids: [`${userId}-${de}`] });
 const H = ALTURA_HORA.computador;
@@ -50,5 +50,36 @@ describe("#861 · modoDoBloco (a foto conforme o tamanho)", () => {
     expect(modoDoBloco(H, 2)).toBe("estreito");
     expect(modoDoBloco(H / 2, 3)).toBe("mini");
     expect(modoDoBloco(H / 4, 2)).toBe("mini");
+  });
+});
+
+describe("#861 PR 2 · muita gente, agora e filtro", () => {
+  it("4 pessoas ao mesmo tempo: o grupo vira UM bloco (multidão) do primeiro começo ao último fim", () => {
+    const bs = blocosDoDia([f("a", 2, 600, 720), f("b", 2, 600, 660), f("c", 2, 630, 720), f("d", 2, 600, 690)], 2, H);
+    expect(bs).toHaveLength(1);
+    expect(bs[0]!.multidao).toHaveLength(4);
+    expect([bs[0]!.faixa.de, bs[0]!.faixa.ate]).toEqual([600, 720]);
+    expect(pessoasNoBloco(bs[0]!).sort()).toEqual(["a", "b", "c", "d"]);
+  });
+  it("3 pessoas continuam em colunas (sem multidão)", () => {
+    const bs = blocosDoDia([f("a", 2, 600, 720), f("b", 2, 600, 660), f("c", 2, 630, 720)], 2, H);
+    expect(bs.every((b) => !b.multidao && b.colunas === 3)).toBe(true);
+  });
+  it("pessoasNoBloco não conta a mesma pessoa duas vezes", () => {
+    const bs = blocosDoDia([f("a", 3, 600, 630), f("a", 3, 610, 700), f("b", 3, 600, 700), f("c", 3, 600, 700), f("d", 3, 600, 700)], 3, H);
+    expect(pessoasNoBloco(bs[0]!)).toHaveLength(4);
+  });
+  it("acontecendoAgora: hoje e a hora atual dentro do bloco", () => {
+    const sexta10h20 = new Date(2026, 10, 20, 10, 20);   // sexta-feira
+    expect(acontecendoAgora({ dia: 5, de: 600, ate: 720 }, sexta10h20)).toBe(true);
+    expect(acontecendoAgora({ dia: 5, de: 630, ate: 720 }, sexta10h20)).toBe(false);
+    expect(acontecendoAgora({ dia: 4, de: 600, ate: 720 }, sexta10h20)).toBe(false);
+    expect(acontecendoAgora({ dia: 5, de: 540, ate: 620 }, sexta10h20)).toBe(false);   // termina às 10h20: já acabou
+  });
+  it("filtro: todos / só eu / eu + meus contatos", () => {
+    const fs = [f("eu", 1, 480, 540), f("amiga", 1, 480, 540), f("outro", 1, 480, 540)];
+    expect(filtrarFaixas(fs, "todos", "eu", new Set(["amiga"]))).toHaveLength(3);
+    expect(filtrarFaixas(fs, "eu", "eu", new Set(["amiga"])).map((x) => x.userId)).toEqual(["eu"]);
+    expect(filtrarFaixas(fs, "contatos", "eu", new Set(["amiga"])).map((x) => x.userId)).toEqual(["eu", "amiga"]);
   });
 });

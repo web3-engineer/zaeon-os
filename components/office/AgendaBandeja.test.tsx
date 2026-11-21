@@ -145,14 +145,17 @@ describe("AgendaBandeja", () => {
     await waitFor(() => expect(chamadas.find((c) => c.metodo === "POST")!.body).toEqual({ dia: 3, de: 480, ate: 720 }));
   });
 
-  it("tocar no horário de OUTRA pessoa não apaga: mostra quem está e começa uma seleção (dá pra dividir o horário)", async () => {
+  it("tocar no horário de OUTRA pessoa não apaga: #861 abre a lista de quem está, e 'Marcar também' marca a mesma hora", async () => {
     blocos = [{ id: "f".repeat(24), userId: OUTRA, dia: 1, inicio: 8, fim: 10 }];
     abrir();
     await pronta("Seg 8h: Martinez");
     fireEvent.click(celula("Seg 8h: Martinez"));
     expect(chamadas.some((c) => c.metodo === "DELETE")).toBe(false);
-    expect(screen.getByText(/toque no horário FINAL/i)).toBeTruthy();
-    expect(screen.getByRole("status").textContent).toContain("Martinez (8h–11h)");
+    const lista = screen.getByRole("dialog", { name: /segunda, 8h/i });
+    expect(within(lista).getByText("Martinez")).toBeTruthy();
+    expect(within(lista).getByText("8h–11h")).toBeTruthy();
+    fireEvent.click(within(lista).getByRole("button", { name: /Marcar também/ }));
+    await waitFor(() => expect(chamadas.find((c) => c.metodo === "POST")?.body).toEqual({ dia: 1, inicio: 8, fim: 8 }));
   });
 
   it("legenda mostra quem tem horário, com '(você)'", async () => {
@@ -204,5 +207,26 @@ describe("AgendaBandeja", () => {
     fireEvent.click(tentar);
     await waitFor(() => expect(celula("Ter 9h: Giulia")).toBeTruthy(), { timeout: 3000 });
     expect(chamadas.filter((c) => c.metodo === "POST")).toHaveLength(2);
+  });
+  it("#861 PR 2: 4 pessoas no mesmo horário viram um bloco só, com '+1' e '4 pessoas'", async () => {
+    const P = ["c", "d", "e", "f"].map((x) => x.repeat(24));
+    blocos = P.map((u, i) => ({ id: String(i + 1).repeat(24), userId: u, dia: 3, inicio: 10, fim: 11 }));
+    abrir();
+    await pronta("Qua 9h: livre");
+    const m = document.querySelector('[data-coluna-dia="3"] [data-barra="multidao"]') as HTMLElement;
+    expect(m).toBeTruthy();
+    expect(m.textContent).toContain("+1");
+    expect(m.textContent).toContain("4 pessoas");
+  });
+
+  it("#861 PR 2: filtro 'Só eu' esconde o horário dos outros (e o quadrado fica livre)", async () => {
+    blocos = [{ id: "c".repeat(24), userId: EU, dia: 1, inicio: 8, fim: 8 }, { id: "f".repeat(24), userId: OUTRA, dia: 2, inicio: 9, fim: 9 }];
+    abrir();
+    await pronta("Ter 9h: Martinez");
+    fireEvent.click(screen.getByRole("button", { name: "Só eu" }));
+    expect(celula("Ter 9h: livre")).toBeTruthy();
+    expect(celula("Seg 8h: Giulia")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Todos" }));
+    expect(celula("Ter 9h: Martinez")).toBeTruthy();
   });
 });

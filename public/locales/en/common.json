@@ -1147,6 +1147,15 @@
   "agenda": {
     "tentarDeNovo": "Try again",
     "naoSalvou": "Couldn't save the time slot.",
-    "naoApagou": "Couldn't delete the time slot."
+    "naoApagou": "Couldn't delete the time slot.",
+    "filtro": "Show in the schedule",
+    "todos": "Everyone",
+    "soEu": "Only me",
+    "meusContatos": "My contacts",
+    "agora": "now",
+    "nPessoas": "{{n}} people",
+    "umaPessoa": "1 person",
+    "marcarTambem": "Join this time",
+    "fechar": "Close"
   }
 }
