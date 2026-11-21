@@ -91,6 +91,8 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
   // #858: o arrasto também mora numa ref — o soltar lê dela e salva FORA do updater do setState
   // (o Strict Mode repete updaters, e salvar lá dentro mandava o POST duas vezes)
   const arrastoRef = useRef<Arrasto | null>(null);
+  // #861: depois do 1º toque, a hora em que o mouse está (pra mostrar "14h–17h" ANTES de confirmar)
+  const [mira, setMira] = useState<{ dia: Dia; hora: number } | null>(null);
   const setArrasto = useCallback((a: Arrasto | null) => { arrastoRef.current = a; setArrastoEstado(a); }, []);
   const avisoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gradeRef = useRef<HTMLDivElement>(null);
@@ -155,6 +157,7 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
     return () => { cargaAtual.current++; abortar.current?.abort(); setCarregando(false); };
   }, [aberta, carregar, versao]);
   useEffect(() => { setAncora(null); setEditando(null); rolouPraAgora.current = false; }, [aberta]);
+  useEffect(() => { if (!ancora) setMira(null); }, [ancora]);
 
   // #850: o relógio da agenda (hoje, a linha de agora e o que já passou) anda de minuto em minuto
   useEffect(() => {
@@ -378,8 +381,15 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
     el.addEventListener("touchmove", prender, { passive: false });
     return () => el.removeEventListener("touchmove", prender);
   }, [arrasto?.ativo]);
-  const naSelecao = (dia: Dia, hora: number) =>
-    !!arrasto?.ativo && arrasto.dia === dia && hora >= Math.min(arrasto.de, arrasto.ate) && hora <= Math.max(arrasto.de, arrasto.ate);
+  // #861: o que vai ser marcado se a pessoa confirmar agora — arrastando, ou entre o 1º toque e onde o mouse está
+  // (cada quadrado é a hora INTEIRA: tocar 14h e depois 16h marca 14h–17h; o rascunho mostra isso antes)
+  const rascunho: { dia: Dia; de: number; ate: number } | null = arrasto?.ativo
+    ? { dia: arrasto.dia, de: Math.min(arrasto.de, arrasto.ate), ate: Math.max(arrasto.de, arrasto.ate) }
+    : ancora
+      ? (() => { const h = mira?.dia === ancora.dia ? mira.hora : ancora.hora; return { dia: ancora.dia, de: Math.min(ancora.hora, h), ate: Math.max(ancora.hora, h) }; })()
+      : null;
+  const textoRascunho = rascunho ? `${rascunho.de}h–${rascunho.ate + 1}h` : "";
+  const naSelecao = (dia: Dia, hora: number) => !!rascunho && rascunho.dia === dia && hora >= rascunho.de && hora <= rascunho.ate;
 
   const pessoasNaAgenda = useMemo(() => [...new Set(blocos.map((b) => b.userId))].map((id) => gente.get(id) ?? { id, nome: "Alguém", avatar: null }), [blocos, gente]);
 
@@ -405,8 +415,10 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
       </div>
 
       <p className={`px-4 pt-2 text-[12px] ${TXT_2}`}>
-        {ancora
-          ? `Agora toque no horário FINAL na coluna de ${DIA_CURTO[ancora.dia]} (ou Esc pra cancelar).`
+        {rascunho
+          ? arrasto?.ativo
+            ? `Marcando ${DIA_CURTO[rascunho.dia]} ${textoRascunho} — solte para salvar.`
+            : `Marcando ${DIA_CURTO[rascunho.dia]} ${textoRascunho}. Toque na ÚLTIMA hora que você quer (ou Esc pra cancelar).`
           : celular
             ? "Toque no horário inicial e depois no final (ou segure e arraste). Toque no seu horário para mudar ou apagar."
             : "Toque no horário inicial e depois no final (ou arraste). Clique no seu horário para mudar ou apagar."}
@@ -463,19 +475,19 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
               {/* os quadrados: o lugar de tocar, arrastar e ler (leitor de tela) quem está em cada hora */}
               {HORAS.map((h, i) => {
                 const occ = naCelula(fsVisiveis, d, h);
-                const ehAncora = ancora?.dia === d && ancora.hora === h;
                 const passou = jaPassou(d, h, agora);
                 const rotulo = occ.length ? `${DIA_CURTO[d]} ${h}h: ${occ.map((o) => nomeDe(o.faixa.userId)).join(", ")}` : `${DIA_CURTO[d]} ${h}h: livre`;
                 return (
                   <button key={`${d}-${h}`} type="button" data-dia={d} data-hora={h} data-passou={passou || undefined}
                     onPointerDown={(e) => comecarPressao(e, d, h)}
+                    onPointerEnter={(e) => { if (ancora && e.pointerType !== "touch") setMira({ dia: d, hora: h }); }}
                     onClick={() => { if (!ignorarClique.current) clicar(d, h); }}
                     onContextMenu={(e) => { if (arrasto?.ativo || pressao.current) e.preventDefault(); }}
                     disabled={!carregouUmaVez}
                     title={passou ? `${rotulo} · já passou nesta semana` : rotulo} aria-label={rotulo}
                     style={{ top: i * ALT, height: ALT }}
                     className={`absolute inset-x-0 border-b border-x transition-colors select-none [-webkit-touch-callout:none] ${i === 0 ? "rounded-t-xl border-t" : ""} ${i === HORAS.length - 1 ? "rounded-b-xl" : ""}
-                      ${ehAncora || naSelecao(d, h) ? "z-[1] border-blue-500 ring-2 ring-inset ring-blue-400/70 dark:border-cyan-300 dark:ring-cyan-300/60" : "border-slate-200 dark:border-white/[0.07] hover:bg-blue-500/[0.06] dark:hover:bg-cyan-300/[0.05]"}
+                      ${naSelecao(d, h) ? "border-slate-200 dark:border-white/[0.07]" /* o contorno é o do rascunho tracejado */ :"border-slate-200 dark:border-white/[0.07] hover:bg-blue-500/[0.06] dark:hover:bg-cyan-300/[0.05]"}
                       ${passou ? "bg-slate-100 dark:bg-[#0d1322]" : d === hoje ? "bg-blue-50 dark:bg-[#0f1a2e]" : "bg-white dark:bg-[#111827]"}`} />
                 );
               })}
@@ -487,6 +499,13 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
                   <div data-agora className="absolute inset-x-0" style={{ top: ((minAgora - MIN_INICIO) / 60) * ALT }}>
                     <span className="absolute -left-1 -top-[4px] h-[10px] w-[10px] rounded-full bg-rose-500" />
                     <span className="block h-[2px] bg-rose-500" />
+                  </div>
+                )}
+                {/* #861: o rascunho — o horário que vai ser marcado, escrito, antes de confirmar */}
+                {rascunho?.dia === d && (
+                  <div data-rascunho className="absolute inset-x-0.5 z-[2] rounded-xl border-2 border-dashed border-blue-500 bg-blue-500/15 dark:border-cyan-300 dark:bg-cyan-300/15"
+                    style={{ top: (rascunho.de - HORAS[0]!) * ALT + 1, height: (rascunho.ate - rascunho.de + 1) * ALT - 2 }}>
+                    <span className="m-1 inline-block rounded-md bg-blue-600 px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-white dark:bg-cyan-300 dark:text-slate-900">{textoRascunho}</span>
                   </div>
                 )}
                 {blocosDoDia(fsNaTela, d, ALT).map((b) => (

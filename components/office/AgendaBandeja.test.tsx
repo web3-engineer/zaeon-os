@@ -73,7 +73,12 @@ describe("AgendaBandeja", () => {
     abrir();
     await pronta("Ter 9h: livre");
     fireEvent.click(celula("Ter 9h: livre"));
-    expect(screen.getByText(/toque no horário FINAL/i)).toBeTruthy();
+    // o rascunho já diz o que vai ser marcado (cada quadrado é a hora inteira)
+    expect(screen.getByText(/Marcando Ter 9h–10h\. Toque na ÚLTIMA hora/)).toBeTruthy();
+    expect(document.querySelector("[data-rascunho]")?.textContent).toBe("9h–10h");
+    // o mouse passa pelo quadrado das 15h: o rascunho cresce até 16h, antes de confirmar
+    fireEvent.pointerEnter(celula("Ter 15h: livre"), { pointerType: "mouse" });
+    expect(document.querySelector("[data-rascunho]")?.textContent).toBe("9h–16h");
     fireEvent.click(celula("Ter 15h: livre"));
     await waitFor(() => expect(chamadas.some((c) => c.metodo === "POST")).toBe(true));
     expect(chamadas.find((c) => c.metodo === "POST")!.body).toEqual({ dia: 2, inicio: 9, fim: 15 });
@@ -90,7 +95,7 @@ describe("AgendaBandeja", () => {
     fireEvent.click(celula("Ter 9h: livre"));
     fireEvent.click(celula("Qui 10h: livre"));
     expect(chamadas.some((c) => c.metodo === "POST")).toBe(false);
-    expect(screen.getByText(/coluna de Qui/)).toBeTruthy();
+    expect(screen.getByText(/Marcando Qui/)).toBeTruthy();
   });
 
   it("Esc cancela a seleção em andamento", async () => {
