@@ -1,6 +1,7 @@
 # infra/litellm.config.yaml — gateway interno de LLM (PR-G1, Fatia 1 · pool grátis PR-G3, Fatia 7).
 # Escopo RÍGIDO: só a camada autônoma passa aqui, e só com GATEWAY_URL setado.
 #  - zaeon-flash / zaeon-pro: Vertex Gemini, mesma credencial do app (GOOGLE_CREDENTIALS) — turno do canal.
+#  - zaeon-hf-*: Hugging Face (router OpenAI-compatible) — só pedidos com LLM_PRIMARIO=hf no app; caem no Vertex.
 #  - zaeon-pool-*: POOL GRÁTIS — só chores com conteúdo PÚBLICO da web (§8.10; lib/chore rotaDaChore).
 #    UMA conta por provedor (§8.11): uma key por provedor, um deployment por provedor. Proibido 2ª key.
 #    O pool NUNCA cai no Vertex (§5.10): todos esgotados = 429 "No deployments available" → fila (G4).
@@ -32,6 +33,41 @@ model_list:
       vertex_location: os.environ/GEMINI_TEXT_LOCATION   # texto: "global" (ver docker-compose.beta.yml)
       vertex_credentials: os.environ/GOOGLE_CREDENTIALS
     model_info: { id: vertex-real }
+
+  # ── HUGGING FACE PRIMÁRIO (decisão do dono, 2026-11-21) ───────────────────────────────────────────
+  # Com LLM_PRIMARIO=hf no .env do app, o envelope (lib/llm/envelope apelidoNoGateway) troca zaeon-flash/zaeon-pro por
+  # estes grupos; sem a flag, ninguém os pede e o gateway segue igual. O Google vira a QUEDA pela cadeia de fallbacks
+  # abaixo (zaeon-hf-* → zaeon-flash/zaeon-pro → reserva Google). Router do HF = API OpenAI: `openai/` + api_base; o
+  # LiteLLM tira o 1º "openai/" e manda "openai/gpt-oss-120b:cerebras" (o sufixo fixa o provedor). HF_TOKEN = o mesmo
+  # token fine-grained da reserva do chat (lib/llm/reservaHf), lido do .env pelo env_file do container.
+  # Provedor desligado na conta do HF = 400 "provider disabled" → o router escorrega pro próximo da cadeia.
+  # Testado ao vivo (2026-11-21): Cerebras 0,4 s / JSON ok / 5,6k tokens em 3,6 s; Groq ok.
+  - model_name: zaeon-hf-flash
+    litellm_params:
+      model: openai/openai/gpt-oss-120b:cerebras
+      api_base: https://router.huggingface.co/v1
+      api_key: os.environ/HF_TOKEN
+      reasoning_effort: low
+      timeout: 60
+    model_info: { id: hf-flash-cerebras }
+  - model_name: zaeon-hf-flash-groq
+    litellm_params:
+      model: openai/openai/gpt-oss-120b:groq
+      api_base: https://router.huggingface.co/v1
+      api_key: os.environ/HF_TOKEN
+      reasoning_effort: low
+      timeout: 60
+    model_info: { id: hf-flash-groq }
+  # Tier forte: o mesmo gpt-oss pensando mais (provado). Trocar por um modelo maior do HF (ex.: zai-org/GLM-5.3:nebius,
+  # moonshotai/Kimi-K3.1-Pro:nebius — testados com JSON ok) = editar o `model:` abaixo.
+  - model_name: zaeon-hf-pro
+    litellm_params:
+      model: openai/openai/gpt-oss-120b:cerebras
+      api_base: https://router.huggingface.co/v1
+      api_key: os.environ/HF_TOKEN
+      reasoning_effort: medium
+      timeout: 120
+    model_info: { id: hf-pro-cerebras }
 
   # ── MODELOS PREMIUM (Octa, opt-in) — conta de API da ORG da Zaeon, NÃO assinatura ───────────────
   # Claude/Codex rodando no harness do Octa (lib/octa/modelosPremium + /api/octa/agente), só plano Max.
@@ -184,7 +220,10 @@ router_settings:
   # O CHAT (2026-10-24, decisão do dono): o 3.5-flash dava 429 "Resource exhausted" no global SEM reserva — o turno
   # falhava ou re-tentava parado. Agora zaeon-flash → a reserva Google (Vertex pago: o conteúdo do chat nunca vai pro
   # pool grátis, que treina com o que recebe) e zaeon-pro → zaeon-flash.
-  fallbacks: [{"zaeon-pool-lite": ["zaeon-pool-cerebras", "zaeon-reserva-google"]}, {"zaeon-pool-cerebras": ["zaeon-reserva-google"]}, {"zaeon-flash": ["zaeon-reserva-google"]}, {"zaeon-pro": ["zaeon-flash", "zaeon-reserva-google"]}]
+  # HF PRIMÁRIO (2026-11-21, LLM_PRIMARIO=hf): zaeon-hf-flash → Groq pelo HF → Google (flash, depois a reserva);
+  # zaeon-hf-pro → Groq pelo HF → Google pro → flash → reserva. A cadeia é EXPLÍCITA: o LiteLLM não encadeia o
+  # fallback do fallback. O HF nunca entra na cadeia do pool (grátis) nem da Contabo.
+  fallbacks: [{"zaeon-pool-lite": ["zaeon-pool-cerebras", "zaeon-reserva-google"]}, {"zaeon-pool-cerebras": ["zaeon-reserva-google"]}, {"zaeon-flash": ["zaeon-reserva-google"]}, {"zaeon-pro": ["zaeon-flash", "zaeon-reserva-google"]}, {"zaeon-hf-flash": ["zaeon-hf-flash-groq", "zaeon-flash", "zaeon-reserva-google"]}, {"zaeon-hf-pro": ["zaeon-hf-flash-groq", "zaeon-pro", "zaeon-flash", "zaeon-reserva-google"]}]
   allowed_fails: 2
   cooldown_time: 60
   num_retries: 1

@@ -4,6 +4,8 @@
  *   gerar(req)      → { texto, usage, modelo, provedor, finishReason, ms }
  *   gerarJson<T>()  → gerar({json:true}) + parse com os MESMOS erros diagnósticos do geminiJson legado
  *
+ * Provedor principal: LLM_PRIMARIO=hf põe o Hugging Face na frente e o Vertex vira a queda (lib/llm/reservaHf
+ * hfPrimario). Sem a flag, o Vertex é o principal e o HF é só a reserva — como sempre foi.
  * Rotas: "vertex" (default; exatamente o que geminiJson/geminiText fazem hoje) e "gateway"
  * (LiteLLM OpenAI-compatible, só com GATEWAY_URL + key). Gateway caído/sem URL/sem key → cai para
  * o Vertex NA MESMA CHAMADA e grava provedor:"vertex" (é o que o health chama de degraded).
@@ -16,7 +18,7 @@ import { registrarTokens, type LedgerCtx } from "@/lib/llm/ledger";
 import { parseJsonComLatex } from "@/lib/llm/latexJson";
 import { GEMINI_MODEL_FLASH } from "@/lib/ai/model";
 import { alvoDe, ehModeloLocal, ehModeloPool, poolConfigurado, type Alvo } from "@/lib/llm/pool";
-import { HF_ROUTER_URL, erroPedeReserva, modeloSemProvedor, modelosReservaHf, reservaHfLigada, timeoutReservaHf } from "@/lib/llm/reservaHf";
+import { HF_ROUTER_URL, erroPedeReserva, esforcoHf, hfPrimario, modeloSemProvedor, modelosHfPrimario, modelosReservaHf, reservaHfLigada, tierDoModelo, timeoutReservaHf } from "@/lib/llm/reservaHf";
 
 export type Rota = "vertex" | "gateway";
 export type { LedgerCtx, Alvo };
@@ -271,7 +273,12 @@ function contentsDe(req: GerarReq): Mensagem[] {
  * canal (Escritório) quebrava. Id fora da tabela segue cru.
  */
 export const APELIDO_GATEWAY: Readonly<Record<string, string>> = { "gemini-3.5-flash": "zaeon-flash", "gemini-2.5-pro": "zaeon-pro" };
-export const apelidoNoGateway = (modelo: string): string => APELIDO_GATEWAY[modelo] ?? modelo;
+/** Com LLM_PRIMARIO=hf: os grupos do HF no gateway (infra/litellm.config.yaml), que caem no Google pela cadeia de fallbacks. */
+export const APELIDO_GATEWAY_HF: Readonly<Record<string, string>> = { "zaeon-flash": "zaeon-hf-flash", "zaeon-pro": "zaeon-hf-pro" };
+export const apelidoNoGateway = (modelo: string, env: Record<string, string | undefined> = {}): string => {
+  const apelido = APELIDO_GATEWAY[modelo] ?? modelo;
+  return hfPrimario(env) ? APELIDO_GATEWAY_HF[apelido] ?? apelido : apelido;
+};
 
 /** 403 do LiteLLM "modelo não liberado pra esta key" — o Vertex direto atende (não é auth quebrada). */
 const keySemModelo = (e: unknown): boolean => /key_model_access_denied|not available for this api key/i.test(`${(e as any)?.message ?? ""} ${(e as any)?.body ?? ""}`);
@@ -321,7 +328,7 @@ export async function gerar(req: GerarReq, deps: Deps = {}): Promise<GerarRes> {
 
   if (rota === "gateway") {
     try {
-      const r = await viaGateway(req, apelidoNoGateway(modelo), env.GATEWAY_URL!.trim(), key!, deps.fetchImpl ?? fetch);
+      const r = await viaGateway(req, apelidoNoGateway(modelo, env), env.GATEWAY_URL!.trim(), key!, deps.fetchImpl ?? fetch);
       const alvo = alvoDe(r.modelo, r.modelId), jv = jsonValido(r.texto);
       gravar("litellm", "gateway", r.usage, true, null, r.modelo, alvo, jv);
       const { modelId: _id, ...resto } = r;
@@ -337,20 +344,30 @@ export async function gerar(req: GerarReq, deps: Deps = {}): Promise<GerarRes> {
     }
   }
 
-  // Reserva do chat pelo Hugging Face (lib/llm/reservaHf): o MESMO pedido no gpt-oss-120b (Cerebras → Groq)
-  // quando o Vertex falha ou volta vazio. Pool e modelos da Contabo nunca chegam aqui (relançaram acima).
-  const reservaHf = async (): Promise<GerarRes | null> => {
-    if (!reservaHfLigada(env)) return null;
-    for (const m of modelosReservaHf(env)) {
+  // Hugging Face (lib/llm/reservaHf), em DOIS papéis com o MESMO código:
+  //  · PRIMÁRIO (LLM_PRIMARIO=hf): vai antes do Vertex, com os modelos do tier pedido (flash/pro) — o Google vira a queda.
+  //  · RESERVA (padrão): o MESMO pedido no gpt-oss-120b quando o Vertex falha ou volta vazio.
+  // Pool e modelos da Contabo nunca chegam aqui (relançaram acima). Uma volta só por pedido: se o HF já foi tentado
+  // como primário e falhou, a falha do Vertex depois NÃO tenta o HF de novo.
+  const primario = hfPrimario(env);
+  const tier = tierDoModelo(modelo, env);
+  let hfTentado = false;
+  const viaHf = async (comoPrimario: boolean): Promise<GerarRes | null> => {
+    if (hfTentado || !reservaHfLigada(env)) return null;
+    hfTentado = true;
+    const modelos = primario ? modelosHfPrimario(tier, env) : modelosReservaHf(env);
+    const esforco = primario ? esforcoHf(req.pensar, tier) : "low";
+    for (const m of modelos) {
       try {
         // o PRAZO DE QUEM CHAMOU vale aqui também: um classify de 8 s não pode esperar 45 s pela reserva
         const prazoHf = req.timeoutMs ? Math.min(timeoutReservaHf(env), req.timeoutMs) : timeoutReservaHf(env);
-        const r = await viaGateway({ ...req, timeoutMs: prazoHf, extra: { ...(req.extra ?? {}), reasoning_effort: "low" } },
+        const r = await viaGateway({ ...req, timeoutMs: prazoHf, extra: { ...(req.extra ?? {}), reasoning_effort: esforco } },
           m, HF_ROUTER_URL, env.HF_TOKEN!.trim(), deps.fetchImpl ?? fetch);
         const nome = modeloSemProvedor(r.modelo || m), jv = jsonValido(r.texto);
         if (!r.texto.trim()) { gravar("huggingface", rota, r.usage, false, "outro", nome, "huggingface"); continue; }
         gravar("huggingface", rota, r.usage, true, null, nome, "huggingface", jv);
-        console.warn(deps.hfPrimario
+        // o primário servindo é o caminho NORMAL: sem log (seria uma linha por pedido). O log fica pro que é desvio.
+        if (!(comoPrimario && primario)) console.warn(comoPrimario
           ? `[llm] Hugging Face primário serviu (${m}, ${req.ctx.agentKey})`
           : `[llm] Vertex falhou — reserva Hugging Face serviu (${m}, ${req.ctx.agentKey})`);
         const { modelId: _id, ...resto } = r;
@@ -359,11 +376,15 @@ export async function gerar(req: GerarReq, deps: Deps = {}): Promise<GerarRes> {
         gravar("huggingface", rota, USAGE_VAZIO, false, (e2 as any)?.naoJson ? "resposta_nao_json" : classificarErroLlm(e2), modeloSemProvedor(m), "huggingface");
       }
     }
+    if (comoPrimario && primario) console.warn(`[llm] HF primário falhou em ${modelos.length} modelo(s) — caindo para o Google (${req.ctx.agentKey})`);
     return null;
   };
+  const reservaHf = () => viaHf(false);
 
-  // o Vertex acabou de falhar neste pedido (stream) ou está engasgado: a reserva vai primeiro (se responder, pronto)
-  if (deps.pularVertex || vertexEngasgado(agora())) { const hf = await reservaHf(); if (hf) return hf; }
+  // HF primário (flag) · disparos com HF primário · o Vertex acabou de falhar neste pedido (stream) ou está engasgado:
+  // o HF vai primeiro (se responder, pronto)
+  if (primario || deps.hfPrimario) { const hf = await viaHf(true); if (hf) return hf; }
+  else if (deps.pularVertex || vertexEngasgado(agora())) { const hf = await reservaHf(); if (hf) return hf; }
 
   const vertex = deps.vertex ?? vertexReal;
   const esperar = deps.esperar ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
@@ -420,7 +441,10 @@ export async function gerarJsonRes<T>(req: GerarReq, deps: Deps = {}): Promise<{
 export async function gerarJsonStreamRes<T>(req: GerarReq, onTexto: (acumulado: string) => void, deps: Deps = {}): Promise<{ valor: T; res: GerarRes }> {
   const env = deps.env ?? process.env;
   const modelo = req.model || GEMINI_MODEL_FLASH;
-  if ((req.rota === "gateway" && gatewayLigado(env)) || ehModeloPool(modelo) || ehModeloLocal(modelo)) return gerarJsonRes<T>(req, deps);
+  // HF primário (LLM_PRIMARIO=hf): o stream é do SDK do Vertex — o HF responde pela chamada normal, sem prévia
+  // parcial. Medido 2026-11-21: gpt-oss-120b na Cerebras devolve ~1500 tok/s, a resposta inteira chega antes da
+  // 1ª palavra do stream do Gemini (1–5 s). Stream SSE do HF fica pra quando a prévia fizer falta.
+  if ((req.rota === "gateway" && gatewayLigado(env)) || ehModeloPool(modelo) || ehModeloLocal(modelo) || hfPrimario(env)) return gerarJsonRes<T>(req, deps);
   const agora = deps.agora ?? Date.now, registrar = deps.registrar ?? registrarTokens, ini = agora();
   let r: RespostaBruta;
   try {
