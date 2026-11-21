@@ -27,9 +27,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AgentAvatar from "@/components/agents/AgentAvatar";
 import {
-  ALTURA_HORA, DIAS_ORDEM, DIA_CURTO, DIA_LONGO, HORAS, MIN_INICIO, OPCOES_MIN, blocosDoDia, coresDoCanal, faixas, jaPassou,
-  minutosDo, modoDoBloco, naCelula, posNaSemana, proximaVez, proximoClique, textoData, textoHora,
-  type Ancora, type Bloco, type BlocoNoDia, type Dia, type Faixa,
+  ALTURA_HORA, DIAS_ORDEM, DIA_CURTO, DIA_LONGO, HORAS, MIN_INICIO, OPCOES_MIN, acontecendoAgora, blocosDoDia, coresDoCanal, faixas,
+  filtrarFaixas, jaPassou, minutosDo, modoDoBloco, naCelula, pessoasNoBloco, posNaSemana, proximaVez, proximoClique, textoData, textoHora,
+  type Ancora, type Bloco, type BlocoNoDia, type Dia, type Faixa, type FiltroAgenda,
 } from "@/lib/canal/agenda";
 import { useIsMobile, QUERY_CELULAR } from "@/lib/ui/useIsMobile";
 import { tr } from "@/lib/ui/avisos";
@@ -83,6 +83,10 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
   const [escondidos, setEscondidos] = useState<ReadonlySet<string>>(new Set());
   // os quadrados só ficam desligados na PRIMEIRA carga do canal (depois, recarregar não trava nada)
   const [carregouUmaVez, setCarregouUmaVez] = useState(false);
+  // #861 PR 2: o filtro de cima, os meus contatos (do servidor) e a lista de quem está num horário
+  const [filtro, setFiltro] = useState<FiltroAgenda>("todos");
+  const [contatos, setContatos] = useState<ReadonlySet<string>>(new Set());
+  const [lista, setLista] = useState<{ dia: Dia; hora: number } | null>(null);
   const [arrasto, setArrastoEstado] = useState<Arrasto | null>(null);
   // #858: o arrasto também mora numa ref — o soltar lê dela e salva FORA do updater do setState
   // (o Strict Mode repete updaters, e salvar lá dentro mandava o POST duas vezes)
@@ -118,6 +122,7 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
       setBlocos(j.blocos ?? []);
       setGente(new Map((j.pessoas ?? []).map((p: Pessoa) => [p.id, p])));
       setEu(j.eu ?? null);
+      setContatos(new Set<string>(Array.isArray(j.contatos) ? j.contatos : []));
       setErro(null);
       setCarregouUmaVez(true);
     } catch (e) {
@@ -183,13 +188,14 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
       if (e.key !== "Escape" || e.defaultPrevented) return;
       e.preventDefault();
       if (e.repeat) return;
-      if (editando) setEditando(null);
+      if (lista) setLista(null);
+      else if (editando) setEditando(null);
       else if (ancora) setAncora(null);
       else onFechar();
     };
     window.addEventListener("keydown", esc);
     return () => window.removeEventListener("keydown", esc);
-  }, [aberta, ancora, editando, onFechar]);
+  }, [aberta, ancora, editando, lista, onFechar]);
 
   // Tab preso na bandeja: o resto do painel está inerte, mas a página em volta (sidebar do lab) não.
   const prenderTab = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -287,7 +293,9 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
 
   const fs = useMemo(() => faixas(blocos.filter((b) => !escondidos.has(b.id))), [blocos, escondidos]);
   /** o que se desenha: o que veio do servidor + a barra que está sendo salva. */
-  const fsNaTela = useMemo(() => (pendente ? [...fs, pendente] : fs), [fs, pendente]);
+  /** #861 PR 2: o que o filtro deixa ver (vale pro desenho, pros rótulos dos quadrados e pro toque). */
+  const fsVisiveis = useMemo(() => filtrarFaixas(fs, filtro, eu, contatos), [fs, filtro, eu, contatos]);
+  const fsNaTela = useMemo(() => (pendente ? [...fsVisiveis, pendente] : fsVisiveis), [fsVisiveis, pendente]);
   // #858: apagaram (noutra aba) o horário que a janelinha está editando → a janelinha fecha
   useEffect(() => {
     if (editando && !editando.ids.every((id) => blocos.some((b) => b.id === id))) setEditando(null);
@@ -300,7 +308,7 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
 
   const clicar = (dia: Dia, hora: number) => {
     if (salvando) return;
-    const aqui = naCelula(fs, dia, hora);
+    const aqui = naCelula(fsVisiveis, dia, hora);
     if (!ancora) {
       // tocar no SEU horário = janelinha (mudar início/fim, apagar)
       const minha = aqui.find((o) => o.faixa.userId === eu);
@@ -311,8 +319,9 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
         void salvar({ dia, de: Math.min(vizinha.de, hora * 60), ate: Math.max(vizinha.ate, (hora + 1) * 60) }, "Esticado");
         return;
       }
-      if (aqui.length) avisar(`${DIA_CURTO[dia]} ${hora}h: ${aqui.map((o) => `${nomeDe(o.faixa.userId)} (${textoHora(o.faixa.de)}–${textoHora(o.faixa.ate)})`).join(", ")}`);
-      else if (jaPassou(dia, hora, agora)) avisar(`Já passou nesta semana — vale a partir da próxima (${textoData(proximaVez(dia, hora * 60, agora))})`);
+      // #861 PR 2: horário de outra(s) pessoa(s) = a lista de quem está, com "Marcar também"
+      if (aqui.length) { setLista({ dia, hora }); return; }
+      if (jaPassou(dia, hora, agora)) avisar(`Já passou nesta semana — vale a partir da próxima (${textoData(proximaVez(dia, hora * 60, agora))})`);
     }
     const r = proximoClique(ancora, { dia, hora });
     setAncora(r.ancora);
@@ -404,6 +413,17 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
       </p>
       {erro && <p role="alert" className="px-4 pt-1 text-[12px] text-rose-600 dark:text-rose-300">{erro}</p>}
 
+      {/* #861 PR 2: ver todo mundo, só o meu horário, ou eu + os meus contatos */}
+      <div role="group" aria-label={tr("agenda.filtro", "Mostrar na agenda")} className="flex flex-wrap gap-1.5 px-4 pt-2">
+        {(["todos", "eu", "contatos"] as const).map((f) => (
+          <button key={f} type="button" aria-pressed={filtro === f} onClick={() => setFiltro(f)}
+            className={`min-h-[36px] rounded-full border px-3 text-[12px] font-semibold transition-colors
+              ${filtro === f ? "border-cyan-500/70 bg-cyan-500/15 text-cyan-800 dark:border-cyan-300/60 dark:text-cyan-100" : `border-slate-300 dark:border-white/15 ${TXT_2}`}`}>
+            {f === "todos" ? tr("agenda.todos", "Todos") : f === "eu" ? tr("agenda.soEu", "Só eu") : tr("agenda.meusContatos", "Meus contatos")}
+          </button>
+        ))}
+      </div>
+
       {/* #850: no celular, um dia por vez — a semana inteira não cabia (a grade de 560 px rolava de lado) */}
       {celular && (
         <div className="flex items-center justify-between gap-2 px-3 pt-2">
@@ -440,7 +460,7 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
             <div key={d} data-coluna-dia={d} className="relative" style={{ height: alturaGrade }}>
               {/* os quadrados: o lugar de tocar, arrastar e ler (leitor de tela) quem está em cada hora */}
               {HORAS.map((h, i) => {
-                const occ = naCelula(fs, d, h);
+                const occ = naCelula(fsVisiveis, d, h);
                 const ehAncora = ancora?.dia === d && ancora.hora === h;
                 const passou = jaPassou(d, h, agora);
                 const rotulo = occ.length ? `${DIA_CURTO[d]} ${h}h: ${occ.map((o) => nomeDe(o.faixa.userId)).join(", ")}` : `${DIA_CURTO[d]} ${h}h: livre`;
@@ -459,17 +479,19 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
               })}
               {/* as barras: cada horário de uma vez, do começo ao fim (não recebem o toque — ele vai pro quadrado de baixo) */}
               <div aria-hidden className="pointer-events-none absolute inset-0">
-                {blocosDoDia(fsNaTela, d, ALT).map((b) => (
-                  <BarraDoHorario key={`${b.faixa.userId}-${b.faixa.de}-${b.faixa.ids[0]}`} b={b} cor={corDe(b.faixa.userId)} minha={b.faixa.userId === eu}
-                    nome={nomeDe(b.faixa.userId)} foto={gente.get(b.faixa.userId)?.avatar ?? null} pendente={b.faixa.ids[0] === ID_PENDENTE} />
-                ))}
-                {/* a linha de AGORA (como no Google Agenda): desce sozinha, de minuto em minuto */}
+                {/* a linha de AGORA (como no Google Agenda): desce sozinha, de minuto em minuto. Vem ANTES das barras,
+                    então passa por baixo delas (não risca o nome/horário; o bloco de agora já tem o contorno e o selo) */}
                 {d === hoje && minAgora >= MIN_INICIO && minAgora <= MIN_INICIO + HORAS.length * 60 && (
-                  <div data-agora className="absolute inset-x-0 z-[2]" style={{ top: ((minAgora - MIN_INICIO) / 60) * ALT }}>
+                  <div data-agora className="absolute inset-x-0" style={{ top: ((minAgora - MIN_INICIO) / 60) * ALT }}>
                     <span className="absolute -left-1 -top-[4px] h-[10px] w-[10px] rounded-full bg-rose-500" />
                     <span className="block h-[2px] bg-rose-500" />
                   </div>
                 )}
+                {blocosDoDia(fsNaTela, d, ALT).map((b) => (
+                  <BarraDoHorario key={`${b.faixa.userId}-${b.faixa.de}-${b.faixa.ids[0]}`} b={b} cor={corDe(b.faixa.userId)} minha={b.faixa.userId === eu}
+                    nome={nomeDe(b.faixa.userId)} foto={gente.get(b.faixa.userId)?.avatar ?? null} pendente={b.faixa.ids[0] === ID_PENDENTE}
+                    agora={acontecendoAgora(b.faixa, agora)} rostos={b.multidao ? pessoasNoBloco(b).map((id) => ({ id, nome: nomeDe(id), foto: gente.get(id)?.avatar ?? null, cor: corDe(id) })) : undefined} />
+                ))}
               </div>
             </div>
           ))}
@@ -502,6 +524,18 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
               className="shrink-0 min-h-[44px] rounded-xl px-3 font-bold text-cyan-300 hover:bg-white/10">{TENTAR}</button>
           )}
         </div>
+      )}
+
+      {/* #861 PR 2: quem está neste horário, com "Marcar também" */}
+      {lista && (
+        <ListaDoHorario dia={lista.dia} hora={lista.hora}
+          gente={naCelula(fsVisiveis, lista.dia, lista.hora).map((o) => ({
+            id: o.faixa.userId, nome: o.faixa.userId === eu ? `${nomeDe(o.faixa.userId)} (você)` : nomeDe(o.faixa.userId),
+            foto: gente.get(o.faixa.userId)?.avatar ?? null, cor: corDe(o.faixa.userId), horario: `${textoHora(o.faixa.de)}–${textoHora(o.faixa.ate)}`,
+          }))}
+          jaEstou={!!eu && naCelula(fs, lista.dia, lista.hora).some((o) => o.faixa.userId === eu)}
+          onFechar={() => setLista(null)}
+          onMarcar={() => { const l = lista; setLista(null); void salvar({ dia: l.dia, inicio: l.hora, fim: l.hora }); }} />
       )}
 
       {/* janelinha do SEU horário: mudar início/fim (de 15 em 15) ou apagar */}
@@ -572,20 +606,53 @@ function Foto({ src, nome, cor, size }: { src: string | null; nome: string; cor:
  * Fundo suave na cor da pessoa e uma linha forte na esquerda (como o Apple Calendar). Enquanto salva: brilho e
  * spinner só nela — o resto da agenda continua livre.
  */
-function BarraDoHorario({ b, cor, minha, nome, foto, pendente }: {
+type Rosto = { id: string; nome: string; foto: string | null; cor: string };
+/** #861 PR 2: a partir de quantos rostos o resto vira "+N". */
+const ROSTOS_VISIVEIS = 3;
+
+function BarraDoHorario({ b, cor, minha, nome, foto, pendente, agora, rostos }: {
   b: BlocoNoDia; cor: string; minha: boolean; nome: string; foto: string | null; pendente: boolean;
+  /** acontecendo agora: contorno ciano e o selo "agora" */
+  agora: boolean;
+  /** multidão (4+ pessoas ao mesmo tempo): os rostos de quem está */
+  rostos?: Rosto[];
 }) {
-  const modo = modoDoBloco(b.altura, b.colunas);
   const horario = `${textoHora(b.faixa.de)}–${textoHora(b.faixa.ate)}`;
   const largura = 100 / b.colunas;
+  const selo = agora && <span data-selo-agora className="absolute right-1 top-1 z-[1] rounded-md bg-cyan-400 px-1.5 text-[10.5px] font-bold leading-[18px] text-cyan-950">{tr("agenda.agora", "agora")}</span>;
+  if (rostos) {
+    // muita gente: um bloco só, em ciano, com os rostos empilhados e "N pessoas" (o número sempre escrito)
+    const n = rostos.length;
+    return (
+      <div data-barra="multidao" data-agora-bloco={agora || undefined} title={`${n} pessoas · ${horario}`}
+        className={`absolute overflow-hidden rounded-[10px] border-l-4 border-cyan-400 bg-cyan-400/20 dark:bg-cyan-400/[0.16] ${agora ? "ring-2 ring-cyan-400" : ""}`}
+        style={{ top: b.topo + 1, height: Math.max(b.altura - 2, 6), left: 3, right: 3 }}>
+        {selo}
+        <div className="flex flex-col gap-1 p-1.5 leading-tight">
+          <div className="flex">
+            {rostos.slice(0, ROSTOS_VISIVEIS).map((r, i) => (
+              <span key={r.id} className={i ? "-ml-2" : ""}><Foto src={r.foto} nome={r.nome} cor={r.cor} size={22} /></span>
+            ))}
+            {n > ROSTOS_VISIVEIS && (
+              <span className="-ml-2 grid h-[22px] min-w-[22px] place-items-center rounded-full bg-cyan-700 px-1 text-[10.5px] font-bold text-white ring-2 ring-cyan-400">+{n - ROSTOS_VISIVEIS}</span>
+            )}
+          </div>
+          {b.altura >= 52 && <div className={`truncate text-[12px] font-bold ${TXT}`}>{tr("agenda.nPessoas", "{{n}} pessoas", { n })}</div>}
+          {b.altura >= 70 && <div className={`truncate text-[11px] ${TXT_2}`}>{horario}</div>}
+        </div>
+      </div>
+    );
+  }
+  const modo = modoDoBloco(b.altura, b.colunas);
   return (
-    <div data-barra={modo} data-pendente={pendente || undefined} title={`${nome} · ${horario}`}
-      className={`absolute rounded-[10px] border-l-4 ${modo === "curto" || modo === "mini" ? "overflow-visible" : "overflow-hidden"} ${pendente ? "animate-pulse" : ""}`}
+    <div data-barra={modo} data-pendente={pendente || undefined} data-agora-bloco={agora || undefined} title={`${nome} · ${horario}`}
+      className={`absolute rounded-[10px] border-l-4 ${modo === "curto" || modo === "mini" ? "overflow-visible" : "overflow-hidden"} ${pendente ? "animate-pulse" : ""} ${agora ? "ring-2 ring-cyan-400" : ""}`}
       style={{
         top: b.topo + 1, height: Math.max(b.altura - 2, 6),
         left: `calc(${b.coluna * largura}% + 3px)`, width: `calc(${largura}% - 6px)`,
         background: `${cor}${minha ? "4d" : "38"}`, borderLeftColor: cor,
       }}>
+      {modo !== "curto" && modo !== "mini" && b.altura >= 40 && selo}
       {modo === "cartao" && (
         // foto em cima e o nome embaixo, com a largura toda (na semana as colunas têm ~90 px: lado a lado cortava "Giu…")
         <div className="flex min-w-0 flex-col gap-1 p-1.5 leading-tight">
@@ -622,6 +689,43 @@ function BarraDoHorario({ b, cor, minha, nome, foto, pendente }: {
       {pendente && (
         <span aria-hidden className="absolute right-1.5 top-1.5 h-3 w-3 animate-spin rounded-full border-2 border-slate-400/40 border-t-slate-700 dark:border-white/30 dark:border-t-white" />
       )}
+    </div>
+  );
+}
+
+/**
+ * #861 PR 2: tocar num horário de outra(s) pessoa(s) mostra quem está (foto, nome e horário de cada um) e oferece
+ * "Marcar também" — marcar a mesma hora pra estudar junto (como o SAP Fiori: o "+N" abre a lista inteira).
+ */
+function ListaDoHorario({ dia, hora, gente, jaEstou, onFechar, onMarcar }: {
+  dia: Dia; hora: number; gente: (Rosto & { horario: string })[]; jaEstou: boolean; onFechar: () => void; onMarcar: () => void;
+}) {
+  const fechar = useRef<HTMLButtonElement>(null);
+  useEffect(() => { fechar.current?.focus(); }, []);
+  return (
+    <div className="absolute inset-0 z-30 grid place-items-center bg-slate-900/30 p-4" onClick={onFechar}>
+      <div role="dialog" aria-label={`${DIA_LONGO[dia]}, ${hora}h`} onClick={(e) => e.stopPropagation()}
+        className={`w-full max-w-[340px] rounded-2xl p-4 ${VIDRO_POPOVER_SOLIDO}`}>
+        <p className={`text-[15px] font-bold ${TXT}`}><span className="capitalize">{DIA_LONGO[dia]}</span>, {hora}h · {gente.length === 1 ? tr("agenda.umaPessoa", "1 pessoa") : tr("agenda.nPessoas", "{{n}} pessoas", { n: gente.length })}</p>
+        <ul className="mt-3 flex max-h-[45vh] flex-col gap-2 overflow-auto">
+          {gente.map((p) => (
+            <li key={p.id} className="flex items-center gap-2.5">
+              <Foto src={p.foto} nome={p.nome} cor={p.cor} size={28} />
+              <span className={`min-w-0 flex-1 truncate text-[14px] font-semibold ${TXT}`}>{p.nome}</span>
+              <span className={`shrink-0 text-[12px] tabular-nums ${TXT_2}`}>{p.horario}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-4 flex gap-2">
+          {!jaEstou && (
+            <button type="button" onClick={onMarcar} className="flex-1 min-h-[44px] rounded-xl bg-blue-600 font-bold text-white">
+              {tr("agenda.marcarTambem", "Marcar também")} ({hora}h–{hora + 1}h)
+            </button>
+          )}
+          <button ref={fechar} type="button" onClick={onFechar}
+            className={`flex-1 min-h-[44px] rounded-xl border border-slate-300 font-semibold dark:border-white/15 ${TXT}`}>{tr("agenda.fechar", "Fechar")}</button>
+        </div>
+      </div>
     </div>
   );
 }

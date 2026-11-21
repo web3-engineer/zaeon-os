@@ -1147,6 +1147,15 @@
   "agenda": {
     "tentarDeNovo": "Réessayer",
     "naoSalvou": "Impossible d'enregistrer le créneau.",
-    "naoApagou": "Impossible de supprimer le créneau."
+    "naoApagou": "Impossible de supprimer le créneau.",
+    "filtro": "Afficher dans l'agenda",
+    "todos": "Tout le monde",
+    "soEu": "Moi seulement",
+    "meusContatos": "Mes contacts",
+    "agora": "maintenant",
+    "nPessoas": "{{n}} personnes",
+    "umaPessoa": "1 personne",
+    "marcarTambem": "Me joindre",
+    "fechar": "Fermer"
   }
 }

@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const A = "a".repeat(24), B = "b".repeat(24), C = "c".repeat(24), CANAL = "d".repeat(24), OUTRO = "e".repeat(24);
 type Linha = { id: string; canalId: string; userId: string; dia: number; inicio: number; fim: number; de?: number | null; ate?: number | null };
-const state: { canal: any; user: any; blocos: Linha[]; publicados: any[]; seq: number } = { canal: null, user: null, blocos: [], publicados: [], seq: 0 };
+const state: { canal: any; user: any; blocos: Linha[]; publicados: any[]; seq: number; convites: any[] } = { canal: null, user: null, blocos: [], publicados: [], seq: 0, convites: [] };
 const novoId = () => (++state.seq).toString(16).padStart(24, "0");
 
 vi.mock("@/lib/canal/server", () => ({
@@ -17,6 +17,9 @@ vi.mock("@/lib/canal/server", () => ({
   pessoas: async (ids: string[]) => new Map([...new Set(ids)].map((id) => [id, { id, nome: id === A ? "Ana" : "Bia", avatar: null }])),
   prisma: {
     $transaction: async (ops: Promise<unknown>[]) => Promise.all(ops),
+    canalConvite: {
+      findMany: async ({ where }: any) => state.convites.filter((c) => c.status === where.status && where.OR.some((o: any) => (o.deId && c.deId === o.deId) || (o.paraId && c.paraId === o.paraId))),
+    },
     canal: { findUnique: async ({ where }: any) => (where.id === state.canal?.id ? state.canal : null) },
     agendaBloco: {
       findMany: async ({ where }: any) => state.blocos.filter((b) => b.canalId === where.canalId && (!where.userId || b.userId === where.userId)),
@@ -41,7 +44,7 @@ const get = () => new Request("http://x/api/canal/x/agenda");
 const canal = (acesso: string) => ({ id: CANAL, ownerId: A, titulo: "t", acesso, membros: [B], agentes: ["aura"] });
 const user = (id: string) => ({ id, name: "N", image: null, email: "e@x", role: null });
 
-beforeEach(() => { state.blocos = []; state.publicados = []; state.seq = 0; state.canal = canal("turma"); state.user = user(A); });
+beforeEach(() => { state.blocos = []; state.publicados = []; state.seq = 0; state.convites = []; state.canal = canal("turma"); state.user = user(A); });
 
 describe("agenda · author gate", () => {
   it.each([
@@ -152,6 +155,17 @@ describe("agenda · marcar horário", () => {
     expect(j.eu).toBe(B);
     expect(j.blocos).toHaveLength(2);
     expect(j.pessoas.map((p: any) => p.nome).sort()).toEqual(["Ana", "Bia"]);
+  });
+
+  it("#861 PR 2: GET devolve os meus contatos (convite de contato aceito, nas duas direções; convite de conversa não conta)", async () => {
+    state.convites = [
+      { deId: A, paraId: B, status: "aceito", canalId: null },
+      { deId: C, paraId: A, status: "aceito" },
+      { deId: A, paraId: OUTRO, status: "aceito", canalId: CANAL },   // convite pra conversa
+      { deId: A, paraId: "f".repeat(24), status: "pendente" },
+    ];
+    const j = await (await GET(get(), ctx)).json();
+    expect(j.contatos.sort()).toEqual([B, C].sort());
   });
 
   it(`teto de ${MAX_BLOCOS_POR_PESSOA} horários por pessoa`, async () => {

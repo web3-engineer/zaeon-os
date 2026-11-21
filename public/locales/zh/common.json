@@ -1147,6 +1147,15 @@
   "agenda": {
     "tentarDeNovo": "重试",
     "naoSalvou": "无法保存时段。",
-    "naoApagou": "无法删除时段。"
+    "naoApagou": "无法删除时段。",
+    "filtro": "在日程中显示",
+    "todos": "所有人",
+    "soEu": "只看我",
+    "meusContatos": "我的联系人",
+    "agora": "现在",
+    "nPessoas": "{{n}} 人",
+    "umaPessoa": "1 人",
+    "marcarTambem": "我也加入",
+    "fechar": "关闭"
   }
 }
