@@ -438,7 +438,9 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
       <div ref={gradeRef} className="flex-1 min-h-0 overflow-auto custom-scrollbar px-2 sm:px-4 py-3 [box-shadow:inset_0_-14px_12px_-12px_rgba(15,23,42,0.18)]">
         {/* #858: no celular não tem linha de cabeçalho — o dia já aparece no ‹ › */}
         {!celular && (
-          <div className="sticky top-0 z-[3] -mt-3 grid gap-x-1 min-w-[560px] pt-3 pb-1.5 bg-white dark:bg-[#0b1020]" style={colunasGrade}>
+          // -top-3: o sticky conta a partir do padding (py-3) da área que rola; sem isso sobrava uma faixa de 12 px
+          // acima dos dias onde as barras apareciam cortadas ao rolar
+          <div className="sticky -top-3 z-[3] -mt-3 grid gap-x-1 min-w-[560px] pt-3 pb-1.5 bg-white dark:bg-[#0b1020]" style={colunasGrade}>
             <div />
             {dias.map((d) => (
               <div key={`h-${d}`} className={`py-1 text-center text-[12px] font-bold rounded-lg
