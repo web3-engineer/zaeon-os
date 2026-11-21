@@ -131,4 +131,29 @@ describe("infra/litellm.config.yaml — pool grátis", () => {
     const linha = ativas.find((l) => /^\s*fallbacks:/.test(l));
     expect(linha).not.toMatch(/zaeon-local-/);
   });
+  it("HF primário: zaeon-hf-* pelo router do HF, key só por env (HF_TOKEN), id hf-* (alvo huggingface no ledger), nunca Vertex", () => {
+    const hf = deps.filter((d) => d.nome.startsWith("zaeon-hf-"));
+    expect(hf.map((d) => d.nome).sort()).toEqual(["zaeon-hf-flash", "zaeon-hf-flash-groq", "zaeon-hf-pro"]);
+    const ids = new Set<string>();
+    for (const d of hf) {
+      const corpo = d.linhas.join("\n");
+      expect(corpo, d.nome).toMatch(/model:\s*openai\/[^\s:]+\/[^\s:]+:(cerebras|groq|nebius|sambanova|google-vertex)\s/);
+      expect(corpo, d.nome).toContain("api_base: https://router.huggingface.co/v1");
+      expect(corpo, d.nome).toContain("api_key: os.environ/HF_TOKEN");
+      expect(corpo, d.nome).not.toMatch(/vertex_ai\/|vertex_credentials/);
+      const id = /id:\s*(hf-[\w-]+)/.exec(corpo)?.[1];
+      expect(id, d.nome).toBeTruthy(); ids.add(id!);
+    }
+    expect(ids.size).toBe(hf.length);   // model_info.id único por deployment
+  });
+
+  it("HF primário cai no GOOGLE (zaeon-flash/zaeon-pro + reserva), nunca no pool grátis nem na Contabo; e ninguém cai no HF", () => {
+    const c = cadeias();
+    expect(c["zaeon-hf-flash"]).toEqual(["zaeon-hf-flash-groq", "zaeon-flash", "zaeon-reserva-google"]);
+    expect(c["zaeon-hf-pro"]?.slice(-3)).toEqual(["zaeon-pro", "zaeon-flash", "zaeon-reserva-google"]);
+    for (const o of ["zaeon-hf-flash", "zaeon-hf-pro"]) expect(c[o].join(" "), o).not.toMatch(/zaeon-pool-|zaeon-local-/);
+    // o HF só entra quando a flag pede o grupo dele: as cadeias do Google/pool não escorregam pro HF
+    for (const [origem, destinos] of Object.entries(c)) if (!origem.startsWith("zaeon-hf-")) expect(destinos.join(" "), origem).not.toMatch(/zaeon-hf-/);
+  });
 });
+

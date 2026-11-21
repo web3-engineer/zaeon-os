@@ -7,6 +7,7 @@
  *
  * Decisão do dono (2026-10-22): a pergunta do aluno pode sair pra esses provedores SÓ quando o Google falha.
  * Por isso a reserva nunca é o caminho principal, e o ledger grava alvo "huggingface" (pago, preço do provedor).
+ * (2026-11-21: com LLM_PRIMARIO=hf o dono inverte isso — ver `hfPrimario` abaixo e docs/HF_PRIMARIO.md.)
  *
  * Env:
  *   HF_TOKEN            token fine-grained com "Make calls to Inference Providers" (sem ele, desligada)
@@ -67,6 +68,57 @@ export function disparosHfPrimario(env: Env = process.env): boolean {
   if (!reservaHfLigada(env)) return false;
   const f = env.DISPAROS_HF?.trim();
   return !!f && !DESLIGADO.test(f);
+}
+
+// ───────────────────────────── HF PRIMÁRIO (LLM_PRIMARIO=hf) ─────────────────────────────
+/**
+ * Decisão do dono (2026-11-21): o Hugging Face vira o provedor PRINCIPAL de texto e o Google vira a queda.
+ * Inverte a ordem da decisão de 22/10 (lá o HF só entrava quando o Google falhava) — por isso atrás de flag:
+ *
+ *   LLM_PRIMARIO=hf          liga (vale pra TODO texto que passa pelo envelope: chat da Aura, geminiJson/geminiText,
+ *                            documento). Sem a env, ou com "google"/"vertex", tudo segue como antes, byte a byte.
+ *                            Voltar = tirar a env e recriar o web/worker — sem deploy de código.
+ *   HF_PRIMARIO_MODELOS      tier rápido (no lugar do GEMINI_MODEL), em ordem. Default: gpt-oss-120b Cerebras → Groq.
+ *   HF_PRIMARIO_MODELOS_PRO  tier forte (no lugar do GEMINI_MODEL_PRO). Default: o mesmo gpt-oss, pensando mais.
+ *
+ * Não muda: pool grátis e Contabo (nunca passam pelo HF), imagem, embeddings do RAG, voz, PDF/imagem multimodal
+ * e as rotas que ainda chamam o SDK do Vertex direto — essas seguem no Google (inventário no PR).
+ * Precisa de HF_TOKEN; `HF_RESERVA=0` desliga o HF inteiro (primário e reserva) — é o kill switch único.
+ */
+export function hfPrimario(env: Env = process.env): boolean {
+  if (!reservaHfLigada(env)) return false;
+  return /^(hf|huggingface|hugging-face)$/i.test(env.LLM_PRIMARIO?.trim() ?? "");
+}
+
+/** Testado ao vivo no router (2026-11-21, conta do dono): JSON mode ok, 131k de contexto, ~1500 tok/s na Cerebras. */
+export const HF_PRIMARIO_PADRAO = ["openai/gpt-oss-120b:cerebras", "openai/gpt-oss-120b:groq"] as const;
+export const HF_PRIMARIO_PRO_PADRAO = ["openai/gpt-oss-120b:cerebras", "openai/gpt-oss-120b:groq"] as const;
+
+export type TierHf = "flash" | "pro";
+
+/** O id do Gemini pedido é o tier forte? (= GEMINI_MODEL_PRO, ou qualquer "*-pro") */
+export function tierDoModelo(modelo: string, env: Env = process.env): TierHf {
+  const m = String(modelo ?? "").trim();
+  const pro = env.GEMINI_MODEL_PRO?.trim() || "gemini-2.5-pro";
+  return m === pro || /-pro(?:-|$)/i.test(m) ? "pro" : "flash";
+}
+
+const lista = (v: string | undefined) => (v ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+
+export function modelosHfPrimario(tier: TierHf, env: Env = process.env): string[] {
+  if (tier === "pro") { const l = lista(env.HF_PRIMARIO_MODELOS_PRO); return l.length ? l : [...HF_PRIMARIO_PRO_PADRAO]; }
+  const l = lista(env.HF_PRIMARIO_MODELOS);
+  return l.length ? l : [...HF_PRIMARIO_PADRAO];
+}
+
+/**
+ * O "pensar" da fase (lib/llm/pensar) → `reasoning_effort` do gpt-oss (low | medium | high; não existe "minimal").
+ * Sem nível pedido: low no tier rápido (como a reserva sempre fez) e medium no forte.
+ */
+export function esforcoHf(nivel: "minimal" | "low" | "medium" | "high" | undefined, tier: TierHf): "low" | "medium" | "high" {
+  if (nivel === "medium" || nivel === "high") return nivel;
+  if (nivel === "minimal" || nivel === "low") return "low";
+  return tier === "pro" ? "medium" : "low";
 }
 
 /**

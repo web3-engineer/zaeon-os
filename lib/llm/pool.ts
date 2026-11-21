@@ -50,8 +50,10 @@ export function alvoDe(modelString: string | null | undefined, headerModelId?: s
   const h = String(headerModelId ?? "").trim().toLowerCase();
   if ((ALVOS as readonly string[]).includes(h)) return h as Alvo;
   if (h.startsWith("contabo-")) return "contabo"; // model_info.id dos zaeon-local-* (litellm.config.yaml)
+  if (h.startsWith("hf-")) return "huggingface"; // model_info.id dos zaeon-hf-* (HF primário, pago)
   const m = String(modelString ?? "").trim().toLowerCase();
   if (m.startsWith("zaeon-local-") || m.startsWith("litellm_proxy/")) return "contabo";
+  if (m.startsWith("zaeon-hf-")) return "huggingface";
   // O próprio grupo pedido (chamada que falhou antes de saber quem serviu) → o primário do grupo.
   const grupo = GRUPO_ALVO[m];
   if (grupo) return grupo;

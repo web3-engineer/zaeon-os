@@ -7,7 +7,7 @@
  *   node scripts/gateway-keys.mjs --budget 0.01          # USD/dia (default 0.50)
  *   node scripts/gateway-keys.mjs --revoke medicina      # POST /key/delete
  *   node scripts/gateway-keys.mjs --ambiente prod        # key_alias = agent:<agentKey>:<ambiente> (default: NODE_ENV|dev)
- *   node scripts/gateway-keys.mjs --models zaeon-flash,zaeon-pro   # allowlist
+ *   node scripts/gateway-keys.mjs --models zaeon-flash,zaeon-pro   # allowlist (default: + zaeon-hf-* e zaeon-reserva-google)
  *   node scripts/gateway-keys.mjs --pool aura,medicina   # Fatia 7: acrescenta zaeon-pool-lite/-cerebras/-cf/-groq + zaeon-reserva-google à allowlist
  *                                                        # da key EXISTENTE (ou cria) desses agentes. Nunca 2ª key.
  *
@@ -37,7 +37,8 @@ const DURATION = flag("--duration") ?? "90d";
 // zaeon-reserva-google: o fallback do pool (Vertex flash-lite) — a key precisa enxergar o grupo do fallback.
 export const GRUPOS_POOL = ["zaeon-pool-lite", "zaeon-pool-cerebras", "zaeon-pool-cf", "zaeon-pool-groq", "zaeon-reserva-google"];
 const POOL = flag("--pool");
-const MODELS_BASE = (flag("--models") ?? "zaeon-flash,zaeon-pro").split(",").map((s) => s.trim()).filter(Boolean);
+// zaeon-hf-* (LLM_PRIMARIO=hf, 2026-11-21) + os grupos da cadeia de fallback deles: a key precisa enxergar o fallback.
+const MODELS_BASE = (flag("--models") ?? "zaeon-flash,zaeon-pro,zaeon-hf-flash,zaeon-hf-flash-groq,zaeon-hf-pro,zaeon-reserva-google").split(",").map((s) => s.trim()).filter(Boolean);
 const MODELS = POOL ? [...new Set([...MODELS_BASE, ...GRUPOS_POOL])] : MODELS_BASE;
 const REVOKE = flag("--revoke");
 const JSON_OUT = args.includes("--json");
