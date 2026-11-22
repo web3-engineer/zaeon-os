@@ -150,7 +150,7 @@ describe("AgendaBandeja", () => {
     await waitFor(() => expect(chamadas.find((c) => c.metodo === "POST")!.body).toEqual({ dia: 3, de: 480, ate: 720 }));
   });
 
-  it("tocar no horário de OUTRA pessoa não apaga: #861 abre a lista de quem está, e 'Marcar também' marca a mesma hora", async () => {
+  it("tocar no horário de OUTRA pessoa não apaga: abre a lista, e 'Marcar também' (#867) copia o horário INTEIRO dela", async () => {
     blocos = [{ id: "f".repeat(24), userId: OUTRA, dia: 1, inicio: 8, fim: 10 }];
     abrir();
     await pronta("Seg 8h: Martinez");
@@ -159,8 +159,24 @@ describe("AgendaBandeja", () => {
     const lista = screen.getByRole("dialog", { name: /segunda, 8h/i });
     expect(within(lista).getByText("Martinez")).toBeTruthy();
     expect(within(lista).getByText("8h–11h")).toBeTruthy();
-    fireEvent.click(within(lista).getByRole("button", { name: /Marcar também/ }));
-    await waitFor(() => expect(chamadas.find((c) => c.metodo === "POST")?.body).toEqual({ dia: 1, inicio: 8, fim: 8 }));
+    fireEvent.click(within(lista).getByRole("button", { name: /Marcar também \(8h–11h\)/ }));
+    await waitFor(() => expect(chamadas.find((c) => c.metodo === "POST")?.body).toEqual({ dia: 1, de: 480, ate: 660 }));
+  });
+
+  it("#867: com várias pessoas no horário, cada uma ganha o seu 'Entrar' com o horário dela", async () => {
+    const TERCEIRA = "e".repeat(24);
+    blocos = [{ id: "f".repeat(24), userId: OUTRA, dia: 1, inicio: 8, fim: 10 }, { id: "a1".repeat(12), userId: TERCEIRA, dia: 1, inicio: 8, fim: 8 }];
+    abrir();
+    // com duas pessoas o rótulo do quadrado lista as duas ("Seg 8h: Martinez, …")
+    const quadrado = () => screen.getByRole("button", { name: /^Seg 8h: Martinez/ }) as HTMLButtonElement;
+    await waitFor(() => expect(quadrado().disabled).toBe(false), { timeout: 3000 });
+    fireEvent.click(quadrado());
+    const lista = screen.getByRole("dialog", { name: /segunda, 8h/i });
+    expect(within(lista).queryByRole("button", { name: /Marcar também/ })).toBeNull();
+    const entrar = within(lista).getAllByRole("button", { name: /^Entrar/ });
+    expect(entrar).toHaveLength(2);
+    fireEvent.click(within(lista).getByRole("button", { name: /Entrar 8h–9h/ }));
+    await waitFor(() => expect(chamadas.find((c) => c.metodo === "POST")?.body).toEqual({ dia: 1, de: 480, ate: 540 }));
   });
 
   it("legenda mostra quem tem horário, com '(você)'", async () => {

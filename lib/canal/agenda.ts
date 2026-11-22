@@ -203,7 +203,15 @@ export function blocosDoDia(fs: Faixa[], dia: Dia, alturaHora: number): BlocoNoD
  *  - "cartao"  (~1h30 ou mais, largura inteira): foto em cima, nome e horário embaixo.
  */
 export type ModoDoBloco = "curto" | "linha" | "estreito" | "mini" | "cartao";
-export function modoDoBloco(alturaPx: number, colunas: number): ModoDoBloco {
+/** #867: a partir desta largura (px) uma coluna dividida já cabe foto + nome + horário (o celular, com um dia só). */
+export const LARGURA_COLUNA_FOLGADA = 110;
+export function modoDoBloco(alturaPx: number, colunas: number, larguraPx?: number): ModoDoBloco {
+  if (colunas > 1 && (larguraPx ?? 0) >= LARGURA_COLUNA_FOLGADA) {
+    // dividindo, mas com espaço (celular): como um bloco de largura inteira — só não usa o "curto",
+    // que põe a foto pra fora da borda e invadiria a coluna do vizinho
+    if (alturaPx < 24) return "mini";
+    return alturaPx < 80 ? "linha" : "cartao";
+  }
   if (colunas > 1) return alturaPx < 44 ? "mini" : "estreito";
   if (alturaPx < 24) return "curto";
   // o cartão (foto em cima, nome e horário embaixo) precisa de ~80 px: abaixo disso, foto do lado

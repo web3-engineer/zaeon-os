@@ -97,6 +97,16 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
   const avisoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gradeRef = useRef<HTMLDivElement>(null);
   const rolouPraAgora = useRef(false);
+  // #867: a largura da área da grade, pra saber se um bloco dividido ainda cabe foto + nome + horário
+  const [larguraGrade, setLarguraGrade] = useState(0);
+  useEffect(() => {
+    const el = gradeRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setLarguraGrade(el.clientWidth));
+    ro.observe(el);
+    setLarguraGrade(el.clientWidth);
+    return () => ro.disconnect();
+  }, [aberta]);
 
   const dialogoRef = useRef<HTMLDivElement>(null);
   // Só a ÚLTIMA carga vale: o evento "agenda" do Pusher, o salvar e o trocar de canal disparam cargas em
@@ -228,7 +238,8 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
 
   /** "toda segunda, 7h–10h · a próxima é seg, 24/11" */
   const quando = useCallback((dia: Dia, de: number, ate: number) =>
-    `toda ${DIA_LONGO[dia]}, ${textoHora(de)}–${textoHora(ate)} · a próxima é ${textoData(proximaVez(dia, de, new Date()))}`, []);
+    // #867: sábado e domingo são masculinos ("todo sábado"); os outros dias, femininos ("toda segunda")
+    `${dia === 0 || dia === 6 ? "todo" : "toda"} ${DIA_LONGO[dia]},${textoHora(de)}–${textoHora(ate)} · a próxima é ${textoData(proximaVez(dia, de, new Date()))}`, []);
 
   const TENTAR = tr("agenda.tentarDeNovo", "Tentar de novo");
 
@@ -401,6 +412,8 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
   const ALT = celular ? ALTURA_HORA.celular : ALTURA_HORA.computador;
   const alturaGrade = HORAS.length * ALT;
   const colunasGrade = { gridTemplateColumns: `40px repeat(${dias.length}, minmax(0,1fr))` };
+  // largura aproximada de UM dia na grade: tira o recuo dos lados, a coluna das horas (40) e os vãos (4 px)
+  const larguraDia = larguraGrade ? (larguraGrade - (celular ? 16 : 32) - 40 - 4 * dias.length) / dias.length : 0;
   const passarDia = (passo: number) => setDiaCel((d) => DIAS_ORDEM[(posNaSemana(d) + passo + 7) % 7]!);
 
   return (
@@ -511,7 +524,7 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
                 {blocosDoDia(fsNaTela, d, ALT).map((b) => (
                   <BarraDoHorario key={`${b.faixa.userId}-${b.faixa.de}-${b.faixa.ids[0]}`} b={b} cor={corDe(b.faixa.userId)} minha={b.faixa.userId === eu}
                     nome={nomeDe(b.faixa.userId)} foto={gente.get(b.faixa.userId)?.avatar ?? null} pendente={b.faixa.ids[0] === ID_PENDENTE}
-                    agora={acontecendoAgora(b.faixa, agora)} rostos={b.multidao ? pessoasNoBloco(b).map((id) => ({ id, nome: nomeDe(id), foto: gente.get(id)?.avatar ?? null, cor: corDe(id) })) : undefined} />
+                    agora={acontecendoAgora(b.faixa, agora)} larguraDia={larguraDia} rostos={b.multidao ? pessoasNoBloco(b).map((id) => ({ id, nome: nomeDe(id), foto: gente.get(id)?.avatar ?? null, cor: corDe(id) })) : undefined} />
                 ))}
               </div>
             </div>
@@ -553,10 +566,11 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
           gente={naCelula(fsVisiveis, lista.dia, lista.hora).map((o) => ({
             id: o.faixa.userId, nome: o.faixa.userId === eu ? `${nomeDe(o.faixa.userId)} (você)` : nomeDe(o.faixa.userId),
             foto: gente.get(o.faixa.userId)?.avatar ?? null, cor: corDe(o.faixa.userId), horario: `${textoHora(o.faixa.de)}–${textoHora(o.faixa.ate)}`,
+            de: o.faixa.de, ate: o.faixa.ate, eu: o.faixa.userId === eu,
           }))}
           jaEstou={!!eu && naCelula(fs, lista.dia, lista.hora).some((o) => o.faixa.userId === eu)}
           onFechar={() => setLista(null)}
-          onMarcar={() => { const l = lista; setLista(null); void salvar({ dia: l.dia, inicio: l.hora, fim: l.hora }); }} />
+          onMarcar={(de, ate) => { const l = lista; setLista(null); void salvar({ dia: l.dia, de, ate }); }} />
       )}
 
       {/* janelinha do SEU horário: mudar início/fim (de 15 em 15) ou apagar */}
@@ -631,8 +645,10 @@ type Rosto = { id: string; nome: string; foto: string | null; cor: string };
 /** #861 PR 2: a partir de quantos rostos o resto vira "+N". */
 const ROSTOS_VISIVEIS = 3;
 
-function BarraDoHorario({ b, cor, minha, nome, foto, pendente, agora, rostos }: {
+function BarraDoHorario({ b, cor, minha, nome, foto, pendente, agora, larguraDia = 0, rostos }: {
   b: BlocoNoDia; cor: string; minha: boolean; nome: string; foto: string | null; pendente: boolean;
+  /** #867: largura (px) de um dia na grade — no celular, dividido em 2, ainda cabe o nome e o horário */
+  larguraDia?: number;
   /** acontecendo agora: contorno ciano e o selo "agora" */
   agora: boolean;
   /** multidão (4+ pessoas ao mesmo tempo): os rostos de quem está */
@@ -664,7 +680,7 @@ function BarraDoHorario({ b, cor, minha, nome, foto, pendente, agora, rostos }: 
       </div>
     );
   }
-  const modo = modoDoBloco(b.altura, b.colunas);
+  const modo = modoDoBloco(b.altura, b.colunas, larguraDia / b.colunas);
   return (
     <div data-barra={modo} data-pendente={pendente || undefined} data-agora-bloco={agora || undefined} title={`${nome} · ${horario}`}
       className={`absolute rounded-[10px] border-l-4 ${modo === "curto" || modo === "mini" ? "overflow-visible" : "overflow-hidden"} ${pendente ? "animate-pulse" : ""} ${agora ? "ring-2 ring-cyan-400" : ""}`}
@@ -719,10 +735,16 @@ function BarraDoHorario({ b, cor, minha, nome, foto, pendente, agora, rostos }: 
  * "Marcar também" — marcar a mesma hora pra estudar junto (como o SAP Fiori: o "+N" abre a lista inteira).
  */
 function ListaDoHorario({ dia, hora, gente, jaEstou, onFechar, onMarcar }: {
-  dia: Dia; hora: number; gente: (Rosto & { horario: string })[]; jaEstou: boolean; onFechar: () => void; onMarcar: () => void;
+  dia: Dia; hora: number; gente: (Rosto & { horario: string; de: number; ate: number; eu?: boolean })[]; jaEstou: boolean;
+  onFechar: () => void;
+  /** #867: marca o horário INTEIRO da pessoa (de/ate em minutos), não só a hora tocada */
+  onMarcar: (de: number, ate: number) => void;
 }) {
   const fechar = useRef<HTMLButtonElement>(null);
   useEffect(() => { fechar.current?.focus(); }, []);
+  // #867: com UMA pessoa, o botão grande copia o horário dela; com várias, cada uma ganha o seu "Entrar"
+  const outros = gente.filter((p) => !p.eu);
+  const unica = outros.length === 1 ? outros[0] : null;
   return (
     <div className="absolute inset-0 z-30 grid place-items-center bg-slate-900/30 p-4" onClick={onFechar}>
       <div role="dialog" aria-label={`${DIA_LONGO[dia]}, ${hora}h`} onClick={(e) => e.stopPropagation()}
@@ -734,13 +756,19 @@ function ListaDoHorario({ dia, hora, gente, jaEstou, onFechar, onMarcar }: {
               <Foto src={p.foto} nome={p.nome} cor={p.cor} size={28} />
               <span className={`min-w-0 flex-1 truncate text-[14px] font-semibold ${TXT}`}>{p.nome}</span>
               <span className={`shrink-0 text-[12px] tabular-nums ${TXT_2}`}>{p.horario}</span>
+              {!jaEstou && !unica && !p.eu && (
+                <button type="button" onClick={() => onMarcar(p.de, p.ate)} aria-label={`${tr("agenda.entrar", "Entrar")} ${p.horario} · ${p.nome}`}
+                  className="shrink-0 min-h-[44px] rounded-xl bg-blue-600 px-3 text-[13px] font-bold text-white">
+                  {tr("agenda.entrar", "Entrar")}
+                </button>
+              )}
             </li>
           ))}
         </ul>
         <div className="mt-4 flex gap-2">
-          {!jaEstou && (
-            <button type="button" onClick={onMarcar} className="flex-1 min-h-[44px] rounded-xl bg-blue-600 font-bold text-white">
-              {tr("agenda.marcarTambem", "Marcar também")} ({hora}h–{hora + 1}h)
+          {!jaEstou && unica && (
+            <button type="button" onClick={() => onMarcar(unica.de, unica.ate)} className="flex-1 min-h-[44px] rounded-xl bg-blue-600 font-bold text-white">
+              {tr("agenda.marcarTambem", "Marcar também")} ({unica.horario})
             </button>
           )}
           <button ref={fechar} type="button" onClick={onFechar}
