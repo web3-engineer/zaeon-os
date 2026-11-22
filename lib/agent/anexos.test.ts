@@ -153,3 +153,20 @@ describe("a flag", () => {
     expect(anexoNoHarnessLigado({ HARNESS_ANEXO: "1" })).toBe(true);
   });
 });
+
+describe("marcas de página do anexo (pra citar a página do trecho)", () => {
+  it("acha onde cada página começa no texto final, tolerando markdown e acento", async () => {
+    const { marcasDePagina, paginaNoOffset } = await import("@/lib/agent/anexos");
+    const texto = "# Introducao\n\nPrimeiro paragrafo da pagina um, com bastante texto.\n\n## Metodo\n\nSegundo paragrafo, ja na pagina dois do arquivo.";
+    const marcas = marcasDePagina(texto, [
+      { page: 1, text: "Introdução" }, // curto demais: pulado
+      { page: 1, text: "Primeiro parágrafo da página um, com bastante texto." },
+      { page: 2, text: "Segundo parágrafo, já na página dois do arquivo." },
+      { page: 2, text: "parágrafo que não existe no markdown final" },
+    ]);
+    expect(marcas.map((m) => m[1])).toEqual([1, 2]);
+    expect(paginaNoOffset(marcas, texto.indexOf("Segundo"))).toBe(2);
+    expect(paginaNoOffset(marcas, texto.indexOf("Primeiro") + 5)).toBe(1);
+    expect(paginaNoOffset(undefined, 10)).toBe(0);
+  });
+});

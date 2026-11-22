@@ -1,6 +1,14 @@
 import type { Paper } from "../types";
 import { fetchWithRetry } from "../http";
 
+/** Resumo JATS do Crossref ("<jats:p>…</jats:p>") → texto. Só ~10% das obras têm, mas é o que sobra com o OpenAlex fora. */
+export function resumoJats(jats: unknown): string | undefined {
+  if (typeof jats !== "string" || !jats.trim()) return undefined;
+  const t = jats.replace(/<jats:title>[\s\S]*?<\/jats:title>/gi, " ").replace(/<[^>]+>/g, " ")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
+  return t.length >= 40 ? t : undefined;
+}
+
 export function parseCrossref(json: any): Paper[] {
   return (json?.message?.items ?? []).map((it: any): Paper => ({
     id: it.DOI ? `doi:${it.DOI}` : `crossref:${it.URL ?? (Array.isArray(it.title) ? it.title[0] : it.title) ?? "unknown"}`,
@@ -11,6 +19,7 @@ export function parseCrossref(json: any): Paper[] {
     doi: it.DOI,
     url: it.URL,
     citationCount: it["is-referenced-by-count"] ?? undefined,
+    abstract: resumoJats(it.abstract),
     openAccess: false,
     sources: ["crossref"],
   }));
@@ -19,7 +28,7 @@ export function parseCrossref(json: any): Paper[] {
 export async function searchCrossref(query: string, limit = 10): Promise<{ papers: Paper[]; status: "ok" | "rate_limited" | "error" }> {
   try {
     const email = process.env.UNPAYWALL_EMAIL ? `&mailto=${encodeURIComponent(process.env.UNPAYWALL_EMAIL)}` : "";
-    const url = `https://api.crossref.org/works?query=${encodeURIComponent(query)}&rows=${limit}&select=DOI,title,author,issued,container-title,URL,is-referenced-by-count${email}`;
+    const url = `https://api.crossref.org/works?query=${encodeURIComponent(query)}&rows=${limit}&select=DOI,title,author,issued,container-title,URL,is-referenced-by-count,abstract${email}`;
     const res = await fetchWithRetry(url, {}, { retries: 3 });
     if (!res.ok) return { papers: [], status: res.status === 429 ? "rate_limited" : "error" };
     return { papers: parseCrossref(await res.json()), status: "ok" };

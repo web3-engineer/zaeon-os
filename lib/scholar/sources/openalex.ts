@@ -29,12 +29,48 @@ export function parseOpenAlex(json: any): Paper[] {
   });
 }
 
+/**
+ * Identificação no OpenAlex. Desde 2026 pedido SEM chave sai de um orçamento diário grátis COMPARTILHADO pelo IP — na
+ * VPS, por todo o tráfego da Zaeon; esgotado, tudo volta 429 até a meia-noite UTC (achado no E2E de nov/2026). Com
+ * `OPENALEX_API_KEY` (gratuita, openalex.org) o orçamento é da Zaeon. O `mailto` segue como identificação educada.
+ */
+export function paramsOpenAlex(env: Record<string, string | undefined> = process.env): string {
+  const chave = env.OPENALEX_API_KEY?.trim();
+  const email = env.UNPAYWALL_EMAIL?.trim();
+  return `${chave ? `&api_key=${encodeURIComponent(chave)}` : ""}${email ? `&mailto=${encodeURIComponent(email)}` : ""}`;
+}
+
 export async function searchOpenAlex(query: string, limit = 15): Promise<{ papers: Paper[]; status: "ok" | "rate_limited" | "error" }> {
   try {
-    const email = process.env.UNPAYWALL_EMAIL ? `&mailto=${encodeURIComponent(process.env.UNPAYWALL_EMAIL)}` : "";
-    const url = `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per-page=${limit}${email}`;
-    const res = await fetchWithRetry(url, {}, { retries: 3 });
+    const url = `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per-page=${limit}${paramsOpenAlex()}`;
+    // 429 do OpenAlex = cota (diária) esgotada: volta na hora como rate_limited → a busca pausa a fonte e segue
+    const res = await fetchWithRetry(url, {}, { retries: 3, repetir429: false });
     if (!res.ok) return { papers: [], status: res.status === 429 ? "rate_limited" : "error" };
     return { papers: parseOpenAlex(await res.json()), status: "ok" };
   } catch { return { papers: [], status: "error" }; }
+}
+
+/**
+ * Resumos por DOI, em lote (OpenAlex `filter=doi:a|b|…`, 50 por pedido). É o "enrichment" do PaperOrchestra: Crossref e
+ * PubMed muitas vezes devolvem o paper SEM resumo, e sem resumo o escritor não sabe o que a fonte diz. Nunca lança.
+ */
+export async function resumosPorDoi(dois: readonly string[], fetchImpl: typeof fetch = fetch): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const limpos = [...new Set(dois.map((d) => String(d ?? "").trim().toLowerCase().replace(/^https?:\/\/(dx\.)?doi\.org\//, "")).filter((d) => /^10\.\d{3,}\//.test(d) && !/[|,]/.test(d)))];
+  const params = paramsOpenAlex();
+  for (let i = 0; i < limpos.length; i += 50) {
+    const lote = limpos.slice(i, i + 50);
+    try {
+      const url = `https://api.openalex.org/works?filter=doi:${lote.map(encodeURIComponent).join("|")}&per-page=50&select=doi,abstract_inverted_index${params}`;
+      const res = await fetchImpl(url);
+      if (!res.ok) continue;
+      const json: any = await res.json();
+      for (const w of json?.results ?? []) {
+        const doi = String(w?.doi ?? "").toLowerCase().replace(/^https?:\/\/doi\.org\//, "");
+        const resumo = reconstructAbstract(w?.abstract_inverted_index);
+        if (doi && resumo) out.set(doi, resumo);
+      }
+    } catch { /* lote perdido: os papers seguem sem resumo */ }
+  }
+  return out;
 }

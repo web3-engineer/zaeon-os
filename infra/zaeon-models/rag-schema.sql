@@ -62,6 +62,10 @@ CREATE TABLE IF NOT EXISTS rag_trechos (
   created_at   timestamptz NOT NULL DEFAULT now()
 );
 
+-- Onde cada página começa DENTRO do texto do trecho ([[deslocamento, página], …]) — só em trecho que cruza páginas.
+-- A skill de trechos (lib/trechos) diz a página EXATA da citação, não a faixa do trecho (nov/2026). Idempotente.
+ALTER TABLE rag_trechos ADD COLUMN IF NOT EXISTS marcas_pagina jsonb;
+
 CREATE INDEX IF NOT EXISTS rag_trechos_embedding_hnsw ON rag_trechos USING hnsw (embedding vector_cosine_ops);
 CREATE INDEX IF NOT EXISTS rag_trechos_tsv_gin        ON rag_trechos USING gin (tsv);
 CREATE INDEX IF NOT EXISTS rag_trechos_turma_ids_gin  ON rag_trechos USING gin (turma_ids);

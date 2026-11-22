@@ -17,6 +17,7 @@ import { lerBriefing, type Briefing } from "@/lib/tcc/briefing";
 import { aplicarNoTcc, criarTcc, findTccDoEscopo, listarTrabalhosDoEscopo, tccCrossOn, referenciasNovas, type FonteVerificada, type TccView } from "@/lib/tcc/store";
 import { ESQUELETO_TCC, chaveTitulo, esqueletoDe, opsDeWork, palavras } from "@/lib/tcc/secoes";
 import { researchWorkType } from "@/lib/agent/tools";
+import { paperOrquestraLigada } from "@/lib/paper-orquestra/flag";
 import { cartolinaMemoriaOn, createBoard, findOwnBoard, patchBoard } from "@/lib/cartolina/store";
 import { fundirNoBoard } from "@/lib/cartolina/fromStructured";
 
@@ -378,7 +379,9 @@ export async function tccDoTurno(input: {
       .filter((s) => s.titulo.trim() && s.corpo.trim());
     // O modelo já escreveu → o TCC nasce com essas seções. Não escreveu → esqueleto ABNT vazio e a
     // geração roda solta (o aluno vê a aba crescer pelo poll).
-    const gerando = doModelo.length === 0;
+    // PAPER ORQUESTRA ligado: o documento SEMPRE nasce do esqueleto e o pipeline de agentes escreve (as seções que
+    // a Aura rascunhou numa resposta só são justamente o texto raso que ele veio substituir — docs/PAPER_ORQUESTRA.md)
+    const gerando = paperOrquestraLigada() || doModelo.length === 0;
     const t = await criarTcc({
       userId: input.userId, scopeId: scope, titulo, origem: "estudos",
       secoes: gerando ? deAbertura : doModelo,
@@ -424,7 +427,7 @@ async function trabalhoDoTurno(input: Parameters<typeof tccDoTurno>[0]): Promise
       const tipo = researchWorkType(input.kind ?? input.answer.work?.kind ?? "artigo");
       const { brief, titulo, secoes: deAbertura } = partidaDoPedido(input.prompt, esqueletoDe(tipo));
       const doModelo = secoesDoModelo(sections);
-      const gerando = doModelo.length === 0;
+      const gerando = paperOrquestraLigada() || doModelo.length === 0;
       const t = await criarTcc({
         userId: input.userId, scopeId: scope, titulo, origem: "estudos", workType: tipo,
         secoes: gerando ? deAbertura : doModelo,

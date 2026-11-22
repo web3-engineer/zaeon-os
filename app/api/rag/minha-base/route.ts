@@ -17,7 +17,7 @@ import { blocosDeTexto, ehArquivoTexto, textoDeBytes, tituloDeTexto } from "@/li
 import { docxParaMarkdown, ehArquivoDocx, ehDocAntigo } from "@/lib/rag/docx";
 import { ehBancoIndisponivel, ragPg } from "@/lib/rag/pg";
 import { buscarPorId, contarEnviadosPessoais, listarDocumentos, removerPermissao } from "@/lib/rag/store";
-import { extractPdfStructured } from "@/lib/scholar/pdf";
+import { estruturaDoPdf } from "@/lib/pdf/ler";
 import { enfileirarIndexacao } from "@/lib/queue/rag";
 import { LIMITE_PESSOAL } from "@/lib/rag/minhaBase";
 
@@ -134,7 +134,9 @@ export async function POST(req: Request) {
         : docx
         ? await ingerirArquivoDocx(db, bytes, f.name, userId)
         : await ingerirPdf(
-            { db, extrair: extractPdfStructured, enfileirar: enfileirarIndexacao },
+            // a SKILL de leitura (lib/pdf/ler): pdf-loader → reserva pdf.js → "escaneado" honesto. Antes era só o loader:
+            // fora do ar ou sem PDF_LOADER_URL, o PDF do aluno não entrava.
+            { db, extrair: estruturaDoPdf, enfileirar: enfileirarIndexacao },
             { bytes, nomeArquivo: f.name, origem: "chat", criadoPor: userId, permissao: { donoId: userId } },
           );
       if (r.erro === "banco_indisponivel") return indisponivel({ resultados: out }); // sem banco, o resto do lote também falharia

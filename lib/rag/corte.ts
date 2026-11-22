@@ -9,6 +9,11 @@ export type TrechoCortado = {
   caminho: string; // "titulo › Cap 1 › 1.1 › 1.1.1"
   paginaIni: number;
   paginaFim: number;
+  /**
+   * Onde cada página começa DENTRO de `texto` ([deslocamento, página], crescente) — só quando o trecho cruza páginas.
+   * Sem isso, a frase da p. 6 num trecho que vai da 4 à 7 seria citada "p. 4–7" (achado no E2E de nov/2026).
+   */
+  marcas?: Array<[number, number]>;
 };
 
 /** Parte um texto longo em pedaços de até `max` chars, cortando na última fronteira de frase/linha da janela. */
@@ -60,6 +65,7 @@ export function cortarEmTrechos(blocks: Block[], titulo: string): TrechoCortado[
   const trechos: TrechoCortado[] = [];
   let pilha: Titulo[] = [];
   let partes: string[] = [];
+  let paginasDasPartes: number[] = [];
   let chars = 0;
   let paginaIni = 1;
   let paginaFim = 1;
@@ -70,15 +76,26 @@ export function cortarEmTrechos(blocks: Block[], titulo: string): TrechoCortado[
   const fechar = () => {
     if (!partes.length) return;
     const c = caminho();
+    const marcas: Array<[number, number]> = [];
+    if (paginaIni !== paginaFim) {
+      let off = c.length + 2;
+      partes.forEach((parte, i) => {
+        const p = paginasDasPartes[i]!;
+        if (!marcas.length || marcas[marcas.length - 1]![1] !== p) marcas.push([marcas.length ? off : 0, p]);
+        off += parte.length + 2;
+      });
+    }
     trechos.push({
       ordem: trechos.length,
       texto: `${c}\n\n${partes.join("\n\n")}`,
       caminho: c,
       paginaIni,
       paginaFim,
+      ...(marcas.length > 1 ? { marcas } : {}),
     });
     for (const t of pilha) t.usado = true;
     partes = [];
+    paginasDasPartes = [];
     chars = 0;
   };
 
@@ -96,6 +113,7 @@ export function cortarEmTrechos(blocks: Block[], titulo: string): TrechoCortado[
     if (!partes.length) paginaIni = pagina;
     paginaFim = pagina;
     partes.push(texto);
+    paginasDasPartes.push(pagina);
     chars += texto.length;
   };
 

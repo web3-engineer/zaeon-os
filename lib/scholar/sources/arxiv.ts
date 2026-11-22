@@ -1,13 +1,17 @@
 import type { Paper } from "../types";
 import { fetchWithRetry } from "../http";
 
+/** O Atom do arXiv vem com entidades XML ("Cinema, Fermi Problems, &amp; General Education" ia cru pra referência ABNT). */
+const desentidade = (t: string) => t.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+  .replace(/&#(\d+);/g, (_m, n: string) => String.fromCodePoint(Number(n))).replace(/&amp;/g, "&");
+
 export function parseArxiv(xml: string): Paper[] {
   const entries = xml.split("<entry>").slice(1);
   return entries.map((e): Paper => {
-    const get = (tag: string) => (e.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`))?.[1] ?? "").trim();
+    const get = (tag: string) => desentidade((e.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`))?.[1] ?? "").trim());
     const idUrl = get("id");
     const arxivId = idUrl.match(/abs\/([^v]+)(v\d+)?/)?.[1] ?? idUrl.split("/").pop() ?? "";
-    const authors = Array.from(e.matchAll(/<name>([\s\S]*?)<\/name>/g)).map((m) => m[1].trim());
+    const authors = Array.from(e.matchAll(/<name>([\s\S]*?)<\/name>/g)).map((m) => desentidade(m[1].trim()));
     const pdf = (e.match(/<link[^>]*title="pdf"[^>]*href="([^"]+)"/) ?? [])[1];
     return {
       id: `arxiv:${arxivId}`,

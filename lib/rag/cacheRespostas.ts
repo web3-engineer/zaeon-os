@@ -70,6 +70,8 @@ export function respostaGuardavel(answer: Record<string, any>, intent: string, d
   if (answer?.rascunhoFalhou || ehMensagemDeErro(answer?.nucleo)) return false;
   const nucleo = String(answer?.nucleo ?? "");
   if (nucleo.length < 40 || answer?.work || answer?.tcc || answer?.videoDoc) return false;
+  // trechos do MATERIAL DE UMA PESSOA (lib/trechos) nunca viram resposta servida a outro aluno
+  if (Array.isArray(answer?.trechos) && answer.trechos.length) return false;
   const texto = `${nucleo} ${String(answer?.desenvolvimento ?? "")}`;
   return !CITA_CONVERSA.test(texto);
 }
