@@ -65,8 +65,9 @@ describe("AgendaBandeja", () => {
     abrir();
     await pronta("Ter 9h: livre");
     expect(chamadas[0]).toMatchObject({ url: `/api/canal/${CANAL}/agenda`, metodo: "GET" });
-    expect(screen.getByText("Seg")).toBeTruthy();
-    expect(screen.getByText("Dom")).toBeTruthy();
+    // o dia de hoje ganha " · hoje" no cabeçalho, então compara só o começo (quebrava aos domingos e segundas)
+    expect(screen.getByText(/^Seg\b/)).toBeTruthy();
+    expect(screen.getByText(/^Dom\b/)).toBeTruthy();
   });
 
   it("o exemplo do card: terça 9 + terça 15 salva das 9 às 15 e pinta o intervalo", async () => {

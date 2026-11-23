@@ -29,8 +29,10 @@ O registro desses testes está em `docs/TESTES_ESCRITORIO_861.md`.
 - `components/office/AgendaBandeja.test.tsx`:
   - "Marcar também" manda o horário inteiro (`{ dia: 1, de: 480, ate: 660 }`);
   - com duas pessoas, um "Entrar" para cada, e cada um manda o horário da pessoa;
-  - o rascunho tracejado (commit de 21/11).
+  - o rascunho tracejado (commit de 21/11);
+  - corrigido o teste da grade, que falhava aos domingos e segundas (o dia de hoje vira "Dom · hoje" no cabeçalho).
 - Escritório, agenda e rotas do canal: 49 arquivos, 776 testes. `tsc` sem erros; `i18n-check` OK.
+- Suíte completa (22/11): 833 arquivos, 8008 testes passando. As 30 falhas são as mesmas da main (nenhuma nova).
 
 ## Verificado na prévia local (prints enviados à Giulia)
 
