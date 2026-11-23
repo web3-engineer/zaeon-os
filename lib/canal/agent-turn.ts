@@ -209,7 +209,8 @@ const gerarComHarness: Gerar = async ({ agente, objective, history, canal, userI
   // #562: o que a memória profunda relembrou (só a de quem pode: lib/canal/memoria) entra depois do bloco do canal
   // #868: pedido sem assunto ("me ajude com resumi") — sem busca na base e, se pediu uma ação, perguntar o que é
   const pedido = lerPedido(objective);
-  const systemContext = [identidade, (agente as any).__blocoCanal ?? "", memoria ?? "", pedido.vago ? INSTRUCAO_PEDIDO_VAGO : ""].filter(Boolean).join("\n\n");
+  // a instrução vai PRIMEIRO: o harness corta o systemContext em 4000 caracteres, e no fim ela podia sumir
+  const systemContext = [pedido.vago ? INSTRUCAO_PEDIDO_VAGO : "", identidade, (agente as any).__blocoCanal ?? "", memoria ?? ""].filter(Boolean).join("\n\n");
   // O harness foi escrito "em Aura"; aqui a voz é do agente convocado. Troca a identidade nos
   // prompts de geração SEM tocar no harness (regra: o harness só muda no incremento de uso).
   const assinatura = `\nIDENTIDADE DESTE TURNO: você é ${agente.nome} (não a Aura). Mantenha a voz e o nome de ${agente.nome} em toda a resposta.`;

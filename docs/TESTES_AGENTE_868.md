@@ -12,6 +12,13 @@ Achado no teste da Giulia em 21/11, no escritório zaeon-OS.
   - Pedido com assunto ("resume o capítulo 3 de fotossíntese", "qual a capital da Austrália") segue igual, com a base.
 - Só o turno do Escritório muda. O chat da Aura e o limite de similaridade da base não foram mexidos.
 
+### Ajustes da revisão (Sourcery, PR #871)
+- Cumprimento sem assunto ("oi, tudo bem?", "bom dia, gente") agora também **não busca na base**. Antes, "tudo" e "gente" contavam como assunto.
+- Mais pedidos de ação contam como vagos: "ensina", "calcule", "resolve", "mostra", "compara"…
+- "me dá uma força" e "uma mão" também contam como pedido de ajuda. "Força" e "luz" sozinhas continuam sendo assunto, porque são temas de física.
+- Uma letra maiúscula sozinha é assunto ("me ajuda com C", "explica R").
+- A instrução de perguntar vai **primeiro** no contexto do agente. O harness corta o contexto em 4000 caracteres, e no fim ela podia sumir.
+
 ## Para o Martinez
 
 - Nada da área dele.
@@ -26,7 +33,8 @@ Achado no teste da Giulia em 21/11, no escritório zaeon-OS.
   - cumprimento ("oi") não busca na base, mas também não manda perguntar;
   - a instrução manda usar a conversa e, sem ela, perguntar;
   - a amarração no `agent-turn.ts` (sem base quando não há assunto; instrução quando é vago).
-- `lib/canal/agent-turn.test.ts` continua passando (58 testes nos dois arquivos).
+- Revisão do #871: casos novos de cumprimento ("oi, tudo bem?" sem base), verbos novos, "uma força"/"uma mão", "C" e "R", "força peso" e "o que é luz?" com assunto, e a instrução primeiro no contexto.
+- `lib/canal/agent-turn.test.ts` continua passando (66 testes nos dois arquivos).
 - Suíte completa (23/11): 836 arquivos, 8040 testes passando. As falhas são as mesmas da main, mais o `lib/rag/docx.test.ts`, que é instável.
 
 ## Como testar em produção (depois do deploy)
@@ -35,6 +43,8 @@ Achado no teste da Giulia em 21/11, no escritório zaeon-OS.
 2. Depois de colar um texto no escritório: "`@zaeon` resume isso". Ele resume **o texto da conversa**.
 3. "`@zaeon` resume o ciclo de Krebs": responde normalmente, e pode citar a base.
 4. "`@zaeon` explica": pergunta o que explicar.
+5. "`@zaeon` oi, tudo bem?": responde ao cumprimento, sem citar referência da base.
+6. "`@zaeon` me dá uma força": pergunta com o quê.
 
 ## Resultado dos testes
 
@@ -44,3 +54,5 @@ Achado no teste da Giulia em 21/11, no escritório zaeon-OS.
 | 2. "resume isso" com texto na conversa | ⏳ falta testar |
 | 3. Pedido com assunto | ⏳ falta testar |
 | 4. "explica" sozinho | ⏳ falta testar |
+| 5. Cumprimento sem base | ⏳ falta testar |
+| 6. "me dá uma força" | ⏳ falta testar |

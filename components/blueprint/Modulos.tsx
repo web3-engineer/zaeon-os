@@ -11,8 +11,9 @@ import { MAO, PAPEL, REDONDA, ROSA, corNaSkin, inclinacao, useCor, useSkin } fro
 
 /** #870: enquanto a Zaeon monta, o título ainda é o PEDIDO da pessoa ("FAZ UM BLUEPRINT DE…") — mostra este no lugar */
 export const TITULO_PROVISORIO = "Montando o seu blueprint…";
-/** #870: o blueprint ainda está sendo montado (a Zaeon não escreveu o resumo) */
-export const estaMontando = (doc: Pick<DocBlueprint, "resumo">) => !doc.resumo;
+/** #870: o blueprint ainda está sendo montado — a Zaeon nunca compôs (compostoEm = 0) e não há resumo.
+ *  Depois de composto, um resumo vazio não deixa o carregamento preso (revisão do #871). */
+export const estaMontando = (doc: Pick<DocBlueprint, "resumo" | "compostoEm">) => !doc.compostoEm && !doc.resumo;
 /** #870: o que a Zaeon faz enquanto monta — a lista do carregamento */
 export const ETAPAS_MONTAGEM = ["lendo a conversa", "escolhendo o título", "desenhando o percurso", "prática e produto", "fontes do YouTube"] as const;
 const PASSO_ETAPA_MS = 2200;
@@ -185,7 +186,7 @@ export function Modulo({ id, doc, acoes, onArrastar }: { id: string; doc: DocBlu
     return (
       <CardPrancha cor={k(COR.estudo)} carimbo="ESTUDO · E-01" direita={<span className="font-mono text-[11px] text-sky-200/60">{doc.area}</span>} onArrastar={onArrastar}>
         <Titulo grande>{estaMontando(doc) ? TITULO_PROVISORIO : doc.titulo.toUpperCase()}</Titulo>
-        {doc.resumo ? <Texto>{doc.resumo}</Texto> : <Montando />}
+        {estaMontando(doc) ? <Montando /> : doc.resumo ? <Texto>{doc.resumo}</Texto> : null}
         <TrilhoFases doc={doc} />
         {abertosDaFase.length > 0 && <div className="mt-2 font-mono text-[12px]" style={{ color: k(COR.critico) }}>● {abertosDaFase.length} crítico{abertosDaFase.length > 1 ? "s" : ""} travando a fase {doc.fase}</div>}
         {acoes.podeEditar && (

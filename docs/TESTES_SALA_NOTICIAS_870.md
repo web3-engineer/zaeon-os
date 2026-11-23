@@ -7,7 +7,7 @@ O PR 2 (apresentação, cyberespaço, Sobre nós e barra de cima) vem depois.
 ## O que muda
 
 ### Sala de Estudos (blueprint)
-- **Abre encaixado:** o foco (a figura e o estudo) abria com zoom mínimo de 0,6. No celular, isso cortava as bordas. Agora o foco cabe na largura, com piso de 0,35 (`ZOOM_MIN_FOCO`, `PranchaBlueprint.tsx`). No computador continua grande como antes.
+- **Abre encaixado:** o foco (a figura e o estudo) abria com zoom mínimo de 0,6. No celular, isso cortava as bordas. Agora o foco cabe na largura, com piso de 0,25 (`ZOOM_MIN_FOCO` e `zoomDoFoco`, `PranchaBlueprint.tsx`). No computador continua grande como antes.
 - **Legenda em botão:** percurso / prática / crítico ficava sempre na tela, por cima do desenho (e no celular, do zoom). Agora há um botão **"Legenda"**, que abre um quadro com fundo. No celular o botão fica em cima da barra de zoom, porque lado a lado não cabe em 375 px.
 - **Zoom com fundo:** a barra "− 60% + ◎ ⤢" era transparente e ficava por cima do texto dos cartões. Agora tem fundo nas 3 skins.
 - **Título provisório:** enquanto a Zaeon monta, o cartão mostrava o PEDIDO em maiúsculas ("FAZ UM BLUEPRINT DE TESTE SOBRE…"). Agora mostra "Montando o seu blueprint…". O cartão do YouTube espera o título de verdade em vez de buscar pelo pedido.
@@ -24,6 +24,11 @@ O PR 2 (apresentação, cyberespaço, Sobre nós e barra de cima) vem depois.
 - **Letras:** nada abaixo de 11 px nas páginas da Hedera (eram 8 a 10 px).
 - "Acessar Justificativa Oficial" já estava com 11 px, e não há mais rótulos em inglês na lista.
 
+### Ajustes da revisão (Sourcery, PR #871)
+- **Encaixe:** o piso do zoom caiu de 0,35 para 0,25, o mesmo do botão "−". Assim a figura de 1100 px cabe até num celular de 320 px. A conta agora está em `zoomDoFoco`.
+- **Carregamento:** o "montando" agora depende de a Zaeon nunca ter composto (`compostoEm = 0`) e não haver resumo. Um blueprint composto com resumo vazio não fica preso no carregamento.
+- **Testes:** o da legenda abre a prancha e clica no botão, abrindo e fechando. O das letras das Notícias lê todo `text-[Npx]`, inclusive 10.5px, e compara com 11.
+
 ## Para o Martinez
 
 - **Blueprint** (`components/blueprint/`: `PranchaBlueprint.tsx`, `Modulos.tsx`, `FiguraIso.tsx`) é área dele.
@@ -32,17 +37,19 @@ O PR 2 (apresentação, cyberespaço, Sobre nós e barra de cima) vem depois.
 
 ## Testes automáticos
 
-- `components/blueprint/acabamento870.test.tsx` (novo, 9 testes):
+- `components/blueprint/acabamento870.test.tsx` (novo, 10 testes depois da revisão):
   - título provisório e carregamento sem resumo;
   - o título de verdade volta com resumo;
   - as etapas acendem uma a uma e param na última;
   - o YouTube não busca pelo pedido;
-  - a legenda em botão;
+  - composto com resumo vazio não fica carregando;
+  - a legenda em botão (abre a prancha e clica);
   - o zoom com fundo nas 3 skins;
-  - o piso do encaixe;
+  - o encaixe em 320, 375 e 390 px (a figura de 1100 px cabe na largura);
   - o texto de toque.
 - `app/news/noticias870.test.ts` (novo, 4 testes): página abaixo da barra, sem a foto 404, títulos sem corte no celular e letras ≥ 11 px.
-- Blueprint, Sala de Estudos e dicas (`DicasRapidas`) continuam passando (70 testes).
+- Blueprint, Sala de Estudos e dicas (`DicasRapidas`) continuam passando.
+- Depois da revisão: `components/blueprint`, `app/news` e `lib/canal` passaram (38 arquivos, 621 testes), e o `tsc` não acusou erro nesses arquivos.
 - Suíte completa (23/11): 836 arquivos, 8040 testes passando. As falhas são as mesmas da main, mais o `lib/rag/docx.test.ts`, que é instável.
 
 ## Verificado na prévia local (prints enviados à Giulia, `prints-870/`)

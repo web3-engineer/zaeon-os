@@ -24,6 +24,10 @@ describe("#870 · Notícias", () => {
   });
 
   it("nenhuma letra abaixo de 11 px nas telas de notícias", () => {
-    for (const src of [lista, hedera, hederaAntiga]) expect(src).not.toMatch(/text-\[(7|8|9|10)px\]/);
+    // lê todo text-[Npx] (inclusive 10.5px) e compara com 11
+    for (const src of [lista, hedera, hederaAntiga]) {
+      const tamanhos = [...src.matchAll(/text-\[(\d+(?:\.\d+)?)px\]/g)].map((m) => Number(m[1]));
+      expect(tamanhos.filter((t) => t < 11)).toEqual([]);
+    }
   });
 });

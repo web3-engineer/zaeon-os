@@ -15,6 +15,11 @@ describe("#868 — pedido sem assunto", () => {
     "pode fazer um resumo?",
     "@zaeon me ajude com resumi",
     "Faz aí rapidinho",
+    // revisão do #871: verbos de ação além de resumir/explicar, e "uma força"/"uma mão"
+    "ensina",
+    "calcule pra mim",
+    "me dá uma força",
+    "pode me dar uma mão?",
   ])("vago: %s", (t) => {
     expect(lerPedido(t).vago).toBe(true);
   });
@@ -26,12 +31,18 @@ describe("#868 — pedido sem assunto", () => {
     "faz um resumo do texto sobre a Revolução Francesa",
     "o que é DNA?",
     "qual a capital da Austrália",
+    // uma letra maiúscula é assunto (linguagens C e R); força e luz sozinhas são física
+    "me ajuda com C",
+    "explica R",
+    "explica a força peso",
+    "o que é luz?",
   ])("tem assunto: %s", (t) => {
     expect(lerPedido(t)).toEqual({ semAssunto: false, vago: false });
   });
 
-  it("cumprimento não é pedido vago (não manda perguntar), mas também não busca na base", () => {
-    expect(lerPedido("oi, tudo bem?")).toEqual({ semAssunto: false, vago: false });
+  it("cumprimento não é pedido vago (não manda perguntar), e também não busca na base", () => {
+    expect(lerPedido("oi, tudo bem?")).toEqual({ semAssunto: true, vago: false });
+    expect(lerPedido("bom dia, gente")).toEqual({ semAssunto: true, vago: false });
     expect(lerPedido("oi")).toEqual({ semAssunto: true, vago: false });
     expect(lerPedido("")).toEqual({ semAssunto: true, vago: false });
   });
@@ -46,6 +57,7 @@ describe("#868 — pedido sem assunto", () => {
     const src = readFileSync("lib/canal/agent-turn.ts", "utf8");
     expect(src).toMatch(/const pedido = lerPedido\(objective\)/);
     expect(src).toMatch(/pedido\.semAssunto \? null : await import\("@\/lib\/rag\/turno"\)/);
-    expect(src).toMatch(/pedido\.vago \? INSTRUCAO_PEDIDO_VAGO : ""/);
+    // a instrução vai primeiro: o harness corta o systemContext em 4000 caracteres
+    expect(src).toMatch(/systemContext = \[pedido\.vago \? INSTRUCAO_PEDIDO_VAGO : "", identidade,/);
   });
 });

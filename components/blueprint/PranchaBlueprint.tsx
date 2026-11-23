@@ -17,7 +17,11 @@ const AZUL = "#0b2c4d", LINHA_FRACA = "rgba(150,205,255,.14)", ALTURA_PADRAO = 1
 const COR_FIO: Record<Fio["tipo"], string> = { percurso: COR.passo, pratica: "rgba(170,220,255,.75)", critico: COR.critico, figura: COR.figura, avaliacao: COR.avaliacao };
 
 /** #870: o menor zoom ao abrir no foco (antes 0,6, que cortava as bordas no celular) */
-export const ZOOM_MIN_FOCO = 0.35;
+export const ZOOM_MIN_FOCO = 0.25;
+/** #870: o zoom que encaixa o foco (largura × altura da tela, tamanho do foco). Piso = o menor zoom do botão "−". */
+export function zoomDoFoco(largura: number, altura: number, focoL: number, focoA: number): number {
+  return Math.max(ZOOM_MIN_FOCO, Math.min(1.1, (largura - 32) / Math.max(1, focoL), (altura - 50) / Math.max(1, focoA)));
+}
 /** #870: o fundo da barra de zoom e da legenda na skin azul (o mesmo azul do papel, quase opaco) */
 const FUNDO_BARRA = "rgba(8,24,52,.94)";
 
@@ -139,8 +143,8 @@ export default function PranchaBlueprint({ id, doc, acoes, onFixar, sobre, skin 
     const f = caixaDoFoco(caixas); if (!f) return;
     const est = caixas.find((c) => c.id === "estudo"), ate = est ? est.y + est.h : f.y1;   // a figura + o estudo cabem na altura
     // #870: o piso era 0,6 — no celular a figura + o estudo passavam da largura e abriam com as bordas cortadas.
-    // Agora o foco cabe na largura (piso 0,35, ainda legível); no computador continua grande como antes.
-    const z = Math.max(ZOOM_MIN_FOCO, Math.min(1.1, (r.width - 32) / Math.max(1, f.x1 - f.x0), (r.height - 50) / Math.max(1, ate - f.y0)));
+    // Agora o foco cabe na largura (piso 0,25, o mesmo do "−"); no computador continua grande como antes.
+    const z = zoomDoFoco(r.width, r.height, f.x1 - f.x0, ate - f.y0);
     setCam({ z, x: r.width / 2 - ((f.x0 + f.x1) / 2) * z, y: 24 - f.y0 * z });
   }, [caixas]);
   // segue reenquadrando enquanto o layout assenta (alturas medidas, a Zaeon recompondo) — até a pessoa mexer na câmera
