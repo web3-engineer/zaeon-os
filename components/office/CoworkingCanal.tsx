@@ -729,18 +729,19 @@ export default function CoworkingCanal({ agenteInicial = null }: { agenteInicial
         {/* agenda semanal do canal: bandeja por cima da conversa (#396) */}
         <AgendaBandeja canalId={ativoId} aberta={agendaAberta} onFechar={() => setAgendaAberta(false)} versao={agendaVersao} />
         {/* barra: agenda · canal · presença · cartolina · config */}
-        <div ref={barraRef} className="flex items-center gap-2 px-3 py-2 border-b border-white/50 dark:border-white/[0.08]">
+        <div ref={barraRef} className="relative flex items-center gap-2 px-3 py-2 border-b border-white/50 dark:border-white/[0.08]">
           {/* à esquerda do seletor: abre a agenda da semana */}
           <button type="button" onClick={() => { setAgendaAberta((v) => !v); setMenu(null); }} aria-label="Agenda da semana" aria-expanded={agendaAberta}
             title="Agenda da semana" className={`${TOQUE} rounded-2xl text-[15px] ${VIDRO_CHIP} ${TXT}`}>🗓</button>
-          <div className="relative">
+          {/* #867: no celular a lista se ancora na BARRA (largura do Escritório, folga dos dois lados); no computador, no botão */}
+          <div className="sm:relative">
             <button type="button" onClick={() => { const abrir = menu !== "canais"; setMenu(abrir ? "canais" : null); if (abrir) void carregarConvites(); }} className={`${TOQUE} px-3 rounded-2xl text-[13px] font-bold ${TXT} ${VIDRO_CHIP} flex items-center gap-2`} aria-haspopup="listbox" aria-expanded={menu === "canais"}>
               <span className="max-w-[30vw] sm:max-w-[260px] truncate">{canal.titulo}</span>
               <span aria-hidden className={`text-[10px] ${TXT_MUDO}`}>▾</span>
               {totalNaoLidas - (naoLidas[ativoId] ?? 0) > 0 && <Badge n={totalNaoLidas - (naoLidas[ativoId] ?? 0)} />}
             </button>
             {menu === "canais" && (
-              <div ref={listaCanaisRef} className={`absolute left-0 top-full mt-1.5 z-30 w-[min(92vw,340px)] p-1.5 rounded-2xl ${VIDRO_POPOVER_SOLIDO}`}>
+              <div ref={listaCanaisRef} className={`absolute inset-x-3 sm:inset-x-auto sm:left-0 top-full mt-1.5 z-30 sm:w-[340px] p-1.5 rounded-2xl ${VIDRO_POPOVER_SOLIDO}`}>
                 {/* as três abas dividem o mesmo espaço; cada uma mostra só os canais dela */}
                 <div className="flex gap-1 p-1" role="tablist" aria-label="Tipo de escritório">
                   {ABAS.map((a) => (
@@ -814,7 +815,8 @@ export default function CoworkingCanal({ agenteInicial = null }: { agenteInicial
                     onRemover={() => void removerPessoa(p)} />
                 );
               }} />
-            {online.length > 0 && <span className={`text-[11px] ${TXT_MUDO}`} title="online agora">{online.length} on</span>}
+            {/* #867: nunca quebra em "1" / "on" (com nome de escritório comprido, quem encolhe é o nome) */}
+            {online.length > 0 && <span className={`shrink-0 whitespace-nowrap text-[11px] ${TXT_MUDO}`} title="online agora">{online.length} on</span>}
             {canal.cartolinaId && (
               <button type="button" onClick={abrirCartolina} className={`${TOQUE} px-3 rounded-2xl text-[12px] font-bold ${VIDRO_CHIP} ${TXT}`} title="Abrir a cartolina da sala">▦ cartolina</button>
             )}

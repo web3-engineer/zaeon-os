@@ -65,23 +65,39 @@ describe("AgendaBandeja", () => {
     abrir();
     await pronta("Ter 9h: livre");
     expect(chamadas[0]).toMatchObject({ url: `/api/canal/${CANAL}/agenda`, metodo: "GET" });
-    expect(screen.getByText("Seg")).toBeTruthy();
-    expect(screen.getByText("Dom")).toBeTruthy();
+    // o dia de hoje ganha " · hoje" no cabeçalho, então compara só o começo (quebrava aos domingos e segundas)
+    expect(screen.getByText(/^Seg\b/)).toBeTruthy();
+    expect(screen.getByText(/^Dom\b/)).toBeTruthy();
   });
 
   it("o exemplo do card: terça 9 + terça 15 salva das 9 às 15 e pinta o intervalo", async () => {
     abrir();
     await pronta("Ter 9h: livre");
     fireEvent.click(celula("Ter 9h: livre"));
-    expect(screen.getByText(/toque no horário FINAL/i)).toBeTruthy();
+    // o rascunho já diz o que vai ser marcado (cada quadrado é a hora inteira)
+    expect(screen.getByText(/Marcando Ter 9h–10h\. Toque na ÚLTIMA hora/)).toBeTruthy();
+    expect(document.querySelector("[data-rascunho]")?.textContent).toBe("9h–10h");
+    // o mouse passa pelo quadrado das 15h: o rascunho cresce até 16h, antes de confirmar
+    fireEvent.pointerEnter(celula("Ter 15h: livre"), { pointerType: "mouse" });
+    expect(document.querySelector("[data-rascunho]")?.textContent).toBe("9h–16h");
     fireEvent.click(celula("Ter 15h: livre"));
     await waitFor(() => expect(chamadas.some((c) => c.metodo === "POST")).toBe(true));
     expect(chamadas.find((c) => c.metodo === "POST")!.body).toEqual({ dia: 2, inicio: 9, fim: 15 });
+    // o aviso separa o dia do horário ("toda terça, 9h–16h")
+    await waitFor(() => expect(screen.getByText(/toda terça, 9h–16h/)).toBeTruthy());
     // recarregou: os quadrados das 9h às 15h agora são da Giulia; 16h continua livre
     await pronta("Ter 12h: Giulia");
     expect(celula("Ter 9h: Giulia")).toBeTruthy();
     expect(celula("Ter 15h: Giulia")).toBeTruthy();
     expect(celula("Ter 16h: livre")).toBeTruthy();
+  });
+
+  it("teclado: o rascunho acompanha o quadrado em foco", async () => {
+    abrir();
+    await pronta("Ter 9h: livre");
+    fireEvent.click(celula("Ter 9h: livre"));
+    fireEvent.focus(celula("Ter 12h: livre"));
+    expect(document.querySelector("[data-rascunho]")?.textContent).toBe("9h–13h");
   });
 
   it("2º clique em outro dia recomeça a seleção (não salva)", async () => {
@@ -90,7 +106,7 @@ describe("AgendaBandeja", () => {
     fireEvent.click(celula("Ter 9h: livre"));
     fireEvent.click(celula("Qui 10h: livre"));
     expect(chamadas.some((c) => c.metodo === "POST")).toBe(false);
-    expect(screen.getByText(/coluna de Qui/)).toBeTruthy();
+    expect(screen.getByText(/Marcando Qui/)).toBeTruthy();
   });
 
   it("Esc cancela a seleção em andamento", async () => {
@@ -145,7 +161,7 @@ describe("AgendaBandeja", () => {
     await waitFor(() => expect(chamadas.find((c) => c.metodo === "POST")!.body).toEqual({ dia: 3, de: 480, ate: 720 }));
   });
 
-  it("tocar no horário de OUTRA pessoa não apaga: #861 abre a lista de quem está, e 'Marcar também' marca a mesma hora", async () => {
+  it("tocar no horário de OUTRA pessoa não apaga: abre a lista, e 'Marcar também' (#867) copia o horário INTEIRO dela", async () => {
     blocos = [{ id: "f".repeat(24), userId: OUTRA, dia: 1, inicio: 8, fim: 10 }];
     abrir();
     await pronta("Seg 8h: Martinez");
@@ -154,8 +170,24 @@ describe("AgendaBandeja", () => {
     const lista = screen.getByRole("dialog", { name: /segunda, 8h/i });
     expect(within(lista).getByText("Martinez")).toBeTruthy();
     expect(within(lista).getByText("8h–11h")).toBeTruthy();
-    fireEvent.click(within(lista).getByRole("button", { name: /Marcar também/ }));
-    await waitFor(() => expect(chamadas.find((c) => c.metodo === "POST")?.body).toEqual({ dia: 1, inicio: 8, fim: 8 }));
+    fireEvent.click(within(lista).getByRole("button", { name: /Marcar também \(8h–11h\)/ }));
+    await waitFor(() => expect(chamadas.find((c) => c.metodo === "POST")?.body).toEqual({ dia: 1, de: 480, ate: 660 }));
+  });
+
+  it("#867: com várias pessoas no horário, cada uma ganha o seu 'Entrar' com o horário dela", async () => {
+    const TERCEIRA = "e".repeat(24);
+    blocos = [{ id: "f".repeat(24), userId: OUTRA, dia: 1, inicio: 8, fim: 10 }, { id: "a1".repeat(12), userId: TERCEIRA, dia: 1, inicio: 8, fim: 8 }];
+    abrir();
+    // com duas pessoas o rótulo do quadrado lista as duas ("Seg 8h: Martinez, …")
+    const quadrado = () => screen.getByRole("button", { name: /^Seg 8h: Martinez/ }) as HTMLButtonElement;
+    await waitFor(() => expect(quadrado().disabled).toBe(false), { timeout: 3000 });
+    fireEvent.click(quadrado());
+    const lista = screen.getByRole("dialog", { name: /segunda, 8h/i });
+    expect(within(lista).queryByRole("button", { name: /Marcar também/ })).toBeNull();
+    const entrar = within(lista).getAllByRole("button", { name: /^Entrar/ });
+    expect(entrar).toHaveLength(2);
+    fireEvent.click(within(lista).getByRole("button", { name: /Entrar 8h–9h/ }));
+    await waitFor(() => expect(chamadas.find((c) => c.metodo === "POST")?.body).toEqual({ dia: 1, de: 480, ate: 540 }));
   });
 
   it("legenda mostra quem tem horário, com '(você)'", async () => {

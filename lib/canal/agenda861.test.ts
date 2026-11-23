@@ -51,6 +51,12 @@ describe("#861 · modoDoBloco (a foto conforme o tamanho)", () => {
     expect(modoDoBloco(H / 2, 3)).toBe("mini");
     expect(modoDoBloco(H / 4, 2)).toBe("mini");
   });
+  it("#867: dividindo mas com espaço (celular, ~145 px por coluna): mostra nome e horário como um bloco inteiro", () => {
+    expect(modoDoBloco(H * 3, 2, 145)).toBe("cartao");
+    expect(modoDoBloco(H, 2, 145)).toBe("linha");
+    expect(modoDoBloco(H / 4, 2, 145)).toBe("mini");   // nunca "curto": a foto sairia pra coluna do vizinho
+    expect(modoDoBloco(H * 3, 2, 90)).toBe("estreito"); // semana no computador: continua estreito
+  });
 });
 
 describe("#861 PR 2 · muita gente, agora e filtro", () => {

@@ -43,7 +43,7 @@ export default function SinoConvites({ itens, contador, aberto, onAlternar, ocup
   useCabeNaTela(painelRef, aberto);
   const ref = agora ?? Date.now();
   return (
-    <div className="relative shrink-0">
+    <div className="sm:relative shrink-0">
       <button type="button" onClick={onAlternar} aria-expanded={aberto} aria-haspopup="dialog"
         aria-label={contador > 0 ? `Notificações (${contador} nova${contador > 1 ? "s" : ""})` : "Notificações"} title="Notificações"
         className={`${TOQUE} relative grid place-items-center rounded-2xl ${VIDRO_CHIP} ${TXT}`}>
@@ -56,7 +56,7 @@ export default function SinoConvites({ itens, contador, aberto, onAlternar, ocup
       </button>
 
       {aberto && (
-        <div ref={painelRef} role="dialog" aria-label="Notificações" className={`absolute left-0 top-full mt-1.5 z-30 w-[min(92vw,340px)] p-2 rounded-2xl ${VIDRO_POPOVER_SOLIDO}`}>
+        <div ref={painelRef} role="dialog" aria-label="Notificações" className={`absolute inset-x-3 sm:inset-x-auto sm:left-0 top-full mt-1.5 z-30 sm:w-[340px] p-2 rounded-2xl ${VIDRO_POPOVER_SOLIDO}`}>
           <div className="flex items-center justify-between gap-2 px-2 pt-1 pb-2">
             <p className={`text-[10.5px] font-bold uppercase tracking-wider ${TXT_MUDO}`}>Convites</p>
             {onLimpar && podeLimpar(itens) && (
