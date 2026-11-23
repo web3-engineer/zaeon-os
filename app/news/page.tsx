@@ -152,7 +152,8 @@ export default function LoungeNewsFeed() {
     }
 
     return (
-        <div className="max-w-[1400px] mx-auto h-full min-h-[85vh] flex flex-col lg:flex-row gap-8 p-4 md:p-6 lg:p-8">
+        // #870: a barra de cima é fixa (64 px) — sem o pt, o título "The Lounge" ficava atrás dela e virava um borrão ao lado do logo
+        <div className="max-w-[1400px] mx-auto h-full min-h-[85vh] flex flex-col lg:flex-row gap-8 p-4 md:p-6 lg:p-8 pt-20 md:pt-24 lg:pt-24">
 
             {/* --- BARRA LATERAL (LISTA DE NOTÍCIAS) COM ANIMAÇÃO SLIDE IN/OUT --- */}
             <aside
@@ -164,7 +165,7 @@ export default function LoungeNewsFeed() {
             >
                 {/* O container interno fixa a largura no desktop para evitar quebra de texto ao retrair */}
                 <div className={`flex flex-col h-full w-full ${isSidebarExpanded ? '' : 'lg:w-[350px] xl:w-[400px]'}`}>
-                    <div className="pb-6 border-b border-slate-200 dark:border-white/10 mb-6 flex-shrink-0 whitespace-nowrap overflow-hidden">
+                    <div className="pb-6 border-b border-slate-200 dark:border-white/10 mb-6 flex-shrink-0 lg:whitespace-nowrap overflow-hidden">
                         <h1 className="text-3xl font-black uppercase tracking-tighter text-slate-900 dark:text-white flex items-center gap-2">
                             The Lounge <SparklesIcon className="w-6 h-6 text-cyan-500 flex-shrink-0" />
                         </h1>
@@ -193,14 +194,12 @@ export default function LoungeNewsFeed() {
                     <Link href="/news/hedera-hackathon-2025">
                         <div className="mb-6 group cursor-pointer relative overflow-hidden rounded-2xl border border-indigo-500/30 bg-gradient-to-br from-indigo-50 to-indigo-100/50 dark:from-indigo-900/20 dark:to-purple-900/20 p-4 shadow-lg transition-all duration-300 hover:border-indigo-500/60 hover:shadow-indigo-500/20 flex-shrink-0">
                             <div className="absolute inset-0 bg-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                            <div className="flex gap-4 items-center relative z-10 whitespace-nowrap">
-                                <div className="relative w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 border border-indigo-500/20 bg-indigo-900/50">
-                                    <NextImage
-                                        src="https://images.unsplash.com/photo-1639762681485-074b7f4ec651?q=80&w=200&auto=format&fit=crop"
-                                        alt="Hedera Hackathon"
-                                        fill
-                                        className="object-cover group-hover:scale-110 transition-transform duration-500"
-                                    />
+                            {/* #870: o título quebra linha no celular (antes "Hedera Hackathon Cobertur…" saía cortado);
+                                no computador continua numa linha só, por causa da barra que encolhe */}
+                            <div className="flex gap-4 items-center relative z-10 lg:whitespace-nowrap">
+                                {/* #870: a foto do Unsplash não existe mais (404) e aparecia "Hedera I" no lugar — agora é o ícone num fundo */}
+                                <div aria-hidden className="relative w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 border border-indigo-500/20 bg-gradient-to-br from-indigo-600 to-purple-700 grid place-items-center">
+                                    <RocketLaunchIcon className="w-7 h-7 text-white/90 group-hover:scale-110 transition-transform duration-500" />
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-[11px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 mb-1 flex items-center gap-1">
@@ -224,7 +223,7 @@ export default function LoungeNewsFeed() {
                                 <div
                                     key={item.id}
                                     onClick={() => handleSelectNews(item)}
-                                    className={`group cursor-pointer p-4 rounded-2xl border transition-all duration-300 relative overflow-hidden whitespace-nowrap
+                                    className={`group cursor-pointer p-4 rounded-2xl border transition-all duration-300 relative overflow-hidden lg:whitespace-nowrap
                                         ${isSelected
                                             ? 'bg-white dark:bg-slate-800 border-cyan-500 shadow-md scale-[1.02]'
                                             : 'bg-transparent border-transparent hover:bg-slate-100 dark:hover:bg-white/5 hover:border-slate-200 dark:hover:border-white/10'
@@ -251,7 +250,7 @@ export default function LoungeNewsFeed() {
                                                     {item.category === 'report' ? tr("noticias.relatorio", "Relatório") : tr("noticias.noticia", "Notícia")}
                                                 </span>
                                             </div>
-                                            <h3 className={`text-sm font-bold truncate leading-tight transition-colors ${isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
+                                            <h3 className={`text-sm font-bold line-clamp-2 lg:line-clamp-none lg:truncate leading-tight transition-colors ${isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
                                                 {title}
                                             </h3>
                                         </div>
