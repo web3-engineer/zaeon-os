@@ -22,6 +22,7 @@ import { estaForaDaConversa } from "@/lib/canal/alvo";
 import { respostaCancelada } from "@/lib/canal/parar";
 import { agentesDasSalas } from "@/lib/canal/agentesSalas";
 import { escopoDaMemoria, SUPERFICIE_ESCRITORIO } from "@/lib/canal/memoria";
+import { lerPedido, INSTRUCAO_PEDIDO_VAGO } from "@/lib/canal/pedidoVago";
 import type { StructuredAnswer } from "@/lib/agent/contracts";
 
 export const N_CONTEXTO = 30;
@@ -206,7 +207,9 @@ const gerarComHarness: Gerar = async ({ agente, objective, history, canal, userI
     identidade = PERSONAS[agente.agentKey] ? buildPersona(agente.agentKey) : `Você é ${agente.nome}. ${agente.bio}`;
   }
   // #562: o que a memória profunda relembrou (só a de quem pode: lib/canal/memoria) entra depois do bloco do canal
-  const systemContext = [identidade, (agente as any).__blocoCanal ?? "", memoria ?? ""].filter(Boolean).join("\n\n");
+  // #868: pedido sem assunto ("me ajude com resumi") — sem busca na base e, se pediu uma ação, perguntar o que é
+  const pedido = lerPedido(objective);
+  const systemContext = [identidade, (agente as any).__blocoCanal ?? "", memoria ?? "", pedido.vago ? INSTRUCAO_PEDIDO_VAGO : ""].filter(Boolean).join("\n\n");
   // O harness foi escrito "em Aura"; aqui a voz é do agente convocado. Troca a identidade nos
   // prompts de geração SEM tocar no harness (regra: o harness só muda no incremento de uso).
   const assinatura = `\nIDENTIDADE DESTE TURNO: você é ${agente.nome} (não a Aura). Mantenha a voz e o nome de ${agente.nome} em toda a resposta.`;
@@ -227,7 +230,8 @@ const gerarComHarness: Gerar = async ({ agente, objective, history, canal, userI
   // leva agentKey/surface/scopeId e cada fase (plan/reason/draft) grava sua linha.
   // BASE DE CONHECIMENTO (RAG, o mesmo do chat): a da turma + a pessoal de quem pediu (os PDFs que ela anexou
   // pelo 📎 do Escritório sobem pra "Minha base") + a da área do mentor. Nunca derruba o turno (null = sem base).
-  const baseConhecimento = await import("@/lib/rag/turno")
+  // #868: pedido sem assunto não busca — qualquer trecho com "resumo" ou "ajuda" virava o tema da resposta.
+  const baseConhecimento = pedido.semAssunto ? null : await import("@/lib/rag/turno")
     .then(async (m) => m.baseParaTurno({
       userId: userId ?? null, pergunta: objective,
       areas: (await import("@/lib/rag/areas")).areasDoTurno(agente.tipo === "mentor" ? agente.agentKey : undefined),
