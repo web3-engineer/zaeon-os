@@ -239,7 +239,7 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
   /** "toda segunda, 7h–10h · a próxima é seg, 24/11" */
   const quando = useCallback((dia: Dia, de: number, ate: number) =>
     // #867: sábado e domingo são masculinos ("todo sábado"); os outros dias, femininos ("toda segunda")
-    `${dia === 0 || dia === 6 ? "todo" : "toda"} ${DIA_LONGO[dia]},${textoHora(de)}–${textoHora(ate)} · a próxima é ${textoData(proximaVez(dia, de, new Date()))}`, []);
+    `${dia === 0 || dia === 6 ? "todo" : "toda"} ${DIA_LONGO[dia]}, ${textoHora(de)}–${textoHora(ate)} · a próxima é ${textoData(proximaVez(dia, de, new Date()))}`, []);
 
   const TENTAR = tr("agenda.tentarDeNovo", "Tentar de novo");
 
@@ -494,6 +494,8 @@ export default function AgendaBandeja({ canalId, aberta, onFechar, versao }: {
                   <button key={`${d}-${h}`} type="button" data-dia={d} data-hora={h} data-passou={passou || undefined}
                     onPointerDown={(e) => comecarPressao(e, d, h)}
                     onPointerEnter={(e) => { if (ancora && e.pointerType !== "touch") setMira({ dia: d, hora: h }); }}
+                    // teclado: o rascunho acompanha o quadrado em foco, como acompanha o mouse
+                    onFocus={() => { if (ancora) setMira({ dia: d, hora: h }); }}
                     onClick={() => { if (!ignorarClique.current) clicar(d, h); }}
                     onContextMenu={(e) => { if (arrasto?.ativo || pressao.current) e.preventDefault(); }}
                     disabled={!carregouUmaVez}

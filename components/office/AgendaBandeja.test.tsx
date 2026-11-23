@@ -83,11 +83,21 @@ describe("AgendaBandeja", () => {
     fireEvent.click(celula("Ter 15h: livre"));
     await waitFor(() => expect(chamadas.some((c) => c.metodo === "POST")).toBe(true));
     expect(chamadas.find((c) => c.metodo === "POST")!.body).toEqual({ dia: 2, inicio: 9, fim: 15 });
+    // o aviso separa o dia do horário ("toda terça, 9h–16h")
+    await waitFor(() => expect(screen.getByText(/toda terça, 9h–16h/)).toBeTruthy());
     // recarregou: os quadrados das 9h às 15h agora são da Giulia; 16h continua livre
     await pronta("Ter 12h: Giulia");
     expect(celula("Ter 9h: Giulia")).toBeTruthy();
     expect(celula("Ter 15h: Giulia")).toBeTruthy();
     expect(celula("Ter 16h: livre")).toBeTruthy();
+  });
+
+  it("teclado: o rascunho acompanha o quadrado em foco", async () => {
+    abrir();
+    await pronta("Ter 9h: livre");
+    fireEvent.click(celula("Ter 9h: livre"));
+    fireEvent.focus(celula("Ter 12h: livre"));
+    expect(document.querySelector("[data-rascunho]")?.textContent).toBe("9h–13h");
   });
 
   it("2º clique em outro dia recomeça a seleção (não salva)", async () => {

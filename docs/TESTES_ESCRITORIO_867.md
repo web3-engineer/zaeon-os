@@ -31,6 +31,8 @@ O registro desses testes está em `docs/TESTES_ESCRITORIO_861.md`.
   - com duas pessoas, um "Entrar" para cada, e cada um manda o horário da pessoa;
   - o rascunho tracejado (commit de 21/11);
   - corrigido o teste da grade, que falhava aos domingos e segundas (o dia de hoje vira "Dom · hoje" no cabeçalho).
+  - o aviso separa o dia do horário ("toda terça, 9h–16h"); a vírgula tinha ficado colada (achado da revisão do PR);
+  - teclado: o rascunho acompanha o quadrado em foco (achado da revisão do PR).
 - Escritório, agenda e rotas do canal: 49 arquivos, 776 testes. `tsc` sem erros; `i18n-check` OK.
 - Suíte completa (22/11): 833 arquivos, 8008 testes passando. As 30 falhas são as mesmas da main (nenhuma nova).
 
