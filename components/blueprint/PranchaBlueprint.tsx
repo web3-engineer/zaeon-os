@@ -16,12 +16,23 @@ const INTERATIVO = "a, button, input, textarea, select, label, [contenteditable]
 const AZUL = "#0b2c4d", LINHA_FRACA = "rgba(150,205,255,.14)", ALTURA_PADRAO = 150;
 const COR_FIO: Record<Fio["tipo"], string> = { percurso: COR.passo, pratica: "rgba(170,220,255,.75)", critico: COR.critico, figura: COR.figura, avaliacao: COR.avaliacao };
 
+/** #870: o menor zoom ao abrir no foco (antes 0,6, que cortava as bordas no celular) */
+export const ZOOM_MIN_FOCO = 0.25;
+/** #870: o zoom que encaixa o foco (largura × altura da tela, tamanho do foco). Piso = o menor zoom do botão "−". */
+export function zoomDoFoco(largura: number, altura: number, focoL: number, focoA: number): number {
+  return Math.max(ZOOM_MIN_FOCO, Math.min(1.1, (largura - 32) / Math.max(1, focoL), (altura - 50) / Math.max(1, focoA)));
+}
+/** #870: o fundo da barra de zoom e da legenda na skin azul (o mesmo azul do papel, quase opaco) */
+const FUNDO_BARRA = "rgba(8,24,52,.94)";
+
 export default function PranchaBlueprint({ id, doc, acoes, onFixar, sobre, skin = "blueprint", letra = 1 }: {
   id: string; doc: DocBlueprint; acoes: AcoesModulo; onFixar: (modulo: string, x: number, y: number) => void; sobre?: ReactNode; skin?: Skin; /** o tamanho da letra dos cards (1 = 100%) */ letra?: number;
 }) {
   const papel = skin === "cartolina", rosa = skin === "barbie";
   const raiz = useRef<HTMLDivElement>(null);
   const [cam, setCam] = useState({ x: 0, y: 0, z: 0.8 });
+  // #870: a legenda virou botão — aberta, ela cobria o desenho e o zoom
+  const [legenda, setLegenda] = useState(false);
   const mexeu = useRef(false);   // a pessoa mexeu na câmera (pan/zoom): para de reenquadrar sozinho
   // #631: as medidas dos cards entram de uma vez (antes, uma por card = N redesenhos ao abrir) — components/blueprint/useAlturas
   const { alturas, guarda } = useAlturas(id);
@@ -131,7 +142,9 @@ export default function PranchaBlueprint({ id, doc, acoes, onFixar, sobre, skin 
     }
     const f = caixaDoFoco(caixas); if (!f) return;
     const est = caixas.find((c) => c.id === "estudo"), ate = est ? est.y + est.h : f.y1;   // a figura + o estudo cabem na altura
-    const z = Math.max(0.6, Math.min(1.1, (r.width - 60) / Math.max(1, f.x1 - f.x0), (r.height - 50) / Math.max(1, ate - f.y0)));
+    // #870: o piso era 0,6 — no celular a figura + o estudo passavam da largura e abriam com as bordas cortadas.
+    // Agora o foco cabe na largura (piso 0,25, o mesmo do "−"); no computador continua grande como antes.
+    const z = zoomDoFoco(r.width, r.height, f.x1 - f.x0, ate - f.y0);
     setCam({ z, x: r.width / 2 - ((f.x0 + f.x1) / 2) * z, y: 24 - f.y0 * z });
   }, [caixas]);
   // segue reenquadrando enquanto o layout assenta (alturas medidas, a Zaeon recompondo) — até a pessoa mexer na câmera
@@ -224,7 +237,10 @@ export default function PranchaBlueprint({ id, doc, acoes, onFixar, sobre, skin 
       </div>
 
       {sobre}
-      <div className="absolute bottom-3 right-3 z-[90] flex items-center gap-1 font-mono text-[11px] text-sky-100" style={papel ? { color: PAPEL.tinta } : rosa ? { color: ROSA.tinta } : undefined} onPointerDown={(e) => e.stopPropagation()}>
+      {/* #870: a barra de zoom ganhou fundo — transparente, ela ficava por cima do texto dos cartões */}
+      <div data-zoom-prancha className="absolute bottom-3 right-3 z-[90] flex items-center gap-1 rounded-md border p-1 font-mono text-[11px] text-sky-100 shadow-lg"
+        style={papel ? { color: PAPEL.tinta, background: PAPEL.card, borderColor: "rgba(58,47,30,.25)" } : rosa ? { color: ROSA.tinta, background: "rgba(255,255,255,.88)", borderColor: ROSA.borda } : { background: FUNDO_BARRA, borderColor: "rgba(125,211,252,.35)" }}
+        onPointerDown={(e) => e.stopPropagation()}>
         {/* #731: os botões com nome (o leitor de tela lia só "menos" e "mais") e do tamanho do dedo em tela de toque */}
         <button type="button" aria-label="Diminuir o zoom" title="Diminuir o zoom" className="rounded-sm border border-sky-300/40 px-2 py-1 hover:bg-white/10 [@media(hover:none)]:min-h-[40px] [@media(hover:none)]:min-w-[40px]" onClick={() => { mexeu.current = true; setCam((c) => ({ ...c, z: Math.max(0.25, c.z * 0.85) })); }}>−</button>
         <span className="w-12 text-center" aria-live="polite" aria-label={`Zoom ${Math.round(cam.z * 100)}%`}>{Math.round(cam.z * 100)}%</span>
@@ -232,9 +248,23 @@ export default function PranchaBlueprint({ id, doc, acoes, onFixar, sobre, skin 
         <button type="button" aria-label="Voltar pro foco (a figura e o estudo)" className="ml-1 rounded-sm border border-sky-300/40 px-2 py-1 hover:bg-white/10 [@media(hover:none)]:min-h-[40px] [@media(hover:none)]:min-w-[40px]" title="Voltar pro foco (a figura e o estudo)" onClick={() => { mexeu.current = true; encaixar(false); }}>◎</button>
         <button type="button" aria-label="Ver a prancha inteira" className="rounded-sm border border-sky-300/40 px-2 py-1 hover:bg-white/10 [@media(hover:none)]:min-h-[40px] [@media(hover:none)]:min-w-[40px]" title="Ver a prancha inteira" onClick={() => { mexeu.current = true; encaixar(true); }}>⤢</button>
       </div>
-      {/* #713: no celular a legenda sobe, acima dos botões de zoom (antes ficava por cima deles) */}
-      <div data-tour="blueprint-legenda" className="pointer-events-none absolute bottom-3 left-3 max-sm:bottom-14 max-sm:right-3 z-[90] font-mono text-[10.5px] tracking-[0.16em] text-sky-200/55">
-        <span style={{ color: corNaSkin(skin, COR.passo) }}>━ PERCURSO</span> &nbsp; <span>━ PRÁTICA</span> &nbsp; <span style={{ color: corNaSkin(skin, COR.critico) }}>━ CRÍTICO (TRAVA A FASE)</span> &nbsp; ⟶ DA ESQUERDA PRA DIREITA
+      {/* #870: a legenda é um botão. Aberta, ela fica num quadro com fundo acima do botão (antes ficava sempre na tela,
+          por cima do desenho, e no celular por cima do zoom). No celular o botão fica em cima da barra de zoom (lado a lado não cabe em 375 px). */}
+      <div data-tour="blueprint-legenda" className="absolute bottom-3 left-3 max-sm:left-auto max-sm:right-3 max-sm:bottom-[64px] z-[90] font-mono text-[11px] tracking-[0.12em]" onPointerDown={(e) => e.stopPropagation()}>
+        {legenda && (
+          <div id="legenda-prancha" role="note" className="absolute bottom-full left-0 max-sm:left-auto max-sm:right-0 mb-2 w-max max-w-[min(18rem,calc(100vw-2rem))] rounded-md border p-2.5 leading-6 shadow-lg"
+            style={papel ? { color: PAPEL.tinta, background: PAPEL.card, borderColor: "rgba(58,47,30,.25)" } : rosa ? { color: ROSA.tinta, background: "rgba(255,255,255,.92)", borderColor: ROSA.borda } : { color: "#e0f2fe", background: FUNDO_BARRA, borderColor: "rgba(125,211,252,.35)" }}>
+            <div><span style={{ color: corNaSkin(skin, COR.passo) }}>━</span> PERCURSO</div>
+            <div><span>━</span> PRÁTICA</div>
+            <div><span style={{ color: corNaSkin(skin, COR.critico) }}>━</span> CRÍTICO (TRAVA A FASE)</div>
+            <div className="opacity-75">⟶ DA ESQUERDA PRA DIREITA</div>
+          </div>
+        )}
+        <button type="button" aria-expanded={legenda} aria-controls="legenda-prancha" onClick={() => setLegenda((v) => !v)}
+          className="rounded-md border px-2.5 py-1.5 shadow-lg hover:brightness-110 [@media(hover:none)]:min-h-[40px]"
+          style={papel ? { color: PAPEL.tinta, background: PAPEL.card, borderColor: "rgba(58,47,30,.25)" } : rosa ? { color: ROSA.tinta, background: "rgba(255,255,255,.88)", borderColor: ROSA.borda } : { color: "#e0f2fe", background: FUNDO_BARRA, borderColor: "rgba(125,211,252,.35)" }}>
+          {legenda ? "✕ Legenda" : "Legenda"}
+        </button>
       </div>
     </div>
     </SkinProvider>

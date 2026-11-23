@@ -186,7 +186,9 @@ export default function FiguraIso({ doc, alca }: { doc: DocBlueprint; alca?: (e:
             style={{ width: "100%", height: "auto", maxHeight: 560 }} dangerouslySetInnerHTML={{ __html: m.svg }} />
         </div>
         <div className="flex items-baseline justify-between gap-4 font-mono text-[11px] tracking-[0.14em]" style={{ color: suave }}>
-          <span className="uppercase">passe o mouse pra desmontar · clique pra fixar</span>
+          {/* #870: no celular não tem mouse — o texto de toque aparece em tela de toque (hover: none) */}
+          <span className="uppercase [@media(hover:none)]:hidden">passe o mouse pra desmontar · clique pra fixar</span>
+          <span className="uppercase hidden [@media(hover:none)]:inline">toque numa peça pra destacar · toque de novo pra soltar</span>
           <span ref={leitura} className="truncate text-right" style={{ color: tinta }} aria-live="off" />
         </div>
       </div>

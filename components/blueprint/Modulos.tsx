@@ -4,10 +4,19 @@
  * registro, o carimbo "TIPO · X-NN" com a régua (arrasta por ali), título mono. O conhecimento (passos) à esquerda, o
  * estudo/figura/críticos no centro, a prática à direita.
  */
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { NOME_FASE, type Critico, type DocBlueprint, type Fase } from "@/lib/blueprint/tipos";
 import FiguraIso from "./FiguraIso";
 import { MAO, PAPEL, REDONDA, ROSA, corNaSkin, inclinacao, useCor, useSkin } from "./skin";
+
+/** #870: enquanto a Zaeon monta, o título ainda é o PEDIDO da pessoa ("FAZ UM BLUEPRINT DE…") — mostra este no lugar */
+export const TITULO_PROVISORIO = "Montando o seu blueprint…";
+/** #870: o blueprint ainda está sendo montado — a Zaeon nunca compôs (compostoEm = 0) e não há resumo.
+ *  Depois de composto, um resumo vazio não deixa o carregamento preso (revisão do #871). */
+export const estaMontando = (doc: Pick<DocBlueprint, "resumo" | "compostoEm">) => !doc.compostoEm && !doc.resumo;
+/** #870: o que a Zaeon faz enquanto monta — a lista do carregamento */
+export const ETAPAS_MONTAGEM = ["lendo a conversa", "escolhendo o título", "desenhando o percurso", "prática e produto", "fontes do YouTube"] as const;
+const PASSO_ETAPA_MS = 2200;
 
 export const COR = {
   estudo: "#7fe0ff", passo: "#ffd36b", critico: "#ff4d5e", provado: "#7dffb0", figura: "#7fe0ff", repos: "#7fe0ff",
@@ -80,10 +89,12 @@ function FiguraHeroi({ doc, onArrastar }: { doc: DocBlueprint; onArrastar?: (e: 
 function CardYoutube({ doc, onArrastar }: { doc: DocBlueprint; onArrastar?: (e: React.PointerEvent) => void }) {
   const k = useCor();
   const passoAtual = doc.passos.find((p) => p.fase === doc.fase && !doc.criticos.some((c) => c.passoId === p.id && c.status === "provado"));
-  const buscas = (doc.buscasYoutube.length ? doc.buscasYoutube : [doc.titulo, ...(passoAtual ? [`${doc.titulo} ${passoAtual.titulo}`] : [])]).slice(0, 4);
+  // #870: enquanto monta, o título ainda é o pedido ("Faz um blueprin…") — sem buscas até chegar o título de verdade
+  const buscas = (doc.buscasYoutube.length ? doc.buscasYoutube : estaMontando(doc) ? [] : [doc.titulo, ...(passoAtual ? [`${doc.titulo} ${passoAtual.titulo}`] : [])]).slice(0, 4);
   const url = (q: string) => `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
   return (
     <CardPrancha cor="#ff4d5e" carimbo="ESTUDE NO YOUTUBE · Y-01" direita={<span className="font-mono text-[12.5px] text-sky-200/60">aulas e tutoriais</span>} onArrastar={onArrastar}>
+      {!buscas.length && <Texto><Falta>as buscas aparecem quando o título chegar…</Falta></Texto>}
       <ul className="space-y-1.5">
         {buscas.map((q) => (
           <li key={q}>
@@ -101,6 +112,41 @@ function CardYoutube({ doc, onArrastar }: { doc: DocBlueprint; onArrastar?: (e: 
 const Titulo = ({ children, grande }: { children: ReactNode; grande?: boolean }) => <div className={`font-semibold ${grande ? "text-[22px]" : ""}`} style={{ fontFamily: MONO, letterSpacing: "0.01em" }}>{children}</div>;
 const Texto = ({ children }: { children: ReactNode }) => <p className="mt-1 whitespace-pre-wrap text-[14px] text-sky-50/85">{children}</p>;
 const Falta = ({ children }: { children: ReactNode }) => <span className="italic text-sky-200/45">{children}</span>;
+
+/**
+ * #870: o carregamento do blueprint — antes, só "a Zaeon está montando o blueprint desta conversa…" parado.
+ * Um traço sendo desenhado (lápis na cartolina, régua no blueprint, pincel na barbie) e as etapas acendendo uma a uma.
+ * Não é o progresso real (o servidor não conta em que etapa está): a última etapa fica acesa até o blueprint chegar.
+ * Com "menos animação", o traço fica parado e inteiro (as etapas só trocam de cor).
+ */
+export function Montando() {
+  const skin = useSkin(), k = useCor();
+  const [etapa, setEtapa] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setEtapa((e) => Math.min(e + 1, ETAPAS_MONTAGEM.length - 1)), PASSO_ETAPA_MS);
+    return () => clearInterval(t);
+  }, []);
+  const ferramenta = skin === "cartolina" ? "✏️" : skin === "barbie" ? "🖌️" : "📐";
+  return (
+    <div data-montando className="mt-1" role="status" aria-label="A Zaeon está montando o blueprint">
+      <style>{`@keyframes bp-traco{from{stroke-dashoffset:220}to{stroke-dashoffset:0}}@keyframes bp-pisca{0%,100%{opacity:.35}50%{opacity:.9}}
+        @media (prefers-reduced-motion: no-preference){[data-montando] .bp-traco{animation:bp-traco 2.2s ease-in-out infinite alternate}[data-montando] .bp-pisca{animation:bp-pisca 1.4s ease-in-out infinite}}`}</style>
+      <div className="flex items-center gap-2">
+        <svg width="150" height="22" viewBox="0 0 150 22" aria-hidden>
+          <path className="bp-traco" d="M4 15 C 30 3, 52 21, 78 11 S 128 5, 146 13" fill="none" stroke={k(COR.estudo)} strokeWidth="2" strokeDasharray="220" strokeLinecap="round" />
+        </svg>
+        <span aria-hidden className="text-[16px]">{ferramenta}</span>
+      </div>
+      <ol className="mt-1.5 space-y-0.5 font-mono text-[12.5px]">
+        {ETAPAS_MONTAGEM.map((e, i) => (
+          <li key={e} data-etapa={i <= etapa ? "acesa" : undefined} className={i === etapa ? "bp-pisca" : ""} style={{ color: i <= etapa ? k(COR.estudo) : undefined, opacity: i <= etapa ? 1 : 0.4 }}>
+            {i < etapa ? "✓" : i === etapa ? "●" : "○"} {e}
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
 export function TagFase({ fase, doc }: { fase: Fase; doc: DocBlueprint }) {
   const k = useCor();
   const cor = fase < doc.fase ? k(COR.provado) : fase === doc.fase ? k(COR.critico) : k("rgba(186,230,253,.55)");
@@ -139,8 +185,8 @@ export function Modulo({ id, doc, acoes, onArrastar }: { id: string; doc: DocBlu
   if (id === "estudo") {
     return (
       <CardPrancha cor={k(COR.estudo)} carimbo="ESTUDO · E-01" direita={<span className="font-mono text-[11px] text-sky-200/60">{doc.area}</span>} onArrastar={onArrastar}>
-        <Titulo grande>{doc.titulo.toUpperCase()}</Titulo>
-        {doc.resumo ? <Texto>{doc.resumo}</Texto> : <Texto><Falta>a Zaeon está montando o blueprint desta conversa…</Falta></Texto>}
+        <Titulo grande>{estaMontando(doc) ? TITULO_PROVISORIO : doc.titulo.toUpperCase()}</Titulo>
+        {estaMontando(doc) ? <Montando /> : doc.resumo ? <Texto>{doc.resumo}</Texto> : null}
         <TrilhoFases doc={doc} />
         {abertosDaFase.length > 0 && <div className="mt-2 font-mono text-[12px]" style={{ color: k(COR.critico) }}>● {abertosDaFase.length} crítico{abertosDaFase.length > 1 ? "s" : ""} travando a fase {doc.fase}</div>}
         {acoes.podeEditar && (

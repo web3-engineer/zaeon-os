@@ -40,7 +40,7 @@ function StoryImage({ src, alt, caption }: { src: string, alt: string, caption: 
                     ) : (
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500">
                             <GlobeAltIcon className="w-8 h-8 mb-3 opacity-50" />
-                            <span className="text-[10px] font-bold uppercase tracking-widest">Insira o link da imagem aqui</span>
+                            <span className="text-[11px] font-bold uppercase tracking-widest">Insira o link da imagem aqui</span>
                         </div>
                     )}
                 </div>
@@ -75,7 +75,7 @@ function YouTubeEmbed({ videoId, caption }: { videoId: string, caption: string }
                     ) : (
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500">
                             <PlayCircleIcon className="w-12 h-12 mb-3 opacity-50" />
-                            <span className="text-[10px] font-bold uppercase tracking-widest">Insira o ID do Vídeo (Ex: dQw4w9WgXcQ)</span>
+                            <span className="text-[11px] font-bold uppercase tracking-widest">Insira o ID do Vídeo (Ex: dQw4w9WgXcQ)</span>
                         </div>
                     )}
                 </div>
@@ -95,7 +95,7 @@ function WeekSection({ weekNum, title, icon: Icon, children }: { weekNum: number
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-50px" }} className="mb-16">
             <div className="flex items-center gap-4 mb-6">
                 <div className="w-12 h-12 rounded-2xl backdrop-blur-xl bg-cyan-500/10 dark:bg-cyan-500/5 border border-cyan-500/20 flex flex-col items-center justify-center flex-shrink-0 shadow-sm">
-                    <span className="text-[8px] font-black uppercase text-cyan-600 dark:text-cyan-400 tracking-widest leading-none mb-0.5">Sem</span>
+                    <span className="text-[11px] font-black uppercase text-cyan-600 dark:text-cyan-400 tracking-widest leading-none mb-0.5">Sem</span>
                     <span className="text-cyan-600 dark:text-cyan-400 font-bold text-lg leading-none">{weekNum}</span>
                 </div>
                 <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-slate-900 dark:text-white font-sans flex items-center gap-3">
@@ -129,10 +129,8 @@ export default function HederaHackathonFeature() {
             {/* HEADER LIQUID GLASS */}
             <div className="relative w-full min-h-[85vh] flex items-center justify-center overflow-hidden">
                 <motion.div style={{ y: yHeader, opacity: opacityHeader }} className="absolute inset-0 z-0">
-                    <NextImage
-                        src="https://images.unsplash.com/photo-1639762681485-074b7f4ec651?q=80&w=2000&auto=format&fit=crop"
-                        alt="Hedera Abstract" fill className="object-cover opacity-30 dark:opacity-20" priority
-                    />
+                    {/* #870: a foto do Unsplash não existe mais (404) — no lugar, um fundo em degradê nas cores da notícia */}
+                    <div aria-hidden className="absolute inset-0 opacity-40 dark:opacity-30 bg-[radial-gradient(ellipse_at_30%_20%,#6366f1_0%,transparent_55%),radial-gradient(ellipse_at_75%_60%,#a855f7_0%,transparent_50%),radial-gradient(ellipse_at_50%_100%,#22d3ee_0%,transparent_45%)]" />
                     <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#f8fafc]/60 to-[#f8fafc] dark:via-[#020617]/60 dark:to-[#020617]" />
                 </motion.div>
 
@@ -140,7 +138,7 @@ export default function HederaHackathonFeature() {
                     <div className="backdrop-blur-[40px] bg-white/40 dark:bg-black/40 border border-white/50 dark:border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.05)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.4)] rounded-[3rem] p-10 md:p-20 text-center">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.8 }}
-                            className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 text-[10px] font-bold uppercase tracking-[0.2em] mb-8"
+                            className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 text-[11px] font-bold uppercase tracking-[0.2em] mb-8"
                         >
                             <CpuChipIcon className="w-4 h-4" />
                         </motion.div>
@@ -264,17 +262,17 @@ export default function HederaHackathonFeature() {
                     <div className="p-8 rounded-[2rem] backdrop-blur-2xl bg-white/40 dark:bg-white/5 border border-white/50 dark:border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.05)] text-center">
                         <CodeBracketIcon className="w-8 h-8 mx-auto text-indigo-600 dark:text-indigo-400 mb-4" />
                         <div className="text-4xl font-bold text-slate-900 dark:text-white tracking-tight mb-2">50</div>
-                        <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Projetos Lapidados</div>
+                        <div className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Projetos Lapidados</div>
                     </div>
                     <div className="p-8 rounded-[2rem] backdrop-blur-2xl bg-white/40 dark:bg-white/5 border border-white/50 dark:border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.05)] text-center">
                         <BugAntIcon className="w-8 h-8 mx-auto text-rose-500 mb-4" />
                         <div className="text-4xl font-bold text-slate-900 dark:text-white tracking-tight mb-2">10k+</div>
-                        <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Bugs Corrigidos</div>
+                        <div className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Bugs Corrigidos</div>
                     </div>
                     <div className="p-8 rounded-[2rem] backdrop-blur-2xl bg-white/40 dark:bg-white/5 border border-white/50 dark:border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.05)] text-center">
                         <ClockIcon className="w-8 h-8 mx-auto text-amber-500 mb-4" />
                         <div className="text-4xl font-bold text-slate-900 dark:text-white tracking-tight mb-2">1.000</div>
-                        <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Concorrentes Globais</div>
+                        <div className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Concorrentes Globais</div>
                     </div>
                 </div>
 

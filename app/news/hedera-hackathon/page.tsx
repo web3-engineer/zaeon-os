@@ -94,7 +94,7 @@ export default function InstitucionalReportPage() {
                             <BuildingLibraryIcon className="w-8 h-8" />
                         </div>
                     </div>
-                    <h4 className="text-[10px] md:text-xs font-semibold uppercase tracking-[0.3em] text-indigo-600 dark:text-indigo-400 mb-4 opacity-80">
+                    <h4 className="text-[11px] md:text-xs font-semibold uppercase tracking-[0.3em] text-indigo-600 dark:text-indigo-400 mb-4 opacity-80">
                         Documento Oficial de Transparência
                     </h4>
                     <h1 className="text-2xl md:text-3xl font-semibold text-slate-900 dark:text-white leading-tight tracking-tight mb-6">
@@ -185,7 +185,7 @@ export default function InstitucionalReportPage() {
                                             #{project.id}
                                         </span>
                                     </div>
-                                    <span className="text-[9px] font-bold uppercase tracking-[0.2em] px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/10">
+                                    <span className="text-[11px] font-bold uppercase tracking-[0.2em] px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/10">
                                         Auditado
                                     </span>
                                 </div>
