@@ -10,12 +10,17 @@
     /* MODO CLARO */
     --background: #f8fafc;
     --foreground: #0f172a;
+    /* #870: os mesmos tons em canais RGB, pro Tailwind fazer bg-background/80 (com hex ele não gera a classe) */
+    --background-rgb: 248 250 252;
+    --foreground-rgb: 15 23 42;
   }
 
   .dark {
     /* MODO ESCURO */
     --background: #030014;
     --foreground: #ffffff;
+    --background-rgb: 3 0 20;
+    --foreground-rgb: 255 255 255;
   }
 }
 

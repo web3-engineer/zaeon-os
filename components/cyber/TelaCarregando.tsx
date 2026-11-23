@@ -3,7 +3,8 @@
  * TelaCarregando — o loading do cyberespaço: um SLIDESHOW de panorâmicas do próprio cyberespaço (fotos tiradas no
  * mundo: a cidadela, a festa do lounge, o olho com os sigilos, o templo, a garagem das motos…) em ORDEM ALEATÓRIA, cada
  * uma entrando e saindo em fade (crossfade) com um zoom lento; embaixo, SÓ a barra clássica (fina, branca), progredindo
- * com as etapas REAIS do engine (lib/cyber/carregamento). Sem cérebro, sem texto. A tela fica NA FRENTE do canvas o tempo
+ * com as etapas REAIS do engine (lib/cyber/carregamento). #870: em cima da barra, UMA linha curta diz o que está
+ * carregando e quanto falta ("Construindo a cidade Zaeon · 42%") — antes era só a barra, e no celular parecia travado. A tela fica NA FRENTE do canvas o tempo
  * inteiro em que o mapa de verdade está sendo montado atrás dela (o usuário não vê o mundo aparecendo aos pedaços) —
  * o som já pode começar enquanto as fotos passam (o engine liga o áudio e a música do lounge durante a montagem) — e
  * só sai, em fade, quando o mundo inteiro está pronto.
@@ -50,8 +51,11 @@ export default function TelaCarregando({ carga, saindo = false }: { carga: Carre
           `}</style>
         </div>
       )}
-      {/* SÓ a barra: fina, branca, embaixo */}
-      <div className="absolute inset-x-0 bottom-[9vh] flex justify-center">
+      {/* a barra: fina, branca, embaixo — com a etapa e a porcentagem em cima (#870) */}
+      <div className="absolute inset-x-0 bottom-[9vh] flex flex-col items-center gap-2 px-4">
+        <p data-carregando-texto className="max-w-[min(90vw,360px)] text-center text-[13px] font-medium text-white/85 [text-shadow:0_1px_6px_rgba(0,0,0,.8)]">
+          {carga?.rotulo ?? "Abrindo o cyberespaço"}{carga?.detalhe ? ` (${carga.detalhe})` : ""} · {pct}%
+        </p>
         <div className="h-[3px] w-[240px] overflow-hidden rounded-full bg-white/20 shadow-[0_0_12px_rgba(0,0,0,.6)]">
           <div className="h-full rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.45)]" style={{ width: `${Math.max(2, pct)}%`, transition: "width 160ms linear" }} />
         </div>

@@ -24,8 +24,9 @@ const config: Config = {
         mao: ["var(--font-mao)", "Caveat", "'Segoe Script'", "cursive"],
       },
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        // #870: em canais RGB pra a transparência funcionar (bg-background/80 na barra de cima); sem "/N" é a cor cheia
+        background: "rgb(var(--background-rgb) / <alpha-value>)",
+        foreground: "rgb(var(--foreground-rgb) / <alpha-value>)",
         ...coresDoTailwind(),
       },
     },

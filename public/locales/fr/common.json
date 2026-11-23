@@ -700,6 +700,8 @@
                 "summary": "Concevez des circuits et testez des composants physiques."
             },
             "label": "Savoirs sur la Marketplace",
+            "prev": "Cartes précédentes",
+            "next": "Cartes suivantes",
             "coracao": {
                 "title": "Atlas du cœur",
                 "summary": "Anatomie, cavités et circulation."

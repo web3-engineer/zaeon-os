@@ -700,6 +700,8 @@
                 "summary": "Entwirf Schaltungen und teste physische Bauteile."
             },
             "label": "Wissen auf dem Marktplatz",
+            "prev": "Vorherige Karten",
+            "next": "Nächste Karten",
             "coracao": {
                 "title": "Atlas des Herzens",
                 "summary": "Anatomie, Herzkammern und Kreislauf."

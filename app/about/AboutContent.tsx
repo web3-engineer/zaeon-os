@@ -47,7 +47,7 @@ export default function AboutContent() {
                         <div key={p.id}
                             className={`relative rounded-[1.8rem] p-[1.5px] ${featured ? "bg-gradient-to-br from-violet-500 to-cyan-400 shadow-[0_20px_60px_-20px_rgba(34,211,238,0.6)]" : "bg-white/10"}`}>
                             <div className="h-full rounded-[1.7rem] bg-[#0b1120]/90 backdrop-blur-2xl border border-white/5 p-6 flex flex-col">
-                                {featured && <span className="self-start mb-2 text-[9px] font-black uppercase tracking-widest text-white px-2 py-0.5 rounded-full" style={{ background: "linear-gradient(135deg,#7c3aed,#06b6d4)" }}>{t("about.plans.popular", "Mais popular")}</span>}
+                                {featured && <span className="self-start mb-2 text-[11px] font-black uppercase tracking-widest text-white px-2 py-0.5 rounded-full" style={{ background: "linear-gradient(135deg,#7c3aed,#06b6d4)" }}>{t("about.plans.popular", "Mais popular")}</span>}
                                 <h3 className="text-xl font-black text-white">{p.name}</h3>
                                 <p className="text-[11px] text-white/50 uppercase tracking-widest mt-0.5">{t(`about.planos_copy.${p.id}.tagline`, p.tagline)}</p>
                                 <div className="my-4 text-cyan-300 font-black text-lg">{p.id === "free" ? t("about.planos_copy.free.price", p.price) : p.id === "plus" ? t("about.planos_copy.plus.price", p.price) : p.price}</div>

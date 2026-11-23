@@ -148,7 +148,7 @@ export default function PilaresAbout() {
                                     className={`flex-shrink-0 w-16 h-16 md:w-20 md:h-20 rounded-full border-2 ${node.borderClass} ${node.bgClass} backdrop-blur-xl flex flex-col items-center justify-center relative`}
                                 >
                                     <span
-                                        className={`text-[7px] font-black uppercase tracking-wider transition-colors duration-700 ${isActive ? node.textClass : "text-white/20"
+                                        className={`text-[11px] font-black uppercase tracking-normal transition-colors duration-700 ${isActive ? node.textClass : "text-white/20"
                                             }`}
                                     >
                                         LVL
