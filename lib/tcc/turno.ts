@@ -17,6 +17,7 @@ import { lerBriefing, type Briefing } from "@/lib/tcc/briefing";
 import { aplicarNoTcc, criarTcc, findTccDoEscopo, listarTrabalhosDoEscopo, tccCrossOn, referenciasNovas, type FonteVerificada, type TccView } from "@/lib/tcc/store";
 import { ESQUELETO_TCC, chaveTitulo, esqueletoDe, opsDeWork, palavras } from "@/lib/tcc/secoes";
 import { researchWorkType } from "@/lib/agent/tools";
+import { TIPO_TRABALHO_PECA, esqueletoDaPeca, pedePecaJuridica, tituloDaPeca, type TipoPeca } from "@/lib/documento/pecaJuridica";
 import { paperOrquestraLigada } from "@/lib/paper-orquestra/flag";
 import { cartolinaMemoriaOn, createBoard, findOwnBoard, patchBoard } from "@/lib/cartolina/store";
 import { fundirNoBoard } from "@/lib/cartolina/fromStructured";
@@ -344,7 +345,7 @@ export async function trabalhosParaTurno(userId: string | null, scopeId: unknown
   } catch { return { bloco: "", total: 0 }; }
 }
 
-const kindDoTipo = (t: string | null): WorkKind => (t === "TCC" ? "tcc" : t === "Relatório" ? "relatorio" : "artigo");
+const kindDoTipo = (t: string | null): WorkKind => (t === "TCC" ? "tcc" : t === "Relatório" ? "relatorio" : t === TIPO_TRABALHO_PECA ? "peca" : "artigo");
 
 export async function tccDoTurno(input: {
   userId: string | null; scopeId: unknown; surface?: string | null; intent?: IntentId; kind?: WorkKind;
@@ -355,6 +356,8 @@ export async function tccDoTurno(input: {
   multi?: boolean;
   /** o trabalho aberto no editor (é nele que "continue a metodologia" mexe); ausente = o mais recente */
   abertoId?: unknown;
+  /** #873: escreve a peça jurídica (injetável pra teste; padrão = lib/documento/pecaJuridica em background) */
+  gerarPeca?: (workId: string, userId: string, pedido: string, tipo: TipoPeca) => void;
 }): Promise<TccTurno | null> {
   if (input.multi) return trabalhoDoTurno(input);
   const scope = sanitizeScopeId(input.scopeId);
@@ -405,6 +408,10 @@ const disparoPadrao = (id: string, uid: string, topic: string, brief?: Briefing)
   void import("@/lib/tcc/gerar").then((m) => m.gerarTccEmBackground(id, uid, topic, undefined, brief)).catch(() => {});
 };
 
+const disparoPeca = (id: string, uid: string, pedido: string, tipo: TipoPeca) => {
+  void import("@/lib/documento/pecaJuridica").then((m) => m.gerarPecaEmBackground(id, uid, pedido, tipo)).catch(() => {});
+};
+
 /** As seções que o modelo escreveu (title/body), sem as vazias. */
 const secoesDoModelo = (sections: unknown) => (Array.isArray(sections) ? sections : [])
   .map((s: any) => ({ titulo: String(s?.title ?? s?.titulo ?? ""), corpo: String(s?.body ?? s?.corpo ?? "") }))
@@ -422,6 +429,19 @@ async function trabalhoDoTurno(input: Parameters<typeof tccDoTurno>[0]): Promise
     const sections = input.answer.work?.sections;
     const lista = await listarTrabalhosDoEscopo(input.userId, scope);
     const aberto = lista.find((w) => w.id === input.abertoId) ?? lista[0] ?? null;
+
+    // #873: PEÇA JURÍDICA é sempre documento novo (o "revisão de aluguel" do pedido não é edição do trabalho aberto)
+    if (ehPedidoDeTrabalho(input.intent, input.kind) && input.kind === "peca") {
+      const tipoPeca = pedePecaJuridica(input.prompt) ?? "peca";
+      const t = await criarTcc({
+        userId: input.userId, scopeId: scope, titulo: tituloDaPeca(tipoPeca, input.prompt), origem: "estudos", workType: TIPO_TRABALHO_PECA,
+        secoes: esqueletoDaPeca(tipoPeca).map((titulo) => ({ titulo })),
+        status: "gerando",
+      });
+      void fixarCardTcc(input.userId, scope, resumoDoCard(t), TIPO_TRABALHO_PECA);
+      (input.gerarPeca ?? disparoPeca)(t.id, input.userId, input.prompt, tipoPeca);
+      return { workId: t.id, titulo: t.titulo, criado: true, alteradas: 0, gerando: true, tipo: TIPO_TRABALHO_PECA };
+    }
 
     if (ehPedidoDeTrabalho(input.intent, input.kind) && pedeNovoTrabalho(input.prompt, aberto)) {
       const tipo = researchWorkType(input.kind ?? input.answer.work?.kind ?? "artigo");

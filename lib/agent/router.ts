@@ -14,6 +14,7 @@ import { pedeImagem } from "@/lib/agent/pedeImagem";
 /** gráfico de função/geometria OU de dados (#749): sai no texto como ```grafico, nunca como imagem gerada */
 const pedeGraficoNoTexto = (s: string) => pedeGraficoMatematico(s) || pedeGraficoDeDados(s);
 import { pedeLivro } from "@/lib/livros/busca";
+import { pedePecaJuridica } from "@/lib/documento/pecaJuridica";
 import {
   INTENTS,
   INTENT_IDS,
@@ -64,7 +65,7 @@ const EXPLAIN_SIGNALS = ["explique", "explicar", "explica", "o que e", "o que sa
 const DEEP_SIGNALS = /(a fundo|aprofund|detalhad|minucios|exaustiv|bem completo|passo a passo)/;
 
 const has = (t: string, arr: string[]) => arr.some((k) => t.includes(k));
-const WORK_KINDS: WorkKind[] = ["estudo", "pesquisa", "artigo", "tcc", "relatorio", "aula"];
+const WORK_KINDS: WorkKind[] = ["estudo", "pesquisa", "artigo", "tcc", "relatorio", "aula", "peca"];
 
 function normalizeKind(k?: string): WorkKind | undefined {
   const n = (k || "").toLowerCase().trim();
@@ -136,6 +137,8 @@ export function classifyHeuristic(objective: string, ctx: CtxRoteador): RouterRe
   if (pedeGraficoNoTexto(objective)) return decide("explicar_conceito");
   // 0.6) #756 · pedido de IMAGEM/ilustração → artefato (o pickStudioKind escolhe "image")
   if (pedeImagem(objective)) return decide("gerar_artefato");
+  // 0.9) #873 · PEÇA JURÍDICA pronta — "faz uma petição inicial de…", "redija um contrato de…"
+  if (pedePecaJuridica(objective)) return decide("criar_trabalho", "peca");
   // 1) trabalho acadêmico completo — "escreva um artigo sobre X"
   if (genVerb && has(t, WORK_NOUNS)) return decide("criar_trabalho", workKindFrom(t) ?? "artigo");
   // 1.1) mais um trabalho na mesma conversa — "agora outro sobre Y" (o tipo é o do último, se o texto não diz)
@@ -161,13 +164,13 @@ export function classifyHeuristic(objective: string, ctx: CtxRoteador): RouterRe
 const SYSTEM = [
   "Você é o ROTEADOR de intenção da Aura (assistente de estudos e pesquisa acadêmica).",
   "Classifique o pedido do usuário em UMA intenção. Responda SOMENTE JSON válido:",
-  '{"intent":"<intenção>","kind":"<estudo|pesquisa|artigo|tcc|relatorio|aula|null>"}',
+  '{"intent":"<intenção>","kind":"<estudo|pesquisa|artigo|tcc|relatorio|aula|peca|null>"}',
   `intenções válidas: ${INTENT_IDS.join(" | ")}.`,
   "- conversa: saudação / small talk, sem tarefa.",
   "- duvida_rapida: pergunta objetiva e curta.",
   "- explicar_conceito: pedir explicação / entendimento de um tema — inclui 'quero aprender/entender X', 'como funciona X' e 'faz engenharia reversa de X'.",
   "- gerar_artefato: pedir artefato de estudo (mapa mental, diagrama, esquema, fluxograma, flashcards, resumo, timeline, podcast, vídeo, quiz, IMAGEM/ilustração/figura — 'faça uma imagem de X' é artefato, não explicação) — e também pedir uma AULA ('me dá uma aula sobre X', 'explica a fundo'),",
-  "- criar_trabalho: pedir trabalho acadêmico completo (artigo, TCC, monografia, relatório, redação) — inclusive MAIS UM quando a conversa já tem trabalho ('agora outro sobre Y', 'mais um sobre Z').",
+  "- criar_trabalho: pedir trabalho acadêmico completo (artigo, TCC, monografia, relatório, redação) — inclusive MAIS UM quando a conversa já tem trabalho ('agora outro sobre Y', 'mais um sobre Z') — OU uma PEÇA JURÍDICA pronta (petição, contestação, recurso, contrato, parecer, procuração, notificação): kind=peca.",
   "- pesquisar_fontes: pedir fontes / referências / bibliografia / papers.",
   "- revisar: pedir revisão / crítica / correção de algo do usuário.",
   "- buscar_livro: pedir um LIVRO específico — achar, link, PDF, baixar, onde ler ('me manda o pdf do livro X').",
@@ -181,10 +184,12 @@ function resultadoDe(cand: IntentId, text: string, ctx: CtxRoteador, kindDoModel
   const nt = norm(text);
   // "agora outro sobre Y" com trabalho na conversa manda mais que o palpite (que lê como conversa).
   const outro = pedeOutroTrabalho(nt, ctx);
-  const intent: IntentId = pedeAula(nt) ? "gerar_artefato" : pedeLivro(text) ? "buscar_livro" : pedeGraficoNoTexto(text) ? "explicar_conceito" : pedeImagem(text) ? "gerar_artefato" : outro ? "criar_trabalho" : cand;
+  // #873: pedido de peça jurídica pronta manda mais que o palpite (o modelo lia "faz uma petição" como explicação)
+  const peca = pedePecaJuridica(text);
+  const intent: IntentId = pedeAula(nt) ? "gerar_artefato" : pedeLivro(text) ? "buscar_livro" : pedeGraficoNoTexto(text) ? "explicar_conceito" : pedeImagem(text) ? "gerar_artefato" : peca || outro ? "criar_trabalho" : cand;
   const kind =
     intent === "criar_trabalho"
-      ? normalizeKind(typeof kindDoModelo === "string" ? kindDoModelo : undefined) ?? workKindFrom(nt) ?? (outro ? ctx.trabalhos?.kind : undefined) ?? "artigo"
+      ? peca ? "peca" : normalizeKind(typeof kindDoModelo === "string" ? kindDoModelo : undefined) ?? workKindFrom(nt) ?? (outro ? ctx.trabalhos?.kind : undefined) ?? "artigo"
       : undefined;
   const academicMode = academicModeForSurface(ctx.activeTab);
   return { intent, mode: modeFor(intent, nt, academicMode), academicMode, kind };
