@@ -700,6 +700,8 @@
                 "summary": "Design circuits and test physical components."
             },
             "label": "Knowledge in the Marketplace",
+            "prev": "Previous cards",
+            "next": "Next cards",
             "coracao": {
                 "title": "Atlas of the Heart",
                 "summary": "Anatomy, chambers and circulation."

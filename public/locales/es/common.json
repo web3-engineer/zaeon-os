@@ -700,6 +700,8 @@
                 "summary": "Diseña circuitos y prueba componentes físicos."
             },
             "label": "Conocimiento en el mercado",
+            "prev": "Tarjetas anteriores",
+            "next": "Siguientes tarjetas",
             "coracao": {
                 "title": "Atlas del corazón",
                 "summary": "Anatomía, cavidades y circulación."

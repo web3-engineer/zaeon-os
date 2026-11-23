@@ -700,6 +700,8 @@
                 "summary": "Projete circuitos e teste componentes físicos."
             },
             "label": "Conhecimento na vitrine",
+            "prev": "Cards anteriores",
+            "next": "Próximos cards",
             "coracao": {
                 "title": "Atlas do coração",
                 "summary": "Anatomia, câmaras e circulação."

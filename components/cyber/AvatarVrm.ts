@@ -16,7 +16,7 @@ import { MIXAMO_PRO_VRM, ORDEM_VRM, paiExistente } from "@/lib/cyber/vrmMapa";
 import { contornarMateriais, trocarJsonDoGlb } from "@/lib/cyber/vrmContorno";
 import { respiracao, type PoseVrm } from "@/lib/cyber/posesVrm";
 import { baixarBytes, comTentativas } from "@/lib/cyber/tentarDeNovo";
-import { corpoBaixando } from "@/lib/cyber/precarga";
+import { corpoBaixando, tomarCorpoBaixado } from "@/lib/cyber/precarga";
 
 /** os BYTES do VRM, baixados uma vez por URL (o founder tem 16 MB): começar cedo (`precarregarVrm`) faz o corpo
  *  próprio já estar pronto quando o avatar nasce — sem aparecer o corpo padrão antes */
@@ -28,7 +28,8 @@ export function precarregarVrm(url: string): Promise<ArrayBuffer> {
     // deixar a avatar sem corpo. Se a pré-carga de fundo já está baixando este corpo, espera ela e lê do cache — sem
     // baixar o mesmo arquivo duas vezes ao mesmo tempo.
     const antes = corpoBaixando(url) ?? Promise.resolve();
-    p = antes.then(() => comTentativas(() => baixarBytes(url)));
+    // #870: se a pré-carga já leu o arquivo inteiro, usa esses bytes (antes o mesmo .vrm era lido de novo)
+    p = antes.then(() => tomarCorpoBaixado(url) ?? comTentativas(() => baixarBytes(url)));
     bytes.set(url, p); p.catch(() => { if (bytes.get(url) === p) bytes.delete(url); });
   }
   return p;

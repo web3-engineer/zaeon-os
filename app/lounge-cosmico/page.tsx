@@ -8,7 +8,10 @@ import NomeUsuarioForm from "@/components/lounge/NomeUsuarioForm";
 import EscolherPersonagem from "@/components/lounge/EscolherPersonagem";
 import type { Personagem } from "@/lib/cyber/personagem";
 
-const CosmicLounge = dynamic(() => import("@/components/cyber/CosmicLounge"), { ssr: false, loading: () => <div className="h-full w-full bg-[#03030a]" /> });
+const CosmicLounge = dynamic(() => import("@/components/cyber/CosmicLounge"), { ssr: false, loading: () => (
+  // #870: enquanto o código do cyberespaço baixa, a tela preta diz o que está acontecendo
+  <div className="flex h-full w-full items-center justify-center bg-[#03030a]"><p role="status" className="text-[13px] font-medium text-white/80">Abrindo o cyberespaço…</p></div>
+) });
 
 /**
  * Cyberespaço (Lounge Cósmico) — a "Zaeon" como espaço RPG (componente three.js `CosmicLounge`; protótipo em docs/prototypes).

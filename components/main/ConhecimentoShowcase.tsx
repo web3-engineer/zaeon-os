@@ -55,6 +55,15 @@ export default function ConhecimentoShowcase({ principal }: { principal?: React.
   const { t } = useTranslation();
   const router = useRouter();
   const faixa = useRef<HTMLUListElement>(null);
+  // #870: depois de uma seta, o passeio automático espera um pouco (senão leva os cards embora na hora)
+  const pausaAte = useRef(0);
+  const rolar = (direcao: 1 | -1) => {
+    const lista = faixa.current;
+    if (!lista) return;
+    pausaAte.current = performance.now() + 6000;
+    const menosAnimacao = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    lista.scrollBy({ left: direcao * Math.max(160, lista.clientWidth * 0.7), behavior: menosAnimacao ? "auto" : "smooth" });
+  };
   useEffect(() => {
     const lista = faixa.current;
     if (!lista || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -70,7 +79,7 @@ export default function ConhecimentoShowcase({ principal }: { principal?: React.
       anterior = agora;
       decorrido += delta;
       const limite = lista.scrollWidth - lista.clientWidth;
-      const pausado = decorrido < 1.7 || lista.matches(":hover, :focus-within");
+      const pausado = decorrido < 1.7 || agora < pausaAte.current || lista.matches(":hover, :focus-within");
       if (pausado || lista.scrollLeft !== ultimaRolagem) {
         posicao = lista.scrollLeft;
         velocidade = 0;
@@ -117,6 +126,9 @@ export default function ConhecimentoShowcase({ principal }: { principal?: React.
 
   return (
     <section aria-label={t("landing.knowledge_cards.label")} className={principal ? "ci-carrossel" : "ci-carrossel ci-carrossel-autonomo"}>
+      {/* #870: setas de 44 px — funcionam também com "menos animação" (aí o carrossel não anda sozinho) e no computador */}
+      <button type="button" className="ci-carrossel-seta ci-carrossel-seta-esq" aria-label={t("landing.knowledge_cards.prev")} onClick={() => rolar(-1)}>‹</button>
+      <button type="button" className="ci-carrossel-seta ci-carrossel-seta-dir" aria-label={t("landing.knowledge_cards.next")} onClick={() => rolar(1)}>›</button>
       <ul ref={faixa} className="ci-carrossel-faixa">
         {exemplos.slice(0, meio).map((exemplo) => renderCarta(exemplo, "esquerda"))}
         {principal && <li className="ci-carrossel-principal">{principal}</li>}

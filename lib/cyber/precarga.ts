@@ -125,6 +125,16 @@ const corposBaixando = new Map<string, Promise<void>>();
 /** #819: o download de fundo deste corpo, se houver — o `precarregarVrm` espera ele (e lê do cache) em vez de baixar
  *  o mesmo arquivo em paralelo */
 export const corpoBaixando = (url: string): Promise<void> | undefined => corposBaixando.get(url);
+/** #870: os BYTES dos corpos que a pré-carga de fundo já leu inteiros. Antes ela lia o arquivo só pra contar e jogava
+ *  fora — e o `precarregarVrm` lia o mesmo arquivo de novo (16 MB do founder lidos mais de uma vez). Agora quem carrega
+ *  o VRM pega estes bytes uma vez (`tomarCorpoBaixado` tira daqui, pra não guardar 16 MB em dobro). */
+const corposProntos = new Map<string, ArrayBuffer>();
+export function tomarCorpoBaixado(url: string): ArrayBuffer | undefined {
+  const b = corposProntos.get(url);
+  corposProntos.delete(url);
+  return b;
+}
+const guardarCorpo = (item: ItemPrecarga) => (item.tipo === "corpo" ? (b: ArrayBuffer) => { corposProntos.set(item.url, b); } : undefined);
 /** baixa registrando o corpo em `corposBaixando` enquanto dura */
 function comRegistro(item: ItemPrecarga, fazer: () => Promise<number>): Promise<number> {
   if (item.tipo !== "corpo") return fazer();
@@ -157,19 +167,27 @@ export function segurarPrecarga(o: { maxMs?: number } = {}): () => void {
 }
 
 /** lê o corpo inteiro contando bytes (pra barra); devolve os bytes lidos, ou −1 se foi CANCELADO (a trava). Nunca lança. */
-async function baixar(url: string, aoAvancar: (delta: number) => void, aoSaberTamanho: (n: number) => void, sinal?: AbortSignal): Promise<number> {
+async function baixar(url: string, aoAvancar: (delta: number) => void, aoSaberTamanho: (n: number) => void, sinal?: AbortSignal, guardar?: (b: ArrayBuffer) => void): Promise<number> {
   try {
     const res = await fetch(url, { cache: "force-cache", signal: sinal, ...( { priority: "low" } as RequestInit) });
     const len = Number(res.headers.get("content-length") || 0);
     if (len > 0) aoSaberTamanho(len);
     if (!res.ok) return 0;
-    if (!res.body) { const b = await res.arrayBuffer(); aoAvancar(b.byteLength); return b.byteLength; }
+    if (!res.body) { const b = await res.arrayBuffer(); aoAvancar(b.byteLength); guardar?.(b); return b.byteLength; }
     const reader = res.body.getReader();
     let lidos = 0;
+    const pedacos: Uint8Array[] = [];
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
       lidos += value.byteLength; aoAvancar(value.byteLength);
+      if (guardar) pedacos.push(value);
+    }
+    if (guardar) {
+      const tudo = new Uint8Array(lidos);
+      let i = 0;
+      for (const p of pedacos) { tudo.set(p, i); i += p.byteLength; }
+      guardar(tudo.buffer);
     }
     return lidos;
   } catch { return sinal?.aborted ? -1 : 0; }
@@ -233,6 +251,7 @@ export function precarregarCyber(opts: {
           (delta) => { if (!ctl.signal.aborted) { feito.set(item.url, (feito.get(item.url) ?? 0) + delta); atualizar(); } },
           (len) => { peso.set(item.url, len); atualizar(); },
           ctl.signal,
+          guardarCorpo(item),
         ));
         emCurso.delete(item.url);
         // CANCELADO pela trava: volta pro começo da fila (e a barra devolve o que tinha contado dele)
@@ -278,7 +297,7 @@ export function precarregarCorposCyber(opts: {
       if (!item) return;
       const ctl = new AbortController();
       emCurso.set(item.url, { tipo: "corpo", abortar: () => ctl.abort() });
-      const lidos = await comRegistro(item, () => baixarFn(item.url, () => {}, () => {}, ctl.signal));
+      const lidos = await comRegistro(item, () => baixarFn(item.url, () => {}, () => {}, ctl.signal, guardarCorpo(item)));
       emCurso.delete(item.url);
       if (lidos < 0 || ctl.signal.aborted) fila.unshift(item);   // (cancelado pela trava: volta pro começo)
     }
@@ -296,7 +315,7 @@ function lerAmbiente(): { largura: number; saveData?: boolean; effectiveType?: s
 /** só pra testes */
 export function _reiniciarPrecarga() {
   iniciada = false; corposIniciados = false; ultimoBaixar = baixar;
-  travas.clear(); emCurso.clear(); corposBaixando.clear(); soltarFila = null; filaPresa = null;
+  travas.clear(); emCurso.clear(); corposBaixando.clear(); corposProntos.clear(); soltarFila = null; filaPresa = null;
   leveTerminou = new Promise<void>((ok) => { avisarLeve = ok; });
   estado = { progresso: 0, pronto: false, etapa: "", comCorpos: false, bytes: 0, total: 0 };
   ouvintes.clear();

@@ -228,6 +228,30 @@ html:not(.dark) .ci-line { background: #cbd5e1; }
 }
 @media (prefers-reduced-motion: reduce) { .ci-carrossel-item { animation: none; } }
 
+/* #870: setas ‹ › (44 px, alvo de toque) nos dois lados da faixa */
+.ci-carrossel-seta {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / .25);
+  background: rgb(3 0 20 / .72);
+  color: #fff;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+.ci-carrossel-seta:hover { background: rgb(3 0 20 / .9); }
+.ci-carrossel-seta:focus-visible { outline: 2px solid #06b6d4; outline-offset: 2px; }
+.ci-carrossel-seta-esq { left: max(8px, env(safe-area-inset-left)); }
+.ci-carrossel-seta-dir { right: max(8px, env(safe-area-inset-right)); }
+
 .ci-carrossel-autonomo {
   --ci-carrossel-carta: clamp(130px, 32vw, 176px);
   position: relative;

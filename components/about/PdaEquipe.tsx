@@ -52,7 +52,7 @@ function Pda({ m, i }: { m: MembroEquipe; i: number }) {
           <span className="text-[11px] font-black text-white uppercase tracking-widest">{t("about.equipe_copy.pda")}</span>
         </div>
         <div className="flex items-center gap-2 text-slate-500">
-          <span className="font-mono text-[9px] tracking-widest">{String(i + 1).padStart(2, "0")}/{String(EQUIPE.length).padStart(2, "0")}</span>
+          <span className="font-mono text-[11px] tracking-widest">{String(i + 1).padStart(2, "0")}/{String(EQUIPE.length).padStart(2, "0")}</span>
           <Signal size={12} /><BatteryMedium size={13} />
         </div>
       </div>
@@ -61,15 +61,15 @@ function Pda({ m, i }: { m: MembroEquipe; i: number }) {
       <div className="px-4 pt-4 pb-3 flex items-center gap-4">
         <Foto m={m} />
         <div className="min-w-0">
-          <p className="text-[8px] uppercase tracking-widest text-slate-500 font-bold">{t("about.equipe_copy.perfil")}</p>
+          <p className="text-[11px] uppercase tracking-widest text-slate-500 font-bold">{t("about.equipe_copy.perfil")}</p>
           <h3 className="mt-0.5 text-xl md:text-2xl font-black tracking-tight text-white leading-tight">{m.nome}</h3>
-          {cargo && <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.22em]" style={{ color: m.acento }}>{cargo}</p>}
+          {cargo && <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.22em]" style={{ color: m.acento }}>{cargo}</p>}
         </div>
       </div>
 
       {m.bio && (
         <div className="mx-3 border-t border-white/10 px-1 pb-2 pt-3">
-          <p className="text-[8px] uppercase tracking-widest text-slate-500 font-bold">{t("about.equipe_copy.nota")}</p>
+          <p className="text-[11px] uppercase tracking-widest text-slate-500 font-bold">{t("about.equipe_copy.nota")}</p>
           <p className="mt-1.5 text-[13px] leading-relaxed text-slate-200">{t(`about.equipe_copy.${m.id}.bio`, m.bio)}</p>
         </div>
       )}
@@ -77,7 +77,7 @@ function Pda({ m, i }: { m: MembroEquipe; i: number }) {
       {/* o que faz */}
       <div className="px-4 pb-4 pt-1 flex flex-wrap items-center gap-1.5">
         {m.tags?.map((tag, indice) => (
-          <span key={tag} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold text-slate-200">{t(`about.equipe_copy.${m.id}.tags.${indice}`, tag)}</span>
+          <span key={tag} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-semibold text-slate-200">{t(`about.equipe_copy.${m.id}.tags.${indice}`, tag)}</span>
         ))}
         {m.redes && (
           <span className="ml-auto flex items-center gap-1.5">
@@ -99,7 +99,7 @@ export default function PdaEquipe({ titulo, subtitulo }: { titulo: string; subti
   return (
     <section aria-labelledby="equipe-titulo" className="mx-auto w-full max-w-5xl flex flex-col items-center text-center relative z-40 pb-[10vh]">
       <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }} className="mb-12">
-        <p className="text-[10px] font-black uppercase tracking-[0.5em] text-cyan-500/70 mb-4">{t("about.equipe_copy.chamada")}</p>
+        <p className="text-[11px] font-black uppercase tracking-[0.5em] text-cyan-500/70 mb-4">{t("about.equipe_copy.chamada")}</p>
         <h2 id="equipe-titulo" className="text-4xl md:text-6xl font-black text-slate-950 dark:text-white tracking-tighter drop-shadow-2xl">{titulo}</h2>
         {subtitulo && <p className="mt-4 text-slate-700 dark:text-white/70 max-w-xl mx-auto">{subtitulo}</p>}
       </motion.div>
