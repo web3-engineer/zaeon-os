@@ -98,14 +98,13 @@ export function SeletorModelo({ valor, onChange, desabilitado, emLista = false }
 /** O selo debaixo da resposta: quem respondeu de verdade (nome vindo do servidor). */
 export function SeloModelo({ nome }: { nome: string }) {
   const local = /· local$/.test(nome);
-  const reserva = /· reserva$/.test(nome);
   return (
     <span
-      title={reserva ? "O Google falhou e a reserva respondeu" : local ? "Respondido no servidor da Zaeon" : "Modelo que respondeu"}
+      title={local ? "Respondido no servidor da Zaeon" : "Modelo que respondeu"}
       className={`inline-flex items-center gap-1 text-[10.5px] font-semibold font-tech px-1.5 py-0.5 rounded-md border
-        ${local ? "text-emerald-700 dark:text-emerald-300 border-emerald-500/30" : reserva ? "text-amber-700 dark:text-amber-300 border-amber-500/30" : "text-slate-500 dark:text-white/45 border-slate-200 dark:border-white/10"}`}
+        ${local ? "text-emerald-700 dark:text-emerald-300 border-emerald-500/30" : "text-slate-500 dark:text-white/45 border-slate-200 dark:border-white/10"}`}
     >
-      <span aria-hidden>{local ? "⬢" : reserva ? "↺" : "✦"}</span>
+      <span aria-hidden>{local ? "⬢" : "✦"}</span>
       {nome}
     </span>
   );

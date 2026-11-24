@@ -27,7 +27,7 @@ describe("catálogo de modelos do chat", () => {
     expect(nomeDoModeloServido("claude-opus")).toBe("Claude Opus");   // grupo → nome, sem "· local"
     expect(nomeDoModeloServido("claude-sonnet")).toBe("Claude Sonnet");
     expect(nomeDoModeloServido("zaeon-local-qwen30", "contabo")).toBe("qwen30 · local");
-    expect(nomeDoModeloServido("openai/gpt-oss-120b", "huggingface")).toBe("gpt-oss-120b · reserva");
+    expect(nomeDoModeloServido("openai/gpt-oss-120b", "huggingface")).toBe("gpt-oss-120b");   // #873 PR 3: sem "· reserva"
     expect(nomeDoModeloServido("", null)).toBe("?");
   });
 });

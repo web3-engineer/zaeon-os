@@ -88,6 +88,12 @@ export function useAnexoChat(
     aceitaBiblioteca?: boolean;
     /** a confirmação da Aura (Markdown) depois de guardar na base — a sala põe como mensagem dela */
     aoGuardar?: (markdown: string) => void;
+    /**
+     * #873 PR 3: a conversa aberta. O anexo é DESTA conversa: abrir outra (ou uma nova) começa sem anexo, e voltar
+     * traz o dela de volta. Antes o anexo era um só para a sala inteira — a conversa nova já nascia "lendo" o PDF da
+     * anterior, e a IA respondia sobre o arquivo errado. Sem `conversa`: o comportamento antigo (um anexo só).
+     */
+    conversa?: string | null;
   },
 ) {
   const { saveFile, files } = useLibraryFiles();
@@ -106,6 +112,25 @@ export function useAnexoChat(
   const [lote, setLote] = useState<ItemLote[]>([]);
   const loteRef = useRef<ItemLote[]>([]);
   const fixarLote = (l: ItemLote[]) => { loteRef.current = l; setLote(l); };
+
+  // #873 PR 3: o anexo e o lote de CADA conversa (só na memória da aba do navegador — o PDF é grande demais pra guardar)
+  const conversaRef = useRef(o.conversa ?? null);
+  const porConversa = useRef(new Map<string, { anexo: AnexoChat | null; lote: ItemLote[] }>());
+  useEffect(() => {
+    const nova = o.conversa ?? null;
+    const antes = conversaRef.current;
+    if (nova === antes) return;
+    if (antes) porConversa.current.set(antes, { anexo: anexoRef.current, lote: loteRef.current });
+    conversaRef.current = nova;
+    const dela = nova ? porConversa.current.get(nova) : undefined;
+    fixar(dela?.anexo ?? null);
+    fixarLote(dela?.lote ?? []);
+  }, [o.conversa]);
+  /** o arquivo terminou de carregar DEPOIS que o aluno trocou de conversa: fica na conversa onde ele foi anexado */
+  const fixarNa = (conversa: string | null, a: AnexoChat) => {
+    if (conversa === conversaRef.current) { fixar(a); return; }
+    if (conversa) porConversa.current.set(conversa, { anexo: a, lote: porConversa.current.get(conversa)?.lote ?? [] });
+  };
 
   // Minha base: a bandeja de envios e uma versão que sobe a cada lote terminado (a lista "Minha base" se recarrega).
   const [envios, setEnvios] = useState<EnvioBase[]>([]);
@@ -151,12 +176,13 @@ export function useAnexoChat(
         return id;
       });
       // o chip de hoje: a IA lê o PDF inteiro (1 PDF; ou o 1º, quando não dá pra guardar na base)
+      const daConversa = conversaRef.current;
       const lerPrimeiroPdf = async () => {
         const i = docs.findIndex(ehPdf);
         if (i < 0) return false;   // lote só de texto: não existe caminho de leitura inteira
         const dataUrl = await blobParaDataUrl(docs[i]);
         if (!dataUrl) return false;
-        fixar({ id: ids[i], nome: nomeLimpo(docs[i]), dataUrl });
+        fixarNa(daConversa, { id: ids[i], nome: nomeLimpo(docs[i]), dataUrl });
         return true;
       };
       // Texto NUNCA pega o chip de leitura inteira: o `fileData` desliga o harness (ver o cabeçalho),
@@ -188,8 +214,9 @@ export function useAnexoChat(
 
   const anexarDaBiblioteca = useCallback(async (id: string) => {
     const f = filesRef.current.find((x) => x.id === id); if (!f) return;
+    const daConversa = conversaRef.current;
     const dataUrl = await pdfDaBiblioteca(f);
-    if (dataUrl) { fixar({ id: f.id, nome: f.title, dataUrl }); oRef.current.focar(); return; }
+    if (dataUrl) { fixarNa(daConversa, { id: f.id, nome: f.title, dataUrl }); oRef.current.focar(); return; }
     // #414: antes não acontecia NADA ("o PDF não aparece quando arrastamos") — agora a Aura diz o que houve e o caminho
     oRef.current.aoGuardar?.(avisoPdfNaoAbriu(f.title, f.pdfUrl));
   }, []);

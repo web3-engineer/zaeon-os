@@ -10,6 +10,7 @@
  * (sem tools); na camada agêntica, o Escritor/Revisor ganham skills e o crítico.
  */
 
+import { semFalhasNoHistorico } from "@/lib/chat/semFalhas";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { avisarEscrevendo } from "@/lib/research/zaeonEventos";
 import CoworkComposer from "@/components/study/CoworkComposer";
@@ -258,6 +259,7 @@ function ChatDaConta({
   const { anexo, anexoRef, tirar: tirarAnexo, anexarArquivos, soltar, arrastando, envios, versaoBase, lote, loteRef, tirarDoLote } = useAnexoChat("pesquisa", {
     focar: focarComposer,
     perguntar: (t) => { onAtivar?.(); sendRef.current(t); },
+    conversa: abaAtiva,
     // Minha base (RAG F3): a Aura confirma o lote guardado na conversa
     aoGuardar: (texto) => setMessages((prev) => [...prev, { id: uid(), role: "assistant", text: texto }]),
   });
@@ -440,10 +442,11 @@ function ChatDaConta({
     nomearPeloTema(prompt);
 
     // msgsRef (e não `messages`): editar/regenerar cortam o histórico no mesmo tique do envio.
-    const history = msgsRef.current.map((m) => ({
+    // #873 PR 3: o aviso de falha fica na tela, mas nao vai pro modelo (ele repetia a propria falha)
+    const history = semFalhasNoHistorico(msgsRef.current.map((m) => ({
       role: m.role === "assistant" ? "model" : "user",
       parts: [{ text: m.text }],
-    }));
+    })));
     const asstId = uid();
     const lendo = anexoRef.current;
     setMessages((prev) => [

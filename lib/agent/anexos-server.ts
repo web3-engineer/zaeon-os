@@ -6,7 +6,7 @@
  * estoura o limite inline do Gemini). Aqui ela é o caminho normal, e deixei o ramo legado com o
  * código dele de propósito: a promessa da flag é que, desligada, o caminho de hoje vale byte a byte.
  */
-import { anexoDe, anexoUtil, marcasDePagina, type AnexoDoTurno } from "@/lib/agent/anexos";
+import { anexoDe, anexoUtil, marcasDePagina, ultimaPaginaLida, type AnexoDoTurno } from "@/lib/agent/anexos";
 import { docxParaMarkdown, ehArquivoDocx } from "@/lib/rag/docx";
 
 type Peça = { mime: string; bytes: Uint8Array };
@@ -72,5 +72,8 @@ export async function anexosDoFileData(fileData: string, nome = "documento"): Pr
   if (!anexoUtil(a)) return [];
   // onde cada página começa no texto FINAL (já cortado no teto): é o que dá "p. N" ao trecho do anexo (lib/trechos)
   const marcas = marcasDePagina(a.texto, paragrafos);
-  return [marcas.length ? { ...a, marcasDePagina: marcas } : a];
+  // #873 PR 3: cortado no teto -> a ultima pagina que coube vai no aviso ("li ate a p. N")
+  const ate = a.cortado ? ultimaPaginaLida(marcas) : undefined;
+  const comCorte = ate && a.cortado ? { ...a, cortado: { ...a.cortado, ateAPagina: ate } } : a;
+  return [marcas.length ? { ...comCorte, marcasDePagina: marcas } : comCorte];
 }
