@@ -51,6 +51,7 @@ import { diretrizDeTamanho, pedeRespostaCurta, semDesenvolvimentoNaoPedido } fro
 import { diretrizDeEscopo } from "@/lib/agents/escopo";
 import { diretrizLivros, markdownDosLivros, type LivroAchado } from "@/lib/livros/busca";
 import { anexarFontesBase, blocoDaBase } from "@/lib/rag/citar";
+import { fontesConferidas } from "@/lib/agent/fontesConferidas";
 import { blocoDosTrechos } from "@/lib/trechos/bloco";
 import { registrarAnatomia } from "@/lib/anatomia/tools";
 import { cardapioDeSkills, registrarSkillsDaCasa } from "@/lib/agent/skills-boot";
@@ -488,7 +489,10 @@ export function normalizeAnswer(out: Partial<StructuredAnswer> | null | undefine
       })
       .slice(0, MAX_EVIDENCIA);
   }
-  if (o.sources) answer.sources = asArray(o.sources).filter((s: Source) => s && s.title);
+  // #873 PR 3 (parte 2): fonte que o turno não teve em mãos vira palpite marcado, sem link (lib/agent/fontesConferidas)
+  if (o.sources) answer.sources = fontesConferidas(asArray(o.sources).filter((s: Source) => s && s.title), {
+    evidencia: (st.evidence ?? []).map((f) => f.source), textos: [st.objective ?? ""],
+  });
   if (o.work && typeof o.work === "object") answer.work = o.work;
   // A substância extraída vira molécula SE ela for mesmo assunto: precisa aparecer no
   // texto da resposta. É a diferença entre "uma resposta sobre cafeína" e "uma resposta

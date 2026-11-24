@@ -13,6 +13,7 @@ import { guard } from "@/src/lib/ratelimit";
 import { geminiJson } from "@/lib/scholar/gemini";
 import { studioUid } from "@/lib/studio/auth";
 import { loadStudyContext, sameIdSet } from "@/lib/studio/content";
+import { materialDoPedido } from "@/lib/studio/materialDoPedido";
 import { TEXT_TRANSFORMS, type TextKind } from "@/lib/studio/transformations";
 
 export async function runTextGeneration(kind: TextKind, req: Request): Promise<Response> {
@@ -35,8 +36,9 @@ export async function runTextGeneration(kind: TextKind, req: Request): Promise<R
   // em mãos, gera a partir dele. Fica marcado como "do tópico": artefato assim sai do
   // conhecimento do modelo, NÃO das fontes da pessoa, e misturar os dois seria desonesto
   // num produto acadêmico.
-  const doTopico = !ctx.text && !!topic;
-  const material = ctx.text || (topic ? `Tópico pedido na conversa: ${topic}` : "");
+  // #873 PR 3 (parte 2): sem estudo com conteúdo, parte da explicação que o aluno acabou de ler (não contradiz ela)
+  const contexto = typeof body.contexto === "string" ? body.contexto : "";
+  const { material, doTopico } = materialDoPedido({ textoDoEstudo: ctx.text, topic, contexto });
   const tituloBase = ctx.text ? ctx.title : topic;
   if (!material) {
     return NextResponse.json({ error: "Sem conteúdo de estudo para usar — e sem tópico." }, { status: 400 });

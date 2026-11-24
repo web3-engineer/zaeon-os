@@ -236,6 +236,9 @@ export function textoParaHistorico(m: {
 const isQuickPrompt = (t: string) => t.trim().split(/\s+/).filter(Boolean).length <= 8;
 
 /** #663: cada conta tem as suas conversas; trocar de conta remonta o chat com a área da outra. */
+/** artefatos que nascem da explicação que o aluno acabou de ler (o desenho/guia reflete ELA) */
+const COM_A_EXPLICACAO = new Set(["diagram", "mindmap", "guide", "faq", "flashcards", "timeline"]);
+
 export default function StudyCoworkChat({ active = true }: { active?: boolean }) {
   const area = useArmazemDaConta();
   if (!area) return null;
@@ -1113,7 +1116,9 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
             // Pedido explícito falha em voz alta; artefato que a Aura trouxe de
             // brinde falha calado — ninguém pediu, ninguém precisa saber.
             // Diagrama/mapa recebem a explicação que o aluno acabou de ler (o desenho reflete ELA).
-            const ctx = art.studioKind === "diagram" || art.studioKind === "mindmap" ? textoParaHistorico({ kind: "structured", answer: a }) : undefined;
+            // #873 PR 3 (parte 2): guia/FAQ/flashcards/linha do tempo também — senão o guia dizia "o documento não foi
+            // detalhado" logo abaixo de um resumo certo (ele só via o título)
+            const ctx = COM_A_EXPLICACAO.has(art.studioKind) ? textoParaHistorico({ kind: "structured", answer: a }) : undefined;
             void runStudioAction(art.studioKind, art.title?.trim() || prompt, asstId, !art.explicito, ctx);
           }
         }

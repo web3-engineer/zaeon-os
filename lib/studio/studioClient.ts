@@ -165,7 +165,8 @@ export async function gerarArtefato(kind: string, o: OpcoesStudio & Deps): Promi
     }
     // Texto: roda em BACKGROUND no servidor (fire-and-forget) → "queued" e polling até "done".
     // Cache hit já volta "done" com meta na hora.
-    const res = await f(`/api/studio/${kind}`, { method: "POST", headers: H, body: JSON.stringify({ spaceId, topic, force: true }) });
+    // #873 PR 3 (parte 2): o guia/FAQ/flashcards partem da explicação que o aluno leu (não a contradizem)
+    const res = await f(`/api/studio/${kind}`, { method: "POST", headers: H, body: JSON.stringify({ spaceId, topic, force: true, ...(o.contexto ? { contexto: o.contexto } : {}) }) });
     const data = await json(res);
     if (!res.ok || !data?.id) return { tipo: "erro", mensagem: data?.error };
     if (data.status === "done" && data.meta) return { tipo: "pronto", bloco: { studioKind: kind, title: data.title, data: data.meta } };
