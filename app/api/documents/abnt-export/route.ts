@@ -1,8 +1,9 @@
-import { vertexCredentials, vertexTextClientOpts } from "@/lib/ai/vertex-credentials";
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from "@/src/lib/auth";
-import { VertexAI } from '@google-cloud/vertexai';
+// #873: o resumo/estrutura do export saem pelo ENVELOPE (provedores atuais) — antes era Vertex direto, e com a
+// cota do Google acabada o export saía com resumo cortado e palavras-chave genéricas.
+import { geminiJson } from "@/lib/scholar/gemini";
 import { prisma } from '@/src/lib/prisma';
 import { onWorkFinalized } from '@/lib/solana/hooks';
 import { ehEstilo, prepararParaNorma, type Estilo } from '@/lib/export/norma';
@@ -54,20 +55,6 @@ async function generateMetaWithGemini(request: ABNTExportRequest): Promise<{
     abstract: string;
     keywords: string[];
 }> {
-    const credentials = (() => { const __v = vertexCredentials(); return { project_id: __v.project, client_email: __v.client_email, private_key: __v.private_key }; })(); // robust parse
-    const vertexAI = new VertexAI({
-        project: credentials.project_id || process.env.GOOGLE_PROJECT_ID,
-        ...vertexTextClientOpts(),
-        googleAuthOptions: {
-            credentials: {
-                client_email: credentials.client_email,
-                private_key: credentials.private_key,
-            },
-        },
-    });
-
-    const model = vertexAI.getGenerativeModel({ model: (process.env.GEMINI_MODEL || 'gemini-2.5-flash') });
-
     const prompt = `Você é um assistente acadêmico. Analise o texto abaixo e retorne EXCLUSIVAMENTE um JSON válido (sem markdown) com:
 {
   "resumo": "parágrafo único, até 500 palavras, terceira pessoa, em português",
@@ -83,14 +70,7 @@ TIPO: ${request.workType}
 TEXTO:
 ${request.content.substring(0, 3000)}`;
 
-    const result = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
-    });
-
-    const rawText = result.response.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const cleaned = rawText.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
-    return JSON.parse(cleaned);
+    return geminiJson("Responda SOMENTE JSON válido.", prompt, { temperature: 0.2, timeoutMs: 30_000 });
 }
 
 async function structureWithGemini(request: ABNTExportRequest): Promise<{
@@ -111,20 +91,6 @@ async function structureWithGemini(request: ABNTExportRequest): Promise<{
         warnings: string[];
     };
 }> {
-    const credentials = (() => { const __v = vertexCredentials(); return { project_id: __v.project, client_email: __v.client_email, private_key: __v.private_key }; })(); // robust parse
-    const vertexAI = new VertexAI({
-        project: credentials.project_id || process.env.GOOGLE_PROJECT_ID,
-        ...vertexTextClientOpts(),
-        googleAuthOptions: {
-            credentials: {
-                client_email: credentials.client_email,
-                private_key: credentials.private_key,
-            },
-        },
-    });
-
-    const model = vertexAI.getGenerativeModel({ model: (process.env.GEMINI_MODEL || 'gemini-2.5-flash') });
-
     const abntStructurerPersona = `Você é o Agente ABNT Structurer da Zaeon OS.
 Sua única função é analisar um texto acadêmico bruto e estruturá-lo nas seções da ABNT NBR 14724:2011.
 Retorne EXCLUSIVAMENTE um JSON válido, sem markdown, sem blocos de código, sem texto extra.
@@ -171,23 +137,7 @@ ${request.content}
 CITAÇÕES SALVAS:
 ${request.citations.map((c, i) => `${i + 1}. ${c.text}`).join('\n') || 'Nenhuma citação salva.'}`;
 
-    const result = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-            temperature: 0.2,
-            maxOutputTokens: 4096,
-        },
-    });
-
-    const rawText = result.response.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-    // Remove markdown code blocks if the model added them despite instructions
-    const cleaned = rawText
-        .replace(/```json\s*/gi, '')
-        .replace(/```\s*/gi, '')
-        .trim();
-
-    return JSON.parse(cleaned);
+    return geminiJson(abntStructurerPersona, prompt.slice(abntStructurerPersona.length), { temperature: 0.2, timeoutMs: 45_000 });
 }
 
 export async function POST(req: Request) {

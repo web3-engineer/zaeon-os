@@ -25,7 +25,8 @@ export function academicModeForSurface(surface?: string | null): AcademicMode {
 // ─────────────────────────── Saída estruturada (§8.2) ───────────────────────────
 
 export type Source = { title: string; url?: string; authors?: string; year?: number };
-export type WorkKind = "estudo" | "pesquisa" | "artigo" | "tcc" | "relatorio" | "aula";
+/** #873: "peca" = peça jurídica (petição, contrato, parecer…) — lib/documento/pecaJuridica */
+export type WorkKind = "estudo" | "pesquisa" | "artigo" | "tcc" | "relatorio" | "aula" | "peca";
 
 /** Uma passagem literal do material da pessoa, verificada pelo código (lib/trechos). */
 export type TrechoEmPapel = {

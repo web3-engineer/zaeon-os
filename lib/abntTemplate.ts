@@ -110,7 +110,9 @@ function renderSections(secs: SectionDef[], byTitle?: Record<string, string>): s
 export function templateFor(workType?: WorkType | null): string {
   if (!workType) return ABNT_TEMPLATE;
   if (workType === 'TCC') return ABNT_TEMPLATE; // mantém o template TCC original
-  return renderSections(WORK_SECTIONS[workType]);
+  // #873: tipo sem modelo próprio (ex.: "Peça jurídica", que vem do chat) → o modelo clássico, em vez de quebrar
+  const secoes = WORK_SECTIONS[workType];
+  return secoes ? renderSections(secoes) : ABNT_TEMPLATE;
 }
 
 /** Campos do esboço gerado pelo motor de pesquisa (research-draft). */
