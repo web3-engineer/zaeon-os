@@ -14,6 +14,8 @@
  * endereço, nº do processo) fica entre colchetes — a IA não inventa.
  */
 
+import type { OpSecao } from "@/lib/tcc/secoes";
+
 /** minúsculas sem acento */
 const norm = (s: string) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
@@ -157,7 +159,7 @@ export async function gerarPecaEmBackground(workId: string, userId: string, pedi
     if (faltando >= secoes.length - 1) throw new Error("peça vazia");
     const r = await store.aplicarNoTcc(workId, userId, (t) => {
       const porChave = new Map(t.secoes.map((s) => [chaveSecao(s.titulo), s]));
-      return secoes.flatMap((s) => {
+      return secoes.flatMap((s): OpSecao[] => {
         const existe = porChave.get(chaveSecao(s.titulo));
         if (!existe) return [{ op: "inserir" as const, titulo: s.titulo, corpo: s.corpo }];
         // o aluno já escreveu nesta parte enquanto a peça era gerada → o texto dele fica (só preenche o que está
