@@ -33,6 +33,18 @@ O card vai em 3 PRs:
 - Com a cota do Google acabada, o export saía com o resumo cortado e as palavras-chave "Pesquisa, Acadêmico, Zaeon".
 - Agora usa o envelope (os provedores atuais).
 
+### Ajustes da revisão (Sourcery, PR #874)
+- **"Artigo" de lei não atrapalha:** "petição… com base no artigo 23 da Lei 8.245" continua sendo peça. "Pesquisa sobre contratos" e "estudo sobre recursos" são trabalho, não peça.
+- **O aviso nasce escrito** quando o documento é criado. Ele fica mesmo se a geração falhar.
+- **O texto do aluno não é sobrescrito:** se ele escrever numa parte enquanto a peça é gerada, o texto dele fica.
+- **Título com outra grafia** ("Dos Pedidos.") casa com a parte certa, sem duplicar.
+- **Parte que não veio** aparece marcada no texto ("[ESTA PARTE NÃO VEIO NA GERAÇÃO…]"), e o documento sai como "erro", não "pronto".
+- **O mesmo pedido de novo** em menos de 3 minutos (reenvio) não cria uma segunda peça.
+- **Funciona também sem o chat único**, no chat de um trabalho só.
+- **Se o gerador nem começar**, o documento é marcado "erro" e não fica preso em "gerando".
+- **A arena da orquestra** aceita o tipo `peca`.
+- **O editor não quebra** com um tipo sem modelo próprio (volta pro modelo clássico).
+
 ## Para o Martinez
 
 - Chat, roteador, documento e export são área dele.
@@ -42,7 +54,7 @@ O card vai em 3 PRs:
 
 ## Testes automáticos
 
-- `lib/documento/pecaJuridica.test.ts` (novo, 27 testes):
+- `lib/documento/pecaJuridica.test.ts` (novo, 36 testes depois da revisão):
   - os 8 tipos de pedido reconhecidos;
   - 6 frases que **não** são pedido de peça (aprender, artigo, TCC);
   - o roteador manda pra `criar_trabalho`/`peca`;

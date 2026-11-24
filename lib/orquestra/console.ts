@@ -237,7 +237,7 @@ export function detalheDe(l: LinhaTarefa, ledger: LinhaLedgerDb[]) {
 
 // ───────────────────────────── arena ─────────────────────────────
 const INTENTS_ARENA: readonly IntentId[] = ["criar_trabalho", "pesquisar_fontes", "revisar", "explicar_conceito"];
-const KINDS: readonly WorkKind[] = ["estudo", "pesquisa", "artigo", "tcc", "relatorio", "aula"];
+const KINDS: readonly WorkKind[] = ["estudo", "pesquisa", "artigo", "tcc", "relatorio", "aula", "peca"];
 export const MAX_MOTORES_ARENA = 4;
 
 export type PedidoArena = { objetivo: string; intent: IntentId; kind?: WorkKind; motores: string[] };

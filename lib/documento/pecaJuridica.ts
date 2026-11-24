@@ -52,8 +52,11 @@ const PECA_GENERICA_RE = /\bpeca (juridica|processual)\b|\bdocumento juridico\b|
 const QUER_APRENDER_RE = /\b(como (se )?(faz|fazer|faco|escrever|redigir|elaborar)|me ensin|ensina|o que e|o que sao|explica|explique|diferenca entre|quais (sao )?os requisitos|estrutura de uma)\b/;
 /** verbos de pedir a peça pronta */
 const GERAR_RE = /(^|\s)(gere|gerar|gera|crie|criar|cria|faca|fazer|faz|monte|montar|produza|escreva|escrever|redija|redigir|elabore|elaborar|prepare|preparar|minute|minutar|quero (?:um|uma)|preciso de (?:um|uma)|me (?:da|de|manda|mande|passa|passe) (?:um|uma))(\s|$)/;
-/** pedido de trabalho ACADÊMICO sobre o tema ("artigo sobre contratos") — esse é artigo, não peça */
-const ACADEMICO_RE = /\b(artigo|tcc|monografia|dissertacao|tese|ensaio|resenha|relatorio|paper|trabalho academico|redacao)\b/;
+/**
+ * pedido de trabalho ACADÊMICO sobre o tema ("artigo sobre contratos", "pesquisa sobre contratos") — é trabalho, não peça.
+ * "artigo" de LEI não conta ("com base no artigo 23 da Lei 8.245"): só o "artigo" que não vem seguido de número.
+ */
+const ACADEMICO_RE = /\b(tcc|monografia|dissertacao|tese|ensaio|resenha|relatorio|paper|trabalho academico|redacao)\b|\bartigo\b(?!\s*(n\S{0,2}\s*)?\d)|\b(pesquisa|estudo|levantamento|revisao de literatura)\s+(sobre|acerca|a respeito)\b/;
 
 /** O tipo da peça pedida, ou null quando o texto não pede uma peça pronta. PURO. */
 export function pedePecaJuridica(texto: string): TipoPeca | null {
@@ -110,6 +113,29 @@ const genPadrao: Gen = async (sys, user) => {
   return geminiJson<SaidaPeca>(sys, user, { temperature: 0.3, timeoutMs: 90_000 });
 };
 
+/** título sem acento/pontuação/caixa: "Dos Pedidos." = "DOS PEDIDOS" (o modelo varia a grafia) */
+export const chaveSecao = (s: string) => norm(s).replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+
+/** o que entra numa parte que o modelo não escreveu — visível, pra ninguém achar que a peça veio completa */
+export const PARTE_FALTANDO = "[ESTA PARTE NÃO VEIO NA GERAÇÃO — escreva aqui ou peça de novo à Aura.]";
+
+/**
+ * Casa o que o modelo escreveu com a estrutura da peça (pela chave do título, tolerando a grafia). Cada parte da
+ * estrutura sai com o texto do modelo ou com PARTE_FALTANDO; o que o modelo inventou fora da estrutura é descartado.
+ * `faltando` = quantas partes não vieram. PURO.
+ */
+export function encaixarNaPeca(tipo: TipoPeca, saida: SaidaPeca | null): { secoes: { titulo: string; corpo: string }[]; faltando: number } {
+  const escritas = new Map<string, string>();
+  for (const s of secoesDaPeca(tipo, saida)) if (!escritas.has(chaveSecao(s.titulo))) escritas.set(chaveSecao(s.titulo), s.corpo);
+  let faltando = 0;
+  const secoes = esqueletoDaPeca(tipo).map((titulo) => {
+    const corpo = escritas.get(chaveSecao(titulo));
+    if (!corpo) faltando++;
+    return { titulo, corpo: corpo ?? PARTE_FALTANDO };
+  });
+  return { secoes, faltando };
+}
+
 /** As seções que o modelo escreveu, com o AVISO na frente (sempre o nosso texto, nunca o do modelo). PURO. */
 export function secoesDaPeca(tipo: TipoPeca, saida: SaidaPeca | null): { titulo: string; corpo: string }[] {
   const doModelo = (saida?.secoes ?? [])
@@ -126,17 +152,23 @@ export async function gerarPecaEmBackground(workId: string, userId: string, pedi
   const store = await import("@/lib/tcc/store");
   try {
     const saida = await gen(PECA_SYS, pecaUser(tipo, pedido));
-    const secoes = secoesDaPeca(tipo, saida);
-    if (secoes.length < 2) throw new Error("peça vazia");
+    const { secoes, faltando } = encaixarNaPeca(tipo, saida);
+    // nada além do aviso → falhou
+    if (faltando >= secoes.length - 1) throw new Error("peça vazia");
     const r = await store.aplicarNoTcc(workId, userId, (t) => {
-      const porTitulo = new Map(t.secoes.map((s) => [s.titulo.trim().toUpperCase(), s]));
-      return secoes.map((s) => {
-        const existe = porTitulo.get(s.titulo);
-        return existe ? { op: "substituir" as const, secaoId: existe.id, corpo: s.corpo } : { op: "inserir" as const, titulo: s.titulo, corpo: s.corpo };
+      const porChave = new Map(t.secoes.map((s) => [chaveSecao(s.titulo), s]));
+      return secoes.flatMap((s) => {
+        const existe = porChave.get(chaveSecao(s.titulo));
+        if (!existe) return [{ op: "inserir" as const, titulo: s.titulo, corpo: s.corpo }];
+        // o aluno já escreveu nesta parte enquanto a peça era gerada → o texto dele fica (só preenche o que está
+        // vazio; o AVISO, que nasce escrito, é sempre o nosso)
+        const mexida = !!existe.corpo.trim() && existe.corpo.trim() !== AVISO_PECA;
+        return mexida || existe.corpo === s.corpo ? [] : [{ op: "substituir" as const, secaoId: existe.id, corpo: s.corpo }];
       });
     }, "estudos");
     if (!r.ok) throw new Error(`não gravou: ${r.reason ?? "?"}`);
-    await store.marcarStatus(workId, userId, "pronto");
+    // parte faltando fica marcada no texto e o documento sai como "erro" (não "pronto"): a peça não está completa
+    await store.marcarStatus(workId, userId, faltando ? "erro" : "pronto");
   } catch (e: any) {
     console.warn("[peca] geração falhou:", e?.message ?? e);
     await store.marcarStatus(workId, userId, "erro").catch(() => {});

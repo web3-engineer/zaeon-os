@@ -13,7 +13,7 @@ vi.mock("@/lib/agent/transcript", () => ({ resolveUserId: async () => null }));
 vi.mock("@/src/lib/ratelimit", () => ({ guard: async () => ({ ok: true }) }));
 
 import {
-  AVISO_PECA, TIPO_TRABALHO_PECA, esqueletoDaPeca, gerarPecaEmBackground, pedePecaJuridica, pecaUser, secoesDaPeca, tituloDaPeca,
+  AVISO_PECA, PARTE_FALTANDO, TIPO_TRABALHO_PECA, esqueletoDaPeca, gerarPecaEmBackground, pedePecaJuridica, pecaUser, secoesDaPeca, tituloDaPeca,
 } from "./pecaJuridica";
 import { classifyHeuristic } from "@/lib/agent/router";
 import { tccDoTurno } from "@/lib/tcc/turno";
@@ -50,8 +50,15 @@ describe("#873 · reconhecer o pedido de peça", () => {
     "faz um artigo sobre contratos de trabalho", // trabalho acadêmico SOBRE o tema = artigo
     "escreva um TCC sobre recursos no processo civil",
     "uma petição precisa de quais requisitos",
+    "faça uma pesquisa sobre contratos de trabalho", // revisão #874: pesquisa/estudo SOBRE o tema = trabalho
+    "cria um estudo sobre recursos administrativos",
   ])("não é pedido de peça pronta: %s", (texto) => {
     expect(pedePecaJuridica(texto)).toBeNull();
+  });
+
+  it("artigo de LEI não atrapalha (revisão #874): a peça que cita o art. 23 continua sendo peça", () => {
+    expect(pedePecaJuridica("faz uma petição de cobrança com base no artigo 23 da Lei 8.245")).toBe("peticao_inicial");
+    expect(pedePecaJuridica("redija um contrato de locação conforme o artigo nº 4 da lei")).toBe("contrato");
   });
 
   it("o roteador manda a peça pra criar_trabalho com kind=peca (antes virava explicação)", () => {
@@ -106,21 +113,50 @@ describe("#873 · a estrutura é de PEÇA, não de artigo", () => {
 });
 
 describe("#873 · gerar a peça (envelope, sem Google direto)", () => {
-  it("escreve as seções no documento e marca pronto", async () => {
-    const gen = vi.fn(async () => ({ titulo: "x", secoes: [{ titulo: "ENDEREÇAMENTO", corpo: "EXCELENTÍSSIMO SENHOR JUIZ DE DIREITO DA [VARA] DA COMARCA DE [COMARCA]" }, { titulo: "DOS PEDIDOS", corpo: "1. a citação do réu…" }] }));
-    let ops: any[] = [];
-    m.aplicar.mockImplementation(async (_id: string, _u: string, f: any) => {
-      ops = f({ secoes: [{ id: "s0", titulo: "OBSERVAÇÃO", corpo: "" }, { id: "s1", titulo: "ENDEREÇAMENTO", corpo: "" }, { id: "s2", titulo: "DOS PEDIDOS", corpo: "" }] });
-      return { ok: true, tcc: {}, efeitos: [] };
-    });
+  const doc = (corpos: Record<string, string> = {}) => ({
+    secoes: esqueletoDaPeca("peticao_inicial").map((titulo, k) => ({ id: `s${k}`, titulo, corpo: corpos[titulo] ?? (titulo === "OBSERVAÇÃO" ? AVISO_PECA : "") })),
+  });
+  const tudo = (extra: Record<string, string> = {}) => ({
+    secoes: esqueletoDaPeca("peticao_inicial").slice(1).map((titulo) => ({ titulo, corpo: extra[titulo] ?? `texto de ${titulo}` })),
+  });
+  const capturar = (estado: any) => {
+    const r: { ops: any[] } = { ops: [] };
+    m.aplicar.mockImplementation(async (_id: string, _u: string, f: any) => { r.ops = f(estado); return { ok: true, tcc: {}, efeitos: [] }; });
+    return r;
+  };
+
+  it("escreve as partes vazias e marca pronto", async () => {
+    const gen = vi.fn(async () => tudo({ "ENDEREÇAMENTO": "EXCELENTÍSSIMO SENHOR JUIZ DE DIREITO DA [VARA] DA COMARCA DE [COMARCA]" }));
+    const r = capturar(doc());
     await gerarPecaEmBackground("p1", "u1", "faz uma petição inicial de cobrança", "peticao_inicial", gen);
     expect(gen).toHaveBeenCalledTimes(1);
-    expect(ops).toEqual([
-      { op: "substituir", secaoId: "s0", corpo: AVISO_PECA },
-      { op: "substituir", secaoId: "s1", corpo: expect.stringMatching(/\[COMARCA\]/) },
-      { op: "substituir", secaoId: "s2", corpo: "1. a citação do réu…" },
-    ]);
+    expect(r.ops).toHaveLength(esqueletoDaPeca("peticao_inicial").length - 1); // o aviso já estava escrito
+    expect(r.ops).toContainEqual({ op: "substituir", secaoId: "s1", corpo: expect.stringMatching(/\[COMARCA\]/) });
     expect(m.marcar).toHaveBeenCalledWith("p1", "u1", "pronto");
+  });
+
+  it("revisão #874 · o que o aluno escreveu enquanto gerava NÃO é sobrescrito", async () => {
+    const r = capturar(doc({ "DOS FATOS": "meu texto dos fatos" }));
+    await gerarPecaEmBackground("p1", "u1", "x", "peticao_inicial", vi.fn(async () => tudo()));
+    expect(r.ops.find((o) => o.secaoId === "s3")).toBeUndefined(); // DOS FATOS é a 4ª parte
+  });
+
+  it("revisão #874 · título com outra grafia casa ('Dos Pedidos.'), sem duplicar", async () => {
+    const r = capturar(doc());
+    const saida = tudo();
+    saida.secoes = saida.secoes.map((s) => (s.titulo === "DOS PEDIDOS" ? { titulo: "Dos Pedidos.", corpo: "1. a citação" } : s));
+    await gerarPecaEmBackground("p1", "u1", "x", "peticao_inicial", vi.fn(async () => saida));
+    expect(r.ops.filter((o) => o.op === "inserir")).toEqual([]);
+    expect(r.ops).toContainEqual({ op: "substituir", secaoId: "s5", corpo: "1. a citação" });
+  });
+
+  it("revisão #874 · parte que não veio fica marcada no texto e o documento sai 'erro', não 'pronto'", async () => {
+    const r = capturar(doc());
+    const saida = tudo();
+    saida.secoes = saida.secoes.filter((s) => s.titulo !== "DAS PROVAS");
+    await gerarPecaEmBackground("p1", "u1", "x", "peticao_inicial", vi.fn(async () => saida));
+    expect(r.ops).toContainEqual({ op: "substituir", secaoId: "s6", corpo: PARTE_FALTANDO });
+    expect(m.marcar).toHaveBeenCalledWith("p1", "u1", "erro");
   });
 
   it("falhou (provedor fora / resposta vazia) → status 'erro', nunca lança", async () => {
@@ -149,7 +185,27 @@ describe("#873 · o turno do chat cria o documento da peça", () => {
     const criado = m.criar.mock.calls[0][0];
     expect(criado).toMatchObject({ workType: TIPO_TRABALHO_PECA, status: "gerando" });
     expect(criado.secoes.map((s: any) => s.titulo)).toEqual(esqueletoDaPeca("peticao_inicial"));
+    // revisão #874: o aviso nasce ESCRITO (existe mesmo se a geração falhar)
+    expect(criado.secoes[0]).toEqual({ titulo: "OBSERVAÇÃO", corpo: AVISO_PECA });
     expect(gerarPeca).toHaveBeenCalledWith("p1", "u1", expect.stringMatching(/petição inicial/), "peticao_inicial");
+  });
+
+  it("revisão #874 · o mesmo pedido de novo em poucos minutos não cria outra peça", async () => {
+    m.listar.mockResolvedValue([{ id: "p0", titulo: "Petição inicial — ação de cobrança de aluguel atrasado", workType: TIPO_TRABALHO_PECA, status: "gerando", updatedAt: new Date(), secoes: [] }]);
+    const gerarPeca = vi.fn();
+    const r = await tccDoTurno({ ...base, gerarPeca, prompt: "faz uma petição inicial de ação de cobrança de aluguel atrasado", answer: { nucleo: "ok" } as any });
+    expect(r).toMatchObject({ workId: "p0", criado: false });
+    expect(m.criar).not.toHaveBeenCalled();
+    expect(gerarPeca).not.toHaveBeenCalled();
+  });
+
+  it("revisão #874 · também no chat de um trabalho só (sem o chat único)", async () => {
+    process.env.TCC_CROSS = "1";
+    const gerarPeca = vi.fn();
+    const r = await tccDoTurno({ ...base, multi: false, gerarPeca, prompt: "redija um contrato de prestação de serviços", answer: { nucleo: "ok" } as any });
+    expect(r).toMatchObject({ criado: true, tipo: TIPO_TRABALHO_PECA });
+    expect(gerarPeca).toHaveBeenCalledWith("p1", "u1", expect.any(String), "contrato");
+    delete process.env.TCC_CROSS;
   });
 
   it("com um artigo aberto, a peça é documento NOVO (não edita o artigo)", async () => {
@@ -158,6 +214,14 @@ describe("#873 · o turno do chat cria o documento da peça", () => {
     await tccDoTurno({ ...base, gerarPeca, prompt: "redija uma contestação sobre revisão de aluguel", answer: { nucleo: "ok", work: { kind: "artigo", sections: [{ title: "INTRODUÇÃO", body: "x" }] } } as any });
     expect(m.criar).toHaveBeenCalledTimes(1);
     expect(m.aplicar).not.toHaveBeenCalled();
+  });
+});
+
+describe("revisão #874 · outros pontos", () => {
+  it("a arena aceita kind 'peca'; o editor não quebra com um tipo sem modelo", async () => {
+    expect(readFileSync("lib/orquestra/console.ts", "utf8")).toMatch(/"aula", "peca"\]/);
+    const { templateFor, ABNT_TEMPLATE } = await import("@/lib/abntTemplate");
+    expect(templateFor(TIPO_TRABALHO_PECA as any)).toBe(ABNT_TEMPLATE);
   });
 });
 
