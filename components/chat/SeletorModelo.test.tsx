@@ -31,10 +31,11 @@ describe("SeletorModelo", () => {
     expect(result.current[0].id).toBe("gemini-3.5-flash-lite");
     expect(localStorage.getItem(CHAVE_MODELO)).toBe("gemini-3.5-flash-lite");
   });
-  it("SeloModelo marca local e reserva", () => {
+  it("SeloModelo marca local; o modelo de fora é neutro (#873 PR 3: sem 'o Google falhou')", () => {
     const { container, rerender } = render(<SeloModelo nome="Qwen3 30B · local" />);
     expect(container.textContent).toContain("⬢");
-    rerender(<SeloModelo nome="gpt-oss-120b · reserva" />);
-    expect(container.textContent).toContain("↺");
+    rerender(<SeloModelo nome="gpt-oss-120b" />);
+    expect(container.textContent).toContain("✦");
+    expect(container.innerHTML).not.toMatch(/Google falhou/);
   });
 });

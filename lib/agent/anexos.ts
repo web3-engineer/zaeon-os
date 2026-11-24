@@ -33,6 +33,12 @@ export type AnexoDoTurno = {
    * trechos (lib/trechos) dizer "p. 12" de uma passagem do anexo. Ausente = sem paginação conhecida (Word, texto).
    */
   marcasDePagina?: Array<[number, number]>;
+  /**
+   * #873 PR 3: o arquivo passou do teto e só o começo veio. `total` = caracteres do arquivo inteiro; `ateAPagina` =
+   * a última página que coube (quando se sabe). Sem isto a IA respondia como se tivesse lido tudo — e, sem achar no
+   * começo, pegava a resposta de OUTRO documento da base.
+   */
+  cortado?: { total: number; ateAPagina?: number };
 };
 
 /**
@@ -71,13 +77,21 @@ export function cortarTexto(texto: string, max = MAX_CHARS_ANEXO): string {
 
 /** Monta o anexo a partir do texto cru já extraído. */
 export function anexoDe(i: { id: string; nome: string; tipo: string; texto: string; paginas?: number }): AnexoDoTurno {
+  const inteiro = String(i.texto ?? "").trim();
+  const texto = cortarTexto(inteiro);
   return {
     id: i.id,
     nome: String(i.nome ?? "arquivo").slice(0, 160),
     tipo: String(i.tipo ?? ""),
-    texto: cortarTexto(String(i.texto ?? "").trim()),
+    texto,
     ...(i.paginas ? { paginas: i.paginas } : {}),
+    ...(texto.length < inteiro.length ? { cortado: { total: inteiro.length } } : {}),
   };
+}
+
+/** a última página que coube no texto cortado (pelas marcas de página), pro aviso dizer "li até a p. N" */
+export function ultimaPaginaLida(marcas: readonly [number, number][] | undefined): number | undefined {
+  return marcas?.length ? marcas[marcas.length - 1]![1] : undefined;
 }
 
 // ───────────────────────────── o inventário (contexto e `listar_anexos`) ─────────────────────────────
@@ -88,8 +102,37 @@ const mil = (n: number) => (n >= 1000 ? `${Math.round(n / 1000)} mil` : String(n
 export function inventarioDosAnexos(anexos: readonly AnexoDoTurno[]): string {
   if (!anexos.length) return "";
   return anexos
-    .map((a) => `- ${a.id}: "${a.nome}"${a.paginas ? `, ${a.paginas} ${a.paginas === 1 ? "página" : "páginas"}` : ""} (${mil(a.texto.length)} caracteres)`)
+    .map((a) => `- ${a.id}: "${a.nome}"${a.paginas ? `, ${a.paginas} ${a.paginas === 1 ? "página" : "páginas"}` : ""} (${mil(a.texto.length)} caracteres` +
+      (a.cortado ? ` lidos de ${mil(a.cortado.total)}${a.cortado.ateAPagina ? `: só até a página ${a.cortado.ateAPagina}` : ": só o começo"}` : "") + ")")
     .join("\n");
+}
+
+/**
+ * #873 PR 3 · o aviso de arquivo grande. A IA só tem o começo; sem dizer isso, ela respondia "com confiança" uma coisa
+ * que estava depois do corte — e, sem achar no começo, usava um trecho de OUTRO documento. PURO.
+ */
+export function avisoDeCorte(anexos: readonly AnexoDoTurno[]): string {
+  return anexos.filter((a) => a.cortado).map((a) => {
+    const ate = a.cortado!.ateAPagina ? `até a página ${a.cortado!.ateAPagina}` : "o começo";
+    return `ATENÇÃO: "${a.nome}" é maior que o limite de leitura — você só tem ${ate}` +
+      (a.paginas ? ` (de ${a.paginas} páginas)` : "") + ". Se a resposta não estiver nessa parte, diga isso com " +
+      `franqueza ("li ${ate}; o resto ainda está sendo preparado na sua base — pergunte de novo em alguns minutos") ` +
+      "e NÃO responda como se tivesse lido o arquivo inteiro.";
+  }).join("\n");
+}
+
+/**
+ * #873 PR 3 · NÃO MISTURAR DOCUMENTOS. No teste, a pergunta era sobre o manual anexado, e a Aura respondeu com a
+ * palavra-código de OUTRO PDF da base, dizendo que era do manual. A base pode trazer trechos de outros arquivos: eles
+ * nunca falam pelo anexo. PURO.
+ */
+export function regraDeNaoMisturar(anexos: readonly AnexoDoTurno[]): string {
+  if (!anexos.length) return "";
+  const um = anexos.length === 1;
+  return `Pergunta sobre ${um ? "o arquivo" : "os arquivos"} ${anexos.map((a) => `"${a.nome}"`).join(", ")} se responde pelo ` +
+    `conteúdo ${um ? "dele" : "deles"}. Trecho da base com OUTRO título é de OUTRO documento: nunca atribua a um anexo ` +
+    "algo que veio de outro documento. Se usar um trecho desses, diga de qual documento ele veio " +
+    "(\"isso está em outro material seu: …\").";
 }
 
 /**
@@ -104,7 +147,9 @@ export function blocoDosAnexos(anexos: readonly AnexoDoTurno[]): string {
     inventarioDosAnexos(anexos),
     "O conteúdo chega pela ferramenta de leitura do anexo. Se a pergunta for sobre o arquivo e nada " +
     "vier da leitura, diga isso — não invente o que ele diz.",
-  ].join("\n");
+    avisoDeCorte(anexos),
+    regraDeNaoMisturar(anexos),
+  ].filter(Boolean).join("\n");
 }
 
 // ───────────────────────────── o recorte (`ler_anexo`) ─────────────────────────────

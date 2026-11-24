@@ -151,3 +151,40 @@ describe("sem sessão", () => {
     expect(h.aoGuardar).toHaveBeenCalledWith(expect.stringContaining("entre na sua conta"));
   });
 });
+
+describe("#873 PR 3 · o anexo é da conversa, não da sala inteira", () => {
+  const montarEm = (conversa: string) =>
+    renderHook(({ c }) => useAnexoChat("estudos", { focar: vi.fn(), perguntar: vi.fn(), aoGuardar: vi.fn(), conversa: c }), { initialProps: { c: conversa } });
+
+  it("conversa nova começa SEM o PDF da anterior; voltar traz o dela", async () => {
+    const h = montarEm("c1");
+    await anexar(h, [pdf("manual.pdf")]);
+    expect(h.result.current.anexo?.nome).toBe("manual");
+    h.rerender({ c: "c2" });   // "Nova conversa"
+    expect(h.result.current.anexo).toBeNull();
+    expect(h.result.current.anexoRef.current).toBeNull();   // o envio lê o ref: nada vai junto na conversa nova
+    h.rerender({ c: "c1" });
+    expect(h.result.current.anexo?.nome).toBe("manual");
+  });
+
+  it("tirar o anexo (×) numa conversa não tira da outra", async () => {
+    const h = montarEm("c1");
+    await anexar(h, [pdf("a.pdf")]);
+    h.rerender({ c: "c2" });
+    await anexar(h, [pdf("b.pdf")]);
+    act(() => h.result.current.tirar());
+    expect(h.result.current.anexo).toBeNull();
+    h.rerender({ c: "c1" });
+    expect(h.result.current.anexo?.nome).toBe("a");
+  });
+
+  it("o lote 📚 também é por conversa", async () => {
+    const h = montarEm("c1");
+    await anexar(h, [txt("aula1.txt"), txt("aula2.txt")]);
+    expect(h.result.current.lote).toHaveLength(2);
+    h.rerender({ c: "c2" });
+    expect(h.result.current.lote).toEqual([]);
+    h.rerender({ c: "c1" });
+    expect(h.result.current.lote.map((a) => a.nome)).toEqual(["aula1", "aula2"]);
+  });
+});

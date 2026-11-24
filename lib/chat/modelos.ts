@@ -49,13 +49,14 @@ export function modeloDoId(id: unknown): ModeloChat | null {
 /**
  * Nome pra tela a partir do que o SERVIDOR usou (ledger: model + alvo) — inclusive quando um fallback serviu.
  *   "gemini-3.5-flash"/vertex → "Gemini 3.5 Flash" · "zaeon-local-qwen30"/contabo → "Qwen3 30B · local"
- *   "openai/gpt-oss-120b"/huggingface → "gpt-oss-120b · reserva"
+ *   "openai/gpt-oss-120b"/huggingface → "gpt-oss-120b" (#873 PR 3: sem "· reserva" — não usamos mais o Google como
+ *   provedor; com LLM_PRIMARIO=hf ele é o PRINCIPAL, e a etiqueta dizia ao aluno que "o Google falhou")
  */
 export function nomeDoModeloServido(model: string | null | undefined, alvo?: string | null): string {
   const m = String(model ?? "").trim();
   const doCatalogo = MODELOS_CHAT.find((x) => x.vertex === m || x.grupo === m);
   if (doCatalogo) return doCatalogo.provedor === "zaeon" ? `${doCatalogo.nome} · local` : doCatalogo.nome;
-  if (alvo === "huggingface") return `${m.replace(/^.*\//, "") || "Hugging Face"} · reserva`;
+  if (alvo === "huggingface") return m.replace(/^.*\//, "") || "Hugging Face";
   if (alvo === "contabo" || m.startsWith("zaeon-local-")) return `${m.replace(/^zaeon-local-/, "") || "Zaeon"} · local`;
   return m || "?";
 }

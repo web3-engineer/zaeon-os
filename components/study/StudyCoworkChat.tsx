@@ -18,6 +18,7 @@
  * (function-calling) entram na Fase 2 — aqui deixamos as superfícies prontas.
  */
 
+import { semFalhasNoHistorico } from "@/lib/chat/semFalhas";
 import { confirmar, tr } from "@/lib/ui/avisos";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
@@ -479,6 +480,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     focar: focarComposer,
     perguntar: (t) => sendRefA.current(t),
     aceitaBiblioteca: true,
+    conversa: abaAtiva,
     // Minha base (RAG F3): a Aura confirma o lote guardado na conversa
     aoGuardar: (texto) => setMessages((prev) => [...prev, { id: uid(), role: "assistant", kind: "text", text: texto, at: Date.now() }]),
   });
@@ -1204,6 +1206,8 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
       .map((m) => ({ role: m.role === "assistant" ? "model" : "user", texto: textoParaHistorico(m) }))
       .filter((h) => h.texto)
       .map((h) => ({ role: h.role, parts: [{ text: h.texto }] }));
+    // #873 PR 3: o aviso de falha fica na tela, mas nao vai pro modelo (ele repetia a propria falha)
+    const historyLimpo = semFalhasNoHistorico(history);
 
     // mensagem da assistente entra vazia e vai sendo preenchida aos poucos (streaming)
     const asstId = uid(), perguntaId = uid();
@@ -1290,7 +1294,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
       // o MESMO núcleo do chat mobile (useAuraChat). Aqui fica só o que é desta tela.
       const res = await pedirAura({
         prompt,
-        history,
+        history: historyLimpo,
         systemContext,
         // QUEM o aluno escolheu no seletor da sidebar. Até aqui o chat lia essa escolha só pro
         // ROSTO (lib/research/zaeonEventos) e nunca pra conversa — era isso que fazia o seletor
