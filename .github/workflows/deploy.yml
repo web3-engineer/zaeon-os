@@ -412,10 +412,10 @@ jobs:
             # HF: o token é SECRET; o resto são Variables (docs/HF_PRIMARIO.md). Só grava a preenchida —
             # linha vazia SOBRESCREVERIA o `.env` do VPS e desligaria o que já estava ligado.
             HFV="HF_TOKEN HF_RESERVA DISPAROS_HF DISPAROS_HF_SEM_HISTORICO LLM_PRIMARIO HF_RESERVA_MODELOS HF_PRIMARIO_MODELOS HF_PRIMARIO_MODELOS_PRO"
-            hfn=""; for k in $HFV; do [ -n "${!k:-}" ] && hfn="$hfn|$k"; done
+            hfn=""; for h in $HFV; do [ -n "${!h:-}" ] && hfn="$hfn|$h"; done
             if [ -n "$hfn" ]; then
               grep -vE "^(${hfn#|})=" .env.secrets > .env.secrets.tmp || true
-              { cat .env.secrets.tmp; for k in ${hfn//|/ }; do echo "$k=${!k}"; done; } > .env.secrets
+              { cat .env.secrets.tmp; for h in ${hfn//|/ }; do echo "$h=${!h}"; done; } > .env.secrets
               rm -f .env.secrets.tmp
               # Nunca imprime o token: só os NOMES gravados e o primário.
               echo "→ HF: gravadas ${hfn#|} · primario=${LLM_PRIMARIO:-'(vale o .env)'}"

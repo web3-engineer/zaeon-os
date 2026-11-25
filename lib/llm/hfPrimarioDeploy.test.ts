@@ -16,10 +16,14 @@ describe("deploy leva as chaves do HF", () => {
     expect(deploy).toMatch(new RegExp(`HFV="[^"]*\\b${k}\\b`));
   });
 
+  it("o laço do HF usa `h`, não `k` — os testes da plumagem leem o 1º `for k in` do script", () => {
+    expect(deploy).not.toMatch(/for k in \$HFV|for k in \$\{hfn/);
+  });
+
   it("o laço só grava a preenchida e troca a linha antiga (não duplica)", () => {
-    expect(deploy).toContain(`for k in $HFV; do [ -n "\${!k:-}" ] && hfn="$hfn|$k"; done`);
+    expect(deploy).toContain(`for h in $HFV; do [ -n "\${!h:-}" ] && hfn="$hfn|$h"; done`);
     expect(deploy).toContain(`grep -vE "^(\${hfn#|})=" .env.secrets > .env.secrets.tmp || true`);
-    expect(deploy).toContain(`for k in \${hfn//|/ }; do echo "$k=\${!k}"; done; } > .env.secrets`);
+    expect(deploy).toContain(`for h in \${hfn//|/ }; do echo "$h=\${!h}"; done; } > .env.secrets`);
   });
 
   it("não vira Secret nem imprime o token", () => {
