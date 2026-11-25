@@ -159,6 +159,12 @@ jobs:
           HF_RESERVA: ${{ vars.HF_RESERVA || '' }}
           DISPAROS_HF: ${{ vars.DISPAROS_HF || '' }}
           DISPAROS_HF_SEM_HISTORICO: ${{ vars.DISPAROS_HF_SEM_HISTORICO || '' }}
+          # HF na frente do Google (docs/HF_PRIMARIO.md): LLM_PRIMARIO=hf liga; os modelos são opcionais
+          # (vazios = os defaults do código). Variables, não Secrets — não são credencial.
+          LLM_PRIMARIO: ${{ vars.LLM_PRIMARIO || '' }}
+          HF_RESERVA_MODELOS: ${{ vars.HF_RESERVA_MODELOS || '' }}
+          HF_PRIMARIO_MODELOS: ${{ vars.HF_PRIMARIO_MODELOS || '' }}
+          HF_PRIMARIO_MODELOS_PRO: ${{ vars.HF_PRIMARIO_MODELOS_PRO || '' }}
           # opções (push usa defaults; dispatch respeita os inputs)
           WITH_VOICE: ${{ github.event.inputs.with_voice || vars.DEPLOY_WITH_VOICE || 'false' }}
           DB_PUSH: ${{ github.event.inputs.db_push || 'true' }}
@@ -291,7 +297,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           command_timeout: 25m
-          envs: GOOGLE_CREDENTIALS_B64,GOOGLE_PROJECT_ID_VALUE,OCTA_CRON_SECRET,UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,HF_TOKEN,RESEND_API_KEY,EMAIL_FROM,HF_RESERVA,DISPAROS_HF,DISPAROS_HF_SEM_HISTORICO,WITH_VOICE,DB_PUSH,DEPLOY_BRANCH,APP_URL,BETA_DOMAIN,ACME_EMAIL,NEXT_PUBLIC_ESCRITORIO_COWORK,NEXT_PUBLIC_AGENTS_ADMIN,NEXT_PUBLIC_AGENT_AVATARS,NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM,NEXT_PUBLIC_MAP_HARNESS,NEXT_PUBLIC_LOUNGE_3D,NEXT_PUBLIC_CYBER_AVATAR_GLB,NEXT_PUBLIC_CYBER_LANDMARKS,NEXT_PUBLIC_AURA_ECONOMY,NEXT_PUBLIC_REALTIME,NEXT_PUBLIC_VOZ,NEXT_PUBLIC_PROJETOS,NEXT_PUBLIC_MENTORES_TAB,NEXT_PUBLIC_OCTA_CODE,NEXT_PUBLIC_OCTA_REA,MAP_HARNESS,ESTUDO_GATEKEEPER,AURA_ECONOMY,NEXT_PUBLIC_CHAT_UNICO,DOC_POR_SECAO,CHAT_UNICO,TCC_CROSS,NEXT_PUBLIC_TCC_CROSS,CHAT_BG,NEXT_PUBLIC_BLUEPRINT_PRATICO,BLUEPRINT_PRATICO,GITHUB_TOKEN_BLUEPRINT,NEXT_PUBLIC_VIDEO_DOC,VIDEO_DOC,NEXT_PUBLIC_REA_BLUEPRINT,REA_BLUEPRINT,HARNESS_CAPACIDADE,HARNESS_ACAO,HARNESS_VOLTAS_ACAO,PRO_PESADAS,HARNESS_ANEXO,HARNESS_SINTESE,HARNESS_GRAFICO,MCP_CONECTORES,PUSHER_APP_ID,PUSHER_SECRET,NEXT_PUBLIC_PUSHER_KEY,NEXT_PUBLIC_PUSHER_CLUSTER,RACIOCINIO_ELABORADO,AGENTIC_MODE,AGENTE_URL,AGENTE_ALLOW,SCHOLAR_WORKER,CANAL_WORKER,CHORES_WORKER,CANAL_QUEUE,LEITOR_PROXY_URL,LEITOR_ALLOW,LEITOR_MAX_BYTES,LEITOR_MAX_BYTES_BIN,VISAO_HARNESS,VISAO_CAMERA,OCTA_MODELOS_PREMIUM,OCTA_PREMIUM_BUDGET_USD,AGENTE_TOKEN,NAVE_TRIPULACAO
+          envs: GOOGLE_CREDENTIALS_B64,GOOGLE_PROJECT_ID_VALUE,OCTA_CRON_SECRET,UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,HF_TOKEN,RESEND_API_KEY,EMAIL_FROM,HF_RESERVA,DISPAROS_HF,DISPAROS_HF_SEM_HISTORICO,LLM_PRIMARIO,HF_RESERVA_MODELOS,HF_PRIMARIO_MODELOS,HF_PRIMARIO_MODELOS_PRO,WITH_VOICE,DB_PUSH,DEPLOY_BRANCH,APP_URL,BETA_DOMAIN,ACME_EMAIL,NEXT_PUBLIC_ESCRITORIO_COWORK,NEXT_PUBLIC_AGENTS_ADMIN,NEXT_PUBLIC_AGENT_AVATARS,NEXT_PUBLIC_UNIFIED_RESEARCH_ROOM,NEXT_PUBLIC_MAP_HARNESS,NEXT_PUBLIC_LOUNGE_3D,NEXT_PUBLIC_CYBER_AVATAR_GLB,NEXT_PUBLIC_CYBER_LANDMARKS,NEXT_PUBLIC_AURA_ECONOMY,NEXT_PUBLIC_REALTIME,NEXT_PUBLIC_VOZ,NEXT_PUBLIC_PROJETOS,NEXT_PUBLIC_MENTORES_TAB,NEXT_PUBLIC_OCTA_CODE,NEXT_PUBLIC_OCTA_REA,MAP_HARNESS,ESTUDO_GATEKEEPER,AURA_ECONOMY,NEXT_PUBLIC_CHAT_UNICO,DOC_POR_SECAO,CHAT_UNICO,TCC_CROSS,NEXT_PUBLIC_TCC_CROSS,CHAT_BG,NEXT_PUBLIC_BLUEPRINT_PRATICO,BLUEPRINT_PRATICO,GITHUB_TOKEN_BLUEPRINT,NEXT_PUBLIC_VIDEO_DOC,VIDEO_DOC,NEXT_PUBLIC_REA_BLUEPRINT,REA_BLUEPRINT,HARNESS_CAPACIDADE,HARNESS_ACAO,HARNESS_VOLTAS_ACAO,PRO_PESADAS,HARNESS_ANEXO,HARNESS_SINTESE,HARNESS_GRAFICO,MCP_CONECTORES,PUSHER_APP_ID,PUSHER_SECRET,NEXT_PUBLIC_PUSHER_KEY,NEXT_PUBLIC_PUSHER_CLUSTER,RACIOCINIO_ELABORADO,AGENTIC_MODE,AGENTE_URL,AGENTE_ALLOW,SCHOLAR_WORKER,CANAL_WORKER,CHORES_WORKER,CANAL_QUEUE,LEITOR_PROXY_URL,LEITOR_ALLOW,LEITOR_MAX_BYTES,LEITOR_MAX_BYTES_BIN,VISAO_HARNESS,VISAO_CAMERA,OCTA_MODELOS_PREMIUM,OCTA_PREMIUM_BUDGET_USD,AGENTE_TOKEN,NAVE_TRIPULACAO
           # ─────────────────────────────────────────────────────────────────────────────────────
           # O TETO DE 21.000 BYTES DO `script:`. Medido com o único juiz que existe (o push), porque
           # o parser do GitHub não tem substituto local: 20.581 bytes PASSA, 21.010 FALHA — e falhar
@@ -403,23 +409,16 @@ jobs:
             else
               echo "→ Upstash: Secrets vazios — vale o .env do VPS"
             fi
-            # HF: o token é SECRET (vai pro .env.secrets); as três chaves de comportamento são Variables
-            # e entram no mesmo arquivo pra valerem sem rebuild. Cada uma só é gravada se vier preenchida —
-            # linha vazia aqui SOBRESCREVERIA o `.env` do VPS e desligaria o que já estava ligado.
-            if [ -n "${HF_TOKEN:-}" ] || [ -n "${HF_RESERVA:-}" ] || [ -n "${DISPAROS_HF:-}" ] || [ -n "${DISPAROS_HF_SEM_HISTORICO:-}" ]; then
-              grep -vE '^(HF_TOKEN|HF_RESERVA|DISPAROS_HF|DISPAROS_HF_SEM_HISTORICO)=' .env.secrets > .env.secrets.tmp || true
-              {
-                cat .env.secrets.tmp
-                # `|| true` em cada uma: o script roda com `set -e`, e um teste falso sem isso
-                # devolveria 1 e derrubaria o deploy justamente quando a chave está vazia.
-                { [ -n "${HF_TOKEN:-}" ] && echo "HF_TOKEN=${HF_TOKEN}"; } || true
-                { [ -n "${HF_RESERVA:-}" ] && echo "HF_RESERVA=${HF_RESERVA}"; } || true
-                { [ -n "${DISPAROS_HF:-}" ] && echo "DISPAROS_HF=${DISPAROS_HF}"; } || true
-                { [ -n "${DISPAROS_HF_SEM_HISTORICO:-}" ] && echo "DISPAROS_HF_SEM_HISTORICO=${DISPAROS_HF_SEM_HISTORICO}"; } || true
-              } > .env.secrets
+            # HF: o token é SECRET; o resto são Variables (docs/HF_PRIMARIO.md). Só grava a preenchida —
+            # linha vazia SOBRESCREVERIA o `.env` do VPS e desligaria o que já estava ligado.
+            HFV="HF_TOKEN HF_RESERVA DISPAROS_HF DISPAROS_HF_SEM_HISTORICO LLM_PRIMARIO HF_RESERVA_MODELOS HF_PRIMARIO_MODELOS HF_PRIMARIO_MODELOS_PRO"
+            hfn=""; for k in $HFV; do [ -n "${!k:-}" ] && hfn="$hfn|$k"; done
+            if [ -n "$hfn" ]; then
+              grep -vE "^(${hfn#|})=" .env.secrets > .env.secrets.tmp || true
+              { cat .env.secrets.tmp; for k in ${hfn//|/ }; do echo "$k=${!k}"; done; } > .env.secrets
               rm -f .env.secrets.tmp
-              # Nunca imprime o token: só se ele existe, e o estado das chaves de comportamento.
-              echo "→ HF: token=$([ -n "${HF_TOKEN:-}" ] && echo sim || echo '(vale o .env)') reserva=${HF_RESERVA:-'(default)'} disparos=${DISPAROS_HF:-'(off)'}"
+              # Nunca imprime o token: só os NOMES gravados e o primário.
+              echo "→ HF: gravadas ${hfn#|} · primario=${LLM_PRIMARIO:-'(vale o .env)'}"
             else
               echo "→ HF: nada nos Secrets/Variables — vale o .env do VPS"
             fi

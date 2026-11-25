@@ -90,6 +90,12 @@ export function hfPrimario(env: Env = process.env): boolean {
   return /^(hf|huggingface|hugging-face)$/i.test(env.LLM_PRIMARIO?.trim() ?? "");
 }
 
+/** O recibo do /api/health: quem vai na frente e se o HF está de reserva. Sem token nem nome de modelo. */
+export function llmNaFrente(env: Env = process.env): { primario: "huggingface" | "google"; reservaHf: boolean } {
+  const hf = hfPrimario(env);
+  return { primario: hf ? "huggingface" : "google", reservaHf: !hf && reservaHfLigada(env) };
+}
+
 /** Testado ao vivo no router (2026-11-21, conta do dono): JSON mode ok, 131k de contexto, ~1500 tok/s na Cerebras. */
 export const HF_PRIMARIO_PADRAO = ["openai/gpt-oss-120b:cerebras", "openai/gpt-oss-120b:groq"] as const;
 export const HF_PRIMARIO_PRO_PADRAO = ["openai/gpt-oss-120b:cerebras", "openai/gpt-oss-120b:groq"] as const;

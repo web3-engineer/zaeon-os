@@ -55,6 +55,7 @@ import { TCC_CROSS_ON } from "@/lib/tcc/client";
 import { chatUnicoOn } from "@/lib/chat/chatUnico";
 import { resumoDoAtlas } from "@/lib/anatomia/carregar";
 import { reciboCad } from "@/lib/cad/mcp";
+import { llmNaFrente } from "@/lib/llm/reservaHf";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
@@ -101,6 +102,9 @@ export async function GET() {
     // conta plus/pro (lib/ai/proNasPesadas), e isso depende de usuário — o health não tem usuário.
     // Dizer só "ON" aqui seria recibo exagerado; o nome do campo e esta nota é que o mantêm honesto.
     modelo: { flash: GEMINI_MODEL_FLASH, pro: GEMINI_MODEL_PRO, proPesadas: proNasPesadasLigado(), proSoPlusEPro: true },
+    // QUEM RESPONDE PRIMEIRO o texto (docs/HF_PRIMARIO.md): "huggingface" com LLM_PRIMARIO=hf + token, senão
+    // "google". `reservaHf` = o HF entra quando o Google falha. Só o estado — nunca o token.
+    llm: llmNaFrente(),
     // O TEMPO REAL do documento colaborativo. "on" = as quatro envs do Pusher chegaram; senão, os
     // NOMES que faltam (nunca os valores). Sem elas a colaboração funciona no poll de 6 s — a
     // diferença é invisível de fora, e era por isso que eu não conseguia confirmá-la pro dono.
