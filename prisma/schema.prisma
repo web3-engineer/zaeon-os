@@ -490,6 +490,21 @@ model CartolinaMembro {
   @@index([userId])
 }
 
+// Convites individuais para o board: só o destinatário pode aceitar ou recusar.
+model ConviteBoard {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  cartolinaId String   @db.ObjectId
+  deId        String   @db.ObjectId
+  paraId      String   @db.ObjectId
+  papel       String
+  status      String   @default("pendente")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([cartolinaId, paraId])
+  @@index([paraId, status])
+}
+
 // Comentário/resposta ancorado num card (thread via parentId).
 model CartolinaComentario {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId

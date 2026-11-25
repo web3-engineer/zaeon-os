@@ -14,6 +14,7 @@ import { useSession } from "next-auth/react";
 import { LARGURA, filhosDe, novoIdCard, posicaoDoFilho, profundidade, type CardEstudo, type TipoCard } from "@/lib/estudos/board";
 import { useBoardEstudos } from "./useBoardEstudos";
 import BlueprintEstudo from "./BlueprintEstudo";
+import ConvitesBoard from "./ConvitesBoard";
 
 const AZUL = "#0b2c4d", LINHA = "rgba(170,220,255,.9)", LINHA_FRACA = "rgba(150,205,255,.14)", TINTA = "#e8f6ff";
 const ROTULO: Record<TipoCard, string> = { estudo: "ESTUDO", percurso: "PERCURSO", confirmacao: "CONFIRMAÇÃO", especulacao: "ESPECULAÇÃO", nota: "NOTA", pergunta: "PERGUNTA" };
@@ -232,6 +233,7 @@ export default function BoardEstudos({ boardInicialId, convite }: { boardInicial
         </select>
         {!leitor && (["estudo", "nota", "pergunta"] as const).map((t) => <Botao key={t} cor={COR[t]} onClick={() => novo(t)}>+ {ROTULO[t].toLowerCase()}</Botao>)}
         {board?.papel === "dono" && <><Botao cor="#7fe0ff" onClick={() => convidar("editor")}>convidar (edita)</Botao><Botao cor="#7fe0ff" onClick={() => convidar("leitor")}>convidar (só vê)</Botao></>}
+        {board && <ConvitesBoard boardId={board.id} dono={board.papel === "dono"} abrir={(id) => { centrou.current = null; B.abrir(id); }} />}
         {leitor && <span className="text-amber-200/80">só leitura</span>}
         <span className="text-sky-300/60">{B.salvando ? "salvando…" : "salvo"}</span>
       </div>

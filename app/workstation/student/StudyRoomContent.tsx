@@ -444,6 +444,7 @@ export default function StudyRoomContent({ flushTop = false, unified = false, ab
                             blueprintUiOn() && !pranchaAntiga ? (
                                 <div className="relative h-full">
                                     <SalaBlueprint />
+                                    <button type="button" onClick={() => { setBoardDoLink({ id: null, convite: null }); setCadernoAberto(false); setPranchaAntiga(true); }} className="absolute bottom-3 left-1/2 z-[95] -translate-x-1/2 rounded-full border border-sky-300/30 bg-[#05162a]/85 px-3 py-1 font-mono text-[10.5px] text-sky-100/80 backdrop-blur hover:text-white">Abrir board compartilhado</button>
                                 </div>
                             ) : (
                             <div className="relative h-full">
