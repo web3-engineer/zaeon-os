@@ -97,6 +97,34 @@ export const PECA_SYS = [
   'Responda SOMENTE JSON válido: {"titulo":"<título curto da peça>","secoes":[{"titulo":"<título da seção>","corpo":"<texto>"}]}',
 ].join("\n");
 
+/**
+ * #873 PR 4 · NÚMERO DE JULGADO/PROCESSO INVENTADO. Mesmo com a ordem no prompt, a petição de teste citou
+ * "REsp 1.234.567" — número que parece real e não é. O modelo não tem como conferir julgado, então o CÓDIGO troca todo
+ * número de julgado (REsp, RE, HC, AgRg…) e todo número de processo no padrão do CNJ por um campo entre colchetes, como
+ * os outros dados que o aluno precisa preencher. A citação da LEI (art. 62 da Lei 8.245/91) não é tocada. PURO.
+ */
+export const CAMPO_JULGADO = "[JULGADO — CONFIRA E PREENCHA O NÚMERO]";
+export const CAMPO_PROCESSO = "[NÚMERO DO PROCESSO]";
+const JULGADO = /\b(?:(?:AgRg|AgInt|EDcl)\s+n[oa]s?\s+)?(?:REsp|AREsp|RE|ARE|HC|RHC|MS|RMS|ADI|ADC|ADPF|EREsp|CC|Rcl)\s*(?:n[º°o.]\s*)?\d{1,3}(?:\.\d{3})+(?:\s*\/\s*[A-Z]{2})?/g;
+const PROCESSO_CNJ = /\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b/g;
+export function semNumeroInventado(texto: string): string {
+  return String(texto ?? "").replace(JULGADO, CAMPO_JULGADO).replace(PROCESSO_CNJ, CAMPO_PROCESSO);
+}
+
+/**
+ * #873 PR 4 · A RESPOSTA DO CHAT QUANDO A PEÇA NASCE. No teste da procuração, o documento foi criado, mas a bolha disse
+ * "A base de conhecimento fornecida não contém informações sobre como elaborar uma procuração" — a resposta do chat
+ * olhou só pra base (vazia sobre o assunto) e recusou, enquanto a peça era escrita ao lado. Quando a peça foi criada
+ * e a resposta é uma recusa por falta de base, o código troca pela confirmação. Resposta boa fica como está. PURO.
+ */
+const RECUSA_SEM_BASE = /(base de conhecimento|material (fornecido|dispon[ií]vel)|trechos? (fornecidos?|dispon[ií]veis)|documentos? fornecidos?)[^.]{0,80}n[ãa]o (cont[ée]m|traz|tem|possui|apresenta)|n[ãa]o (encontrei|h[áa]) (informa[çc](ão|ões)|dados)/i;
+export function respostaDaPecaCriada(nucleo: string, titulo: string): string {
+  const t = String(nucleo ?? "").trim();
+  if (t && !RECUSA_SEM_BASE.test(t)) return nucleo;
+  return `Comecei a escrever **${titulo}** na aba ao lado. É um modelo para estudo: os dados que você não informou ` +
+    "ficam entre colchetes para preencher, e vale a revisão de um advogado antes de usar.";
+}
+
 export function pecaUser(tipo: TipoPeca, pedido: string): string {
   const secoes = daPeca(tipo).secoes;
   return [
@@ -154,7 +182,9 @@ export async function gerarPecaEmBackground(workId: string, userId: string, pedi
   const store = await import("@/lib/tcc/store");
   try {
     const saida = await gen(PECA_SYS, pecaUser(tipo, pedido));
-    const { secoes, faltando } = encaixarNaPeca(tipo, saida);
+    const encaixe = encaixarNaPeca(tipo, saida);
+    const faltando = encaixe.faltando;
+    const secoes = encaixe.secoes.map((x) => ({ ...x, corpo: semNumeroInventado(x.corpo) }));
     // nada além do aviso → falhou
     if (faltando >= secoes.length - 1) throw new Error("peça vazia");
     const r = await store.aplicarNoTcc(workId, userId, (t) => {

@@ -16,6 +16,8 @@ import { sanitizeScopeId } from "@/lib/cartolina/route-auth";
 import { lerBriefing, type Briefing } from "@/lib/tcc/briefing";
 import { aplicarNoTcc, criarTcc, findTccDoEscopo, listarTrabalhosDoEscopo, marcarStatus, tccCrossOn, referenciasNovas, type FonteVerificada, type TccView } from "@/lib/tcc/store";
 import { ESQUELETO_TCC, chaveTitulo, esqueletoDe, opsDeWork, palavras } from "@/lib/tcc/secoes";
+import { tituloDoTema } from "@/lib/tcc/titulo";
+export { tituloDoTema };
 import { researchWorkType } from "@/lib/agent/tools";
 import { AVISO_PECA, TIPO_TRABALHO_PECA, esqueletoDaPeca, pedePecaJuridica, tituloDaPeca, type TipoPeca } from "@/lib/documento/pecaJuridica";
 import { paperOrquestraLigada } from "@/lib/paper-orquestra/flag";
@@ -37,6 +39,7 @@ export function temaDoPedido(prompt: string): string {
   const tema = (m ? m[1] : t).replace(/[.!?]+$/, "").trim();
   return tema.slice(0, 160) || "TCC";
 }
+
 
 /**
  * Título e seções de PARTIDA, a partir do pedido.
@@ -136,7 +139,7 @@ export function pedeNovoTrabalho(prompt: string, aberto: Pick<TccView, "titulo">
   if (!EDICAO_EXPLICITA.test(t) && lerBriefing(prompt).secoes.length >= 2) return true;
   if (PARTE_RE.test(t)) return false;
   if (!TEMA_RE.test(t)) return false;
-  return chaveTitulo(temaDoPedido(prompt)) !== chaveTitulo(aberto.titulo);
+  return chaveTitulo(tituloDoTema(temaDoPedido(prompt))) !== chaveTitulo(tituloDoTema(aberto.titulo));
 }
 
 /** O bloco do CHAT ÚNICO: todos os trabalhos da conversa, com o que está aberto no editor marcado. */
@@ -392,7 +395,7 @@ export async function tccDoTurno(input: {
     // a Aura rascunhou numa resposta só são justamente o texto raso que ele veio substituir — docs/PAPER_ORQUESTRA.md)
     const gerando = paperOrquestraLigada() || doModelo.length === 0;
     const t = await criarTcc({
-      userId: input.userId, scopeId: scope, titulo, origem: "estudos",
+      userId: input.userId, scopeId: scope, titulo: tituloDoTema(titulo), origem: "estudos",
       secoes: gerando ? deAbertura : doModelo,
       status: gerando ? "gerando" : "pronto",
     });
@@ -471,7 +474,7 @@ async function trabalhoDoTurno(input: Parameters<typeof tccDoTurno>[0]): Promise
       const doModelo = secoesDoModelo(sections);
       const gerando = paperOrquestraLigada() || doModelo.length === 0;
       const t = await criarTcc({
-        userId: input.userId, scopeId: scope, titulo, origem: "estudos", workType: tipo,
+        userId: input.userId, scopeId: scope, titulo: tituloDoTema(titulo), origem: "estudos", workType: tipo,
         secoes: gerando ? deAbertura : doModelo,
         status: gerando ? "gerando" : "pronto",
       });

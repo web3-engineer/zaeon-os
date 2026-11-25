@@ -108,9 +108,9 @@ O PR 1 (gerar peças jurídicas, #874) já está em produção. O PR 2 (ler sem 
 | Teste | Resultado |
 |---|---|
 | Suíte completa (24/11) | ✅ nenhuma falha nova: os 85 arquivos que usam o código mexido rodaram com 1311 testes passando. As 12 falhas desses arquivos são de ambiente do Windows (skills, `rea-agent-eval`) e acontecem igual na main; o `mcp-real` falhou só sob carga e passou sozinho. As outras falhas da suíte completa são de arquivos que não usam este código (compose, symlink, docx), as mesmas de sempre. |
-| 1. Anexo por conversa | ⏳ falta testar |
-| 2. × numa conversa só | ⏳ falta testar |
-| 3. Arquivo grande | ⏳ falta testar |
-| 4. Não misturar | ⏳ falta testar |
-| 5. Falha não contamina | ⏳ falta testar |
-| 6. Etiqueta | ⏳ falta testar |
+| 1. Anexo por conversa | ✅ 25/11 (conversa nova sem o chip; voltar trouxe o Mandacaru). Achado: recarregar a página apagava o anexo de todas as conversas, corrigido no PR 4 |
+| 2. × numa conversa só | ✅ 25/11 (o × tirou o caatinga só da conversa dele) |
+| 3. Arquivo grande | ✅ 25/11 ("leitura disponível cobre apenas até a página 43", sem GIRASSOL-42) |
+| 4. Não misturar | ✅ 25/11 ("não está nas páginas lidas do manual", fonte só o manual; resposta em ~35 s). Melhoria: apontar o outro arquivo, feita no PR 4 |
+| 5. Falha não contamina | ⏳ não apareceu falha pra testar |
+| 6. Etiqueta | ✅ 24/11 (sem "· reserva") |

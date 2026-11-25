@@ -19,13 +19,16 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING, WD_BREAK
 from models import DocumentPayload
 import formatter as F
 
-STYLES = ("vancouver", "apa")
+STYLES = ("vancouver", "apa", "peca")
 
 # ── regras por norma ─────────────────────────────────────────────
 REGRAS = {
     "vancouver": {"margem_cm": 2.5, "entrelinha": 1.5, "recuo_cm": 1.25, "alinhamento": WD_ALIGN_PARAGRAPH.JUSTIFY},
     # APA 7: 1 polegada, espaço duplo, recuo de 0,5 pol., alinhado à esquerda (margem direita irregular)
     "apa": {"margem_cm": 2.54, "entrelinha": 2.0, "recuo_cm": 1.27, "alinhamento": WD_ALIGN_PARAGRAPH.LEFT},
+    # #873 PR 4 · PEÇA JURÍDICA (petição, contrato, procuração…): sem capa, folha de rosto nem resumo — o título e as
+    # partes da peça, justificado, entrelinha 1,5 e recuo de parágrafo de 2,5 cm (o costume do foro)
+    "peca": {"margem_cm": 2.5, "entrelinha": 1.5, "recuo_cm": 2.5, "alinhamento": WD_ALIGN_PARAGRAPH.JUSTIFY},
 }
 FONTE_PT = 12
 
@@ -44,9 +47,12 @@ def build_styled_document(payload: DocumentPayload) -> bytes:
     st.font.name, st.font.size = font, Pt(FONTE_PT)
     st.paragraph_format.space_after = Pt(0)
 
-    _folha_de_rosto(doc, payload, font, style)
-    _quebra(doc)
-    _resumo(doc, payload, font, style)
+    if style == "peca":
+        _paragrafo_titulo(doc, payload.title, font, r)
+    else:
+        _folha_de_rosto(doc, payload, font, style)
+        _quebra(doc)
+        _resumo(doc, payload, font, style)
 
     if style == "apa":
         _quebra(doc)
@@ -137,6 +143,11 @@ def _sem_numero(titulo: str) -> str:
 
 def _titulo(doc, titulo, font, style, nivel):
     texto = _sem_numero(titulo)
+    if style == "peca":
+        # a peça mantém a caixa das partes ("DOS FATOS", "DOS PEDIDOS"); parte sem título não vira linha vazia
+        texto = re.sub(r"^\s*\d+(\.\d+)*\s+", "", titulo or "").strip()
+        if not texto:
+            return
     p = doc.add_paragraph()
     p.paragraph_format.space_before = Pt(12)
     p.paragraph_format.space_after = Pt(6)

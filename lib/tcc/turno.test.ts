@@ -90,8 +90,8 @@ describe("tccDoTurno — entrelace Estudos → TCC", () => {
   it("'crie um TCC' com seções do modelo: cria com scopeId, origem estudos, pronto, e põe o card na cartolina", async () => {
     const gerar = vi.fn();
     const r = await tccDoTurno({ ...base, gerar, answer: ans({ work: { kind: "tcc", sections: [{ title: "Introdução", body: "i" }, { title: "Vazia", body: " " }] } }) as any });
-    expect(m.criar).toHaveBeenCalledWith(expect.objectContaining({ userId: "u1", scopeId: "aba1", titulo: "fotossíntese", origem: "estudos", status: "pronto", secoes: [{ titulo: "Introdução", corpo: "i" }] }));
-    expect(r).toEqual({ workId: "novo", titulo: "fotossíntese", criado: true, alteradas: 1, gerando: false });
+    expect(m.criar).toHaveBeenCalledWith(expect.objectContaining({ userId: "u1", scopeId: "aba1", titulo: "Fotossíntese", origem: "estudos", status: "pronto", secoes: [{ titulo: "Introdução", corpo: "i" }] }));
+    expect(r).toEqual({ workId: "novo", titulo: "Fotossíntese", criado: true, alteradas: 1, gerando: false });
     expect(gerar).not.toHaveBeenCalled();
     await vi.waitFor(() => expect(m.createBoard).toHaveBeenCalled());
     expect(m.createBoard.mock.calls[0][0].cards[0]).toMatchObject({ id: "tcc:novo", titulo: "TCC — em construção" });
@@ -280,13 +280,14 @@ describe("chat único — VÁRIOS trabalhos na mesma conversa", () => {
   });
 
   it("dois pedidos na mesma conversa = DOIS trabalhos (o 1º não é sobrescrito)", async () => {
-    m.criar.mockImplementation(async (i: any) => artigo({ id: i.titulo === "fotossíntese" ? "a1" : "a2", titulo: i.titulo, workType: i.workType, secoes: i.secoes.map((s: any, k: number) => ({ id: `s${k}`, titulo: s.titulo, corpo: s.corpo ?? "" })) }));
+    m.criar.mockImplementation(async (i: any) => artigo({ id: i.titulo === "Fotossíntese" ? "a1" : "a2", titulo: i.titulo, workType: i.workType, secoes: i.secoes.map((s: any, k: number) => ({ id: `s${k}`, titulo: s.titulo, corpo: s.corpo ?? "" })) }));
     const sec = { work: { kind: "artigo", sections: [{ title: "INTRODUÇÃO", body: "texto" }] } };
     const r1 = await tccDoTurno({ ...base, prompt: "escreva um artigo sobre fotossíntese", answer: ans(sec) as any });
     expect(r1).toMatchObject({ workId: "a1", criado: true, tipo: "Artigo" });
     m.listar.mockResolvedValue([artigo()]);
     const r2 = await tccDoTurno({ ...base, kind: "tcc", prompt: "agora outro sobre a mitose", answer: ans(sec) as any });
-    expect(r2).toMatchObject({ workId: "a2", titulo: "a mitose", criado: true, tipo: "TCC" });
+    // #873 PR 4: o título que o aluno vê, sem o artigo do começo e com maiúscula
+    expect(r2).toMatchObject({ workId: "a2", titulo: "Mitose", criado: true, tipo: "TCC" });
     expect(m.criar).toHaveBeenCalledTimes(2);
     expect(m.criar.mock.calls[1][0]).toMatchObject({ workType: "TCC", scopeId: "aba1" });
     expect(m.aplicar).not.toHaveBeenCalled();

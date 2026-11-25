@@ -36,6 +36,7 @@ import { chatUnicoOn } from "@/lib/chat/chatUnico";
 import { conteudoSemLatex } from "@/lib/tcc/latexTexto";
 import { useIsMobile } from "@/lib/ui/useIsMobile";
 import ExportarTrabalho, { type OpcoesExport } from "@/components/tcc/ExportarTrabalho";
+import { TIPO_TRABALHO_PECA } from "@/lib/documento/pecaJuridica";
 import ConvitePainel from "@/components/tcc/ConvitePainel";
 
 type Aba = "doc" | "sugestoes" | "historico";
@@ -238,7 +239,7 @@ export default function TccPanel({ workId, onFechar, onTitulo }: {
       }
       const url = URL.createObjectURL(await r.blob());
       const a = document.createElement("a");
-      a.href = url; a.download = `${tcc.titulo.replace(/\s+/g, "_").replace(/[^\w-]/g, "") || tipo}_${o.estilo.toUpperCase()}.${o.formato}`; a.click();
+      a.href = url; a.download = `${tcc.titulo.replace(/\s+/g, "_").replace(/[^\w-]/g, "") || tipo}_${tipo === TIPO_TRABALHO_PECA ? "PECA" : o.estilo.toUpperCase()}.${o.formato}`; a.click();
       URL.revokeObjectURL(url);
       setExportAberto(false);
     } catch { setErroExport("Não consegui exportar."); } finally { setExportando(false); }
@@ -460,6 +461,7 @@ export default function TccPanel({ workId, onFechar, onTitulo }: {
       <ExportarTrabalho
         aberto={exportAberto} autorPadrao={session?.user?.name || ""} exportando={exportando} erro={erroExport}
         onFechar={() => { if (!exportando) setExportAberto(false); }} onExportar={(o) => void exportar(o)}
+        peca={tipo === TIPO_TRABALHO_PECA}
       />
       {convite && (
         <ConvitePainel

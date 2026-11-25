@@ -24,7 +24,8 @@
  */
 import { useCallback, useEffect, useRef, useState, type DragEvent } from "react";
 import { useLibraryFiles, type LibraryFile } from "@/lib/useLibraryFiles";
-import { blobParaDataUrl } from "@/lib/pdfStore";
+import { blobParaDataUrl, lerPdf } from "@/lib/pdfStore";
+import { gravarAnexoGuardado, lerAnexoGuardado } from "@/lib/chat/anexoGuardado";
 import { arquivosDasEntradas, entradasDoDrop } from "@/lib/chat/arquivosSoltos";
 import { enviarLote, type EstadoEnvio } from "@/lib/chat/enviarBase";
 import { motivoDoErro, resumoDoEnvio, type ErroEnvio } from "@/lib/rag/minhaBase";
@@ -125,9 +126,26 @@ export function useAnexoChat(
     const dela = nova ? porConversa.current.get(nova) : undefined;
     fixar(dela?.anexo ?? null);
     fixarLote(dela?.lote ?? []);
+    if (!dela) void restaurar(nova);
   }, [o.conversa]);
+  // #873 PR 4: a página recarregou — a conversa aberta pega de volta o PDF dela (o arquivo está na Biblioteca do aparelho)
+  useEffect(() => { void restaurar(conversaRef.current); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  async function restaurar(conversa: string | null) {
+    try { await restaurarDe(conversa); } catch { /* sem IndexedDB/armazenamento: a conversa abre sem o anexo, como antes */ }
+  }
+  async function restaurarDe(conversa: string | null) {
+    const g = lerAnexoGuardado(sala, conversa);
+    if (!g || !conversa) return;
+    const blob = await lerPdf(g.id).catch(() => null);
+    const dataUrl = blob ? await blobParaDataUrl(blob) : null;
+    if (!dataUrl) { gravarAnexoGuardado(sala, conversa, null); return; }   // o arquivo saiu da Biblioteca: esquece
+    if (conversa === conversaRef.current) { if (!anexoRef.current && !loteRef.current.length) fixar({ id: g.id, nome: g.nome, dataUrl }); }
+    else if (!porConversa.current.get(conversa)) porConversa.current.set(conversa, { anexo: { id: g.id, nome: g.nome, dataUrl }, lote: [] });
+  }
+  const guardar = (conversa: string | null, a: AnexoChat | null) => gravarAnexoGuardado(sala, conversa, a ? { id: a.id, nome: a.nome } : null);
   /** o arquivo terminou de carregar DEPOIS que o aluno trocou de conversa: fica na conversa onde ele foi anexado */
   const fixarNa = (conversa: string | null, a: AnexoChat) => {
+    guardar(conversa, a);
     if (conversa === conversaRef.current) { fixar(a); return; }
     if (conversa) porConversa.current.set(conversa, { anexo: a, lote: porConversa.current.get(conversa)?.lote ?? [] });
   };
@@ -196,6 +214,7 @@ export function useAnexoChat(
         const antes = anexoRef.current && !anexoRef.current.id.startsWith("img-") ? [{ id: anexoRef.current.id, nome: anexoRef.current.nome }] : [];
         const novos = docs.map((f, i) => ({ id: ids[i], nome: nomeLimpo(f) }));
         fixar(null);
+        guardar(conversaRef.current, null);
         fixarLote([...antes, ...loteRef.current, ...novos].filter((a, i, l) => l.findIndex((b) => b.nome === a.nome) === i));
         void guardarNaBase(docs, false).then(async (r) => {
           if (r !== "nao_logado") return;
@@ -254,7 +273,7 @@ export function useAnexoChat(
   };
 
   return {
-    anexo, anexoRef, tirar: () => { fixar(null); oRef.current.focar(); }, anexarArquivos, anexarDaBiblioteca, soltar, arrastando, envios, versaoBase,
+    anexo, anexoRef, tirar: () => { fixar(null); guardar(conversaRef.current, null); oRef.current.focar(); }, anexarArquivos, anexarDaBiblioteca, soltar, arrastando, envios, versaoBase,
     lote, loteRef,
     /** tira um arquivo do foco da conversa (segue na base); sem id = limpa o lote (conversa nova) */
     tirarDoLote: (id?: string) => fixarLote(id ? loteRef.current.filter((a) => a.id !== id) : []),

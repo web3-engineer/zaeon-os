@@ -70,7 +70,7 @@
 | Testes novos + `lib/llm` + health (25/11) | ✅ passando |
 | Tamanho do script do deploy (`agenteCompose`, "cabe no teto de 21.000 bytes") | ✅ volta a passar (estava vermelho na main) |
 | Suíte completa (25/11) | ✅ 8115 testes passando e `tsc` limpo. As falhas são do ambiente do Windows (compose, skills, symlink, docx) e as instáveis de sempre (`mcp-real`, que passa sozinho na CI). Nenhuma toca este código. |
-| 1. Health antes de ligar | ⏳ depois do deploy |
-| 2–3. Ligar e conferir no health | ⏳ Martinez |
-| 4. Pergunta normal | ⏳ |
-| 5. Petição | ⏳ |
+| 1. Health antes de ligar | ✅ 25/11, commit 3c31032e: `"llm":{"primario":"huggingface","reservaHf":false}` — o Martinez já tinha ligado `LLM_PRIMARIO=hf` no `.env` do servidor |
+| 2–3. Ligar e conferir no health | ✅ já estava ligado (item 1); a Variable não foi precisa |
+| 4. Pergunta normal | ✅ 25/11 (o chat respondeu; logo depois do deploy ficou lento até o reinício terminar) |
+| 5. Petição | ⏳ fica pro teste do PR 4 |

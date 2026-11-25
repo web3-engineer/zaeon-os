@@ -32,4 +32,18 @@ Registro feito depois (22/11): o PR #833 (mergeado em 16/11) entrou sem o docume
 ## Resultado dos testes da Giulia
 
 - 17/11 (app reinstalado): ❌ **Menu de baixo → Marketplace não abria** — efeito colateral deste PR (`useFecharNoVoltar` desfazia o endereço ao fechar o Menu). **Corrigido no #846** (#845 PR 1).
-- **Falta testar:** itens 1 a 6 acima (deitado, ◀ no Menu e no detalhe, vitrine, docs, zoom no iPhone).
+- **25/11 (Android da Giulia, app instalado, depois do #876 no ar):**
+
+| Teste | Resultado |
+|---|---|
+| 1. Deitado: barra de baixo com ícones e 3 linhas de conversa | ✅ no chat da Aura (3 linhas, no limite) |
+| 2. ◀ fecha o Menu | ✅ o Menu de baixo fecha e o app continua |
+| 3. ◀ fecha o detalhe do curso | ✅ abriu inteiro (com o ✕) e o ◀ voltou pra vitrine |
+| 4. Reabrir o app estando na vitrine | ✅ abriu na conversa da Aura |
+| 5. `/docs` sem rolar de lado | ✅ (navegador do celular) |
+| 6. Zoom no iPhone | — sem iPhone pra testar |
+
+- **Achados novos (ficam pro card de telas, fora deste PR):**
+  - Escritório deitado: cabe só 1 linha de conversa (o topo ZAEON e a fileira de agentes ocupam o resto).
+  - Gaveta da esquerda deitada: apertada, a lista de conversas quase não aparece.
+  - ◀ com o menu de CIMA (o ☰ ao lado da lua) aberto fecha o app — esse menu não entrou no `useFecharNoVoltar`.

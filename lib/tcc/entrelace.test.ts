@@ -70,13 +70,13 @@ describe("jornada do TCC cross-sala", () => {
       nucleo: "Comecei seu TCC.",
       work: { kind: "tcc", sections: [{ title: "INTRODUÇÃO", body: "A energia solar…" }, { title: "METODOLOGIA", body: "Estudo de caso." }] },
     });
-    expect(t1).toMatchObject({ criado: true, titulo: "energia solar em escolas" });
+    expect(t1).toMatchObject({ criado: true, titulo: "Energia solar em escolas" });
     const row = db.works.get(t1!.workId);
     expect(row).toMatchObject({ userId: U, scopeId: "aba-7", workType: "TCC" });
     expect(row.secoes.map((s: any) => s.titulo)).toEqual(["INTRODUÇÃO", "METODOLOGIA"]);
 
     // 2) a Aura passa a SABER do TCC nos turnos seguintes
-    expect(await tccContextoParaTurno(U, "aba-7")).toContain("energia solar em escolas");
+    expect(await tccContextoParaTurno(U, "aba-7")).toContain("Energia solar em escolas");
 
     // 3) turno seguinte devolve só a seção que muda → edição POR SEÇÃO (a intro não é tocada)
     const t2 = await turno("melhora a metodologia do meu tcc", "explicar_conceito", {

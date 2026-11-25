@@ -88,3 +88,39 @@ def test_rota_format_despacha_pela_norma_e_nomeia_o_arquivo():
     body["style"] = "abnt"; body["cover"]["institution"] = "UFC"; body["cover"]["city"] = "Fortaleza"
     r = c.post("/format", json=body)
     assert r.status_code == 200 and "_ABNT.docx" in r.headers["content-disposition"]
+
+
+def test_titulo_com_travessao_exporta_sem_quebrar():
+    """#873 PR 4: toda peça tem "—" no título, e o nome do arquivo derrubava a resposta (Internal Server Error)."""
+    from main import nome_do_arquivo
+    assert nome_do_arquivo("PETIÇÃO INICIAL — AÇÃO DE COBRANÇA DE R$ 3.000") == "PETICAO_INICIAL_-_ACAO_DE_COBRANCA_DE_R_3.000"
+    assert nome_do_arquivo("") == "documento"
+    assert nome_do_arquivo("———") == "documento"
+    c = TestClient(app)
+    body = {
+        "title": "Petição inicial — ação de cobrança", "work_type": "Artigo", "style": "abnt", "format": "docx",
+        "cover": {"author": "A", "institution": "UFC", "course": "", "city": "Fortaleza", "year": "2026"},
+        "resumo": "r", "palavras_chave": ["x"], "sections": [{"type": "introducao", "title": "Intro", "content": "c", "subsections": []}],
+    }
+    r = c.post("/format", json=body)
+    assert r.status_code == 200
+    r.headers["content-disposition"].encode("latin-1")
+    assert 'filename="Peticao_inicial_-_acao_de_cobranca_ABNT.docx"' in r.headers["content-disposition"]
+
+
+def test_peca_sai_sem_capa_folha_de_rosto_nem_resumo():
+    """#873 PR 4: a peça jurídica não é TCC — só o título e as partes dela."""
+    p = DocumentPayload(
+        title="Petição inicial — ação de cobrança", work_type="Peça jurídica", style="peca",
+        cover=CoverData(author="Fulano", institution="", course="", city="", year="2026"),
+        resumo="", palavras_chave=["Peça jurídica"],
+        sections=[
+            SectionData(type="desenvolvimento", title="1 DOS FATOS", content="O réu deve três aluguéis.", subsections=[]),
+            SectionData(type="desenvolvimento", title="DOS PEDIDOS", content="A condenação ao pagamento.", subsections=[]),
+        ],
+    )
+    doc = Document(io.BytesIO(build_styled_document(p)))
+    textos = [x.text for x in doc.paragraphs if x.text.strip()]
+    assert textos[0] == "Petição inicial — ação de cobrança"
+    assert "DOS FATOS" in textos and "DOS PEDIDOS" in textos
+    assert not any(t in ("RESUMO", "Resumo", "Fulano") for t in textos)
