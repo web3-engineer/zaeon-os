@@ -21,8 +21,9 @@ const norm = (s: string) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").t
 
 export type TipoPeca = "peticao_inicial" | "contestacao" | "recurso" | "contrato" | "parecer" | "procuracao" | "notificacao" | "peca";
 
-/** o rótulo (tipo do trabalho no editor e no topo do chat) */
-export const TIPO_TRABALHO_PECA = "Peça jurídica";
+/** o rótulo (tipo do trabalho no editor e no topo do chat) — mora em lib/documento/tipoPeca (o cliente também usa) */
+import { TIPO_TRABALHO_PECA } from "@/lib/documento/tipoPeca";
+export { TIPO_TRABALHO_PECA };
 
 export const AVISO_PECA =
   "Modelo gerado pela Zaeon para estudo. Não substitui um advogado: confira a lei, os prazos e a competência, " +

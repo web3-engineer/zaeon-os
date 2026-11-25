@@ -36,7 +36,7 @@ import { chatUnicoOn } from "@/lib/chat/chatUnico";
 import { conteudoSemLatex } from "@/lib/tcc/latexTexto";
 import { useIsMobile } from "@/lib/ui/useIsMobile";
 import ExportarTrabalho, { type OpcoesExport } from "@/components/tcc/ExportarTrabalho";
-import { TIPO_TRABALHO_PECA } from "@/lib/documento/pecaJuridica";
+import { TIPO_TRABALHO_PECA } from "@/lib/documento/tipoPeca";
 import ConvitePainel from "@/components/tcc/ConvitePainel";
 
 type Aba = "doc" | "sugestoes" | "historico";
