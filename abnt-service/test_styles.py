@@ -111,7 +111,7 @@ def test_titulo_com_travessao_exporta_sem_quebrar():
 def test_peca_sai_sem_capa_folha_de_rosto_nem_resumo():
     """#873 PR 4: a peça jurídica não é TCC — só o título e as partes dela."""
     p = DocumentPayload(
-        title="Petição inicial — ação de cobrança", work_type="Peça jurídica", style="peca",
+        title="Petição inicial — ação de cobrança", work_type="Peça jurídica", style="peca", format="docx",
         cover=CoverData(author="Fulano", institution="", course="", city="", year="2026"),
         resumo="", palavras_chave=["Peça jurídica"],
         sections=[
