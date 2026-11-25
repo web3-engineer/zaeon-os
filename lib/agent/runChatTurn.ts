@@ -158,7 +158,9 @@ export async function runChatTurn(
     // RAG F2: base da turma + pessoal. Dispara já, em paralelo com memória/cartolina/TCC/árvore
     // (não soma latência); import lazy pra o load do módulo nunca tocar o pg. O módulo já não
     // rejeita, mas se rejeitar (ou o import falhar) loga e vira null — a base nunca derruba o turno.
-    const basePromise = import("@/lib/rag/turno")
+    // #873 PR 3 (parte 2): o critério do #868 no chat — pedido sem assunto não busca; com anexo, sem as bases públicas
+    const busca = (await import("@/lib/rag/buscaDoTurno")).buscaDoTurno({ pergunta: objetivo, temAnexo: !!params.anexos?.length });
+    const basePromise = !busca.buscar ? Promise.resolve(null) : import("@/lib/rag/turno")
       // + as bases por área (lib/rag/areas): a do mentor ativo e a geral (ENEM, conceitos)
       // F4: com a flag, a consulta é LARGA (K_AMPLO) pra todo documento aparecer no agrupamento por
       // documento. O bloco de citação do prompt continua recebendo só o top-k — ver `baseCurta`.
@@ -166,7 +168,7 @@ export async function runChatTurn(
         userId, pergunta: objetivo,
         // A ÁREA DA AGENTE vem antes da do mentor: a Zenita é a da medicina por ser quem é, não por
         // haver um mentor de medicina ativo (é lá que moram os datasets de saúde do HF).
-        areas: (await import("@/lib/rag/areas")).areasDoTurno(cap.area ?? mentor?.slug),
+        areas: busca.areasPublicas ? (await import("@/lib/rag/areas")).areasDoTurno(cap.area ?? mentor?.slug) : [],
         // o gráfico de cobertura por documento (G3) precisa do MESMO agrupamento, então ele também
         // pede a consulta larga — senão `HARNESS_GRAFICO=1` com `HARNESS_SINTESE=0` produziria um
         // gráfico silenciosamente ausente, que é a dependência não declarada de sempre.
@@ -341,7 +343,9 @@ export async function runChatTurn(
     const proPesadas = await podeProNasPesadas(userId);
     const trechosAchados = await trechosPromise;
     // o contexto do turno numa variável só: o harness da Aura E os motores da orquestra leem o MESMO
-    const systemContextDoTurno = [params.systemContext, memBlock, cartolinaBlock, tccBlock, entregaveisBlock, skillBlock, blocoDosAnexos(params.anexos ?? []), colada.fonte ? blocoFonteColada(colada.fonte) : ""].filter(Boolean).join("\n\n") || undefined;
+    // #873 PR 3 (parte 2): pedido vago ("resume") sem anexo → usar a conversa; se ela não disser, perguntar "de quê?"
+    const vagoBlock = busca.vago ? (await import("@/lib/canal/pedidoVago")).INSTRUCAO_PEDIDO_VAGO.replace("conversa do canal", "conversa") : "";
+    const systemContextDoTurno = [vagoBlock, params.systemContext, memBlock, cartolinaBlock, tccBlock, entregaveisBlock, skillBlock, blocoDosAnexos(params.anexos ?? []), colada.fonte ? blocoFonteColada(colada.fonte) : ""].filter(Boolean).join("\n\n") || undefined;
     const deps = buildHarnessDeps(hctx, {
       modelo: escolhido?.provedor === "google" ? escolhido.vertex : undefined,
       modeloEhPadrao: escolhido?.id === MODELO_PADRAO,
