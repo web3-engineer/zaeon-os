@@ -11,12 +11,13 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
+import { BookOpen, FileText, HelpCircle, Link2, Minus, Plus, Sparkles } from "lucide-react";
 import { LARGURA, filhosDe, novoIdCard, posicaoDoFilho, profundidade, type CardEstudo, type TipoCard } from "@/lib/estudos/board";
 import { useBoardEstudos } from "./useBoardEstudos";
 import BlueprintEstudo from "./BlueprintEstudo";
 import ConvitesBoard from "./ConvitesBoard";
 
-const AZUL = "#0b2c4d", LINHA = "rgba(170,220,255,.9)", LINHA_FRACA = "rgba(150,205,255,.14)", TINTA = "#e8f6ff";
+const AZUL = "#051c32", LINHA = "rgba(155,230,255,.85)", LINHA_FRACA = "rgba(42,155,205,.16)", TINTA = "#e8f6ff";
 const ROTULO: Record<TipoCard, string> = { estudo: "ESTUDO", percurso: "PERCURSO", confirmacao: "CONFIRMAÇÃO", especulacao: "ESPECULAÇÃO", nota: "NOTA", pergunta: "PERGUNTA" };
 const COR: Record<TipoCard, string> = { estudo: "#7fe0ff", percurso: "#ffd36b", confirmacao: "#7dffb0", especulacao: "#c9b6ff", nota: "#e8f6ff", pergunta: "#ff9ec7" };
 const PREFIXO: Record<TipoCard, string> = { estudo: "E", percurso: "P", confirmacao: "C", especulacao: "S", nota: "N", pergunta: "Q" };
@@ -37,10 +38,16 @@ export default function BoardEstudos({ boardInicialId, convite }: { boardInicial
     if (!board || centrou.current === board.id || !raiz.current) return;
     centrou.current = board.id;
     const r = raiz.current.getBoundingClientRect(), cs = board.cards;
-    if (!cs.length) { setCam({ x: r.width / 2, y: 120, z: 0.85 }); return; }
+    if (!cs.length) { setCam({ x: r.width / 2, y: 160, z: 0.85 }); return; }
+    if (r.width < 768) {
+      const principal = cs.find((c) => c.tipo === "estudo" && !c.pai) ?? cs[0]!;
+      const z = Math.min(0.85, Math.max(0.55, (r.width - 48) / principal.w));
+      setCam({ x: r.width / 2 - (principal.x + principal.w / 2) * z, y: 160 - principal.y * z, z });
+      return;
+    }
     const x0 = Math.min(...cs.map((c) => c.x)), x1 = Math.max(...cs.map((c) => c.x + c.w)), y0 = Math.min(...cs.map((c) => c.y));
-    const z = Math.max(0.35, Math.min(1, (r.width - 120) / Math.max(1, x1 - x0)));
-    setCam({ x: r.width / 2 - ((x0 + x1) / 2) * z, y: 90 - y0 * z, z });
+    const z = Math.max(0.35, Math.min(1, (r.width - 140) / Math.max(1, x1 - x0)));
+    setCam({ x: r.width / 2 - ((x0 + x1) / 2) * z, y: 130 - y0 * z, z });
   }, [board]);
   const paraBoard = useCallback((cx: number, cy: number) => { const r = raiz.current!.getBoundingClientRect(); return { x: (cx - r.left - cam.x) / cam.z, y: (cy - r.top - cam.y) / cam.z }; }, [cam]);
 
@@ -122,15 +129,15 @@ export default function BoardEstudos({ boardInicialId, convite }: { boardInicial
   const porId = new Map(cards.map((c) => [c.id, c] as const));
 
   return (
-    <div ref={raiz} className="relative h-full w-full touch-none select-none overflow-hidden" style={{ background: AZUL }}
+    <div ref={raiz} className="relative h-full w-full touch-none select-none overflow-hidden" style={{ background: AZUL, fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif" }}
       onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onWheel={onWheel}>
       {/* a GRADE do blueprint (fina a cada 20, forte a cada 100 — acompanha o pan/zoom) */}
       <div className="pointer-events-none absolute inset-0" style={{
-        backgroundImage: `linear-gradient(${LINHA_FRACA} 1px, transparent 1px), linear-gradient(90deg, ${LINHA_FRACA} 1px, transparent 1px), linear-gradient(rgba(150,205,255,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(150,205,255,.06) 1px, transparent 1px)`,
+        backgroundImage: `linear-gradient(${LINHA_FRACA} 1px, transparent 1px), linear-gradient(90deg, ${LINHA_FRACA} 1px, transparent 1px), linear-gradient(rgba(65,160,200,.055) 1px, transparent 1px), linear-gradient(90deg, rgba(65,160,200,.055) 1px, transparent 1px)`,
         backgroundSize: `${100 * cam.z}px ${100 * cam.z}px, ${100 * cam.z}px ${100 * cam.z}px, ${20 * cam.z}px ${20 * cam.z}px, ${20 * cam.z}px ${20 * cam.z}px`,
         backgroundPosition: `${cam.x}px ${cam.y}px`,
       }} />
-      <div className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(ellipse at 60% 40%, transparent 40%, rgba(3,14,30,.55) 100%)" }} />
+      <div className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(ellipse at 60% 40%, transparent 40%, rgba(1,10,24,.34) 100%)" }} />
 
       {/* o MUNDO do board */}
       <div className="absolute left-0 top-0 origin-top-left" style={{ transform: `translate(${cam.x}px, ${cam.y}px) scale(${cam.z})` }}>
@@ -158,28 +165,23 @@ export default function BoardEstudos({ boardInicialId, convite }: { boardInicial
             <div key={c.id} ref={(el) => medir(c.id, el)} className="absolute" onPointerDown={(e) => e.stopPropagation()} onDoubleClick={() => !leitor && setEditando(c.id)}
               style={{
                 left: pos.x, top: pos.y, width: c.w, zIndex: arrastando?.id === c.id ? 50 : 10 + n,
-                // o 3D: cada nível mais fundo inclina um pouco (vira pra direita, de onde veio) e escurece
-                transform: `perspective(1100px) rotateY(${Math.min(14, n * 5)}deg) scale(${1 - Math.min(0.12, n * 0.035)})`, transformOrigin: "right center",
-                filter: n ? `brightness(${1 - Math.min(0.3, n * 0.08)})` : undefined,
               }}>
-              <div className="relative rounded-[3px] text-[13px] leading-snug" style={{
-                background: esp ? "rgba(20,40,80,.55)" : "rgba(12,45,82,.92)", color: TINTA,
-                border: `${esp ? 1.2 : 1.6}px ${esp ? "dashed" : "solid"} ${COR[c.tipo]}`,
-                boxShadow: `${8 + n * 3}px ${10 + n * 3}px 0 rgba(0,10,25,.35), inset 0 0 0 1px rgba(255,255,255,.04)`,
-                padding: esp ? "8px 10px" : "10px 12px", fontSize: esp ? 12 : 13,
+              <div className="relative rounded-xl text-[13px] leading-relaxed" style={{
+                background: esp ? "linear-gradient(145deg, rgba(28,35,72,.97), rgba(7,27,48,.97))" : "linear-gradient(145deg, rgba(10,49,77,.98), rgba(4,27,48,.98))", color: TINTA,
+                border: `${c.tipo === "estudo" ? 2 : 1}px ${esp ? "dashed" : "solid"} ${COR[c.tipo]}${c.tipo === "estudo" ? "dd" : "99"}`,
+                boxShadow: c.tipo === "estudo" ? "0 0 22px rgba(67,220,244,.18), 0 14px 32px rgba(0,8,20,.35), inset 0 1px rgba(255,255,255,.08)" : "0 12px 26px rgba(0,8,20,.3), inset 0 1px rgba(255,255,255,.06)",
+                padding: esp ? "12px 14px" : "14px 16px", fontSize: esp ? 12 : 13,
               }}>
-                {/* os cantos de registro da prancha */}
-                {["left-1 top-1 border-l border-t", "right-1 top-1 border-r border-t", "left-1 bottom-1 border-l border-b", "right-1 bottom-1 border-r border-b"].map((k) => <span key={k} className={`pointer-events-none absolute h-2 w-2 ${k}`} style={{ borderColor: COR[c.tipo] }} />)}
                 {/* o carimbo (arrasta por aqui) */}
-                <div className={`mb-1.5 flex items-center gap-2 font-mono text-[10px] tracking-[0.18em] ${leitor ? "" : "cursor-grab active:cursor-grabbing"}`} style={{ color: COR[c.tipo] }} onPointerDown={(e) => comecarCard(e, c)}>
+                <div className={`mb-2.5 flex items-center gap-2 font-mono text-[10px] tracking-[0.12em] ${leitor ? "" : "cursor-grab active:cursor-grabbing"}`} style={{ color: COR[c.tipo] }} onPointerDown={(e) => comecarCard(e, c)}>
                   <span>{ROTULO[c.tipo]} · {PREFIXO[c.tipo]}-{String(i + 1).padStart(2, "0")}</span>
                   <span className="h-px flex-1" style={{ background: `${COR[c.tipo]}55` }} />
                   {!leitor && <button type="button" aria-label="Apagar" className="opacity-50 hover:opacity-100" onPointerDown={(e) => e.stopPropagation()} onClick={() => B.mudar([], [c.id])}>✕</button>}
                 </div>
                 {ed ? <Editor c={c} onSalvar={salvarTexto} /> : (
                   <>
-                    {c.titulo && <div className={`font-semibold ${c.tipo === "estudo" ? "text-[17px]" : ""}`} style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", letterSpacing: "0.01em" }}>{c.titulo}</div>}
-                    {c.corpo ? <p className="mt-1 whitespace-pre-wrap text-sky-50/85">{c.corpo}</p> : !c.titulo && <p className="italic text-sky-100/40">{leitor ? "…" : "duplo clique pra escrever"}</p>}
+                    {c.titulo && <div className={`font-semibold tracking-tight text-sky-50 ${c.tipo === "estudo" ? "text-[21px]" : "text-[15px]"}`}>{c.titulo}</div>}
+                    {c.corpo ? <p className="mt-2 whitespace-pre-wrap text-sky-50/80">{c.corpo}</p> : !c.titulo && <p className="italic text-sky-100/40">{leitor ? "…" : "duplo clique pra escrever"}</p>}
                   </>
                 )}
                 {c.fontes?.length ? (
@@ -223,21 +225,40 @@ export default function BoardEstudos({ boardInicialId, convite }: { boardInicial
         ))}
       </div>
 
-      {/* a BARRA: o board, os cards novos, convidar */}
-      <div className="absolute left-3 top-3 z-[90] flex max-w-[calc(100%-24px)] flex-wrap items-center gap-2 rounded-md border px-2.5 py-2 font-mono text-[11px] text-sky-100 backdrop-blur" style={{ background: "rgba(5,22,42,.82)", borderColor: "rgba(127,224,255,.3)" }} onPointerDown={(e) => e.stopPropagation()}>
-        <span className="tracking-[0.2em] text-sky-300">PRANCHA</span>
-        <select className="max-w-[200px] rounded border bg-transparent px-1.5 py-1 text-sky-50" style={{ borderColor: "rgba(127,224,255,.3)" }} value={board?.id ?? ""} onChange={(e) => { centrou.current = null; B.abrir(e.target.value === "meu" ? null : e.target.value); }}>
-          {board && <option value={board.id} className="bg-[#0b2c4d]">{board.titulo}{board.papel !== "dono" ? " (convidado)" : ""}</option>}
-          {board?.papel !== "dono" && <option value="meu" className="bg-[#0b2c4d]">Meus estudos</option>}
-          {B.compartilhados.filter((s) => s.id !== board?.id).map((s) => <option key={s.id} value={s.id} className="bg-[#0b2c4d]">{s.titulo} — de {s.donoNome}</option>)}
+      {/* Barra de ferramentas do quadro */}
+      <div className="absolute inset-x-0 top-0 z-[90] flex min-h-[60px] flex-wrap items-center gap-2 border-b border-sky-300/20 bg-[#03182d]/95 px-3 py-2 text-[12px] text-sky-100 shadow-[0_8px_24px_rgba(0,8,20,.2)] backdrop-blur-md sm:px-4" onPointerDown={(e) => e.stopPropagation()} onWheel={(e) => e.stopPropagation()}>
+        <span className="hidden pr-2 text-base font-bold tracking-tight text-white sm:inline">Zaeon</span>
+        <label className="sr-only" htmlFor="board-seletor">Selecionar board</label>
+        <select id="board-seletor" className="max-w-[150px] rounded-lg border border-sky-300/25 bg-[#082a45] px-2 py-2 text-sky-50 outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 sm:max-w-[200px]" value={board?.id ?? ""} onChange={(e) => { centrou.current = null; B.abrir(e.target.value === "meu" ? null : e.target.value); }}>
+          {board && <option value={board.id}>{board.titulo}{board.papel !== "dono" ? " (convidado)" : ""}</option>}
+          {board?.papel !== "dono" && <option value="meu">Meus estudos</option>}
+          {B.compartilhados.filter((s) => s.id !== board?.id).map((s) => <option key={s.id} value={s.id}>{s.titulo} — de {s.donoNome}</option>)}
         </select>
-        {!leitor && (["estudo", "nota", "pergunta"] as const).map((t) => <Botao key={t} cor={COR[t]} onClick={() => novo(t)}>+ {ROTULO[t].toLowerCase()}</Botao>)}
-        {board?.papel === "dono" && <><Botao cor="#7fe0ff" onClick={() => convidar("editor")}>convidar (edita)</Botao><Botao cor="#7fe0ff" onClick={() => convidar("leitor")}>convidar (só vê)</Botao></>}
+        {!leitor && board && <div className="flex flex-wrap items-center gap-1.5" aria-label="Adicionar ao quadro">
+          <button type="button" aria-label="Adicionar estudo" onClick={() => novo("estudo")} className="board-tool board-tool-primary"><Plus size={15} aria-hidden="true" /> Estudo</button>
+          <button type="button" aria-label="Adicionar nota" onClick={() => novo("nota")} className="board-tool"><FileText size={14} aria-hidden="true" /> Nota</button>
+          <button type="button" aria-label="Adicionar pergunta" onClick={() => novo("pergunta")} className="board-tool"><HelpCircle size={14} aria-hidden="true" /> Pergunta</button>
+        </div>}
         {board && <ConvitesBoard boardId={board.id} dono={board.papel === "dono"} abrir={(id) => { centrou.current = null; B.abrir(id); }} />}
-        {leitor && <span className="text-amber-200/80">só leitura</span>}
-        <span className="text-sky-300/60">{B.salvando ? "salvando…" : "salvo"}</span>
+        {board?.papel === "dono" && <details className="relative">
+          <summary className="board-tool cursor-pointer list-none"><Link2 size={14} aria-hidden="true" /> Link</summary>
+          <div className="absolute left-0 top-full mt-2 flex min-w-[150px] flex-col gap-1 rounded-xl border border-sky-300/30 bg-[#061e34] p-2 shadow-xl">
+            <button type="button" className="rounded-lg px-2 py-2 text-left hover:bg-sky-300/10" onClick={() => convidar("editor")}>Copiar link de edição</button>
+            <button type="button" className="rounded-lg px-2 py-2 text-left hover:bg-sky-300/10" onClick={() => convidar("leitor")}>Copiar link de leitura</button>
+          </div>
+        </details>}
+        <div className="ml-auto flex items-center gap-2">
+          {leitor && <span className="text-amber-200">Só leitura</span>}
+          <span className="hidden text-[11px] text-sky-200/60 sm:inline" role="status">{B.salvando ? "Salvando…" : "Salvo"}</span>
+          <div className="flex -space-x-2" aria-label="Pessoas presentes">{B.presentes.map((p) => (
+            <div key={p.id} title={p.nome} className="h-8 w-8 overflow-hidden rounded-full border-2 bg-sky-900 text-center text-xs leading-7 text-white" style={{ borderColor: p.cor }}>
+              {p.imagem ? <img src={p.imagem} alt={p.nome} className="h-full w-full object-cover" /> : p.nome.slice(0, 1).toUpperCase()}
+            </div>
+          ))}</div>
+        </div>
       </div>
-      {conviteMsg && <div className="absolute left-3 top-16 z-[90] rounded border px-3 py-1.5 font-mono text-[11px] text-sky-50" style={{ background: "rgba(5,22,42,.9)", borderColor: "rgba(127,224,255,.3)" }}>{conviteMsg}</div>}
+      {conviteMsg && <div role="status" className="absolute left-3 top-24 z-[90] rounded-lg border border-sky-300/30 bg-[#061e34] px-3 py-2 text-xs text-sky-50">{conviteMsg}</div>}
+      <style>{`.board-tool{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:36px;padding:6px 10px;border:1px solid rgba(125,211,252,.35);border-radius:9px;color:#dff7ff;background:rgba(12,55,81,.55);white-space:nowrap}.board-tool:hover{background:rgba(37,135,166,.24)}.board-tool:focus-visible{outline:2px solid #67e8f9;outline-offset:2px}.board-tool-primary{border-color:rgba(103,232,249,.8);background:rgba(9,104,133,.45)}`}</style>
 
       {/* o BLUEPRINT do estudo (a prancha técnica) */}
       {blueprint && board && (
@@ -245,30 +266,21 @@ export default function BoardEstudos({ boardInicialId, convite }: { boardInicial
           onSalvar={(c) => B.mudar([c])} onChecar={() => B.checarSelos(blueprint)} onFechar={() => setBlueprint(null)} />
       )}
 
-      {/* QUEM ESTÁ no board agora */}
-      <div className="absolute right-3 top-3 z-[90] flex items-center -space-x-2" onPointerDown={(e) => e.stopPropagation()}>
-        {B.presentes.map((p) => (
-          <div key={p.id} title={p.nome} className="h-8 w-8 overflow-hidden rounded-full border-2 bg-sky-900 text-center font-mono text-[12px] leading-[28px] text-white" style={{ borderColor: p.cor }}>
-            {p.imagem ? <img src={p.imagem} alt={p.nome} className="h-full w-full object-cover" /> : p.nome.slice(0, 1).toUpperCase()}
-          </div>
-        ))}
+      {/* Zoom */}
+      <div className="absolute bottom-3 left-1/2 z-[90] flex -translate-x-1/2 items-center gap-1 rounded-full border border-sky-300/35 bg-[#03182d]/95 px-2 py-1 text-xs text-sky-100 shadow-lg" onPointerDown={(e) => e.stopPropagation()}>
+        <button type="button" aria-label="Diminuir zoom" className="rounded-full p-2 hover:bg-sky-300/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300" onClick={() => setCam((c) => ({ ...c, z: Math.max(0.25, c.z * 0.85) }))}><Minus size={15} aria-hidden="true" /></button>
+        <span className="w-12 text-center tabular-nums">{Math.round(cam.z * 100)}%</span>
+        <button type="button" aria-label="Aumentar zoom" className="rounded-full p-2 hover:bg-sky-300/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300" onClick={() => setCam((c) => ({ ...c, z: Math.min(2.2, c.z * 1.15) }))}><Plus size={15} aria-hidden="true" /></button>
       </div>
-
-      {/* o ZOOM e a legenda */}
-      <div className="absolute bottom-3 right-3 z-[90] flex items-center gap-1 font-mono text-[11px] text-sky-100" onPointerDown={(e) => e.stopPropagation()}>
-        <Botao cor="#7fe0ff" onClick={() => setCam((c) => ({ ...c, z: Math.max(0.25, c.z * 0.85) }))}>−</Botao>
-        <span className="w-12 text-center">{Math.round(cam.z * 100)}%</span>
-        <Botao cor="#7fe0ff" onClick={() => setCam((c) => ({ ...c, z: Math.min(2.2, c.z * 1.15) }))}>+</Botao>
-      </div>
-      <div className="pointer-events-none absolute bottom-3 left-3 z-[90] font-mono text-[10px] tracking-[0.14em] text-sky-200/50">
-        ━ CONFIRMADO NA LITERATURA &nbsp; ┅ ESPECULAÇÃO &nbsp; ⟵ AS RAMIFICAÇÕES CRESCEM PRA ESQUERDA
+      <div className="pointer-events-none absolute bottom-4 left-4 z-[90] hidden items-center gap-3 text-[10px] text-sky-200/60 lg:flex">
+        <span className="flex items-center gap-1"><BookOpen size={12} /> Fontes</span><span>┅ Especulação</span><span className="flex items-center gap-1"><Sparkles size={12} /> Percursos gerados</span>
       </div>
     </div>
   );
 }
 
 function Botao({ children, cor, onClick, titulo, desabilitado }: { children: React.ReactNode; cor: string; onClick?: () => void; titulo?: string; desabilitado?: boolean }) {
-  return <button type="button" title={titulo} disabled={desabilitado} onClick={onClick} className="rounded-sm border px-2 py-1 font-mono text-[10.5px] tracking-wide transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40" style={{ borderColor: `${cor}88`, color: cor }}>{children}</button>;
+  return <button type="button" title={titulo} disabled={desabilitado} onClick={onClick} className="rounded-md border px-2 py-1 text-[10.5px] transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300 disabled:cursor-not-allowed disabled:opacity-40" style={{ borderColor: `${cor}88`, color: cor }}>{children}</button>;
 }
 
 function Editor({ c, onSalvar }: { c: CardEstudo; onSalvar: (c: CardEstudo, titulo: string, corpo: string) => void }) {
