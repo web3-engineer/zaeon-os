@@ -7,6 +7,8 @@ import { geminiJson } from "@/lib/scholar/gemini";
 import { prisma } from '@/src/lib/prisma';
 import { onWorkFinalized } from '@/lib/solana/hooks';
 import { ehEstilo, prepararParaNorma, type Estilo } from '@/lib/export/norma';
+import { TIPO_TRABALHO_PECA } from '@/lib/documento/pecaJuridica';
+import { estruturaDaPeca } from '@/lib/export/peca';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -160,7 +162,9 @@ export async function POST(req: Request) {
         body.citations = Array.isArray(body.citations) ? body.citations : [];
         if (!body.year?.trim()) body.year = String(new Date().getFullYear());
         // Só a ABNT tem CAPA e folha de rosto com instituição e cidade (NBR 14724); Vancouver/APA não exigem.
-        if (estilo === 'abnt' && (!body.institution?.trim() || !body.city?.trim())) {
+        // #873 PR 4: PEÇA JURÍDICA não é trabalho acadêmico — sem capa, folha de rosto nem resumo (abnt-service: style "peca")
+        const peca = body.workType === TIPO_TRABALHO_PECA;
+        if (!peca && estilo === 'abnt' && (!body.institution?.trim() || !body.city?.trim())) {
             return NextResponse.json(
                 { error: 'Para a ABNT, preencha instituição e cidade (vão na capa).', faltando: ['institution', 'city'].filter((k) => !(body as any)[k]?.trim()) },
                 { status: 400 }
@@ -170,7 +174,10 @@ export async function POST(req: Request) {
         // Step 1: Structure content
         let structured;
 
-        if (body.parsedSections && body.parsedSections.length > 0) {
+        if (peca) {
+            // sem IA: a peça já vem com as partes dela; resumo e palavras-chave não existem numa petição
+            structured = estruturaDaPeca(body.content, body.parsedSections);
+        } else if (body.parsedSections && body.parsedSections.length > 0) {
             // Fast-path: front-end already parsed # markers — skip Gemini section detection
             const hasIntro = body.parsedSections.some(s => s.type === 'introducao');
             const hasConclusion = body.parsedSections.some(s => s.type === 'conclusao');
@@ -251,12 +258,12 @@ export async function POST(req: Request) {
 
         // Step 1.5: Vancouver/APA — chamadas no texto na forma da norma e referências em campos (a seção REFERÊNCIAS
         // em texto ABNT sai do corpo; o serviço monta a lista na ordem/forma da norma)
-        const norma = prepararParaNorma(structured.sections, body.citations, estilo);
+        const norma = prepararParaNorma(structured.sections, body.citations, peca ? 'abnt' : estilo);
         structured.sections = norma.sections;
 
         // Step 2: Build DocumentPayload for Python service
         const documentPayload = {
-            style: estilo,
+            style: peca ? 'peca' : estilo,
             title: body.title || 'Trabalho Acadêmico',
             work_type: body.workType || 'Artigo',
             cover: {

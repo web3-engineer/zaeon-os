@@ -5,13 +5,17 @@
  * inteira, que é o caminho que desliga o harness.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 
 const saveFile = vi.fn();
 const enviarLote = vi.fn();
 
 vi.mock("@/lib/useLibraryFiles", () => ({ useLibraryFiles: () => ({ saveFile, files: [] }) }));
-vi.mock("@/lib/pdfStore", () => ({ blobParaDataUrl: vi.fn(async () => "data:application/pdf;base64,QUFB") }));
+const pdfsNoAparelho = new Map<string, Blob>();
+vi.mock("@/lib/pdfStore", () => ({
+  blobParaDataUrl: vi.fn(async () => "data:application/pdf;base64,QUFB"),
+  lerPdf: vi.fn(async (id: string) => pdfsNoAparelho.get(id) ?? null),
+}));
 vi.mock("@/lib/chat/enviarBase", () => ({ enviarLote: (...a: any[]) => enviarLote(...a) }));
 
 import { useAnexoChat } from "@/components/chat/useAnexoChat";
@@ -30,6 +34,8 @@ const anexar = async (h: any, fs: File[]) => { await act(async () => { await h.r
 const esperarMicrotarefas = () => act(async () => { await Promise.resolve(); await Promise.resolve(); });
 
 beforeEach(() => {
+  localStorage.clear();
+  pdfsNoAparelho.clear();
   saveFile.mockReset();
   enviarLote.mockReset().mockImplementation(async (fs: File[]) => fs.map((f) => ok(f.name)));
 });
@@ -176,6 +182,36 @@ describe("#873 PR 3 · o anexo é da conversa, não da sala inteira", () => {
     expect(h.result.current.anexo).toBeNull();
     h.rerender({ c: "c1" });
     expect(h.result.current.anexo?.nome).toBe("a");
+  });
+
+  it("#873 PR 4 · a página recarregou: cada conversa pega de volta o PDF dela", async () => {
+    const h = montarEm("c1");
+    await anexar(h, [pdf("mandacaru.pdf")]);
+    const id = h.result.current.anexo!.id;
+    pdfsNoAparelho.set(id, new Blob(["x"]));   // a Biblioteca guardou o arquivo no aparelho
+    h.unmount();                                  // recarregar = o hook nasce de novo, sem memória
+    const h2 = montarEm("c1");
+    await waitFor(() => expect(h2.result.current.anexo?.nome).toBe("mandacaru"));
+    const h3 = montarEm("outra");
+    await new Promise((r) => setTimeout(r, 0));
+    expect(h3.result.current.anexo).toBeNull();   // a conversa que não tinha anexo continua sem
+  });
+
+  it("#873 PR 4 · o × esquece o anexo guardado; arquivo que saiu da Biblioteca não volta", async () => {
+    const h = montarEm("c1");
+    await anexar(h, [pdf("a.pdf")]);
+    pdfsNoAparelho.set(h.result.current.anexo!.id, new Blob(["x"]));
+    act(() => h.result.current.tirar());
+    h.unmount();
+    const h2 = montarEm("c1");
+    await new Promise((r) => setTimeout(r, 0));
+    expect(h2.result.current.anexo).toBeNull();
+    // guardado, mas o PDF sumiu do aparelho: não volta (e o ponteiro é esquecido)
+    await anexar(h2, [pdf("b.pdf")]);
+    h2.unmount();
+    const h3 = montarEm("c1");
+    await new Promise((r) => setTimeout(r, 0));
+    expect(h3.result.current.anexo).toBeNull();
   });
 
   it("o lote 📚 também é por conversa", async () => {

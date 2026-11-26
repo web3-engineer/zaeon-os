@@ -128,7 +128,10 @@ export function graficoCoberturaPorDocumento(
  * trabalho, ou perguntou pelo panorama do tema (estado da arte, tendência, quanto se publica,
  * lacuna). Fora disso não sai — e isso é o caso comum.
  */
-const INTENCOES_DE_LITERATURA: ReadonlySet<string> = new Set(["pesquisar_fontes", "criar_trabalho"]);
+// #873 PR 4: "criar_trabalho" saiu. No teste de 24/11 o gráfico apareceu embaixo da PETIÇÃO e do artigo sobre a Lei do
+// Inquilinato: a peça não tem nada a ver com contagem de papers, e o artigo já leva o quadro DENTRO do documento
+// (lib/tcc/gerar) — na bolha ele ficava repetido e fora de lugar. Quem pede o panorama continua recebendo.
+const INTENCOES_DE_LITERATURA: ReadonlySet<string> = new Set(["pesquisar_fontes"]);
 const PANORAMA_RE =
   /\b(estado da arte|revisao (?:de|da|sistematica|bibliografica) ?(?:literatura)?|panorama|tendencias?|producao cientifica|bibliometri\w*|levantamento bibliografico|lacunas?|pouco (?:explorad|estudad|pesquisad)\w*|quant[oa]s (?:artigos|papers|estudos|trabalhos|publicacoes|pesquisas)|(?:artigos|papers|estudos|publicacoes|pesquisas?) (?:por ano|ao longo|nos ultimos|recentes)|evolucao (?:da|das) (?:pesquisas?|publicacoes|literatura)|o que (?:a literatura|a ciencia|os estudos) (?:diz|dizem))/;
 const semAcento = (s: string) => (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();

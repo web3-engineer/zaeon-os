@@ -29,21 +29,23 @@ export function lerOpcoesSalvas(autorPadrao: string): OpcoesExport {
   return base;
 }
 
-/** O que falta pra exportar nessa norma (só a ABNT exige: a capa leva instituição e cidade). */
-export function faltandoPara(o: OpcoesExport): string[] {
-  if (o.estilo !== "abnt") return [];
+/** O que falta pra exportar nessa norma (só a ABNT exige: a capa leva instituição e cidade). A PEÇA não tem capa. */
+export function faltandoPara(o: OpcoesExport, peca = false): string[] {
+  if (peca || o.estilo !== "abnt") return [];
   return [!o.institution.trim() && "instituição", !o.city.trim() && "cidade"].filter(Boolean) as string[];
 }
 
-export default function ExportarTrabalho({ aberto, autorPadrao, exportando, erro, onFechar, onExportar }: {
+export default function ExportarTrabalho({ aberto, autorPadrao, exportando, erro, onFechar, onExportar, peca = false }: {
   aberto: boolean; autorPadrao: string; exportando: boolean; erro: string | null;
+  /** #873 PR 4: PEÇA JURÍDICA — sem norma acadêmica, sem capa: só o formato */
+  peca?: boolean;
   onFechar: () => void; onExportar: (o: OpcoesExport) => void;
 }) {
   const [o, setO] = useState<OpcoesExport>(() => lerOpcoesSalvas(autorPadrao));
   const [tentou, setTentou] = useState(false);
   useEffect(() => { if (aberto) { setO(lerOpcoesSalvas(autorPadrao)); setTentou(false); } }, [aberto, autorPadrao]);
   if (!aberto) return null;
-  const falta = faltandoPara(o);
+  const falta = faltandoPara(o, peca);
   const mudar = (k: keyof OpcoesExport, v: string) => setO((x) => ({ ...x, [k]: v }));
   const exportar = () => {
     setTentou(true);
@@ -63,13 +65,18 @@ export default function ExportarTrabalho({ aberto, autorPadrao, exportando, erro
   };
   return (
     <div className="absolute inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-[2px] p-3" onClick={onFechar}>
-      <div role="dialog" aria-modal="true" aria-label="Exportar trabalho" onClick={(e) => e.stopPropagation()}
+      <div role="dialog" aria-modal="true" aria-label={peca ? "Exportar peça" : "Exportar trabalho"} onClick={(e) => e.stopPropagation()}
         className="w-full max-w-[520px] max-h-full overflow-y-auto rounded-2xl bg-white dark:bg-[#15171c] text-slate-900 dark:text-white shadow-2xl border border-slate-200 dark:border-white/10">
         <div className="flex items-center gap-2 px-4 pt-4">
-          <h3 className="flex-1 text-[15px] font-bold">Exportar trabalho</h3>
+          <h3 className="flex-1 text-[15px] font-bold">{peca ? "Exportar peça" : "Exportar trabalho"}</h3>
           <button type="button" onClick={onFechar} aria-label="Fechar" className="h-8 w-8 grid place-items-center rounded-md hover:bg-slate-100 dark:hover:bg-white/10"><X size={16} /></button>
         </div>
 
+        {peca ? (
+          <p className="px-4 pt-3 text-[12.5px] text-slate-600 dark:text-white/65">
+            A peça sai como está no editor: título e partes, sem capa, folha de rosto ou resumo (isso é de trabalho acadêmico).
+          </p>
+        ) : (<>
         <div className="px-4 pt-3">
           <p className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-white/50 mb-1.5">Norma</p>
           <div role="radiogroup" aria-label="Norma" className="grid grid-cols-3 gap-1.5">
@@ -91,6 +98,7 @@ export default function ExportarTrabalho({ aberto, autorPadrao, exportando, erro
           {campo("city", "Cidade", o.estilo === "abnt", "Ex.: Fortaleza")}
           {campo("year", "Ano")}
         </div>
+        </>)}
 
         <div className="px-4 pt-3">
           <p className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-white/50 mb-1.5">Formato</p>

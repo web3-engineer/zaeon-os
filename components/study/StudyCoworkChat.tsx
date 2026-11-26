@@ -18,6 +18,7 @@
  * (function-calling) entram na Fase 2 — aqui deixamos as superfícies prontas.
  */
 
+import { ehEnvioRepetido, type UltimoEnvio } from "@/lib/chat/envioRepetido";
 import { semFalhasNoHistorico } from "@/lib/chat/semFalhas";
 import { confirmar, tr } from "@/lib/ui/avisos";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -330,6 +331,11 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
   useEffect(() => { setCerebroAberto(false); }, [abaAtiva]);
   useEffect(() => { if (trabalhoAberto && abaAtiva) focoPorAbaRef.current[abaAtiva] = trabalhoAberto; }, [trabalhoAberto, abaAtiva]);
   const trabalhosDaAba = TCC_CROSS_ON && abaAtiva ? trabalhosPorAba[abaAtiva] ?? [] : [];
+  // #873 PR 4: o documento FECHADO não tinha onde reabrir (no teste de 24/11, fechou a aba da petição e perdeu o caminho).
+  // Quem fecha vai pra esta lista, e a pasta "↺ Reabrir" traz o último de volta. O documento nunca é apagado.
+  const [fechadosPorAba, setFechadosPorAba] = useState<Record<string, TrabalhoResumo[]>>({});
+  // (o que voltou por outro caminho — a Aura escreveu nele de novo — não aparece como fechado)
+  const fechadosDaAba = abaAtiva ? (fechadosPorAba[abaAtiva] ?? []).filter((x) => !trabalhosDaAba.some((y) => y.id === x.id)) : [];
   // Trocar de aba fecha o trabalho aberto (ele é DAQUELA conversa) e descobre os trabalhos da nova aba.
   useEffect(() => {
     setTrabalhoAberto(null);
@@ -1187,9 +1193,14 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     return () => { vivo = false; };
   }, [abaAtiva, aplicarFinal]);
 
+  const envioEmCurso = useRef(false);
+  const ultimoEnvio = useRef<UltimoEnvio>(null);
   const send = useCallback(async (override?: string) => {
     const prompt = (typeof override === "string" ? override : input).trim();
     if (!prompt || sending) return;
+    // #873 PR 4: MENSAGEM DUPLICADA (dois balões iguais no teste de 24/11) — Enter duas vezes, ou Enter + clique, antes
+    // do `sending` (estado) chegar: os dois envios passavam. A trava é síncrona (ref) e a mesma frase em 3 s não sai de novo.
+    if (envioEmCurso.current || (typeof override !== "string" && ehEnvioRepetido(ultimoEnvio.current, prompt))) return;
     // #705: sem internet a mensagem não sai — fica na caixa de texto até a conexão voltar
     if (typeof navigator !== "undefined" && navigator.onLine === false) { setSemRede(true); if (typeof override === "string") setInput((v) => (v.trim() ? v : prompt)); return; }
     // o TUTORIAL do tablet (lib/onboarding/tutorialLab): o tema escolhido não vai pro chat — vira a pesquisa na tela roxa
@@ -1226,6 +1237,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
     batizarSePreciso(prompt);
     avisarEscritorio(activeMentor, "trabalhando");
     setSending(true);
+    envioEmCurso.current = true; ultimoEnvio.current = { texto: prompt, em: Date.now() };
 
     const patchAsst = (text: string) =>
       setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, text } : m)));
@@ -1366,6 +1378,7 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
       avisarEscritorio(activeMentor, "ocioso");
       setMessages((prev) => prev.map((m) => (m.id === asstId ? { ...m, fase: undefined, ...(m.streaming ? { streaming: false } : null) } : m)));
       setSending(false);
+      envioEmCurso.current = false;
       avisarTurnoFim();   // #626: o tour sabe que a resposta acabou (e se veio desenho junto)
       // o mentor pode ter subido a maestria neste turno → o painel refaz o progresso
       if (tree) setTreeRefresh((n) => n + 1);
@@ -1734,8 +1747,13 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
             // os TRABALHOS da conversa (abrem no editor; nascem do "escreva um artigo/TCC sobre…" ou do card na cartolina)
             ...trabalhosDaAba.map((w): Pasta => ({
               id: `trab:${w.id}`, rotulo: CHAT_UNICO ? w.titulo : "TCC", titulo: `${w.tipo}: ${w.titulo}`, icone: <GraduationCap size={13} />,
-              ...(CHAT_UNICO ? { onFechar: () => { setTrabalhosPorAba((p) => ({ ...p, [abaAtiva!]: (p[abaAtiva!] ?? []).filter((x) => x.id !== w.id) })); if (trabalhoAberto === w.id) setTrabalhoAberto(null); if (focoPorAbaRef.current[abaAtiva!] === w.id) delete focoPorAbaRef.current[abaAtiva!]; } } : {}),
+              ...(CHAT_UNICO ? { onFechar: () => { setFechadosPorAba((p) => ({ ...p, [abaAtiva!]: [...(p[abaAtiva!] ?? []).filter((x) => x.id !== w.id), w] })); setTrabalhosPorAba((p) => ({ ...p, [abaAtiva!]: (p[abaAtiva!] ?? []).filter((x) => x.id !== w.id) })); if (trabalhoAberto === w.id) setTrabalhoAberto(null); if (focoPorAbaRef.current[abaAtiva!] === w.id) delete focoPorAbaRef.current[abaAtiva!]; } } : {}),
             })),
+            // #873 PR 4: reabrir o último documento fechado desta conversa
+            ...(fechadosDaAba.length ? [{
+              id: "reabrir", rotulo: fechadosDaAba.length > 1 ? `↺ Reabrir (${fechadosDaAba.length})` : "↺ Reabrir",
+              titulo: `Reabrir: ${fechadosDaAba[fechadosDaAba.length - 1].titulo}`, icone: <GraduationCap size={13} />,
+            }] : []),
             // a cartolina da conversa (o board abre por cima; tap num card → volta à resposta)
             ...(CARTOLINA_ON && abaAtiva ? [{ id: "cartolina", rotulo: "Cartolina", titulo: "Cartolina desta conversa", icone: <FileText size={13} /> }] : []),
           ]}
@@ -1745,6 +1763,14 @@ function ChatDaConta({ active, armazem }: { active: boolean; armazem: Armazem })
           onAbrir={(id) => {
             if (id.startsWith("trab:")) { setTrabalhoAberto(id.slice(5)); setCartolinaAberta(false); return; }
             if (id === "cartolina") { setCartolinaAberta(true); return; }
+            if (id === "reabrir" && abaAtiva) {
+              const w = fechadosDaAba[fechadosDaAba.length - 1];
+              if (w) {
+                setFechadosPorAba((p) => ({ ...p, [abaAtiva]: (p[abaAtiva] ?? []).filter((x) => x.id !== w.id) }));
+                guardarTrabalho(abaAtiva, w); setTrabalhoAberto(w.id); setCartolinaAberta(false);
+              }
+              return;
+            }
             setTrabalhoAberto(null); setCartolinaAberta(false);
             setDocAtivo(id === "conversa" ? null : id);
           }}

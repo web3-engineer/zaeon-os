@@ -28,7 +28,7 @@ import * as mem from "@/lib/agent/memory-provider";
 import { serializarProgresso, serializarModelo, serializarPrevia } from "@/lib/agent/progresso";
 import { criarEmissorPrevia } from "@/lib/agent/previa";
 import { blocoFonteColada, objetivoComFonte, pedidoParaTitulo, separarFonteColada } from "@/lib/agent/fonteColada";
-import { blocoDosAnexos } from "@/lib/agent/anexos";
+import { blocoDosAnexos, blocoOutrosArquivos } from "@/lib/agent/anexos";
 import { sinteseLigada } from "@/lib/agent/sintese-flag";
 import { graficoLigado } from "@/lib/agent/graficosDoTurno";
 import { MODELO_PADRAO, modeloDoId, nomeDoModeloServido, viaGateway } from "@/lib/chat/modelos";
@@ -160,6 +160,15 @@ export async function runChatTurn(
     // rejeita, mas se rejeitar (ou o import falhar) loga e vira null — a base nunca derruba o turno.
     // #873 PR 3 (parte 2): o critério do #868 no chat — pedido sem assunto não busca; com anexo, sem as bases públicas
     const busca = (await import("@/lib/rag/buscaDoTurno")).buscaDoTurno({ pergunta: objetivo, temAnexo: !!params.anexos?.length });
+    // #873 PR 4: com anexo, os NOMES dos outros arquivos guardados (pra apontar "isso está no seu outro arquivo")
+    const outrosArquivosPromise: Promise<string[]> = params.anexos?.length && userId
+      ? Promise.race([
+          Promise.all([import("@/lib/rag/pg"), import("@/lib/rag/store")])
+            .then(([pg, st]) => st.listarDocumentos(pg.ragPg(), { donoId: userId }))
+            .then((ds) => ds.filter((d) => d.status !== "erro").map((d) => d.titulo || d.nomeArquivo || "")),
+          new Promise<string[]>((r) => setTimeout(() => r([]), 1500)),
+        ]).catch(() => [])
+      : Promise.resolve([]);
     const basePromise = !busca.buscar ? Promise.resolve(null) : import("@/lib/rag/turno")
       // + as bases por área (lib/rag/areas): a do mentor ativo e a geral (ENEM, conceitos)
       // F4: com a flag, a consulta é LARGA (K_AMPLO) pra todo documento aparecer no agrupamento por
@@ -345,7 +354,8 @@ export async function runChatTurn(
     // o contexto do turno numa variável só: o harness da Aura E os motores da orquestra leem o MESMO
     // #873 PR 3 (parte 2): pedido vago ("resume") sem anexo → usar a conversa; se ela não disser, perguntar "de quê?"
     const vagoBlock = busca.vago ? (await import("@/lib/canal/pedidoVago")).INSTRUCAO_PEDIDO_VAGO.replace("conversa do canal", "conversa") : "";
-    const systemContextDoTurno = [vagoBlock, params.systemContext, memBlock, cartolinaBlock, tccBlock, entregaveisBlock, skillBlock, blocoDosAnexos(params.anexos ?? []), colada.fonte ? blocoFonteColada(colada.fonte) : ""].filter(Boolean).join("\n\n") || undefined;
+    const outrosArquivosBlock = blocoOutrosArquivos(await outrosArquivosPromise, params.anexos ?? []);
+    const systemContextDoTurno = [vagoBlock, params.systemContext, memBlock, cartolinaBlock, tccBlock, entregaveisBlock, skillBlock, blocoDosAnexos(params.anexos ?? []), outrosArquivosBlock, colada.fonte ? blocoFonteColada(colada.fonte) : ""].filter(Boolean).join("\n\n") || undefined;
     const deps = buildHarnessDeps(hctx, {
       modelo: escolhido?.provedor === "google" ? escolhido.vertex : undefined,
       modeloEhPadrao: escolhido?.id === MODELO_PADRAO,
@@ -468,6 +478,11 @@ export async function runChatTurn(
     // O texto das seções mora na ABA do TCC (e a Aura relê as seções pela bússola do TCC): a bolha
     // do chat leva só o núcleo + o aviso `tcc`, sem repetir o documento.
     if (tcc && out.mode === "structured") out.answer = { ...out.answer, work: undefined, tcc };
+    // #873 PR 4: a peça nasceu, mas a bolha recusou por "a base não contém informações" → vira a confirmação
+    if (tcc?.criado && out.mode === "structured") {
+      const pj = await import("@/lib/documento/pecaJuridica");
+      if (tcc.tipo === pj.TIPO_TRABALHO_PECA) out.answer = { ...out.answer, nucleo: pj.respostaDaPecaCriada(out.answer.nucleo, tcc.titulo) };
+    }
     // VÍDEO DO DOCUMENTO pedido no chat ("faz um vídeo desse artigo" — lib/videodoc): AGUARDADO (só banco; a geração
     // corre em segundo plano) porque o card com ▶ vai NESTA resposta. Best-effort: falhou, a resposta segue sem ele.
     if (userId && out.mode === "structured") {

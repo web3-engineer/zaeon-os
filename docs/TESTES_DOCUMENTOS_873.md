@@ -91,10 +91,10 @@ O card vai em 3 PRs:
 
 | Teste | Resultado |
 |---|---|
-| 1. Petição | ⏳ falta testar |
-| 2. Contrato | ⏳ falta testar |
-| 3. Outros tipos | ⏳ falta testar |
-| 4. Não vira peça | ⏳ falta testar |
-| 5. Artigo continua | ⏳ falta testar |
-| 6. Exportar a peça | ⏳ falta testar |
-| 7. Exportar o artigo | ⏳ falta testar |
+| 1. Petição | ✅ 24/11 ("Petição inicial — ação de cobrança de R$ 3.000…", com o aviso, as partes e os colchetes). ❌ citou "REsp 1.234.567", número inventado: corrigido no PR 4 |
+| 2. Contrato | ✅ 24/11 (cláusulas e colchetes) |
+| 3. Outros tipos | ✅ 24/11, procuração para o INSS. ❌ a bolha disse "a base de conhecimento não contém informações…": corrigido no PR 4 |
+| 4. Não vira peça | ✅ 24/11 (explicou e abriu um diagrama, sem criar peça) |
+| 5. Artigo continua | ✅ 24/11. ❌ título "a Lei do Inquilinato" com minúscula e o gráfico "Papers por ano" na bolha: corrigidos no PR 4 |
+| 6. Exportar a peça | ❌ 25/11: "Erro no serviço ABNT: Internal Server Error" em Word e PDF (o "—" do título no nome do arquivo). Corrigido no PR 4 |
+| 7. Exportar o artigo | ⏳ falta testar (fica pro teste do PR 4) |

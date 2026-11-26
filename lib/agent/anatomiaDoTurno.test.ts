@@ -145,9 +145,11 @@ describe("'Papers por ano' só onde cabe, e com contexto", () => {
     expect(graficosDoTurno({ fontes, env: {} })).toEqual([]);   // sem sinal nenhum, não sai
   });
 
-  it("sai quando o turno é sobre a literatura: buscar fontes, escrever trabalho, ou perguntar pelo panorama", () => {
+  it("sai quando o turno é sobre a literatura: buscar fontes ou perguntar pelo panorama", () => {
     expect(cabePapersPorAno("pesquisar_fontes", "artigos sobre sepse neonatal")).toBe(true);
-    expect(cabePapersPorAno("criar_trabalho", "escreva um artigo sobre sepse")).toBe(true);
+    // #873 PR 4: criar um documento (peça, artigo) não traz mais a série na bolha — o artigo já leva o quadro dentro
+    expect(cabePapersPorAno("criar_trabalho", "escreva um artigo sobre sepse")).toBe(false);
+    expect(cabePapersPorAno("criar_trabalho", "faz uma petição inicial de cobrança de aluguel")).toBe(false);
     for (const objetivo of ["qual o estado da arte em CRISPR?", "esse tema é pouco explorado?", "quantos artigos existem sobre isso?", "qual a tendência das publicações sobre IA na saúde?", "faz uma revisão de literatura sobre sepse", "onde estão as lacunas da pesquisa?"]) {
       expect(cabePapersPorAno("explicar_conceito", objetivo), objetivo).toBe(true);
     }

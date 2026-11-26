@@ -136,6 +136,29 @@ export function regraDeNaoMisturar(anexos: readonly AnexoDoTurno[]): string {
 }
 
 /**
+ * #873 PR 4 · APONTAR O OUTRO ARQUIVO. No teste de 25/11, com o manual anexado, a pergunta era sobre o Mandacaru-7
+ * (outro PDF guardado). A Aura disse "não está nas páginas lidas, procure no capítulo de orçamento" — certo, mas mandou
+ * a pessoa procurar no lugar errado. Com os NOMES dos outros arquivos guardados, ela aponta onde provavelmente está.
+ * Só nomes: o conteúdo de um arquivo que não foi lido NUNCA é inventado. PURO.
+ */
+export const MAX_OUTROS_ARQUIVOS = 30;
+export function blocoOutrosArquivos(nomes: readonly string[], anexos: readonly AnexoDoTurno[]): string {
+  const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\.(pdf|docx|txt|md)$/i, "").trim();
+  const anexados = new Set(anexos.map((a) => norm(a.nome)));
+  const vistos = new Set<string>();
+  const outros = nomes
+    .map((n) => String(n ?? "").trim())
+    .filter((n) => n && !anexados.has(norm(n)) && !vistos.has(norm(n)) && vistos.add(norm(n)))
+    .slice(0, MAX_OUTROS_ARQUIVOS);
+  if (!anexos.length || !outros.length) return "";
+  return "OUTROS ARQUIVOS GUARDADOS DO ALUNO (só os nomes; você NÃO leu o conteúdo deles neste turno): " +
+    outros.map((n) => `"${n}"`).join(", ") + ". Se a resposta NÃO estiver no arquivo anexado e a pergunta combinar " +
+    "com um desses nomes (o nome do projeto, do assunto ou do arquivo), diga isso logo no começo: \"isso não está em " +
+    "<anexo>; parece estar no seu outro arquivo <nome> — quer que eu olhe nele?\". Nunca diga o que está dentro " +
+    "de um arquivo que você não leu; e não mande a pessoa procurar no anexo uma coisa que é de outro arquivo.";
+}
+
+/**
  * O bloco que vai no `systemContext`. Diz o que ESTÁ anexado e que o conteúdo chega pela ferramenta —
  * o texto inteiro NÃO entra aqui de propósito: duplicaria 120 mil caracteres no prompt e tiraria a
  * única fonte da verdade do lugar certo (a evidência).
