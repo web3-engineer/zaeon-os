@@ -24,14 +24,18 @@ export function useBoardEstudos(o: { boardId?: string | null; convite?: string |
   const [presentes, setPresentes] = useState<Presente[]>([]);
   const [cursores, setCursores] = useState<Record<string, Cursor>>({});
   const [salvando, setSalvando] = useState(false);
+  const [pendente, setPendente] = useState(false);
+  const [erroSalvar, setErroSalvar] = useState<string | null>(null);
   const boardRef = useRef<BoardCliente | null>(null); boardRef.current = board;
   const fila = useRef<{ upsert: Map<string, CardEstudo>; remove: Set<string>; titulo?: string }>({ upsert: new Map(), remove: new Set() });
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const emVoo = useRef(false);
+  const idsEmVoo = useRef<Set<string>>(new Set());
   const canal = useRef<any>(null);
   const [alvo, setAlvo] = useState<{ id: string | null; convite: string | null }>({ id: o.boardId ?? null, convite: o.convite ?? null });
 
-  const pendentes = () => new Set([...fila.current.upsert.keys(), ...fila.current.remove]);
+  const pendentesFila = () => new Set([...fila.current.upsert.keys(), ...fila.current.remove]);
+  const pendentes = () => new Set([...pendentesFila(), ...idsEmVoo.current]);
   /** relê o board (do servidor) e junta com o que ainda não salvei */
   const reler = useCallback(async (id?: string) => {
     const bid = id ?? boardRef.current?.id; if (!bid) return;
@@ -64,24 +68,49 @@ export function useBoardEstudos(o: { boardId?: string | null; convite?: string |
   }, [alvo]);
 
   // ── gravar em lote ──
-  const gravar = useCallback(async () => {
-    const b = boardRef.current; if (!b || emVoo.current) return;
-    const f = fila.current; if (!f.upsert.size && !f.remove.size && f.titulo === undefined) return;
+  const gravar = useCallback(async (): Promise<boolean> => {
+    const b = boardRef.current;
+    if (!b || emVoo.current) return false;
+    const f = fila.current;
+    if (!f.upsert.size && !f.remove.size && f.titulo === undefined) return true;
     const corpo = { upsert: [...f.upsert.values()], remove: [...f.remove], titulo: f.titulo };
     fila.current = { upsert: new Map(), remove: new Set() };
-    emVoo.current = true; setSalvando(true);
+    emVoo.current = true; idsEmVoo.current = new Set([...corpo.upsert.map((c) => c.id), ...corpo.remove]); setSalvando(true); setErroSalvar(null);
+    let sucesso = false;
     try {
       const r = await fetch(`/api/estudos/board/${b.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo) });
-      if (r.ok) { const { board: nb } = (await r.json()) as { board: BoardCliente }; setBoard((atual) => (atual && atual.id === nb.id ? { ...nb, cards: mesclarRemoto(atual.cards, nb.cards, pendentes()) } : atual)); }
-      else if (r.status === 409) await reler();
-      else if (r.status === 403) setErro("Você só pode ver este board (leitor).");
-    } catch { /* sem rede: a próxima mudança tenta de novo */ for (const c of corpo.upsert) if (!fila.current.upsert.has(c.id)) fila.current.upsert.set(c.id, c); }
-    finally { emVoo.current = false; setSalvando(false); if (fila.current.upsert.size || fila.current.remove.size) agendar(); }
-  }, [reler]);
+      if (!r.ok) throw new Error(r.status === 403 ? "Você não tem permissão para salvar neste board." : "Não foi possível salvar. Tente novamente.");
+      const { board: nb } = (await r.json()) as { board: BoardCliente };
+      setBoard((atual) => (atual && atual.id === nb.id ? { ...nb, cards: mesclarRemoto(atual.cards, nb.cards, pendentesFila()) } : atual));
+      sucesso = true; setErroSalvar(null);
+    } catch (e) {
+      // Restaura a operação, sem substituir uma edição ou exclusão mais recente.
+      const atual = fila.current;
+      for (const c of corpo.upsert) if (!atual.upsert.has(c.id) && !atual.remove.has(c.id)) atual.upsert.set(c.id, c);
+      for (const id of corpo.remove) if (!atual.upsert.has(id) && !atual.remove.has(id)) atual.remove.add(id);
+      if (corpo.titulo !== undefined && atual.titulo === undefined) atual.titulo = corpo.titulo;
+      setErroSalvar(e instanceof Error ? e.message : "Não foi possível salvar. Tente novamente.");
+    } finally {
+      emVoo.current = false; idsEmVoo.current = new Set(); setSalvando(false);
+      const temFila = !!(fila.current.upsert.size || fila.current.remove.size || fila.current.titulo !== undefined);
+      setPendente(temFila);
+      if (sucesso && temFila) agendar();
+    }
+    return sucesso && !fila.current.upsert.size && !fila.current.remove.size && fila.current.titulo === undefined;
+  }, []);
   const agendar = useCallback(() => { if (timer.current) clearTimeout(timer.current); timer.current = setTimeout(() => void gravar(), 350); }, [gravar]);
+
+  // O navegador avisa se a pessoa tentar sair antes da confirmação do servidor.
+  useEffect(() => {
+    if (!pendente && !salvando) return;
+    const avisar = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", avisar);
+    return () => window.removeEventListener("beforeunload", avisar);
+  }, [pendente, salvando]);
 
   /** muda cards (na hora, na tela) e agenda a gravação */
   const mudar = useCallback((upsert: CardEstudo[], remove: string[] = []) => {
+    if (!boardRef.current || boardRef.current.papel === "leitor") return;
     setBoard((b) => {
       if (!b || b.papel === "leitor") return b;
       const fora = new Set(remove), mapa = new Map(b.cards.filter((c) => !fora.has(c.id)).map((c) => [c.id, c] as const));
@@ -90,9 +119,9 @@ export function useBoardEstudos(o: { boardId?: string | null; convite?: string |
     });
     for (const c of upsert) { fila.current.upsert.set(c.id, c); fila.current.remove.delete(c.id); }
     for (const id of remove) { fila.current.remove.add(id); fila.current.upsert.delete(id); }
-    agendar();
+    setPendente(true); setErroSalvar(null); agendar();
   }, [agendar]);
-  const renomear = useCallback((titulo: string) => { setBoard((b) => (b ? { ...b, titulo } : b)); fila.current.titulo = titulo; agendar(); }, [agendar]);
+  const renomear = useCallback((titulo: string) => { setBoard((b) => (b ? { ...b, titulo } : b)); fila.current.titulo = titulo; setPendente(true); setErroSalvar(null); agendar(); }, [agendar]);
 
   // ── tempo real ──
   useEffect(() => {
@@ -140,7 +169,8 @@ export function useBoardEstudos(o: { boardId?: string | null; convite?: string |
   const [gerando, setGerando] = useState<Record<string, "percurso" | "resposta">>({});
   const gerar = useCallback(async (cardId: string, acao: "percurso" | "resposta"): Promise<string | null> => {
     const b = boardRef.current; if (!b) return null;
-    if (fila.current.upsert.size || fila.current.remove.size) await gravar();   // (o texto do card precisa estar salvo)
+    if (emVoo.current) return "Aguarde o salvamento do board.";
+    if ((fila.current.upsert.size || fila.current.remove.size) && !(await gravar())) return "Salve o board antes de gerar.";
     setGerando((g) => ({ ...g, [cardId]: acao }));
     try {
       const r = await fetch(`/api/estudos/board/${b.id}/gerar`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cardId, acao }) });
@@ -155,7 +185,8 @@ export function useBoardEstudos(o: { boardId?: string | null; convite?: string |
   /** a CAMADA DE VALIDAÇÃO do blueprint: o servidor confere os links do estudo e grava o selo */
   const checarSelos = useCallback(async (cardId: string): Promise<string | null> => {
     const b = boardRef.current; if (!b) return null;
-    if (fila.current.upsert.size || fila.current.remove.size) await gravar();
+    if (emVoo.current) return "Aguarde o salvamento do board.";
+    if ((fila.current.upsert.size || fila.current.remove.size) && !(await gravar())) return "Salve o board antes de conferir.";
     try {
       const r = await fetch(`/api/estudos/board/${b.id}/selos`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cardId }) });
       const j = await r.json().catch(() => ({}));
@@ -166,5 +197,15 @@ export function useBoardEstudos(o: { boardId?: string | null; convite?: string |
     } catch { return "Sem conexão."; }
   }, [gravar]);
 
-  return { board, compartilhados, erro, presentes, cursores, salvando, gerando, mudar, renomear, moverCursor, convidar, gerar, checarSelos, abrir: (id: string | null) => setAlvo({ id, convite: null }) };
+  const abrir = useCallback(async (id: string | null) => {
+    if (timer.current) clearTimeout(timer.current);
+    if (!(await gravar())) {
+      setErroSalvar((atual) => atual ?? "Aguarde o salvamento antes de trocar de board.");
+      return;
+    }
+    setAlvo({ id, convite: null });
+  }, [gravar]);
+
+  return { board, compartilhados, erro, presentes, cursores, salvando, pendente, erroSalvar, tentarSalvar: gravar, gerando, mudar, renomear, moverCursor, convidar, gerar, checarSelos, abrir };
+
 }
