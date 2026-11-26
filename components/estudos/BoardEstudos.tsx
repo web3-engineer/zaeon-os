@@ -67,9 +67,11 @@ export default function BoardEstudos({ boardInicialId, convite }: { boardInicial
   // ── arrastar (fundo = pan; cabeçalho do card = mover o card) ──
   const arrasto = useRef<{ tipo: "pan" | "card"; id?: string; x0: number; y0: number; ox: number; oy: number } | null>(null);
   const [arrastando, setArrastando] = useState<{ id: string; x: number; y: number } | null>(null);
+  const arrastandoRef = useRef<{ id: string; x: number; y: number } | null>(null);
   const onPointerDown = (e: React.PointerEvent) => { if (e.button !== 0) return; arrasto.current = { tipo: "pan", x0: e.clientX, y0: e.clientY, ox: cam.x, oy: cam.y }; (e.target as HTMLElement).setPointerCapture?.(e.pointerId); };
   const comecarCard = (e: React.PointerEvent, c: CardEstudo) => {
     if (leitor || e.button !== 0) return; e.stopPropagation();
+    arrastandoRef.current = null;
     arrasto.current = { tipo: "card", id: c.id, x0: e.clientX, y0: e.clientY, ox: c.x, oy: c.y }; (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
   };
   const onPointerMove = (e: React.PointerEvent) => {
@@ -77,12 +79,13 @@ export default function BoardEstudos({ boardInicialId, convite }: { boardInicial
     const a = arrasto.current; if (!a) return;
     const dx = e.clientX - a.x0, dy = e.clientY - a.y0;
     if (a.tipo === "pan") setCam((c) => ({ ...c, x: a.ox + dx, y: a.oy + dy }));
-    else if (a.id) setArrastando({ id: a.id, x: a.ox + dx / cam.z, y: a.oy + dy / cam.z });
+    else if (a.id) { const pos = { id: a.id, x: a.ox + dx / cam.z, y: a.oy + dy / cam.z }; arrastandoRef.current = pos; setArrastando(pos); }
   };
   const onPointerUp = () => {
     const a = arrasto.current; arrasto.current = null;
-    if (a?.tipo === "card" && arrastando && board) { const c = board.cards.find((k) => k.id === arrastando.id); if (c && (c.x !== arrastando.x || c.y !== arrastando.y)) B.mudar([{ ...c, x: Math.round(arrastando.x), y: Math.round(arrastando.y) }]); }
-    setArrastando(null);
+    const pos = arrastandoRef.current;
+    if (a?.tipo === "card" && pos && board) { const c = board.cards.find((k) => k.id === pos.id); if (c && (c.x !== pos.x || c.y !== pos.y)) B.mudar([{ ...c, x: Math.round(pos.x), y: Math.round(pos.y) }]); }
+    arrastandoRef.current = null; setArrastando(null);
   };
   const onWheel = (e: React.WheelEvent) => {
     const r = raiz.current!.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
@@ -162,7 +165,7 @@ export default function BoardEstudos({ boardInicialId, convite }: { boardInicial
           const pos = posDe(c), n = nivel.get(c.id) ?? 0, esp = c.tipo === "especulacao", ed = editando === c.id;
           const prof = c.tipo === "estudo" ? profundidade(cards, c.id) : null;
           return (
-            <div key={c.id} ref={(el) => medir(c.id, el)} className="absolute" onPointerDown={(e) => e.stopPropagation()} onDoubleClick={() => !leitor && setEditando(c.id)}
+            <div key={c.id} ref={(el) => medir(c.id, el)} className="absolute" onPointerDown={(e) => { e.stopPropagation(); if (!ed && !(e.target as HTMLElement).closest("button, a, input, textarea, select")) comecarCard(e, c); }} onDoubleClick={() => !leitor && setEditando(c.id)}
               style={{
                 left: pos.x, top: pos.y, width: c.w, zIndex: arrastando?.id === c.id ? 50 : 10 + n,
               }}>
@@ -249,7 +252,8 @@ export default function BoardEstudos({ boardInicialId, convite }: { boardInicial
         </details>}
         <div className="ml-auto flex items-center gap-2">
           {leitor && <span className="text-amber-200">Só leitura</span>}
-          <span className="hidden text-[11px] text-sky-200/60 sm:inline" role="status">{B.salvando ? "Salvando…" : "Salvo"}</span>
+          <span className="text-[11px] text-sky-200/75" role="status">{B.erroSalvar ? "Não salvo" : B.salvando || B.pendente ? "Salvando…" : "Salvo"}</span>
+          {B.erroSalvar && <button type="button" className="rounded-md border border-amber-300/60 px-2 py-1 text-amber-100 hover:bg-amber-300/10" title={B.erroSalvar} onClick={() => void B.tentarSalvar()}>Tentar salvar</button>}
           <div className="flex -space-x-2" aria-label="Pessoas presentes">{B.presentes.map((p) => (
             <div key={p.id} title={p.nome} className="h-8 w-8 overflow-hidden rounded-full border-2 bg-sky-900 text-center text-xs leading-7 text-white" style={{ borderColor: p.cor }}>
               {p.imagem ? <img src={p.imagem} alt={p.nome} className="h-full w-full object-cover" /> : p.nome.slice(0, 1).toUpperCase()}
@@ -257,6 +261,7 @@ export default function BoardEstudos({ boardInicialId, convite }: { boardInicial
           ))}</div>
         </div>
       </div>
+      {B.erroSalvar && <div role="alert" className="absolute right-3 top-24 z-[90] max-w-[280px] rounded-lg border border-amber-300/40 bg-[#211e1a] px-3 py-2 text-xs text-amber-100">{B.erroSalvar}</div>}
       {conviteMsg && <div role="status" className="absolute left-3 top-24 z-[90] rounded-lg border border-sky-300/30 bg-[#061e34] px-3 py-2 text-xs text-sky-50">{conviteMsg}</div>}
       <style>{`.board-tool{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:36px;padding:6px 10px;border:1px solid rgba(125,211,252,.35);border-radius:9px;color:#dff7ff;background:rgba(12,55,81,.55);white-space:nowrap}.board-tool:hover{background:rgba(37,135,166,.24)}.board-tool:focus-visible{outline:2px solid #67e8f9;outline-offset:2px}.board-tool-primary{border-color:rgba(103,232,249,.8);background:rgba(9,104,133,.45)}`}</style>
 
