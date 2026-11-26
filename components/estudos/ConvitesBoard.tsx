@@ -44,8 +44,8 @@ export default function ConvitesBoard({ boardId, dono, abrir }: { boardId: strin
     } catch { setMensagem("Sem conexão. Tente novamente."); } finally { setOcupado(false); }
   };
   return <div className="relative" onPointerDown={(e) => e.stopPropagation()}>
-    <button type="button" onClick={() => setAberto(!aberto)} aria-expanded={aberto} className="rounded border border-sky-300/40 px-2 py-1 hover:bg-sky-300/10">pessoas{convites.length ? ` · ${convites.length}` : ""}</button>
-    {aberto && <div className="absolute left-0 top-full z-[100] mt-2 w-80 max-w-[85vw] rounded border border-sky-300/40 bg-[#071e35] p-3 text-sky-50 shadow-xl" onWheel={(e) => e.stopPropagation()}>
+    <button type="button" onClick={() => setAberto(!aberto)} aria-expanded={aberto} className="inline-flex min-h-[36px] items-center rounded-lg border border-sky-300/40 bg-sky-950/60 px-3 py-1 text-sky-50 hover:bg-sky-300/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300">pessoas{convites.length ? ` · ${convites.length}` : ""}</button>
+    {aberto && <div className="absolute right-0 top-full z-[100] mt-2 w-80 max-w-[85vw] rounded-xl border border-sky-300/40 bg-[#071e35] p-3 text-sky-50 shadow-xl" onWheel={(e) => e.stopPropagation()}>
       <div className="mb-2 flex justify-between"><strong>Compartilhar board</strong><button type="button" onClick={() => setAberto(false)} aria-label="Fechar">✕</button></div>
       {dono && <><label className="block">Nome da pessoa<input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Buscar pelo nome" className="mt-1 w-full rounded border border-sky-300/30 bg-sky-950 px-2 py-1.5" /></label>
         <label className="mt-2 block">Permissão <select value={papel} onChange={(e) => setPapel(e.target.value)} className="rounded bg-sky-950 p-1"><option value="editor">Pode editar</option><option value="leitor">Pode ver</option></select></label>
