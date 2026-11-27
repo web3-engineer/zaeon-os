@@ -15,7 +15,7 @@ import { prisma } from "@/src/lib/prisma";
 import { guard } from "@/src/lib/ratelimit";
 import { studioUid } from "@/lib/studio/auth";
 import { resolverEsqueleto } from "@/lib/forja/esqueletoResolver";
-import { concluir, definir, lerConcluidas, reiniciar, sanearIds } from "@/lib/knowledge-tree/progressoServidor";
+import { MAX_POR_CURSO, concluir, definir, lerConcluidas, reiniciar, sanearIds } from "@/lib/knowledge-tree/progressoServidor";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,6 +45,8 @@ export async function POST(req: Request) {
   const nos = sanearIds(body.nos);
   if (body.op === "concluir") {
     if (!nos.length) return NextResponse.json({ error: "nos_obrigatorios" }, { status: 400 });
+    const ja = new Set(await lerConcluidas(prisma as never, userId, cursoId));
+    if (ja.size + nos.filter((n) => !ja.has(n)).length > MAX_POR_CURSO) return NextResponse.json({ error: "limite" }, { status: 413 });
     await concluir(prisma as never, userId, cursoId, nos);
   } else if (body.op === "reiniciar") {
     await reiniciar(prisma as never, userId, cursoId);

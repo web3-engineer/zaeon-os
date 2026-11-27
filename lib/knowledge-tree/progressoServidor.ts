@@ -12,6 +12,8 @@
  */
 export const STATUS_CONCLUIDA = "concluida";
 export const MAX_NOS_POR_OP = 500;
+/** teto de lições guardadas por usuário e curso (uma árvore real tem dezenas; isto só barra abuso). */
+export const MAX_POR_CURSO = 2000;
 const ID_OK = /^[\w:./#@+\-]{1,200}$/;
 
 export const topicoDoCurso = (cursoId: string): string => `curso:${cursoId}`;

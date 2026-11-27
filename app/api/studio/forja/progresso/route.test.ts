@@ -55,4 +55,10 @@ describe("/api/studio/forja/progresso", () => {
     expect((await post({ cursoId: "pomodoro", op: "definir", nos: [] })).status).toBe(200);
     expect(m.deleteMany).toHaveBeenCalledWith({ where: { userId: "u1", topicSlug: "curso:pomodoro", nodeId: { notIn: [] } } });
   });
+  it("teto por curso: não passa de 2000 lições guardadas", async () => {
+    m.findMany.mockResolvedValue(Array.from({ length: 2000 }, (_, i) => ({ nodeId: "n" + i })));
+    expect((await post({ cursoId: "pomodoro", op: "concluir", nos: ["novo"] })).status).toBe(413);
+    expect((await post({ cursoId: "pomodoro", op: "concluir", nos: ["n5"] })).status).toBe(200); // já guardada: não conta
+    expect(m.upsert).toHaveBeenCalledTimes(1);
+  });
 });
