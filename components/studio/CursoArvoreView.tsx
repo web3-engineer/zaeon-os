@@ -83,10 +83,26 @@ const questaoHtml = (q: QuestaoProva, tr: TrFn) => {
  * NUNCA fabrica conteúdo: sem lição curada e sem grafo, mostra só o que há, sem inventar código/quiz.
  */
 export function montarBoardHtml(args: { titulo: string; tipo: Nav["tipo"]; mod: string; repo: string; resumo?: string; lic?: LicaoCurada; prox?: string; passo?: string; tr?: TrFn }): string {
-  const { titulo, tipo, mod, repo, resumo, lic, prox, passo } = args;
+  const { titulo, tipo, repo, prox, passo } = args;
+  const tr = args.tr ?? trPT;
+  const tag = tipo === "sim" ? tr("forja.board.tagConceito") : tipo === "mod" ? tr("forja.board.tagModulo") : tr("forja.board.tagRepo");
+  const avanco = prox
+    ? '<button class="av-btn av-pill av-continuar">' + tr("forja.board.continuar", { prox: esc(cut(prox, 22)) }) + '</button>'
+    : '<button class="av-btn av-pill av-voltar">' + esc(tr("forja.board.concluir")) + '</button>';
+  const selo = passo ? '<span class="av-passo">' + esc(passo) + "</span>" : "";
+  return '<div class="av-card"><div class="tag">' + selo + esc(tag) + " · " + repo + '</div><h1>' + esc(titulo) + "</h1>"
+    + montarConteudoLicaoHtml(args)
+    + '<div class="av-nav"><button class="av-btn av-ghost av-voltar">' + esc(tr("forja.board.voltarArvore")) + '</button>' + avanco + '</div></div>';
+}
+
+/**
+ * Só o MIOLO da lição (Aprendizado + No código + Teste), sem cartão, título nem navegação — o que a
+ * Árvore Neuronal (components/studio/CursoArvoreNeuronal) embute no painel dela. PURO.
+ */
+export function montarConteudoLicaoHtml(args: { titulo: string; tipo: Nav["tipo"]; mod: string; resumo?: string; lic?: LicaoCurada; tr?: TrFn }): string {
+  const { titulo, tipo, mod, resumo, lic } = args;
   const tr = args.tr ?? trPT;
   const base = String(mod).split(".py")[0];
-  const tag = tipo === "sim" ? tr("forja.board.tagConceito") : tipo === "mod" ? tr("forja.board.tagModulo") : tr("forja.board.tagRepo");
   const temResumo = (resumo || "").trim().length > 3;
   const aprendHtml = lic?.estudo ? paras(lic.estudo)
     : temResumo ? paras(resumo!)
@@ -100,16 +116,11 @@ export function montarBoardHtml(args: { titulo: string; tipo: Nav["tipo"]; mod: 
   let testeHtml = "";
   if (lic?.prova?.length) testeHtml += '<h3>' + esc(tr("forja.board.teste")) + '</h3>' + lic.prova.map((q) => questaoHtml(q, tr)).join("");
   if (lic?.desafio) testeHtml += '<h3>' + esc(tr("forja.board.desafio")) + '</h3>' + questaoHtml(lic.desafio, tr);
-  const avanco = prox
-    ? '<button class="av-btn av-pill av-continuar">' + tr("forja.board.continuar", { prox: esc(cut(prox, 22)) }) + '</button>'
-    : '<button class="av-btn av-pill av-voltar">' + esc(tr("forja.board.concluir")) + '</button>';
-  const selo = passo ? '<span class="av-passo">' + esc(passo) + "</span>" : "";
-  return '<div class="av-card"><div class="tag">' + selo + esc(tag) + " · " + repo + '</div><h1>' + esc(titulo) + "</h1>"
-    + '<h3>' + esc(tr("forja.board.aprendizado")) + '</h3>' + aprendHtml
-    + codigoHtml
-    + testeHtml
-    + '<div class="av-nav"><button class="av-btn av-ghost av-voltar">' + esc(tr("forja.board.voltarArvore")) + '</button>' + avanco + '</div></div>';
+  return '<h3>' + esc(tr("forja.board.aprendizado")) + '</h3>' + aprendHtml + codigoHtml + testeHtml;
 }
+
+/** o CSS do quadro (as classes .av-*), pra quem embute o miolo da lição com o mesmo visual. */
+export { CSS as CSS_CURSO_ARVORE };
 
 const CSS = `
 .av-root{position:absolute;inset:0;overflow:hidden;container-type:inline-size;font-family:ui-sans-serif,system-ui,-apple-system,"SF Pro Display",Segoe UI,Roboto,sans-serif;

@@ -1,0 +1,17 @@
+{
+  "base": "http://localhost:3011",
+  "cursos": [
+    "pomodoro",
+    "pandas-analise-de-dados"
+  ],
+  "falhas": [],
+  "desempenho": {
+    "visiveis": 80,
+    "pulsos": 79,
+    "fps": 60,
+    "quadros": 300,
+    "med": 16.699999999999818,
+    "p95": 16.799999999999727,
+    "max": 16.800000000000182
+  }
+}

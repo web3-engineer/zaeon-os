@@ -12,6 +12,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import CursoArvoreView from "@/components/studio/CursoArvoreView";
+import CursoArvoreNeuronal from "@/components/studio/CursoArvoreNeuronal";
 import { comBaseDoGrafo, mesclarEnriquecimento } from "@/lib/forja/arvoreDoGrafo";
 import type { CursoRepo } from "@/lib/forja/tipos";
 import type { LicaoCurada } from "@/lib/forja/licaoCurada";
@@ -24,6 +25,8 @@ export default function SalaCurso({ cursoId, titulo, onFechar }: { cursoId: stri
   const [curso, setCurso] = useState<CursoRepo | null>(null);
   const [licoes, setLicoes] = useState<Record<string, LicaoCurada>>({});
   const [erro, setErro] = useState(false);
+  // Árvore Neuronal: a flag de runtime vem do servidor (ARVORE_NEURONAL, ligada por padrão); off = árvore antiga
+  const [neuronal, setNeuronal] = useState(false);
 
   useEffect(() => {
     let vivo = true;
@@ -35,6 +38,7 @@ export default function SalaCurso({ cursoId, titulo, onFechar }: { cursoId: stri
         if (!vivo) return;
         if (!r.ok || !j?.meta) { setErro(true); return; }
         const c = j.meta as MetaCurso;
+        setNeuronal(j.arvoreNeuronal === true);
         setCurso(c);                        // base curada já ensina (não espera o motor)
         setLicoes(c.licoesPorNo ?? {});     // lições reais (estudo/prova/sandbox) por nó
         // Camadas: a base curada (c.arvore) manda. O motor (graphify/understand), quando a box responde,
@@ -69,7 +73,9 @@ export default function SalaCurso({ cursoId, titulo, onFechar }: { cursoId: stri
 
   return (
     <div className="relative h-full">
-      <CursoArvoreView curso={curso} licoes={licoes} titulo={titulo || curso.arvore.raiz.titulo} onFechar={onFechar} />
+      {neuronal
+        ? <CursoArvoreNeuronal curso={curso} cursoId={cursoId} licoes={licoes} titulo={titulo || curso.arvore.raiz.titulo} onFechar={onFechar} />
+        : <CursoArvoreView curso={curso} licoes={licoes} titulo={titulo || curso.arvore.raiz.titulo} onFechar={onFechar} />}
     </div>
   );
 }
