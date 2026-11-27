@@ -17,6 +17,7 @@ import { conteudoCuradoDoCurso } from "@/lib/forja/conteudoCurado";
 import { projetoCuradoDoCurso } from "@/lib/forja/projetosCurados";
 import { cardsCacheados } from "@/lib/forja/cardsLocal";
 import { tutoriaisDoCurso } from "@/lib/forja/tutoriais";
+import { arvoreNeuronalLigada } from "@/lib/knowledge-tree/flag";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -56,5 +57,5 @@ export async function POST(req: Request) {
     data: { ownerId: userId, sourceIds: [chave], kind: "forja", skin: skinDaVitrine({ kind: "forja" }), status: "done", title: esq.titulo, mime: "application/json", meta: curso as unknown as object },
   }));
 
-  return NextResponse.json({ id: art.id, status: "done", title: esq.titulo, meta: { ...curso, licoesPorNo }, cards, prepararTeste, pacotes: projeto?.pacotes });
+  return NextResponse.json({ id: art.id, status: "done", title: esq.titulo, meta: { ...curso, licoesPorNo }, cards, prepararTeste, pacotes: projeto?.pacotes, arvoreNeuronal: arvoreNeuronalLigada() });
 }
