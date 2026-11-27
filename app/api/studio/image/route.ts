@@ -41,7 +41,7 @@ export async function POST(req: Request) {
   if (!rl.ok) return rl.response;
 
   if (!imagenAvailable()) {
-    return NextResponse.json({ error: "Geração de imagem indisponível (credencial Google ausente)." }, { status: 503 });
+    return NextResponse.json({ error: "Geração de imagem indisponível agora." }, { status: 503 });
   }
 
   const body = await req.json().catch(() => ({} as any));

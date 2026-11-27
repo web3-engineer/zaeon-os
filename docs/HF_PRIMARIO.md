@@ -16,7 +16,8 @@ Legenda: ✅ = o HF assume com a flag (este PR) · 🟡 = dá pra migrar, fica p
 | 4 | `vertex_ai/*` (modelo real do **Octa Code**) | `lib/octa/modelo.ts` | 🔴 fica | — | O Octa pede `vertex_ai/<id>` pelo nome; trocar = mudar `OCTA_MODELO_RESERVA` (env já existe). |
 | 5 | `zaeon-reserva-google` (queda do pool grátis) e `zaeon-pool-lite` (AI Studio grátis) | gateway | 🔴 fica | — | O pool só leva web pública; o HF é pago e nunca entra na cadeia do pool (teste pina). |
 | 6 | **Embeddings do RAG** (1024 dim) e **memória L3** (1536 dim) — `gemini-embedding-001` | `lib/rag/embed.ts` | 🔴 fica | (candidato: `Qwen/Qwen3-Embedding-*` ou o `zaeon-local-embed` da Contabo) | O índice pgvector e a L3 guardam vetores DESSE modelo: trocar = re-embedar a base inteira. Fora do escopo. |
-| 7 | **Imagem** (Studio, avatares) — `gemini-2.5-flash-image` | `lib/ai/gemini-image.ts`, `lib/studio/imagen.ts`, `lib/avatars/gemini-image.ts` | 🔴 fica | (HF tem FLUX/Qwen-Image via fal-ai/replicate/nebius) | API diferente (não é chat OpenAI) e a EDIÇÃO mantendo o personagem é do Gemini. |
+| 7a | **Imagem do Studio** (chat, Studio, cartolina, cenas do vídeo) | `lib/ai/hf-image.ts`, `lib/studio/imagen.ts` | ✅ HF primeiro (#883) | `black-forest-labs/FLUX.1-schnell` em together → nebius → fal-ai → hf-inference (`HF_IMAGEM_MODELOS`) | O Gemini image fica só de reserva enquanto a credencial existir. `HF_IMAGEM=0` desliga. |
+| 7b | **Avatares** (edição mantendo o personagem) — `gemini-2.5-flash-image` | `lib/avatars/gemini-image.ts` | 🔴 fica | (precisa de modelo de EDIÇÃO de imagem) | O FLUX.1-schnell só cria do zero; editar mantendo o personagem fica para um PR próprio. |
 | 8 | **Voz (TTS)** — Gemini-TTS | `lib/voice/gemini-tts.ts`, `scripts/generate-voice-fillers.mjs`, `scripts/avatars/gerar-saudacao.mjs` | 🔴 fica | — | Vozes prebuilt do Gemini (Leda etc.) não existem no HF. |
 | 9 | **PDF/imagem multimodal** (Gemini lê PDF nativo; context caching) | `lib/ai/descreverImagem.ts`, `lib/ai/contextCache.ts`, `app/api/ai/relate`, `lib/aula-interativa/gerar.ts`, `app/api/agentic/biosim` | 🔴 fica | (visão: `Qwen/Qwen3.8-27B:cerebras`, `google/gemma-4-26B-A4B-it:google-vertex`) | O HF não lê PDF nativo nem tem `cachedContents`; o anexo do chat que é TEXTO já passa pelo envelope (#1). |
 | 10 | **Rotas que chamam o SDK do Vertex direto** (sem envelope), texto/JSON puro | `app/api/agentic/{codelab,quantum}`, `app/api/onboarding-extract`, `app/api/documents/abnt-export`, `app/api/research/chat/[researchId]` (stream), `lib/scholar/suggest.ts`, `lib/cyber/ia/motor.ts`, `lib/ai/router.ts` | 🟡 fica no Google por enquanto | o mesmo do #1 assim que migrarem pro envelope | Migrar = trocar o `getGenerativeModel().generateContent` por `geminiJson`/`gerar` (uma a uma, com teste). |
@@ -87,7 +88,7 @@ HF_RESERVA_MODELOS=openai/gpt-oss-120b:cerebras,openai/gpt-oss-120b:groq   # tir
 - Já basta pro default: **cerebras** + **groq** (ligados).
 - Pra modelos maiores no tier forte: nebius/sambanova já ligados (GLM-5.3, Kimi-K3.1-Pro, DeepSeek-V4.1-Flash).
 - Ligar **together / fireworks-ai / deepinfra / novita** só se for usar DeepSeek/Kimi/GLM/MiniMax mais baratos neles.
-- Imagem/voz pelo HF (futuro): fal-ai ou replicate.
+- Imagem pelo HF (#883): o default usa together, nebius, fal-ai e hf-inference — basta um deles ligado. Voz pelo HF: futuro.
 
 **Privacidade:** com a flag, a pergunta do aluno (e o histórico) vai pro provedor do HF por padrão, não só quando o Google cai — inverte a decisão de 22/10. Cerebras/Groq não treinam com dados de API, mas é terceiro fora do Google.
 

@@ -4,6 +4,8 @@
  * Use pra descobrir por que imagem/podcast/vídeo falham (ex.: id de modelo errado,
  * 403 de permissão, multi-speaker não suportado, ffmpeg ausente).
  *
+ * #883: a imagem testa PRIMEIRO o Hugging Face (o caminho principal); o Gemini aparece como reserva.
+ *
  * Não vaza segredo: só ids de modelo e trechos de mensagem de erro.
  */
 import { NextResponse } from "next/server";
@@ -13,6 +15,7 @@ import { vertexCredentials } from "@/lib/ai/vertex-credentials";
 import { studioUid } from "@/lib/studio/auth";
 import { buildImagenBody } from "@/lib/studio/imagen-request";
 import { imageRoute } from "@/lib/studio/imagen";
+import { gerarImagemHf, hfImagemAlvos, hfImagemDisponivel } from "@/lib/ai/hf-image";
 import { geminiImageModelo } from "@/lib/ai/gemini-image";
 import { buildGeminiImageBody, geminiImageLocais, geminiImageUrl, parseGeminiImageResponse } from "@/lib/ai/gemini-image-request";
 import { buildTtsBody, buildMultiSpeakerTtsBody } from "@/lib/studio/gemini-tts-request";
@@ -57,6 +60,18 @@ async function vertexPost(
   }
 }
 
+/** #883: gera 1 imagem pelo HF (o caminho principal) e diz qual provedor respondeu ou o motivo de cada um. */
+async function probeHf(prompt: string): Promise<Probe & { provedores: string }> {
+  const provedores = hfImagemAlvos().map((a) => `${a.modelo}:${a.provedor}`).join(",") || "(HF_IMAGEM_MODELOS inválido)";
+  if (!hfImagemDisponivel()) return { ok: false, detail: "desligado (sem HF_TOKEN, ou HF_IMAGEM=0 / HF_RESERVA=0)", provedores };
+  try {
+    const img = await gerarImagemHf(prompt, { timeoutMs: 45_000 });
+    return { ok: true, detail: `ok (${img.mimeType})`, provedores };
+  } catch (e) {
+    return { ok: false, detail: String((e as Error)?.message || e).slice(0, 400), provedores };
+  }
+}
+
 function checkFfmpeg(): Promise<Probe> {
   return new Promise((resolve) => {
     try {
@@ -81,7 +96,8 @@ export async function GET() {
   // 1ª região da rotação (em produção um 429 aqui passa pra próxima; o diag mostra o status cru).
   const geminiLoc = geminiImageLocais(process.env.GEMINI_IMAGE_LOCATIONS)[0];
   const probePrompt = "a simple red circle on white background";
-  const [imagem, imagenOverride, ttsSingle, ttsMulti, ffmpeg] = await Promise.all([
+  const [imagemHf, imagem, imagenOverride, ttsSingle, ttsMulti, ffmpeg] = await Promise.all([
+    probeHf(probePrompt),
     vertexPost(geminiModel, ":generateContent", buildGeminiImageBody(probePrompt), {
       location: geminiLoc,
       okDetail: (text) => {
@@ -110,10 +126,13 @@ export async function GET() {
       IMAGEN_MODEL: process.env.IMAGEN_MODEL || "(não definido → Gemini image)",
       GEMINI_IMAGE_MODEL: geminiModel,
       GEMINI_IMAGE_LOCATIONS: geminiImageLocais(process.env.GEMINI_IMAGE_LOCATIONS).join(","),
-      imagem_via: route.provider === "imagen" ? `imagen (${route.model}) → fallback gemini` : "gemini",
+      imagem_via: hfImagemDisponivel()
+        ? `hugging face → reserva ${route.provider === "imagen" ? `imagen (${route.model}) → gemini` : "gemini"}`
+        : route.provider === "imagen" ? `imagen (${route.model}) → fallback gemini` : "gemini",
       GEMINI_TTS_MODEL: TTS_MODEL,
     },
-    imagem,
+    imagem: imagemHf,
+    imagem_reserva_google: imagem,
     ...(imagenOverride ? { imagem_imagen_override: imagenOverride } : {}),
     voz_narracao: ttsSingle,
     voz_podcast_multi: ttsMulti,

@@ -11,7 +11,7 @@ import fs from "fs/promises";
 import path from "path";
 import { prisma } from "@/src/lib/prisma";
 import { geminiJson } from "@/lib/scholar/gemini";
-import { generateImage } from "@/lib/studio/imagen";
+import { generateImageResult } from "@/lib/studio/imagen";
 import { synthGeminiTTS } from "@/lib/voice/gemini-tts";
 import { writeStudioFile, studioDir } from "@/lib/studio/storage";
 import {
@@ -52,9 +52,12 @@ export async function runVideoGeneration(artId: string, content: string, options
 
     // Uma cena = imagem (Gemini image) + narração (Gemini-TTS) → clipe mp4.
     const clips: string[] = [];
+    let motivoImagem: string | null = null; // #883: o porquê da imagem que falhou chega ao aluno ("fora do ar")
     for (let i = 0; i < script.length; i++) {
       const sec = script[i];
-      const img = await generateImage(sec.imagePrompt || sec.narration, { aspectRatio: "16:9" }, 45_000);
+      const ri = await generateImageResult(sec.imagePrompt || sec.narration, { aspectRatio: "16:9" }, 45_000);
+      const img = "image" in ri ? ri.image : null;
+      if ("error" in ri) motivoImagem = ri.error;
       const narr = await synthGeminiTTS(sec.narration, undefined, 45_000).catch(() => null);
       if (!img?.data || !narr?.audio_base64) { console.warn(`[video] cena ${i} sem mídia (img=${!!img?.data} narr=${!!narr?.audio_base64})`); continue; }
       const imgPath = path.join(tmp, `s${i}.png`);
@@ -65,7 +68,9 @@ export async function runVideoGeneration(artId: string, content: string, options
       await runFfmpeg(sectionClipArgs({ image: imgPath, audio: audPath, out: clipPath }));
       clips.push(clipPath);
     }
-    if (!clips.length) throw new Error("Nenhuma cena pôde ser gerada (Gemini image e Gemini-TTS habilitados no projeto?).");
+    if (!clips.length) {
+      throw new Error(motivoImagem ? `Nenhuma cena pôde ser gerada: ${motivoImagem}` : "Nenhuma cena pôde ser gerada (sem narração).");
+    }
 
     let finalBuf: Buffer;
     if (clips.length === 1) {
