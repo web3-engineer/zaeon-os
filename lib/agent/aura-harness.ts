@@ -276,7 +276,7 @@ export function pickStudioKind(objective: string): string {
   // no texto como bloco ```grafico (lib/agent/matematica) — o roteador nem manda esses pra cá.
   // #749: "gráfico" saiu daqui — gráfico de DADOS também é ```grafico (barras com número e fonte); o modelo de imagem
   // desenhava um mapa com bonequinhos e nenhum número.
-  if (/imagem|figura|ilustra|desenh/.test(t)) return "image";
+  if (/imagem|figura|ilustra|desenh|\bfotos?\b|fotografia/.test(t)) return "image";
   return normalizeStudioKind(t); // default "guide"
 }
 

@@ -23,7 +23,7 @@ const norm = (s: string) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").t
 // #883: "imagem"/"ilustração"/"figura"/"foto" também são pedidos pelo nome — "faça uma imagem do coração humano" virava o
 // cartão 3D (teste do #764, 27/11). "desenhe o pulmão" (verbo, sem pedir imagem) continua sendo a peça do atlas.
 const PEDIU_PELO_NOME =
-  /\b(imagem|imagens|ilustracao|ilustracoes|figura|foto|diagrama|esquema|fluxograma|mapa mental|mindmap|mapa (?:de estudos?|conceitual)|flashcards?|cartoes|linha do tempo|timeline|cronologia|podcast|audio|aula|faq|perguntas e respostas|quiz|guia de estudo|molecula|estrutura (?:molecular|quimica))\b/;
+  /\b(imagem|imagens|ilustracao|ilustracoes|figuras?|fotos?|fotografias?|diagrama|esquema|fluxograma|mapa mental|mindmap|mapa (?:de estudos?|conceitual)|flashcards?|cartoes|linha do tempo|timeline|cronologia|podcast|audio|aula|faq|perguntas e respostas|quiz|guia de estudo|molecula|estrutura (?:molecular|quimica))\b/;
 
 export const pediuOutroArtefato = (objetivo: string): boolean => PEDIU_PELO_NOME.test(norm(objetivo));
 

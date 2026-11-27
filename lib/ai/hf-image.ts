@@ -51,9 +51,14 @@ export function lerAlvo(s: string): AlvoImagem | null {
   return (PROVEDORES_IMAGEM as readonly string[]).includes(provedor) ? { modelo: m[1], provedor } : null;
 }
 
+/**
+ * A lista de alvos. Vazia/ausente → o padrão. Preenchida mas sem NENHUM item válido → lista vazia (e a geração
+ * avisa "HF_IMAGEM_MODELOS inválido"): um erro de digitação não pode mandar pedido pago para outro provedor.
+ */
 export function hfImagemAlvos(env: Env = process.env): AlvoImagem[] {
-  const lista = (env.HF_IMAGEM_MODELOS ?? "").split(",").map(lerAlvo).filter((a): a is AlvoImagem => !!a);
-  return lista.length ? lista : HF_IMAGEM_PADRAO.map((s) => lerAlvo(s)!);
+  const bruto = (env.HF_IMAGEM_MODELOS ?? "").trim();
+  if (!bruto) return HF_IMAGEM_PADRAO.map((s) => lerAlvo(s)!);
+  return bruto.split(",").map(lerAlvo).filter((a): a is AlvoImagem => !!a);
 }
 
 export function hfImagemTimeout(env: Env = process.env): number {
@@ -115,40 +120,95 @@ export function montarPedido(
   }
 }
 
-/** data:image/png;base64,AAAA → {data, mimeType} */
-function deDataUrl(u: string): ImagemHf | null {
-  const m = u.match(/^data:(image\/[a-z+.-]+);base64,(.+)$/i);
-  return m ? { mimeType: m[1], data: m[2] } : null;
+/** Teto de uma imagem (bytes): o FLUX em 1024² fica bem abaixo; acima disso é resposta errada, não imagem. */
+export const HF_IMAGEM_MAX_BYTES = 12 * 1024 * 1024;
+
+/**
+ * Hosts de onde a imagem pode ser BAIXADA (o fal-ai devolve link; os outros, base64). O link vem da resposta do
+ * provedor, então não se baixa de qualquer lugar: só https, só estes domínios e sem seguir redirecionamento.
+ */
+export const HOSTS_IMAGEM = ["fal.media", "fal.run", "fal.ai", "huggingface.co", "hf.co", "together.ai", "together.xyz", "nebius.com", "nebius.ai"] as const;
+
+export function hostPermitido(url: string): boolean {
+  let u: URL;
+  try { u = new URL(url); } catch { return false; }
+  if (u.protocol !== "https:" || u.username || u.password || (u.port && u.port !== "443")) return false;
+  const h = u.hostname.toLowerCase();
+  return HOSTS_IMAGEM.some((d) => h === d || h.endsWith(`.${d}`));
+}
+
+/** Lê o corpo até o teto; passou do teto → null (não guarda o resto na memória). */
+async function lerAteOTeto(r: Response, teto = HF_IMAGEM_MAX_BYTES): Promise<Buffer | null> {
+  const declarado = Number(r.headers.get("content-length"));
+  if (Number.isFinite(declarado) && declarado > teto) return null;
+  if (!r.body) return null;
+  const leitor = r.body.getReader();
+  const partes: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await leitor.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > teto) { await leitor.cancel().catch(() => {}); return null; }
+    partes.push(value);
+  }
+  return total ? Buffer.concat(partes) : null;
 }
 
 /**
- * A resposta de qualquer provedor → imagem em base64. Aceita: bytes de imagem (hf-inference); `data[0].b64_json`
- * (together/nebius); `images[0].url` ou `data[0].url` (fal-ai e afins) — data URL ou link para baixar.
+ * Toda imagem sai em PNG: a rota do Studio grava .png (ou .jpg) e o vídeo grava .png para o ffmpeg — um WebP com
+ * nome .png quebrava o download e a cena. PNG passa direto; o resto é convertido com o sharp (já é dependência).
  */
-export async function lerResposta(res: Response, fetchImpl: Fetch = fetch): Promise<ImagemHf | null> {
-  const tipo = (res.headers.get("content-type") || "").toLowerCase();
+export async function emPng(buf: Buffer, mime: string): Promise<ImagemHf | null> {
+  if (!buf.length) return null;
+  if (/^image\/png$/i.test(mime)) return { data: buf.toString("base64"), mimeType: "image/png" };
+  try {
+    const sharp = (await import("sharp")).default;
+    const png = await sharp(buf).png().toBuffer();
+    return { data: png.toString("base64"), mimeType: "image/png" };
+  } catch {
+    return null; // não é imagem que o sharp entenda: melhor nada do que um arquivo quebrado
+  }
+}
+
+/** data:image/png;base64,AAAA → bytes + tipo */
+function deDataUrl(u: string): { buf: Buffer; mime: string } | null {
+  const m = u.match(/^data:(image\/[a-z+.-]+);base64,(.+)$/i);
+  return m ? { mime: m[1], buf: Buffer.from(m[2], "base64") } : null;
+}
+
+/**
+ * A resposta de qualquer provedor → imagem PNG em base64. Aceita: bytes de imagem (hf-inference); `data[0].b64_json`
+ * (together/nebius); `images[0].url` ou `data[0].url` (fal-ai e afins) — data URL ou link de um host permitido.
+ * `signal` limita o download do link ao prazo da tentativa.
+ */
+export async function lerResposta(res: Response, fetchImpl: Fetch = fetch, signal?: AbortSignal): Promise<ImagemHf | null> {
+  const tipo = (res.headers.get("content-type") || "").toLowerCase().split(";")[0].trim();
   if (tipo.startsWith("image/")) {
-    const buf = Buffer.from(await res.arrayBuffer());
-    return buf.length ? { data: buf.toString("base64"), mimeType: tipo.split(";")[0] } : null;
+    const buf = await lerAteOTeto(res);
+    return buf ? emPng(buf, tipo) : null;
   }
   const j = (await res.json().catch(() => null)) as
     | { data?: Array<{ b64_json?: string; url?: string }>; images?: Array<{ url?: string; content_type?: string }> }
     | null;
   const b64 = j?.data?.[0]?.b64_json;
-  if (b64) return { data: b64, mimeType: "image/png" };
+  if (b64) {
+    if (b64.length > (HF_IMAGEM_MAX_BYTES * 4) / 3) return null;
+    return emPng(Buffer.from(b64, "base64"), "image/png");
+  }
   const url = j?.images?.[0]?.url || j?.data?.[0]?.url;
   if (!url) return null;
   const embutida = deDataUrl(url);
-  if (embutida) return embutida;
-  if (!/^https:\/\//i.test(url)) return null;
-  const r = await fetchImpl(url);
+  if (embutida) return embutida.buf.length <= HF_IMAGEM_MAX_BYTES ? emPng(embutida.buf, embutida.mime) : null;
+  if (!hostPermitido(url)) return null;
+  const r = await fetchImpl(url, { redirect: "error", signal: signal ?? AbortSignal.timeout(20_000) });
   if (!r.ok) return null;
-  const buf = Buffer.from(await r.arrayBuffer());
-  const mime = (r.headers.get("content-type") || j?.images?.[0]?.content_type || "image/png").split(";")[0];
-  return buf.length ? { data: buf.toString("base64"), mimeType: mime } : null;
+  const buf = await lerAteOTeto(r);
+  const mime = (r.headers.get("content-type") || j?.images?.[0]?.content_type || "image/png").split(";")[0].trim();
+  return buf ? emPng(buf, mime) : null;
 }
 
-/** providerId em memória: "modelo|provedor" → id (ou o próprio modelo quando o HF não informou). */
+/** providerId em memória: "modelo|provedor" → id. Só guarda o id que o HF informou; a falha tenta de novo depois. */
 const cacheIds = new Map<string, string>();
 export const _limparCacheIds = () => cacheIds.clear();
 
@@ -165,11 +225,15 @@ async function providerId(alvo: AlvoImagem, token: string, fetchImpl: Fetch, tim
     });
     if (r.ok) id = providerIdDoMapeamento(await r.json().catch(() => null), alvo.provedor);
   } catch {
-    /* sem mapeamento: tenta com o id do HF */
+    /* sem mapeamento agora: tenta com o id do HF, sem guardar */
   }
-  const final = id || alvo.modelo;
-  cacheIds.set(chave, final);
-  return final;
+  if (id) cacheIds.set(chave, id);
+  return id || alvo.modelo;
+}
+
+function descreverErro(e: unknown): string {
+  const nome = (e as Error)?.name;
+  return nome === "TimeoutError" || nome === "AbortError" ? "demorou demais" : String((e as Error)?.message || e).slice(0, 120);
 }
 
 /** Erro HTTP do provedor, curto e sem o token (vai pro log e, resumido, pro motivo da falha). */
@@ -197,28 +261,39 @@ export async function gerarImagemHf(
   const fim = Date.now() + Math.max(prazo, opts.timeoutMs ?? 0);
   const tam = tamanhoDaProporcao(opts.aspectRatio);
   const motivos: string[] = [];
+  const alvos = hfImagemAlvos(env);
+  if (!alvos.length) throw new Error("Hugging Face não gerou a imagem (HF_IMAGEM_MODELOS inválido: use modelo:provedor)");
 
-  for (const alvo of hfImagemAlvos(env)) {
+  // Só passa para o próximo provedor quando este RECUSOU com todas as letras (status de erro). Se o pedido saiu e a
+  // resposta se perdeu (tempo, rede) ou veio 200 sem imagem, ele pode ter cobrado: tentar outro cobraria duas vezes.
+  for (const alvo of alvos) {
     const resta = fim - Date.now();
     if (resta < 2_000) { motivos.push("sem tempo para tentar o próximo provedor"); break; }
     const t = Math.min(prazo, resta);
+    const id = await providerId(alvo, token, fetchImpl, t);
+    const { url, body } = montarPedido(alvo, id, texto, tam);
+    const sinal = AbortSignal.timeout(Math.max(1_000, Math.min(t, fim - Date.now())));
+    let res: Response;
     try {
-      const id = await providerId(alvo, token, fetchImpl, t);
-      const { url, body } = montarPedido(alvo, id, texto, tam);
-      const res = await fetchImpl(url, {
+      res = await fetchImpl(url, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(t),
+        signal: sinal,
       });
-      if (!res.ok) { motivos.push(await erroHttp(res, alvo)); continue; }
-      const img = await lerResposta(res, fetchImpl);
+    } catch (e) {
+      motivos.push(`${alvo.provedor}: ${descreverErro(e)}`);
+      break;
+    }
+    if (!res.ok) { motivos.push(await erroHttp(res, alvo)); continue; }
+    try {
+      const img = await lerResposta(res, fetchImpl, sinal);
       if (img) return img;
       motivos.push(`${alvo.provedor}: resposta sem imagem`);
     } catch (e) {
-      const nome = (e as Error)?.name;
-      motivos.push(`${alvo.provedor}: ${nome === "TimeoutError" || nome === "AbortError" ? "demorou demais" : String((e as Error)?.message || e).slice(0, 120)}`);
+      motivos.push(`${alvo.provedor}: ${descreverErro(e)}`);
     }
+    break;
   }
   throw new Error(`Hugging Face não gerou a imagem (${motivos.join(" | ")})`);
 }

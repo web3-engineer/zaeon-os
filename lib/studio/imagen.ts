@@ -47,16 +47,24 @@ export async function generateImageResult(
   if (!imagenAvailable()) return { error: "geração de imagem indisponível (sem HF_TOKEN e sem credencial Google)" };
 
   // #883: o Hugging Face primeiro. Falhou e há credencial Google → tenta a reserva; senão devolve o motivo do HF.
+  // UM prazo só para os dois: `timeoutMs` é o teto do pedido inteiro, não de cada provedor — a rota (maxDuration)
+  // precisa de folga para gravar o resultado e responder.
+  const fim = Date.now() + timeoutMs;
   let motivoHf: string | null = null;
   if (hfImagemDisponivel()) {
     try {
-      return { image: await gerarImagemHf(clean, { aspectRatio: opts?.aspectRatio, timeoutMs }) };
+      // com reserva Google, o HF fica com 2/3 do prazo; sem reserva, com o prazo todo
+      const parteHf = geminiImageDisponivel() ? Math.round((timeoutMs * 2) / 3) : timeoutMs;
+      return { image: await gerarImagemHf(clean, { aspectRatio: opts?.aspectRatio, timeoutMs: parteHf }) };
     } catch (e) {
       motivoHf = String((e as Error)?.message || e).slice(0, 300);
       console.warn("[hf-image] erro:", motivoHf);
       if (!geminiImageDisponivel()) return { error: motivoHf };
     }
   }
+  const resta = fim - Date.now();
+  if (resta < 5_000) return { error: motivoHf ? `${motivoHf} | reserva Google: sem tempo` : "sem tempo para gerar a imagem" };
+  timeoutMs = resta;
 
   const route = imageRoute();
   if (route.provider === "imagen") {
@@ -65,12 +73,18 @@ export async function generateImageResult(
     console.warn(`[imagen] ${route.model} falhou — caindo pro Gemini image`);
   }
   try {
-    const image = await gerarImagemGemini(clean, {
-      model: route.provider === "gemini" ? route.model : geminiImageModelo(),
-      aspectRatio: opts?.aspectRatio,
-      timeoutMs,
-      esperaMaxMs: 20_000,
-    });
+    // o Gemini troca de região e espera entre voltas: o relógio do pedido inteiro corta o que passar de `fim`
+    const sobra = Math.max(1_000, fim - Date.now());
+    let relogio: ReturnType<typeof setTimeout> | undefined;
+    const image = await Promise.race([
+      gerarImagemGemini(clean, {
+        model: route.provider === "gemini" ? route.model : geminiImageModelo(),
+        aspectRatio: opts?.aspectRatio,
+        timeoutMs: sobra,
+        esperaMaxMs: Math.min(20_000, sobra),
+      }),
+      new Promise<never>((_, rej) => { relogio = setTimeout(() => rej(new Error("demorou demais")), sobra); }),
+    ]).finally(() => clearTimeout(relogio));
     return { image };
   } catch (e) {
     const error = String((e as Error)?.message || e).slice(0, 300);

@@ -27,6 +27,18 @@ Achado no teste do #764 em 27/11: nenhuma imagem saía, nem a do vulcão. O diag
 - Com a base ligada, a bolha dizia "Nenhum dos documentos disponíveis contém instruções para criar uma imagem de um vulcão em erupção".
 - Agora o turno sabe que a imagem é feita por outra ferramenta. A bolha fala do assunto da imagem e lista as partes.
 
+### Revisão do PR #884 (Sourcery)
+- **Download seguro:** o link da imagem só é baixado de host de provedor (fal.media, huggingface.co…), por https, sem seguir redirecionamento, com prazo e teto de 12 MB.
+- **Sempre PNG:** JPEG/WebP viram PNG (a rota e o vídeo gravam `.png`).
+- **Sem cobrar duas vezes:** só passa para o próximo provedor quando o atual recusou; se o pedido saiu e não voltou, para.
+- **`HF_IMAGEM_MODELOS` com erro de digitação** não cai no padrão pago: avisa "HF_IMAGEM_MODELOS inválido".
+- **Um prazo só** para HF + reserva Google, com folga para a rota responder.
+- "foto", "fotos", "figuras" e "fotografias" também pedem imagem.
+- Vídeo sem cena por falta de imagem mostra "fora do ar".
+- `/api/studio/diag` testa o HF primeiro (`imagem`) e o Google como `imagem_reserva_google`.
+- `deploy.yml` passa `HF_IMAGEM`, `HF_IMAGEM_MODELOS` e `HF_IMAGEM_TIMEOUT_MS` das Variables do GitHub.
+- `docs/HF_PRIMARIO.md`: imagem do Studio ✅ no HF; avatares ficam no Google.
+
 ### O que fica para depois
 - **Avatares** (`lib/avatars/gemini-image.ts`): eles **editam** uma imagem mantendo o personagem, e isso o FLUX.1-schnell não faz. Fica para um PR próprio, com um modelo de edição.
 
@@ -76,6 +88,7 @@ Achado no teste do #764 em 27/11: nenhuma imagem saía, nem a do vulcão. O diag
 | Teste | Resultado |
 |---|---|
 | Testes novos e de imagem | ✅ 27/11: `hf-image` 13, `imagen` 10, `imagem883` 7 |
+| Revisão do #884 (27/11) | ✅ `hf-image` 19, `imagen` 10, `imagem883` 12, lint e tsc limpos |
 | Suíte completa (27/11) | ✅ 817 arquivos passando; as 34 falhas são do Windows e iguais às da `main` |
 | 1. Imagem | ⏳ falta testar |
 | 2. Texto da bolha | ⏳ falta testar |

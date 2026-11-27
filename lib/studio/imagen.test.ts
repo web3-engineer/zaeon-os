@@ -95,7 +95,11 @@ describe("#883 · o Hugging Face na frente do Google", () => {
   it("com HF ligado, a imagem vem do HF e o Google nem é chamado", async () => {
     m.hfGerar.mockResolvedValue({ data: "HF", mimeType: "image/png" });
     expect(await generateImageResult("  um vulcão  ", { aspectRatio: "16:9" }, 45_000)).toEqual({ image: { data: "HF", mimeType: "image/png" } });
-    expect(m.hfGerar).toHaveBeenCalledWith("um vulcão", { aspectRatio: "16:9", timeoutMs: 45_000 });
+    // um prazo só (revisão do #884): com reserva Google, o HF fica com 2/3; sem reserva, com o prazo todo
+    expect(m.hfGerar).toHaveBeenCalledWith("um vulcão", { aspectRatio: "16:9", timeoutMs: 30_000 });
+    m.googleLigado = false;
+    await generateImageResult("x", undefined, 45_000);
+    expect(m.hfGerar).toHaveBeenLastCalledWith("x", { aspectRatio: undefined, timeoutMs: 45_000 });
     expect(m.gerar).not.toHaveBeenCalled();
   });
 
