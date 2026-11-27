@@ -1,6 +1,6 @@
 /**
- * Cyberespaço — a VOZ DA ZAEON no holograma do tutorial (PURO, sem three nem rede). A voz é a mesma do laboratório
- * (Gemini-TTS, Leda, pt-BR), mas o caminho é do cyberespaço: rota própria (app/api/lounge3d/[id]/zaeon/voz), limite
+ * Cyberespaço — a VOZ DA ZAEON no holograma do tutorial (PURO, sem three nem rede). A voz é a mesma do resto da Zaeon
+ * (#883: lib/voice/sintetizar — Hugging Face, feminina, pt-BR), mas o caminho é do cyberespaço: rota própria (app/api/lounge3d/[id]/zaeon/voz), limite
  * próprio e custo como "cyber:zaeon-voz". Aqui ficam as regras:
  *  - o TEXTO que vai pra síntese (sem ✦/emoji — a voz não lê símbolo);
  *  - as falas FIXAS (conhecidas antes: pré-geradas quando o Droid leva a pessoa à capela);
@@ -11,7 +11,7 @@
 import { FRASES_CAPELA } from "./falasCapela";
 import { ABERTURA, OPCOES_SITUACAO, PERGUNTAS, compromissoFixo, fechamento, reacaoFixa } from "./conversaZaeon";
 
-/** a voz da Zaeon (o id do catálogo de lib/voice/gemini-tts) */
+/** a voz da Zaeon: o id antigo "leda" vira a feminina de cada provedor (lib/voice/sintetizar) */
 export const VOZ_ZAEON = "leda";
 /** teto de caracteres por fala (as dela são curtas; a IA fala até ~200) */
 export const MAX_TEXTO_VOZ = 280;

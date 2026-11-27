@@ -5,11 +5,13 @@ vi.mock("next-auth", () => ({ getServerSession: m.session }));
 vi.mock("@/src/lib/auth", () => ({ authOptions: {} }));
 vi.mock("@/src/lib/ratelimit", () => ({ guard: m.guard }));
 vi.mock("@/src/lib/prisma", () => ({ prisma: { user: { findUnique: m.userFind }, collabDoc: { findUnique: m.docFind } } }));
-vi.mock("@/lib/voice/gemini-tts", () => ({ synthGeminiTTS: m.tts }));
+vi.mock("@/lib/voice/sintetizar", () => ({ sintetizarVoz: m.tts }));
 vi.mock("@/lib/llm/ledger", () => ({ registrarTokens: m.ledger }));
 
 import { POST } from "./[id]/zaeon/voz/route";
 import { PERGUNTAS } from "@/lib/cyber/conversaZaeon";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 
 const ID = "0123456789abcdef01234567", ME = "aaaaaaaaaaaaaaaaaaaaaaaa";
 const req = (b: unknown) => new Request("http://x/", { method: "POST", body: JSON.stringify(b), headers: { "Content-Type": "application/json" } });
@@ -25,7 +27,7 @@ describe("POST /api/lounge3d/[id]/zaeon/voz", () => {
     m.userFind.mockResolvedValue({ id: ME, name: "Ana", image: null, role: null, cyberNasceuEm: null });
     m.docFind.mockResolvedValue(doc());
     m.ledger.mockResolvedValue(true);
-    m.tts.mockImplementation(async (_t: string, _v: string, _ms: number, onUsage?: (u: unknown, mo: string) => void) => { onUsage?.({ promptTokenCount: 10, candidatesTokenCount: 50, totalTokenCount: 60 }, "gemini-2.5-flash-tts"); return WAV; });
+    m.tts.mockImplementation(async (_t: string, _v: string, _ms: number, onUsage?: (u: unknown, mo: string) => void) => { onUsage?.({ promptTokenCount: 10, candidatesTokenCount: 50, totalTokenCount: 60 }, "gemini-2.5-flash-tts"); return { ...WAV, provedor: "google" }; });
   });
   afterEach(() => { (process.env as Record<string, string | undefined>).NODE_ENV = env; });
 
@@ -42,13 +44,31 @@ describe("POST /api/lounge3d/[id]/zaeon/voz", () => {
     expect(m.tts).not.toHaveBeenCalled();
   });
 
-  it("sintetiza com a voz da Zaeon (Leda), sem o ✦, e registra o custo como cyber:zaeon-voz", async () => {
+  it("#883: sintetiza pela voz única (sintetizarVoz) com a voz da Zaeon, sem o ✦; Google de reserva registra o custo como cyber:zaeon-voz", async () => {
     const r = await POST(req({ texto: "Prazer, Ana! ✦", voz: "charon" }), { params: { id: ID } });
     expect(r.status).toBe(200); expect(await r.json()).toEqual(WAV);
     expect(m.tts).toHaveBeenCalledWith("Prazer, Ana!", "leda", expect.any(Number), expect.any(Function));
     const linha = m.ledger.mock.calls[0]![0];
     expect(linha).toMatchObject({ agentKey: "cyber:zaeon-voz", userId: ME, ok: true, model: "gemini-2.5-flash-tts" });
     expect(linha.usage.completionTokens).toBe(50);
+  });
+
+  it("#883: voz pelo Hugging Face → ledger huggingface/kokoro sem custo de token; Piper (local) nem entra no ledger", async () => {
+    m.tts.mockResolvedValueOnce({ ...WAV, provedor: "hf" });
+    const r = await POST(req({ texto: "Oi, Ana." }), { params: { id: ID } });
+    expect(await r.json()).toEqual(WAV);   // o cliente não recebe o provedor
+    expect(m.ledger.mock.calls[0]![0]).toMatchObject({ agentKey: "cyber:zaeon-voz", provedor: "huggingface", model: "kokoro-pt-br", alvo: "hf-voz", ok: true });
+    expect(m.ledger.mock.calls[0]![0].usage.completionTokens).toBe(0);
+    m.ledger.mockClear();
+    m.tts.mockResolvedValueOnce({ ...WAV, provedor: "piper" });
+    expect((await POST(req({ texto: "Oi de novo." }), { params: { id: ID } })).status).toBe(200);
+    expect(m.ledger).not.toHaveBeenCalled();
+  });
+
+  it("#883: a rota não chama mais o Gemini-TTS direto", () => {
+    const fonte = readFileSync(path.resolve(__dirname, "[id]/zaeon/voz/route.ts"), "utf8");
+    expect(fonte).toMatch(/sintetizarVoz/);
+    expect(fonte).not.toMatch(/synthGeminiTTS|@\/lib\/voice\/gemini-tts/);
   });
 
   it("as falas fixas ficam em cache (a 2ª pessoa não paga); a gerativa não", async () => {
@@ -63,10 +83,10 @@ describe("POST /api/lounge3d/[id]/zaeon/voz", () => {
     expect(m.tts).toHaveBeenCalledTimes(3);
   });
 
-  it("falha do TTS → 503 (o cliente segue sem voz) e o erro vai pro ledger", async () => {
-    m.tts.mockRejectedValueOnce(new Error("gemini_tts_http_500"));
+  it("nenhum provedor de voz respondeu → 503 (o cliente segue sem voz) e o erro vai pro ledger", async () => {
+    m.tts.mockRejectedValueOnce(new Error("voz indisponível (hf caiu | google: gemini_tts_http_403 | piper: fetch failed)"));
     expect((await POST(req({ texto: "uma fala nova" }), { params: { id: ID } })).status).toBe(503);
-    expect(m.ledger.mock.calls[0]![0]).toMatchObject({ ok: false, erro: "outro" });
+    expect(m.ledger.mock.calls[0]![0]).toMatchObject({ ok: false, erro: "outro", provedor: "huggingface" });
   });
 
   it("a sala 'dev' dispensa sessão SÓ em desenvolvimento", async () => {
