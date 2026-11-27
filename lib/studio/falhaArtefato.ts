@@ -27,6 +27,14 @@ export function semRepetir(motivo: string): string {
   return partes.filter((p) => { const k = chave(p); if (vistos.has(k)) return false; vistos.add(k); return true; }).join(" | ");
 }
 
+/**
+ * #883: o GERADOR está fora do ar (sem provedor, cobrança do Google, todos os provedores do HF recusaram) — "tente de
+ * novo" engana, porque o próximo clique falha igual. Vale para os artefatos que dependem de um gerador externo.
+ */
+const FORA_DO_AR = /indispon|billing|faturamento|\b403\b|credencial|HF_TOKEN|desligad|n[aã]o gerou a imagem|fora do ar/i;
+const GERADOR: Record<string, string> = { image: "A geração de imagem", podcast: "A geração de podcast", video: "A geração de vídeo" };
+const NO_LUGAR: Record<string, string> = { image: " Se quiser, peça um diagrama ou um mapa mental do mesmo assunto." };
+
 export function mensagemDeFalha(kind: string, motivo?: string): { texto: string; tecnico: string | null } {
   const bruto = (motivo || "").trim();
   const oQue = NOME[kind] ?? "esse material";
@@ -34,6 +42,9 @@ export function mensagemDeFalha(kind: string, motivo?: string): { texto: string;
   const padrao = `Não consegui ${verbo} ${oQue} agora. Pode tentar de novo.`;
   if (!bruto) return { texto: padrao, tecnico: null };
   const limpo = semRepetir(bruto);
+  if (GERADOR[kind] && FORA_DO_AR.test(limpo)) {
+    return { texto: `${GERADOR[kind]} está fora do ar agora.${NO_LUGAR[kind] ?? ""}`, tecnico: limpo };
+  }
   if (TECNICO.test(limpo) || limpo.length > 220) return { texto: padrao, tecnico: limpo };
   // motivo para gente (limite do plano, assunto vazio…): mostra, sem o prefixo técnico
   return { texto: `Não consegui ${verbo} ${oQue}: ${limpo.replace(/[.\s]+$/, "")}.`, tecnico: null };

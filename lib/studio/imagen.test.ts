@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-const m = vi.hoisted(() => ({ gerar: vi.fn() }));
+const m = vi.hoisted(() => ({ gerar: vi.fn(), hfLigado: false, hfGerar: vi.fn(), googleLigado: true }));
+vi.mock("@/lib/ai/hf-image", () => ({
+  hfImagemDisponivel: () => m.hfLigado,
+  gerarImagemHf: m.hfGerar,
+}));
 vi.mock("@/lib/ai/vertex-credentials", () => ({
   vertexCredentials: () => ({ project: "p", client_email: "e", private_key: "k", location: "us-central1" }),
 }));
@@ -9,16 +13,19 @@ vi.mock("google-auth-library", () => ({
 }));
 vi.mock("@/lib/ai/gemini-image", () => ({
   gerarImagemGemini: m.gerar,
-  geminiImageDisponivel: () => true,
+  geminiImageDisponivel: () => m.googleLigado,
   geminiImageModelo: () => "gemini-2.5-flash-image",
 }));
 
-import { generateImage, generateImageResult, imageRoute } from "@/lib/studio/imagen";
+import { generateImage, generateImageResult, imageRoute, imagenAvailable } from "@/lib/studio/imagen";
 
 describe("generateImageResult", () => {
   const fetchMock = vi.fn();
   beforeEach(() => {
     m.gerar.mockReset();
+    m.hfGerar.mockReset();
+    m.hfLigado = false;
+    m.googleLigado = true;
     fetchMock.mockReset();
     vi.stubGlobal("fetch", fetchMock);
     vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -72,5 +79,46 @@ describe("generateImageResult", () => {
   it("prompt vazio não chama nada", async () => {
     expect(await generateImageResult("   ")).toEqual({ error: "prompt vazio" });
     expect(m.gerar).not.toHaveBeenCalled();
+  });
+});
+
+describe("#883 · o Hugging Face na frente do Google", () => {
+  beforeEach(() => {
+    m.gerar.mockReset();
+    m.hfGerar.mockReset();
+    m.hfLigado = true;
+    m.googleLigado = true;
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it("com HF ligado, a imagem vem do HF e o Google nem é chamado", async () => {
+    m.hfGerar.mockResolvedValue({ data: "HF", mimeType: "image/png" });
+    expect(await generateImageResult("  um vulcão  ", { aspectRatio: "16:9" }, 45_000)).toEqual({ image: { data: "HF", mimeType: "image/png" } });
+    expect(m.hfGerar).toHaveBeenCalledWith("um vulcão", { aspectRatio: "16:9", timeoutMs: 45_000 });
+    expect(m.gerar).not.toHaveBeenCalled();
+  });
+
+  it("HF falhou e há credencial Google → tenta a reserva; as duas falhas viram um motivo só", async () => {
+    m.hfGerar.mockRejectedValue(new Error("Hugging Face não gerou a imagem (together 402)"));
+    m.gerar.mockRejectedValue(new Error("Vertex 403: requires billing"));
+    expect(await generateImageResult("x")).toEqual({ error: "Hugging Face não gerou a imagem (together 402) | reserva Google: Vertex 403: requires billing" });
+    m.gerar.mockResolvedValue({ data: "G", mimeType: "image/png" });
+    expect(await generateImageResult("x")).toEqual({ image: { data: "G", mimeType: "image/png" } });
+  });
+
+  it("HF falhou e não há Google → devolve o motivo do HF, sem tentar o Google", async () => {
+    m.googleLigado = false;
+    m.hfGerar.mockRejectedValue(new Error("Hugging Face não gerou a imagem (fal-ai: demorou demais)"));
+    expect(await generateImageResult("x")).toEqual({ error: "Hugging Face não gerou a imagem (fal-ai: demorou demais)" });
+    expect(m.gerar).not.toHaveBeenCalled();
+  });
+
+  it("disponível com qualquer um dos dois; sem nenhum, o motivo não fala só de Google", async () => {
+    m.googleLigado = false;
+    expect(imagenAvailable()).toBe(true);
+    m.hfLigado = false;
+    expect(imagenAvailable()).toBe(false);
+    expect(await generateImageResult("x")).toEqual({ error: "geração de imagem indisponível (sem HF_TOKEN e sem credencial Google)" });
   });
 });

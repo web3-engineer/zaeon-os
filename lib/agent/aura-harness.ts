@@ -835,7 +835,10 @@ export function buildHarnessDeps(ctx: ToolContext, opts: HarnessOpts = {}): Harn
           : []),
         // #764: a imagem gerada sai SEM rótulos (o gerador erra letras) — quem estuda precisa saber o que é cada parte
         ...(pedeImagem(st.objective)
-          ? ["O usuário PEDIU UMA IMAGEM, que sai sem nomes escritos nela: no texto, termine com uma lista curta das partes que aparecem e de como reconhecer cada uma (cor ou posição), ex.: \"- **Átrio direito** (azul, em cima à esquerda)\"."]
+          ? ["O usuário PEDIU UMA IMAGEM, que sai sem nomes escritos nela: no texto, termine com uma lista curta das partes que aparecem e de como reconhecer cada uma (cor ou posição), ex.: \"- **Átrio direito** (azul, em cima à esquerda)\".",
+            // #883: com a base ligada, o modelo respondia "Nenhum dos documentos disponíveis contém instruções para criar
+            // uma imagem de um vulcão em erupção" — a imagem é feita por OUTRA ferramenta, depois do texto
+            "A imagem é desenhada por outra ferramenta, depois deste texto: você NÃO desenha e NÃO precisa de instruções nos documentos para isso. Nunca diga que os documentos não têm instruções para criar a imagem; escreva 2 a 4 frases sobre o assunto da imagem (o que ela vai mostrar) e a lista das partes."]
           : []),
         // A TABELA é decidida pelo PEDIDO, nunca pela vontade do modelo (lib/agent/tabela).
         // Calar sobre o assunto era o que produzia "tabela do nada": sem esta linha o modelo não
