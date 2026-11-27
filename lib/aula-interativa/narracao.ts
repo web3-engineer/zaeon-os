@@ -1,9 +1,9 @@
 /**
- * lib/aula-interativa/narracao.ts — a voz da aula (servidor): Gemini-TTS → WAV → MP3 (ffmpeg, que já está no
+ * lib/aula-interativa/narracao.ts — a voz da aula (servidor): voz da Zaeon (#883: HF primeiro, lib/voice/sintetizar) → WAV → MP3 (ffmpeg, que já está no
  * container por causa do Studio). Sem ffmpeg (dev local) fica em WAV — toca igual, só pesa ~6×.
  */
 import { spawn } from "node:child_process";
-import { synthGeminiTTS } from "@/lib/voice/gemini-tts";
+import { sintetizarVoz } from "@/lib/voice/sintetizar";
 import { writeStudioFile } from "@/lib/studio/storage";
 import { duracaoWav } from "@/lib/aula-interativa/tempo";
 import type { GravarAudio, Narracao, Sintetizar } from "@/lib/aula-interativa/gerar";
@@ -27,7 +27,7 @@ function wavParaMp3(wav: Buffer): Promise<Buffer | null> {
 }
 
 export const sintetizarGemini: Sintetizar = async (texto) => {
-  const r = await synthGeminiTTS(texto, undefined, 60_000);
+  const r = await sintetizarVoz(texto, undefined, 60_000);
   const wav = Buffer.from(r.audio_base64, "base64");
   const duracao = duracaoWav(wav);
   if (!duracao) return null;

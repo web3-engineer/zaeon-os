@@ -138,7 +138,7 @@ export function hostPermitido(url: string): boolean {
 }
 
 /** Lê o corpo até o teto; passou do teto → null (não guarda o resto na memória). */
-async function lerAteOTeto(r: Response, teto = HF_IMAGEM_MAX_BYTES): Promise<Buffer | null> {
+export async function lerAteOTeto(r: Response, teto = HF_IMAGEM_MAX_BYTES): Promise<Buffer | null> {
   const declarado = Number(r.headers.get("content-length"));
   if (Number.isFinite(declarado) && declarado > teto) return null;
   if (!r.body) return null;

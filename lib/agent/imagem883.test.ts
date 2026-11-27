@@ -88,7 +88,7 @@ describe("#883 · revisão do PR #884", () => {
   it("vídeo sem nenhuma cena por causa da imagem mostra 'fora do ar', não 'tente de novo'", () => {
     const m = mensagemDeFalha("video", "Nenhuma cena pôde ser gerada: Hugging Face não gerou a imagem (together 402: x)");
     expect(m.texto).toMatch(/A geração de vídeo está fora do ar agora/);
-    expect(ler("lib/studio/video-pipeline.ts")).toContain("Nenhuma cena pôde ser gerada: ${motivoImagem}");
+    expect(ler("lib/studio/video-pipeline.ts")).toContain("Nenhuma cena pôde ser gerada: ${motivo}");
   });
 
   it("um prazo só para HF + Google (a rota tem folga para gravar e responder)", () => {
