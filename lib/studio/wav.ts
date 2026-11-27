@@ -102,3 +102,54 @@ export function concatWav(buffers: Buffer[]): Buffer {
   const datas = wavs.map((b) => readWav(b).data);
   return pcmToWav(Buffer.concat(datas), first.fmt);
 }
+
+/** #883 (parte 2): o formato único da voz da Zaeon — 24 kHz, mono, 16-bit (o do Gemini-TTS de antes). */
+export const FORMATO_VOZ: PcmFormat = { sampleRate: 24000, bitsPerSample: 16, channels: 1 };
+
+/**
+ * Qualquer WAV (PCM 16/24/32-bit ou float 32, mono ou estéreo, qualquer taxa) → WAV no FORMATO_VOZ.
+ *
+ * Por que: o `concatWav` usa o formato do 1º pedaço para todos. O Kokoro (HF), o Piper (22,05 kHz) e o Gemini
+ * podem devolver formatos diferentes; misturados sem converter, o podcast sairia acelerado ou lento.
+ * Devolve null se o buffer não for um WAV que dê para ler.
+ */
+export function normalizarWav(buf: Buffer, alvo: PcmFormat = FORMATO_VOZ): Buffer | null {
+  if (!isWav(buf) || buf.length < 44) return null;
+  const formato = buf.readUInt16LE(20); // 1 = PCM inteiro, 3 = float, 0xFFFE = extensível
+  let fmt: PcmFormat;
+  let data: Buffer;
+  try { ({ fmt, data } = readWav(buf)); } catch { return null; }
+  const { sampleRate, bitsPerSample, channels } = fmt;
+  if (!sampleRate || !channels || ![16, 24, 32].includes(bitsPerSample)) return null;
+  if (sampleRate === alvo.sampleRate && channels === alvo.channels && bitsPerSample === alvo.bitsPerSample && formato === 1) {
+    return pcmToWav(data, alvo);
+  }
+  const ehFloat = formato === 3 || (formato === 0xfffe && bitsPerSample === 32 && buf.readUInt16LE(44) === 3);
+  const bytes = bitsPerSample / 8;
+  const quadros = Math.floor(data.length / (bytes * channels));
+  // 1) amostras mono em [-1, 1]
+  const mono = new Float32Array(quadros);
+  for (let i = 0; i < quadros; i++) {
+    let soma = 0;
+    for (let c = 0; c < channels; c++) {
+      const o = (i * channels + c) * bytes;
+      let v: number;
+      if (bitsPerSample === 16) v = data.readInt16LE(o) / 32768;
+      else if (bitsPerSample === 24) v = data.readIntLE(o, 3) / 8388608;
+      else v = ehFloat ? data.readFloatLE(o) : data.readInt32LE(o) / 2147483648;
+      soma += v;
+    }
+    mono[i] = soma / channels;
+  }
+  // 2) reamostragem linear para a taxa do alvo
+  const n = quadros ? Math.max(1, Math.round((quadros * alvo.sampleRate) / sampleRate)) : 0;
+  const out = Buffer.alloc(n * 2);
+  for (let j = 0; j < n; j++) {
+    const pos = (j * sampleRate) / alvo.sampleRate;
+    const a = Math.floor(pos);
+    const b = Math.min(a + 1, quadros - 1);
+    const v = mono[a] + (mono[b] - mono[a]) * (pos - a);
+    out.writeInt16LE(Math.max(-32768, Math.min(32767, Math.round(v * 32767))), j * 2);
+  }
+  return pcmToWav(out, { ...alvo, channels: 1, bitsPerSample: 16 });
+}

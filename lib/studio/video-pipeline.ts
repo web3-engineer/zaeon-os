@@ -12,7 +12,7 @@ import path from "path";
 import { prisma } from "@/src/lib/prisma";
 import { geminiJson } from "@/lib/scholar/gemini";
 import { generateImageResult } from "@/lib/studio/imagen";
-import { synthGeminiTTS } from "@/lib/voice/gemini-tts";
+import { sintetizarVoz } from "@/lib/voice/sintetizar";
 import { writeStudioFile, studioDir } from "@/lib/studio/storage";
 import {
   buildVideoScriptPrompt,
@@ -52,13 +52,14 @@ export async function runVideoGeneration(artId: string, content: string, options
 
     // Uma cena = imagem (Gemini image) + narração (Gemini-TTS) → clipe mp4.
     const clips: string[] = [];
-    let motivoImagem: string | null = null; // #883: o porquê da imagem que falhou chega ao aluno ("fora do ar")
+    let motivoImagem: string | null = null;
+    let motivoVoz: string | null = null; // #883 (parte 2): idem para a narração // #883: o porquê da imagem que falhou chega ao aluno ("fora do ar")
     for (let i = 0; i < script.length; i++) {
       const sec = script[i];
       const ri = await generateImageResult(sec.imagePrompt || sec.narration, { aspectRatio: "16:9" }, 45_000);
       const img = "image" in ri ? ri.image : null;
       if ("error" in ri) motivoImagem = ri.error;
-      const narr = await synthGeminiTTS(sec.narration, undefined, 45_000).catch(() => null);
+      const narr = await sintetizarVoz(sec.narration, undefined, 45_000).catch((e) => { motivoVoz = (e as Error)?.message || String(e); return null; });
       if (!img?.data || !narr?.audio_base64) { console.warn(`[video] cena ${i} sem mídia (img=${!!img?.data} narr=${!!narr?.audio_base64})`); continue; }
       const imgPath = path.join(tmp, `s${i}.png`);
       const audPath = path.join(tmp, `s${i}.wav`);
@@ -69,7 +70,8 @@ export async function runVideoGeneration(artId: string, content: string, options
       clips.push(clipPath);
     }
     if (!clips.length) {
-      throw new Error(motivoImagem ? `Nenhuma cena pôde ser gerada: ${motivoImagem}` : "Nenhuma cena pôde ser gerada (sem narração).");
+      const motivo = motivoImagem ?? motivoVoz;
+      throw new Error(motivo ? `Nenhuma cena pôde ser gerada: ${motivo}` : "Nenhuma cena pôde ser gerada.");
     }
 
     let finalBuf: Buffer;

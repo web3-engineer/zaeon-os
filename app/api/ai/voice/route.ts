@@ -2,15 +2,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { guard } from "@/src/lib/ratelimit";
-import { synthGeminiTTS } from "@/lib/voice/gemini-tts";
+import { sintetizarVoz } from "@/lib/voice/sintetizar";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-// Fallback offline: engine Python de voz (Piper "natural-br"). Caminho PRINCIPAL é
-// o Gemini-TTS no Vertex (voz feminina, no crédito GenAI). O engine só entra se o
-// Gemini-TTS falhar — resiliência, sem 503 silencioso.
-const VOICE_URL = process.env.VOICE_ENGINE_URL ?? "http://localhost:8004";
+// #883 (parte 2): a voz vem de lib/voice/sintetizar — Hugging Face (Kokoro pt-BR) primeiro, o Gemini-TTS só de
+// reserva enquanto a credencial existir, e o Piper do voice-engine por último (a reserva que esta rota já tinha).
 
 function json(data: unknown, status: number) {
   return new Response(JSON.stringify(data), {
@@ -39,38 +37,13 @@ export async function POST(req: Request) {
   if (text.length < 1) return json({ error: "Texto vazio." }, 400);
   if (text.length > 4000) return json({ error: "Texto muito longo (máx. 4000)." }, 400);
 
-  // CAMINHO PRINCIPAL: Gemini-TTS no Vertex (voz feminina pt-BR, no crédito GenAI).
-  let geminiErr = "";
+  // 45 s para o pedido inteiro (a rota tem 60): texto longo vira vários trechos no HF.
   try {
-    // 12s: se o Gemini-TTS pendurar (modelo/região), falha rápido e cai pro Piper
-    // em vez de estourar 30s e devolver 503 "aborted".
-    const out = await synthGeminiTTS(text, voice, 12_000);
+    const out = await sintetizarVoz(text, voice, 45_000);
     return json(out, 200);
   } catch (e) {
-    // segue para o fallback offline (Piper) sem derrubar a tela.
-    geminiErr = (e as Error)?.message || String(e);
-    console.warn("[ai/voice] gemini-tts falhou, tentando Piper:", geminiErr);
+    // o motivo vai para o log (sintetizar já registra cada provedor); o aluno recebe a frase curta
+    console.warn("[ai/voice]", (e as Error)?.message || e);
+    return json({ error: "A voz está fora do ar agora." }, 503);
   }
-
-  // FALLBACK: engine Python (Piper "natural-br"). Garante áudio em vez de 503 silencioso.
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 30_000);
-  try {
-    const res = await fetch(`${VOICE_URL}/synthesize`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, voice: "natural-br" }),
-      signal: controller.signal,
-    });
-    clearTimeout(timer);
-    if (res.ok) {
-      const data = await res.json().catch(() => null);
-      if (data?.audio_base64) return json(data, 200);
-    }
-  } catch {
-    clearTimeout(timer);
-  }
-  // DIAGNÓSTICO TEMPORÁRIO: expõe o motivo real da falha do Gemini-TTS no corpo do 503
-  // (mensagem do Vertex, sem segredo) pra identificar modelo/região/allowlist. Remover depois.
-  return json({ error: "Engine de voz indisponível.", detail: geminiErr }, 503);
 }

@@ -68,13 +68,13 @@ export async function gerarVideoDoc(artId: string, entrada: { titulo: string; te
 
 /** as dependências reais (Vertex + storage do Studio + Prisma) */
 export async function depsReais(userId: string): Promise<GerarDeps> {
-  const [{ geminiJson }, { GEMINI_MODEL_FLASH }, { synthGeminiTTS }, { concatWav }, { writeStudioFile }, { prisma }] = await Promise.all([
-    import("@/lib/scholar/gemini"), import("@/lib/ai/model"), import("@/lib/voice/gemini-tts"), import("@/lib/studio/wav"), import("@/lib/studio/storage"), import("@/src/lib/prisma"),
+  const [{ geminiJson }, { GEMINI_MODEL_FLASH }, { sintetizarVoz }, { concatWav }, { writeStudioFile }, { prisma }] = await Promise.all([
+    import("@/lib/scholar/gemini"), import("@/lib/ai/model"), import("@/lib/voice/sintetizar"), import("@/lib/studio/wav"), import("@/lib/studio/storage"), import("@/src/lib/prisma"),
   ]);
   return {
     gen: <T,>(system: string, user: string) => geminiJson<T>(system, user, { temperature: 0.3, model: GEMINI_MODEL_FLASH, timeoutMs: 90_000, ctx: { agentKey: "zaeon", surface: "estudos", userId, phase: "videodoc" } }),
     tts: async (texto) => {
-      const a = await comEsperaDeCota(() => synthGeminiTTS(texto, VOZ_ZAEON, 45_000));
+      const a = await comEsperaDeCota(() => sintetizarVoz(texto, VOZ_ZAEON, 45_000));
       if (!a?.audio_base64) throw new Error("a voz da Zaeon falhou");
       return Buffer.from(a.audio_base64, "base64");
     },

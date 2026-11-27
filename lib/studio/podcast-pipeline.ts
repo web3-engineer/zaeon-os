@@ -13,7 +13,7 @@
  */
 import { prisma } from "@/src/lib/prisma";
 import { geminiJson } from "@/lib/scholar/gemini";
-import { synthGeminiTTS } from "@/lib/voice/gemini-tts";
+import { sintetizarVoz } from "@/lib/voice/sintetizar";
 import { concatWav } from "@/lib/studio/wav";
 import { writeStudioFile } from "@/lib/studio/storage";
 import {
@@ -25,8 +25,8 @@ import {
   type PodcastOptions,
 } from "@/lib/studio/podcast";
 
-// Vozes dos 2 apresentadores (nomes prebuilt do Gemini-TTS; override por env).
-// Feminina = Leda (voz premium padrão da casa); masculina = Charon.
+// Vozes dos 2 apresentadores (override por env). #883: o nome diz o GÊNERO — no Hugging Face "Leda" vira a feminina
+// (pf_dora) e "Charon" a masculina (pm_alex); no Gemini-TTS de reserva, continuam as vozes de antes.
 const VOICE_F = process.env.ZAEON_TTS_VOICE_F || "Leda";
 const VOICE_M = process.env.ZAEON_TTS_VOICE_M || "Charon";
 
@@ -57,19 +57,21 @@ export async function runPodcastGeneration(
     const turns = transcript.filter((t) => t.text.trim());
     const CONC = 5;
     const parts: (Buffer | null)[] = new Array(turns.length).fill(null);
+    let motivoVoz: string | null = null;
     for (let i = 0; i < turns.length; i += CONC) {
       const batch = turns.slice(i, i + CONC);
       const got = await Promise.all(
         batch.map((t) =>
-          synthGeminiTTS(t.text, voiceFor(t.speaker), 30_000)
+          sintetizarVoz(t.text, voiceFor(t.speaker), 30_000)
             .then((a) => (a?.audio_base64 ? Buffer.from(a.audio_base64, "base64") : null))
-            .catch((e) => { console.warn("[podcast] turno falhou:", (e as Error)?.message); return null; }),
+            .catch((e) => { motivoVoz = (e as Error)?.message || String(e); console.warn("[podcast] turno falhou:", motivoVoz); return null; }),
         ),
       );
       got.forEach((b, j) => { parts[i + j] = b; });
     }
     const wavs = parts.filter((b): b is Buffer => b !== null);
-    if (!wavs.length) throw new Error("Síntese de voz do podcast falhou (verifique GEMINI_TTS_MODEL).");
+    // #883: o motivo chega ao aluno — "voz indisponível" vira "A geração de podcast está fora do ar agora"
+    if (!wavs.length) throw new Error(`Síntese de voz do podcast falhou: ${motivoVoz ?? "nenhuma fala gerada"}`);
 
     const merged = concatWav(wavs);
     await writeStudioFile(artId, "wav", merged);
