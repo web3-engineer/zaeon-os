@@ -13,7 +13,7 @@
  */
 import { vertexCredentials } from "@/lib/ai/vertex-credentials";
 import { synthGeminiTTS } from "@/lib/voice/gemini-tts";
-import { gerarVozHf, hfVozDisponivel } from "@/lib/voice/hf-voz";
+import { gerarVozHf, hfVozDisponivel, vozKokoro } from "@/lib/voice/hf-voz";
 import { normalizarWav } from "@/lib/studio/wav";
 
 export type ProvedorVoz = "hf" | "google" | "piper";
@@ -24,17 +24,25 @@ type Deps = {
   hfLigado: () => boolean;
   google: (texto: string, voz: string | undefined, timeoutMs: number, onUsage?: (u: unknown, m: string) => void) => Promise<{ audio_base64: string }>;
   googleLigado: () => boolean;
-  piper: (texto: string, timeoutMs: number) => Promise<Buffer | null>;
+  piper: (texto: string, timeoutMs: number, voz?: string) => Promise<Buffer | null>;
 };
 
 const VOICE_URL = () => process.env.VOICE_ENGINE_URL ?? "http://localhost:8004";
 
-/** Piper do voice-engine (o `natural-br`). Sem o container (dev local, deploy enxuto), falha rápido. */
-async function piperReal(texto: string, timeoutMs: number): Promise<Buffer | null> {
+/**
+ * A voz do voice-engine para a voz pedida: "aura-f" (feminina) ou "aura-m" (masculina). O `natural-br` (Piper faber)
+ * é MASCULINO; com a feminina pedida, ele só entra se o Kokoro local do voice-engine falhar (o próprio engine cai nele).
+ */
+export function vozDoVoiceEngine(voz: string | undefined): "aura-f" | "aura-m" {
+  return vozKokoro(voz, {}).startsWith("pm_") ? "aura-m" : "aura-f";
+}
+
+/** Voice-engine local (Kokoro, com o Piper dentro de reserva). Sem o container (dev local, deploy enxuto), falha rápido. */
+async function piperReal(texto: string, timeoutMs: number, voz?: string): Promise<Buffer | null> {
   const res = await fetch(`${VOICE_URL()}/synthesize`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text: texto, voice: "natural-br" }),
+    body: JSON.stringify({ text: texto, voice: vozDoVoiceEngine(voz) }),
     signal: AbortSignal.timeout(timeoutMs),
   });
   if (!res.ok) throw new Error(`piper ${res.status}`);
@@ -95,7 +103,7 @@ export async function sintetizarVoz(
   }
   if (fim - Date.now() > 1_500) {
     try {
-      const r = pronto(await deps.piper(limpo, resta()), "piper");
+      const r = pronto(await deps.piper(limpo, resta(), voz), "piper");
       if (r) return r;
       motivos.push("piper: sem áudio");
     } catch (e) { motivos.push(`piper: ${curto(e)}`); }

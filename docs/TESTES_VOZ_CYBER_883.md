@@ -23,7 +23,7 @@ A parte 2a (#885) passou a voz da Aura, do podcast, do vídeo e da aula para o H
 
 ## Testes automáticos
 
-- `app/api/lounge3d/zaeonVoz.test.ts` (atualizado, 7 testes):
+- `app/api/lounge3d/zaeonVoz.test.ts` (atualizado, 10 testes):
   - continua: sem sessão 401, não-membro 404, texto vazio 400, limite próprio, cache das falas fixas, sala "dev" só em desenvolvimento;
   - a rota chama `sintetizarVoz` com a voz da Zaeon e sem o ✦;
   - voz pelo HF vai ao ledger como `huggingface`/`kokoro-pt-br`, sem custo de token, e o cliente não recebe o nome do provedor;
@@ -44,6 +44,16 @@ A parte 2a (#885) passou a voz da Aura, do podcast, do vídeo e da aula para o H
 2. **Fala com o seu nome:** a fala que diz o seu nome também tem voz (pode chegar 1 ou 2 segundos depois do balão).
 3. **Capela:** quando o Droid leva você à capela, as frases da Zaeon têm voz.
 4. **Sem voz** (só se o HF falhar): o balão aparece mudo e a conversa continua, sem travar.
+
+## Revisão (Sourcery, 27/11)
+
+Os 5 pontos da revisão foram corrigidos:
+- **Gasto do Google no ledger:** se o Google gastou e o áudio dele não serviu (e o Piper falou no fim), o gasto entra no ledger mesmo assim.
+- **Fala fixa sintetizada duas vezes:** quem pede a mesma fala fixa ao mesmo tempo espera a mesma síntese, e só um paga.
+- **Tempo da rota:** a rota ganhou `maxDuration = 30`, acima do prazo de 12 s da voz, para a reserva e o erro terminarem.
+- **Provedor certo na falha:** a falha só vai como Hugging Face se o HF estava ligado; o Google entra quando ele foi chamado.
+- **Piper com voz masculina:** o voice-engine local recebe a voz pedida. A Zaeon usa a `aura-f` (feminina) e a voz masculina do podcast usa a `aura-m`, no lugar do `natural-br`, que é masculino. Vale para todo lugar que usa a voz (`lib/voice/sintetizar.ts`).
+- Testes novos: `zaeonVoz.test.ts` 10/10 e `sintetizar.test.ts` 10/10; os testes de podcast, vídeo, aula e cyberespaço que usam a voz: 85/85; `tsc` sem erros.
 
 ## Resultado dos testes
 
