@@ -4,7 +4,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { sintetizarVoz } from "@/lib/voice/sintetizar";
+import { sintetizarVoz, vozDoVoiceEngine } from "@/lib/voice/sintetizar";
 import { FORMATO_VOZ, pcmToWav, readWav } from "@/lib/studio/wav";
 import { mensagemDeFalha } from "@/lib/studio/falhaArtefato";
 
@@ -60,6 +60,16 @@ describe("#883 · sintetizarVoz", () => {
     expect(erro).toMatch(/^voz indisponível \(Hugging Face não gerou a voz \(fal-ai 402\) \| google: gemini_tts_http_403 \| piper: fetch failed\)/);
     expect(mensagemDeFalha("podcast", `Síntese de voz do podcast falhou: ${erro}`).texto).toBe("A geração de podcast está fora do ar agora.");
     expect(mensagemDeFalha("video", `Nenhuma cena pôde ser gerada: ${erro}`).texto).toBe("A geração de vídeo está fora do ar agora.");
+  });
+
+  it("#883 (revisão): o Piper de reserva recebe a voz pedida e usa a feminina do voice-engine (o natural-br é masculino)", async () => {
+    const d = deps({ hfLigado: false, googleLigado: false });
+    await sintetizarVoz("x", "leda", 30_000, undefined, d);
+    expect(d.piper).toHaveBeenCalledWith("x", expect.any(Number), "leda");
+    expect(vozDoVoiceEngine("leda")).toBe("aura-f");
+    expect(vozDoVoiceEngine(undefined)).toBe("aura-f");
+    expect(vozDoVoiceEngine("Charon")).toBe("aura-m");
+    expect(vozDoVoiceEngine("pm_santa")).toBe("aura-m");
   });
 
   it("texto vazio não chama ninguém", async () => {
