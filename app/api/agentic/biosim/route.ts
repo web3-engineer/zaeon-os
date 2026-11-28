@@ -19,6 +19,8 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/src/lib/auth';
 import { VertexAI } from '@google-cloud/vertexai';
+// #883 (parte 3a): sem foto, a IA sai pelo envelope (Hugging Face primeiro, Google só de queda)
+import { iaDoLaboratorio } from '@/lib/agentic/labIa';
 import fs from 'fs';
 import path from 'path';
 import {
@@ -88,8 +90,10 @@ function getModel() {
   });
 }
 
-// ─── Call Gemini ──────────────────────────────────────────────────────────────
+// ─── Call the AI ───────────────────────────────────────────────────────────────
+// #883: só TEXTO → envelope (HF primeiro). Com FOTO → o Gemini, que lê imagem (sai na parte 4 do #883, a da visão).
 async function callGemini(systemPrompt: string, userMessage: string, imagePart?: { inlineData: { data: string; mimeType: string } }): Promise<string> {
+  if (!imagePart) return iaDoLaboratorio('biosim', systemPrompt, userMessage, { temperature: 0.2, maxOutputTokens: 8192, timeoutMs: 45_000 });
   const model = getModel();
   const parts: any[] = [{ text: userMessage }];
   if (imagePart) parts.push(imagePart);
