@@ -1,8 +1,8 @@
-import { vertexCredentials, vertexTextClientOpts } from "@/lib/ai/vertex-credentials";
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/src/lib/auth';
-import { VertexAI } from '@google-cloud/vertexai';
+// #883 (parte 3a): a IA sai pelo envelope (Hugging Face primeiro, Google só de queda), não pelo SDK do Vertex direto
+import { iaDoLaboratorio, idDoAluno } from '@/lib/agentic/labIa';
 
 export const dynamic    = 'force-dynamic';
 export const maxDuration = 30;
@@ -59,24 +59,6 @@ Given a user's description of a quantum experiment, particle, or state, return a
 - theta ∈ [0, π], phi ∈ [0, 2π] for blochSphere.
 - Choose formula in LaTeX-like text notation (not actual LaTeX).`;
 
-function getModel() {
-  const credentials = (() => { const __v = vertexCredentials(); return { project_id: __v.project, client_email: __v.client_email, private_key: __v.private_key }; })(); // robust parse
-  const v = new VertexAI({
-    project: credentials.project_id || process.env.GOOGLE_PROJECT_ID,
-    ...vertexTextClientOpts(),
-    googleAuthOptions: {
-      credentials: {
-        client_email: credentials.client_email,
-        private_key:  credentials.private_key,
-      },
-    },
-  });
-  return v.getGenerativeModel({
-    model: (process.env.GEMINI_MODEL || 'gemini-2.5-flash'),
-    generationConfig: { temperature: 0.3, maxOutputTokens: 512, responseMimeType: 'application/json' },
-  });
-}
-
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -85,12 +67,7 @@ export async function POST(req: Request) {
     const { prompt } = await req.json();
     if (!prompt?.trim()) return NextResponse.json({ error: 'Prompt required' }, { status: 400 });
 
-    const model = getModel();
-    const result = await model.generateContent({
-      systemInstruction: { role: 'system', parts: [{ text: SYSTEM_PROMPT }] },
-      contents: [{ role: 'user', parts: [{ text: `User: "${prompt.trim()}"` }] }],
-    });
-    const raw = result.response?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    const raw = await iaDoLaboratorio('quantum', SYSTEM_PROMPT, `User: "${prompt.trim()}"`, { temperature: 0.3, maxOutputTokens: 512, userId: idDoAluno(session) });
 
     let scene: any;
     try {

@@ -1,8 +1,8 @@
-import { vertexCredentials, vertexTextClientOpts } from "@/lib/ai/vertex-credentials";
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/src/lib/auth';
-import { VertexAI } from '@google-cloud/vertexai';
+// #883 (parte 3a): a IA sai pelo envelope (Hugging Face primeiro, Google só de queda), não pelo SDK do Vertex direto
+import { iaDoLaboratorio, idDoAluno } from '@/lib/agentic/labIa';
 
 export const dynamic    = 'force-dynamic';
 export const maxDuration = 30;
@@ -25,21 +25,6 @@ RULES:
 - Never explain what JSON is. Just return valid JSON.
 - Max 300 words in "response".`;
 
-function getModel() {
-  const credentials = (() => { const __v = vertexCredentials(); return { project_id: __v.project, client_email: __v.client_email, private_key: __v.private_key }; })(); // robust parse
-  const v = new VertexAI({
-    project:  credentials.project_id || process.env.GOOGLE_PROJECT_ID,
-    ...vertexTextClientOpts(),
-    googleAuthOptions: {
-      credentials: { client_email: credentials.client_email, private_key: credentials.private_key },
-    },
-  });
-  return v.getGenerativeModel({
-    model: (process.env.GEMINI_MODEL || 'gemini-2.5-flash'),
-    generationConfig: { temperature: 0.4, maxOutputTokens: 1024, responseMimeType: 'application/json' },
-  });
-}
-
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -48,7 +33,6 @@ export async function POST(req: Request) {
     const { prompt, code, language } = await req.json();
     if (!prompt?.trim()) return NextResponse.json({ error: 'Prompt required' }, { status: 400 });
 
-    const model = getModel();
     const userMsg = `Language: ${language ?? 'javascript'}
 User question: "${prompt.trim()}"
 Current code:
@@ -56,11 +40,7 @@ Current code:
 ${(code ?? '').slice(0, 3000)}
 \`\`\``;
 
-    const result = await model.generateContent({
-      systemInstruction: { role: 'system', parts: [{ text: SYSTEM_PROMPT }] },
-      contents: [{ role: 'user', parts: [{ text: userMsg }] }],
-    });
-    const raw = result.response?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    const raw = await iaDoLaboratorio('codelab', SYSTEM_PROMPT, userMsg, { temperature: 0.4, maxOutputTokens: 1024, userId: idDoAluno(session) });
 
     let parsed: any;
     try {

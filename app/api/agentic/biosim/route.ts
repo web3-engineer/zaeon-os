@@ -19,6 +19,10 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/src/lib/auth';
 import { VertexAI } from '@google-cloud/vertexai';
+// #883 (parte 3a): sem foto, a IA sai pelo envelope (Hugging Face primeiro, Google só de queda)
+import { iaDoLaboratorio, idDoAluno } from '@/lib/agentic/labIa';
+import { registrarTokens } from '@/lib/llm/ledger';
+import { usageDoVertex, USAGE_VAZIO } from '@/lib/llm/usage';
 import fs from 'fs';
 import path from 'path';
 import {
@@ -88,17 +92,28 @@ function getModel() {
   });
 }
 
-// ─── Call Gemini ──────────────────────────────────────────────────────────────
-async function callGemini(systemPrompt: string, userMessage: string, imagePart?: { inlineData: { data: string; mimeType: string } }): Promise<string> {
+// ─── Call the AI ───────────────────────────────────────────────────────────────
+// #883: só TEXTO → envelope (HF primeiro). Com FOTO → o Gemini, que lê imagem (sai na parte 4 do #883, a da visão).
+async function callGemini(systemPrompt: string, userMessage: string, imagePart: { inlineData: { data: string; mimeType: string } } | undefined, userId: string | null): Promise<string> {
+  if (!imagePart) return iaDoLaboratorio('biosim', systemPrompt, userMessage, { temperature: 0.2, maxOutputTokens: 8192, userId });
   const model = getModel();
   const parts: any[] = [{ text: userMessage }];
   if (imagePart) parts.push(imagePart);
 
-  const result = await model.generateContent({
-    systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] },
-    contents: [{ role: 'user', parts }],
-  });
-  return result.response?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  // a foto também entra no ledger como lab:biosim (#883, revisão)
+  const ini = Date.now(), modelo = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  const ctx = { agentKey: 'lab:biosim', surface: 'estudos' as const, userId, jsonValido: null };
+  try {
+    const result = await model.generateContent({
+      systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] },
+      contents: [{ role: 'user', parts }],
+    });
+    void registrarTokens({ ...ctx, model: modelo, provedor: 'vertex', rota: 'vertex', usage: usageDoVertex(result.response?.usageMetadata), ms: Date.now() - ini, ok: true, erro: null, alvo: 'vertex' }).catch(() => undefined);
+    return result.response?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  } catch (e) {
+    void registrarTokens({ ...ctx, model: modelo, provedor: 'vertex', rota: 'vertex', usage: USAGE_VAZIO, ms: Date.now() - ini, ok: false, erro: /timeout|abort/i.test(String((e as Error)?.message ?? e)) ? 'timeout' : 'outro', alvo: 'vertex' }).catch(() => undefined);
+    throw e;
+  }
 }
 
 // ─── Internal sub-route fetchers ──────────────────────────────────────────────
@@ -265,7 +280,7 @@ export async function POST(req: Request) {
       userMessage += `\n[Context: An image was provided. Translate the visual into a point cloud structure if applicable.]`;
     }
 
-    const raw = await callGemini(systemPrompt, userMessage, imagePart);
+    const raw = await callGemini(systemPrompt, userMessage, imagePart, idDoAluno(session));
 
     let classified: any;
     try {
