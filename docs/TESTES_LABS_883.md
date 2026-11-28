@@ -45,11 +45,20 @@ Os 3 laboratórios agênticos da Zaeon (**BioSim 3D**, **CodeLab** e **QuantumLa
 5. **BioSim 3D, por texto:** peça "uma célula animal" ou "cafeína". Aparece a cena 3D ou a molécula.
 6. **BioSim 3D, com foto** (fica para a parte 4): ainda depende do Google, então pode falhar enquanto o Google estiver fora.
 
+## Revisão (Sourcery, 28/11)
+
+- **Tempo da reserva:** cada tentativa (HF, depois o Google) tem o seu prazo, e o pedido inteiro tem um prazo total abaixo do limite da rota (CodeLab e QuantumLab: 10 s por tentativa, 25 s no total; BioSim: 20 s e 50 s). Assim a reserva tem tempo de responder, e se passar do total o erro sai antes de a rota ser cortada.
+- **Uso por aluno:** as 3 rotas passam o id do aluno da sessão para o ledger. Antes o uso ia como anônimo.
+- **Foto do BioSim no ledger:** a chamada com foto (que ainda vai ao Gemini) também é registrada como `lab:biosim`.
+- **Teste da reserva:** confere que o Google foi tentado antes e só então o HF respondeu.
+- **Não mudou:** a revisão pediu esperar a gravação do ledger antes de responder. Isso é do envelope, que o app inteiro usa do mesmo jeito, e a Zaeon roda num servidor Node que fica de pé (não é serverless), então a gravação termina depois da resposta. Mexer nisso fica fora deste PR.
+- `labIa.test.ts`: 8/8; `tsc` e lint sem erros.
+
 ## Resultado dos testes
 
 | Teste | Resultado |
 |---|---|
-| `labIa.test.ts` | ✅ 27/11: 4/4 |
+| `labIa.test.ts` | ✅ 28/11: 8/8 (com a revisão) |
 | Suíte completa (27/11) | ✅ 823 arquivos passando; as falhas são as do Windows de sempre (compose, links simbólicos, caminhos); o `docx.test.ts` estourou os 5 s só na suíte cheia e passa 13/13 sozinho |
 | 1. CodeLab explica | ⏳ falta testar |
 | 2. CodeLab muda o código | ⏳ falta testar |

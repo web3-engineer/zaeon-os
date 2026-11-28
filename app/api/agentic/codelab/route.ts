@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/src/lib/auth';
 // #883 (parte 3a): a IA sai pelo envelope (Hugging Face primeiro, Google só de queda), não pelo SDK do Vertex direto
-import { iaDoLaboratorio } from '@/lib/agentic/labIa';
+import { iaDoLaboratorio, idDoAluno } from '@/lib/agentic/labIa';
 
 export const dynamic    = 'force-dynamic';
 export const maxDuration = 30;
@@ -40,7 +40,7 @@ Current code:
 ${(code ?? '').slice(0, 3000)}
 \`\`\``;
 
-    const raw = await iaDoLaboratorio('codelab', SYSTEM_PROMPT, userMsg, { temperature: 0.4, maxOutputTokens: 1024 });
+    const raw = await iaDoLaboratorio('codelab', SYSTEM_PROMPT, userMsg, { temperature: 0.4, maxOutputTokens: 1024, userId: idDoAluno(session) });
 
     let parsed: any;
     try {

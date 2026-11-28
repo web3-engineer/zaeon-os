@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/src/lib/auth';
 // #883 (parte 3a): a IA sai pelo envelope (Hugging Face primeiro, Google só de queda), não pelo SDK do Vertex direto
-import { iaDoLaboratorio } from '@/lib/agentic/labIa';
+import { iaDoLaboratorio, idDoAluno } from '@/lib/agentic/labIa';
 
 export const dynamic    = 'force-dynamic';
 export const maxDuration = 30;
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
     const { prompt } = await req.json();
     if (!prompt?.trim()) return NextResponse.json({ error: 'Prompt required' }, { status: 400 });
 
-    const raw = await iaDoLaboratorio('quantum', SYSTEM_PROMPT, `User: "${prompt.trim()}"`, { temperature: 0.3, maxOutputTokens: 512 });
+    const raw = await iaDoLaboratorio('quantum', SYSTEM_PROMPT, `User: "${prompt.trim()}"`, { temperature: 0.3, maxOutputTokens: 512, userId: idDoAluno(session) });
 
     let scene: any;
     try {
